@@ -1,9 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ar_SA{
     Languages{
-        ar_001{"العربية الرسمية الحديثة"}
         arn{"المابودونجونية"}
         gn{"الغورانية"}
         hsb{"صوربيا العليا"}
@@ -15,4 +13,5 @@ ar_SA{
         te{"التيلوجو"}
         ti{"التيغرينية"}
     }
+    Version{"2.1.49.36"}
 }

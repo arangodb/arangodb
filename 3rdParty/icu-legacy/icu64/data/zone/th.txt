@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 th{
+    Version{"2.1.49.82"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"อาบีจาน"}
@@ -258,9 +258,6 @@ th{
         "America:Chihuahua"{
             ec{"ชีวาวา"}
         }
-        "America:Ciudad_Juarez"{
-            ec{"ซิวดัดฮัวเรซ"}
-        }
         "America:Coral_Harbour"{
             ec{"คอรัลฮาร์เบอร์"}
         }
@@ -465,6 +462,9 @@ th{
         "America:New_York"{
             ec{"นิวยอร์ก"}
         }
+        "America:Nipigon"{
+            ec{"นิปิกอน"}
+        }
         "America:Nome"{
             ec{"นอม"}
         }
@@ -485,6 +485,9 @@ th{
         }
         "America:Panama"{
             ec{"ปานามา"}
+        }
+        "America:Pangnirtung"{
+            ec{"พางนีทัง"}
         }
         "America:Paramaribo"{
             ec{"ปารามาริโบ"}
@@ -507,6 +510,9 @@ th{
         "America:Punta_Arenas"{
             ec{"ปุนตาอาเรนัส"}
         }
+        "America:Rainy_River"{
+            ec{"เรนนี่ริเวอร์"}
+        }
         "America:Rankin_Inlet"{
             ec{"แรงกินอินเล็ต"}
         }
@@ -521,6 +527,9 @@ th{
         }
         "America:Rio_Branco"{
             ec{"รีโอบรังโก"}
+        }
+        "America:Santa_Isabel"{
+            ec{"ซานตาอิซาเบล"}
         }
         "America:Santarem"{
             ec{"ซันตาเรม"}
@@ -567,6 +576,9 @@ th{
         "America:Thule"{
             ec{"ทูเล"}
         }
+        "America:Thunder_Bay"{
+            ec{"ทันเดอร์เบย์"}
+        }
         "America:Tijuana"{
             ec{"ทิฮัวนา"}
         }
@@ -587,6 +599,9 @@ th{
         }
         "America:Yakutat"{
             ec{"ยากูทัต"}
+        }
+        "America:Yellowknife"{
+            ec{"เยลโลว์ไนฟ์"}
         }
         "Antarctica:Casey"{
             ec{"เคซีย์"}
@@ -874,7 +889,7 @@ th{
             ec{"เยเรวาน"}
         }
         "Atlantic:Azores"{
-            ec{"อะโซร์ส"}
+            ec{"อาซอเรส"}
         }
         "Atlantic:Bermuda"{
             ec{"เบอร์มิวดา"}
@@ -911,6 +926,9 @@ th{
         }
         "Australia:Broken_Hill"{
             ec{"โบรกเคนฮิลล์"}
+        }
+        "Australia:Currie"{
+            ec{"คูร์รี"}
         }
         "Australia:Darwin"{
             ec{"ดาร์วิน"}
@@ -1094,6 +1112,9 @@ th{
         "Europe:Ulyanovsk"{
             ec{"อะลิยานอฟ"}
         }
+        "Europe:Uzhgorod"{
+            ec{"อัซโกร็อด"}
+        }
         "Europe:Vaduz"{
             ec{"วาดุซ"}
         }
@@ -1114,6 +1135,9 @@ th{
         }
         "Europe:Zagreb"{
             ec{"ซาเกร็บ"}
+        }
+        "Europe:Zaporozhye"{
+            ec{"ซาโปโรซี"}
         }
         "Europe:Zurich"{
             ec{"ซูริค"}
@@ -1196,8 +1220,8 @@ th{
         "Pacific:Honolulu"{
             ec{"โฮโนลูลู"}
         }
-        "Pacific:Kanton"{
-            ec{"แคนทอน"}
+        "Pacific:Johnston"{
+            ec{"จอห์นสตัน"}
         }
         "Pacific:Kiritimati"{
             ec{"คิริทิมาตี"}
@@ -1654,6 +1678,9 @@ th{
             lg{"เวลามาเก๊า"}
             ls{"เวลามาตรฐานมาเก๊า"}
         }
+        "meta:Macquarie"{
+            ls{"เวลาเกาะแมกควอรี"}
+        }
         "meta:Magadan"{
             ld{"เวลาฤดูร้อนมากาดาน"}
             lg{"เวลามากาดาน"}
@@ -1678,6 +1705,11 @@ th{
         }
         "meta:Mawson"{
             ls{"เวลามอว์สัน"}
+        }
+        "meta:Mexico_Northwest"{
+            ld{"เวลาออมแสงเม็กซิโกตะวันตกเฉียงเหนือ"}
+            lg{"เวลาเม็กซิโกตะวันตกเฉียงเหนือ"}
+            ls{"เวลามาตรฐานเม็กซิโกตะวันตกเฉียงเหนือ"}
         }
         "meta:Mexico_Pacific"{
             ld{"เวลาออมแสงแปซิฟิกเม็กซิโก"}
@@ -1722,9 +1754,7 @@ th{
             ls{"เวลานีอูเอ"}
         }
         "meta:Norfolk"{
-            ld{"เวลาออมแสงเกาะนอร์ฟอล์ก"}
-            lg{"เวลาเกาะนอร์ฟอล์ก"}
-            ls{"เวลามาตรฐานเกาะนอร์ฟอล์ก"}
+            ls{"เวลาเกาะนอร์ฟอล์ก"}
         }
         "meta:Noronha"{
             ld{"เวลาฤดูร้อนของหมู่เกาะเฟอร์นันโด"}
@@ -1907,9 +1937,6 @@ th{
             ld{"เวลาฤดูร้อนเยคาเตรินบูร์ก"}
             lg{"เวลาเยคาเตรินบูร์ก"}
             ls{"เวลามาตรฐานเยคาเตรินบูร์ก"}
-        }
-        "meta:Yukon"{
-            ls{"เวลายูคอน"}
         }
         regionFormat{"เวลา{0}"}
         regionFormatDaylight{"เวลาออมแสง{0}"}

@@ -24,10 +24,10 @@ class StringEnumeration;
 
 class CollationServiceTest: public IntlTest {
 public:
-    void runIndexedTest(int32_t index, UBool exec, const char* &name, char* /*par = nullptr */) override;
+    void runIndexedTest(int32_t index, UBool exec, const char* &name, char* /*par = NULL */);
 
-    void TestRegister();
-    void TestRegisterFactory();
+    void TestRegister(void);
+    void TestRegisterFactory(void);
     void TestSeparateTree();
 
  private:

@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 kw{
     ExemplarCharacters{"[a b c d e f g h i j k l m n o p q r s t u v w x y z]"}
     NumberElements{
@@ -10,8 +9,13 @@ kw{
             }
         }
     }
+    Version{"2.1.48.56"}
     calendar{
         gregorian{
+            AmPmMarkers{
+                "a.m.",
+                "p.m.",
+            }
             AmPmMarkersAbbr{
                 "a.m.",
                 "p.m.",

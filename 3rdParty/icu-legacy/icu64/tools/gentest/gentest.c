@@ -184,13 +184,8 @@ outputJavaStuff(const char* progname, const char *outputDir) {
         fprintf(out, "        /* %s, %d */\n", udbg_enumName(UDBG_UDebugEnumType,t), t);
         fprintf(out, "        { \n");
         for(i=0;i<count;i++) {
-            fprintf(out, "           ");
-#if !UCONFIG_NO_FORMATTING
-            if (t == UDBG_UCalendarDateFields && i == 23) {
-              fprintf(out, "//");
-            } 
-#endif 
-            fprintf(out, "\"%s\", /* %d */ \n", udbg_enumName((UDebugEnumType)t,i), i);
+            fprintf(out, 
+                "           \"%s\", /* %d */ \n", udbg_enumName((UDebugEnumType)t,i), i);
         }
         fprintf(out, "        },\n");
     }
@@ -211,9 +206,6 @@ outputJavaStuff(const char* progname, const char *outputDir) {
                 /* Temporary workaround for IS_LEAP_MONTH #6051 */
                 if (t == UDBG_UCalendarDateFields && i == 22) {
                   fprintf(out, "com.ibm.icu.util.ChineseCalendar.%s, /* %d */", udbg_enumName((UDebugEnumType)t,i), i);
-                /* Temporary workaround for ORDINAL_MONTH */
-                } else if (t == UDBG_UCalendarDateFields && i == 23) {
-                  fprintf(out, "//com.ibm.icu.util.Calendar.%s, /* %d */", udbg_enumName((UDebugEnumType)t,i), i);
                 } else {
                   fprintf(out, "com.ibm.icu.util.Calendar.%s, /* %d */", udbg_enumName((UDebugEnumType)t,i), i);
                 }

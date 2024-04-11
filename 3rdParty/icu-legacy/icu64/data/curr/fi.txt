@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 fi{
     Currencies{
         ADP{
@@ -899,13 +898,9 @@ fi{
             "SKK",
             "Slovakian koruna",
         }
-        SLE{
-            "SLE",
-            "Sierra Leonen leone",
-        }
         SLL{
             "SLL",
-            "Sierra Leonen leone (1964—2022)",
+            "Sierra Leonen leone",
         }
         SOS{
             "SOS",
@@ -1039,10 +1034,6 @@ fi{
             "UYU",
             "Uruguayn peso",
         }
-        UYW{
-            "UYW",
-            "Uruguayn nimellinen palkkaindeksiyksikkö",
-        }
         UZS{
             "UZS",
             "Uzbekistanin som",
@@ -1124,7 +1115,7 @@ fi{
             "Ranskan UIC-frangi",
         }
         XOF{
-            "F CFA",
+            "CFA",
             "CFA-frangi BCEAO",
         }
         XPD{
@@ -1233,6 +1224,7 @@ fi{
         BRL{"BRL"}
         BSD{"BSD"}
         BWP{"BWP"}
+        BYN{"BYN"}
         BZD{"BZD"}
         CAD{"CAD"}
         CLP{"CLP"}
@@ -1291,6 +1283,7 @@ fi{
         PLN{"PLN"}
         PYG{"PYG"}
         RON{"RON"}
+        RUR{"RUR"}
         RWF{"RWF"}
         SBD{"SBD"}
         SEK{"SEK"}
@@ -1312,6 +1305,9 @@ fi{
         XCD{"XCD"}
         ZAR{"ZAR"}
         ZMW{"ZMW"}
+    }
+    Currencies%variant{
+        TRY{"TL"}
     }
     CurrencyPlurals{
         ADP{
@@ -2210,13 +2206,9 @@ fi{
             one{"Slovakian koruna"}
             other{"Slovakian korunaa"}
         }
-        SLE{
-            one{"Sierra Leonen leonea"}
-            other{"Sierra Leonen leonea"}
-        }
         SLL{
-            one{"Sierra Leonen leone (1964—2022)"}
-            other{"Sierra Leonen leonea (1964—2022)"}
+            one{"Sierra Leonen leone"}
+            other{"Sierra Leonen leonea"}
         }
         SOS{
             one{"Somalian šillinki"}
@@ -2225,6 +2217,10 @@ fi{
         SRD{
             one{"Surinamen dollari"}
             other{"Surinamen dollaria"}
+        }
+        SRG{
+            one{"Surinamen guldeni"}
+            other{"Surinamen guldeni"}
         }
         SSP{
             one{"Etelä-Sudanin punta"}
@@ -2345,10 +2341,6 @@ fi{
         UYU{
             one{"Uruguayn peso"}
             other{"Uruguayn pesoa"}
-        }
-        UYW{
-            one{"Uruguayn nimellinen palkkaindeksiyksikkö"}
-            other{"Uruguayn nimellistä palkkaindeksiyksikköä"}
         }
         UZS{
             one{"Uzbekistanin som"}
@@ -2531,4 +2523,5 @@ fi{
         one{"{0} {1}"}
         other{"{0} {1}"}
     }
+    Version{"2.1.48.42"}
 }

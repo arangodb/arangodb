@@ -29,7 +29,7 @@ public:
 
     CollationKanaTest();
     virtual ~CollationKanaTest();
-    void runIndexedTest( int32_t index, UBool exec, const char* &name, char* par = nullptr ) override;
+    void runIndexedTest( int32_t index, UBool exec, const char* &name, char* par = NULL );
 
     // performs test with strength TERIARY
     void TestTertiary(/* char* par */);
@@ -50,14 +50,14 @@ public:
     void TestChooonKigoo();
 
 private:
-    static const char16_t testSourceCases[][MAX_TOKEN_LEN];
-    static const char16_t testTargetCases[][MAX_TOKEN_LEN];
+    static const UChar testSourceCases[][MAX_TOKEN_LEN];
+    static const UChar testTargetCases[][MAX_TOKEN_LEN];
     static const Collator::EComparisonResult results[];
-    static const char16_t testBaseCases[][MAX_TOKEN_LEN];
-    static const char16_t testPlainDakutenHandakutenCases[][MAX_TOKEN_LEN];
-    static const char16_t testSmallLargeCases[][MAX_TOKEN_LEN];
-    static const char16_t testKatakanaHiraganaCases[][MAX_TOKEN_LEN];
-    static const char16_t testChooonKigooCases[][MAX_TOKEN_LEN];
+    static const UChar testBaseCases[][MAX_TOKEN_LEN];
+    static const UChar testPlainDakutenHandakutenCases[][MAX_TOKEN_LEN];
+    static const UChar testSmallLargeCases[][MAX_TOKEN_LEN];
+    static const UChar testKatakanaHiraganaCases[][MAX_TOKEN_LEN];
+    static const UChar testChooonKigooCases[][MAX_TOKEN_LEN];
 
     Collator *myCollation;
 };

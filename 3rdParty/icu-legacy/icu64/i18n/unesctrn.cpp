@@ -26,47 +26,47 @@ U_NAMESPACE_BEGIN
 /**
  * Special character marking the end of the spec[] array.
  */
-static const char16_t END = 0xFFFF;
+static const UChar END = 0xFFFF;
 
 // Unicode: "U+10FFFF" hex, min=4, max=6
-static const char16_t SPEC_Unicode[] = {
+static const UChar SPEC_Unicode[] = {
     2, 0, 16, 4, 6, 85/*U*/, 43/*+*/,
     END
 };
 
 // Java: "\\uFFFF" hex, min=4, max=4
-static const char16_t SPEC_Java[] = {
+static const UChar SPEC_Java[] = {
     2, 0, 16, 4, 4, 92/*\*/, 117/*u*/,
     END
 };
 
 // C: "\\uFFFF" hex, min=4, max=4; \\U0010FFFF hex, min=8, max=8
-static const char16_t SPEC_C[] = {
+static const UChar SPEC_C[] = {
     2, 0, 16, 4, 4, 92/*\*/, 117/*u*/,
     2, 0, 16, 8, 8, 92/*\*/, 85/*U*/,
     END
 };
 
 // XML: "&#x10FFFF;" hex, min=1, max=6
-static const char16_t SPEC_XML[] = {
+static const UChar SPEC_XML[] = {
     3, 1, 16, 1, 6, 38/*&*/, 35/*#*/, 120/*x*/, 59/*;*/,
     END
 };
 
 // XML10: "&#1114111;" dec, min=1, max=7 (not really "Hex-Any")
-static const char16_t SPEC_XML10[] = {
+static const UChar SPEC_XML10[] = {
     2, 1, 10, 1, 7, 38/*&*/, 35/*#*/, 59/*;*/,
     END
 };
 
 // Perl: "\\x{263A}" hex, min=1, max=6
-static const char16_t SPEC_Perl[] = {
+static const UChar SPEC_Perl[] = {
     3, 1, 16, 1, 6, 92/*\*/, 120/*x*/, 123/*{*/, 125/*}*/,
     END
 };
 
 // All: Java, C, Perl, XML, XML10, Unicode
-static const char16_t SPEC_Any[] = {
+static const UChar SPEC_Any[] = {
     2, 0, 16, 4, 6, 85/*U*/, 43/*+*/,                      // Unicode
     2, 0, 16, 4, 4, 92/*\*/, 117/*u*/,                     // Java
     2, 0, 16, 8, 8, 92/*\*/, 85/*U*/,                      // C (surrogates)
@@ -78,15 +78,15 @@ static const char16_t SPEC_Any[] = {
 
 UOBJECT_DEFINE_RTTI_IMPLEMENTATION(UnescapeTransliterator)
 
-static char16_t* copySpec(const char16_t* spec) {
+static UChar* copySpec(const UChar* spec) {
     int32_t len = 0;
     while (spec[len] != END) {
         ++len;
     }
     ++len;
-    char16_t *result = (char16_t *)uprv_malloc(len*sizeof(char16_t));
+    UChar *result = (UChar *)uprv_malloc(len*sizeof(UChar));
     // Check for memory allocation error. 
-    if (result != nullptr) {
+    if (result != NULL) {
     	uprv_memcpy(result, spec, (size_t)len*sizeof(result[0]));
     }
     return result;
@@ -143,8 +143,8 @@ void UnescapeTransliterator::registerIDs() {
  * Constructor.  Takes the encoded spec array.
  */
 UnescapeTransliterator::UnescapeTransliterator(const UnicodeString& newID,
-                                               const char16_t *newSpec) :
-    Transliterator(newID, nullptr)
+                                               const UChar *newSpec) :
+    Transliterator(newID, NULL)
 {
     this->spec = copySpec(newSpec);
 }
@@ -164,7 +164,7 @@ UnescapeTransliterator::~UnescapeTransliterator() {
 /**
  * Transliterator API.
  */
-UnescapeTransliterator* UnescapeTransliterator::clone() const {
+Transliterator* UnescapeTransliterator::clone() const {
     return new UnescapeTransliterator(*this);
 }
 
@@ -175,13 +175,13 @@ void UnescapeTransliterator::handleTransliterate(Replaceable& text, UTransPositi
                                                  UBool isIncremental) const {
     int32_t start = pos.start;
     int32_t limit = pos.limit;
-    int32_t i, ipat;
+    int32_t i, j, ipat;
 
     while (start < limit) {
         // Loop over the forms in spec[].  Exit this loop when we
         // match one of the specs.  Exit the outer loop if a
         // partial match is detected and isIncremental is true.
-        for (ipat=0; spec[ipat] != END;) {
+        for (j=0, ipat=0; spec[ipat] != END; ++j) {
 
             // Read the header
             int32_t prefixLen = spec[ipat++];
@@ -193,7 +193,7 @@ void UnescapeTransliterator::handleTransliterate(Replaceable& text, UTransPositi
             // s is a copy of start that is advanced over the
             // characters as we parse them.
             int32_t s = start;
-            UBool match = true;
+            UBool match = TRUE;
 
             for (i=0; i<prefixLen; ++i) {
                 if (s >= limit) {
@@ -205,13 +205,13 @@ void UnescapeTransliterator::handleTransliterate(Replaceable& text, UTransPositi
                         if (isIncremental) {
                             goto exit;
                         }
-                        match = false;
+                        match = FALSE;
                         break;
                     }
                 }
-                char16_t c = text.charAt(s++);
+                UChar c = text.charAt(s++);
                 if (c != spec[ipat + i]) {
-                    match = false;
+                    match = FALSE;
                     break;
                 }
             }
@@ -248,12 +248,12 @@ void UnescapeTransliterator::handleTransliterate(Replaceable& text, UTransPositi
                             if (s > start && isIncremental) {
                                 goto exit;
                             }
-                            match = false;
+                            match = FALSE;
                             break;
                         }
-                        char16_t c = text.charAt(s++);
+                        UChar c = text.charAt(s++);
                         if (c != spec[ipat + prefixLen + i]) {
-                            match = false;
+                            match = FALSE;
                             break;
                         }
                     }

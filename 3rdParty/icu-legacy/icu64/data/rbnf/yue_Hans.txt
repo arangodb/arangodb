@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 yue_Hans{
     %%Parent{"root"}
     RBNFRules{
@@ -151,7 +150,23 @@ yue_Hans{
             "0: \u96F6;",
             "1: \u4E00;",
             "2: \u4E24;",
-            "3: =%spellout-cardinal=;",
+            "3: \u4E09;",
+            "4: \u56DB;",
+            "5: \u4E94;",
+            "6: \u516D;",
+            "7: \u4E03;",
+            "8: \u516B;",
+            "9: \u4E5D;",
+            "10: <%%cardinal-twenties<\u5341[>%spellout-numbering>];",
+            "21: \u5EFF[>%spellout-numbering>];",
+            "30: <%spellout-numbering<\u5341[>>];",
+            "100: <%spellout-numbering<\u767E[>%%number2>];",
+            "1000: <%spellout-numbering<\u5343[>%%number3>];",
+            "10000: <%spellout-numbering<\u4E07[>%%number4>];",
+            "100000000: <%spellout-numbering<\u4EBF[>%%number5>];",
+            "1000000000000: <%spellout-numbering<\u5146[>%%number8>];",
+            "10000000000000000: <%spellout-numbering<\u4EAC[>%%number13>];",
+            "1000000000000000000: =#,##0=;",
             "%%cardinal-twenties:",
             "1: ;",
             "2: \u4E8C;",
@@ -160,4 +175,5 @@ yue_Hans{
             "0: \u7B2C=%spellout-numbering=;",
         }
     }
+    Version{"2.1.48.77"}
 }

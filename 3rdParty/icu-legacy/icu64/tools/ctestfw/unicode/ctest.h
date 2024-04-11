@@ -82,13 +82,6 @@ U_CDECL_END
 #define ICU_TRACE_OPTION 6
 
 /**
- * This is used to set or get the option value for WRITE_GOLDEN_DATA.
- * Set to 1 to overwrite golden data files, such as those in testdata/ucptrie.
- * Use with set/getTestOption().
- */
-#define WRITE_GOLDEN_DATA_OPTION 7
-
-/**
  * Maximum amount of memory uprv_malloc should allocate before returning NULL.
  *
  * @internal
@@ -174,7 +167,7 @@ T_CTEST_API void T_CTEST_EXPORT2
 cleanUpTestTree(TestNode *tn);
 
 /**
- * Retrieve a specific subtest. (subtree).
+ * Retreive a specific subtest. (subtree).
  *
  * @param root Pointer to the root.
  * @param path Path relative to the root, Ex. '/a/b'
@@ -235,9 +228,9 @@ log_data_err(const char *pattern, ...);
 
 /**
  * Log a known issue.
- * @param ticket ticket number such as "ICU-12345" for ICU tickets or "CLDR-6636" for CLDR tickets.
+ * @param ticket ticket number such as "12345" for ICU tickets or "cldrbug:6636" for CLDR tickets.
  * @param fmt ...  sprintf-style format, optional message. can be NULL.
- * @return true if known issue test should be skipped, false if it should be run
+ * @return TRUE if known issue test should be skipped, FALSE if it should be run
  */
 T_CTEST_API UBool
 T_CTEST_EXPORT2

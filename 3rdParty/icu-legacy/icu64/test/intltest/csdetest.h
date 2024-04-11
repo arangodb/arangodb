@@ -21,7 +21,7 @@ public:
     CharsetDetectionTest();
     virtual ~CharsetDetectionTest();
 
-    virtual void runIndexedTest(int32_t index, UBool exec, const char* &name, char* par = nullptr ) override;
+    virtual void runIndexedTest(int32_t index, UBool exec, const char* &name, char* par = NULL );
 
     virtual void ConstructionTest();
     virtual void UTF8Test();
@@ -33,7 +33,6 @@ public:
     virtual void IBM420Test();
     virtual void Ticket6394Test();
     virtual void Ticket6954Test();
-    virtual void Ticket21823Test();
 
 private:
     void checkEncoding(const UnicodeString &testString,

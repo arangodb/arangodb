@@ -47,7 +47,7 @@ UnicodeString FieldsSet::diffFrom(const FieldsSet& other, UErrorCode& status) co
     UnicodeString str;
     if(!isSameType(other)) {
         status = U_ILLEGAL_ARGUMENT_ERROR;
-        return {"U_ILLEGAL_ARGUMENT_ERROR: FieldsSet of a different type!"};
+        return UnicodeString("U_ILLEGAL_ARGUMENT_ERROR: FieldsSet of a different type!");
     }
     for (int i=0; i<fieldCount(); i++) {
         if (isSet((UCalendarDateFields)i)) {
@@ -67,7 +67,7 @@ UnicodeString FieldsSet::diffFrom(const FieldsSet& other, UErrorCode& status) co
     return str;
 }
 
-static UnicodeString *split(const UnicodeString &src, char16_t ch, int32_t &splits)
+static UnicodeString *split(const UnicodeString &src, UChar ch, int32_t &splits)
 {
     int32_t offset = -1;
 
@@ -116,7 +116,7 @@ int32_t FieldsSet::parseFrom(const UnicodeString& str, const
 
         if(U_FAILURE(status)) {
             char ch[256];
-            const char16_t *u = kv[0].getBuffer();
+            const UChar *u = kv[0].getBuffer();
             int32_t len = kv[0].length();
             u_UCharsToChars(u, ch, len);
             ch[len] = 0; /* include terminating \0 */
@@ -131,7 +131,7 @@ int32_t FieldsSet::parseFrom(const UnicodeString& str, const
 
             if(U_FAILURE(status)) {
                 char ch[256];
-                const char16_t *u = kv[1].getBuffer();
+                const UChar *u = kv[1].getBuffer();
                 int32_t len = kv[1].length();
                 u_UCharsToChars(u, ch, len);
                 ch[len] = 0; /* include terminating \0 */
@@ -160,7 +160,7 @@ UBool FieldsSet::isSameType(const FieldsSet& other) const {
 void FieldsSet::clear() {
     for (int i=0; i<fieldCount(); i++) {
         fValue[i]=-1;
-        fIsSet[i]=false;
+        fIsSet[i]=FALSE;
     }
 }
 
@@ -169,19 +169,19 @@ void FieldsSet::clear(int32_t field) {
         return;
     }
     fValue[field] = -1;
-    fIsSet[field] = false;
+    fIsSet[field] = FALSE;
 }
 void FieldsSet::set(int32_t field, int32_t amount) {
     if (field<0|| field>=fieldCount()) {
         return;
     }
     fValue[field] = amount;
-    fIsSet[field] = true;
+    fIsSet[field] = TRUE;
 }
 
 UBool FieldsSet::isSet(int32_t field) const {
     if (field<0|| field>=fieldCount()) {
-        return false;
+        return FALSE;
     }
     return fIsSet[field];
 }
@@ -210,7 +210,7 @@ void FieldsSet::parseValueDefault(const FieldsSet* inheritFrom, int32_t field, c
     int32_t value = -1;
     if(substr.length()==0) { // inherit requested
         // inherit
-        if((inheritFrom == nullptr) || !inheritFrom->isSet((UCalendarDateFields)field)) {
+        if((inheritFrom == NULL) || !inheritFrom->isSet((UCalendarDateFields)field)) {
             // couldn't inherit from field 
             it_errln(UnicodeString("Parse Failed: Couldn't inherit field ") + field + UnicodeString(" [") + UnicodeString(udbg_enumName(fEnum, field)) + UnicodeString("]"));
             status = U_ILLEGAL_ARGUMENT_ERROR;
@@ -274,17 +274,17 @@ void CalendarFieldsSet::setOnCalendar(Calendar *cal, UErrorCode& /*status*/) con
  */
 UBool CalendarFieldsSet::matches(Calendar *cal, CalendarFieldsSet &diffSet,
         UErrorCode& status) const {
-    UBool match = true;
+    UBool match = TRUE;
     if (U_FAILURE(status)) {
-        return false;
+        return FALSE;
     }
     for (int i=0; i<UDAT_FIELD_COUNT; i++) {
         if (isSet((UCalendarDateFields)i)) {
             int32_t calVal = cal->get((UCalendarDateFields)i, status);
             if (U_FAILURE(status))
-                return false;
+                return FALSE;
             if (calVal != get((UCalendarDateFields)i)) {
-                match = false;
+                match = FALSE;
                 diffSet.set((UCalendarDateFields)i, calVal);
                 //fprintf(stderr, "match failed: %s#%d=%d != %d\n",udbg_enumName(UDBG_UCalendarDateFields,i),i,cal->get((UCalendarDateFields)i,status), get((UCalendarDateFields)i));;
             }

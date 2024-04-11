@@ -1,7 +1,7 @@
 /*
 **********************************************************************
 * © 2016 and later: Unicode, Inc. and others.
-* License & terms of use: http://www.unicode.org/copyright.html
+* License & terms of use: http://www.unicode.org/copyright.html#License
 **********************************************************************
 **********************************************************************
 * Copyright (c) 2002-2006, International Business Machines
@@ -91,7 +91,7 @@ public:
     ~CharPerformanceTest();
     virtual UPerfFunction* runIndexedTest(int32_t index, UBool exec,
         const char *&name, 
-        char *par = nullptr);
+        char *par = NULL);     
     UPerfFunction* TestIsAlpha();
     UPerfFunction* TestIsUpper();
     UPerfFunction* TestIsLower();

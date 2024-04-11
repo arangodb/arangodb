@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 os{
+    Version{"2.1.47.82"}
     zoneStrings{
         "Asia:Tbilisi"{
             ec{"Тбилис"}
@@ -43,6 +43,10 @@ os{
             lg{"Мӕскуыйы рӕстӕг"}
             ls{"Мӕскуыйы стандартон рӕстӕг"}
         }
+        fallbackFormat{"{1} ({0})"}
+        gmtFormat{"GMT{0}"}
+        gmtZeroFormat{"GMT"}
+        hourFormat{"+HH:mm;-HH:mm"}
         regionFormat{"{0} рӕстӕг"}
     }
 }

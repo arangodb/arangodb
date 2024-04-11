@@ -33,11 +33,11 @@
  *
  * @param s Input string pointer.
  * @param length Length of the string, can be -1 if NUL-terminated.
- * @return true if s contains only invariant characters.
+ * @return TRUE if s contains only invariant characters.
  *
  * @internal (ICU 2.8)
  */
-U_CAPI UBool U_EXPORT2
+U_INTERNAL UBool U_EXPORT2
 uprv_isInvariantString(const char *s, int32_t length);
 
 /**
@@ -46,11 +46,11 @@ uprv_isInvariantString(const char *s, int32_t length);
  *
  * @param s Input string pointer.
  * @param length Length of the string, can be -1 if NUL-terminated.
- * @return true if s contains only invariant characters.
+ * @return TRUE if s contains only invariant characters.
  *
  * @internal (ICU 2.8)
  */
-U_CAPI UBool U_EXPORT2
+U_INTERNAL UBool U_EXPORT2
 uprv_isInvariantUString(const UChar *s, int32_t length);
 
 /**
@@ -68,80 +68,11 @@ uprv_isInvariantUString(const UChar *s, int32_t length);
 #   error Unknown charset family!
 #endif
 
-#ifdef __cplusplus
-
-U_NAMESPACE_BEGIN
-
-/**
- * Like U_UPPER_ORDINAL(x) but with validation.
- * Returns 0..25 for A..Z else a value outside 0..25.
- */
-inline int32_t uprv_upperOrdinal(int32_t c) {
-#if U_CHARSET_FAMILY==U_ASCII_FAMILY
-    return c - 'A';
-#elif U_CHARSET_FAMILY==U_EBCDIC_FAMILY
-    // EBCDIC: A-Z (26 letters) is split into three ranges A-I (9 letters), J-R (9), S-Z (8).
-    // https://en.wikipedia.org/wiki/EBCDIC_037#Codepage_layout
-    if (c <= 'I') { return c - 'A'; }  // A-I --> 0-8
-    if (c < 'J') { return -1; }
-    if (c <= 'R') { return c - 'J' + 9; }  // J-R --> 9..17
-    if (c < 'S') { return -1; }
-    return c - 'S' + 18;  // S-Z --> 18..25
-#else
-#   error Unknown charset family!
-#endif
-}
-
-// Like U_UPPER_ORDINAL(x) but for lowercase and with validation.
-// Returns 0..25 for a..z else a value outside 0..25.
-inline int32_t uprv_lowerOrdinal(int32_t c) {
-#if U_CHARSET_FAMILY==U_ASCII_FAMILY
-    return c - 'a';
-#elif U_CHARSET_FAMILY==U_EBCDIC_FAMILY
-    // EBCDIC: a-z (26 letters) is split into three ranges a-i (9 letters), j-r (9), s-z (8).
-    // https://en.wikipedia.org/wiki/EBCDIC_037#Codepage_layout
-    if (c <= 'i') { return c - 'a'; }  // a-i --> 0-8
-    if (c < 'j') { return -1; }
-    if (c <= 'r') { return c - 'j' + 9; }  // j-r --> 9..17
-    if (c < 's') { return -1; }
-    return c - 's' + 18;  // s-z --> 18..25
-#else
-#   error Unknown charset family!
-#endif
-}
-
-U_NAMESPACE_END
-
-#endif
-
-/**
- * Returns true if c == '@' is possible.
- * The @ sign is variant, and the @ sign used on one
- * EBCDIC machine won't be compiled the same way on other EBCDIC based machines.
- * @internal
- */
-U_CFUNC UBool
-uprv_isEbcdicAtSign(char c);
-
-/**
- * \def uprv_isAtSign
- * Returns true if c == '@' is possible.
- * For ASCII, checks for exactly '@'. For EBCDIC, calls uprv_isEbcdicAtSign().
- * @internal
- */
-#if U_CHARSET_FAMILY==U_ASCII_FAMILY
-#   define uprv_isAtSign(c) ((c)=='@')
-#elif U_CHARSET_FAMILY==U_EBCDIC_FAMILY
-#   define uprv_isAtSign(c) uprv_isEbcdicAtSign(c)
-#else
-#   error Unknown charset family!
-#endif
-
 /**
  * Compare two EBCDIC invariant-character strings in ASCII order.
  * @internal
  */
-U_CAPI int32_t U_EXPORT2
+U_INTERNAL int32_t U_EXPORT2
 uprv_compareInvEbcdicAsAscii(const char *s1, const char *s2);
 
 /**
@@ -158,30 +89,10 @@ uprv_compareInvEbcdicAsAscii(const char *s1, const char *s2);
 #endif
 
 /**
- * Converts an EBCDIC invariant character to ASCII.
- * @internal
- */
-U_CAPI char U_EXPORT2
-uprv_ebcdicToAscii(char c);
-
-/**
- * \def uprv_invCharToAscii
- * Converts an invariant character to ASCII.
- * @internal
- */
-#if U_CHARSET_FAMILY==U_ASCII_FAMILY
-#   define uprv_invCharToAscii(c) (c)
-#elif U_CHARSET_FAMILY==U_EBCDIC_FAMILY
-#   define uprv_invCharToAscii(c) uprv_ebcdicToAscii(c)
-#else
-#   error Unknown charset family!
-#endif
-
-/**
  * Converts an EBCDIC invariant character to lowercase ASCII.
  * @internal
  */
-U_CAPI char U_EXPORT2
+U_INTERNAL char U_EXPORT2
 uprv_ebcdicToLowercaseAscii(char c);
 
 /**
@@ -202,7 +113,7 @@ uprv_ebcdicToLowercaseAscii(char c);
  * @internal
  * @see uprv_strncpy
  */
-U_CAPI uint8_t* U_EXPORT2
+U_INTERNAL uint8_t* U_EXPORT2
 uprv_aestrncpy(uint8_t *dst, const uint8_t *src, int32_t n);
 
 
@@ -211,7 +122,7 @@ uprv_aestrncpy(uint8_t *dst, const uint8_t *src, int32_t n);
  * @internal
  * @see uprv_strncpy
  */
-U_CAPI uint8_t* U_EXPORT2
+U_INTERNAL uint8_t* U_EXPORT2
 uprv_eastrncpy(uint8_t *dst, const uint8_t *src, int32_t n);
 
 

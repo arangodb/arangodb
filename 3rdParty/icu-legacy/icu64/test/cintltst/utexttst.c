@@ -15,8 +15,6 @@
 *******************************************************************************
 */
 
-#include <stdbool.h>
-
 #include "unicode/utypes.h"
 #include "unicode/utext.h"
 #include "unicode/ustring.h"
@@ -36,21 +34,17 @@ addUTextTest(TestNode** root)
 }
 
 
-#define TEST_ASSERT(x) UPRV_BLOCK_MACRO_BEGIN { \
-    if ((x)==false) { \
-        log_err("Test failure in file %s at line %d\n", __FILE__, __LINE__); \
-        gFailed = true; \
-    } \
-} UPRV_BLOCK_MACRO_END
+#define TEST_ASSERT(x) \
+   {if ((x)==FALSE) {log_err("Test failure in file %s at line %d\n", __FILE__, __LINE__);\
+                     gFailed = TRUE;\
+   }}
 
 
-#define TEST_SUCCESS(status) UPRV_BLOCK_MACRO_BEGIN { \
-    if (U_FAILURE(status)) { \
-        log_err("Test failure in file %s at line %d. Error = \"%s\"\n", \
-                __FILE__, __LINE__, u_errorName(status)); \
-        gFailed = true; \
-   } \
-} UPRV_BLOCK_MACRO_END
+#define TEST_SUCCESS(status) \
+   {if (U_FAILURE(status)) {log_err("Test failure in file %s at line %d. Error = \"%s\"\n", \
+       __FILE__, __LINE__, u_errorName(status)); \
+       gFailed = TRUE;\
+   }}
 
 
 
@@ -59,13 +53,13 @@ addUTextTest(TestNode** root)
  *            This is not intended to be a complete test of the API functionality.  That is
  *            in the C++ intltest program.
  *            This test is intended to check that everything can be accessed and built in 
- *            a pure C environment.
+ *            a pure C enviornment.
  */
 
 
 static void TestAPI(void) {
     UErrorCode      status = U_ZERO_ERROR;
-    UBool           gFailed = false;
+    UBool           gFailed = FALSE;
     (void)gFailed;   /* Suppress set but not used warning. */
 
     /* Open    */
@@ -102,7 +96,7 @@ static void TestAPI(void) {
         status = U_ZERO_ERROR;
         uta = utext_openUChars(NULL, uString, -1, &status);
         TEST_SUCCESS(status);
-        utb = utext_clone(NULL, uta, false, false, &status);
+        utb = utext_clone(NULL, uta, FALSE, FALSE, &status);
         TEST_SUCCESS(status);
         TEST_ASSERT(utb != NULL);
         TEST_ASSERT(utb != uta);
@@ -126,11 +120,11 @@ static void TestAPI(void) {
         TEST_ASSERT(uta!=NULL);
         TEST_SUCCESS(status);
         b = utext_isLengthExpensive(uta);
-        TEST_ASSERT(b==true);
+        TEST_ASSERT(b==TRUE);
         len = utext_nativeLength(uta);
         TEST_ASSERT(len == u_strlen(uString));
         b = utext_isLengthExpensive(uta);
-        TEST_ASSERT(b==false);
+        TEST_ASSERT(b==FALSE);
 
         c = utext_char32At(uta, 0);
         TEST_ASSERT(c==uString[0]);
@@ -160,17 +154,17 @@ static void TestAPI(void) {
 
         utext_setNativeIndex(uta, 0);
         b = utext_moveIndex32(uta, 1);
-        TEST_ASSERT(b==true);
+        TEST_ASSERT(b==TRUE);
         i = utext_getNativeIndex(uta);
         TEST_ASSERT(i==1);
 
         b = utext_moveIndex32(uta, u_strlen(uString)-1);
-        TEST_ASSERT(b==true);
+        TEST_ASSERT(b==TRUE);
         i = utext_getNativeIndex(uta);
         TEST_ASSERT(i==u_strlen(uString));
 
         b = utext_moveIndex32(uta, 1);
-        TEST_ASSERT(b==false);
+        TEST_ASSERT(b==FALSE);
         i = utext_getNativeIndex(uta);
         TEST_ASSERT(i==u_strlen(uString));
 
@@ -272,10 +266,10 @@ static void TestAPI(void) {
         TEST_SUCCESS(status);
 
         b = utext_isWritable(uta);
-        TEST_ASSERT(b == false);
+        TEST_ASSERT(b == FALSE);
 
         b = utext_hasMetaData(uta);
-        TEST_ASSERT(b == false);
+        TEST_ASSERT(b == FALSE);
 
         utext_replace(uta,
                       0, 1,     /* start, limit */
@@ -287,29 +281,13 @@ static void TestAPI(void) {
         utext_copy(uta,
                    0, 1,         /* start, limit      */
                    2,            /* destination index */
-                   false,        /* move flag         */
+                   FALSE,        /* move flag         */
                    &status);
         TEST_ASSERT(status == U_NO_WRITE_PERMISSION);
 
         utext_close(uta);
     }
 
-    {
-        // utext_equals() checks for the same type of text provider,
-        // same string pointer(!), and same index.
-        status = U_ZERO_ERROR;
-        const UChar *s = u"aßカ🚲";
-        UText *ut1 = utext_openUChars(NULL, s, -1, &status);
-        UText *ut2 = utext_openUChars(NULL, s, 5, &status);
-        TEST_SUCCESS(status);
-        TEST_ASSERT(utext_equals(ut1, ut2));
-        UChar32 c = utext_next32(ut1);
-        TEST_ASSERT(c == u'a');
-        TEST_ASSERT(!utext_equals(ut1, ut2));  // indexes out of sync
-        c = utext_next32(ut2);
-        TEST_ASSERT(c == u'a');
-        TEST_ASSERT(utext_equals(ut1, ut2));  // back in sync
-        utext_close(ut1);
-        utext_close(ut2);
-    }
+
 }
+

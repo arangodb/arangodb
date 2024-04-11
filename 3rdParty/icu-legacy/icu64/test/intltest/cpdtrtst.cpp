@@ -81,7 +81,7 @@ void CompoundTransliteratorTest::TestConstruction(){
        delete cpdtrans;
 
        CompoundTransliterator *cpdtrans2=new CompoundTransliterator(transarray[i], i+1);
-       if (cpdtrans2 == nullptr) {
+       if(cpdtrans2 == 0){
            errln("Construction using CompoundTransliterator(Transliterator* const transliterators[], "
                            "int32_t count, UnicodeFilter* adoptedFilter = 0)  failed");
            continue;
@@ -100,10 +100,10 @@ void CompoundTransliteratorTest::TestConstruction(){
    {
     /*Test Jitterbug 914 */
     UErrorCode err = U_ZERO_ERROR;
-    CompoundTransliterator  cpdTrans(UnicodeString("Latin-Hangul"),UTRANS_REVERSE,nullptr,parseError,err);
+    CompoundTransliterator  cpdTrans(UnicodeString("Latin-Hangul"),UTRANS_REVERSE,NULL,parseError,err);
     UnicodeString newID =cpdTrans.getID();
     if(newID!=UnicodeString("Hangul-Latin")){
-        errln(UnicodeString("Test for Jitterbug 914 for cpdTrans(UnicodeString(\"Latin-Hangul\"),UTRANS_REVERSE,nullptr,err) failed"));
+        errln(UnicodeString("Test for Jitterbug 914 for cpdTrans(UnicodeString(\"Latin-Hangul\"),UTRANS_REVERSE,NULL,err) failed"));
     }
    }
    delete t1;
@@ -131,12 +131,12 @@ void CompoundTransliteratorTest::TestCloneEqual(){
         return;
     }
     CompoundTransliterator *copyct1=new CompoundTransliterator(*ct1);
-    if (copyct1 == nullptr) {
+    if(copyct1 == 0){
         errln("copy construction failed");
         return;
     }
     CompoundTransliterator *copyct2=new CompoundTransliterator(*ct2);
-    if (copyct2 == nullptr) {
+    if(copyct2 == 0){
         errln("copy construction failed");
         return;
     }
@@ -159,10 +159,10 @@ void CompoundTransliteratorTest::TestCloneEqual(){
         errln("Error: =operator or copy constructor failed");
     }
 
-    CompoundTransliterator *clonect1a=ct1->clone();
-    CompoundTransliterator *clonect1b=equalct1.clone();
-    CompoundTransliterator *clonect2a=ct2->clone();
-    CompoundTransliterator *clonect2b=copyct2->clone();
+    CompoundTransliterator *clonect1a=(CompoundTransliterator*)ct1->clone();
+    CompoundTransliterator *clonect1b=(CompoundTransliterator*)equalct1.clone();
+    CompoundTransliterator *clonect2a=(CompoundTransliterator*)ct2->clone();
+    CompoundTransliterator *clonect2b=(CompoundTransliterator*)copyct2->clone();
 
 
     if(clonect1a->getID()  != ct1->getID()       || clonect1a->getCount() != ct1->getCount()        ||
@@ -194,7 +194,7 @@ void CompoundTransliteratorTest::TestGetCount(){
     UParseError parseError;
     CompoundTransliterator *ct1=new CompoundTransliterator("Halfwidth-Fullwidth;Fullwidth-Halfwidth", parseError, status);
     CompoundTransliterator *ct2=new CompoundTransliterator("Any-Hex;Hex-Any;Cyrillic-Latin;Latin-Cyrillic", parseError, status);
-    CompoundTransliterator *ct3=ct1;
+    CompoundTransliterator *ct3=(CompoundTransliterator*)ct1;
     if (U_FAILURE(status)) {
         dataerrln("FAILED: CompoundTransliterator constructor failed - %s", u_errorName(status));
         return;
@@ -216,7 +216,7 @@ void CompoundTransliteratorTest::TestGetCount(){
 
     /* Quick test getTargetSet(), only test that it doesn't die.  TODO:  a better test. */
     UnicodeSet ts;
-    UnicodeSet *retUS = nullptr;
+    UnicodeSet *retUS = NULL;
     retUS = &ct1->getTargetSet(ts);
     if (retUS != &ts || ts.size() == 0) {
         errln("CompoundTransliterator::getTargetSet() failed.\n");
@@ -224,7 +224,7 @@ void CompoundTransliteratorTest::TestGetCount(){
 
     /* Quick test getSourceSet(), only test that it doesn't die.  TODO:  a better test. */
     UnicodeSet ss;
-    retUS = nullptr;
+    retUS = NULL;
     retUS = &ct1->getSourceSet(ss);
     if (retUS != &ss || ss.size() == 0) {
         errln("CompoundTransliterator::getSourceSet() failed.\n");
@@ -297,9 +297,9 @@ void CompoundTransliteratorTest::TestGetSetAdoptTransliterator(){
     }*/
     logln("Testing adoptTransliterator() API of CompoundTransliterator");
     UnicodeString ID3("Latin-Katakana");
-    Transliterator **transarray2=static_cast<Transliterator **>(uprv_malloc(sizeof(Transliterator*)*1));
+    Transliterator **transarray2=(Transliterator **)uprv_malloc(sizeof(Transliterator*)*1);
     transarray2[0] = Transliterator::createInstance(ID3,UTRANS_FORWARD,parseError,status);
-    if (transarray2[0] != nullptr) {
+    if (transarray2[0] != 0) {
         ct1->adoptTransliterators(transarray2, 1);
     }
     if(ct1->getCount() != 1 || ct1->getID() != ID3){
@@ -320,7 +320,7 @@ void CompoundTransliteratorTest::TestGetSetAdoptTransliterator(){
 /**
  * Splits a UnicodeString
  */
-UnicodeString* CompoundTransliteratorTest::split(const UnicodeString& str, char16_t seperator, int32_t& count) {
+UnicodeString* CompoundTransliteratorTest::split(const UnicodeString& str, UChar seperator, int32_t& count) {
 
     //get the count
     int32_t i;
@@ -359,13 +359,13 @@ void CompoundTransliteratorTest::TestTransliterate(){
         UTransPosition index = { 0, 0, 0, 0 };
         UnicodeString rsource2(s);
         UnicodeString expectedResult=s;
-        ct1->handleTransliterate(rsource2, index, false);
-        expectAux(ct1->getID() + ":String, index(0,0,0), incremental=false", rsource2 + "->" + rsource2, rsource2==expectedResult, expectedResult);
+        ct1->handleTransliterate(rsource2, index, FALSE);
+        expectAux(ct1->getID() + ":String, index(0,0,0), incremental=FALSE", rsource2 + "->" + rsource2, rsource2==expectedResult, expectedResult);
         UTransPosition _index = {1,3,2,3};
         uprv_memcpy(&index, &_index, sizeof(index));
         UnicodeString rsource3(s);
-        ct1->handleTransliterate(rsource3, index, true); 
-        expectAux(ct1->getID() + ":String, index(1,2,3), incremental=true", rsource3 + "->" + rsource3, rsource3==expectedResult, expectedResult);
+        ct1->handleTransliterate(rsource3, index, TRUE); 
+        expectAux(ct1->getID() + ":String, index(1,2,3), incremental=TRUE", rsource3 + "->" + rsource3, rsource3==expectedResult, expectedResult);
 #endif
     }
     delete ct1;

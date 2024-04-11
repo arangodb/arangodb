@@ -26,42 +26,42 @@
  */
 class TransliteratorAPITest : public IntlTest {
 public:
-    void runIndexedTest(int32_t index, UBool exec, const char* &name, char* par=nullptr) override;
+    void runIndexedTest(int32_t index, UBool exec, const char* &name, char* par=NULL);
 
     /*Tests the function getDisplayName() */
-    void TestGetDisplayName();
+    void TestGetDisplayName(void);
 
-    void TestgetID();
+    void TestgetID(void);
 
-    void TestgetInverse();
+    void TestgetInverse(void);
 
-    void TestClone();
+    void TestClone(void);
 
-    void TestTransliterate1();
+    void TestTransliterate1(void);
 
-    void TestTransliterate2();
+    void TestTransliterate2(void);
 
-    void TestTransliterate3();
+    void TestTransliterate3(void);
 
-    void TestSimpleKeyboardTransliterator();
+    void TestSimpleKeyboardTransliterator(void);
 
-    void TestKeyboardTransliterator1();
+    void TestKeyboardTransliterator1(void);
 
-    void TestKeyboardTransliterator2();
+    void TestKeyboardTransliterator2(void);
 
-    void TestKeyboardTransliterator3();
+    void TestKeyboardTransliterator3(void);
 
-    void TestGetAdoptFilter();
+    void TestGetAdoptFilter(void);
 
-    void TestNullTransliterator();
+    void TestNullTransliterator(void);
 
-    void TestRegisterUnregister();
+    void TestRegisterUnregister(void);
 
-    void TestLatinDevanagari();
+    void TestLatinDevanagari(void);
     
-    void TestDevanagariLatinRT();
+    void TestDevanagariLatinRT(void);
 
-    void TestUnicodeFunctor();
+    void TestUnicodeFunctor(void);
 
     /*Internal functions used*/
     void doTest(const UnicodeString& , const UnicodeString& , const UnicodeString& );

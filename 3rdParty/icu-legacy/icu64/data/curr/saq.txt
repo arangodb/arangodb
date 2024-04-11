@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 saq{
     Currencies{
         AED{
@@ -171,13 +170,9 @@ saq{
             "SHP",
             "Paunt eel Santahelena",
         }
-        SLE{
-            "SLE",
-            "Leoni",
-        }
         SLL{
             "SLL",
-            "Leoni (1964—2022)",
+            "Leoni",
         }
         SOS{
             "SOS",
@@ -216,7 +211,7 @@ saq{
             "Njilingi eel CFA BEAC",
         }
         XOF{
-            "F CFA",
+            "CFA",
             "Njilingi eel CFA BCEAO",
         }
         ZAR{
@@ -236,4 +231,5 @@ saq{
             "Dola eel Zimbabwe",
         }
     }
+    Version{"2.1.47.82"}
 }

@@ -20,14 +20,14 @@ UOBJECT_DEFINE_RTTI_IMPLEMENTATION(UCharCharacterIterator)
 
 UCharCharacterIterator::UCharCharacterIterator()
   : CharacterIterator(),
-  text(nullptr)
+  text(0)
 {
     // never default construct!
 }
 
 UCharCharacterIterator::UCharCharacterIterator(ConstChar16Ptr textPtr,
                                                int32_t length)
-  : CharacterIterator(textPtr != nullptr ? (length >= 0 ? length : u_strlen(textPtr)) : 0),
+  : CharacterIterator(textPtr != 0 ? (length>=0 ? length : u_strlen(textPtr)) : 0),
   text(textPtr)
 {
 }
@@ -35,7 +35,7 @@ UCharCharacterIterator::UCharCharacterIterator(ConstChar16Ptr textPtr,
 UCharCharacterIterator::UCharCharacterIterator(ConstChar16Ptr textPtr,
                                                int32_t length,
                                                int32_t position)
-  : CharacterIterator(textPtr != nullptr ? (length >= 0 ? length : u_strlen(textPtr)) : 0, position),
+  : CharacterIterator(textPtr != 0 ? (length>=0 ? length : u_strlen(textPtr)) : 0, position),
   text(textPtr)
 {
 }
@@ -45,8 +45,7 @@ UCharCharacterIterator::UCharCharacterIterator(ConstChar16Ptr textPtr,
                                                int32_t textBegin,
                                                int32_t textEnd,
                                                int32_t position)
-  : CharacterIterator(textPtr != nullptr ? (length >= 0 ? length : u_strlen(textPtr)) : 0,
-                      textBegin, textEnd, position),
+  : CharacterIterator(textPtr != 0 ? (length>=0 ? length : u_strlen(textPtr)) : 0, textBegin, textEnd, position),
   text(textPtr)
 {
 }
@@ -67,16 +66,16 @@ UCharCharacterIterator::operator=(const UCharCharacterIterator& that) {
 UCharCharacterIterator::~UCharCharacterIterator() {
 }
 
-bool
+UBool
 UCharCharacterIterator::operator==(const ForwardCharacterIterator& that) const {
     if (this == &that) {
-        return true;
+        return TRUE;
     }
     if (typeid(*this) != typeid(that)) {
-        return false;
+        return FALSE;
     }
 
-    const UCharCharacterIterator&    realThat = static_cast<const UCharCharacterIterator&>(that);
+    UCharCharacterIterator&    realThat = (UCharCharacterIterator&)that;
 
     return text == realThat.text
         && textLength == realThat.textLength
@@ -90,12 +89,12 @@ UCharCharacterIterator::hashCode() const {
     return ustr_hashUCharsN(text, textLength) ^ pos ^ begin ^ end;
 }
 
-UCharCharacterIterator*
+CharacterIterator*
 UCharCharacterIterator::clone() const {
     return new UCharCharacterIterator(*this);
 }
 
-char16_t
+UChar
 UCharCharacterIterator::first() {
     pos = begin;
     if(pos < end) {
@@ -105,7 +104,7 @@ UCharCharacterIterator::first() {
     }
 }
 
-char16_t
+UChar
 UCharCharacterIterator::firstPostInc() {
     pos = begin;
     if(pos < end) {
@@ -115,7 +114,7 @@ UCharCharacterIterator::firstPostInc() {
     }
 }
 
-char16_t
+UChar
 UCharCharacterIterator::last() {
     pos = end;
     if(pos > begin) {
@@ -125,7 +124,7 @@ UCharCharacterIterator::last() {
     }
 }
 
-char16_t
+UChar
 UCharCharacterIterator::setIndex(int32_t position) {
     if(position < begin) {
         pos = begin;
@@ -141,7 +140,7 @@ UCharCharacterIterator::setIndex(int32_t position) {
     }
 }
 
-char16_t
+UChar
 UCharCharacterIterator::current() const {
     if (pos >= begin && pos < end) {
         return text[pos];
@@ -150,7 +149,7 @@ UCharCharacterIterator::current() const {
     }
 }
 
-char16_t
+UChar
 UCharCharacterIterator::next() {
     if (pos + 1 < end) {
         return text[++pos];
@@ -161,7 +160,7 @@ UCharCharacterIterator::next() {
     }
 }
 
-char16_t
+UChar
 UCharCharacterIterator::nextPostInc() {
     if (pos < end) {
         return text[pos++];
@@ -172,10 +171,10 @@ UCharCharacterIterator::nextPostInc() {
 
 UBool
 UCharCharacterIterator::hasNext() {
-    return (UBool)(pos < end ? true : false);
+    return (UBool)(pos < end ? TRUE : FALSE);
 }
 
-char16_t
+UChar
 UCharCharacterIterator::previous() {
     if (pos > begin) {
         return text[--pos];
@@ -186,7 +185,7 @@ UCharCharacterIterator::previous() {
 
 UBool
 UCharCharacterIterator::hasPrevious() {
-    return (UBool)(pos > begin ? true : false);
+    return (UBool)(pos > begin ? TRUE : FALSE);
 }
 
 UChar32
@@ -353,7 +352,7 @@ UCharCharacterIterator::move32(int32_t delta, CharacterIterator::EOrigin origin)
 void UCharCharacterIterator::setText(ConstChar16Ptr newText,
                                      int32_t      newTextLength) {
     text = newText;
-    if (newText == nullptr || newTextLength < 0) {
+    if(newText == 0 || newTextLength < 0) {
         newTextLength = 0;
     }
     end = textLength = newTextLength;

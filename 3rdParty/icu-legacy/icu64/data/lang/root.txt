@@ -1,16 +1,16 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
+/**
+ * ICU <specials> source: <path>/common/main/root.xml
+ */
 root{
-    Version{"45"}
+    Version{"2.1.49.82"}
     characterLabelPattern{
         all{"{0} — all"}
         category-list{"{0}: {1}"}
         compatibility{"{0} — compatibility"}
         enclosed{"{0} — enclosed"}
         extended{"{0} — extended"}
-        facing-left{"{0} facing left"}
-        facing-right{"{0} facing right"}
         historic{"{0} — historic"}
         miscellaneous{"{0} — miscellaneous"}
         other{"{0} — other"}
@@ -18,8 +18,6 @@ root{
         strokes{
             other{"{0} strokes"}
         }
-        subscript{"subscript {0}"}
-        superscript{"superscript {0}"}
     }
     codePatterns{
         language{"{0}"}

@@ -60,8 +60,9 @@ DEFS += -DU_IO_IMPLEMENTATION
 LDFLAGS += $(LDFLAGSICUIO)
 LIBS = $(LIBICUUC) $(LIBICUI18N) $(DEFAULT_LIBS)
 
-SOURCES = $(shell cat $(srcdir)/sources.txt)
-OBJECTS = $(SOURCES:.cpp=.o)
+OBJECTS = locbund.o ufile.o ufmt_cmn.o uprintf.o uprntf_p.o \
+uscanf.o uscanf_p.o ustdio.o sprintf.o sscanf.o \
+ustream.o ucln_io.o
 
 ## Header files to install
 HEADERS = $(srcdir)/unicode/*.h
@@ -100,17 +101,11 @@ ifneq ($(ENABLE_STATIC),)
 	$(INSTALL-L) $(TARGET) $(DESTDIR)$(libdir)
 endif
 ifneq ($(ENABLE_SHARED),)
-# For MinGW, do we want the DLL to go in the bin location?
-ifeq ($(MINGW_MOVEDLLSTOBINDIR),YES)
-	$(MKINSTALLDIRS) $(DESTDIR)$(bindir)
-	$(INSTALL-L) $(FINAL_SO_TARGET) $(DESTDIR)$(bindir)
-else
 	$(INSTALL-L) $(FINAL_SO_TARGET) $(DESTDIR)$(libdir)
 ifneq ($(FINAL_SO_TARGET),$(SO_TARGET))
 	cd $(DESTDIR)$(libdir) && $(RM) $(notdir $(SO_TARGET)) && ln -s $(notdir $(FINAL_SO_TARGET)) $(notdir $(SO_TARGET))
 ifneq ($(FINAL_SO_TARGET),$(MIDDLE_SO_TARGET))
 	cd $(DESTDIR)$(libdir) && $(RM) $(notdir $(MIDDLE_SO_TARGET)) && ln -s $(notdir $(FINAL_SO_TARGET)) $(notdir $(MIDDLE_SO_TARGET))
-endif
 endif
 endif
 ifneq ($(IMPORT_LIB_EXT),)

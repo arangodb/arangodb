@@ -1,17 +1,41 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 sr_Latn_XK{
+    Version{"2.1.47.82"}
     calendar{
         generic{
             intervalFormats{
                 MMMEd{
-                    M{"E, d. MMM – E, d. MMM"}
-                    d{"E, d – E, d. MMM"}
+                    M{"E, d. MMM – E, d. MMM"}
+                    d{"E, d – E, d. MMM"}
                 }
             }
         }
         gregorian{
+            dayNames{
+                format{
+                    abbreviated{
+                        "ned.",
+                        "pon.",
+                        "ut.",
+                        "sr.",
+                        "čet.",
+                        "pet.",
+                        "sub.",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "ned.",
+                        "pon.",
+                        "ut.",
+                        "sr.",
+                        "čet.",
+                        "pet.",
+                        "sub.",
+                    }
+                }
+            }
             dayPeriod{
                 format{
                     abbreviated{
@@ -41,18 +65,34 @@ sr_Latn_XK{
             monthNames{
                 format{
                     abbreviated{
-                        "jan",
-                        "feb",
+                        "jan.",
+                        "feb.",
                         "mart",
-                        "apr",
+                        "apr.",
                         "maj",
                         "jun",
                         "jul",
-                        "avg",
-                        "sept",
-                        "okt",
-                        "nov",
-                        "dec",
+                        "avg.",
+                        "sept.",
+                        "okt.",
+                        "nov.",
+                        "dec.",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "jan.",
+                        "feb.",
+                        "mart",
+                        "apr.",
+                        "maj",
+                        "jun",
+                        "jul",
+                        "avg.",
+                        "sept.",
+                        "okt.",
+                        "nov.",
+                        "dec.",
                     }
                 }
             }

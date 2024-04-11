@@ -1,17 +1,19 @@
 # Copyright (C) 2018 and later: Unicode, Inc. and others.
 # License & terms of use: http://www.unicode.org/copyright.html
 
-from icutools.databuilder import *
-from icutools.databuilder.request_types import *
+from distutils.sysconfig import parse_makefile
+
+from buildtool import *
+from buildtool.request_types import *
 
 
-def generate(config, io, common_vars):
+def generate(config, glob, common_vars):
     requests = []
-    requests += generate_rb(config, io, common_vars)
-    requests += generate_sprep(config, io, common_vars)
-    requests += generate_conv(config, io, common_vars)
-    requests += generate_other(config, io, common_vars)
-    requests += generate_copy(config, io, common_vars)
+    requests += generate_rb(config, glob, common_vars)
+    requests += generate_sprep(config, glob, common_vars)
+    requests += generate_conv(config, glob, common_vars)
+    requests += generate_other(config, glob, common_vars)
+    requests += generate_copy(config, glob, common_vars)
 
     requests += [
         ListRequest(
@@ -25,29 +27,25 @@ def generate(config, io, common_vars):
     return requests
 
 
-def generate_rb(config, io, common_vars):
-    basenames = [
-        "calendar",
+def generate_rb(config, glob, common_vars):
+    mk_vars = parse_makefile("{GLOB_DIR}/tstfiles.mk".format(**common_vars))
+    basenames = [v[:-4] for v in mk_vars["TEST_RES_SOURCE"].split()]
+    basenames += [
         "casing",
-        "conversion",
-        "format",
-        "icuio",
-        "idna_rules",
         "mc",
         "root",
-        "sh_YU",
         "sh",
-        "structLocale",
-        "te_IN_REVISED",
-        "te_IN",
+        "sh_YU",
         "te",
+        "te_IN",
+        "te_IN_REVISED",
+        "testtypes",
         "testaliases",
         "testempty",
-        "testtypes",
-        # LSTM models
-        "Thai_graphclust_model4_heavy",
-        "Thai_codepoints_exclusive_model5_heavy",
-        "Burmese_graphclust_model5_heavy"
+        "structLocale",
+        "idna_rules",
+        "conversion",
+        "icuio",
         # "metaZones",
         # "timezoneTypes",
         # "windowsZones",
@@ -63,7 +61,7 @@ def generate_rb(config, io, common_vars):
             input_files = [InFile("%s.txt" % bn) for bn in basenames],
             output_files = [OutFile("%s.res" % bn) for bn in basenames],
             tool = IcuTool("genrb"),
-            args = "-q -i {LIBRARY_DATA_DIR} -s {IN_DIR} -d {OUT_DIR} {INPUT_FILE}",
+            args = "-q -s {IN_DIR} -d {OUT_DIR} {INPUT_FILE}",
             format_with = {},
             repeat_with = {}
         ),
@@ -99,7 +97,7 @@ def generate_rb(config, io, common_vars):
     ]
 
 
-def generate_sprep(config, io, common_vars):
+def generate_sprep(config, glob, common_vars):
     return [
         SingleExecutionRequest(
             name = "nfscsi",
@@ -149,7 +147,7 @@ def generate_sprep(config, io, common_vars):
     ]
 
 
-def generate_conv(config, io, common_vars):
+def generate_conv(config, glob, common_vars):
     basenames = [
         "test1",
         "test1bmp",
@@ -173,7 +171,8 @@ def generate_conv(config, io, common_vars):
         )
     ]
 
-def generate_copy(config, io, common_vars):
+
+def generate_copy(config, glob, common_vars):
     return [
         CopyRequest(
             name = "nam_typ",
@@ -193,7 +192,7 @@ def generate_copy(config, io, common_vars):
     ]
 
 
-def generate_other(config, io, common_vars):
+def generate_other(config, glob, common_vars):
     return [
         SingleExecutionRequest(
             name = "testnorm",

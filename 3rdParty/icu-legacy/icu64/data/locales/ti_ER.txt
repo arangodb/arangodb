@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ti_ER{
+    Version{"2.1.47.82"}
     calendar{
         generic{
             DateTimePatterns{
@@ -10,8 +10,8 @@ ti_ER{
                 "h:mm:ss a",
                 "h:mm a",
                 "EEEE፡ dd MMMM መዓልቲ y G",
-                "d MMMM y G",
-                "d MMM y G",
+                "dd MMMM y G",
+                "dd-MMM-y G",
                 "dd/MM/yy GGGGG",
                 "{1} {0}",
                 "{1} {0}",
@@ -19,22 +19,25 @@ ti_ER{
                 "{1} {0}",
                 "{1} {0}",
             }
-            DateTimeSkeletons{
-                "ahmmsszzzz",
-                "ahmmssz",
-                "ahmmss",
-                "ahmm",
-                "GyMMMMEEEEdd",
-                "GyMMMMdd",
-                "GyMMMdd",
-                "GGGGGyyMMdd",
-            }
         }
         gregorian{
+            dayNames{
+                stand-alone{
+                    narrow{
+                        "ሰ",
+                        "ሰ",
+                        "ሰ",
+                        "ረ",
+                        "ሓ",
+                        "ዓ",
+                        "ቀ",
+                    }
+                }
+            }
             eras{
                 wide{
                     "ዓመተ ዓለም",
-                    "ዓመተ ምሕረት",
+                    "ዓመተ ምህረት",
                 }
                 wide%variant{
                     "ቅድሚ ልደተ ክርስቶስ",
@@ -42,35 +45,10 @@ ti_ER{
                 }
             }
         }
-        islamic{
-            DateTimePatterns{
-                "h:mm:ss a zzzz",
-                "h:mm:ss a z",
-                "h:mm:ss a",
-                "h:mm a",
-                "EEEE፡ dd MMMM መዓልቲ y G",
-                "d MMMM y G",
-                "d MMM y G",
-                "dd/MM/yy GGGGG",
-                "{1} {0}",
-                "{1} {0}",
-                "{1} {0}",
-                "{1} {0}",
-                "{1} {0}",
-            }
-            DateTimeSkeletons{
-                "ahmmsszzzz",
-                "ahmmssz",
-                "ahmmss",
-                "ahmm",
-                "GyMMMMEEEEdd",
-                "GyMMMMdd",
-                "GyMMMdd",
-                "GGGGGyyMMdd",
-            }
-        }
     }
     delimiters{
+        alternateQuotationEnd{"”"}
+        alternateQuotationStart{"“"}
         quotationEnd{"’"}
         quotationStart{"‘"}
     }

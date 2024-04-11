@@ -1,6 +1,6 @@
 /***********************************************************************
  * © 2016 and later: Unicode, Inc. and others.
- * License & terms of use: http://www.unicode.org/copyright.html
+ * License & terms of use: http://www.unicode.org/copyright.html#License
  ***********************************************************************
  ***********************************************************************
  * COPYRIGHT:
@@ -41,7 +41,7 @@ int main(int argc, const char *argv[])
     if (U_FAILURE(status)){
         return status;
     }
-    if (test.run() == false){
+    if (test.run() == FALSE){
         fprintf(stderr, "FAILED: Tests could not be run please check the "
             "arguments.\n");
         return -1;
@@ -81,6 +81,7 @@ CharPerformanceTest::CharPerformanceTest(int32_t argc, const char *argv[],
     else {
         MAX_ = 0xffff;
     }
+    printf("MAX_ size will be 0x%x\n", MAX_);
     if (options[MIN_OPTION_].doesOccur) {
         MIN_ = atoi(options[MIN_OPTION_].value);
     }
@@ -122,9 +123,9 @@ UPerfFunction* CharPerformanceTest::runIndexedTest(int32_t index, UBool exec,
         TESTCASE(21, TestStdLibIsWhiteSpace);
         default: 
             name = ""; 
-            return nullptr;
+            return NULL;
     }
-    return nullptr;
+    return NULL;
 }
 
 UPerfFunction* CharPerformanceTest::TestIsAlpha()

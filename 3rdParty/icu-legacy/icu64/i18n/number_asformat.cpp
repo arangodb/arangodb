@@ -32,8 +32,8 @@ LocalizedNumberFormatterAsFormat::LocalizedNumberFormatterAsFormat(
 
 LocalizedNumberFormatterAsFormat::~LocalizedNumberFormatterAsFormat() = default;
 
-bool LocalizedNumberFormatterAsFormat::operator==(const Format& other) const {
-    const auto* _other = dynamic_cast<const LocalizedNumberFormatterAsFormat*>(&other);
+UBool LocalizedNumberFormatterAsFormat::operator==(const Format& other) const {
+    auto* _other = dynamic_cast<const LocalizedNumberFormatterAsFormat*>(&other);
     if (_other == nullptr) {
         return false;
     }
@@ -43,7 +43,7 @@ bool LocalizedNumberFormatterAsFormat::operator==(const Format& other) const {
     return fFormatter.toSkeleton(localStatus) == _other->fFormatter.toSkeleton(localStatus);
 }
 
-LocalizedNumberFormatterAsFormat* LocalizedNumberFormatterAsFormat::clone() const {
+Format* LocalizedNumberFormatterAsFormat::clone() const {
     return new LocalizedNumberFormatterAsFormat(*this);
 }
 
@@ -62,12 +62,12 @@ UnicodeString& LocalizedNumberFormatterAsFormat::format(const Formattable& obj, 
     // always return first occurrence:
     pos.setBeginIndex(0);
     pos.setEndIndex(0);
-    bool found = data.nextFieldPosition(pos, status);
+    bool found = data.getStringRef().nextFieldPosition(pos, status);
     if (found && appendTo.length() != 0) {
         pos.setBeginIndex(pos.getBeginIndex() + appendTo.length());
         pos.setEndIndex(pos.getEndIndex() + appendTo.length());
     }
-    appendTo.append(data.toTempString(status));
+    appendTo.append(data.getStringRef().toTempUnicodeString());
     return appendTo;
 }
 
@@ -84,10 +84,10 @@ UnicodeString& LocalizedNumberFormatterAsFormat::format(const Formattable& obj, 
     if (U_FAILURE(status)) {
         return appendTo;
     }
-    appendTo.append(data.toTempString(status));
+    appendTo.append(data.getStringRef().toTempUnicodeString());
     if (posIter != nullptr) {
         FieldPositionIteratorHandler fpih(posIter, status);
-        data.getAllFieldPositions(fpih, status);
+        data.getStringRef().getAllFieldPositions(fpih, status);
     }
     return appendTo;
 }
@@ -100,18 +100,6 @@ void LocalizedNumberFormatterAsFormat::parseObject(const UnicodeString&, Formatt
 
 const LocalizedNumberFormatter& LocalizedNumberFormatterAsFormat::getNumberFormatter() const {
     return fFormatter;
-}
-
-
-// Definitions of public API methods (put here for dependency disentanglement)
-
-Format* LocalizedNumberFormatter::toFormat(UErrorCode& status) const {
-    if (U_FAILURE(status)) {
-        return nullptr;
-    }
-    LocalPointer<LocalizedNumberFormatterAsFormat> retval(
-            new LocalizedNumberFormatterAsFormat(*this, fMacros.locale), status);
-    return retval.orphan();
 }
 
 #endif /* #if !UCONFIG_NO_FORMATTING */

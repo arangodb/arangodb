@@ -11,10 +11,31 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
+    <None Include="brkitr\brkfiles.mk">
+      <Filter>Make Files</Filter>
+    </None>
+    <None Include="coll\colfiles.mk">
+      <Filter>Make Files</Filter>
+    </None>
     <None Include="makedata.mak">
       <Filter>Make Files</Filter>
     </None>
+    <None Include="misc\miscfiles.mk">
+      <Filter>Make Files</Filter>
+    </None>
+    <None Include="rbnf\rbnffiles.mk">
+      <Filter>Make Files</Filter>
+    </None>
+    <None Include="locales\resfiles.mk">
+      <Filter>Make Files</Filter>
+    </None>
     <None Include="..\test\testdata\testdata.mak">
+      <Filter>Make Files</Filter>
+    </None>
+    <None Include="translit\trnsfiles.mk">
+      <Filter>Make Files</Filter>
+    </None>
+    <None Include="..\test\testdata\tstfiles.mk">
       <Filter>Make Files</Filter>
     </None>
     <None Include="mappings\ucmcore.mk">

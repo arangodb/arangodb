@@ -9,11 +9,14 @@
 
 #include "unicode/utypes.h"
 
+#ifndef U_HIDE_DRAFT_API
+
 U_CDECL_BEGIN
 
 /**
  * \file
- * \brief C API: This file defines an abstract map from Unicode code points to integer values.
+ *
+ * This file defines an abstract map from Unicode code points to integer values.
  *
  * @see UCPMap
  * @see UCPTrie
@@ -25,7 +28,7 @@ U_CDECL_BEGIN
  *
  * @see UCPTrie
  * @see UMutableCPTrie
- * @stable ICU 63
+ * @draft ICU 63
  */
 typedef struct UCPMap UCPMap;
 
@@ -36,13 +39,13 @@ typedef struct UCPMap UCPMap;
  * @see ucpmap_getRange
  * @see ucptrie_getRange
  * @see umutablecptrie_getRange
- * @stable ICU 63
+ * @draft ICU 63
  */
 enum UCPMapRangeOption {
     /**
      * ucpmap_getRange() enumerates all same-value ranges as stored in the map.
      * Most users should use this option.
-     * @stable ICU 63
+     * @draft ICU 63
      */
     UCPMAP_RANGE_NORMAL,
     /**
@@ -58,7 +61,7 @@ enum UCPMapRangeOption {
      * special values optimized for UTF-16 string processing
      * or for special error behavior for unpaired surrogates,
      * but those values are not to be associated with the lead surrogate code *points*.
-     * @stable ICU 63
+     * @draft ICU 63
      */
     UCPMAP_RANGE_FIXED_LEAD_SURROGATES,
     /**
@@ -74,7 +77,7 @@ enum UCPMapRangeOption {
      * special values optimized for UTF-16 string processing
      * or for special error behavior for unpaired surrogates,
      * but those values are not to be associated with the lead surrogate code *points*.
-     * @stable ICU 63
+     * @draft ICU 63
      */
     UCPMAP_RANGE_FIXED_ALL_SURROGATES
 };
@@ -90,7 +93,7 @@ typedef enum UCPMapRangeOption UCPMapRangeOption;
  * @param c the code point
  * @return the map value,
  *         or an implementation-defined error value if the code point is not in the range 0..U+10FFFF
- * @stable ICU 63
+ * @draft ICU 63
  */
 U_CAPI uint32_t U_EXPORT2
 ucpmap_get(const UCPMap *map, UChar32 c);
@@ -107,7 +110,7 @@ ucpmap_get(const UCPMap *map, UChar32 c);
  * @param context an opaque pointer, as passed into the getRange function
  * @param value a value from the map
  * @return the modified value
- * @stable ICU 63
+ * @draft ICU 63
  */
 typedef uint32_t U_CALLCONV
 UCPMapValueFilter(const void *context, uint32_t value);
@@ -146,7 +149,7 @@ UCPMapValueFilter(const void *context, uint32_t value);
  *     may have been modified by filter(context, map value)
  *     if that function pointer is not NULL
  * @return the range end code point, or -1 if start is not a valid code point
- * @stable ICU 63
+ * @draft ICU 63
  */
 U_CAPI UChar32 U_EXPORT2
 ucpmap_getRange(const UCPMap *map, UChar32 start,
@@ -155,4 +158,5 @@ ucpmap_getRange(const UCPMap *map, UChar32 start,
 
 U_CDECL_END
 
+#endif  // U_HIDE_DRAFT_API
 #endif

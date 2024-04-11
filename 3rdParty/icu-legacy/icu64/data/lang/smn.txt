@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 smn{
     Languages{
         aa{"afar"}
@@ -293,6 +292,7 @@ smn{
         ro{"romaniakielâ"}
         rof{"rombo"}
         rom{"roomaankielâ"}
+        root{"ruotâs"}
         ru{"ruošâkielâ"}
         rup{"aromaniakielâ"}
         rw{"ruandakielâ"}
@@ -401,9 +401,15 @@ smn{
         en_GB{"eŋgâlâskielâ (OK)"}
         en_US{"eŋgâlâskielâ (USA)"}
     }
+    Version{"2.1.47.82"}
     codePatterns{
         language{"kielâ: {0}"}
         script{"čäällimvuáhádâh: {0}"}
         territory{"kuávlu: {0}"}
+    }
+    localeDisplayPattern{
+        keyTypePattern{"{0}: {1}"}
+        pattern{"{0} ({1})"}
+        separator{"{0}, {1}"}
     }
 }

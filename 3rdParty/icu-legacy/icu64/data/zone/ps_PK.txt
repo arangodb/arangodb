@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ps_PK{
+    Version{"2.1.49.34"}
     zoneStrings{
         "Africa:Harare"{
             ec{"هرارے"}
@@ -70,6 +70,9 @@ ps_PK{
         }
         "meta:Lord_Howe"{
             ld{"رب هاو د ورځے د رڼا وخت"}
+        }
+        "meta:Mexico_Northwest"{
+            ld{"د شمال لویدیځ مکسیکو رڼا ورځے وخت"}
         }
         "meta:Mexico_Pacific"{
             ld{"مکسیکن پیسفک رڼا ورځے وخت"}

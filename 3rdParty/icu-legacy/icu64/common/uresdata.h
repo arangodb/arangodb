@@ -69,16 +69,14 @@ typedef uint32_t Resource;
 #define RES_GET_OFFSET(res) ((res)&0x0fffffff)
 #define RES_GET_POINTER(pRoot, res) ((pRoot)+RES_GET_OFFSET(res))
 
-/* get signed and unsigned integer values directly from the Resource handle
- * NOTE: For proper logging, please use the res_getInt() constexpr
- */
+/* get signed and unsigned integer values directly from the Resource handle */
 #if U_SIGNED_RIGHT_SHIFT_IS_ARITHMETIC
-#   define RES_GET_INT_NO_TRACE(res) (((int32_t)((res)<<4L))>>4L)
+#   define RES_GET_INT(res) (((int32_t)((res)<<4L))>>4L)
 #else
-#   define RES_GET_INT_NO_TRACE(res) (int32_t)(((res)&0x08000000) ? (res)|0xf0000000 : (res)&0x07ffffff)
+#   define RES_GET_INT(res) (int32_t)(((res)&0x08000000) ? (res)|0xf0000000 : (res)&0x07ffffff)
 #endif
 
-#define RES_GET_UINT_NO_TRACE(res) ((res)&0x0fffffff)
+#define RES_GET_UINT(res) ((res)&0x0fffffff)
 
 #define URES_IS_ARRAY(type) ((int32_t)(type)==URES_ARRAY || (int32_t)(type)==URES_ARRAY16)
 #define URES_IS_TABLE(type) ((int32_t)(type)==URES_TABLE || (int32_t)(type)==URES_TABLE16 || (int32_t)(type)==URES_TABLE32)
@@ -399,12 +397,10 @@ typedef struct ResourceData {
     UBool useNativeStrcmp;
 } ResourceData;
 
-struct UResourceDataEntry;   // forward declared for ResoureDataValue below; actually defined in uresimp.h
-
 /*
  * Read a resource bundle from memory.
  */
-U_CAPI void U_EXPORT2
+U_INTERNAL void U_EXPORT2
 res_read(ResourceData *pResData,
          const UDataInfo *pInfo, const void *inBytes, int32_t length,
          UErrorCode *errorCode);
@@ -424,43 +420,39 @@ res_load(ResourceData *pResData,
 U_CFUNC void
 res_unload(ResourceData *pResData);
 
-U_CAPI UResType U_EXPORT2
+U_INTERNAL UResType U_EXPORT2
 res_getPublicType(Resource res);
-
-///////////////////////////////////////////////////////////////////////////
-// To enable tracing, use the inline versions of the res_get* functions. //
-///////////////////////////////////////////////////////////////////////////
 
 /*
  * Return a pointer to a zero-terminated, const UChar* string
  * and set its length in *pLength.
  * Returns NULL if not found.
  */
-U_CAPI const UChar * U_EXPORT2
-res_getStringNoTrace(const ResourceData *pResData, Resource res, int32_t *pLength);
+U_INTERNAL const UChar * U_EXPORT2
+res_getString(const ResourceData *pResData, Resource res, int32_t *pLength);
 
-U_CAPI const uint8_t * U_EXPORT2
-res_getBinaryNoTrace(const ResourceData *pResData, Resource res, int32_t *pLength);
-
-U_CAPI const int32_t * U_EXPORT2
-res_getIntVectorNoTrace(const ResourceData *pResData, Resource res, int32_t *pLength);
-
-U_CAPI const UChar * U_EXPORT2
+U_INTERNAL const UChar * U_EXPORT2
 res_getAlias(const ResourceData *pResData, Resource res, int32_t *pLength);
 
-U_CAPI Resource U_EXPORT2
+U_INTERNAL const uint8_t * U_EXPORT2
+res_getBinary(const ResourceData *pResData, Resource res, int32_t *pLength);
+
+U_INTERNAL const int32_t * U_EXPORT2
+res_getIntVector(const ResourceData *pResData, Resource res, int32_t *pLength);
+
+U_INTERNAL Resource U_EXPORT2
 res_getResource(const ResourceData *pResData, const char *key);
 
-U_CAPI int32_t U_EXPORT2
+U_INTERNAL int32_t U_EXPORT2
 res_countArrayItems(const ResourceData *pResData, Resource res);
 
-U_CAPI Resource U_EXPORT2
+U_INTERNAL Resource U_EXPORT2
 res_getArrayItem(const ResourceData *pResData, Resource array, int32_t indexS);
 
-U_CAPI Resource U_EXPORT2
+U_INTERNAL Resource U_EXPORT2
 res_getTableItemByIndex(const ResourceData *pResData, Resource table, int32_t indexS, const char ** key);
 
-U_CAPI Resource U_EXPORT2
+U_INTERNAL Resource U_EXPORT2
 res_getTableItemByKey(const ResourceData *pResData, Resource table, int32_t *indexS, const char* * key);
 
 /**
@@ -478,84 +470,37 @@ U_CFUNC Resource res_findResource(const ResourceData *pResData, Resource r,
 #ifdef __cplusplus
 
 #include "resource.h"
-#include "restrace.h"
 
 U_NAMESPACE_BEGIN
 
-inline const char16_t* res_getString(const ResourceTracer& traceInfo,
-        const ResourceData *pResData, Resource res, int32_t *pLength) {
-    traceInfo.trace("string");
-    return res_getStringNoTrace(pResData, res, pLength);
-}
-
-inline const uint8_t* res_getBinary(const ResourceTracer& traceInfo,
-        const ResourceData *pResData, Resource res, int32_t *pLength) {
-    traceInfo.trace("binary");
-    return res_getBinaryNoTrace(pResData, res, pLength);
-}
-
-inline const int32_t* res_getIntVector(const ResourceTracer& traceInfo,
-        const ResourceData *pResData, Resource res, int32_t *pLength) {
-    traceInfo.trace("intvector");
-    return res_getIntVectorNoTrace(pResData, res, pLength);
-}
-
-inline int32_t res_getInt(const ResourceTracer& traceInfo, Resource res) {
-    traceInfo.trace("int");
-    return RES_GET_INT_NO_TRACE(res);
-}
-
-inline uint32_t res_getUInt(const ResourceTracer& traceInfo, Resource res) {
-    traceInfo.trace("uint");
-    return RES_GET_UINT_NO_TRACE(res);
-}
-
 class ResourceDataValue : public ResourceValue {
 public:
-    ResourceDataValue() :
-        pResData(nullptr),
-        validLocaleDataEntry(nullptr),
-        res(static_cast<Resource>(URES_NONE)),
-        fTraceInfo() {}
+    ResourceDataValue() : pResData(NULL), res(static_cast<Resource>(URES_NONE)) {}
     virtual ~ResourceDataValue();
 
-    void setData(const ResourceData &data) {
-        pResData = &data;
-    }
-    
-    void setValidLocaleDataEntry(UResourceDataEntry *entry) {
-        validLocaleDataEntry = entry;
-    }
+    void setData(const ResourceData *data) { pResData = data; }
+    void setResource(Resource r) { res = r; }
 
-    void setResource(Resource r, ResourceTracer&& traceInfo) {
-        res = r;
-        fTraceInfo = traceInfo;
-    }
-
-    const ResourceData &getData() const { return *pResData; }
-    UResourceDataEntry *getValidLocaleDataEntry() const { return validLocaleDataEntry; }
-    Resource getResource() const { return res; }
-    virtual UResType getType() const override;
-    virtual const char16_t *getString(int32_t &length, UErrorCode &errorCode) const override;
-    virtual const char16_t *getAliasString(int32_t &length, UErrorCode &errorCode) const override;
-    virtual int32_t getInt(UErrorCode &errorCode) const override;
-    virtual uint32_t getUInt(UErrorCode &errorCode) const override;
-    virtual const int32_t *getIntVector(int32_t &length, UErrorCode &errorCode) const override;
-    virtual const uint8_t *getBinary(int32_t &length, UErrorCode &errorCode) const override;
-    virtual ResourceArray getArray(UErrorCode &errorCode) const override;
-    virtual ResourceTable getTable(UErrorCode &errorCode) const override;
-    virtual UBool isNoInheritanceMarker() const override;
+    virtual UResType getType() const;
+    virtual const UChar *getString(int32_t &length, UErrorCode &errorCode) const;
+    virtual const UChar *getAliasString(int32_t &length, UErrorCode &errorCode) const;
+    virtual int32_t getInt(UErrorCode &errorCode) const;
+    virtual uint32_t getUInt(UErrorCode &errorCode) const;
+    virtual const int32_t *getIntVector(int32_t &length, UErrorCode &errorCode) const;
+    virtual const uint8_t *getBinary(int32_t &length, UErrorCode &errorCode) const;
+    virtual ResourceArray getArray(UErrorCode &errorCode) const;
+    virtual ResourceTable getTable(UErrorCode &errorCode) const;
+    virtual UBool isNoInheritanceMarker() const;
     virtual int32_t getStringArray(UnicodeString *dest, int32_t capacity,
-                                   UErrorCode &errorCode) const override;
+                                   UErrorCode &errorCode) const;
     virtual int32_t getStringArrayOrStringAsArray(UnicodeString *dest, int32_t capacity,
-                                                  UErrorCode &errorCode) const override;
-    virtual UnicodeString getStringOrFirstOfArray(UErrorCode &errorCode) const override;
+                                                  UErrorCode &errorCode) const;
+    virtual UnicodeString getStringOrFirstOfArray(UErrorCode &errorCode) const;
+
+    const ResourceData *pResData;
 
 private:
-    const ResourceData *pResData;
-    UResourceDataEntry *validLocaleDataEntry;
     Resource res;
-    ResourceTracer fTraceInfo;
 };
 
 U_NAMESPACE_END

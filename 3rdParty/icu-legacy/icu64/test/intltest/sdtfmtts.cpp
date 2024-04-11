@@ -55,7 +55,7 @@ void IntlTestSimpleDateFormatAPI::testAPI(/*char *par*/)
 
     SimpleDateFormat def(status);
     if(U_FAILURE(status)) {
-        dataerrln("ERROR: Could not create SimpleDateFormat (default) - exiting");
+        dataerrln("ERROR: Could not create SimpleDateFormat (default) - exitting");
         return;
     }
 
@@ -84,7 +84,7 @@ void IntlTestSimpleDateFormatAPI::testAPI(/*char *par*/)
     status = U_ZERO_ERROR;
     SimpleDateFormat cust1(pattern, symbols, status);
     if(U_FAILURE(status)) {
-        dataerrln("ERROR: Could not create SimpleDateFormat (pattern, symbols*) - exiting");
+        dataerrln("ERROR: Could not create SimpleDateFormat (pattern, symbols*) - exitting");
         return;
     }
 
@@ -273,9 +273,9 @@ void IntlTestSimpleDateFormatAPI::testAPI(/*char *par*/)
     }
 
 // ====== Test ticket 11295 getNumberFormatForField returns wild pointer
-    if (object.getNumberFormatForField('N') != nullptr) {
+    if (object.getNumberFormatForField('N') != NULL) {
         errln("N is not a valid field, "
-              "getNumberFormatForField should return nullptr");
+              "getNumberFormatForField should return NULL");
     }
 }
 

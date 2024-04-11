@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ff{
     Currencies{
         AED{
@@ -171,13 +170,9 @@ ff{
             "SHP",
             "Liibar Sent Helen",
         }
-        SLE{
-            "SLE",
-            "Lewoon Seraa Liyon",
-        }
         SLL{
             "SLL",
-            "Lewoon Seraa Liyon (1964—2022)",
+            "Lewoon Seraa Liyon",
         }
         SOS{
             "SOS",
@@ -216,7 +211,7 @@ ff{
             "Mbuuɗi Seefaa BEAC",
         }
         XOF{
-            "F CFA",
+            "CFA",
             "Mbuuɗu Seefaa BCEAO",
         }
         ZAR{
@@ -236,4 +231,5 @@ ff{
             "Dolaar Simbaabuwe",
         }
     }
+    Version{"2.1.47.82"}
 }

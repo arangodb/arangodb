@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ksf{
     Currencies{
         AED{
@@ -171,13 +170,9 @@ ksf{
             "SHP",
             "mɔni mǝ á sɛntɛ́len",
         }
-        SLE{
-            "SLE",
-            "mɔni mǝ á syɛraleon",
-        }
         SLL{
             "SLL",
-            "mɔni mǝ á syɛraleon (1964—2022)",
+            "mɔni mǝ á syɛraleon",
         }
         SOS{
             "SOS",
@@ -216,7 +211,7 @@ ksf{
             "fráŋ",
         }
         XOF{
-            "F CFA",
+            "CFA",
             "mɔni mǝ á afríka aná wɛs",
         }
         ZAR{
@@ -236,4 +231,5 @@ ksf{
             "mɔni mǝ á zimbabwɛ́",
         }
     }
+    Version{"2.1.47.82"}
 }

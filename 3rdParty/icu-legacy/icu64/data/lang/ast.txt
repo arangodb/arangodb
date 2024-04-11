@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ast{
     Keys{
         calendar{"calendariu"}
@@ -465,6 +464,7 @@ ast{
         ro_MD{"moldavu"}
         rof{"rombo"}
         rom{"romaní"}
+        root{"root"}
         rtm{"rotumanu"}
         ru{"rusu"}
         rue{"rusyn"}
@@ -824,6 +824,11 @@ ast{
             gregorian{"calendariu gregorianu"}
             hebrew{"calendariu hebréu"}
             indian{"calendariu nacional indiu"}
+            islamic{"calendariu islámicu"}
+            islamic-civil{"calendariu islámicu (tabular, época civil)"}
+            islamic-rgsa{"calendariu islámicu (Arabia Saudita, visual)"}
+            islamic-tbla{"calendariu islámicu (tabular, época astronómica)"}
+            islamic-umalqura{"calendariu islámicu (Umm al-Qura)"}
             iso8601{"calendariu ISO-8601"}
             japanese{"calendariu xaponés"}
             persian{"calendariu persa"}
@@ -843,6 +848,7 @@ ast{
             gb2312han{"orde de clasificación chinu simplificáu - GB2312"}
             phonebook{"orde de clasificación de llista telefónica"}
             pinyin{"orde de clasificación pinyin"}
+            reformed{"orde de clasificación reformáu"}
             search{"gueta xeneral"}
             searchjl{"gueta por consonante Hangul d’aniciu"}
             standard{"orde de clasificación estándar"}
@@ -959,49 +965,74 @@ ast{
         BAKU1926{"alfabetu turcu llatino unificáu"}
         BALANKA{"dialectu balanka del anii"}
         BARLA{"grupu dialectal barlavento del cabuverdianu"}
+        BASICENG{"BASICENG"}
+        BAUDDHA{"BAUDDHA"}
+        BISCAYAN{"BISCAYAN"}
         BISKE{"dialectu San Giorgio/Bila"}
         BOHORIC{"alfabetu bohorič"}
         BOONT{"boontling"}
         COLB1945{"convención ortográfica brasilanu-portuguesa de 1945"}
+        CORNU{"CORNU"}
         DAJNKO{"alfabetu dajnko"}
         EKAVSK{"serbiu con pronunciación ekaviana"}
         EMODENG{"inglés modernu primitivu"}
         FONIPA{"fonética IPA"}
         FONUPA{"fonética UPA"}
+        FONXSAMP{"FONXSAMP"}
         HEPBURN{"romanización de Hepburn"}
+        HOGNORSK{"HOGNORSK"}
         IJEKAVSK{"serbiu con pronunciación Ijekaviana"}
+        ITIHASA{"ITIHASA"}
+        JAUER{"JAUER"}
+        JYUTPING{"JYUTPING"}
         KKCOR{"ortografía común"}
+        KOCIEWIE{"KOCIEWIE"}
         KSCOR{"ortografía estándar"}
+        LAUKIKA{"LAUKIKA"}
         LIPAW{"el dialectu lipovaz del resianu"}
+        LUNA1918{"LUNA1918"}
         METELKO{"alfabetu metelko"}
         MONOTON{"monotónicu"}
         NDYUKA{"dialectu ndyuka"}
         NEDIS{"dialectu natisone"}
+        NEWFOUND{"NEWFOUND"}
         NJIVA{"dialectu gniva/njiva"}
         NULIK{"volapük modernu"}
         OSOJS{"dialectu oseacco/osojane"}
         OXENDICT{"ortografía del diccionariu d’inglés d’Oxford"}
         PAMAKA{"dialectu pamaka"}
+        PETR1708{"PETR1708"}
         PINYIN{"romanización pinyin"}
         POLYTON{"politónicu"}
         POSIX{"ordenador"}
+        PUTER{"PUTER"}
         REVISED{"ortografía revisada"}
         RIGIK{"volapük clásicu"}
         ROZAJ{"resianu"}
+        RUMGR{"RUMGR"}
         SAAHO{"saho"}
         SCOTLAND{"inglés estándar escocés"}
         SCOUSE{"scouse"}
+        SIMPLE{"SIMPLE"}
         SOLBA{"dialectu stolvizza/solbica"}
         SOTAV{"grupu dialectal sotavento del cabuverdianu"}
+        SURMIRAN{"SURMIRAN"}
+        SURSILV{"SURSILV"}
+        SUTSILV{"SUTSILV"}
         TARASK{"ortografía taraskievica"}
         UCCOR{"ortografía unificada"}
         UCRCOR{"ortografía unificada revisada"}
+        ULSTER{"ULSTER"}
         UNIFON{"alfabetu fonéticu Unifon"}
+        VAIDIKA{"VAIDIKA"}
         VALENCIA{"valencianu"}
+        VALLADER{"VALLADER"}
         WADEGILE{"romanización de Wade-Giles"}
     }
+    Version{"2.1.47.82"}
     characterLabelPattern{
         all{"{0} — too"}
+        category-list{"{0}: {1}"}
         compatibility{"{0} — compatibilidá"}
         enclosed{"{0} — arrodiáu"}
         extended{"{0} — enantáu"}
@@ -1018,5 +1049,10 @@ ast{
         language{"Llingua: {0}"}
         script{"Alfabetu: {0}"}
         territory{"Rexón: {0}"}
+    }
+    localeDisplayPattern{
+        keyTypePattern{"{0}: {1}"}
+        pattern{"{0} ({1})"}
+        separator{"{0}, {1}"}
     }
 }

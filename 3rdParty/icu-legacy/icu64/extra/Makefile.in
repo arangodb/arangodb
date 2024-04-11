@@ -23,7 +23,7 @@ subdir = extra
 ## Files to remove for 'make clean'
 CLEANFILES = *~
 
-SUBDIRS = scrptrun uconv
+SUBDIRS = uconv
 
 ## List of phony targets
 .PHONY : all all-local all-recursive install install-local		\

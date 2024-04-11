@@ -1,14 +1,6 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 en_AU{
     %%Parent{"en_001"}
-    Countries{
-        001{"World"}
-        BL{"St. Barthélemy"}
-        KN{"St. Kitts & Nevis"}
-        LC{"St. Lucia"}
-        MF{"St. Martin"}
-        VC{"St. Vincent & Grenadines"}
-    }
+    Version{"2.1.48.43"}
 }

@@ -50,8 +50,7 @@ DEFS += -DT_CTEST_IMPLEMENTATION
 LDFLAGS += $(LDFLAGSCTESTFW)
 LIBS = $(LIBICUTOOLUTIL) $(LIBICUI18N) $(LIBICUUC) $(DEFAULT_LIBS)
 
-SOURCES = $(shell cat $(srcdir)/sources.txt)
-OBJECTS = $(patsubst %.cpp,%.o,$(patsubst %.c,%.o, $(SOURCES)))
+OBJECTS = ctest.o tstdtmod.o testdata.o datamap.o uperf.o ucln_ct.o
 
 STATIC_OBJECTS = $(OBJECTS:.o=.$(STATIC_O))
 
@@ -84,17 +83,11 @@ ifneq ($(ENABLE_STATIC),)
 	$(INSTALL-L) $(TARGET) $(DESTDIR)$(libdir)
 endif
 ifneq ($(ENABLE_SHARED),)
-# For MinGW, do we want the DLL to go in the bin location?
-ifeq ($(MINGW_MOVEDLLSTOBINDIR),YES)
-	$(MKINSTALLDIRS) $(DESTDIR)$(bindir)
-	$(INSTALL-L) $(FINAL_SO_TARGET) $(DESTDIR)$(bindir)
-else
 	$(INSTALL-L) $(FINAL_SO_TARGET) $(DESTDIR)$(libdir)
 ifneq ($(FINAL_SO_TARGET),$(SO_TARGET))
 	cd $(DESTDIR)$(libdir) && $(RM) $(notdir $(SO_TARGET)) && ln -s $(notdir $(FINAL_SO_TARGET)) $(notdir $(SO_TARGET))
 ifneq ($(FINAL_SO_TARGET),$(MIDDLE_SO_TARGET))
 	cd $(DESTDIR)$(libdir) && $(RM) $(notdir $(MIDDLE_SO_TARGET)) && ln -s $(notdir $(FINAL_SO_TARGET)) $(notdir $(MIDDLE_SO_TARGET))
-endif
 endif
 endif
 ifneq ($(IMPORT_LIB_EXT),)

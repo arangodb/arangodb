@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ca{
     Countries{
         001{"Món"}
@@ -45,7 +44,7 @@ ca{
         AO{"Angola"}
         AQ{"Antàrtida"}
         AR{"Argentina"}
-        AS{"Samoa Americana"}
+        AS{"Samoa Nord-americana"}
         AT{"Àustria"}
         AU{"Austràlia"}
         AW{"Aruba"}
@@ -53,14 +52,14 @@ ca{
         AZ{"Azerbaidjan"}
         BA{"Bòsnia i Hercegovina"}
         BB{"Barbados"}
-        BD{"Bangladesh"}
+        BD{"Bangla Desh"}
         BE{"Bèlgica"}
         BF{"Burkina Faso"}
         BG{"Bulgària"}
         BH{"Bahrain"}
         BI{"Burundi"}
         BJ{"Benín"}
-        BL{"Saint-Barthélemy"}
+        BL{"Saint Barthélemy"}
         BM{"Bermudes"}
         BN{"Brunei"}
         BO{"Bolívia"}
@@ -68,17 +67,17 @@ ca{
         BR{"Brasil"}
         BS{"Bahames"}
         BT{"Bhutan"}
-        BV{"Illa Bouvet"}
+        BV{"Bouvet"}
         BW{"Botswana"}
         BY{"Belarús"}
         BZ{"Belize"}
         CA{"Canadà"}
-        CC{"Illes Cocos (Keeling)"}
+        CC{"Illes Cocos"}
         CD{"Congo - Kinshasa"}
         CF{"República Centreafricana"}
         CG{"Congo - Brazzaville"}
         CH{"Suïssa"}
-        CI{"Côte d’Ivoire"}
+        CI{"Costa d’Ivori"}
         CK{"Illes Cook"}
         CL{"Xile"}
         CM{"Camerun"}
@@ -123,10 +122,10 @@ ca{
         GG{"Guernsey"}
         GH{"Ghana"}
         GI{"Gibraltar"}
-        GL{"Groenlàndia"}
+        GL{"Grenlàndia"}
         GM{"Gàmbia"}
         GN{"Guinea"}
-        GP{"Guadalupe"}
+        GP{"Guadeloupe"}
         GQ{"Guinea Equatorial"}
         GR{"Grècia"}
         GS{"Illes Geòrgia del Sud i Sandwich del Sud"}
@@ -135,7 +134,7 @@ ca{
         GW{"Guinea Bissau"}
         GY{"Guyana"}
         HK{"Hong Kong (RAE Xina)"}
-        HM{"Illes Heard i McDonald"}
+        HM{"Illa Heard i Illes McDonald"}
         HN{"Hondures"}
         HR{"Croàcia"}
         HT{"Haití"}
@@ -156,11 +155,11 @@ ca{
         JO{"Jordània"}
         JP{"Japó"}
         KE{"Kenya"}
-        KG{"Kirguizstan"}
+        KG{"Kirguizistan"}
         KH{"Cambodja"}
         KI{"Kiribati"}
         KM{"Comores"}
-        KN{"Saint Kitts i Nevis"}
+        KN{"Saint Christopher i Nevis"}
         KP{"Corea del Nord"}
         KR{"Corea del Sud"}
         KW{"Kuwait"}
@@ -189,7 +188,7 @@ ca{
         MM{"Myanmar (Birmània)"}
         MN{"Mongòlia"}
         MO{"Macau (RAE Xina)"}
-        MP{"Illes Marianes del Nord"}
+        MP{"Illes Mariannes del Nord"}
         MQ{"Martinica"}
         MR{"Mauritània"}
         MS{"Montserrat"}
@@ -223,7 +222,7 @@ ca{
         PM{"Saint-Pierre-et-Miquelon"}
         PN{"Illes Pitcairn"}
         PR{"Puerto Rico"}
-        PS{"Territoris palestins"}
+        PS{"territoris palestins"}
         PT{"Portugal"}
         PW{"Palau"}
         PY{"Paraguai"}
@@ -234,13 +233,13 @@ ca{
         RS{"Sèrbia"}
         RU{"Rússia"}
         RW{"Ruanda"}
-        SA{"Aràbia Saudí"}
+        SA{"Aràbia Saudita"}
         SB{"Illes Salomó"}
         SC{"Seychelles"}
         SD{"Sudan"}
         SE{"Suècia"}
         SG{"Singapur"}
-        SH{"Santa Helena"}
+        SH{"Saint Helena"}
         SI{"Eslovènia"}
         SJ{"Svalbard i Jan Mayen"}
         SK{"Eslovàquia"}
@@ -254,8 +253,8 @@ ca{
         SV{"El Salvador"}
         SX{"Sint Maarten"}
         SY{"Síria"}
-        SZ{"Eswatini"}
-        TA{"Tristan da Cunha"}
+        SZ{"eSwatini"}
+        TA{"Tristão da Cunha"}
         TC{"Illes Turks i Caicos"}
         TD{"Txad"}
         TF{"Territoris Australs Francesos"}
@@ -263,7 +262,7 @@ ca{
         TH{"Tailàndia"}
         TJ{"Tadjikistan"}
         TK{"Tokelau"}
-        TL{"Timor-Leste"}
+        TL{"Timor Oriental"}
         TM{"Turkmenistan"}
         TN{"Tunísia"}
         TO{"Tonga"}
@@ -282,24 +281,21 @@ ca{
         VA{"Ciutat del Vaticà"}
         VC{"Saint Vincent i les Grenadines"}
         VE{"Veneçuela"}
-        VG{"Illes Verges britàniques"}
-        VI{"Illes Verges nord-americanes"}
+        VG{"Illes Verges Britàniques"}
+        VI{"Illes Verges Nord-americanes"}
         VN{"Vietnam"}
         VU{"Vanuatu"}
         WF{"Wallis i Futuna"}
         WS{"Samoa"}
-        XA{"pseudoaccents"}
-        XB{"pseudobidi"}
+        XA{"Pseudo-Accents"}
+        XB{"Pseudo-Bidi"}
         XK{"Kosovo"}
         YE{"Iemen"}
         YT{"Mayotte"}
         ZA{"República de Sud-àfrica"}
         ZM{"Zàmbia"}
         ZW{"Zimbàbue"}
-        ZZ{"regió desconeguda"}
-    }
-    Countries%chagos{
-        IO{"Arxipèlag de Chagos"}
+        ZZ{"Regió desconeguda"}
     }
     Countries%short{
         GB{"RU"}
@@ -310,13 +306,11 @@ ca{
         US{"EUA"}
     }
     Countries%variant{
-        CD{"República Democràtica del Congo"}
-        CG{"República del Congo"}
-        CI{"Costa d’Ivori"}
+        CD{"Congo (República Democràtica del Congo)"}
+        CG{"Congo (República del Congo)"}
         CZ{"República Txeca"}
         FK{"Illes Malvines (Illes Falkland)"}
-        NZ{"Aotearoa (Nova Zelanda)"}
         SZ{"Swazilàndia"}
-        TL{"Timor Oriental"}
     }
+    Version{"2.1.48.42"}
 }

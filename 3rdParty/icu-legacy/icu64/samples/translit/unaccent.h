@@ -1,6 +1,6 @@
 /***********************************************************************
  * © 2016 and later: Unicode, Inc. and others.
- * License & terms of use: http://www.unicode.org/copyright.html
+ * License & terms of use: http://www.unicode.org/copyright.html#License
  ***********************************************************************
  ***********************************************************************
  * COPYRIGHT:
@@ -41,7 +41,7 @@ class UnaccentTransliterator : public Transliterator {
     /**
      * Unaccent a single character using normalizer.
      */
-    char16_t unaccent(char16_t c) const;
+    UChar unaccent(UChar c) const;
 
     Normalizer normalizer;
 
@@ -58,7 +58,7 @@ public:
      * @return          The class ID for all objects of this class.
      * @stable ICU 2.0
      */
-    static inline UClassID getStaticClassID() { return (UClassID)&fgClassID; };
+    static inline UClassID getStaticClassID(void) { return (UClassID)&fgClassID; };
 
     /**
      * Returns a unique class ID <b>polymorphically</b>.  This method
@@ -83,7 +83,7 @@ public:
      * different class IDs.
      * @stable ICU 2.0
      */
-    virtual UClassID getDynamicClassID() const { return getStaticClassID(); };
+    virtual UClassID getDynamicClassID(void) const { return getStaticClassID(); };
 
 private:
 

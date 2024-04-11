@@ -17,14 +17,12 @@
 *
 */
 
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include "unicode/utypes.h"
 #include "cmemory.h"
 #include "cstring.h"
 #include "filestrm.h"
-#include "toolutil.h"
 #include "unicode/udata.h"
 #include "unicode/utf16.h"
 #include "utrie.h"
@@ -36,76 +34,76 @@
 #define DO_DEBUG_OUT 0
 
 
-/*
+/* 
  * StringPrep profile file format ------------------------------------
- *
+ * 
  * The file format prepared and written here contains a 16-bit trie and a mapping table.
- *
+ * 
  * Before the data contents described below, there are the headers required by
  * the udata API for loading ICU data. Especially, a UDataInfo structure
  * precedes the actual data. It contains platform properties values and the
  * file format version.
- *
+ * 
  * The following is a description of format version 2.
- *
+ * 
  * Data contents:
- *
+ * 
  * The contents is a parsed, binary form of RFC3454 and possibly
  * NormalizationCorrections.txt depending on the options specified on the profile.
- *
+ * 
  * Any Unicode code point from 0 to 0x10ffff can be looked up to get
  * the trie-word, if any, for that code point. This means that the input
  * to the lookup are 21-bit unsigned integers, with not all of the
  * 21-bit range used.
- *
+ * 
  * *.spp files customarily begin with a UDataInfo structure, see udata.h and .c.
  * After that there are the following structures:
  *
  * int32_t indexes[_SPREP_INDEX_TOP];           -- _SPREP_INDEX_TOP=16, see enum in sprpimpl.h file
  *
  * UTrie stringPrepTrie;                        -- size in bytes=indexes[_SPREP_INDEX_TRIE_SIZE]
- *
- * uint16_t mappingTable[];                     -- Contains the sequence of code units that the code point maps to
+ * 
+ * uint16_t mappingTable[];                     -- Contains the sequecence of code units that the code point maps to 
  *                                                 size in bytes = indexes[_SPREP_INDEX_MAPPING_DATA_SIZE]
  *
  * The indexes array contains the following values:
  *  indexes[_SPREP_INDEX_TRIE_SIZE]                  -- The size of the StringPrep trie in bytes
- *  indexes[_SPREP_INDEX_MAPPING_DATA_SIZE]          -- The size of the mappingTable in bytes
- *  indexes[_SPREP_NORM_CORRECTNS_LAST_UNI_VERSION]  -- The index of Unicode version of last entry in NormalizationCorrections.txt
- *  indexes[_SPREP_ONE_UCHAR_MAPPING_INDEX_START]    -- The starting index of 1 UChar  mapping index in the mapping table
+ *  indexes[_SPREP_INDEX_MAPPING_DATA_SIZE]          -- The size of the mappingTable in bytes 
+ *  indexes[_SPREP_NORM_CORRECTNS_LAST_UNI_VERSION]  -- The index of Unicode version of last entry in NormalizationCorrections.txt 
+ *  indexes[_SPREP_ONE_UCHAR_MAPPING_INDEX_START]    -- The starting index of 1 UChar  mapping index in the mapping table 
  *  indexes[_SPREP_TWO_UCHARS_MAPPING_INDEX_START]   -- The starting index of 2 UChars mapping index in the mapping table
  *  indexes[_SPREP_THREE_UCHARS_MAPPING_INDEX_START] -- The starting index of 3 UChars mapping index in the mapping table
  *  indexes[_SPREP_FOUR_UCHARS_MAPPING_INDEX_START]  -- The starting index of 4 UChars mapping index in the mapping table
  *  indexes[_SPREP_OPTIONS]                          -- Bit set of options to turn on in the profile, e.g: USPREP_NORMALIZATION_ON, USPREP_CHECK_BIDI_ON
- *
+ *    
  *
  * StringPrep Trie :
  *
- * The StringPrep tries is a 16-bit trie that contains data for the profile.
+ * The StringPrep tries is a 16-bit trie that contains data for the profile. 
  * Each code point is associated with a value (trie-word) in the trie.
  *
  * - structure of data words from the trie
- *
- *  i)  A value greater than or equal to _SPREP_TYPE_THRESHOLD (0xFFF0)
+ * 
+ *  i)  A value greater than or equal to _SPREP_TYPE_THRESHOLD (0xFFF0) 
  *      represents the type associated with the code point
  *      if(trieWord >= _SPREP_TYPE_THRESHOLD){
  *          type = trieWord - 0xFFF0;
  *      }
  *      The type can be :
- *             USPREP_UNASSIGNED
- *             USPREP_PROHIBITED
- *             USPREP_DELETE
- *
+ *             USPREP_UNASSIGNED                     
+ *             USPREP_PROHIBITED       
+ *             USPREP_DELETE     
+ *     
  *  ii) A value less than _SPREP_TYPE_THRESHOLD means the type is USPREP_MAP and
  *      contains distribution described below
- *
+ *      
  *      0       -  ON : The code point is prohibited (USPREP_PROHIBITED). This is to allow for codepoint that are both prohibited and mapped.
  *      1       -  ON : The value in the next 14 bits is an index into the mapping table
  *                 OFF: The value in the next 14 bits is an delta value from the code point
- *      2..15   -  Contains data as described by bit 1. If all bits are set
+ *      2..15   -  Contains data as described by bit 1. If all bits are set 
  *                 (value = _SPREP_MAX_INDEX_VALUE) then the type is USPREP_DELETE
  *
- *
+ *  
  * Mapping Table:
  * The data in mapping table is sorted according to the length of the mapping sequence.
  * If the type of the code point is USPREP_MAP and value in trie word is an index, the index
@@ -122,10 +120,10 @@
  *                        index < indexes[_SPREP_FOUR_UCHARS_MAPPING_INDEX_START]){
  *                   length = 3;
  *               }else{
- *                   // The first position in the mapping table contains the length
+ *                   // The first position in the mapping table contains the length 
  *                   // of the sequence
  *                   length = mappingTable[index++];
- *
+ *        
  *               }
  *
  */
@@ -194,17 +192,17 @@ static UNewTrie *sprepTrie;
 #define MAX_DATA_LENGTH 11500
 
 
-#define SPREP_DELTA_RANGE_POSITIVE_LIMIT              8191
+#define SPREP_DELTA_RANGE_POSITIVE_LIMIT              8191 
 #define SPREP_DELTA_RANGE_NEGATIVE_LIMIT              -8192
 
 
 extern void
-init(void) {
+init() {
 
     sprepTrie = (UNewTrie *)uprv_calloc(1, sizeof(UNewTrie));
 
     /* initialize the two tries */
-    if(NULL==utrie_open(sprepTrie, NULL, MAX_DATA_LENGTH, 0, 0, false)) {
+    if(NULL==utrie_open(sprepTrie, NULL, MAX_DATA_LENGTH, 0, 0, FALSE)) {
         fprintf(stderr, "error: failed to initialize tries\n");
         exit(U_MEMORY_ALLOCATION_ERROR);
     }
@@ -237,8 +235,8 @@ static UBool U_CALLCONV compareEntries(const UHashTok p1, const UHashTok p2) {
 }
 
 
-static void
-storeMappingData(void){
+static void 
+storeMappingData(){
 
     int32_t pos = UHASH_FIRST;
     const UHashElement* element = NULL;
@@ -262,10 +260,10 @@ storeMappingData(void){
     while(writtenElementCount < elementCount){
 
         while( (element = uhash_nextElement(hashTable, &pos))!=NULL){
-
+            
             codepoint = element->key.integer;
             value = (ValueStruct*)element->value.pointer;
-
+            
             /* store the start of indexes */
             if(oldMappingLength != mappingLength){
                 /* Assume that index[] is used according to the enums defined */
@@ -274,9 +272,9 @@ storeMappingData(void){
                 }
                 if(oldMappingLength <= _SPREP_MAX_INDEX_TOP_LENGTH &&
                    mappingLength == _SPREP_MAX_INDEX_TOP_LENGTH +1){
-
+                   
                     limitIndex = currentIndex;
-
+                     
                 }
                 oldMappingLength = mappingLength;
             }
@@ -286,7 +284,7 @@ storeMappingData(void){
                 trieWord = currentIndex << 2;
                 /* turn on the 2nd bit to signal that the following bits contain an index */
                 trieWord += 0x02;
-
+            
                 if(trieWord > _SPREP_TYPE_THRESHOLD){
                     fprintf(stderr,"trieWord cannot contain value greater than 0x%04X.\n",_SPREP_TYPE_THRESHOLD);
                     exit(U_ILLEGAL_CHAR_FOUND);
@@ -298,19 +296,19 @@ storeMappingData(void){
                         /* turn on the first bit in trie word */
                         trieWord += 0x01;
                     }else{
-                        /*
+                        /* 
                          * the codepoint has value something other than prohibited
-                         * and a mapping .. error!
+                         * and a mapping .. error! 
                          */
                         fprintf(stderr,"Type for codepoint \\U%08X already set!.\n", (int)codepoint);
-                        exit(U_ILLEGAL_ARGUMENT_ERROR);
-                    }
-                }
-
+                        exit(U_ILLEGAL_ARGUMENT_ERROR); 
+                    } 
+                } 
+                
                 /* now set the value in the trie */
                 if(!utrie_set32(sprepTrie,codepoint,trieWord)){
                     fprintf(stderr,"Could not set the value for code point.\n");
-                    exit(U_ILLEGAL_ARGUMENT_ERROR);
+                    exit(U_ILLEGAL_ARGUMENT_ERROR);   
                 }
 
                 /* written the trie word for the codepoint... increment the count*/
@@ -318,7 +316,7 @@ storeMappingData(void){
 
                 /* sanity check are we exceeding the max number allowed */
                 if(currentIndex+value->length+1 > _SPREP_MAX_INDEX_VALUE){
-                    fprintf(stderr, "Too many entries in the mapping table %i. Maximum allowed is %i\n",
+                    fprintf(stderr, "Too many entries in the mapping table %i. Maximum allowed is %i\n", 
                         currentIndex+value->length, _SPREP_MAX_INDEX_VALUE);
                     exit(U_INDEX_OUTOFBOUNDS_ERROR);
                 }
@@ -348,7 +346,7 @@ storeMappingData(void){
     }else{
         indexes[_SPREP_FOUR_UCHARS_MAPPING_INDEX_START] = limitIndex;
     }
-
+    
 }
 
 extern void setOptions(int32_t options){
@@ -357,8 +355,8 @@ extern void setOptions(int32_t options){
 extern void
 storeMapping(uint32_t codepoint, uint32_t* mapping,int32_t length,
              UStringPrepType type, UErrorCode* status){
-
-
+    
+ 
     UChar* map = NULL;
     int16_t adjustedLen=0, i, j;
     uint16_t trieWord = 0;
@@ -370,7 +368,7 @@ storeMapping(uint32_t codepoint, uint32_t* mapping,int32_t length,
         hashTable = uhash_open(hashEntry, compareEntries, NULL, status);
         uhash_setValueDeleter(hashTable, valueDeleter);
     }
-
+    
     /* figure out if the code point has type already stored */
     savedTrieWord= utrie_get32(sprepTrie,codepoint,NULL);
     if(savedTrieWord!=0){
@@ -378,16 +376,16 @@ storeMapping(uint32_t codepoint, uint32_t* mapping,int32_t length,
             /* turn on the first bit in trie word */
             trieWord += 0x01;
         }else{
-            /*
+            /* 
              * the codepoint has value something other than prohibited
-             * and a mapping .. error!
+             * and a mapping .. error! 
              */
             fprintf(stderr,"Type for codepoint \\U%08X already set!.\n", (int)codepoint);
-            exit(U_ILLEGAL_ARGUMENT_ERROR);
-        }
+            exit(U_ILLEGAL_ARGUMENT_ERROR); 
+        } 
     }
 
-    /* figure out the real length */
+    /* figure out the real length */ 
     for(i=0; i<length; i++){
         adjustedLen += U16_LENGTH(mapping[i]);
     }
@@ -395,11 +393,11 @@ storeMapping(uint32_t codepoint, uint32_t* mapping,int32_t length,
     if(adjustedLen == 0){
         trieWord = (uint16_t)(_SPREP_MAX_INDEX_VALUE << 2);
         /* make sure that the value of trieWord is less than the threshold */
-        if(trieWord < _SPREP_TYPE_THRESHOLD){
+        if(trieWord < _SPREP_TYPE_THRESHOLD){   
             /* now set the value in the trie */
             if(!utrie_set32(sprepTrie,codepoint,trieWord)){
                 fprintf(stderr,"Could not set the value for code point.\n");
-                exit(U_ILLEGAL_ARGUMENT_ERROR);
+                exit(U_ILLEGAL_ARGUMENT_ERROR);   
             }
             /* value is set so just return */
             return;
@@ -414,8 +412,7 @@ storeMapping(uint32_t codepoint, uint32_t* mapping,int32_t length,
         int16_t delta = (int16_t)((int32_t)codepoint - (int16_t) mapping[0]);
         if(delta >= SPREP_DELTA_RANGE_NEGATIVE_LIMIT && delta <= SPREP_DELTA_RANGE_POSITIVE_LIMIT){
 
-            trieWord = delta;
-            trieWord <<= 2;
+            trieWord = delta << 2;
 
 
             /* make sure that the second bit is OFF */
@@ -424,28 +421,28 @@ storeMapping(uint32_t codepoint, uint32_t* mapping,int32_t length,
                 exit(U_INTERNAL_PROGRAM_ERROR);
             }
             /* make sure that the value of trieWord is less than the threshold */
-            if(trieWord < _SPREP_TYPE_THRESHOLD){
+            if(trieWord < _SPREP_TYPE_THRESHOLD){   
                 /* now set the value in the trie */
                 if(!utrie_set32(sprepTrie,codepoint,trieWord)){
                     fprintf(stderr,"Could not set the value for code point.\n");
-                    exit(U_ILLEGAL_ARGUMENT_ERROR);
+                    exit(U_ILLEGAL_ARGUMENT_ERROR);   
                 }
                 /* value is set so just return */
                 return;
             }
         }
-        /*
+        /* 
          * if the delta is not in the given range or if the trieWord is larger than the threshold
          * just fall through for storing the mapping in the mapping table
          */
     }
 
     map = (UChar*) uprv_calloc(adjustedLen + 1, U_SIZEOF_UCHAR);
-
+    
     for (i=0, j=0; i<length; i++) {
         U16_APPEND_UNSAFE(map, j, mapping[i]);
     }
-
+    
     value = (ValueStruct*) uprv_malloc(sizeof(ValueStruct));
     value->mapping = map;
     value->type    = type;
@@ -460,15 +457,14 @@ storeMapping(uint32_t codepoint, uint32_t* mapping,int32_t length,
     mappingDataCapacity += adjustedLen;
 
     if(U_FAILURE(*status)){
-        fprintf(stderr, "Failed to put entries into the hash table. Error: %s\n", u_errorName(*status));
+        fprintf(stderr, "Failed to put entries into the hastable. Error: %s\n", u_errorName(*status));
         exit(*status);
     }
 }
 
 
 extern void
-storeRange(uint32_t start, uint32_t end, UStringPrepType type, UErrorCode* status){
-    (void)status; // suppress compiler warnings about unused variable
+storeRange(uint32_t start, uint32_t end, UStringPrepType type,UErrorCode* status){
     uint16_t trieWord = 0;
 
     if((int)(_SPREP_TYPE_THRESHOLD + type) > 0xFFFF){
@@ -480,9 +476,9 @@ storeRange(uint32_t start, uint32_t end, UStringPrepType type, UErrorCode* statu
         uint32_t savedTrieWord = utrie_get32(sprepTrie, start, NULL);
         if(savedTrieWord>0){
             if(savedTrieWord < _SPREP_TYPE_THRESHOLD && type == USPREP_PROHIBITED){
-                /*
-                 * A mapping is stored in the trie word
-                 * and the only other possible type that a
+                /* 
+                 * A mapping is stored in the trie word 
+                 * and the only other possible type that a 
                  * code point can have is USPREP_PROHIBITED
                  *
                  */
@@ -494,11 +490,11 @@ storeRange(uint32_t start, uint32_t end, UStringPrepType type, UErrorCode* statu
                 trieWord = (uint16_t)savedTrieWord;
 
                 /* make sure that the value of trieWord is less than the threshold */
-                if(trieWord < _SPREP_TYPE_THRESHOLD){
+                if(trieWord < _SPREP_TYPE_THRESHOLD){   
                     /* now set the value in the trie */
                     if(!utrie_set32(sprepTrie,start,trieWord)){
                         fprintf(stderr,"Could not set the value for code point.\n");
-                        exit(U_ILLEGAL_ARGUMENT_ERROR);
+                        exit(U_ILLEGAL_ARGUMENT_ERROR);   
                     }
                     /* value is set so just return */
                     return;
@@ -506,7 +502,7 @@ storeRange(uint32_t start, uint32_t end, UStringPrepType type, UErrorCode* statu
                     fprintf(stderr,"trieWord cannot contain value greater than threshold 0x%04X.\n",_SPREP_TYPE_THRESHOLD);
                     exit(U_ILLEGAL_CHAR_FOUND);
                 }
-
+ 
             }else if(savedTrieWord != trieWord){
                 fprintf(stderr,"Value for codepoint \\U%08X already set!.\n", (int)start);
                 exit(U_ILLEGAL_ARGUMENT_ERROR);
@@ -515,12 +511,12 @@ storeRange(uint32_t start, uint32_t end, UStringPrepType type, UErrorCode* statu
         }
         if(!utrie_set32(sprepTrie,start,trieWord)){
             fprintf(stderr,"Could not set the value for code point \\U%08X.\n", (int)start);
-            exit(U_ILLEGAL_ARGUMENT_ERROR);
+            exit(U_ILLEGAL_ARGUMENT_ERROR);   
         }
     }else{
-        if(!utrie_setRange32(sprepTrie, start, end+1, trieWord, false)){
+        if(!utrie_setRange32(sprepTrie, start, end+1, trieWord, FALSE)){
             fprintf(stderr,"Value for certain codepoint already set.\n");
-            exit(U_ILLEGAL_CHAR_FOUND);
+            exit(U_ILLEGAL_CHAR_FOUND);   
         }
     }
 
@@ -569,13 +565,13 @@ generateData(const char *dataDir, const char* bundleName) {
 
     /* sort and add mapping data */
     storeMappingData();
-
-    sprepTrieSize=utrie_serialize(sprepTrie, sprepTrieBlock, sizeof(sprepTrieBlock), getFoldedValue, true, &errorCode);
+    
+    sprepTrieSize=utrie_serialize(sprepTrie, sprepTrieBlock, sizeof(sprepTrieBlock), getFoldedValue, TRUE, &errorCode);
     if(U_FAILURE(errorCode)) {
         fprintf(stderr, "error: utrie_serialize(sprep trie) failed, %s\n", u_errorName(errorCode));
         exit(errorCode);
     }
-
+    
     size = sprepTrieSize + mappingDataCapacity*U_SIZEOF_UCHAR + sizeof(indexes);
     if(beVerbose) {
         printf("size of sprep trie              %5u bytes\n", (int)sprepTrieSize);
@@ -601,11 +597,11 @@ generateData(const char *dataDir, const char* bundleName) {
 
     indexes[_SPREP_INDEX_TRIE_SIZE]=sprepTrieSize;
     indexes[_SPREP_INDEX_MAPPING_DATA_SIZE]=mappingDataCapacity*U_SIZEOF_UCHAR;
-
+    
     udata_writeBlock(pData, indexes, sizeof(indexes));
     udata_writeBlock(pData, sprepTrieBlock, sprepTrieSize);
     udata_writeBlock(pData, mappingData, indexes[_SPREP_INDEX_MAPPING_DATA_SIZE]);
-
+    
 
 #endif
 

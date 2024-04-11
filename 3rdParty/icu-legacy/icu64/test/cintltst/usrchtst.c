@@ -14,18 +14,16 @@
 
 #if !UCONFIG_NO_COLLATION && !UCONFIG_NO_BREAK_ITERATION && !UCONFIG_NO_FILE_IO
 
-#include <assert.h>
-#include <stdbool.h>
-#include <stdio.h>
-
 #include "unicode/usearch.h"
 #include "unicode/ustring.h"
 #include "ccolltst.h"
 #include "cmemory.h"
-#include "usrchdat.inc"
+#include <stdio.h>
+#include "usrchdat.c"
 #include "unicode/ubrk.h"
+#include <assert.h>
 
-static UBool      TOCLOSE_ = true;
+static UBool      TOCLOSE_ = TRUE;
 static UCollator *EN_US_; 
 static UCollator *FR_FR_;
 static UCollator *DE_;
@@ -36,7 +34,7 @@ static UCollator *ES_;
  *     Test if a break iterator is passed in AND break iteration is disabled. 
  *     Skip the test if so.
  * CHECK_BREAK_BOOL(char *brk)
- *     Same as above, but returns 'true' as a passing result
+ *     Same as above, but returns 'TRUE' as a passing result
  */
 
 #if !UCONFIG_NO_BREAK_ITERATION
@@ -46,7 +44,7 @@ static UBreakIterator *EN_CHARACTERBREAKER_;
 #define CHECK_BREAK_BOOL(x)
 #else
 #define CHECK_BREAK(x)  if(x) { log_info("Skipping test on %s:%d because UCONFIG_NO_BREAK_ITERATION is on\n", __FILE__, __LINE__); return; }
-#define CHECK_BREAK_BOOL(x)  if(x) { log_info("Skipping test on %s:%d because UCONFIG_NO_BREAK_ITERATION is on\n", __FILE__, __LINE__); return true; }
+#define CHECK_BREAK_BOOL(x)  if(x) { log_info("Skipping test on %s:%d because UCONFIG_NO_BREAK_ITERATION is on\n", __FILE__, __LINE__); return TRUE; }
 #endif
 
 /**
@@ -86,7 +84,7 @@ static void open(UErrorCode* status)
         EN_CHARACTERBREAKER_ = ubrk_open(UBRK_CHARACTER, "en_US", NULL, 0, 
                                         status);
 #endif
-        TOCLOSE_ = true;
+        TOCLOSE_ = TRUE;
     }
 }
 
@@ -101,7 +99,7 @@ static void TestStart(void)
         log_err_status(status, "Unable to open static collators %s\n", u_errorName(status));
         return;
     }
-    TOCLOSE_ = false;
+    TOCLOSE_ = FALSE;
 }
 
 /**
@@ -119,7 +117,7 @@ static void close(void)
         ubrk_close(EN_CHARACTERBREAKER_);
 #endif
     }
-    TOCLOSE_ = false;
+    TOCLOSE_ = FALSE;
 }
 
 /**
@@ -127,9 +125,9 @@ static void close(void)
 */
 static void TestEnd(void)
 {
-    TOCLOSE_ = true;
+    TOCLOSE_ = TRUE;
     close();
-    TOCLOSE_ = true;
+    TOCLOSE_ = TRUE;
 }
 
 /**
@@ -148,7 +146,7 @@ static char *toCharString(const UChar* unichars)
             *temp ++ = (char)ch;
         }
         else {
-            snprintf(temp, sizeof(result) - (temp-result),  "\\u%04x", ch);
+            sprintf(temp, "\\u%04x", ch);
             temp += 6; /* \uxxxx */
         }
     }
@@ -304,7 +302,7 @@ static void TestInitialization(void)
 {
           UErrorCode      status = U_ZERO_ERROR;
           UChar           pattern[512];
-    const UChar           text[] = u"abcdef";
+    const UChar           text[] = {0x61, 0x62, 0x63, 0x64, 0x65, 0x66};
     int32_t i = 0;
     UStringSearch  *result;
 
@@ -334,15 +332,6 @@ static void TestInitialization(void)
         log_err("Error opening search %s\n", u_errorName(status));
     }
     usearch_close(result);
-
-    /* testing that a pattern with all ignoreables doesn't fail initialization with an error */
-    UChar patternIgnoreables[] = u"\u200b"; // Zero Width Space
-    result = usearch_openFromCollator(patternIgnoreables, 1, text, 3, EN_US_, NULL, &status);
-    if (U_FAILURE(status)) {
-        log_err("Error opening search %s\n", u_errorName(status));
-    }
-    usearch_close(result);
-
     close();
 }
 
@@ -361,7 +350,7 @@ static UBool assertEqualWithUStringSearch(      UStringSearch *strsrch,
     usearch_setAttribute(strsrch, USEARCH_ELEMENT_COMPARISON, search.elemCompare, &status);
     if (U_FAILURE(status)) {
         log_err("Error setting USEARCH_ELEMENT_COMPARISON attribute %s\n", u_errorName(status));
-        return false;
+        return FALSE;
     }
 
     if (usearch_getMatchedStart(strsrch) != USEARCH_DONE ||
@@ -373,7 +362,7 @@ static UBool assertEqualWithUStringSearch(      UStringSearch *strsrch,
         matchlength = search.size[count];
         usearch_next(strsrch, &status);
         if (matchindex != usearch_getMatchedStart(strsrch) || 
-            matchlength != usearch_getMatchedLength(strsrch)) {
+            matchlength != (uint32_t)usearch_getMatchedLength(strsrch)) {
             char *str = toCharString(usearch_getText(strsrch, &textlength));
             log_err("Text: %s\n", str);
             str = toCharString(usearch_getPattern(strsrch, &textlength));
@@ -381,12 +370,12 @@ static UBool assertEqualWithUStringSearch(      UStringSearch *strsrch,
             log_err("Error next match found at idx %d (len:%d); expected %d (len:%d)\n", 
                     usearch_getMatchedStart(strsrch), usearch_getMatchedLength(strsrch),
                     matchindex, matchlength);
-            return false;
+            return FALSE;
         }
         count ++;
         
         if (usearch_getMatchedText(strsrch, matchtext, 128, &status) !=
-             matchlength || U_FAILURE(status) ||
+            (int32_t) matchlength || U_FAILURE(status) ||
             memcmp(matchtext, 
                    usearch_getText(strsrch, &textlength) + matchindex,
                    matchlength * sizeof(UChar)) != 0) {
@@ -405,7 +394,7 @@ static UBool assertEqualWithUStringSearch(      UStringSearch *strsrch,
         log_err("Error next match found at %d (len:%d); expected <NO MATCH>\n", 
                     usearch_getMatchedStart(strsrch), 
                     usearch_getMatchedLength(strsrch));
-        return false;
+        return FALSE;
     }
     /* start of previous matches */
     count = count == 0 ? 0 : count - 1;
@@ -415,7 +404,7 @@ static UBool assertEqualWithUStringSearch(      UStringSearch *strsrch,
         matchlength = search.size[count];
         usearch_previous(strsrch, &status);
         if (matchindex != usearch_getMatchedStart(strsrch) || 
-            matchlength != usearch_getMatchedLength(strsrch)) {
+            matchlength != (uint32_t)usearch_getMatchedLength(strsrch)) {
             char *str = toCharString(usearch_getText(strsrch, &textlength));
             log_err("Text: %s\n", str);
             str = toCharString(usearch_getPattern(strsrch, &textlength));
@@ -423,11 +412,11 @@ static UBool assertEqualWithUStringSearch(      UStringSearch *strsrch,
             log_err("Error previous match found at %d (len:%d); expected %d (len:%d)\n", 
                     usearch_getMatchedStart(strsrch), usearch_getMatchedLength(strsrch),
                     matchindex, matchlength);
-            return false;
+            return FALSE;
         }
         
         if (usearch_getMatchedText(strsrch, matchtext, 128, &status) !=
-             matchlength || U_FAILURE(status) ||
+            (int32_t) matchlength || U_FAILURE(status) ||
             memcmp(matchtext, 
                    usearch_getText(strsrch, &textlength) + matchindex,
                    matchlength * sizeof(UChar)) != 0) {
@@ -447,7 +436,7 @@ static UBool assertEqualWithUStringSearch(      UStringSearch *strsrch,
         log_err("Error previous match found at %d (len:%d); expected <NO MATCH>\n", 
                     usearch_getMatchedStart(strsrch), 
                     usearch_getMatchedLength(strsrch));
-        return false;
+        return FALSE;
     }
 
 
@@ -458,7 +447,7 @@ static UBool assertEqualWithUStringSearch(      UStringSearch *strsrch,
     matchindex  = search.offset[count];
     nextStart = 0;
 
-    while (true) {
+    while (TRUE) {
         usearch_following(strsrch, nextStart, &status);
 
         if (matchindex < 0) {
@@ -471,7 +460,7 @@ static UBool assertEqualWithUStringSearch(      UStringSearch *strsrch,
                             nextStart, isOverlap,
                             usearch_getMatchedStart(strsrch), 
                             usearch_getMatchedLength(strsrch));
-                return false;
+                return FALSE;
             }
             /* no more matches */
             break;
@@ -489,7 +478,7 @@ static UBool assertEqualWithUStringSearch(      UStringSearch *strsrch,
                         nextStart, isOverlap,
                         usearch_getMatchedStart(strsrch), usearch_getMatchedLength(strsrch),
                         matchindex, matchlength);
-            return false;
+            return FALSE;
         }
 
         if (isOverlap || usearch_getMatchedLength(strsrch) == 0) {
@@ -509,7 +498,7 @@ static UBool assertEqualWithUStringSearch(      UStringSearch *strsrch,
     }
     usearch_getText(strsrch, &nextStart);
 
-    while (true) {
+    while (TRUE) {
         usearch_preceding(strsrch, nextStart, &status);
 
         if (count < 0) {
@@ -522,7 +511,7 @@ static UBool assertEqualWithUStringSearch(      UStringSearch *strsrch,
                             nextStart, isOverlap,
                             usearch_getMatchedStart(strsrch), 
                             usearch_getMatchedLength(strsrch));
-                return false;
+                return FALSE;
             }
             /* no more matches */
             break;
@@ -541,7 +530,7 @@ static UBool assertEqualWithUStringSearch(      UStringSearch *strsrch,
                         nextStart, isOverlap,
                         usearch_getMatchedStart(strsrch), usearch_getMatchedLength(strsrch),
                         matchindex, matchlength);
-            return false;
+            return FALSE;
         }
 
         nextStart = matchindex;
@@ -549,7 +538,7 @@ static UBool assertEqualWithUStringSearch(      UStringSearch *strsrch,
     }
 
     usearch_setAttribute(strsrch, USEARCH_ELEMENT_COMPARISON, USEARCH_STANDARD_ELEMENT_COMPARISON, &status);
-    return true;
+    return TRUE;
 }
 
 static UBool assertEqual(const SearchData search)
@@ -570,17 +559,17 @@ static UBool assertEqual(const SearchData search)
                                        breaker, &status);
     if (U_FAILURE(status)) {
         log_err("Error opening string search %s\n", u_errorName(status));
-        return false;
+        return FALSE;
     }   
     
     if (!assertEqualWithUStringSearch(strsrch, search)) {
         ucol_setStrength(collator, UCOL_TERTIARY);
         usearch_close(strsrch);
-        return false;
+        return FALSE;
     }
     ucol_setStrength(collator, UCOL_TERTIARY);
     usearch_close(strsrch);
-    return true;
+    return TRUE;
 }
 
 static UBool assertCanonicalEqual(const SearchData search)
@@ -591,7 +580,7 @@ static UBool assertCanonicalEqual(const SearchData search)
     UCollator      *collator = getCollator(search.collator);
     UBreakIterator *breaker  = getBreakIterator(search.breaker);
     UStringSearch  *strsrch; 
-    UBool           result = true;
+    UBool           result = TRUE;
     
     CHECK_BREAK_BOOL(search.breaker);
     u_unescape(search.text, text, 128);
@@ -604,14 +593,14 @@ static UBool assertCanonicalEqual(const SearchData search)
                          &status);
     if (U_FAILURE(status)) {
         log_err("Error opening string search %s\n", u_errorName(status));
-        result = false;
+        result = FALSE;
         goto bail;
     }   
     
     if (!assertEqualWithUStringSearch(strsrch, search)) {
         ucol_setStrength(collator, UCOL_TERTIARY);
         usearch_close(strsrch);
-        result = false;
+        result = FALSE;
         goto bail;
     }
 
@@ -645,17 +634,17 @@ static UBool assertEqualWithAttribute(const SearchData            search,
     
     if (U_FAILURE(status)) {
         log_err("Error opening string search %s\n", u_errorName(status));
-        return false;
+        return FALSE;
     }   
     
     if (!assertEqualWithUStringSearch(strsrch, search)) {
             ucol_setStrength(collator, UCOL_TERTIARY);
             usearch_close(strsrch);
-            return false;
+            return FALSE;
     }
     ucol_setStrength(collator, UCOL_TERTIARY);
     usearch_close(strsrch);
-    return true;
+    return TRUE;
 }
 
 static void TestBasic(void) 
@@ -1266,10 +1255,10 @@ static void TestGetSetOffset(void)
         ucol_setStrength(usearch_getCollator(strsrch), search.strength);
         usearch_reset(strsrch);
         while (U_SUCCESS(status) && matchindex >= 0) {
-            int32_t matchlength = search.size[count];
+            uint32_t matchlength = search.size[count];
             usearch_next(strsrch, &status);
             if (matchindex != usearch_getMatchedStart(strsrch) || 
-                matchlength != usearch_getMatchedLength(strsrch)) {
+                matchlength != (uint32_t)usearch_getMatchedLength(strsrch)) {
                 char *str = toCharString(usearch_getText(strsrch, 
                                                          &textlength));
                 log_err("Text: %s\n", str);
@@ -1283,7 +1272,7 @@ static void TestGetSetOffset(void)
             usearch_setOffset(strsrch, matchindex + matchlength, &status);
             usearch_previous(strsrch, &status);
             if (matchindex != usearch_getMatchedStart(strsrch) || 
-                matchlength != usearch_getMatchedLength(strsrch)) {
+                matchlength != (uint32_t)usearch_getMatchedLength(strsrch)) {
                 char *str = toCharString(usearch_getText(strsrch, 
                                                          &textlength));
                 log_err("Text: %s\n", str);
@@ -1470,23 +1459,23 @@ static void TestGetMatch(void)
         }
         status = U_ZERO_ERROR;
         if (usearch_getMatchedText(strsrch, NULL, 0, &status) != 
-            matchlength || U_SUCCESS(status)){
+            (int32_t)matchlength || U_SUCCESS(status)){
             log_err("Error pre-flighting match length\n");
         }
         status = U_ZERO_ERROR;
         if (usearch_getMatchedText(strsrch, matchtext, 0, &status) != 
-            matchlength || U_SUCCESS(status)){
+            (int32_t)matchlength || U_SUCCESS(status)){
             log_err("Error getting match text with buffer size 0\n");
         }
         status = U_ZERO_ERROR;
         if (usearch_getMatchedText(strsrch, matchtext, matchlength, &status) 
-            != matchlength || matchtext[matchlength - 1] == 0 ||
+            != (int32_t)matchlength || matchtext[matchlength - 1] == 0 ||
             U_FAILURE(status)){
             log_err("Error getting match text with exact size\n");
         }
         status = U_ZERO_ERROR;
         if (usearch_getMatchedText(strsrch, matchtext, 128, &status) !=
-            matchlength || U_FAILURE(status) ||
+            (int32_t) matchlength || U_FAILURE(status) ||
             memcmp(matchtext, 
                    usearch_getText(strsrch, &textlength) + matchindex,
                    matchlength * sizeof(UChar)) != 0 ||
@@ -1573,7 +1562,7 @@ static void TestSetMatch(void)
                                                search.size[offsetIndex + 1] + 1, 
                                       &status) != search.offset[offsetIndex + 1] ||
                     U_FAILURE(status)) {
-                    log_err("Error getting preceding match at index %d\n", 
+                    log_err("Error getting preceeding match at index %d\n", 
                             search.offset[offsetIndex + 1] + 1);
                 }
             }
@@ -1769,7 +1758,7 @@ static void TestDiacriticMatch(void)
     search = DIACRITICMATCH[count];
     while (search.text != NULL) {
         if (search.collator != NULL) {
-            coll = ucol_openFromShortString(search.collator, false, NULL, &status);
+            coll = ucol_openFromShortString(search.collator, FALSE, NULL, &status);
         } else {
             /* Always use "en_US" because some of these tests fail in Danish locales. */
             coll = ucol_open("en_US"/*uloc_getDefault()*/, &status);
@@ -2324,10 +2313,10 @@ static void TestGetSetOffsetCanonical(void)
         usearch_setText(strsrch, text, -1, &status);
         usearch_setPattern(strsrch, pattern, -1, &status);
         while (U_SUCCESS(status) && matchindex >= 0) {
-            int32_t matchlength = search.size[count];
+            uint32_t matchlength = search.size[count];
             usearch_next(strsrch, &status);
             if (matchindex != usearch_getMatchedStart(strsrch) || 
-                matchlength != usearch_getMatchedLength(strsrch)) {
+                matchlength != (uint32_t)usearch_getMatchedLength(strsrch)) {
                 char *str = toCharString(usearch_getText(strsrch, 
                                                          &textlength));
                 log_err("Text: %s\n", str);
@@ -2517,11 +2506,9 @@ exitTestForwardBackward :
     }
 }
 
-#define TEST_ASSERT(x) UPRV_BLOCK_MACRO_BEGIN { \
-    if (U_FAILURE(x)) { \
-        log_err_status(x, "%s:%d: FAIL: test assertion failure \n", __FILE__, __LINE__); \
-    } \
-} UPRV_BLOCK_MACRO_END
+#define TEST_ASSERT(x) \
+   {if (U_FAILURE(x)) {log_err_status(x, "%s:%d: FAIL: test assertion failure \n", __FILE__, __LINE__);\
+   }}
 
 static void TestSearchForNull(void) {
     UCollator *coll;
@@ -2659,7 +2646,7 @@ static void TestStrengthIdentical(void)
         len = usearch_getMatchedLength(search);
 
         if(pos != -1) {
-            log_err("Expected failure for strength = UCOL_IDENTICAL: got %d instead.\n", pos);
+            log_err("Expected failure for strentgh = UCOL_IDENTICAL: got %d instead.\n", pos);
         }
     }
 
@@ -2765,7 +2752,7 @@ static void TestUsingSearchCollator(void)
                         usearch_reset(usrch);
                         nextOffsetPtr = patternsOffsetsPtr->offsets;
                         limitOffsetPtr = patternsOffsetsPtr->offsets + patternsOffsetsPtr->offsetsLen;
-                        while (true) {
+                        while (TRUE) {
                             offset = usearch_next(usrch, &status);
                             if ( U_FAILURE(status) || offset == USEARCH_DONE ) {
                                 break;
@@ -2791,7 +2778,7 @@ static void TestUsingSearchCollator(void)
                         usearch_reset(usrch);
                         nextOffsetPtr = patternsOffsetsPtr->offsets + patternsOffsetsPtr->offsetsLen;
                         limitOffsetPtr = patternsOffsetsPtr->offsets;
-                        while (true) {
+                        while (TRUE) {
                             offset = usearch_previous(usrch, &status);
                             if ( U_FAILURE(status) || offset == USEARCH_DONE ) {
                                 break;
@@ -2839,7 +2826,7 @@ static void TestPCEBuffer_with(const UChar *search, uint32_t searchLen, const UC
 
 
    coll = ucol_openFromShortString( "LSK_AS_CX_EX_FX_HX_NX_S4",
-                                    false,
+                                    FALSE,
                                     NULL,
                                     &icuStatus );
    if ( U_FAILURE(icuStatus) )
@@ -2905,43 +2892,6 @@ exit:
    return;
 }
 
-static void TestUInt16Overflow(void) {
-    const int32_t uint16_overflow = UINT16_MAX + 1;
-    UChar* pattern = (UChar*)uprv_malloc(uint16_overflow * sizeof(UChar));
-    if (pattern == NULL)
-    {
-        log_err("Err: uprv_malloc returned NULL\n");
-        return;
-    }
-    u_memset(pattern, 'A', uint16_overflow);
-    UChar text[] = { 'B' };
-
-    UErrorCode errorCode = U_ZERO_ERROR;
-    UStringSearch* usearch = usearch_open(pattern, uint16_overflow, text, 1, "en-US", NULL, &errorCode);
-
-    if (U_SUCCESS(errorCode))
-    {
-        int32_t match = usearch_first(usearch, &errorCode);
-
-        if (U_SUCCESS(errorCode))
-        {
-            if (match != USEARCH_DONE)
-            {
-                log_err("Err: match was not expected, got %d\n", match);
-            }
-        }
-        else
-        {
-            log_err("usearch_first error %s\n", u_errorName(errorCode));
-        }
-        usearch_close(usearch);
-    }
-    else
-    {
-        log_err("usearch_open error %s\n", u_errorName(errorCode));
-    }
-    uprv_free(pattern);
-}
 
 static void TestPCEBuffer_100df(void) {
   UChar search[] =
@@ -2983,7 +2933,7 @@ static void TestMatchFollowedByIgnorables(void) {
     sourceLen = UPRV_LENGTHOF(source);
 
     coll = ucol_openFromShortString("LHR_AN_CX_EX_FX_HX_NX_S3",
-                                    false,
+                                    FALSE,
                                     NULL,
                                     &icuStatus);
     if (U_FAILURE(icuStatus)) {
@@ -3118,7 +3068,6 @@ void addSearchTest(TestNode** root)
     addTest(root, &TestPCEBuffer_2surr, "tscoll/usrchtst/TestPCEBuffer/2_dfff");
     addTest(root, &TestMatchFollowedByIgnorables, "tscoll/usrchtst/TestMatchFollowedByIgnorables");
     addTest(root, &TestIndicPrefixMatch, "tscoll/usrchtst/TestIndicPrefixMatch");
-    addTest(root, &TestUInt16Overflow, "tscoll/usrchtst/TestUInt16Overflow");
 }
 
 #endif /* #if !UCONFIG_NO_COLLATION */

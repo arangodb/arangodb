@@ -19,9 +19,6 @@
 
 static void TestUListFmt(void);
 static void TestUListFmtToValue(void);
-static void TestUListOpenStyled(void);
-static void TestUList21871_A(void);
-static void TestUList21871_B(void);
 
 void addUListFmtTest(TestNode** root);
 
@@ -31,9 +28,6 @@ void addUListFmtTest(TestNode** root)
 {
     TESTCASE(TestUListFmt);
     TESTCASE(TestUListFmtToValue);
-    TESTCASE(TestUListOpenStyled);
-    TESTCASE(TestUList21871_A);
-    TESTCASE(TestUList21871_B);
 }
 
 static const UChar str0[] = { 0x41,0 }; /* "A" */
@@ -69,7 +63,7 @@ enum {
   kBBufMax = 256
 };
 
-static void TestUListFmt(void) {
+static void TestUListFmt() {
     const ListFmtTestEntry * lftep;
     for (lftep = listFmtTestEntries; lftep->locale != NULL ; lftep++ ) {
         UErrorCode status = U_ZERO_ERROR;
@@ -135,7 +129,7 @@ static void TestUListFmt(void) {
     }
 }
 
-static void TestUListFmtToValue(void) {
+static void TestUListFmtToValue() {
     UErrorCode ec = U_ZERO_ERROR;
     UListFormatter* fmt = ulistfmt_open("en", &ec);
     UFormattedList* fl = ulistfmt_openResult(&ec);
@@ -214,142 +208,6 @@ static void TestUListFmtToValue(void) {
 
     ulistfmt_close(fmt);
     ulistfmt_closeResult(fl);
-}
-
-static void TestUListOpenStyled(void) {
-    UErrorCode ec = U_ZERO_ERROR;
-    UListFormatter* fmt = ulistfmt_openForType("en", ULISTFMT_TYPE_OR, ULISTFMT_WIDTH_SHORT, &ec);
-    UFormattedList* fl = ulistfmt_openResult(&ec);
-    assertSuccess("Opening", &ec);
-
-    {
-        const char* message = "openStyled test 1";
-        const UChar* expectedString = u"A, B, or C";
-        const UChar* inputs[] = {
-            u"A",
-            u"B",
-            u"C",
-        };
-        ulistfmt_formatStringsToResult(fmt, inputs, NULL, UPRV_LENGTHOF(inputs), fl, &ec);
-        assertSuccess("Formatting", &ec);
-        static const UFieldPositionWithCategory expectedFieldPositions[] = {
-            // field, begin index, end index
-            {UFIELD_CATEGORY_LIST_SPAN, 0, 0,  1},
-            {UFIELD_CATEGORY_LIST, ULISTFMT_ELEMENT_FIELD, 0,  1},
-            {UFIELD_CATEGORY_LIST, ULISTFMT_LITERAL_FIELD, 1,  3},
-            {UFIELD_CATEGORY_LIST_SPAN, 1, 3,  4},
-            {UFIELD_CATEGORY_LIST, ULISTFMT_ELEMENT_FIELD, 3,  4},
-            {UFIELD_CATEGORY_LIST, ULISTFMT_LITERAL_FIELD, 4,  9},
-            {UFIELD_CATEGORY_LIST_SPAN, 2, 9, 10},
-            {UFIELD_CATEGORY_LIST, ULISTFMT_ELEMENT_FIELD, 9, 10}};
-        checkMixedFormattedValue(
-            message,
-            ulistfmt_resultAsValue(fl, &ec),
-            expectedString,
-            expectedFieldPositions,
-            UPRV_LENGTHOF(expectedFieldPositions));
-    }
-
-    ulistfmt_close(fmt);
-    ulistfmt_closeResult(fl);
-}
-
-#include <stdio.h>
-
-static void TestUList21871_A(void) {
-    UErrorCode status = U_ZERO_ERROR;
-    UListFormatter *fmt = ulistfmt_openForType("en", ULISTFMT_TYPE_AND, ULISTFMT_WIDTH_WIDE, &status);
-    assertSuccess("ulistfmt_openForType", &status);
-
-    const UChar *strs[] = {u"A", u""};
-    const int32_t lens[] = {1, 0};
-
-    UFormattedList *fl = ulistfmt_openResult(&status);
-    assertSuccess("ulistfmt_openResult", &status);
-
-    ulistfmt_formatStringsToResult(fmt, strs, lens, 2, fl, &status);
-    assertSuccess("ulistfmt_formatStringsToResult", &status);
-
-    const UFormattedValue *value = ulistfmt_resultAsValue(fl, &status);
-    assertSuccess("ulistfmt_resultAsValue", &status);
-
-    {
-        int32_t len;
-        const UChar *str = ufmtval_getString(value, &len, &status);
-        assertUEquals("TEST ufmtval_getString", u"A and ", str);
-    }
-
-    UConstrainedFieldPosition *fpos = ucfpos_open(&status);
-    assertSuccess("ucfpos_open", &status);
-
-    ucfpos_constrainField(fpos, UFIELD_CATEGORY_LIST, ULISTFMT_ELEMENT_FIELD, &status);
-    assertSuccess("ucfpos_constrainField", &status);
-
-    bool hasMore = ufmtval_nextPosition(value, fpos, &status);
-    assertSuccess("ufmtval_nextPosition", &status);
-    assertTrue("hasMore 1", hasMore);
-
-    int32_t beginIndex, endIndex;
-    ucfpos_getIndexes(fpos, &beginIndex, &endIndex, &status);
-    assertSuccess("ufmtval_nextPosition", &status);
-    assertIntEquals("TEST beginIndex", 0, beginIndex);
-    assertIntEquals("TEST endIndex", 1, endIndex);
-
-    hasMore = ufmtval_nextPosition(value, fpos, &status);
-    assertSuccess("ufmtval_nextPosition", &status);
-    assertTrue("hasMore 2", !hasMore);
-
-    ucfpos_close(fpos);
-    ulistfmt_closeResult(fl);
-    ulistfmt_close(fmt);
-}
-
-static void TestUList21871_B(void) {
-    UErrorCode status = U_ZERO_ERROR;
-    UListFormatter *fmt = ulistfmt_openForType("en", ULISTFMT_TYPE_AND, ULISTFMT_WIDTH_WIDE, &status);
-    assertSuccess("ulistfmt_openForType", &status);
-
-    const UChar *strs[] = {u"", u"B"};
-    const int32_t lens[] = {0, 1};
-
-    UFormattedList *fl = ulistfmt_openResult(&status);
-    assertSuccess("ulistfmt_openResult", &status);
-
-    ulistfmt_formatStringsToResult(fmt, strs, lens, 2, fl, &status);
-    assertSuccess("ulistfmt_formatStringsToResult", &status);
-
-    const UFormattedValue *value = ulistfmt_resultAsValue(fl, &status);
-    assertSuccess("ulistfmt_resultAsValue", &status);
-
-    {
-        int32_t len;
-        const UChar *str = ufmtval_getString(value, &len, &status);
-        assertUEquals("TEST ufmtval_getString", u" and B", str);
-    }
-
-    UConstrainedFieldPosition *fpos = ucfpos_open(&status);
-    assertSuccess("ucfpos_open", &status);
-
-    ucfpos_constrainField(fpos, UFIELD_CATEGORY_LIST, ULISTFMT_ELEMENT_FIELD, &status);
-    assertSuccess("ucfpos_constrainField", &status);
-
-    bool hasMore = ufmtval_nextPosition(value, fpos, &status);
-    assertSuccess("ufmtval_nextPosition", &status);
-    assertTrue("hasMore 1", hasMore);
-
-    int32_t beginIndex, endIndex;
-    ucfpos_getIndexes(fpos, &beginIndex, &endIndex, &status);
-    assertSuccess("ucfpos_getIndexes", &status);
-    assertIntEquals("TEST beginIndex", 5, beginIndex);
-    assertIntEquals("TEST endIndex", 6, endIndex);
-
-    hasMore = ufmtval_nextPosition(value, fpos, &status);
-    assertSuccess("ufmtval_nextPosition", &status);
-    assertTrue("hasMore 2", !hasMore);
-
-    ucfpos_close(fpos);
-    ulistfmt_closeResult(fl);
-    ulistfmt_close(fmt);
 }
 
 

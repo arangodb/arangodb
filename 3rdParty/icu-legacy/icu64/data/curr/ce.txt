@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ce{
     Currencies{
         AED{
@@ -499,13 +498,9 @@ ce{
             "SHP",
             "Сийлахьчу Еленин гӀайрен фунт",
         }
-        SLE{
-            "SLE",
-            "Леоне",
-        }
         SLL{
             "SLL",
-            "Леоне (1964—2022)",
+            "Леоне",
         }
         SOS{
             "SOS",
@@ -620,7 +615,7 @@ ce{
             "Малхбален Карибийн доллар",
         }
         XOF{
-            "F CFA",
+            "CFA",
             "Малхбузен Африкан КФА франк",
         }
         XPF{
@@ -645,8 +640,102 @@ ce{
         }
     }
     Currencies%narrow{
+        AOA{"Kz"}
+        ARS{"$"}
+        AUD{"$"}
+        BAM{"KM"}
+        BBD{"$"}
+        BDT{"৳"}
+        BMD{"$"}
+        BND{"$"}
+        BOB{"Bs"}
+        BRL{"R$"}
+        BSD{"$"}
+        BWP{"P"}
         BYN{"р."}
+        BZD{"$"}
+        CAD{"$"}
+        CLP{"$"}
+        CNY{"¥"}
+        COP{"$"}
+        CRC{"₡"}
+        CUC{"$"}
+        CUP{"$"}
+        CZK{"Kč"}
+        DKK{"kr"}
+        DOP{"$"}
+        EGP{"E£"}
+        EUR{"€"}
+        FJD{"$"}
+        FKP{"£"}
+        GBP{"£"}
+        GIP{"£"}
+        GNF{"FG"}
+        GTQ{"Q"}
+        GYD{"$"}
+        HKD{"$"}
+        HNL{"L"}
+        HRK{"kn"}
+        HUF{"Ft"}
+        IDR{"Rp"}
+        ILS{"₪"}
+        INR{"₹"}
+        ISK{"kr"}
+        JMD{"$"}
+        JPY{"¥"}
+        KHR{"៛"}
+        KMF{"CF"}
+        KPW{"₩"}
+        KRW{"₩"}
+        KYD{"$"}
+        KZT{"₸"}
+        LAK{"₭"}
+        LBP{"L£"}
+        LKR{"Rs"}
+        LRD{"$"}
+        MGA{"Ar"}
+        MMK{"K"}
+        MNT{"₮"}
+        MUR{"Rs"}
+        MXN{"$"}
+        MYR{"RM"}
+        NAD{"$"}
+        NGN{"₦"}
+        NIO{"C$"}
+        NOK{"kr"}
+        NPR{"Rs"}
+        NZD{"$"}
+        PHP{"₱"}
+        PKR{"Rs"}
+        PLN{"zł"}
+        PYG{"₲"}
         RON{"лей"}
+        RWF{"RF"}
+        SBD{"$"}
+        SEK{"kr"}
+        SGD{"$"}
+        SHP{"£"}
+        SRD{"$"}
+        SSP{"£"}
+        STN{"Db"}
+        SYP{"£"}
+        THB{"฿"}
+        TOP{"T$"}
+        TRY{"₺"}
+        TTD{"$"}
+        TWD{"$"}
+        UAH{"₴"}
+        USD{"$"}
+        UYU{"$"}
+        VEF{"Bs"}
+        VND{"₫"}
+        XCD{"$"}
+        ZAR{"R"}
+        ZMW{"ZK"}
+    }
+    Currencies%variant{
+        GEL{"₾"}
+        TRY{"TL"}
     }
     CurrencyPlurals{
         AED{
@@ -772,6 +861,10 @@ ce{
         CNY{
             one{"Китайн юань"}
             other{"Китайн юанаш"}
+        }
+        COP{
+            one{"Колумбин песо"}
+            other{"Колумбин песо"}
         }
         CRC{
             one{"Костарикан колон"}
@@ -1141,13 +1234,9 @@ ce{
             one{"Сийлахьчу Еленин гӀайрен фунт"}
             other{"Сийлахьчу Еленин гӀайрен фунташ"}
         }
-        SLE{
+        SLL{
             one{"леоне"}
             other{"леонеш"}
-        }
-        SLL{
-            one{"леоне (1964—2022)"}
-            other{"леонеш (1964—2022)"}
         }
         SOS{
             one{"Сомалин шиллинг"}
@@ -1261,6 +1350,18 @@ ce{
             one{"Малхбален Карибийн доллар"}
             other{"Малхбален Карибийн долларш"}
         }
+        XOF{
+            one{"Малхбузен Африкан КФА франк"}
+            other{"Малхбузен Африкан КФА франк"}
+        }
+        XPF{
+            one{"Французийн Тийна океанан франк"}
+            other{"Французийн Тийна океанан франк"}
+        }
+        XXX{
+            one{"девзаш доцу я лелаш доцу ахча"}
+            other{"девзаш доцу я лелаш доцу ахча"}
+        }
         YER{
             one{"Йеменан риал"}
             other{"Йеменан риалш"}
@@ -1278,4 +1379,5 @@ ce{
         one{"{0} {1}"}
         other{"{0} {1}"}
     }
+    Version{"2.1.47.82"}
 }

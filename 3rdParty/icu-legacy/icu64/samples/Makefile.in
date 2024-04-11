@@ -1,6 +1,6 @@
 ## Makefile.in for ICU samples
 ## Copyright (C) 2016 and later: Unicode, Inc. and others.
-## License & terms of use: http://www.unicode.org/copyright.html
+## License & terms of use: http://www.unicode.org/copyright.html#License
 ##
 ## Copyright (c) 1999-2011, International Business Machines Corporation and
 ## others. All Rights Reserved.
@@ -22,8 +22,8 @@ include @platform_make_fragment@
 ## Files to remove for 'make clean'
 CLEANFILES = *~
 
-SUBDIRS =
-ALLSUBDIRS = coll strsrch translit
+SUBDIRS = date cal
+ALLSUBDIRS = break case csdet datefmt msgfmt numfmt props translit ucnv udata ufortune uresb ustring citer uciter8 ugrep
 
 ## List of phony targets
 .PHONY : all all-local all-recursive install install-local		\

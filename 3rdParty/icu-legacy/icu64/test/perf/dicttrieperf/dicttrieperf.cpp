@@ -1,7 +1,7 @@
 /*  
  ***********************************************************************
  * © 2016 and later: Unicode, Inc. and others.
- * License & terms of use: http://www.unicode.org/copyright.html
+ * License & terms of use: http://www.unicode.org/copyright.html#License
  ***********************************************************************
  ***********************************************************************
  *   Copyright (C) 2010-2014, International Business Machines
@@ -47,7 +47,7 @@
 class DictionaryTriePerfTest : public UPerfTest {
 public:
     DictionaryTriePerfTest(int32_t argc, const char *argv[], UErrorCode &status)
-            : UPerfTest(argc, argv, nullptr, 0, "", status), numTextLines(0) {
+            : UPerfTest(argc, argv, NULL, 0, "", status), numTextLines(0) {
         if(hasFile()) {
             getLines(status);
             for(int32_t i=0; i<numLines; ++i) {
@@ -56,7 +56,7 @@ public:
                     ++numTextLines;
                     // Remove trailing CR LF.
                     int32_t len=lines[i].len;
-                    char16_t c;
+                    UChar c;
                     while(len>0 && ((c=lines[i].name[len-1])==0xa || c==0xd)) {
                         --len;
                     }
@@ -66,11 +66,11 @@ public:
         }
     }
 
-    virtual UPerfFunction *runIndexedTest(int32_t index, UBool exec, const char *&name, char *par=nullptr);
+    virtual UPerfFunction *runIndexedTest(int32_t index, UBool exec, const char *&name, char *par=NULL);
 
     const char *getSourceDir() const { return sourceDir; }
 
-    UBool hasFile() const { return ucharBuf!=nullptr; }
+    UBool hasFile() const { return ucharBuf!=NULL; }
     const ULine *getCachedLines() const { return lines; }
     int32_t getNumLines() const { return numLines; }
     int32_t numTextLines;  // excluding comment lines
@@ -352,7 +352,7 @@ ucharsTrieMatches(UCharsTrie &trie,
     UChar32 c=utext_next32(text);
     // Notes:
     // a) CompactTrieDictionary::matches() does not check for U_SENTINEL.
-    // b) It also ignores non-BMP code points by casting to char16_t!
+    // b) It also ignores non-BMP code points by casting to UChar!
     if(c<0) {
         return 0;
     }
@@ -380,7 +380,7 @@ ucharsTrieMatches(UCharsTrie &trie,
         UChar32 c=utext_next32(text);
         // Notes:
         // a) CompactTrieDictionary::matches() does not check for U_SENTINEL.
-        // b) It also ignores non-BMP code points by casting to char16_t!
+        // b) It also ignores non-BMP code points by casting to UChar!
         if(c<0) {
             break;
         }
@@ -406,7 +406,7 @@ ucharsTrieMatches(UCharsTrie &trie,
 class UCharsTrieDictLookup : public DictLookup {
 public:
     UCharsTrieDictLookup(const DictionaryTriePerfTest &perfTest)
-            : DictLookup(perfTest), trie(nullptr) {
+            : DictLookup(perfTest), trie(NULL) {
         IcuToolErrorCode errorCode("UCharsTrieDictLookup()");
         builder=new UCharsTrieBuilder(errorCode);
         const ULine *lines=perf.getCachedLines();
@@ -416,7 +416,7 @@ public:
             if(lines[i].name[0]<0x41) {
                 continue;
             }
-            builder->add(UnicodeString(false, lines[i].name, lines[i].len), 0, errorCode);
+            builder->add(UnicodeString(FALSE, lines[i].name, lines[i].len), 0, errorCode);
         }
         UnicodeString trieUChars;
         int32_t length=builder->buildUnicodeString(USTRINGTRIE_BUILD_SMALL, trieUChars, errorCode).length();
@@ -490,25 +490,25 @@ static inline int32_t thaiCharToByte(UChar32 c) {
     }
 }
 
-static UBool thaiWordToBytes(const char16_t *s, int32_t length,
+static UBool thaiWordToBytes(const UChar *s, int32_t length,
                              CharString &str, UErrorCode &errorCode) {
     for(int32_t i=0; i<length; ++i) {
-        char16_t c=s[i];
+        UChar c=s[i];
         int32_t b=thaiCharToByte(c);
         if(b>=0) {
             str.append((char)b, errorCode);
         } else {
             fprintf(stderr, "thaiWordToBytes(): unable to encode U+%04X as a byte\n", c);
-            return false;
+            return FALSE;
         }
     }
-    return true;
+    return TRUE;
 }
 
 class BytesTrieDictLookup : public DictLookup {
 public:
     BytesTrieDictLookup(const DictionaryTriePerfTest &perfTest)
-            : DictLookup(perfTest), trie(nullptr), noDict(false) {
+            : DictLookup(perfTest), trie(NULL), noDict(FALSE) {
         IcuToolErrorCode errorCode("BytesTrieDictLookup()");
         builder=new BytesTrieBuilder(errorCode);
         CharString str;
@@ -521,7 +521,7 @@ public:
             }
             if(!thaiWordToBytes(lines[i].name, lines[i].len, str.clear(), errorCode)) {
                 fprintf(stderr, "thaiWordToBytes(): failed for word %ld (0-based)\n", (long)i);
-                noDict=true;
+                noDict=TRUE;
                 break;
             }
             builder->add(str.toStringPiece(), 0, errorCode);
@@ -621,7 +621,7 @@ public:
         const ULine *lines=perf.getCachedLines();
         int32_t numLines=perf.getNumLines();
         for(int32_t i=0; i<numLines; ++i) {
-            const char16_t *line=lines[i].name;
+            const UChar *line=lines[i].name;
             // Skip comment lines (start with a character below 'A').
             if(line[0]<0x41) {
                 continue;
@@ -703,7 +703,7 @@ UPerfFunction *DictionaryTriePerfTest::runIndexedTest(int32_t index, UBool exec,
             break;
         }
     }
-    return nullptr;
+    return NULL;
 }
 
 int main(int argc, const char *argv[]) {

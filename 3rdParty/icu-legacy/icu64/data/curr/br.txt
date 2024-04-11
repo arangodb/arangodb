@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 br{
     Currencies{
         ADP{
@@ -106,6 +105,10 @@ br{
         BEF{
             "BEF",
             "lur Belgia",
+        }
+        BEL{
+            "BEL",
+            "BEL",
         }
         BGM{
             "BGM",
@@ -214,10 +217,6 @@ br{
         CLP{
             "CLP",
             "peso Chile",
-        }
-        CNH{
-            "CNH",
-            "yuan Sina (diavaez)",
         }
         CNX{
             "CNX",
@@ -803,13 +802,9 @@ br{
             "SKK",
             "kurunenn Slovakia",
         }
-        SLE{
-            "SLE",
-            "leone Sierra Leone",
-        }
         SLL{
             "SLL",
-            "leone Sierra Leone (1964—2022)",
+            "leone Sierra Leone",
         }
         SOS{
             "SOS",
@@ -1008,7 +1003,7 @@ br{
             "lur Unaniezh etrebroadel an hentoù-houarn",
         }
         XOF{
-            "F CFA",
+            "CFA",
             "lur CFA Afrika ar Cʼhornôg",
         }
         XPD{
@@ -1026,10 +1021,6 @@ br{
         XTS{
             "XTS",
             "kod moneiz amprouiñ",
-        }
-        XUA{
-            "XUA",
-            "unanenn jediñ BAD",
         }
         XXX{
             "XXX",
@@ -1084,7 +1075,7 @@ br{
         BYN{"р."}
         EGP{"£ E"}
         LBP{"£L"}
-        RUR{"р."}
+        STN{"Db"}
         TOP{"$ T"}
     }
     CurrencyPlurals{
@@ -1269,6 +1260,13 @@ br{
             one{"lur Belgia"}
             other{"lur Belgia"}
             two{"lur Belgia"}
+        }
+        BEL{
+            few{"BEL"}
+            many{"BEL"}
+            one{"BEL"}
+            other{"BEL"}
+            two{"BEL"}
         }
         BGM{
             few{"lev sokialour Bulgaria"}
@@ -1458,13 +1456,6 @@ br{
             one{"peso Chile"}
             other{"peso Chile"}
             two{"beso Chile"}
-        }
-        CNH{
-            few{"yuan Sina (diavaez)"}
-            many{"a yuanoù Sina (diavaez)"}
-            one{"yuan Sina (diavaez)"}
-            other{"yuan Sina (diavaez)"}
-            two{"yuan Sina (diavaez)"}
         }
         CNX{
             few{"dollar Bank poblel Sina"}
@@ -1669,6 +1660,13 @@ br{
             other{"lari Jorjia"}
             two{"lari Jorjia"}
         }
+        GHS{
+            few{"cedi Ghana"}
+            many{"cedi Ghana"}
+            one{"cedi Ghana"}
+            other{"cedi Ghana"}
+            two{"cedi Ghana"}
+        }
         GIP{
             few{"lur Jibraltar"}
             many{"a lurioù Jibraltar"}
@@ -1794,6 +1792,20 @@ br{
             one{"lur Israel"}
             other{"lur Israel"}
             two{"lur Israel"}
+        }
+        ILR{
+            few{"shekel Israel (1980–1985)"}
+            many{"shekel Israel (1980–1985)"}
+            one{"shekel Israel (1980–1985)"}
+            other{"shekel Israel (1980–1985)"}
+            two{"shekel Israel (1980–1985)"}
+        }
+        ILS{
+            few{"shekel nevez Israel"}
+            many{"shekel nevez Israel"}
+            one{"shekel nevez Israel"}
+            other{"shekel nevez Israel"}
+            two{"shekel nevez Israel"}
         }
         INR{
             few{"roupi India"}
@@ -2040,6 +2052,13 @@ br{
             other{"lur Monaco"}
             two{"lur Monaco"}
         }
+        MDL{
+            few{"leu Moldova"}
+            many{"leu Moldova"}
+            one{"leu Moldova"}
+            other{"leu Moldova"}
+            two{"leu Moldova"}
+        }
         MGA{
             few{"ariary Madagaskar"}
             many{"a ariaryoù Madagaska"}
@@ -2264,6 +2283,13 @@ br{
             other{"balboa Panamá"}
             two{"valboa Panamá"}
         }
+        PEN{
+            few{"sol Perou"}
+            many{"sol Perou"}
+            one{"sol Perou"}
+            other{"sol Perou"}
+            two{"sol Perou"}
+        }
         PES{
             few{"sol Perou (1863–1965)"}
             many{"a solioù Perou (1863–1965)"}
@@ -2333,6 +2359,20 @@ br{
             one{"dollar Rodezia"}
             other{"dollar Rodezia"}
             two{"zollar Rodezia"}
+        }
+        ROL{
+            few{"leu Roumania (1952–2006)"}
+            many{"leu Roumania (1952–2006)"}
+            one{"leu Roumania (1952–2006)"}
+            other{"leu Roumania (1952–2006)"}
+            two{"leu Roumania (1952–2006)"}
+        }
+        RON{
+            few{"leu Roumania"}
+            many{"leu Roumania"}
+            one{"leu Roumania"}
+            other{"leu Roumania"}
+            two{"leu Roumania"}
         }
         RSD{
             few{"dinar Serbia"}
@@ -2439,19 +2479,12 @@ br{
             other{"kurunenn Slovakia"}
             two{"gurunenn Slovakia"}
         }
-        SLE{
+        SLL{
             few{"leone Sierra Leone"}
             many{"a leoneoù Sierra Leone"}
             one{"leone Sierra Leone"}
             other{"leone Sierra Leone"}
             two{"leone Sierra Leone"}
-        }
-        SLL{
-            few{"leone Sierra Leone (1964—2022)"}
-            many{"a leoneoù Sierra Leone (1964—2022)"}
-            one{"leone Sierra Leone (1964—2022)"}
-            other{"leone Sierra Leone (1964—2022)"}
-            two{"leone Sierra Leone (1964—2022)"}
         }
         SOS{
             few{"shilling Somalia"}
@@ -2712,19 +2745,12 @@ br{
             other{"tala Samoa"}
             two{"dala Samoa"}
         }
-        XAG{
-            few{"oñs troy arcʼhant"}
-            many{"oñs troy arcʼhant"}
-            one{"oñs troy arcʼhant"}
-            other{"oñs troy arcʼhant"}
-            two{"oñs troy arcʼhant"}
-        }
-        XAU{
-            few{"oñs troy aour"}
-            many{"oñs troy aour"}
-            one{"oñs troy aour"}
-            other{"oñs troy aour"}
-            two{"oñs troy aour"}
+        XAF{
+            few{"lur CFA Kreizafrika"}
+            many{"lur CFA Kreizafrika"}
+            one{"lur CFA Kreizafrika"}
+            other{"lur CFA Kreizafrika"}
+            two{"lur CFA Kreizafrika"}
         }
         XBA{
             few{"unanenn genaoz europat"}
@@ -2761,6 +2787,13 @@ br{
             other{"dollar Karib ar reter"}
             two{"zollar Karib ar reter"}
         }
+        XDR{
+            few{"gwirioù tennañ arbennik"}
+            many{"gwirioù tennañ arbennik"}
+            one{"gwirioù tennañ arbennik"}
+            other{"gwirioù tennañ arbennik"}
+            two{"gwirioù tennañ arbennik"}
+        }
         XEU{
             few{"unanenn jediñ europat"}
             many{"a unanennoù jediñ europat"}
@@ -2789,13 +2822,6 @@ br{
             other{"lur CFA Afrika ar Cʼhornôg"}
             two{"lur CFA BCEAO"}
         }
-        XPD{
-            few{"oñs troy palladiom"}
-            many{"oñs troy palladiom"}
-            one{"oñs troy palladiom"}
-            other{"oñs troy palladiom"}
-            two{"oñs troy palladiom"}
-        }
         XPF{
             few{"lur CFP"}
             many{"a lurioù CFP"}
@@ -2803,26 +2829,12 @@ br{
             other{"lur CFP"}
             two{"lur CFP"}
         }
-        XPT{
-            few{"oñs troy platin"}
-            many{"oñs troy platin"}
-            one{"oñs troy platin"}
-            other{"oñs troy platin"}
-            two{"oñs troy platin"}
-        }
         XTS{
             few{"unanenn voneiz amprouiñ"}
             many{"a unanennoù voneiz amprouiñ"}
             one{"unanenn voneiz amprouiñ"}
             other{"unanenn voneiz amprouiñ"}
             two{"unanenn voneiz amprouiñ"}
-        }
-        XUA{
-            few{"unanenn jediñ BAD"}
-            many{"a unanennoù jediñ BAD"}
-            one{"unanenn jediñ BAD"}
-            other{"unanenn jediñ BAD"}
-            two{"unanenn jediñ BAD"}
         }
         XXX{
             few{"(moneiz dianav)"}
@@ -2916,4 +2928,5 @@ br{
         other{"{0} {1}"}
         two{"{0} {1}"}
     }
+    Version{"2.1.48.86"}
 }

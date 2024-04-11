@@ -1,7 +1,7 @@
 /*
 ***********************************************************************
 * © 2016 and later: Unicode, Inc. and others.
-* License & terms of use: http://www.unicode.org/copyright.html
+* License & terms of use: http://www.unicode.org/copyright.html#License
 ***********************************************************************
 ***********************************************************************
 * Copyright (c) 2002-2016, International Business Machines
@@ -68,21 +68,21 @@ UPerfFunction* NormalizerPerformanceTest::runIndexedTest(int32_t index, UBool ex
 
         default: 
             name = ""; 
-            return nullptr;
+            return NULL;
     }
-    return nullptr;
+    return NULL;
 
 }
 
-void NormalizerPerformanceTest::normalizeInput(ULine* dest,const char16_t* src ,int32_t srcLen,UNormalizationMode mode, int32_t options){
+void NormalizerPerformanceTest::normalizeInput(ULine* dest,const UChar* src ,int32_t srcLen,UNormalizationMode mode, int32_t options){
     int32_t reqLen = 0;
     UErrorCode status = U_ZERO_ERROR;
     for(;;){
         /* pure pre-flight */
-        reqLen=unorm_normalize(src,srcLen,mode, options,nullptr,0,&status);
+        reqLen=unorm_normalize(src,srcLen,mode, options,NULL,0,&status);
         if(status==U_BUFFER_OVERFLOW_ERROR){
             status=U_ZERO_ERROR;
-            dest->name = new char16_t[reqLen+1];
+            dest->name = new UChar[reqLen+1];
             reqLen= unorm_normalize(src,srcLen,mode, options,dest->name,reqLen+1,&status);
             dest->len=reqLen;
             break;
@@ -91,22 +91,22 @@ void NormalizerPerformanceTest::normalizeInput(ULine* dest,const char16_t* src ,
         }
     }
 }
-char16_t* NormalizerPerformanceTest::normalizeInput(int32_t& len, const char16_t* src ,int32_t srcLen,UNormalizationMode mode, int32_t options){
+UChar* NormalizerPerformanceTest::normalizeInput(int32_t& len, const UChar* src ,int32_t srcLen,UNormalizationMode mode, int32_t options){
     int32_t reqLen = 0;
     UErrorCode status = U_ZERO_ERROR;
-    char16_t* dest = nullptr;
+    UChar* dest = NULL;
     for(;;){
         /* pure pre-flight */
-        reqLen=unorm_normalize(src,srcLen,mode, options,nullptr,0,&status);
+        reqLen=unorm_normalize(src,srcLen,mode, options,NULL,0,&status);
         if(status==U_BUFFER_OVERFLOW_ERROR){
             status=U_ZERO_ERROR;
-            dest = new char16_t[reqLen+1];
+            dest = new UChar[reqLen+1];
             reqLen= unorm_normalize(src,srcLen,mode, options,dest,reqLen+1,&status);
             len=reqLen;
             break;
         }else if(U_FAILURE(status)){
             printf("Could not normalize input. Error: %s", u_errorName(status));
-            return nullptr;
+            return NULL;
         }
     }
     return dest;
@@ -118,12 +118,12 @@ static UOption cmdLineOptions[]={
 
 NormalizerPerformanceTest::NormalizerPerformanceTest(int32_t argc, const char* argv[], UErrorCode& status)
 : UPerfTest(argc,argv,status), options(0) {
-    NFDBuffer = nullptr;
-    NFCBuffer = nullptr;
+    NFDBuffer = NULL;
+    NFCBuffer = NULL;
     NFDBufferLen = 0;
     NFCBufferLen = 0;
-    NFDFileLines = nullptr;
-    NFCFileLines = nullptr;
+    NFDFileLines = NULL;
+    NFCFileLines = NULL;
 
     if(status== U_ILLEGAL_ARGUMENT_ERROR){
        fprintf(stderr,gUsageString, "normperf");
@@ -136,8 +136,8 @@ NormalizerPerformanceTest::NormalizerPerformanceTest(int32_t argc, const char* a
     }
 
     _remainingArgc = u_parseArgs(_remainingArgc, (char **)argv, UPRV_LENGTHOF(cmdLineOptions), cmdLineOptions);
-    if(cmdLineOptions[0].doesOccur && cmdLineOptions[0].value!=nullptr) {
-        options=(int32_t)strtol(cmdLineOptions[0].value, nullptr, 16);
+    if(cmdLineOptions[0].doesOccur && cmdLineOptions[0].value!=NULL) {
+        options=(int32_t)strtol(cmdLineOptions[0].value, NULL, 16);
     }
 
     if(line_mode){
@@ -156,7 +156,7 @@ NormalizerPerformanceTest::NormalizerPerformanceTest(int32_t argc, const char* a
         }
     }else if(bulk_mode){
         int32_t srcLen = 0;
-        const char16_t* src = getBuffer(srcLen,status);
+        const UChar* src = getBuffer(srcLen,status);
         NFDBufferLen = 0;
         NFCBufferLen = 0;
 
@@ -500,7 +500,7 @@ int main(int argc, const char* argv[]){
     if(U_FAILURE(status)){
         return status;
     }
-    if(test.run()==false){
+    if(test.run()==FALSE){
         fprintf(stderr,"FAILED: Tests could not be run please check the arguments.\n");
         return -1;
     }

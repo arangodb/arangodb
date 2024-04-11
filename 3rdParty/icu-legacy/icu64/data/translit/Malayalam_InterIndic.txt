@@ -1,6 +1,5 @@
 ﻿# © 2016 and later: Unicode, Inc. and others.
-# License & terms of use: http://www.unicode.org/copyright.html
-# Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+# License & terms of use: http://www.unicode.org/copyright.html#License
 #
 # File: Malayalam_InterIndic.txt
 # Generated from CLDR
@@ -83,12 +82,6 @@
 ൭→\uE06D;      # DIGIT SEVEN
 ൮→\uE06E;      # DIGIT EIGHT
 ൯→\uE06F;      # DIGIT NINE
-#Chillus
-ൺ → \uE023\uE04D ;
-ൻ → \uE028\uE04D ;
-ർ → \uE030\uE04D ;
-ൽ→ \uE032\uE04D ;
-ൾ→ \uE033\uE04D ;
 #    :: NFC (NFD) ;
 # eof
 

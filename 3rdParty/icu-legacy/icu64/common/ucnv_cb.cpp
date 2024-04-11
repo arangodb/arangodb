@@ -54,8 +54,8 @@ ucnv_cbFromUWriteBytes (UConverterFromUnicodeArgs *args,
 
 U_CAPI void  U_EXPORT2
 ucnv_cbFromUWriteUChars(UConverterFromUnicodeArgs *args,
-                             const char16_t** source,
-                             const char16_t*  sourceLimit,
+                             const UChar** source,
+                             const UChar*  sourceLimit,
                              int32_t offsetIndex,
                              UErrorCode * err)
 {
@@ -85,8 +85,8 @@ ucnv_cbFromUWriteUChars(UConverterFromUnicodeArgs *args,
         args->targetLimit,
         source,
         sourceLimit,
-        nullptr, /* no offsets */
-        false, /* no flush */
+        NULL, /* no offsets */
+        FALSE, /* no flush */
         err);
 
     if(args->offsets)
@@ -140,8 +140,8 @@ ucnv_cbFromUWriteUChars(UConverterFromUnicodeArgs *args,
                          newTargetLimit,
                          source,
                          sourceLimit,
-                         nullptr,
-                         false,
+                         NULL,
+                         FALSE,
                          &err2);
 
         /* We can go ahead and overwrite the  length here. We know just how
@@ -200,12 +200,12 @@ ucnv_cbFromUWriteSub (UConverterFromUnicodeArgs *args,
          * and will not recurse.
          * At worst we should get a U_BUFFER_OVERFLOW_ERROR.
          */
-        const char16_t *source = (const char16_t *)converter->subChars;
+        const UChar *source = (const UChar *)converter->subChars;
         ucnv_cbFromUWriteUChars(args, &source, source - length, offsetIndex, err);
         return;
     }
 
-    if(converter->sharedData->impl->writeSub!=nullptr) {
+    if(converter->sharedData->impl->writeSub!=NULL) {
         converter->sharedData->impl->writeSub(args, offsetIndex, err);
     }
     else if(converter->subChar1!=0 && (uint16_t)converter->invalidUCharBuffer[0]<=(uint16_t)0xffu) {
@@ -226,7 +226,7 @@ ucnv_cbFromUWriteSub (UConverterFromUnicodeArgs *args,
 
 U_CAPI void  U_EXPORT2
 ucnv_cbToUWriteUChars (UConverterToUnicodeArgs *args,
-                            const char16_t* source,
+                            const UChar* source,
                             int32_t length,
                             int32_t offsetIndex,
                             UErrorCode * err)
@@ -248,7 +248,7 @@ ucnv_cbToUWriteSub (UConverterToUnicodeArgs *args,
                          int32_t offsetIndex,
                        UErrorCode * err)
 {
-    static const char16_t kSubstituteChar1 = 0x1A, kSubstituteChar = 0xFFFD;
+    static const UChar kSubstituteChar1 = 0x1A, kSubstituteChar = 0xFFFD;
 
     /* could optimize this case, just one uchar */
     if(args->converter->invalidCharLength == 1 && args->converter->subChar1 != 0) {

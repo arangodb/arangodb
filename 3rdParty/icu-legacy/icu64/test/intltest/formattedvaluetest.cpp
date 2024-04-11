@@ -16,8 +16,7 @@
 
 class FormattedValueTest : public IntlTest {
 public:
-    void runIndexedTest(int32_t index, UBool exec, const char*& name, char* par = nullptr) override;
-
+    void runIndexedTest(int32_t index, UBool exec, const char *&name, char *par=0);
 private:
     void testBasic();
     void testSetters();
@@ -238,14 +237,9 @@ void IntlTestWithFieldPosition::checkMixedFormattedValue(
     }
     UBool afterLoopResult = fv.nextPosition(cfpos, status);
     assertFalse(baseMessage + u"A after loop: " + CFPosToUnicodeString(cfpos), afterLoopResult);
-    afterLoopResult = fv.nextPosition(cfpos, status);
-    assertFalse(baseMessage + u"A after loop again: " + CFPosToUnicodeString(cfpos), afterLoopResult);
 
     // Check nextPosition constrained over each category one at a time
-    for (int32_t category=0; category<UFIELD_CATEGORY_COUNT+1; category++) {
-        if (category == UFIELD_CATEGORY_COUNT) {
-            category = UFIELD_CATEGORY_LIST_SPAN;
-        }
+    for (int32_t category=0; category<UFIELD_CATEGORY_COUNT; category++) {
         cfpos.reset();
         cfpos.constrainCategory(static_cast<UFieldCategory>(category));
         for (int32_t i = 0; i < length; i++) {
@@ -269,8 +263,6 @@ void IntlTestWithFieldPosition::checkMixedFormattedValue(
         }
         UBool afterLoopResult = fv.nextPosition(cfpos, status);
         assertFalse(baseMessage + u"B after loop @ " + CFPosToUnicodeString(cfpos), afterLoopResult);
-        afterLoopResult = fv.nextPosition(cfpos, status);
-        assertFalse(baseMessage + u"B after loop again @ " + CFPosToUnicodeString(cfpos), afterLoopResult);
     }
 
     // Check nextPosition constrained over each field one at a time
@@ -305,8 +297,6 @@ void IntlTestWithFieldPosition::checkMixedFormattedValue(
         }
         UBool afterLoopResult = fv.nextPosition(cfpos, status);
         assertFalse(baseMessage + u"C after loop: " + CFPosToUnicodeString(cfpos), afterLoopResult);
-        afterLoopResult = fv.nextPosition(cfpos, status);
-        assertFalse(baseMessage + u"C after loop again: " + CFPosToUnicodeString(cfpos), afterLoopResult);
     }
 }
 

@@ -29,7 +29,9 @@ U_NAMESPACE_BEGIN
 //
 //----------------------------------------------------------------------------
 ScriptSet::ScriptSet() {
-    uprv_memset(bits, 0, sizeof(bits));
+    for (uint32_t i=0; i<UPRV_LENGTHOF(bits); i++) {
+        bits[i] = 0;
+    }
 }
 
 ScriptSet::~ScriptSet() {
@@ -38,28 +40,32 @@ ScriptSet::~ScriptSet() {
 ScriptSet::ScriptSet(const ScriptSet &other) {
     *this = other;
 }
+    
 
 ScriptSet & ScriptSet::operator =(const ScriptSet &other) {
-    uprv_memcpy(bits, other.bits, sizeof(bits));
+    for (uint32_t i=0; i<UPRV_LENGTHOF(bits); i++) {
+        bits[i] = other.bits[i];
+    }
     return *this;
 }
 
-bool ScriptSet::operator == (const ScriptSet &other) const {
+
+UBool ScriptSet::operator == (const ScriptSet &other) const {
     for (uint32_t i=0; i<UPRV_LENGTHOF(bits); i++) {
         if (bits[i] != other.bits[i]) {
-            return false;
+            return FALSE;
         }
     }
-    return true;
+    return TRUE;
 }
 
 UBool ScriptSet::test(UScriptCode script, UErrorCode &status) const {
     if (U_FAILURE(status)) {
-        return false;
+        return FALSE;
     }
-    if (script < 0 || (int32_t)script >= SCRIPT_LIMIT) {
+    if (script < 0 || script >= (int32_t)sizeof(bits) * 8) {
         status = U_ILLEGAL_ARGUMENT_ERROR;
-        return false;
+        return FALSE;
     }
     uint32_t index = script / 32;
     uint32_t bit   = 1 << (script & 31);
@@ -71,7 +77,7 @@ ScriptSet &ScriptSet::set(UScriptCode script, UErrorCode &status) {
     if (U_FAILURE(status)) {
         return *this;
     }
-    if (script < 0 || (int32_t)script >= SCRIPT_LIMIT) {
+    if (script < 0 || script >= (int32_t)sizeof(bits) * 8) {
         status = U_ILLEGAL_ARGUMENT_ERROR;
         return *this;
     }
@@ -85,7 +91,7 @@ ScriptSet &ScriptSet::reset(UScriptCode script, UErrorCode &status) {
     if (U_FAILURE(status)) {
         return *this;
     }
-    if (script < 0 || (int32_t)script >= SCRIPT_LIMIT) {
+    if (script < 0 || script >= (int32_t)sizeof(bits) * 8) {
         status = U_ILLEGAL_ARGUMENT_ERROR;
         return *this;
     }
@@ -119,7 +125,7 @@ ScriptSet &ScriptSet::intersect(UScriptCode script, UErrorCode &status) {
     }
     return *this;
 }
-
+    
 UBool ScriptSet::intersects(const ScriptSet &other) const {
     for (uint32_t i=0; i<UPRV_LENGTHOF(bits); i++) {
         if ((bits[i] & other.bits[i]) != 0) {
@@ -145,7 +151,9 @@ ScriptSet &ScriptSet::setAll() {
 
 
 ScriptSet &ScriptSet::resetAll() {
-    uprv_memset(bits, 0, sizeof(bits));
+    for (uint32_t i=0; i<UPRV_LENGTHOF(bits); i++) {
+        bits[i] = 0;
+    }
     return *this;
 }
 
@@ -177,7 +185,7 @@ int32_t ScriptSet::nextSetBit(int32_t fromIndex) const {
         return -1;
     }
     UErrorCode status = U_ZERO_ERROR;
-    for (int32_t scriptIndex = fromIndex; scriptIndex < SCRIPT_LIMIT; scriptIndex++) {
+    for (int32_t scriptIndex = fromIndex; scriptIndex < (int32_t)sizeof(bits)*8; scriptIndex++) {
         if (test((UScriptCode)scriptIndex, status)) {
             return scriptIndex;
         }
@@ -188,19 +196,19 @@ int32_t ScriptSet::nextSetBit(int32_t fromIndex) const {
 UBool ScriptSet::isEmpty() const {
     for (uint32_t i=0; i<UPRV_LENGTHOF(bits); i++) {
         if (bits[i] != 0) {
-            return false;
+            return FALSE;
         }
     }
-    return true;
+    return TRUE;
 }
 
 UnicodeString &ScriptSet::displayScripts(UnicodeString &dest) const {
-    UBool firstTime = true;
+    UBool firstTime = TRUE;
     for (int32_t i = nextSetBit(0); i >= 0; i = nextSetBit(i + 1)) {
         if (!firstTime) {
-            dest.append((char16_t)0x20);
+            dest.append((UChar)0x20);
         }
-        firstTime = false;
+        firstTime = FALSE;
         const char *scriptName = uscript_getShortName((UScriptCode(i)));
         dest.append(UnicodeString(scriptName, -1, US_INV));
     }
@@ -243,17 +251,17 @@ ScriptSet &ScriptSet::parseScripts(const UnicodeString &scriptString, UErrorCode
 
 void ScriptSet::setScriptExtensions(UChar32 codePoint, UErrorCode& status) {
     if (U_FAILURE(status)) { return; }
-    static const int32_t FIRST_GUESS_SCRIPT_CAPACITY = 20;
+    static const int32_t FIRST_GUESS_SCRIPT_CAPACITY = 5;
     MaybeStackArray<UScriptCode,FIRST_GUESS_SCRIPT_CAPACITY> scripts;
     UErrorCode internalStatus = U_ZERO_ERROR;
     int32_t script_count = -1;
 
-    while (true) {
+    while (TRUE) {
         script_count = uscript_getScriptExtensions(
             codePoint, scripts.getAlias(), scripts.getCapacity(), &internalStatus);
         if (internalStatus == U_BUFFER_OVERFLOW_ERROR) {
             // Need to allocate more space
-            if (scripts.resize(script_count) == nullptr) {
+            if (scripts.resize(script_count) == NULL) {
                 status = U_MEMORY_ALLOCATION_ERROR;
                 return;
             }

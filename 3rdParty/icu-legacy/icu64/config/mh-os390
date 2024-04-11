@@ -80,7 +80,7 @@ ARFLAGS         = -cr
 ifeq (${OS390_XPLINK}, 1)
 #SH# if [ "x$OS390_XPLINK" = "x1" ]; then
 # These lines must be the last options specified.
-# GOFF is the strategic object module format for S/390. It is required for XPLINK.
+# GOFF is is the strategic object module format for S/390. It is required for XPLINK.
 # NOTEMPINC could be used if ICU starts using templates.
 ICU_XPLINK_C      = -Wc,'xplink(backchain,storeargs),goff'
 ICU_XPLINK_CXX    = -Wc,'xplink(backchain,storeargs),goff' -Wc,'NOTEMPINC'

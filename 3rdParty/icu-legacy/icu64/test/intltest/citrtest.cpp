@@ -36,49 +36,49 @@ public:
 
     }
 
-    virtual ~SCharacterIterator(){}
+    virtual ~SCharacterIterator(){};
 
                                 
     void setText(const UnicodeString& newText){
         text = newText;
     }
 
-    virtual void getText(UnicodeString& result) override {
+    virtual void getText(UnicodeString& result) {
         text.extract(0,text.length(),result);
     }
-    static UClassID getStaticClassID(){ 
+    static UClassID getStaticClassID(void){ 
         return (UClassID)(&fgClassID); 
     }
-    virtual UClassID getDynamicClassID() const override {
+    virtual UClassID getDynamicClassID(void) const{ 
         return getStaticClassID(); 
     }
 
-    virtual bool operator==(const ForwardCharacterIterator& /*that*/) const override {
-        return true;
+    virtual UBool operator==(const ForwardCharacterIterator& /*that*/) const{
+        return TRUE;
     }
 
-    virtual SCharacterIterator* clone() const override {
-        return nullptr;
+    virtual CharacterIterator* clone(void) const {
+        return NULL;
     }
-    virtual int32_t hashCode() const override {
+    virtual int32_t hashCode(void) const{
         return DONE;
     }
-    virtual char16_t nextPostInc() override { return text.charAt(pos++);}
-    virtual UChar32 next32PostInc() override {return text.char32At(pos++);}
-    virtual UBool hasNext() override { return true;}
-    virtual char16_t first() override {return DONE;}
-    virtual UChar32 first32() override {return DONE;}
-    virtual char16_t last() override {return DONE;}
-    virtual UChar32 last32() override {return DONE;}
-    virtual char16_t setIndex(int32_t /*pos*/) override {return DONE;}
-    virtual UChar32 setIndex32(int32_t /*pos*/) override {return DONE;}
-    virtual char16_t current() const override {return DONE;}
-    virtual UChar32 current32() const override {return DONE;}
-    virtual char16_t next() override {return DONE;}
-    virtual UChar32 next32() override {return DONE;}
-    virtual char16_t previous() override {return DONE;}
-    virtual UChar32 previous32() override {return DONE;}
-    virtual int32_t move(int32_t delta,CharacterIterator::EOrigin origin) override {
+    virtual UChar nextPostInc(void){ return text.charAt(pos++);}
+    virtual UChar32 next32PostInc(void){return text.char32At(pos++);}
+    virtual UBool hasNext() { return TRUE;};
+    virtual UChar first(){return DONE;};
+    virtual UChar32 first32(){return DONE;};
+    virtual UChar last(){return DONE;};
+    virtual UChar32 last32(){return DONE;};
+    virtual UChar setIndex(int32_t /*pos*/){return DONE;};
+    virtual UChar32 setIndex32(int32_t /*pos*/){return DONE;};
+    virtual UChar current() const{return DONE;};
+    virtual UChar32 current32() const{return DONE;};
+    virtual UChar next(){return DONE;};
+    virtual UChar32 next32(){return DONE;};
+    virtual UChar previous(){return DONE;};
+    virtual UChar32 previous32(){return DONE;};
+    virtual int32_t move(int32_t delta,CharacterIterator::EOrigin origin){    
         switch(origin) {
         case kStart:
             pos = begin + delta;
@@ -100,13 +100,8 @@ public:
         }
 
         return pos;
-    }
-
-#ifdef move32
-    // One of the system headers right now is sometimes defining a conflicting macro we don't use
-#undef move32
-#endif
-    virtual int32_t move32(int32_t delta, CharacterIterator::EOrigin origin) override {
+    };
+    virtual int32_t move32(int32_t delta, CharacterIterator::EOrigin origin){    
         switch(origin) {
         case kStart:
             pos = begin;
@@ -132,8 +127,8 @@ public:
         }
 
         return pos;
-    }
-    virtual UBool hasPrevious() override {return true;}
+    };
+    virtual UBool hasPrevious() {return TRUE;};
 
   SCharacterIterator&  operator=(const SCharacterIterator&    that){
      text = that.text;
@@ -203,7 +198,7 @@ void CharIterTest::TestConstructionAndEquality() {
     UnicodeString  testText2("Don't bother using this string.");
     UnicodeString result1, result2, result3;
 
-    StringCharacterIterator* test1 = new StringCharacterIterator(testText);
+    CharacterIterator* test1 = new StringCharacterIterator(testText);
     CharacterIterator* test1b= new StringCharacterIterator(testText, -1);
     CharacterIterator* test1c= new StringCharacterIterator(testText, 100);
     CharacterIterator* test1d= new StringCharacterIterator(testText, -2, 100, 5);
@@ -246,7 +241,7 @@ void CharIterTest::TestConstructionAndEquality() {
     if (*test1 != *test2 || *test1 == *test5)
         errln("setIndex() failed");
 
-    *(test1) = *(dynamic_cast<StringCharacterIterator*>(test3));
+    *((StringCharacterIterator*)test1) = *((StringCharacterIterator*)test3);
     if (*test1 != *test3 || *test1 == *test5)
         errln("operator= failed");
 
@@ -262,7 +257,7 @@ void CharIterTest::TestConstructionAndEquality() {
    
     StringCharacterIterator* testChar1=new StringCharacterIterator(testText);
     StringCharacterIterator* testChar2=new StringCharacterIterator(testText2);
-    StringCharacterIterator* testChar3=test1->clone();
+    StringCharacterIterator* testChar3=(StringCharacterIterator*)test1->clone();
 
     testChar1->getText(result1);
     testChar2->getText(result2);
@@ -297,7 +292,7 @@ void CharIterTest::TestConstructionAndEqualityUChariter() {
     UCharCharacterIterator* test2 = new UCharCharacterIterator(testText, u_strlen(testText), 5);
     UCharCharacterIterator* test3 = new UCharCharacterIterator(testText, u_strlen(testText), 2, 20, 5);
     UCharCharacterIterator* test4 = new UCharCharacterIterator(testText2, u_strlen(testText2));
-    UCharCharacterIterator* test5 = test1->clone();
+    UCharCharacterIterator* test5 = (UCharCharacterIterator*)test1->clone();
     UCharCharacterIterator* test6 = new UCharCharacterIterator(*test1);
 
     // j785: length=-1 will use u_strlen()
@@ -383,7 +378,7 @@ void CharIterTest::TestConstructionAndEqualityUChariter() {
 void CharIterTest::TestIteration() {
     UnicodeString text("Now is the time for all good men to come to the aid of their country.");
 
-    char16_t c;
+    UChar c;
     int32_t i;
     {
         StringCharacterIterator   iter(text, 5);
@@ -555,7 +550,7 @@ void CharIterTest::TestIteration() {
 
 //Tests for new API for utf-16 support 
 void CharIterTest::TestIterationUChar32() {
-    char16_t textChars[]={ 0x0061, 0x0062, 0xd841, 0xdc02, 0x20ac, 0xd7ff, 0xd842, 0xdc06, 0xd801, 0xdc00, 0x0061, 0x0000};
+    UChar textChars[]={ 0x0061, 0x0062, 0xd841, 0xdc02, 0x20ac, 0xd7ff, 0xd842, 0xdc06, 0xd801, 0xdc00, 0x0061, 0x0000};
     UnicodeString text(textChars);
     UChar32 c;
     int32_t i;
@@ -605,7 +600,7 @@ void CharIterTest::TestIterationUChar32() {
             /* logln("c=%d i=%d char32At=%d", c, i, text.char32At(i)); */
             if (c == CharacterIterator::DONE && i != text.length())
                 errln("Iterator reached end prematurely");
-            else if(iter.hasNext() == false && i != text.length())
+            else if(iter.hasNext() == FALSE && i != text.length())
                 errln("Iterator reached end prematurely.  Failed at hasNext");
             else if (c != text.char32At(i))
                 errln("Character mismatch at position %d, iterator has %X, string has %X", i, c, text.char32At(i));
@@ -619,13 +614,13 @@ void CharIterTest::TestIterationUChar32() {
                 i += U16_LENGTH(c);
             }
         } while (c != CharacterIterator::DONE);
-        if(iter.hasNext() == true)
+        if(iter.hasNext() == TRUE)
            errln("hasNext() returned true at the end of the string");
 
 
 
         c=iter.setToEnd();
-        if(iter.getIndex() != text.length() || iter.hasNext() != false)
+        if(iter.getIndex() != text.length() || iter.hasNext() != FALSE)
             errln("setToEnd failed");
 
         c=iter.next32();
@@ -642,7 +637,7 @@ void CharIterTest::TestIterationUChar32() {
         do {
             if (c == CharacterIterator::DONE && i >= 0)
                 errln((UnicodeString)"Iterator reached start prematurely for i=" + i);
-            else if(iter.hasPrevious() == false && i>0)
+            else if(iter.hasPrevious() == FALSE && i>0)
                 errln((UnicodeString)"Iterator reached start prematurely for i=" + i);
             else if (c != text.char32At(i))
                 errln("Character mismatch at position %d, iterator has %X, string has %X", i, c, text.char32At(i));
@@ -658,7 +653,7 @@ void CharIterTest::TestIterationUChar32() {
                 i -= U16_LENGTH(c);
             }
         } while (c != CharacterIterator::DONE);
-        if(iter.hasPrevious() == true)
+        if(iter.hasPrevious() == TRUE)
             errln("hasPrevious returned true after reaching the start");
 
         c=iter.previous32();
@@ -718,7 +713,7 @@ void CharIterTest::TestIterationUChar32() {
         do {
             if (c == CharacterIterator::DONE && i != 11)
                 errln("Iterator reached end prematurely");
-            else if(iter.hasNext() == false)
+            else if(iter.hasNext() == FALSE)
                 errln("Iterator reached end prematurely");
             else if (c != text.char32At(i))
                 errln("Character mismatch at position %d, iterator has %X, string has %X", i, c, text.char32At(i));
@@ -745,7 +740,7 @@ void CharIterTest::TestIterationUChar32() {
         do {
             if (c == CharacterIterator::DONE && i >= 5)
                 errln("Iterator reached start prematurely");
-            else if(iter.hasPrevious() == false && i > 5)
+            else if(iter.hasPrevious() == FALSE && i > 5)
                 errln("Iterator reached start prematurely");
             else if (c != text.char32At(i))
                 errln("Character mismatch at position %d, iterator has %X, string has %X", i, c, text.char32At(i));
@@ -819,13 +814,13 @@ void CharIterTest::TestUCharIterator(UCharIterator *iter, CharacterIterator &ci,
             break;
 
         case '2':
-            h=h2=false;
+            h=h2=FALSE;
             c=(UChar32)iter->move(iter, 2, UITER_CURRENT);
             c2=(UChar32)ci.move(2, CharacterIterator::kCurrent);
             break;
 
         case '8':
-            h=h2=false;
+            h=h2=FALSE;
             c=(UChar32)iter->move(iter, -2, UITER_CURRENT);
             c2=(UChar32)ci.move(-2, CharacterIterator::kCurrent);
             break;
@@ -952,13 +947,13 @@ void CharIterTest::TestUCharIterator() {
 
     /* Testing function coverage on bad input */
     UErrorCode status = U_ZERO_ERROR;
-    uiter_setString(&sIter, nullptr, 1);
+    uiter_setString(&sIter, NULL, 1);
     uiter_setState(&sIter, 1, &status);
     if (status != U_UNSUPPORTED_ERROR) {
         errln("error: uiter_setState returned %s instead of U_UNSUPPORTED_ERROR", u_errorName(status));
     }
     status = U_ZERO_ERROR;
-    uiter_setState(nullptr, 1, &status);
+    uiter_setState(NULL, 1, &status);
     if (status != U_ILLEGAL_ARGUMENT_ERROR) {
         errln("error: uiter_setState returned %s instead of U_ILLEGAL_ARGUMENT_ERROR", u_errorName(status));
     }
@@ -981,7 +976,7 @@ public:
     }
 
     // useful stuff, mostly dummy but testing coverage and subclassability
-    virtual char16_t nextPostInc() override {
+    virtual UChar nextPostInc() {
         if(pos<UPRV_LENGTHOF(s)) {
             return s[pos++];
         } else {
@@ -989,7 +984,7 @@ public:
         }
     }
 
-    virtual UChar32 next32PostInc() override {
+    virtual UChar32 next32PostInc() {
         if(pos<UPRV_LENGTHOF(s)) {
             UChar32 c;
             U16_NEXT(s, pos, UPRV_LENGTHOF(s), c);
@@ -999,16 +994,16 @@ public:
         }
     }
 
-    virtual UBool hasNext() override {
+    virtual UBool hasNext() {
         return pos<UPRV_LENGTHOF(s);
     }
 
-    virtual char16_t first() override {
+    virtual UChar first() {
         pos=0;
         return s[0];
     }
 
-    virtual UChar32 first32() override {
+    virtual UChar32 first32() {
         UChar32 c;
         pos=0;
         U16_NEXT(s, pos, UPRV_LENGTHOF(s), c);
@@ -1016,7 +1011,7 @@ public:
         return c;
     }
 
-    virtual char16_t setIndex(int32_t position) override {
+    virtual UChar setIndex(int32_t position) {
         if(0<=position && position<=UPRV_LENGTHOF(s)) {
             pos=position;
             if(pos<UPRV_LENGTHOF(s)) {
@@ -1026,7 +1021,7 @@ public:
         return DONE;
     }
 
-    virtual UChar32 setIndex32(int32_t position) override {
+    virtual UChar32 setIndex32(int32_t position) {
         if(0<=position && position<=UPRV_LENGTHOF(s)) {
             pos=position;
             if(pos<UPRV_LENGTHOF(s)) {
@@ -1038,7 +1033,7 @@ public:
         return DONE;
     }
 
-    virtual char16_t current() const override {
+    virtual UChar current() const {
         if(pos<UPRV_LENGTHOF(s)) {
             return s[pos];
         } else {
@@ -1046,7 +1041,7 @@ public:
         }
     }
 
-    virtual UChar32 current32() const override {
+    virtual UChar32 current32() const {
         if(pos<UPRV_LENGTHOF(s)) {
             UChar32 c;
             U16_GET(s, 0, pos, UPRV_LENGTHOF(s), c);
@@ -1056,7 +1051,7 @@ public:
         }
     }
 
-    virtual char16_t next() override {
+    virtual UChar next() {
         if(pos<UPRV_LENGTHOF(s) && ++pos<UPRV_LENGTHOF(s)) {
             return s[pos];
         } else {
@@ -1064,7 +1059,7 @@ public:
         }
     }
 
-    virtual UChar32 next32() override {
+    virtual UChar32 next32() {
         if(pos<UPRV_LENGTHOF(s)) {
             U16_FWD_1(s, pos, UPRV_LENGTHOF(s));
         }
@@ -1078,50 +1073,50 @@ public:
         }
     }
 
-    virtual UBool hasPrevious() override {
+    virtual UBool hasPrevious() {
         return pos>0;
     }
 
-    virtual void getText(UnicodeString &result) override {
+    virtual void getText(UnicodeString &result) {
         result.setTo(s, UPRV_LENGTHOF(s));
     }
 
     // dummy implementations of other pure virtual base class functions
-    virtual bool operator==(const ForwardCharacterIterator &that) const override {
+    virtual UBool operator==(const ForwardCharacterIterator &that) const {
         return
             this==&that ||
             (typeid(*this)==typeid(that) && pos==((SubCharIter &)that).pos);
     }
 
-    virtual int32_t hashCode() const override {
+    virtual int32_t hashCode() const {
         return 2;
     }
 
-    virtual CharacterIterator *clone() const override {
-        return nullptr;
+    virtual CharacterIterator *clone() const {
+        return NULL;
     }
 
-    virtual char16_t last() override {
+    virtual UChar last() {
         return 0;
     }
 
-    virtual UChar32 last32() override {
+    virtual UChar32 last32() {
         return 0;
     }
 
-    virtual char16_t previous() override {
+    virtual UChar previous() {
         return 0;
     }
 
-    virtual UChar32 previous32() override {
+    virtual UChar32 previous32() {
         return 0;
     }
 
-    virtual int32_t move(int32_t /*delta*/, EOrigin /*origin*/) override {
+    virtual int32_t move(int32_t /*delta*/, EOrigin /*origin*/) {
         return 0;
     }
 
-    virtual int32_t move32(int32_t /*delta*/, EOrigin /*origin*/) override {
+    virtual int32_t move32(int32_t /*delta*/, EOrigin /*origin*/) {
         return 0;
     }
 
@@ -1130,13 +1125,13 @@ public:
         return (UClassID)(&fgClassID);
     }
 
-    virtual UClassID getDynamicClassID() const override {
+    virtual UClassID getDynamicClassID() const {
         return getStaticClassID();
     }
 
 private:
     // dummy string data
-    char16_t s[4];
+    UChar s[4];
 
     static const char fgClassID;
 };
@@ -1157,10 +1152,10 @@ public:
     }
 
 private:
-    static const char16_t u[3];
+    static const UChar u[3];
 };
 
-const char16_t SubUCharCharIter::u[3]={ 0x61, 0x62, 0x63 };
+const UChar SubUCharCharIter::u[3]={ 0x61, 0x62, 0x63 };
 
 void CharIterTest::TestCharIteratorSubClasses() {
     SubCharIter *p;

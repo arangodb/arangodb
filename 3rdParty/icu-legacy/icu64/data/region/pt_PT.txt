@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 pt_PT{
     Countries{
         009{"Oceânia"}
@@ -30,7 +29,8 @@ pt_PT{
         EE{"Estónia"}
         EH{"Sara Ocidental"}
         EZ{"Zona Euro"}
-        FK{"Ilhas Falkland"}
+        FK{"Ilhas Malvinas (Falkland)"}
+        FO{"Ilhas Faroé"}
         GG{"Guernesey"}
         GL{"Gronelândia"}
         GU{"Guame"}
@@ -44,7 +44,7 @@ pt_PT{
         LK{"Sri Lanca"}
         LV{"Letónia"}
         MC{"Mónaco"}
-        MF{"São Martinho (Saint-Martin)"}
+        MD{"Moldávia"}
         MG{"Madagáscar"}
         MK{"Macedónia do Norte"}
         MS{"Monserrate"}
@@ -60,7 +60,7 @@ pt_PT{
         SM{"São Marinho"}
         SV{"Salvador"}
         SX{"São Martinho (Sint Maarten)"}
-        TF{"Territórios Austrais Franceses"}
+        SZ{"Essuatíni"}
         TJ{"Tajiquistão"}
         TK{"Toquelau"}
         TM{"Turquemenistão"}
@@ -69,7 +69,6 @@ pt_PT{
         UZ{"Usbequistão"}
         VI{"Ilhas Virgens dos EUA"}
         VN{"Vietname"}
-        XA{"Pseudoacentos"}
         YE{"Iémen"}
         YT{"Maiote"}
         ZW{"Zimbabué"}
@@ -82,7 +81,6 @@ pt_PT{
         CI{"Costa do Marfim"}
         CZ{"República Checa"}
         FK{"Ilhas Falkland (Malvinas)"}
-        NZ{"Aotearoa"}
-        TR{"Türkiye"}
     }
+    Version{"2.1.49.82"}
 }

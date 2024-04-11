@@ -1,6 +1,5 @@
 ﻿# © 2016 and later: Unicode, Inc. and others.
-# License & terms of use: http://www.unicode.org/copyright.html
-# Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+# License & terms of use: http://www.unicode.org/copyright.html#License
 #
 # File: Latn_Armn.txt
 # Generated from CLDR
@@ -87,9 +86,5 @@ R ↔ Ր ;
 W ↔ Ւ ;
 Ō ↔ Օ ;
 F ↔ Ֆ ;
-'’' ↔ ՚ 	 ; # U+055A	ARMENIAN APOSTROPHE
-',' ↔ ՝ 	; # U+055D	ARMENIAN COMMA
-'?' ↔ ՞; # U+055E	ARMENIAN QUESTION MARK
-։ → \. ; # ARMENIAN FULL STOP
 ::NFC(NFD);
 

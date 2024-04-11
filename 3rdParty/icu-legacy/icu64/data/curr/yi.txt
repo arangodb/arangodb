@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 yi{
     Currencies{
         BRL{
@@ -60,6 +59,14 @@ yi{
             "אומבאַוואוסטע וואַלוטע",
         }
     }
+    Currencies%narrow{
+        EUR{"€"}
+        GBP{"£"}
+        INR{"₹"}
+        JPY{"¥"}
+        RUB{"₽"}
+        USD{"$"}
+    }
     CurrencyPlurals{
         BRL{
             one{"בראזיל רעאל"}
@@ -68,6 +75,14 @@ yi{
         CNY{
             one{"כינעזישער יואן"}
             other{"כינעזישע יואן"}
+        }
+        EUR{
+            one{"איירא"}
+            other{"איירא"}
+        }
+        GBP{
+            one{"פֿונט שטערלינג"}
+            other{"פֿונט שטערלינג"}
         }
         INR{
             one{"אינדישער רופי"}
@@ -85,5 +100,10 @@ yi{
             one{"אמעריקאנער דאלאר"}
             other{"אמעריקאנער דאלארן"}
         }
+        XXX{
+            one{"אומבאַוואוסטע וואַלוטע"}
+            other{"אומבאַוואוסטע וואַלוטע"}
+        }
     }
+    Version{"2.1.47.82"}
 }

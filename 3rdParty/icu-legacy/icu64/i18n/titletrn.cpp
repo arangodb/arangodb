@@ -28,7 +28,7 @@ U_NAMESPACE_BEGIN
 UOBJECT_DEFINE_RTTI_IMPLEMENTATION(TitlecaseTransliterator)
 
 TitlecaseTransliterator::TitlecaseTransliterator() :
-    CaseMapTransliterator(UNICODE_STRING("Any-Title", 9), nullptr)
+    CaseMapTransliterator(UNICODE_STRING("Any-Title", 9), NULL)
 {
     // Need to look back 2 characters in the case of "can't"
     setMaximumContextLength(2);
@@ -60,7 +60,7 @@ TitlecaseTransliterator::TitlecaseTransliterator(const TitlecaseTransliterator& 
 /**
  * Transliterator API.
  */
-TitlecaseTransliterator* TitlecaseTransliterator::clone() const {
+Transliterator* TitlecaseTransliterator::clone(void) const {
     return new TitlecaseTransliterator(*this);
 }
 
@@ -87,7 +87,7 @@ void TitlecaseTransliterator::handleTransliterate(
 
     // Our mode; we are either converting letter toTitle or
     // toLower.
-    UBool doTitle = true;
+    UBool doTitle = TRUE;
     
     // Determine if there is a preceding context of cased case-ignorable*,
     // in which case we want to start in toLower mode.  If the
@@ -99,7 +99,7 @@ void TitlecaseTransliterator::handleTransliterate(
         c = text.char32At(start);
         type=ucase_getTypeOrIgnorable(c);
         if(type>0) { // cased
-            doTitle=false;
+            doTitle=FALSE;
             break;
         } else if(type==0) { // uncased but not ignorable
             break;
@@ -117,7 +117,7 @@ void TitlecaseTransliterator::handleTransliterate(
     csc.limit = offsets.contextLimit;
 
     UnicodeString tmp;
-    const char16_t *s;
+    const UChar *s;
     int32_t textPos, delta, result;
 
     for(textPos=offsets.start; textPos<offsets.limit;) {
@@ -146,7 +146,7 @@ void TitlecaseTransliterator::handleTransliterate(
                 // see UCASE_MAX_STRING_LENGTH
                 if(result<=UCASE_MAX_STRING_LENGTH) {
                     // string s[result]
-                    tmp.setTo(false, s, result);
+                    tmp.setTo(FALSE, s, result);
                     delta=result-U16_LENGTH(c);
                 } else {
                     // single code point

@@ -385,31 +385,17 @@ typedef double UDate;
 /*===========================================================================*/
 
 /**
- * Standard ICU4C error code type, a substitute for exceptions.
+ * Error code to replace exception handling, so that the code is compatible with all C++ compilers,
+ * and to use the same mechanism for C and C++.
  *
- * Initialize the UErrorCode with U_ZERO_ERROR, and check for success or
- * failure using U_SUCCESS() or U_FAILURE():
- *
- *     UErrorCode errorCode = U_ZERO_ERROR;
- *     // call ICU API that needs an error code parameter.
- *     if (U_FAILURE(errorCode)) {
- *         // An error occurred. Handle it here.
- *     }
- *
- * C++ code should use icu::ErrorCode, available in unicode/errorcode.h, or a
- * suitable subclass.
- *
- * For more information, see:
- * https://unicode-org.github.io/icu/userguide/dev/codingguidelines#details-about-icu-error-codes
- *
- * Note: By convention, ICU functions that take a reference (C++) or a pointer
- * (C) to a UErrorCode first test:
- *
- *     if (U_FAILURE(errorCode)) { return immediately; }
- *
+ * \par
+ * ICU functions that take a reference (C++) or a pointer (C) to a UErrorCode
+ * first test if(U_FAILURE(errorCode)) { return immediately; }
  * so that in a chain of such functions the first one that sets an error code
  * causes the following ones to not perform any operations.
  *
+ * \par
+ * Error codes should be tested using U_FAILURE() and U_SUCCESS().
  * @stable ICU 2.0
  */
 typedef enum UErrorCode {
@@ -437,7 +423,6 @@ typedef enum UErrorCode {
     U_DIFFERENT_UCA_VERSION = -121,     /**< ucol_open encountered a mismatch between UCA version and collator image version, so the collator was constructed from rules. No impact to further function */
     
     U_PLUGIN_CHANGED_LEVEL_WARNING = -120, /**< A plugin caused a level change. May not be an error, but later plugins may not load. */
-
 
 #ifndef U_HIDE_DEPRECATED_API
     /**
@@ -480,21 +465,13 @@ typedef enum UErrorCode {
     U_COLLATOR_VERSION_MISMATCH = 28,   /**< Collator version is not compatible with the base version */
     U_USELESS_COLLATOR_ERROR  = 29,     /**< Collator is options only and no base is specified */
     U_NO_WRITE_PERMISSION     = 30,     /**< Attempt to modify read-only or constant data. */
-    /**
-     * The input is impractically long for an operation.
-     * It is rejected because it may lead to problems such as excessive
-     * processing time, stack depth, or heap memory requirements.
-     *
-     * @stable ICU 68
-     */
-    U_INPUT_TOO_LONG_ERROR = 31,
 
 #ifndef U_HIDE_DEPRECATED_API
     /**
      * One more than the highest standard error code.
      * @deprecated ICU 58 The numeric value may change over time, see ICU ticket #12420.
      */
-    U_STANDARD_ERROR_LIMIT = 32,
+    U_STANDARD_ERROR_LIMIT,
 #endif  // U_HIDE_DEPRECATED_API
 
     /*
@@ -569,27 +546,12 @@ typedef enum UErrorCode {
     U_FORMAT_INEXACT_ERROR,           /**< Cannot format a number exactly and rounding mode is ROUND_UNNECESSARY @stable ICU 4.8 */
     U_NUMBER_ARG_OUTOFBOUNDS_ERROR,   /**< The argument to a NumberFormatter helper method was out of bounds; the bounds are usually 0 to 999. @stable ICU 61 */
     U_NUMBER_SKELETON_SYNTAX_ERROR,   /**< The number skeleton passed to C++ NumberFormatter or C UNumberFormatter was invalid or contained a syntax error. @stable ICU 62 */
-
-    /* MessageFormat 2.0 errors */
-    U_MF_UNRESOLVED_VARIABLE_ERROR,    /**< A variable is referred to but not bound by any definition @internal ICU 75.0 technology preview @deprecated This API is for technology preview only. */
-    U_MF_SYNTAX_ERROR,                 /**< Includes all syntax errors @internal ICU 75.0 technology preview @deprecated This API is for technology preview only. */
-    U_MF_UNKNOWN_FUNCTION_ERROR,       /**< An annotation refers to a function not defined by the standard or custom function registry @internal ICU 75.0 technology preview @deprecated This API is for technology preview only. */
-    U_MF_VARIANT_KEY_MISMATCH_ERROR,   /**< In a match-construct, one or more variants had a different number of keys from the number of selectors @internal ICU 75.0 technology preview @deprecated This API is for technology preview only. */
-    U_MF_FORMATTING_ERROR,             /**< Covers all runtime errors: for example, an internally inconsistent set of options. @internal ICU 75.0 technology preview @deprecated This API is for technology preview only. */
-    U_MF_NONEXHAUSTIVE_PATTERN_ERROR,  /**< In a match-construct, the variants do not cover all possible values @internal ICU 75.0 technology preview @deprecated This API is for technology preview only. */
-    U_MF_DUPLICATE_OPTION_NAME_ERROR,  /**< In an annotation, the same option name appears more than once @internal ICU 75.0 technology preview @deprecated This API is for technology preview only. */
-    U_MF_SELECTOR_ERROR,               /**< A selector function is applied to an operand of the wrong type @internal ICU 75.0 technology preview @deprecated This API is for technology preview only. */
-    U_MF_MISSING_SELECTOR_ANNOTATION_ERROR,  /**< A selector expression evaluates to an unannotated operand. @internal ICU 75.0 technology preview @deprecated This API is for technology preview only. */
-    U_MF_DUPLICATE_DECLARATION_ERROR, /**< The same variable is declared in more than one .local or .input declaration. @internal ICU 75.0 technology preview @deprecated This API is for technology preview only. */
-    U_MF_OPERAND_MISMATCH_ERROR,     /**< An operand provided to a function does not have the required form for that function @internal ICU 75.0 technology preview @deprecated This API is for technology preview only. */
-    U_MF_UNSUPPORTED_STATEMENT_ERROR, /**< A message includes a reserved statement. @internal ICU 75.0 technology preview @deprecated This API is for technology preview only. */
-    U_MF_UNSUPPORTED_EXPRESSION_ERROR, /**< A message includes syntax reserved for future standardization or private implementation use. @internal ICU 75.0 technology preview @deprecated This API is for technology preview only. */
 #ifndef U_HIDE_DEPRECATED_API
     /**
      * One more than the highest normal formatting API error code.
      * @deprecated ICU 58 The numeric value may change over time, see ICU ticket #12420.
      */
-    U_FMT_PARSE_ERROR_LIMIT = 0x10121,
+    U_FMT_PARSE_ERROR_LIMIT = 0x10114,
 #endif  // U_HIDE_DEPRECATED_API
 
     /*
@@ -739,7 +701,7 @@ typedef enum UErrorCode {
  * in the UErrorCode enum above.
  * @stable ICU 2.0
  */
-U_CAPI const char * U_EXPORT2
+U_STABLE const char * U_EXPORT2
 u_errorName(UErrorCode code);
 
 

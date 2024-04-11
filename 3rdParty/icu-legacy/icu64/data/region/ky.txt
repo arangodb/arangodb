@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ky{
     Countries{
         001{"Дүйнө"}
@@ -188,7 +187,7 @@ ky{
         ML{"Мали"}
         MM{"Мьянма (Бирма)"}
         MN{"Монголия"}
-        MO{"Макао Кытай ААА"}
+        MO{"Макау Кытай ААА"}
         MP{"Түндүк Мариана аралдары"}
         MQ{"Мартиника"}
         MR{"Мавритания"}
@@ -288,8 +287,6 @@ ky{
         VU{"Вануату"}
         WF{"Уоллис жана Футуна"}
         WS{"Самоа"}
-        XA{"Жасалма- Акцент"}
-        XB{"Жасалма - эки тараптуу"}
         XK{"Косово"}
         YE{"Йемен"}
         YT{"Майотта"}
@@ -301,7 +298,7 @@ ky{
     Countries%short{
         GB{"УБ"}
         HK{"Гонконг"}
-        MO{"Макао"}
+        MO{"Макау"}
         PS{"Палестина"}
         US{"АКШ"}
     }
@@ -311,7 +308,8 @@ ky{
         CI{"Пил сөөктүү жээк"}
         CZ{"Чех Республикасы"}
         FK{"Фолкленд (Мальвина) аралдары"}
+        SZ{"SZ"}
         TL{"Чыгыш Тимор"}
-        TR{"Түркие"}
     }
+    Version{"2.1.49.82"}
 }

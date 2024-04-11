@@ -5,8 +5,8 @@
 ## Copyright (c) 1999-2010, International Business Machines Corporation and
 ## others. All Rights Reserved.
 
-## Flags for ICU 75+
-CXXFLAGS += -std=c++17
+## Flags for ICU 59+
+CXXFLAGS += -std=c++11
 CFLAGS   += -std=c11
 
 ## Flags for position independent code
@@ -15,8 +15,8 @@ SHAREDLIBCXXFLAGS = -KPIC
 SHAREDLIBCPPFLAGS = -DPIC
 
 ## Commands to generate dependency files
-GEN_DEPS.c=  $(CC) -xM $(DEFS) $(CPPFLAGS) $(CFLAGS)
-GEN_DEPS.cc= $(CXX) -xM $(DEFS) $(CPPFLAGS) $(CXXFLAGS)
+GEN_DEPS.c=  $(CC) -xM $(DEFS) $(CPPFLAGS)
+GEN_DEPS.cc= $(CXX) -xM $(DEFS) $(CPPFLAGS)
 
 ifeq ($(UCLN_NO_AUTO_CLEANUP),0)
 # set up init point.

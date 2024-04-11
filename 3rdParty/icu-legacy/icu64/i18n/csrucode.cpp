@@ -37,7 +37,7 @@ const char *CharsetRecog_UTF_16_BE::getName() const
 //   NULs are a contra-indication, they will appear commonly if the actual encoding is UTF-32.
 //   NULs should be rare in actual text. 
 
-static int32_t adjustConfidence(char16_t codeUnit, int32_t confidence) {
+static int32_t adjustConfidence(UChar codeUnit, int32_t confidence) {
     if (codeUnit == 0) {
         confidence -= 10;
     } else if ((codeUnit >= 0x20 && codeUnit <= 0xff) || codeUnit == 0x0a) {
@@ -60,7 +60,7 @@ UBool CharsetRecog_UTF_16_BE::match(InputText* textIn, CharsetMatch *results) co
 
     int32_t bytesToCheck = (length > 30) ? 30 : length;
     for (int32_t charIndex=0; charIndex<bytesToCheck-1; charIndex+=2) {
-        char16_t codeUnit = (input[charIndex] << 8) | input[charIndex + 1];
+        UChar codeUnit = (input[charIndex] << 8) | input[charIndex + 1];
         if (charIndex == 0 && codeUnit == 0xFEFF) {
             confidence = 100;
             break;
@@ -95,7 +95,7 @@ UBool CharsetRecog_UTF_16_LE::match(InputText* textIn, CharsetMatch *results) co
 
     int32_t bytesToCheck = (length > 30) ? 30 : length;
     for (int32_t charIndex=0; charIndex<bytesToCheck-1; charIndex+=2) {
-        char16_t codeUnit = input[charIndex] | (input[charIndex + 1] << 8);
+        UChar codeUnit = input[charIndex] | (input[charIndex + 1] << 8);
         if (charIndex == 0 && codeUnit == 0xFEFF) {
             confidence = 100;     // UTF-16 BOM
             if (length >= 4 && input[2] == 0 && input[3] == 0) {
@@ -126,11 +126,11 @@ UBool CharsetRecog_UTF_32::match(InputText* textIn, CharsetMatch *results) const
     int32_t limit = (textIn->fRawLength / 4) * 4;
     int32_t numValid = 0;
     int32_t numInvalid = 0;
-    bool hasBOM = false;
+    bool hasBOM = FALSE;
     int32_t confidence = 0;
 
     if (limit > 0 && getChar(input, 0) == 0x0000FEFFUL) {
-        hasBOM = true;
+        hasBOM = TRUE;
     }
 
     for(int32_t i = 0; i < limit; i += 4) {
@@ -144,7 +144,7 @@ UBool CharsetRecog_UTF_32::match(InputText* textIn, CharsetMatch *results) const
     }
 
 
-    // Cook up some sort of confidence score, based on presence of a BOM
+    // Cook up some sort of confidence score, based on presense of a BOM
     //    and the existence of valid and/or invalid multi-byte sequences.
     if (hasBOM && numInvalid==0) {
         confidence = 100;
@@ -155,7 +155,7 @@ UBool CharsetRecog_UTF_32::match(InputText* textIn, CharsetMatch *results) const
     } else if (numValid > 0 && numInvalid == 0) {
         confidence = 80;
     } else if (numValid > numInvalid*10) {
-        // Probably corrupt UTF-32BE data.  Valid sequences aren't likely by chance.
+        // Probably corruput UTF-32BE data.  Valid sequences aren't likely by chance.
         confidence = 25;
     }
 

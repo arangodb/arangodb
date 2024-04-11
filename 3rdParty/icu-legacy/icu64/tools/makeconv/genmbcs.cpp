@@ -26,7 +26,6 @@
 #include "ucm.h"
 #include "makeconv.h"
 #include "genmbcs.h"
-#include "toolutil.h"
 
 /*
  * TODO: Split this file into toUnicode, SBCSFromUnicode and MBCSFromUnicode files.
@@ -138,14 +137,14 @@ MBCSGetDummy() {
     /*
      * Set "pessimistic" values which may sometimes move too many
      * mappings to the extension table (but never too few).
-     * These values cause MBCSOkForBaseFromUnicode() to return false for the
+     * These values cause MBCSOkForBaseFromUnicode() to return FALSE for the
      * largest set of mappings.
      * Assume maxCharLength>1.
      */
-    gDummy.utf8Friendly=true;
+    gDummy.utf8Friendly=TRUE;
     if(SMALL) {
         gDummy.utf8Max=0xffff;
-        gDummy.omitFromU=true;
+        gDummy.omitFromU=TRUE;
     } else {
         gDummy.utf8Max=MBCS_UTF8_MAX;
     }
@@ -167,7 +166,7 @@ MBCSInit(MBCSData *mbcsData, UCMFile *ucm) {
 U_CFUNC NewConverter *
 MBCSOpen(UCMFile *ucm) {
     MBCSData *mbcsData=(MBCSData *)uprv_malloc(sizeof(MBCSData));
-    if(mbcsData==nullptr) {
+    if(mbcsData==NULL) {
         printf("out of memory\n");
         exit(U_MEMORY_ALLOCATION_ERROR);
     }
@@ -186,7 +185,7 @@ U_CDECL_BEGIN
 static void
 MBCSClose(NewConverter *cnvData) {
     MBCSData *mbcsData=(MBCSData *)cnvData;
-    if(mbcsData!=nullptr) {
+    if(mbcsData!=NULL) {
         MBCSDestruct(mbcsData);
         uprv_free(mbcsData);
     }
@@ -209,10 +208,10 @@ MBCSStartMappings(MBCSData *mbcsData) {
 
     if(sum>0) {
         mbcsData->unicodeCodeUnits=(uint16_t *)uprv_malloc(sum*sizeof(uint16_t));
-        if(mbcsData->unicodeCodeUnits==nullptr) {
+        if(mbcsData->unicodeCodeUnits==NULL) {
             fprintf(stderr, "error: out of memory allocating %ld 16-bit code units\n",
                 (long)sum);
-            return false;
+            return FALSE;
         }
         for(i=0; i<sum; ++i) {
             mbcsData->unicodeCodeUnits[i]=0xfffe;
@@ -231,9 +230,9 @@ MBCSStartMappings(MBCSData *mbcsData) {
         sum=0x100000*maxCharLength;
     }
     mbcsData->fromUBytes=(uint8_t *)uprv_malloc(sum);
-    if(mbcsData->fromUBytes==nullptr) {
+    if(mbcsData->fromUBytes==NULL) {
         fprintf(stderr, "error: out of memory allocating %ld B for target mappings\n", (long)sum);
-        return false;
+        return FALSE;
     }
     uprv_memset(mbcsData->fromUBytes, 0, sum);
 
@@ -316,28 +315,28 @@ MBCSStartMappings(MBCSData *mbcsData) {
      */
     mbcsData->stage3Top=(stage3NullLength+stage3AllocLength)*maxCharLength; /* ==sum*maxCharLength */
 
-    return true;
+    return TRUE;
 }
 
-/* return true for success */
+/* return TRUE for success */
 static UBool
 setFallback(MBCSData *mbcsData, uint32_t offset, UChar32 c) {
     int32_t i=ucm_findFallback(mbcsData->toUFallbacks, mbcsData->countToUFallbacks, offset);
     if(i>=0) {
         /* if there is already a fallback for this offset, then overwrite it */
         mbcsData->toUFallbacks[i].codePoint=c;
-        return true;
+        return TRUE;
     } else {
         /* if there is no fallback for this offset, then add one */
         i=mbcsData->countToUFallbacks;
         if(i>=MBCS_MAX_FALLBACK_COUNT) {
             fprintf(stderr, "error: too many toUnicode fallbacks, currently at: U+%x\n", (int)c);
-            return false;
+            return FALSE;
         } else {
             mbcsData->toUFallbacks[i].offset=offset;
             mbcsData->toUFallbacks[i].codePoint=c;
             mbcsData->countToUFallbacks=i+1;
-            return true;
+            return TRUE;
         }
     }
 }
@@ -366,8 +365,8 @@ removeFallback(MBCSData *mbcsData, uint32_t offset) {
 
 /*
  * isFallback is almost a boolean:
- * 1 (true)  this is a fallback mapping
- * 0 (false) this is a precise mapping
+ * 1 (TRUE)  this is a fallback mapping
+ * 0 (FALSE) this is a precise mapping
  * -1        the precision of this mapping is not specified
  */
 static UBool
@@ -382,7 +381,7 @@ MBCSAddToUnicode(MBCSData *mbcsData,
 
     if(mbcsData->ucm->states.countStates==0) {
         fprintf(stderr, "error: there is no state information!\n");
-        return false;
+        return FALSE;
     }
 
     /* for SI/SO (like EBCDIC-stateful), double-byte sequences start in state 1 */
@@ -401,7 +400,7 @@ MBCSAddToUnicode(MBCSData *mbcsData,
             if(i==length) {
                 fprintf(stderr, "error: byte sequence too short, ends in non-final state %hu: 0x%s (U+%x)\n",
                     (short)state, printBytes(buffer, bytes, length), (int)c);
-                return false;
+                return FALSE;
             }
             state=(uint8_t)MBCS_ENTRY_TRANSITION_STATE(entry);
             offset+=MBCS_ENTRY_TRANSITION_OFFSET(entry);
@@ -409,21 +408,21 @@ MBCSAddToUnicode(MBCSData *mbcsData,
             if(i<length) {
                 fprintf(stderr, "error: byte sequence too long by %d bytes, final state %u: 0x%s (U+%x)\n",
                     (int)(length-i), state, printBytes(buffer, bytes, length), (int)c);
-                return false;
+                return FALSE;
             }
             switch(MBCS_ENTRY_FINAL_ACTION(entry)) {
             case MBCS_STATE_ILLEGAL:
                 fprintf(stderr, "error: byte sequence ends in illegal state at U+%04x<->0x%s\n",
                     (int)c, printBytes(buffer, bytes, length));
-                return false;
+                return FALSE;
             case MBCS_STATE_CHANGE_ONLY:
                 fprintf(stderr, "error: byte sequence ends in state-change-only at U+%04x<->0x%s\n",
                     (int)c, printBytes(buffer, bytes, length));
-                return false;
+                return FALSE;
             case MBCS_STATE_UNASSIGNED:
                 fprintf(stderr, "error: byte sequence ends in unassigned state at U+%04x<->0x%s\n",
                     (int)c, printBytes(buffer, bytes, length));
-                return false;
+                return FALSE;
             case MBCS_STATE_FALLBACK_DIRECT_16:
             case MBCS_STATE_VALID_DIRECT_16:
             case MBCS_STATE_FALLBACK_DIRECT_20:
@@ -438,7 +437,7 @@ MBCSAddToUnicode(MBCSData *mbcsData,
                     if(flag>=0) {
                         fprintf(stderr, "error: duplicate codepage byte sequence at U+%04x<->0x%s see U+%04x\n",
                             (int)c, printBytes(buffer, bytes, length), (int)old);
-                        return false;
+                        return FALSE;
                     } else if(VERBOSE) {
                         fprintf(stderr, "duplicate codepage byte sequence at U+%04x<->0x%s see U+%04x\n",
                             (int)c, printBytes(buffer, bytes, length), (int)old);
@@ -468,7 +467,7 @@ MBCSAddToUnicode(MBCSData *mbcsData,
                     if(flag>=0) {
                         fprintf(stderr, "error: duplicate codepage byte sequence at U+%04x<->0x%s see U+%04x\n",
                             (int)c, printBytes(buffer, bytes, length), (int)old);
-                        return false;
+                        return FALSE;
                     } else if(VERBOSE) {
                         fprintf(stderr, "duplicate codepage byte sequence at U+%04x<->0x%s see U+%04x\n",
                             (int)c, printBytes(buffer, bytes, length), (int)old);
@@ -477,7 +476,7 @@ MBCSAddToUnicode(MBCSData *mbcsData,
                 if(c>=0x10000) {
                     fprintf(stderr, "error: code point does not fit into valid-16-bit state at U+%04x<->0x%s\n",
                         (int)c, printBytes(buffer, bytes, length));
-                    return false;
+                    return FALSE;
                 }
                 if(flag>0) {
                     /* assign only if there is no precise mapping */
@@ -506,7 +505,7 @@ MBCSAddToUnicode(MBCSData *mbcsData,
                     if(flag>=0) {
                         fprintf(stderr, "error: duplicate codepage byte sequence at U+%04x<->0x%s see U+%04x\n",
                             (int)c, printBytes(buffer, bytes, length), (int)real);
-                        return false;
+                        return FALSE;
                     } else if(VERBOSE) {
                         fprintf(stderr, "duplicate codepage byte sequence at U+%04x<->0x%s see U+%04x\n",
                             (int)c, printBytes(buffer, bytes, length), (int)real);
@@ -544,10 +543,10 @@ MBCSAddToUnicode(MBCSData *mbcsData,
                 /* reserved, must never occur */
                 fprintf(stderr, "internal error: byte sequence reached reserved action code, entry 0x%02x: 0x%s (U+%x)\n",
                     (int)entry, printBytes(buffer, bytes, length), (int)c);
-                return false;
+                return FALSE;
             }
 
-            return true;
+            return TRUE;
         }
     }
 }
@@ -576,7 +575,7 @@ MBCSSingleAddFromUnicode(MBCSData *mbcsData,
 
     /* ignore |2 SUB mappings */
     if(flag==2) {
-        return true;
+        return TRUE;
     }
 
     /*
@@ -608,7 +607,7 @@ MBCSSingleAddFromUnicode(MBCSData *mbcsData,
 
         if(newTop>MBCS_MAX_STAGE_2_TOP) {
             fprintf(stderr, "error: too many stage 2 entries at U+%04x<->0x%02x\n", (int)c, b);
-            return false;
+            return FALSE;
         }
 
         /*
@@ -642,7 +641,7 @@ MBCSSingleAddFromUnicode(MBCSData *mbcsData,
 
         if(newTop>MBCS_STAGE_3_SBCS_SIZE) {
             fprintf(stderr, "error: too many code points at U+%04x<->0x%02x\n", (int)c, b);
-            return false;
+            return FALSE;
         }
         /* each block has 16 uint16_t entries */
         i=idx;
@@ -669,7 +668,7 @@ MBCSSingleAddFromUnicode(MBCSData *mbcsData,
         if(flag>=0) {
             fprintf(stderr, "error: duplicate Unicode code point at U+%04x<->0x%02x see 0x%02x\n",
                 (int)c, b, old&0xff);
-            return false;
+            return FALSE;
         } else if(VERBOSE) {
             fprintf(stderr, "duplicate Unicode code point at U+%04x<->0x%02x see 0x%02x\n",
                 (int)c, b, old&0xff);
@@ -677,7 +676,7 @@ MBCSSingleAddFromUnicode(MBCSData *mbcsData,
         /* continue after the above warning if the precision of the mapping is unspecified */
     }
 
-    return true;
+    return TRUE;
 }
 
 static UBool
@@ -700,13 +699,13 @@ MBCSAddFromUnicode(MBCSData *mbcsData,
     ) {
         fprintf(stderr, "error: illegal mapping to SI or SO for SI/SO codepage: U+%04x<->0x%s\n",
             (int)c, printBytes(buffer, bytes, length));
-        return false;
+        return FALSE;
     }
 
     if(flag==1 && length==1 && *bytes==0) {
         fprintf(stderr, "error: unable to encode a |1 fallback from U+%04x to 0x%02x\n",
             (int)c, *bytes);
-        return false;
+        return FALSE;
     }
 
     /*
@@ -739,7 +738,7 @@ MBCSAddFromUnicode(MBCSData *mbcsData,
         if(newTop>MBCS_MAX_STAGE_2_TOP) {
             fprintf(stderr, "error: too many stage 2 entries at U+%04x<->0x%s\n",
                 (int)c, printBytes(buffer, bytes, length));
-            return false;
+            return FALSE;
         }
 
         /*
@@ -787,7 +786,7 @@ MBCSAddFromUnicode(MBCSData *mbcsData,
         if(newTop>MBCS_STAGE_3_MBCS_SIZE*(uint32_t)maxCharLength) {
             fprintf(stderr, "error: too many code points at U+%04x<->0x%s\n",
                 (int)c, printBytes(buffer, bytes, length));
-            return false;
+            return FALSE;
         }
         /* each block has 16*maxCharLength bytes */
         i=idx;
@@ -882,7 +881,7 @@ MBCSAddFromUnicode(MBCSData *mbcsData,
         if(flag>=0) {
             fprintf(stderr, "error: duplicate Unicode code point at U+%04x<->0x%s see 0x%02x\n",
                 (int)c, printBytes(buffer, bytes, length), (int)old);
-            return false;
+            return FALSE;
         } else if(VERBOSE) {
             fprintf(stderr, "duplicate Unicode code point at U+%04x<->0x%s see 0x%02x\n",
                 (int)c, printBytes(buffer, bytes, length), (int)old);
@@ -895,7 +894,7 @@ MBCSAddFromUnicode(MBCSData *mbcsData,
         mbcsData->stage2[idx+(nextOffset>>4)]|=(1UL<<(16+(c&0xf)));
     }
 
-    return true;
+    return TRUE;
 }
 
 U_CFUNC UBool
@@ -916,7 +915,7 @@ MBCSOkForBaseFromUnicode(const MBCSData *mbcsData,
         (flag==1 && bytes[0]==0) || /* testing length==1 would be redundant with the next test */
         (flag<=1 && length>1 && bytes[0]==0)
     ) {
-        return false;
+        return FALSE;
     }
 
     /*
@@ -927,7 +926,7 @@ MBCSOkForBaseFromUnicode(const MBCSData *mbcsData,
      * - any |1 fallback (no roundtrip flags in the optimized table)
      */
     if(mbcsData->utf8Friendly && flag<=1 && c<=mbcsData->utf8Max && (bytes[0]==0 || flag==1)) {
-        return false;
+        return FALSE;
     }
 
     /*
@@ -936,11 +935,11 @@ MBCSOkForBaseFromUnicode(const MBCSData *mbcsData,
      * Fallbacks must go into the extension table.
      */
     if(mbcsData->omitFromU && flag!=0) {
-        return false;
+        return FALSE;
     }
 
     /* All other mappings do fit into the base table. */
-    return true;
+    return TRUE;
 }
 
 U_CDECL_BEGIN
@@ -957,7 +956,7 @@ MBCSAddTable(NewConverter *cnvData, UCMTable *table, UConverterStaticData *stati
     staticData->unicodeMask=table->unicodeMask;
     if(staticData->unicodeMask==3) {
         fprintf(stderr, "error: contains mappings for both supplementary and surrogate code points\n");
-        return false;
+        return FALSE;
     }
 
     staticData->conversionType=UCNV_MBCS;
@@ -974,7 +973,7 @@ MBCSAddTable(NewConverter *cnvData, UCMTable *table, UConverterStaticData *stati
     if(utf8Friendly) {
         mbcsData->utf8Max=MBCS_UTF8_MAX;
         if(SMALL && maxCharLength>1) {
-            mbcsData->omitFromU=true;
+            mbcsData->omitFromU=TRUE;
         }
     } else {
         mbcsData->utf8Max=0;
@@ -985,13 +984,13 @@ MBCSAddTable(NewConverter *cnvData, UCMTable *table, UConverterStaticData *stati
     }
 
     if(!MBCSStartMappings(mbcsData)) {
-        return false;
+        return FALSE;
     }
 
-    staticData->hasFromUnicodeFallback=false;
-    staticData->hasToUnicodeFallback=false;
+    staticData->hasFromUnicodeFallback=FALSE;
+    staticData->hasToUnicodeFallback=FALSE;
 
-    isOK=true;
+    isOK=TRUE;
 
     m=table->mappings;
     for(i=0; i<table->mappingsLength; ++m, ++i) {
@@ -1041,10 +1040,10 @@ MBCSAddTable(NewConverter *cnvData, UCMTable *table, UConverterStaticData *stati
         case 1:
             /* set only a fallback mapping from Unicode to codepage */
             if(maxCharLength==1) {
-                staticData->hasFromUnicodeFallback=true;
+                staticData->hasFromUnicodeFallback=TRUE;
                 isOK&=MBCSSingleAddFromUnicode(mbcsData, m->b.bytes, m->bLen, c, f);
             } else if(MBCSOkForBaseFromUnicode(mbcsData, m->b.bytes, m->bLen, c, f)) {
-                staticData->hasFromUnicodeFallback=true;
+                staticData->hasFromUnicodeFallback=TRUE;
                 isOK&=MBCSAddFromUnicode(mbcsData, m->b.bytes, m->bLen, c, f);
             } else {
                 m->f|=MBCS_FROM_U_EXT_FLAG;
@@ -1060,7 +1059,7 @@ MBCSAddTable(NewConverter *cnvData, UCMTable *table, UConverterStaticData *stati
             break;
         case 3:
             /* set only a fallback mapping from codepage to Unicode */
-            staticData->hasToUnicodeFallback=true;
+            staticData->hasToUnicodeFallback=TRUE;
             isOK&=MBCSAddToUnicode(mbcsData, m->b.bytes, m->bLen, c, f);
             break;
         case 4:
@@ -1071,7 +1070,7 @@ MBCSAddTable(NewConverter *cnvData, UCMTable *table, UConverterStaticData *stati
         default:
             /* will not occur because the parser checked it already */
             fprintf(stderr, "error: illegal fallback indicator %d\n", f);
-            return false;
+            return FALSE;
         }
     }
 
@@ -1088,7 +1087,7 @@ transformEUC(MBCSData *mbcsData) {
 
     oldLength=mbcsData->ucm->states.maxCharLength;
     if(oldLength<3) {
-        return false;
+        return FALSE;
     }
 
     old3Top=mbcsData->stage3Top;
@@ -1108,7 +1107,7 @@ transformEUC(MBCSData *mbcsData) {
         b=p8[i];
         if(b!=0 && b!=0x8e && b!=0x8f) {
             /* some first byte does not fit the EUC pattern, nothing to be done */
-            return false;
+            return FALSE;
         }
     }
     /* restore p if it was modified above */
@@ -1167,7 +1166,7 @@ transformEUC(MBCSData *mbcsData) {
         }
     }
 
-    return true;
+    return TRUE;
 }
 
 /*

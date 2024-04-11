@@ -37,6 +37,7 @@ U_NAMESPACE_BEGIN
 //  class RegexCompile    Contains the regular expression compiler.
 //
 //--------------------------------------------------------------------------------
+struct  RegexTableEl;
 class   RegexPattern;
 
 
@@ -63,6 +64,9 @@ public:
     virtual    ~RegexCompile();
 
     void        nextChar(RegexPatternChar &c);      // Get the next char from the input stream.
+
+    static void cleanup();                       // Memory cleanup
+
 
 
     // Categories of parentheses in pattern.
@@ -100,7 +104,7 @@ private:
                                int32_t LoopOp);
     UBool       compileInlineInterval();             // Generate inline code for a {min,max} quantifier
     void        literalChar(UChar32 c);              // Compile a literal char
-    void        fixLiterals(UBool split=false);      // Generate code for pending literal characters.
+    void        fixLiterals(UBool split=FALSE);      // Generate code for pending literal characters.
     void        insertOp(int32_t where);             // Open up a slot for a new op in the
                                                      //   generated code at the specified location.
     void        appendOp(int32_t op);                // Append a new op to the compiled pattern.
@@ -149,6 +153,12 @@ private:
 
     RegexPatternChar              fC;                // Current char for parse state machine
                                                      //   processing.
+
+    //
+    //   Data for the state machine that parses the regular expression.
+    //
+    RegexTableEl                  **fStateTable;     // State Transition Table for regex Rule
+                                                     //   parsing.  index by p[state][char-class]
 
     uint16_t                      fStack[kStackSize];  // State stack, holds state pushes
     int32_t                       fStackPtr;           //  and pops as specified in the state
@@ -199,7 +209,11 @@ private:
                                                      //   initially scanned.  Each new interval
                                                      //   encountered overwrites these values.
                                                      //   -1 for the upper interval value means none
-                                                     //   was specified (unlimited occurrences.)
+                                                     //   was specified (unlimited occurences.)
+
+    int64_t                       fNameStartPos;     // Starting position of a \N{NAME} name in a
+                                                     //   pattern, valid while remainder of name is
+                                                     //   scanned.
 
     UStack                        fSetStack;         // Stack of UnicodeSets, used while evaluating
                                                      //   (at compile time) set expressions within
@@ -214,7 +228,7 @@ private:
                                                      //   in this string while being scanned.
 };
 
-// Constant values to be pushed onto fSetOpStack while scanning & evaluating [set expressions]
+// Constant values to be pushed onto fSetOpStack while scanning & evalueating [set expressions]
 //   The high 16 bits are the operator precedence, and the low 16 are a code for the operation itself.
 
 enum SetOperations {

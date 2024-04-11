@@ -1,6 +1,6 @@
 /***********************************************************************
  * © 2016 and later: Unicode, Inc. and others.
- * License & terms of use: http://www.unicode.org/copyright.html
+ * License & terms of use: http://www.unicode.org/copyright.html#License
  ***********************************************************************
  ***********************************************************************
  * COPYRIGHT:
@@ -9,6 +9,7 @@
  ***********************************************************************/
 
 #include "unicode/translit.h"
+#include "unicode/rbt.h"
 #include "unicode/unistr.h"
 #include "unicode/calendar.h"
 #include "unicode/datefmt.h"
@@ -16,8 +17,6 @@
 #include <stdlib.h>
 #include "util.h"
 #include "unaccent.h"
-
-using icu::Transliterator;
 
 int main(int argc, char **argv) {
 
@@ -42,8 +41,8 @@ int main(int argc, char **argv) {
     defFmt->setCalendar(*cal);
 
     // Create a Greek-Latin Transliterator
-    greek_latin = Transliterator::createInstance("Greek-Latin", UTRANS_FORWARD, status);
-    if (greek_latin == nullptr) {
+    greek_latin = Transliterator::createInstance("Greek-Latin");
+    if (greek_latin == 0) {
         printf("ERROR: Transliterator::createInstance() failed\n");
         exit(1);
     }

@@ -83,7 +83,7 @@ scanInput:
     }
 
     //
-    // Initial quality is based on relative proportion of recognized vs.
+    // Initial quality is based on relative proportion of recongized vs.
     //   unrecognized escape sequences. 
     //   All good:  quality = 100;
     //   half or less good: quality = 0;

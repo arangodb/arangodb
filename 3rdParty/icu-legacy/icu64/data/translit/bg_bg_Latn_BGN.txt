@@ -1,6 +1,5 @@
 ﻿# © 2016 and later: Unicode, Inc. and others.
-# License & terms of use: http://www.unicode.org/copyright.html
-# Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+# License & terms of use: http://www.unicode.org/copyright.html#License
 #
 # File: bg_bg_Latn_BGN.txt
 # Generated from CLDR
@@ -228,7 +227,7 @@ $bulgarian { [Ъъ]  } $wordBoundary > ;
 ѣ → ye ; # CYRILLIC SMALL LETTER YAT
 #
 #
-# Alternative rule where appropriate for local pronunciation. To apply
+# Alternative rule where appropriate for local pronounciation. To apply
 # uncomment the following by removing the '#' mark at the start of the
 # line and insert before the three rule lines above.
 #

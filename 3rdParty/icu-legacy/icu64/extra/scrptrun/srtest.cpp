@@ -15,7 +15,7 @@
 
 #include <stdio.h>
 
-char16_t testChars[] = {
+UChar testChars[] = {
             0x0020, 0x0946, 0x0939, 0x093F, 0x0928, 0x094D, 0x0926, 0x0940, 0x0020,
             0x0627, 0x0644, 0x0639, 0x0631, 0x0628, 0x064A, 0x0629, 0x0020,
             0x0420, 0x0443, 0x0441, 0x0441, 0x043A, 0x0438, 0x0439, 0x0020,
@@ -27,9 +27,9 @@ char16_t testChars[] = {
 
 int32_t testLength = UPRV_LENGTHOF(testChars);
 
-int main()
+void main()
 {
-    icu::ScriptRun scriptRun(testChars, 0, testLength);
+    ScriptRun scriptRun(testChars, 0, testLength);
 
     while (scriptRun.next()) {
         int32_t     start = scriptRun.getScriptStart();
@@ -38,5 +38,4 @@ int main()
 
         printf("Script '%s' from %d to %d.\n", uscript_getName(code), start, end);
     }
-    return 0;
 }

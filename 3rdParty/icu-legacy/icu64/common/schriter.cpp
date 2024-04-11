@@ -79,10 +79,10 @@ StringCharacterIterator::operator=(const StringCharacterIterator& that) {
     return *this;
 }
 
-bool
+UBool
 StringCharacterIterator::operator==(const ForwardCharacterIterator& that) const {
     if (this == &that) {
-        return true;
+        return TRUE;
     }
 
     // do not call UCharCharacterIterator::operator==()
@@ -90,10 +90,10 @@ StringCharacterIterator::operator==(const ForwardCharacterIterator& that) const 
     // while we compare UnicodeString objects
 
     if (typeid(*this) != typeid(that)) {
-        return false;
+        return FALSE;
     }
 
-    const StringCharacterIterator&    realThat = static_cast<const StringCharacterIterator&>(that);
+    StringCharacterIterator&    realThat = (StringCharacterIterator&)that;
 
     return text == realThat.text
         && pos == realThat.pos
@@ -101,7 +101,7 @@ StringCharacterIterator::operator==(const ForwardCharacterIterator& that) const 
         && end == realThat.end;
 }
 
-StringCharacterIterator*
+CharacterIterator*
 StringCharacterIterator::clone() const {
     return new StringCharacterIterator(*this);
 }

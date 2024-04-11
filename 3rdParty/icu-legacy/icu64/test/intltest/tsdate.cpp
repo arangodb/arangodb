@@ -19,6 +19,8 @@
 #include <stdlib.h>
 #include <math.h>
 
+const double IntlTestDateFormat::ONEYEAR = 365.25 * ONEDAY; // Approximate
+
 IntlTestDateFormat::~IntlTestDateFormat() {}
 
 /**
@@ -111,7 +113,7 @@ IntlTestDateFormat::testLocale(/*char* par, */const Locale& locale, const Unicod
 
 void IntlTestDateFormat::testFormat(/* char* par */)
 {
-    if (fFormat == nullptr)
+    if (fFormat == 0)
     {
         dataerrln("FAIL: DateFormat creation failed");
         return;
@@ -140,7 +142,7 @@ void
 IntlTestDateFormat::describeTest()
 {
     // Assume it's a SimpleDateFormat and get some info
-    SimpleDateFormat *s = dynamic_cast<SimpleDateFormat*>(fFormat);
+    SimpleDateFormat *s = (SimpleDateFormat*)fFormat;
     UnicodeString str;
     logln(fTestName + " Pattern " + s->toPattern(str));
 }
@@ -153,32 +155,24 @@ void IntlTestDateFormat::tryDate(UDate theDate)
 
     int32_t dateMatch = 0;
     int32_t stringMatch = 0;
-    UBool dump = false;
+    UBool dump = FALSE;
 #if defined (U_CAL_DEBUG)
-    dump = true;
+    dump = TRUE;
 #endif
     int32_t i;
 
     date[0] = theDate;
     fFormat->format(theDate, string[0]);
 
-    UErrorCode status = U_ZERO_ERROR;
-    const char* locID = "??";
-    Locale loc = fFormat->getCalendar()->getLocale(ULOC_VALID_LOCALE, status);
-    if (U_SUCCESS(status)) {
-        locID = loc.getName();
-    }
-
     for (i=1; i<DEPTH; ++i)
     {
-        status = U_ZERO_ERROR;
+        UErrorCode status = U_ZERO_ERROR;
         date[i] = fFormat->parse(string[i-1], status);
         if (U_FAILURE(status))
         {
             describeTest();
-            errln("**** FAIL, locale " + UnicodeString(locID,-1,US_INV) +
-                    ": Parse of " + prettify(string[i-1], false) + " failed.");
-            dump = true;
+            errln("**** FAIL: Parse of " + prettify(string[i-1], FALSE) + " failed.");
+            dump = TRUE;
             break;
         }
         fFormat->format(date[i], string[i]);
@@ -187,9 +181,8 @@ void IntlTestDateFormat::tryDate(UDate theDate)
         else if (dateMatch > 0 && date[i] != date[i-1])
         {
             describeTest();
-            errln("**** FAIL, locale " + UnicodeString(locID,-1,US_INV) +
-                    ": Date mismatch after match for " + string[i]);
-            dump = true;
+            errln("**** FAIL: Date mismatch after match for " + string[i]);
+            dump = TRUE;
             break;
         }
         if (stringMatch == 0 && string[i] == string[i-1])
@@ -197,9 +190,8 @@ void IntlTestDateFormat::tryDate(UDate theDate)
         else if (stringMatch > 0 && string[i] != string[i-1])
         {
             describeTest();
-            errln("**** FAIL, locale " + UnicodeString(locID,-1,US_INV) +
-                    ": String mismatch after match for " + string[i]);
-            dump = true;
+            errln("**** FAIL: String mismatch after match for " + string[i]);
+            dump = TRUE;
             break;
         }
         if (dateMatch > 0 && stringMatch > 0)
@@ -213,7 +205,7 @@ void IntlTestDateFormat::tryDate(UDate theDate)
         describeTest();
         errln((UnicodeString)"**** FAIL: No string and/or date match within " + fLimit
             + " iterations for the Date " + string[0] + "\t(" + theDate + ").");
-        dump = true;
+        dump = TRUE;
     }
 
     if (dump)

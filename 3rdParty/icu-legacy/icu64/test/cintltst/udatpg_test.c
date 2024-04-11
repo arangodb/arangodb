@@ -28,9 +28,6 @@
 #include "unicode/utypes.h"
 
 #if !UCONFIG_NO_FORMATTING
-
-#include <stdbool.h>
-
 #include "unicode/udat.h"
 #include "unicode/udatpg.h"
 #include "unicode/ustring.h"
@@ -46,11 +43,6 @@ static void TestUsage(void);
 static void TestBuilder(void);
 static void TestOptions(void);
 static void TestGetFieldDisplayNames(void);
-static void TestGetDefaultHourCycle(void);
-static void TestGetDefaultHourCycleOnEmptyInstance(void);
-static void TestEras(void);
-static void TestDateTimePatterns(void);
-static void TestRegionOverride(void);
 
 void addDateTimePatternGeneratorTest(TestNode** root) {
     TESTCASE(TestOpenClose);
@@ -58,11 +50,6 @@ void addDateTimePatternGeneratorTest(TestNode** root) {
     TESTCASE(TestBuilder);
     TESTCASE(TestOptions);
     TESTCASE(TestGetFieldDisplayNames);
-    TESTCASE(TestGetDefaultHourCycle);
-    TESTCASE(TestGetDefaultHourCycleOnEmptyInstance);
-    TESTCASE(TestEras);
-    TESTCASE(TestDateTimePatterns);
-    TESTCASE(TestRegionOverride);
 }
 
 /*
@@ -87,7 +74,7 @@ static const UChar sampleFormatted[] = {0x31, 0x30, 0x20, 0x6A, 0x75, 0x69, 0x6C
 static const UChar skeleton[]= {0x4d, 0x4d, 0x4d, 0x64, 0};  /* MMMd */
 static const UChar timeZoneGMT[] = { 0x0047, 0x004d, 0x0054, 0x0000 };  /* "GMT" */
 
-static void TestOpenClose(void) {
+static void TestOpenClose() {
     UErrorCode errorCode=U_ZERO_ERROR;
     UDateTimePatternGenerator *dtpg, *dtpg2;
     const UChar *s;
@@ -143,7 +130,7 @@ static const AppendItemNameData appendItemNameData[] = { /* for Finnish */
     { UDATPG_FIELD_COUNT,   {0}        }  /* terminator */
 };
 
-static void TestUsage(void) {
+static void TestUsage() {
     UErrorCode errorCode=U_ZERO_ERROR;
     UDateTimePatternGenerator *dtpg;
     const AppendItemNameData * appItemNameDataPtr;
@@ -254,7 +241,7 @@ static void TestUsage(void) {
     udatpg_close(dtpg);
 }
 
-static void TestBuilder(void) {
+static void TestBuilder() {
     UErrorCode errorCode=U_ZERO_ERROR;
     UDateTimePatternGenerator *dtpg;
     UDateTimePatternConflict conflict;
@@ -280,14 +267,14 @@ static void TestBuilder(void) {
     }
     
     /* Add a pattern */
-    conflict = udatpg_addPattern(dtpg, redundantPattern, 5, false, result, 20, 
+    conflict = udatpg_addPattern(dtpg, redundantPattern, 5, FALSE, result, 20, 
                                  &length, &errorCode);
     if(U_FAILURE(errorCode)) {
         log_err("udatpg_addPattern() failed - %s\n", u_errorName(errorCode));
         return;
     }
     /* Add a redundant pattern */
-    conflict = udatpg_addPattern(dtpg, redundantPattern, 5, false, result, 20,
+    conflict = udatpg_addPattern(dtpg, redundantPattern, 5, FALSE, result, 20,
                                  &length, &errorCode);
     if(conflict == UDATPG_NO_CONFLICT) {
         log_err("udatpg_addPattern() failed to find the duplicate pattern.\n");
@@ -295,7 +282,7 @@ static void TestBuilder(void) {
     }
     /* Test pattern == NULL */
     s=NULL;
-    length = udatpg_addPattern(dtpg, s, 0, false, result, 20,
+    length = udatpg_addPattern(dtpg, s, 0, FALSE, result, 20,
                                &length, &errorCode);
     if(!U_FAILURE(errorCode)&&(length!=0) ) {
         log_err("udatpg_addPattern failed in illegal argument - pattern is NULL.\n");
@@ -304,7 +291,7 @@ static void TestBuilder(void) {
 
     /* replace field type */
     errorCode=U_ZERO_ERROR;
-    conflict = udatpg_addPattern(dtpg, testPattern2, 7, false, result, 20,
+    conflict = udatpg_addPattern(dtpg, testPattern2, 7, FALSE, result, 20,
                                  &length, &errorCode);
     if((conflict != UDATPG_NO_CONFLICT)||U_FAILURE(errorCode)) {
         log_err("udatpg_addPattern() failed to add HH:mm v. - %s\n", u_errorName(errorCode));
@@ -398,18 +385,18 @@ typedef struct DTPtnGenOptionsData {
 } DTPtnGenOptionsData;
 enum { kTestOptionsPatLenMax = 32 };
 
-static const UChar skel_Hmm[]     = u"Hmm";
-static const UChar skel_HHmm[]    = u"HHmm";
-static const UChar skel_hhmm[]    = u"hhmm";
-static const UChar patn_hcmm_a[]  = u"h:mm\u202Fa";
-static const UChar patn_HHcmm[]   = u"HH:mm";
-static const UChar patn_hhcmm_a[] = u"hh:mm\u202Fa";
-static const UChar patn_HHpmm[]   = u"HH.mm";
-static const UChar patn_hpmm_a[]  = u"h.mm\u202Fa";
-static const UChar patn_Hpmm[]    = u"H.mm";
-static const UChar patn_hhpmm_a[] = u"hh.mm\u202Fa";
+static const UChar skel_Hmm[]     = { 0x0048, 0x006D, 0x006D, 0 };
+static const UChar skel_HHmm[]    = { 0x0048, 0x0048, 0x006D, 0x006D, 0 };
+static const UChar skel_hhmm[]    = { 0x0068, 0x0068, 0x006D, 0x006D, 0 };
+static const UChar patn_hcmm_a[]  = { 0x0068, 0x003A, 0x006D, 0x006D, 0x0020, 0x0061, 0 }; /* h:mm a */
+static const UChar patn_HHcmm[]   = { 0x0048, 0x0048, 0x003A, 0x006D, 0x006D, 0 }; /* HH:mm */
+static const UChar patn_hhcmm_a[] = { 0x0068, 0x0068, 0x003A, 0x006D, 0x006D, 0x0020, 0x0061, 0 }; /* hh:mm a */
+static const UChar patn_HHpmm[]   = { 0x0048, 0x0048, 0x002E, 0x006D, 0x006D, 0 }; /* HH.mm */
+static const UChar patn_hpmm_a[]  = { 0x0068, 0x002E, 0x006D, 0x006D, 0x0020, 0x0061, 0 }; /* h.mm a */
+static const UChar patn_Hpmm[]    = { 0x0048, 0x002E, 0x006D, 0x006D, 0 }; /* H.mm */
+static const UChar patn_hhpmm_a[] = { 0x0068, 0x0068, 0x002E, 0x006D, 0x006D, 0x0020, 0x0061, 0 }; /* hh.mm a */
 
-static void TestOptions(void) {
+static void TestOptions() {
     const DTPtnGenOptionsData testData[] = {
         /*loc   skel       options                       expectedPattern */
         { "en", skel_Hmm,  UDATPG_MATCH_NO_OPTIONS,        patn_HHcmm   },
@@ -461,7 +448,7 @@ typedef struct FieldDisplayNameData {
 } FieldDisplayNameData;
 enum { kFieldDisplayNameMax = 32, kFieldDisplayNameBytesMax  = 64};
 
-static void TestGetFieldDisplayNames(void) {
+static void TestGetFieldDisplayNames() {
     const FieldDisplayNameData testData[] = {
         /*loc      field                              width               expectedName */
         { "de",    UDATPG_QUARTER_FIELD,              UDATPG_WIDE,        "Quartal" },
@@ -523,307 +510,4 @@ static void TestGetFieldDisplayNames(void) {
     }
 }
 
-typedef struct HourCycleData {
-    const char *         locale;
-    UDateFormatHourCycle   expected;
-} HourCycleData;
-
-static void TestGetDefaultHourCycle(void) {
-    const HourCycleData testData[] = {
-        /*loc      expected */
-        { "ar_EG",    UDAT_HOUR_CYCLE_12 },
-        { "de_DE",    UDAT_HOUR_CYCLE_23 },
-        { "en_AU",    UDAT_HOUR_CYCLE_12 },
-        { "en_CA",    UDAT_HOUR_CYCLE_12 },
-        { "en_US",    UDAT_HOUR_CYCLE_12 },
-        { "es_ES",    UDAT_HOUR_CYCLE_23 },
-        { "fi",       UDAT_HOUR_CYCLE_23 },
-        { "fr",       UDAT_HOUR_CYCLE_23 },
-        { "ja_JP",    UDAT_HOUR_CYCLE_23 },
-        { "zh_CN",    UDAT_HOUR_CYCLE_23 },
-        { "zh_HK",    UDAT_HOUR_CYCLE_12 },
-        { "zh_TW",    UDAT_HOUR_CYCLE_12 },
-        { "ko_KR",    UDAT_HOUR_CYCLE_12 },
-    };
-    int count = UPRV_LENGTHOF(testData);
-    const HourCycleData * testDataPtr = testData;
-    for (; count-- > 0; ++testDataPtr) {
-        UErrorCode status = U_ZERO_ERROR;
-        UDateTimePatternGenerator * dtpgen =
-            udatpg_open(testDataPtr->locale, &status);
-        if ( U_FAILURE(status) ) {
-            log_data_err( "ERROR udatpg_open failed for locale %s : %s - (Are you missing data?)\n",
-                         testDataPtr->locale, myErrorName(status));
-        } else {
-            UDateFormatHourCycle actual = udatpg_getDefaultHourCycle(dtpgen, &status);
-            if (U_FAILURE(status) || testDataPtr->expected != actual) {
-                log_err("ERROR dtpgen locale %s udatpg_getDefaultHourCycle expected to get %d but get %d\n",
-                        testDataPtr->locale, testDataPtr->expected, actual);
-            }
-            udatpg_close(dtpgen);
-        }
-    }
-}
-
-// Ensure that calling udatpg_getDefaultHourCycle on an empty instance doesn't call UPRV_UNREACHABLE_EXIT/abort.
-static void TestGetDefaultHourCycleOnEmptyInstance(void) {
-    UErrorCode status = U_ZERO_ERROR;
-    UDateTimePatternGenerator * dtpgen = udatpg_openEmpty(&status);
-
-    if (U_FAILURE(status)) {
-        log_data_err("ERROR udatpg_openEmpty failed, status: %s \n", myErrorName(status));
-        return;
-    }
-
-    (void)udatpg_getDefaultHourCycle(dtpgen, &status);
-    if (!U_FAILURE(status)) {
-        log_data_err("ERROR expected udatpg_getDefaultHourCycle on an empty instance to fail, status: %s", myErrorName(status));
-    }
-
-    status = U_USELESS_COLLATOR_ERROR;
-    (void)udatpg_getDefaultHourCycle(dtpgen, &status);
-    if (status != U_USELESS_COLLATOR_ERROR) {
-        log_data_err("ERROR udatpg_getDefaultHourCycle shouldn't modify status if it is already failed, status: %s", myErrorName(status));
-    }
-
-    udatpg_close(dtpgen);
-}
-
-// Test for ICU-21202: Make sure DateTimePatternGenerator supplies an era field for year formats using the
-// Buddhist and Japanese calendars for all English-speaking locales.
-static void TestEras(void) {
-    const char* localeIDs[] = {
-        "en_US@calendar=japanese",
-        "en_GB@calendar=japanese",
-        "en_150@calendar=japanese",
-        "en_001@calendar=japanese",
-        "en@calendar=japanese",
-        "en_US@calendar=buddhist",
-        "en_GB@calendar=buddhist",
-        "en_150@calendar=buddhist",
-        "en_001@calendar=buddhist",
-        "en@calendar=buddhist",
-    };
-    
-    UErrorCode err = U_ZERO_ERROR;
-    for (int32_t i = 0; i < UPRV_LENGTHOF(localeIDs); i++) {
-        const char* locale = localeIDs[i];
-        UDateTimePatternGenerator* dtpg = udatpg_open(locale, &err);
-        if (U_SUCCESS(err)) {
-            UChar pattern[200];
-            udatpg_getBestPattern(dtpg, u"y", 1, pattern, 200, &err);
-            
-            if (u_strchr(pattern, u'G') == NULL) {
-                log_err("missing era field for locale %s\n", locale);
-            }
-        }
-        udatpg_close(dtpg);
-    }
-}
-
-enum { kNumDateTimePatterns = 4 };
-
-typedef struct {
-    const char* localeID;
-    const UChar* expectPat[kNumDateTimePatterns];
-} DTPLocaleAndResults;
-
-static void doDTPatternTest(UDateTimePatternGenerator* udtpg,
-                            const UChar** skeletons,
-                            DTPLocaleAndResults* localeAndResultsPtr);
-
-static void TestDateTimePatterns(void) {
-    const UChar* skeletons[kNumDateTimePatterns] = {
-        u"yMMMMEEEEdjmm", // full date, short time
-        u"yMMMMdjmm",     // long date, short time
-        u"yMMMdjmm",      // medium date, short time
-        u"yMdjmm"         // short date, short time
-    };
-    // The following tests some locales in which there are differences between the
-    // DateTimePatterns of various length styles.
-    DTPLocaleAndResults localeAndResults[] = {
-        { "en", { u"EEEE, MMMM d, y 'at' h:mm\u202Fa", // long != medium
-                  u"MMMM d, y 'at' h:mm\u202Fa",
-                  u"MMM d, y, h:mm\u202Fa",
-                  u"M/d/y, h:mm\u202Fa" } },
-        { "fr", { u"EEEE d MMMM y 'à' HH:mm", // medium != short
-                  u"d MMMM y 'à' HH:mm",
-                  u"d MMM y, HH:mm",
-                  u"dd/MM/y HH:mm" } },
-        { "ha", { u"EEEE d MMMM, y 'da' HH:mm",
-                  u"d MMMM, y 'da' HH:mm",
-                  u"d MMM, y, HH:mm",
-                  u"y-MM-dd, HH:mm" } },
-        { NULL, { NULL, NULL, NULL, NULL } } // terminator
-    };
-
-    const UChar* enDTPatterns[kNumDateTimePatterns] = {
-        u"{1} 'at' {0}",
-        u"{1} 'at' {0}",
-        u"{1}, {0}",
-        u"{1}, {0}"
-    };
-    const UChar* modDTPatterns[kNumDateTimePatterns] = {
-        u"{1} _0_ {0}",
-        u"{1} _1_ {0}",
-        u"{1} _2_ {0}",
-        u"{1} _3_ {0}"
-    };
-    DTPLocaleAndResults enModResults = { "en", { u"EEEE, MMMM d, y _0_ h:mm\u202Fa",
-                                                 u"MMMM d, y _1_ h:mm\u202Fa",
-                                                 u"MMM d, y _2_ h:mm\u202Fa",
-                                                 u"M/d/y _3_ h:mm\u202Fa" }
-    };
-
-    // Test various locales with standard data
-    UErrorCode status;
-    UDateTimePatternGenerator* udtpg;
-    DTPLocaleAndResults* localeAndResultsPtr = localeAndResults;
-    for (; localeAndResultsPtr->localeID != NULL; localeAndResultsPtr++) {
-        status = U_ZERO_ERROR;
-        udtpg = udatpg_open(localeAndResultsPtr->localeID, &status);
-        if (U_FAILURE(status)) {
-            log_data_err("FAIL: udatpg_open for locale %s: %s", localeAndResultsPtr->localeID, myErrorName(status));
-        } else {
-            doDTPatternTest(udtpg, skeletons, localeAndResultsPtr);
-            udatpg_close(udtpg);
-        }
-    }
-    // Test getting and modifying date-time combining patterns
-    status = U_ZERO_ERROR;
-    udtpg = udatpg_open("en", &status);
-    if (U_FAILURE(status)) {
-        log_data_err("FAIL: udatpg_open #2 for locale en: %s", myErrorName(status));
-    } else {
-        char bExpect[64];
-        char bGet[64];
-        const UChar* uGet;
-        int32_t uGetLen, uExpectLen;
-
-        // Test error: style out of range
-        status = U_ZERO_ERROR;
-        uGet = udatpg_getDateTimeFormatForStyle(udtpg, UDAT_NONE, &uGetLen, &status);
-        if (status != U_ILLEGAL_ARGUMENT_ERROR || uGetLen != 0 || uGet==NULL || *uGet!= 0) {
-            if (uGet==NULL) {
-                log_err("FAIL: udatpg_getDateTimeFormatForStyle with invalid style, expected U_ILLEGAL_ARGUMENT_ERROR "
-                        "and ptr to empty string but got %s, len %d, ptr = NULL\n", myErrorName(status), uGetLen);
-            } else {
-                log_err("FAIL: udatpg_getDateTimeFormatForStyle with invalid style, expected U_ILLEGAL_ARGUMENT_ERROR "
-                        "and ptr to empty string but got %s, len %d, *ptr = %04X\n", myErrorName(status), uGetLen, *uGet);
-            }
-        }
-
-        // Test normal getting and setting
-        for (int32_t patStyle = 0; patStyle < kNumDateTimePatterns; patStyle++) {
-            status = U_ZERO_ERROR;
-            uExpectLen = u_strlen(enDTPatterns[patStyle]);
-            uGet = udatpg_getDateTimeFormatForStyle(udtpg, patStyle, &uGetLen, &status);
-            if (U_FAILURE(status)) {
-                log_err("FAIL udatpg_getDateTimeFormatForStyle %d (en before mod), get %s\n", patStyle, myErrorName(status));
-            } else if (uGetLen != uExpectLen || u_strncmp(uGet, enDTPatterns[patStyle], uExpectLen) != 0) {
-                u_austrcpy(bExpect, enDTPatterns[patStyle]);
-                u_austrcpy(bGet, uGet);
-                log_err("ERROR udatpg_getDateTimeFormatForStyle %d (en before mod), expect %d:\"%s\", get %d:\"%s\"\n",
-                        patStyle, uExpectLen, bExpect, uGetLen, bGet);
-            }
-            status = U_ZERO_ERROR;
-            udatpg_setDateTimeFormatForStyle(udtpg, patStyle, modDTPatterns[patStyle], -1, &status);
-            if (U_FAILURE(status)) {
-                log_err("FAIL udatpg_setDateTimeFormatForStyle %d (en), get %s\n", patStyle, myErrorName(status));
-            } else {
-                uExpectLen = u_strlen(modDTPatterns[patStyle]);
-                uGet = udatpg_getDateTimeFormatForStyle(udtpg, patStyle, &uGetLen, &status);
-                if (U_FAILURE(status)) {
-                    log_err("FAIL udatpg_getDateTimeFormatForStyle %d (en after  mod), get %s\n", patStyle, myErrorName(status));
-                } else if (uGetLen != uExpectLen || u_strncmp(uGet, modDTPatterns[patStyle], uExpectLen) != 0) {
-                    u_austrcpy(bExpect, modDTPatterns[patStyle]);
-                    u_austrcpy(bGet, uGet);
-                    log_err("ERROR udatpg_getDateTimeFormatForStyle %d (en after  mod), expect %d:\"%s\", get %d:\"%s\"\n",
-                            patStyle, uExpectLen, bExpect, uGetLen, bGet);
-                }
-            }
-        }
-        // Test result of setting
-        doDTPatternTest(udtpg, skeletons, &enModResults);
-        // Test old get/set functions
-        uExpectLen = u_strlen(modDTPatterns[UDAT_MEDIUM]);
-        uGet = udatpg_getDateTimeFormat(udtpg, &uGetLen);
-        if (uGetLen != uExpectLen || u_strncmp(uGet, modDTPatterns[UDAT_MEDIUM], uExpectLen) != 0) {
-            u_austrcpy(bExpect, modDTPatterns[UDAT_MEDIUM]);
-            u_austrcpy(bGet, uGet);
-            log_err("ERROR udatpg_getDateTimeFormat (en after  mod), expect %d:\"%s\", get %d:\"%s\"\n",
-                    uExpectLen, bExpect, uGetLen, bGet);
-        }
-        udatpg_setDateTimeFormat(udtpg, modDTPatterns[UDAT_SHORT], -1); // set all dateTimePatterns to the short format
-        uExpectLen = u_strlen(modDTPatterns[UDAT_SHORT]);
-        u_austrcpy(bExpect, modDTPatterns[UDAT_SHORT]);
-        for (int32_t patStyle = 0; patStyle < kNumDateTimePatterns; patStyle++) {
-            status = U_ZERO_ERROR;
-            uGet = udatpg_getDateTimeFormatForStyle(udtpg, patStyle, &uGetLen, &status);
-            if (U_FAILURE(status)) {
-                log_err("FAIL udatpg_getDateTimeFormatForStyle %d (en after second mod), get %s\n", patStyle, myErrorName(status));
-            } else if (uGetLen != uExpectLen || u_strncmp(uGet, modDTPatterns[UDAT_SHORT], uExpectLen) != 0) {
-                u_austrcpy(bGet, uGet);
-                log_err("ERROR udatpg_getDateTimeFormatForStyle %d (en after second mod), expect %d:\"%s\", get %d:\"%s\"\n",
-                        patStyle, uExpectLen, bExpect, uGetLen, bGet);
-            }
-        }
-
-        udatpg_close(udtpg);
-    }
-}
-
-static void doDTPatternTest(UDateTimePatternGenerator* udtpg,
-                            const UChar** skeletons,
-                            DTPLocaleAndResults* localeAndResultsPtr) {
-    for (int32_t patStyle = 0; patStyle < kNumDateTimePatterns; patStyle++) {
-        UChar uGet[64];
-        int32_t uGetLen, uExpectLen;
-        UErrorCode status = U_ZERO_ERROR;
-        uExpectLen = u_strlen(localeAndResultsPtr->expectPat[patStyle]);
-        uGetLen = udatpg_getBestPattern(udtpg, skeletons[patStyle], -1, uGet, 64, &status);
-        if (U_FAILURE(status)) {
-            log_err("FAIL udatpg_getBestPattern locale %s style %d: %s\n", localeAndResultsPtr->localeID, patStyle, myErrorName(status));
-        } else if (uGetLen != uExpectLen || u_strncmp(uGet, localeAndResultsPtr->expectPat[patStyle], uExpectLen) != 0) {
-            char bExpect[64];
-            char bGet[64];
-            u_austrcpy(bExpect, localeAndResultsPtr->expectPat[patStyle]);
-            u_austrcpy(bGet, uGet);
-            log_err("ERROR udatpg_getBestPattern locale %s style %d, expect %d:\"%s\", get %d:\"%s\"\n",
-                    localeAndResultsPtr->localeID, patStyle, uExpectLen, bExpect, uGetLen, bGet);
-        }
-    }
-}
-
-static void TestRegionOverride(void) {
-    typedef struct RegionOverrideTest {
-        const char* locale;
-        const UChar* expectedPattern;
-        UDateFormatHourCycle expectedHourCycle;
-    } RegionOverrideTest;
-
-    const RegionOverrideTest testCases[] = {
-        { "en_US",           u"h:mm\u202fa", UDAT_HOUR_CYCLE_12 },
-        { "en_GB",           u"HH:mm",  UDAT_HOUR_CYCLE_23 },
-        { "en_US@rg=GBZZZZ", u"HH:mm",  UDAT_HOUR_CYCLE_23 },
-        { "en_US@hours=h23", u"HH:mm",  UDAT_HOUR_CYCLE_23 },
-    };
-
-    for (int32_t i = 0; i < UPRV_LENGTHOF(testCases); i++) {
-        UErrorCode err = U_ZERO_ERROR;
-        UChar actualPattern[200];
-        UDateTimePatternGenerator* dtpg = udatpg_open(testCases[i].locale, &err);
-
-        if (assertSuccess("Error creating dtpg", &err)) {
-            UDateFormatHourCycle actualHourCycle = udatpg_getDefaultHourCycle(dtpg, &err);
-            udatpg_getBestPattern(dtpg, u"jmm", -1, actualPattern, 200, &err);
-
-            if (assertSuccess("Error using dtpg", &err)) {
-                assertIntEquals("Wrong hour cycle", testCases[i].expectedHourCycle, actualHourCycle);
-                assertUEquals("Wrong pattern", testCases[i].expectedPattern, actualPattern);
-            }
-        }
-        udatpg_close(dtpg);
-    }
-}
 #endif

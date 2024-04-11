@@ -28,8 +28,8 @@ LINK.cc=	$(AIX_PREDELETE) $(CXX) $(CXXFLAGS) $(LDFLAGS)
 LD_SOOPTIONS= -Wl,-bsymbolic
 
 ## Commands to make a shared library
-SHLIB.c=    $(AIX_PREDELETE) $(CC) $(CFLAGS) $(LDFLAGS) -shared $(LD_SOOPTIONS)
-SHLIB.cc=   $(AIX_PREDELETE) $(CXX) $(CXXFLAGS) $(LDFLAGS) -shared $(LD_SOOPTIONS)
+SHLIB.c=    $(AIX_PREDELETE) $(CC) $(CFLAGS) $(LDFLAGS) -shared -Wl,-bexpall $(LD_SOOPTIONS)
+SHLIB.cc=   $(AIX_PREDELETE) $(CXX) $(CXXFLAGS) $(LDFLAGS) -shared -Wl,-bexpall $(LD_SOOPTIONS)
 
 ## Compiler switch to embed a runtime search path
 LD_RPATH=	-I

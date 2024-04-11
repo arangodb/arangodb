@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 smn{
     Countries{
         AC{"Ascension-suálui"}
@@ -42,9 +41,7 @@ smn{
         BZ{"Belize"}
         CA{"Kanada"}
         CC{"Kookossuolluuh (Keelingsuolluuh)"}
-        CD{"Kongo demokraattisâš täsiväldi"}
         CF{"Koskâ-Afrika täsiväldi"}
-        CG{"Kongo täsiväldi"}
         CH{"Sveitsi"}
         CI{"Côte d’Ivoire"}
         CK{"Cooksuolluuh"}
@@ -111,6 +108,7 @@ smn{
         IL{"Israel"}
         IM{"Mansuálui"}
         IN{"India"}
+        IO{"Brittilâš India väldimeerâ kuávlu"}
         IQ{"Irak"}
         IR{"Iran"}
         IS{"Island"}
@@ -262,6 +260,10 @@ smn{
         US{"USA"}
     }
     Countries%variant{
+        CD{"Kongo demokraattisâš täsiväldi"}
+        CG{"Kongo täsiväldi"}
         FK{"Falklandsuolluuh (Malvinassuolluuh)"}
+        MK{"OJT Makedonia"}
     }
+    Version{"2.1.47.82"}
 }

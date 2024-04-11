@@ -69,7 +69,7 @@ class TransliteratorAlias : public UMemory {
      * it when the registry mutex is NOT held, to prevent deadlock.
      * It may only be called once.
      *
-     * Note: Only call create() if isRuleBased() returns false.
+     * Note: Only call create() if isRuleBased() returns FALSE.
      *
      * This method must be called *outside* of the TransliteratorRegistry
      * mutex.
@@ -77,17 +77,17 @@ class TransliteratorAlias : public UMemory {
     Transliterator* create(UParseError&, UErrorCode&);
 
     /**
-     * Return true if this alias is rule-based.  If so, the caller
+     * Return TRUE if this alias is rule-based.  If so, the caller
      * must call parse() on it, then call TransliteratorRegistry::reget().
      */
     UBool isRuleBased() const;
 
     /**
-     * If isRuleBased() returns true, then the caller must call this
+     * If isRuleBased() returns TRUE, then the caller must call this
      * method, followed by TransliteratorRegistry::reget().  The latter
      * method must be called inside the TransliteratorRegistry mutex.
      *
-     * Note: Only call parse() if isRuleBased() returns true.
+     * Note: Only call parse() if isRuleBased() returns TRUE.
      *
      * This method must be called *outside* of the TransliteratorRegistry
      * mutex, because it can instantiate Transliterators embedded in
@@ -103,7 +103,7 @@ class TransliteratorAlias : public UMemory {
     //    null, zero, empty.
     // 2. CompoundRBT
     //    Here ID is the ID, aliasID is the idBlock, trans is the
-    //    contained RBT, and idSplitPoint is the offset in aliasID
+    //    contained RBT, and idSplitPoint is the offet in aliasID
     //    where the contained RBT goes.  compoundFilter is the
     //    compound filter, and it is _not_ owned.
     // 3. Rules
@@ -144,7 +144,7 @@ class TransliteratorRegistry : public UMemory {
  public:
 
     /**
-     * Constructor
+     * Contructor
      * @param status Output param set to success/failure code.
      */
     TransliteratorRegistry(UErrorCode& status);
@@ -163,14 +163,14 @@ class TransliteratorRegistry : public UMemory {
      * compound) attempt to instantiate it from the registry.  Return
      * 0 on failure.
      *
-     * Return a non-nullptr aliasReturn value if the ID points to an alias.
+     * Return a non-NULL aliasReturn value if the ID points to an alias.
      * We cannot instantiate it ourselves because the alias may contain
      * filters or compounds, which we do not understand.  Caller should
-     * make aliasReturn nullptr before calling.
+     * make aliasReturn NULL before calling.
      * @param ID          the given ID
      * @param aliasReturn output param to receive TransliteratorAlias;
-     *                    should be nullptr on entry
-     * @param parseError  Struct to receive information on position
+     *                    should be NULL on entry
+     * @param parseError  Struct to recieve information on position
      *                    of error if an error is encountered
      * @param status      Output param set to success/failure code.
      */
@@ -191,7 +191,7 @@ class TransliteratorRegistry : public UMemory {
      * from within the TransliteratorRegistry mutex.
      *
      * @param aliasReturn output param to receive TransliteratorAlias;
-     *                    should be nullptr on entry
+     *                    should be NULL on entry
      */
     Transliterator* reget(const UnicodeString& ID,
                           TransliteratorParser& parser,
@@ -268,7 +268,7 @@ class TransliteratorRegistry : public UMemory {
      * @return the number of IDs currently registered with the system.
      * @internal
      */
-    int32_t countAvailableIDs() const;
+    int32_t countAvailableIDs(void) const;
 
     /**
      * == OBSOLETE - remove in ICU 3.4 ==
@@ -287,13 +287,13 @@ class TransliteratorRegistry : public UMemory {
      * Return the number of registered source specifiers.
      * @return the number of registered source specifiers.
      */
-    int32_t countAvailableSources() const;
+    int32_t countAvailableSources(void) const;
 
     /**
      * Return a registered source specifier.
      * @param index which specifier to return, from 0 to n-1, where
      * n = countAvailableSources()
-     * @param result fill-in parameter to receive the source specifier.
+     * @param result fill-in paramter to receive the source specifier.
      * If index is out of range, result will be empty.
      * @return reference to result
      */
@@ -314,7 +314,7 @@ class TransliteratorRegistry : public UMemory {
      * @param index which specifier to return, from 0 to n-1, where
      * n = countAvailableTargets(source)
      * @param source the source specifier
-     * @param result fill-in parameter to receive the target specifier.
+     * @param result fill-in paramter to receive the target specifier.
      * If source is invalid or if index is out of range, result will
      * be empty.
      * @return reference to result
@@ -345,7 +345,7 @@ class TransliteratorRegistry : public UMemory {
      * n = countAvailableVariants(source, target)
      * @param source the source specifier
      * @param target the target specifier
-     * @param result fill-in parameter to receive the variant
+     * @param result fill-in paramter to receive the variant
      * specifier.  If source is invalid or if target is invalid or if
      * index is out of range, result will be empty.
      * @return reference to result
@@ -417,14 +417,13 @@ class TransliteratorRegistry : public UMemory {
     public:
         Enumeration(const TransliteratorRegistry& reg);
         virtual ~Enumeration();
-        virtual int32_t count(UErrorCode& status) const override;
-        virtual const UnicodeString* snext(UErrorCode& status) override;
-        virtual void reset(UErrorCode& status) override;
+        virtual int32_t count(UErrorCode& status) const;
+        virtual const UnicodeString* snext(UErrorCode& status);
+        virtual void reset(UErrorCode& status);
         static UClassID U_EXPORT2 getStaticClassID();
-        virtual UClassID getDynamicClassID() const override;
+        virtual UClassID getDynamicClassID() const;
     private:
-        int32_t pos;
-        int32_t size;
+        int32_t index;
         const TransliteratorRegistry& reg;
     };
     friend class Enumeration;
@@ -453,7 +452,7 @@ class TransliteratorRegistry : public UMemory {
     /**
      * Vector of public full IDs.
      */
-    Hashtable availableIDs;
+    UVector availableIDs;
 
     TransliteratorRegistry(const TransliteratorRegistry &other); // forbid copying of this class
     TransliteratorRegistry &operator=(const TransliteratorRegistry &other); // forbid copying of this class
@@ -461,7 +460,7 @@ class TransliteratorRegistry : public UMemory {
 
 U_NAMESPACE_END
 
-U_CFUNC UBool utrans_transliterator_cleanup();
+U_CFUNC UBool utrans_transliterator_cleanup(void);
 
 #endif /* #if !UCONFIG_NO_TRANSLITERATION */
 

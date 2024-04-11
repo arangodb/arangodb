@@ -43,10 +43,10 @@ ParsePositionTest::failure(UErrorCode status, const char* msg, UBool possibleDat
         } else {
             errln(UnicodeString("FAIL: ") + msg + " failed, error " + u_errorName(status));
         }
-        return true;
+        return TRUE;
     }
 
-    return false;
+    return FALSE;
 }
  
 void ParsePositionTest::TestParsePosition() 
@@ -125,16 +125,16 @@ void ParsePositionTest::TestFieldPosition()
     if ( fph.getField() != 3) 
         errln("*** FP getField or heap constr.");
 
-    UBool err1 = false;
-    UBool err2 = false;
-    UBool err3 = false;
+    UBool err1 = FALSE;
+    UBool err2 = FALSE;
+    UBool err3 = FALSE;
 //        for (long i = -50; i < 50; i++ ) {
 //            fp.setField( i+8 );
 //            fp.setBeginIndex( i+6 );
 //            fp.setEndIndex( i+7 );
-//            if (fp.getField() != i+8)  err1 = true;
-//            if (fp.getBeginIndex() != i+6) err2 = true;
-//            if (fp.getEndIndex() != i+7) err3 = true;
+//            if (fp.getField() != i+8)  err1 = TRUE;
+//            if (fp.getBeginIndex() != i+6) err2 = TRUE;
+//            if (fp.getEndIndex() != i+7) err3 = TRUE;
 //        }
     if (!err1) {
         logln("FP setField and getField tested.");
@@ -179,17 +179,17 @@ void ParsePositionTest::TestFieldPosition_example()
 
     UErrorCode status = U_ZERO_ERROR;
     NumberFormat *nf = NumberFormat::createInstance(status);
-    if (failure(status, "NumberFormat::createInstance", true)){
+    if (failure(status, "NumberFormat::createInstance", TRUE)){
         delete nf;
         return;
-    }
+    };
 
     DecimalFormat *fmt = dynamic_cast<DecimalFormat *>(nf);
-    if(fmt == nullptr) {
+    if(fmt == NULL) {
         errln("NumberFormat::createInstance returned unexpected class type");
         return;
     }
-    fmt->setDecimalSeparatorAlwaysShown(true);
+    fmt->setDecimalSeparatorAlwaysShown(TRUE);
 
     const int tempLen = 20;
     UnicodeString temp;

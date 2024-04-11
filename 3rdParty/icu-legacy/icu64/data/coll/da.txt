@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 da{
+    Version{"2.1.34.8"}
     collations{
         search{
             Sequence{
@@ -9,7 +9,7 @@ da{
                 "[import da-u-co-standard]"
                 "[caseFirst off]"
             }
-            Version{"45"}
+            Version{"35.1"}
         }
         standard{
             Sequence{
@@ -21,7 +21,7 @@ da{
                 "&[before 1]ǀ<æ<<<Æ<<ä<<<Ä<ø<<<Ø<<ö<<<Ö<<ő<<<Ő<å<<<Å<<<aa<<<Aa<<<AA"
                 "&oe<<œ<<<Œ"
             }
-            Version{"45"}
+            Version{"35.1"}
         }
     }
 }

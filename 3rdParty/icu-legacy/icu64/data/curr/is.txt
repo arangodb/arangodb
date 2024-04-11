@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 is{
     Currencies{
         ADP{
@@ -261,7 +260,7 @@ is{
         }
         FJD{
             "FJD",
-            "fídjískur dalur",
+            "fidjeyskur dalur",
         }
         FKP{
             "FKP",
@@ -360,7 +359,7 @@ is{
             "íranskt ríal",
         }
         ISK{
-            "kr.",
+            "ISK",
             "íslensk króna",
         }
         ITL{
@@ -433,7 +432,7 @@ is{
         }
         LSL{
             "LSL",
-            "lesótóskur lóti",
+            "Lesotho Loti",
         }
         LTL{
             "LTL",
@@ -559,13 +558,9 @@ is{
             "NGN",
             "nígerísk næra",
         }
-        NIC{
-            "NIC",
-            "Níkarögsk kordóva (1988–1991)",
-        }
         NIO{
             "NIO",
-            "níkarögsk kordóva",
+            "níkaraögsk kordóva",
         }
         NLG{
             "NLG",
@@ -695,13 +690,9 @@ is{
             "SKK",
             "Slóvakísk króna",
         }
-        SLE{
-            "SLE",
-            "síerraleónsk ljóna",
-        }
         SLL{
             "SLL",
-            "síerraleónsk ljóna (1964—2022)",
+            "síerraleónsk ljóna",
         }
         SOS{
             "SOS",
@@ -765,7 +756,7 @@ is{
         }
         TND{
             "TND",
-            "túniskur denari",
+            "túnískur denari",
         }
         TOP{
             "TOP",
@@ -872,7 +863,7 @@ is{
             "Franskur franki, UIC",
         }
         XOF{
-            "F CFA",
+            "CFA",
             "vesturafrískur franki",
         }
         XPF{
@@ -917,11 +908,63 @@ is{
         }
     }
     Currencies%narrow{
-        DKK{"kr."}
-        ISK{"kr."}
-        NOK{"kr."}
-        SEK{"kr."}
+        ARS{"$"}
+        AUD{"$"}
+        BBD{"$"}
+        BDT{"৳"}
+        BMD{"$"}
+        BND{"$"}
+        BRL{"R$"}
+        BSD{"$"}
+        BZD{"$"}
+        CAD{"$"}
+        CLP{"$"}
+        CNY{"¥"}
+        COP{"$"}
+        CRC{"₡"}
+        CUP{"$"}
+        DOP{"$"}
+        EUR{"€"}
+        FJD{"$"}
+        GBP{"£"}
+        GIP{"£"}
+        GYD{"$"}
+        HKD{"$"}
+        IDR{"Rp"}
+        ILS{"₪"}
+        INR{"₹"}
+        ISK{"kr"}
+        JMD{"$"}
+        JPY{"¥"}
+        KHR{"៛"}
+        KRW{"₩"}
+        KYD{"$"}
+        KZT{"₸"}
+        LAK{"₭"}
+        LRD{"$"}
+        MNT{"₮"}
+        MXN{"$"}
+        NAD{"$"}
+        NGN{"₦"}
+        NZD{"$"}
+        PHP{"₱"}
+        PYG{"₲"}
+        SBD{"$"}
+        SGD{"$"}
+        SRD{"$"}
+        SSP{"£"}
+        THB{"฿"}
+        TOP{"T$"}
+        TRY{"₺"}
+        TTD{"$"}
         TWD{"NT$"}
+        UAH{"₴"}
+        USD{"$"}
+        UYU{"$"}
+        VND{"₫"}
+    }
+    Currencies%variant{
+        GEL{"₾"}
     }
     CurrencyPlurals{
         AED{
@@ -1046,7 +1089,7 @@ is{
         }
         CNH{
             one{"kínverskt júan (utan heimalands)"}
-            other{"kínversk júön (utan heimalands)"}
+            other{"kínverskt júan (utan heimalands)"}
         }
         CNY{
             one{"kínverskt júan"}
@@ -1061,8 +1104,8 @@ is{
             other{"kostarísk kólon"}
         }
         CUC{
-            one{"kúbverskur skiptanlegur pesi"}
-            other{"kúbverskir skiptanlegir pesar"}
+            one{"kúbverskur skiptanlegur pesói"}
+            other{"kúbverskir skiptanlegir pesóar"}
         }
         CUP{
             one{"kúbverskur pesi"}
@@ -1113,12 +1156,16 @@ is{
             other{"evrur"}
         }
         FJD{
-            one{"fídjískur dalur"}
-            other{"fídjískir dalir"}
+            one{"fidjeyskur dalur"}
+            other{"fidjeyskir dalir"}
         }
         FKP{
             one{"falklenskt pund"}
             other{"falklensk pund"}
+        }
+        GBP{
+            one{"sterlingspund"}
+            other{"sterlingspund"}
         }
         GEL{
             one{"georgískur lari"}
@@ -1127,6 +1174,10 @@ is{
         GHS{
             one{"ganverskur sedi"}
             other{"ganverskir sedar"}
+        }
+        GIP{
+            one{"Gíbraltarspund"}
+            other{"Gíbraltarspund"}
         }
         GMD{
             one{"gambískur dalasi"}
@@ -1252,10 +1303,6 @@ is{
             one{"líberískur dalur"}
             other{"líberískir dalir"}
         }
-        LSL{
-            one{"lesótóskur lóti"}
-            other{"lesótóskir lótar"}
-        }
         LTL{
             one{"litháískt lít"}
             other{"litháísk lít"}
@@ -1336,10 +1383,6 @@ is{
             one{"nígerísk næra"}
             other{"nígerískar nærur"}
         }
-        NIC{
-            one{"Níkarögsk kordóva (1988–1991)"}
-            other{"Níkaragskar kordóvur (1988–1991)"}
-        }
         NIO{
             one{"níkarögsk kordóva"}
             other{"níkaragskar kordóvur"}
@@ -1392,6 +1435,10 @@ is{
             one{"katarskt ríal"}
             other{"katörsk ríöl"}
         }
+        ROL{
+            one{"Rúmenskt lei (1952–2006)"}
+            other{"Rúmenskt lei (1952–2006)"}
+        }
         RON{
             one{"rúmenskt lei"}
             other{"rúmensk lei"}
@@ -1436,13 +1483,9 @@ is{
             one{"helenskt pund"}
             other{"helensk pund"}
         }
-        SLE{
+        SLL{
             one{"síerraleónsk ljóna"}
             other{"síerraleónskar ljónur"}
-        }
-        SLL{
-            one{"síerraleónsk ljóna (1964—2022)"}
-            other{"síerraleónskar ljónur (1964—2022)"}
         }
         SOS{
             one{"sómalískur skildingur"}
@@ -1464,6 +1507,10 @@ is{
             one{"Saó Tóme og Prinsípe-dóbra"}
             other{"Saó Tóme og Prinsípe-dóbrur"}
         }
+        SVC{
+            one{"El Salvador Colon"}
+            other{"El Salvador Colon"}
+        }
         SYP{
             one{"sýrlenskt pund"}
             other{"sýrlensk pund"}
@@ -1479,6 +1526,10 @@ is{
         TJS{
             one{"tadsjikskur sómóni"}
             other{"tadsjikskir sómónar"}
+        }
+        TMM{
+            one{"Túrkmenskt manat (1993–2009)"}
+            other{"Túrkmenskt manat (1993–2009)"}
         }
         TMT{
             one{"túrkmenskt manat"}
@@ -1585,4 +1636,5 @@ is{
         one{"{0} {1}"}
         other{"{0} {1}"}
     }
+    Version{"2.1.49.82"}
 }

@@ -1,8 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Copyright (C) 2016 and later: Unicode, Inc. and others. License & terms of use: http://www.unicode.org/copyright.html -->
-<Project ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
-  <!-- The following import will set the ICU Major Version number. -->
-  <Import Project="Build.Windows.IcuVersion.props" />
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <!-- This file is used to set common configuration options for all *_uwp projects. -->
   <PropertyGroup>
     <MinimumVisualStudioVersion>14.0</MinimumVisualStudioVersion>
@@ -10,29 +8,22 @@
     <ApplicationType>Windows Store</ApplicationType>
     <ApplicationTypeRevision>10.0</ApplicationTypeRevision>
   </PropertyGroup>
-  <PropertyGroup>
-    <!-- Set the minimum Windows 10 SDK version to TH1/RTM. -->
+  <!-- If not already set, then we will default to using the latest installed Windows 10 SDK version. -->
+  <PropertyGroup Condition="'$(WindowsTargetPlatformVersion)'==''">
+    <!-- Detect the SDK version. -->
+    <WindowsSdkInstallFolder_10 Condition="'$(WindowsSdkInstallFolder_10)' == ''">$(Registry:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Microsoft SDKs\Windows\v10.0@InstallationFolder)</WindowsSdkInstallFolder_10>
+    <WindowsSdkInstallFolder_10 Condition="'$(WindowsSdkInstallFolder_10)' == ''">$(Registry:HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Microsoft\Microsoft SDKs\Windows\v10.0@InstallationFolder)</WindowsSdkInstallFolder_10>
+    <WindowsTargetPlatformVersion_10 Condition="'$(WindowsTargetPlatformVersion_10)' == ''">$(Registry:HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Microsoft SDKs\Windows\v10.0@ProductVersion)</WindowsTargetPlatformVersion_10>
+    <WindowsTargetPlatformVersion_10 Condition="'$(WindowsTargetPlatformVersion_10)' == ''">$(Registry:HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node\Microsoft\Microsoft SDKs\Windows\v10.0@ProductVersion)</WindowsTargetPlatformVersion_10>
+    <!-- Sometimes the version in the registry has the '.0' suffix, and sometimes it doesn't. Check and add it. -->
+    <WindowsTargetPlatformVersion_10 Condition="'$(WindowsTargetPlatformVersion_10)' != '' and !$(WindowsTargetPlatformVersion_10.EndsWith('.0'))">$(WindowsTargetPlatformVersion_10).0</WindowsTargetPlatformVersion_10>
+    <!-- Set the default. -->
+    <WindowsTargetPlatformVersion>$(WindowsTargetPlatformVersion_10)</WindowsTargetPlatformVersion>
+    <!-- Set the minimum Win10 SDK version to TH1/RTM. -->
     <WindowsTargetPlatformMinVersion>10.0.10240.0</WindowsTargetPlatformMinVersion>
   </PropertyGroup>
   <!-- The following import will set the PlatformToolset configuration. -->
   <Import Project="..\allinone\Build.Windows.PlatformToolset.props" />
-  <!-- The following PropertyGroups are used to set the binary and lib output locations -->
-  <PropertyGroup Condition="'$(Platform)'=='Win32'">
-    <IcuBinOutputDir>bin32uwp</IcuBinOutputDir>
-    <IcuLibOutputDir>lib32uwp</IcuLibOutputDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Platform)'=='x64'">
-    <IcuBinOutputDir>bin64uwp</IcuBinOutputDir>
-    <IcuLibOutputDir>lib64uwp</IcuLibOutputDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Platform)'=='ARM'">
-    <IcuBinOutputDir>binARMuwp</IcuBinOutputDir>
-    <IcuLibOutputDir>libARMuwp</IcuLibOutputDir>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Platform)'=='ARM64'">
-    <IcuBinOutputDir>binARM64uwp</IcuBinOutputDir>
-    <IcuLibOutputDir>libARM64uwp</IcuLibOutputDir>
-  </PropertyGroup>
   <ItemDefinitionGroup>
     <Midl>
       <PreprocessorDefinitions>
@@ -45,9 +36,6 @@
         %(PreprocessorDefinitions);
         U_PLATFORM_HAS_WINUWP_API=1;
       </PreprocessorDefinitions>
-      <!-- Set the C/C++ versions supported. -->
-      <LanguageStandard>stdcpp17</LanguageStandard>
-      <LanguageStandard_C>stdc11</LanguageStandard_C>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>

@@ -1,15 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 eo{
-    zoneStrings{
-        "meta:GMT"{
-            ls{"universala tempo kunordigita"}
-        }
-        gmtFormat{"UTC{0}"}
-        gmtZeroFormat{"UTC"}
-        regionFormat{"tempo de {0}"}
-        regionFormatDaylight{"somera tempo de {0}"}
-        regionFormatStandard{"norma tempo de {0}"}
-    }
+    Version{"2.1.49.33"}
 }

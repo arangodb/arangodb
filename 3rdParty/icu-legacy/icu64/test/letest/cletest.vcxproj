@@ -89,8 +89,6 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
-      <LanguageStandard>stdcpp17</LanguageStandard>
-      <LanguageStandard_C>stdc11</LanguageStandard_C>
     </ClCompile>
     <Link>
       <AdditionalDependencies>..\..\..\lib\icuucd.lib;..\..\..\lib\icuind.lib;..\..\..\lib\icutestd.lib;..\..\..\lib\icutud.lib;..\..\..\lib\iculed.lib;..\..\..\lib\iculxd.lib;%(AdditionalDependencies)</AdditionalDependencies>

@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ckb_IR{
+    Version{"2.1.48.22"}
     calendar{
         default{"persian"}
         gregorian{
@@ -20,16 +20,6 @@ ckb_IR{
                 "{1} {0}",
                 "{1} {0}",
             }
-            DateTimeSkeletons{
-                "HHmmsszzzz",
-                "HHmmssz",
-                "HHmmss",
-                "HHmm",
-                "yMMMMEEEEd",
-                "yMMMMd",
-                "yMMMd",
-                "yMMdd",
-            }
         }
         persian{
             DateTimePatterns{
@@ -46,34 +36,6 @@ ckb_IR{
                 "{1} {0}",
                 "{1} {0}",
                 "{1} {0}",
-            }
-            DateTimeSkeletons{
-                "HHmmsszzzz",
-                "HHmmssz",
-                "HHmmss",
-                "HHmm",
-                "GyMMMMEEEEd",
-                "GyMMMMd",
-                "GyMMMd",
-                "GGGGGyMMdd",
-            }
-            monthNames{
-                format{
-                    wide{
-                        "خاکەلێوە",
-                        "گوڵان",
-                        "جۆزەردان",
-                        "پووشپەڕ",
-                        "گەلاوێژ",
-                        "خەرمانان",
-                        "ڕەزبەر",
-                        "گەڵاڕێزان",
-                        "سەرماوەز",
-                        "بەفرانبار",
-                        "ڕێبەندان",
-                        "ڕەشەمە",
-                    }
-                }
             }
         }
     }

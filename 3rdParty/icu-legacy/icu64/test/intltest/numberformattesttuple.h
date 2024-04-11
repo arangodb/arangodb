@@ -77,8 +77,8 @@ enum ENumberFormatTestTupleField {
  * field means and how the data drive tests work, please see
  * https://docs.google.com/document/d/1T2P0p953_Lh1pRwo-5CuPVrHlIBa_wcXElG-Hhg_WHM/edit?usp=sharing
  * Each field is optional. That is, a certain field may be unset for a given
- * test. The UBool fields ending in "Flag" indicate whether the corresponding
- * field is set or not. true means set; false means unset. An unset field
+ * test. The UBool fields ending in "Flag" indicate whether the corrresponding
+ * field is set or not. TRUE means set; FALSE means unset. An unset field
  * generally means that the corresponding setter method is not called on
  * the NumberFormat object.
  */
@@ -189,7 +189,7 @@ public:
      * @param fieldValue the string representation of the field value.
      * @param status error returned here such as when the string representation
      *  of the field value cannot be parsed.
-     * @return true on success or false if an error was set in status.
+     * @return TRUE on success or FALSE if an error was set in status.
      */
     UBool setField(
             ENumberFormatTestTupleField field,
@@ -199,7 +199,7 @@ public:
      * Clears a particular field.
      * @param field the field to clear.
      * @param status error set here.
-     * @return true on success or false if error was set.
+     * @return TRUE on success or FALSE if error was set.
      */
     UBool clearField(
             ENumberFormatTestTupleField field,

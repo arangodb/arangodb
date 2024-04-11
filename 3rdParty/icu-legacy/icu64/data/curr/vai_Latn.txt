@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 vai_Latn{
     %%Parent{"root"}
     Currencies{
@@ -168,13 +167,9 @@ vai_Latn{
             "SHP",
             "Siŋ Hɛlina Pɔɔ̃",
         }
-        SLE{
-            "SLE",
-            "Liyɔɔ̀",
-        }
         SLL{
             "SLL",
-            "Liyɔɔ̀ (1964—2022)",
+            "Liyɔɔ̀",
         }
         SOS{
             "SOS",
@@ -213,7 +208,7 @@ vai_Latn{
             "Áfíríka Tɛ Sifa",
         }
         XOF{
-            "F CFA",
+            "CFA",
             "Áfíríka Tele Jíí Sifa",
         }
         ZAR{
@@ -233,4 +228,5 @@ vai_Latn{
             "Zimbhabhuwe Dala",
         }
     }
+    Version{"2.1.47.82"}
 }

@@ -1,16 +1,13 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ks{
+    Version{"2.1.47.83"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"عابِدجان"}
         }
         "Africa:Accra"{
             ec{"اؠکرا"}
-        }
-        "Africa:Addis_Ababa"{
-            ec{"عدیس ابابا"}
         }
         "Africa:Algiers"{
             ec{"اَلجیٖرِیا"}
@@ -55,16 +52,13 @@ ks{
             ec{"دَکار"}
         }
         "Africa:Dar_es_Salaam"{
-            ec{"دارالسلام"}
+            ec{"دارُالسلام"}
         }
         "Africa:Djibouti"{
-            ec{"ڈِجیبوٹی"}
+            ec{"ڑِزِبوٹی"}
         }
         "Africa:Douala"{
-            ec{"ڈوولا"}
-        }
-        "Africa:El_Aaiun"{
-            ec{"ال عیون"}
+            ec{"دوعالا"}
         }
         "Africa:Freetown"{
             ec{"فری ٹاوُن"}
@@ -76,10 +70,7 @@ ks{
             ec{"ہَراریے"}
         }
         "Africa:Johannesburg"{
-            ec{"جوہانسبرگ"}
-        }
-        "Africa:Juba"{
-            ec{"جوبا"}
+            ec{"جانسبٔرگ"}
         }
         "Africa:Kampala"{
             ec{"کَمپالا"}
@@ -103,13 +94,13 @@ ks{
             ec{"لوم"}
         }
         "Africa:Luanda"{
-            ec{"لیوانڈا"}
+            ec{"لُعؠنڑا"}
         }
         "Africa:Lubumbashi"{
-            ec{"لوبم باشی"}
+            ec{"لُبُمباشی"}
         }
         "Africa:Lusaka"{
-            ec{"لوساکا"}
+            ec{"لُساکا"}
         }
         "Africa:Malabo"{
             ec{"مالابو"}
@@ -145,7 +136,7 @@ ks{
             ec{"اوآگدوگو"}
         }
         "Africa:Porto-Novo"{
-            ec{"پورٹو نووو"}
+            ec{"پوٹو نووو"}
         }
         "Africa:Sao_Tome"{
             ec{"ساو ٹوم"}
@@ -160,7 +151,7 @@ ks{
             ec{"وِنڈہوک"}
         }
         "America:Adak"{
-            ec{"ادک"}
+            ec{"اِدَک"}
         }
         "America:Anchorage"{
             ec{"اَنکوراج"}
@@ -179,9 +170,6 @@ ks{
         }
         "America:Argentina:Rio_Gallegos"{
             ec{"رِیو گالیگوس"}
-        }
-        "America:Argentina:Salta"{
-            ec{"سالٹا"}
         }
         "America:Argentina:San_Juan"{
             ec{"سین جُواں"}
@@ -204,11 +192,8 @@ ks{
         "America:Bahia"{
             ec{"بَہِیا"}
         }
-        "America:Bahia_Banderas"{
-            ec{"باہیا بندارس"}
-        }
         "America:Barbados"{
-            ec{"بارباڈوس"}
+            ec{"بَرباڑوس"}
         }
         "America:Belem"{
             ec{"بؠلؠم"}
@@ -259,16 +244,13 @@ ks{
             ec{"چِہُوا ہُوا"}
         }
         "America:Coral_Harbour"{
-            ec{"اٹی کوکنٍ"}
+            ec{"کورَل بٔندٕرگاہ"}
         }
         "America:Cordoba"{
             ec{"کورڑوبا"}
         }
         "America:Costa_Rica"{
             ec{"کوسٹا ریٖکا"}
-        }
-        "America:Creston"{
-            ec{"کریسٹن"}
         }
         "America:Cuiaba"{
             ec{"کوٗیابا"}
@@ -277,13 +259,13 @@ ks{
             ec{"کیوٗراکااو"}
         }
         "America:Danmarkshavn"{
-            ec{"ڈنمارک شاون"}
+            ec{"ڑؠنمارکشَون"}
         }
         "America:Dawson"{
-            ec{"ڈاوسن"}
+            ec{"ڑاسَن"}
         }
         "America:Dawson_Creek"{
-            ec{"ڈواسَن کریٖک"}
+            ec{"ڑاسَن کریٖک"}
         }
         "America:Denver"{
             ec{"ڈینوَر"}
@@ -295,16 +277,13 @@ ks{
             ec{"ڈومِنِکا"}
         }
         "America:Edmonton"{
-            ec{"اؠڈمَنٹَن"}
+            ec{"اؠڑمَنٹَن"}
         }
         "America:Eirunepe"{
             ec{"ایٖروٗنیپ"}
         }
         "America:El_Salvador"{
             ec{"ایل سَلویدَر"}
-        }
-        "America:Fort_Nelson"{
-            ec{"فورٹ نیلسن"}
         }
         "America:Fortaleza"{
             ec{"فورٹیلیزا"}
@@ -313,7 +292,7 @@ ks{
             ec{"گلیس خلیٖج"}
         }
         "America:Godthab"{
-            ec{"نوٗک"}
+            ec{"گعاڑتھیب"}
         }
         "America:Goose_Bay"{
             ec{"گوٗس خلیٖج"}
@@ -322,7 +301,7 @@ ks{
             ec{"گرینڈ تٔرک"}
         }
         "America:Grenada"{
-            ec{"گریناڈا"}
+            ec{"گریناڑا"}
         }
         "America:Guadeloupe"{
             ec{"گوڑلوپ"}
@@ -349,22 +328,22 @@ ks{
             ec{"نوکس"}
         }
         "America:Indiana:Marengo"{
-            ec{"میرنگو، انڈیانا"}
+            ec{"میرینگو"}
         }
         "America:Indiana:Petersburg"{
-            ec{"پِٹس بٔرگ، انڈیانا"}
+            ec{"پِٹس بٔرگ"}
         }
         "America:Indiana:Tell_City"{
-            ec{"ٹیل سِٹی، انڈیانا"}
+            ec{"ٹیل سِٹی"}
         }
         "America:Indiana:Vevay"{
-            ec{"ویویے، انڈیانا"}
+            ec{"ویویے"}
         }
         "America:Indiana:Vincennes"{
-            ec{"وِنسینیس، انڈیانا"}
+            ec{"وِنسینیس"}
         }
         "America:Indiana:Winamac"{
-            ec{"وِنیمیک، انڈیانا"}
+            ec{"وِنیمیک"}
         }
         "America:Indianapolis"{
             ec{"اِنڈیَن پولِس"}
@@ -385,10 +364,7 @@ ks{
             ec{"جوٗنی"}
         }
         "America:Kentucky:Monticello"{
-            ec{"مونٹِسیلو، کینٹوکی"}
-        }
-        "America:Kralendijk"{
-            ec{"کرالینڈِک"}
+            ec{"مونٹِسیلو"}
         }
         "America:La_Paz"{
             ec{"لا پاز"}
@@ -402,9 +378,6 @@ ks{
         "America:Louisville"{
             ec{"لوٗیِس وِل"}
         }
-        "America:Lower_Princes"{
-            ec{"لوور پرنس کوارٹر"}
-        }
         "America:Maceio"{
             ec{"میسِیوو"}
         }
@@ -414,14 +387,8 @@ ks{
         "America:Manaus"{
             ec{"مَنوس"}
         }
-        "America:Marigot"{
-            ec{"میریگوٹ"}
-        }
         "America:Martinique"{
             ec{"مارٹِنِک"}
-        }
-        "America:Matamoros"{
-            ec{"میٹاموروس"}
         }
         "America:Mazatlan"{
             ec{"مَزَٹلان"}
@@ -434,9 +401,6 @@ ks{
         }
         "America:Merida"{
             ec{"میرِڈا"}
-        }
-        "America:Metlakatla"{
-            ec{"میٹلا کاٹلا"}
         }
         "America:Mexico_City"{
             ec{"میکسِکو سِٹی"}
@@ -462,26 +426,26 @@ ks{
         "America:New_York"{
             ec{"نِو یارک"}
         }
+        "America:Nipigon"{
+            ec{"نِپِگَن"}
+        }
         "America:Nome"{
             ec{"نوم"}
         }
         "America:Noronha"{
             ec{"نورونہا"}
         }
-        "America:North_Dakota:Beulah"{
-            ec{"بیولاہ، شُمالی ڈیکوٹا"}
-        }
         "America:North_Dakota:Center"{
             ec{"مَرکزی جنوٗبی ڈکوٹا"}
         }
         "America:North_Dakota:New_Salem"{
-            ec{"نوو سیلٕم، شُمالی ڈیکوٹا"}
-        }
-        "America:Ojinaga"{
-            ec{"اوجی ناگا"}
+            ec{"نوو سیلٕم"}
         }
         "America:Panama"{
             ec{"پَناما"}
+        }
+        "America:Pangnirtung"{
+            ec{"پَنگنِرٹَنگ"}
         }
         "America:Paramaribo"{
             ec{"پَرامارِبو"}
@@ -501,14 +465,14 @@ ks{
         "America:Puerto_Rico"{
             ec{"پیٖٹو رِکو"}
         }
-        "America:Punta_Arenas"{
-            ec{"پونٹا اریناس"}
+        "America:Rainy_River"{
+            ec{"رینی رِوَر"}
         }
         "America:Rankin_Inlet"{
             ec{"رینکِن اِنلؠٹ"}
         }
         "America:Recife"{
-            ec{"ریسیف"}
+            ec{"رؠچیٖف"}
         }
         "America:Regina"{
             ec{"رؠجیٖنا"}
@@ -519,26 +483,17 @@ ks{
         "America:Rio_Branco"{
             ec{"رِیو برانکو"}
         }
-        "America:Santarem"{
-            ec{"سانتاریم"}
-        }
         "America:Santiago"{
-            ec{"سینٹیاگو"}
+            ec{"سینٹِعؠگو"}
         }
         "America:Santo_Domingo"{
             ec{"سؠنٹو ڑومِنگو"}
         }
         "America:Sao_Paulo"{
-            ec{"ساؤ پالو"}
+            ec{"ساو پعالو"}
         }
         "America:Scoresbysund"{
             ec{"سکورٕسباےسَنڑ"}
-        }
-        "America:Sitka"{
-            ec{"سِٹکا"}
-        }
-        "America:St_Barthelemy"{
-            ec{"سینٹ بارتھیلمی"}
         }
         "America:St_Johns"{
             ec{"سؠنٹ جونس"}
@@ -553,16 +508,16 @@ ks{
             ec{"سینٹ تھامَس"}
         }
         "America:St_Vincent"{
-            ec{"سینٹ وِنسینٹ"}
+            ec{"وِنسینٹ"}
         }
         "America:Swift_Current"{
             ec{"سٕوِفٹ کَرَنٹ"}
         }
-        "America:Tegucigalpa"{
-            ec{"ٹیگوسی گالپا"}
-        }
         "America:Thule"{
             ec{"تھیوٗلے"}
+        }
+        "America:Thunder_Bay"{
+            ec{"تھَنڑَر خلیٖج"}
         }
         "America:Tijuana"{
             ec{"تِجُوانا"}
@@ -584,6 +539,9 @@ ks{
         }
         "America:Yakutat"{
             ec{"یکوٗتات"}
+        }
+        "America:Yellowknife"{
+            ec{"یؠلو نایِف"}
         }
         "Antarctica:Casey"{
             ec{"کیسی"}
@@ -612,9 +570,6 @@ ks{
         "Antarctica:Vostok"{
             ec{"ووستوک"}
         }
-        "Arctic:Longyearbyen"{
-            ec{"لونگ ییئر بئین"}
-        }
         "Asia:Aden"{
             ec{"ایڈٕن"}
         }
@@ -628,16 +583,13 @@ ks{
             ec{"اَنَدیر"}
         }
         "Asia:Aqtau"{
-            ec{"اکٹو"}
+            ec{"اَکتاؤں"}
         }
         "Asia:Aqtobe"{
             ec{"اَقٹوب"}
         }
         "Asia:Ashgabat"{
             ec{"اَشگَبَت"}
-        }
-        "Asia:Atyrau"{
-            ec{"اٹیرو"}
         }
         "Asia:Baghdad"{
             ec{"بغداد"}
@@ -651,20 +603,14 @@ ks{
         "Asia:Bangkok"{
             ec{"بینگ کاک"}
         }
-        "Asia:Barnaul"{
-            ec{"برنول"}
-        }
         "Asia:Beirut"{
-            ec{"بیرٹ"}
+            ec{"بیرُت"}
         }
         "Asia:Bishkek"{
             ec{"بِشکیک"}
         }
         "Asia:Brunei"{
             ec{"بروٗنَے"}
-        }
-        "Asia:Chita"{
-            ec{"چیٹا"}
         }
         "Asia:Choibalsan"{
             ec{"چویبالسَن"}
@@ -682,22 +628,16 @@ ks{
             ec{"دِلی"}
         }
         "Asia:Dubai"{
-            ec{"دُبئی"}
+            ec{"دُبَے"}
         }
         "Asia:Dushanbe"{
             ec{"دُشانبیے"}
         }
-        "Asia:Famagusta"{
-            ec{"فاما گوسٹا"}
-        }
         "Asia:Gaza"{
-            ec{"غزہ"}
-        }
-        "Asia:Hebron"{
-            ec{"ہیبرون"}
+            ec{"غازا"}
         }
         "Asia:Hong_Kong"{
-            ec{"ہانگ کانگ"}
+            ec{"حانگ کانگ"}
         }
         "Asia:Hovd"{
             ec{"حووڑ"}
@@ -712,7 +652,7 @@ ks{
             ec{"جَیاپوٗرا"}
         }
         "Asia:Jerusalem"{
-            ec{"یروشلم"}
+            ec{"یؠروٗسَلَم"}
         }
         "Asia:Kabul"{
             ec{"قابُل"}
@@ -725,9 +665,6 @@ ks{
         }
         "Asia:Katmandu"{
             ec{"کاٹھمَنڈوٗ"}
-        }
-        "Asia:Khandyga"{
-            ec{"کھانڈیگا"}
         }
         "Asia:Krasnoyarsk"{
             ec{"کرنسنویارسک"}
@@ -742,7 +679,7 @@ ks{
             ec{"کُویت"}
         }
         "Asia:Macau"{
-            ec{"مکو"}
+            ec{"مقاؤں"}
         }
         "Asia:Magadan"{
             ec{"مَگادَن"}
@@ -754,13 +691,10 @@ ks{
             ec{"مَنیٖلا"}
         }
         "Asia:Muscat"{
-            ec{"مسقط"}
+            ec{"مَسکَت"}
         }
         "Asia:Nicosia"{
             ec{"نِکوسِیا"}
-        }
-        "Asia:Novokuznetsk"{
-            ec{"نوووکُزنیٹسک"}
         }
         "Asia:Novosibirsk"{
             ec{"نوووسِبِرسک"}
@@ -781,10 +715,7 @@ ks{
             ec{"پیونگیانگ"}
         }
         "Asia:Qatar"{
-            ec{"قطر"}
-        }
-        "Asia:Qostanay"{
-            ec{"کوسٹانے"}
+            ec{"قَتَر"}
         }
         "Asia:Qyzylorda"{
             ec{"قؠزؠلوڑا"}
@@ -793,7 +724,7 @@ ks{
             ec{"رنگوٗن"}
         }
         "Asia:Riyadh"{
-            ec{"ریاض"}
+            ec{"رِیاد"}
         }
         "Asia:Saigon"{
             ec{"سیگَن"}
@@ -805,16 +736,10 @@ ks{
             ec{"سَمَرکَند"}
         }
         "Asia:Seoul"{
-            ec{"سیول"}
-        }
-        "Asia:Shanghai"{
-            ec{"شانگے"}
+            ec{"سول"}
         }
         "Asia:Singapore"{
             ec{"سِنگاپور"}
-        }
-        "Asia:Srednekolymsk"{
-            ec{"سریڈنیکولیمسک"}
         }
         "Asia:Taipei"{
             ec{"تَیپیے"}
@@ -834,17 +759,11 @@ ks{
         "Asia:Tokyo"{
             ec{"ٹوکیو"}
         }
-        "Asia:Tomsk"{
-            ec{"ٹومسک"}
-        }
         "Asia:Ulaanbaatar"{
-            ec{"اولن باٹر"}
+            ec{"اُلانباٹَر"}
         }
         "Asia:Urumqi"{
-            ec{"اُرومقی"}
-        }
-        "Asia:Ust-Nera"{
-            ec{"اوسٹ-نیرا"}
+            ec{"اُرَمچی"}
         }
         "Asia:Vientiane"{
             ec{"وِیَنتِیین"}
@@ -883,7 +802,7 @@ ks{
             ec{"رؠکیاوِک"}
         }
         "Atlantic:South_Georgia"{
-            ec{"جنوبی جارجیا"}
+            ec{"ساوتھ جورجِیا"}
         }
         "Atlantic:St_Helena"{
             ec{"سینٹ ہیلِنا"}
@@ -899,6 +818,9 @@ ks{
         }
         "Australia:Broken_Hill"{
             ec{"بروکٕن ہِل"}
+        }
+        "Australia:Currie"{
+            ec{"کیوٗری"}
         }
         "Australia:Darwin"{
             ec{"ڈاروِن"}
@@ -924,9 +846,6 @@ ks{
         "Australia:Sydney"{
             ec{"سِڑنی"}
         }
-        "Etc:UTC"{
-            ls{"کوآرڈنیٹڈ یونیورسل وَکھ"}
-        }
         "Etc:Unknown"{
             ec{"غٲر زان"}
         }
@@ -934,22 +853,13 @@ ks{
             ec{"ایمسٹَرڈیم"}
         }
         "Europe:Andorra"{
-            ec{"اَنڈورا"}
-        }
-        "Europe:Astrakhan"{
-            ec{"ایسٹرا کھان"}
+            ec{"اَنڑورا"}
         }
         "Europe:Athens"{
             ec{"اؠتھٕنس"}
         }
-        "Europe:Belgrade"{
-            ec{"بیلگریڈ"}
-        }
         "Europe:Berlin"{
             ec{"بٔرلِن"}
-        }
-        "Europe:Bratislava"{
-            ec{"بریٹیسلاوا"}
         }
         "Europe:Brussels"{
             ec{"برسٕلس"}
@@ -958,16 +868,13 @@ ks{
             ec{"بَچاریسٹ"}
         }
         "Europe:Budapest"{
-            ec{"بُڈاپیسٹ"}
-        }
-        "Europe:Busingen"{
-            ec{"بوسِنگین"}
+            ec{"بُڑاپیسٹ"}
         }
         "Europe:Chisinau"{
             ec{"چِسیٖنو"}
         }
         "Europe:Copenhagen"{
-            ec{"کوپن ہیگن"}
+            ec{"کوپَنہیگَن"}
         }
         "Europe:Dublin"{
             ec{"ڈَبلِن"}
@@ -976,20 +883,11 @@ ks{
         "Europe:Gibraltar"{
             ec{"گِبرالٹَر"}
         }
-        "Europe:Guernsey"{
-            ec{"گویرنسے"}
-        }
         "Europe:Helsinki"{
             ec{"حؠلسِنکی"}
         }
-        "Europe:Isle_of_Man"{
-            ec{"آئل آف مین"}
-        }
         "Europe:Istanbul"{
             ec{"اِستانبُل"}
-        }
-        "Europe:Jersey"{
-            ec{"جرسی"}
         }
         "Europe:Kaliningrad"{
             ec{"کَلِناِنگرَد"}
@@ -997,14 +895,8 @@ ks{
         "Europe:Kiev"{
             ec{"کیٖو"}
         }
-        "Europe:Kirov"{
-            ec{"کیرو"}
-        }
         "Europe:Lisbon"{
             ec{"لِسبَن"}
-        }
-        "Europe:Ljubljana"{
-            ec{"لِیوٗب لِیانا"}
         }
         "Europe:London"{
             ec{"لَندَن"}
@@ -1014,13 +906,10 @@ ks{
             ec{"لَکزٕمبٔرگ"}
         }
         "Europe:Madrid"{
-            ec{"میڈریڈ"}
+            ec{"میڑرِڑ"}
         }
         "Europe:Malta"{
             ec{"مالٹا"}
-        }
-        "Europe:Mariehamn"{
-            ec{"میری ہیم"}
         }
         "Europe:Minsk"{
             ec{"مِنسک"}
@@ -1037,12 +926,6 @@ ks{
         "Europe:Paris"{
             ec{"پیرِس"}
         }
-        "Europe:Podgorica"{
-            ec{"پوڈگوریکا"}
-        }
-        "Europe:Prague"{
-            ec{"پراگ"}
-        }
         "Europe:Riga"{
             ec{"رِگا"}
         }
@@ -1052,20 +935,8 @@ ks{
         "Europe:Samara"{
             ec{"سَمارا"}
         }
-        "Europe:San_Marino"{
-            ec{"سین مرینو"}
-        }
-        "Europe:Sarajevo"{
-            ec{"سارا جیوو"}
-        }
-        "Europe:Saratov"{
-            ec{"ساراٹو"}
-        }
         "Europe:Simferopol"{
             ec{"سِمفیروپول"}
-        }
-        "Europe:Skopje"{
-            ec{"سِکوپیے"}
         }
         "Europe:Sofia"{
             ec{"سوفِیا"}
@@ -1079,14 +950,11 @@ ks{
         "Europe:Tirane"{
             ec{"ٹِرین"}
         }
-        "Europe:Ulyanovsk"{
-            ec{"اولیانووسک"}
+        "Europe:Uzhgorod"{
+            ec{"اُزگورود"}
         }
         "Europe:Vaduz"{
             ec{"وادُز"}
-        }
-        "Europe:Vatican"{
-            ec{"ویٹیکن"}
         }
         "Europe:Vienna"{
             ec{"وِیَننا"}
@@ -1100,8 +968,8 @@ ks{
         "Europe:Warsaw"{
             ec{"وارسا"}
         }
-        "Europe:Zagreb"{
-            ec{"زگریب"}
+        "Europe:Zaporozhye"{
+            ec{"زَپوروزَے"}
         }
         "Europe:Zurich"{
             ec{"زیوٗرِک"}
@@ -1180,6 +1048,9 @@ ks{
         }
         "Pacific:Honolulu"{
             ec{"ہونولو لو"}
+        }
+        "Pacific:Johnston"{
+            ec{"جانسٹَن"}
         }
         "Pacific:Kiritimati"{
             ec{"کِرِتِماتی"}
@@ -1270,7 +1141,7 @@ ks{
         "meta:Africa_Western"{
             ld{"مغربی افریٖقا سَمَر ٹایِم"}
             lg{"مغربی افریٖقا ٹایِم"}
-            ls{"مغربی افریٖقا سٹینڈرڈ ٹایِم"}
+            ls{"مغربی افریٖقا سٹینڑاڑ ٹایِم"}
         }
         "meta:Alaska"{
             ld{"اؠلاسکا ڈےلایِٔٹ ٹایِم"}
@@ -1325,7 +1196,7 @@ ks{
         "meta:Arabian"{
             ld{"ارؠبِیَن ڈےلایِٔٹ ٹایِم"}
             lg{"ارؠبِیَن ٹایِم"}
-            ls{"ارؠبِیَن سٹینڈرڈ ٹایِم"}
+            ls{"ارؠبِیَن سٹینڑاڑ ٹایِم"}
         }
         "meta:Argentina"{
             ld{"ارجؠنٹیٖنا سَمَر ٹایِم"}
@@ -1340,7 +1211,7 @@ ks{
         "meta:Armenia"{
             ld{"ارمیٖنِیا سَمَر ٹایِم"}
             lg{"ارمیٖنِیا ٹایِم"}
-            ls{"ارمیٖنِیا سٹینڈرڈ ٹایِم"}
+            ls{"ارمیٖنِیا سٹینڑاڑ ٹایِم"}
         }
         "meta:Atlantic"{
             ld{"اؠٹلانٹِک ڈےلایِٔٹ ٹایِم"}
@@ -1368,12 +1239,12 @@ ks{
             ls{"آسٹریلِیَن مغرِبی سٹینڑاڑ ٹایِم"}
         }
         "meta:Azerbaijan"{
-            ld{"ازربائیجان سَمَر ٹائم"}
-            lg{"ازربائیجان ٹائم"}
-            ls{"ازربائیجان سٹینڈرڈ ٹائم"}
+            ld{"اَزَربیجان سَمَر ٹایِم"}
+            lg{"اَزَربیجان ٹایِم"}
+            ls{"اَزَربیجان سٹینڑاڑ ٹایِم"}
         }
         "meta:Azores"{
-            ld{"اؠزورٕس سَمَر ٹائم"}
+            ld{"اؠزورٕس سَمَر ٹ"}
             lg{"اؠزورٕس ٹایِم"}
             ls{"اؠزورٕس سٹینڑاڑ ٹایِم"}
         }
@@ -1399,7 +1270,7 @@ ks{
         "meta:Cape_Verde"{
             ld{"کیپ سَمَر ٹایِم"}
             lg{"کیپ ؤرڑو ٹایِم"}
-            ls{"کیپ ؤرڑو سٹینڈرڈ ٹایِم"}
+            ls{"کیپ ؤرڑو سٹینڑاڑ ٹایِم"}
         }
         "meta:Chamorro"{
             ls{"کؠمورو سٹینڑاڑ ٹایِم"}
@@ -1417,12 +1288,12 @@ ks{
         "meta:China"{
             ld{"چَینا ڈےلایِٔٹ ٹایِم"}
             lg{"چَینا ٹایِم"}
-            ls{"چَینا سٹینڈرڈ ٹایِم"}
+            ls{"چَینا سٹینڑاڑ ٹایِم"}
         }
         "meta:Choibalsan"{
             ld{"کوےبؠلسَن سَمَر ٹایِم"}
             lg{"کوےبؠلسَن ٹایِم"}
-            ls{"کوےبؠلسَن سٹینڈرڈ ٹایِم"}
+            ls{"کوےبؠلسَن سٹینڑاڑ ٹایِم"}
         }
         "meta:Christmas"{
             ls{"کرسمَس ٹایِم"}
@@ -1455,9 +1326,9 @@ ks{
             ls{"ایٖسٹ ٹیٖمَر ٹایِم"}
         }
         "meta:Easter"{
-            ld{"ایٖسٹَر جزیرٕ سَمَر ٹایِم"}
-            lg{"ایٖسٹَر جزیرٕ ٹایِم"}
-            ls{"ایٖسٹَر جزیرٕ سٹینڈرڈ ٹایِم"}
+            ld{"ایٖسٹَر سَمَر ٹایِم"}
+            lg{"ایٖسٹَر ٹایِم"}
+            ls{"ایٖسٹَر سٹینڑاڑ ٹایِم"}
         }
         "meta:Ecuador"{
             ls{"اِکویڑَر ٹایِم"}
@@ -1472,18 +1343,15 @@ ks{
             lg{"مشرقی یوٗرپی ٹایِم"}
             ls{"مشرقی یوٗرپی سٹینڑاڑ ٹایِم"}
         }
-        "meta:Europe_Further_Eastern"{
-            ls{"مزید مشرقی یورپی ٹائم"}
-        }
         "meta:Europe_Western"{
             ld{"مغرِبی یوٗرِپی سَمَر ٹایِم"}
             lg{"مغرِبی یوٗرپی ٹایِم"}
-            ls{"مغرِبی یوٗرپی سٹینڈرڈ ٹایِم"}
+            ls{"مغرِبی یوٗرپی سٹینڑاڑ ٹایِم"}
         }
         "meta:Falkland"{
-            ld{"فالک لینڈ جزیرٕ سَمَر ٹائم"}
-            lg{"فالک لینڈ جزیرٕ ٹائم"}
-            ls{"فالک لینڈ جزیرٕ سٹینڈرڈ ٹائم"}
+            ld{"فاکلینڑ سَمَر ٹایِم"}
+            lg{"فاکلینڑ ٹایِم"}
+            ls{"فاکلینڑ سٹینڑاڑ ٹایِم"}
         }
         "meta:Fiji"{
             ld{"فیٖجی سَمَر ٹایِم"}
@@ -1494,7 +1362,7 @@ ks{
             ls{"فرؠنچ گیوٗؠنا ٹایِم"}
         }
         "meta:French_Southern"{
-            ls{"فرینچ جنوبی تٕہ انٹارکٹِک ٹائم"}
+            ls{"جنوٗبی فرؠنچ ٹایِم"}
         }
         "meta:GMT"{
             ls{"گریٖن وِچ میٖن ٹایِم"}
@@ -1508,26 +1376,26 @@ ks{
         "meta:Georgia"{
             ld{"جورجِیاہُک سَمَر ٹایِم"}
             lg{"جورجِیاہُک ٹایِم"}
-            ls{"جورجِیاہُک سٹینڈرڈ ٹایِم"}
+            ls{"جورجِیاہُک سٹینڑاڑ ٹایِم"}
         }
         "meta:Gilbert_Islands"{
             ls{"گِلبٲٹ ججیٖرُک ٹایِم"}
         }
         "meta:Greenland_Eastern"{
-            ld{"مشرِقی گریٖن لینڈُک سَمَر ٹایِم"}
-            lg{"مشرِقی گریٖن لینڈُک ٹایِم"}
-            ls{"مشرِقی گریٖن لینڈُک سٹینڑاڑ ٹایِم"}
+            ld{"مشرِقی گریٖن لینڑُک سَمَر ٹایِم"}
+            lg{"مشرِقی گریٖن لینڑُک ٹایِم"}
+            ls{"مشرِقی گریٖن لینڑُک سٹینڑاڑ ٹایِم"}
         }
         "meta:Greenland_Western"{
-            ld{"مغرِبی گریٖن لینڈُک سَمَر ٹایِم"}
-            lg{"مغرِبی گریٖن لینڈُک ٹایِم"}
-            ls{"مغرِبی گریٖن لینڈُک سٹینڑاڑ ٹایِم"}
+            ld{"مغرِبی گریٖن لینڑُک سَمَر ٹایِم"}
+            lg{"مغرِبی گریٖن لینڑُک ٹایِم"}
+            ls{"مغرِبی گریٖن لینڑُک سٹینڑاڑ ٹایِم"}
         }
         "meta:Guam"{
             ls{"گُوؠم ٹایِم"}
         }
         "meta:Gulf"{
-            ls{"گَلف سٹینڈرڈ ٹایِم"}
+            ls{"گَلف سٹینڑاڑ ٹایِم"}
         }
         "meta:Guyana"{
             ls{"گُیَنا ٹایِم"}
@@ -1538,20 +1406,20 @@ ks{
             ls{"حَواے اؠلیوٗٹِیَن سٹینڑاڑ ٹایِم"}
         }
         "meta:Hong_Kong"{
-            ld{"ہانگ کانگ سَمر ٹائم"}
-            lg{"ہانگ کانگ ٹائم"}
-            ls{"ہانگ کانگ سٹینڈرڈ ٹائم"}
+            ld{"حانگ کانگ سَمَر ٹایِم"}
+            lg{"حانگ کانگ ٹایِم"}
+            ls{"حانگ کانگ سٹینڑاڑ ٹایِم"}
         }
         "meta:Hovd"{
             ld{"حووڑ سَمَر ٹایِم"}
             lg{"حووڑ ٹایِم"}
-            ls{"حووڑ سٹینڈرڈ ٹایِم"}
+            ls{"حووڑ سٹینڑاڑ ٹایِم"}
         }
         "meta:India"{
             ls{"ہِندوستان"}
         }
         "meta:Indian_Ocean"{
-            ls{"ہِندوستٲنؠ اوشَن ٹائم"}
+            ls{"ہِندوستٲنۍ اوشَن ٹایِن"}
         }
         "meta:Indochina"{
             ls{"اِنڑوچَینا ٹایِم"}
@@ -1567,23 +1435,23 @@ ks{
         }
         "meta:Iran"{
             ld{"اِیٖرٲنی سَمَر ٹایِم"}
-            lg{"اِیٖرٲنؠ ٹایِم"}
-            ls{"اِیٖرٲنؠ سٹینڑاڑ ٹایِم"}
+            lg{"اِیٖرٲنۍ ٹایِم"}
+            ls{"اِیٖرٲنۍ سٹینڑاڑ ٹایِم"}
         }
         "meta:Irkutsk"{
             ld{"اِرکُٹسک سَمَر ٹایِم"}
             lg{"اِرکُٹسک ٹایِم"}
-            ls{"اِرکُٹسک سٹینڈرڈ ٹایِم"}
+            ls{"اِرکُٹسک سٹینڑاڑ ٹایِم"}
         }
         "meta:Israel"{
             ld{"اِسرٲیِلی ڑےلایِٔٹ ٹایِم"}
             lg{"اِسرٲیِلی ٹایِم"}
-            ls{"اِسرٲیِلی سٹینڈرڈ ٹایِم"}
+            ls{"اِسرٲیِلی سٹینڑاڑ ٹایِم"}
         }
         "meta:Japan"{
-            ld{"جاپٲنؠ ڑےلایِٔٹ ٹایِم"}
-            lg{"جاپٲنؠ ٹایِم"}
-            ls{"جاپٲنؠ سٹینڈرڈ ٹایِم"}
+            ld{"جاپٲنۍ ڑےلایِٔٹ ٹایِم"}
+            lg{"جاپٲنۍ ٹایِم"}
+            ls{"جاپٲنۍ سٹینڑاڑ ٹایِم"}
         }
         "meta:Kamchatka"{
             ld{"کَمچَٹکا سَمَر ٹایِم"}
@@ -1591,15 +1459,15 @@ ks{
             ls{"کَمچَٹکا سٹینڑاڑ ٹایِم"}
         }
         "meta:Kazakhstan_Eastern"{
-            ls{"مشرقی قازقستان ٹائم"}
+            ls{"مشرِقی کَزاکھِستان ٹایِم"}
         }
         "meta:Kazakhstan_Western"{
-            ls{"مغربی قازقستان ٹائم"}
+            ls{"مغرِبی کَزاکھِستان ٹایِم"}
         }
         "meta:Korea"{
             ld{"کورِیا ڑےلایِٔٹ ٹایِم"}
             lg{"کورِیا ٹایِم"}
-            ls{"کورِیا سٹینڈرڈ ٹایِم"}
+            ls{"کورِیا سٹینڑاڑ ٹایِم"}
         }
         "meta:Kosrae"{
             ls{"کورسَے ٹایِم"}
@@ -1607,10 +1475,10 @@ ks{
         "meta:Krasnoyarsk"{
             ld{"کرؠسنوےیارسک سَمَر ٹایِم"}
             lg{"کرؠسنوےیارسک ٹایِم"}
-            ls{"کرؠسنوےیارسک سٹینڈرڈ ٹایِم"}
+            ls{"کرؠسنوےیارسک سٹینڑاڑ ٹایِم"}
         }
         "meta:Kyrgystan"{
-            ls{"کرغزستان ٹائم"}
+            ls{"کِرگِستان ٹایِم"}
         }
         "meta:Lanka"{
             ls{"لَنکا ٹایِم"}
@@ -1631,7 +1499,7 @@ ks{
         "meta:Magadan"{
             ld{"مَگَدَن سَمَر ٹایِم"}
             lg{"مَگَدَن ٹایِم"}
-            ls{"مَگَدَن سٹینڈرڈ ٹایِم"}
+            ls{"مَگَدَن سٹینڑاڑ ٹایِم"}
         }
         "meta:Malaysia"{
             ls{"مَلیشِیا ٹایِم"}
@@ -1648,25 +1516,20 @@ ks{
         "meta:Mauritius"{
             ld{"مورِشَس سَمَر ٹایِم"}
             lg{"مورِشَس ٹایِم"}
-            ls{"مورِشَس سٹینڈرڈ ٹایِم"}
+            ls{"مورِشَس سٹینڑاڑ ٹایِم"}
         }
         "meta:Mawson"{
             ls{"ماسَن ٹایِم"}
         }
-        "meta:Mexico_Pacific"{
-            ld{"میکسیکن پیسیفک ڈے لائٹ ٹائم"}
-            lg{"میکسیکن پیسیفک ٹائم"}
-            ls{"میکسیکن پیسیفک سٹینڈرڈ ٹائم"}
-        }
         "meta:Mongolia"{
-            ld{"اولن باٹر سَمَر ٹایِم"}
-            lg{"اولن باٹر ٹائم"}
-            ls{"اولن باٹر سٹینڈرڈ ٹائم"}
+            ld{"مونگولِیا سَمَر ٹایِم"}
+            lg{"مونگولِیا ٹایِم"}
+            ls{"مونگولِیا سٹینڑاڑ ٹایِم"}
         }
         "meta:Moscow"{
             ld{"ماسکو سَمَر ٹایِم"}
             lg{"ماسکَو ٹایِم"}
-            ls{"ماسکو سٹینڈرڈ ٹایِم"}
+            ls{"ماسکو سٹینڑاڑ ٹایِم"}
         }
         "meta:Myanmar"{
             ls{"مِیانمَر ٹایِم"}
@@ -1675,7 +1538,7 @@ ks{
             ls{"نَعوٗروٗ ٹایِم"}
         }
         "meta:Nepal"{
-            ls{"نؠپٲلؠ ٹایِم"}
+            ls{"نؠپٲلۍ ٹایِم"}
         }
         "meta:New_Caledonia"{
             ld{"نِو کیلؠڑونِیس سَمَر ٹایِم"}
@@ -1688,22 +1551,20 @@ ks{
             ls{"نِوزِلینڑ سٹینڑاڑ ٹایِم"}
         }
         "meta:Newfoundland"{
-            ld{"نیو فاؤنڈ لینڈ ڈے لائٹ ٹائم"}
-            lg{"نیو فاؤنڈ لینڈ ٹائم"}
-            ls{"نیو فاؤنڈ لینڈ سٹینڈرڈ ٹائم"}
+            ld{"نیوٗ فاونڑ لینڑ ڑےلایِٔٹ ٹایِم"}
+            lg{"نیوٗ فاونڑلینڑ ٹایِم"}
+            ls{"نیوٗ فاونڑلینڑ سٹینڑاڑ ٹایِم"}
         }
         "meta:Niue"{
             ls{"نِیوٗ ٹایِم"}
         }
         "meta:Norfolk"{
-            ld{"نورفعاک سَمَر ٹایِم"}
-            lg{"نورفعاک ٹایِم"}
-            ls{"نورفعاک سٹینڑاڑ ٹایِم"}
+            ls{"نورفعاک ٹایِم"}
         }
         "meta:Noronha"{
-            ld{"فرنینڈو ڈی نورونہا سَمَر ٹائم"}
-            lg{"فرنینڈو ڈی نورونہا ٹائم"}
-            ls{"فرنینڈو ڈی نورونہا سٹینڈرڈ ٹائم"}
+            ld{"نورونہا سَمَر ٹایِم"}
+            lg{"نورونہا ٹایِم"}
+            ls{"نورونہا سٹینڑاڑ ٹایِم"}
         }
         "meta:North_Mariana"{
             ls{"شُمٲلی مَرِیانا ٹایِم"}
@@ -1711,12 +1572,12 @@ ks{
         "meta:Novosibirsk"{
             ld{"نۄوۄسِبٔرسک سَمَر ٹایِم"}
             lg{"نۄوۄسِبٔرسک ٹایِم"}
-            ls{"نۄوۄسِبٔرسک سٹینڈرڈ ٹایِم"}
+            ls{"نۄوۄسِبٔرسک سٹینڑاڑ ٹایِم"}
         }
         "meta:Omsk"{
             ld{"اۄمسک سَمَر ٹایِم"}
             lg{"اۄمسک ٹایِم"}
-            ls{"اۄمسک سٹینڈرڈ ٹایِم"}
+            ls{"اۄمسک سٹینڑاڑ ٹایِم"}
         }
         "meta:Pakistan"{
             ld{"پاکِستان سَمَر ٹایِم"}
@@ -1732,12 +1593,12 @@ ks{
         "meta:Paraguay"{
             ld{"پیرؠگوے سَمَر ٹایِم"}
             lg{"پیرؠگوے ٹایِم"}
-            ls{"پیرؠگوے سٹینڈرڈ ٹایِم"}
+            ls{"پیرؠگوے سٹینڑاڑ ٹایِم"}
         }
         "meta:Peru"{
             ld{"پٔروٗ سَمَر ٹایِم"}
             lg{"پٔروٗ ٹایِم"}
-            ls{"پٔروٗ سٹینڈرڈ ٹایِم"}
+            ls{"پٔروٗ سٹینڑاڑ ٹایِم"}
         }
         "meta:Philippines"{
             ld{"پھِلِپایِن سَمَر ٹایِم"}
@@ -1758,9 +1619,6 @@ ks{
         "meta:Ponape"{
             ls{"پونیپ ٹایِم"}
         }
-        "meta:Pyongyang"{
-            ls{"یونگ یانگ ٹائم"}
-        }
         "meta:Qyzylorda"{
             ld{"قِزلوڑا سَمَر ٹایِم"}
             lg{"قِزلوڑا ٹایِم"}
@@ -1775,7 +1633,7 @@ ks{
         "meta:Sakhalin"{
             ld{"سَکھؠلِن سَمَر ٹایِم"}
             lg{"سَکھؠلِن ٹایِم"}
-            ls{"سَکھؠلِن سٹینڈرڈ ٹایِم"}
+            ls{"سَکھؠلِن سٹینڑاڑ ٹایِم"}
         }
         "meta:Samara"{
             ld{"سمؠرا سَمَر ٹایِم"}
@@ -1808,13 +1666,8 @@ ks{
         "meta:Tahiti"{
             ls{"ٹاہِٹی ٹایِم"}
         }
-        "meta:Taipei"{
-            ld{"ٹے پے ڈے لائٹ ٹائم"}
-            lg{"ٹے پے ٹائم"}
-            ls{"ٹے پے سٹینڈرڈ ٹائم"}
-        }
         "meta:Tajikistan"{
-            ls{"تاجکستان ٹائم"}
+            ls{"تازِکِستان ٹایِم"}
         }
         "meta:Tokelau"{
             ls{"ٹوکؠلو ٹایِم"}
@@ -1829,8 +1682,8 @@ ks{
         }
         "meta:Turkmenistan"{
             ld{"تُرکمؠنِستان سَمَر ٹایِم"}
-            lg{"ترکمانستان ٹائم"}
-            ls{"ترکمانستان سٹینڈرڈ ٹائم"}
+            lg{"تُرکمؠنِستان ٹایِم"}
+            ls{"تُرکمؠنِستان سٹینڑاڑ ٹایِم"}
         }
         "meta:Tuvalu"{
             ls{"ٹوٗوَلوٗ ٹایِم"}
@@ -1838,12 +1691,12 @@ ks{
         "meta:Uruguay"{
             ld{"یوٗرؠگوَے سَمَر ٹایِم"}
             lg{"یوٗرؠگوَے ٹایِم"}
-            ls{"یوٗرؠگوَے سٹینڈرڈ ٹایِم"}
+            ls{"یوٗرؠگوَے سٹینڑاڑ ٹایِم"}
         }
         "meta:Uzbekistan"{
             ld{"اُزبیکِستانُک سَمَر ٹایِم"}
             lg{"اُزبیکِستان ٹایِم"}
-            ls{"اُزبیکِستان سٹینڈرڈ ٹایِم"}
+            ls{"اُزبیکِستان سٹینڑاڑ ٹایِم"}
         }
         "meta:Vanuatu"{
             ld{"وَنوٗاَٹوٗ سَمَر ٹایِم"}
@@ -1856,12 +1709,12 @@ ks{
         "meta:Vladivostok"{
             ld{"ولاڑِووسٹوک سَمَر ٹایِم"}
             lg{"ولاڑِووسٹوک ٹایِم"}
-            ls{"ولاڑِووسٹوک سٹینڈرڈ ٹایِم"}
+            ls{"ولاڑِووسٹوک سٹینڑاڑ ٹایِم"}
         }
         "meta:Volgograd"{
             ld{"وولگوگریڑ سَمَر ٹایِم"}
             lg{"وولگوگریڑ ٹایِم"}
-            ls{"وولگوگریڑ سٹینڈرڈ ٹایِم"}
+            ls{"وولگوگریڑ سٹینڑاڑ ٹایِم"}
         }
         "meta:Vostok"{
             ls{"ووسٹوک ٹایِم"}
@@ -1875,19 +1728,14 @@ ks{
         "meta:Yakutsk"{
             ld{"یَکُٹُسک سَمَر ٹایِم"}
             lg{"یَکُٹسک ٹایِم"}
-            ls{"یَکُٹسک سٹینڈرڈ ٹایِم"}
+            ls{"یَکُٹسک سٹینڑاڑ ٹایِم"}
         }
         "meta:Yekaterinburg"{
             ld{"یؠکَٹرِنبٔرگ سَمَر ٹایِم"}
             lg{"یؠکَٹٔرِنبٔرگ ٹایِم"}
-            ls{"یؠکَٹٔرِنبٔرگ سٹینڈرڈ ٹایِم"}
+            ls{"یؠکَٹٔرِنبٔرگ سٹینڑاڑ ٹایِم"}
         }
-        "meta:Yukon"{
-            ls{"یوکون ٹائم"}
-        }
-        gmtZeroFormat{"جی ایم ٹی"}
-        regionFormat{"{0} وَکھ"}
-        regionFormatDaylight{"{0} ڈے لائٹ وَکھ"}
-        regionFormatStandard{"{0} معیٲری وَکھ"}
+        gmtFormat{"GMT{0}"}
+        hourFormat{"+HH:mm;-HH:mm"}
     }
 }

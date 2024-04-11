@@ -1,8 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 fr_MA{
-    ExemplarCharactersNumbers{"[\\- ‑ , . % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
+    ExemplarCharactersNumbers{"[\\- , . % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
     NumberElements{
         latn{
             symbols{
@@ -10,6 +9,7 @@ fr_MA{
             }
         }
     }
+    Version{"2.1.47.70"}
     calendar{
         gregorian{
             AmPmMarkers{
@@ -18,6 +18,22 @@ fr_MA{
             }
             monthNames{
                 format{
+                    abbreviated{
+                        "jan.",
+                        "fév.",
+                        "mar.",
+                        "avr.",
+                        "mai",
+                        "jui.",
+                        "juil.",
+                        "août",
+                        "sept.",
+                        "oct.",
+                        "nov.",
+                        "déc.",
+                    }
+                }
+                stand-alone{
                     abbreviated{
                         "jan.",
                         "fév.",

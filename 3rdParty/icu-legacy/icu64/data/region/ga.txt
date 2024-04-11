@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ga{
     Countries{
         001{"an Domhan"}
@@ -19,7 +18,7 @@ ga{
         029{"an Mhuir Chairib"}
         030{"Oirthear na hÁise"}
         034{"Deisceart na hÁise"}
-        035{"an Áise Thoir Theas"}
+        035{"Oirdheisceart na hÁise"}
         039{"Deisceart na hEorpa"}
         053{"an Astraláise"}
         054{"an Mheilinéis"}
@@ -43,7 +42,7 @@ ga{
         AL{"an Albáin"}
         AM{"an Airméin"}
         AO{"Angóla"}
-        AQ{"Antartaice"}
+        AQ{"an Antartaice"}
         AR{"an Airgintín"}
         AS{"Samó Mheiriceá"}
         AT{"an Ostair"}
@@ -76,9 +75,9 @@ ga{
         CC{"Oileáin Cocos (Keeling)"}
         CD{"Poblacht Dhaonlathach an Chongó"}
         CF{"Poblacht na hAfraice Láir"}
-        CG{"Congó-Brazzaville"}
+        CG{"an Congó"}
         CH{"an Eilvéis"}
-        CI{"An Cósta Eabhair"}
+        CI{"an Cósta Eabhair"}
         CK{"Oileáin Cook"}
         CL{"an tSile"}
         CM{"Camarún"}
@@ -88,7 +87,7 @@ ga{
         CR{"Cósta Ríce"}
         CU{"Cúba"}
         CV{"Rinn Verde"}
-        CW{"Cúrasó"}
+        CW{"Curaçao"}
         CX{"Oileán na Nollag"}
         CY{"an Chipir"}
         CZ{"an tSeicia"}
@@ -98,12 +97,12 @@ ga{
         DK{"an Danmhairg"}
         DM{"Doiminice"}
         DO{"an Phoblacht Dhoiminiceach"}
-        DZ{"An Ailgéir"}
+        DZ{"an Ailgéir"}
         EA{"Ceuta agus Melilla"}
         EC{"Eacuadór"}
         EE{"an Eastóin"}
-        EG{"An Éigipt"}
-        EH{"An Sahára Thiar"}
+        EG{"an Éigipt"}
+        EH{"an Sahára Thiar"}
         ER{"an Eiritré"}
         ES{"an Spáinn"}
         ET{"an Aetóip"}
@@ -124,23 +123,23 @@ ga{
         GH{"Gána"}
         GI{"Giobráltar"}
         GL{"an Ghraonlainn"}
-        GM{"An Ghaimbia"}
-        GN{"An Ghuine"}
+        GM{"an Ghaimbia"}
+        GN{"an Ghuine"}
         GP{"Guadalúip"}
         GQ{"an Ghuine Mheánchiorclach"}
         GR{"an Ghréig"}
-        GS{"An tSeoirsia Theas agus Oileáin Sandwich Theas"}
+        GS{"an tSeoirsia Theas agus Oileáin Sandwich Theas"}
         GT{"Guatamala"}
         GU{"Guam"}
         GW{"Guine Bissau"}
-        GY{"An Ghuáin"}
-        HK{"Sainréigiún Riaracháin Hong Cong, Daonphoblacht na Síne"}
+        GY{"an Ghuáin"}
+        HK{"S.R.R. na Síne Hong Cong"}
         HM{"Oileán Heard agus Oileáin McDonald"}
         HN{"Hondúras"}
         HR{"an Chróit"}
         HT{"Háítí"}
         HU{"an Ungáir"}
-        IC{"Na hOileáin Chanáracha"}
+        IC{"na hOileáin Chanáracha"}
         ID{"an Indinéis"}
         IE{"Éire"}
         IL{"Iosrael"}
@@ -158,7 +157,7 @@ ga{
         KE{"an Chéinia"}
         KG{"an Chirgeastáin"}
         KH{"an Chambóid"}
-        KI{"Ciribeas"}
+        KI{"Cireabaití"}
         KM{"Oileáin Chomóra"}
         KN{"San Críostóir-Nimheas"}
         KP{"an Chóiré Thuaidh"}
@@ -171,12 +170,12 @@ ga{
         LC{"Saint Lucia"}
         LI{"Lichtinstéin"}
         LK{"Srí Lanca"}
-        LR{"An Libéir"}
+        LR{"an Libéir"}
         LS{"Leosóta"}
         LT{"an Liotuáin"}
         LU{"Lucsamburg"}
         LV{"an Laitvia"}
-        LY{"An Libia"}
+        LY{"an Libia"}
         MA{"Maracó"}
         MC{"Monacó"}
         MD{"an Mholdóiv"}
@@ -188,10 +187,10 @@ ga{
         ML{"Mailí"}
         MM{"Maenmar (Burma)"}
         MN{"an Mhongóil"}
-        MO{"Sainréigiún Riaracháin Macao, Daonphoblacht na Síne"}
-        MP{"Na hOileáin Mháirianacha Thuaidh"}
+        MO{"S.R.R. na Síne Macao"}
+        MP{"na hOileáin Mháirianacha Thuaidh"}
         MQ{"Martinique"}
-        MR{"An Mháratái"}
+        MR{"an Mháratáin"}
         MS{"Montsarat"}
         MT{"Málta"}
         MU{"Oileán Mhuirís"}
@@ -202,9 +201,9 @@ ga{
         MZ{"Mósaimbíc"}
         NA{"an Namaib"}
         NC{"an Nua-Chaladóin"}
-        NE{"An Nígir"}
+        NE{"an Nígir"}
         NF{"Oileán Norfolk"}
-        NG{"An Nigéir"}
+        NG{"an Nigéir"}
         NI{"Nicearagua"}
         NL{"an Ísiltír"}
         NO{"an Iorua"}
@@ -217,7 +216,7 @@ ga{
         PE{"Peiriú"}
         PF{"Polainéis na Fraince"}
         PG{"Nua-Ghuine Phapua"}
-        PH{"Na hOileáin Fhilipíneacha"}
+        PH{"na hOileáin Fhilipíneacha"}
         PK{"an Phacastáin"}
         PL{"an Pholainn"}
         PM{"San Pierre agus Miquelon"}
@@ -229,15 +228,15 @@ ga{
         PY{"Paragua"}
         QA{"Catar"}
         QO{"an Aigéine Imeallach"}
-        RE{"La Réunion"}
+        RE{"Réunion"}
         RO{"an Rómáin"}
         RS{"an tSeirbia"}
         RU{"an Rúis"}
         RW{"Ruanda"}
         SA{"an Araib Shádach"}
-        SB{"Oileáin Sholaimh"}
+        SB{"Oileáin Sholomón"}
         SC{"na Séiséil"}
-        SD{"An tSúdáin"}
+        SD{"an tSúdáin"}
         SE{"an tSualainn"}
         SG{"Singeapór"}
         SH{"San Héilin"}
@@ -246,15 +245,15 @@ ga{
         SK{"an tSlóvaic"}
         SL{"Siarra Leon"}
         SM{"San Mairíne"}
-        SN{"An tSeineagáil"}
+        SN{"an tSeineagáil"}
         SO{"an tSomáil"}
         SR{"Suranam"}
         SS{"an tSúdáin Theas"}
         ST{"São Tomé agus Príncipe"}
-        SV{"An tSalvadóir"}
+        SV{"an tSalvadóir"}
         SX{"Sint Maarten"}
         SY{"an tSiria"}
-        SZ{"eSuaitíní"}
+        SZ{"an tSuasalainn"}
         TA{"Tristan da Cunha"}
         TC{"Oileáin na dTurcach agus Caicos"}
         TD{"Sead"}
@@ -265,17 +264,17 @@ ga{
         TK{"Tócalá"}
         TL{"Tíomór Thoir"}
         TM{"an Tuircméanastáin"}
-        TN{"An Tuinéis"}
+        TN{"an Túinéis"}
         TO{"Tonga"}
         TR{"an Tuirc"}
         TT{"Oileán na Tríonóide agus Tobága"}
-        TV{"Túvalú"}
+        TV{"Tuvalu"}
         TW{"an Téaváin"}
         TZ{"an Tansáin"}
         UA{"an Úcráin"}
         UG{"Uganda"}
         UM{"Oileáin Imeallacha S.A.M."}
-        UN{"na Náisiúin Aontaithe"}
+        UN{"na Náisiúin Aontaiteh"}
         US{"Stáit Aontaithe Mheiriceá"}
         UY{"Uragua"}
         UZ{"an Úisbéiceastáin"}
@@ -288,8 +287,8 @@ ga{
         VU{"Vanuatú"}
         WF{"Vailís agus Futúna"}
         WS{"Samó"}
-        XA{"Bréagaicinn"}
-        XB{"Bréag-Bidi"}
+        XA{"XA"}
+        XB{"XB"}
         XK{"an Chosaiv"}
         YE{"Éimin"}
         YT{"Mayotte"}
@@ -299,6 +298,7 @@ ga{
         ZZ{"Réigiún Anaithnid"}
     }
     Countries%short{
+        GB{"RA"}
         HK{"Hong Cong"}
         MO{"Macao"}
         PS{"an Phalaistín"}
@@ -307,10 +307,12 @@ ga{
     }
     Countries%variant{
         CD{"an Congó (PDC)"}
-        CG{"Poblacht an Chongó"}
-        CI{"an Cósta Eabhair"}
+        CG{"an Congó (Poblacht)"}
+        CI{"Côte d’Ivoire"}
         CZ{"Poblacht na Seice"}
         FK{"Oileáin Fháclainne (Islas Malvinas)"}
-        SZ{"an tSuasalainn"}
+        SZ{"Ríocht na Suasalainne"}
+        TL{"TL"}
     }
+    Version{"2.1.49.82"}
 }

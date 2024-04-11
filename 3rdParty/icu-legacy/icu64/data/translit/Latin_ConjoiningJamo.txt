@@ -1,6 +1,5 @@
 ﻿# © 2016 and later: Unicode, Inc. and others.
-# License & terms of use: http://www.unicode.org/copyright.html
-# Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+# License & terms of use: http://www.unicode.org/copyright.html#License
 #
 # File: Latin_ConjoiningJamo.txt
 # Generated from CLDR
@@ -49,7 +48,7 @@
 #    after it. Continue with the rest of the consonants.
 # -- If there is one consonant, attach to the following vowel
 # -- If there are two consonants and a following vowel, attach one to the
-#    preceding vowel, and one to the following vowel.
+#    preceeding vowel, and one to the following vowel.
 # -- If there are more than two consonants, join the first two together if you
 #    can: L + G =→ LG
 # -- If you still end up with more than 2 consonants, insert EU after the

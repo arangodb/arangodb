@@ -438,7 +438,7 @@ calendar:table(nofallback) {
                     "MILLIS=-180799750799999",
                     "add",
                     "YEAR=100000", // year + 100000
-                    "MILLIS=2974932601622001",
+                    "MILLIS=2974930006022001",
                },
             }
         }	          

@@ -17,7 +17,6 @@
 #include "cintltst.h"
 #include "cmemory.h"
 
-#include <stdbool.h>
 #include <stdlib.h>
 #include <time.h>
 
@@ -45,15 +44,15 @@ static uint64_t randomInt64(void)
 {
     int64_t ran = 0;
     int32_t i;
-    static UBool initialized = false;
+    static UBool initialized = FALSE;
 
     if (!initialized) {
         srand((unsigned)time(NULL));
-        initialized = true;
+        initialized = TRUE;
     }
 
     /* Assume rand has at least 12 bits of precision */
-    for (i = 0; i < (int32_t)sizeof(ran); i += 1) {
+    for (i = 0; i < sizeof(ran); i += 1) {
         ((char*)&ran)[i] = (char)((rand() & 0x0FF0) >> 4);
     }
 
@@ -443,7 +442,7 @@ static const DotNetDateTimeTicks dotNetDateTimeTicks[]={
  * any date that we test, that is, before 0001 AD.
  */
 static void
-TestDotNet(void) {
+TestDotNet() {
     static const UChar utc[] = { 0x45, 0x74, 0x63, 0x2f, 0x47, 0x4d, 0x54, 0 }; /* "Etc/GMT" */
     const int32_t dayMillis = 86400 * INT64_C(1000);    /* 1 day = 86400 seconds */
     const int64_t dayTicks = 86400 * INT64_C(10000000);

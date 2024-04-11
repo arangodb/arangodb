@@ -14,7 +14,6 @@
 #include "unicode/errorcode.h"
 #include "unicode/normlzr.h"
 #include "unicode/stringoptions.h"
-#include "unicode/stringpiece.h"
 #include "unicode/uniset.h"
 #include "unicode/usetiter.h"
 #include "unicode/schriter.h"
@@ -55,14 +54,12 @@ void BasicNormalizerTest::runIndexedTest(int32_t index, UBool exec,
     TESTCASE_AUTO(TestCustomFCC);
 #endif
     TESTCASE_AUTO(TestFilteredNormalizer2Coverage);
-    TESTCASE_AUTO(TestComposeUTF8WithEdits);
-    TESTCASE_AUTO(TestDecomposeUTF8WithEdits);
+    TESTCASE_AUTO(TestNormalizeUTF8WithEdits);
     TESTCASE_AUTO(TestLowMappingToEmpty_D);
     TESTCASE_AUTO(TestLowMappingToEmpty_FCD);
     TESTCASE_AUTO(TestNormalizeIllFormedText);
     TESTCASE_AUTO(TestComposeJamoTBase);
     TESTCASE_AUTO(TestComposeBoundaryAfter);
-    TESTCASE_AUTO(TestNFKC_SCF);
     TESTCASE_AUTO_END;
 }
 
@@ -272,7 +269,7 @@ void BasicNormalizerTest::TestHangulDecomp()
 /**
  * The Tibetan vowel sign AA, 0f71, was messed up prior to Unicode version 2.1.9.
  */
-void BasicNormalizerTest::TestTibetan() {
+void BasicNormalizerTest::TestTibetan(void) {
     UnicodeString decomp[1][3];
     decomp[0][0] = str("\\u0f77");
     decomp[0][1] = str("\\u0f77");
@@ -293,7 +290,7 @@ void BasicNormalizerTest::TestTibetan() {
  * Make sure characters in the CompositionExclusion.txt list do not get
  * composed to.
  */
-void BasicNormalizerTest::TestCompositionExclusion() {
+void BasicNormalizerTest::TestCompositionExclusion(void) {
     // This list is generated from CompositionExclusion.txt.
     // Update whenever the normalizer tables are updated.  Note
     // that we test all characters listed, even those that can be
@@ -345,7 +342,7 @@ void BasicNormalizerTest::TestCompositionExclusion() {
  * map to the same canonical class, which is not the case, in
  * reality.
  */
-void BasicNormalizerTest::TestZeroIndex() {
+void BasicNormalizerTest::TestZeroIndex(void) {
     const char* DATA[] = {
         // Expect col1 x COMPOSE_COMPAT => col2
         // Expect col2 x DECOMP => col3
@@ -393,7 +390,7 @@ void BasicNormalizerTest::TestZeroIndex() {
 /**
  * Run a few specific cases that are failing for Verisign.
  */
-void BasicNormalizerTest::TestVerisign() {
+void BasicNormalizerTest::TestVerisign(void) {
     /*
       > Their input:
       > 05B8 05B9 05B1 0591 05C3 05B0 05AC 059F
@@ -488,7 +485,7 @@ void BasicNormalizerTest::TestVerisign() {
 // Internal utilities
 //
 
-UnicodeString BasicNormalizerTest::hex(char16_t ch) {
+UnicodeString BasicNormalizerTest::hex(UChar ch) {
     UnicodeString result;
     return appendHex(ch, 4, result);
 }
@@ -496,7 +493,7 @@ UnicodeString BasicNormalizerTest::hex(char16_t ch) {
 UnicodeString BasicNormalizerTest::hex(const UnicodeString& s) {
     UnicodeString result;
     for (int i = 0; i < s.length(); ++i) {
-        if (i != 0) result += (char16_t)0x2c/*,*/;
+        if (i != 0) result += (UChar)0x2c/*,*/;
         appendHex(s[i], 4, result);
     }
     return result;
@@ -629,7 +626,7 @@ private:
 };
 
 void
-BasicNormalizerTest::TestPreviousNext(const char16_t *src, int32_t srcLength,
+BasicNormalizerTest::TestPreviousNext(const UChar *src, int32_t srcLength,
                                       const UChar32 *expect, int32_t expectLength,
                                       const int32_t *expectIndex, // its length=expectLength+1
                                       int32_t srcMiddle, int32_t expectMiddle,
@@ -719,7 +716,7 @@ BasicNormalizerTest::TestPreviousNext(const char16_t *src, int32_t srcLength,
 void
 BasicNormalizerTest::TestPreviousNext() {
     // src and expect strings
-    static const char16_t src[]={
+    static const UChar src[]={
         U16_LEAD(0x2f999), U16_TRAIL(0x2f999),
         U16_LEAD(0x1d15f), U16_TRAIL(0x1d15f),
         0xc4,
@@ -742,7 +739,7 @@ BasicNormalizerTest::TestPreviousNext() {
     };
 
     // src and expect strings for regression test for j2911
-    static const char16_t src_j2911[]={
+    static const UChar src_j2911[]={
         U16_LEAD(0x2f999), U16_TRAIL(0x2f999),
         0xdd00, 0xd900, // unpaired surrogates - regression test for j2911
         0xc4,
@@ -884,8 +881,8 @@ ref_norm_compare(const UnicodeString &s1, const UnicodeString &s2, uint32_t opti
     int32_t normOptions=(int32_t)(options>>UNORM_COMPARE_NORM_OPTIONS_SHIFT);
 
     if(options&U_COMPARE_IGNORE_CASE) {
-        Normalizer::decompose(s1, false, normOptions, r1, errorCode);
-        Normalizer::decompose(s2, false, normOptions, r2, errorCode);
+        Normalizer::decompose(s1, FALSE, normOptions, r1, errorCode);
+        Normalizer::decompose(s2, FALSE, normOptions, r2, errorCode);
 
         r1.foldCase(options);
         r2.foldCase(options);
@@ -894,8 +891,8 @@ ref_norm_compare(const UnicodeString &s1, const UnicodeString &s2, uint32_t opti
         r2=s2;
     }
 
-    Normalizer::decompose(r1, false, normOptions, t1, errorCode);
-    Normalizer::decompose(r2, false, normOptions, t2, errorCode);
+    Normalizer::decompose(r1, FALSE, normOptions, t1, errorCode);
+    Normalizer::decompose(r2, FALSE, normOptions, t2, errorCode);
 
     if(options&U_COMPARE_CODE_POINT_ORDER) {
         return t1.compareCodePointOrder(t2);
@@ -1135,7 +1132,7 @@ BasicNormalizerTest::TestCompare() {
     }
 
     // test cases with i and I to make sure Turkic works
-    static const char16_t iI[]={ 0x49, 0x69, 0x130, 0x131 };
+    static const UChar iI[]={ 0x49, 0x69, 0x130, 0x131 };
     UnicodeSet iSet, set;
 
     UnicodeString s1, s2;
@@ -1195,7 +1192,7 @@ BasicNormalizerTest::TestCompare() {
         nfcNorm2->getDecomposition(0x4e00, s2) ||
         nfcNorm2->getDecomposition(0x20002, s2)
     ) {
-        errln("NFC.getDecomposition() returns true for characters which do not have decompositions");
+        errln("NFC.getDecomposition() returns TRUE for characters which do not have decompositions");
     }
 
     // test getRawDecomposition() for some characters that do not decompose
@@ -1203,16 +1200,14 @@ BasicNormalizerTest::TestCompare() {
         nfcNorm2->getRawDecomposition(0x4e00, s2) ||
         nfcNorm2->getRawDecomposition(0x20002, s2)
     ) {
-        errln("NFC.getRawDecomposition() returns true for characters which do not have decompositions");
+        errln("NFC.getRawDecomposition() returns TRUE for characters which do not have decompositions");
     }
 
     // test composePair() for some pairs of characters that do not compose
     if( nfcNorm2->composePair(0x20, 0x301)>=0 ||
         nfcNorm2->composePair(0x61, 0x305)>=0 ||
         nfcNorm2->composePair(0x1100, 0x1160)>=0 ||
-        nfcNorm2->composePair(0xac00, 0x11a7)>=0 ||
-        nfcNorm2->composePair(0x1100, 0x80000020)>= 0 ||  // ICU-22635
-        nfcNorm2->composePair(0xac00, 0x80000020)>= 0     // ICU-22635
+        nfcNorm2->composePair(0xac00, 0x11a7)>=0
     ) {
         errln("NFC.composePair() incorrectly composes some pairs of characters");
     }
@@ -1283,14 +1278,14 @@ BasicNormalizerTest::countFoldFCDExceptions(uint32_t foldingOptions) {
         s.setTo(c);
 
         // get leading and trailing cc for c
-        Normalizer::decompose(s, false, 0, d, errorCode);
+        Normalizer::decompose(s, FALSE, 0, d, errorCode);
         isNFD= s==d;
         cc=u_getCombiningClass(d.char32At(0));
         trailCC=u_getCombiningClass(d.char32At(d.length()-1));
 
         // get leading and trailing cc for the case-folding of c
         s.foldCase(foldingOptions);
-        Normalizer::decompose(s, false, 0, d, errorCode);
+        Normalizer::decompose(s, FALSE, 0, d, errorCode);
         foldCC=u_getCombiningClass(d.char32At(0));
         foldTrailCC=u_getCombiningClass(d.char32At(d.length()-1));
 
@@ -1374,7 +1369,7 @@ initExpectedSkippables(UnicodeSet skipSets[UNORM_MODE_COUNT], UErrorCode &errorC
     // We need not look at control codes, Han characters nor Hangul LVT syllables because they
     // do not combine forward. LV syllables are already removed.
     UnicodeSet notInteresting("[[:C:][:Unified_Ideograph:][:HST=LVT:]]", errorCode);
-    LocalPointer<UnicodeSet> unsure(&(skipSets[UNORM_NFC].clone())->removeAll(notInteresting));
+    LocalPointer<UnicodeSet> unsure(&((UnicodeSet *)(skipSets[UNORM_NFC].clone()))->removeAll(notInteresting));
     // System.out.format("unsure.size()=%d\n", unsure.size());
 
     // For each character about which we are unsure, see if it changes when we add
@@ -1441,12 +1436,12 @@ BasicNormalizerTest::TestSkippable() {
             // expectSets ourselves in initSkippables().
 
             s=UNICODE_STRING_SIMPLE("skip-expect=");
-            (diff=skipSets[i]).removeAll(expectSets[i]).toPattern(pattern, true);
+            (diff=skipSets[i]).removeAll(expectSets[i]).toPattern(pattern, TRUE);
             s.append(pattern);
 
             pattern.remove();
             s.append(UNICODE_STRING_SIMPLE("\n\nexpect-skip="));
-            (diff=expectSets[i]).removeAll(skipSets[i]).toPattern(pattern, true);
+            (diff=expectSets[i]).removeAll(skipSets[i]).toPattern(pattern, TRUE);
             s.append(pattern);
             s.append(UNICODE_STRING_SIMPLE("\n\n"));
 
@@ -1572,41 +1567,41 @@ BasicNormalizerTest::TestFilteredNormalizer2Coverage() {
 }
 
 void
-BasicNormalizerTest::TestComposeUTF8WithEdits() {
-    IcuTestErrorCode errorCode(*this, "TestComposeUTF8WithEdits");
+BasicNormalizerTest::TestNormalizeUTF8WithEdits() {
+    IcuTestErrorCode errorCode(*this, "TestNormalizeUTF8WithEdits");
     const Normalizer2 *nfkc_cf=Normalizer2::getNFKCCasefoldInstance(errorCode);
     if(errorCode.errDataIfFailureAndReset("Normalizer2::getNFKCCasefoldInstance() call failed")) {
         return;
     }
-    static const StringPiece src =
+    static const char *const src =
         u8"  AÄA\u0308A\u0308\u00ad\u0323Ä\u0323,\u00ad\u1100\u1161가\u11A8가\u3133  ";
-    StringPiece expected = u8"  aääạ\u0308ạ\u0308,가각갃  ";
+    std::string expected = u8"  aääạ\u0308ạ\u0308,가각갃  ";
     std::string result;
     StringByteSink<std::string> sink(&result, static_cast<int32_t>(expected.length()));
     Edits edits;
     nfkc_cf->normalizeUTF8(0, src, sink, &edits, errorCode);
     assertSuccess("normalizeUTF8 with Edits", errorCode.get());
-    assertEquals("normalizeUTF8 with Edits", expected.data(), result.c_str());
+    assertEquals("normalizeUTF8 with Edits", expected.c_str(), result.c_str());
     static const EditChange expectedChanges[] = {
-        { false, 2, 2 },  // 2 spaces
-        { true, 1, 1 },  // A→a
-        { true, 2, 2 },  // Ä→ä
-        { true, 3, 2 },  // A\u0308→ä
-        { true, 7, 5 },  // A\u0308\u00ad\u0323→ạ\u0308 removes the soft hyphen
-        { true, 4, 5 },  // Ä\u0323→ạ\u0308
-        { false, 1, 1 },  // comma
-        { true, 2, 0 },  // U+00AD soft hyphen maps to empty
-        { true, 6, 3 },  // \u1100\u1161→가
-        { true, 6, 3 },  // 가\u11A8→각
-        { true, 6, 3 },  // 가\u3133→갃
-        { false, 2, 2 }  // 2 spaces
+        { FALSE, 2, 2 },  // 2 spaces
+        { TRUE, 1, 1 },  // A→a
+        { TRUE, 2, 2 },  // Ä→ä
+        { TRUE, 3, 2 },  // A\u0308→ä
+        { TRUE, 7, 5 },  // A\u0308\u00ad\u0323→ạ\u0308 removes the soft hyphen
+        { TRUE, 4, 5 },  // Ä\u0323→ ạ\u0308
+        { FALSE, 1, 1 },  // comma
+        { TRUE, 2, 0 },  // U+00AD soft hyphen maps to empty
+        { TRUE, 6, 3 },  // \u1100\u1161→ 가
+        { TRUE, 6, 3 },  // 가\u11A8→ 각
+        { TRUE, 6, 3 },  // 가\u3133→ 갃
+        { FALSE, 2, 2 }  // 2 spaces
     };
     assertTrue("normalizeUTF8 with Edits hasChanges", edits.hasChanges());
     assertEquals("normalizeUTF8 with Edits numberOfChanges", 9, edits.numberOfChanges());
     TestUtility::checkEditsIter(*this, u"normalizeUTF8 with Edits",
             edits.getFineIterator(), edits.getFineIterator(),
             expectedChanges, UPRV_LENGTHOF(expectedChanges),
-            true, errorCode);
+            TRUE, errorCode);
 
     assertFalse("isNormalizedUTF8(source)", nfkc_cf->isNormalizedUTF8(src, errorCode));
     assertTrue("isNormalizedUTF8(normalized)", nfkc_cf->isNormalizedUTF8(result, errorCode));
@@ -1617,13 +1612,13 @@ BasicNormalizerTest::TestComposeUTF8WithEdits() {
     edits.reset();
     nfkc_cf->normalizeUTF8(U_OMIT_UNCHANGED_TEXT, src, sink, &edits, errorCode);
     assertSuccess("normalizeUTF8 omit unchanged", errorCode.get());
-    assertEquals("normalizeUTF8 omit unchanged", expected.data(), result.c_str());
+    assertEquals("normalizeUTF8 omit unchanged", expected.c_str(), result.c_str());
     assertTrue("normalizeUTF8 omit unchanged hasChanges", edits.hasChanges());
     assertEquals("normalizeUTF8 omit unchanged numberOfChanges", 9, edits.numberOfChanges());
     TestUtility::checkEditsIter(*this, u"normalizeUTF8 omit unchanged",
             edits.getFineIterator(), edits.getFineIterator(),
             expectedChanges, UPRV_LENGTHOF(expectedChanges),
-            true, errorCode);
+            TRUE, errorCode);
 
     // With filter: The normalization code does not see the "A" substrings.
     UnicodeSet filter(u"[^A]", errorCode);
@@ -1633,26 +1628,26 @@ BasicNormalizerTest::TestComposeUTF8WithEdits() {
     edits.reset();
     fn2.normalizeUTF8(0, src, sink, &edits, errorCode);
     assertSuccess("filtered normalizeUTF8", errorCode.get());
-    assertEquals("filtered normalizeUTF8", expected.data(), result.c_str());
+    assertEquals("filtered normalizeUTF8", expected.c_str(), result.c_str());
     static const EditChange filteredChanges[] = {
-        { false, 3, 3 },  // 2 spaces + A
-        { true, 2, 2 },  // Ä→ä
-        { false, 4, 4 },  // A\u0308A
-        { true, 6, 4 },  // \u0308\u00ad\u0323→\u0323\u0308 removes the soft hyphen
-        { true, 4, 5 },  // Ä\u0323→ạ\u0308
-        { false, 1, 1 },  // comma
-        { true, 2, 0 },  // U+00AD soft hyphen maps to empty
-        { true, 6, 3 },  // \u1100\u1161→가
-        { true, 6, 3 },  // 가\u11A8→각
-        { true, 6, 3 },  // 가\u3133→갃
-        { false, 2, 2 }  // 2 spaces
+        { FALSE, 3, 3 },  // 2 spaces + A
+        { TRUE, 2, 2 },  // Ä→ä
+        { FALSE, 4, 4 },  // A\u0308A
+        { TRUE, 6, 4 },  // \u0308\u00ad\u0323→\u0323\u0308 removes the soft hyphen
+        { TRUE, 4, 5 },  // Ä\u0323→ ạ\u0308
+        { FALSE, 1, 1 },  // comma
+        { TRUE, 2, 0 },  // U+00AD soft hyphen maps to empty
+        { TRUE, 6, 3 },  // \u1100\u1161→ 가
+        { TRUE, 6, 3 },  // 가\u11A8→ 각
+        { TRUE, 6, 3 },  // 가\u3133→ 갃
+        { FALSE, 2, 2 }  // 2 spaces
     };
     assertTrue("filtered normalizeUTF8 hasChanges", edits.hasChanges());
     assertEquals("filtered normalizeUTF8 numberOfChanges", 7, edits.numberOfChanges());
     TestUtility::checkEditsIter(*this, u"filtered normalizeUTF8",
             edits.getFineIterator(), edits.getFineIterator(),
             filteredChanges, UPRV_LENGTHOF(filteredChanges),
-            true, errorCode);
+            TRUE, errorCode);
 
     assertFalse("filtered isNormalizedUTF8(source)", fn2.isNormalizedUTF8(src, errorCode));
     assertTrue("filtered isNormalizedUTF8(normalized)", fn2.isNormalizedUTF8(result, errorCode));
@@ -1665,79 +1660,13 @@ BasicNormalizerTest::TestComposeUTF8WithEdits() {
     edits.reset();
     fn2.normalizeUTF8(U_OMIT_UNCHANGED_TEXT, src, sink, &edits, errorCode);
     assertSuccess("filtered normalizeUTF8 omit unchanged", errorCode.get());
-    assertEquals("filtered normalizeUTF8 omit unchanged", expected.data(), result.c_str());
+    assertEquals("filtered normalizeUTF8 omit unchanged", expected.c_str(), result.c_str());
     assertTrue("filtered normalizeUTF8 omit unchanged hasChanges", edits.hasChanges());
     assertEquals("filtered normalizeUTF8 omit unchanged numberOfChanges", 7, edits.numberOfChanges());
     TestUtility::checkEditsIter(*this, u"filtered normalizeUTF8 omit unchanged",
             edits.getFineIterator(), edits.getFineIterator(),
             filteredChanges, UPRV_LENGTHOF(filteredChanges),
-            true, errorCode);
-}
-
-void
-BasicNormalizerTest::TestDecomposeUTF8WithEdits() {
-    IcuTestErrorCode errorCode(*this, "TestDecomposeUTF8WithEdits");
-    const Normalizer2 *nfkd_cf =
-        Normalizer2::getInstance(nullptr, "nfkc_cf", UNORM2_DECOMPOSE, errorCode);
-    if(errorCode.errDataIfFailureAndReset("Normalizer2::getInstance(nfkc_cf/decompose) call failed")) {
-        return;
-    }
-    static const StringPiece src =
-        u8"  AÄA\u0308A\u0308\u00ad\u0323Ä\u0323,\u00ad\u1100\u1161가\u11A8가\u3133  ";
-    StringPiece expected =
-        u8"  aa\u0308a\u0308a\u0323\u0308a\u0323\u0308,"
-        u8"\u1100\u1161\u1100\u1161\u11A8\u1100\u1161\u11AA  ";
-    std::string result;
-    StringByteSink<std::string> sink(&result, static_cast<int32_t>(expected.length()));
-    Edits edits;
-    nfkd_cf->normalizeUTF8(0, src, sink, &edits, errorCode);
-    assertSuccess("normalizeUTF8 with Edits", errorCode.get());
-    assertEquals("normalizeUTF8 with Edits", expected.data(), result.c_str());
-    static const EditChange expectedChanges[] = {
-        { false, 2, 2 },  // 2 spaces
-        { true, 1, 1 },  // A→a
-        { true, 2, 3 },  // Ä→a\u0308
-        { true, 1, 1 },  // A→a
-        { false, 2, 2 },  // \u0308→\u0308 unchanged
-        { true, 1, 1 },  // A→a
-        { true, 6, 4 },  // \u0308\u00ad\u0323→\u0323\u0308 removes the soft hyphen
-        { true, 4, 5 },  // Ä\u0323→a\u0323\u0308
-        { false, 1, 1 },  // comma
-        { true, 2, 0 },  // U+00AD soft hyphen maps to empty
-        { false, 6, 6 },  // \u1100\u1161 unchanged
-        { true, 3, 6 },  // 가→\u1100\u1161
-        { false, 3, 3 },  // \u11A8 unchanged
-        { true, 3, 6 },  // 가→\u1100\u1161
-        { true, 3, 3 },  // \u3133→\u11AA
-        { false, 2, 2 }  // 2 spaces
-    };
-    assertTrue("normalizeUTF8 with Edits hasChanges", edits.hasChanges());
-    assertEquals("normalizeUTF8 with Edits numberOfChanges", 10, edits.numberOfChanges());
-    TestUtility::checkEditsIter(*this, u"normalizeUTF8 with Edits",
-            edits.getFineIterator(), edits.getFineIterator(),
-            expectedChanges, UPRV_LENGTHOF(expectedChanges),
-            true, errorCode);
-
-    assertFalse("isNormalizedUTF8(source)", nfkd_cf->isNormalizedUTF8(src, errorCode));
-    assertTrue("isNormalizedUTF8(normalized)", nfkd_cf->isNormalizedUTF8(result, errorCode));
-
-    // Omit unchanged text.
-    expected = u8"aa\u0308aa\u0323\u0308a\u0323\u0308\u1100\u1161\u1100\u1161\u11AA";
-    result.clear();
-    edits.reset();
-    nfkd_cf->normalizeUTF8(U_OMIT_UNCHANGED_TEXT, src, sink, &edits, errorCode);
-    assertSuccess("normalizeUTF8 omit unchanged", errorCode.get());
-    assertEquals("normalizeUTF8 omit unchanged", expected.data(), result.c_str());
-    assertTrue("normalizeUTF8 omit unchanged hasChanges", edits.hasChanges());
-    assertEquals("normalizeUTF8 omit unchanged numberOfChanges", 10, edits.numberOfChanges());
-    TestUtility::checkEditsIter(*this, u"normalizeUTF8 omit unchanged",
-            edits.getFineIterator(), edits.getFineIterator(),
-            expectedChanges, UPRV_LENGTHOF(expectedChanges),
-            true, errorCode);
-
-    // Not testing FilteredNormalizer2:
-    // The code there is the same for all normalization modes, and
-    // TestComposeUTF8WithEdits() covers it well.
+            TRUE, errorCode);
 }
 
 void
@@ -1814,16 +1743,16 @@ BasicNormalizerTest::TestNormalizeIllFormedText() {
     assertSuccess("normalize", errorCode.get());
     assertEquals("normalize", expected, result);
 
-    std::string src8(reinterpret_cast<const char*>(u8"  A"));
-    src8.append("\x80").append(reinterpret_cast<const char*>(u8"ÄA\u0308")).append("\xC0\x80").
-        append(reinterpret_cast<const char*>(u8"A\u0308\u00ad\u0323")).append("\xED\xA0\x80").
-        append(reinterpret_cast<const char*>(u8"Ä\u0323,\u00ad")).append("\xF4\x90\x80\x80").
-        append(reinterpret_cast<const char*>(u8"\u1100\u1161가\u11A8가\u3133  ")).append("\xF0");
-    std::string expected8(reinterpret_cast<const char*>(u8"  a"));
-    expected8.append("\x80").append(reinterpret_cast<const char*>(u8"ää")).append("\xC0\x80").
-        append(reinterpret_cast<const char*>(u8"ạ\u0308")).append("\xED\xA0\x80").
-        append(reinterpret_cast<const char*>(u8"ạ\u0308,")).append("\xF4\x90\x80\x80").
-        append(reinterpret_cast<const char*>(u8"가각갃  ")).append("\xF0");
+    std::string src8(u8"  A");
+    src8.append("\x80").append(u8"ÄA\u0308").append("\xC0\x80").
+        append(u8"A\u0308\u00ad\u0323").append("\xED\xA0\x80").
+        append(u8"Ä\u0323,\u00ad").append("\xF4\x90\x80\x80").
+        append(u8"\u1100\u1161가\u11A8가\u3133  ").append("\xF0");
+    std::string expected8(u8"  a");
+    expected8.append("\x80").append(u8"ää").append("\xC0\x80").
+        append(u8"ạ\u0308").append("\xED\xA0\x80").
+        append(u8"ạ\u0308,").append("\xF4\x90\x80\x80").
+        append(u8"가각갃  ").append("\xF0");
     std::string result8;
     StringByteSink<std::string> sink(&result8);
     nfkc_cf->normalizeUTF8(0, src8, sink, nullptr, errorCode);
@@ -1848,13 +1777,13 @@ BasicNormalizerTest::TestComposeJamoTBase() {
     assertFalse("isNormalized(LV+11A7)", nfkc->isNormalized(s, errorCode));
     assertTrue("isNormalized(normalized)", nfkc->isNormalized(result, errorCode));
 
-    StringPiece s8(u8"\u1100\u1161\u11A7\u1100\u314F\u11A7가\u11A7");
-    StringPiece expected8(u8"가\u11A7가\u11A7가\u11A7");
+    std::string s8(u8"\u1100\u1161\u11A7\u1100\u314F\u11A7가\u11A7");
+    std::string expected8(u8"가\u11A7가\u11A7가\u11A7");
     std::string result8;
-    StringByteSink<std::string> sink(&result8, expected8.length());
+    StringByteSink<std::string> sink(&result8, static_cast<int32_t>(expected8.length()));
     nfkc->normalizeUTF8(0, s8, sink, nullptr, errorCode);
     assertSuccess("normalizeUTF8(LV+11A7)", errorCode.get());
-    assertEquals("normalizeUTF8(LV+11A7)", expected8.data(), result8.c_str());
+    assertEquals("normalizeUTF8(LV+11A7)", expected8.c_str(), result8.c_str());
     assertFalse("isNormalizedUTF8(LV+11A7)", nfkc->isNormalizedUTF8(s8, errorCode));
     assertTrue("isNormalizedUTF8(normalized)", nfkc->isNormalizedUTF8(result8, errorCode));
 }
@@ -1874,22 +1803,6 @@ BasicNormalizerTest::TestComposeBoundaryAfter() {
     assertEquals("nfkc", expected, result);
     assertFalse("U+02DA boundary-after", nfkc->hasBoundaryAfter(0x2DA));
     assertFalse("U+FB2C boundary-after", nfkc->hasBoundaryAfter(0xFB2C));
-}
-
-void
-BasicNormalizerTest::TestNFKC_SCF() {
-    IcuTestErrorCode errorCode(*this, "TestNFKC_SCF");
-    const Normalizer2 *nfkc_scf = Normalizer2::getNFKCSimpleCasefoldInstance(errorCode);
-    if(errorCode.errDataIfFailureAndReset(
-            "Normalizer2::getNFKCSimpleCasefoldInstance() call failed")) {
-        return;
-    }
-    // Uses only Simple_Casefolding mappings.
-    UnicodeString s(u"aA\u0308 ßẞ \u1F80\u1F88");
-    UnicodeString expected(u"aä ßß \u1F80\u1F80");
-    UnicodeString result = nfkc_scf->normalize(s, errorCode);
-    assertSuccess("nfkc_scf", errorCode.get());
-    assertEquals("nfkc_scf", expected, result);
 }
 
 #endif /* #if !UCONFIG_NO_NORMALIZATION */

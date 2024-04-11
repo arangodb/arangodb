@@ -1,6 +1,8 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
+/**
+ * ICU <specials> source: <path>/xml/rbnf/de.xml
+ */
 de{
     RBNFRules{
         SpelloutRules{
@@ -10,8 +12,8 @@ de{
             "-x: minus >>;",
             "x.x: =0.0=;",
             "0: =%spellout-numbering=;",
-            "1100/100: <<\u00ADhundert[\u00AD>>];",
-            "2000: =%spellout-numbering=;",
+            "1100/100: <%spellout-cardinal-masculine<\u00ADhundert[\u00AD>>];",
+            "10000: =%spellout-numbering=;",
             "%spellout-numbering:",
             "-x: minus >>;",
             "x.x: << Komma >>;",
@@ -138,23 +140,6 @@ de{
             "1000000000000000: eine Billiarde[ >>];",
             "2000000000000000: <%spellout-cardinal-feminine< Billiarden[ >>];",
             "1000000000000000000: =#,##0=;",
-            "%spellout-cardinal-m:",
-            "-x: minus >>;",
-            "x.x: << Komma >>;",
-            "0: null;",
-            "1: einem;",
-            "2: =%spellout-numbering=;",
-            "100: <%spellout-cardinal-masculine<\u00ADhundert[\u00AD>>];",
-            "1000: <%spellout-cardinal-masculine<\u00ADtausend[\u00AD>>];",
-            "1000000: eine Million[ >>];",
-            "2000000: <%spellout-cardinal-feminine< Millionen[ >>];",
-            "1000000000: eine Milliarde[ >>];",
-            "2000000000: <%spellout-cardinal-feminine< Milliarden[ >>];",
-            "1000000000000: eine Billion[ >>];",
-            "2000000000000: <%spellout-cardinal-feminine< Billionen[ >>];",
-            "1000000000000000: eine Billiarde[ >>];",
-            "2000000000000000: <%spellout-cardinal-feminine< Billiarden[ >>];",
-            "1000000000000000000: =#,##0=;",
             "%%ste:",
             "0: ste;",
             "1: \u00AD=%spellout-ordinal=;",
@@ -198,10 +183,7 @@ de{
             "-x: minus >>;",
             "x.x: =#,##0.#=;",
             "0: =%spellout-ordinal=s;",
-            "%spellout-ordinal-m:",
-            "-x: minus >>;",
-            "x.x: =#,##0.#=;",
-            "0: =%spellout-ordinal=m;",
         }
     }
+    Version{"2.1.27.22"}
 }

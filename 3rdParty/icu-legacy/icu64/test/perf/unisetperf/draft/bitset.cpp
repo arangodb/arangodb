@@ -1,7 +1,7 @@
 /*  
 *************************************************************************
 *   © 2016 and later: Unicode, Inc. and others.
-*   License & terms of use: http://www.unicode.org/copyright.html
+*   License & terms of use: http://www.unicode.org/copyright.html#License
 *************************************************************************
 *************************************************************************
 *   Copyright (C) 2014, International Business Machines
@@ -22,16 +22,9 @@
 *   Uses the original set for supplementary code points.
 */
 
-#include "unicode/uniset.h"
-#include "unicode/uobject.h"
-#include "unicode/usetiter.h"
 #include "unicode/utypes.h"
 #include "unicont.h"
 #include "cmemory.h" // for UPRV_LENGTHOF
-
-using icu::UObject;
-using icu::UnicodeSet;
-using icu::UnicodeSetIterator;
 
 /*
  * Hash table for up to 1k 64-bit words, for 1 bit per BMP code point.
@@ -100,7 +93,7 @@ public:
             return;
         }
         BMPBitHash *bitHash=new BMPBitHash;
-        if(bitHash==nullptr || restSet==nullptr) {
+        if(bitHash==NULL || restSet==NULL) {
             errorCode=U_MEMORY_ALLOCATION_ERROR;
             return;
         }
@@ -161,7 +154,7 @@ public:
         if(bitHash->countKeys()>UPRV_LENGTHOF(shortBits)) {
             bits=(int64_t *)uprv_malloc(bitHash->countKeys()*8);
         }
-        if(bits!=nullptr) {
+        if(bits!=NULL) {
             bitHash->invert(bits);
         } else {
             bits=shortBits;
@@ -178,7 +171,7 @@ public:
         latin1Set[6]=(uint32_t)bits[3];
         latin1Set[7]=(uint32_t)(bits[3]>>32);
 
-        restSet->remove(0, 0xffff);
+        restSet.remove(0, 0xffff);
     }
 
     ~BitSet() {
@@ -203,7 +196,7 @@ private:
     int64_t shortBits[32];
     int64_t *bits;
 
-    uint32_t latin1Set[8];
+    uint32_t latin1Bits[8];
 
     UnicodeSet *restSet;
 };

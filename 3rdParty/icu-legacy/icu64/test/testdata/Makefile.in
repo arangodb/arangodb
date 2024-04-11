@@ -92,7 +92,6 @@ TESTSRCDATADIR=$(top_srcdir)/test/testdata
 TESTOUTDIR=$(top_builddir)/test/testdata/out
 BUILD_DIRS = $(TESTOUTDIR) $(TESTBUILDDIR) $(TESTOUTDIR)/$(TESTDT)
 GENTEST=$(TOOLDIR)/gentest/gentest$(TOOLEXEEXT)
-LIBRARY_DATA_DIR=$(OUTDIR)/build
 
 ifeq ($(PKGDATA_MODE),common)
 ICU_DATA_OPT = -i $(OUTDIR)
@@ -167,7 +166,7 @@ $(OUTDIR)/icu4j/testdata.jar: build-dir testdata $(TESTOUTDIR)/testdata.dat
 	$(JAR) cf $(OUTDIR)/icu4j/testdata.jar -C $(OUTDIR)/icu4j com/ibm/icu/dev/data/testdata
 
 
-DEBUGUTILITIESDATA_DIR=main/core/src/test/java/com/ibm/icu/dev/test/util
+DEBUGUTILITIESDATA_DIR=main/tests/core/src/com/ibm/icu/dev/test/util
 DEBUGUTILITIESDATA_SRC=DebugUtilitiesData.java
 
 ICU4J_DATA=$(OUTDIR)/icu4j/src/$(DEBUGUTILITIESDATA_SRC) $(OUTDIR)/icu4j/testdata.jar

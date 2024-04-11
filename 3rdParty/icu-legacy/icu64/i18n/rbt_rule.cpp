@@ -26,7 +26,7 @@
 #include "util.h"
 #include "putilimp.h"
 
-static const char16_t FORWARD_OP[] = {32,62,32,0}; // " > "
+static const UChar FORWARD_OP[] = {32,62,32,0}; // " > "
 
 U_NAMESPACE_BEGIN
 
@@ -50,9 +50,9 @@ U_NAMESPACE_BEGIN
  * segments, or null if there are none.  The array itself is adopted,
  * but the pointers within it are not.
  * @param segsCount number of elements in segs[]
- * @param anchorStart true if the the rule is anchored on the left to
+ * @param anchorStart TRUE if the the rule is anchored on the left to
  * the context start
- * @param anchorEnd true if the rule is anchored on the right to the
+ * @param anchorEnd TRUE if the rule is anchored on the right to the
  * context limit
  */
 TransliterationRule::TransliterationRule(const UnicodeString& input,
@@ -65,7 +65,7 @@ TransliterationRule::TransliterationRule(const UnicodeString& input,
                                          const TransliterationRuleData* theData,
                                          UErrorCode& status) :
     UMemory(),
-    segments(nullptr),
+    segments(0),
     data(theData) {
 
     if (U_FAILURE(status)) {
@@ -116,43 +116,43 @@ TransliterationRule::TransliterationRule(const UnicodeString& input,
         flags |= ANCHOR_END;
     }
 
-    anteContext = nullptr;
+    anteContext = NULL;
     if (anteContextLength > 0) {
         anteContext = new StringMatcher(pattern, 0, anteContextLength,
-                                        false, *data);
-        /* test for nullptr */
-        if (anteContext == nullptr) {
+                                        FALSE, *data);
+        /* test for NULL */
+        if (anteContext == 0) {
             status = U_MEMORY_ALLOCATION_ERROR;
             return;
         }
     }
     
-    key = nullptr;
+    key = NULL;
     if (keyLength > 0) {
         key = new StringMatcher(pattern, anteContextLength, anteContextLength + keyLength,
-                                false, *data);
-        /* test for nullptr */
-        if (key == nullptr) {
+                                FALSE, *data);
+        /* test for NULL */
+        if (key == 0) {
             status = U_MEMORY_ALLOCATION_ERROR;
             return;
         }
     }
     
     int32_t postContextLength = pattern.length() - keyLength - anteContextLength;
-    postContext = nullptr;
+    postContext = NULL;
     if (postContextLength > 0) {
         postContext = new StringMatcher(pattern, anteContextLength + keyLength, pattern.length(),
-                                        false, *data);
-        /* test for nullptr */
-        if (postContext == nullptr) {
+                                        FALSE, *data);
+        /* test for NULL */
+        if (postContext == 0) {
             status = U_MEMORY_ALLOCATION_ERROR;
             return;
         }
     }
 
     this->output = new StringReplacer(outputStr, cursorPosition + cursorOffset, data);
-    /* test for nullptr */
-    if (this->output == nullptr) {
+    /* test for NULL */
+    if (this->output == 0) {
         status = U_MEMORY_ALLOCATION_ERROR;
         return;
     }
@@ -163,30 +163,30 @@ TransliterationRule::TransliterationRule(const UnicodeString& input,
  */
 TransliterationRule::TransliterationRule(TransliterationRule& other) :
     UMemory(other),
-    anteContext(nullptr),
-    key(nullptr),
-    postContext(nullptr),
+    anteContext(NULL),
+    key(NULL),
+    postContext(NULL),
     pattern(other.pattern),
     anteContextLength(other.anteContextLength),
     keyLength(other.keyLength),
     flags(other.flags),
     data(other.data) {
 
-    segments = nullptr;
+    segments = NULL;
     segmentsCount = 0;
     if (other.segmentsCount > 0) {
         segments = (UnicodeFunctor **)uprv_malloc(other.segmentsCount * sizeof(UnicodeFunctor *));
         uprv_memcpy(segments, other.segments, (size_t)other.segmentsCount*sizeof(segments[0]));
     }
 
-    if (other.anteContext != nullptr) {
-        anteContext = other.anteContext->clone();
+    if (other.anteContext != NULL) {
+        anteContext = (StringMatcher*) other.anteContext->clone();
     }
-    if (other.key != nullptr) {
-        key = other.key->clone();
+    if (other.key != NULL) {
+        key = (StringMatcher*) other.key->clone();
     }
-    if (other.postContext != nullptr) {
-        postContext = other.postContext->clone();
+    if (other.postContext != NULL) {
+        postContext = (StringMatcher*) other.postContext->clone();
     }
     output = other.output->clone();
 }
@@ -208,7 +208,7 @@ TransliterationRule::~TransliterationRule() {
  * needed to make repeated incremental transliteration with
  * anchors work.
  */
-int32_t TransliterationRule::getContextLength() const {
+int32_t TransliterationRule::getContextLength(void) const {
     return anteContextLength + ((flags & ANCHOR_START) ? 1 : 0);
 }
 
@@ -225,7 +225,7 @@ int16_t TransliterationRule::getIndexValue() const {
         return -1;
     }
     UChar32 c = pattern.char32At(anteContextLength);
-    return (int16_t)(data->lookupMatcher(c) == nullptr ? (c & 0xFF) : -1);
+    return (int16_t)(data->lookupMatcher(c) == NULL ? (c & 0xFF) : -1);
 }
 
 /**
@@ -241,8 +241,8 @@ int16_t TransliterationRule::getIndexValue() const {
 UBool TransliterationRule::matchesIndexValue(uint8_t v) const {
     // Delegate to the key, or if there is none, to the postContext.
     // If there is neither then we match any key; return true.
-    UnicodeMatcher *m = (key != nullptr) ? key : postContext;
-    return (m != nullptr) ? m->matchesIndexValue(v) : true;
+    UnicodeMatcher *m = (key != NULL) ? key : postContext;
+    return (m != NULL) ? m->matchesIndexValue(v) : TRUE;
 }
 
 /**
@@ -343,11 +343,11 @@ static inline int32_t posAfter(const Replaceable& str, int32_t pos) {
  * 
  * @param text the text
  * @param pos the position indices
- * @param incremental if true, test for partial matches that may
+ * @param incremental if TRUE, test for partial matches that may
  * be completed by additional text inserted at pos.limit.
  * @return one of <code>U_MISMATCH</code>,
  * <code>U_PARTIAL_MATCH</code>, or <code>U_MATCH</code>.  If
- * incremental is false then U_PARTIAL_MATCH will not be returned.
+ * incremental is FALSE then U_PARTIAL_MATCH will not be returned.
  */
 UMatchDegree TransliterationRule::matchAndReplace(Replaceable& text,
                                                   UTransPosition& pos,
@@ -361,7 +361,7 @@ UMatchDegree TransliterationRule::matchAndReplace(Replaceable& text,
     // ============================ MATCH ===========================
 
     // Reset segment match data
-    if (segments != nullptr) {
+    if (segments != NULL) {
         for (int32_t i=0; i<segmentsCount; ++i) {
             ((StringMatcher*) segments[i])->resetMatch();
         }
@@ -391,8 +391,8 @@ UMatchDegree TransliterationRule::matchAndReplace(Replaceable& text,
     // Start reverse match at char before pos.start
     oText = posBefore(text, pos.start);
 
-    if (anteContext != nullptr) {
-        match = anteContext->matches(text, oText, anteLimit, false);
+    if (anteContext != NULL) {
+        match = anteContext->matches(text, oText, anteLimit, FALSE);
         if (match != U_MATCH) {
             return U_MISMATCH;
         }
@@ -410,7 +410,7 @@ UMatchDegree TransliterationRule::matchAndReplace(Replaceable& text,
     
     oText = pos.start;
 
-    if (key != nullptr) {
+    if (key != NULL) {
         match = key->matches(text, oText, pos.limit, incremental);
         if (match != U_MATCH) {
             return match;
@@ -419,7 +419,7 @@ UMatchDegree TransliterationRule::matchAndReplace(Replaceable& text,
 
     keyLimit = oText;
 
-    if (postContext != nullptr) {
+    if (postContext != NULL) {
         if (incremental && keyLimit == pos.limit) {
             // The key matches just before pos.limit, and there is
             // a postContext.  Since we are in incremental mode,
@@ -477,51 +477,51 @@ UnicodeString& TransliterationRule::toRule(UnicodeString& rule,
     // Do not emit the braces '{' '}' around the pattern if there
     // is neither anteContext nor postContext.
     UBool emitBraces =
-        (anteContext != nullptr) || (postContext != nullptr);
+        (anteContext != NULL) || (postContext != NULL);
 
     // Emit start anchor
     if ((flags & ANCHOR_START) != 0) {
-        rule.append((char16_t)94/*^*/);
+        rule.append((UChar)94/*^*/);
     }
 
     // Emit the input pattern
     ICU_Utility::appendToRule(rule, anteContext, escapeUnprintable, quoteBuf);
 
     if (emitBraces) {
-        ICU_Utility::appendToRule(rule, (char16_t) 0x007B /*{*/, true, escapeUnprintable, quoteBuf);
+        ICU_Utility::appendToRule(rule, (UChar) 0x007B /*{*/, TRUE, escapeUnprintable, quoteBuf);
     }
 
     ICU_Utility::appendToRule(rule, key, escapeUnprintable, quoteBuf);
 
     if (emitBraces) {
-        ICU_Utility::appendToRule(rule, (char16_t) 0x007D /*}*/, true, escapeUnprintable, quoteBuf);
+        ICU_Utility::appendToRule(rule, (UChar) 0x007D /*}*/, TRUE, escapeUnprintable, quoteBuf);
     }
 
     ICU_Utility::appendToRule(rule, postContext, escapeUnprintable, quoteBuf);
 
     // Emit end anchor
     if ((flags & ANCHOR_END) != 0) {
-        rule.append((char16_t)36/*$*/);
+        rule.append((UChar)36/*$*/);
     }
 
-    ICU_Utility::appendToRule(rule, UnicodeString(true, FORWARD_OP, 3), true, escapeUnprintable, quoteBuf);
+    ICU_Utility::appendToRule(rule, UnicodeString(TRUE, FORWARD_OP, 3), TRUE, escapeUnprintable, quoteBuf);
 
     // Emit the output pattern
 
     ICU_Utility::appendToRule(rule, output->toReplacer()->toReplacerPattern(str, escapeUnprintable),
-                              true, escapeUnprintable, quoteBuf);
+                              TRUE, escapeUnprintable, quoteBuf);
 
-    ICU_Utility::appendToRule(rule, (char16_t) 0x003B /*;*/, true, escapeUnprintable, quoteBuf);
+    ICU_Utility::appendToRule(rule, (UChar) 0x003B /*;*/, TRUE, escapeUnprintable, quoteBuf);
 
     return rule;
 }
 
 void TransliterationRule::setData(const TransliterationRuleData* d) {
     data = d;
-    if (anteContext != nullptr) anteContext->setData(d);
-    if (postContext != nullptr) postContext->setData(d);
-    if (key != nullptr) key->setData(d);
-    // assert(output != nullptr);
+    if (anteContext != NULL) anteContext->setData(d);
+    if (postContext != NULL) postContext->setData(d);
+    if (key != NULL) key->setData(d);
+    // assert(output != NULL);
     output->setData(d);
     // Don't have to do segments since they are in the context or key
 }
@@ -536,7 +536,7 @@ void TransliterationRule::addSourceSetTo(UnicodeSet& toUnionTo) const {
         UChar32 ch = pattern.char32At(i);
         i += U16_LENGTH(ch);
         const UnicodeMatcher* matcher = data->lookupMatcher(ch);
-        if (matcher == nullptr) {
+        if (matcher == NULL) {
             toUnionTo.add(ch);
         } else {
             matcher->addMatchSetTo(toUnionTo);

@@ -8,7 +8,7 @@
 #include <cstdlib>
 #include "number_scientific.h"
 #include "number_utils.h"
-#include "formatted_string_builder.h"
+#include "number_stringbuilder.h"
 #include "unicode/unum.h"
 #include "number_microprops.h"
 
@@ -36,7 +36,7 @@ void ScientificModifier::set(int32_t exponent, const ScientificHandler *handler)
     fHandler = handler;
 }
 
-int32_t ScientificModifier::apply(FormattedStringBuilder &output, int32_t /*leftIndex*/, int32_t rightIndex,
+int32_t ScientificModifier::apply(NumberStringBuilder &output, int32_t /*leftIndex*/, int32_t rightIndex,
                                   UErrorCode &status) const {
     // FIXME: Localized exponent separator location.
     int i = rightIndex;
@@ -44,21 +44,21 @@ int32_t ScientificModifier::apply(FormattedStringBuilder &output, int32_t /*left
     i += output.insert(
             i,
             fHandler->fSymbols->getSymbol(DecimalFormatSymbols::ENumberFormatSymbol::kExponentialSymbol),
-            {UFIELD_CATEGORY_NUMBER, UNUM_EXPONENT_SYMBOL_FIELD},
+            UNUM_EXPONENT_SYMBOL_FIELD,
             status);
     if (fExponent < 0 && fHandler->fSettings.fExponentSignDisplay != UNUM_SIGN_NEVER) {
         i += output.insert(
                 i,
                 fHandler->fSymbols
                         ->getSymbol(DecimalFormatSymbols::ENumberFormatSymbol::kMinusSignSymbol),
-                {UFIELD_CATEGORY_NUMBER, UNUM_EXPONENT_SIGN_FIELD},
+                UNUM_EXPONENT_SIGN_FIELD,
                 status);
     } else if (fExponent >= 0 && fHandler->fSettings.fExponentSignDisplay == UNUM_SIGN_ALWAYS) {
         i += output.insert(
                 i,
                 fHandler->fSymbols
                         ->getSymbol(DecimalFormatSymbols::ENumberFormatSymbol::kPlusSignSymbol),
-                {UFIELD_CATEGORY_NUMBER, UNUM_EXPONENT_SIGN_FIELD},
+                UNUM_EXPONENT_SIGN_FIELD,
                 status);
     }
     // Append the exponent digits (using a simple inline algorithm)
@@ -70,7 +70,7 @@ int32_t ScientificModifier::apply(FormattedStringBuilder &output, int32_t /*left
                 i - j,
                 d,
                 *fHandler->fSymbols,
-                {UFIELD_CATEGORY_NUMBER, UNUM_EXPONENT_FIELD},
+                UNUM_EXPONENT_FIELD,
                 status);
     }
     return i - rightIndex;
@@ -93,10 +93,10 @@ bool ScientificModifier::isStrong() const {
     return true;
 }
 
-bool ScientificModifier::containsField(Field field) const {
+bool ScientificModifier::containsField(UNumberFormatFields field) const {
     (void)field;
     // This method is not used for inner modifiers.
-    UPRV_UNREACHABLE_EXIT;
+    UPRV_UNREACHABLE;
 }
 
 void ScientificModifier::getParameters(Parameters& output) const {
@@ -104,8 +104,8 @@ void ScientificModifier::getParameters(Parameters& output) const {
     output.obj = nullptr;
 }
 
-bool ScientificModifier::strictEquals(const Modifier& other) const {
-    const auto* _other = dynamic_cast<const ScientificModifier*>(&other);
+bool ScientificModifier::semanticallyEquivalent(const Modifier& other) const {
+    auto* _other = dynamic_cast<const ScientificModifier*>(&other);
     if (_other == nullptr) {
         return false;
     }
@@ -123,15 +123,9 @@ void ScientificHandler::processQuantity(DecimalQuantity &quantity, MicroProps &m
     fParent->processQuantity(quantity, micros, status);
     if (U_FAILURE(status)) { return; }
 
-    // Do not apply scientific notation to special doubles
-    if (quantity.isInfinite() || quantity.isNaN()) {
-        micros.modInner = &micros.helpers.emptyStrongModifier;
-        return;
-    }
-
     // Treat zero as if it had magnitude 0
     int32_t exponent;
-    if (quantity.isZeroish()) {
+    if (quantity.isZero()) {
         if (fSettings.fRequireMinInt && micros.rounder.isSignificantDigits()) {
             // Show "00.000E0" on pattern "00.000E0"
             micros.rounder.apply(quantity, fSettings.fEngineeringInterval, status);
@@ -148,11 +142,6 @@ void ScientificHandler::processQuantity(DecimalQuantity &quantity, MicroProps &m
     ScientificModifier &mod = micros.helpers.scientificModifier;
     mod.set(exponent, this);
     micros.modInner = &mod;
-
-    // Change the exponent only after we select appropriate plural form
-    // for formatting purposes so that we preserve expected formatted
-    // string behavior.
-    quantity.adjustExponent(exponent);
 
     // We already performed rounding. Do not perform it again.
     micros.rounder = RoundingImpl::passThrough();

@@ -15,15 +15,13 @@
 #define __DTINTRV_H__
 
 #include "unicode/utypes.h"
-
-#if U_SHOW_CPLUSPLUS_API
-
 #include "unicode/uobject.h"
 
 /**
  * \file
  * \brief C++ API: Date Interval data type
  */
+
 
 U_NAMESPACE_BEGIN
 
@@ -76,7 +74,7 @@ public:
      * @return          The class ID for all objects of this class.
      * @stable ICU 4.0
      */
-    static UClassID U_EXPORT2 getStaticClassID();
+    static UClassID U_EXPORT2 getStaticClassID(void);
 
     /**
      * Returns a unique class ID POLYMORPHICALLY. Pure virtual override. This
@@ -89,8 +87,9 @@ public:
      *                  other classes have different class IDs.
      * @stable ICU 4.0
      */
-    virtual UClassID getDynamicClassID() const override;
+    virtual UClassID getDynamicClassID(void) const;
 
+    
     /**
      * Copy constructor.
      * @stable ICU 4.0
@@ -105,17 +104,17 @@ public:
 
     /**
      * Equality operator.
-     * @return true if the two DateIntervals are the same
+     * @return TRUE if the two DateIntervals are the same
      * @stable ICU 4.0
      */
-    virtual bool operator==(const DateInterval& other) const;
+    virtual UBool operator==(const DateInterval& other) const;
 
     /**
      * Non-equality operator
-     * @return true if the two DateIntervals are not the same
+     * @return TRUE if the two DateIntervals are not the same
      * @stable ICU 4.0
      */
-    inline bool operator!=(const DateInterval& other) const;
+    inline UBool operator!=(const DateInterval& other) const;
 
 
     /**
@@ -130,7 +129,7 @@ private:
     /** 
      * Default constructor, not implemented.
      */
-    DateInterval() = delete;
+    DateInterval();
 
     UDate fromDate;
     UDate toDate;
@@ -150,14 +149,12 @@ DateInterval::getToDate() const {
 }
 
 
-inline bool
+inline UBool 
 DateInterval::operator!=(const DateInterval& other) const { 
     return ( !operator==(other) );
 }
 
 
 U_NAMESPACE_END
-
-#endif /* U_SHOW_CPLUSPLUS_API */
 
 #endif

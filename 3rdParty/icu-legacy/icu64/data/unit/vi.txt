@@ -1,33 +1,50 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 vi{
+    Version{"2.1.49.82"}
+    durationUnits{
+        hm{"h:mm"}
+        hms{"h:mm:ss"}
+        ms{"m:ss"}
+    }
     units{
         acceleration{
             g-force{
+                dnam{"lực g"}
                 other{"{0} lực g"}
-            }
-            meter-per-square-second{
-                dnam{"mét/giây bình phương"}
-                other{"{0} mét/giây bình phương"}
             }
         }
         angle{
             arc-minute{
+                dnam{"phút"}
                 other{"{0} phút"}
             }
             arc-second{
+                dnam{"giây"}
                 other{"{0} giây"}
             }
             degree{
+                dnam{"độ"}
                 other{"{0} độ"}
             }
             radian{
                 dnam{"radian"}
                 other{"{0} radian"}
             }
+            revolution{
+                dnam{"vòng"}
+                other{"{0} vòng"}
+            }
         }
         area{
+            acre{
+                dnam{"mẫu"}
+                other{"{0} mẫu"}
+            }
+            dunam{
+                dnam{"dunam"}
+                other{"{0} dunam"}
+            }
             hectare{
                 dnam{"héc-ta"}
                 other{"{0} héc-ta"}
@@ -61,67 +78,32 @@ vi{
                 other{"{0} yard vuông"}
             }
         }
-        compound{
-            1024p1{"kibi{0}"}
-            1024p2{"mebi{0}"}
-            1024p3{"gibi{0}"}
-            1024p4{"tebi{0}"}
-            1024p5{"pebi{0}"}
-            1024p6{"exbi{0}"}
-            1024p7{"zebi{0}"}
-            1024p8{"yobi{0}"}
-            10p-1{"đềxi{0}"}
-            10p-12{"picô{0}"}
-            10p-15{"femto{0}"}
-            10p-18{"atto{0}"}
-            10p-2{"xenti{0}"}
-            10p-21{"zepto{0}"}
-            10p-24{"yocto{0}"}
-            10p-27{"ronto{0}"}
-            10p-3{"mili{0}"}
-            10p-30{"quecto{0}"}
-            10p-6{"micrô{0}"}
-            10p-9{"nano{0}"}
-            10p1{"deka{0}"}
-            10p12{"tera{0}"}
-            10p15{"peta{0}"}
-            10p18{"exa{0}"}
-            10p2{"hecto{0}"}
-            10p21{"zetta{0}"}
-            10p24{"yotta{0}"}
-            10p27{"ronna{0}"}
-            10p3{"kilô{0}"}
-            10p30{"quetta{0}"}
-            10p6{"mega{0}"}
-            10p9{"giga{0}"}
-            power2{
-                other{
-                    _{
-                        _{"{0} vuông"}
-                    }
-                }
-            }
-            power3{
-                other{
-                    _{
-                        _{"{0} khối"}
-                    }
-                }
-            }
-            times{"{0}-{1}"}
-        }
         concentr{
             karat{
-                dnam{"carat"}
-                other{"{0} carat"}
+                dnam{"karat"}
+                other{"{0} karat"}
+            }
+            mole{
+                dnam{"mol"}
+                other{"{0} mol"}
+            }
+            percent{
+                dnam{"%"}
+                other{"{0}%"}
+            }
+            permille{
+                dnam{"‰"}
+                other{"{0}‰"}
             }
             permyriad{
-                other{"{0} phần vạn"}
+                dnam{"phần chục nghìn"}
+                other{"{0} phần chục nghìn"}
             }
         }
         consumption{
-            liter-per-100-kilometer{
+            liter-per-100kilometers{
                 dnam{"lít/100km"}
+                other{"{0} l/100km"}
             }
             liter-per-kilometer{
                 dnam{"lít/km"}
@@ -131,16 +113,13 @@ vi{
                 dnam{"dặm/gallon"}
                 other{"{0} dặm/gallon"}
             }
-            mile-per-gallon-imperial{
-                dnam{"dặm/galông Anh"}
-            }
         }
         coordinate{
             dnam{"phương trời"}
-            east{"{0} Đông"}
-            north{"{0} Bắc"}
-            south{"{0} Nam"}
-            west{"{0} Tây"}
+            east{"{0}Đ"}
+            north{"{0}B"}
+            south{"{0}N"}
+            west{"{0}T"}
         }
         digital{
             gigabit{
@@ -169,7 +148,6 @@ vi{
             }
             petabyte{
                 dnam{"petabyte"}
-                other{"{0} petabyte"}
             }
             terabit{
                 dnam{"terabit"}
@@ -178,6 +156,59 @@ vi{
             terabyte{
                 dnam{"terabyte"}
                 other{"{0} terabyte"}
+            }
+        }
+        duration{
+            century{
+                dnam{"thế kỷ"}
+                other{"{0} thế kỷ"}
+            }
+            day{
+                dnam{"ngày"}
+                other{"{0} ngày"}
+                per{"{0}/ngày"}
+            }
+            hour{
+                dnam{"giờ"}
+                other{"{0} giờ"}
+                per{"{0}/giờ"}
+            }
+            microsecond{
+                dnam{"micrô giây"}
+                other{"{0} micrô giây"}
+            }
+            millisecond{
+                dnam{"mili giây"}
+                other{"{0} mili giây"}
+            }
+            minute{
+                dnam{"phút"}
+                other{"{0} phút"}
+                per{"{0}/phút"}
+            }
+            month{
+                dnam{"tháng"}
+                other{"{0} tháng"}
+                per{"{0}/tháng"}
+            }
+            nanosecond{
+                dnam{"nano giây"}
+                other{"{0} nano giây"}
+            }
+            second{
+                dnam{"giây"}
+                other{"{0} giây"}
+                per{"{0}/giây"}
+            }
+            week{
+                dnam{"tuần"}
+                other{"{0} tuần"}
+                per{"{0}/tuần"}
+            }
+            year{
+                dnam{"năm"}
+                other{"{0} năm"}
+                per{"{0}/năm"}
             }
         }
         electric{
@@ -190,8 +221,7 @@ vi{
                 other{"{0} mili ampe"}
             }
             ohm{
-                dnam{"ôm"}
-                other{"{0} ôm"}
+                other{"{0} ohm"}
             }
             volt{
                 dnam{"vôn"}
@@ -208,6 +238,7 @@ vi{
                 other{"{0} calo"}
             }
             electronvolt{
+                dnam{"electronvôn"}
                 other{"{0} electronvôn"}
             }
             foodcalorie{
@@ -219,8 +250,8 @@ vi{
                 other{"{0} jun"}
             }
             kilocalorie{
-                dnam{"kilôcalo"}
-                other{"{0} kilôcalo"}
+                dnam{"kilô calo"}
+                other{"{0} kilô calo"}
             }
             kilojoule{
                 dnam{"kilô jun"}
@@ -230,13 +261,10 @@ vi{
                 dnam{"kilôoát giờ"}
                 other{"{0} kilôoát giờ"}
             }
-            therm-us{
-                dnam{"đơn vị nhiệt Mỹ"}
-                other{"{0} đơn vị nhiệt Mỹ"}
-            }
         }
         force{
             newton{
+                dnam{"newton"}
                 other{"{0} newton"}
             }
             pound-force{
@@ -244,28 +272,7 @@ vi{
                 other{"{0} pound lực"}
             }
         }
-        graphics{
-            dot-per-centimeter{
-                dnam{"chấm/xentimét"}
-                other{"{0} chấm/xentimét"}
-            }
-            dot-per-inch{
-                dnam{"chấm/inch"}
-                other{"{0} chấm/inch"}
-            }
-            megapixel{
-                other{"{0} megapixel"}
-            }
-            pixel-per-centimeter{
-                dnam{"pixel/xentimét"}
-                other{"{0} pixel/xentimét"}
-            }
-        }
         length{
-            astronomical-unit{
-                dnam{"đơn vị thiên văn"}
-                other{"{0} đơn vị thiên văn"}
-            }
             centimeter{
                 dnam{"xentimét"}
                 other{"{0} xentimét"}
@@ -274,23 +281,21 @@ vi{
                 dnam{"đềximét"}
                 other{"{0} đềximét"}
             }
-            earth-radius{
-                dnam{"bán kính trái đất"}
-                other{"{0} bán kính trái đất"}
-            }
             fathom{
-                dnam{"sải"}
-                other{"{0} sải"}
+                dnam{"fm"}
+                other{"{0} fth"}
             }
             foot{
                 dnam{"feet"}
                 other{"{0} feet"}
             }
             furlong{
-                dnam{"fulông"}
-                other{"{0} fulông"}
+                dnam{"fur"}
+                other{"{0} fur"}
             }
             inch{
+                dnam{"inch"}
+                other{"{0} inch"}
                 per{"{0}/inch"}
             }
             kilometer{
@@ -308,6 +313,10 @@ vi{
             micrometer{
                 dnam{"micrômét"}
                 other{"{0} micrômét"}
+            }
+            mile{
+                dnam{"dặm"}
+                other{"{0} dặm"}
             }
             mile-scandinavian{
                 dnam{"dặm scandinavia"}
@@ -334,10 +343,11 @@ vi{
                 other{"{0} picômét"}
             }
             point{
-                dnam{"điểm"}
-                other{"{0} điểm"}
+                dnam{"đ"}
+                other{"{0} đ"}
             }
             solar-radius{
+                dnam{"bán kính mặt trời"}
                 other{"{0} bán kính mặt trời"}
             }
             yard{
@@ -346,19 +356,12 @@ vi{
             }
         }
         light{
-            candela{
-                dnam{"candela"}
-                other{"{0} candela"}
-            }
-            lumen{
-                dnam{"lumen"}
-                other{"{0} lumen"}
-            }
             lux{
                 dnam{"lux"}
                 other{"{0} lux"}
             }
             solar-luminosity{
+                dnam{"độ sáng của mặt trời"}
                 other{"{0} độ sáng của mặt trời"}
             }
         }
@@ -368,9 +371,11 @@ vi{
                 other{"{0} carat"}
             }
             dalton{
+                dnam{"dalton"}
                 other{"{0} dalton"}
             }
             earth-mass{
+                dnam{"Trọng lượng trái đất"}
                 other{"{0} trọng lượng trái đất"}
             }
             gram{
@@ -382,36 +387,33 @@ vi{
                 dnam{"kilôgam"}
                 other{"{0} kilôgam"}
             }
+            metric-ton{
+                dnam{"MT"}
+                other{"{0} MT"}
+            }
             microgram{
                 dnam{"micrôgam"}
-                other{"{0} micrôgam"}
+                other{"{0} micrô gam"}
             }
             milligram{
                 dnam{"miligam"}
                 other{"{0} miligam"}
             }
-            ounce{
-                dnam{"aoxơ"}
-                other{"{0} aoxơ"}
-                per{"{0}/aoxơ"}
-            }
-            ounce-troy{
-                dnam{"troi aoxơ"}
-                other{"{0} troi aoxơ"}
-            }
             pound{
+                dnam{"pao"}
                 other{"{0} pao"}
             }
             solar-mass{
+                dnam{"trọng lượng mặt trời"}
                 other{"{0} trọng lượng mặt trời"}
+            }
+            stone{
+                dnam{"st"}
+                other{"{0} st"}
             }
             ton{
                 dnam{"tấn"}
                 other{"{0} tấn"}
-            }
-            tonne{
-                dnam{"tấn hệ mét"}
-                other{"{0} tấn hệ mét"}
             }
         }
         power{
@@ -442,49 +444,37 @@ vi{
         }
         pressure{
             atmosphere{
-                dnam{"átmốtphe"}
                 other{"{0} átmốtphe"}
             }
             hectopascal{
                 dnam{"héctô pascal"}
                 other{"{0} héctô pascal"}
             }
-            inch-ofhg{
+            inch-hg{
                 dnam{"inch thủy ngân"}
                 other{"{0} inch thủy ngân"}
             }
             kilopascal{
-                dnam{"kilô pascal"}
+                dnam{"kPa"}
+                other{"{0} kPa"}
             }
             megapascal{
-                dnam{"mêga pascal"}
-                other{"{0} mêga pascal"}
+                dnam{"MPa"}
+                other{"{0} MPa"}
             }
             millibar{
                 dnam{"millibar"}
                 other{"{0} millibar"}
             }
-            millimeter-ofhg{
-                dnam{"milimét thủy ngân"}
-                other{"{0} milimét thủy ngân"}
-            }
-            pound-force-per-square-inch{
-                dnam{"pound/inch vuông"}
-                other{"{0} pound/inch vuông"}
-            }
         }
         speed{
-            beaufort{
-                dnam{"Beaufort"}
-                other{"Beaufort {0}"}
-            }
             kilometer-per-hour{
                 dnam{"kilômét/giờ"}
                 other{"{0} kilômét/giờ"}
             }
             knot{
-                dnam{"hải lý/giờ"}
-                other{"{0} hải lý/giờ"}
+                dnam{"nút"}
+                other{"{0} nút"}
             }
             meter-per-second{
                 dnam{"mét/giây"}
@@ -504,10 +494,6 @@ vi{
                 dnam{"độ F"}
                 other{"{0} độ F"}
             }
-            generic{
-                dnam{"độ"}
-                other{"{0} độ"}
-            }
             kelvin{
                 dnam{"độ K"}
                 other{"{0} độ K"}
@@ -518,12 +504,20 @@ vi{
                 dnam{"newton-mét"}
                 other{"{0} newton-mét"}
             }
-            pound-force-foot{
+            pound-foot{
                 dnam{"pound-feet"}
                 other{"{0} pound-feet"}
             }
         }
         volume{
+            barrel{
+                dnam{"thùng"}
+                other{"{0} thùng"}
+            }
+            bushel{
+                dnam{"bu"}
+                other{"{0} bu"}
+            }
             centiliter{
                 dnam{"xentilít"}
                 other{"{0} xentilít"}
@@ -556,6 +550,9 @@ vi{
                 dnam{"yard khối"}
                 other{"{0} yard khối"}
             }
+            cup{
+                other{"{0} cup"}
+            }
             cup-metric{
                 dnam{"cup khối"}
                 other{"{0} cup khối"}
@@ -564,13 +561,9 @@ vi{
                 dnam{"đềxilít"}
                 other{"{0} đềxilít"}
             }
-            dram{
-                dnam{"dram"}
-                other{"{0} dram"}
-            }
             fluid-ounce{
-                dnam{"aoxơ chất lỏng"}
-                other{"{0} aoxơ chất lỏng"}
+                dnam{"fl oz"}
+                other{"{0} fl oz"}
             }
             fluid-ounce-imperial{
                 dnam{"Aoxơ chất lỏng theo hệ đo lường Anh"}
@@ -584,15 +577,15 @@ vi{
             gallon-imperial{
                 dnam{"gallon Anh"}
                 other{"{0} gallon Anh"}
+                per{"{0}/gal Anh"}
             }
             hectoliter{
-                dnam{"hectôlít"}
-                other{"{0} hectôlít"}
+                dnam{"hectolit"}
+                other{"{0} hectolit"}
             }
             liter{
                 dnam{"lít"}
                 other{"{0} lít"}
-                per{"{0}/l"}
             }
             megaliter{
                 dnam{"megalít"}
@@ -603,8 +596,8 @@ vi{
                 other{"{0} mililít"}
             }
             pint{
-                dnam{"panh"}
-                other{"{0} panh"}
+                dnam{"pint"}
+                other{"{0} pint"}
             }
             pint-metric{
                 dnam{"panh khối"}
@@ -614,6 +607,14 @@ vi{
                 dnam{"quart"}
                 other{"{0} quart"}
             }
+            tablespoon{
+                dnam{"muỗng canh"}
+                other{"{0} muỗng canh"}
+            }
+            teaspoon{
+                dnam{"muỗng cà phê"}
+                other{"{0} muỗng cà phê"}
+            }
         }
     }
     unitsNarrow{
@@ -622,75 +623,146 @@ vi{
                 other{"{0}G"}
             }
         }
+        angle{
+            arc-minute{
+                other{"{0}′"}
+            }
+            arc-second{
+                other{"{0}″"}
+            }
+        }
         area{
+            acre{
+                other{"{0} mẫu"}
+            }
+            dunam{
+                dnam{"dunam"}
+                other{"{0} dunam"}
+            }
             hectare{
                 other{"{0}ha"}
             }
         }
         concentr{
+            mole{
+                dnam{"mol"}
+                other{"{0} mol"}
+            }
             permyriad{
-                dnam{"‱"}
+                dnam{"phần vạn"}
+                other{"{0}‱"}
             }
         }
-        digital{
-            byte{
-                dnam{"B"}
-                other{"{0} B"}
+        consumption{
+            liter-per-100kilometers{
+                dnam{"L/100km"}
+                other{"{0}L/100km"}
             }
-            petabyte{
-                dnam{"PB"}
-            }
+        }
+        coordinate{
+            dnam{"hướng"}
+            east{"{0}Đ"}
+            north{"{0}B"}
+            south{"{0}N"}
+            west{"{0}T"}
         }
         duration{
+            day{
+                dnam{"ngày"}
+                other{"{0} ngày"}
+            }
+            hour{
+                dnam{"giờ"}
+                other{"{0} giờ"}
+            }
             millisecond{
+                dnam{"mili giây"}
                 other{"{0}miligiây"}
+            }
+            minute{
+                dnam{"phút"}
+                other{"{0} phút"}
+            }
+            month{
+                dnam{"tháng"}
+                other{"{0} tháng"}
+            }
+            second{
+                dnam{"giây"}
+                other{"{0} giây"}
+            }
+            week{
+                dnam{"tuần"}
+                other{"{0} tuần"}
+            }
+            year{
+                dnam{"năm"}
+                other{"{0} năm"}
             }
         }
         energy{
+            british-thermal-unit{
+                dnam{"BTU"}
+                other{"{0} Btu"}
+            }
             electronvolt{
-                dnam{"eV"}
+                dnam{"electronvôn"}
+                other{"{0} eV"}
             }
         }
         force{
             newton{
-                dnam{"N"}
+                dnam{"newton"}
+                other{"{0} N"}
             }
             pound-force{
-                dnam{"lbf"}
-            }
-        }
-        graphics{
-            megapixel{
-                dnam{"MP"}
+                dnam{"pound-lực"}
+                other{"{0} lbf"}
             }
         }
         length{
             centimeter{
+                dnam{"cm"}
                 other{"{0}cm"}
+            }
+            fathom{
+                dnam{"fm"}
+                other{"{0} fth"}
             }
             foot{
                 other{"{0}'"}
+            }
+            furlong{
+                dnam{"fur"}
+                other{"{0} fur"}
             }
             inch{
                 other{"{0}\u0022"}
             }
             kilometer{
+                dnam{"km"}
                 other{"{0}km"}
             }
             light-year{
                 other{"{0}ly"}
             }
             meter{
+                dnam{"m"}
                 other{"{0}m"}
             }
+            mile{
+                other{"{0}mi"}
+            }
             millimeter{
+                dnam{"mm"}
                 other{"{0}mm"}
             }
             picometer{
                 other{"{0}pm"}
             }
             solar-radius{
-                dnam{"R☉"}
+                dnam{"bán kính mặt trời"}
+                other{"{0} R☉"}
             }
             yard{
                 other{"{0}yd"}
@@ -698,41 +770,107 @@ vi{
         }
         light{
             solar-luminosity{
-                dnam{"L☉"}
+                dnam{"độ sáng của mặt trời"}
+                other{"{0} L☉"}
             }
         }
         mass{
             dalton{
-                dnam{"Da"}
+                dnam{"dalton"}
+                other{"{0} Da"}
             }
             earth-mass{
-                dnam{"M⊕"}
+                dnam{"Trọng lượng trái đất"}
+                other{"{0} M⊕"}
+            }
+            gram{
+                dnam{"g"}
+                other{"{0}g"}
+            }
+            kilogram{
+                dnam{"kg"}
+                other{"{0}kg"}
+            }
+            ounce{
+                other{"{0}oz"}
             }
             pound{
-                dnam{"lb"}
                 other{"{0}lb"}
             }
             solar-mass{
-                dnam{"M☉"}
+                dnam{"trọng lượng mặt trời"}
+                other{"{0} M☉"}
+            }
+            stone{
+                dnam{"st"}
+                other{"{0} st"}
             }
         }
         power{
             horsepower{
                 other{"{0}hp"}
             }
+            kilowatt{
+                other{"{0}kW"}
+            }
             watt{
                 other{"{0}W"}
             }
         }
         pressure{
-            inch-ofhg{
+            hectopascal{
+                other{"{0}hPa"}
+            }
+            inch-hg{
                 other{"{0}\u0022 Hg"}
             }
+            kilopascal{
+                dnam{"kPa"}
+                other{"{0} kPa"}
+            }
+            megapascal{
+                dnam{"MPa"}
+                other{"{0} MPa"}
+            }
             millibar{
-                other{"{0} mb"}
+                other{"{0}mb"}
+            }
+        }
+        speed{
+            kilometer-per-hour{
+                other{"{0}km/h"}
+            }
+            meter-per-second{
+                other{"{0}m/s"}
+            }
+            mile-per-hour{
+                other{"{0}mph"}
+            }
+        }
+        temperature{
+            celsius{
+                dnam{"°C"}
+            }
+        }
+        torque{
+            newton-meter{
+                dnam{"N⋅m"}
+                other{"{0} N⋅m"}
+            }
+            pound-foot{
+                dnam{"lbf⋅ft"}
+                other{"{0} lbf⋅ft"}
             }
         }
         volume{
+            barrel{
+                dnam{"thùng"}
+                other{"{0} thùng"}
+            }
+            bushel{
+                dnam{"bu"}
+                other{"{0} bu"}
+            }
             cubic-kilometer{
                 other{"{0}km³"}
             }
@@ -740,14 +878,12 @@ vi{
                 other{"{0}mi³"}
             }
             fluid-ounce-imperial{
+                dnam{"Oz"}
                 other{"{0} fl ozIm"}
             }
-            gallon{
-                per{"{0}/gal"}
-            }
             liter{
+                dnam{"l"}
                 other{"{0}L"}
-                per{"{0}/l"}
             }
         }
     }
@@ -768,8 +904,7 @@ vi{
                 dnam{"độ"}
             }
             revolution{
-                dnam{"vòng"}
-                other{"{0} vòng"}
+                dnam{"rev"}
             }
         }
         area{
@@ -777,24 +912,42 @@ vi{
                 dnam{"mẫu"}
                 other{"{0} mẫu"}
             }
+            dunam{
+                dnam{"dunam"}
+                other{"{0} dunam"}
+            }
             hectare{
                 dnam{"ha"}
             }
+            square-centimeter{
+                dnam{"cm²"}
+            }
+            square-kilometer{
+                dnam{"km²"}
+            }
         }
         concentr{
-            item{
-                dnam{"mục"}
-                other{"{0} mục"}
+            milligram-per-deciliter{
+                dnam{"mg/dL"}
+            }
+            mole{
+                dnam{"mol"}
+                other{"{0} mol"}
+            }
+            percent{
+                dnam{"%"}
+                other{"{0}%"}
+            }
+            permille{
+                dnam{"‰"}
+                other{"{0}‰"}
             }
             permyriad{
                 dnam{"phần vạn"}
+                other{"{0}‱"}
             }
         }
         consumption{
-            liter-per-100-kilometer{
-                dnam{"l/100km"}
-                other{"{0} l/100km"}
-            }
             liter-per-kilometer{
                 dnam{"l/km"}
                 other{"{0} l/km"}
@@ -812,8 +965,15 @@ vi{
             west{"{0}T"}
         }
         digital{
+            bit{
+                dnam{"bit"}
+            }
+            byte{
+                dnam{"byte"}
+            }
             petabyte{
                 dnam{"PByte"}
+                other{"{0} PB"}
             }
         }
         duration{
@@ -826,18 +986,14 @@ vi{
                 other{"{0} ngày"}
                 per{"{0}/ngày"}
             }
-            decade{
-                dnam{"thập kỷ"}
-                other{"{0} thập kỷ"}
-            }
             hour{
                 dnam{"giờ"}
                 other{"{0} giờ"}
                 per{"{0}/giờ"}
             }
             microsecond{
-                dnam{"micrô giây"}
-                other{"{0} micrô giây"}
+                dnam{"μs"}
+                other{"{0} μs"}
             }
             millisecond{
                 dnam{"mili giây"}
@@ -856,11 +1012,6 @@ vi{
             nanosecond{
                 dnam{"nano giây"}
                 other{"{0} nano giây"}
-            }
-            quarter{
-                dnam{"quý"}
-                other{"{0} quý"}
-                per{"{0}/quý"}
             }
             second{
                 dnam{"giây"}
@@ -892,63 +1043,64 @@ vi{
         energy{
             british-thermal-unit{
                 dnam{"BTU"}
+                other{"{0} Btu"}
             }
             electronvolt{
                 dnam{"electronvôn"}
-            }
-            foodcalorie{
-                dnam{"Cal"}
-                other{"{0} Cal"}
+                other{"{0} eV"}
             }
             joule{
                 dnam{"J"}
-            }
-            therm-us{
-                dnam{"therm Mỹ"}
-                other{"{0} therm Mỹ"}
             }
         }
         force{
             newton{
                 dnam{"newton"}
+                other{"{0} N"}
             }
             pound-force{
                 dnam{"pound-lực"}
+                other{"{0} lbf"}
             }
         }
-        graphics{
-            dot{
-                dnam{"chấm"}
-                other{"{0} chấm"}
+        frequency{
+            gigahertz{
+                dnam{"GHz"}
             }
-            dot-per-centimeter{
-                dnam{"dpcm"}
-                other{"{0} dpcm"}
+            hertz{
+                dnam{"Hz"}
             }
-            dot-per-inch{
-                dnam{"dpi"}
-                other{"{0} dpi"}
+            kilohertz{
+                dnam{"kHz"}
             }
-            megapixel{
-                dnam{"megapixel"}
-            }
-            pixel{
-                dnam{"pixel"}
-                other{"{0} pixel"}
-            }
-            pixel-per-centimeter{
-                dnam{"pixel/cm"}
-                other{"{0} pixel/cm"}
-            }
-            pixel-per-inch{
-                dnam{"pixel/inch"}
-                other{"{0} pixel/inch"}
+            megahertz{
+                dnam{"MHz"}
             }
         }
         length{
+            astronomical-unit{
+                dnam{"au"}
+            }
+            centimeter{
+                dnam{"cm"}
+            }
+            decimeter{
+                dnam{"dm"}
+            }
+            fathom{
+                dnam{"fm"}
+                other{"{0} fth"}
+            }
+            furlong{
+                dnam{"fur"}
+                other{"{0} fur"}
+            }
             inch{
                 dnam{"inch"}
                 other{"{0} inch"}
+            }
+            kilometer{
+                dnam{"km"}
             }
             meter{
                 dnam{"m"}
@@ -957,56 +1109,144 @@ vi{
                 dnam{"dặm"}
                 other{"{0} dặm"}
             }
+            mile-scandinavian{
+                dnam{"smi"}
+            }
+            millimeter{
+                dnam{"mm"}
+            }
+            nanometer{
+                dnam{"nm"}
+            }
+            nautical-mile{
+                dnam{"nmi"}
+            }
+            picometer{
+                dnam{"pm"}
+            }
             point{
                 dnam{"đ"}
                 other{"{0} đ"}
             }
             solar-radius{
                 dnam{"bán kính mặt trời"}
+                other{"{0} R☉"}
             }
         }
         light{
             solar-luminosity{
                 dnam{"độ sáng của mặt trời"}
+                other{"{0} L☉"}
             }
         }
         mass{
-            carat{
-                dnam{"cara"}
-                other{"{0} CT"}
-            }
             dalton{
                 dnam{"dalton"}
+                other{"{0} Da"}
             }
             earth-mass{
                 dnam{"Trọng lượng trái đất"}
-            }
-            grain{
-                dnam{"gren"}
-                other{"{0} gren"}
+                other{"{0} M⊕"}
             }
             gram{
                 dnam{"g"}
             }
-            ounce-troy{
-                dnam{"ozt"}
-                other{"{0} ozt"}
+            kilogram{
+                dnam{"kg"}
+            }
+            metric-ton{
+                dnam{"t"}
+            }
+            microgram{
+                dnam{"µg"}
+            }
+            milligram{
+                dnam{"mg"}
+            }
+            ounce{
+                dnam{"oz"}
+                other{"{0} oz"}
             }
             pound{
                 dnam{"pao"}
             }
             solar-mass{
                 dnam{"trọng lượng mặt trời"}
+                other{"{0} M☉"}
+            }
+            stone{
+                dnam{"st"}
+                other{"{0} st"}
             }
         }
         power{
+            gigawatt{
+                dnam{"GW"}
+            }
+            horsepower{
+                dnam{"hp"}
+            }
+            kilowatt{
+                dnam{"kW"}
+            }
+            megawatt{
+                dnam{"MW"}
+            }
+            milliwatt{
+                dnam{"mW"}
+            }
             watt{
                 dnam{"W"}
             }
         }
+        pressure{
+            atmosphere{
+                dnam{"atm"}
+                other{"{0} atm"}
+            }
+            hectopascal{
+                dnam{"hPa"}
+            }
+            inch-hg{
+                dnam{"inHg"}
+            }
+            kilopascal{
+                dnam{"kPa"}
+                other{"{0} kPa"}
+            }
+            megapascal{
+                dnam{"MPa"}
+                other{"{0} MPa"}
+            }
+            millibar{
+                dnam{"mbar"}
+            }
+            millimeter-of-mercury{
+                dnam{"mm Hg"}
+                other{"{0} mm Hg"}
+            }
+            pound-per-square-inch{
+                dnam{"psi"}
+            }
+        }
         speed{
-            mile-per-hour{
-                other{"{0} mph"}
+            knot{
+                dnam{"kn"}
+            }
+        }
+        temperature{
+            kelvin{
+                dnam{"K"}
+            }
+        }
+        torque{
+            newton-meter{
+                dnam{"N⋅m"}
+                other{"{0} N⋅m"}
+            }
+            pound-foot{
+                dnam{"lbf⋅ft"}
+                other{"{0} lbf⋅ft"}
             }
         }
         volume{
@@ -1014,63 +1254,74 @@ vi{
                 dnam{"thùng"}
                 other{"{0} thùng"}
             }
+            bushel{
+                dnam{"bu"}
+                other{"{0} bu"}
+            }
+            centiliter{
+                dnam{"cL"}
+            }
+            cubic-centimeter{
+                dnam{"cm³"}
+            }
+            cubic-kilometer{
+                dnam{"km³"}
+            }
+            cubic-meter{
+                dnam{"m³"}
+            }
+            cubic-mile{
+                dnam{"mi³"}
+            }
             cup{
-                dnam{"tách"}
-                other{"{0} tách"}
+                dnam{"c"}
             }
-            dessert-spoon{
-                dnam{"thìa tráng miệng"}
-                other{"{0} thìa tráng miệng"}
+            cup-metric{
+                dnam{"mcup"}
             }
-            dessert-spoon-imperial{
-                dnam{"thìa tráng miệng Anh"}
-                other{"{0} thìa tráng miệng Anh"}
-            }
-            dram{
-                dnam{"dram chất lỏng"}
-            }
-            drop{
-                dnam{"giọt"}
-                other{"{0} giọt"}
+            deciliter{
+                dnam{"dL"}
             }
             fluid-ounce{
                 dnam{"fl oz"}
                 other{"{0} fl oz"}
             }
             fluid-ounce-imperial{
-                dnam{"fl oz Anh"}
-                other{"{0} fl oz Anh"}
+                dnam{"Oz"}
+                other{"{0} fl oz Imp."}
             }
             gallon{
                 dnam{"gal"}
                 other{"{0} gal"}
-                per{"{0}/gal Mỹ"}
+                per{"{0}/gal"}
             }
             gallon-imperial{
                 dnam{"gal Anh"}
                 other{"{0} gal Anh"}
                 per{"{0}/gal Anh"}
             }
+            hectoliter{
+                dnam{"hL"}
+            }
             liter{
                 dnam{"l"}
                 other{"{0} L"}
-                per{"{0}/L"}
+                per{"{0}/l"}
             }
-            pinch{
-                dnam{"nhúm"}
-                other{"{0} nhúm"}
+            megaliter{
+                dnam{"ML"}
             }
-            quart-imperial{
-                dnam{"lít Anh"}
-                other{"{0} lít Anh"}
+            milliliter{
+                dnam{"mL"}
+            }
+            pint-metric{
+                dnam{"mpt"}
             }
             tablespoon{
-                dnam{"muỗng canh"}
-                other{"{0} muỗng canh"}
+                dnam{"thìa xúp"}
             }
             teaspoon{
-                dnam{"muỗng cà phê"}
-                other{"{0} muỗng cà phê"}
+                dnam{"tsp"}
             }
         }
     }

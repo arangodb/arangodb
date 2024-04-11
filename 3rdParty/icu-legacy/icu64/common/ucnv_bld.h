@@ -66,8 +66,8 @@ typedef struct UConverterImpl UConverterImpl;
 
 typedef struct UConverterStaticData {   /* +offset: size */
     uint32_t structSize;                /* +0: 4 Size of this structure */
-
-    char name
+    
+    char name 
       [UCNV_MAX_CONVERTER_NAME_LENGTH]; /* +4: 60  internal name of the converter- invariant chars */
 
     int32_t codepage;               /* +64: 4 codepage # (now IBM-$codepage) */
@@ -80,7 +80,7 @@ typedef struct UConverterStaticData {   /* +offset: size */
 
     uint8_t subChar[UCNV_MAX_SUBCHAR_LEN]; /* +72: 4  [note:  4 and 8 byte boundary] */
     int8_t subCharLen;              /* +76: 1 */
-
+    
     uint8_t hasToUnicodeFallback;   /* +77: 1 UBool needs to be changed to UBool to be consistent across platform */
     uint8_t hasFromUnicodeFallback; /* +78: 1 */
     uint8_t unicodeMask;            /* +79: 1  bit 0: has supplementary  bit 1: has single surrogates */
@@ -101,8 +101,8 @@ struct UConverterSharedData {
 
     const UConverterStaticData *staticData; /* pointer to the static (non changing) data. */
 
-    UBool                sharedDataCached;   /* true:  shared data is in cache, don't destroy on ucnv_close() if 0 ref.  false: shared data isn't in the cache, do attempt to clean it up if the ref is 0 */
-    /** If false, then referenceCounter is not used. Must not change after initialization. */
+    UBool                sharedDataCached;   /* TRUE:  shared data is in cache, don't destroy on ucnv_close() if 0 ref.  FALSE: shared data isn't in the cache, do attempt to clean it up if the ref is 0 */
+    /** If FALSE, then referenceCounter is not used. Must not change after initialization. */
     UBool isReferenceCounted;
 
     const UConverterImpl *impl;     /* vtable-style struct of mostly function pointers */
@@ -128,7 +128,7 @@ struct UConverterSharedData {
 #define UCNV_IMMUTABLE_SHARED_DATA_INITIALIZER(pStaticData, pImpl) \
     { \
         sizeof(UConverterSharedData), ~((uint32_t)0), \
-        NULL, pStaticData, false, false, pImpl, \
+        NULL, pStaticData, FALSE, FALSE, pImpl, \
         0, UCNV_MBCS_TABLE_INITIALIZER \
     }
 
@@ -181,9 +181,9 @@ struct UConverter {
 
     uint32_t options; /* options flags from UConverterOpen, may contain additional bits */
 
-    UBool sharedDataIsCached;  /* true:  shared data is in cache, don't destroy on ucnv_close() if 0 ref.  false: shared data isn't in the cache, do attempt to clean it up if the ref is 0 */
-    UBool isCopyLocal;  /* true if UConverter is not owned and not released in ucnv_close() (stack-allocated, safeClone(), etc.) */
-    UBool isExtraLocal; /* true if extraInfo is not owned and not released in ucnv_close() (stack-allocated, safeClone(), etc.) */
+    UBool sharedDataIsCached;  /* TRUE:  shared data is in cache, don't destroy on ucnv_close() if 0 ref.  FALSE: shared data isn't in the cache, do attempt to clean it up if the ref is 0 */
+    UBool isCopyLocal;  /* TRUE if UConverter is not owned and not released in ucnv_close() (stack-allocated, safeClone(), etc.) */
+    UBool isExtraLocal; /* TRUE if extraInfo is not owned and not released in ucnv_close() (stack-allocated, safeClone(), etc.) */
 
     UBool  useFallback;
     int8_t toULength;                   /* number of bytes in toUBytes */
@@ -289,7 +289,7 @@ ucnv_swap(const UDataSwapper *ds,
           UErrorCode *pErrorCode);
 
 U_CAPI void U_EXPORT2
-ucnv_enableCleanup(void);
+ucnv_enableCleanup();
 
 #endif
 

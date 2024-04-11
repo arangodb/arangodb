@@ -31,7 +31,7 @@ public:
 
     CollationCurrencyTest();
     virtual ~CollationCurrencyTest();
-    void runIndexedTest(int32_t index, UBool exec, const char* &name, char* par = nullptr) override;
+    void runIndexedTest(int32_t index, UBool exec, const char* &name, char* par = NULL);
 
     void currencyTest(/*char *par*/);
 };

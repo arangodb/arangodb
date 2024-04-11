@@ -26,15 +26,15 @@ class ICUServiceTest : public IntlTest
   ICUServiceTest();
   virtual ~ICUServiceTest();
 
-  void runIndexedTest(int32_t index, UBool exec, const char* &name, char* par = nullptr) override;
+  void runIndexedTest(int32_t index, UBool exec, const char* &name, char* par = NULL);
 
-  void testAPI_One();
-  void testAPI_Two();
-  void testRBF();
-  void testNotification();
-  void testLocale();
-  void testWrapFactory();
-  void testCoverage();
+  void testAPI_One(void);
+  void testAPI_Two(void);
+  void testRBF(void);
+  void testNotification(void);
+  void testLocale(void);
+  void testWrapFactory(void);
+  void testCoverage(void);
 
  private:
   UnicodeString& lrmsg(UnicodeString& result, const UnicodeString& message, const UObject* lhs, const UObject* rhs) const;
@@ -50,9 +50,9 @@ class ICUServiceTest : public IntlTest
   void confirmIdentical(const UnicodeString& message, const UObject* lhs, const UObject* rhs);
   void confirmIdentical(const UnicodeString& message, int32_t lhs, int32_t rhs);
 
-  void msgstr(const UnicodeString& message, UObject* obj, UBool err = true);
+  void msgstr(const UnicodeString& message, UObject* obj, UBool err = TRUE);
   void logstr(const UnicodeString& message, UObject* obj) {
-        msgstr(message, obj, false);
+        msgstr(message, obj, FALSE);
   }
 };
 

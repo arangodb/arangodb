@@ -225,23 +225,23 @@ static COMPOUND_TEXT_CONVERTERS getState(int codepoint) {
 
 static COMPOUND_TEXT_CONVERTERS findStateFromEscSeq(const char* source, const char* sourceLimit, const uint8_t* toUBytesBuffer, int32_t toUBytesBufferLength, UErrorCode *err) {
     COMPOUND_TEXT_CONVERTERS state = INVALID;
-    UBool matchFound = false;
+    UBool matchFound = FALSE;
     int32_t i, n, offset = toUBytesBufferLength;
 
     for (i = 0; i < NUM_OF_CONVERTERS; i++) {
-        matchFound = true;
+        matchFound = TRUE;
         for (n = 0; escSeqCompoundText[i][n] != 0; n++) {
             if (n < toUBytesBufferLength) {
                 if (toUBytesBuffer[n] != escSeqCompoundText[i][n]) {
-                    matchFound = false;
+                    matchFound = FALSE;
                     break;
                 }
             } else if ((source + (n - offset)) >= sourceLimit) {
                 *err = U_TRUNCATED_CHAR_FOUND;
-                matchFound = false;
+                matchFound = FALSE;
                 break;
             } else if (*(source + (n - offset)) != escSeqCompoundText[i][n]) {
-                matchFound = false;
+                matchFound = FALSE;
                 break;
             }
         }
@@ -261,13 +261,13 @@ static COMPOUND_TEXT_CONVERTERS findStateFromEscSeq(const char* source, const ch
 static void U_CALLCONV
 _CompoundTextOpen(UConverter *cnv, UConverterLoadArgs *pArgs, UErrorCode *errorCode){
     cnv->extraInfo = uprv_malloc (sizeof (UConverterDataCompoundText));
-    if (cnv->extraInfo != nullptr) {
+    if (cnv->extraInfo != NULL) {
         UConverterDataCompoundText *myConverterData = (UConverterDataCompoundText *) cnv->extraInfo;
 
         UConverterNamePieces stackPieces;
         UConverterLoadArgs stackArgs=UCNV_LOAD_ARGS_INITIALIZER;
 
-        myConverterData->myConverterArray[COMPOUND_TEXT_SINGLE_0] = nullptr;
+        myConverterData->myConverterArray[COMPOUND_TEXT_SINGLE_0] = NULL;
         myConverterData->myConverterArray[COMPOUND_TEXT_SINGLE_1] = ucnv_loadSharedData("icu-internal-compound-s1", &stackPieces, &stackArgs, errorCode);
         myConverterData->myConverterArray[COMPOUND_TEXT_SINGLE_2] = ucnv_loadSharedData("icu-internal-compound-s2", &stackPieces, &stackArgs, errorCode);
         myConverterData->myConverterArray[COMPOUND_TEXT_SINGLE_3] = ucnv_loadSharedData("icu-internal-compound-s3", &stackPieces, &stackArgs, errorCode);
@@ -306,16 +306,16 @@ _CompoundTextClose(UConverter *converter) {
     UConverterDataCompoundText* myConverterData = (UConverterDataCompoundText*)(converter->extraInfo);
     int32_t i;
 
-    if (converter->extraInfo != nullptr) {
+    if (converter->extraInfo != NULL) {
         /*close the array of converter pointers and free the memory*/
         for (i = 0; i < NUM_OF_CONVERTERS; i++) {
-            if (myConverterData->myConverterArray[i] != nullptr) {
+            if (myConverterData->myConverterArray[i] != NULL) {
                 ucnv_unloadSharedDataIfReady(myConverterData->myConverterArray[i]);
             }
         }
 
         uprv_free(converter->extraInfo);
-        converter->extraInfo = nullptr;
+        converter->extraInfo = NULL;
     }
 }
 
@@ -336,8 +336,8 @@ UConverter_fromUnicode_CompoundText_OFFSETS(UConverterFromUnicodeArgs* args, UEr
     UConverter *cnv = args->converter;
     uint8_t *target = (uint8_t *) args->target;
     const uint8_t *targetLimit = (const uint8_t *) args->targetLimit;
-    const char16_t* source = args->source;
-    const char16_t* sourceLimit = args->sourceLimit;
+    const UChar* source = args->source;
+    const UChar* sourceLimit = args->sourceLimit;
     /* int32_t* offsets = args->offsets; */
     UChar32 sourceChar;
     UBool useFallback = cnv->useFallback;
@@ -368,7 +368,7 @@ getTrail:
                     /*look ahead to find the trail surrogate*/
                     if(source < sourceLimit) {
                         /* test the following code unit */
-                        char16_t trail=(char16_t) *source;
+                        UChar trail=(UChar) *source;
                         if(U16_IS_TRAIL(trail)) {
                             source++;
                             sourceChar=U16_GET_SUPPLEMENTARY(sourceChar, trail);
@@ -467,14 +467,14 @@ static void U_CALLCONV
 UConverter_toUnicode_CompoundText_OFFSETS(UConverterToUnicodeArgs *args,
                                                UErrorCode* err){
     const char *mySource = (char *) args->source;
-    char16_t *myTarget = args->target;
+    UChar *myTarget = args->target;
     const char *mySourceLimit = args->sourceLimit;
     const char *tmpSourceLimit = mySourceLimit;
     uint32_t mySourceChar = 0x0000;
     COMPOUND_TEXT_CONVERTERS currentState, tmpState;
     int32_t sourceOffset = 0;
     UConverterDataCompoundText *myConverterData = (UConverterDataCompoundText *) args->converter->extraInfo;
-    UConverterSharedData* savedSharedData = nullptr;
+    UConverterSharedData* savedSharedData = NULL;
 
     UConverterToUnicodeArgs subArgs;
     int32_t minArgsSize;
@@ -602,8 +602,8 @@ static const UConverterImpl _CompoundTextImpl = {
 
     UCNV_COMPOUND_TEXT,
 
-    nullptr,
-    nullptr,
+    NULL,
+    NULL,
 
     _CompoundTextOpen,
     _CompoundTextClose,
@@ -613,15 +613,15 @@ static const UConverterImpl _CompoundTextImpl = {
     UConverter_toUnicode_CompoundText_OFFSETS,
     UConverter_fromUnicode_CompoundText_OFFSETS,
     UConverter_fromUnicode_CompoundText_OFFSETS,
-    nullptr,
+    NULL,
 
-    nullptr,
+    NULL,
     _CompoundTextgetName,
-    nullptr,
-    nullptr,
+    NULL,
+    NULL,
     _CompoundText_GetUnicodeSet,
-    nullptr,
-    nullptr
+    NULL,
+    NULL
 };
 
 static const UConverterStaticData _CompoundTextStaticData = {
@@ -634,8 +634,8 @@ static const UConverterStaticData _CompoundTextStaticData = {
     6,
     { 0xef, 0, 0, 0 },
     1,
-    false,
-    false,
+    FALSE,
+    FALSE,
     0,
     0,
     { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 } /* reserved */

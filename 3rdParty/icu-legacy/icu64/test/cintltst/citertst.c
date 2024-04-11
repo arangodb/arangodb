@@ -39,7 +39,6 @@
 #include "cstring.h"
 #include "ucol_imp.h"
 #include "uparse.h"
-#include <stdbool.h>
 #include <stdio.h>
 
 extern uint8_t ucol_uprv_getCaseBits(const UChar *, uint32_t, UErrorCode *);
@@ -65,7 +64,7 @@ void addCollIterTest(TestNode** root)
 
 static const char * LOCALES[] = {"en_AU", "en_BE", "en_CA"};
 
-static void TestBug672(void) {
+static void TestBug672() {
     UErrorCode  status = U_ZERO_ERROR;
     UChar       pattern[20];
     UChar       text[50];
@@ -138,7 +137,7 @@ static void TestBug672(void) {
 
 /*  Running this test with normalization enabled showed up a bug in the incremental
     normalization code. */
-static void TestBug672Normalize(void) {
+static void TestBug672Normalize() {
     UErrorCode  status = U_ZERO_ERROR;
     UChar       pattern[20];
     UChar       text[50];
@@ -217,7 +216,7 @@ static void TestBug672Normalize(void) {
  * Test for CollationElementIterator previous and next for the whole set of
  * unicode characters.
  */
-static void TestUnicodeChar(void)
+static void TestUnicodeChar()
 {
     UChar source[0x100];
     UCollator *en_us;
@@ -283,7 +282,7 @@ static void TestUnicodeChar(void)
  * Test for CollationElementIterator previous and next for the whole set of
  * unicode characters with normalization on.
  */
-static void TestNormalizedUnicodeChar(void)
+static void TestNormalizedUnicodeChar()
 {
     UChar source[0x100];
     UCollator *th_th;
@@ -347,7 +346,7 @@ static void TestNormalizedUnicodeChar(void)
 /**
 * Test the incremental normalization
 */
-static void TestNormalization(void)
+static void TestNormalization()
 {
           UErrorCode          status = U_ZERO_ERROR;
     const char               *str    =
@@ -418,7 +417,7 @@ static void TestNormalization(void)
  * @bug 4108758 - Make sure it works with contracting characters
  *
  */
-static void TestPrevious(void)
+static void TestPrevious()
 {
     UCollator *coll=NULL;
     UChar rule[50];
@@ -558,7 +557,7 @@ static void TestPrevious(void)
 /**
  * Test for getOffset() and setOffset()
  */
-static void TestOffset(void)
+static void TestOffset()
 {
     UErrorCode status= U_ZERO_ERROR;
     UCollator *en_us=NULL;
@@ -703,7 +702,7 @@ static void TestOffset(void)
 /**
  * Test for setText()
  */
-static void TestSetText(void)
+static void TestSetText()
 {
     int32_t c,i;
     UErrorCode status = U_ZERO_ERROR;
@@ -776,7 +775,7 @@ static void TestSetText(void)
 /** @bug 4108762
  * Test for getMaxExpansion()
  */
-static void TestMaxExpansion(void)
+static void TestMaxExpansion()
 {
     UErrorCode          status = U_ZERO_ERROR;
     UCollator          *coll   ;/*= ucol_open("en_US", &status);*/
@@ -784,7 +783,7 @@ static void TestMaxExpansion(void)
     UChar32             unassigned = 0xEFFFD;
     UChar               supplementary[2];
     uint32_t            stringOffset = 0;
-    UBool               isError = false;
+    UBool               isError = FALSE;
     uint32_t            sorder = 0;
     UCollationElements *iter   ;/*= ucol_openElements(coll, &ch, 1, &status);*/
     uint32_t            temporder = 0;
@@ -934,7 +933,7 @@ static void assertEqual(UCollationElements *i1, UCollationElements *i2)
 /**
  * Testing iterators with extremely small buffers
  */
-static void TestSmallBuffer(void)
+static void TestSmallBuffer()
 {
     UErrorCode          status = U_ZERO_ERROR;
     UCollator          *coll;
@@ -1005,9 +1004,9 @@ static void TestSmallBuffer(void)
 }
 
 /**
-* Testing the discontiguous contractions
+* Testing the discontigous contractions
 */
-static void TestDiscontiguos(void) {
+static void TestDiscontiguos() {
     const char               *rulestr    =
                             "&z < AB < X\\u0300 < ABC < X\\u0300\\u0315";
           UChar               rule[50];
@@ -1077,7 +1076,7 @@ static void TestDiscontiguos(void) {
         log_verbose("count %d\n", count);
 
         for (;;) {
-            int32_t  ce;
+            uint32_t  ce;
             UChar    *e = u_strchr(s, 0x20);
             if (e == 0) {
                 e = u_strchr(s, 0);
@@ -1089,9 +1088,9 @@ static void TestDiscontiguos(void) {
                 return;
             }
             while (ce != UCOL_NULLORDER) {
-                if (ce != ucol_next(iter, &status) ||
+                if (ce != (uint32_t)ucol_next(iter, &status) ||
                     U_FAILURE(status)) {
-                    log_err("Discontiguous contraction test mismatch\n");
+                    log_err("Discontiguos contraction test mismatch\n");
                     return;
                 }
                 ce = ucol_next(resultiter, &status);

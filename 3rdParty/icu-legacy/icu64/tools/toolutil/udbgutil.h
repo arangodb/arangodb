@@ -114,6 +114,14 @@ U_CAPI void udbg_writeIcuInfo(FILE *f);
 #define UDBG_KNOWNISSUE_LEN 255
 
 /**
+ * Convert a "known issue" string into a URL
+ * @param ticket ticket string such as "10245" or "cldrbug:5013"
+ * @param buf output buffer - must be UDBG_KNOWNISSUE_LEN in size
+ * @return pointer to output buffer, or NULL on err
+ */
+U_CAPI char *udbg_knownIssueURLFrom(const char *ticket, char *buf);
+
+/**
  * Open (or reopen) a 'known issue' table.
  * @param ptr pointer to 'table'. Opaque.
  * @return new or existing ptr
@@ -133,7 +141,7 @@ U_CAPI void *udbg_knownIssue_open(void *ptr, const char *ticket, char *where, co
 /**
  * Print 'known issue' table, to std::cout.
  * @param ptr pointer from udbg_knownIssue
- * @return true if there were any issues.
+ * @return TRUE if there were any issues.
  */
 U_CAPI UBool udbg_knownIssue_print(void *ptr);
 

@@ -1233,7 +1233,7 @@ passfail: pass
 type: toascii
 
 =====
-desc: 5-1-2 Unassigned outside BMP; zone editors should reject
+desc: 5-1-2 Unassinged outside BMP; zone editors should reject
 namebase: <10205><00ED>dn
 nameutf8: í €í¸…Ã­dn
 namezone: xn--dn-mja7734x

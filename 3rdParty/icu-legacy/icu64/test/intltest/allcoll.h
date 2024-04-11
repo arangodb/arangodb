@@ -30,7 +30,7 @@ public:
 
     CollationDummyTest();
     virtual ~CollationDummyTest();
-    void runIndexedTest( int32_t index, UBool exec, const char* &name, char* /*par = nullptr */) override;
+    void runIndexedTest( int32_t index, UBool exec, const char* &name, char* /*par = NULL */);
 
     // perform test with strength PRIMARY
     void TestPrimary(/* char* par */);

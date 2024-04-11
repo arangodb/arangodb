@@ -16,37 +16,48 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC71.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC71.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC71.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC71.props" />
+  </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
     <_ProjectFileVersion>10.0.30319.1</_ProjectFileVersion>
-    <OutDir>.\$(Platform)\$(Configuration)\</OutDir>
-    <IntDir>.\$(Platform)\$(Configuration)\</IntDir>
-    <!-- The ICU projects use "Win32" to mean "x86", so we need to special case it. -->
-    <OutDir Condition="'$(Platform)'=='Win32'">.\x86\$(Configuration)\</OutDir>
-    <IntDir Condition="'$(Platform)'=='Win32'">.\x86\$(Configuration)\</IntDir>
-    <!-- Disable Incremental Linking for Release builds as it prevents Link-time Code Generation -->
-    <LinkIncremental Condition="'$(Configuration)'=='Debug'">true</LinkIncremental>
-    <LinkIncremental Condition="'$(Configuration)'=='Release'">false</LinkIncremental>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">.\..\..\lib\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">.\x86\Release\</IntDir>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</LinkIncremental>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.\..\..\lib\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.\x86\Debug\</IntDir>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</LinkIncremental>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.\x64\Release\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.\x64\Release\</IntDir>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkIncremental>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.\x64\Debug\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.\x64\Debug\</IntDir>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</LinkIncremental>
   </PropertyGroup>
   <!-- Options that are common to *all* "common" project configurations -->
   <ItemDefinitionGroup>
-    <Midl>
-      <TypeLibraryName>$(OutDir)\icuuc.tlb</TypeLibraryName>
-    </Midl>
     <ClCompile>
       <PreprocessorDefinitions>U_ATTRIBUTE_DEPRECATED=;U_COMMON_IMPLEMENTATION;U_PLATFORM_USES_ONLY_WIN32_API=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <DisableLanguageExtensions>false</DisableLanguageExtensions>
       <WarningLevel>Level3</WarningLevel>
-      <CompileAs>Default</CompileAs>
-      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <PrecompiledHeaderOutputFile>$(OutDir)/icuuc.pch</PrecompiledHeaderOutputFile>
-      <AssemblerListingLocation>$(OutDir)/</AssemblerListingLocation>
-      <ObjectFileName>$(OutDir)/</ObjectFileName>
-      <ProgramDataBaseFileName>$(OutDir)/icuuc.pdb</ProgramDataBaseFileName>
     </ClCompile>
     <Link>
-      <!-- The icudt.lib is for U_ICUDATA_ENTRY_POINT -->
       <AdditionalDependencies>icudt.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>.\..\..\$(IcuLibOutputDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <BaseAddress>0x4a800000</BaseAddress>
     </Link>
   </ItemDefinitionGroup>
   <!-- Options that are common to all 'Debug' project configurations -->
@@ -56,11 +67,6 @@
       <BrowseInformation>true</BrowseInformation>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
     </ClCompile>
-    <Link>
-      <OutputFile>..\..\$(IcuBinOutputDir)\icuuc$(IcuMajorVersion)d.dll</OutputFile>
-      <ProgramDatabaseFile>.\..\..\$(IcuLibOutputDir)\icuucd.pdb</ProgramDatabaseFile>
-      <ImportLibrary>..\..\$(IcuLibOutputDir)\icuucd.lib</ImportLibrary>
-    </Link>
   </ItemDefinitionGroup>
   <!-- Options that are common to all 'Release' project configurations -->
   <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
@@ -68,10 +74,79 @@
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
     </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Midl>
+      <TypeLibraryName>.\..\..\lib\icuuc.tlb</TypeLibraryName>
+    </Midl>
+    <ClCompile>
+      <PrecompiledHeaderOutputFile>.\x86\Release/common.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>.\x86\Release/</AssemblerListingLocation>
+      <ObjectFileName>.\x86\Release/</ObjectFileName>
+      <ProgramDataBaseFileName>.\x86\Release/</ProgramDataBaseFileName>
+    </ClCompile>
     <Link>
-      <OutputFile>..\..\$(IcuBinOutputDir)\icuuc$(IcuMajorVersion).dll</OutputFile>
-      <ProgramDatabaseFile>.\..\..\$(IcuLibOutputDir)\icuuc.pdb</ProgramDatabaseFile>
-      <ImportLibrary>..\..\$(IcuLibOutputDir)\icuuc.lib</ImportLibrary>
+      <OutputFile>..\..\bin\icuuc64.dll</OutputFile>
+      <AdditionalLibraryDirectories>.\..\..\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <ProgramDatabaseFile>.\..\..\lib\icuuc.pdb</ProgramDatabaseFile>
+      <DataExecutionPrevention>
+      </DataExecutionPrevention>
+      <ImportLibrary>..\..\lib\icuuc.lib</ImportLibrary>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Midl>
+      <TypeLibraryName>.\..\..\lib\icuucd.tlb</TypeLibraryName>
+    </Midl>
+    <ClCompile>
+      <PrecompiledHeaderOutputFile>.\x86\Debug/common.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>.\x86\Debug/</AssemblerListingLocation>
+      <ObjectFileName>.\x86\Debug/</ObjectFileName>
+      <ProgramDataBaseFileName>.\x86\Debug/</ProgramDataBaseFileName>
+      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+    </ClCompile>
+    <Link>
+      <OutputFile>..\..\bin\icuuc64d.dll</OutputFile>
+      <AdditionalLibraryDirectories>.\..\..\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <ProgramDatabaseFile>.\..\..\lib\icuucd.pdb</ProgramDatabaseFile>
+      <DataExecutionPrevention>
+      </DataExecutionPrevention>
+      <ImportLibrary>..\..\lib\icuucd.lib</ImportLibrary>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Midl>
+      <TypeLibraryName>.\..\..\lib64\icuuc.tlb</TypeLibraryName>
+    </Midl>
+    <ClCompile>
+      <PrecompiledHeaderOutputFile>.\x64\Release/common.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>.\x64\Release/</AssemblerListingLocation>
+      <ObjectFileName>.\x64\Release/</ObjectFileName>
+      <ProgramDataBaseFileName>.\x64\Release/</ProgramDataBaseFileName>
+    </ClCompile>
+    <Link>
+      <OutputFile>..\..\bin64\icuuc64.dll</OutputFile>
+      <AdditionalLibraryDirectories>.\..\..\lib64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <ProgramDatabaseFile>.\..\..\lib64\icuuc.pdb</ProgramDatabaseFile>
+      <ImportLibrary>..\..\lib64\icuuc.lib</ImportLibrary>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Midl>
+      <TypeLibraryName>.\..\..\lib64\icuucd.tlb</TypeLibraryName>
+    </Midl>
+    <ClCompile>
+      <PrecompiledHeaderOutputFile>.\x64\Debug/common.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>.\x64\Debug/</AssemblerListingLocation>
+      <ObjectFileName>.\x64\Debug/</ObjectFileName>
+      <ProgramDataBaseFileName>.\x64\Debug/</ProgramDataBaseFileName>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+    </ClCompile>
+    <Link>
+      <OutputFile>..\..\bin64\icuuc64d.dll</OutputFile>
+      <AdditionalLibraryDirectories>.\..\..\lib64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <ProgramDatabaseFile>.\..\..\lib64\icuucd.pdb</ProgramDatabaseFile>
+      <ImportLibrary>..\..\lib64\icuucd.lib</ImportLibrary>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -86,8 +161,6 @@
     <ClCompile Include="brkeng.cpp" />
     <ClCompile Include="brkiter.cpp" />
     <ClCompile Include="dictbe.cpp" />
-    <ClCompile Include="lstmbe.cpp" />
-    <ClCompile Include="mlbe.cpp" />
     <ClCompile Include="pluralmap.cpp" />
     <ClCompile Include="rbbi.cpp" />
     <ClCompile Include="rbbidata.cpp" />
@@ -165,32 +238,25 @@
     <ClCompile Include="punycode.cpp" />
     <ClCompile Include="uidna.cpp" />
     <ClCompile Include="uts46.cpp" />
-    <ClCompile Include="localebuilder.cpp" />
-    <ClCompile Include="ulocbuilder.cpp" />
-    <ClCompile Include="localematcher.cpp" />
-    <ClCompile Include="localeprioritylist.cpp" />
     <ClCompile Include="locavailable.cpp" />
     <ClCompile Include="locbased.cpp" />
     <ClCompile Include="locdispnames.cpp" />
-    <ClCompile Include="locdistance.cpp" />
     <ClCompile Include="locdspnm.cpp" />
     <ClCompile Include="locid.cpp" />
     <ClCompile Include="loclikely.cpp" />
-    <ClCompile Include="loclikelysubtags.cpp" />
     <ClCompile Include="locresdata.cpp" />
     <ClCompile Include="locutil.cpp" />
-    <ClCompile Include="lsr.cpp" />
     <ClCompile Include="resbund.cpp" />
     <ClCompile Include="resbund_cnv.cpp" />
     <ClCompile Include="ucat.cpp" />
     <ClCompile Include="uloc.cpp" />
     <ClCompile Include="uloc_tag.cpp" />
-    <ClCompile Include="ulocale.cpp" />
     <ClCompile Include="ures_cnv.cpp" />
     <ClCompile Include="uresbund.cpp" />
     <ClCompile Include="uresdata.cpp" />
     <ClCompile Include="resource.cpp" />
     <ClCompile Include="ucurr.cpp" />
+    <ClCompile Include="localebuilder.cpp" />
     <ClCompile Include="caniter.cpp" />
     <ClCompile Include="filterednormalizer2.cpp" />
     <ClCompile Include="loadednormalizer2impl.cpp" />
@@ -206,7 +272,6 @@
     <ClCompile Include="ucase.cpp" />
     <ClCompile Include="uchar.cpp" />
     <ClCompile Include="characterproperties.cpp" />
-    <ClCompile Include="emojiprops.cpp" />
     <ClCompile Include="unames.cpp" />
     <ClCompile Include="unifiedcache.cpp" />
     <ClCompile Include="unifilt.cpp" />
@@ -274,7 +339,6 @@
     <ClCompile Include="utext.cpp" />
     <ClCompile Include="utf_impl.cpp" />
     <ClCompile Include="static_unicode_sets.cpp" />
-    <ClCompile Include="restrace.cpp" />
     <ClInclude Include="localsvc.h" />
     <ClInclude Include="msvcres.h" />
     <ClInclude Include="pluralmap.h" />
@@ -283,8 +347,6 @@
     <ClInclude Include="ubidiimp.h" />
     <ClInclude Include="brkeng.h" />
     <ClInclude Include="dictbe.h" />
-    <ClInclude Include="lstmbe.h" />
-    <ClInclude Include="mlbe.h" />
     <ClInclude Include="rbbidata.h" />
     <ClInclude Include="rbbinode.h" />
     <ClInclude Include="rbbirb.h" />
@@ -344,14 +406,8 @@
     <ClInclude Include="ustrfmt.h" />
     <ClInclude Include="util.h" />
     <ClInclude Include="punycode.h" />
-    <ClInclude Include="localeprioritylist.h" />
     <ClInclude Include="locbased.h" />
-    <ClInclude Include="locdistance.h" />
-    <ClInclude Include="charstrmap.h" />
-    <ClInclude Include="loclikelysubtags.h" />
-    <ClInclude Include="uniquecharstr.h" />
     <ClInclude Include="locutil.h" />
-    <ClInclude Include="lsr.h" />
     <ClInclude Include="sharedobject.h" />
     <ClCompile Include="sharedobject.cpp" />
     <ClInclude Include="ulocimp.h" />
@@ -369,7 +425,6 @@
     <ClInclude Include="patternprops.h" />
     <ClInclude Include="propname.h" />
     <ClInclude Include="ruleiter.h" />
-    <ClInclude Include="emojiprops.h" />
     <ClInclude Include="ucase.h" />
     <ClInclude Include="ulayout_props.h" />
     <ClInclude Include="unisetspan.h" />
@@ -392,7 +447,7 @@
     <ClInclude Include="ustr_imp.h" />
     <ClInclude Include="static_unicode_sets.h" />
     <ClInclude Include="capi_helper.h" />
-    <ClInclude Include="restrace.h" />
+    <ClInclude Include="unicode\localebuilder.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="common.rc" />

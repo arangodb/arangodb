@@ -148,7 +148,7 @@ INLINE_INHERITED_MEMB  = NO
 # shortest path that makes the file name unique will be used
 # The default value is: YES.
 
-FULL_PATH_NAMES        = YES
+FULL_PATH_NAMES        = NO
 
 # The STRIP_FROM_PATH tag can be used to strip a user-defined part of the path.
 # Stripping is only done if one of the specified strings matches the left-hand
@@ -160,7 +160,7 @@ FULL_PATH_NAMES        = YES
 # will be relative from the directory where doxygen is started.
 # This tag requires that the tag FULL_PATH_NAMES is set to YES.
 
-STRIP_FROM_PATH        = @srcdir@
+STRIP_FROM_PATH        =
 
 # The STRIP_FROM_INC_PATH tag can be used to strip a user-defined part of the
 # path mentioned in the documentation of a class, which tells the reader which
@@ -1310,7 +1310,7 @@ CHM_FILE               =
 HHC_LOCATION           =
 
 # The GENERATE_CHI flag controls if a separate .chi index file is generated
-# (YES) or that it should be included in the primary .chm file (NO).
+# (YES) or that it should be included in the master .chm file (NO).
 # The default value is: NO.
 # This tag requires that the tag GENERATE_HTMLHELP is set to YES.
 
@@ -1677,7 +1677,7 @@ COMPACT_LATEX          = NO
 # The default value is: a4.
 # This tag requires that the tag GENERATE_LATEX is set to YES.
 
-PAPER_TYPE             = a4
+PAPER_TYPE             = a4wide
 
 # The EXTRA_PACKAGES tag can be used to specify one or more LaTeX package names
 # that should be included in the LaTeX output. The package can be specified just
@@ -2084,8 +2084,9 @@ PREDEFINED             = U_EXPORT2= \
                          U_DEFINE_LOCAL_OPEN_POINTER()= \
                          U_IN_DOXYGEN=1 \
                          U_CHAR16_IS_TYPEDEF=0 \
-                         U_CPLUSPLUS_VERSION=17 \
-                         U_WCHAR_IS_UTF16
+                         U_CPLUSPLUS_VERSION=11 \
+                         U_WCHAR_IS_UTF16 \
+                         U_FINAL=final
 
 # If the MACRO_EXPANSION and EXPAND_ONLY_PREDEF tags are set to YES then this
 # tag can be used to specify a list of macro names that should be expanded. The

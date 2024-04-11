@@ -24,7 +24,7 @@
 // class DateFormatRoundTripTest
 // *****************************************************************************
 
-// Useful for turning up subtle bugs: Change the following to true, recompile,
+// Useful for turning up subtle bugs: Change the following to TRUE, recompile,
 // and run while at lunch.
 // Warning -- makes test run infinite loop!!!
 #ifndef INFINITE
@@ -42,7 +42,7 @@ int32_t DateFormatRoundTripTest::SPARSENESS = 0;
 int32_t DateFormatRoundTripTest::TRIALS = 4;
 int32_t DateFormatRoundTripTest::DEPTH = 5;
 
-DateFormatRoundTripTest::DateFormatRoundTripTest() : dateFormat(nullptr) {
+DateFormatRoundTripTest::DateFormatRoundTripTest() : dateFormat(0) {
 }
 
 DateFormatRoundTripTest::~DateFormatRoundTripTest() {
@@ -67,10 +67,10 @@ DateFormatRoundTripTest::failure(UErrorCode status, const char* msg)
 {
     if(U_FAILURE(status)) {
         errln(UnicodeString("FAIL: ") + msg + " failed, error " + u_errorName(status));
-        return true;
+        return TRUE;
     }
 
-    return false;
+    return FALSE;
 }
 
 UBool 
@@ -80,10 +80,10 @@ DateFormatRoundTripTest::failure(UErrorCode status, const char* msg, const Unico
         UnicodeString escaped;
         escape(str,escaped);
         errln(UnicodeString("FAIL: ") + msg + " failed, error " + u_errorName(status) + ", str=" + escaped);
-        return true;
+        return TRUE;
     }
 
-    return false;
+    return FALSE;
 }
 
 void DateFormatRoundTripTest::TestCentury()
@@ -220,14 +220,14 @@ void DateFormatRoundTripTest::test(const Locale& loc)
     UBool TEST_TABLE [24];//= new boolean[24];
     int32_t i = 0;
     for(i = 0; i < 24; ++i) 
-        TEST_TABLE[i] = true;
+        TEST_TABLE[i] = TRUE;
 
     // If we have some sparseness, implement it here.  Sparseness decreases
     // test time by eliminating some tests, up to 23.
     for(i = 0; i < SPARSENESS; ) {
         int random = (int)(randFraction() * 24);
         if (random >= 0 && random < 24 && TEST_TABLE[i]) {
-            TEST_TABLE[i] = false;
+            TEST_TABLE[i] = FALSE;
             ++i;
         }
     }
@@ -238,7 +238,7 @@ void DateFormatRoundTripTest::test(const Locale& loc)
         if(TEST_TABLE[itable++]) {
             logln("Testing style " + UnicodeString(styleName((DateFormat::EStyle)style)));
             DateFormat *df = DateFormat::createDateInstance((DateFormat::EStyle)style, loc);
-            if(df == nullptr) {
+            if(df == NULL) {
               errln(UnicodeString("Could not DF::createDateInstance ") + UnicodeString(styleName((DateFormat::EStyle)style)) +      " Locale: " + loc.getDisplayName(temp));
             } else {
               test(df, loc);
@@ -251,10 +251,10 @@ void DateFormatRoundTripTest::test(const Locale& loc)
         if (TEST_TABLE[itable++]) {
             logln("Testing style " + UnicodeString(styleName((DateFormat::EStyle)style)));
             DateFormat *df = DateFormat::createTimeInstance((DateFormat::EStyle)style, loc);
-            if(df == nullptr) {
+            if(df == NULL) {
               errln(UnicodeString("Could not DF::createTimeInstance ") + UnicodeString(styleName((DateFormat::EStyle)style)) + " Locale: " + loc.getDisplayName(temp));
             } else {
-              test(df, loc, true);
+              test(df, loc, TRUE);
               delete df;
             }
         }
@@ -265,7 +265,7 @@ void DateFormatRoundTripTest::test(const Locale& loc)
             if(TEST_TABLE[itable++]) {
                 logln("Testing dstyle" + UnicodeString(styleName((DateFormat::EStyle)dstyle)) + ", tstyle" + UnicodeString(styleName((DateFormat::EStyle)tstyle)) );
                 DateFormat *df = DateFormat::createDateTimeInstance((DateFormat::EStyle)dstyle, (DateFormat::EStyle)tstyle, loc);
-                if(df == nullptr) {
+                if(df == NULL) {
                     dataerrln(UnicodeString("Could not DF::createDateTimeInstance ") + UnicodeString(styleName((DateFormat::EStyle)dstyle)) + ", tstyle" + UnicodeString(styleName((DateFormat::EStyle)tstyle))    + "Locale: " + loc.getDisplayName(temp));
                 } else {
                     test(df, loc);
@@ -284,9 +284,9 @@ void DateFormatRoundTripTest::test(DateFormat *fmt, const Locale &origLocale, UB
         return;
     }
     
-    UBool isGregorian = false;
+    UBool isGregorian = FALSE;
     UErrorCode minStatus = U_ZERO_ERROR;
-    if(fmt->getCalendar() == nullptr) {
+    if(fmt->getCalendar() == NULL) {
       errln((UnicodeString)"DateFormatRoundTripTest::test, DateFormat getCalendar() returns null for " + origLocale.getName());
       return;
     } 
@@ -297,7 +297,7 @@ void DateFormatRoundTripTest::test(DateFormat *fmt, const Locale &origLocale, UB
     } 
     //logln(UnicodeString("Min date is ") + fullFormat(minDate)  + " for " + origLocale.getName());
 
-    pat = dynamic_cast<SimpleDateFormat*>(fmt)->toPattern(pat);
+    pat = ((SimpleDateFormat*)fmt)->toPattern(pat);
 
     // NOTE TO MAINTAINER
     // This indexOf check into the pattern needs to be refined to ignore
@@ -322,7 +322,7 @@ void DateFormatRoundTripTest::test(DateFormat *fmt, const Locale &origLocale, UB
             UDate *d                = new UDate    [DEPTH];
             UnicodeString *s    = new UnicodeString[DEPTH];
 
-            if(isGregorian == true) {
+            if(isGregorian == TRUE) {
               d[0] = generateDate();
             } else {
               d[0] = generateDate(minDate);
@@ -395,7 +395,7 @@ void DateFormatRoundTripTest::test(DateFormat *fmt, const Locale &origLocale, UB
                 // Time-only pattern with zone information and a starting date in PST.
                 if(timeOnly && hasZoneDisplayName) {
                     int32_t startRaw, startDst;
-                    fmt->getTimeZone().getOffset(d[0], false, startRaw, startDst, status);
+                    fmt->getTimeZone().getOffset(d[0], FALSE, startRaw, startDst, status);
                     failure(status, "TimeZone::getOffset");
                     // if the start offset is greater than the offset on Jan 1, 1970
                     // in PST, then need one more round trip.  There are two cases
@@ -445,7 +445,7 @@ void DateFormatRoundTripTest::test(DateFormat *fmt, const Locale &origLocale, UB
                 }
                 else if (timeOnly && !isGregorian && hasZoneDisplayName && maxSmatch == 1) {
                     int32_t startRaw, startDst;
-                    fmt->getTimeZone().getOffset(d[1], false, startRaw, startDst, status);
+                    fmt->getTimeZone().getOffset(d[1], FALSE, startRaw, startDst, status);
                     failure(status, "TimeZone::getOffset");
                     // If the calendar type is not Gregorian and the pattern is time only,
                     // the calendar implementation may use a date before 1970 as day 0.
@@ -470,14 +470,7 @@ void DateFormatRoundTripTest::test(DateFormat *fmt, const Locale &origLocale, UB
               } else if(!strcmp(type,"hebrew")) {
                   maxSmatch = 3;
                   maxDmatch = 3;
-              } else if (timeOnly && uprv_strcmp(origLocale.getName(),"ar_JO@calendar=islamic-civil")==0 &&
-                      logKnownIssue("21049", "ar_JO@calendar=islamic-civil timeOnly roundtrip converges too slowly")) {
-                  // For some reason, for time-only tests, ar_JO@calendar=islamic-civil is no
-                  // longer converging to a match as fast as expected above. Investigate with
-                  // ICU-21022, but meanwhile allow more cycles for convergence.
-                  maxSmatch = 2;
-                  maxDmatch = 3;
-              }
+                }
             }
 
             // Use @v to see verbose results on successful cases
@@ -485,9 +478,7 @@ void DateFormatRoundTripTest::test(DateFormat *fmt, const Locale &origLocale, UB
             if (optionv || fail) {
                 if (fail) {
                     errln(UnicodeString("\nFAIL: Pattern: ") + pat +
-                          " in Locale: " + origLocale.getName() +
-                          "\nget dmatch: " + dmatch + " (expected max " + maxDmatch +
-                          "), smatch: " + smatch + " (expected max " + maxSmatch + ")");
+                          " in Locale: " + origLocale.getName());
                 } else {
                     errln(UnicodeString("\nOk: Pattern: ") + pat +
                           " in Locale: " + origLocale.getName());
@@ -517,12 +508,12 @@ void DateFormatRoundTripTest::test(DateFormat *fmt, const Locale &origLocale, UB
 
 const UnicodeString& DateFormatRoundTripTest::fullFormat(UDate d) {
     UErrorCode ec = U_ZERO_ERROR;
-    if (dateFormat == nullptr) {
+    if (dateFormat == 0) {
         dateFormat = new SimpleDateFormat((UnicodeString)"EEE MMM dd HH:mm:ss.SSS zzz yyyy G", ec);
-        if (U_FAILURE(ec) || dateFormat == nullptr) {
+        if (U_FAILURE(ec) || dateFormat == 0) {
             fgStr = "[FAIL: SimpleDateFormat constructor]";
             delete dateFormat;
-            dateFormat = nullptr;
+            dateFormat = 0;
             return fgStr;
         }
     }
@@ -557,7 +548,7 @@ UnicodeString& DateFormatRoundTripTest::escape(const UnicodeString& src, Unicode
         } else {
             dst += UnicodeString("[");
             char buf [12];
-            snprintf(buf, sizeof(buf), "%#04x", c);
+            sprintf(buf, "%#04x", c);
             dst += UnicodeString(buf);
             dst += UnicodeString("]");
         }

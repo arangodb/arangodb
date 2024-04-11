@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 tzm{
     Countries{
         AD{"Anḍurra"}
@@ -93,6 +92,7 @@ tzm{
         IE{"Irlanḍa"}
         IL{"Israeil"}
         IN{"Hind"}
+        IO{"Amur n Agaraw Uhindi Ubṛiṭani"}
         IQ{"Ɛiraq"}
         IR{"Iran"}
         IS{"Islanḍa"}
@@ -127,6 +127,7 @@ tzm{
         MD{"Mulḍavya"}
         MG{"Madaɣacqar"}
         MH{"Tigzirin n Marcal"}
+        MK{"Maqdunya"}
         ML{"Mali"}
         MM{"Myanmar"}
         MN{"Manɣulya"}
@@ -226,4 +227,5 @@ tzm{
         ZM{"Zambya"}
         ZW{"Zimbabwi"}
     }
+    Version{"2.1.47.82"}
 }

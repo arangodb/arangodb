@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 se_FI{
+    Version{"2.1.47.83"}
     zoneStrings{
         "Africa:Cairo"{
             ec{"Kairo"}
@@ -483,6 +483,9 @@ se_FI{
             lg{"Lord Howe áigi"}
             ls{"Lord Howe dálveáigi"}
         }
+        "meta:Macquarie"{
+            ls{"MacQuarie sullo áigi"}
+        }
         "meta:Magadan"{
             ld{"Magadana geasseáigi"}
             lg{"Magadana áigi"}
@@ -507,6 +510,11 @@ se_FI{
         }
         "meta:Mawson"{
             ls{"Mawsona áigi"}
+        }
+        "meta:Mexico_Northwest"{
+            ld{"Oarjedavvi-Meksiko geasseáigi"}
+            lg{"Oarjedavvi-Meksiko áigi"}
+            ls{"Oarjedavvi-Meksiko dálveáigi"}
         }
         "meta:Mexico_Pacific"{
             ld{"Meksiko Jáskesábi geasseáigi"}

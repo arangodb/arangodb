@@ -1,6 +1,8 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
+/**
+ * ICU <specials> source: <path>/xml/rbnf/da.xml
+ */
 da{
     RBNFRules{
         SpelloutRules{
@@ -13,7 +15,7 @@ da{
             "1100/100: <<\u00ADhundrede[ og >>];",
             "10000: =%spellout-numbering=;",
             "%spellout-numbering:",
-            "0: =%spellout-cardinal-neuter=;",
+            "0: =%spellout-cardinal-common=;",
             "%spellout-cardinal-common:",
             "-x: minus >>;",
             "x.x: << komma >>;",
@@ -169,4 +171,5 @@ da{
             "1: er =%spellout-ordinal-neuter=;",
         }
     }
+    Version{"2.1.27.22"}
 }

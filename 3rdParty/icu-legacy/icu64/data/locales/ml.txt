@@ -1,18 +1,27 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ml{
-    AuxExemplarCharacters{"[\u200C\u200Dഃ ൠ ഌ ൡ ൿ]"}
+    AuxExemplarCharacters{"[]"}
+    Ellipsis{
+        final{"{0}…"}
+        initial{"…{0}"}
+        medial{"{0}…{1}"}
+        word-final{"{0} …"}
+        word-initial{"… {0}"}
+        word-medial{"{0} … {1}"}
+    }
     ExemplarCharacters{
-        "[അ ആ ഇ ഈ ഉ ഊ ഋ എ ഏ ഐ ഒ ഓ ഔ ക ഖ ഗ ഘ ങ ച ഛ ജ ഝ ഞ ട ഠ ഡ ഢ ണ ൺ ത ഥ ദ ധ ന ൻ പ ഫ ബ"
-        " ഭ മ ം യ ര ർ ല ൽ വ ശ ഷ സ ഹ ള ൾ ഴ റ ാ ി ീ ു ൂ ൃ െ േ ൈ ൊ ോ ൌ ൗ ്]"
+        "[\u200C\u200D ഃ അ ആ ഇ ഈ ഉ ഊ ഋ ൠ ഌ ൡ എ ഏ ഐ ഒ ഓ ഔ ക ൿ ഖ ഗ ഘ ങ ച ഛ ജ ഝ ഞ ട ഠ ഡ "
+        "ഢ ണ ൺ ത ഥ ദ ധ ന ൻ പ ഫ ബ ഭ മ ം യ ര ർ ല ൽ വ ശ ഷ സ ഹ ള ൾ ഴ റ ാ ി ീ \u0D41 "
+        "\u0D42 \u0D43 െ േ ൈ ൊ ോ ൌ ൗ \u0D4D]"
     }
     ExemplarCharactersIndex{
         "[അ ആ ഇ ഈ ഉ ഊ ഋ എ ഏ ഐ ഒ ഓ ഔ ക ഖ ഗ ഘ ങ ച ഛ ജ ഝ ഞ ട ഠ ഡ ഢ ണ ത ഥ ദ ധ ന പ ഫ ബ ഭ മ"
         " യ ര ല വ ശ ഷ സ ഹ ള ഴ റ]"
     }
-    ExemplarCharactersNumbers{"[\\- ‑ , . % ‰ + 0൦ 1൧ 2൨ 3൩ 4൪ 5൫ 6൬ 7൭ 8൮ 9൯]"}
-    ExemplarCharactersPunctuation{"[\\- ‐‑ – — , ; \\: ! ? . … '‘’ \u0022“” ( ) \\[ \\] § @ * / \\& # † ‡ ′ ″]"}
+    ExemplarCharactersNumbers{"[\\- , . % ‰ + 0൦ 1൧ 2൨ 3൩ 4൪ 5൫ 6൬ 7൭ 8൮ 9൯]"}
+    ExemplarCharactersPunctuation{"[\\- , ; \\: ! ? . ' ‘ ’ \u0022 “ ” ( ) \\[ \\] \\{ \\}]"}
+    MoreInformation{"?"}
     NumberElements{
         latn{
             miscPatterns{
@@ -21,11 +30,10 @@ ml{
             }
             patterns{
                 accountingFormat{"¤#,##0.00;(¤#,##0.00)"}
-                accountingFormat%alphaNextToNumber{"¤ #,##0.00;(¤ #,##0.00)"}
-                accountingFormat%noCurrency{"#,##0.00;(#,##0.00)"}
                 currencyFormat{"¤#,##0.00"}
-                currencyPatternAppendISO{"{0} ¤¤"}
                 decimalFormat{"#,##,##0.###"}
+                percentFormat{"#,##0%"}
+                scientificFormat{"#E0"}
             }
             patternsLong{
                 decimalFormat{
@@ -130,57 +138,31 @@ ml{
                         other{"¤000T"}
                     }
                 }
-                currencyFormat%alphaNextToNumber{
+                decimalFormat{
                     1000{
-                        one{"¤ 0K"}
-                        other{"¤ 0K"}
+                        one{"0K"}
+                        other{"0K"}
                     }
                     10000{
-                        one{"¤ 00K"}
-                        other{"¤ 00K"}
+                        one{"00K"}
+                        other{"00K"}
                     }
                     100000{
-                        one{"¤ 000K"}
-                        other{"¤ 000K"}
+                        one{"000K"}
+                        other{"000K"}
                     }
                     1000000{
-                        one{"¤ 0M"}
-                        other{"¤ 0M"}
+                        one{"0M"}
+                        other{"0M"}
                     }
                     10000000{
-                        one{"¤ 00M"}
-                        other{"¤ 00M"}
+                        one{"00M"}
+                        other{"00M"}
                     }
                     100000000{
-                        one{"¤ 000M"}
-                        other{"¤ 000M"}
+                        one{"000M"}
+                        other{"000M"}
                     }
-                    1000000000{
-                        one{"¤ 0B"}
-                        other{"¤ 0B"}
-                    }
-                    10000000000{
-                        one{"¤ 00B"}
-                        other{"¤ 00B"}
-                    }
-                    100000000000{
-                        one{"¤ 000B"}
-                        other{"¤ 000B"}
-                    }
-                    1000000000000{
-                        one{"¤ 0T"}
-                        other{"¤ 0T"}
-                    }
-                    10000000000000{
-                        one{"¤ 00T"}
-                        other{"¤ 00T"}
-                    }
-                    100000000000000{
-                        one{"¤ 000T"}
-                        other{"¤ 000T"}
-                    }
-                }
-                decimalFormat{
                     1000000000{
                         one{"0B"}
                         other{"0B"}
@@ -193,23 +175,31 @@ ml{
                         one{"000B"}
                         other{"000B"}
                     }
+                    1000000000000{
+                        one{"0T"}
+                        other{"0T"}
+                    }
+                    10000000000000{
+                        one{"00T"}
+                        other{"00T"}
+                    }
+                    100000000000000{
+                        one{"000T"}
+                        other{"000T"}
+                    }
                 }
+            }
+            symbols{
+                exponential{"E"}
+                infinity{"∞"}
+                nan{"NaN"}
+                perMille{"‰"}
+                percentSign{"%"}
+                superscriptingExponent{"×"}
+                timeSeparator{":"}
             }
         }
         minimalPairs{
-            case{
-                accusative{"{0} ദിവസത്തിനെ"}
-                dative{"{0} ദിവസത്തിന്"}
-                genitive{"{0} ദിവസത്തിന്റെ"}
-                instrumental{"{0} ദിവസത്തിനാൽ"}
-                locative{"{0} ദിവസത്തിൽ"}
-                nominative{"{0} ദിവസം"}
-                sociative{"{0} ദിവസത്തിനോട്"}
-            }
-            gender{
-                feminine{"{0} സ്ത്രീലിംഗം"}
-                neuter{"{0} neuter"}
-            }
             ordinal{
                 other{"{0}-ാമത്തെ വലത്തേക്ക് തിരിയുക."}
             }
@@ -218,8 +208,28 @@ ml{
                 other{"{0} വ്യക്തികൾ"}
             }
         }
+        minimumGroupingDigits{"1"}
+        mlym{
+            patterns{
+                currencyFormat{"¤#,##0.00"}
+                decimalFormat{"#,##,##0.###"}
+                percentFormat{"#,##0%"}
+                scientificFormat{"#E0"}
+            }
+            symbols{
+                exponential{"E"}
+                infinity{"∞"}
+                list{";"}
+                nan{"NaN"}
+                perMille{"‰"}
+                percentSign{"%"}
+                superscriptingExponent{"×"}
+                timeSeparator{":"}
+            }
+        }
         native{"mlym"}
     }
+    Version{"2.1.48.42"}
     calendar{
         coptic{
             eras{
@@ -227,9 +237,47 @@ ml{
                     "കാലഘട്ടം0",
                     "കാലഘട്ടം1",
                 }
+                narrow{
+                    "കാലഘട്ടം0",
+                    "കാലഘട്ടം1",
+                }
+                wide{
+                    "കാലഘട്ടം0",
+                    "കാലഘട്ടം1",
+                }
             }
             monthNames{
                 format{
+                    abbreviated{
+                        "ടൗട്ട്",
+                        "ബാബ",
+                        "ഹാറ്റർ",
+                        "കിയാക്ക്",
+                        "ടോബ",
+                        "ആംഷിർ",
+                        "ബാരംഹാത്ത്",
+                        "ബാരമൗഡ",
+                        "ബാഷൻസ്",
+                        "പവോണ",
+                        "ഈപെപ്",
+                        "മെസ്ര",
+                        "നസീ",
+                    }
+                    narrow{
+                        "ടൗ.",
+                        "ബാ.",
+                        "ഹാ.",
+                        "കി.",
+                        "ടോ.",
+                        "ആം.",
+                        "ബാ.",
+                        "ബാ.",
+                        "ബാ.",
+                        "പ.",
+                        "ഈ.",
+                        "മെ.",
+                        "ന.",
+                    }
                     wide{
                         "ടൗട്ട്",
                         "ബാബ",
@@ -247,6 +295,21 @@ ml{
                     }
                 }
                 stand-alone{
+                    abbreviated{
+                        "ടൗട്ട്",
+                        "ബാബ",
+                        "ഹാറ്റർ",
+                        "കിയാക്ക്",
+                        "ടോബ",
+                        "ആംഷിർ",
+                        "ബാരംഹാത്ത്",
+                        "ബാരമൗഡ",
+                        "ബാഷൻസ്",
+                        "പവോണ",
+                        "ഈപെപ്",
+                        "മെസ്ര",
+                        "നസീ",
+                    }
                     narrow{
                         "ടൗ.",
                         "ബാ.",
@@ -262,6 +325,21 @@ ml{
                         "മെ.",
                         "ന.",
                     }
+                    wide{
+                        "ടൗട്ട്",
+                        "ബാബ",
+                        "ഹാറ്റർ",
+                        "കിയാക്ക്",
+                        "ടോബ",
+                        "ആംഷിർ",
+                        "ബാരംഹാത്ത്",
+                        "ബാരമൗഡ",
+                        "ബാഷൻസ്",
+                        "പവോണ",
+                        "ഈപെപ്",
+                        "മെസ്ര",
+                        "നസീ",
+                    }
                 }
             }
         }
@@ -271,9 +349,47 @@ ml{
                     "കാലഘട്ടം0",
                     "കാലഘട്ടം1",
                 }
+                narrow{
+                    "കാലഘട്ടം0",
+                    "കാലഘട്ടം1",
+                }
+                wide{
+                    "കാലഘട്ടം0",
+                    "കാലഘട്ടം1",
+                }
             }
             monthNames{
                 format{
+                    abbreviated{
+                        "മെസ്‌കെരെം",
+                        "ടെക്കെംറ്റ്",
+                        "ഹേദർ",
+                        "തഹ്‌സാസ്",
+                        "ടെർ",
+                        "യെക്കാറ്റിറ്റ്",
+                        "മെഗാബിറ്റ്",
+                        "മിയാസിയ",
+                        "ഗെൻബോട്ട്",
+                        "സെനെ",
+                        "ഹാംലെ",
+                        "നെഹാസെ",
+                        "പാഗുമെൻ",
+                    }
+                    narrow{
+                        "മെ.",
+                        "ടെ.",
+                        "ഹേ.",
+                        "ത.",
+                        "ടെ.",
+                        "യെ.",
+                        "മെ.",
+                        "മി.",
+                        "ഗെ.",
+                        "സെ.",
+                        "ഹാം",
+                        "നെ.",
+                        "പാ.",
+                    }
                     wide{
                         "മെസ്‌കെരെം",
                         "ടെക്കെംറ്റ്",
@@ -291,6 +407,21 @@ ml{
                     }
                 }
                 stand-alone{
+                    abbreviated{
+                        "മെസ്‌കെരെം",
+                        "ടെക്കെംറ്റ്",
+                        "ഹേദർ",
+                        "തഹ്‌സാസ്",
+                        "ടെർ",
+                        "യെക്കാറ്റിറ്റ്",
+                        "മെഗാബിറ്റ്",
+                        "മിയാസിയ",
+                        "ഗെൻബോട്ട്",
+                        "സെനെ",
+                        "ഹാംലെ",
+                        "നെഹാസെ",
+                        "പാഗുമെൻ",
+                    }
                     narrow{
                         "മെ.",
                         "ടെ.",
@@ -305,6 +436,21 @@ ml{
                         "ഹാം",
                         "നെ.",
                         "പാ.",
+                    }
+                    wide{
+                        "മെസ്‌കെരെം",
+                        "ടെക്കെംറ്റ്",
+                        "ഹേദർ",
+                        "തഹ്‌സാസ്",
+                        "ടെർ",
+                        "യെക്കാറ്റിറ്റ്",
+                        "മെഗാബിറ്റ്",
+                        "മിയാസിയ",
+                        "ഗെൻബോട്ട്",
+                        "സെനെ",
+                        "ഹാംലെ",
+                        "നെഹാസെ",
+                        "പാഗുമെൻ",
                     }
                 }
             }
@@ -329,16 +475,96 @@ ml{
                 Bh{"B h"}
                 Bhm{"B h:mm"}
                 Bhms{"B h:mm:ss"}
+                E{"ccc"}
                 EBhm{"E, B h:mm"}
                 EBhms{"E, B h:mm:ss"}
+                EHm{"E HH:mm"}
+                EHms{"E HH:mm:ss"}
+                Ed{"d, E"}
+                Ehm{"E h:mm a"}
+                Ehms{"E h:mm:ss a"}
+                Gy{"G y"}
+                GyMMM{"G y MMM"}
+                GyMMMEd{"G y MMM d, E"}
+                GyMMMd{"G y MMM d"}
+                H{"HH"}
+                Hm{"HH:mm"}
+                Hms{"HH:mm:ss"}
+                M{"L"}
                 MEd{"M/d, E"}
+                MMM{"LLL"}
+                MMMEd{"MMM d, E"}
                 MMMMEd{"MMMM d, E"}
+                MMMMd{"MMMM d"}
+                MMMd{"MMM d"}
                 MMdd{"dd-MM"}
+                Md{"MM-dd"}
+                d{"d"}
+                h{"h a"}
+                hm{"h:mm a"}
+                hms{"h:mm:ss a"}
+                ms{"mm:ss"}
+                y{"G y"}
+                yyyy{"G y"}
+                yyyyM{"GGGGG y-MM"}
                 yyyyMEd{"G d/M/y, E"}
                 yyyyMM{"MM-y G"}
+                yyyyMMM{"G y MMM"}
+                yyyyMMMEd{"G y MMM d, E"}
+                yyyyMMMM{"G y MMMM"}
+                yyyyMMMd{"G y MMM d"}
                 yyyyMd{"G d/M/y"}
+                yyyyQQQ{"G y QQQ"}
+                yyyyQQQQ{"G y QQQQ"}
             }
             intervalFormats{
+                Bh{
+                    B{"h B – h B"}
+                    h{"h–h B"}
+                }
+                Bhm{
+                    B{"h:mm B – h:mm B"}
+                    h{"h:mm–h:mm B"}
+                    m{"h:mm–h:mm B"}
+                }
+                Gy{
+                    G{"G y – G y"}
+                    y{"G y–y"}
+                }
+                GyM{
+                    G{"GGGGG y-MM – GGGGG y-MM"}
+                    M{"GGGGG y-MM – y-MM"}
+                    y{"GGGGG y-MM – y-MM"}
+                }
+                GyMEd{
+                    G{"GGGGG y-MM-dd, E – GGGGG y-MM-dd, E"}
+                    M{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    d{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    y{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                }
+                GyMMM{
+                    G{"G y MMM – G y MMM"}
+                    M{"G y MMM–MMM"}
+                    y{"G y MMM – y MMM"}
+                }
+                GyMMMEd{
+                    G{"G y MMM d, E – G y MMM d, E"}
+                    M{"G y MMM d, E – MMM d, E"}
+                    d{"G y MMM d, E – MMM d, E"}
+                    y{"G y MMM d, E – y MMM d, E"}
+                }
+                GyMMMd{
+                    G{"G y MMM d – G y MMM d"}
+                    M{"G y MMM d – MMM d"}
+                    d{"G y MMM d–d"}
+                    y{"G y MMM d – y MMM d"}
+                }
+                GyMd{
+                    G{"GGGGG y-MM-dd – GGGGG y-MM-dd"}
+                    M{"GGGGG y-MM-dd – y-MM-dd"}
+                    d{"GGGGG y-MM-dd – y-MM-dd"}
+                    y{"GGGGG y-MM-dd – y-MM-dd"}
+                }
                 M{
                     M{"M – M"}
                 }
@@ -349,10 +575,15 @@ ml{
                 MMM{
                     M{"MMM – MMM"}
                 }
+                MMMEd{
+                    M{"MMM d, E – MMM d, E"}
+                    d{"MMM d, E – MMM d, E"}
+                }
                 MMMM{
                     M{"MMMM – MMMM"}
                 }
                 MMMd{
+                    M{"MMM d – MMM d"}
                     d{"MMM d – d"}
                 }
                 Md{
@@ -363,12 +594,49 @@ ml{
                     d{"d – d"}
                 }
                 fallback{"{0} – {1}"}
+                h{
+                    h{"h–h a"}
+                }
+                hm{
+                    h{"h:mm–h:mm a"}
+                    m{"h:mm–h:mm a"}
+                }
+                hmv{
+                    h{"h:mm–h:mm a v"}
+                    m{"h:mm–h:mm a v"}
+                }
+                hv{
+                    h{"h–h a v"}
+                }
+                y{
+                    y{"G y–y"}
+                }
                 yM{
                     M{"M/y – M/y GGGGG"}
                     y{"M/y – M/y GGGGG"}
                 }
+                yMEd{
+                    M{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    d{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    y{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                }
+                yMMM{
+                    M{"G y MMM–MMM"}
+                    y{"G y MMM – y MMM"}
+                }
                 yMMMEd{
+                    M{"G y MMM d, E – MMM d, E"}
                     d{"G y, MMM d, E – d, E"}
+                    y{"G y MMM d, E – y MMM d, E"}
+                }
+                yMMMM{
+                    M{"G y MMMM–MMMM"}
+                    y{"G y MMMM – y MMMM"}
+                }
+                yMMMd{
+                    M{"G y MMM d – MMM d"}
+                    d{"G y MMM d–d"}
+                    y{"G y MMM d – y MMM d"}
                 }
                 yMd{
                     M{"d/M/y – d/M/y G"}
@@ -378,6 +646,18 @@ ml{
             }
         }
         gregorian{
+            AmPmMarkers{
+                "AM",
+                "PM",
+            }
+            AmPmMarkersAbbr{
+                "AM",
+                "PM",
+            }
+            AmPmMarkersNarrow{
+                "AM",
+                "PM",
+            }
             DateTimePatterns{
                 "h:mm:ss a zzzz",
                 "h:mm:ss a z",
@@ -393,34 +673,61 @@ ml{
                 "{1} {0}",
                 "{1} {0}",
             }
-            DateTimeSkeletons{
-                "ahmmsszzzz",
-                "ahmmssz",
-                "ahmmss",
-                "ahmm",
-                "yMMMMEEEEd",
-                "yMMMMd",
-                "yMMMd",
-                "yyMd",
+            appendItems{
+                Timezone{"{0} {1}"}
             }
             availableFormats{
                 Bh{"B h"}
                 Bhm{"B h:mm"}
                 Bhms{"B h:mm:ss"}
+                E{"ccc"}
                 EBhm{"E, B h:mm"}
                 EBhms{"E, B h:mm:ss"}
-                GyMd{"M/d/y GGGGG"}
+                EHm{"E HH:mm"}
+                EHms{"E HH:mm:ss"}
+                Ed{"d, E"}
+                Ehm{"E h:mm a"}
+                Ehms{"E h:mm:ss a"}
+                Gy{"G y"}
+                GyMMM{"G y MMM"}
+                GyMMMEd{"G y MMM d, E"}
+                GyMMMd{"G y MMM d"}
+                H{"HH"}
+                Hm{"HH:mm"}
+                Hms{"HH:mm:ss"}
+                Hmsv{"HH:mm:ss v"}
+                Hmv{"HH:mm v"}
+                M{"L"}
                 MEd{"d/M, E"}
+                MMM{"LLL"}
+                MMMEd{"MMM d, E"}
                 MMMMEd{"MMMM d, E"}
                 MMMMW{
                     one{"MMMM - ആഴ്ച W"}
                     other{"MMMM - ആഴ്ച W"}
                 }
+                MMMMd{"MMMM d"}
+                MMMd{"MMM d"}
                 MMdd{"dd/MM"}
                 Md{"d/M"}
+                d{"d"}
+                h{"h a"}
+                hm{"h:mm a"}
+                hms{"h:mm:ss a"}
+                hmsv{"h:mm:ss a v"}
+                hmv{"h:mm a v"}
+                ms{"mm:ss"}
+                y{"y"}
+                yM{"y-MM"}
                 yMEd{"d-M-y, E"}
                 yMM{"y-MM"}
+                yMMM{"y MMM"}
+                yMMMEd{"y MMM d, E"}
+                yMMMM{"y MMMM"}
+                yMMMd{"y MMM d"}
                 yMd{"d/M/y"}
+                yQQQ{"y QQQ"}
+                yQQQQ{"y QQQQ"}
                 yw{
                     one{"Y-ലെ ആഴ്ച w"}
                     other{"Y-ലെ ആഴ്ച w"}
@@ -466,7 +773,25 @@ ml{
                     }
                 }
                 stand-alone{
+                    abbreviated{
+                        "ഞായർ",
+                        "തിങ്കൾ",
+                        "ചൊവ്വ",
+                        "ബുധൻ",
+                        "വ്യാഴം",
+                        "വെള്ളി",
+                        "ശനി",
+                    }
                     narrow{
+                        "ഞാ",
+                        "തി",
+                        "ചൊ",
+                        "ബു",
+                        "വ്യാ",
+                        "വെ",
+                        "ശ",
+                    }
+                    short{
                         "ഞാ",
                         "തി",
                         "ചൊ",
@@ -510,6 +835,58 @@ ml{
                         night1{"രാത്രി"}
                         noon{"ഉച്ച"}
                     }
+                    wide{
+                        afternoon1{"ഉച്ചയ്ക്ക്"}
+                        afternoon2{"ഉച്ചതിരിഞ്ഞ്"}
+                        evening1{"വൈകുന്നേരം"}
+                        evening2{"സന്ധ്യ"}
+                        midnight{"അർദ്ധരാത്രി"}
+                        morning1{"പുലർച്ചെ"}
+                        morning2{"രാവിലെ"}
+                        night1{"രാത്രി"}
+                        noon{"ഉച്ച"}
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        afternoon1{"ഉച്ചയ്ക്ക്"}
+                        afternoon2{"ഉച്ചതിരിഞ്ഞ്"}
+                        am{"AM"}
+                        evening1{"വൈകുന്നേരം"}
+                        evening2{"സന്ധ്യ"}
+                        midnight{"അർദ്ധരാത്രി"}
+                        morning1{"പുലർച്ചെ"}
+                        morning2{"രാവിലെ"}
+                        night1{"രാത്രി"}
+                        noon{"ഉച്ച"}
+                        pm{"PM"}
+                    }
+                    narrow{
+                        afternoon1{"ഉച്ചയ്ക്ക്"}
+                        afternoon2{"ഉച്ചതിരിഞ്ഞ്"}
+                        am{"AM"}
+                        evening1{"വൈകുന്നേരം"}
+                        evening2{"സന്ധ്യ"}
+                        midnight{"അർദ്ധരാത്രി"}
+                        morning1{"പുലർച്ചെ"}
+                        morning2{"രാവിലെ"}
+                        night1{"രാത്രി"}
+                        noon{"ഉച്ച"}
+                        pm{"PM"}
+                    }
+                    wide{
+                        afternoon1{"ഉച്ചയ്ക്ക്"}
+                        afternoon2{"ഉച്ചതിരിഞ്ഞ്"}
+                        am{"AM"}
+                        evening1{"വൈകുന്നേരം"}
+                        evening2{"സന്ധ്യ"}
+                        midnight{"അർദ്ധരാത്രി"}
+                        morning1{"പുലർച്ചെ"}
+                        morning2{"രാവിലെ"}
+                        night1{"രാത്രി"}
+                        noon{"ഉച്ച"}
+                        pm{"PM"}
+                    }
                 }
             }
             eras{
@@ -518,6 +895,14 @@ ml{
                     "എഡി",
                 }
                 abbreviated%variant{
+                    "ബിസിഇ",
+                    "സിഇ",
+                }
+                narrow{
+                    "ക്രി.മു.",
+                    "എഡി",
+                }
+                narrow%variant{
                     "ബിസിഇ",
                     "സിഇ",
                 }
@@ -532,12 +917,51 @@ ml{
             }
             intervalFormats{
                 Bh{
-                    B{"B h – B h"}
+                    B{"h B – h B"}
+                    h{"h–h B"}
                 }
                 Bhm{
-                    B{"B h:mm – B h:mm"}
-                    h{"B h:mm – h:mm"}
-                    m{"B h:mm – h:mm"}
+                    B{"h:mm B – h:mm B"}
+                    h{"h:mm–h:mm B"}
+                    m{"h:mm–h:mm B"}
+                }
+                Gy{
+                    G{"G y – G y"}
+                    y{"G y–y"}
+                }
+                GyM{
+                    G{"GGGGG y-MM – GGGGG y-MM"}
+                    M{"GGGGG y-MM – y-MM"}
+                    y{"GGGGG y-MM – y-MM"}
+                }
+                GyMEd{
+                    G{"GGGGG y-MM-dd, E – GGGGG y-MM-dd, E"}
+                    M{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    d{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    y{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                }
+                GyMMM{
+                    G{"G y MMM – G y MMM"}
+                    M{"G y MMM–MMM"}
+                    y{"G y MMM – y MMM"}
+                }
+                GyMMMEd{
+                    G{"G y MMM d, E – G y MMM d, E"}
+                    M{"G y MMM d, E – MMM d, E"}
+                    d{"G y MMM d, E – MMM d, E"}
+                    y{"G y MMM d, E – y MMM d, E"}
+                }
+                GyMMMd{
+                    G{"G y MMM d – G y MMM d"}
+                    M{"G y MMM d – MMM d"}
+                    d{"G y MMM d–d"}
+                    y{"G y MMM d – y MMM d"}
+                }
+                GyMd{
+                    G{"GGGGG y-MM-dd – GGGGG y-MM-dd"}
+                    M{"GGGGG y-MM-dd – y-MM-dd"}
+                    d{"GGGGG y-MM-dd – y-MM-dd"}
+                    y{"GGGGG y-MM-dd – y-MM-dd"}
                 }
                 H{
                     H{"HH – HH"}
@@ -553,6 +977,9 @@ ml{
                 Hv{
                     H{"HH – HH v"}
                 }
+                M{
+                    M{"MM–MM"}
+                }
                 MEd{
                     M{"d/M, E – d/M, E"}
                     d{"d/M, E – d/M, E"}
@@ -560,10 +987,15 @@ ml{
                 MMM{
                     M{"MMM – MMM"}
                 }
+                MMMEd{
+                    M{"MMM d, E – MMM d, E"}
+                    d{"MMM d, E – MMM d, E"}
+                }
                 MMMM{
                     M{"MMMM – MMMM"}
                 }
                 MMMd{
+                    M{"MMM d – MMM d"}
                     d{"MMM d – d"}
                 }
                 Md{
@@ -575,17 +1007,21 @@ ml{
                 }
                 fallback{"{0} - {1}"}
                 h{
+                    a{"h a – h a"}
                     h{"h – h a"}
                 }
                 hm{
+                    a{"h:mm a – h:mm a"}
                     h{"h:mm – h:mm a"}
                     m{"h:mm – h:mm a"}
                 }
                 hmv{
+                    a{"h:mm a – h:mm a v"}
                     h{"h:mm – h:mm a v"}
                     m{"h:mm – h:mm a v"}
                 }
                 hv{
+                    a{"h a – h a v"}
                     h{"h – h a v"}
                 }
                 y{
@@ -602,9 +1038,21 @@ ml{
                 }
                 yMMM{
                     M{"y MMM – MMM"}
+                    y{"y MMM – y MMM"}
+                }
+                yMMMEd{
+                    M{"y MMM d, E – MMM d, E"}
+                    d{"y MMM d, E – MMM d, E"}
+                    y{"y MMM d, E – y MMM d, E"}
+                }
+                yMMMM{
+                    M{"y MMMM–MMMM"}
+                    y{"y MMMM – y MMMM"}
                 }
                 yMMMd{
+                    M{"y MMM d – MMM d"}
                     d{"y MMM d – d"}
+                    y{"y MMM d – y MMM d"}
                 }
                 yMd{
                     M{"d/M/y – d/M/y"}
@@ -628,6 +1076,20 @@ ml{
                         "നവം",
                         "ഡിസം",
                     }
+                    narrow{
+                        "ജ",
+                        "ഫെ",
+                        "മാ",
+                        "ഏ",
+                        "മെ",
+                        "ജൂൺ",
+                        "ജൂ",
+                        "ഓ",
+                        "സെ",
+                        "ഒ",
+                        "ന",
+                        "ഡി",
+                    }
                     wide{
                         "ജനുവരി",
                         "ഫെബ്രുവരി",
@@ -644,6 +1106,20 @@ ml{
                     }
                 }
                 stand-alone{
+                    abbreviated{
+                        "ജനു",
+                        "ഫെബ്രു",
+                        "മാർ",
+                        "ഏപ്രി",
+                        "മേയ്",
+                        "ജൂൺ",
+                        "ജൂലൈ",
+                        "ഓഗ",
+                        "സെപ്റ്റം",
+                        "ഒക്ടോ",
+                        "നവം",
+                        "ഡിസം",
+                    }
                     narrow{
                         "ജ",
                         "ഫെ",
@@ -658,10 +1134,56 @@ ml{
                         "ന",
                         "ഡി",
                     }
+                    wide{
+                        "ജനുവരി",
+                        "ഫെബ്രുവരി",
+                        "മാർച്ച്",
+                        "ഏപ്രിൽ",
+                        "മേയ്",
+                        "ജൂൺ",
+                        "ജൂലൈ",
+                        "ഓഗസ്റ്റ്",
+                        "സെപ്റ്റംബർ",
+                        "ഒക്‌ടോബർ",
+                        "നവംബർ",
+                        "ഡിസംബർ",
+                    }
                 }
             }
             quarters{
                 format{
+                    abbreviated{
+                        "ഒന്നാം പാദം",
+                        "രണ്ടാം പാദം",
+                        "മൂന്നാം പാദം",
+                        "നാലാം പാദം",
+                    }
+                    narrow{
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                    }
+                    wide{
+                        "ഒന്നാം പാദം",
+                        "രണ്ടാം പാദം",
+                        "മൂന്നാം പാദം",
+                        "നാലാം പാദം",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "ഒന്നാം പാദം",
+                        "രണ്ടാം പാദം",
+                        "മൂന്നാം പാദം",
+                        "നാലാം പാദം",
+                    }
+                    narrow{
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                    }
                     wide{
                         "ഒന്നാം പാദം",
                         "രണ്ടാം പാദം",
@@ -674,6 +1196,38 @@ ml{
         hebrew{
             monthNames{
                 format{
+                    abbreviated{
+                        "തിഷ്റി",
+                        "ഹെഷ്‌വൻ",
+                        "കിസ്‌ലെവ്",
+                        "ടിവെറ്റ്",
+                        "സീബാറ്റ്",
+                        "അദാർ I",
+                        "അദാർ",
+                        "നിസാൻ",
+                        "ഇയാർ",
+                        "സിവാൻ",
+                        "താമൂസ്",
+                        "അബ്",
+                        "ഏലുൾ",
+                        "അദാർ II",
+                    }
+                    narrow{
+                        "തി.",
+                        "ഹെ.",
+                        "കി.",
+                        "ടി.",
+                        "സീ.",
+                        "അ I",
+                        "അ.",
+                        "നി.",
+                        "ഇ.",
+                        "സി.",
+                        "താ.",
+                        "അ.",
+                        "ഏ.",
+                        "അ II",
+                    }
                     wide{
                         "തിഷ്റി",
                         "ഹെഷ്‌വൻ",
@@ -692,6 +1246,22 @@ ml{
                     }
                 }
                 stand-alone{
+                    abbreviated{
+                        "തിഷ്റി",
+                        "ഹെഷ്‌വൻ",
+                        "കിസ്‌ലെവ്",
+                        "ടിവെറ്റ്",
+                        "സീബാറ്റ്",
+                        "അദാർ I",
+                        "അദാർ",
+                        "നിസാൻ",
+                        "ഇയാർ",
+                        "സിവാൻ",
+                        "താമൂസ്",
+                        "അബ്",
+                        "ഏലുൾ",
+                        "അദാർ II",
+                    }
                     narrow{
                         "തി.",
                         "ഹെ.",
@@ -708,12 +1278,34 @@ ml{
                         "ഏ.",
                         "അ II",
                     }
+                    wide{
+                        "തിഷ്റി",
+                        "ഹെഷ്‌വൻ",
+                        "കിസ്‌ലെവ്",
+                        "ടിവെറ്റ്",
+                        "സീബാറ്റ്",
+                        "അദാർ I",
+                        "അദാർ",
+                        "നിസാൻ",
+                        "ഇയാർ",
+                        "സിവാൻ",
+                        "താമൂസ്",
+                        "അബ്",
+                        "ഏലുൾ",
+                        "അദാർ II",
+                    }
                 }
             }
         }
         indian{
             eras{
                 abbreviated{
+                    "ശക",
+                }
+                narrow{
+                    "ശക",
+                }
+                wide{
                     "ശക",
                 }
             }
@@ -725,7 +1317,7 @@ ml{
                         "ജ്യേഷ്ഠം",
                         "ആഷാഢം",
                         "ശ്രാവണം",
-                        "ഭാദ്രം",
+                        "ഭാദ്രപാദം",
                         "ആശ്വിനം",
                         "കാർത്തികം",
                         "മാർഗശീർഷം",
@@ -733,22 +1325,6 @@ ml{
                         "മാഘം",
                         "ഫൽഗുനം",
                     }
-                    wide{
-                        "ചൈത്രം",
-                        "വൈശാഖം",
-                        "ജ്യേഷ്ഠം",
-                        "ആഷാഢം",
-                        "ശ്രാവണം",
-                        "ഭാദ്രം",
-                        "ആശ്വിനം",
-                        "കാർത്തികം",
-                        "മാർഗശീർഷം",
-                        "പൗഷം",
-                        "മാഘം",
-                        "ഫാൽഗുനം",
-                    }
-                }
-                stand-alone{
                     narrow{
                         "ചൈ",
                         "വൈ",
@@ -763,12 +1339,76 @@ ml{
                         "മാ",
                         "ഫ",
                     }
+                    wide{
+                        "ചൈത്രം",
+                        "വൈശാഖം",
+                        "ജ്യേഷ്ഠം",
+                        "ആഷാഢം",
+                        "ശ്രാവണം",
+                        "ഭാദ്രപാദം",
+                        "ആശ്വിനം",
+                        "കാർത്തികം",
+                        "മാർഗശീർഷം",
+                        "പൗഷം",
+                        "മാഘം",
+                        "ഫൽഗുനം",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "ചൈത്രം",
+                        "വൈശാഖം",
+                        "ജ്യേഷ്ഠം",
+                        "ആഷാഢം",
+                        "ശ്രാവണം",
+                        "ഭാദ്രപാദം",
+                        "ആശ്വിനം",
+                        "കാർത്തികം",
+                        "മാർഗശീർഷം",
+                        "പൗഷം",
+                        "മാഘം",
+                        "ഫൽഗുനം",
+                    }
+                    narrow{
+                        "ചൈ",
+                        "വൈ",
+                        "ജ്യേ",
+                        "ആ",
+                        "ശ്രാ",
+                        "ഭാ",
+                        "ആ",
+                        "കാ",
+                        "മാ",
+                        "പൗ",
+                        "മാ",
+                        "ഫ",
+                    }
+                    wide{
+                        "ചൈത്രം",
+                        "വൈശാഖം",
+                        "ജ്യേഷ്ഠം",
+                        "ആഷാഢം",
+                        "ശ്രാവണം",
+                        "ഭാദ്രപാദം",
+                        "ആശ്വിനം",
+                        "കാർത്തികം",
+                        "മാർഗശീർഷം",
+                        "പൗഷം",
+                        "മാഘം",
+                        "ഫൽഗുനം",
+                    }
                 }
             }
         }
         islamic{
             eras{
                 abbreviated{
+                    "ഹിജറ",
+                }
+                narrow{
+                    "ഹിജറ",
+                }
+                wide{
                     "ഹിജറ",
                 }
             }
@@ -788,6 +1428,20 @@ ml{
                         "ദുൽ ഖഹ.",
                         "ദുൽ ഹി.",
                     }
+                    narrow{
+                        "മു",
+                        "സ",
+                        "റ",
+                        "റ",
+                        "ജ",
+                        "ജ",
+                        "റ",
+                        "ശ",
+                        "റ",
+                        "ശ",
+                        "ദു",
+                        "ദു",
+                    }
                     wide{
                         "മുഹറം",
                         "സഫർ",
@@ -804,6 +1458,20 @@ ml{
                     }
                 }
                 stand-alone{
+                    abbreviated{
+                        "മുഹ.",
+                        "സഫ.",
+                        "റബീഹുൽ അവ്വ.",
+                        "റബീഹുൽ ആഖി.",
+                        "ജമാദുൽ അവ്വ.",
+                        "ജമാദുൽ ആഖി.",
+                        "റജ.",
+                        "ശഹബാ.",
+                        "റമദാ.",
+                        "ശവ്വാ.",
+                        "ദുൽ ഖഹ.",
+                        "ദുൽ ഹി.",
+                    }
                     narrow{
                         "മു",
                         "സ",
@@ -838,6 +1506,34 @@ ml{
         persian{
             monthNames{
                 format{
+                    abbreviated{
+                        "ഫർവാർദിൻ",
+                        "ഓർഡിബെഹെഷ്‌റ്റ്",
+                        "ഖോർദാദ്",
+                        "ടിർ",
+                        "മോർദാദ്",
+                        "ഷഹ്‌രിവാർ",
+                        "മെഹർ",
+                        "അബാൻ",
+                        "അസർ",
+                        "ഡെയ്",
+                        "ബഹ്‌മാൻ",
+                        "എസ്‌ഫാൻഡ്",
+                    }
+                    narrow{
+                        "ഫ.",
+                        "ഓ.",
+                        "ഖോ",
+                        "ടി.",
+                        "മോ.",
+                        "ഷ.",
+                        "മെ.",
+                        "അ.",
+                        "അ.",
+                        "ഡെ.",
+                        "ബ.",
+                        "എ.",
+                    }
                     wide{
                         "ഫർവാർദിൻ",
                         "ഓർഡിബെഹെഷ്‌റ്റ്",
@@ -854,6 +1550,20 @@ ml{
                     }
                 }
                 stand-alone{
+                    abbreviated{
+                        "ഫർവാർദിൻ",
+                        "ഓർഡിബെഹെഷ്‌റ്റ്",
+                        "ഖോർദാദ്",
+                        "ടിർ",
+                        "മോർദാദ്",
+                        "ഷഹ്‌രിവാർ",
+                        "മെഹർ",
+                        "അബാൻ",
+                        "അസർ",
+                        "ഡെയ്",
+                        "ബഹ്‌മാൻ",
+                        "എസ്‌ഫാൻഡ്",
+                    }
                     narrow{
                         "ഫ.",
                         "ഓ.",
@@ -868,12 +1578,30 @@ ml{
                         "ബ.",
                         "എ.",
                     }
+                    wide{
+                        "ഫർവാർദിൻ",
+                        "ഓർഡിബെഹെഷ്‌റ്റ്",
+                        "ഖോർദാദ്",
+                        "ടിർ",
+                        "മോർദാദ്",
+                        "ഷഹ്‌രിവാർ",
+                        "മെഹർ",
+                        "അബാൻ",
+                        "അസർ",
+                        "ഡെയ്",
+                        "ബഹ്‌മാൻ",
+                        "എസ്‌ഫാൻഡ്",
+                    }
                 }
             }
         }
         roc{
             eras{
                 abbreviated{
+                    "R.O.C-യ്‌ക്ക് മു.",
+                    "മിംഗ്വോ",
+                }
+                narrow{
                     "R.O.C-യ്‌ക്ക് മു.",
                     "മിംഗ്വോ",
                 }
@@ -887,9 +1615,9 @@ ml{
     characterLabel{
         activities{"ആക്‌റ്റിവിറ്റി"}
         african_scripts{"ആഫ്രിക്കൻ ലിപികൾ"}
-        american_scripts{"അമേരിക്കൻ ലിപി"}
+        american_scripts{"അമേരിക്കൻ ലിപികൾ"}
         animal{"മൃഗം"}
-        animals_nature{"മൃഗമോ പ്രകൃതിയോ"}
+        animals_nature{"മൃഗങ്ങളും പ്രകൃതിയും"}
         arrows{"അമ്പടയാളങ്ങൾ"}
         body{"ശരീരം"}
         box_drawing{"ബോക്‌സ് ഡ്രോയിംഗ്"}
@@ -904,73 +1632,79 @@ ml{
         divination_symbols{"ആത്മീയ ചിഹ്നങ്ങൾ"}
         downwards_arrows{"താഴേക്കുള്ള അമ്പടയാളങ്ങൾ"}
         downwards_upwards_arrows{"താഴേക്കും മുകളിലേക്കും ഉള്ള അമ്പടയാളങ്ങൾ"}
-        east_asian_scripts{"കിഴക്കനേഷ്യൻ ലിപി"}
+        east_asian_scripts{"കിഴക്കനേഷ്യൻ ലിപികൾ"}
         emoji{"ഇമോജി"}
-        european_scripts{"യൂറോപ്യൻ ലിപി"}
+        european_scripts{"യൂറോപ്യൻ ലിപികൾ"}
         female{"സ്ത്രീ"}
         flag{"പതാക"}
         flags{"പതാകകൾ"}
         food_drink{"ഭക്ഷണപാനീയങ്ങൾ"}
         format{"ഫോർമാറ്റ്"}
         format_whitespace{"ഫോർമാറ്റും വൈറ്റ്‌സ്പെയ്‌സും"}
-        full_width_form_variant{"ഫുൾ-വിഡ്ത്ത് വേരിയന്റ്"}
+        full_width_form_variant{"ഫുൾ-വിഡ്ത്ത് ഫോം വേരിയന്റ്"}
         geometric_shapes{"ജ്യാമിതീയ രൂപങ്ങൾ"}
         half_width_form_variant{"ഹാഫ്-വിഡ്‌ത്ത് വേരിയന്റ്"}
-        han_characters{"ഹാൻ പ്രതീകം"}
-        han_radicals{"ഹാൻ മൂലസംഖ്യ"}
+        han_characters{"ഹാൻ പ്രതീകങ്ങൾ"}
+        han_radicals{"ഹാൻ മൂലസംഖ്യകൾ"}
         hanja{"ഹഞ്ഞ"}
         hanzi_simplified{"ഹൻസി (ലളിതമാക്കിയത്)"}
         hanzi_traditional{"ഹൻസി (പരമ്പരാഗതം)"}
         heart{"ഹൃദയം"}
-        historic_scripts{"ചരിത്രപരമായ ലിപി"}
-        ideographic_desc_characters{"ആശയലിപി വിവരണ പ്രതീകം"}
+        historic_scripts{"ചരിത്രപരമായ ലിപികൾ"}
+        ideographic_desc_characters{"ആശയലിപി വിവരണ പ്രതീകങ്ങൾ"}
         japanese_kana{"ജാപ്പനീസ് കാന"}
         kanbun{"കാൻബുൺ"}
         kanji{"കാഞ്ചി"}
         keycap{"കീക്യാപ്പ്"}
         leftwards_arrows{"ഇടത്തേക്ക് ചൂണ്ടുന്ന അമ്പടയാളങ്ങൾ"}
         leftwards_rightwards_arrows{"ഇടത്തേക്കും വലത്തേക്കും ചൂണ്ടുന്ന അമ്പടയാളങ്ങൾ"}
-        letterlike_symbols{"അക്ഷരസമാനമായ ചിഹ്നം"}
+        letterlike_symbols{"അക്ഷരസമാനമായ ചിഹ്നങ്ങൾ"}
         limited_use{"പരിമിത ഉപയോഗം"}
         male{"പുരുഷൻ"}
-        math_symbols{"ഗണിത ചിഹ്നം"}
-        middle_eastern_scripts{"പശ്ചിമേഷ്യൻ ലിപി"}
+        math_symbols{"ഗണിത ചിഹ്നങ്ങൾ"}
+        middle_eastern_scripts{"പശ്ചിമേഷ്യൻ ലിപികൾ"}
         miscellaneous{"പലവക"}
-        modern_scripts{"ആധുനിക ലിപി"}
+        modern_scripts{"ആധുനിക ലിപികൾ"}
         modifier{"മോഡിഫയർ"}
-        musical_symbols{"മ്യൂസിക്കൽ സിംബൽ"}
+        musical_symbols{"മ്യൂസിക്കൽ സിംബലുകൾ"}
         nature{"പ്രകൃതി"}
         nonspacing{"നോൺസ്പെയ്‌സിംഗ്"}
         numbers{"അക്കങ്ങൾ"}
-        objects{"വസ്‌തു"}
+        objects{"വസ്‌തുക്കൾ"}
         other{"മറ്റുള്ളവ"}
         paired{"ജോടിയാക്കിയവ"}
         person{"വ്യക്തി"}
         phonetic_alphabet{"സ്വരസൂചക അക്ഷരമാല"}
-        pictographs{"ചിത്രലേഖ"}
+        pictographs{"ചിത്രലേഖകൾ"}
         place{"സ്ഥലം"}
         plant{"സസ്യം"}
         punctuation{"വിരാമചിഹ്നം"}
         rightwards_arrows{"വലത്തേക്ക് ചൂണ്ടുന്ന അമ്പടയാളങ്ങൾ"}
-        sign_standard_symbols{"അടയാളമോ ചിഹ്നമോ"}
-        small_form_variant{"സ്മോൾ വേരിയന്റുകൾ"}
+        sign_standard_symbols{"അടയാളങ്ങളും ചിഹ്നങ്ങളും"}
+        small_form_variant{"സ്മോൾ ഫോം വേരിയന്റുകൾ"}
         smiley{"സ്‌മൈലി"}
-        smileys_people{"സ്മൈലിയോ വ്യക്തിയോ"}
-        south_asian_scripts{"ദക്ഷിണേഷ്യൻ ലിപി"}
-        southeast_asian_scripts{"തെക്കുകിഴക്കനേഷ്യൻ ലിപി"}
+        smileys_people{"സ്മൈലികളും ആളുകളും"}
+        south_asian_scripts{"ദക്ഷിണേഷ്യൻ ലിപികൾ"}
+        southeast_asian_scripts{"തെക്കുകിഴക്കനേഷ്യൻ ലിപികൾ"}
         spacing{"സ്പെയ്‌സിംഗ്"}
-        sport{"സ്പോർട്"}
-        symbols{"ചിഹ്നം"}
-        technical_symbols{"സാങ്കേതിക ചിഹ്നം"}
-        tone_marks{"ടോൺ മാർക്ക്"}
+        sport{"സ്പോർട്സ്"}
+        symbols{"ചിഹ്നങ്ങൾ"}
+        technical_symbols{"സാങ്കേതിക ചിഹ്നങ്ങൾ"}
+        tone_marks{"ടോൺ മാർക്കുകൾ"}
         travel{"യാത്ര"}
-        travel_places{"യാത്രയോ സ്ഥലമോ"}
+        travel_places{"യാത്രയും സ്ഥലങ്ങളും"}
         upwards_arrows{"മുകളിലേക്ക് ചൂണ്ടുന്ന അമ്പടയാളങ്ങൾ"}
-        variant_forms{"വേരിയന്റ്"}
+        variant_forms{"വേരിയന്റ് ഫോമുകൾ"}
         vocalic_jamo{"വൊക്കാലിക് ജാമോ"}
         weather{"കാലാവസ്ഥ"}
-        western_asian_scripts{"പശ്ചിമേഷ്യൻ ലിപി"}
+        western_asian_scripts{"പശ്ചിമേഷ്യൻ ലിപികൾ"}
         whitespace{"വൈറ്റ്സ്പെയ്‌സ്"}
+    }
+    delimiters{
+        alternateQuotationEnd{"’"}
+        alternateQuotationStart{"‘"}
+        quotationEnd{"”"}
+        quotationStart{"“"}
     }
     fields{
         day{
@@ -993,8 +1727,51 @@ ml{
                 }
             }
         }
+        day-narrow{
+            dn{"ദിവസം"}
+            relative{
+                "-1"{"ഇന്നലെ"}
+                "-2"{"മിനിഞ്ഞാന്ന്"}
+                "0"{"ഇന്ന്"}
+                "1"{"നാളെ"}
+                "2"{"മറ്റന്നാൾ"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} ദിവസത്തിൽ"}
+                    other{"{0} ദിവസത്തിൽ"}
+                }
+                past{
+                    one{"{0} ദിവസം മുമ്പ്"}
+                    other{"{0} ദിവസം മുമ്പ്"}
+                }
+            }
+        }
+        day-short{
+            dn{"ദിവസം"}
+            relative{
+                "-1"{"ഇന്നലെ"}
+                "-2"{"മിനിഞ്ഞാന്ന്"}
+                "0"{"ഇന്ന്"}
+                "1"{"നാളെ"}
+                "2"{"മറ്റന്നാൾ"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} ദിവസത്തിൽ"}
+                    other{"{0} ദിവസത്തിൽ"}
+                }
+                past{
+                    one{"{0} ദിവസം മുമ്പ്"}
+                    other{"{0} ദിവസം മുമ്പ്"}
+                }
+            }
+        }
         dayOfYear{
             dn{"വർഷത്തിലെ ദിവസം"}
+        }
+        dayOfYear-narrow{
+            dn{"വർഷ. ദിവസം"}
         }
         dayOfYear-short{
             dn{"വർഷ. ദിവസം"}
@@ -1002,11 +1779,20 @@ ml{
         dayperiod{
             dn{"AM/PM"}
         }
+        dayperiod-narrow{
+            dn{"AM/PM"}
+        }
+        dayperiod-short{
+            dn{"AM/PM"}
+        }
         era{
             dn{"കാലഘട്ടം"}
         }
         era-narrow{
-            dn{"കാല."}
+            dn{"കാലഘട്ടം"}
+        }
+        era-short{
+            dn{"കാലഘട്ടം"}
         }
         fri{
             relative{
@@ -1025,11 +1811,38 @@ ml{
                 }
             }
         }
+        fri-narrow{
+            relative{
+                "-1"{"കഴിഞ്ഞ വെള്ളി"}
+                "0"{"ഈ വെള്ളി"}
+                "1"{"അടുത്ത വെള്ളി"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} വെള്ളിയാഴ്ചയിൽ"}
+                    other{"{0} വെള്ളിയാഴ്ചയിൽ"}
+                }
+                past{
+                    one{"{0} വെള്ളിയാഴ്ച മുമ്പ്"}
+                    other{"{0} വെള്ളിയാഴ്ച മുമ്പ്"}
+                }
+            }
+        }
         fri-short{
             relative{
                 "-1"{"കഴിഞ്ഞ വെള്ളി"}
                 "0"{"ഈ വെള്ളി"}
                 "1"{"അടുത്ത വെള്ളി"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} വെള്ളിയാഴ്ചയിൽ"}
+                    other{"{0} വെള്ളിയാഴ്ചയിൽ"}
+                }
+                past{
+                    one{"{0} വെള്ളിയാഴ്ച മുമ്പ്"}
+                    other{"{0} വെള്ളിയാഴ്ച മുമ്പ്"}
+                }
             }
         }
         hour{
@@ -1048,8 +1861,31 @@ ml{
                 }
             }
         }
+        hour-narrow{
+            dn{"മ."}
+            relativeTime{
+                future{
+                    one{"{0} മണിക്കൂറിൽ"}
+                    other{"{0} മണിക്കൂറിൽ"}
+                }
+                past{
+                    one{"{0} മണിക്കൂർ മുമ്പ്"}
+                    other{"{0} മണിക്കൂർ മുമ്പ്"}
+                }
+            }
+        }
         hour-short{
             dn{"മ."}
+            relativeTime{
+                future{
+                    one{"{0} മണിക്കൂറിൽ"}
+                    other{"{0} മണിക്കൂറിൽ"}
+                }
+                past{
+                    one{"{0} മണിക്കൂർ മുമ്പ്"}
+                    other{"{0} മണിക്കൂർ മുമ്പ്"}
+                }
+            }
         }
         minute{
             dn{"മിനിറ്റ്"}
@@ -1067,8 +1903,31 @@ ml{
                 }
             }
         }
+        minute-narrow{
+            dn{"മി."}
+            relativeTime{
+                future{
+                    one{"{0} മിനിറ്റിൽ"}
+                    other{"{0} മിനിറ്റിൽ"}
+                }
+                past{
+                    one{"{0} മിനിറ്റ് മുമ്പ്"}
+                    other{"{0} മിനിറ്റ് മുമ്പ്"}
+                }
+            }
+        }
         minute-short{
             dn{"മി."}
+            relativeTime{
+                future{
+                    one{"{0} മിനിറ്റിൽ"}
+                    other{"{0} മിനിറ്റിൽ"}
+                }
+                past{
+                    one{"{0} മിനിറ്റ് മുമ്പ്"}
+                    other{"{0} മിനിറ്റ് മുമ്പ്"}
+                }
+            }
         }
         mon{
             relative{
@@ -1087,11 +1946,38 @@ ml{
                 }
             }
         }
+        mon-narrow{
+            relative{
+                "-1"{"കഴിഞ്ഞ തിങ്കൾ"}
+                "0"{"ഈ തിങ്കൾ"}
+                "1"{"അടുത്ത തിങ്കൾ"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} തിങ്കളാഴ്ചയിൽ"}
+                    other{"{0} തിങ്കളാഴ്ചയിൽ"}
+                }
+                past{
+                    one{"{0} തിങ്കളാഴ്ച മുമ്പ്"}
+                    other{"{0} തിങ്കളാഴ്ച മുമ്പ്"}
+                }
+            }
+        }
         mon-short{
             relative{
                 "-1"{"കഴിഞ്ഞ തിങ്കൾ"}
                 "0"{"ഈ തിങ്കൾ"}
                 "1"{"അടുത്ത തിങ്കൾ"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} തിങ്കളാഴ്ചയിൽ"}
+                    other{"{0} തിങ്കളാഴ്ചയിൽ"}
+                }
+                past{
+                    one{"{0} തിങ്കളാഴ്ച മുമ്പ്"}
+                    other{"{0} തിങ്കളാഴ്ച മുമ്പ്"}
+                }
             }
         }
         month{
@@ -1112,10 +1998,79 @@ ml{
                 }
             }
         }
+        month-narrow{
+            dn{"മാ."}
+            relative{
+                "-1"{"കഴിഞ്ഞ മാസം"}
+                "0"{"ഈ മാസം"}
+                "1"{"അടുത്ത മാസം"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} മാസത്തിൽ"}
+                    other{"{0} മാസത്തിൽ"}
+                }
+                past{
+                    one{"{0} മാസം മുമ്പ്"}
+                    other{"{0} മാസം മുമ്പ്"}
+                }
+            }
+        }
         month-short{
             dn{"മാ."}
+            relative{
+                "-1"{"കഴിഞ്ഞ മാസം"}
+                "0"{"ഈ മാസം"}
+                "1"{"അടുത്ത മാസം"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} മാസത്തിൽ"}
+                    other{"{0} മാസത്തിൽ"}
+                }
+                past{
+                    one{"{0} മാസം മുമ്പ്"}
+                    other{"{0} മാസം മുമ്പ്"}
+                }
+            }
         }
         quarter{
+            dn{"പാദം"}
+            relative{
+                "-1"{"കഴിഞ്ഞ പാദം"}
+                "0"{"ഈ പാദം"}
+                "1"{"അടുത്ത പാദം"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} പാദത്തിൽ"}
+                    other{"{0} പാദത്തിൽ"}
+                }
+                past{
+                    one{"{0} പാദം മുമ്പ്"}
+                    other{"{0} പാദം മുമ്പ്"}
+                }
+            }
+        }
+        quarter-narrow{
+            dn{"പാദം"}
+            relative{
+                "-1"{"കഴിഞ്ഞ പാദം"}
+                "0"{"ഈ പാദം"}
+                "1"{"അടുത്ത പാദം"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} പാദത്തിൽ"}
+                    other{"{0} പാദത്തിൽ"}
+                }
+                past{
+                    one{"{0} പാദം മുമ്പ്"}
+                    other{"{0} പാദം മുമ്പ്"}
+                }
+            }
+        }
+        quarter-short{
             dn{"പാദം"}
             relative{
                 "-1"{"കഴിഞ്ഞ പാദം"}
@@ -1150,11 +2105,38 @@ ml{
                 }
             }
         }
+        sat-narrow{
+            relative{
+                "-1"{"കഴിഞ്ഞ ശനി"}
+                "0"{"ഈ ശനി"}
+                "1"{"അടുത്ത ശനി"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} ശനിയാഴ്ചയിൽ"}
+                    other{"{0} ശനിയാഴ്ചയിൽ"}
+                }
+                past{
+                    one{"{0} ശനിയാഴ്ച മുമ്പ്"}
+                    other{"{0} ശനിയാഴ്ച മുമ്പ്"}
+                }
+            }
+        }
         sat-short{
             relative{
                 "-1"{"കഴിഞ്ഞ ശനി"}
                 "0"{"ഈ ശനി"}
                 "1"{"അടുത്ത ശനി"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} ശനിയാഴ്ചയിൽ"}
+                    other{"{0} ശനിയാഴ്ചയിൽ"}
+                }
+                past{
+                    one{"{0} ശനിയാഴ്ച മുമ്പ്"}
+                    other{"{0} ശനിയാഴ്ച മുമ്പ്"}
+                }
             }
         }
         second{
@@ -1173,8 +2155,31 @@ ml{
                 }
             }
         }
+        second-narrow{
+            dn{"സെ."}
+            relativeTime{
+                future{
+                    one{"{0} സെക്കൻഡിൽ"}
+                    other{"{0} സെക്കൻഡിൽ"}
+                }
+                past{
+                    one{"{0} സെക്കൻഡ് മുമ്പ്"}
+                    other{"{0} സെക്കൻഡ് മുമ്പ്"}
+                }
+            }
+        }
         second-short{
             dn{"സെ."}
+            relativeTime{
+                future{
+                    one{"{0} സെക്കൻഡിൽ"}
+                    other{"{0} സെക്കൻഡിൽ"}
+                }
+                past{
+                    one{"{0} സെക്കൻഡ് മുമ്പ്"}
+                    other{"{0} സെക്കൻഡ് മുമ്പ്"}
+                }
+            }
         }
         sun{
             relative{
@@ -1193,11 +2198,38 @@ ml{
                 }
             }
         }
+        sun-narrow{
+            relative{
+                "-1"{"കഴിഞ്ഞ ഞായർ"}
+                "0"{"ഈ ഞായർ"}
+                "1"{"അടുത്ത ഞായർ"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} ഞായറാഴ്ചയിൽ"}
+                    other{"{0} ഞായറാഴ്ചയിൽ"}
+                }
+                past{
+                    one{"{0} ഞായറാഴ്ച മുമ്പ്"}
+                    other{"{0} ഞായറാഴ്ച മുമ്പ്"}
+                }
+            }
+        }
         sun-short{
             relative{
                 "-1"{"കഴിഞ്ഞ ഞായർ"}
                 "0"{"ഈ ഞായർ"}
                 "1"{"അടുത്ത ഞായർ"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} ഞായറാഴ്ചയിൽ"}
+                    other{"{0} ഞായറാഴ്ചയിൽ"}
+                }
+                past{
+                    one{"{0} ഞായറാഴ്ച മുമ്പ്"}
+                    other{"{0} ഞായറാഴ്ച മുമ്പ്"}
+                }
             }
         }
         thu{
@@ -1217,11 +2249,38 @@ ml{
                 }
             }
         }
+        thu-narrow{
+            relative{
+                "-1"{"കഴിഞ്ഞ വ്യാഴം"}
+                "0"{"ഈ വ്യാഴം"}
+                "1"{"അടുത്ത വ്യാഴം"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} വ്യാഴാഴ്ചയിൽ"}
+                    other{"{0} വ്യാഴാഴ്ചയിൽ"}
+                }
+                past{
+                    one{"{0} വ്യാഴാഴ്ച മുമ്പ്"}
+                    other{"{0} വ്യാഴാഴ്ച മുമ്പ്"}
+                }
+            }
+        }
         thu-short{
             relative{
                 "-1"{"കഴിഞ്ഞ വ്യാഴം"}
                 "0"{"ഈ വ്യാഴം"}
                 "1"{"അടുത്ത വ്യാഴം"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} വ്യാഴാഴ്ചയിൽ"}
+                    other{"{0} വ്യാഴാഴ്ചയിൽ"}
+                }
+                past{
+                    one{"{0} വ്യാഴാഴ്ച മുമ്പ്"}
+                    other{"{0} വ്യാഴാഴ്ച മുമ്പ്"}
+                }
             }
         }
         tue{
@@ -1241,11 +2300,38 @@ ml{
                 }
             }
         }
+        tue-narrow{
+            relative{
+                "-1"{"കഴിഞ്ഞ ചൊവ്വ"}
+                "0"{"ഈ ചൊവ്വ"}
+                "1"{"അടുത്ത ചൊവ്വ"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} ചൊവ്വാഴ്ചയിൽ"}
+                    other{"{0} ചൊവ്വാഴ്ചയിൽ"}
+                }
+                past{
+                    one{"{0} ചൊവ്വാഴ്ച മുമ്പ്"}
+                    other{"{0} ചൊവ്വാഴ്ച മുമ്പ്"}
+                }
+            }
+        }
         tue-short{
             relative{
                 "-1"{"കഴിഞ്ഞ ചൊവ്വ"}
                 "0"{"ഈ ചൊവ്വ"}
                 "1"{"അടുത്ത ചൊവ്വ"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} ചൊവ്വാഴ്ചയിൽ"}
+                    other{"{0} ചൊവ്വാഴ്ചയിൽ"}
+                }
+                past{
+                    one{"{0} ചൊവ്വാഴ്ച മുമ്പ്"}
+                    other{"{0} ചൊവ്വാഴ്ച മുമ്പ്"}
+                }
             }
         }
         wed{
@@ -1265,11 +2351,38 @@ ml{
                 }
             }
         }
+        wed-narrow{
+            relative{
+                "-1"{"കഴിഞ്ഞ ബുധൻ"}
+                "0"{"ഈ ബുധൻ"}
+                "1"{"അടുത്ത ബുധൻ"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} ബുധനാഴ്ചയിൽ"}
+                    other{"{0} ബുധനാഴ്ചയിൽ"}
+                }
+                past{
+                    one{"{0} ബുധനാഴ്ച മുമ്പ്"}
+                    other{"{0} ബുധനാഴ്ച മുമ്പ്"}
+                }
+            }
+        }
         wed-short{
             relative{
                 "-1"{"കഴിഞ്ഞ ബുധൻ"}
                 "0"{"ഈ ബുധൻ"}
                 "1"{"അടുത്ത ബുധൻ"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} ബുധനാഴ്ചയിൽ"}
+                    other{"{0} ബുധനാഴ്ചയിൽ"}
+                }
+                past{
+                    one{"{0} ബുധനാഴ്ച മുമ്പ്"}
+                    other{"{0} ബുധനാഴ്ച മുമ്പ്"}
+                }
             }
         }
         week{
@@ -1291,11 +2404,49 @@ ml{
                 }
             }
         }
+        week-narrow{
+            dn{"ആ."}
+            relative{
+                "-1"{"കഴിഞ്ഞ ആഴ്‌ച"}
+                "0"{"ഈ ആഴ്ച"}
+                "1"{"അടുത്ത ആഴ്ച"}
+            }
+            relativePeriod{"{0} വരുന്ന ആഴ്ച"}
+            relativeTime{
+                future{
+                    one{"{0} ആഴ്ചയിൽ"}
+                    other{"{0} ആഴ്ചയിൽ"}
+                }
+                past{
+                    one{"{0} ആഴ്ച മുമ്പ്"}
+                    other{"{0} ആഴ്ച മുമ്പ്"}
+                }
+            }
+        }
         week-short{
             dn{"ആ."}
+            relative{
+                "-1"{"കഴിഞ്ഞ ആഴ്‌ച"}
+                "0"{"ഈ ആഴ്ച"}
+                "1"{"അടുത്ത ആഴ്ച"}
+            }
+            relativePeriod{"{0} വരുന്ന ആഴ്ച"}
+            relativeTime{
+                future{
+                    one{"{0} ആഴ്ചയിൽ"}
+                    other{"{0} ആഴ്ചയിൽ"}
+                }
+                past{
+                    one{"{0} ആഴ്ച മുമ്പ്"}
+                    other{"{0} ആഴ്ച മുമ്പ്"}
+                }
+            }
         }
         weekOfMonth{
             dn{"മാസത്തിലെ ആഴ്‌ച"}
+        }
+        weekOfMonth-narrow{
+            dn{"മാസ. ആഴ്‌ച"}
         }
         weekOfMonth-short{
             dn{"മാസ. ആഴ്‌ച"}
@@ -1303,14 +2454,20 @@ ml{
         weekday{
             dn{"ആഴ്ചയിലെ ദിവസം"}
         }
+        weekday-narrow{
+            dn{"ആഴ്‌ച. ദിവസം"}
+        }
         weekday-short{
             dn{"ആഴ്‌ച. ദിവസം"}
         }
         weekdayOfMonth{
-            dn{"മാസത്തിലെ പ്രവൃത്തി ദിവസം"}
+            dn{"മാസത്തിലെ പ്രവർത്തിദിനം"}
+        }
+        weekdayOfMonth-narrow{
+            dn{"മാസ. പ്രവർത്തിദിനം"}
         }
         weekdayOfMonth-short{
-            dn{"മാസ. പ്രവൃത്തി ദിവസം"}
+            dn{"മാസ. പ്രവർത്തിദിനം"}
         }
         year{
             dn{"വർഷം"}
@@ -1330,36 +2487,88 @@ ml{
                 }
             }
         }
+        year-narrow{
+            dn{"വ."}
+            relative{
+                "-1"{"കഴിഞ്ഞ വർഷം"}
+                "0"{"ഈ വർ‌ഷം"}
+                "1"{"അടുത്തവർഷം"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} വർഷത്തിൽ"}
+                    other{"{0} വർഷത്തിൽ"}
+                }
+                past{
+                    one{"{0} വർഷം മുമ്പ്"}
+                    other{"{0} വർഷം മുമ്പ്"}
+                }
+            }
+        }
         year-short{
             dn{"വ."}
+            relative{
+                "-1"{"കഴിഞ്ഞ വർഷം"}
+                "0"{"ഈ വർ‌ഷം"}
+                "1"{"അടുത്തവർഷം"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} വർഷത്തിൽ"}
+                    other{"{0} വർഷത്തിൽ"}
+                }
+                past{
+                    one{"{0} വർഷം മുമ്പ്"}
+                    other{"{0} വർഷം മുമ്പ്"}
+                }
+            }
         }
         zone{
             dn{"സമയ മേഖല"}
         }
+        zone-narrow{
+            dn{"സമയ മേഖല"}
+        }
         zone-short{
-            dn{"മേഖല"}
+            dn{"സമയ മേഖല"}
         }
     }
     listPattern{
         or{
             2{"{0} അല്ലെങ്കിൽ {1}"}
             end{"{0}, അല്ലെങ്കിൽ {1}"}
+            middle{"{0}, {1} എന്നിവ"}
+            start{"{0}, {1} എന്നിവ"}
         }
         standard{
             2{"{0} കൂടാതെ {1}"}
             end{"{0}, {1} എന്നിവ"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
         }
-        standard-narrow{
-            2{"{0}, {1}"}
+        standard-short{
+            2{"{0} കൂടാതെ {1}"}
+            end{"{0}, {1} എന്നിവ"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+        unit{
+            2{"{0} കൂടാതെ {1}"}
+            end{"{0}, {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
         }
         unit-narrow{
+            2{"{0} കൂടാതെ {1}"}
             end{"{0} {1}"}
             middle{"{0} {1}"}
             start{"{0} {1}"}
         }
         unit-short{
-            2{"{0}, {1}"}
+            2{"{0} കൂടാതെ {1}"}
             end{"{0}, {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
         }
     }
     measurementSystemNames{
@@ -1368,69 +2577,35 @@ ml{
         metric{"മെട്രിക്ക്"}
     }
     parse{
+        date{
+            lenient{
+                "[\\--/]",
+                "[\\:∶]",
+            }
+        }
+        general{
+            lenient{
+                "[.․。︒﹒．｡]",
+                "['ʼ՚᾽᾿’＇]",
+                "[%٪﹪％]",
+                "[؉‰]",
+                "[\$﹩＄$]",
+                "[£₤]",
+                "[¥￥]",
+                "[₩￦]",
+                "[₨₹{Rp}{Rs}]",
+            }
+        }
         number{
             lenient{
-                "[\\-－﹣ ‐‑ ‒ – −⁻₋ ➖]",
-                "[,，﹐︐ ، ٫ 、﹑､︑]",
-                "[+＋﬩﹢⁺₊ ➕]",
+                "[\\-‒⁻₋−➖﹣－]",
+                "[,،٫、︐︑﹐﹑，､]",
+                "[+⁺₊➕﬩﹢＋]",
             }
             stricter{
-                "[,，﹐︐ ٫]",
-                "[.．․﹒ ｡]",
+                "[,٫︐﹐，]",
+                "[.․﹒．｡]",
             }
-        }
-    }
-    personNames{
-        nameOrderLocales{
-            givenFirst{
-                "und",
-                "ml",
-            }
-        }
-        namePattern{
-            givenFirst-long-addressing-formal{"{title} {surname}"}
-            givenFirst-long-addressing-informal{"{given-informal}"}
-            givenFirst-long-monogram-informal{"{given-informal-monogram-allCaps}{surname-monogram-allCaps}"}
-            givenFirst-long-referring-formal{"{given} {given2} {surname} {credentials}"}
-            givenFirst-long-referring-informal{"{given-informal} {surname}"}
-            givenFirst-medium-addressing-formal{"{title} {surname}"}
-            givenFirst-medium-addressing-informal{"{given-informal}"}
-            givenFirst-medium-monogram-formal{"{surname-monogram-allCaps}"}
-            givenFirst-medium-monogram-informal{"{given-informal-monogram-allCaps}"}
-            givenFirst-medium-referring-formal{"{given} {given2-initial} {surname} {credentials}"}
-            givenFirst-medium-referring-informal{"{given-informal} {surname}"}
-            givenFirst-short-addressing-formal{"{title} {surname}"}
-            givenFirst-short-addressing-informal{"{given-informal}"}
-            givenFirst-short-monogram-formal{"{surname-monogram-allCaps}"}
-            givenFirst-short-monogram-informal{"{given-informal-monogram-allCaps}"}
-            givenFirst-short-referring-formal{"{given-initial} {given2-initial} {surname}"}
-            givenFirst-short-referring-informal{"{given-informal} {surname-initial}"}
-            sorting-long-referring-formal{"{surname-core}, {given} {given2} {surname-prefix}"}
-            sorting-long-referring-informal{"{surname}, {given-informal}"}
-            sorting-medium-referring-formal{"{surname-core}, {given} {given2-initial} {surname-prefix}"}
-            sorting-medium-referring-informal{"{surname}, {given-informal}"}
-            sorting-short-referring-formal{"{surname-core}, {given-initial} {given2-initial} {surname-prefix}"}
-            sorting-short-referring-informal{"{surname}, {given-informal}"}
-            surnameFirst-long-addressing-formal{"{title} {surname}"}
-            surnameFirst-long-addressing-informal{"{given-informal}"}
-            surnameFirst-long-monogram-informal{"{surname-monogram-allCaps}{given-informal-monogram-allCaps}"}
-            surnameFirst-long-referring-formal{"{surname} {title} {given} {given2} {generation}, {credentials}"}
-            surnameFirst-long-referring-informal{"{surname} {given-informal}"}
-            surnameFirst-medium-addressing-formal{"{title} {surname}"}
-            surnameFirst-medium-addressing-informal{"{given-informal}"}
-            surnameFirst-medium-monogram-formal{"{surname-monogram-allCaps}"}
-            surnameFirst-medium-monogram-informal{"{given-informal-monogram-allCaps}"}
-            surnameFirst-medium-referring-formal{"{surname} {given} {given2-initial} {credentials}"}
-            surnameFirst-medium-referring-informal{"{surname} {given-informal}"}
-            surnameFirst-short-addressing-formal{"{title} {surname}"}
-            surnameFirst-short-addressing-informal{"{given-informal}"}
-            surnameFirst-short-monogram-formal{"{surname-monogram-allCaps}"}
-            surnameFirst-short-monogram-informal{"{given-informal-monogram-allCaps}"}
-            surnameFirst-short-referring-formal{"{surname} {given-initial} {given2-initial}"}
-            surnameFirst-short-referring-informal{"{surname} {given-initial}"}
-        }
-        parameterDefault{
-            formality{"informal"}
         }
     }
 }

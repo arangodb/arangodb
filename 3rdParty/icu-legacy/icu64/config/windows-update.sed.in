@@ -4,4 +4,5 @@
 # sed script for updating windows .mak and .vcproj files
 s%^U_ICUDATA_NAME=.*%U_ICUDATA_NAME=icudt@LIB_VERSION_MAJOR@%
 s%^UNICODE_VERSION=.*%UNICODE_VERSION=@UNICODE_VERSION@%
-s%\(<IcuMajorVersion>\)[0-9][0-9]%\1@LIB_VERSION_MAJOR@%g
+s%\(icu[a-zA-Z]*\)[0-9][0-9]\(d\.dll\)%\1@LIB_VERSION_MAJOR@\2%g
+s%\(icu[a-zA-Z]*\)[0-9][0-9]\(\.dll\)%\1@LIB_VERSION_MAJOR@\2%g

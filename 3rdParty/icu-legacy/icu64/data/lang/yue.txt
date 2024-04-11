@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 yue{
     Keys{
         calendar{"曆法"}
@@ -44,7 +43,6 @@ yue{
         am{"阿姆哈拉文"}
         an{"阿拉貢文"}
         ang{"古英文"}
-        ann{"奧博洛文"}
         anp{"昂加文"}
         ar{"阿拉伯文"}
         ar_001{"現代標準阿拉伯文"}
@@ -53,7 +51,6 @@ yue{
         aro{"阿拉奧納文"}
         arp{"阿拉帕霍文"}
         arq{"阿爾及利亞阿拉伯文"}
-        ars{"納吉迪阿拉伯文"}
         arw{"阿拉瓦克文"}
         ary{"摩洛哥阿拉伯文"}
         arz{"埃及阿拉伯文"}
@@ -61,7 +58,6 @@ yue{
         asa{"阿蘇文"}
         ase{"美國手語"}
         ast{"阿斯圖里亞文"}
-        atj{"阿提卡米克文"}
         av{"阿瓦爾文"}
         avk{"科塔瓦文"}
         awa{"阿瓦文"}
@@ -83,7 +79,6 @@ yue{
         bfd{"富特文"}
         bfq{"巴達加文"}
         bg{"保加利亞文"}
-        bgc{"哈里亞納文"}
         bgn{"西俾路支文"}
         bho{"博傑普爾文"}
         bi{"比斯拉馬文"}
@@ -128,22 +123,14 @@ yue{
         chr{"柴羅基文"}
         chy{"沙伊安文"}
         ckb{"索拉尼庫爾德文"}
-        clc{"奇爾科延文"}
         co{"科西嘉文"}
         cop{"科普特文"}
         cps{"卡皮茲文"}
         cr{"克裡文"}
-        crg{"米奇夫文"}
         crh{"克里米亞半島的土耳其文；克里米亞半島的塔塔爾文"}
-        crj{"東南克里文"}
-        crk{"平原克里文"}
-        crl{"東北克里文"}
-        crm{"駝鹿克里文"}
-        crr{"卡羅來納州阿爾岡昆語"}
         crs{"法語克里奧爾混合語"}
         cs{"捷克文"}
         csb{"卡舒布文"}
-        csw{"沼澤克里文"}
         cu{"宗教斯拉夫文"}
         cv{"楚瓦什文"}
         cy{"威爾斯文"}
@@ -152,7 +139,7 @@ yue{
         dar{"達爾格瓦文"}
         dav{"台塔文"}
         de{"德文"}
-        de_CH{"高地德文 (瑞士)"}
+        de_CH{"高地德文（瑞士）"}
         del{"德拉瓦文"}
         den{"斯拉夫"}
         dgr{"多格里布文"}
@@ -186,7 +173,6 @@ yue{
         ewo{"依汪都文"}
         ext{"埃斯特雷馬杜拉文"}
         fa{"波斯文"}
-        fa_AF{"達里文"}
         fan{"芳族文"}
         fat{"芳蒂文"}
         ff{"富拉文"}
@@ -215,7 +201,7 @@ yue{
         gd{"蘇格蘭蓋爾文"}
         gez{"吉茲文"}
         gil{"吉爾伯特群島文"}
-        gl{"加里西亞文"}
+        gl{"加利西亞文"}
         glk{"吉拉基文"}
         gmh{"中古高地德文"}
         gn{"瓜拉尼文"}
@@ -237,7 +223,6 @@ yue{
         hai{"海達文"}
         hak{"客家話"}
         haw{"夏威夷文"}
-        hax{"南海達文"}
         he{"希伯來文"}
         hi{"北印度文"}
         hif{"斐濟印地文"}
@@ -251,7 +236,6 @@ yue{
         ht{"海地文"}
         hu{"匈牙利文"}
         hup{"胡帕文"}
-        hur{"哈爾魁梅林語"}
         hy{"亞美尼亞文"}
         hz{"赫雷羅文"}
         ia{"國際文"}
@@ -262,7 +246,6 @@ yue{
         ig{"伊布文"}
         ii{"四川彝文"}
         ik{"依奴皮維克文"}
-        ikt{"加拿大西部因紐特文"}
         ilo{"伊洛闊文"}
         inh{"印古什文"}
         io{"伊多文"}
@@ -329,7 +312,6 @@ yue{
         kut{"庫特奈文"}
         kv{"科米文"}
         kw{"康瓦耳文"}
-        kwk{"誇誇瓦拉文"}
         ky{"吉爾吉斯文"}
         la{"拉丁文"}
         lad{"拉迪諾文"}
@@ -342,17 +324,14 @@ yue{
         lg{"干達文"}
         li{"林堡文"}
         lij{"利古里亞文"}
-        lil{"利盧埃特文"}
         liv{"利伏尼亞文"}
         lkt{"拉科塔文"}
         lmo{"倫巴底文"}
         ln{"林加拉文"}
         lo{"寮文"}
         lol{"芒戈文"}
-        lou{"路易斯安那克里奧爾文"}
         loz{"洛齊文"}
         lrc{"北盧爾文"}
-        lsm{"薩米亞文"}
         lt{"立陶宛文"}
         ltg{"拉特加萊文"}
         lu{"魯巴加丹加文"}
@@ -391,7 +370,6 @@ yue{
         mn{"蒙古文"}
         mnc{"滿族文"}
         mni{"曼尼普裡文"}
-        moe{"因努埃蒙文"}
         moh{"莫霍克文"}
         mos{"莫西文"}
         mr{"馬拉地文"}
@@ -444,11 +422,6 @@ yue{
         nzi{"尼茲馬文"}
         oc{"奧克西坦文"}
         oj{"奧杰布瓦文"}
-        ojb{"西北奧吉布瓦文"}
-        ojc{"中奧吉布瓦文"}
-        ojs{"王子克里文"}
-        ojw{"西奧吉布瓦文"}
-        oka{"奧卡納根文"}
         om{"奧羅莫文"}
         or{"歐利亞文"}
         os{"奧塞提文"}
@@ -468,12 +441,10 @@ yue{
         pfl{"普法爾茨德文"}
         phn{"腓尼基文"}
         pi{"巴利文"}
-        pis{"皮京文"}
         pl{"波蘭文"}
         pms{"皮埃蒙特文"}
         pnt{"旁狄希臘文"}
         pon{"波那貝文"}
-        pqm{"馬里塞-帕薩馬誇迪文"}
         prg{"普魯士文"}
         pro{"古普羅旺斯文"}
         ps{"普什圖文"}
@@ -485,7 +456,6 @@ yue{
         rap{"復活島文"}
         rar{"拉羅通加文"}
         rgn{"羅馬格諾里文"}
-        rhg{"羅興亞文"}
         rif{"里菲亞諾文"}
         rm{"羅曼斯文"}
         rn{"隆迪文"}
@@ -493,6 +463,7 @@ yue{
         ro_MD{"摩爾多瓦文"}
         rof{"蘭博文"}
         rom{"吉普賽文"}
+        root{"根語言"}
         rtm{"羅圖馬島文"}
         ru{"俄文"}
         rue{"盧森尼亞文"}
@@ -533,7 +504,6 @@ yue{
         sid{"希達摩文"}
         sk{"斯洛伐克文"}
         sl{"斯洛維尼亞文"}
-        slh{"南盧紹錫德文"}
         sli{"下西利西亞文"}
         sly{"塞拉亞文"}
         sm{"薩摩亞文"}
@@ -553,7 +523,6 @@ yue{
         ssy{"薩霍文"}
         st{"塞索托文"}
         stq{"沙特菲士蘭文"}
-        str{"海峽薩利希文"}
         su{"巽他文"}
         suk{"蘇庫馬文"}
         sus{"蘇蘇文"}
@@ -566,7 +535,6 @@ yue{
         syr{"敘利亞文"}
         szl{"西利西亞文"}
         ta{"坦米爾文"}
-        tce{"南塔穹文"}
         tcy{"圖盧文"}
         te{"泰盧固文"}
         tem{"提姆文"}
@@ -574,9 +542,7 @@ yue{
         ter{"泰雷諾文"}
         tet{"泰頓文"}
         tg{"塔吉克文"}
-        tgx{"塔吉什文"}
         th{"泰文"}
-        tht{"塔爾坦文"}
         ti{"提格利尼亞文"}
         tig{"蒂格雷文"}
         tiv{"提夫文"}
@@ -591,7 +557,6 @@ yue{
         tn{"突尼西亞文"}
         to{"東加文"}
         tog{"東加文（尼亞薩）"}
-        tok{"托基波納文"}
         tpi{"托比辛文"}
         tr{"土耳其文"}
         tru{"圖羅尤文"}
@@ -600,7 +565,6 @@ yue{
         tsd{"特薩克尼恩文"}
         tsi{"欽西安文"}
         tt{"韃靼文"}
-        ttm{"北塔奇訥文"}
         ttt{"穆斯林塔特文"}
         tum{"圖姆布卡文"}
         tvl{"吐瓦魯文"}
@@ -662,20 +626,13 @@ yue{
         zxx{"無語言內容"}
         zza{"扎扎文"}
     }
-    Languages%long{
-        zh_Hans{"簡體中文 (普通話)"}
-        zh_Hant{"繁體中文 (普通話)"}
-    }
-    Languages%menu{
-        yue{"中文 (粵語)"}
-        zh{"中文 (普通話)"}
+    Languages%short{
+        az{"亞塞拜然文"}
     }
     Scripts{
-        Adlm{"阿德拉姆文"}
         Afak{"阿法卡文字"}
         Aghb{"高加索阿爾巴尼亞文"}
         Arab{"阿拉伯文"}
-        Aran{"納斯塔利克文"}
         Armi{"皇室亞美尼亞文"}
         Armn{"亞美尼亞文"}
         Avst{"阿維斯陀文"}
@@ -788,7 +745,6 @@ yue{
         Plrd{"柏格理拼音符"}
         Prti{"帕提亞文（碑銘體）"}
         Rjng{"拉讓文"}
-        Rohg{"哈尼菲文"}
         Roro{"朗格朗格象形文"}
         Runr{"古北歐文字"}
         Samr{"撒馬利亞文"}
@@ -859,7 +815,9 @@ yue{
             indian{"印度國曆"}
             islamic{"伊斯蘭曆"}
             islamic-civil{"伊斯蘭民用曆"}
-            islamic-umalqura{"伊斯蘭曆 (烏姆庫拉)"}
+            islamic-rgsa{"伊斯蘭新月曆"}
+            islamic-tbla{"伊斯蘭天文曆"}
+            islamic-umalqura{"烏姆庫拉曆"}
             iso8601{"國際標準 ISO 8601"}
             japanese{"日本曆"}
             persian{"波斯曆"}
@@ -910,6 +868,7 @@ yue{
             phonebook{"電話簿排序"}
             phonetic{"發音排序"}
             pinyin{"拼音排序"}
+            reformed{"改良排序"}
             search{"一般用途搜尋"}
             searchjl{"韓文子音排序"}
             standard{"標準排序"}
@@ -1066,13 +1025,13 @@ yue{
         VALLADER{"瑞士瓦勒德方言"}
         WADEGILE{"威妥瑪式拼音"}
     }
+    Version{"2.1.49.82"}
     characterLabelPattern{
         all{"{0} — 全部"}
+        category-list{"{0}: {1}"}
         compatibility{"{0} — 相容性"}
         enclosed{"{0} — 包圍"}
         extended{"{0} — 擴充"}
-        facing-left{"{0} 向左"}
-        facing-right{"{0} 向右"}
         historic{"{0} - 古代"}
         miscellaneous{"{0} — 其他"}
         other{"{0} — 其他"}
@@ -1080,8 +1039,6 @@ yue{
         strokes{
             other{"{0}斜線"}
         }
-        subscript{"下標 {0}"}
-        superscript{"上標 {0}"}
     }
     codePatterns{
         language{"語言：{0}"}
@@ -1090,6 +1047,7 @@ yue{
     }
     localeDisplayPattern{
         keyTypePattern{"{0}：{1}"}
+        pattern{"{0} ({1})"}
         separator{"{0}，{1}"}
     }
 }

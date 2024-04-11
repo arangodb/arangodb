@@ -45,7 +45,7 @@ CollationThaiTest::CollationThaiTest() {
         //coll->setStrength(Collator::TERTIARY);
     } else {
         delete coll;
-        coll = nullptr;
+        coll = 0;
     }
 }
 
@@ -77,8 +77,8 @@ void CollationThaiTest::runIndexedTest(int32_t index, UBool exec, const char* &n
  * gets the same results when comparing lines one to another
  * using regular and iterative comparison.
  */
-void CollationThaiTest::TestNamesList() {
-    if (coll == nullptr) {
+void CollationThaiTest::TestNamesList(void) {
+    if (coll == 0) {
         errln("Error: could not construct Thai collator");
         return;
     }
@@ -98,7 +98,7 @@ void CollationThaiTest::TestNamesList() {
     UnicodeString lastWord, word;
     //int32_t failed = 0;
     int32_t wordCount = 0;
-    while (names.readLineSkippingComments(word, ec, false) && U_SUCCESS(ec)) {
+    while (names.readLineSkippingComments(word, ec, FALSE) && U_SUCCESS(ec)) {
 
         // Show the first 8 words being compared, so we can see what's happening
         ++wordCount;
@@ -124,8 +124,8 @@ void CollationThaiTest::TestNamesList() {
  * sorted order, and confirm that the collator compares each line as
  * preceding the following line.
  */
-void CollationThaiTest::TestDictionary() {
-    if (coll == nullptr) {
+void CollationThaiTest::TestDictionary(void) {
+    if (coll == 0) {
         errln("Error: could not construct Thai collator");
         return;
     }
@@ -145,7 +145,7 @@ void CollationThaiTest::TestDictionary() {
     UnicodeString lastWord, word;
     int32_t failed = 0;
     int32_t wordCount = 0;
-    while (riwords.readLineSkippingComments(word, ec, false) && U_SUCCESS(ec)) {
+    while (riwords.readLineSkippingComments(word, ec, FALSE) && U_SUCCESS(ec)) {
 
         // Show the first 8 words being compared, so we can see what's happening
         ++wordCount;
@@ -203,7 +203,7 @@ void CollationThaiTest::TestDictionary() {
  * Odd corner conditions taken from "How to Sort Thai Without Rewriting Sort",
  * by Doug Cooper, http://seasrc.th.net/paper/thaisort.zip
  */
-void CollationThaiTest::TestCornerCases() {
+void CollationThaiTest::TestCornerCases(void) {
     const char* TESTS[] = {
         // Shorter words precede longer
         "\\u0e01",                               "<",    "\\u0e01\\u0e01",
@@ -222,7 +222,7 @@ void CollationThaiTest::TestCornerCases() {
         "\\u0e01\\u0e32",                        "=",    "\\u0e01\\u0e32-",
         "\\u0e01\\u0e32-",                       "<",    "\\u0e01\\u0e32\\u0e01\\u0e32",
 
-        // Doubler follows an identical word without the doubler
+        // Doubler follows an indentical word without the doubler
         "\\u0e01\\u0e32",                        "=",    "\\u0e01\\u0e32\\u0e46",
         "\\u0e01\\u0e32\\u0e46",                 "<",    "\\u0e01\\u0e32\\u0e01\\u0e32",
 
@@ -244,7 +244,7 @@ void CollationThaiTest::TestCornerCases() {
     };
     const int32_t TESTS_length = UPRV_LENGTHOF(TESTS);
 
-    if (coll == nullptr) {
+    if (coll == 0) {
         errln("Error: could not construct Thai collator");
         return;
     }
@@ -340,19 +340,19 @@ UnicodeString& CollationThaiTest::parseChars(UnicodeString& result,
     return result = CharsToUnicodeString(chars);
 }
 
-UCollator *thaiColl = nullptr;
+UCollator *thaiColl = NULL;
 
 U_CDECL_BEGIN
 static int U_CALLCONV
 StrCmp(const void *p1, const void *p2) {
-  return ucol_strcoll(thaiColl, *(char16_t **) p1, -1,  *(char16_t **)p2, -1);
+  return ucol_strcoll(thaiColl, *(UChar **) p1, -1,  *(UChar **)p2, -1);
 }
 U_CDECL_END
 
 
 #define LINES 6
 
-void CollationThaiTest::TestInvalidThai() {
+void CollationThaiTest::TestInvalidThai(void) {
   const char *tests[LINES] = {
     "\\u0E44\\u0E01\\u0E44\\u0E01",
     "\\u0E44\\u0E01\\u0E01\\u0E44",
@@ -362,9 +362,9 @@ void CollationThaiTest::TestInvalidThai() {
     "\\u0E01\\u0E44\\u0E44\\u0E01",
   };
 
-  char16_t strings[LINES][20];
+  UChar strings[LINES][20];
 
-  char16_t *toSort[LINES];
+  UChar *toSort[LINES];
 
   int32_t i = 0, j = 0, len = 0;
 
@@ -377,7 +377,7 @@ void CollationThaiTest::TestInvalidThai() {
     return;
   }
 
-  CollationElementIterator* c = (dynamic_cast<RuleBasedCollator*>(coll))->createCollationElementIterator( iteratorText );
+  CollationElementIterator* c = ((RuleBasedCollator *)coll)->createCollationElementIterator( iteratorText );
 
   for(i = 0; i < UPRV_LENGTHOF(tests); i++) {
     len = u_unescape(tests[i], strings[i], 20);
@@ -385,7 +385,7 @@ void CollationThaiTest::TestInvalidThai() {
     toSort[i] = strings[i];
   }
 
-  qsort (toSort, LINES, sizeof (char16_t *), StrCmp);
+  qsort (toSort, LINES, sizeof (UChar *), StrCmp);
 
   for (i=0; i < LINES; i++)
   {
@@ -407,7 +407,7 @@ void CollationThaiTest::TestInvalidThai() {
   delete c;
 }
 
-void CollationThaiTest::TestReordering() {
+void CollationThaiTest::TestReordering(void) {
   // Until UCA 4.1, the collation code swapped Thai/Lao prevowels with the following consonants,
   // resulting in consonant+prevowel == prevowel+consonant.
   // From UCA 5.0 on, there are order-reversing contractions for prevowel+consonant.

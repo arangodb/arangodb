@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 fur{
     Currencies{
         AMD{
@@ -289,6 +288,10 @@ fur{
             one{"franc svuizar"}
             other{"francs svuizars"}
         }
+        CNY{
+            one{"yuan cinês"}
+            other{"yuan cinês"}
+        }
         DKK{
             one{"corone danese"}
             other{"coronis danesis"}
@@ -313,6 +316,14 @@ fur{
             one{"rupie indiane"}
             other{"rupiis indianis"}
         }
+        JPY{
+            one{"yen gjaponês"}
+            other{"yen gjaponês"}
+        }
+        KRW{
+            one{"won de Coree dal Sud"}
+            other{"won de Coree dal Sud"}
+        }
         MXN{
             one{"peso messican"}
             other{"pesos messicans"}
@@ -336,6 +347,10 @@ fur{
         SEK{
             one{"corone svedese"}
             other{"coronis svedesis"}
+        }
+        THB{
+            one{"baht tailandês"}
+            other{"baht tailandês"}
         }
         TRY{
             one{"lire turche"}
@@ -362,4 +377,5 @@ fur{
         one{"{0} {1}"}
         other{"{0} {1}"}
     }
+    Version{"2.1.47.82"}
 }

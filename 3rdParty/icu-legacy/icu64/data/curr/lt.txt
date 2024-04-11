@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 lt{
     Currencies{
         ADP{
@@ -899,13 +898,9 @@ lt{
             "SKK",
             "Slovakijos krona",
         }
-        SLE{
-            "SLE",
-            "Siera Leonės leonė",
-        }
         SLL{
             "SLL",
-            "Siera Leonės leonė (1964—2022)",
+            "Siera Leonės leonė",
         }
         SOS{
             "SOS",
@@ -1217,19 +1212,103 @@ lt{
         }
     }
     Currencies%narrow{
+        AOA{"Kz"}
+        ARS{"$"}
+        AUD{"$"}
+        BAM{"KM"}
+        BBD{"$"}
         BDT{"BDT"}
+        BMD{"$"}
+        BND{"$"}
+        BOB{"Bs"}
+        BRL{"R$"}
+        BSD{"$"}
+        BWP{"P"}
         BYN{"Br"}
+        BZD{"$"}
+        CAD{"$"}
+        CLP{"$"}
+        CNY{"¥"}
+        COP{"$"}
+        CRC{"₡"}
+        CUC{"$"}
+        CUP{"$"}
+        CZK{"Kč"}
+        DKK{"kr"}
+        DOP{"$"}
+        EGP{"E£"}
+        EUR{"€"}
+        FJD{"$"}
+        FKP{"£"}
+        GBP{"£"}
+        GEL{"₾"}
+        GIP{"£"}
+        GNF{"FG"}
+        GTQ{"Q"}
+        GYD{"$"}
+        HKD{"$"}
+        HNL{"L"}
+        HRK{"kn"}
+        HUF{"Ft"}
+        IDR{"Rp"}
         ILS{"ILS"}
         INR{"INR"}
+        ISK{"kr"}
+        JMD{"$"}
+        JPY{"¥"}
         KHR{"KHR"}
+        KMF{"CF"}
+        KPW{"₩"}
+        KRW{"₩"}
+        KYD{"$"}
+        KZT{"₸"}
         LAK{"LAK"}
+        LBP{"L£"}
+        LKR{"Rs"}
+        LRD{"$"}
+        MGA{"Ar"}
+        MMK{"K"}
         MNT{"MNT"}
+        MUR{"Rs"}
+        MXN{"$"}
+        MYR{"RM"}
+        NAD{"$"}
+        NGN{"₦"}
+        NIO{"C$"}
+        NOK{"kr"}
+        NPR{"Rs"}
+        NZD{"$"}
+        PHP{"₱"}
+        PKR{"Rs"}
         PLN{"zl"}
         PYG{"Gs"}
+        RON{"lei"}
         RUB{"rb"}
+        RWF{"RF"}
+        SBD{"$"}
+        SEK{"kr"}
+        SGD{"$"}
+        SHP{"£"}
+        SRD{"$"}
+        SSP{"£"}
+        STN{"Db"}
+        SYP{"£"}
+        THB{"฿"}
+        TOP{"T$"}
+        TRY{"₺"}
+        TTD{"$"}
+        TWD{"$"}
+        UAH{"₴"}
+        USD{"$"}
+        UYU{"$"}
+        VEF{"Bs"}
         VND{"VND"}
+        XCD{"$"}
+        ZAR{"R"}
+        ZMW{"ZK"}
     }
     Currencies%variant{
+        GEL{"₾"}
         RUB{"₽"}
     }
     CurrencyPlurals{
@@ -1310,6 +1389,12 @@ lt{
             many{"Argentinos australs"}
             one{"Argentinos austral"}
             other{"Argentinos australs"}
+        }
+        ARL{
+            few{"Argentinos pesos ley (1970–1983)"}
+            many{"Argentinos pesos ley (1970–1983)"}
+            one{"Argentinos pesos ley (1970–1983)"}
+            other{"Argentinos pesos ley (1970–1983)"}
         }
         ARM{
             few{"Argentinos pesai (1881–1970)"}
@@ -1605,6 +1690,12 @@ lt{
             one{"Čilės eskudas"}
             other{"Čilės eskudų"}
         }
+        CLF{
+            few{"Čiliečių unidades de fomentos"}
+            many{"Čiliečių unidades de fomentos"}
+            one{"Čiliečių unidades de fomentos"}
+            other{"Čiliečių unidades de fomentos"}
+        }
         CLP{
             few{"Čilės pesai"}
             many{"Čilės peso"}
@@ -1863,6 +1954,12 @@ lt{
             one{"Gvinėjos sylis"}
             other{"Gvinėjos sylio"}
         }
+        GQE{
+            few{"Pusiaujo Guinean ekwele"}
+            many{"Pusiaujo Guinean ekwele"}
+            one{"Pusiaujo Guinean ekwele"}
+            other{"Pusiaujo Guinean ekwele"}
+        }
         GRD{
             few{"Graikijos drachmos"}
             many{"Graikijos drachmos"}
@@ -2103,6 +2200,12 @@ lt{
             one{"Liberijos doleris"}
             other{"Liberijos dolerių"}
         }
+        LSL{
+            few{"Lesoto lotis"}
+            many{"Lesoto lotis"}
+            one{"Lesoto loti"}
+            other{"Lesoto lotis"}
+        }
         LTL{
             few{"Lietuvos litai"}
             many{"Lietuvos lito"}
@@ -2169,6 +2272,12 @@ lt{
             one{"Monegasque frankas"}
             other{"Monegasque frankų"}
         }
+        MDC{
+            few{"Moldovų cupon"}
+            many{"Moldovų cupon"}
+            one{"Moldovų cupon"}
+            other{"Moldovų cupon"}
+        }
         MDL{
             few{"Moldovos lėjos"}
             many{"Moldovos lėjos"}
@@ -2234,6 +2343,12 @@ lt{
             many{"Mauritanijos ugijos"}
             one{"Mauritanijos ugija"}
             other{"Mauritanijos ugijų"}
+        }
+        MTL{
+            few{"Maltos lira"}
+            many{"Maltos lira"}
+            one{"Maltos lira"}
+            other{"Maltos lira"}
         }
         MTP{
             few{"Maltos svarai"}
@@ -2541,17 +2656,11 @@ lt{
             one{"Slovakijos krona"}
             other{"Slovakijos kronų"}
         }
-        SLE{
+        SLL{
             few{"Siera Leonės leonės"}
             many{"Siera Leonės leonės"}
             one{"Siera Leonės leonė"}
             other{"Siera Leonės leonių"}
-        }
-        SLL{
-            few{"Siera Leonės leonės (1964—2022)"}
-            many{"Siera Leonės leonės (1964—2022)"}
-            one{"Siera Leonės leonė (1964—2022)"}
-            other{"Siera Leonės leonių (1964—2022)"}
         }
         SOS{
             few{"Somalio šilingai"}
@@ -2805,6 +2914,18 @@ lt{
             one{"CFA BEAC frankas"}
             other{"CFA BEAC frankų"}
         }
+        XAG{
+            few{"Sidabras"}
+            many{"Sidabras"}
+            one{"Sidabras"}
+            other{"Sidabras"}
+        }
+        XAU{
+            few{"Auksas"}
+            many{"Auksas"}
+            one{"Auksas"}
+            other{"Auksas"}
+        }
         XBA{
             few{"Europos suvestinės vienetai"}
             many{"Europos suvestinės vienetai"}
@@ -2835,6 +2956,12 @@ lt{
             one{"Rytų Karibų doleris"}
             other{"Rytų Karibų dolerių"}
         }
+        XDR{
+            few{"SDR tarptautinis valiutos fondas"}
+            many{"SDR tarptautinis valiutos fondas"}
+            one{"SDR tarptautinis valiutos fondas"}
+            other{"SDR tarptautinis valiutos fondas"}
+        }
         XFO{
             few{"Aukso frankai"}
             many{"Aukso franko"}
@@ -2853,11 +2980,23 @@ lt{
             one{"CFA BCEAO frankas"}
             other{"CFA BCEAO frankų"}
         }
+        XPD{
+            few{"Paladis"}
+            many{"Paladis"}
+            one{"Paladis"}
+            other{"Paladis"}
+        }
         XPF{
             few{"CFP frankai"}
             many{"CFP franko"}
             one{"CFP frankas"}
             other{"CFP frankų"}
+        }
+        XPT{
+            few{"Platina"}
+            many{"Platina"}
+            one{"Platina"}
+            other{"Platina"}
         }
         XRE{
             few{"RINET fondai"}
@@ -2870,6 +3009,12 @@ lt{
             many{"Sukrės"}
             one{"Sukrė"}
             other{"Sukrių"}
+        }
+        XTS{
+            few{"Tikrinamas valiutos kodas"}
+            many{"Tikrinamas valiutos kodas"}
+            one{"Tikrinamas valiutos kodas"}
+            other{"Tikrinamas valiutos kodas"}
         }
         XUA{
             few{"Azijos plėtros banko apskaitos vienetai"}
@@ -2980,4 +3125,5 @@ lt{
         one{"{0} {1}"}
         other{"{0} {1}"}
     }
+    Version{"2.1.48.42"}
 }

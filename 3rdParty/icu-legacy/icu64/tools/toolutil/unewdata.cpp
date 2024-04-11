@@ -43,82 +43,72 @@ udata_create(const char *dir, const char *type, const char *name,
     uint8_t bytes[16];
     int32_t length;
 
-    if(pErrorCode==nullptr || U_FAILURE(*pErrorCode)) {
-        return nullptr;
-    } else if(name==nullptr || *name==0 || pInfo==nullptr) {
+    if(pErrorCode==NULL || U_FAILURE(*pErrorCode)) {
+        return NULL;
+    } else if(name==NULL || *name==0 || pInfo==NULL) {
         *pErrorCode=U_ILLEGAL_ARGUMENT_ERROR;
-        return nullptr;
+        return NULL;
     }
 
     /* allocate the data structure */
     pData=(UNewDataMemory *)uprv_malloc(sizeof(UNewDataMemory));
-    if(pData==nullptr) {
+    if(pData==NULL) {
         *pErrorCode=U_MEMORY_ALLOCATION_ERROR;
-        return nullptr;
+        return NULL;
     }
-
-    char dirSepChar = U_FILE_SEP_CHAR;
-#if (U_FILE_SEP_CHAR != U_FILE_ALT_SEP_CHAR)
-    // We may need to append a different directory separator when building for Cygwin or MSYS2.
-    if(dir && *dir) {
-      if(!uprv_strchr(dir, U_FILE_SEP_CHAR) && uprv_strchr(dir, U_FILE_ALT_SEP_CHAR)) {
-          dirSepChar = U_FILE_ALT_SEP_CHAR;
-      }
-    }
-#endif
-
+    
     /* Check that the full path won't be too long */
     length = 0;					/* Start with nothing */
-    if(dir != nullptr  && *dir !=0)	/* Add directory length if one was given */
+    if(dir != NULL  && *dir !=0)	/* Add directory length if one was given */
     {
     	length += static_cast<int32_t>(strlen(dir));
-
+	
     	/* Add 1 if dir doesn't end with path sep */
-        if (dir[strlen(dir) - 1]!= dirSepChar) {
+        if (dir[strlen(dir) - 1]!= U_FILE_SEP_CHAR) {
             length++;
         }
 	}
     length += static_cast<int32_t>(strlen(name));		/* Add the filename length */
 
-    if(type != nullptr  && *type !=0) { /* Add directory length if  given */
+    if(type != NULL  && *type !=0) { /* Add directory length if  given */
         length += static_cast<int32_t>(strlen(type));
     }
 
-
+        
      /* LDH buffer Length error check */
     if(length  > ((int32_t)sizeof(filename) - 1))
     {
    	    *pErrorCode = U_BUFFER_OVERFLOW_ERROR;
    	    uprv_free(pData);
-	    return nullptr;
+	    return NULL;
     }
-
+   
     /* open the output file */
-    if(dir!=nullptr && *dir!=0) { /* if dir has a value, we prepend it to the filename */
+    if(dir!=NULL && *dir!=0) { /* if dir has a value, we prepend it to the filename */
         char *p=filename+strlen(dir);
         uprv_strcpy(filename, dir);
-        if (*(p-1)!=dirSepChar) {
-            *p++=dirSepChar;
+        if (*(p-1)!=U_FILE_SEP_CHAR) {
+            *p++=U_FILE_SEP_CHAR;
             *p=0;
         }
     } else { /* otherwise, we'll output to the current dir */
         filename[0]=0;
     }
     uprv_strcat(filename, name);
-    if(type!=nullptr && *type!=0) {
+    if(type!=NULL && *type!=0) {
         uprv_strcat(filename, ".");
         uprv_strcat(filename, type);
     }
     pData->file=T_FileStream_open(filename, "wb");
-    if(pData->file==nullptr) {
+    if(pData->file==NULL) {
         uprv_free(pData);
         *pErrorCode=U_FILE_ACCESS_ERROR;
-        return nullptr;
+        return NULL;
     }
 
     /* write the header information */
     headerSize=(uint16_t)(pInfo->size+4);
-    if(comment!=nullptr && *comment!=0) {
+    if(comment!=NULL && *comment!=0) {
         commentLength=(uint16_t)(uprv_strlen(comment)+1);
         headerSize+=commentLength;
     } else {
@@ -154,12 +144,12 @@ U_CAPI uint32_t U_EXPORT2
 udata_finish(UNewDataMemory *pData, UErrorCode *pErrorCode) {
     uint32_t fileLength=0;
 
-    if(pErrorCode==nullptr || U_FAILURE(*pErrorCode)) {
+    if(pErrorCode==NULL || U_FAILURE(*pErrorCode)) {
         return 0;
     }
 
-    if(pData!=nullptr) {
-        if(pData->file!=nullptr) {
+    if(pData!=NULL) {
+        if(pData->file!=NULL) {
             /* fflush(pData->file);*/
             fileLength=T_FileStream_size(pData->file);
             if(T_FileStream_error(pData->file)) {
@@ -193,7 +183,7 @@ static const UDataInfo dummyDataInfo = {
 U_CAPI void U_EXPORT2
 udata_createDummy(const char *dir, const char *type, const char *name, UErrorCode *pErrorCode) {
     if(U_SUCCESS(*pErrorCode)) {
-        udata_finish(udata_create(dir, type, name, &dummyDataInfo, nullptr, pErrorCode), pErrorCode);
+        udata_finish(udata_create(dir, type, name, &dummyDataInfo, NULL, pErrorCode), pErrorCode);
         if(U_FAILURE(*pErrorCode)) {
             fprintf(stderr, "error %s writing dummy data file %s" U_FILE_SEP_STRING "%s.%s\n",
                     u_errorName(*pErrorCode), dir, name, type);
@@ -204,28 +194,28 @@ udata_createDummy(const char *dir, const char *type, const char *name, UErrorCod
 
 U_CAPI void U_EXPORT2
 udata_write8(UNewDataMemory *pData, uint8_t byte) {
-    if(pData!=nullptr && pData->file!=nullptr) {
+    if(pData!=NULL && pData->file!=NULL) {
         T_FileStream_write(pData->file, &byte, 1);
     }
 }
 
 U_CAPI void U_EXPORT2
 udata_write16(UNewDataMemory *pData, uint16_t word) {
-    if(pData!=nullptr && pData->file!=nullptr) {
+    if(pData!=NULL && pData->file!=NULL) {
         T_FileStream_write(pData->file, &word, 2);
     }
 }
 
 U_CAPI void U_EXPORT2
 udata_write32(UNewDataMemory *pData, uint32_t wyde) {
-    if(pData!=nullptr && pData->file!=nullptr) {
+    if(pData!=NULL && pData->file!=NULL) {
         T_FileStream_write(pData->file, &wyde, 4);
     }
 }
 
 U_CAPI void U_EXPORT2
 udata_writeBlock(UNewDataMemory *pData, const void *s, int32_t length) {
-    if(pData!=nullptr && pData->file!=nullptr) {
+    if(pData!=NULL && pData->file!=NULL) {
         if(length>0) {
             T_FileStream_write(pData->file, s, length);
         }
@@ -240,7 +230,7 @@ udata_writePadding(UNewDataMemory *pData, int32_t length) {
         0xaa, 0xaa, 0xaa, 0xaa,
         0xaa, 0xaa, 0xaa, 0xaa
     };
-    if(pData!=nullptr && pData->file!=nullptr) {
+    if(pData!=NULL && pData->file!=NULL) {
         while(length>=16) {
             T_FileStream_write(pData->file, padding, 16);
             length-=16;
@@ -253,7 +243,7 @@ udata_writePadding(UNewDataMemory *pData, int32_t length) {
 
 U_CAPI void U_EXPORT2
 udata_writeString(UNewDataMemory *pData, const char *s, int32_t length) {
-    if(pData!=nullptr && pData->file!=nullptr) {
+    if(pData!=NULL && pData->file!=NULL) {
         if(length==-1) {
             length=(int32_t)uprv_strlen(s);
         }
@@ -264,13 +254,13 @@ udata_writeString(UNewDataMemory *pData, const char *s, int32_t length) {
 }
 
 U_CAPI void U_EXPORT2
-udata_writeUString(UNewDataMemory *pData, const char16_t *s, int32_t length) {
-    if(pData!=nullptr && pData->file!=nullptr) {
+udata_writeUString(UNewDataMemory *pData, const UChar *s, int32_t length) {
+    if(pData!=NULL && pData->file!=NULL) {
         if(length==-1) {
             length=u_strlen(s);
         }
         if(length>0) {
-            T_FileStream_write(pData->file, s, length*sizeof(char16_t));
+            T_FileStream_write(pData->file, s, length*sizeof(UChar));
         }
     }
 }

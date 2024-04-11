@@ -1,13 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 el{
     RBNFRules{
-        OrdinalRules{
-            "%digits-ordinal:",
-            "-x: \u2212>>;",
-            "0: =#,##0=;",
-        }
         SpelloutRules{
             "%spellout-numbering-year:",
             "x.x: =0.0=;",
@@ -198,7 +192,7 @@ el{
             "1000000000: <%spellout-cardinal-neuter< \u03B4\u03B9\u03C3\u03B5\u03BA\u03B1\u03C4\u03BF\u03BC\u03BC\u03C5\u03C1\u03B9\u03BF\u03C3\u03C4\u03CC\u03C2[ >>];",
             "1000000000000: <%spellout-cardinal-neuter< \u03C4\u03C1\u03B9\u03C3\u03B5\u03BA\u03B1\u03C4\u03BF\u03BC\u03BC\u03C5\u03C1\u03B9\u03BF\u03C3\u03C4\u03CC\u03C2[ >>];",
             "1000000000000000: <%spellout-cardinal-neuter< \u03C4\u03B5\u03C4\u03C1\u03AC\u03BA\u03B9\u03C2 \u03B5\u03BA\u03B1\u03C4\u03BF\u03BC\u03BC\u03C5\u03C1\u03B9\u03BF\u03C3\u03C4\u03CC\u03C2[ >>];",
-            "1000000000000000000: =#,##0=;",
+            "1000000000000000000: =#,##0=.;",
             "%spellout-ordinal-feminine:",
             "-x: \u03BC\u03B5\u03AF\u03BF\u03BD >>;",
             "x.x: =#,##0.#=;",
@@ -248,7 +242,7 @@ el{
             "1000000000: <%spellout-cardinal-neuter< \u03B4\u03B9\u03C3\u03B5\u03BA\u03B1\u03C4\u03BF\u03BC\u03BC\u03C5\u03C1\u03B9\u03BF\u03C3\u03C4\u03AE[ >>];",
             "1000000000000: <%spellout-cardinal-neuter< \u03C4\u03C1\u03B9\u03C3\u03B5\u03BA\u03B1\u03C4\u03BF\u03BC\u03BC\u03C5\u03C1\u03B9\u03BF\u03C3\u03C4\u03AE[ >>];",
             "1000000000000000: <%spellout-cardinal-neuter< \u03C4\u03B5\u03C4\u03C1\u03AC\u03BA\u03B9\u03C2 \u03B5\u03BA\u03B1\u03C4\u03BF\u03BC\u03BC\u03C5\u03C1\u03B9\u03BF\u03C3\u03C4\u03AE[ >>];",
-            "1000000000000000000: =#,##0=;",
+            "1000000000000000000: =#,##0=.;",
             "%spellout-ordinal-neuter:",
             "-x: \u03BC\u03B5\u03AF\u03BF\u03BD >>;",
             "0: \u03BC\u03B7\u03B4\u03B5\u03BD\u03B9\u03BA\u03CC;",
@@ -297,7 +291,8 @@ el{
             "1000000000: <%spellout-cardinal-neuter< \u03B4\u03B9\u03C3\u03B5\u03BA\u03B1\u03C4\u03BF\u03BC\u03BC\u03C5\u03C1\u03B9\u03BF\u03C3\u03C4\u03CC[ >>];",
             "1000000000000: <%spellout-cardinal-neuter< \u03C4\u03C1\u03B9\u03C3\u03B5\u03BA\u03B1\u03C4\u03BF\u03BC\u03BC\u03C5\u03C1\u03B9\u03BF\u03C3\u03C4\u03CC[ >>];",
             "1000000000000000: <%spellout-cardinal-neuter< \u03C4\u03B5\u03C4\u03C1\u03AC\u03BA\u03B9\u03C2 \u03B5\u03BA\u03B1\u03C4\u03BF\u03BC\u03BC\u03C5\u03C1\u03B9\u03BF\u03C3\u03C4\u03CC[ >>];",
-            "1000000000000000000: =#,##0=;",
+            "1000000000000000000: =#,##0=.;",
         }
     }
+    Version{"2.1.27.22"}
 }

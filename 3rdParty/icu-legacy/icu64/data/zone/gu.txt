@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 gu{
+    Version{"2.1.48.42"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"આબિદ્જાન"}
@@ -258,9 +258,6 @@ gu{
         "America:Chihuahua"{
             ec{"ચિહુઆહુઆ"}
         }
-        "America:Ciudad_Juarez"{
-            ec{"સિયુદાદ હુઆરેઝ"}
-        }
         "America:Coral_Harbour"{
             ec{"એટિકોકેન"}
         }
@@ -465,6 +462,9 @@ gu{
         "America:New_York"{
             ec{"ન્યૂયોર્ક"}
         }
+        "America:Nipigon"{
+            ec{"નિપિગોન"}
+        }
         "America:Nome"{
             ec{"નોમ"}
         }
@@ -485,6 +485,9 @@ gu{
         }
         "America:Panama"{
             ec{"પનામા"}
+        }
+        "America:Pangnirtung"{
+            ec{"પેંગનિરતુંગ"}
         }
         "America:Paramaribo"{
             ec{"પેરામેરિબો"}
@@ -507,6 +510,9 @@ gu{
         "America:Punta_Arenas"{
             ec{"પુન્ટા એરીનાઝ"}
         }
+        "America:Rainy_River"{
+            ec{"રેઇની નદી"}
+        }
         "America:Rankin_Inlet"{
             ec{"રેંકિન ઇન્લેટ"}
         }
@@ -521,6 +527,9 @@ gu{
         }
         "America:Rio_Branco"{
             ec{"રિયો બ્રાંકો"}
+        }
+        "America:Santa_Isabel"{
+            ec{"સાંતા ઇસાબેલ"}
         }
         "America:Santarem"{
             ec{"સેન્તારેમ"}
@@ -567,6 +576,9 @@ gu{
         "America:Thule"{
             ec{"થુલે"}
         }
+        "America:Thunder_Bay"{
+            ec{"થંડર બે"}
+        }
         "America:Tijuana"{
             ec{"તિજુઆના"}
         }
@@ -588,11 +600,14 @@ gu{
         "America:Yakutat"{
             ec{"યકુતત"}
         }
+        "America:Yellowknife"{
+            ec{"યેલોનાઇફ"}
+        }
         "Antarctica:Casey"{
             ec{"કૅસી"}
         }
         "Antarctica:Davis"{
-            ec{"ડેવિસ"}
+            ec{"ડૅવિસ"}
         }
         "Antarctica:DumontDUrville"{
             ec{"દુમોન્ત દી‘ઉર્વિલ"}
@@ -895,7 +910,7 @@ gu{
             ec{"રૅકયાવિક"}
         }
         "Atlantic:South_Georgia"{
-            ec{"દક્ષિણ જ્યોર્જિયા"}
+            ec{"સાઉથ જ્યોર્જિયા"}
         }
         "Atlantic:St_Helena"{
             ec{"સેંટ હેલેના"}
@@ -911,6 +926,9 @@ gu{
         }
         "Australia:Broken_Hill"{
             ec{"બ્રોકન હિલ"}
+        }
+        "Australia:Currie"{
+            ec{"ક્યુરી"}
         }
         "Australia:Darwin"{
             ec{"ડાર્વિન"}
@@ -1094,6 +1112,9 @@ gu{
         "Europe:Ulyanovsk"{
             ec{"ઉલેનોવ્સ્ક"}
         }
+        "Europe:Uzhgorod"{
+            ec{"ઉઝ્ગોરોદ"}
+        }
         "Europe:Vaduz"{
             ec{"વૅદુઝ"}
         }
@@ -1115,6 +1136,9 @@ gu{
         "Europe:Zagreb"{
             ec{"ઝેગરેબ"}
         }
+        "Europe:Zaporozhye"{
+            ec{"જેપોરોઝિયે"}
+        }
         "Europe:Zurich"{
             ec{"ઝુરીક"}
         }
@@ -1128,7 +1152,7 @@ gu{
             ec{"ક્રિસમસ"}
         }
         "Indian:Cocos"{
-            ec{"કોકોઝ"}
+            ec{"કૉકોસ"}
         }
         "Indian:Comoro"{
             ec{"કોમોરો"}
@@ -1149,7 +1173,7 @@ gu{
             ec{"મેયોટ"}
         }
         "Indian:Reunion"{
-            ec{"રીયુનિયન"}
+            ec{"રિયુનિયન"}
         }
         "Pacific:Apia"{
             ec{"એપિયા"}
@@ -1196,8 +1220,8 @@ gu{
         "Pacific:Honolulu"{
             ec{"હોનોલુલુ"}
         }
-        "Pacific:Kanton"{
-            ec{"કેન્ટન"}
+        "Pacific:Johnston"{
+            ec{"જોહ્નસ્ટોન"}
         }
         "Pacific:Kiritimati"{
             ec{"કિરિતિમાતી"}
@@ -1372,23 +1396,23 @@ gu{
         }
         "meta:Australia_Central"{
             ld{"ઓસ્ટ્રેલિયન કેન્દ્રીય દિવસ સમય"}
-            lg{"કેન્દ્રીય ઑસ્ટ્રેલિયન સમય"}
-            ls{"ઑસ્ટ્રેલિયન કેન્દ્રીય માનક સમય"}
+            lg{"કેન્દ્રીય ઓસ્ટ્રેલિયન સમય"}
+            ls{"ઓસ્ટ્રેલિયન કેન્દ્રીય માનક સમય"}
         }
         "meta:Australia_CentralWestern"{
             ld{"ઓસ્ટ્રેલિયન કેન્દ્રીય પશ્ચિમી દિવસ સમય"}
-            lg{"ઑસ્ટ્રેલિયન કેન્દ્રીય પશ્ચિમી સમય"}
-            ls{"ઑસ્ટ્રેલિયન કેન્દ્રીય પશ્ચિમી માનક સમય"}
+            lg{"ઓસ્ટ્રેલિયન કેન્દ્રીય પશ્ચિમી સમય"}
+            ls{"ઓસ્ટ્રેલિયન કેન્દ્રીય પશ્ચિમી માનક સમય"}
         }
         "meta:Australia_Eastern"{
             ld{"ઓસ્ટ્રેલિયન પૂર્વીય દિવસ સમય"}
-            lg{"પૂર્વીય ઑસ્ટ્રેલિયા સમય"}
-            ls{"ઑસ્ટ્રેલિયન પૂર્વીય માનક સમય"}
+            lg{"પૂર્વીય ઓસ્ટ્રેલિયા સમય"}
+            ls{"ઓસ્ટ્રેલિયન પૂર્વીય માનક સમય"}
         }
         "meta:Australia_Western"{
             ld{"ઓસ્ટ્રેલિયન પશ્ચિમી દિવસ સમય"}
-            lg{"પશ્ચિમી ઑસ્ટ્રેલિયા સમય"}
-            ls{"ઑસ્ટ્રેલિયન પશ્ચિમી માનક સમય"}
+            lg{"પશ્ચિમી ઓસ્ટ્રેલિયા સમય"}
+            ls{"ઓસ્ટ્રેલિયન પશ્ચિમી માનક સમય"}
         }
         "meta:Azerbaijan"{
             ld{"અઝરબૈજાન ગ્રીષ્મ સમય"}
@@ -1417,7 +1441,7 @@ gu{
             ls{"બ્રાઝિલિયા માનક સમય"}
         }
         "meta:Brunei"{
-            ls{"બ્રુનેઇ દરુસલામ સમય"}
+            ls{"બ્રૂનેઈ દારુસલામ સમય"}
         }
         "meta:Cape_Verde"{
             ld{"કૅપ વર્ડે ગ્રીષ્મ સમય"}
@@ -1454,9 +1478,9 @@ gu{
             ls{"કોકોઝ આઇલેન્ડ્સ સમય"}
         }
         "meta:Colombia"{
-            ld{"કોલમ્બિયા ગ્રીષ્મ સમય"}
-            lg{"કોલમ્બિયા સમય"}
-            ls{"કોલમ્બિયા માનક સમય"}
+            ld{"કોલંબિયા ગ્રીષ્મ સમય"}
+            lg{"કોલંબિયા સમય"}
+            ls{"કોલંબિયા માનક સમય"}
         }
         "meta:Cook"{
             ld{"કુક આઇલેન્ડ્સ અર્ધ ગ્રીષ્મ સમય"}
@@ -1504,9 +1528,9 @@ gu{
             ls{"પશ્ચિમી યુરોપિયન માનક સમય"}
         }
         "meta:Falkland"{
-            ld{"ફૉકલેન્ડ આઇલેન્ડ્સ ગ્રીષ્મ સમય"}
-            lg{"ફૉકલેન્ડ આઇલેન્ડ્સ સમય"}
-            ls{"ફૉકલેન્ડ આઇલેન્ડ્સ માનક સમય"}
+            ld{"ફોકલૅંડ આઇલેન્ડ્સ ગ્રીષ્મ સમય"}
+            lg{"ફોકલૅંડ આઇલેન્ડ્સ સમય"}
+            ls{"ફોકલૅંડ આઇલેન્ડ્સ માનક સમય"}
         }
         "meta:Fiji"{
             ld{"ફીજી ગ્રીષ્મ સમય"}
@@ -1634,7 +1658,7 @@ gu{
             ls{"ક્રેસ્નોયાર્સ્ક માનક સમય"}
         }
         "meta:Kyrgystan"{
-            ls{"કિર્ગિઝ્સ્તાન સમય"}
+            ls{"કિર્ગિઝતાન સમય"}
         }
         "meta:Lanka"{
             ls{"લંકા સમય"}
@@ -1651,6 +1675,9 @@ gu{
             ld{"મકાઉ ગ્રીષ્મ સમય"}
             lg{"મકાઉ સમય"}
             ls{"મકાઉ પ્રમાણભૂત સમય"}
+        }
+        "meta:Macquarie"{
+            ls{"મેક્વાયર આઇલેન્ડ સમય"}
         }
         "meta:Magadan"{
             ld{"મગાડન ગ્રીષ્મ સમય"}
@@ -1676,6 +1703,11 @@ gu{
         }
         "meta:Mawson"{
             ls{"મોસન સમય"}
+        }
+        "meta:Mexico_Northwest"{
+            ld{"ઉત્તરપશ્ચિમ મેક્સિકો દિવસ સમય"}
+            lg{"ઉત્તરપશ્ચિમ મેક્સિકો સમય"}
+            ls{"ઉત્તરપશ્ચિમ મેક્સિકો માનક સમય"}
         }
         "meta:Mexico_Pacific"{
             ld{"મેક્સિકન પેસિફિક દિવસ સમય"}
@@ -1720,9 +1752,7 @@ gu{
             ls{"નીયુ સમય"}
         }
         "meta:Norfolk"{
-            ld{"નોરફૉક આઇલેન્ડ દિવસ સમય"}
-            lg{"નોરફૉક આઇલેન્ડ સમય"}
-            ls{"નોરફૉક આઇલેન્ડ માનક સમય"}
+            ls{"નોરફૉક આઇલેન્ડ સમય"}
         }
         "meta:Noronha"{
             ld{"ફર્નાન્ડો દે નોરોહા ગ્રીષ્મ સમય"}
@@ -1821,7 +1851,7 @@ gu{
             ls{"સોલોમન આઇલેન્ડ્સ સમય"}
         }
         "meta:South_Georgia"{
-            ls{"દક્ષિણ જ્યોર્જિયા સમય"}
+            ls{"સાઉથ જ્યોર્જિયા સમય"}
         }
         "meta:Suriname"{
             ls{"સુરીનામ સમય"}
@@ -1906,9 +1936,10 @@ gu{
             lg{"યેકાટેરિનબર્ગ સમય"}
             ls{"યેકાટેરિનબર્ગ માનક સમય"}
         }
-        "meta:Yukon"{
-            ls{"યુકોન સમય"}
-        }
+        fallbackFormat{"{1} ({0})"}
+        gmtFormat{"GMT{0}"}
+        gmtZeroFormat{"GMT"}
+        hourFormat{"+HH:mm;-HH:mm"}
         regionFormat{"{0} સમય"}
         regionFormatDaylight{"{0} દિવસ સમય"}
         regionFormatStandard{"{0} માનક સમય"}

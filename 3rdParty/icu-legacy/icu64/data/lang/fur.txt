@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 fur{
     Keys{
         calendar{"calendari"}
@@ -264,6 +263,8 @@ fur{
             gregorian{"calendari gregorian"}
             hebrew{"calendari ebreu"}
             indian{"calendari nazionâl indian"}
+            islamic{"calendari islamic"}
+            islamic-civil{"calendari islamic civîl"}
             japanese{"calendari gjaponês"}
             roc{"calendari de Republiche di Cine"}
         }
@@ -298,9 +299,14 @@ fur{
         SOLBA{"dialet di Stolvize"}
         VALENCIA{"valenzian"}
     }
+    Version{"2.1.47.82"}
     codePatterns{
         language{"Lenghe: {0}"}
         script{"Scriture: {0}"}
         territory{"Regjon: {0}"}
+    }
+    localeDisplayPattern{
+        pattern{"{0} ({1})"}
+        separator{"{0}, {1}"}
     }
 }

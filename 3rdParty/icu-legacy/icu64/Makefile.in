@@ -38,7 +38,7 @@ subdir = .
 @TOOLS_TRUE@@TESTS_TRUE@TEST = test
 @SAMPLES_TRUE@SAMPLE = samples
 @TOOLS_TRUE@TOOLS = tools
-@DATA_TRUE@DATASUBDIR = data
+@TOOLS_TRUE@DATASUBDIR = data
 
 ## pkgconfig setup. Always have uc and i18n. Others are optional.
 ALL_PKGCONFIG_SUFFIX=uc i18n
@@ -337,7 +337,7 @@ $(top_builddir)/config/icu-config: $(top_builddir)/Makefile $(top_srcdir)/config
 	chmod u+w $@
 	@echo "# Following from icu/icu4c/source/config/Makefile.inc" >> $@
 	LC_ALL=C $(SED) -f $(top_srcdir)/config/make2sh.sed < $(top_builddir)/config/Makefile.inc | grep -v '#M#' | uniq >> $@
-	@echo "# Following from @platform_make_fragment_name@" >> $@
+	@echo "# Following from @platform_make_fragment@" >> $@
 	LC_ALL=C $(SED) -f $(top_srcdir)/config/make2sh.sed < @platform_make_fragment@ | grep -v '#M#' | uniq >> $@
 	cat $(top_srcdir)/config/icu-config-bottom >> $@
 	chmod u-w $@
@@ -371,7 +371,7 @@ icu4j-data-install icu4j-data: all tests
 
 # For updating Windows makefiles
 
-WINDOWS_UPDATEFILES=$(srcdir)/data/makedata.mak $(srcdir)/allinone/Build.Windows.IcuVersion.props
+WINDOWS_UPDATEFILES=$(srcdir)/data/makedata.mak $(shell find $(srcdir) -name '*.vcproj' -o -name '*.vcxproj')
 
 WINDOWS_UPDATEFILES_SED=config/windows-update.sed
 

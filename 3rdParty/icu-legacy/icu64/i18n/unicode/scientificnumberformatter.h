@@ -11,8 +11,6 @@
 
 #include "unicode/utypes.h"
 
-#if U_SHOW_CPLUSPLUS_API
-
 #if !UCONFIG_NO_FORMATTING
 
 
@@ -159,14 +157,14 @@ public:
 
     class U_I18N_API SuperscriptStyle : public Style {
     public:
-        virtual SuperscriptStyle *clone() const override;
+        virtual Style *clone() const;
     protected:
         virtual UnicodeString &format(
                 const UnicodeString &original,
                 FieldPositionIterator &fpi,
                 const UnicodeString &preExponent,
                 UnicodeString &appendTo,
-                UErrorCode &status) const override;
+                UErrorCode &status) const;
     };
 
     class U_I18N_API MarkupStyle : public Style {
@@ -177,14 +175,14 @@ public:
                 : Style(),
                   fBeginMarkup(beginMarkup),
                   fEndMarkup(endMarkup) { }
-        virtual MarkupStyle *clone() const override;
+        virtual Style *clone() const;
     protected:
         virtual UnicodeString &format(
                 const UnicodeString &original,
                 FieldPositionIterator &fpi,
                 const UnicodeString &preExponent,
                 UnicodeString &appendTo,
-                UErrorCode &status) const override;
+                UErrorCode &status) const;
     private:
         UnicodeString fBeginMarkup;
         UnicodeString fEndMarkup;
@@ -196,7 +194,7 @@ public:
             UErrorCode &status);
 
     ScientificNumberFormatter(const ScientificNumberFormatter &other);
-    ScientificNumberFormatter &operator=(const ScientificNumberFormatter &) = delete;
+    ScientificNumberFormatter &operator=(const ScientificNumberFormatter &);
 
     static void getPreExponent(
             const DecimalFormatSymbols &dfs, UnicodeString &preExponent);
@@ -216,7 +214,4 @@ U_NAMESPACE_END
 
 
 #endif /* !UCONFIG_NO_FORMATTING */
-
-#endif /* U_SHOW_CPLUSPLUS_API */
-
 #endif 

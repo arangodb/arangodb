@@ -1,27 +1,39 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 lb{
-    AuxExemplarCharacters{"[áàăâåãā æ ç èĕêē ğ íìĭîïİī ı ñ óòŏôöøō œ ş ß úùŭûüū ÿ]"}
+    AuxExemplarCharacters{
+        "[á à ă â å ã ā æ ç è ĕ ê ē ğ í ì ĭ î ï İ ī ı ñ ó ò ŏ ô ö ø ō œ ş ß ú ù ŭ û ü"
+        " ū ÿ]"
+    }
     Ellipsis{
         final{"{0} …"}
         initial{"… {0}"}
         medial{"{0} … {1}"}
+        word-final{"{0} …"}
+        word-initial{"… {0}"}
+        word-medial{"{0} … {1}"}
     }
-    ExemplarCharacters{"[aä b c d eéë f g h i j k l m n o p q r s t u v w x y z]"}
+    ExemplarCharacters{"[a ä b c d e é ë f g h i j k l m n o p q r s t u v w x y z]"}
     ExemplarCharactersIndex{"[A B C D E F G H I J K L M N O P Q R S T U V W X Y Z]"}
+    ExemplarCharactersNumbers{"[\\- , . % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
     ExemplarCharactersPunctuation{
-        "[\\- ‐‑ – — , ; \\: ! ? . … '‘‚ \u0022“„ « » ( ) \\[ \\] \\{ \\} § @ * / \\&"
-        " #]"
+        "[\\- ‐ – — , ; \\: ! ? . … ' ‘ ‚ \u0022 “ „ « » ( ) \\[ \\] \\{ \\} § @ * / "
+        "\\& #]"
     }
+    MoreInformation{"?"}
     NumberElements{
+        default{"latn"}
         latn{
             miscPatterns{
                 atLeast{"≥ {0}"}
+                range{"{0}–{1}"}
             }
             patterns{
+                accountingFormat{"#,##0.00 ¤"}
                 currencyFormat{"#,##0.00 ¤"}
+                decimalFormat{"#,##0.###"}
                 percentFormat{"#,##0 %"}
+                scientificFormat{"#E0"}
             }
             patternsLong{
                 decimalFormat{
@@ -129,11 +141,30 @@ lb{
             }
             symbols{
                 decimal{","}
+                exponential{"E"}
                 group{"."}
+                infinity{"∞"}
+                minusSign{"-"}
+                nan{"NaN"}
+                perMille{"‰"}
+                percentSign{"%"}
+                plusSign{"+"}
+                superscriptingExponent{"×"}
+                timeSeparator{":"}
             }
         }
+        minimumGroupingDigits{"1"}
+        native{"latn"}
     }
+    Version{"2.1.49.82"}
     calendar{
+        buddhist{
+            eras{
+                abbreviated{
+                    "BE",
+                }
+            }
+        }
         chinese{
             DateTimePatterns{
                 "HH:mm:ss zzzz",
@@ -150,16 +181,28 @@ lb{
                 "{1} {0}",
                 "{1} {0}",
             }
-            DateTimeSkeletons{
-                "HHmmsszzzz",
-                "HHmmssz",
-                "HHmmss",
-                "HHmm",
-                "UMMMMEEEEd",
-                "UMMMMd",
-                "UMMdd",
-                "yyMMdd",
+            cyclicNameSets{
+                zodiacs{
+                    format{
+                        abbreviated{
+                            "Rat",
+                            "Ochs",
+                            "Tiger",
+                            "Kannéngchen",
+                            "Draach",
+                            "Schlaang",
+                            "Päerd",
+                            "Geess",
+                            "Af",
+                            "Hong",
+                            "Hond",
+                            "Schwäin",
+                        }
+                    }
+                }
             }
+        }
+        dangi{
             cyclicNameSets{
                 zodiacs{
                     format{
@@ -197,34 +240,25 @@ lb{
                 "{1} {0}",
                 "{1} {0}",
             }
-            DateTimeSkeletons{
-                "HHmmsszzzz",
-                "HHmmssz",
-                "HHmmss",
-                "HHmm",
-                "GyMMMMEEEEd",
-                "GyMMMMd",
-                "GyMMdd",
-                "GGGGGyyMMdd",
-            }
             availableFormats{
                 Ed{"E, d."}
                 Gy{"y G"}
                 GyMMM{"MMM y G"}
                 GyMMMEd{"E, d. MMM y G"}
                 GyMMMd{"d. MMM y G"}
+                M{"L"}
                 MEd{"E, d.M."}
+                MMM{"LLL"}
                 MMMEd{"E, d. MMM"}
-                MMMMd{"d. MMMM"}
                 MMMd{"d. MMM"}
                 Md{"d.M."}
+                d{"d"}
                 y{"y G"}
                 yyyy{"y G"}
                 yyyyM{"M.y GGGGG"}
                 yyyyMEd{"E, d.M.y GGGGG"}
                 yyyyMMM{"MMM y G"}
                 yyyyMMMEd{"E, d. MMM y G"}
-                yyyyMMMM{"MMMM y G"}
                 yyyyMMMd{"d. MMM y G"}
                 yyyyMd{"d.M.y GGGGG"}
                 yyyyQQQ{"QQQ y G"}
@@ -235,65 +269,70 @@ lb{
                     M{"M.–M."}
                 }
                 MEd{
-                    M{"E, dd.MM. – E, dd.MM."}
-                    d{"E, dd.MM. – E, dd.MM."}
+                    M{"E, dd.MM. – E, dd.MM."}
+                    d{"E, dd.MM. – E, dd.MM."}
                 }
                 MMM{
                     M{"MMM–MMM"}
                 }
                 MMMEd{
-                    M{"E, d. MMM – E, d. MMM"}
-                    d{"E, d. – E, d. MMM"}
+                    M{"E, d. MMM – E, d. MMM"}
+                    d{"E, d. – E, d. MMM"}
                 }
                 MMMd{
-                    M{"d. MMM – d. MMM"}
+                    M{"d. MMM – d. MMM"}
                     d{"d.–d. MMM"}
                 }
                 Md{
-                    M{"dd.MM. – dd.MM."}
-                    d{"dd.MM. – dd.MM."}
+                    M{"dd.MM. – dd.MM."}
+                    d{"dd.MM. – dd.MM."}
                 }
                 d{
                     d{"d.–d."}
                 }
+                fallback{"{0} - {1}"}
                 y{
                     y{"y–y G"}
                 }
                 yM{
-                    M{"MM.y – MM.y G"}
-                    y{"MM.y – MM.y G"}
+                    M{"MM.y – MM.y G"}
+                    y{"MM.y – MM.y G"}
                 }
                 yMEd{
-                    M{"E, dd.MM.y – E, dd.MM.y G"}
-                    d{"E, dd.MM.y – E, dd.MM.y G"}
-                    y{"E, dd.MM.y – E, dd.MM.y G"}
+                    M{"E, dd.MM.y – E, dd.MM.y G"}
+                    d{"E, dd.MM.y – E, dd.MM.y G"}
+                    y{"E, dd.MM.y – E, dd.MM.y G"}
                 }
                 yMMM{
                     M{"MMM–MMM y G"}
-                    y{"MMM y – MMM y G"}
+                    y{"MMM y – MMM y G"}
                 }
                 yMMMEd{
-                    M{"E, d. MMM – E, d. MMM y G"}
-                    d{"E, d. – E, d. MMM y G"}
-                    y{"E, d. MMM y – E, d. MMM y G"}
+                    M{"E, d. MMM – E, d. MMM y G"}
+                    d{"E, d. – E, d. MMM y G"}
+                    y{"E, d. MMM y – E, d. MMM y G"}
                 }
                 yMMMM{
                     M{"MMMM–MMMM y G"}
-                    y{"MMMM y – MMMM y G"}
+                    y{"MMMM y – MMMM y G"}
                 }
                 yMMMd{
-                    M{"d. MMM – d. MMM y G"}
+                    M{"d. MMM – d. MMM y G"}
                     d{"d.–d. MMM y G"}
-                    y{"d. MMM y – d. MMM y G"}
+                    y{"d. MMM y – d. MMM y G"}
                 }
                 yMd{
-                    M{"dd.MM.y – dd.MM.y G"}
-                    d{"dd.MM.y – dd.MM.y G"}
-                    y{"dd.MM.y – dd.MM.y G"}
+                    M{"dd.MM.y – dd.MM.y G"}
+                    d{"dd.MM.y – dd.MM.y G"}
+                    y{"dd.MM.y – dd.MM.y G"}
                 }
             }
         }
         gregorian{
+            AmPmMarkers{
+                "moies",
+                "nomëttes",
+            }
             AmPmMarkersAbbr{
                 "moies",
                 "nomëttes",
@@ -317,40 +356,39 @@ lb{
                 "{1} {0}",
                 "{1} {0}",
             }
-            DateTimeSkeletons{
-                "HHmmsszzzz",
-                "HHmmssz",
-                "HHmmss",
-                "HHmm",
-                "yMMMMEEEEd",
-                "yMMMMd",
-                "yMMMd",
-                "yyMMdd",
+            appendItems{
+                Timezone{"{0} {1}"}
             }
             availableFormats{
+                E{"ccc"}
                 EHm{"E, HH:mm"}
                 EHms{"E, HH:mm:ss"}
                 Ed{"E, d."}
-                Ehm{"E, h:mm a"}
-                Ehms{"E, h:mm:ss a"}
+                Ehm{"E, h:mm a"}
+                Ehms{"E, h:mm:ss a"}
                 Gy{"y G"}
                 GyMMM{"MMM y G"}
                 GyMMMEd{"E, d. MMM y G"}
                 GyMMMd{"d. MMM y G"}
                 H{"HH 'Auer'"}
+                Hm{"HH:mm"}
+                Hms{"HH:mm:ss"}
+                M{"L"}
                 MEd{"E, d.M."}
+                MMM{"LLL"}
                 MMMEd{"E, d. MMM"}
-                MMMMd{"d. MMMM"}
                 MMMd{"d. MMM"}
                 Md{"d.M."}
-                h{"h a"}
-                hm{"h:mm a"}
-                hms{"h:mm:ss a"}
+                d{"d"}
+                h{"h a"}
+                hm{"h:mm a"}
+                hms{"h:mm:ss a"}
+                ms{"mm:ss"}
+                y{"y"}
                 yM{"M.y"}
                 yMEd{"E, d.M.y"}
                 yMMM{"MMM y"}
                 yMMMEd{"E, d. MMM y"}
-                yMMMM{"MMMM y"}
                 yMMMd{"d. MMM y"}
                 yMd{"d.M.y"}
                 yQQQ{"QQQ y"}
@@ -366,6 +404,15 @@ lb{
                         "Don.",
                         "Fre.",
                         "Sam.",
+                    }
+                    narrow{
+                        "S",
+                        "M",
+                        "D",
+                        "M",
+                        "D",
+                        "F",
+                        "S",
                     }
                     short{
                         "So.",
@@ -405,6 +452,24 @@ lb{
                         "F",
                         "S",
                     }
+                    short{
+                        "So.",
+                        "Mé.",
+                        "Dë.",
+                        "Më.",
+                        "Do.",
+                        "Fr.",
+                        "Sa.",
+                    }
+                    wide{
+                        "Sonndeg",
+                        "Méindeg",
+                        "Dënschdeg",
+                        "Mëttwoch",
+                        "Donneschdeg",
+                        "Freideg",
+                        "Samschdeg",
+                    }
                 }
             }
             eras{
@@ -416,10 +481,22 @@ lb{
                     "v. e. Z.",
                     "n. e. Z.",
                 }
+                wide{
+                    "v. Chr.",
+                    "n. Chr.",
+                }
             }
             intervalFormats{
                 H{
                     H{"HH–HH 'Auer'"}
+                }
+                Hm{
+                    H{"HH:mm–HH:mm"}
+                    m{"HH:mm–HH:mm"}
+                }
+                Hmv{
+                    H{"HH:mm–HH:mm v"}
+                    m{"HH:mm–HH:mm v"}
                 }
                 Hv{
                     H{"HH–HH 'Auer' v"}
@@ -428,76 +505,80 @@ lb{
                     M{"M.–M."}
                 }
                 MEd{
-                    M{"E, dd.MM. – E, dd.MM."}
-                    d{"E, dd.MM. – E, dd.MM."}
+                    M{"E, dd.MM. – E, dd.MM."}
+                    d{"E, dd.MM. – E, dd.MM."}
                 }
                 MMM{
                     M{"MMM–MMM"}
                 }
                 MMMEd{
-                    M{"E, d. MMM – E, d. MMM"}
-                    d{"E, d. – E, d. MMM"}
+                    M{"E, d. MMM – E, d. MMM"}
+                    d{"E, d. – E, d. MMM"}
                 }
                 MMMd{
-                    M{"d. MMM – d. MMM"}
+                    M{"d. MMM – d. MMM"}
                     d{"d.–d. MMM"}
                 }
                 Md{
-                    M{"dd.MM. – dd.MM."}
-                    d{"dd.MM. – dd.MM."}
+                    M{"dd.MM. – dd.MM."}
+                    d{"dd.MM. – dd.MM."}
                 }
                 d{
                     d{"d.–d."}
                 }
+                fallback{"{0} - {1}"}
                 h{
-                    a{"h a – h a"}
-                    h{"h–h a"}
+                    a{"h a – h a"}
+                    h{"h–h a"}
                 }
                 hm{
-                    a{"h:mm a – h:mm a"}
-                    h{"h:mm–h:mm a"}
-                    m{"h:mm–h:mm a"}
+                    a{"h:mm a – h:mm a"}
+                    h{"h:mm–h:mm a"}
+                    m{"h:mm–h:mm a"}
                 }
                 hmv{
-                    a{"h:mm a – h:mm a v"}
-                    h{"h:mm–h:mm a v"}
-                    m{"h:mm–h:mm a v"}
+                    a{"h:mm a – h:mm a v"}
+                    h{"h:mm–h:mm a v"}
+                    m{"h:mm–h:mm a v"}
                 }
                 hv{
-                    a{"h a – h a v"}
-                    h{"h–h a v"}
+                    a{"h a – h a v"}
+                    h{"h–h a v"}
+                }
+                y{
+                    y{"y–y"}
                 }
                 yM{
-                    M{"MM.y – MM.y"}
-                    y{"MM.y – MM.y"}
+                    M{"MM.y – MM.y"}
+                    y{"MM.y – MM.y"}
                 }
                 yMEd{
-                    M{"E, dd.MM.y – E, dd.MM.y"}
-                    d{"E, dd.MM.y – E, dd.MM.y"}
-                    y{"E, dd.MM.y – E, dd.MM.y"}
+                    M{"E, dd.MM.y – E, dd.MM.y"}
+                    d{"E, dd.MM.y – E, dd.MM.y"}
+                    y{"E, dd.MM.y – E, dd.MM.y"}
                 }
                 yMMM{
                     M{"MMM–MMM y"}
-                    y{"MMM y – MMM y"}
+                    y{"MMM y – MMM y"}
                 }
                 yMMMEd{
-                    M{"E, d. MMM – E, d. MMM y"}
-                    d{"E, d. – E, d. MMM y"}
-                    y{"E, d. MMM y – E, d. MMM y"}
+                    M{"E, d. MMM – E, d. MMM y"}
+                    d{"E, d. – E, d. MMM y"}
+                    y{"E, d. MMM y – E, d. MMM y"}
                 }
                 yMMMM{
                     M{"MMMM–MMMM y"}
-                    y{"MMMM y – MMMM y"}
+                    y{"MMMM y – MMMM y"}
                 }
                 yMMMd{
-                    M{"d. MMM – d. MMM y"}
+                    M{"d. MMM – d. MMM y"}
                     d{"d.–d. MMM y"}
-                    y{"d. MMM y – d. MMM y"}
+                    y{"d. MMM y – d. MMM y"}
                 }
                 yMd{
-                    M{"dd.MM.y – dd.MM.y"}
-                    d{"dd.MM.y – dd.MM.y"}
-                    y{"dd.MM.y – dd.MM.y"}
+                    M{"dd.MM.y – dd.MM.y"}
+                    d{"dd.MM.y – dd.MM.y"}
+                    y{"dd.MM.y – dd.MM.y"}
                 }
             }
             monthNames{
@@ -515,6 +596,20 @@ lb{
                         "Okt.",
                         "Nov.",
                         "Dez.",
+                    }
+                    narrow{
+                        "J",
+                        "F",
+                        "M",
+                        "A",
+                        "M",
+                        "J",
+                        "J",
+                        "A",
+                        "S",
+                        "O",
+                        "N",
+                        "D",
                     }
                     wide{
                         "Januar",
@@ -560,6 +655,20 @@ lb{
                         "N",
                         "D",
                     }
+                    wide{
+                        "Januar",
+                        "Februar",
+                        "Mäerz",
+                        "Abrëll",
+                        "Mee",
+                        "Juni",
+                        "Juli",
+                        "August",
+                        "September",
+                        "Oktober",
+                        "November",
+                        "Dezember",
+                    }
                 }
             }
             quarters{
@@ -570,6 +679,12 @@ lb{
                         "Q3",
                         "Q4",
                     }
+                    narrow{
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                    }
                     wide{
                         "1. Quartal",
                         "2. Quartal",
@@ -577,6 +692,57 @@ lb{
                         "4. Quartal",
                     }
                 }
+                stand-alone{
+                    abbreviated{
+                        "Q1",
+                        "Q2",
+                        "Q3",
+                        "Q4",
+                    }
+                    narrow{
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                    }
+                    wide{
+                        "1. Quartal",
+                        "2. Quartal",
+                        "3. Quartal",
+                        "4. Quartal",
+                    }
+                }
+            }
+        }
+        hebrew{
+            eras{
+                abbreviated{
+                    "AM",
+                }
+            }
+        }
+        islamic{
+            eras{
+                abbreviated{
+                    "AH",
+                }
+            }
+        }
+        japanese{
+            DateTimePatterns{
+                "HH:mm:ss zzzz",
+                "HH:mm:ss z",
+                "HH:mm:ss",
+                "HH:mm",
+                "EEEE, d. MMMM y G",
+                "d. MMMM y G",
+                "dd.MM.y G",
+                "dd.MM.yy GGGGG",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
             }
         }
         roc{
@@ -614,6 +780,7 @@ lb{
             }
         }
         day-narrow{
+            dn{"D."}
             relativeTime{
                 future{
                     one{"+{0} D."}
@@ -679,6 +846,7 @@ lb{
             }
         }
         hour-narrow{
+            dn{"St."}
             relativeTime{
                 future{
                     one{"+{0} St."}
@@ -717,6 +885,7 @@ lb{
             }
         }
         minute-narrow{
+            dn{"Min."}
             relativeTime{
                 future{
                     one{"+{0} Min."}
@@ -781,6 +950,7 @@ lb{
             }
         }
         month-narrow{
+            dn{"M."}
             relativeTime{
                 future{
                     one{"+{0} M."}
@@ -819,6 +989,7 @@ lb{
             }
         }
         quarter-narrow{
+            dn{"Q."}
             relativeTime{
                 future{
                     one{"+{0} Q."}
@@ -878,6 +1049,7 @@ lb{
             }
         }
         second-narrow{
+            dn{"Sek."}
             relativeTime{
                 future{
                     one{"+{0} Sek."}
@@ -951,6 +1123,13 @@ lb{
                 "1"{"nächsten Dënschdeg"}
             }
         }
+        tue-narrow{
+            relative{
+                "-1"{"leschten Dë."}
+                "0"{"dësen Dë."}
+                "1"{"nächsten Dë."}
+            }
+        }
         tue-short{
             relative{
                 "-1"{"leschten Dë."}
@@ -998,6 +1177,7 @@ lb{
             }
         }
         week-narrow{
+            dn{"W."}
             relativeTime{
                 future{
                     one{"+{0} W."}
@@ -1044,6 +1224,7 @@ lb{
             }
         }
         year-narrow{
+            dn{"J."}
             relativeTime{
                 future{
                     one{"+{0} J."}
@@ -1072,10 +1253,22 @@ lb{
             dn{"Zäitzon"}
         }
     }
+    layout{
+        characters{"left-to-right"}
+        lines{"top-to-bottom"}
+    }
     listPattern{
         standard{
             2{"{0} a(n) {1}"}
             end{"{0} a(n) {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+        unit{
+            2{"{0}, {1}"}
+            end{"{0}, {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
         }
         unit-narrow{
             2{"{0} {1}"}
@@ -1086,6 +1279,8 @@ lb{
         unit-short{
             2{"{0}, {1}"}
             end{"{0}, {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
         }
     }
     measurementSystemNames{

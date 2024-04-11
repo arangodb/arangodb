@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 nl{
     RBNFRules{
         OrdinalRules{
@@ -104,7 +103,8 @@ nl{
             "1000000000: <%spellout-cardinal<\u00ADmiljard>%%ord-ste>;",
             "1000000000000: <%spellout-cardinal<\u00ADbiljoen>%%ord-ste>;",
             "1000000000000000: <%spellout-cardinal<\u00ADbiljard>%%ord-ste>;",
-            "1000000000000000000: =#,##0=e;",
+            "1000000000000000000: =#,##0=.;",
         }
     }
+    Version{"2.1.27.22"}
 }

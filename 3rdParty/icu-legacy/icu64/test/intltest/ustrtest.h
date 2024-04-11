@@ -27,57 +27,57 @@ public:
     UnicodeStringTest() {}
     virtual ~UnicodeStringTest();
     
-    void runIndexedTest( int32_t index, UBool exec, const char* &name, char* par = nullptr ) override;
+    void runIndexedTest( int32_t index, UBool exec, const char* &name, char* par = NULL );
 
     /**
      * Test some basic methods (insert, remove, replace, ...)
      **/
-    void TestBasicManipulation();
+    void TestBasicManipulation(void);
     /**
      * Test the methods for comparison
      **/
-    void TestCompare();
+    void TestCompare(void);
     /**
      * Test the methods for extracting
      **/
-    void TestExtract();
+    void TestExtract(void);
     /**
      * More extensively test methods for removing and replacing
      **/
-    void TestRemoveReplace();
+    void TestRemoveReplace(void);
     /**
      * Test language specific case conversions
      **/
-    void TestSearching();
+    void TestSearching(void);
     /**
      * Test methods for padding, trimmimg and truncating
      **/
-    void TestSpacePadding();
+    void TestSpacePadding(void);
     /**
      * Test methods startsWith and endsWith
      **/
-    void TestPrefixAndSuffix();
+    void TestPrefixAndSuffix(void);
     void TestStartsWithAndEndsWithNulTerminated();
     /**
      * Test method findAndReplace
      **/
-    void TestFindAndReplace();
+    void TestFindAndReplace(void);
     /**
      * Test method reverse
      **/
-    void TestReverse();
+    void TestReverse(void);
     /**
      * Test a few miscellaneous methods (isBogus, hashCode,...)
      **/
-    void TestMiscellaneous();
+    void TestMiscellaneous(void);
     /**
      * Test the functionality of allocating UnicodeStrings on the stack
      **/
-    void TestStackAllocation();
+    void TestStackAllocation(void);
     /**
      * Test the unescape() function.
      */
-    void TestUnescape();
+    void TestUnescape(void);
 
     void _testUnicodeStringHasMoreChar32Than(const UnicodeString &s, int32_t start, int32_t length, int32_t number);
     void TestCountChar32();
@@ -97,7 +97,6 @@ public:
     void TestWCharPointers();
     void TestNullPointers();
     void TestUnicodeStringInsertAppendToSelf();
-    void TestLargeAppend();
 };
 
 #endif

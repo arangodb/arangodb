@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 fil{
     Countries{
         001{"Mundo"}
@@ -146,7 +145,7 @@ fil{
         IL{"Israel"}
         IM{"Isle of Man"}
         IN{"India"}
-        IO{"Teritoryo sa Karagatan ng British Indian"}
+        IO{"British Indian Ocean Territory"}
         IQ{"Iraq"}
         IR{"Iran"}
         IS{"Iceland"}
@@ -267,7 +266,7 @@ fil{
         TM{"Turkmenistan"}
         TN{"Tunisia"}
         TO{"Tonga"}
-        TR{"Türkiye"}
+        TR{"Turkey"}
         TT{"Trinidad & Tobago"}
         TV{"Tuvalu"}
         TW{"Taiwan"}
@@ -298,9 +297,6 @@ fil{
         ZW{"Zimbabwe"}
         ZZ{"Hindi Kilalang Rehiyon"}
     }
-    Countries%chagos{
-        IO{"Chagos Archipelago"}
-    }
     Countries%short{
         GB{"U.K."}
         HK{"Hong Kong"}
@@ -315,7 +311,7 @@ fil{
         CI{"Ivory Coast"}
         CZ{"Czech Republic"}
         FK{"Falkland Islands (Islas Malvinas)"}
-        NZ{"Aotearoa New Zealand"}
         TL{"East Timor"}
     }
+    Version{"2.1.49.82"}
 }

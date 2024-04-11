@@ -53,16 +53,16 @@ BasicNormalizerTest::TestNormalizerAPI() {
         errln("error in Normalizer(Normalizer(CharacterIterator)).clone()->next().hashCode()==copy.hashCode()");
     }
     delete clone;
-    clone = nullptr;
+    clone=0;
 
     // test compose() and decompose()
     UnicodeString tel, nfkc, nfkd;
     tel=UnicodeString(1, (UChar32)0x2121, 10);
-    tel.insert(1, (char16_t)0x301);
+    tel.insert(1, (UChar)0x301);
 
     UErrorCode errorCode=U_ZERO_ERROR;
-    Normalizer::compose(tel, true, 0, nfkc, errorCode);
-    Normalizer::decompose(tel, true, 0, nfkd, errorCode);
+    Normalizer::compose(tel, TRUE, 0, nfkc, errorCode);
+    Normalizer::decompose(tel, TRUE, 0, nfkd, errorCode);
     if(U_FAILURE(errorCode)) {
         dataerrln("error in Normalizer::(de)compose(): %s", u_errorName(errorCode));
     } else if(
@@ -95,7 +95,7 @@ BasicNormalizerTest::TestNormalizerAPI() {
         }
     }
 
-    // test setText(char16_t *), getUMode() and setMode()
+    // test setText(UChar *), getUMode() and setMode()
     errorCode=U_ZERO_ERROR;
     copy.setText(s.getBuffer()+1, s.length()-1, errorCode);
     copy.setMode(UNORM_NFD);
@@ -103,24 +103,24 @@ BasicNormalizerTest::TestNormalizerAPI() {
         errln("error in Normalizer::setMode() or Normalizer::getUMode()");
     }
     if(copy.next()!=0x308 || copy.next()!=0x1100) {
-        dataerrln("error in Normalizer::setText(char16_t *) or Normalizer::setMode()");
+        dataerrln("error in Normalizer::setText(UChar *) or Normalizer::setMode()");
     }
 
-    // test setText(char16_t *, length=-1)
+    // test setText(UChar *, length=-1)
     errorCode=U_ZERO_ERROR;
 
     // NUL-terminate s
-    s.append((char16_t)0);         // append NUL
+    s.append((UChar)0);         // append NUL
     s.truncate(s.length()-1);   // undo length change
 
     copy.setText(s.getBuffer()+1, -1, errorCode);
     if(copy.endIndex()!=s.length()-1) {
-        errln("error in Normalizer::setText(char16_t *, -1)");
+        errln("error in Normalizer::setText(UChar *, -1)");
     }
 
     // test setOption() and getOption()
-    copy.setOption(0xaa0000, true);
-    copy.setOption(0x20000, false);
+    copy.setOption(0xaa0000, TRUE);
+    copy.setOption(0x20000, FALSE);
     if(!copy.getOption(0x880000) || copy.getOption(0x20000)) {
         errln("error in Normalizer::setOption() or Normalizer::getOption()");
     }
@@ -143,7 +143,7 @@ BasicNormalizerTest::TestNormalizerAPI() {
     }
 
     // test that the same string can be used as source and destination
-    s.setTo((char16_t)0xe4);
+    s.setTo((UChar)0xe4);
     Normalizer::normalize(s, UNORM_NFD, 0, s, status);
     if(s.charAt(1)!=0x308) {
         dataerrln("error in Normalizer::normalize(UNORM_NFD, self)");
@@ -152,11 +152,11 @@ BasicNormalizerTest::TestNormalizerAPI() {
     if(s.charAt(0)!=0xe4) {
         dataerrln("error in Normalizer::normalize(UNORM_NFC, self)");
     }
-    Normalizer::decompose(s, false, 0, s, status);
+    Normalizer::decompose(s, FALSE, 0, s, status);
     if(s.charAt(1)!=0x308) {
         dataerrln("error in Normalizer::decompose(self)");
     }
-    Normalizer::compose(s, false, 0, s, status);
+    Normalizer::compose(s, FALSE, 0, s, status);
     if(s.charAt(0)!=0xe4) {
         dataerrln("error in Normalizer::compose(self)");
     }

@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 dsb{
+    Version{"2.1.47.82"}
     zoneStrings{
         "Africa:Accra"{
             ec{"Akkra"}
@@ -11,6 +11,9 @@ dsb{
         }
         "Africa:Algiers"{
             ec{"Algier"}
+        }
+        "Africa:Asmera"{
+            ec{"Asmara"}
         }
         "Africa:Cairo"{
             ec{"Kairo"}
@@ -54,17 +57,62 @@ dsb{
         "America:Cayman"{
             ec{"Kaimaniske kupy"}
         }
+        "America:Coral_Harbour"{
+            ec{"Atikokan"}
+        }
         "America:Curacao"{
             ec{"Curaçao"}
+        }
+        "America:El_Salvador"{
+            ec{"El Salvador"}
+        }
+        "America:Godthab"{
+            ec{"Nuuk"}
         }
         "America:Havana"{
             ec{"Havanna"}
         }
+        "America:Indiana:Knox"{
+            ec{"Knox, Indiana"}
+        }
+        "America:Indiana:Marengo"{
+            ec{"Marengo, Indiana"}
+        }
+        "America:Indiana:Petersburg"{
+            ec{"Petersburg, Indiana"}
+        }
+        "America:Indiana:Tell_City"{
+            ec{"Tell City, Indiana"}
+        }
+        "America:Indiana:Vevay"{
+            ec{"Vevay, Indiana"}
+        }
+        "America:Indiana:Vincennes"{
+            ec{"Vincennes, Indiana"}
+        }
+        "America:Indiana:Winamac"{
+            ec{"Winamac, Indiana"}
+        }
         "America:Jamaica"{
             ec{"Jamaika"}
         }
+        "America:Kentucky:Monticello"{
+            ec{"Monticello, Kentucky"}
+        }
+        "America:Lower_Princes"{
+            ec{"Lower Prince’s Quarter"}
+        }
         "America:Mexico_City"{
             ec{"Mexiko-město"}
+        }
+        "America:North_Dakota:Beulah"{
+            ec{"Beulah, North Dakota"}
+        }
+        "America:North_Dakota:Center"{
+            ec{"Center, North Dakota"}
+        }
+        "America:North_Dakota:New_Salem"{
+            ec{"New Salem, North Dakota"}
         }
         "America:Port_of_Spain"{
             ec{"Port-of-Spain"}
@@ -72,8 +120,26 @@ dsb{
         "America:Sao_Paulo"{
             ec{"São Paulo"}
         }
+        "America:Scoresbysund"{
+            ec{"Ittoqqortoormiit"}
+        }
         "America:St_Barthelemy"{
             ec{"St.Barthélemy"}
+        }
+        "America:St_Johns"{
+            ec{"St. John’s"}
+        }
+        "America:St_Kitts"{
+            ec{"St. Kitts"}
+        }
+        "America:St_Lucia"{
+            ec{"St. Lucia"}
+        }
+        "America:St_Thomas"{
+            ec{"St. Thomas"}
+        }
+        "America:St_Vincent"{
+            ec{"St. Vincent"}
         }
         "Antarctica:DumontDUrville"{
             ec{"Dumont D’Urville"}
@@ -108,11 +174,14 @@ dsb{
         "Asia:Kamchatka"{
             ec{"Kamčatka"}
         }
-        "Asia:Karachi"{
-            ec{"Karači"}
+        "Asia:Katmandu"{
+            ec{"Kathmandu"}
         }
         "Asia:Krasnoyarsk"{
             ec{"Krasnojarsk"}
+        }
+        "Asia:Macau"{
+            ec{"Macao"}
         }
         "Asia:Muscat"{
             ec{"Muskat"}
@@ -132,9 +201,6 @@ dsb{
         "Asia:Qatar"{
             ec{"Katar"}
         }
-        "Asia:Rangoon"{
-            ec{"Rangun"}
-        }
         "Asia:Riyadh"{
             ec{"Riad"}
         }
@@ -152,6 +218,9 @@ dsb{
         }
         "Asia:Tashkent"{
             ec{"Taškent"}
+        }
+        "Asia:Tbilisi"{
+            ec{"Tbilisi"}
         }
         "Asia:Tehran"{
             ec{"Teheran"}
@@ -192,8 +261,8 @@ dsb{
         "Atlantic:South_Georgia"{
             ec{"Pódpołdnjowa Georgiska"}
         }
-        "Etc:UTC"{
-            ls{"koordiněrowany swětowy cas"}
+        "Atlantic:St_Helena"{
+            ec{"St. Helena"}
         }
         "Etc:Unknown"{
             ec{"Njeznate"}
@@ -246,6 +315,9 @@ dsb{
         "Europe:Tirane"{
             ec{"Tirana"}
         }
+        "Europe:Uzhgorod"{
+            ec{"Užgorod"}
+        }
         "Europe:Vatican"{
             ec{"Vatikan"}
         }
@@ -260,6 +332,9 @@ dsb{
         }
         "Europe:Warsaw"{
             ec{"Waršawa"}
+        }
+        "Europe:Zaporozhye"{
+            ec{"Saporižja"}
         }
         "Europe:Zurich"{
             ec{"Zürich"}
@@ -281,6 +356,12 @@ dsb{
         }
         "Pacific:Fiji"{
             ec{"Fidži"}
+        }
+        "Pacific:Ponape"{
+            ec{"Pohnpei"}
+        }
+        "Pacific:Truk"{
+            ec{"Chuuk"}
         }
         "meta:Afghanistan"{
             ls{"Afghaniski cas"}
@@ -475,17 +556,17 @@ dsb{
             ls{"Ekuadorski cas"}
         }
         "meta:Europe_Central"{
-            ld{"Srjejźnoeuropejski lěśojski cas"}
-            lg{"Srjejźnoeuropejski cas"}
-            ls{"Srjejźnoeuropejski standardny cas"}
+            ld{"Srjejźoeuropski lěśojski cas"}
+            lg{"Srjejźoeuropski cas"}
+            ls{"Srjejźoeuropski standardny cas"}
             sd{"MESZ"}
             sg{"MEZ"}
             ss{"MEZ"}
         }
         "meta:Europe_Eastern"{
-            ld{"Pódzajtšnoeuropejski lěśojski cas"}
-            lg{"Pódzajtšnoeuropejski cas"}
-            ls{"Pódzajtšnoeuropejski standardny cas"}
+            ld{"Pódzajtšnoeuropski lěśojski cas"}
+            lg{"Pódzajtšnoeuropski cas"}
+            ls{"Pódzajtšnoeuropski standardny cas"}
             sd{"OESZ"}
             sg{"OEZ"}
             ss{"OEZ"}
@@ -494,9 +575,9 @@ dsb{
             ls{"Kaliningradski cas"}
         }
         "meta:Europe_Western"{
-            ld{"Pódwjacornoeuropejski lěśojski cas"}
-            lg{"Pódwjacornoeuropejski cas"}
-            ls{"Pódwjacornoeuropejski standardny cas"}
+            ld{"Pódwjacornoeuropski lěśojski cas"}
+            lg{"Pódwjacornoeuropski cas"}
+            ls{"Pódwjacornoeuropski standardny cas"}
             sd{"WESZ"}
             sg{"WEZ"}
             ss{"WEZ"}
@@ -633,6 +714,9 @@ dsb{
             lg{"cas kupy Lord-Howe"}
             ls{"Standardny cas kupy Lord-Howe"}
         }
+        "meta:Macquarie"{
+            ls{"cas kupy Macquarie"}
+        }
         "meta:Magadan"{
             ld{"Magadański lěśojski cas"}
             lg{"Magadański cas"}
@@ -657,6 +741,11 @@ dsb{
         }
         "meta:Mawson"{
             ls{"Mawson cas"}
+        }
+        "meta:Mexico_Northwest"{
+            ld{"Mexiski dłujkowjacorny lěśojski cas"}
+            lg{"Mexiski dłujkowjacorny cas"}
+            ls{"Mexiski dłujkowjacorny standardny cas"}
         }
         "meta:Mexico_Pacific"{
             ld{"Mexiski pacifiski lěśojski cas"}
@@ -701,9 +790,7 @@ dsb{
             ls{"Niueski cas"}
         }
         "meta:Norfolk"{
-            ld{"lěśojski cas kupy Norfolk"}
-            lg{"cas kupy Norfolk"}
-            ls{"standardny cas kupy Norfolk"}
+            ls{"cas kupy Norfolk"}
         }
         "meta:Noronha"{
             ld{"lěśojski cas Fernando de Noronha"}
@@ -759,9 +846,6 @@ dsb{
         }
         "meta:Ponape"{
             ls{"Ponapski cas"}
-        }
-        "meta:Pyongyang"{
-            ls{"Pjöngjangski cas"}
         }
         "meta:Reunion"{
             ls{"Reunionski cas"}
@@ -874,9 +958,10 @@ dsb{
             lg{"Jekaterinburgski cas"}
             ls{"Jekaterinburgski standardny cas"}
         }
-        "meta:Yukon"{
-            ls{"Yukonowy cas"}
-        }
+        fallbackFormat{"{1} ({0})"}
+        gmtFormat{"GMT{0}"}
+        gmtZeroFormat{"GMT"}
+        hourFormat{"+HH:mm;-HH:mm"}
         regionFormat{"Casowe pasmo {0}"}
         regionFormatDaylight{"{0} lěśojski cas"}
         regionFormatStandard{"{0} zymski cas"}

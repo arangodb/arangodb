@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 sr_Cyrl_ME{
+    Version{"2.1.47.71"}
     calendar{
         generic{
             intervalFormats{
@@ -17,8 +17,8 @@ sr_Cyrl_ME{
                 "по подне",
             }
             AmPmMarkersAbbr{
-                "прије подне",
-                "по подне",
+                "прије подне",
+                "по подне",
             }
             availableFormats{
                 MMMMW{
@@ -34,6 +34,17 @@ sr_Cyrl_ME{
             }
             dayNames{
                 format{
+                    wide{
+                        "недјеља",
+                        "понедељак",
+                        "уторак",
+                        "сриједа",
+                        "четвртак",
+                        "петак",
+                        "субота",
+                    }
+                }
+                stand-alone{
                     wide{
                         "недјеља",
                         "понедељак",
@@ -65,6 +76,10 @@ sr_Cyrl_ME{
                     }
                 }
                 stand-alone{
+                    abbreviated{
+                        am{"прије подне"}
+                        pm{"по подне"}
+                    }
                     narrow{
                         am{"a"}
                         pm{"p"}
@@ -83,6 +98,22 @@ sr_Cyrl_ME{
             }
             monthNames{
                 format{
+                    abbreviated{
+                        "јан",
+                        "феб",
+                        "март",
+                        "апр",
+                        "мај",
+                        "јун",
+                        "јул",
+                        "авг",
+                        "септ",
+                        "окт",
+                        "нов",
+                        "дец",
+                    }
+                }
+                stand-alone{
                     abbreviated{
                         "јан",
                         "феб",

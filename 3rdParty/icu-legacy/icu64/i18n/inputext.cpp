@@ -30,11 +30,11 @@ InputText::InputText(UErrorCode &status)
                                                  //   removed if appropriate.
       fByteStats(NEW_ARRAY(int16_t, 256)),       // byte frequency statistics for the input text.
                                                  //   Value is percent, not absolute.
-      fDeclaredEncoding(nullptr),
-      fRawInput(nullptr),
+      fDeclaredEncoding(0),
+      fRawInput(0),
       fRawLength(0)
 {
-    if (fInputBytes == nullptr || fByteStats == nullptr) {
+    if (fInputBytes == NULL || fByteStats == NULL) {
         status = U_MEMORY_ALLOCATION_ERROR;
     }
 }
@@ -49,7 +49,7 @@ InputText::~InputText()
 void InputText::setText(const char *in, int32_t len)
 {
     fInputLen  = 0;
-    fC1Bytes   = false;
+    fC1Bytes   = FALSE;
     fRawInput  = (const uint8_t *) in;
     fRawLength = len == -1? (int32_t)uprv_strlen(in) : len;
 }
@@ -70,7 +70,7 @@ void InputText::setDeclaredEncoding(const char* encoding, int32_t len)
 
 UBool InputText::isSet() const 
 {
-    return fRawInput != nullptr;
+    return fRawInput != NULL;
 }
 
 /**
@@ -83,7 +83,7 @@ void InputText::MungeInput(UBool fStripTags) {
     int     srci = 0;
     int     dsti = 0;
     uint8_t b;
-    bool    inMarkup = false;
+    bool    inMarkup = FALSE;
     int32_t openTags = 0;
     int32_t badTags  = 0;
 
@@ -103,7 +103,7 @@ void InputText::MungeInput(UBool fStripTags) {
                     badTags += 1;
                 }
 
-                inMarkup = true;
+                inMarkup = TRUE;
                 openTags += 1;
             }
 
@@ -112,7 +112,7 @@ void InputText::MungeInput(UBool fStripTags) {
             }
 
             if (b == (uint8_t)0x3E) { /* Check for the ASCII '>' */
-                inMarkup = false;
+                inMarkup = FALSE;
             }
         }
 
@@ -141,7 +141,7 @@ void InputText::MungeInput(UBool fStripTags) {
     }
 
     //
-    // Tally up the byte occurrence statistics.
+    // Tally up the byte occurence statistics.
     // These are available for use by the various detectors.
     //
 
@@ -153,7 +153,7 @@ void InputText::MungeInput(UBool fStripTags) {
 
     for (int32_t i = 0x80; i <= 0x9F; i += 1) {
         if (fByteStats[i] != 0) {
-            fC1Bytes = true;
+            fC1Bytes = TRUE;
             break;
         }
     }

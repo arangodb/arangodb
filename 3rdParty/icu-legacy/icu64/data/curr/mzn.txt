@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 mzn{
     Currencies{
         AED{
@@ -479,13 +478,9 @@ mzn{
             "SHP",
             "سنت هلنای ِپوند",
         }
-        SLE{
-            "SLE",
-            "سیرالئون ِلئون",
-        }
         SLL{
             "SLL",
-            "سیرالئون ِلئون - 1964-2022",
+            "سیرالئون ِلئون",
         }
         SOS{
             "SOS",
@@ -588,7 +583,7 @@ mzn{
             "شرقی کاراییب ِدولار",
         }
         XOF{
-            "F CFA",
+            "CFA",
             "غربی آفریقای ِسی‌اف‌ای فرانک",
         }
         YER{
@@ -605,17 +600,143 @@ mzn{
         }
     }
     Currencies%narrow{
+        AOA{"Kz"}
+        ARS{"$"}
+        BAM{"KM"}
+        BBD{"$"}
+        BDT{"৳"}
+        BMD{"$"}
+        BND{"$"}
+        BOB{"Bs"}
+        BRL{"R$"}
+        BSD{"$"}
+        BWP{"P"}
         BYN{"р."}
+        BZD{"$"}
+        CAD{"$"}
+        CLP{"$"}
+        CNY{"¥"}
+        COP{"$"}
+        CRC{"₡"}
+        CUC{"$"}
+        CUP{"$"}
+        CZK{"Kč"}
+        DKK{"kr"}
+        DOP{"$"}
+        EGP{"E£"}
+        EUR{"€"}
+        FKP{"£"}
+        GBP{"£"}
+        GIP{"£"}
+        GNF{"FG"}
+        GTQ{"Q"}
+        GYD{"$"}
+        HKD{"$"}
+        HNL{"L"}
+        HRK{"kn"}
+        HUF{"Ft"}
+        IDR{"Rp"}
+        ILS{"₪"}
+        INR{"₹"}
+        ISK{"kr"}
+        JMD{"$"}
+        JPY{"¥"}
+        KHR{"៛"}
+        KMF{"CF"}
+        KPW{"₩"}
+        KRW{"₩"}
+        KYD{"$"}
+        KZT{"₸"}
+        LAK{"₭"}
+        LBP{"L£"}
+        LKR{"Rs"}
+        LRD{"$"}
+        MGA{"Ar"}
+        MMK{"K"}
+        MNT{"₮"}
+        MUR{"Rs"}
+        MXN{"$"}
+        MYR{"RM"}
+        NAD{"$"}
+        NGN{"₦"}
+        NIO{"C$"}
+        NOK{"kr"}
+        NPR{"Rs"}
+        PHP{"₱"}
+        PKR{"Rs"}
+        PLN{"zł"}
+        PYG{"₲"}
+        RUB{"₽"}
+        RWF{"RF"}
+        SEK{"kr"}
+        SGD{"$"}
+        SHP{"£"}
+        SRD{"$"}
+        SSP{"£"}
+        STN{"Db"}
+        SYP{"£"}
+        THB{"฿"}
+        TRY{"₺"}
+        TTD{"$"}
+        TWD{"$"}
+        UAH{"₴"}
+        USD{"$"}
+        UYU{"$"}
+        VEF{"Bs"}
+        VND{"₫"}
+        XCD{"$"}
+        ZAR{"R"}
+        ZMW{"ZK"}
+    }
+    Currencies%variant{
+        GEL{"₾"}
+        TRY{"TL"}
     }
     CurrencyPlurals{
         AED{
             other{"امارات ِدرهم"}
         }
+        AFN{
+            other{"افغانستون ِافغانی"}
+        }
+        ALL{
+            other{"آلبانی ِلک"}
+        }
+        AMD{
+            other{"ارمنستون درهم"}
+        }
+        ANG{
+            other{"هلند ِآنتیل ِجزایر ِگویلدر"}
+        }
+        AOA{
+            other{"آنگولای ِکوانزا"}
+        }
+        ARS{
+            other{"آرژانتین ِپزو"}
+        }
         AWG{
             other{"آروبای فلورن"}
         }
+        AZN{
+            other{"آذربایجون ِمنات"}
+        }
+        BAM{
+            other{"بوسنی و هرزگوین ِتبدیل‌بَیی مارک"}
+        }
         BBD{
             other{"باربادوس دلار"}
+        }
+        BDT{
+            other{"بنگلادش ِتاکا"}
+        }
+        BGN{
+            other{"بلغارستون ِلیوا"}
+        }
+        BHD{
+            other{"بحرین ِدینار"}
+        }
+        BIF{
+            other{"بوروندی ِفرانک"}
         }
         BMD{
             other{"برمودای ِدلار"}
@@ -623,11 +744,47 @@ mzn{
         BND{
             other{"برونئی دلار"}
         }
+        BOB{
+            other{"بولیوی ِبولیویانو"}
+        }
+        BRL{
+            other{"برزیل ِرئال"}
+        }
+        BSD{
+            other{"باهامای ِدولار"}
+        }
+        BTN{
+            other{"بوتان ِنگولتروم"}
+        }
+        BWP{
+            other{"بوتساوانای ِپولا"}
+        }
+        BYN{
+            other{"بلاروس ِروبل"}
+        }
+        BYR{
+            other{"بلاروس ِروبل (۲۰۰۰–۲۰۱۶)"}
+        }
         BZD{
             other{"بلیز دلار"}
         }
         CAD{
             other{"کانادای ِدلار"}
+        }
+        CDF{
+            other{"کنگوی ِفرانک"}
+        }
+        CHF{
+            other{"سوییس ِفرانک"}
+        }
+        CLP{
+            other{"شیلی ِپزو"}
+        }
+        CNY{
+            other{"چین ِیوآن"}
+        }
+        COP{
+            other{"کلمبیای ِپزو"}
         }
         CRC{
             other{"کاستاریکا کولون"}
@@ -638,8 +795,56 @@ mzn{
         CUP{
             other{"کوبای پزو"}
         }
+        CVE{
+            other{"عاج ِساحل ِایسکودو"}
+        }
+        CZK{
+            other{"چک ِکرون"}
+        }
+        DJF{
+            other{"جیبوتی ِفرانک"}
+        }
+        DKK{
+            other{"دانمارک ِکورن"}
+        }
         DOP{
             other{"دومینیکن پزو"}
+        }
+        DZD{
+            other{"الجزیره‌ی ِدینار"}
+        }
+        EGP{
+            other{"مصر ِپوند"}
+        }
+        ERN{
+            other{"اریتره‌ی ِناکفا"}
+        }
+        ETB{
+            other{"اتیوپی ِبیر"}
+        }
+        EUR{
+            other{"یورو"}
+        }
+        FKP{
+            other{"فالکلند ِجزایر ِپوند"}
+        }
+        GBP{
+            other{"بریتانیای ِپوند"}
+        }
+        GEL{
+            other{"گرجستون ِلاری"}
+        }
+        GHS{
+            other{"غنای ِسدی"}
+        }
+        GIP{
+            other{"جبل‌طارق ِپوند"}
+        }
+        GMD{
+            other{"گامبیای ِدالاسی"}
+        }
+        GNF{
+            other{"گینه‌ی ِفرانک"}
         }
         GTQ{
             other{"گواتمالای ِکتزال"}
@@ -653,11 +858,53 @@ mzn{
         HNL{
             other{"هندوراس لمپیرا"}
         }
+        HRK{
+            other{"کرواسی ِکونا"}
+        }
         HTG{
             other{"هاییتی گورد"}
         }
+        HUF{
+            other{"مجارستون ِفروینت"}
+        }
+        IDR{
+            other{"اندونزی ِروپیه"}
+        }
+        ILS{
+            other{"اسراییل ِنو شِکِل"}
+        }
+        INR{
+            other{"هند ِروپیه"}
+        }
+        IQD{
+            other{"عراق ِدینار"}
+        }
+        IRR{
+            other{"ایران ریال"}
+        }
+        ISK{
+            other{"ایسلند کرونا"}
+        }
         JMD{
             other{"جاماییکا دلار"}
+        }
+        JOD{
+            other{"اردن ِدینار"}
+        }
+        JPY{
+            other{"جاپون ِین"}
+        }
+        KES{
+            other{"کنیای ِشیلینگ"}
+        }
+        KGS{
+            other{"قرقیزستون ِسام"}
+        }
+        KHR{
+            other{"کامبوج ِریل"}
+        }
+        KMF{
+            other{"کامرون ِفرانک"}
         }
         KPW{
             other{"شمالی کره وون"}
@@ -665,23 +912,182 @@ mzn{
         KRW{
             other{"جنوبی کره وون"}
         }
+        KWD{
+            other{"کویت ِدینار"}
+        }
         KYD{
             other{"کایمن جزیره‌ی دلار"}
+        }
+        KZT{
+            other{"قراقستون ِتنگ"}
+        }
+        LAK{
+            other{"لائوس ِکیپ"}
+        }
+        LBP{
+            other{"لبنان ِپوند"}
+        }
+        LKR{
+            other{"سریلانکا روپیه"}
         }
         LRD{
             other{"لیبریا دلار"}
         }
+        LYD{
+            other{"لیبی ِدینار"}
+        }
+        MAD{
+            other{"مراکش ِدرهم"}
+        }
+        MDL{
+            other{"مولداوی ِلئو"}
+        }
+        MGA{
+            other{"ماداگاسکار ِآریاری"}
+        }
+        MKD{
+            other{"مقدونیه‌ی ِدینار"}
+        }
+        MMK{
+            other{"میانمار ِکیات"}
+        }
+        MNT{
+            other{"مغلستون ِتوگریک"}
+        }
+        MOP{
+            other{"ماکائو ِپاتاجا"}
+        }
+        MRO{
+            other{"موریتانی ِاوگوئیا (1973–2017)"}
+        }
+        MRU{
+            other{"موریتانی ِاوگوئیا"}
+        }
+        MUR{
+            other{"موریتیان ِروپیه"}
+        }
+        MVR{
+            other{"مالدیو ِروفیا"}
+        }
+        MWK{
+            other{"مالاوی ِکواچا"}
+        }
         MXN{
             other{"مکزیک پزو"}
+        }
+        MYR{
+            other{"مالزی ِرینگیت"}
+        }
+        MZN{
+            other{"موزامبیک متیکال"}
         }
         NAD{
             other{"نامبیای ِدلار"}
         }
+        NGN{
+            other{"نیجریه‌ی ِنیارا"}
+        }
         NIO{
             other{"نیکاراگوئه کوردوبا"}
         }
+        NOK{
+            other{"نروژ ِکرون"}
+        }
+        NPR{
+            other{"نپال ِروپیه"}
+        }
+        OMR{
+            other{"عمان ِریال"}
+        }
         PAB{
             other{"پانامای بالبوا"}
+        }
+        PEN{
+            other{"پروی ِسول"}
+        }
+        PHP{
+            other{"فیلیپین ِپزو"}
+        }
+        PKR{
+            other{"پاکستون روپیه"}
+        }
+        PLN{
+            other{"لهستون ِزلوتی"}
+        }
+        PYG{
+            other{"پاراگوئه‌ی ِگوارانی"}
+        }
+        QAR{
+            other{"قطر ِریال"}
+        }
+        RON{
+            other{"رومانی ِلئو"}
+        }
+        RSD{
+            other{"صربستون ِدینار"}
+        }
+        RUB{
+            other{"روسیه‌ی ِروبل"}
+        }
+        RWF{
+            other{"روآندای ِفرانک"}
+        }
+        SAR{
+            other{"عربستون ِریال"}
+        }
+        SCR{
+            other{"سیشل ِروپیه"}
+        }
+        SDG{
+            other{"سودان ِپوند"}
+        }
+        SEK{
+            other{"سوئد ِکرون"}
+        }
+        SGD{
+            other{"سنگاپور ِدلار"}
+        }
+        SHP{
+            other{"سنت هلنای ِپوند"}
+        }
+        SLL{
+            other{"سیرالئون ِلئون"}
+        }
+        SOS{
+            other{"سومالی ِشیلینگ"}
+        }
+        SRD{
+            other{"سورینام ِدولار"}
+        }
+        SSP{
+            other{"جنوبی سودان ِپوند"}
+        }
+        STD{
+            other{"سائوتومه و پرینسیپ ِدوبرا (1977–2017)"}
+        }
+        STN{
+            other{"سائوتومه و پرینسیپ ِدوبرا"}
+        }
+        SYP{
+            other{"سوریه‌ی ِپوند"}
+        }
+        SZL{
+            other{"سوازیلند ِلیلانجنی"}
+        }
+        THB{
+            other{"تایلند ِبات"}
+        }
+        TJS{
+            other{"تاجیکستون ِسامانی"}
+        }
+        TMT{
+            other{"ترکمنستون ِمنات"}
+        }
+        TND{
+            other{"تونس ِدینار"}
+        }
+        TRY{
+            other{"ترکیه‌ی ِلیره"}
         }
         TTD{
             other{"ترینیداد و توباگوی ِدلار"}
@@ -689,11 +1095,51 @@ mzn{
         TWD{
             other{"تایوان دلار"}
         }
+        TZS{
+            other{"تانزانیای ِشیلینگ"}
+        }
+        UAH{
+            other{"اکراین ِگریونا"}
+        }
+        UGX{
+            other{"اوگاندای ِشیلینگ"}
+        }
         USD{
             other{"آمریکای ِدلار"}
+        }
+        UYU{
+            other{"اروگوئه‌ی ِپزو"}
+        }
+        UZS{
+            other{"ازبکستون ِسام"}
+        }
+        VEF{
+            other{"ونزوئلایِ بولیوار (2008–2018)"}
+        }
+        VES{
+            other{"ونزوئلایِ بولیوار"}
+        }
+        VND{
+            other{"ویتنام ِدنگ"}
+        }
+        XAF{
+            other{"میونی آفریقای ِسی‌اف‌ای فرانک"}
         }
         XCD{
             other{"شرقی کارائیب دلار"}
         }
+        XOF{
+            other{"غربی آفریقای ِسی‌اف‌ای فرانک"}
+        }
+        YER{
+            other{"یمن ِریال"}
+        }
+        ZAR{
+            other{"جنوبی آفریقای ِراند"}
+        }
+        ZMW{
+            other{"زامبیای ِکواچا"}
+        }
     }
+    Version{"2.1.47.82"}
 }

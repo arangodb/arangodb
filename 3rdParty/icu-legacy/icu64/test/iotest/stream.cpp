@@ -38,21 +38,21 @@ using namespace std;
 
 U_CDECL_BEGIN
 #if U_PLATFORM_USES_ONLY_WIN32_API
-const char16_t NEW_LINE[] = {0x0d,0x0a,0};
+const UChar NEW_LINE[] = {0x0d,0x0a,0};
 const char C_NEW_LINE[] = {0x0d,0x0a,0};
 #define UTF8_NEW_LINE "\x0d\x0a"
 #else
-const char16_t NEW_LINE[] = {0x0a,0};
+const UChar NEW_LINE[] = {0x0a,0};
 const char C_NEW_LINE[] = {'\n',0};
 #define UTF8_NEW_LINE "\x0a"
 #endif
 U_CDECL_END
 
 U_CDECL_BEGIN
-static void U_CALLCONV TestStream()
+static void U_CALLCONV TestStream(void)
 {
-    const char16_t thisMu[] = { 0x74, 0x48, 0x69, 0x73, 0x3BC, 0};
-    const char16_t mu[] = { 0x6D, 0x75, 0};
+    const UChar thisMu[] = { 0x74, 0x48, 0x69, 0x73, 0x3BC, 0};
+    const UChar mu[] = { 0x6D, 0x75, 0};
     UnicodeString str1 = UNICODE_STRING_SIMPLE("str1");
     UnicodeString str2 = UNICODE_STRING_SIMPLE(" <<");
     UnicodeString str3 = UNICODE_STRING_SIMPLE("2");
@@ -152,7 +152,7 @@ static void U_CALLCONV TestStream()
     memset(testLargeStreamBuf, 0, sizeof(testLargeStreamBuf));
     ostrstream outLargeStream(testLargeStreamBuf, sizeof(testLargeStreamBuf));
 #endif
-    char16_t large_array[200];
+    UChar large_array[200];
     int32_t large_array_length = UPRV_LENGTHOF(large_array);
     for (int32_t i = 0; i < large_array_length; i++) {
         large_array[i] = 0x41;
@@ -219,7 +219,7 @@ void
 testString(
             UnicodeString&  str,
             const char*     testString,
-            const char16_t*    expectedString,
+            const UChar*    expectedString,
             int32_t         expectedStatus)
 {
 #ifdef USE_SSTREAM
@@ -248,7 +248,7 @@ testString(
 }
 
 
-static void U_CALLCONV TestStreamEOF()
+static void U_CALLCONV TestStreamEOF(void)
 {
     UnicodeString dest;
     fstream fs(STANDARD_TEST_FILE, fstream::in | fstream::out | fstream::trunc);

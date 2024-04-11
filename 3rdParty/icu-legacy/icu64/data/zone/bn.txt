@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 bn{
+    Version{"2.1.48.36"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"আবিদজান"}
@@ -160,7 +160,7 @@ bn{
             ec{"উইনধোক"}
         }
         "America:Adak"{
-            ec{"আডক"}
+            ec{"আডাক"}
         }
         "America:Anchorage"{
             ec{"এনকোরেজ"}
@@ -205,7 +205,7 @@ bn{
             ec{"বাহিয়া"}
         }
         "America:Bahia_Banderas"{
-            ec{"বাহিয়া বান্দেরাস"}
+            ec{"বাহিয়া বানড্রাস"}
         }
         "America:Barbados"{
             ec{"বার্বাডোজ"}
@@ -257,9 +257,6 @@ bn{
         }
         "America:Chihuahua"{
             ec{"চিহুয়াহুয়া"}
-        }
-        "America:Ciudad_Juarez"{
-            ec{"সিউদাদ জুয়ারেজ"}
         }
         "America:Coral_Harbour"{
             ec{"আটিকোকান"}
@@ -465,6 +462,9 @@ bn{
         "America:New_York"{
             ec{"নিউইয়র্ক"}
         }
+        "America:Nipigon"{
+            ec{"নিপিগোন"}
+        }
         "America:Nome"{
             ec{"নোম"}
         }
@@ -486,6 +486,9 @@ bn{
         "America:Panama"{
             ec{"পানামা"}
         }
+        "America:Pangnirtung"{
+            ec{"প্যাঙ্গনির্টুং"}
+        }
         "America:Paramaribo"{
             ec{"প্যারামেরিবো"}
         }
@@ -502,13 +505,16 @@ bn{
             ec{"পোর্তো ভেল্‌হো"}
         }
         "America:Puerto_Rico"{
-            ec{"পুয়ের্তো রিকো"}
+            ec{"পুয়েরতো রিকো"}
         }
         "America:Punta_Arenas"{
             ec{"পুন্টা আরেনাস"}
         }
+        "America:Rainy_River"{
+            ec{"রেইনি রিভার"}
+        }
         "America:Rankin_Inlet"{
-            ec{"র‍্যাঙ্কিন ইনলেট"}
+            ec{"র‌্যাঙ্কিন ইনলেট"}
         }
         "America:Recife"{
             ec{"রেসিফে"}
@@ -521,6 +527,9 @@ bn{
         }
         "America:Rio_Branco"{
             ec{"রিও ব্রাঙ্কো"}
+        }
+        "America:Santa_Isabel"{
+            ec{"সান্তা ইসাবেল"}
         }
         "America:Santarem"{
             ec{"সেনটুরেম"}
@@ -535,7 +544,7 @@ bn{
             ec{"সাও পাউলো"}
         }
         "America:Scoresbysund"{
-            ec{"ইট্টকুয়োরটুরমিট"}
+            ec{"ইটকুয়োরটুরমিট"}
         }
         "America:Sitka"{
             ec{"শিটকা"}
@@ -567,6 +576,9 @@ bn{
         "America:Thule"{
             ec{"থুলি"}
         }
+        "America:Thunder_Bay"{
+            ec{"থান্ডার বে"}
+        }
         "America:Tijuana"{
             ec{"তিজুয়ানা"}
         }
@@ -587,6 +599,9 @@ bn{
         }
         "America:Yakutat"{
             ec{"ইয়াকুটাট"}
+        }
+        "America:Yellowknife"{
+            ec{"ইয়েলোনাইফ"}
         }
         "Antarctica:Casey"{
             ec{"কেইসি"}
@@ -912,6 +927,9 @@ bn{
         "Australia:Broken_Hill"{
             ec{"ব্রোকেন হিল"}
         }
+        "Australia:Currie"{
+            ec{"কিউরি"}
+        }
         "Australia:Darwin"{
             ec{"ডারউইন"}
         }
@@ -1094,6 +1112,9 @@ bn{
         "Europe:Ulyanovsk"{
             ec{"উলিয়ানোভস্ক"}
         }
+        "Europe:Uzhgorod"{
+            ec{"উঝগোরোড"}
+        }
         "Europe:Vaduz"{
             ec{"ভাদুজ"}
         }
@@ -1114,6 +1135,9 @@ bn{
         }
         "Europe:Zagreb"{
             ec{"জাগ্রেব"}
+        }
+        "Europe:Zaporozhye"{
+            ec{"জেপোরোজাইয়াই"}
         }
         "Europe:Zurich"{
             ec{"জুরিখ"}
@@ -1196,8 +1220,8 @@ bn{
         "Pacific:Honolulu"{
             ec{"হনোলুলু"}
         }
-        "Pacific:Kanton"{
-            ec{"ক্যান্টন"}
+        "Pacific:Johnston"{
+            ec{"জনস্টন"}
         }
         "Pacific:Kiritimati"{
             ec{"কিরিতিমাতি"}
@@ -1268,11 +1292,6 @@ bn{
         "Pacific:Wallis"{
             ec{"ওলিস"}
         }
-        "meta:Acre"{
-            ld{"একর গ্রীষ্মকাল সময়"}
-            lg{"একর সময়"}
-            ls{"একর মানক সময়"}
-        }
         "meta:Afghanistan"{
             ls{"আফগানিস্তান সময়"}
         }
@@ -1296,8 +1315,8 @@ bn{
             ls{"আলাস্কা মানক সময়"}
         }
         "meta:Amazon"{
-            ld{"আমাজন গ্রীষ্মকালীন সময়"}
-            lg{"আমাজন সময়"}
+            ld{"অ্যামাজন গ্রীষ্মকালীন সময়"}
+            lg{"অ্যামাজন সময়"}
             ls{"আমাজন মানক সময়"}
         }
         "meta:America_Central"{
@@ -1308,12 +1327,12 @@ bn{
         "meta:America_Eastern"{
             ld{"পূর্বাঞ্চলের দিবালোক সময়"}
             lg{"পূর্বাঞ্চলীয় সময়"}
-            ls{"পূর্বাঞ্চলের মানক সময়"}
+            ls{"পূর্বাঞ্চলের প্রমাণ সময়"}
         }
         "meta:America_Mountain"{
             ld{"পার্বত্য অঞ্চলের দিনের সময়"}
             lg{"পার্বত্য অঞ্চলের সময়"}
-            ls{"পার্বত্য অঞ্চলের মানক সময়"}
+            ls{"পার্বত্য অঞ্চলের প্রমাণ সময়"}
         }
         "meta:America_Pacific"{
             ld{"প্রশান্ত মহাসাগরীয় অঞ্চলের দিনের সময়"}
@@ -1481,7 +1500,7 @@ bn{
             ls{"পূর্ব ইউরোপীয় মানক সময়"}
         }
         "meta:Europe_Further_Eastern"{
-            ls{"প্রান্তীয় পূর্ব ইউরোপীয় সময়"}
+            ls{"অতিরিক্ত-পূর্ব ইউরোপীয় সময়"}
         }
         "meta:Europe_Western"{
             ld{"পশ্চিম ইউরোপীয় গ্রীষ্মকালীন সময়"}
@@ -1539,7 +1558,7 @@ bn{
         }
         "meta:Hawaii_Aleutian"{
             ld{"হাওয়াই-আলেউত দিবালোক সময়"}
-            lg{"হাওয়াই-আলেউত সময়"}
+            lg{"হাওয়াই অ্যালিউটিয়ান সময়"}
             ls{"হাওয়াই-আলেউত মানক সময়"}
         }
         "meta:Hong_Kong"{
@@ -1626,6 +1645,9 @@ bn{
             lg{"লর্ড হাওয়ে সময়"}
             ls{"লর্ড হাওয়ে মানক মসয়"}
         }
+        "meta:Macquarie"{
+            ls{"ম্যাককুরি দ্বীপ সময়"}
+        }
         "meta:Magadan"{
             ld{"ম্যাগাডান গ্রীষ্মকালীন সময়"}
             lg{"ম্যাগাডান সময়"}
@@ -1650,6 +1672,11 @@ bn{
         }
         "meta:Mawson"{
             ls{"মসন সময়"}
+        }
+        "meta:Mexico_Northwest"{
+            ld{"উত্তরপশ্চিম মেক্সিকোর দিনের সময়"}
+            lg{"উত্তরপশ্চিম মেক্সিকোর সময়"}
+            ls{"উত্তরপশ্চিম মেক্সিকোর মানক সময়"}
         }
         "meta:Mexico_Pacific"{
             ld{"মেক্সিকান প্রশান্ত মহাসাগরীয় দিবালোক সময়"}
@@ -1694,9 +1721,7 @@ bn{
             ls{"নিউই সময়"}
         }
         "meta:Norfolk"{
-            ld{"নরফোক দ্বীপ দিবালোক সময়"}
-            lg{"নরফোক দ্বীপ সময়"}
-            ls{"নরফোক দ্বীপ মানক সময়"}
+            ls{"নরফোক দ্বীপ সময়"}
         }
         "meta:Noronha"{
             ld{"ফার্নান্দো ডি নোরোনহা গ্রীষ্মকালীন সময়"}
@@ -1872,10 +1897,10 @@ bn{
             lg{"ইয়েকাতেরিনবুর্গ সময়"}
             ls{"ইয়েকাতেরিনবুর্গ মানক সময়"}
         }
-        "meta:Yukon"{
-            ls{"ইউকোন সময়"}
-        }
+        fallbackFormat{"{1} ({0})"}
         gmtFormat{"GMT {0}"}
+        gmtZeroFormat{"GMT"}
+        hourFormat{"+HH:mm;-HH:mm"}
         regionFormat{"{0} সময়"}
         regionFormatDaylight{"{0} দিবালোক সময়"}
         regionFormatStandard{"{0} মানক সময়"}

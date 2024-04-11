@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ee{
     Countries{
         001{"xexeme"}
@@ -142,6 +141,7 @@ ee{
         IL{"Israel nutome"}
         IM{"Aisle of Man nutome"}
         IN{"India nutome"}
+        IO{"Britaintɔwo ƒe india ƒudome nutome"}
         IQ{"iraqdukɔ"}
         IR{"Iran nutome"}
         IS{"Aiseland nutome"}
@@ -179,6 +179,7 @@ ee{
         MF{"Saint Martin nutome"}
         MG{"Madagaska nutome"}
         MH{"Marshal ƒudomekpowo nutome"}
+        MK{"Makedonia nutome"}
         ML{"Mali nutome"}
         MM{"Myanmar (Burma) nutome"}
         MN{"Mongolia nutome"}
@@ -294,6 +295,8 @@ ee{
         CG{"Kongo repɔblik nutome"}
         CI{"Ivory Kost nutome"}
         FK{"Falkland ƒudomekpowo (Islas Malvinas) nutome"}
+        MK{"Makedonia (FYROM) nutome"}
         TL{"Ɣedzeƒe Timɔ nutome"}
     }
+    Version{"2.1.47.82"}
 }

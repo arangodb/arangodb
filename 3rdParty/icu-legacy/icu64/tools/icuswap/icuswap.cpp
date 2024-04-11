@@ -122,10 +122,10 @@ main(int argc, char *argv[]) {
 
     /* get the program basename */
     pname=strrchr(argv[0], U_FILE_SEP_CHAR);
-    if(pname==nullptr) {
+    if(pname==NULL) {
         pname=strrchr(argv[0], '/');
     }
-    if(pname!=nullptr) {
+    if(pname!=NULL) {
         ++pname;
     } else {
         pname=argv[0];
@@ -141,31 +141,31 @@ main(int argc, char *argv[]) {
     data=(char *)options[OPT_OUT_TYPE].value;
     if(data[0]==0 || data[1]!=0) {
         /* the type must be exactly one letter */
-        return printUsage(pname, false);
+        return printUsage(pname, FALSE);
     }
     switch(data[0]) {
     case 'l':
-        outIsBigEndian=false;
+        outIsBigEndian=FALSE;
         outCharset=U_ASCII_FAMILY;
         break;
     case 'b':
-        outIsBigEndian=true;
+        outIsBigEndian=TRUE;
         outCharset=U_ASCII_FAMILY;
         break;
     case 'e':
-        outIsBigEndian=true;
+        outIsBigEndian=TRUE;
         outCharset=U_EBCDIC_FAMILY;
         break;
     default:
-        return printUsage(pname, false);
+        return printUsage(pname, FALSE);
     }
 
-    in=out=nullptr;
-    data=nullptr;
+    in=out=NULL;
+    data=NULL;
 
     /* open the input file, get its length, allocate memory for it, read the file */
     in=fopen(argv[1], "rb");
-    if(in==nullptr) {
+    if(in==NULL) {
         fprintf(stderr, "%s: unable to open input file \"%s\"\n", pname, argv[1]);
         rc=2;
         goto done;
@@ -185,7 +185,7 @@ main(int argc, char *argv[]) {
      * additional padding bytes
      */
     data=(char *)malloc(length+DEFAULT_PADDING_LENGTH);
-    if(data==nullptr) {
+    if(data==NULL) {
         fprintf(stderr, "%s: error allocating memory for \"%s\"\n", pname, argv[1]);
         rc=2;
         goto done;
@@ -201,7 +201,7 @@ main(int argc, char *argv[]) {
     }
 
     fclose(in);
-    in=nullptr;
+    in=NULL;
 
     /* swap the data in-place */
     errorCode=U_ZERO_ERROR;
@@ -253,7 +253,7 @@ main(int argc, char *argv[]) {
     }
 
     out=fopen(argv[2], "wb");
-    if(out==nullptr) {
+    if(out==NULL) {
         fprintf(stderr, "%s: unable to open output file \"%s\"\n", pname, argv[2]);
         rc=5;
         goto done;
@@ -266,19 +266,19 @@ main(int argc, char *argv[]) {
     }
 
     fclose(out);
-    out=nullptr;
+    out=NULL;
 
     /* all done */
     rc=0;
 
 done:
-    if(in!=nullptr) {
+    if(in!=NULL) {
         fclose(in);
     }
-    if(out!=nullptr) {
+    if(out!=NULL) {
         fclose(out);
     }
-    if(data!=nullptr) {
+    if(data!=NULL) {
         free(data);
     }
     return rc;
@@ -356,7 +356,7 @@ udata_swapPackage(const char *inFilename, const char *outFilename,
 
     /* udata_swapDataHeader checks the arguments */
     headerSize=udata_swapDataHeader(ds, inData, length, outData, pErrorCode);
-    if(pErrorCode==nullptr || U_FAILURE(*pErrorCode)) {
+    if(pErrorCode==NULL || U_FAILURE(*pErrorCode)) {
         return 0;
     }
 
@@ -419,7 +419,7 @@ udata_swapPackage(const char *inFilename, const char *outFilename,
 
         /* read the last item's offset and preflight it */
         offset=ds->readUInt32(inEntries[itemCount-1].dataOffset);
-        itemLength=udata_swap(ds, inBytes+offset, -1, nullptr, pErrorCode);
+        itemLength=udata_swap(ds, inBytes+offset, -1, NULL, pErrorCode);
 
         if(U_SUCCESS(*pErrorCode)) {
             return headerSize+offset+(uint32_t)itemLength;
@@ -475,7 +475,7 @@ udata_swapPackage(const char *inFilename, const char *outFilename,
         /* swap the package names into the output charset */
         if(ds->outCharset!=U_CHARSET_FAMILY) {
             UDataSwapper *ds2;
-            ds2=udata_openSwapper(true, U_CHARSET_FAMILY, true, ds->outCharset, pErrorCode);
+            ds2=udata_openSwapper(TRUE, U_CHARSET_FAMILY, TRUE, ds->outCharset, pErrorCode);
             ds2->swapInvChars(ds2, inPkgName, inPkgNameLength, inPkgName, pErrorCode);
             ds2->swapInvChars(ds2, outPkgName, outPkgNameLength, outPkgName, pErrorCode);
             udata_closeSwapper(ds2);
@@ -522,7 +522,7 @@ udata_swapPackage(const char *inFilename, const char *outFilename,
         if(inData==outData) {
             /* +15: prepare for extra padding of a newly-last item */
             table=(ToCEntry *)uprv_malloc(itemCount*sizeof(ToCEntry)+length+DEFAULT_PADDING_LENGTH);
-            if(table!=nullptr) {
+            if(table!=NULL) {
                 outBytes=(uint8_t *)(table+itemCount);
 
                 /* copy the item count and the swapped strings */
@@ -532,7 +532,7 @@ udata_swapPackage(const char *inFilename, const char *outFilename,
         } else {
             table=(ToCEntry *)uprv_malloc(itemCount*sizeof(ToCEntry));
         }
-        if(table==nullptr) {
+        if(table==NULL) {
             udata_printError(ds, "udata_swapPackage(): out of memory allocating %d bytes\n",
                              inData==outData ?
                                  itemCount*sizeof(ToCEntry)+length+DEFAULT_PADDING_LENGTH :
@@ -581,7 +581,7 @@ udata_swapPackage(const char *inFilename, const char *outFilename,
             offset=table[0].inOffset;
             /* sort the TOC entries */
             uprv_sortArray(table, (int32_t)itemCount, (int32_t)sizeof(ToCEntry),
-                           compareToCEntries, outBytes, false, pErrorCode);
+                           compareToCEntries, outBytes, FALSE, pErrorCode);
 
             /*
              * Note: Before sorting, the inOffset values were in order.

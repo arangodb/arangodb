@@ -39,34 +39,34 @@ public:
     static void cleanUp() {
         if (fgTestDataPath) {
             free(fgTestDataPath);
-            fgTestDataPath = nullptr;
+            fgTestDataPath = NULL;
         }
     }
-    virtual void errln( const UnicodeString &message ) override {
+    virtual void errln( const UnicodeString &message ) {
         char buffer[4000];
         message.extract(0, message.length(), buffer, sizeof(buffer));
-        buffer[3999] = 0; /* NUL terminate */
+        buffer[3999] = 0; /* NULL terminate */
         log_err(buffer);
     }
 
-    virtual void logln( const UnicodeString &message ) override {
+    virtual void logln( const UnicodeString &message ) {
         char buffer[4000];
         message.extract(0, message.length(), buffer, sizeof(buffer));
-        buffer[3999] = 0; /* NUL terminate */
+        buffer[3999] = 0; /* NULL terminate */
         log_info(buffer);
     }
 
-    virtual void dataerrln( const UnicodeString &message ) override {
+    virtual void dataerrln( const UnicodeString &message ) {
         char buffer[4000];
         message.extract(0, message.length(), buffer, sizeof(buffer));
-        buffer[3999] = 0; /* NUL terminate */
+        buffer[3999] = 0; /* NULL terminate */
         log_data_err(buffer);
     }
 
-    static const char * pathToDataDirectory()
+    static const char * pathToDataDirectory(void)
     {
 
-        if(fgDataDir != nullptr) {
+        if(fgDataDir != NULL) {
             return fgDataDir;
         }
 
@@ -98,12 +98,12 @@ public:
             /*   Only Windows should end up here, so looking for '\' is safe.   */
             for (i=1; i<=3; i++) {
                 pBackSlash = strrchr(p, U_FILE_SEP_CHAR);
-                if (pBackSlash != nullptr) {
+                if (pBackSlash != NULL) {
                     *pBackSlash = 0;        /* Truncate the string at the '\'   */
                 }
             }
 
-            if (pBackSlash != nullptr) {
+            if (pBackSlash != NULL) {
                 /* We found and truncated three names from the path.
                 *  Now append "source\data" and set the environment
                 */
@@ -129,10 +129,10 @@ public:
     }
 
     static const char* loadTestData(UErrorCode& err){
-        if( fgTestDataPath == nullptr){
-            const char*      directory=nullptr;
-            UResourceBundle* test =nullptr;
-            char* tdpath=nullptr;
+        if( fgTestDataPath == NULL){
+            const char*      directory=NULL;
+            UResourceBundle* test =NULL;
+            char* tdpath=NULL;
             const char* tdrelativepath;
 
 #if defined (U_TOPBUILDDIR)
@@ -166,17 +166,17 @@ public:
         return fgTestDataPath;
     }
 
-    virtual const char* getTestDataPath(UErrorCode& err) override {
+    virtual const char* getTestDataPath(UErrorCode& err) {
         return loadTestData(err);
     }
 };
 
-const char* DataDrivenLogger::fgDataDir = nullptr;
-char* DataDrivenLogger::fgTestDataPath = nullptr;
+const char* DataDrivenLogger::fgDataDir = NULL;
+char* DataDrivenLogger::fgTestDataPath = NULL;
 
 #if !UCONFIG_NO_FORMATTING && !UCONFIG_NO_FILE_IO
 static int64_t
-uto64(const char16_t  *buffer)
+uto64(const UChar     *buffer)
 {
     uint64_t result = 0;
     /* iterate through buffer */
@@ -184,7 +184,7 @@ uto64(const char16_t  *buffer)
         /* read the next digit */
         result *= 16u;
         if (!u_isxdigit(*buffer)) {
-            log_err("\\u%04X is not a valid hex digit for this test\n", (char16_t)*buffer);
+            log_err("\\u%04X is not a valid hex digit for this test\n", (UChar)*buffer);
         }
         result += *buffer - 0x0030 - (*buffer >= 0x0041 ? (*buffer >= 0x0061 ? 39 : 7) : 0);
         buffer++;
@@ -194,7 +194,7 @@ uto64(const char16_t  *buffer)
 #endif
 
 U_CDECL_BEGIN
-static void U_CALLCONV DataDrivenPrintf()
+static void U_CALLCONV DataDrivenPrintf(void)
 {
 #if !UCONFIG_NO_FORMATTING && !UCONFIG_NO_FILE_IO
     UErrorCode errorCode;
@@ -202,14 +202,14 @@ static void U_CALLCONV DataDrivenPrintf()
     TestData *testData;
     const DataMap *testCase;
     DataDrivenLogger logger;
-    char16_t uBuffer[512];
+    UChar uBuffer[512];
     char cBuffer[512];
     char cFormat[sizeof(cBuffer)];
     char cExpected[sizeof(cBuffer)];
     UnicodeString tempStr;
-    char16_t format[512];
-    char16_t expectedResult[512];
-    char16_t argument[512];
+    UChar format[512];
+    UChar expectedResult[512];
+    UChar argument[512];
     int32_t i;
     int8_t i8;
     int16_t i16;
@@ -287,7 +287,7 @@ static void U_CALLCONV DataDrivenPrintf()
                     uBufferLenReturned = u_sprintf_u(uBuffer, format, cBuffer);
                     uFileBufferLenReturned = u_fprintf_u(testFile.getAlias(), format, cBuffer);
                     break;
-                case 0x53:  // 'S' char16_t *
+                case 0x53:  // 'S' UChar *
                     uBufferLenReturned = u_sprintf_u(uBuffer, format, argument);
                     uFileBufferLenReturned = u_fprintf_u(testFile.getAlias(), format, argument);
                     break;
@@ -360,44 +360,7 @@ static void U_CALLCONV DataDrivenPrintf()
 U_CDECL_END
 
 U_CDECL_BEGIN
-static void U_CALLCONV ScanfMultipleIntegers()
-{
-#if !UCONFIG_NO_FORMATTING && !UCONFIG_NO_FILE_IO
-    UnicodeString input = UNICODE_STRING("[1.2.3]", 7);
-    UnicodeString fmt = UNICODE_STRING("[%d.%d.%d]", 10);
-    DataDrivenLogger logger;
-
-    const int32_t expectedFirst = 1;
-    const int32_t expectedSecond = 2;
-    const int32_t expectedThird = 3;
-    const int32_t expectedResult = 3;
-    int32_t first = 0;
-    int32_t second = 0;
-    int32_t third = 0;
-    int32_t result = u_sscanf_u(input.getBuffer(), fmt.getBuffer(), &first, &second, &third);
-
-    if(first != expectedFirst){
-        log_err("error in scanfmultipleintegers test 'first' Got: %d Exp: %d\n", 
-                first, expectedFirst);
-    }
-    if(second != expectedSecond){
-        log_err("error in scanfmultipleintegers test 'second' Got: %d Exp: %d\n",
-                second, expectedSecond);
-    }
-    if(third != expectedThird){
-        log_err("error in scanfmultipleintegers test 'third' Got: %d Exp: %d\n",
-                third, expectedThird);
-    }
-    if(result != expectedResult){
-        log_err("error in scanfmultipleintegers test 'result'  Got: %d Exp: %d\n",
-                result, expectedResult);
-    }
-#endif
-}
-U_CDECL_END
-
-U_CDECL_BEGIN
-static void U_CALLCONV DataDrivenScanf()
+static void U_CALLCONV DataDrivenScanf(void)
 {
 #if !UCONFIG_NO_FORMATTING && !UCONFIG_NO_FILE_IO
     UErrorCode errorCode;
@@ -405,13 +368,13 @@ static void U_CALLCONV DataDrivenScanf()
     TestData *testData;
     const DataMap *testCase;
     DataDrivenLogger logger;
-    char16_t uBuffer[512];
+    UChar uBuffer[512];
     char cBuffer[512];
     char cExpected[sizeof(cBuffer)];
     UnicodeString tempStr;
-    char16_t format[512];
-    char16_t expectedResult[512];
-    char16_t argument[512];
+    UChar format[512];
+    UChar expectedResult[512];
+    UChar argument[512];
     int32_t i;
     int8_t i8, expected8;
     int16_t i16, expected16;
@@ -520,13 +483,13 @@ static void U_CALLCONV DataDrivenScanf()
                         log_err("error in scanf char * string. Got \"%s\" Expected \"%s\". Test case = %d\n", cBuffer, cExpected, i);
                     }
                     break;
-                case 0x53:  // 'S' char16_t *
+                case 0x53:  // 'S' UChar *
                     uBufferLenReturned = u_sscanf_u(argument, format, uBuffer);
                     //uFileBufferLenReturned = u_fscanf_u(testFile, format, argument);
                     if (u_strcmp(uBuffer, expectedResult) != 0) {
                         u_austrcpy(cExpected, format);
                         u_austrcpy(cBuffer, uBuffer);
-                        log_err("error in scanf char16_t * string %s Got: \"%s\". Test case = %d\n", cExpected, cBuffer, i);
+                        log_err("error in scanf UChar * string %s Got: \"%s\". Test case = %d\n", cExpected, cBuffer, i);
                     }
                     break;
                 default:
@@ -599,7 +562,7 @@ static void U_CALLCONV DataDrivenScanf()
 U_CDECL_END
 
 U_CDECL_BEGIN
-static void U_CALLCONV DataDrivenPrintfPrecision()
+static void U_CALLCONV DataDrivenPrintfPrecision(void)
 {
 #if !UCONFIG_NO_FORMATTING && !UCONFIG_NO_FILE_IO
     UErrorCode errorCode;
@@ -607,14 +570,14 @@ static void U_CALLCONV DataDrivenPrintfPrecision()
     TestData *testData;
     const DataMap *testCase;
     DataDrivenLogger logger;
-    char16_t uBuffer[512];
+    UChar uBuffer[512];
     char cBuffer[512];
     char cFormat[sizeof(cBuffer)];
     char cExpected[sizeof(cBuffer)];
     UnicodeString tempStr;
-    char16_t format[512];
-    char16_t expectedResult[512];
-    char16_t argument[512];
+    UChar format[512];
+    UChar expectedResult[512];
+    UChar argument[512];
     int32_t precision;
     int32_t i;
     int8_t i8;
@@ -678,7 +641,7 @@ static void U_CALLCONV DataDrivenPrintfPrecision()
                     u_austrncpy(cBuffer, uBuffer, sizeof(cBuffer));
                     uBufferLenReturned = u_sprintf_u(uBuffer, format, precision, cBuffer);
                     break;
-                case 0x53:  // 'S' char16_t *
+                case 0x53:  // 'S' UChar *
                     uBufferLenReturned = u_sprintf_u(uBuffer, format, precision, argument);
                     break;
                 default:
@@ -734,7 +697,6 @@ static void addAllTests(TestNode** root) {
     addTest(root, &DataDrivenPrintf, "datadriv/DataDrivenPrintf");
     addTest(root, &DataDrivenPrintfPrecision, "datadriv/DataDrivenPrintfPrecision");
     addTest(root, &DataDrivenScanf, "datadriv/DataDrivenScanf");
-    addTest(root, &ScanfMultipleIntegers, "ScanfMultipleIntegers");
 #endif
     addStreamTests(root);
 }
@@ -742,7 +704,7 @@ static void addAllTests(TestNode** root) {
 /* returns the path to icu/source/data/out */
 static const char *ctest_dataOutDir()
 {
-    static const char *dataOutDir = nullptr;
+    static const char *dataOutDir = NULL;
 
     if(dataOutDir) {
         return dataOutDir;
@@ -776,12 +738,12 @@ static const char *ctest_dataOutDir()
         /*   Only Windows should end up here, so looking for '\' is safe.   */
         for (i=1; i<=3; i++) {
             pBackSlash = strrchr(p, U_FILE_SEP_CHAR);
-            if (pBackSlash != nullptr) {
+            if (pBackSlash != NULL) {
                 *pBackSlash = 0;        /* Truncate the string at the '\'   */
             }
         }
 
-        if (pBackSlash != nullptr) {
+        if (pBackSlash != NULL) {
             /* We found and truncated three names from the path.
              *  Now append "source\data" and set the environment
              */
@@ -819,7 +781,7 @@ static void ctest_setICU_DATA() {
     /* No location for the data dir was identifiable.
      *   Add other fallbacks for the test data location here if the need arises
      */
-    if (getenv("ICU_DATA") == nullptr) {
+    if (getenv("ICU_DATA") == NULL) {
         /* If ICU_DATA isn't set, set it to the usual location */
         u_setDataDirectory(ctest_dataOutDir());
     }
@@ -828,7 +790,7 @@ static void ctest_setICU_DATA() {
 U_CDECL_BEGIN
 /*
  * Note: this assumes that context is a pointer to STANDARD_TEST_FILE. It would be
- * cleaner to define an actual context with a string pointer in it and set STANDARD_TEST_FILE
+ * cleaner to define an acutal context with a string pointer in it and set STANDARD_TEST_FILE
  * after the call to initArgs()...
  */
 static int U_CALLCONV argHandler(int arg, int /*argc*/, const char * const argv[], void *context)
@@ -847,7 +809,7 @@ U_CDECL_END
 int main(int argc, char* argv[])
 {
     int32_t nerrors = 0;
-    TestNode *root = nullptr;
+    TestNode *root = NULL;
     UErrorCode errorCode = U_ZERO_ERROR;
     UDate startTime, endTime;
     int32_t diffTime;
@@ -891,20 +853,15 @@ int main(int argc, char* argv[])
     nerrors = runTestRequest(root, argc, argv);
 
 #if 1
-    static const char* filenamesToRemove[] = { STANDARD_TEST_FILE, MEDIUMNAME_TEST_FILE, LONGNAME_TEST_FILE, nullptr };
-    const char** filenamesToRemovePtr = filenamesToRemove;
-    const char* filenameToRemove;
-    while ((filenameToRemove = *filenamesToRemovePtr++) != nullptr)
     {
-
-        FILE* fileToRemove = fopen(filenameToRemove, "r");
+        FILE* fileToRemove = fopen(STANDARD_TEST_FILE, "r");
         /* This should delete any temporary files. */
         if (fileToRemove) {
             fclose(fileToRemove);
-            log_verbose("Deleting: %s\n", filenameToRemove);
-            if (remove(filenameToRemove) != 0) {
+            log_verbose("Deleting: %s\n", STANDARD_TEST_FILE);
+            if (remove(STANDARD_TEST_FILE) != 0) {
                 /* Maybe someone didn't close the file correctly. */
-                fprintf(stderr, "FAIL: Could not delete %s\n", filenameToRemove);
+                fprintf(stderr, "FAIL: Could not delete %s\n", STANDARD_TEST_FILE);
                 nerrors += 1;
             }
         }

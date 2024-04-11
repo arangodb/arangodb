@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 hr_BA{
+    Version{"2.1.47.71"}
     calendar{
         gregorian{
             DateTimePatterns{
@@ -14,20 +14,10 @@ hr_BA{
                 "d. MMM y.",
                 "d. M. yy.",
                 "{1} {0}",
+                "{1} 'u' {0}",
+                "{1} 'u' {0}",
                 "{1} {0}",
                 "{1} {0}",
-                "{1} {0}",
-                "{1} {0}",
-            }
-            DateTimeSkeletons{
-                "HHmmsszzzz",
-                "HHmmssz",
-                "HHmmss",
-                "HHmm",
-                "yMMMMEEEEd",
-                "yMMMMd",
-                "yMMMd",
-                "yyMd",
             }
             dayNames{
                 stand-alone{

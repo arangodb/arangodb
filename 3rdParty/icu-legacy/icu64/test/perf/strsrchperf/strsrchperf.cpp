@@ -1,6 +1,6 @@
 /************************************************************************
  * © 2016 and later: Unicode, Inc. and others.
- * License & terms of use: http://www.unicode.org/copyright.html
+ * License & terms of use: http://www.unicode.org/copyright.html#License
  *
  *************************************************************************
  ********************************************************************
@@ -19,8 +19,8 @@
 StringSearchPerformanceTest::StringSearchPerformanceTest(int32_t argc, const char *argv[], UErrorCode &status)
 :UPerfTest(argc,argv,status){
     int32_t start, end;
-    srch = nullptr;
-    pttrn = nullptr;
+    srch = NULL;
+    pttrn = NULL;
     if(status== U_ILLEGAL_ARGUMENT_ERROR || line_mode){
        fprintf(stderr,gUsageString, "strsrchperf");
        return;
@@ -38,7 +38,7 @@ StringSearchPerformanceTest::StringSearchPerformanceTest(int32_t argc, const cha
     start = ubrk_preceding(brk, 1000);
     end = ubrk_following(brk, start);
     pttrnLen = end - start;
-    char16_t* temp = (char16_t*)malloc(sizeof(char16_t)*(pttrnLen));
+    UChar* temp = (UChar*)malloc(sizeof(UChar)*(pttrnLen));
     for (int i = 0; i < pttrnLen; i++) {
         temp[i] = src[start++];
     }
@@ -49,7 +49,7 @@ StringSearchPerformanceTest::StringSearchPerformanceTest(int32_t argc, const cha
     start = 0;
 
     for(end = start; ; end += 1) {
-        char16_t ch = src[end];
+        UChar ch = src[end];
 
         if (ch == 0x000A || ch == 0x000D || ch == 0x2028) {
             break;
@@ -57,7 +57,7 @@ StringSearchPerformanceTest::StringSearchPerformanceTest(int32_t argc, const cha
     }
 
     pttrnLen = end - start;
-    char16_t* temp = (char16_t*)malloc(sizeof(char16_t)*(pttrnLen));
+    UChar* temp = (UChar*)malloc(sizeof(UChar)*(pttrnLen));
     for (int i = 0; i < pttrnLen; i++) {
         temp[i] = src[start++];
     }
@@ -65,7 +65,7 @@ StringSearchPerformanceTest::StringSearchPerformanceTest(int32_t argc, const cha
 #endif
     
     /* Create the StringSearch object to be use in performance test. */
-    srch = usearch_open(pttrn, pttrnLen, src, srcLen, locale, nullptr, &status);
+    srch = usearch_open(pttrn, pttrnLen, src, srcLen, locale, NULL, &status);
 
     if(U_FAILURE(status)){
         fprintf(stderr, "FAILED to create UPerfTest object. Error: %s\n", u_errorName(status));
@@ -75,10 +75,10 @@ StringSearchPerformanceTest::StringSearchPerformanceTest(int32_t argc, const cha
 }
 
 StringSearchPerformanceTest::~StringSearchPerformanceTest() {
-    if (pttrn != nullptr) {
+    if (pttrn != NULL) {
         free(pttrn);
     }
-    if (srch != nullptr) {
+    if (srch != NULL) {
         usearch_close(srch);
     }
 }
@@ -90,9 +90,9 @@ UPerfFunction* StringSearchPerformanceTest::runIndexedTest(int32_t index, UBool 
 
         default: 
             name = ""; 
-            return nullptr;
+            return NULL;
     }
-    return nullptr;
+    return NULL;
 }
 
 UPerfFunction* StringSearchPerformanceTest::Test_ICU_Forward_Search(){
@@ -111,7 +111,7 @@ int main (int argc, const char* argv[]) {
     if(U_FAILURE(status)){
         return status;
     }
-    if(test.run()==false){
+    if(test.run()==FALSE){
         fprintf(stderr,"FAILED: Tests could not be run please check the arguments.\n");
         return -1;
     }

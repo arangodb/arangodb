@@ -1,6 +1,6 @@
 /***********************************************************************
  * © 2016 and later: Unicode, Inc. and others.
- * License & terms of use: http://www.unicode.org/copyright.html
+ * License & terms of use: http://www.unicode.org/copyright.html#License
  ***********************************************************************
  ***********************************************************************
  * COPYRIGHT:
@@ -10,10 +10,6 @@
 
 #include "unicode/translit.h"
 #include "unicode/normlzr.h"
-
-using icu::Normalizer;
-using icu::Replaceable;
-using icu::Transliterator;
 
 class UnaccentTransliterator : public Transliterator {
     
@@ -29,9 +25,6 @@ class UnaccentTransliterator : public Transliterator {
      */
     virtual ~UnaccentTransliterator();
 
-    virtual UClassID getDynamicClassID() const override;
-    U_I18N_API static UClassID U_EXPORT2 getStaticClassID();
-
  protected:
 
     /**
@@ -46,7 +39,7 @@ class UnaccentTransliterator : public Transliterator {
     /**
      * Unaccent a single character using normalizer.
      */
-    char16_t unaccent(char16_t c) const;
+    UChar unaccent(UChar c) const;
 
     Normalizer normalizer;
 };

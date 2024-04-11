@@ -27,8 +27,7 @@ TARGET = $(BINDIR)/$(TARGET_STUB_NAME)$(EXEEXT)
 CPPFLAGS += -I$(srcdir) -I$(top_srcdir)/common -I$(srcdir)/../toolutil
 LIBS = $(LIBICUTOOLUTIL) $(LIBICUI18N) $(LIBICUUC) $(DEFAULT_LIBS) $(LIB_M)
 
-SOURCES = $(shell cat $(srcdir)/sources.txt)
-OBJECTS = $(SOURCES:.cpp=.o)
+OBJECTS = gennorm2.o n2builder.o extradata.o norms.o
 
 DEPS = $(OBJECTS:.o=.d)
 

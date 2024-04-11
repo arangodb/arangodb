@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 hi{
     RBNFRules{
         OrdinalRules{
@@ -177,4 +176,5 @@ hi{
             "7: =%spellout-cardinal=\u0935\u0940;",
         }
     }
+    Version{"2.1.33.36"}
 }

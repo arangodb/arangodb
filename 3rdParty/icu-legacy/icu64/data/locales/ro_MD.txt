@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ro_MD{
+    Version{"2.1.48.43"}
     calendar{
         gregorian{
             dayNames{
@@ -15,6 +15,15 @@ ro_MD{
                         "Vin",
                         "Sâm",
                     }
+                    narrow{
+                        "D",
+                        "L",
+                        "Ma",
+                        "Mi",
+                        "J",
+                        "V",
+                        "S",
+                    }
                     short{
                         "Du",
                         "Lu",
@@ -26,6 +35,15 @@ ro_MD{
                     }
                 }
                 stand-alone{
+                    abbreviated{
+                        "Dum",
+                        "Lun",
+                        "Mar",
+                        "Mie",
+                        "Joi",
+                        "Vin",
+                        "Sâm",
+                    }
                     narrow{
                         "D",
                         "L",
@@ -34,6 +52,15 @@ ro_MD{
                         "J",
                         "V",
                         "S",
+                    }
+                    short{
+                        "Du",
+                        "Lu",
+                        "Ma",
+                        "Mi",
+                        "Jo",
+                        "Vi",
+                        "Sâ",
                     }
                 }
             }

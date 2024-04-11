@@ -29,11 +29,11 @@ class RBBIAPITest: public IntlTest {
 public:
    
     
-    void runIndexedTest( int32_t index, UBool exec, const char* &name, char* par = nullptr ) override;
+    void runIndexedTest( int32_t index, UBool exec, const char* &name, char* par = NULL );
     /**
      * Tests Constructor behaviour of RuleBasedBreakIterator
      **/
-   // void TestConstruction();   
+   // void TestConstruction(void);   
     /**
      * Tests clone() and equals() methods of RuleBasedBreakIterator         
      **/
@@ -53,23 +53,23 @@ public:
      /**
       * Testing the iteration methods of RuleBasedBreakIterator
       **/
-    void TestIteration();
+    void TestIteration(void);
 
-    void TestFilteredBreakIteratorBuilder();
+    void TestFilteredBreakIteratorBuilder(void);
 
     /**
      * Tests creating RuleBasedBreakIterator from rules strings.
      **/
-    void TestBuilder();
+    void TestBuilder(void);
 
-    void TestRoundtripRules();
+    void TestRoundtripRules(void);
 
     void RoundtripRule(const char *dataFile);
 
     /**
      * Test getting and using binary (compiled) rules.
      **/
-    void TestGetBinaryRules();
+    void TestGetBinaryRules(void);
 
     /**
      * Tests grouping effect of 'single quotes' in rules.
@@ -83,7 +83,6 @@ public:
     void TestRuleStatusVec();
 
     void TestBug2190();
-    void TestBug22580();
 
     void TestBoilerPlate();
 
@@ -97,7 +96,7 @@ public:
     /* Internal subroutine used by TestIsBoundary() */ 
     void doBoundaryTest(BreakIterator& bi, UnicodeString& text, int32_t *boundaries);
 
-    /*Internal subroutine used for comparison of expected and acquired results */
+    /*Internal subroutine used for comparision of expected and acquired results */
     void doTest(UnicodeString& testString, int32_t start, int32_t gotoffset, int32_t expectedOffset, const char* expected);
 
 

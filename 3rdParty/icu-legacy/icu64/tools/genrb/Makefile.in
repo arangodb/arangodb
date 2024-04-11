@@ -37,10 +37,9 @@ CPPFLAGS += -I$(srcdir) -I$(top_srcdir)/common -I$(top_srcdir)/i18n -I$(srcdir)/
 CPPFLAGS += -DUNISTR_FROM_CHAR_EXPLICIT=explicit -DUNISTR_FROM_STRING_EXPLICIT=explicit
 LIBS = $(LIBICUTOOLUTIL) $(LIBICUI18N) $(LIBICUUC) $(DEFAULT_LIBS) $(LIB_M)
 
-SOURCES = $(shell cat $(srcdir)/sources.txt)
-OBJECTS = $(patsubst %.cpp,%.o,$(patsubst %.c,%.o, $(SOURCES)))
-DERB_SOURCES = derb.cpp
-DERB_OBJ = $(DERB_SOURCES:.cpp=.o)
+OBJECTS = errmsg.o genrb.o parse.o read.o reslist.o ustr.o rbutil.o \
+wrtjava.o rle.o wrtxml.o prscmnts.o filterrb.o
+DERB_OBJ = derb.o
 
 DEPS = $(OBJECTS:.o=.d)
 DERB_DEPS = $(DERB_OBJ:.o=.d)

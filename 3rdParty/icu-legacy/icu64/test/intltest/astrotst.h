@@ -22,25 +22,28 @@
 class AstroTest: public CalendarTimeZoneTest {
 public:
     // IntlTest override
-    void runIndexedTest( int32_t index, UBool exec, const char* &name, char* par ) override;
+    void runIndexedTest( int32_t index, UBool exec, const char* &name, char* par );
 public:
     AstroTest();
 
-    void TestSolarLongitude();
+    void TestSolarLongitude(void);
 
-    void TestLunarPosition();
+    void TestLunarPosition(void);
 
-    void TestCoordinates();
+    void TestCoordinates(void);
 
-    void TestCoverage();
+    void TestCoverage(void);
 
-    void TestBasics();
+    void TestSunriseTimes(void);
+
+    void TestBasics(void);
     
-    void TestMoonAge();
+    void TestMoonAge(void);
  private:
-    void init(UErrorCode&);
-    void close(UErrorCode&);
+    void initAstro(UErrorCode&);
+    void closeAstro(UErrorCode&);
     
+    CalendarAstronomer *astro;
     Calendar *gc;
     
 };

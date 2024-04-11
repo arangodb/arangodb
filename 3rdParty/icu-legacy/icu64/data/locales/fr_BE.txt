@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 fr_BE{
+    Version{"2.1.47.70"}
     calendar{
         generic{
             DateTimePatterns{
@@ -14,20 +14,10 @@ fr_BE{
                 "d MMM y G",
                 "d/MM/yy GGGGG",
                 "{1} {0}",
+                "{1} 'à' {0}",
+                "{1} 'à' {0}",
                 "{1} {0}",
                 "{1} {0}",
-                "{1} {0}",
-                "{1} {0}",
-            }
-            DateTimeSkeletons{
-                "Hmmsszzzz",
-                "HHmmssz",
-                "HHmmss",
-                "HHmm",
-                "GyMMMMEEEEd",
-                "GyMMMMd",
-                "GyMMMd",
-                "GGGGGyyMMd",
             }
         }
         gregorian{
@@ -40,21 +30,11 @@ fr_BE{
                 "d MMMM y",
                 "d MMM y",
                 "d/MM/yy",
-                "{1}, {0}",
-                "{1}, {0}",
-                "{1}, {0}",
-                "{1}, {0}",
+                "{1} 'à' {0}",
+                "{1} 'à' {0}",
+                "{1} 'à' {0}",
+                "{1} 'à' {0}",
                 "{1} {0}",
-            }
-            DateTimeSkeletons{
-                "Hmmsszzzz",
-                "HHmmssz",
-                "HHmmss",
-                "HHmm",
-                "yMMMMEEEEd",
-                "yMMMMd",
-                "yMMMd",
-                "yyMMd",
             }
         }
     }

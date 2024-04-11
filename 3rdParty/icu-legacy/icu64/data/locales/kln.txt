@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 kln{
     AuxExemplarCharacters{"[f q v x z]"}
     ExemplarCharacters{"[a b c d e g h i j k l m n o p r s t u w y]"}
@@ -13,6 +12,7 @@ kln{
             }
         }
     }
+    Version{"2.1.47.82"}
     calendar{
         generic{
             DateTimePatterns{
@@ -31,11 +31,19 @@ kln{
                 "{1} {0}",
             }
             availableFormats{
+                Hm{"HH:mm"}
+                Hms{"HH:mm:ss"}
+                M{"L"}
                 MEd{"E, M/d"}
+                MMM{"LLL"}
                 MMMEd{"E, MMM d"}
                 MMMMEd{"E, MMMM d"}
+                MMMMd{"MMMM d"}
+                MMMd{"MMM d"}
                 Md{"M/d"}
-                hm{"h:mm a"}
+                d{"d"}
+                hm{"h:mm a"}
+                ms{"mm:ss"}
                 y{"y"}
                 yM{"M/y"}
                 yMEd{"E, M/d/y"}
@@ -71,11 +79,20 @@ kln{
                 "{1} {0}",
             }
             availableFormats{
+                Hm{"HH:mm"}
+                Hms{"HH:mm:ss"}
+                M{"L"}
                 MEd{"E, M/d"}
+                MMM{"LLL"}
                 MMMEd{"E, MMM d"}
                 MMMMEd{"E, MMMM d"}
+                MMMMd{"MMMM d"}
+                MMMd{"MMM d"}
                 Md{"M/d"}
-                hm{"h:mm a"}
+                d{"d"}
+                hm{"h:mm a"}
+                ms{"mm:ss"}
+                y{"y"}
                 yM{"M/y"}
                 yMEd{"E, M/d/y"}
                 yMMM{"MMM y"}
@@ -192,6 +209,12 @@ kln{
                 }
             }
         }
+    }
+    delimiters{
+        alternateQuotationEnd{"’"}
+        alternateQuotationStart{"‘"}
+        quotationEnd{"”"}
+        quotationStart{"“"}
     }
     fields{
         day{

@@ -64,9 +64,6 @@
     <ClCompile Include="itrbbi.cpp">
       <Filter>break iteration</Filter>
     </ClCompile>
-    <ClCompile Include="lstmbetst.cpp">
-      <Filter>break iteration</Filter>
-    </ClCompile>
     <ClCompile Include="rbbiapts.cpp">
       <Filter>break iteration</Filter>
     </ClCompile>
@@ -220,9 +217,6 @@
     <ClCompile Include="fldset.cpp">
       <Filter>formatting</Filter>
     </ClCompile>
-    <ClCompile Include="formatted_string_builder_test.cpp">
-      <Filter>formatting</Filter>
-    </ClCompile>
     <ClCompile Include="genderinfotest.cpp">
       <Filter>formatting</Filter>
     </ClCompile>
@@ -280,13 +274,13 @@
     <ClCompile Include="numbertest_patternstring.cpp">
       <Filter>formatting</Filter>
     </ClCompile>
-    <ClCompile Include="string_segment_test.cpp">
+    <ClCompile Include="numbertest_stringbuilder.cpp">
+      <Filter>formatting</Filter>
+    </ClCompile>
+    <ClCompile Include="numbertest_stringsegment.cpp">
       <Filter>formatting</Filter>
     </ClCompile>
     <ClCompile Include="numbertest_parse.cpp">
-      <Filter>formatting</Filter>
-    </ClCompile>
-    <ClCompile Include="displayoptions_test.cpp">
       <Filter>formatting</Filter>
     </ClCompile>
     <ClCompile Include="numbertest_doubleconversion.cpp">
@@ -296,12 +290,6 @@
       <Filter>formatting</Filter>
     </ClCompile>
     <ClCompile Include="numbertest_range.cpp">
-      <Filter>formatting</Filter>
-    </ClCompile>
-    <ClCompile Include="numbertest_simple.cpp">
-      <Filter>formatting</Filter>
-    </ClCompile>
-    <ClCompile Include="numbertest_permutation.cpp">
       <Filter>formatting</Filter>
     </ClCompile>
     <ClCompile Include="numfmtst.cpp">
@@ -552,31 +540,9 @@
     </ClCompile>
     <ClCompile Include="formattedvaluetest.cpp">
       <Filter>formatting</Filter>
-    </ClCompile>
     <ClCompile Include="localebuildertest.cpp">
       <Filter>locales &amp; resources</Filter>
     </ClCompile>
-    <ClCompile Include="localematchertest.cpp">
-      <Filter>locales &amp; resources</Filter>
-    </ClCompile>
-    <ClCompile Include="units_data_test.cpp">
-      <Filter>formatting</Filter>
-    </ClCompile>
-    <ClCompile Include="units_router_test.cpp">
-      <Filter>formatting</Filter>
-    </ClCompile>
-    <ClCompile Include="units_test.cpp">
-      <Filter>formatting</Filter>
-    </ClCompile>
-    <ClCompile Include="uchar_type_build_test.cpp">
-      <Filter>configuration</Filter>
-    </ClCompile>
-    <ClCompile Include="messageformat2test_builtin.cpp" />
-    <ClCompile Include="messageformat2test.cpp" />
-    <ClCompile Include="messageformat2test_custom.cpp" />
-    <ClCompile Include="messageformat2test_features.cpp" />
-    <ClCompile Include="messageformat2test_fromjson.cpp" />
-    <ClCompile Include="messageformat2test_icu.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="itrbbi.h">

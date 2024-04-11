@@ -21,12 +21,12 @@
 #include "umutex.h"
 
 // see LocaleUtility::getAvailableLocaleNames
-static icu::UInitOnce   LocaleUtilityInitOnce {};
-static icu::Hashtable * LocaleUtility_cache = nullptr;
+static icu::UInitOnce   LocaleUtilityInitOnce = U_INITONCE_INITIALIZER;
+static icu::Hashtable * LocaleUtility_cache = NULL;
 
-#define UNDERSCORE_CHAR ((char16_t)0x005f)
-#define AT_SIGN_CHAR    ((char16_t)64)
-#define PERIOD_CHAR     ((char16_t)46)
+#define UNDERSCORE_CHAR ((UChar)0x005f)
+#define AT_SIGN_CHAR    ((UChar)64)
+#define PERIOD_CHAR     ((UChar)46)
 
 /*
  ******************************************************************
@@ -36,26 +36,26 @@ static icu::Hashtable * LocaleUtility_cache = nullptr;
  * Release all static memory held by Locale Utility.  
  */
 U_CDECL_BEGIN
-static UBool U_CALLCONV service_cleanup() {
+static UBool U_CALLCONV service_cleanup(void) {
     if (LocaleUtility_cache) {
         delete LocaleUtility_cache;
-        LocaleUtility_cache = nullptr;
+        LocaleUtility_cache = NULL;
     }
-    return true;
+    return TRUE;
 }
 
 
 static void U_CALLCONV locale_utility_init(UErrorCode &status) {
     using namespace icu;
-    U_ASSERT(LocaleUtility_cache == nullptr);
+    U_ASSERT(LocaleUtility_cache == NULL);
     ucln_common_registerCleanup(UCLN_COMMON_SERVICE, service_cleanup);
     LocaleUtility_cache = new Hashtable(status);
     if (U_FAILURE(status)) {
         delete LocaleUtility_cache;
-        LocaleUtility_cache = nullptr;
+        LocaleUtility_cache = NULL;
         return;
     }
-    if (LocaleUtility_cache == nullptr) {
+    if (LocaleUtility_cache == NULL) {
         status = U_MEMORY_ALLOCATION_ERROR;
         return;
     }
@@ -69,7 +69,7 @@ U_NAMESPACE_BEGIN
 UnicodeString&
 LocaleUtility::canonicalLocaleString(const UnicodeString* id, UnicodeString& result)
 {
-  if (id == nullptr) {
+  if (id == NULL) {
     result.setToBogus();
   } else {
     // Fix case only (no other changes) up to the first '@' or '.' or
@@ -94,14 +94,14 @@ LocaleUtility::canonicalLocaleString(const UnicodeString* id, UnicodeString& res
       n = end;
     }
     for (; i < n; ++i) {
-      char16_t c = result.charAt(i);
+      UChar c = result.charAt(i);
       if (c >= 0x0041 && c <= 0x005a) {
         c += 0x20;
         result.setCharAt(i, c);
       }
     }
     for (n = end; i < n; ++i) {
-      char16_t c = result.charAt(i);
+      UChar c = result.charAt(i);
       if (c >= 0x0061 && c <= 0x007a) {
         c -= 0x20;
         result.setCharAt(i, c);
@@ -112,7 +112,7 @@ LocaleUtility::canonicalLocaleString(const UnicodeString* id, UnicodeString& res
 
 #if 0
     // This code does a proper full level 2 canonicalization of id.
-    // It's nasty to go from char16_t to char to char to char16_t -- but
+    // It's nasty to go from UChar to char to char to UChar -- but
     // that's what you have to do to use the uloc_canonicalize
     // function on UnicodeStrings.
 
@@ -145,7 +145,9 @@ LocaleUtility::canonicalLocaleString(const UnicodeString* id, UnicodeString& res
 Locale&
 LocaleUtility::initLocaleFromName(const UnicodeString& id, Locale& result)
 {
-    if (id.isBogus()) {
+    enum { BUFLEN = 128 }; // larger than ever needed
+
+    if (id.isBogus() || id.length() >= BUFLEN) {
         result.setToBogus();
     } else {
         /*
@@ -166,29 +168,24 @@ LocaleUtility::initLocaleFromName(const UnicodeString& id, Locale& result)
          *
          * There should be only at most one '@' in a locale ID.
          */
-        CharString buffer;
+        char buffer[BUFLEN];
         int32_t prev, i;
         prev = 0;
-        UErrorCode status = U_ZERO_ERROR;
-        do {
-            i = id.indexOf((char16_t)0x40, prev);
+        for(;;) {
+            i = id.indexOf((UChar)0x40, prev);
             if(i < 0) {
                 // no @ between prev and the rest of the string
-                buffer.appendInvariantChars(id.tempSubString(prev), status);
+                id.extract(prev, INT32_MAX, buffer + prev, BUFLEN - prev, US_INV);
                 break; // done
             } else {
                 // normal invariant-character conversion for text between @s
-                buffer.appendInvariantChars(id.tempSubString(prev, i - prev), status);
+                id.extract(prev, i - prev, buffer + prev, BUFLEN - prev, US_INV);
                 // manually "convert" U+0040 at id[i] into '@' at buffer[i]
-                buffer.append('@', status);
+                buffer[i] = '@';
                 prev = i + 1;
             }
-        } while (U_SUCCESS(status));
-        if (U_FAILURE(status)) {
-            result.setToBogus();
-        } else {
-            result = Locale::createFromName(buffer.data());
         }
+        result = Locale::createFromName(buffer);
     }
     return result;
 }
@@ -217,52 +214,52 @@ LocaleUtility::getAvailableLocaleNames(const UnicodeString& bundleID)
     UErrorCode status = U_ZERO_ERROR;
     umtx_initOnce(LocaleUtilityInitOnce, locale_utility_init, status);
     Hashtable *cache = LocaleUtility_cache;
-    if (cache == nullptr) {
+    if (cache == NULL) {
         // Catastrophic failure.
-        return nullptr;
+        return NULL;
     }
 
     Hashtable* htp;
-    umtx_lock(nullptr);
+    umtx_lock(NULL);
     htp = (Hashtable*) cache->get(bundleID);
-    umtx_unlock(nullptr);
+    umtx_unlock(NULL);
 
-    if (htp == nullptr) {
+    if (htp == NULL) {
         htp = new Hashtable(status);
         if (htp && U_SUCCESS(status)) {
             CharString cbundleID;
             cbundleID.appendInvariantChars(bundleID, status);
-            const char* path = cbundleID.isEmpty() ? nullptr : cbundleID.data();
+            const char* path = cbundleID.isEmpty() ? NULL : cbundleID.data();
             icu::LocalUEnumerationPointer uenum(ures_openAvailableLocales(path, &status));
             for (;;) {
-                const char16_t* id = uenum_unext(uenum.getAlias(), nullptr, &status);
-                if (id == nullptr) {
+                const UChar* id = uenum_unext(uenum.getAlias(), NULL, &status);
+                if (id == NULL) {
                     break;
                 }
                 htp->put(UnicodeString(id), (void*)htp, status);
             }
             if (U_FAILURE(status)) {
                 delete htp;
-                return nullptr;
+                return NULL;
             }
-            umtx_lock(nullptr);
+            umtx_lock(NULL);
             Hashtable *t = static_cast<Hashtable *>(cache->get(bundleID));
-            if (t != nullptr) {
+            if (t != NULL) {
                 // Another thread raced through this code, creating the cache entry first.
                 // Discard ours and return theirs.
-                umtx_unlock(nullptr);
+                umtx_unlock(NULL);
                 delete htp;
                 htp = t;
             } else {
                 cache->put(bundleID, (void*)htp, status);
-                umtx_unlock(nullptr);
+                umtx_unlock(NULL);
             }
         }
     }
     return htp;
 }
 
-bool
+UBool
 LocaleUtility::isFallbackOf(const UnicodeString& root, const UnicodeString& child)
 {
     return child.indexOf(root) == 0 &&
@@ -274,3 +271,5 @@ U_NAMESPACE_END
 
 /* !UCONFIG_NO_SERVICE */
 #endif
+
+

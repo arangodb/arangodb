@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ln{
     Countries{
         AD{"Andorɛ"}
@@ -97,6 +96,7 @@ ln{
         IE{"Irelandɛ"}
         IL{"Isirayelɛ"}
         IN{"Índɛ"}
+        IO{"Mabelé ya Angɛlɛtɛ́lɛ na mbú ya Indiya"}
         IQ{"Iraki"}
         IR{"Irâ"}
         IS{"Isilandɛ"}
@@ -132,6 +132,7 @@ ln{
         ME{"Monténégro"}
         MG{"Madagasikari"}
         MH{"Bisanga bya Marishalɛ"}
+        MK{"Masedwanɛ"}
         ML{"Malí"}
         MM{"Birmanie"}
         MN{"Mongolí"}
@@ -236,4 +237,5 @@ ln{
     Countries%variant{
         CZ{"Repibiki Tsekɛ"}
     }
+    Version{"2.1.47.82"}
 }

@@ -19,24 +19,18 @@
 class TimeZoneFormatTest : public IntlTest {
   public:
     // IntlTest override
-    void runIndexedTest(int32_t index, UBool exec, const char*& name, char* par) override;
+    void runIndexedTest(int32_t index, UBool exec, const char*& name, char* par);
 
-    void TestTimeZoneRoundTrip();
-    void TestTimeRoundTrip();
-    void TestParse();
-    void TestISOFormat();
-    void TestFormat();
-    void TestFormatTZDBNames();
-    void TestFormatCustomZone();
-    void TestFormatTZDBNamesAllZoneCoverage();
-    void TestAdoptDefaultThreadSafe();
-    void TestCentralTime();
-    void TestBogusLocale();
-    void Test22614GetMetaZoneNamesNotCrash();
-    void Test22615NonASCIIID();
+    void TestTimeZoneRoundTrip(void);
+    void TestTimeRoundTrip(void);
+    void TestParse(void);
+    void TestISOFormat(void);
+    void TestFormat(void);
+    void TestFormatTZDBNames(void);
+    void TestFormatCustomZone(void);
+    void TestFormatTZDBNamesAllZoneCoverage(void);
 
     void RunTimeRoundTripTests(int32_t threadNumber);
-    void RunAdoptDefaultThreadSafeTests(int32_t threadNumber);
 };
 
 #endif /* #if !UCONFIG_NO_FORMATTING */

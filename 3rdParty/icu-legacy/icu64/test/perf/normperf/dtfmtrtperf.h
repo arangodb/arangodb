@@ -47,7 +47,7 @@ using namespace std;
 #else
 #define _UNICODE
 typedef int DWORD;
-inline int FoldStringW(DWORD dwMapFlags, const char16_t* lpSrcStr,int cchSrc, char16_t* lpDestStr,int cchDest);
+inline int FoldStringW(DWORD dwMapFlags, const UChar* lpSrcStr,int cchSrc, UChar* lpDestStr,int cchDest);
 #endif
 
 class DateTimeRoundTripFunction : public UPerfFunction
@@ -143,7 +143,7 @@ public:
         const Locale *LOCALES;
         LOCALES = testLocales;
 
-        StringEnumeration *tzids = TimeZone::createEnumeration(*status);
+        StringEnumeration *tzids = TimeZone::createEnumeration();
         if (U_FAILURE(*status)) {
             //errln("tzids->count failed");
             return;

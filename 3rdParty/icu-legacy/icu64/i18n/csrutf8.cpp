@@ -27,7 +27,7 @@ const char *CharsetRecog_UTF8::getName() const
 }
 
 UBool CharsetRecog_UTF8::match(InputText* input, CharsetMatch *results) const {
-    bool hasBOM = false;
+    bool hasBOM = FALSE;
     int32_t numValid = 0;
     int32_t numInvalid = 0;
     const uint8_t *inputBytes = input->fRawInput;
@@ -37,7 +37,7 @@ UBool CharsetRecog_UTF8::match(InputText* input, CharsetMatch *results) const {
 
     if (input->fRawLength >= 3 && 
         inputBytes[0] == 0xEF && inputBytes[1] == 0xBB && inputBytes[2] == 0xBF) {
-            hasBOM = true;
+            hasBOM = TRUE;
     }
 
     // Scan for multi-byte sequences
@@ -99,7 +99,7 @@ UBool CharsetRecog_UTF8::match(InputText* input, CharsetMatch *results) const {
         //              accepts ASCII with confidence = 10.
         confidence = 15;
     } else if (numValid > numInvalid*10) {
-        // Probably corrupt utf-8 data.  Valid sequences aren't likely by chance.
+        // Probably corruput utf-8 data.  Valid sequences aren't likely by chance.
         confidence = 25;
     }
 

@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ce{
+    Version{"2.1.47.82"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"Абиджан"}
@@ -462,6 +462,9 @@ ce{
         "America:New_York"{
             ec{"Нью-Йорк"}
         }
+        "America:Nipigon"{
+            ec{"Нипигон"}
+        }
         "America:Nome"{
             ec{"Ном"}
         }
@@ -482,6 +485,9 @@ ce{
         }
         "America:Panama"{
             ec{"Панама"}
+        }
+        "America:Pangnirtung"{
+            ec{"Пангниртанг"}
         }
         "America:Paramaribo"{
             ec{"Парамарибо"}
@@ -504,6 +510,9 @@ ce{
         "America:Punta_Arenas"{
             ec{"Пунта-Аренас"}
         }
+        "America:Rainy_River"{
+            ec{"Рейни-Ривер"}
+        }
         "America:Rankin_Inlet"{
             ec{"Ранкин-Инлет"}
         }
@@ -518,6 +527,9 @@ ce{
         }
         "America:Rio_Branco"{
             ec{"Риу-Бранку"}
+        }
+        "America:Santa_Isabel"{
+            ec{"Санта-Изабел"}
         }
         "America:Santarem"{
             ec{"Сантарен"}
@@ -564,6 +576,9 @@ ce{
         "America:Thule"{
             ec{"Туле"}
         }
+        "America:Thunder_Bay"{
+            ec{"Тандер-Бей"}
+        }
         "America:Tijuana"{
             ec{"Тихуана"}
         }
@@ -584,6 +599,9 @@ ce{
         }
         "America:Yakutat"{
             ec{"Якутат"}
+        }
+        "America:Yellowknife"{
+            ec{"Йеллоунайф"}
         }
         "Antarctica:Casey"{
             ec{"Кейси"}
@@ -906,6 +924,9 @@ ce{
         "Australia:Broken_Hill"{
             ec{"Брокен-Хилл"}
         }
+        "Australia:Currie"{
+            ec{"Керри"}
+        }
         "Australia:Darwin"{
             ec{"Дарвин"}
         }
@@ -1085,6 +1106,9 @@ ce{
         "Europe:Ulyanovsk"{
             ec{"Ульяновск"}
         }
+        "Europe:Uzhgorod"{
+            ec{"Ужгород"}
+        }
         "Europe:Vaduz"{
             ec{"Вадуц"}
         }
@@ -1105,6 +1129,9 @@ ce{
         }
         "Europe:Zagreb"{
             ec{"Загреб"}
+        }
+        "Europe:Zaporozhye"{
+            ec{"Запорожье"}
         }
         "Europe:Zurich"{
             ec{"Цюрих"}
@@ -1186,6 +1213,9 @@ ce{
         }
         "Pacific:Honolulu"{
             ec{"Гонолулу"}
+        }
+        "Pacific:Johnston"{
+            ec{"Джонстон"}
         }
         "Pacific:Kiritimati"{
             ec{"Киритимати"}
@@ -1598,6 +1628,9 @@ ce{
             lg{"Лорд-Хау"}
             ls{"Лорд-Хау, стандартан хан"}
         }
+        "meta:Macquarie"{
+            ls{"Маккуори"}
+        }
         "meta:Magadan"{
             ld{"Магадан, аьхкенан хан"}
             lg{"Магадан"}
@@ -1622,6 +1655,11 @@ ce{
         }
         "meta:Mawson"{
             ls{"Моусон"}
+        }
+        "meta:Mexico_Northwest"{
+            ld{"Къилбаседа Американ Мексикан аьхкенан хан"}
+            lg{"Къилбаседа Американ Мексикан хан"}
+            ls{"Къилбаседа Американ Мексикан стандартан хан"}
         }
         "meta:Mexico_Pacific"{
             ld{"Тийна океанан Мексикан аьхкенан хан"}
@@ -1666,9 +1704,7 @@ ce{
             ls{"Ниуэ"}
         }
         "meta:Norfolk"{
-            ld{"Норфолк, аьхкенан хан"}
-            lg{"Норфолк"}
-            ls{"Норфолк, стандартан хан"}
+            ls{"Норфолк"}
         }
         "meta:Noronha"{
             ld{"Фернанду-ди-Норонья, аьхкенан хан"}
@@ -1839,5 +1875,12 @@ ce{
             lg{"Екатеринбург"}
             ls{"Екатеринбург, стандартан хан"}
         }
+        fallbackFormat{"{1} ({0})"}
+        gmtFormat{"GMT{0}"}
+        gmtZeroFormat{"GMT"}
+        hourFormat{"+HH:mm;-HH:mm"}
+        regionFormat{"{0}"}
+        regionFormatDaylight{"{0} (+1)"}
+        regionFormatStandard{"{0} (+0)"}
     }
 }

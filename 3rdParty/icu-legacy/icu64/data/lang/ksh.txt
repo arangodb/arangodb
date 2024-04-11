@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ksh{
     Keys{
         calendar{"dä Kalländer"}
@@ -417,6 +416,8 @@ ksh{
             gregorian{"jrejorejahnesche Kalännder"}
             hebrew{"jühdesche Kalännder"}
             indian{"indesche Nazjonahl-Kaländer"}
+            islamic{"ißlaamesche Kaländer"}
+            islamic-civil{"wältlesche islaamesche Kaländer"}
             japanese{"japaanesche Kaländer"}
             persian{"pärsesche Kaländer"}
             roc{"rotschineesesche Kaländer"}
@@ -511,12 +512,14 @@ ksh{
         VALENCIA{"valenzijaanesche Dijaläk"}
         WADEGILE{"lateijnesche Ömschreff noh Wade-Giles"}
     }
+    Version{"2.1.47.82"}
     codePatterns{
         language{"de Schprohch afjekööz met „{0}“"}
         script{"de Schreff afjekööz met „{0}“"}
         territory{"de Jähjend afjekööz met „{0}“"}
     }
     localeDisplayPattern{
+        keyTypePattern{"{0}: {1}"}
         pattern{"{0} en {1}"}
         separator{"{0} uß {1}"}
     }

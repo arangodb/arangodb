@@ -36,7 +36,7 @@ public:
             : testClass(callingTestClass), testName(callingTestName), scopeMessage() {}
     virtual ~IcuTestErrorCode();
 
-    // Returns true if isFailure().
+    // Returns TRUE if isFailure().
     UBool errIfFailureAndReset();
     UBool errIfFailureAndReset(const char *fmt, ...);
     UBool errDataIfFailureAndReset();
@@ -49,7 +49,7 @@ public:
     void setScope(const UnicodeString& message);
 
 protected:
-    virtual void handleFailure() const override;
+    virtual void handleFailure() const;
 
 private:
     TestLog &testClass;

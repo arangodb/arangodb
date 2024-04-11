@@ -22,28 +22,28 @@
  */
 class TestMessageFormat: public IntlTest {
 public:
-    void runIndexedTest( int32_t index, UBool exec, const char* &name, char* par = nullptr ) override;
+    void runIndexedTest( int32_t index, UBool exec, const char* &name, char* par = NULL );
 
     /**
      * regression test for a specific bug regarding ChoiceFormat boundaries
      **/
-    void testBug1();
+    void testBug1(void);
     /**
      * regression test for a specific bug regarding MessageFormat using ChoiceFormat
      **/
-    void testBug2();
+    void testBug2(void);
     /**
      * regression test for a specific bug involving NumberFormat and Locales
      **/
-    void testBug3();
+    void testBug3(void);
     /** 
      * test MessageFormat with various given patterns
      **/
-    void PatternTest();
+    void PatternTest(void);
     /** 
      * test MesageFormat formatting functionality in a simple example
      **/
-    void sample();
+    void sample(void);
 
     /** 
     * tests the static MessageFormat::format method
@@ -83,7 +83,7 @@ public:
         UnicodeString pattern ,Locale locale , UErrorCode& err, char* errMsg);
 
     /**
-     * Verify that MessageFormat accommodates more than 10 arguments
+     * Verify that MessageFormat accomodates more than 10 arguments
      * and more than 10 subformats.
      */
     void TestUnlimitedArgsAndSubformats();
@@ -103,18 +103,18 @@ public:
      * In addition to the methods their name suggests,
      * they often test other methods as well.
      **/
-    void testCopyConstructor();
-    void testCopyConstructor2();
-    void testAssignment();
-    void testClone();
-    void testEquals();
-    void testNotEquals();
-    void testSetLocale();
-    void testFormat();
-    void testParse();
-    void testAdopt();
-    void TestTurkishCasing();
-    void testAutoQuoteApostrophe();
+    void testCopyConstructor(void);
+    void testCopyConstructor2(void);
+    void testAssignment(void);
+    void testClone(void);
+    void testEquals(void);
+    void testNotEquals(void);
+    void testSetLocale(void);
+    void testFormat(void);
+    void testParse(void);
+    void testAdopt(void);
+    void TestTurkishCasing(void);
+    void testAutoQuoteApostrophe(void);
     void testCoverage();
     void testGetFormatNames();
     void TestTrimArgumentName();

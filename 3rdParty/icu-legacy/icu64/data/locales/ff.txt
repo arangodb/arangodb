@@ -1,11 +1,10 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ff{
     AuxExemplarCharacters{"[q v x z]"}
-    ExemplarCharacters{"[a b ɓ c d ɗ e f g h i j k l m nñ ŋ o p r s t u w y ƴ]"}
-    ExemplarCharactersIndex{"[A B Ɓ C D Ɗ E F G H I J K L M NÑ Ŋ O P R S T U W Y Ƴ]"}
-    ExemplarCharactersNumbers{"[  \\- ‑ , % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
+    ExemplarCharacters{"[a b ɓ c d ɗ e f g h i j k l m n ñ ŋ o p r s t u w y ƴ]"}
+    ExemplarCharactersIndex{"[A B Ɓ C D Ɗ E F G H I J K L M N Ñ Ŋ O P R S T U W Y Ƴ]"}
+    ExemplarCharactersNumbers{"[  \\- , % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
     NumberElements{
         latn{
             patterns{
@@ -17,6 +16,7 @@ ff{
             }
         }
     }
+    Version{"2.1.47.82"}
     calendar{
         generic{
             DateTimePatterns{
@@ -33,16 +33,6 @@ ff{
                 "{1} {0}",
                 "{1} {0}",
                 "{1} {0}",
-            }
-            DateTimeSkeletons{
-                "HHmmsszzzz",
-                "HHmmssz",
-                "HHmmss",
-                "HHmm",
-                "GyMMMMEEEEd",
-                "GyMMMMd",
-                "GyMMMd",
-                "GGGGGyMd",
             }
             availableFormats{
                 M{"M"}
@@ -68,6 +58,10 @@ ff{
             }
         }
         gregorian{
+            AmPmMarkers{
+                "subaka",
+                "kikiiɗe",
+            }
             AmPmMarkersAbbr{
                 "subaka",
                 "kikiiɗe",
@@ -87,15 +81,18 @@ ff{
                 "{1} {0}",
                 "{1} {0}",
             }
-            DateTimeSkeletons{
-                "HHmmsszzzz",
-                "HHmmssz",
-                "HHmmss",
-                "HHmm",
-                "yMMMMEEEEd",
-                "yMMMMd",
-                "yMMMd",
-                "yMd",
+            appendItems{
+                Day{"{0} ({2}: {1})"}
+                Day-Of-Week{"{0} {1}"}
+                Era{"{1} {0}"}
+                Hour{"{0} ({2}: {1})"}
+                Minute{"{0} ({2}: {1})"}
+                Month{"{0} ({2}: {1})"}
+                Quarter{"{0} ({2}: {1})"}
+                Second{"{0} ({2}: {1})"}
+                Timezone{"{0} {1}"}
+                Week{"{0} ({2}: {1})"}
+                Year{"{1} {0}"}
             }
             availableFormats{
                 M{"M"}
@@ -108,6 +105,7 @@ ff{
                 MMdd{"dd/MM"}
                 Md{"d/M"}
                 ms{"m:ss"}
+                y{"y"}
                 yM{"M/y"}
                 yMEd{"E d/M/y"}
                 yMM{"MM/y"}
@@ -228,7 +226,9 @@ ff{
         }
     }
     delimiters{
+        alternateQuotationEnd{"’"}
         alternateQuotationStart{"‚"}
+        quotationEnd{"”"}
         quotationStart{"„"}
     }
     fields{
@@ -269,20 +269,6 @@ ff{
         }
         zone{
             dn{"Diiwaan waktu"}
-        }
-    }
-    personNames{
-        nameOrderLocales{
-            givenFirst{
-                "und",
-                "ff",
-            }
-            surnameFirst{
-                "ko",
-                "vi",
-                "yue",
-                "zh",
-            }
         }
     }
 }

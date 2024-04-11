@@ -2,7 +2,6 @@
 // License & terms of use: http://www.unicode.org/copyright.html
 
 #include <iostream>
-#include <memory>
 #include <stack>
 
 #include "filterrb.h"
@@ -22,9 +21,6 @@ ResKeyPath::ResKeyPath(const std::string& path, UErrorCode& status) {
     if (path.empty() || path[0] != '/') {
         std::cerr << "genrb error: path must start with /: " << path << std::endl;
         status = U_PARSE_ERROR;
-        return;
-    }
-    if (path.length() == 1) {
         return;
     }
     size_t i;
@@ -60,7 +56,7 @@ const std::list<std::string>& ResKeyPath::pieces() const {
 std::ostream& operator<<(std::ostream& out, const ResKeyPath& value) {
     if (value.pieces().empty()) {
         out << "/";
-    } else for (const auto& key : value.pieces()) {
+    } else for (auto& key : value.pieces()) {
         out << "/" << key;
     }
     return out;
@@ -109,7 +105,7 @@ PathFilter::EInclusion SimpleRuleBasedPathFilter::match(const ResKeyPath& path) 
     // even if additional subpaths are added to the given key
     bool isLeaf = false;
 
-    for (const auto& key : path.pieces()) {
+    for (auto& key : path.pieces()) {
         auto child = node->fChildren.find(key);
         // Leaf case 1: input path descends outside the filter tree
         if (child == node->fChildren.end()) {
@@ -151,7 +147,7 @@ SimpleRuleBasedPathFilter::Tree::Tree(const Tree& other)
         : fIncluded(other.fIncluded), fChildren(other.fChildren) {
     // Note: can't use the default copy assignment because of the std::unique_ptr
     if (other.fWildcard) {
-        fWildcard = std::make_unique<Tree>(*other.fWildcard);
+        fWildcard.reset(new Tree(*other.fWildcard));
     }
 }
 
@@ -178,11 +174,11 @@ void SimpleRuleBasedPathFilter::Tree::applyRule(
     }
 
     // Recursive Step
-    const auto& key = *it;
+    auto& key = *it;
     if (key == "*") {
         // Case 1: Wildcard
         if (!fWildcard) {
-            fWildcard = std::make_unique<Tree>();
+            fWildcard.reset(new Tree());
         }
         // Apply the rule to fWildcard and also to all existing children.
         it++;
@@ -212,7 +208,7 @@ void SimpleRuleBasedPathFilter::Tree::applyRule(
 void SimpleRuleBasedPathFilter::Tree::print(std::ostream& out, int32_t indent) const {
     for (int32_t i=0; i<indent; i++) out << "\t";
     out << "included: " << kEInclusionNames[fIncluded] << std::endl;
-    for (const auto& child : fChildren) {
+    for (auto& child : fChildren) {
         for (int32_t i=0; i<indent; i++) out << "\t";
         out << child.first << ": {" << std::endl;
         child.second.print(out, indent + 1);

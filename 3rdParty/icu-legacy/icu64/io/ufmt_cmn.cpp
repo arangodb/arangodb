@@ -38,7 +38,7 @@
 #define UPPERCASE_Z 0x005A
 
 int
-ufmt_digitvalue(char16_t c)
+ufmt_digitvalue(UChar c)
 {
     if( ((c>=DIGIT_0)&&(c<=DIGIT_9)) ||
         ((c>=LOWERCASE_A)&&(c<=LOWERCASE_Z)) ||
@@ -53,7 +53,7 @@ ufmt_digitvalue(char16_t c)
 }
 
 UBool
-ufmt_isdigit(char16_t  c,
+ufmt_isdigit(UChar     c,
              int32_t     radix)
 {
     int digitVal = ufmt_digitvalue(c);
@@ -65,7 +65,7 @@ ufmt_isdigit(char16_t  c,
 #define TO_LC_DIGIT(a) a <= 9 ? (DIGIT_0 + a) : (0x0057 + a)
 
 void 
-ufmt_64tou(char16_t  *buffer,
+ufmt_64tou(UChar     *buffer, 
           int32_t   *len,
           uint64_t  value, 
           uint8_t  radix,
@@ -74,12 +74,12 @@ ufmt_64tou(char16_t  *buffer,
 {
     int32_t  length = 0;
     uint32_t digit;
-    char16_t *left, *right, temp;
+    UChar    *left, *right, temp;
     
     do {
         digit = (uint32_t)(value % radix);
         value = value / radix;
-        buffer[length++] = (char16_t)(uselower ? TO_LC_DIGIT(digit)
+        buffer[length++] = (UChar)(uselower ? TO_LC_DIGIT(digit) 
             : TO_UC_DIGIT(digit));
     } while(value);
 
@@ -102,7 +102,7 @@ ufmt_64tou(char16_t  *buffer,
 }
 
 void 
-ufmt_ptou(char16_t *buffer,
+ufmt_ptou(UChar    *buffer, 
           int32_t   *len,
           void      *value, 
           UBool     uselower)
@@ -134,16 +134,16 @@ ufmt_ptou(char16_t *buffer,
 }
 
 int64_t
-ufmt_uto64(const char16_t  *buffer,
+ufmt_uto64(const UChar     *buffer, 
           int32_t     *len,
           int8_t     radix)
 {
-    const char16_t  *limit;
+    const UChar     *limit;
     int32_t         count;
     uint64_t        result;
     
     
-    /* initialize parameters */
+    /* intialize parameters */
     limit     = buffer + *len;
     count     = 0;
     result    = 0;
@@ -165,7 +165,7 @@ ufmt_uto64(const char16_t  *buffer,
 
 #define NIBBLE_PER_BYTE 2
 void *
-ufmt_utop(const char16_t  *buffer,
+ufmt_utop(const UChar     *buffer,
           int32_t     *len)
 {
     int32_t count, resultIdx, incVal, offset;
@@ -175,10 +175,10 @@ ufmt_utop(const char16_t  *buffer,
         uint8_t bytes[sizeof(void*)];
     } result;
     
-    /* initialize variables */
+    /* intialize variables */
     count      = 0;
     offset     = 0;
-    result.ptr = nullptr;
+    result.ptr = NULL;
 
     /* Skip the leading zeros */
     while(buffer[count] == DIGIT_0 || u_isspace(buffer[count])) {
@@ -223,26 +223,27 @@ ufmt_utop(const char16_t  *buffer,
     return result.ptr;
 }
 
-char16_t*
+UChar*
 ufmt_defaultCPToUnicode(const char *s, int32_t sSize,
-                        char16_t *target, int32_t tSize)
+                        UChar *target, int32_t tSize)
 {
-    char16_t *alias;
+    UChar *alias;
     UErrorCode status = U_ZERO_ERROR;
     UConverter *defConverter = u_getDefaultConverter(&status);
-
-    if (U_FAILURE(status) || defConverter == nullptr)
-        return nullptr;
+    
+    if(U_FAILURE(status) || defConverter == 0)
+        return 0;
 
     if(sSize <= 0) {
         sSize = static_cast<int32_t>(uprv_strlen(s)) + 1;
     }
     
     /* perform the conversion in one swoop */
-    if (target != nullptr) {
+    if(target != 0) {
+        
         alias = target;
         ucnv_toUnicode(defConverter, &alias, alias + tSize, &s, s + sSize - 1, 
-            nullptr, true, &status);
+            NULL, TRUE, &status);
         
         
         /* add the null terminator */

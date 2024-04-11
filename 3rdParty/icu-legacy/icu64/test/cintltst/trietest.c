@@ -16,7 +16,6 @@
 *   created by: Markus W. Scherer
 */
 
-#include <stdbool.h>
 #include <stdio.h>
 #include "unicode/utypes.h"
 #include "unicode/utf16.h"
@@ -121,7 +120,6 @@ _testFoldingOffset16(uint32_t data) {
 
 static uint32_t U_CALLCONV
 _testEnumValue(const void *context, uint32_t value) {
-    (void)context; // suppress compiler warnings about unused variable
     return value^0x5555;
 }
 
@@ -136,7 +134,7 @@ _testEnumRange(const void *context, UChar32 start, UChar32 limit, uint32_t value
             start, limit, value,
             (b-1)->limit, b->limit, b->value);
     }
-    return true;
+    return TRUE;
 }
 
 static void
@@ -278,7 +276,7 @@ testTrieRangesWithMalloc(const char *testName,
                        latin1Linear);
 
     /* set values from setRanges[] */
-    ok=true;
+    ok=TRUE;
     for(i=0; i<countSetRanges; ++i) {
         start=setRanges[i].start;
         limit=setRanges[i].limit;
@@ -449,7 +447,7 @@ testTrieRanges(const char *testName,
                const CheckRange checkRanges[], int32_t countCheckRanges,
                UBool dataIs32, UBool latin1Linear) {
     union{
-        double bogus; /* needed for aligning the storage */
+        double bogus; /* needed for aligining the storage */
         uint8_t storage[32768];
     } storageHolder;
     UTrieGetFoldingOffset *getFoldingOffset;
@@ -469,7 +467,7 @@ testTrieRanges(const char *testName,
                        latin1Linear);
 
     /* set values from setRanges[] */
-    ok=true;
+    ok=TRUE;
     for(i=0; i<countSetRanges; ++i) {
         start=setRanges[i].start;
         limit=setRanges[i].limit;
@@ -661,22 +659,22 @@ testTrieRanges2(const char *testName,
     testTrieRanges(testName,
                    setRanges, countSetRanges,
                    checkRanges, countCheckRanges,
-                   dataIs32, false);
+                   dataIs32, FALSE);
     testTrieRangesWithMalloc(testName,
                    setRanges, countSetRanges,
                    checkRanges, countCheckRanges,
-                   dataIs32, false);
+                   dataIs32, FALSE);
 
     uprv_strcpy(name, testName);
     uprv_strcat(name, "-latin1Linear");
     testTrieRanges(name,
                    setRanges, countSetRanges,
                    checkRanges, countCheckRanges,
-                   dataIs32, true);
+                   dataIs32, TRUE);
     testTrieRangesWithMalloc(name,
                    setRanges, countSetRanges,
                    checkRanges, countCheckRanges,
-                   dataIs32, true);
+                   dataIs32, TRUE);
 }
 
 static void
@@ -690,14 +688,14 @@ testTrieRanges4(const char *testName,
     testTrieRanges2(name,
                     setRanges, countSetRanges,
                     checkRanges, countCheckRanges,
-                    true);
+                    TRUE);
 
     uprv_strcpy(name, testName);
     uprv_strcat(name, ".16");
     testTrieRanges2(name,
                     setRanges, countSetRanges,
                     checkRanges, countCheckRanges,
-                    false);
+                    FALSE);
 }
 
 /* test data ----------------------------------------------------------------*/
@@ -705,20 +703,20 @@ testTrieRanges4(const char *testName,
 /* set consecutive ranges, even with value 0 */
 static const SetRange
 setRanges1[]={
-    {0,      0x20,       0,      false},
-    {0x20,   0xa7,       0x1234, false},
-    {0xa7,   0x3400,     0,      false},
-    {0x3400, 0x9fa6,     0x6162, false},
-    {0x9fa6, 0xda9e,     0x3132, false},
-    {0xdada, 0xeeee,     0x87ff, false}, /* try to disrupt _testFoldingOffset16() */
-    {0xeeee, 0x11111,    1,      false},
-    {0x11111, 0x44444,   0x6162, false},
-    {0x44444, 0x60003,   0,      false},
-    {0xf0003, 0xf0004,   0xf,    false},
-    {0xf0004, 0xf0006,   0x10,   false},
-    {0xf0006, 0xf0007,   0x11,   false},
-    {0xf0007, 0xf0020,   0x12,   false},
-    {0xf0020, 0x110000,  0,      false}
+    {0,      0x20,       0,      FALSE},
+    {0x20,   0xa7,       0x1234, FALSE},
+    {0xa7,   0x3400,     0,      FALSE},
+    {0x3400, 0x9fa6,     0x6162, FALSE},
+    {0x9fa6, 0xda9e,     0x3132, FALSE},
+    {0xdada, 0xeeee,     0x87ff, FALSE}, /* try to disrupt _testFoldingOffset16() */
+    {0xeeee, 0x11111,    1,      FALSE},
+    {0x11111, 0x44444,   0x6162, FALSE},
+    {0x44444, 0x60003,   0,      FALSE},
+    {0xf0003, 0xf0004,   0xf,    FALSE},
+    {0xf0004, 0xf0006,   0x10,   FALSE},
+    {0xf0006, 0xf0007,   0x11,   FALSE},
+    {0xf0007, 0xf0020,   0x12,   FALSE},
+    {0xf0020, 0x110000,  0,      FALSE}
 };
 
 static const CheckRange
@@ -744,17 +742,17 @@ checkRanges1[]={
 /* set some interesting overlapping ranges */
 static const SetRange
 setRanges2[]={
-    {0x21,   0x7f,       0x5555, true},
-    {0x2f800,0x2fedc,    0x7a,   true},
-    {0x72,   0xdd,       3,      true},
-    {0xdd,   0xde,       4,      false},
-    {0x201,  0x220,      6,      true},  /* 3 consecutive blocks with the same pattern but discontiguous value ranges */
-    {0x221,  0x240,      6,      true},
-    {0x241,  0x260,      6,      true},
-    {0x2f987,0x2fa98,    5,      true},
-    {0x2f777,0x2f833,    0,      true},
-    {0x2f900,0x2ffee,    1,      false},
-    {0x2ffee,0x2ffef,    2,      true}
+    {0x21,   0x7f,       0x5555, TRUE},
+    {0x2f800,0x2fedc,    0x7a,   TRUE},
+    {0x72,   0xdd,       3,      TRUE},
+    {0xdd,   0xde,       4,      FALSE},
+    {0x201,  0x220,      6,      TRUE},  /* 3 consecutive blocks with the same pattern but discontiguous value ranges */
+    {0x221,  0x240,      6,      TRUE},
+    {0x241,  0x260,      6,      TRUE},
+    {0x2f987,0x2fa98,    5,      TRUE},
+    {0x2f777,0x2f833,    0,      TRUE},
+    {0x2f900,0x2ffee,    1,      FALSE},
+    {0x2ffee,0x2ffef,    2,      TRUE}
 };
 
 static const CheckRange
@@ -782,10 +780,10 @@ checkRanges2[]={
 /* use a non-zero initial value */
 static const SetRange
 setRanges3[]={
-    {0x31,   0xa4,   1,  false},
-    {0x3400, 0x6789, 2,  false},
-    {0x30000,0x34567,9,  true},
-    {0x45678,0x56789,3,  true}
+    {0x31,   0xa4,   1,  FALSE},
+    {0x3400, 0x6789, 2,  FALSE},
+    {0x30000,0x34567,9,  TRUE},
+    {0x45678,0x56789,3,  TRUE}
 };
 
 static const CheckRange
@@ -817,7 +815,6 @@ TrieTest(void) {
 
 static int32_t U_CALLCONV
 dummyGetFoldingOffset(uint32_t data) {
-    (void)data; // suppress compiler warnings about unused variable
     return -1; /* never get non-initialValue data for supplementary code points */
 }
 
@@ -876,8 +873,8 @@ dummyTest(UBool make16BitTrie) {
 
 static void
 DummyTrieTest(void) {
-    dummyTest(true);
-    dummyTest(false);
+    dummyTest(TRUE);
+    dummyTest(FALSE);
 }
 
 void

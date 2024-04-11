@@ -34,23 +34,23 @@ ucnv_getUnicodeSet(const UConverter *cnv,
                    UConverterUnicodeSet whichSet,
                    UErrorCode *pErrorCode) {
     /* argument checking */
-    if(pErrorCode==nullptr || U_FAILURE(*pErrorCode)) {
+    if(pErrorCode==NULL || U_FAILURE(*pErrorCode)) {
         return;
     }
-    if(cnv==nullptr || setFillIn==nullptr || whichSet<UCNV_ROUNDTRIP_SET || UCNV_SET_COUNT<=whichSet) {
+    if(cnv==NULL || setFillIn==NULL || whichSet<UCNV_ROUNDTRIP_SET || UCNV_SET_COUNT<=whichSet) {
         *pErrorCode=U_ILLEGAL_ARGUMENT_ERROR;
         return;
     }
 
     /* does this converter support this function? */
-    if(cnv->sharedData->impl->getUnicodeSet==nullptr) {
+    if(cnv->sharedData->impl->getUnicodeSet==NULL) {
         *pErrorCode=U_UNSUPPORTED_ERROR;
         return;
     }
 
     {
         USetAdder sa={
-            nullptr,
+            NULL,
             uset_add,
             uset_addRange,
             uset_addString,

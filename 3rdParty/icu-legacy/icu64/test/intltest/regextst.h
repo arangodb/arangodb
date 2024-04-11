@@ -24,7 +24,7 @@ public:
     RegexTest();
     virtual ~RegexTest();
 
-    virtual void runIndexedTest(int32_t index, UBool exec, const char* &name, char* par = nullptr ) override;
+    virtual void runIndexedTest(int32_t index, UBool exec, const char* &name, char* par = NULL );
 
     // The following are test functions that are visible from the intltest test framework.
     virtual void API_Match();
@@ -60,7 +60,6 @@ public:
     virtual void TestBug13631();
     virtual void TestBug13632();
     virtual void TestBug20359();
-    virtual void TestBug20863();
 
     // The following functions are internal to the regexp tests.
     virtual void assertUText(const char *expected, UText *actual, const char *file, int line);
@@ -71,6 +70,7 @@ public:
                             const UnicodeString &input, const char *srcPath, int32_t line);
     virtual void regex_err(const char *pat, int32_t errline, int32_t errcol,
                             UErrorCode expectedStatus, int32_t line);
+    virtual UChar *ReadAndConvertFile(const char *fileName, int32_t &len, const char *charset, UErrorCode &status);
     virtual const char *getPath(char buffer[2048], const char *filename);
 
     virtual void TestCase11049(const char *pattern, const char *data, UBool expectMatch, int32_t lineNumber);

@@ -1,8 +1,8 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 sr_Latn{
     %%Parent{"root"}
+    Version{"2.1.49.82"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"Abidžan"}
@@ -259,9 +259,6 @@ sr_Latn{
         "America:Chihuahua"{
             ec{"Čihuahua"}
         }
-        "America:Ciudad_Juarez"{
-            ec{"Siudad Huarez"}
-        }
         "America:Coral_Harbour"{
             ec{"Koral Harbur"}
         }
@@ -278,7 +275,7 @@ sr_Latn{
             ec{"Kuiaba"}
         }
         "America:Curacao"{
-            ec{"Kurasao"}
+            ec{"Kiraso"}
         }
         "America:Danmarkshavn"{
             ec{"Danmarkshagen"}
@@ -466,6 +463,9 @@ sr_Latn{
         "America:New_York"{
             ec{"Njujork"}
         }
+        "America:Nipigon"{
+            ec{"Nipigon"}
+        }
         "America:Nome"{
             ec{"Nom"}
         }
@@ -486,6 +486,9 @@ sr_Latn{
         }
         "America:Panama"{
             ec{"Panama"}
+        }
+        "America:Pangnirtung"{
+            ec{"Pangnirtung"}
         }
         "America:Paramaribo"{
             ec{"Paramaribo"}
@@ -508,6 +511,9 @@ sr_Latn{
         "America:Punta_Arenas"{
             ec{"Punta Arenas"}
         }
+        "America:Rainy_River"{
+            ec{"Rejni River"}
+        }
         "America:Rankin_Inlet"{
             ec{"Rankin Inlet"}
         }
@@ -522,6 +528,9 @@ sr_Latn{
         }
         "America:Rio_Branco"{
             ec{"Rio Branko"}
+        }
+        "America:Santa_Isabel"{
+            ec{"Santa Izabel"}
         }
         "America:Santarem"{
             ec{"Santarem"}
@@ -568,6 +577,9 @@ sr_Latn{
         "America:Thule"{
             ec{"Tul"}
         }
+        "America:Thunder_Bay"{
+            ec{"Tander Bej"}
+        }
         "America:Tijuana"{
             ec{"Tihuana"}
         }
@@ -588,6 +600,9 @@ sr_Latn{
         }
         "America:Yakutat"{
             ec{"Jakutat"}
+        }
+        "America:Yellowknife"{
+            ec{"Jelounajf"}
         }
         "Antarctica:Casey"{
             ec{"Kejsi"}
@@ -797,7 +812,7 @@ sr_Latn{
             ec{"Katar"}
         }
         "Asia:Qostanay"{
-            ec{"Kostanaj"}
+            ec{"Qostanay"}
         }
         "Asia:Qyzylorda"{
             ec{"Kizilorda"}
@@ -913,6 +928,9 @@ sr_Latn{
         "Australia:Broken_Hill"{
             ec{"Broken Hil"}
         }
+        "Australia:Currie"{
+            ec{"Kari"}
+        }
         "Australia:Darwin"{
             ec{"Darvin"}
         }
@@ -1002,7 +1020,7 @@ sr_Latn{
             ec{"Istanbul"}
         }
         "Europe:Jersey"{
-            ec{"Džerzi"}
+            ec{"Džersi"}
         }
         "Europe:Kaliningrad"{
             ec{"Kalinjingrad"}
@@ -1095,6 +1113,9 @@ sr_Latn{
         "Europe:Ulyanovsk"{
             ec{"Uljanovsk"}
         }
+        "Europe:Uzhgorod"{
+            ec{"Užgorod"}
+        }
         "Europe:Vaduz"{
             ec{"Vaduz"}
         }
@@ -1115,6 +1136,9 @@ sr_Latn{
         }
         "Europe:Zagreb"{
             ec{"Zagreb"}
+        }
+        "Europe:Zaporozhye"{
+            ec{"Zaporožje"}
         }
         "Europe:Zurich"{
             ec{"Cirih"}
@@ -1197,8 +1221,8 @@ sr_Latn{
         "Pacific:Honolulu"{
             ec{"Honolulu"}
         }
-        "Pacific:Kanton"{
-            ec{"Kanton"}
+        "Pacific:Johnston"{
+            ec{"Džonston"}
         }
         "Pacific:Kiritimati"{
             ec{"Kiritimati"}
@@ -1503,7 +1527,7 @@ sr_Latn{
             ss{"EET"}
         }
         "meta:Europe_Further_Eastern"{
-            ls{"Vreme daljeg istoka Evrope"}
+            ls{"Dalji istok Evrope"}
         }
         "meta:Europe_Western"{
             ld{"Zapadnoevropsko letnje vreme"}
@@ -1662,6 +1686,9 @@ sr_Latn{
             lg{"Makao vreme"}
             ls{"Makao standardno vreme"}
         }
+        "meta:Macquarie"{
+            ls{"Ostrvo Makveri vreme"}
+        }
         "meta:Magadan"{
             ld{"Magadan, letnje vreme"}
             lg{"Magadan vreme"}
@@ -1686,6 +1713,11 @@ sr_Latn{
         }
         "meta:Mawson"{
             ls{"Moson vreme"}
+        }
+        "meta:Mexico_Northwest"{
+            ld{"Severozapadni Meksiko, letnje vreme"}
+            lg{"Severozapadni Meksiko"}
+            ls{"Severozapadni Meksiko, standardno vreme"}
         }
         "meta:Mexico_Pacific"{
             ld{"Meksički Pacifik, letnje vreme"}
@@ -1730,9 +1762,7 @@ sr_Latn{
             ls{"Niue vreme"}
         }
         "meta:Norfolk"{
-            ld{"Norfolk Ostrvo, letnje vreme"}
-            lg{"Norfolk Ostrvo vreme"}
-            ls{"Norfolk Ostrvo, standardno vreme"}
+            ls{"Norfolk Ostrvo vreme"}
         }
         "meta:Noronha"{
             ld{"Fernando de Noronja, letnje vreme"}
@@ -1916,9 +1946,11 @@ sr_Latn{
             lg{"Jekaterinburg vreme"}
             ls{"Jekaterinburg, standardno vreme"}
         }
-        "meta:Yukon"{
-            ls{"Jukon"}
-        }
+        fallbackFormat{"{1} ({0})"}
+        gmtFormat{"GMT{0}"}
+        gmtZeroFormat{"GMT"}
+        hourFormat{"+HH:mm;-HH:mm"}
+        regionFormat{"{0}"}
         regionFormatDaylight{"{0}, letnje vreme"}
         regionFormatStandard{"{0}, standardno vreme"}
     }

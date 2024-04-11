@@ -182,7 +182,7 @@ typedef struct UTrie UTrie;
     ]
 
 /** Internal trie getter from a pair of surrogates */
-#define _UTRIE_GET_FROM_PAIR(trie, data, c, c2, result, resultType) UPRV_BLOCK_MACRO_BEGIN { \
+#define _UTRIE_GET_FROM_PAIR(trie, data, c, c2, result, resultType) { \
     int32_t __offset; \
 \
     /* get data for lead surrogate */ \
@@ -195,18 +195,18 @@ typedef struct UTrie UTrie;
     } else { \
         (result)=(resultType)((trie)->initialValue); \
     } \
-} UPRV_BLOCK_MACRO_END
+}
 
 /** Internal trie getter from a BMP code point, treating a lead surrogate as a normal code point */
 #define _UTRIE_GET_FROM_BMP(trie, data, c16) \
-    _UTRIE_GET_RAW(trie, data, 0xd800<=(c16) && (c16)<=0xdbff ? UTRIE_LEAD_INDEX_DISP : 0, c16)
+    _UTRIE_GET_RAW(trie, data, 0xd800<=(c16) && (c16)<=0xdbff ? UTRIE_LEAD_INDEX_DISP : 0, c16);
 
 /**
  * Internal trie getter from a code point.
  * Could be faster(?) but longer with
  *   if((c32)<=0xd7ff) { (result)=_UTRIE_GET_RAW(trie, data, 0, c32); }
  */
-#define _UTRIE_GET(trie, data, c32, result, resultType) UPRV_BLOCK_MACRO_BEGIN { \
+#define _UTRIE_GET(trie, data, c32, result, resultType) \
     if((uint32_t)(c32)<=0xffff) { \
         /* BMP code points */ \
         (result)=_UTRIE_GET_FROM_BMP(trie, data, c32); \
@@ -217,11 +217,10 @@ typedef struct UTrie UTrie;
     } else { \
         /* out of range */ \
         (result)=(resultType)((trie)->initialValue); \
-    } \
-} UPRV_BLOCK_MACRO_END
+    }
 
 /** Internal next-post-increment: get the next code point (c, c2) and its data */
-#define _UTRIE_NEXT(trie, data, src, limit, c, c2, result, resultType) UPRV_BLOCK_MACRO_BEGIN { \
+#define _UTRIE_NEXT(trie, data, src, limit, c, c2, result, resultType) { \
     (c)=*(src)++; \
     if(!U16_IS_LEAD(c)) { \
         (c2)=0; \
@@ -234,10 +233,10 @@ typedef struct UTrie UTrie;
         (c2)=0; \
         (result)=_UTRIE_GET_RAW((trie), data, UTRIE_LEAD_INDEX_DISP, (c)); \
     } \
-} UPRV_BLOCK_MACRO_END
+}
 
 /** Internal previous: get the previous code point (c, c2) and its data */
-#define _UTRIE_PREVIOUS(trie, data, start, src, c, c2, result, resultType) UPRV_BLOCK_MACRO_BEGIN { \
+#define _UTRIE_PREVIOUS(trie, data, start, src, c, c2, result, resultType) { \
     (c)=*--(src); \
     if(!U16_IS_SURROGATE(c)) { \
         (c2)=0; \
@@ -258,7 +257,7 @@ typedef struct UTrie UTrie;
         (c2)=0; \
         (result)=_UTRIE_GET_RAW((trie), data, UTRIE_LEAD_INDEX_DISP, (c)); \
     } \
-} UPRV_BLOCK_MACRO_END
+}
 
 /* Public UTrie API ---------------------------------------------------------*/
 
@@ -460,13 +459,13 @@ UTrieEnumValue(const void *context, uint32_t value);
  * of code points with the same value as retrieved from the trie and
  * transformed by the UTrieEnumValue function.
  *
- * The callback function can stop the enumeration by returning false.
+ * The callback function can stop the enumeration by returning FALSE.
  *
  * @param context an opaque pointer, as passed into utrie_enum()
  * @param start the first code point in a contiguous range with value
  * @param limit one past the last code point in a contiguous range with value
  * @param value the value that is set for all code points in [start..limit[
- * @return false to stop the enumeration
+ * @return FALSE to stop the enumeration
  */
 typedef UBool U_CALLCONV
 UTrieEnumRange(const void *context, UChar32 start, UChar32 limit, uint32_t value);
@@ -667,7 +666,7 @@ utrie_getData(UNewTrie *trie, int32_t *pLength);
  * @param trie the build-time trie
  * @param c the code point
  * @param value the value
- * @return false if a failure occurred (illegal argument or data array overrun)
+ * @return FALSE if a failure occurred (illegal argument or data array overrun)
  */
 U_CAPI UBool U_EXPORT2
 utrie_set32(UNewTrie *trie, UChar32 c, uint32_t value);
@@ -677,7 +676,7 @@ utrie_set32(UNewTrie *trie, UChar32 c, uint32_t value);
  *
  * @param trie the build-time trie
  * @param c the code point
- * @param pInBlockZero if not NULL, then *pInBlockZero is set to true
+ * @param pInBlockZero if not NULL, then *pInBlockZero is set to TRUE
  *                     iff the value is retrieved from block 0;
  *                     block 0 is the all-initial-value initial block
  * @return the value
@@ -688,14 +687,14 @@ utrie_get32(UNewTrie *trie, UChar32 c, UBool *pInBlockZero);
 /**
  * Set a value in a range of code points [start..limit[.
  * All code points c with start<=c<limit will get the value if
- * overwrite is true or if the old value is 0.
+ * overwrite is TRUE or if the old value is 0.
  *
  * @param trie the build-time trie
  * @param start the first code point to get the value
  * @param limit one past the last code point to get the value
  * @param value the value
  * @param overwrite flag for whether old non-initial values are to be overwritten
- * @return false if a failure occurred (illegal argument or data array overrun)
+ * @return FALSE if a failure occurred (illegal argument or data array overrun)
  */
 U_CAPI UBool U_EXPORT2
 utrie_setRange32(UNewTrie *trie, UChar32 start, UChar32 limit, uint32_t value, UBool overwrite);

@@ -11,7 +11,6 @@
 
 #include "numparse_types.h"
 #include "number_decimalquantity.h"
-#include "string_segment.h"
 #include "putilimp.h"
 #include <cmath>
 
@@ -74,7 +73,7 @@ double ParsedNumber::getDouble(UErrorCode& status) const {
         status = U_INVALID_STATE_ERROR;
         return 0.0;
     }
-    if (quantity.isZeroish() && quantity.isNegative()) {
+    if (quantity.isZero() && quantity.isNegative()) {
         return -0.0;
     }
 
@@ -107,7 +106,7 @@ void ParsedNumber::populateFormattable(Formattable& output, parse_flags_t parseF
         }
     }
     U_ASSERT(!quantity.bogus);
-    if (quantity.isZeroish() && quantity.isNegative() && !integerOnly) {
+    if (quantity.isZero() && quantity.isNegative() && !integerOnly) {
         output.setDouble(-0.0);
         return;
     }

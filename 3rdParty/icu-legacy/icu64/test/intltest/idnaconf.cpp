@@ -24,26 +24,25 @@
 #include "unicode/uidna.h"
 #include "unicode/utf16.h"
 #include "idnaconf.h"
-#include "charstr.h"
 
-static const char16_t C_TAG[] = {0x3D, 0x3D, 0x3D, 0x3D, 0x3D, 0}; // =====
-static const char16_t C_NAMEZONE[] = {0x6E, 0x61, 0x6D, 0x65, 0x7A, 0x6F, 0x6E, 0x65, 0}; // namezone
-static const char16_t C_NAMEBASE[] = {0x6E, 0x61, 0x6D, 0x65, 0x62, 0x61, 0x73, 0x65, 0}; // namebase
+static const UChar C_TAG[] = {0x3D, 0x3D, 0x3D, 0x3D, 0x3D, 0}; // =====
+static const UChar C_NAMEZONE[] = {0x6E, 0x61, 0x6D, 0x65, 0x7A, 0x6F, 0x6E, 0x65, 0}; // namezone 
+static const UChar C_NAMEBASE[] = {0x6E, 0x61, 0x6D, 0x65, 0x62, 0x61, 0x73, 0x65, 0}; // namebase 
 
-static const char16_t C_TYPE[] = {0x74, 0x79, 0x70, 0x65, 0}; // type
-static const char16_t C_TOASCII[]  =  {0x74, 0x6F, 0x61, 0x73, 0x63, 0x69, 0x69, 0};       // toascii
-static const char16_t C_TOUNICODE[] = {0x74, 0x6F, 0x75, 0x6E, 0x69, 0x63, 0x6F, 0x64, 0x65, 0}; // tounicode
+static const UChar C_TYPE[] = {0x74, 0x79, 0x70, 0x65, 0}; // type
+static const UChar C_TOASCII[]  =  {0x74, 0x6F, 0x61, 0x73, 0x63, 0x69, 0x69, 0};       // toascii
+static const UChar C_TOUNICODE[] = {0x74, 0x6F, 0x75, 0x6E, 0x69, 0x63, 0x6F, 0x64, 0x65, 0}; // tounicode
 
-static const char16_t C_PASSFAIL[] = {0x70, 0x61, 0x73, 0x73, 0x66, 0x61, 0x69, 0x6C, 0}; // passfail
-static const char16_t C_PASS[] = {0x70, 0x61, 0x73, 0x73, 0}; // pass
-static const char16_t C_FAIL[] = {0x66, 0x61, 0x69, 0x6C, 0}; // fail
+static const UChar C_PASSFAIL[] = {0x70, 0x61, 0x73, 0x73, 0x66, 0x61, 0x69, 0x6C, 0}; // passfail
+static const UChar C_PASS[] = {0x70, 0x61, 0x73, 0x73, 0}; // pass
+static const UChar C_FAIL[] = {0x66, 0x61, 0x69, 0x6C, 0}; // fail
 
-static const char16_t C_DESC[] = {0x64, 0x65, 0x73, 0x63, 0}; // desc
-static const char16_t C_USESTD3ASCIIRULES[] = {0x55, 0x73, 0x65, 0x53, 0x54, 0x44,
+static const UChar C_DESC[] = {0x64, 0x65, 0x73, 0x63, 0}; // desc
+static const UChar C_USESTD3ASCIIRULES[] = {0x55, 0x73, 0x65, 0x53, 0x54, 0x44, 
        0x33, 0x41, 0x53, 0x43, 0x49, 0x49, 0x52, 0x75, 0x6C, 0x65, 0x73, 0}; // UseSTD3ASCIIRules
 
 IdnaConfTest::IdnaConfTest(){
-    base = nullptr;
+    base = NULL;
     len = 0;
     curOffset = 0;
 
@@ -56,11 +55,87 @@ IdnaConfTest::~IdnaConfTest(){
 }
 
 #if !UCONFIG_NO_IDNA
+/* this function is modified from RBBITest::ReadAndConvertFile() 
+ *
+ */
+UBool IdnaConfTest::ReadAndConvertFile(){
+    
+    char * source = NULL;
+    size_t source_len;
+
+    // read the test data file to memory
+    FILE* f    = NULL;
+    UErrorCode  status  = U_ZERO_ERROR;
+
+    const char *path = IntlTest::getSourceTestData(status);
+    if (U_FAILURE(status)) {
+        errln("%s", u_errorName(status));
+        return FALSE;
+    }
+
+    const char* name = "idna_conf.txt";     // test data file
+    int t = static_cast<int>(strlen(path) + strlen(name) + 1);
+    char* absolute_name = new char[t];
+    strcpy(absolute_name, path);
+    strcat(absolute_name, name);
+    f = fopen(absolute_name, "rb");
+    delete [] absolute_name;
+
+    if (f == NULL){
+        dataerrln("fopen error on %s", name);
+        return FALSE;
+    }
+
+    fseek( f, 0, SEEK_END);
+    if ((source_len = ftell(f)) <= 0){
+        errln("Error reading test data file.");
+        fclose(f);
+        return FALSE;
+    }
+
+    source = new char[source_len];
+    fseek(f, 0, SEEK_SET);
+    if (fread(source, 1, source_len, f) != source_len) {
+        errln("Error reading test data file.");
+        delete [] source;
+        fclose(f);
+        return FALSE;
+    }
+    fclose(f);
+
+    // convert the UTF-8 encoded stream to UTF-16 stream
+    UConverter* conv = ucnv_open("utf-8", &status);
+    int dest_len = ucnv_toUChars(conv,
+                                NULL,           //  dest,
+                                0,              //  destCapacity,
+                                source,
+                                static_cast<int32_t>(source_len),
+                                &status);
+    if (status == U_BUFFER_OVERFLOW_ERROR) {
+        // Buffer Overflow is expected from the preflight operation.
+        status = U_ZERO_ERROR;
+        UChar * dest = NULL;
+        dest = new UChar[ dest_len + 1];
+        ucnv_toUChars(conv, dest, dest_len + 1, source, static_cast<int32_t>(source_len), &status);
+        // Do not know the "if possible" behavior of ucnv_toUChars()
+        // Do it by ourself.
+        dest[dest_len] = 0; 
+        len = dest_len;
+        base = dest;
+        delete [] source;
+        ucnv_close(conv);
+        return TRUE;    // The buffer will owned by caller.
+    }
+    errln("UConverter error: %s", u_errorName(status));
+    delete [] source;
+    ucnv_close(conv);
+    return FALSE;
+}
 
 int IdnaConfTest::isNewlineMark(){
-    static const char16_t LF        = 0x0a;
-    static const char16_t CR        = 0x0d;
-    char16_t c = base[curOffset];
+    static const UChar LF        = 0x0a;
+    static const UChar CR        = 0x0d;
+    UChar c = base[curOffset];
     // CR LF
     if ( c == CR && curOffset + 1 < len && base[curOffset + 1] == LF){
         return 2;
@@ -82,9 +157,9 @@ int IdnaConfTest::isNewlineMark(){
  *
  */
 UBool IdnaConfTest::ReadOneLine(UnicodeString& buf){
-    if ( !(curOffset < len) ) return false; // stream end
+    if ( !(curOffset < len) ) return FALSE; // stream end
 
-    static const char16_t BACKSLASH = 0x5c;
+    static const UChar BACKSLASH = 0x5c;
     buf.remove();
     int t = 0;
     while (curOffset < len){
@@ -92,17 +167,17 @@ UBool IdnaConfTest::ReadOneLine(UnicodeString& buf){
             curOffset += t;
             break;
         }
-        char16_t c = base[curOffset];
+        UChar c = base[curOffset];
         if (c == BACKSLASH && curOffset < len -1){  // escaped new line mark
             if ((t = isNewlineMark())){
                 curOffset += 1 + t;  // BACKSLAH and NewlineMark
                 continue;
             }
-        }
+        };
         buf.append(c);
         curOffset++;
     }
-    return true;
+    return TRUE;
 }
 
 //
@@ -116,9 +191,9 @@ UBool IdnaConfTest::ReadOneLine(UnicodeString& buf){
  * and, of course, will shift tail elements.
  */
 void IdnaConfTest::ExplainCodePointTag(UnicodeString& buf){
-    buf.append((char16_t)0);    // add a terminal NUL
-    char16_t* bufBase = buf.getBuffer(buf.length());
-    char16_t* p = bufBase;
+    buf.append((UChar)0);    // add a terminal NULL
+    UChar* bufBase = buf.getBuffer(buf.length());
+    UChar* p = bufBase;
     while (*p != 0){
         if ( *p != 0x3C){    // <
             *bufBase++ = *p++;
@@ -153,18 +228,18 @@ void IdnaConfTest::Call(){
         errln("Incomplete record");
     } else {
         UErrorCode status = U_ZERO_ERROR;
-        char16_t result[200] = {0,};   // simple life
-        const char16_t *p = namebase.getTerminatedBuffer();
+        UChar result[200] = {0,};   // simple life
+        const UChar *p = namebase.getTerminatedBuffer();
         const int p_len = namebase.length();
 
         if (type == 0 && option == 0){
-            uidna_IDNToASCII(p, p_len, result, 200, UIDNA_USE_STD3_RULES, nullptr, &status);
+            uidna_IDNToASCII(p, p_len, result, 200, UIDNA_USE_STD3_RULES, NULL, &status);
         } else if (type == 0 && option == 1){
-            uidna_IDNToASCII(p, p_len, result, 200, UIDNA_ALLOW_UNASSIGNED, nullptr, &status);
+            uidna_IDNToASCII(p, p_len, result, 200, UIDNA_ALLOW_UNASSIGNED, NULL, &status);
         } else if (type == 1 && option == 0){
-            uidna_IDNToUnicode(p, p_len, result, 200, UIDNA_USE_STD3_RULES, nullptr, &status);
+            uidna_IDNToUnicode(p, p_len, result, 200, UIDNA_USE_STD3_RULES, NULL, &status);
         } else if (type == 1 && option == 1){
-            uidna_IDNToUnicode(p, p_len, result, 200, UIDNA_ALLOW_UNASSIGNED, nullptr, &status);
+            uidna_IDNToUnicode(p, p_len, result, 200, UIDNA_ALLOW_UNASSIGNED, NULL, &status);
         }
         if (passfail == 0){
             if (U_FAILURE(status)){
@@ -201,21 +276,11 @@ void IdnaConfTest::Call(){
     namebase.setToBogus();
     namezone.setToBogus();
     id.remove();
+    return;
 }
 
-void IdnaConfTest::Test(){
-    UErrorCode  status  = U_ZERO_ERROR;
-    //
-    //  Open and read the test data file.
-    //
-    const char *testDataDirectory = IntlTest::getSourceTestData(status);
-    CharString testFileName(testDataDirectory, -1, status);
-    testFileName.append("idna_conf.txt", -1, status);
-
-    base = ReadAndConvertFile(testFileName.data(), len, "UTF-8", status);
-    if (U_FAILURE(status)) {
-        return;
-    }
+void IdnaConfTest::Test(void){
+    if (!ReadAndConvertFile())return;
 
     UnicodeString s;
     UnicodeString key;
@@ -238,7 +303,7 @@ void IdnaConfTest::Test(){
             Call();
        } else {
             // explain      key:value
-            int p = s.indexOf((char16_t)0x3A);    // :
+            int p = s.indexOf((UChar)0x3A);    // :
             key.setTo(s,0,p).trim();
             value.setTo(s,p+1).trim();
             if (key.compare(C_TYPE, -1) == 0){
@@ -259,7 +324,7 @@ void IdnaConfTest::Test(){
                 } else {
                     option = 0;
                 }
-                id.setTo(value, 0, value.indexOf((char16_t)0x20));    // space
+                id.setTo(value, 0, value.indexOf((UChar)0x20));    // space
             } else if (key.compare(C_NAMEZONE, -1) == 0){
                 ExplainCodePointTag(value);
                 namezone.setTo(value);
@@ -274,7 +339,7 @@ void IdnaConfTest::Test(){
     Call(); // for last record
 }
 #else
-void IdnaConfTest::Test()
+void IdnaConfTest::Test(void)
 {
   // test nothing...
 }

@@ -147,8 +147,10 @@ AC_SUBST(ENABLE_RELEASE)
 : ${CXXFLAGS=""}
 
 # Checks for compilers
-AC_PROG_CC([cc clang gcc c99 c89 xlc_r xlc cl.exe icc])
-AC_PROG_CXX([c++ clang++ g++ gpp xlC_r xlC aCC CC cxx cc++ cl.exe icc FCC KCC RCC])
+AC_PROG_CC([clang gcc cc c99 c89 xlc_r xlc cl.exe icc])
+# Make sure that we try clang++ first, which provides C++11 support.
+# The g++ compiler is less likely to support C++11.
+AC_PROG_CXX([clang++ g++ c++ gpp xlC_r xlC aCC CC cxx cc++ cl.exe icc FCC KCC RCC])
 
 # pkg-config is needed for harfbuzz support
 PKG_PROG_PKG_CONFIG([0.20])
@@ -171,21 +173,6 @@ if test "$GCC" = yes; then
         fi
         if test "$ENABLE_RELEASE" = 1; then
             CXXFLAGS="$CXXFLAGS -O2"
-        fi
-    fi
-    # if CFLAGS does not have a "-std=" setting, set it now to -std=c11,
-    # and check that the compiler still works.
-    if ! echo "$CFLAGS" | grep '\-std=' >/dev/null 2>&1; then
-        OLD_CFLAGS="${CFLAGS}"
-        CFLAGS="$CFLAGS -std=c11"
-        AC_MSG_CHECKING([[if we have a C11 compiler]])
-        AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]],[[]])],[c11_okay=yes],[c11_okay=no])
-        AC_MSG_RESULT($c11_okay)
-        if [[ $c11_okay = yes ]]; then
-            AC_MSG_NOTICE([Adding CFLAGS option -std=c11])
-            UCONFIG_CFLAGS="${UCONFIG_CFLAGS} -std=c11"
-        else
-            CFLAGS="$OLD_CFLAGS"
         fi
     fi
 fi
@@ -494,7 +481,7 @@ if test "$enable" = "yes"; then
    fi
 fi
 
-# Check for miscellaneous functions.
+# Check for miscellanous functions.
 # So, use for putil / tools only.
 # Note that this will generate HAVE_GETTIMEOFDAY, not U_HAVE_GETTIMEOFDAY
 AC_CHECK_FUNCS([gettimeofday])
@@ -526,20 +513,25 @@ else
 fi
 
 if [[ "$GXX" = yes ]]; then
-    # if CXXFLAGS does not have a "-std=" setting, set it now to -std=c++17,
+    # if CXXFLAGS does not have a "-std=" setting, set it now to -std=c++11,
     # and check that the compiler still works.
     if ! echo "$CXXFLAGS" | grep '\-std=' >/dev/null 2>&1; then
         OLD_CXXFLAGS="${CXXFLAGS}"
-        CXXFLAGS="$CXXFLAGS -std=c++17"
-        AC_MSG_CHECKING([[if we have a C++17 compiler]])
-        AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]],[[]])],[cxx17_okay=yes],[cxx17_okay=no])
-        AC_MSG_RESULT($cxx17_okay)
-        if [[ $cxx17_okay = yes ]]; then
-            AC_MSG_NOTICE([Adding CXXFLAGS option -std=c++17])
-            UCONFIG_CXXFLAGS="${UCONFIG_CXXFLAGS} -std=c++17"
+        CXXFLAGS="$CXXFLAGS -std=c++11"
+        AC_MSG_CHECKING([[if we have a C++11 compiler]])
+        AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]],[[]])],[cxx11_okay=yes],[cxx11_okay=no])
+        AC_MSG_RESULT($cxx11_okay)
+        if [[ $cxx11_okay = yes ]]; then
+            AC_MSG_NOTICE([Adding CXXFLAGS option -std=c++11])
+            UCONFIG_CXXFLAGS="${UCONFIG_CXXFLAGS} -std=c++11"
         else
             CXXFLAGS="$OLD_CXXFLAGS"
         fi
+        case "${host}" in
+        *-*-solaris*)
+            CXXFLAGS="$OLD_CXXFLAGS"
+            ;;
+        esac
     fi
 fi
 
@@ -549,7 +541,7 @@ AC_LANG_POP([C++])
 OLD_LIBS=${LIBS}
 
 # For Compaq Tru64 (OSF1), we must look for pthread_attr_init
-# and must do this before searching for pthread_mutex_destroy, or
+# and must do this before seaching for pthread_mutex_destroy, or
 # we will pick up libpthreads.so not libpthread.so
 # If this fails, then we must test for HPUX specials, before
 # moving on to a more generic test
@@ -683,7 +675,22 @@ AC_SUBST(GENCCODE_ASSEMBLY)
 AC_MSG_RESULT($GENCCODE_ASSEMBLY)
 
 # Checks for header files
+AC_CHECK_HEADERS(inttypes.h)
+if test $ac_cv_header_inttypes_h = no; then
+ U_HAVE_INTTYPES_H=0
+ CONFIG_CPPFLAGS="${CONFIG_CPPFLAGS} -DU_HAVE_INTTYPES_H=0"
+else
+ U_HAVE_INTTYPES_H=1
+fi
+if test "$CC" = ccc; then
+ AC_MSG_RESULT("C compiler set to CCC ${CC}" )
+ case "${host}" in
+        alpha*-*-*) U_HAVE_INTTYPES_H=0;
+        CONFIG_CPPFLAGS="${CONFIG_CPPFLAGS} -DU_HAVE_INTTYPES_H=0"
+ esac
+fi
 
+AC_SUBST(U_HAVE_INTTYPES_H)
 
 AC_CHECK_HEADERS(dirent.h)
 if test $ac_cv_header_dirent_h = no; then
@@ -896,6 +903,48 @@ else
 fi
 AC_SUBST(U_HAVE_STRTOD_L)
 
+# Checks for typedefs
+AC_CHECK_TYPE(int8_t,signed char)
+AC_CHECK_TYPE(uint8_t,unsigned char)
+AC_CHECK_TYPE(int16_t,signed short)
+AC_CHECK_TYPE(uint16_t,unsigned short)
+AC_CHECK_TYPE(int32_t,signed long)
+AC_CHECK_TYPE(uint32_t,unsigned long)
+AC_CHECK_TYPE(int64_t,signed long long)
+AC_CHECK_TYPE(uint64_t,unsigned long long)
+
+if test $ac_cv_type_int8_t = no; then
+CONFIG_CPPFLAGS="${CONFIG_CPPFLAGS} -DU_HAVE_INT8_T=0"
+fi
+
+if test $ac_cv_type_uint8_t = no; then
+CONFIG_CPPFLAGS="${CONFIG_CPPFLAGS} -DU_HAVE_UINT8_T=0"
+fi
+
+if test $ac_cv_type_int16_t = no; then
+CONFIG_CPPFLAGS="${CONFIG_CPPFLAGS} -DU_HAVE_INT16_T=0"
+fi
+
+if test $ac_cv_type_uint16_t = no; then
+CONFIG_CPPFLAGS="${CONFIG_CPPFLAGS} -DU_HAVE_UINT16_T=0"
+fi
+
+if test $ac_cv_type_int32_t = no; then
+CONFIG_CPPFLAGS="${CONFIG_CPPFLAGS} -DU_HAVE_INT32_T=0"
+fi
+
+if test $ac_cv_type_uint32_t = no; then
+CONFIG_CPPFLAGS="${CONFIG_CPPFLAGS} -DU_HAVE_UINT32_T=0"
+fi
+
+if test $ac_cv_type_int64_t = no; then
+CONFIG_CPPFLAGS="${CONFIG_CPPFLAGS} -DU_HAVE_INT64_T=0"
+fi
+
+if test $ac_cv_type_uint64_t = no; then
+CONFIG_CPPFLAGS="${CONFIG_CPPFLAGS} -DU_HAVE_UINT64_T=0"
+fi
+
 # Do various wchar_t related checks
 AC_CHECK_HEADER(wchar.h)
 if test "$ac_cv_header_wchar_h" = no
@@ -1044,14 +1093,14 @@ ICU_CONDITIONAL(ICUIO, test "$icuio" = true)
 
 # Enable/disable layoutex
 AC_ARG_ENABLE(layoutex,
-	[  --enable-layoutex         build ICU's Paragraph Layout library [default=no].
+	[  --enable-layoutex         build ICU's Paragraph Layout library [default=yes].
             icu-le-hb must be installed via pkg-config. See http://harfbuzz.org],
 	[case "${enableval}" in
 		yes) layoutex=$have_icu_le_hb ;;
 		no)  layoutex=false ;;
 		*) AC_MSG_ERROR(bad value ${enableval} for --enable-layoutex) ;;
 		esac],
-	layoutex=false)
+	layoutex=$have_icu_le_hb)
 ICU_CONDITIONAL(LAYOUTEX, test "$layoutex" = true)
 
 # Enable/disable layout
@@ -1075,19 +1124,6 @@ AC_ARG_ENABLE(tools,
 	tools=true)
 ICU_CONDITIONAL(TOOLS, test "$tools" = true)
 
-# Enable/disable fuzzer target tests.
-AC_ARG_ENABLE(fuzzer,
-	[  --enable-fuzzer        build ICU's fuzzer test targets [default=no]],
-	[case "${enableval}" in
-		yes) fuzzer=true ;;
-		no)  fuzzer=false ;;
-		*) AC_MSG_ERROR(bad value ${enableval} for --enable-fuzzer) ;;
-		esac],
-	fuzzer=false)
-ICU_CONDITIONAL(FUZZER, test "$fuzzer" = true)
-
-ICU_CONDITIONAL(DATA, test "$tools" = true || test "$cross_compiling" = "yes")
-
 AC_ARG_WITH(data-packaging,
 	[  --with-data-packaging     specify how to package ICU data. Possible values:
         files    raw files (.res, etc)
@@ -1095,7 +1131,7 @@ AC_ARG_WITH(data-packaging,
         library  shared library (.dll/.so/etc.)
         static   static library (.a/.lib/etc.)
         auto     build shared if possible (default)
-           See https://unicode-org.github.io/icu/userguide/icu_data for more info.],
+           See http://userguide.icu-project.org/icudata for more info.],
 	[case "${withval}" in
                 files|archive|library) datapackaging=$withval ;;
 		auto) datapackaging=$withval ;;
@@ -1133,7 +1169,7 @@ fi
 
 datapackaging_dir=`eval echo $thedatadir`"/icu/${VERSION}"
 
-datapackaging_msg="(No explanation for mode $datapackaging.)"
+datapackaging_msg="(No explaination for mode $datapackaging.)"
 
 datapackaging_msg_path="ICU will look in $datapackaging_dir which is the installation location. Call u_setDataDirectory() or use the ICU_DATA environment variable to override."
 datapackaging_msg_set="ICU will use the linked data library. If linked with the stub library located in stubdata/, the application can use udata_setCommonData() or set a data path to override."
@@ -1268,7 +1304,6 @@ fi
 
 if test "${CXX}" = "clang++"; then
    CLANGCXXFLAGS="-Qunused-arguments -Wno-parentheses-equality"
-   LIBCXXFLAGS="$LIBCXXFLAGS -Wglobal-constructors"
 else
    CLANGCXXFLAGS=""
 fi
@@ -1322,7 +1357,6 @@ AC_CONFIG_FILES([icudefs.mk \
 		tools/icupkg/Makefile \
 		tools/icuswap/Makefile \
 		tools/pkgdata/Makefile \
-		tools/icuexportdata/Makefile \
 		tools/tzcode/Makefile \
 		tools/gencfu/Makefile \
 		tools/escapesrc/Makefile \
@@ -1343,7 +1377,6 @@ AC_CONFIG_FILES([icudefs.mk \
 		test/perf/ubrkperf/Makefile \
 		test/perf/charperf/Makefile \
 		test/perf/convperf/Makefile \
-		test/perf/localecanperf/Makefile \
 		test/perf/normperf/Makefile \
 		test/perf/DateFmtPerf/Makefile \
 		test/perf/howExpensiveIs/Makefile \
@@ -1354,8 +1387,8 @@ AC_CONFIG_FILES([icudefs.mk \
 		test/perf/utfperf/Makefile \
 		test/perf/utrie2perf/Makefile \
 		test/perf/leperf/Makefile \
-		test/fuzzer/Makefile \
-		samples/Makefile])
+		samples/Makefile samples/date/Makefile \
+		samples/cal/Makefile samples/layout/Makefile])
 AC_OUTPUT
 
 if test -z "$PYTHON";
@@ -1366,8 +1399,7 @@ else
     if test -f "$srcdir/data/locales/root.txt";
     then
         echo "Spawning Python to generate data/rules.mk..."
-        PYTHONPATH="$srcdir/python" \
-            $PYTHON -m icutools.databuilder \
+        PYTHONPATH="$srcdir/data" $PYTHON -m buildtool \
             --mode gnumake \
             --seqmode parallel \
             --src_dir "$srcdir/data" \
@@ -1382,8 +1414,7 @@ else
       touch data/rules.mk
     fi
     echo "Spawning Python to generate test/testdata/rules.mk..."
-    PYTHONPATH="$srcdir/python" \
-        $PYTHON -m icutools.databuilder \
+    PYTHONPATH="$srcdir/test/testdata:$srcdir/data" $PYTHON -m buildtool \
         --mode gnumake \
         --seqmode parallel \
         --src_dir "$srcdir/test/testdata" \

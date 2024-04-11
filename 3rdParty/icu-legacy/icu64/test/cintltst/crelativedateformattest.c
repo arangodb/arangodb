@@ -10,8 +10,6 @@
 
 #if !UCONFIG_NO_FORMATTING && !UCONFIG_NO_BREAK_ITERATION
 
-#include <stdbool.h>
-
 #include "unicode/ureldatefmt.h"
 #include "unicode/unum.h"
 #include "unicode/udisplaycontext.h"
@@ -173,8 +171,8 @@ static const char* en_decDef_long_midSent_min[kNumOffsets*2] = {
     "2 minutes ago",        "2 minutes ago",      /* -2   */
     "1 minute ago",         "1 minute ago",       /* -1   */
     "0.7 minutes ago",      "0.7 minutes ago",    /* -0.7 */
-    "this minute",          "0 minutes ago",      /* -0   */
-    "this minute",          "in 0 minutes",       /*  0   */
+    "0 minutes ago",        "0 minutes ago",      /* -0   */
+    "in 0 minutes",         "in 0 minutes",       /*  0   */
     "in 0.7 minutes",       "in 0.7 minutes",     /*  0.7 */
     "in 1 minute",          "in 1 minute",        /*  1   */
     "in 2 minutes",         "in 2 minutes",       /*  2   */
@@ -188,8 +186,8 @@ static const FieldsDat en_attrDef_long_midSent_min[kNumOffsets*2] = {
     {UDAT_REL_NUMERIC_FIELD,  0,  1}, {UDAT_REL_NUMERIC_FIELD,  0,  1}, /* "2 minutes ago",        "2 minutes ago",       -2   */
     {UDAT_REL_NUMERIC_FIELD,  0,  1}, {UDAT_REL_NUMERIC_FIELD,  0,  1}, /* "1 minute ago",         "1 minute ago",        -1   */
     {UDAT_REL_NUMERIC_FIELD,  0,  3}, {UDAT_REL_NUMERIC_FIELD,  0,  3}, /* "0.7 minutes ago",      "0.7 minutes ago",     -0.7 */
-    {-1,  -1,  -1}, {UDAT_REL_NUMERIC_FIELD,  0,  1}, /* "this minute",        "0 minutes ago",       -0   */
-    {-1,  -1,  -1}, {UDAT_REL_NUMERIC_FIELD,  3,  4}, /* "this minute",         "in 0 minutes",         0   */
+    {UDAT_REL_NUMERIC_FIELD,  0,  1}, {UDAT_REL_NUMERIC_FIELD,  0,  1}, /* "0 minutes ago",        "0 minutes ago",       -0   */
+    {UDAT_REL_NUMERIC_FIELD,  3,  4}, {UDAT_REL_NUMERIC_FIELD,  3,  4}, /* "in 0 minutes",         "in 0 minutes",         0   */
     {UDAT_REL_NUMERIC_FIELD,  3,  6}, {UDAT_REL_NUMERIC_FIELD,  3,  6}, /* "in 0.7 minutes",       "in 0.7 minutes",       0.7 */
     {UDAT_REL_NUMERIC_FIELD,  3,  4}, {UDAT_REL_NUMERIC_FIELD,  3,  4}, /* "in 1 minute",          "in 1 minute",          1   */
     {UDAT_REL_NUMERIC_FIELD,  3,  4}, {UDAT_REL_NUMERIC_FIELD,  3,  4}, /* "in 2 minutes",         "in 2 minutes",         2   */
@@ -348,7 +346,7 @@ static const RelDateTimeFormatTestItem fmtTestItems[] = {
 
 enum { kUBufMax = 64, kBBufMax = 256 };
 
-static void TestRelDateFmt(void)
+static void TestRelDateFmt()
 {
     const RelDateTimeFormatTestItem *itemPtr;
     log_verbose("\nTesting ureldatefmt_open(), ureldatefmt_format(), ureldatefmt_formatNumeric() with various parameters\n");
@@ -429,7 +427,7 @@ static void TestRelDateFmt(void)
     }
 }
 
-static void TestNumericField(void)
+static void TestNumericField()
 {
     const RelDateTimeFormatTestItem *itemPtr;
     log_verbose("\nTesting ureldatefmt_open(), ureldatefmt_formatForFields(), ureldatefmt_formatNumericForFields() with various parameters\n");
@@ -484,8 +482,8 @@ static void TestNumericField(void)
 
                 FieldsDat expectedAttr = itemPtr->expectedAttributes[iOffset*2];
                 UConstrainedFieldPosition* cfpos = ucfpos_open(&status);
-                UBool foundNumeric = false;
-                while (true) {
+                UBool foundNumeric = FALSE;
+                while (TRUE) {
                     foundNumeric = ufmtval_nextPosition(ureldatefmt_resultAsValue(fv, &status), cfpos, &status);
                     if (!foundNumeric) {
                         break;
@@ -539,8 +537,8 @@ static void TestNumericField(void)
 
                 FieldsDat expectedAttr = itemPtr->expectedAttributes[iOffset*2 + 1];
                 UConstrainedFieldPosition* cfpos = ucfpos_open(&status);
-                UBool foundNumeric = false;
-                while (true) {
+                UBool foundNumeric = FALSE;
+                while (TRUE) {
                     foundNumeric = ufmtval_nextPosition(ureldatefmt_resultAsValue(fv, &status), cfpos, &status);
                     if (!foundNumeric) {
                         break;
@@ -591,7 +589,7 @@ static const CombineDateTimeTestItem combTestItems[] = {
     { NULL,  (UDateRelativeDateTimeFormatterStyle)0, (UDisplayContext)0, NULL, NULL, NULL } /* terminator */
 };
 
-static void TestCombineDateTime(void)
+static void TestCombineDateTime()
 {
     const CombineDateTimeTestItem *itemPtr;
     log_verbose("\nTesting ureldatefmt_combineDateAndTime() with various parameters\n");
@@ -645,7 +643,7 @@ static void TestCombineDateTime(void)
     }
 }
 
-static void TestFields(void) {
+static void TestFields() {
     UErrorCode ec = U_ZERO_ERROR;
     URelativeDateTimeFormatter* fmt = ureldatefmt_open(
         "en-us",

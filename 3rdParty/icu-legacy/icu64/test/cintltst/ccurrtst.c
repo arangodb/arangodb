@@ -37,7 +37,7 @@ void addCurrencyCollTest(TestNode** root)
 }
 
 
-void currTest(void)
+void currTest()
 {
     /* All the currency symbols, in UCA order*/
     static const UChar currency[][2] =
@@ -63,8 +63,7 @@ void currTest(void)
       { 0x20A4, 0x0000}, /*20A4; L; [14 50, 03, 03]    # [0838.0020.0002] # LIRA SIGN*/
       { 0x20A5, 0x0000}, /*20A5; L; [14 52, 03, 03]    # [0839.0020.0002] # MILL SIGN*/
       { 0x20A6, 0x0000}, /*20A6; L; [14 54, 03, 03]    # [083A.0020.0002] # NAIRA SIGN*/
-      // Unicode 15.1: ₧ now sorts like "Pts", no longer as a stand-alone symbol.
-      // { 0x20A7, 0x0000}, /*20A7; L; [14 56, 03, 03]    # [083B.0020.0002] # PESETA SIGN*/
+      { 0x20A7, 0x0000}, /*20A7; L; [14 56, 03, 03]    # [083B.0020.0002] # PESETA SIGN*/
       { 0x20A9, 0x0000}, /*20A9; L; [14 58, 03, 03]    # [083C.0020.0002] # WON SIGN*/
       { 0xFFE6, 0x0000}, /*FFE6; L; [14 58, 03, 05]    # [083C.0020.0003] # FULLWIDTH WON SIGN*/
       { 0x20AA, 0x0000}, /*20AA; L; [14 5A, 03, 03]    # [083D.0020.0002] # NEW SHEQEL SIGN*/

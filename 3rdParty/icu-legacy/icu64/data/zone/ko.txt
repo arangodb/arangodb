@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ko{
+    Version{"2.1.49.82"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"아비장"}
@@ -258,9 +258,6 @@ ko{
         "America:Chihuahua"{
             ec{"치와와"}
         }
-        "America:Ciudad_Juarez"{
-            ec{"시우다드후아레스"}
-        }
         "America:Coral_Harbour"{
             ec{"코랄하버"}
         }
@@ -349,25 +346,25 @@ ko{
             ec{"에르모시요"}
         }
         "America:Indiana:Knox"{
-            ec{"인디애나주, 녹스"}
+            ec{"인디애나주 녹스"}
         }
         "America:Indiana:Marengo"{
-            ec{"인디애나주, 머렝고"}
+            ec{"인디애나주, 마렝고"}
         }
         "America:Indiana:Petersburg"{
             ec{"인디애나주, 피츠버그"}
         }
         "America:Indiana:Tell_City"{
-            ec{"인디애나주, 텔시티"}
+            ec{"인디아나주, 텔시티"}
         }
         "America:Indiana:Vevay"{
-            ec{"인디애나주, 비비"}
+            ec{"비비"}
         }
         "America:Indiana:Vincennes"{
-            ec{"인디애나주, 빈센스"}
+            ec{"인디아나주, 뱅센"}
         }
         "America:Indiana:Winamac"{
-            ec{"인디애나주, 위너맥"}
+            ec{"인디아나주, 워너맥"}
         }
         "America:Indianapolis"{
             ec{"인디애나폴리스"}
@@ -465,6 +462,9 @@ ko{
         "America:New_York"{
             ec{"뉴욕"}
         }
+        "America:Nipigon"{
+            ec{"니피곤"}
+        }
         "America:Nome"{
             ec{"놈"}
         }
@@ -478,13 +478,16 @@ ko{
             ec{"중부, 노스다코타"}
         }
         "America:North_Dakota:New_Salem"{
-            ec{"노스다코타주, 뉴살렘"}
+            ec{"노스 다코타주, 뉴살렘"}
         }
         "America:Ojinaga"{
             ec{"오히나가"}
         }
         "America:Panama"{
             ec{"파나마"}
+        }
+        "America:Pangnirtung"{
+            ec{"팡니르퉁"}
         }
         "America:Paramaribo"{
             ec{"파라마리보"}
@@ -507,6 +510,9 @@ ko{
         "America:Punta_Arenas"{
             ec{"푼타아레나스"}
         }
+        "America:Rainy_River"{
+            ec{"레이니강"}
+        }
         "America:Rankin_Inlet"{
             ec{"랭킹 인렛"}
         }
@@ -521,6 +527,9 @@ ko{
         }
         "America:Rio_Branco"{
             ec{"히우 브랑쿠"}
+        }
+        "America:Santa_Isabel"{
+            ec{"산타 이사벨"}
         }
         "America:Santarem"{
             ec{"산타렘"}
@@ -547,16 +556,16 @@ ko{
             ec{"세인트존스"}
         }
         "America:St_Kitts"{
-            ec{"세인트키츠"}
+            ec{"세인트 키츠"}
         }
         "America:St_Lucia"{
-            ec{"세인트루시아"}
+            ec{"세인트 루시아"}
         }
         "America:St_Thomas"{
-            ec{"세인트토마스"}
+            ec{"세인트 토마스"}
         }
         "America:St_Vincent"{
-            ec{"세인트빈센트"}
+            ec{"세인트 빈센트"}
         }
         "America:Swift_Current"{
             ec{"스위프트커런트"}
@@ -566,6 +575,9 @@ ko{
         }
         "America:Thule"{
             ec{"툴레"}
+        }
+        "America:Thunder_Bay"{
+            ec{"선더베이"}
         }
         "America:Tijuana"{
             ec{"티후아나"}
@@ -587,6 +599,9 @@ ko{
         }
         "America:Yakutat"{
             ec{"야쿠타트"}
+        }
+        "America:Yellowknife"{
+            ec{"옐로나이프"}
         }
         "Antarctica:Casey"{
             ec{"케이시"}
@@ -912,6 +927,9 @@ ko{
         "Australia:Broken_Hill"{
             ec{"브로컨힐"}
         }
+        "Australia:Currie"{
+            ec{"퀴리"}
+        }
         "Australia:Darwin"{
             ec{"다윈"}
         }
@@ -1094,6 +1112,9 @@ ko{
         "Europe:Ulyanovsk"{
             ec{"울리야노프스크"}
         }
+        "Europe:Uzhgorod"{
+            ec{"우주고로트"}
+        }
         "Europe:Vaduz"{
             ec{"파두츠"}
         }
@@ -1114,6 +1135,9 @@ ko{
         }
         "Europe:Zagreb"{
             ec{"자그레브"}
+        }
+        "Europe:Zaporozhye"{
+            ec{"자포로지예"}
         }
         "Europe:Zurich"{
             ec{"취리히"}
@@ -1196,8 +1220,8 @@ ko{
         "Pacific:Honolulu"{
             ec{"호놀룰루"}
         }
-        "Pacific:Kanton"{
-            ec{"칸톤"}
+        "Pacific:Johnston"{
+            ec{"존스톤"}
         }
         "Pacific:Kiritimati"{
             ec{"키리티마티"}
@@ -1489,9 +1513,9 @@ ko{
             ls{"에콰도르 시간"}
         }
         "meta:Europe_Central"{
-            ld{"중부유럽 하계 표준시"}
-            lg{"중부유럽 시간"}
-            ls{"중부유럽 표준시"}
+            ld{"중부 유럽 하계 표준시"}
+            lg{"중부 유럽 시간"}
+            ls{"중부 유럽 표준시"}
         }
         "meta:Europe_Eastern"{
             ld{"동유럽 하계 표준시"}
@@ -1499,7 +1523,7 @@ ko{
             ls{"동유럽 표준시"}
         }
         "meta:Europe_Further_Eastern"{
-            ls{"극동유럽 표준시"}
+            ls{"극동 유럽 표준시"}
         }
         "meta:Europe_Western"{
             ld{"서유럽 하계 표준시"}
@@ -1648,6 +1672,9 @@ ko{
             lg{"마카오 시간"}
             ls{"마카오 표준 시간"}
         }
+        "meta:Macquarie"{
+            ls{"매쿼리섬 시간"}
+        }
         "meta:Magadan"{
             ld{"마가단 하계 표준시"}
             lg{"마가단 시간"}
@@ -1672,6 +1699,11 @@ ko{
         }
         "meta:Mawson"{
             ls{"모슨 시간"}
+        }
+        "meta:Mexico_Northwest"{
+            ld{"멕시코 북서부 하계 표준시"}
+            lg{"멕시코 북서부 시간"}
+            ls{"멕시코 북서부 표준시"}
         }
         "meta:Mexico_Pacific"{
             ld{"멕시코 태평양 하계 표준시"}
@@ -1716,9 +1748,7 @@ ko{
             ls{"니우에 시간"}
         }
         "meta:Norfolk"{
-            ld{"노퍽섬 하계 표준시"}
-            lg{"노퍽섬 시간"}
-            ls{"노퍽섬 표준시"}
+            ls{"노퍽섬 시간"}
         }
         "meta:Noronha"{
             ld{"페르난도 데 노로냐 하계 표준시"}
@@ -1899,10 +1929,10 @@ ko{
             lg{"예카테린부르크 시간"}
             ls{"예카테린부르크 표준시"}
         }
-        "meta:Yukon"{
-            ls{"유콘 시간"}
-        }
         fallbackFormat{"{1}({0})"}
+        gmtFormat{"GMT{0}"}
+        gmtZeroFormat{"GMT"}
+        hourFormat{"+HH:mm;-HH:mm"}
         regionFormat{"{0} 시간"}
         regionFormatDaylight{"{0} 하계 표준시"}
         regionFormatStandard{"{0} 표준시"}

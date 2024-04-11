@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 kn{
+    Version{"2.1.19.14"}
     collations{
         standard{
             Sequence{
@@ -9,7 +9,7 @@ kn{
                 "[reorder Knda Deva Beng Guru Gujr Orya Taml Telu Mlym Sinh]"
                 "&ಔ<ಂ<ಃ<ೱ<ೲ"
             }
-            Version{"45"}
+            Version{"35.1"}
         }
         traditional{
             Sequence{
@@ -651,7 +651,7 @@ kn{
                 "&ಫೋ<<<ಫ಼ೋ"
                 "&ಫೌ<<<ಫ಼ೌ"
             }
-            Version{"45"}
+            Version{"35.1"}
         }
     }
 }

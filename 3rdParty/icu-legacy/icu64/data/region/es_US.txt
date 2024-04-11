@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 es_US{
     %%Parent{"es_419"}
     Countries{
@@ -12,18 +11,27 @@ es_US{
         034{"Asia meridional"}
         035{"Sudeste asiático"}
         039{"Europa meridional"}
+        057{"Región de Micronesia"}
         145{"Asia occidental"}
         151{"Europa oriental"}
         154{"Europa septentrional"}
         155{"Europa occidental"}
         AC{"Isla de la Ascensión"}
         BA{"Bosnia y Herzegovina"}
-        EH{"Sahara Occidental"}
+        CI{"Côte d’Ivoire"}
+        EZ{"zona euro"}
         GG{"Guernsey"}
         QO{"Territorios alejados de Oceanía"}
+        TL{"Timor-Leste"}
         UM{"Islas menores alejadas de EE. UU."}
+        VI{"Islas Vírgenes de EE. UU."}
     }
     Countries%short{
         GB{"RU"}
     }
+    Countries%variant{
+        CI{"CI"}
+        TL{"TL"}
+    }
+    Version{"2.1.47.86"}
 }

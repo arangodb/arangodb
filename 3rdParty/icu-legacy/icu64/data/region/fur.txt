@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 fur{
     Countries{
         001{"Mont"}
@@ -141,6 +140,7 @@ fur{
         IL{"Israêl"}
         IM{"Isule di Man"}
         IN{"India"}
+        IO{"Teritori britanic dal Ocean Indian"}
         IQ{"Iraq"}
         IR{"Iran"}
         IS{"Islande"}
@@ -178,6 +178,7 @@ fur{
         MF{"Sant Martin"}
         MG{"Madagascar"}
         MH{"Isulis Marshall"}
+        MK{"Macedonie"}
         ML{"Mali"}
         MM{"Birmanie"}
         MN{"Mongolie"}
@@ -293,5 +294,7 @@ fur{
         CD{"Congo (RDC)"}
         CG{"Congo (Republiche)"}
         FK{"Isulis Falkland (Isulis Malvinas)"}
+        MK{"Macedonie (FYROM)"}
     }
+    Version{"2.1.47.82"}
 }

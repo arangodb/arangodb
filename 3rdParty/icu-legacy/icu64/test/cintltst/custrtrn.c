@@ -17,9 +17,8 @@
 /****************************************************************************/
 
 
-#include <stdbool.h>
-#include <stdio.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include "unicode/utypes.h"
 #include "unicode/ustring.h"
@@ -208,7 +207,7 @@ static void Test_strToUTF32(void){
 }
 
 /* test unpaired surrogates */
-static void Test_strToUTF32_surrogates(void) {
+static void Test_strToUTF32_surrogates() {
     UErrorCode err = U_ZERO_ERROR;
     UChar32 u32Target[400];
     int32_t len16, u32DestLen;
@@ -388,7 +387,7 @@ static void Test_strFromUTF32(void){
 }
 
 /* test surrogate code points */
-static void Test_strFromUTF32_surrogates(void) {
+static void Test_strFromUTF32_surrogates() {
     UErrorCode err = U_ZERO_ERROR;
     UChar uTarget[400];
     int32_t len32, uDestLen;
@@ -517,7 +516,7 @@ static void Test_UChar_UTF8_API(void){
     char* u8Target = u8Temp;
     int32_t u8TargetLength =0;
     int32_t u8DestLen =0;
-    UBool failed = false;
+    UBool failed = FALSE;
     int i= 0;
     int32_t numSubstitutions;
 
@@ -542,7 +541,7 @@ static void Test_UChar_UTF8_API(void){
         else {
             log_err("Should have gotten U_BUFFER_OVERFLOW_ERROR");
         }
-        failed = false;
+        failed = FALSE;
         /*for(i=0; i< u8DestLen; i++){
             printf("0x%04X, ",u8Target[i]);
             if(i%10==0){
@@ -552,7 +551,7 @@ static void Test_UChar_UTF8_API(void){
         /*for(i=0; i< u8DestLen; i++){
             if(u8Target[i] != src8[i]){
                 log_verbose("u_strToUTF8() failed expected: %04X got: %04X \n", src8[i], u8Target[i]);
-                failed =true;
+                failed =TRUE;
             }
         }
         if(failed){
@@ -584,12 +583,12 @@ static void Test_UChar_UTF8_API(void){
         }*/
 
         if(U_FAILURE(err) || uDestLen != uTargetLength || uTarget[uTargetLength] != 0xfff0) {
-            failed = true;
+            failed = TRUE;
         }
         for(i=0; i< uSrcLen; i++){
             if(uTarget[i] != src16[i]){
                 log_verbose("u_strFromUTF8() failed expected: \\u%04X got: \\u%04X at index: %i \n", src16[i] ,uTarget[i],i);
-                failed =true;
+                failed =TRUE;
             }
         }
         if(failed){
@@ -604,7 +603,7 @@ static void Test_UChar_UTF8_API(void){
         uTargetLength = 0;
         uSrcLen =-1;
         u8TargetLength=0;
-        failed = false;
+        failed = FALSE;
         /* preflight */
         u_strToUTF8(NULL,u8TargetLength, &u8DestLen, uSrc, uSrcLen,&err);
         if(err == U_BUFFER_OVERFLOW_ERROR){
@@ -618,7 +617,7 @@ static void Test_UChar_UTF8_API(void){
         else {
             log_err("Should have gotten U_BUFFER_OVERFLOW_ERROR");
         }
-        failed = false;
+        failed = FALSE;
         /*for(i=0; i< u8DestLen; i++){
             printf("0x%04X, ",u8Target[i]);
             if(i%10==0){
@@ -628,7 +627,7 @@ static void Test_UChar_UTF8_API(void){
         /*for(i=0; i< u8DestLen; i++){
             if(u8Target[i] != src8[i]){
                 log_verbose("u_strToUTF8() failed expected: %04X got: %04X \n", src8[i], u8Target[i]);
-                failed =true;
+                failed =TRUE;
             }
         }
         if(failed){
@@ -659,7 +658,7 @@ static void Test_UChar_UTF8_API(void){
         for(i=0; i< uSrcLen; i++){
             if(uTarget[i] != src16[i]){
                 log_verbose("u_strFromUTF8() failed expected: \\u%04X got: \\u%04X at index: %i \n", src16[i] ,uTarget[i],i);
-                failed =true;
+                failed =TRUE;
             }
         }
         if(failed){
@@ -749,7 +748,7 @@ static void Test_UChar_UTF8_API(void){
                            withTrail16, u_strlen(withTrail16),
                            0xfffd, &numSubstitutions,
                            &err);
-        if(U_FAILURE(err) || u8DestLen!=(int32_t)uprv_strlen((const char *)withTrail8SubFFFD) ||
+        if(U_FAILURE(err) || u8DestLen!=uprv_strlen((const char *)withTrail8SubFFFD) ||
                              0!=uprv_memcmp((const char *)withTrail8SubFFFD, out8, u8DestLen+1) ||
                              numSubstitutions!=1) {
             log_err("error: u_strToUTF8WithSub(length) failed\n");
@@ -764,7 +763,7 @@ static void Test_UChar_UTF8_API(void){
                            withTrail16, -1,
                            0x1a, &numSubstitutions,
                            &err);
-        if(U_FAILURE(err) || u8DestLen!=(int32_t)uprv_strlen((const char *)withTrail8Sub1A) ||
+        if(U_FAILURE(err) || u8DestLen!=uprv_strlen((const char *)withTrail8Sub1A) ||
                              0!=uprv_memcmp((const char *)withTrail8Sub1A, out8, u8DestLen+1) ||
                              numSubstitutions!=1) {
             log_err("error: u_strToUTF8WithSub(NUL termination) failed\n");
@@ -779,7 +778,7 @@ static void Test_UChar_UTF8_API(void){
                            withTrail16, -1,
                            0xfffd, &numSubstitutions,
                            &err);
-        if(err!=U_BUFFER_OVERFLOW_ERROR || u8DestLen!=(int32_t)uprv_strlen((const char *)withTrail8SubFFFD) ||
+        if(err!=U_BUFFER_OVERFLOW_ERROR || u8DestLen!=uprv_strlen((const char *)withTrail8SubFFFD) ||
                                            numSubstitutions!=1) {
             log_err("error: u_strToUTF8WithSub(preflight/NUL termination) failed\n");
         }
@@ -872,11 +871,11 @@ equalAnyFFFD(const UChar *s, const UChar *t, int32_t length) {
         c1=*s++;
         c2=*t++;
         if(c1!=c2 && c2!=0xfffd) {
-            return false;
+            return FALSE;
         }
         --length;
     }
-    return true;
+    return TRUE;
 }
 
 /* test u_strFromUTF8Lenient() */
@@ -1172,7 +1171,7 @@ static void Test_UChar_WCHART_API(void){
     wchar_t* wDest = NULL;
     int32_t wDestLen = 0;
     int32_t reqLen= 0 ;
-    UBool failed = false;
+    UBool failed = FALSE;
     UChar* uDest = NULL;
     int32_t uDestLen = 0;
     int i =0;
@@ -1226,12 +1225,12 @@ static void Test_UChar_WCHART_API(void){
         for(i=0; i< uSrcLen; i++){
             if(uDest[i] != src16j[i]){
                 log_verbose("u_str*WCS() failed for unterminated string expected: \\u%04X got: \\u%04X at index: %i \n", src16j[i] ,uDest[i],i);
-                failed =true;
+                failed =TRUE;
             }
         }
 
         if(U_FAILURE(err)){
-            failed = true;
+            failed = TRUE;
         }
         if(failed){
             log_err("u_strToWCS() failed \n");
@@ -1240,7 +1239,7 @@ static void Test_UChar_WCHART_API(void){
         free(uDest);
         
        
-        /* test with embedded nulls */
+        /* test with embeded nulls */
         uSrc = src16WithNulls;
         uSrcLen = sizeof(src16WithNulls)/2;
         wDestLen =0;
@@ -1271,13 +1270,13 @@ static void Test_UChar_WCHART_API(void){
          for(i=0; i< uSrcLen; i++){
             if(uDest[i] != src16WithNulls[i]){
                 log_verbose("u_str*WCS() failed for string with nulls expected: \\u%04X got: \\u%04X at index: %i \n", src16WithNulls[i] ,uDest[i],i);
-                failed =true;
+                failed =TRUE;
             }
          }
         }
 
         if(U_FAILURE(err)){
-            failed = true;
+            failed = TRUE;
         }
         if(failed){
             log_err("u_strToWCS() failed \n");
@@ -1321,13 +1320,13 @@ static void Test_UChar_WCHART_API(void){
          for(i=0; i< uSrcLen; i++){
             if(uDest[i] != src16j[i]){
                 log_verbose("u_str*WCS() failed for null terminated string expected: \\u%04X got: \\u%04X at index: %i \n", src16j[i] ,uDest[i],i);
-                failed =true;
+                failed =TRUE;
             }
          }
         }
 
         if(U_FAILURE(err)){
-            failed = true;
+            failed = TRUE;
         }
         if(failed){
             log_err("u_strToWCS() failed \n");
@@ -1381,7 +1380,7 @@ static void Test_UChar_WCHART_API(void){
 #endif
 } 
 
-static void Test_widestrs(void)
+static void Test_widestrs()
 {
 #if (defined(U_WCHAR_IS_UTF16) || defined(U_WCHAR_IS_UTF32)) || (!UCONFIG_NO_CONVERSION && !UCONFIG_NO_LEGACY_CONVERSION)
         wchar_t ws[100];
@@ -1425,7 +1424,7 @@ static void Test_widestrs(void)
 }
 
 static void
-Test_WCHART_LongString(void){
+Test_WCHART_LongString(){
 #if (defined(U_WCHAR_IS_UTF16) || defined(U_WCHAR_IS_UTF32)) || (!UCONFIG_NO_CONVERSION && !UCONFIG_NO_LEGACY_CONVERSION)
     UErrorCode status = U_ZERO_ERROR;
     const char* testdatapath=loadTestData(&status);
@@ -1438,7 +1437,7 @@ Test_WCHART_LongString(void){
     int32_t uDestLen =0;
     wchar_t* wDest = NULL;
     UChar* uDest = NULL;
-    UBool failed = false;
+    UBool failed = FALSE;
 
     log_verbose("Loaded string of %d UChars\n", uSrcLen);
 
@@ -1494,12 +1493,12 @@ Test_WCHART_LongString(void){
     for(i=0; i< uSrcLen; i++){
         if(uDest[i] != str[i]){
             log_verbose("u_str*WCS() failed for null terminated string expected: \\u%04X got: \\u%04X at index: %i \n", str[i], uDest[i],i);
-            failed =true;
+            failed =TRUE;
         }
     }
 
     if(U_FAILURE(status)){
-        failed = true;
+        failed = TRUE;
     }
     if(failed){
         log_err("u_strToWCS() failed \n");
@@ -1513,7 +1512,7 @@ Test_WCHART_LongString(void){
 #endif
 }
 
-static void Test_strToJavaModifiedUTF8(void) {
+static void Test_strToJavaModifiedUTF8() {
     static const UChar src[]={
         0x61, 0x62, 0x63, 0xe1, 0xe2, 0xe3,
         0xe01, 0xe02, 0xe03, 0xe001, 0xe002, 0xe003,
@@ -1689,7 +1688,7 @@ static void Test_strToJavaModifiedUTF8(void) {
     }
 }
 
-static void Test_strFromJavaModifiedUTF8(void) {
+static void Test_strFromJavaModifiedUTF8() {
     static const uint8_t src[]={
         0x61, 0x62, 0x63, 0xc3, 0xa1, 0xc3, 0xa2, 0xc3, 0xa3,
         0xe0, 0xb8, 0x81, 0xe0, 0xb8, 0x82, 0xe0, 0xb8, 0x83,
@@ -1992,7 +1991,7 @@ static void Test_strFromJavaModifiedUTF8(void) {
 }
 
 /* test that string transformation functions permit NULL source pointer when source length==0 */
-static void TestNullEmptySource(void) {
+static void TestNullEmptySource() {
     char dest8[4]={ 3, 3, 3, 3 };
     UChar dest16[4]={ 3, 3, 3, 3 };
     UChar32 dest32[4]={ 3, 3, 3, 3 };

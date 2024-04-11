@@ -4,9 +4,9 @@
  License & terms of use: http://www.unicode.org/copyright.html
  Copyright (c) 2006-2015 International Business Machines Corporation and others. All rights reserved.
 -->
-<!DOCTYPE ldml SYSTEM "../../dtd/cldr/common/dtd/ldml.dtd"
+<!DOCTYPE ldml SYSTEM "http://www.unicode.org/repos/cldr/trunk/common/dtd/ldml.dtd"
 [
-   <!ENTITY % icu SYSTEM "../../dtd/cldr/common/dtd/ldmlICU.dtd">
+   <!ENTITY % icu SYSTEM "http://www.unicode.org/repos/cldr/trunk/common/dtd/ldmlICU.dtd">
    %icu;
 ]
 >

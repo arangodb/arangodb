@@ -47,7 +47,7 @@ public:
      * Transliterator API.
      * @return A copy of the object.
      */
-    virtual RemoveTransliterator* clone() const override;
+    virtual Transliterator* clone(void) const;
 
     /**
      * Implements {@link Transliterator#handleTransliterate}.
@@ -59,12 +59,12 @@ public:
      *                      pos.contextLimit. Otherwise, assume the text is complete.
      */
     virtual void handleTransliterate(Replaceable& text, UTransPosition& offset,
-                                     UBool isIncremental) const override;
+                                     UBool isIncremental) const;
 
     /**
      * ICU "poor man's RTTI", returns a UClassID for the actual class.
      */
-    virtual UClassID getDynamicClassID() const override;
+    virtual UClassID getDynamicClassID() const;
 
     /**
      * ICU "poor man's RTTI", returns a UClassID for this class.

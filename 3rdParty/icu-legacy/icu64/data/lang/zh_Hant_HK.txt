@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 zh_Hant_HK{
     Keys{
         ms{"度量衡系統"}
@@ -8,7 +7,6 @@ zh_Hant_HK{
     }
     Languages{
         aa{"阿法爾文"}
-        am{"岩哈拉語"}
         az{"阿塞拜疆文"}
         az_Arab{"南阿塞拜疆文"}
         ba{"巴什基爾文"}
@@ -28,14 +26,14 @@ zh_Hant_HK{
         es_419{"拉丁美洲西班牙文"}
         es_ES{"歐洲西班牙文"}
         es_MX{"墨西哥西班牙文"}
-        fa_AF{"達利文"}
         fr_CA{"加拿大法文"}
         fr_CH{"瑞士法文"}
         gil{"吉爾伯特文"}
         gl{"加里西亞文"}
         gsw{"瑞士德文"}
+        hi{"印度文"}
+        hmn{"苗語"}
         hr{"克羅地亞文"}
-        ig{"伊博文"}
         it{"意大利文"}
         jpr{"猶太波斯文"}
         ka{"格魯吉亞文"}
@@ -71,6 +69,7 @@ zh_Hant_HK{
         zgh{"摩洛哥標準塔馬齊格特文"}
     }
     Languages%short{
+        az{"阿塞拜疆文"}
         en_GB{"英式英文"}
         en_US{"美式英文"}
     }
@@ -79,6 +78,7 @@ zh_Hant_HK{
         ug{"維吾爾語"}
     }
     Scripts{
+        Cyrl{"西里爾文"}
         Ethi{"埃塞俄比亞文"}
         Geor{"格魯吉亞文"}
         Guru{"古木基文"}
@@ -103,6 +103,7 @@ zh_Hant_HK{
             big5han{"繁體中文排序 (Big5)"}
             dictionary{"詞典排序"}
             gb2312han{"簡體中文排序 (GB2312)"}
+            reformed{"改革版排序"}
         }
         ms{
             uksystem{"英制"}
@@ -123,9 +124,12 @@ zh_Hant_HK{
     Variants{
         1901{"傳統德國拼字法"}
         1996{"1996 德國拼字法"}
+        ABL1943{"ABL1943"}
         REVISED{"已修訂拼字法"}
         SCOTLAND{"蘇格蘭標準英語"}
+        SOTAV{"SOTAV"}
     }
+    Version{"2.1.47.86"}
     characterLabelPattern{
         enclosed{"{0} — 包含"}
         historic{"{0} — 舊式"}

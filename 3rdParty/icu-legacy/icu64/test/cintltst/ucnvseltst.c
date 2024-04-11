@@ -17,7 +17,6 @@
 
 #include "ucnvseltst.h"
 
-#include <stdbool.h>
 #include <stdio.h>
 
 #include "unicode/utypes.h"
@@ -46,30 +45,30 @@ static const char **gAvailableNames = NULL;
 static int32_t gCountAvailable = 0;
 
 static UBool
-getAvailableNames(void) {
+getAvailableNames() {
   int32_t i;
   if (gAvailableNames != NULL) {
-    return true;
+    return TRUE;
   }
   gCountAvailable = ucnv_countAvailable();
   if (gCountAvailable == 0) {
     log_data_err("No converters available.\n");
-    return false;
+    return FALSE;
   }
   gAvailableNames = (const char **)uprv_malloc(gCountAvailable * sizeof(const char *));
   if (gAvailableNames == NULL) {
     log_err("unable to allocate memory for %ld available converter names\n",
             (long)gCountAvailable);
-    return false;
+    return FALSE;
   }
   for (i = 0; i < gCountAvailable; ++i) {
     gAvailableNames[i] = ucnv_getAvailableName(i);
   }
-  return true;
+  return TRUE;
 }
 
 static void
-releaseAvailableNames(void) {
+releaseAvailableNames() {
   uprv_free((void *)gAvailableNames);
   gAvailableNames = NULL;
   gCountAvailable = 0;
@@ -231,7 +230,7 @@ text_open(TestText *tt) {
   uprv_memset(tt, 0, sizeof(TestText));
   f = fopenOrError("ConverterSelectorTestUTF8.txt");
   if(!f) {
-    return false;
+    return FALSE;
   }
   fseek(f, 0, SEEK_END);
   length = (int32_t)ftell(f);
@@ -239,9 +238,9 @@ text_open(TestText *tt) {
   tt->text = (char *)uprv_malloc(length + 1);
   if (tt->text == NULL) {
     fclose(f);
-    return false;
+    return FALSE;
   }
-  if (length != (int32_t)fread(tt->text, 1, length, f)) {
+  if (length != fread(tt->text, 1, length, f)) {
     log_err("error reading %ld bytes from test text file\n", (long)length);
     length = 0;
     uprv_free(tt->text);
@@ -252,7 +251,7 @@ text_open(TestText *tt) {
   /* replace all Unicode '#' (U+0023) with NUL */
   for(s = tt->text; (s = uprv_strchr(s, 0x23)) != NULL; *s++ = 0) {}
   text_reset(tt);
-  return true;
+  return TRUE;
 }
 
 static void
@@ -311,11 +310,11 @@ getResultsManually(const char** encodings, int32_t num_encodings,
      * converted, and it treats an illegal sequence as convertible
      * while uset_spanUTF8() treats it like U+FFFD which may not be convertible.
      */
-    resultsManually[encIndex] = true;
+    resultsManually[encIndex] = TRUE;
     while(offset<length) {
       U8_NEXT(utf8, offset, length, cp);
       if (cp >= 0 && !uset_contains(set, cp)) {
-        resultsManually[encIndex] = false;
+        resultsManually[encIndex] = FALSE;
         break;
       }
     }
@@ -335,7 +334,7 @@ static void verifyResult(UEnumeration* res, const UBool *resultsManually) {
   /* fill the bool for the selector results! */
   uprv_memset(resultsFromSystem, 0, gCountAvailable);
   while ((name = uenum_next(res,NULL, &status)) != NULL) {
-    resultsFromSystem[findIndex(name)] = true;
+    resultsFromSystem[findIndex(name)] = TRUE;
   }
   for(i = 0 ; i < gCountAvailable; i++) {
     if(resultsManually[i] != resultsFromSystem[i]) {
@@ -377,7 +376,7 @@ serializeAndUnserialize(UConverterSelector *sel, char **buffer, UErrorCode *stat
   return sel;
 }
 
-static void TestSelector(void)
+static void TestSelector()
 {
   TestText text;
   USet* excluded_sets[3] = { NULL };
@@ -387,7 +386,7 @@ static void TestSelector(void)
     return;
   }
   if (!text_open(&text)) {
-    releaseAvailableNames();
+    releaseAvailableNames();;
   }
 
   excluded_sets[0] = uset_openEmpty();
@@ -507,7 +506,7 @@ static void TestSelector(void)
 }
 
 /* Improve code coverage of UPropsVectors */
-static void TestUPropsVector(void) {
+static void TestUPropsVector() {
     UErrorCode errorCode = U_ILLEGAL_ARGUMENT_ERROR;
     UPropsVectors *pv = upvec_open(100, &errorCode);
     if (pv != NULL) {

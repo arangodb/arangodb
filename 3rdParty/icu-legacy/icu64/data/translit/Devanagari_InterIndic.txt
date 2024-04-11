@@ -1,6 +1,5 @@
 ﻿# © 2016 and later: Unicode, Inc. and others.
-# License & terms of use: http://www.unicode.org/copyright.html
-# Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+# License & terms of use: http://www.unicode.org/copyright.html#License
 #
 # File: Devanagari_InterIndic.txt
 # Generated from CLDR
@@ -115,6 +114,5 @@
 ९→\uE06F;  # DIGIT NINE
 ॰→\uE070;  # Devanagari-InterIndic: ABBREVIATION SIGN
 ॽ→\uE082;  # Devanagari Glottal Stop
-ॲ→\uE084; # https://en.wiktionary.org/wiki/%E0%A5%B2
 #    :: NFC (NFD) ;
 

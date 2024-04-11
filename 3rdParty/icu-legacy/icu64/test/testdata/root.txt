@@ -12,9 +12,9 @@
 
 root
 {
-    Version { 45.0 }
-    ExpectCLDRVersionAtLeast { 45.0 } // 'base' cldr version. Allow up to version =.=.* of this
-    CurrentCLDRVersion { 45.0 } // Current CLDR version as of the test update. Warn if not an exact match.
+    Version { 44.0 }
+    ExpectCLDRVersionAtLeast { 35.0 } // 'base' cldr version. Allow up to version =.=.* of this
+    CurrentCLDRVersion { 35.0 } // Current CLDR version as of the test update. Warn if not an exact match.
 
     ShortLanguage { xxx }
 
@@ -30,14 +30,14 @@ root
 
     tagged_array_only_in_Root
     {
-        tag2 { ROOT2 }
-        tag1 { ROOT1 }
-        tag3 { ROOT3 }
-        tag6 { ROOT6 }
-        tag12 { ROOT12 }
-        tag7 { ROOT7 }
-        tag14 { ROOT14 }
-        tag9 { ROOT9 }
+        tag2 { ROOT2 } 
+        tag1 { ROOT1 } 
+        tag3 { ROOT3 } 
+        tag6 { ROOT6 } 
+        tag12 { ROOT12 } 
+        tag7 { ROOT7 } 
+        tag14 { ROOT14 } 
+        tag9 { ROOT9 } 
     }
 
     string_in_Root_te_te_IN { ROOT }
@@ -54,9 +54,9 @@ root
 
     tagged_array_in_Root_te_te_IN
     {
-        tag4 { ROOT4 }
-        tag9 { ROOT9 }
-        tag12 { ROOT12 }
+        tag4 { ROOT4 } 
+        tag9 { ROOT9 } 
+        tag12 { ROOT12 } 
     tag1 { ROOT1 }
     }
 
@@ -74,10 +74,10 @@ root
 
     tagged_array_in_Root_te
     {
-        tag12 { ROOT12 }
-        tag1 { ROOT1 }
-        tag7 { ROOT7 }
-        tag3 { ROOT3 }
+        tag12 { ROOT12 } 
+        tag1 { ROOT1 } 
+        tag7 { ROOT7 } 
+        tag3 { ROOT3 } 
     }
 
     string_in_Root_te_IN { ROOT }
@@ -93,8 +93,8 @@ root
 
     tagged_array_in_Root_te_IN
     {
-        tag13 { ROOT13 }
-        tag8 { ROOT8 }
+        tag13 { ROOT13 } 
+        tag8 { ROOT8 } 
     }
     rootAliasClient:alias {"/LOCALE/rootAliasDestination"}
     rootAliasDestination {"wrong"}
@@ -107,7 +107,7 @@ root
         a2{"ar2"}
         a3{"ar3"}
         a4{"ar4"}
-    }
+    }    
 
     tableT7996 {
         b7996:alias {"/LOCALE/tableT7996/c7996"}

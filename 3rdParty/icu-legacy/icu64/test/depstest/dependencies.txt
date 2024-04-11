@@ -9,7 +9,7 @@
 # created on: 2011may26
 # created by: Markus W. Scherer
 #
-# See https://unicode-org.github.io/icu/processes/release/tasks/healthy-code.html#check-library-dependencies
+# See http://site.icu-project.org/processes/release/tasks/healthy-code#TOC-Check-library-dependencies
 
 # Standard library symbols used by ICU --------------------------------------- #
 
@@ -19,10 +19,9 @@ system_symbols:
     PIC system_misc system_debug malloc_functions ubsan
     c_strings c_string_formatting
     int_functions floating_point trigonometry
-    exp_and_tanhf
     stdlib_qsort
-    system_locale
-    stdio_input stdio_output file_io dir_io mmap_functions dlfcn
+    pthread system_locale
+    stdio_input stdio_output file_io readlink_function dir_io mmap_functions dlfcn
     # C++
     cplusplus iostream
     std_mutex
@@ -48,9 +47,6 @@ group: std_mutex
     std::condition_variable::~condition_variable()
     std::condition_variable_any::condition_variable_any()
     std::condition_variable_any::~condition_variable_any()
-    pthread_once
-    pthread_mutex_lock
-    pthread_mutex_unlock
 
 group: ubsan
     # UBSan=UndefinedBehaviorSanitizer, clang -fsanitize=bounds
@@ -62,8 +58,6 @@ group: c_strings
     # We must not use tolower and toupper because they are system-locale-sensitive (Turkish i).
     strlen strchr strrchr strstr strcmp strncmp strcpy strncpy strcat strncat
     memchr memcmp memcpy memmove memset
-    # BSD version of memcmp().
-    bcmp
     # Additional symbols in an optimized build.
     __strcpy_chk __strncpy_chk __strcat_chk __strncat_chk
     __rawmemchr __memcpy_chk __memmove_chk __memset_chk
@@ -80,9 +74,6 @@ group: int_functions
 group: floating_point
     abs fabs floor ceil modf fmod log pow round sqrt trunc
 
-group: exp_and_tanhf
-    expf tanhf
-
 group: trigonometry
     acos asin atan atan2 cos sin tan
     # Additional symbols in an optimized build.
@@ -90,6 +81,10 @@ group: trigonometry
 
 group: stdlib_qsort
     qsort
+
+group: pthread
+    pthread_mutex_init pthread_mutex_destroy pthread_mutex_lock pthread_mutex_unlock
+    pthread_cond_wait pthread_cond_broadcast pthread_cond_signal
 
 group: system_locale
     getenv
@@ -99,7 +94,7 @@ group: system_locale
 group: stdio_input
     fopen fclose fgets fread fseek ftell rewind feof fileno
     # Additional symbols in an optimized build.
-    __fgets_chk __fread_chk fread_unlocked
+    __fgets_chk __fread_chk
 
 group: stdio_output
     fflush fwrite
@@ -110,8 +105,11 @@ group: file_io
     # Additional symbols in an optimized build.
     __xstat
 
+group: readlink_function
+    readlink  # putil.cpp uprv_tzname() calls this in a hack to get the time zone name
+
 group: dir_io
-    opendir closedir readdir readlink realpath # for a hack to get the time zone name
+    opendir closedir readdir  # for a hack to get the time zone name
 
 group: mmap_functions  # for memory-mapped data loading
     mmap munmap
@@ -125,7 +123,6 @@ group: cplusplus
     # even when no code actually uses it.
     # ICU must not _use_ the global operator delete.
     "operator delete(void*)"
-    "operator delete(void*, unsigned long)"
     # ICU also must not use the global operator new.
     # "operator new[](unsigned long)"
 
@@ -146,7 +143,6 @@ group: iostream
     "std::basic_ostream<char, std::char_traits<char> >& std::operator<< <std::char_traits<char> >(std::basic_ostream<char, std::char_traits<char> >&, char const*)"
     std::ios_base::Init::Init()
     std::ios_base::Init::~Init()
-    std::ios_base_library_init()
     std::istream::get()
     std::istream::putback(char)
     # Additional symbols in an optimized build.
@@ -174,7 +170,7 @@ library: common
     static_unicode_sets
     uiter edits
     ucasemap ucasemap_titlecase_brkiter script_runs
-    uprops ubidi_props ucase uscript uscript_props emojiprops characterproperties
+    uprops ubidi_props ucase uscript uscript_props characterproperties
     ubidi ushape ubiditransform
     resourcebundle service_registration resbund_cnv ures_cnv icudataver ucat
     currency
@@ -192,7 +188,7 @@ library: common
     uinit utypes errorcode
     icuplug
     platform
-    localematcher
+    localebuilder
 
 group: pluralmap
     # TODO: Move to i18n library, ticket #11926.
@@ -213,7 +209,7 @@ group: breakiterator
     brkiter.o brkeng.o ubrk.o
     rbbi.o rbbinode.o rbbiscan.o rbbisetb.o rbbistbl.o rbbitblb.o
     rbbidata.o rbbirb.o rbbi_cache.o
-    dictionarydata.o dictbe.o lstmbe.o mlbe.o
+    dictionarydata.o dictbe.o
     # BreakIterator::makeInstance() factory implementation makes for circular dependency
     # between BreakIterator base and FilteredBreakIteratorBuilder.
     filteredbrk.o
@@ -225,8 +221,6 @@ group: breakiterator
     ucharstriebuilder  # for filteredbrk.o
     normlzr  # for dictbe.o, should switch to Normalizer2
     uvector32 # for dictbe.o
-    exp_and_tanhf # for lstmbe.o
-    usetiter # for dictbe.o
 
 group: unormcmp  # unorm_compare()
     unormcmp.o
@@ -350,7 +344,7 @@ group: uniset_core
 group: icu_utility_with_props
     util_props.o
   deps
-    icu_utility uchar ucase uprops
+    icu_utility uchar ucase
 
 group: icu_utility
     util.o
@@ -414,7 +408,6 @@ group: uprops
     ubidi_props
     unistr_case ustring_case  # only for case folding
     ucase
-    emojiprops
 
 group: characterproperties
     characterproperties.o
@@ -477,12 +470,6 @@ group: ubidi_props
     ubidi_props.o
   deps
     utrie2
-
-group: emojiprops
-    emojiprops.o
-  deps
-    ucharstrie ucharstrieiterator
-    ucptrie udata
 
 group: unistr_props
     unistr_props.o
@@ -648,48 +635,26 @@ group: resourcebundle
     # We can probably only disentangle basic locale ID handling from resource bundle code
     # by hardcoding all of the locale ID data.
     locid.o locmap.o wintz.o
-    # Do we need class LocaleBased? https://unicode-org.atlassian.net/browse/ICU-8608
+    # Do we need class LocaleBased? http://bugs.icu-project.org/trac/ticket/8608
     locbased.o
     loclikely.o
-    localebuilder.o
-    ulocale.o
-    ulocbuilder.o
-    loclikelysubtags.o
   deps
     udata ucol_swp
     sort stringenumeration uhash uvector
     uscript_props propname
     bytesinkutil
-    errorcode
-    lsr
 
-group: localematcher
-    localematcher.o
-  deps
-    resourcebundle localeprioritylist locdistance
-
-group: localeprioritylist
-    localeprioritylist.o
+group: localebuilder
+    localebuilder.o
   deps
     resourcebundle
-
-group: locdistance
-    locdistance.o
-  deps
-    resourcebundle
-
-group: lsr
-    lsr.o
-  deps
-    platform
 
 group: udata
-    udata.o ucmndata.o udatamem.o restrace.o
+    udata.o ucmndata.o udatamem.o
     umapfile.o
   deps
     uhash platform stubdata
     file_io mmap_functions
-    icu_utility
 
 group: unifiedcache
     unifiedcache.o
@@ -866,8 +831,8 @@ group: platform
     # The "platform" group has no ICU dependencies.
     PIC system_misc system_debug malloc_functions ubsan
     c_strings c_string_formatting
-    floating_point system_locale
-    stdio_input dir_io
+    floating_point pthread system_locale
+    stdio_input readlink_function dir_io
     dlfcn  # Move related code into icuplug.c?
     cplusplus
     std_mutex
@@ -881,17 +846,14 @@ library: i18n
     dayperiodrules
     listformatter
     formatting formattable_cnv regex regex_cnv translit
-    double_conversion number_representation number_output numberformatter
-    number_skeletons number_usageprefs numberparser
-    units_extra unitsformatter
+    double_conversion number_representation number_output numberformatter numberparser
     universal_time_scale
     uclean_i18n
-    display_options
 
 group: region
     region.o uregion.o
   deps
-    icu_utility
+    formatting  # Temporary, TODO: Ticket #9982 class Region should use low-level ASCII-integer functions, and probably be moved to the common library.
     resourcebundle
     uvector uclean_i18n
 
@@ -916,7 +878,7 @@ group: charset_detector
 group: spoof_detection
     uspoof.o uspoof_build.o uspoof_conf.o uspoof_impl.o scriptset.o
   deps
-    uniset_props regex unorm uscript ubidi
+    uniset_props regex unorm uscript
 
 group: alphabetic_index
     alphaindex.o
@@ -960,20 +922,17 @@ group: dayperiodrules
 group: listformatter
     listformatter.o ulistformatter.o
   deps
-    uchar resourcebundle simpleformatter format uclean_i18n formatted_value_sbimpl
+    resourcebundle simpleformatter format uclean_i18n formatted_value_iterimpl
 
 group: double_conversion
-    double-conversion-bignum.o double-conversion-double-to-string.o
-    double-conversion-bignum-dtoa.o double-conversion-cached-powers.o
-    double-conversion-string-to-double.o double-conversion-fast-dtoa.o
-    double-conversion-strtod.o
+    double-conversion.o double-conversion-bignum.o double-conversion-bignum-dtoa.o
+    double-conversion-cached-powers.o double-conversion-diy-fp.o
+    double-conversion-fast-dtoa.o double-conversion-strtod.o
   deps
     platform
 
 group: number_representation
-    number_decimalquantity.o string_segment.o number_utils.o
-    # TODO(ICU-21058) Move formatted_string_builder to its own unit.
-    formatted_string_builder.o
+    number_decimalquantity.o number_stringbuilder.o numparse_stringsegment.o number_utils.o
   deps
     decnumber double_conversion
     # for trimming whitespace around fields
@@ -987,74 +946,30 @@ group: number_representation
 group: number_output
     # PluralRules and FormattedNumber
     number_output.o
-    standardplural.o plurrule.o pluralranges.o
+    standardplural.o plurrule.o
   deps
     # FormattedNumber internals:
-    number_representation format formatted_value_sbimpl units
+    number_representation format formatted_value_sbimpl
     # PluralRules internals:
     unifiedcache
-    display_options
-    icu_utility_with_props
 
 group: numberformatter
     # ICU 60+ NumberFormatter API
-    number_affixutils.o
-    number_compact.o number_currencysymbols.o
+    number_affixutils.o number_asformat.o
+    number_capi.o number_compact.o number_currencysymbols.o
     number_decimfmtprops.o
     number_fluent.o number_formatimpl.o
     number_grouping.o number_integerwidth.o number_longnames.o
-    number_mapper.o number_modifiers.o
+    number_mapper.o number_modifiers.o number_multiplier.o
     number_notation.o number_padding.o
-    number_patternmodifier.o number_patternstring.o
-    number_scientific.o
-    currpinf.o
+    number_patternmodifier.o number_patternstring.o number_rounding.o
+    number_scientific.o number_skeletons.o
+    currpinf.o dcfmtsym.o numsys.o
     numrange_fluent.o numrange_impl.o
-    # NOTE: This could go into its own dependency block, but it would require
-    # refactoring more of the dependencies (e.g. removing class methods).
-    number_simple.o
   deps
-    decnumber double_conversion formattable units unitsformatter
-    listformatter number_representation number_output
-    numsys
-    number_usageprefs
-    number_rounding
-    number_symbolswrapper
+    decnumber double_conversion formattable units
+    number_representation number_output
     uclean_i18n common
-
-group: numsys
-    dcfmtsym.o
-    numsys.o
-  deps
-    currency
-    resourcebundle
-    uclean_i18n
-
-group: number_usageprefs
-    number_multiplier.o
-    number_usageprefs.o
-  deps
-    number_rounding
-    number_symbolswrapper
-    unitsformatter
-
-group: number_rounding
-    number_rounding.o
-  deps
-    currency
-    number_representation
-
-group: number_skeletons
-    # Number skeleton support; separated from numberformatter
-    number_skeletons.o number_capi.o number_asformat.o numrange_capi.o
-  deps
-    numberformatter
-    units_extra
-
-group: number_symbolswrapper
-    number_symbolswrapper.o
-  deps
-    platform
-    numsys
 
 group: numberparser
     numparse_affixes.o numparse_compositions.o numparse_currency.o
@@ -1083,7 +998,7 @@ group: formatting
     measfmt.o quantityformatter.o
     # dateformat
     astro.o buddhcal.o calendar.o cecal.o chnsecal.o coptccal.o dangical.o ethpccal.o
-    gregocal.o gregoimp.o hebrwcal.o indiancal.o islamcal.o iso8601cal.o japancal.o persncal.o taiwncal.o
+    gregocal.o gregoimp.o hebrwcal.o indiancal.o islamcal.o japancal.o persncal.o taiwncal.o
     erarules.o  # mostly for Japanese eras
     ucal.o
     basictz.o olsontz.o rbtz.o simpletz.o timezone.o tzrule.o tztrans.o
@@ -1095,14 +1010,8 @@ group: formatting
     tmunit.o tmutamt.o tmutfmt.o
     # messageformat
     choicfmt.o msgfmt.o plurfmt.o selfmt.o umsg.o
-    # MessageFormat 2
-    messageformat2.o messageformat2_arguments.o messageformat2_checker.o
-    messageformat2_data_model.o messageformat2_errors.o messageformat2_evaluation.o
-    messageformat2_formattable.o messageformat2_formatter.o
-    messageformat2_function_registry.o messageformat2_parser.o messageformat2_serializer.o
   deps
-    decnumber formattable format units numberformatter number_skeletons numberparser
-    formatted_value_sbimpl
+    decnumber formattable format units numberformatter numberparser formatted_value_sbimpl
     listformatter
     dayperiodrules
     collation collation_builder  # for rbnf
@@ -1111,29 +1020,16 @@ group: formatting
     trigonometry  # for astro.o
     sharedbreakiterator # for reldatefmt.o
     uclean_i18n
-    region
-    formatted_value_iterimpl  # NOTE (2020-08-27): Not currently used.
 
 group: sharedbreakiterator
     sharedbreakiterator.o
   deps
     breakiterator
 
-group: units_extra
-    measunit_extra.o
-  deps
-    units bytestriebuilder bytestrie resourcebundle uclean_i18n
-
 group: units
-    measunit.o currunit.o
+    measunit.o currunit.o nounit.o
   deps
-    stringenumeration errorcode
-
-group: unitsformatter
-    units_data.o units_converter.o units_complexconverter.o units_router.o
-  deps
-    resourcebundle units_extra double_conversion number_representation formattable sort
-    number_rounding
+    stringenumeration
 
 group: decnumber
     decContext.o decNumber.o
@@ -1200,11 +1096,6 @@ group: universal_time_scale
 
 group: uclean_i18n
     ucln_in.o
-  deps
-    platform
-
-group: display_options
-    displayoptions.o
   deps
     platform
 

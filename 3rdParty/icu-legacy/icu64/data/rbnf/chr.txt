@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 chr{
     RBNFRules{
         SpelloutRules{
@@ -54,4 +53,5 @@ chr{
             "1: ' =%spellout-numbering=;",
         }
     }
+    Version{"2.1.36.80"}
 }

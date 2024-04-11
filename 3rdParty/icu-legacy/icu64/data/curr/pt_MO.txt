@@ -1,12 +1,12 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 pt_MO{
     %%Parent{"pt_PT"}
     Currencies{
         MOP{
             "MOP$",
-            "pataca macaense",
+            "Pataca de Macau",
         }
     }
+    Version{"2.1.47.71"}
 }

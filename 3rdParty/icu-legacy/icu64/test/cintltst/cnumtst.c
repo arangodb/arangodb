@@ -38,13 +38,12 @@
 #include "cstring.h"
 #include "putilimp.h"
 #include "uassert.h"
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 static const char *tagAssert(const char *f, int32_t l, const char *msg) {
     static char _fileline[1000];
-    snprintf(_fileline, sizeof(_fileline), "%s:%d: ASSERT_TRUE(%s)", f, l, msg);
+    sprintf(_fileline, "%s:%d: ASSERT_TRUE(%s)", f, l, msg);
     return _fileline;
 }
 
@@ -74,13 +73,6 @@ static void Test12052_NullPointer(void);
 static void TestParseCases(void);
 static void TestSetMaxFracAndRoundIncr(void);
 static void TestIgnorePadding(void);
-static void TestSciNotationMaxFracCap(void);
-static void TestMinIntMinFracZero(void);
-static void Test21479_ExactCurrency(void);
-static void Test22088_Ethiopic(void);
-static void TestChangingRuleset(void);
-static void TestParseWithEmptyCurr(void);
-static void TestDuration(void);
 
 #define TESTCASE(x) addTest(root, &x, "tsformat/cnumtst/" #x)
 
@@ -120,18 +112,11 @@ void addNumForTest(TestNode** root)
     TESTCASE(TestParseCases);
     TESTCASE(TestSetMaxFracAndRoundIncr);
     TESTCASE(TestIgnorePadding);
-    TESTCASE(TestSciNotationMaxFracCap);
-    TESTCASE(TestMinIntMinFracZero);
-    TESTCASE(Test21479_ExactCurrency);
-    TESTCASE(Test22088_Ethiopic);
-    TESTCASE(TestChangingRuleset);
-    TESTCASE(TestParseWithEmptyCurr);
-    TESTCASE(TestDuration);
 }
 
 /* test Parse int 64 */
 
-static void TestInt64Parse(void)
+static void TestInt64Parse()
 {
 
     UErrorCode st = U_ZERO_ERROR;
@@ -171,10 +156,11 @@ static void TestInt64Parse(void)
     }
 
     unum_close(nf);
+    return;
 }
 
 /* test Number Format API */
-static void TestNumberFormat(void)
+static void TestNumberFormat()
 {
     UChar *result=NULL;
     UChar temp1[512];
@@ -272,8 +258,8 @@ static void TestNumberFormat(void)
     if(numlocales < 0)
         log_err("error in countAvailable");
     else{
-        log_verbose("unum_countAvailable() successful\n");
-        log_verbose("The no: of locales where number formatting is applicable is %d\n", numlocales);
+        log_verbose("unum_countAvialable() successful\n");
+        log_verbose("The no: of locales where number formattting is applicable is %d\n", numlocales);
     }
     for(i=0;i<numlocales;i++)
     {
@@ -512,7 +498,7 @@ free(result);
     pattern=unum_open(UNUM_IGNORE,temp1, u_strlen(temp1), NULL, NULL,&status);
     if(U_FAILURE(status))
     {
-        log_err("error in unum_openPattern(): %s\n", myErrorName(status) );
+        log_err("error in unum_openPattern(): %s\n", myErrorName(status) );;
     }
     else
         log_verbose("Pass: unum_openPattern() works fine\n");
@@ -520,13 +506,13 @@ free(result);
     /*test for unum_toPattern()*/
     log_verbose("\nTesting unum_toPattern()\n");
     resultlength=0;
-    resultlengthneeded=unum_toPattern(pattern, false, NULL, resultlength, &status);
+    resultlengthneeded=unum_toPattern(pattern, FALSE, NULL, resultlength, &status);
     if(status==U_BUFFER_OVERFLOW_ERROR)
     {
         status=U_ZERO_ERROR;
         resultlength=resultlengthneeded+1;
         result=(UChar*)malloc(sizeof(UChar) * resultlength);
-        unum_toPattern(pattern, false, result, resultlength, &status);
+        unum_toPattern(pattern, FALSE, result, resultlength, &status);
     }
     if(U_FAILURE(status))
     {
@@ -545,13 +531,13 @@ free(result);
     log_verbose("\nTesting unum_getSymbols and unum_setSymbols()\n");
     /*when we try to change the symbols of french to default we need to apply the pattern as well to fetch correct results */
     resultlength=0;
-    resultlengthneeded=unum_toPattern(cur_def, false, NULL, resultlength, &status);
+    resultlengthneeded=unum_toPattern(cur_def, FALSE, NULL, resultlength, &status);
     if(status==U_BUFFER_OVERFLOW_ERROR)
     {
         status=U_ZERO_ERROR;
         resultlength=resultlengthneeded+1;
         result=(UChar*)malloc(sizeof(UChar) * resultlength);
-        unum_toPattern(cur_def, false, result, resultlength, &status);
+        unum_toPattern(cur_def, FALSE, result, resultlength, &status);
     }
     if(U_FAILURE(status))
     {
@@ -597,7 +583,7 @@ free(result);
     if(U_FAILURE(status)){
         log_err("Fail: error in unum_setSymbols: %s\n", myErrorName(status));
     }
-    unum_applyPattern(cur_frpattern, false, result, u_strlen(result),NULL,NULL);
+    unum_applyPattern(cur_frpattern, FALSE, result, u_strlen(result),NULL,NULL);
 
     for (symType = UNUM_DECIMAL_SEPARATOR_SYMBOL; symType < UNUM_FORMAT_SYMBOL_COUNT; symType++) {
         status=U_ZERO_ERROR;
@@ -681,17 +667,17 @@ free(result);
     unum_getTextAttribute(cur_fr, UNUM_NEGATIVE_SUFFIX, temp, resultlength, &status);
     if(U_FAILURE(status))
     {
-        log_err("Failure in getting the Text attributes of number format: %s\n", myErrorName(status));
+        log_err("Failure in gettting the Text attributes of number format: %s\n", myErrorName(status));
     }
     unum_setTextAttribute(cur_def, UNUM_NEGATIVE_SUFFIX, temp, u_strlen(temp), &status);
     if(U_FAILURE(status))
     {
-        log_err("Failure in getting the Text attributes of number format: %s\n", myErrorName(status));
+        log_err("Failure in gettting the Text attributes of number format: %s\n", myErrorName(status));
     }
     unum_getTextAttribute(cur_def, UNUM_NEGATIVE_SUFFIX, suffix, resultlength, &status);
     if(U_FAILURE(status))
     {
-        log_err("Failure in getting the Text attributes of number format: %s\n", myErrorName(status));
+        log_err("Failure in gettting the Text attributes of number format: %s\n", myErrorName(status));
     }
     if(u_strcmp(suffix,temp)!=0)
         log_err("Fail:Error in setTextAttribute or getTextAttribute in setting and getting suffix\n");
@@ -772,7 +758,6 @@ free(result);
     /*Testing unum_getAttribute and  unum_setAttribute() */
     log_verbose("\nTesting get and set Attributes\n");
     attr=UNUM_GROUPING_SIZE;
-    assertTrue("unum_hasAttribute returned false for UNUM_GROUPING_SIZE", unum_hasAttribute(def, attr));
     newvalue=unum_getAttribute(def, attr);
     newvalue=2;
     unum_setAttribute(def, attr, newvalue);
@@ -782,7 +767,6 @@ free(result);
         log_verbose("Pass: setting and getting attributes for UNUM_GROUPING_SIZE works fine\n");
 
     attr=UNUM_MULTIPLIER;
-    assertTrue("unum_hasAttribute returned false for UNUM_MULTIPLIER", unum_hasAttribute(def, attr));
     newvalue=unum_getAttribute(def, attr);
     newvalue=8;
     unum_setAttribute(def, attr, newvalue);
@@ -792,7 +776,6 @@ free(result);
         log_verbose("Pass:setting and getting attributes for UNUM_MULTIPLIER works fine\n");
 
     attr=UNUM_SECONDARY_GROUPING_SIZE;
-    assertTrue("unum_hasAttribute returned false for UNUM_SECONDARY_GROUPING_SIZE", unum_hasAttribute(def, attr));
     newvalue=unum_getAttribute(def, attr);
     newvalue=2;
     unum_setAttribute(def, attr, newvalue);
@@ -806,7 +789,6 @@ free(result);
     log_verbose("\nTesting get and set attributes extensively\n");
     for(attr=UNUM_PARSE_INT_ONLY; attr<= UNUM_PADDING_POSITION; attr=(UNumberFormatAttribute)((int32_t)attr + 1) )
     {
-        assertTrue("unum_hasAttribute returned false", unum_hasAttribute(fr, attr));
         newvalue=unum_getAttribute(fr, attr);
         unum_setAttribute(def, attr, newvalue);
         if(unum_getAttribute(def,attr)!=unum_getAttribute(fr, attr))
@@ -819,10 +801,6 @@ free(result);
     log_verbose("\nTesting spellout format\n");
     if (spellout_def)
     {
-        // check that unum_hasAttribute() works right with a spellout formatter
-        assertTrue("unum_hasAttribute() returned true for UNUM_MULTIPLIER on a spellout formatter", !unum_hasAttribute(spellout_def, UNUM_MULTIPLIER));
-        assertTrue("unum_hasAttribute() returned false for UNUM_LENIENT_PARSE on a spellout formatter", unum_hasAttribute(spellout_def, UNUM_LENIENT_PARSE));
-
         static const int32_t values[] = { 0, -5, 105, 1005, 105050 };
         for (i = 0; i < UPRV_LENGTHOF(values); ++i) {
             UChar buffer[128];
@@ -900,12 +878,12 @@ free(result);
         }
         u_austrncpy(desta, dest, DESTCAPACITY);
         if (strcmp(numFormatted, desta) != 0) {
-            log_err("File %s, Line %d, (expected, actual) =  (\"%s\", \"%s\")\n",
+            log_err("File %s, Line %d, (expected, acutal) =  (\"%s\", \"%s\")\n",
                     __FILE__, __LINE__, numFormatted, desta);
         }
-        if ((int32_t)strlen(numFormatted) != resultSize) {
+        if (strlen(numFormatted) != resultSize) {
             log_err("File %s, Line %d, (expected, actual) = (%d, %d)\n",
-                     __FILE__, __LINE__, (int32_t)strlen(numFormatted), resultSize);
+                     __FILE__, __LINE__, strlen(numFormatted), resultSize);
         }
 
         /* Format with a FieldPosition parameter */
@@ -917,15 +895,15 @@ free(result);
         }
         u_austrncpy(desta, dest, DESTCAPACITY);
         if (strcmp(numFormatted, desta) != 0) {
-            log_err("File %s, Line %d, (expected, actual) =  (\"%s\", \"%s\")\n",
+            log_err("File %s, Line %d, (expected, acutal) =  (\"%s\", \"%s\")\n",
                     __FILE__, __LINE__, numFormatted, desta);
         }
         if (fieldPos.beginIndex != 26) {  /* index of "." in formatted number */
-            log_err("File %s, Line %d, (expected, actual) =  (%d, %d)\n",
+            log_err("File %s, Line %d, (expected, acutal) =  (%d, %d)\n",
                     __FILE__, __LINE__, 0, fieldPos.beginIndex);
         }
         if (fieldPos.endIndex != 27) {
-            log_err("File %s, Line %d, (expected, actual) =  (%d, %d)\n",
+            log_err("File %s, Line %d, (expected, acutal) =  (%d, %d)\n",
                     __FILE__, __LINE__, 0, fieldPos.endIndex);
         }
 
@@ -944,9 +922,9 @@ free(result);
             log_verbose("File %s, Line %d, got expected = \"%s\"\n",
                     __FILE__, __LINE__, desta);
         }
-        if ((int32_t)strlen(parseExpected) != resultSize) {
+        if (strlen(parseExpected) != resultSize) {
             log_err("File %s, Line %d, (expected, actual) = (%d, %d)\n",
-                    __FILE__, __LINE__, (int32_t)strlen(parseExpected), resultSize);
+                    __FILE__, __LINE__, strlen(parseExpected), resultSize);
         }
 
         /* Parse with a parsePos parameter */
@@ -966,9 +944,9 @@ free(result);
             log_verbose("File %s, Line %d, got expected = \"%s\"\n",
                     __FILE__, __LINE__, desta);
         }
-        if ((int32_t)strlen(numFormatted) != parsePos) {
+        if (strlen(numFormatted) != parsePos) {
             log_err("File %s, Line %d, parsePos (expected, actual) = (\"%d\", \"%d\")\n",
-                    __FILE__, __LINE__, (int32_t)strlen(parseExpected), parsePos);
+                    __FILE__, __LINE__, strlen(parseExpected), parsePos);
         }
 
         unum_close(fmt);
@@ -1096,7 +1074,7 @@ static const ParseCurrencyItem parseCurrencyItems[] = {
     { NULL,    NULL,       NULL,        NULL,           0,             0, 0.0, 0,             0, 0.0, NULL  }
 };
 
-static void TestParseCurrency(void)
+static void TestParseCurrency()
 {
     const ParseCurrencyItem * itemPtr;
     for (itemPtr = parseCurrencyItems; itemPtr->locale != NULL; ++itemPtr) {
@@ -1207,7 +1185,7 @@ static const SpelloutParseTest spelloutParseTests[] = {
     { NULL,    NULL, NULL,        0,   0,  0, 0 } /* terminator */
 };
 
-static void TestSpelloutNumberParse(void)
+static void TestSpelloutNumberParse()
 {
     const SpelloutParseTest * testPtr;
     for (testPtr = spelloutParseTests; testPtr->testname != NULL; ++testPtr) {
@@ -1230,7 +1208,7 @@ static void TestSpelloutNumberParse(void)
     }
 }
 
-static void TestSignificantDigits(void)
+static void TestSignificantDigits()
 {
     UChar temp[128];
     int32_t resultlengthneeded;
@@ -1246,7 +1224,7 @@ static void TestSignificantDigits(void)
         log_data_err("got unexpected error for unum_open: '%s'\n", u_errorName(status));
         return;
     }
-    unum_setAttribute(fmt, UNUM_SIGNIFICANT_DIGITS_USED, true);
+    unum_setAttribute(fmt, UNUM_SIGNIFICANT_DIGITS_USED, TRUE);
     unum_setAttribute(fmt, UNUM_MAX_SIGNIFICANT_DIGITS, 6);
 
     u_uastrcpy(temp, "123457");
@@ -1272,7 +1250,7 @@ static void TestSignificantDigits(void)
     unum_close(fmt);
 }
 
-static void TestSigDigRounding(void)
+static void TestSigDigRounding()
 {
     UErrorCode status = U_ZERO_ERROR;
     UChar expected[128];
@@ -1287,8 +1265,8 @@ static void TestSigDigRounding(void)
         log_data_err("got unexpected error for unum_open: '%s'\n", u_errorName(status));
         return;
     }
-    unum_setAttribute(fmt, UNUM_LENIENT_PARSE, false);
-    unum_setAttribute(fmt, UNUM_SIGNIFICANT_DIGITS_USED, true);
+    unum_setAttribute(fmt, UNUM_LENIENT_PARSE, FALSE);
+    unum_setAttribute(fmt, UNUM_SIGNIFICANT_DIGITS_USED, TRUE);
     unum_setAttribute(fmt, UNUM_MAX_SIGNIFICANT_DIGITS, 2);
     /* unum_setAttribute(fmt, UNUM_MAX_FRACTION_DIGITS, 0); */
 
@@ -1309,7 +1287,7 @@ static void TestSigDigRounding(void)
     unum_close(fmt);
 }
 
-static void TestNumberFormatPadding(void)
+static void TestNumberFormatPadding()
 {
     UChar *result=NULL;
     UChar temp1[512];
@@ -1345,7 +1323,7 @@ static void TestNumberFormatPadding(void)
     pattern=unum_open(UNUM_IGNORE,temp1, u_strlen(temp1), "en_US",NULL, &status);
     if(U_FAILURE(status))
     {
-        log_err_status(status, "error in padding unum_openPattern(%s): %s\n", temp1, myErrorName(status) );
+        log_err_status(status, "error in padding unum_openPattern(%s): %s\n", temp1, myErrorName(status) );;
     }
     else {
         log_verbose("Pass: padding unum_openPattern() works fine\n");
@@ -1353,13 +1331,13 @@ static void TestNumberFormatPadding(void)
         /*test for unum_toPattern()*/
         log_verbose("\nTesting padding unum_toPattern()\n");
         resultlength=0;
-        resultlengthneeded=unum_toPattern(pattern, false, NULL, resultlength, &status);
+        resultlengthneeded=unum_toPattern(pattern, FALSE, NULL, resultlength, &status);
         if(status==U_BUFFER_OVERFLOW_ERROR)
         {
             status=U_ZERO_ERROR;
             resultlength=resultlengthneeded+1;
             result=(UChar*)malloc(sizeof(UChar) * resultlength);
-            unum_toPattern(pattern, false, result, resultlength, &status);
+            unum_toPattern(pattern, FALSE, result, resultlength, &status);
         }
         if(U_FAILURE(status))
         {
@@ -1432,7 +1410,7 @@ withinErr(double a, double b, double err) {
     return uprv_fabs(a - b) < uprv_fabs(a * err);
 }
 
-static void TestInt64Format(void) {
+static void TestInt64Format() {
     UChar temp1[512];
     UChar result[512];
     UNumberFormat *fmt;
@@ -1587,7 +1565,7 @@ static void test_fmt(UNumberFormat* fmt, UBool isDecimal) {
         UErrorCode status = U_ZERO_ERROR;
         UParseError perr;
         u_uastrcpy(buffer, "#,##0.0#");
-        unum_applyPattern(fmt, false, buffer, -1, &perr, &status);
+        unum_applyPattern(fmt, FALSE, buffer, -1, &perr, &status);
         if (isDecimal ? U_FAILURE(status) : (status != U_UNSUPPORTED_ERROR)) {
             log_err("got unexpected error for applyPattern: '%s'\n", u_errorName(status));
         }
@@ -1596,13 +1574,13 @@ static void test_fmt(UNumberFormat* fmt, UBool isDecimal) {
     {
         int isLenient = unum_getAttribute(fmt, UNUM_LENIENT_PARSE);
         log_verbose("lenient: 0x%x\n", isLenient);
-        if (isLenient != false) {
+        if (isLenient != FALSE) {
             log_err("didn't expect lenient value: %d\n", isLenient);
         }
 
-        unum_setAttribute(fmt, UNUM_LENIENT_PARSE, true);
+        unum_setAttribute(fmt, UNUM_LENIENT_PARSE, TRUE);
         isLenient = unum_getAttribute(fmt, UNUM_LENIENT_PARSE);
-        if (isLenient != true) {
+        if (isLenient != TRUE) {
             log_err("didn't expect lenient value after set: %d\n", isLenient);
         }
     }
@@ -1647,7 +1625,7 @@ static void test_fmt(UNumberFormat* fmt, UBool isDecimal) {
             /* set the default ruleset to the first one found, and retry */
 
             if (len > 0) {
-                for (i = 0; i < len && temp[i] != ';'; ++i){}
+                for (i = 0; i < len && temp[i] != ';'; ++i){};
                 if (i < len) {
                     buffer[i] = 0;
                     unum_setTextAttribute(fmt, UNUM_DEFAULT_RULESET, buffer, -1, &status);
@@ -1680,7 +1658,7 @@ static void test_fmt(UNumberFormat* fmt, UBool isDecimal) {
 
     {
         UErrorCode status = U_ZERO_ERROR;
-        unum_toPattern(fmt, false, buffer, BUFSIZE, &status);
+        unum_toPattern(fmt, FALSE, buffer, BUFSIZE, &status);
         if (U_SUCCESS(status)) {
             u_austrcpy(temp, buffer);
             log_verbose("pattern: '%s'\n", temp);
@@ -1705,7 +1683,7 @@ static void test_fmt(UNumberFormat* fmt, UBool isDecimal) {
     }
 }
 
-static void TestNonExistentCurrency(void) {
+static void TestNonExistentCurrency() {
     UNumberFormat *format;
     UErrorCode status = U_ZERO_ERROR;
     UChar currencySymbol[8];
@@ -1729,12 +1707,12 @@ static void TestNonExistentCurrency(void) {
     unum_close(format);
 }
 
-static void TestRBNFFormat(void) {
+static void TestRBNFFormat() {
     UErrorCode status;
     UParseError perr;
     UChar pat[1024];
     UChar tempUChars[512];
-    UNumberFormat *formats[4];
+    UNumberFormat *formats[5];
     int COUNT = UPRV_LENGTHOF(formats);
     int i;
 
@@ -1762,6 +1740,13 @@ static void TestRBNFFormat(void) {
     formats[2] = unum_open(UNUM_ORDINAL, NULL, 0, "en_US", &perr, &status);
     if (U_FAILURE(status)) {
         log_err_status(status, "unable to open ordinal -> %s\n", u_errorName(status));
+        return;
+    }
+
+    status = U_ZERO_ERROR;
+    formats[3] = unum_open(UNUM_DURATION, NULL, 0, "en_US", &perr, &status);
+    if (U_FAILURE(status)) {
+        log_err_status(status, "unable to open duration %s\n", u_errorName(status));
         return;
     }
 
@@ -1803,7 +1788,7 @@ static void TestRBNFFormat(void) {
         "100,000,000: some huge number;\n");
     /* This is to get around some compiler warnings about char * string length. */
     u_strcat(pat, tempUChars);
-    formats[3] = unum_open(UNUM_PATTERN_RULEBASED, pat, -1, "en_US", &perr, &status);
+    formats[4] = unum_open(UNUM_PATTERN_RULEBASED, pat, -1, "en_US", &perr, &status);
     if (U_FAILURE(status)) {
         log_err_status(status, "unable to open rulebased pattern -> %s\n", u_errorName(status));
     }
@@ -1839,7 +1824,7 @@ static void TestRBNFFormat(void) {
     }
 }
 
-static void TestRBNFRounding(void) {
+static void TestRBNFRounding() {
     UChar fmtbuf[FORMAT_BUF_CAPACITY];
     UChar expectedBuf[FORMAT_BUF_CAPACITY];
     int32_t len;
@@ -1851,7 +1836,6 @@ static void TestRBNFRounding(void) {
     }
     len = unum_formatDouble(fmt, 10.123456789, fmtbuf, FORMAT_BUF_CAPACITY, NULL, &status);
     U_ASSERT(len < FORMAT_BUF_CAPACITY);
-    (void)len;
     if (U_FAILURE(status)) {
         log_err_status(status, "unum_formatDouble 10.123456789 failed with %s\n", u_errorName(status));
     }
@@ -2030,7 +2014,7 @@ static void TestNBSPInPattern(void) {
         UChar pat[200];
         testcase = "ar_AE special pattern: " SPECIAL_PATTERN;
         u_unescape(SPECIAL_PATTERN, pat, UPRV_LENGTHOF(pat));
-        unum_applyPattern(nf, false, pat, -1, NULL, &status);
+        unum_applyPattern(nf, FALSE, pat, -1, NULL, &status);
         if(U_FAILURE(status)) {
             log_err("%s: unum_applyPattern failed with %s\n", testcase, u_errorName(status));
         } else {
@@ -2357,7 +2341,7 @@ static void TestUFormattable(void) {
   {
     UErrorCode status = U_ZERO_ERROR;
     UNumberFormat *unum = unum_open(UNUM_DEFAULT, NULL, -1, "en_US_POSIX", NULL, &status);
-    if(assertSuccessCheck("calling unum_open()", &status, true)) {
+    if(assertSuccessCheck("calling unum_open()", &status, TRUE)) {
       //! [unum_parseToUFormattable]
       const UChar str[] = { 0x0031, 0x0032, 0x0033, 0x0000 }; /* 123 */
       int32_t result = 0;
@@ -2382,7 +2366,7 @@ static void TestUFormattable(void) {
 
     ufmt = ufmt_open(&status);
     unum = unum_open(UNUM_DEFAULT, NULL, -1, "en_US_POSIX", NULL, &status);
-    if(assertSuccessCheck("calling ufmt_open() || unum_open()", &status, true)) {
+    if(assertSuccessCheck("calling ufmt_open() || unum_open()", &status, TRUE)) {
 
       pattern = "31337";
       log_verbose("-- pattern: %s\n", pattern);
@@ -2430,13 +2414,13 @@ static void TestUFormattable(void) {
     u_uastrcpy(buffer, pattern);
 
     unum = unum_open(UNUM_DEFAULT, NULL, -1, "en_US_POSIX", NULL, &status);
-    if(assertSuccessCheck("calling unum_open()", &status, true)) {
+    if(assertSuccessCheck("calling unum_open()", &status, TRUE)) {
 
       ufmt = unum_parseToUFormattable(unum, NULL, /* will be ufmt_open()'ed for us */
                                    buffer, -1, NULL, &status);
       if(assertSuccess("unum_parseToUFormattable(weight of the moon)", &status)) {
         log_verbose("new formattable allocated at %p\n", (void*)ufmt);
-        assertTrue("ufmt_isNumeric() true", ufmt_isNumeric(ufmt));
+        assertTrue("ufmt_isNumeric() TRUE", ufmt_isNumeric(ufmt));
         unum_formatUFormattable(unum, ufmt, out2k, 2048, NULL, &status);
         if(assertSuccess("unum_formatUFormattable(3.14159)", &status)) {
           assertEquals("unum_formatUFormattable r/t", austrdup(buffer), austrdup(out2k));
@@ -2477,14 +2461,14 @@ static const UChar hantDesc[]    = {0x7A,0x68,0x5F,0x48,0x61,0x6E,0x74,0x2F,0x53
 
 static const NumSysTestItem numSysTestItems[] = {
     //locale                         numsys    radix isAlgo  description
-    { "en",                          "latn",    10,  false,  latnDesc },
-    { "en@numbers=roman",            "roman",   10,  true,   romanDesc },
-    { "en@numbers=finance",          "latn",    10,  false,  latnDesc },
-    { "ar-EG",                       "arab",    10,  false,  arabDesc },
-    { "fa",                          "arabext", 10,  false,  arabextDesc },
-    { "zh_Hans@numbers=hanidec",     "hanidec", 10,  false,  hanidecDesc },
-    { "zh_Hant@numbers=traditional", "hant",    10,  true,   hantDesc },
-    { NULL,                          NULL,       0,  false,  NULL },
+    { "en",                          "latn",    10,  FALSE,  latnDesc },
+    { "en@numbers=roman",            "roman",   10,  TRUE,   romanDesc },
+    { "en@numbers=finance",          "latn",    10,  FALSE,  latnDesc },
+    { "ar-EG",                       "arab",    10,  FALSE,  arabDesc },
+    { "fa",                          "arabext", 10,  FALSE,  arabextDesc },
+    { "zh_Hans@numbers=hanidec",     "hanidec", 10,  FALSE,  hanidecDesc },
+    { "zh_Hant@numbers=traditional", "hant",    10,  TRUE,   hantDesc },
+    { NULL,                          NULL,       0,  FALSE,  NULL },
 };
 enum { kNumSysDescripBufMax = 64 };
 
@@ -2526,15 +2510,15 @@ static void TestUNumberingSystem(void) {
         if ( U_SUCCESS(status) ) {
             int32_t numsysCount = 0;
             // sanity check for a couple of number systems that must be in the enumeration
-            UBool foundLatn = false;
-            UBool foundArab = false;
+            UBool foundLatn = FALSE;
+            UBool foundArab = FALSE;
             while ( (numsys = uenum_next(uenum, NULL, &status)) != NULL && U_SUCCESS(status) ) {
                 status = U_ZERO_ERROR;
                 unumsys = unumsys_openByName(numsys, &status);
                 if ( U_SUCCESS(status) ) {
                     numsysCount++;
-                    if ( uprv_strcmp(numsys, "latn") ) foundLatn = true;
-                    if ( uprv_strcmp(numsys, "arab") ) foundArab = true;
+                    if ( uprv_strcmp(numsys, "latn") ) foundLatn = TRUE;
+                    if ( uprv_strcmp(numsys, "arab") ) foundArab = TRUE;
                     unumsys_close(unumsys);
                 } else {
                     log_err("unumsys_openAvailableNames includes %s but unumsys_openByName on it fails with status %s\n",
@@ -2580,8 +2564,8 @@ static void TestCurrencyIsoPluralFormat(void) {
         {"zh_CN",             "1234.56",  "USD", "US$1,234.56",        "US$1,234.56",        "US$1,234.56",        "USD\\u00A01,234.56",    "1,234.56\\u00A0\\u7F8E\\u5143"},
         // {"zh_CN",          "1",        "CHY", "CHY1.00",            "CHY1.00",            "CHY1.00",            "CHY1.00",        "1.00 CHY"}, // wrong ISO code
         // {"zh_CN",          "1234.56",  "CHY", "CHY1,234.56",        "CHY1,234.56",        "CHY1,234.56",        "CHY1,234.56",    "1,234.56 CHY"}, // wrong ISO code
-        {"zh_CN",             "1",        "CNY", "\\u00A51.00",        "\\u00A51.00",        "\\u00A51.00",        "CNY\\u00A01.00",        "1.00\\u00A0\\u4EBA\\u6C11\\u5E01"},
-        {"zh_CN",             "1234.56",  "CNY", "\\u00A51,234.56",    "\\u00A51,234.56",    "\\u00A51,234.56",    "CNY\\u00A01,234.56",    "1,234.56\\u00A0\\u4EBA\\u6C11\\u5E01"},
+        {"zh_CN",             "1",        "CNY", "\\uFFE51.00",        "\\uFFE51.00",        "\\uFFE51.00",        "CNY\\u00A01.00",        "1.00\\u00A0\\u4EBA\\u6C11\\u5E01"},
+        {"zh_CN",             "1234.56",  "CNY", "\\uFFE51,234.56",    "\\uFFE51,234.56",    "\\uFFE51,234.56",    "CNY\\u00A01,234.56",    "1,234.56\\u00A0\\u4EBA\\u6C11\\u5E01"},
         {"ru_RU",             "1",        "RUB", "1,00\\u00A0\\u20BD", "1,00\\u00A0\\u20BD", "1,00\\u00A0\\u20BD", "1,00\\u00A0RUB",        "1,00 \\u0440\\u043E\\u0441\\u0441\\u0438\\u0439\\u0441\\u043A\\u043E\\u0433\\u043E "
                                                                                                                                             "\\u0440\\u0443\\u0431\\u043B\\u044F"},
         {"ru_RU",             "2",        "RUB", "2,00\\u00A0\\u20BD", "2,00\\u00A0\\u20BD", "2,00\\u00A0\\u20BD", "2,00\\u00A0RUB",        "2,00 \\u0440\\u043E\\u0441\\u0441\\u0438\\u0439\\u0441\\u043A\\u043E\\u0433\\u043E "
@@ -2759,7 +2743,7 @@ static void TestCurrencyUsage(void) {
         }
 
         if(unum_getAttribute(unumFmt, UNUM_CURRENCY_USAGE) != UCURR_USAGE_CASH) {
-            log_err("FAIL: currency usage attribute is not UNUM_CASH_CURRENCY\n");
+            log_err("FAIL: currency usage attribute is not UNUM_CURRENCY_CASH\n");
         }
 
         for (j=0; j<UPRV_LENGTHOF(DATA); ++j) {
@@ -2811,10 +2795,10 @@ static void TestCurrFmtNegSameAsPositive(void) {
     UErrorCode status = U_ZERO_ERROR;
     UNumberFormat* unumfmt = unum_open(UNUM_CURRENCY, NULL, 0, "en_US", NULL, &status);
     if ( U_SUCCESS(status) ) {
-        unum_applyPattern(unumfmt, false, currFmtNegSameAsPos, -1, NULL, &status);
+        unum_applyPattern(unumfmt, FALSE, currFmtNegSameAsPos, -1, NULL, &status);
         if (U_SUCCESS(status)) {
             UChar ubuf[kUBufSize];
-            int32_t ulen = unum_toPattern(unumfmt, false, ubuf, kUBufSize, &status);
+            int32_t ulen = unum_toPattern(unumfmt, FALSE, ubuf, kUBufSize, &status);
             if (U_FAILURE(status)) {
                 log_err("unum_toPattern fails with status %s\n", myErrorName(status));
             } else if (u_strcmp(ubuf, currFmtToPatExpected) != 0) {
@@ -3034,13 +3018,13 @@ static void TestVariousStylesAndAttributes(void) {
 static const UChar currpat[]  = { 0xA4,0x23,0x2C,0x23,0x23,0x30,0x2E,0x30,0x30,0};
 static const UChar parsetxt[] = { 0x78,0x30,0x79,0x24,0 }; /* x0y$ */
 
-static void TestParseCurrPatternWithDecStyle(void) {
+static void TestParseCurrPatternWithDecStyle() {
     UErrorCode status = U_ZERO_ERROR;
     UNumberFormat *unumfmt = unum_open(UNUM_DECIMAL, NULL, 0, "en_US", NULL, &status);
     if (U_FAILURE(status)) {
         log_data_err("unum_open DECIMAL failed for en_US: %s (Are you missing data?)\n", u_errorName(status));
     } else {
-        unum_applyPattern(unumfmt, false, currpat, -1, NULL, &status);
+        unum_applyPattern(unumfmt, FALSE, currpat, -1, NULL, &status);
         if (U_FAILURE(status)) {
             log_err_status(status, "unum_applyPattern failed: %s\n", u_errorName(status));
         } else {
@@ -3137,7 +3121,7 @@ static void TestFormatForFields(void) {
                 } else {
                     const FieldsData * fptr;
                     int32_t field, beginPos, endPos;
-                    for (fptr = itemPtr->expectedFields; true; fptr++) {
+                    for (fptr = itemPtr->expectedFields; TRUE; fptr++) {
                         field = ufieldpositer_next(fpositer, &beginPos, &endPos);
                         if (field != fptr->field || (field >= 0 && (beginPos != fptr->beginPos || endPos != fptr->endPos))) {
                             if (fptr->field >= 0) {
@@ -3161,12 +3145,12 @@ static void TestFormatForFields(void) {
     }
 }
 
-static void Test12052_NullPointer(void) {
+static void Test12052_NullPointer() {
     UErrorCode status = U_ZERO_ERROR;
     static const UChar input[] = u"199a";
     UChar currency[200] = {0};
     UNumberFormat *theFormatter = unum_open(UNUM_CURRENCY, NULL, 0, "en_US", NULL, &status);
-    if (!assertSuccessCheck("unum_open() failed", &status, true)) { return; }
+    if (!assertSuccessCheck("unum_open() failed", &status, TRUE)) { return; }
     status = U_ZERO_ERROR;
     unum_setAttribute(theFormatter, UNUM_LENIENT_PARSE, 1);
     int32_t pos = 1;
@@ -3193,18 +3177,18 @@ typedef struct {
 } ParseCaseItem;
 
 static const ParseCaseItem parseCaseItems[] = {
-    { "en", u"0,000",            false, false, U_ZERO_ERROR,            5,          0, U_ZERO_ERROR,  5,                0.0, U_ZERO_ERROR,  5, "0" },
-    { "en", u"0,000",            true,  false, U_ZERO_ERROR,            5,          0, U_ZERO_ERROR,  5,                0.0, U_ZERO_ERROR,  5, "0" },
-    { "en", u"1000,000",         false, false, U_PARSE_ERROR,           0,          0, U_PARSE_ERROR, 0,                0.0, U_PARSE_ERROR, 0, "" },
-    { "en", u"1000,000",         true,  false, U_ZERO_ERROR,            8,    1000000, U_ZERO_ERROR,  8,          1000000.0, U_ZERO_ERROR,  8, "1000000" },
-    { "en", u"",                 false, false, U_PARSE_ERROR,           0,          0, U_PARSE_ERROR, 0,                0.0, U_PARSE_ERROR, 0, "" },
-    { "en", u"",                 true,  false, U_PARSE_ERROR,           0,          0, U_PARSE_ERROR, 0,                0.0, U_PARSE_ERROR, 0, "" },
-    { "en", u"9999990000503021", false, false, U_INVALID_FORMAT_ERROR, 16, 2147483647, U_ZERO_ERROR, 16, 9999990000503020.0, U_ZERO_ERROR, 16, "9999990000503021" },
-    { "en", u"9999990000503021", false, true,  U_INVALID_FORMAT_ERROR, 16, 2147483647, U_ZERO_ERROR, 16, 9999990000503020.0, U_ZERO_ERROR, 16, "9999990000503021" },
-    { "en", u"1000000.5",        false, false, U_ZERO_ERROR,            9,    1000000, U_ZERO_ERROR,  9,          1000000.5, U_ZERO_ERROR,  9, "1.0000005E+6"},
-    { "en", u"1000000.5",        false, true,  U_ZERO_ERROR,            7,    1000000, U_ZERO_ERROR,  7,          1000000.0, U_ZERO_ERROR,  7, "1000000" },
-    { "en", u"123.5",            false, false, U_ZERO_ERROR,            5,        123, U_ZERO_ERROR,  5,              123.5, U_ZERO_ERROR,  5, "123.5" },
-    { "en", u"123.5",            false, true,  U_ZERO_ERROR,            3,        123, U_ZERO_ERROR,  3,              123.0, U_ZERO_ERROR,  3, "123" },
+    { "en", u"0,000",            FALSE, FALSE, U_ZERO_ERROR,            5,          0, U_ZERO_ERROR,  5,                0.0, U_ZERO_ERROR,  5, "0" },
+    { "en", u"0,000",            TRUE,  FALSE, U_ZERO_ERROR,            5,          0, U_ZERO_ERROR,  5,                0.0, U_ZERO_ERROR,  5, "0" },
+    { "en", u"1000,000",         FALSE, FALSE, U_PARSE_ERROR,           0,          0, U_PARSE_ERROR, 0,                0.0, U_PARSE_ERROR, 0, "" },
+    { "en", u"1000,000",         TRUE,  FALSE, U_ZERO_ERROR,            8,    1000000, U_ZERO_ERROR,  8,          1000000.0, U_ZERO_ERROR,  8, "1000000" },
+    { "en", u"",                 FALSE, FALSE, U_PARSE_ERROR,           0,          0, U_PARSE_ERROR, 0,                0.0, U_PARSE_ERROR, 0, "" },
+    { "en", u"",                 TRUE,  FALSE, U_PARSE_ERROR,           0,          0, U_PARSE_ERROR, 0,                0.0, U_PARSE_ERROR, 0, "" },
+    { "en", u"9999990000503021", FALSE, FALSE, U_INVALID_FORMAT_ERROR, 16, 2147483647, U_ZERO_ERROR, 16, 9999990000503020.0, U_ZERO_ERROR, 16, "9999990000503021" },
+    { "en", u"9999990000503021", FALSE, TRUE,  U_INVALID_FORMAT_ERROR, 16, 2147483647, U_ZERO_ERROR, 16, 9999990000503020.0, U_ZERO_ERROR, 16, "9999990000503021" },
+    { "en", u"1000000.5",        FALSE, FALSE, U_ZERO_ERROR,            9,    1000000, U_ZERO_ERROR,  9,          1000000.5, U_ZERO_ERROR,  9, "1.0000005E+6"},
+    { "en", u"1000000.5",        FALSE, TRUE,  U_ZERO_ERROR,            7,    1000000, U_ZERO_ERROR,  7,          1000000.0, U_ZERO_ERROR,  7, "1000000" },
+    { "en", u"123.5",            FALSE, FALSE, U_ZERO_ERROR,            5,        123, U_ZERO_ERROR,  5,              123.5, U_ZERO_ERROR,  5, "123.5" },
+    { "en", u"123.5",            FALSE, TRUE,  U_ZERO_ERROR,            3,        123, U_ZERO_ERROR,  3,              123.0, U_ZERO_ERROR,  3, "123" },
     { NULL, NULL, 0, 0, 0, 0, 0, 0, 0, 0.0, 0, 0, NULL }
 };
 
@@ -3251,7 +3235,6 @@ static void TestParseCases(void) {
         status = U_ZERO_ERROR;
         decstr[0] = 0;
         dclen = unum_parseDecimal(unumDec, itemPtr->text, -1, &parsePos, decstr, 32, &status);
-        (void)dclen;
         if (status != itemPtr->decStatus || parsePos != itemPtr->decPos || uprv_strcmp(decstr,itemPtr->decString) != 0) {
             char btext[32];
             u_austrcpy(btext, itemPtr->text);
@@ -3325,7 +3308,7 @@ static const SetMaxFracAndRoundIncrItem maxFracAndRoundIncrItems[] = {
 // roundIncr must be non-zero
 static UBool ignoreRoundingIncrement(double roundIncr, int32_t maxFrac) {
     if (maxFrac < 0) {
-        return false;
+        return FALSE;
     }
     int32_t frac = 0;
     roundIncr *= 2.0;
@@ -3382,8 +3365,7 @@ static void TestSetMaxFracAndRoundIncr(void) {
         }
 
         status = U_ZERO_ERROR;
-        ulen = unum_toPattern(unf, false, ubuf, kUBufMax, &status);
-        (void)ulen;
+        ulen = unum_toPattern(unf, FALSE, ubuf, kUBufMax, &status);
         if ( U_FAILURE(status) ) {
             log_err("test %s: unum_toPattern fails with %s\n", itemPtr->descrip, u_errorName(status));
         } else if (u_strcmp(ubuf,itemPtr->expPattern)!=0) {
@@ -3425,7 +3407,7 @@ static void TestIgnorePadding(void) {
             unum_setAttribute(unum, UNUM_MAX_FRACTION_DIGITS, 0);
 
             UChar ubuf[kUBufMax];
-            int32_t ulen = unum_toPattern(unum, false, ubuf, kUBufMax, &status);
+            int32_t ulen = unum_toPattern(unum, FALSE, ubuf, kUBufMax, &status);
             if (U_FAILURE(status)) {
                 log_err("unum_toPattern fails: %s\n", u_errorName(status));
             } else {
@@ -3435,7 +3417,7 @@ static void TestIgnorePadding(void) {
                     u_austrncpy(bbuf, ubuf, kBBufMax);
                     log_err("unum_toPattern result should ignore padding but get %s\n", bbuf);
                 }
-                unum_applyPattern(unum, false, ubuf, ulen, NULL, &status);
+                unum_applyPattern(unum, FALSE, ubuf, ulen, NULL, &status);
                 if (U_FAILURE(status)) {
                     log_err("unum_applyPattern fails: %s\n", u_errorName(status));
                 } else {
@@ -3451,404 +3433,6 @@ static void TestIgnorePadding(void) {
             }
         }
         unum_close(unum);
-    }
-}
-
-static void TestSciNotationMaxFracCap(void) {
-    static const UChar* pat1 = u"#.##E+00;-#.##E+00";
-    UErrorCode status = U_ZERO_ERROR;
-    UNumberFormat* unum = unum_open(UNUM_PATTERN_DECIMAL, pat1, -1, "en_US", NULL, &status);
-    if ( U_FAILURE(status) ) {
-        log_data_err("unum_open UNUM_PATTERN_DECIMAL with scientific pattern for \"en_US\" fails with %s\n", u_errorName(status));
-    } else {
-        double value;
-        UChar ubuf[kUBufMax];
-        char bbuf[kBBufMax];
-        int32_t ulen;
-
-        unum_setAttribute(unum, UNUM_MIN_FRACTION_DIGITS, 0);
-        unum_setAttribute(unum, UNUM_MAX_FRACTION_DIGITS, 2147483647);
-        ulen = unum_toPattern(unum, false, ubuf, kUBufMax, &status);
-        if ( U_SUCCESS(status) ) {
-            u_austrncpy(bbuf, ubuf, kUBufMax);
-            log_info("unum_toPattern (%d): %s\n", ulen, bbuf);
-        }
-
-        for (value = 10.0; value < 1000000000.0; value *= 10.0) {
-            status = U_ZERO_ERROR;
-            ulen = unum_formatDouble(unum, value, ubuf, kUBufMax, NULL, &status);
-            if ( U_FAILURE(status) ) {
-                log_err("unum_formatDouble value %.1f status %s\n", value, u_errorName(status));
-            } else if (u_strncmp(ubuf,u"1E+0",4) != 0) {
-                u_austrncpy(bbuf, ubuf, kUBufMax);
-                log_err("unum_formatDouble value %.1f expected result to begin with 1E+0, got %s\n", value, bbuf);
-            }
-        }
-        unum_close(unum);
-    }
-}
-
-static void TestMinIntMinFracZero(void) {
-    UErrorCode status = U_ZERO_ERROR;
-    UNumberFormat* unum = unum_open(UNUM_DECIMAL, NULL, 0, "en_US", NULL, &status);
-    if ( U_FAILURE(status) ) {
-        log_data_err("unum_open UNUM_DECIMAL for en_US fails with %s\n", u_errorName(status));
-    } else {
-        UChar ubuf[kUBufMax];
-        char  bbuf[kBBufMax];
-        int minInt, minFrac, ulen;
-
-        unum_setAttribute(unum, UNUM_MIN_INTEGER_DIGITS, 0);
-        unum_setAttribute(unum, UNUM_MIN_FRACTION_DIGITS, 0);
-        minInt = unum_getAttribute(unum, UNUM_MIN_INTEGER_DIGITS);
-        minFrac = unum_getAttribute(unum, UNUM_MIN_FRACTION_DIGITS);
-        if (minInt != 0 || minFrac != 0) {
-            log_err("after setting minInt=minFrac=0, get minInt %d, minFrac %d\n", minInt, minFrac);
-        }
-
-        ulen = unum_toPattern(unum, false, ubuf, kUBufMax, &status);
-        if ( U_FAILURE(status) ) {
-            log_err("unum_toPattern fails with %s\n", u_errorName(status));
-        } else if (ulen < 3 || u_strstr(ubuf, u"#.#")==NULL) {
-            u_austrncpy(bbuf, ubuf, kUBufMax);
-            log_info("after setting minInt=minFrac=0, expect pattern to contain \"#.#\", but get (%d): \"%s\"\n", ulen, bbuf);
-        }
-
-        status = U_ZERO_ERROR;
-        ulen = unum_formatDouble(unum, 10.0, ubuf, kUBufMax, NULL, &status);
-        if ( U_FAILURE(status) ) {
-            log_err("unum_formatDouble 10.0 ulen %d fails with %s\n", ulen, u_errorName(status));
-        } else if (u_strcmp(ubuf, u"10") != 0) {
-            u_austrncpy(bbuf, ubuf, kUBufMax);
-            log_err("unum_formatDouble 10.0 expected \"10\", got \"%s\"\n", bbuf);
-        }
-
-        status = U_ZERO_ERROR;
-        ulen = unum_formatDouble(unum, 0.9, ubuf, kUBufMax, NULL, &status);
-        if ( U_FAILURE(status) ) {
-            log_err("unum_formatDouble 0.9 ulen %d fails with %s\n", ulen, u_errorName(status));
-        } else if (u_strcmp(ubuf, u".9") != 0) {
-            u_austrncpy(bbuf, ubuf, kUBufMax);
-            log_err("unum_formatDouble 0.9 expected \".9\", got \"%s\"\n", bbuf);
-        }
-
-        status = U_ZERO_ERROR;
-        ulen = unum_formatDouble(unum, 0.0, ubuf, kUBufMax, NULL, &status);
-        if ( U_FAILURE(status) ) {
-            log_err("unum_formatDouble 0.0 ulen %d fails with %s\n", ulen, u_errorName(status));
-        } else if (u_strcmp(ubuf, u"0") != 0) {
-            u_austrncpy(bbuf, ubuf, kUBufMax);
-            log_err("unum_formatDouble 0.0 expected \"0\", got \"%s\"\n", bbuf);
-        }
-
-        unum_close(unum);
-        status = U_ZERO_ERROR;
-        unum = unum_open(UNUM_CURRENCY, NULL, 0, "en_US", NULL, &status);
-        if ( U_FAILURE(status) ) {
-            log_data_err("unum_open UNUM_CURRENCY for en_US fails with %s\n", u_errorName(status));
-        } else {
-            unum_setAttribute(unum, UNUM_MIN_INTEGER_DIGITS, 0);
-            unum_setAttribute(unum, UNUM_MIN_FRACTION_DIGITS, 0);
-            minInt = unum_getAttribute(unum, UNUM_MIN_INTEGER_DIGITS);
-            minFrac = unum_getAttribute(unum, UNUM_MIN_FRACTION_DIGITS);
-            if (minInt != 0 || minFrac != 0) {
-                log_err("after setting CURRENCY minInt=minFrac=0, get minInt %d, minFrac %d\n", minInt, minFrac);
-            }
-
-            status = U_ZERO_ERROR;
-            ulen = unum_formatDouble(unum, 10.0, ubuf, kUBufMax, NULL, &status);
-            if ( U_FAILURE(status) ) {
-                log_err("unum_formatDouble (CURRENCY) 10.0 ulen %d fails with %s\n", ulen, u_errorName(status));
-            } else if (u_strcmp(ubuf, u"$10") != 0) {
-                u_austrncpy(bbuf, ubuf, kUBufMax);
-                log_err("unum_formatDouble (CURRENCY) 10.0 expected \"$10\", got \"%s\"\n", bbuf);
-            }
-
-            status = U_ZERO_ERROR;
-            ulen = unum_formatDouble(unum, 0.9, ubuf, kUBufMax, NULL, &status);
-            if ( U_FAILURE(status) ) {
-                log_err("unum_formatDouble (CURRENCY) 0.9 ulen %d fails with %s\n", ulen, u_errorName(status));
-            } else if (u_strcmp(ubuf, u"$.9") != 0) {
-                u_austrncpy(bbuf, ubuf, kUBufMax);
-                log_err("unum_formatDouble (CURRENCY) 0.9 expected \"$.9\", got \"%s\"\n", bbuf);
-            }
-
-            status = U_ZERO_ERROR;
-            ulen = unum_formatDouble(unum, 0.0, ubuf, kUBufMax, NULL, &status);
-            if ( U_FAILURE(status) ) {
-                log_err("unum_formatDouble (CURRENCY) 0.0 ulen %d fails with %s\n", ulen, u_errorName(status));
-            } else if (u_strcmp(ubuf, u"$0") != 0) {
-                u_austrncpy(bbuf, ubuf, kUBufMax);
-                log_err("unum_formatDouble (CURRENCY) 0.0 expected \"$0\", got \"%s\"\n", bbuf);
-            }
-
-            unum_close(unum);
-        }
-    }
-}
-
-static void Test21479_ExactCurrency(void) {
-    UErrorCode status = U_ZERO_ERROR;
-    UNumberFormat* nf = unum_open(UNUM_CURRENCY, NULL, 0, "en_US", NULL, &status);
-    if ( U_FAILURE(status) ) {
-        log_data_err("unum_open UNUM_CURRENCY for en_US fails with %s\n", u_errorName(status));
-        goto cleanup;
-    }
-    unum_setTextAttribute(nf, UNUM_CURRENCY_CODE, u"EUR", -1, &status);
-    UChar result[40];
-    unum_formatDecimal(nf, "987654321000000000000001", -1, result, 40, NULL, &status);
-    if (!assertSuccess("Formatting currency decimal", &status)) {
-        goto cleanup;
-    }
-    assertUEquals("", u"€987,654,321,000,000,000,000,001.00", result);
-
-    cleanup:
-    unum_close(nf);
-}
-
-static void Test22088_Ethiopic(void) {
-    const struct TestCase {
-        const char* localeID;
-        UNumberFormatStyle style;
-        const UChar* expectedResult;
-    } testCases[] = {
-        { "am_ET@numbers=ethi",        UNUM_DEFAULT,          u"፻፳፫" },
-        { "am_ET@numbers=ethi",        UNUM_NUMBERING_SYSTEM, u"፻፳፫" },
-        { "am_ET@numbers=traditional", UNUM_DEFAULT,          u"፻፳፫" },
-        { "am_ET@numbers=traditional", UNUM_NUMBERING_SYSTEM, u"፻፳፫" },
-        { "am_ET",                     UNUM_NUMBERING_SYSTEM, u"123" },    // make sure default for Ethiopic still works
-        { "en_US",                     UNUM_NUMBERING_SYSTEM, u"123" },    // make sure non-algorithmic default still works
-        { "ar_SA",                     UNUM_NUMBERING_SYSTEM, u"١٢٣" },    // make sure non-algorithmic default still works
-        // NOTE: There are NO locales in ICU 72 whose default numbering system is algorithmic!
-    };
-    for (int32_t i = 0; i < UPRV_LENGTHOF(testCases); i++) {
-        char errorMessage[200];
-        UErrorCode err = U_ZERO_ERROR;
-        UNumberFormat* nf = unum_open(testCases[i].style, NULL, 0, testCases[i].localeID, NULL, &err);
-
-        snprintf(errorMessage, 200, "Creation of number formatter for %s failed", testCases[i].localeID);
-        if (assertSuccess(errorMessage, &err)) {
-            UChar result[200];
-            
-            unum_formatDouble(nf, 123, result, 200, NULL, &err);
-            snprintf(errorMessage, 200, "Formatting of number for %s failed", testCases[i].localeID);
-            if (assertSuccess(errorMessage, &err)) {
-                snprintf(errorMessage, 200, "Wrong result for %s", testCases[i].localeID);
-                assertUEquals(errorMessage, testCases[i].expectedResult, result);
-            }
-        }
-        unum_close(nf);
-   }
-}
-
-static void TestChangingRuleset(void) {
-    const struct TestCase {
-        const char* localeID;
-        const UChar* rulesetName;
-        const UChar* expectedResult;
-    } testCases[] = {
-        { "en_US",               NULL,            u"123" },
-        { "en_US",               u"%roman-upper", u"CXXIII" },
-        { "en_US",               u"%ethiopic",    u"፻፳፫" },
-        { "en_US@numbers=roman", NULL,            u"CXXIII" },
-        { "en_US@numbers=ethi",  NULL,            u"፻፳፫" },
-        { "am_ET",               NULL,            u"123" },
-        { "am_ET",               u"%ethiopic",    u"፻፳፫" },
-        { "am_ET@numbers=ethi",  NULL,            u"፻፳፫" },
-    };
-    
-    for (int32_t i = 0; i < UPRV_LENGTHOF(testCases); i++) {
-        char errorMessage[200];
-        const char* rulesetNameString = (testCases[i].rulesetName != NULL) ? austrdup(testCases[i].rulesetName) : "NULL";
-        UErrorCode err = U_ZERO_ERROR;
-        UNumberFormat* nf = unum_open(UNUM_NUMBERING_SYSTEM, NULL, 0, testCases[i].localeID, NULL, &err);
-        
-        snprintf(errorMessage, 200, "Creating of number formatter for %s failed", testCases[i].localeID);
-        if (assertSuccess(errorMessage, &err)) {
-            if (testCases[i].rulesetName != NULL) {
-                unum_setTextAttribute(nf, UNUM_DEFAULT_RULESET, testCases[i].rulesetName, -1, &err);
-                snprintf(errorMessage, 200, "Changing formatter for %s's default ruleset to %s failed", testCases[i].localeID, rulesetNameString);
-                assertSuccess(errorMessage, &err);
-            }
-            
-            if (U_SUCCESS(err)) {
-                UChar result[200];
-                
-                unum_formatDouble(nf, 123, result, 200, NULL, &err);
-                snprintf(errorMessage, 200, "Formatting of number with %s/%s failed", testCases[i].localeID, rulesetNameString);
-                if (assertSuccess(errorMessage, &err)) {
-                    snprintf(errorMessage, 200, "Wrong result for %s/%s", testCases[i].localeID, rulesetNameString);
-                    assertUEquals(errorMessage, testCases[i].expectedResult, result);
-                }
-            }
-        }
-        unum_close(nf);
-    }
-}
-
-static void TestParseWithEmptyCurr(void) {
-    UErrorCode status = U_ZERO_ERROR;
-    UNumberFormat* unum = unum_open(UNUM_CURRENCY, NULL, 0, "en_US", NULL, &status);
-    if (U_FAILURE(status)) {
-        log_data_err("unum_open UNUM_CURRENCY for \"en_US\" fails with %s\n", u_errorName(status));
-    } else {
-        unum_setSymbol(unum, UNUM_CURRENCY_SYMBOL, u"", 0, &status);
-        if (U_FAILURE(status)) {
-            log_err("unum_setSymbol UNUM_CURRENCY_SYMBOL u\"\" fails with %s\n", u_errorName(status));
-        } else {
-            char bbuf[kBBufMax] = { 0 };
-            UChar curr[4] = { 0 };
-            int32_t ppos, blen;
-            double val;
-            const UChar* text = u"3";
-
-            status = U_ZERO_ERROR;
-            ppos = 0;
-            blen = unum_parseDecimal(unum, text, -1, &ppos, bbuf, kBBufMax, &status);
-            if (U_FAILURE(status)) {
-                log_err("unum_parseDecimal u\"3\" with empty curr symbol fails with %s, ppos %d\n", u_errorName(status), ppos);
-            } else if (ppos != 1 || blen != 1 || bbuf[0] != '3') {
-                log_err("unum_parseDecimal expect ppos 1, blen 1, str 3; get %d, %d, %s\n", ppos, blen, bbuf);
-            }
-
-            status = U_ZERO_ERROR;
-            ppos = 0;
-            val = unum_parseDouble(unum, text, -1, &ppos, &status);
-            if (U_FAILURE(status)) {
-                log_err("unum_parseDouble u\"3\" with empty curr symbol fails with %s, ppos %d\n", u_errorName(status), ppos);
-            } else if (ppos != 1 || val != 3.0) {
-                log_err("unum_parseDouble expect ppos 1, val 3.0; get %d, %.2f\n", ppos, val);
-            }
-
-            status = U_ZERO_ERROR;
-            ppos = 0;
-            val = unum_parseDoubleCurrency(unum, text, -1, &ppos, curr, &status);
-            if (U_SUCCESS(status)) {
-                log_err("unum_parseDoubleCurrency u\"3\" with empty curr symbol succeeds, get ppos %d, val %.2f\n", ppos, val);
-            }
-        }
-        unum_close(unum);
-    }
-
-    //                              "¤#,##0.00" "¤ #,##0.00" "#,##0.00 ¤" "#,##,##0.00¤"
-    static const char* locales[] = {"en_US",    "nb_NO",     "cs_CZ",     "bn_BD",       NULL };
-    const char ** localesPtr = locales;
-    const char* locale;
-    while ((locale = *localesPtr++) != NULL) {
-        status = U_ZERO_ERROR;
-        unum = unum_open(UNUM_CURRENCY, NULL, 0, locale, NULL, &status);
-        if (U_FAILURE(status)) {
-            log_data_err("locale %s unum_open UNUM_CURRENCY fails with %s\n", locale, u_errorName(status));
-        } else {
-            UChar ubuf[kUBufMax];
-            int32_t ppos, ulen;
-            const double posValToUse = 37.0;
-            const double negValToUse = -3.0;
-            double val;
-
-            status = U_ZERO_ERROR;
-            unum_setSymbol(unum, UNUM_CURRENCY_SYMBOL, u"", 0, &status);
-            if (U_FAILURE(status)) {
-                log_err("locale %s unum_setSymbol UNUM_CURRENCY_SYMBOL u\"\" fails with %s, skipping\n", locale, u_errorName(status));
-                continue;
-            }
-
-            status = U_ZERO_ERROR;
-            ulen = unum_formatDouble(unum, posValToUse, ubuf, kUBufMax, NULL, &status);
-            if (U_FAILURE(status)) {
-                log_err("locale %s unum_formatDouble %.1f fails with %s, skipping\n", locale, posValToUse, u_errorName(status));
-                continue;
-            }
-
-            status = U_ZERO_ERROR;
-            ppos = 0;
-            val = unum_parseDouble(unum, ubuf, ulen, &ppos, &status);
-            if (U_FAILURE(status)) {
-                log_err("locale %s unum_parseDouble fails with %s, ppos %d, expect %.1f\n", locale, u_errorName(status), ppos, posValToUse);
-            } else if (ppos != ulen || val != posValToUse) {
-                log_err("locale %s unum_parseDouble expect ppos %d, val %.1f; get %d, %.2f\n", locale, ulen, posValToUse, ppos, val);
-            }
-
-            status = U_ZERO_ERROR;
-            ulen = unum_formatDouble(unum, negValToUse, ubuf, kUBufMax, NULL, &status);
-            if (U_FAILURE(status)) {
-                log_err("locale %s unum_formatDouble %.1f fails with %s, skipping\n", locale, negValToUse, u_errorName(status));
-                continue;
-            }
-
-            status = U_ZERO_ERROR;
-            ppos = 0;
-            val = unum_parseDouble(unum, ubuf, ulen, &ppos, &status);
-            if (U_FAILURE(status)) {
-                log_err("locale %s unum_parseDouble fails with %s, ppos %d, expect %.1f\n", locale, u_errorName(status), ppos, negValToUse);
-            } else if (ppos != ulen || val != negValToUse) {
-                log_err("locale %s unum_parseDouble expect ppos %d, val %.1f; get %d, %.2f\n", locale, ulen, negValToUse, ppos, val);
-            }
-
-            status = U_ZERO_ERROR;
-            unum_applyPattern(unum, false, u"#,##0.00¤", -1, NULL, &status);
-            if (U_FAILURE(status)) {
-                log_err("locale %s unum_applyPattern \"#,##0.00¤\" fails with %s, skipping\n", locale, u_errorName(status));
-                continue;
-            }
-
-            status = U_ZERO_ERROR;
-            ulen = unum_formatDouble(unum, posValToUse, ubuf, kUBufMax, NULL, &status);
-            if (U_FAILURE(status)) {
-                log_err("locale %s with \"#,##0.00¤\" unum_formatDouble %.1f fails with %s, skipping\n", locale, posValToUse, u_errorName(status));
-                continue;
-            }
-
-            status = U_ZERO_ERROR;
-            ppos = 0;
-            val = unum_parseDouble(unum, ubuf, ulen, &ppos, &status);
-            if (U_FAILURE(status)) {
-                log_err("locale %s with \"#,##0.00¤\" unum_parseDouble fails with %s, ppos %d, expect %.1f\n", locale, u_errorName(status), ppos, posValToUse);
-            } else if (ppos != ulen || val != posValToUse) {
-                log_err("locale %s with \"#,##0.00¤\" unum_parseDouble expect ppos %d, val %.1f; get %d, %.2f\n", locale, ulen, posValToUse, ppos, val);
-            }
-
-            status = U_ZERO_ERROR;
-            ulen = unum_formatDouble(unum, negValToUse, ubuf, kUBufMax, NULL, &status);
-            if (U_FAILURE(status)) {
-                log_err("locale %s with \"#,##0.00¤\" unum_formatDouble %.1f fails with %s, skipping\n", locale, negValToUse, u_errorName(status));
-                continue;
-            }
-
-            status = U_ZERO_ERROR;
-            ppos = 0;
-            val = unum_parseDouble(unum, ubuf, ulen, &ppos, &status);
-            if (U_FAILURE(status)) {
-                log_err("locale %s with \"#,##0.00¤\" unum_parseDouble fails with %s, ppos %d, expect %.1f\n", locale, u_errorName(status), ppos, negValToUse);
-            } else if (ppos != ulen || val != negValToUse) {
-                log_err("locale %s with \"#,##0.00¤\" unum_parseDouble expect ppos %d, val %.1f; get %d, %.2f\n", locale, ulen, negValToUse, ppos, val);
-            }
-
-            unum_close(unum);
-        }
-    }
-}
-
-static void TestDuration(void) {
-    // NOTE: at the moment, UNUM_DURATION is still backed by a set of RBNF rules, which don't handle
-    // showing fractional seconds.  This test should be updated or replaced
-    // when https://unicode-org.atlassian.net/browse/ICU-22487 is fixed.
-    double values[] = { 34, 34.5, 1234, 1234.2, 1234.7, 1235, 8434, 8434.5 };
-    const UChar* expectedResults[] = { u"34 sec.", u"34 sec.", u"20:34", u"20:34", u"20:35", u"20:35", u"2:20:34", u"2:20:34" };
-    
-    UErrorCode err = U_ZERO_ERROR;
-    UNumberFormat* nf = unum_open(UNUM_DURATION, NULL, 0, "en_US", NULL, &err);
-    
-    if (assertSuccess("Failed to create duration formatter", &err)) {
-        UChar actualResult[200];
-        
-        for (int32_t i = 0; i < UPRV_LENGTHOF(values); i++) {
-            unum_formatDouble(nf, values[i], actualResult, 200, NULL, &err);
-            if (assertSuccess("Error formatting duration", &err)) {
-                assertUEquals("Wrong formatting result", expectedResults[i], actualResult);
-            }
-        }
-        unum_close(nf);
     }
 }
 

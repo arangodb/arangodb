@@ -1,13 +1,40 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 br{
+    Version{"2.1.48.86"}
     zoneStrings{
+        "Africa:Abidjan"{
+            ec{"Abidjan"}
+        }
+        "Africa:Accra"{
+            ec{"Accra"}
+        }
         "Africa:Addis_Ababa"{
             ec{"Adis Abeba"}
         }
         "Africa:Algiers"{
             ec{"Aljer"}
+        }
+        "Africa:Asmera"{
+            ec{"Asmara"}
+        }
+        "Africa:Bamako"{
+            ec{"Bamako"}
+        }
+        "Africa:Bangui"{
+            ec{"Bangui"}
+        }
+        "Africa:Banjul"{
+            ec{"Banjul"}
+        }
+        "Africa:Bissau"{
+            ec{"Bissau"}
+        }
+        "Africa:Brazzaville"{
+            ec{"Brazzaville"}
+        }
+        "Africa:Bujumbura"{
+            ec{"Bujumbura"}
         }
         "Africa:Cairo"{
             ec{"Kaero"}
@@ -15,17 +42,101 @@ br{
         "Africa:Casablanca"{
             ec{"Dar el Beida (Casablanca)"}
         }
+        "Africa:Conakry"{
+            ec{"Conakry"}
+        }
+        "Africa:Dakar"{
+            ec{"Dakar"}
+        }
+        "Africa:Dar_es_Salaam"{
+            ec{"Dar es Salaam"}
+        }
+        "Africa:Djibouti"{
+            ec{"Djibouti"}
+        }
         "Africa:El_Aaiun"{
             ec{"LaʼYoun"}
+        }
+        "Africa:Freetown"{
+            ec{"Freetown"}
+        }
+        "Africa:Gaborone"{
+            ec{"Gaborone"}
+        }
+        "Africa:Harare"{
+            ec{"Harare"}
+        }
+        "Africa:Johannesburg"{
+            ec{"Johannesburg"}
+        }
+        "Africa:Juba"{
+            ec{"Juba"}
+        }
+        "Africa:Kampala"{
+            ec{"Kampala"}
+        }
+        "Africa:Khartoum"{
+            ec{"Khartoum"}
+        }
+        "Africa:Kigali"{
+            ec{"Kigali"}
+        }
+        "Africa:Kinshasa"{
+            ec{"Kinshasa"}
+        }
+        "Africa:Lagos"{
+            ec{"Lagos"}
+        }
+        "Africa:Libreville"{
+            ec{"Libreville"}
         }
         "Africa:Lome"{
             ec{"Lomé"}
         }
+        "Africa:Luanda"{
+            ec{"Luanda"}
+        }
+        "Africa:Lubumbashi"{
+            ec{"Lubumbashi"}
+        }
+        "Africa:Lusaka"{
+            ec{"Lusaka"}
+        }
+        "Africa:Malabo"{
+            ec{"Malabo"}
+        }
+        "Africa:Maputo"{
+            ec{"Maputo"}
+        }
+        "Africa:Maseru"{
+            ec{"Maseru"}
+        }
+        "Africa:Mbabane"{
+            ec{"Mbabane"}
+        }
         "Africa:Mogadishu"{
             ec{"Muqdisho"}
         }
+        "Africa:Monrovia"{
+            ec{"Monrovia"}
+        }
+        "Africa:Nairobi"{
+            ec{"Nairobi"}
+        }
         "Africa:Ndjamena"{
             ec{"NʼDjamena"}
+        }
+        "Africa:Niamey"{
+            ec{"Niamey"}
+        }
+        "Africa:Nouakchott"{
+            ec{"Nouakchott"}
+        }
+        "Africa:Ouagadougou"{
+            ec{"Ouagadougou"}
+        }
+        "Africa:Porto-Novo"{
+            ec{"Porto-Novo"}
         }
         "Africa:Sao_Tome"{
             ec{"São Tomé"}
@@ -36,14 +147,65 @@ br{
         "Africa:Tunis"{
             ec{"Tuniz"}
         }
+        "Africa:Windhoek"{
+            ec{"Windhoek"}
+        }
+        "America:Adak"{
+            ec{"Adak"}
+        }
+        "America:Anchorage"{
+            ec{"Anchorage"}
+        }
+        "America:Anguilla"{
+            ec{"Anguilla"}
+        }
+        "America:Antigua"{
+            ec{"Antigua"}
+        }
+        "America:Aruba"{
+            ec{"Aruba"}
+        }
         "America:Asuncion"{
             ec{"Asunción"}
+        }
+        "America:Barbados"{
+            ec{"Barbados"}
         }
         "America:Belem"{
             ec{"Belém"}
         }
+        "America:Belize"{
+            ec{"Belize"}
+        }
         "America:Bogota"{
             ec{"Bogotá"}
+        }
+        "America:Buenos_Aires"{
+            ec{"Buenos Aires"}
+        }
+        "America:Caracas"{
+            ec{"Caracas"}
+        }
+        "America:Cayenne"{
+            ec{"Cayenne"}
+        }
+        "America:Cayman"{
+            ec{"Cayman"}
+        }
+        "America:Chicago"{
+            ec{"Chicago"}
+        }
+        "America:Costa_Rica"{
+            ec{"Costa Rica"}
+        }
+        "America:Denver"{
+            ec{"Denver"}
+        }
+        "America:Dominica"{
+            ec{"Dominica"}
+        }
+        "America:Edmonton"{
+            ec{"Edmonton"}
         }
         "America:El_Salvador"{
             ec{"Salvador"}
@@ -51,14 +213,41 @@ br{
         "America:Godthab"{
             ec{"Nuuk (Godthåb)"}
         }
+        "America:Grenada"{
+            ec{"Grenada"}
+        }
         "America:Guadeloupe"{
             ec{"Gwadeloup"}
+        }
+        "America:Guatemala"{
+            ec{"Guatemala"}
+        }
+        "America:Guyana"{
+            ec{"Guyana"}
         }
         "America:Havana"{
             ec{"La Habana"}
         }
+        "America:Inuvik"{
+            ec{"Inuvik"}
+        }
         "America:Jamaica"{
             ec{"Jamaika"}
+        }
+        "America:La_Paz"{
+            ec{"La Paz"}
+        }
+        "America:Lima"{
+            ec{"Lima"}
+        }
+        "America:Los_Angeles"{
+            ec{"Los Angeles"}
+        }
+        "America:Managua"{
+            ec{"Managua"}
+        }
+        "America:Manaus"{
+            ec{"Manaus"}
         }
         "America:Martinique"{
             ec{"Martinik"}
@@ -69,8 +258,41 @@ br{
         "America:Miquelon"{
             ec{"Mikelon"}
         }
+        "America:Monterrey"{
+            ec{"Monterrey"}
+        }
+        "America:Montevideo"{
+            ec{"Montevideo"}
+        }
+        "America:Montserrat"{
+            ec{"Montserrat"}
+        }
+        "America:Nassau"{
+            ec{"Nassau"}
+        }
+        "America:New_York"{
+            ec{"New York"}
+        }
         "America:Panama"{
             ec{"Panamá"}
+        }
+        "America:Paramaribo"{
+            ec{"Paramaribo"}
+        }
+        "America:Port-au-Prince"{
+            ec{"Port-au-Prince"}
+        }
+        "America:Port_of_Spain"{
+            ec{"Port of Spain"}
+        }
+        "America:Puerto_Rico"{
+            ec{"Puerto Rico"}
+        }
+        "America:Recife"{
+            ec{"Recife"}
+        }
+        "America:Santiago"{
+            ec{"Santiago"}
         }
         "America:Sao_Paulo"{
             ec{"São Paulo"}
@@ -90,11 +312,41 @@ br{
         "America:St_Vincent"{
             ec{"Sant Visant"}
         }
+        "America:Tegucigalpa"{
+            ec{"Tegucigalpa"}
+        }
         "America:Thule"{
             ec{"Qânâq"}
         }
+        "America:Vancouver"{
+            ec{"Vancouver"}
+        }
+        "America:Winnipeg"{
+            ec{"Winnipeg"}
+        }
+        "Antarctica:Macquarie"{
+            ec{"Macquarie"}
+        }
+        "Arctic:Longyearbyen"{
+            ec{"Longyearbyen"}
+        }
+        "Asia:Aden"{
+            ec{"Aden"}
+        }
+        "Asia:Almaty"{
+            ec{"Almaty"}
+        }
+        "Asia:Amman"{
+            ec{"Amman"}
+        }
         "Asia:Anadyr"{
             ec{"Anadyrʼ"}
+        }
+        "Asia:Ashgabat"{
+            ec{"Ashgabat"}
+        }
+        "Asia:Baghdad"{
+            ec{"Baghdad"}
         }
         "Asia:Bahrain"{
             ec{"Bahrein"}
@@ -102,14 +354,20 @@ br{
         "Asia:Baku"{
             ec{"Bakou"}
         }
+        "Asia:Bangkok"{
+            ec{"Bangkok"}
+        }
         "Asia:Beirut"{
             ec{"Bayrut"}
         }
+        "Asia:Bishkek"{
+            ec{"Bishkek"}
+        }
+        "Asia:Brunei"{
+            ec{"Brunei"}
+        }
         "Asia:Calcutta"{
             ec{"Calcutta"}
-        }
-        "Asia:Chita"{
-            ec{"Tchita"}
         }
         "Asia:Colombo"{
             ec{"Kolamba"}
@@ -117,14 +375,38 @@ br{
         "Asia:Damascus"{
             ec{"Damask"}
         }
+        "Asia:Dushanbe"{
+            ec{"Dushanbe"}
+        }
+        "Asia:Gaza"{
+            ec{"Gaza"}
+        }
+        "Asia:Hong_Kong"{
+            ec{"Hong Kong"}
+        }
+        "Asia:Irkutsk"{
+            ec{"Irkutsk"}
+        }
+        "Asia:Jakarta"{
+            ec{"Jakarta"}
+        }
+        "Asia:Jayapura"{
+            ec{"Jayapura"}
+        }
         "Asia:Jerusalem"{
             ec{"Jeruzalem"}
         }
         "Asia:Kabul"{
             ec{"Kaboul"}
         }
-        "Asia:Kamchatka"{
-            ec{"Kamtchatka"}
+        "Asia:Karachi"{
+            ec{"Karachi"}
+        }
+        "Asia:Katmandu"{
+            ec{"Kathmandu"}
+        }
+        "Asia:Kuala_Lumpur"{
+            ec{"Kuala Lumpur"}
         }
         "Asia:Kuwait"{
             ec{"Koweit"}
@@ -132,11 +414,17 @@ br{
         "Asia:Macau"{
             ec{"Macau"}
         }
+        "Asia:Manila"{
+            ec{"Manila"}
+        }
         "Asia:Muscat"{
             ec{"Masqat"}
         }
         "Asia:Nicosia"{
             ec{"Levkosía"}
+        }
+        "Asia:Novosibirsk"{
+            ec{"Novosibirsk"}
         }
         "Asia:Phnom_Penh"{
             ec{"Phnum Pénh"}
@@ -144,14 +432,50 @@ br{
         "Asia:Pyongyang"{
             ec{"Pʼyongyang"}
         }
+        "Asia:Qatar"{
+            ec{"Qatar"}
+        }
+        "Asia:Rangoon"{
+            ec{"Yangon"}
+        }
+        "Asia:Riyadh"{
+            ec{"Riyadh"}
+        }
         "Asia:Saigon"{
             ec{"Kêr Hô-Chi-Minh"}
+        }
+        "Asia:Sakhalin"{
+            ec{"Sakhalin"}
+        }
+        "Asia:Seoul"{
+            ec{"Seoul"}
+        }
+        "Asia:Shanghai"{
+            ec{"Shanghai"}
         }
         "Asia:Singapore"{
             ec{"Singapour"}
         }
+        "Asia:Taipei"{
+            ec{"Taipei"}
+        }
         "Asia:Tashkent"{
             ec{"Toshkent"}
+        }
+        "Asia:Tbilisi"{
+            ec{"Tbilisi"}
+        }
+        "Asia:Tehran"{
+            ec{"Tehran"}
+        }
+        "Asia:Thimphu"{
+            ec{"Thimphu"}
+        }
+        "Asia:Tokyo"{
+            ec{"Tokyo"}
+        }
+        "Asia:Ulaanbaatar"{
+            ec{"Ulaanbaatar"}
         }
         "Asia:Urumqi"{
             ec{"Ürümqi"}
@@ -159,8 +483,17 @@ br{
         "Asia:Vientiane"{
             ec{"Viangchan"}
         }
+        "Asia:Vladivostok"{
+            ec{"Vladivostok"}
+        }
+        "Asia:Yakutsk"{
+            ec{"Yakutsk"}
+        }
         "Asia:Yekaterinburg"{
             ec{"Yekaterinbourg"}
+        }
+        "Asia:Yerevan"{
+            ec{"Yerevan"}
         }
         "Atlantic:Azores"{
             ec{"Azorez"}
@@ -177,6 +510,9 @@ br{
         "Atlantic:Faeroe"{
             ec{"Faero"}
         }
+        "Atlantic:Madeira"{
+            ec{"Madeira"}
+        }
         "Atlantic:Reykjavik"{
             ec{"Reykjavík"}
         }
@@ -186,11 +522,32 @@ br{
         "Atlantic:St_Helena"{
             ec{"Saint Helena"}
         }
-        "Etc:UTC"{
-            ls{"amzer hollvedel kenurzhiet"}
+        "Australia:Adelaide"{
+            ec{"Adelaide"}
+        }
+        "Australia:Brisbane"{
+            ec{"Brisbane"}
+        }
+        "Australia:Darwin"{
+            ec{"Darwin"}
+        }
+        "Australia:Melbourne"{
+            ec{"Melbourne"}
+        }
+        "Australia:Perth"{
+            ec{"Perth"}
+        }
+        "Australia:Sydney"{
+            ec{"Sydney"}
         }
         "Etc:Unknown"{
             ec{"kêr dianav"}
+        }
+        "Europe:Amsterdam"{
+            ec{"Amsterdam"}
+        }
+        "Europe:Andorra"{
+            ec{"Andorra"}
         }
         "Europe:Athens"{
             ec{"Aten"}
@@ -198,11 +555,23 @@ br{
         "Europe:Belgrade"{
             ec{"Beograd"}
         }
+        "Europe:Berlin"{
+            ec{"Berlin"}
+        }
+        "Europe:Bratislava"{
+            ec{"Bratislava"}
+        }
         "Europe:Brussels"{
             ec{"Brusel"}
         }
         "Europe:Bucharest"{
             ec{"Bukarest"}
+        }
+        "Europe:Budapest"{
+            ec{"Budapest"}
+        }
+        "Europe:Chisinau"{
+            ec{"Chisinau"}
         }
         "Europe:Copenhagen"{
             ec{"Kopenhagen"}
@@ -217,17 +586,29 @@ br{
         "Europe:Guernsey"{
             ec{"Gwernenez"}
         }
+        "Europe:Helsinki"{
+            ec{"Helsinki"}
+        }
         "Europe:Isle_of_Man"{
             ec{"Manav"}
         }
+        "Europe:Istanbul"{
+            ec{"Istanbul"}
+        }
         "Europe:Jersey"{
             ec{"Jerzenez"}
+        }
+        "Europe:Kaliningrad"{
+            ec{"Kaliningrad"}
         }
         "Europe:Kiev"{
             ec{"Kiev"}
         }
         "Europe:Lisbon"{
             ec{"Lisboa"}
+        }
+        "Europe:Ljubljana"{
+            ec{"Ljubljana"}
         }
         "Europe:London"{
             ec{"Londrez"}
@@ -236,32 +617,92 @@ br{
         "Europe:Luxembourg"{
             ec{"Luksembourg"}
         }
+        "Europe:Madrid"{
+            ec{"Madrid"}
+        }
+        "Europe:Malta"{
+            ec{"Malta"}
+        }
         "Europe:Mariehamn"{
             ec{"Marjehamn"}
         }
         "Europe:Minsk"{
             ec{"Mensk"}
         }
+        "Europe:Monaco"{
+            ec{"Monaco"}
+        }
         "Europe:Moscow"{
             ec{"Moskov"}
+        }
+        "Europe:Oslo"{
+            ec{"Oslo"}
         }
         "Europe:Paris"{
             ec{"Pariz"}
         }
+        "Europe:Podgorica"{
+            ec{"Podgorica"}
+        }
         "Europe:Prague"{
             ec{"Praha"}
+        }
+        "Europe:Riga"{
+            ec{"Riga"}
         }
         "Europe:Rome"{
             ec{"Roma"}
         }
+        "Europe:San_Marino"{
+            ec{"San Marino"}
+        }
+        "Europe:Sarajevo"{
+            ec{"Sarajevo"}
+        }
+        "Europe:Skopje"{
+            ec{"Skopje"}
+        }
+        "Europe:Sofia"{
+            ec{"Sofia"}
+        }
+        "Europe:Stockholm"{
+            ec{"Stockholm"}
+        }
+        "Europe:Tallinn"{
+            ec{"Tallinn"}
+        }
         "Europe:Tirane"{
             ec{"Tiranë"}
+        }
+        "Europe:Vaduz"{
+            ec{"Vaduz"}
         }
         "Europe:Vatican"{
             ec{"Vatikan"}
         }
+        "Europe:Vienna"{
+            ec{"Vienna"}
+        }
+        "Europe:Vilnius"{
+            ec{"Vilnius"}
+        }
+        "Europe:Volgograd"{
+            ec{"Volgograd"}
+        }
         "Europe:Warsaw"{
             ec{"Varsovia"}
+        }
+        "Europe:Zagreb"{
+            ec{"Zagreb"}
+        }
+        "Indian:Antananarivo"{
+            ec{"Antananarivo"}
+        }
+        "Indian:Chagos"{
+            ec{"Chagos"}
+        }
+        "Indian:Christmas"{
+            ec{"Christmas"}
         }
         "Indian:Cocos"{
             ec{"Kokoz"}
@@ -278,8 +719,23 @@ br{
         "Indian:Mauritius"{
             ec{"Moris"}
         }
+        "Indian:Mayotte"{
+            ec{"Mayotte"}
+        }
         "Indian:Reunion"{
             ec{"Reünion"}
+        }
+        "Pacific:Apia"{
+            ec{"Apia"}
+        }
+        "Pacific:Auckland"{
+            ec{"Auckland"}
+        }
+        "Pacific:Bougainville"{
+            ec{"Bougainville"}
+        }
+        "Pacific:Chatham"{
+            ec{"Chatham"}
         }
         "Pacific:Easter"{
             ec{"Enez Pask"}
@@ -290,11 +746,53 @@ br{
         "Pacific:Galapagos"{
             ec{"Galápagos"}
         }
+        "Pacific:Gambier"{
+            ec{"Gambier"}
+        }
+        "Pacific:Guam"{
+            ec{"Guam"}
+        }
         "Pacific:Honolulu"{
             ec{"Honolulu"}
         }
         "Pacific:Marquesas"{
             ec{"Markiz"}
+        }
+        "Pacific:Midway"{
+            ec{"Midway"}
+        }
+        "Pacific:Nauru"{
+            ec{"Nauru"}
+        }
+        "Pacific:Niue"{
+            ec{"Niue"}
+        }
+        "Pacific:Norfolk"{
+            ec{"Norfolk"}
+        }
+        "Pacific:Noumea"{
+            ec{"Noumea"}
+        }
+        "Pacific:Pago_Pago"{
+            ec{"Pago Pago"}
+        }
+        "Pacific:Palau"{
+            ec{"Palau"}
+        }
+        "Pacific:Pitcairn"{
+            ec{"Pitcairn"}
+        }
+        "Pacific:Port_Moresby"{
+            ec{"Port Moresby"}
+        }
+        "Pacific:Rarotonga"{
+            ec{"Rarotonga"}
+        }
+        "Pacific:Tahiti"{
+            ec{"Tahiti"}
+        }
+        "Pacific:Wallis"{
+            ec{"Wallis"}
         }
         "meta:Afghanistan"{
             ls{"eur Afghanistan"}
@@ -328,11 +826,6 @@ br{
             lg{"eur an Amazon"}
             ls{"eur cʼhoañv an Amazon"}
         }
-        "meta:America_Central"{
-            ld{"eur hañv ar Cʼhreiz"}
-            lg{"eur ar Cʼhreiz"}
-            ls{"eur cʼhoañv ar Cʼhreiz"}
-        }
         "meta:America_Eastern"{
             ld{"eur hañv ar Reter"}
             lg{"eur ar Reter"}
@@ -342,11 +835,6 @@ br{
             ld{"eur hañv ar Menezioù"}
             lg{"eur ar Menezioù"}
             ls{"eur cʼhoañv ar Menezioù"}
-        }
-        "meta:America_Pacific"{
-            ld{"eur hañv an Habask"}
-            lg{"eur an Habask"}
-            ls{"eur cʼhoañv an Habask"}
         }
         "meta:Anadyr"{
             ld{"eur hañv Anadyrʼ"}
@@ -377,11 +865,6 @@ br{
             ld{"eur hañv Armenia"}
             lg{"eur Armenia"}
             ls{"eur cʼhoañv Armenia"}
-        }
-        "meta:Atlantic"{
-            ld{"eur hañv an Atlantel"}
-            lg{"eur an Atlantel"}
-            ls{"eur cʼhoañv an Atlantel"}
         }
         "meta:Australia_Central"{
             ld{"eur hañv Kreizaostralia"}
@@ -437,9 +920,6 @@ br{
             lg{"eur ar Cʼhab-Glas"}
             ls{"eur cʼhoañv ar Cʼhab-Glas"}
         }
-        "meta:Chamorro"{
-            ls{"eur Chamorro"}
-        }
         "meta:Chatham"{
             ld{"eur hañv Chatham"}
             lg{"eur Chatham"}
@@ -454,11 +934,6 @@ br{
             ld{"eur hañv Sina"}
             lg{"eur Sina"}
             ls{"eur cʼhoañv Sina"}
-        }
-        "meta:Choibalsan"{
-            ld{"eur hañv Choibalsan"}
-            lg{"eur Choibalsan"}
-            ls{"eur cʼhoañv Choibalsan"}
         }
         "meta:Christmas"{
             ls{"eur Enez Christmas"}
@@ -481,12 +956,6 @@ br{
             lg{"eur Kuba"}
             ls{"eur cʼhoañv Kuba"}
         }
-        "meta:Davis"{
-            ls{"eur Davis"}
-        }
-        "meta:DumontDUrville"{
-            ls{"eur Dumont-d’Urville"}
-        }
         "meta:East_Timor"{
             ls{"eur Timor ar Reter"}
         }
@@ -507,9 +976,6 @@ br{
             ld{"eur hañv Europa ar Reter"}
             lg{"eur Europa ar Reter"}
             ls{"eur cʼhoañv Europa ar Reter"}
-        }
-        "meta:Europe_Further_Eastern"{
-            ls{"eur Kaliningrad"}
         }
         "meta:Europe_Western"{
             ld{"eur hañv Europa ar Cʼhornôg"}
@@ -539,15 +1005,12 @@ br{
             ls{"eur Inizi Galápagos"}
         }
         "meta:Gambier"{
-            ls{"eur Inizi Gambier"}
+            ls{"eur Gambier"}
         }
         "meta:Georgia"{
             ld{"eur hañv Jorjia"}
             lg{"eur Jorjia"}
             ls{"eur cʼhoañv Jorjia"}
-        }
-        "meta:Gilbert_Islands"{
-            ls{"eur Inizi Gilbert"}
         }
         "meta:Greenland_Eastern"{
             ld{"eur hañv Greunland ar Reter"}
@@ -568,32 +1031,16 @@ br{
         "meta:Guyana"{
             ls{"eur Guyana"}
         }
-        "meta:Hawaii_Aleutian"{
-            ld{"eur hañv Hawaii hag an Aleouted"}
-            lg{"eur Hawaii hag an Aleouted"}
-            ls{"eur cʼhoañv Hawaii hag an Aleouted"}
-        }
         "meta:Hong_Kong"{
             ld{"eur hañv Hong Kong"}
             lg{"eur Hong Kong"}
             ls{"eur cʼhoañv Hong Kong"}
         }
-        "meta:Hovd"{
-            ld{"eur hañv Hovd"}
-            lg{"eur Hovd"}
-            ls{"eur cʼhoañv Hovd"}
-        }
         "meta:India"{
             ls{"eur cʼhoañv India"}
         }
-        "meta:Indian_Ocean"{
-            ls{"eur Meurvor Indez"}
-        }
         "meta:Indochina"{
             ls{"eur Indez-Sina"}
-        }
-        "meta:Indonesia_Central"{
-            ls{"eur Kreiz Indonezia"}
         }
         "meta:Indonesia_Eastern"{
             ls{"eur Indonezia ar Reter"}
@@ -632,37 +1079,19 @@ br{
             lg{"eur Korea"}
             ls{"eur cʼhoañv Korea"}
         }
-        "meta:Kosrae"{
-            ls{"eur Kosrae"}
-        }
-        "meta:Krasnoyarsk"{
-            ld{"eur hañv Krasnoyarsk"}
-            lg{"eur Krasnoyarsk"}
-            ls{"eur cʼhoañv Krasnoyarsk"}
-        }
         "meta:Kyrgystan"{
             ls{"eur Kyrgyzstan"}
         }
         "meta:Lanka"{
             ls{"eur Sri Lanka"}
         }
-        "meta:Line_Islands"{
-            ls{"eur Line Islands"}
-        }
-        "meta:Lord_Howe"{
-            ld{"eur hañv Lord Howe"}
-            lg{"eur Lord Howe"}
-            ls{"eur cʼhoañv Lord Howe"}
-        }
         "meta:Macau"{
             ld{"eur hañv Macau"}
             lg{"eur Macau"}
             ls{"eur cʼhoañv Macau"}
         }
-        "meta:Magadan"{
-            ld{"eur hañv Magadan"}
-            lg{"eur Magadan"}
-            ls{"eur cʼhoañv Magadan"}
+        "meta:Macquarie"{
+            ls{"eur Enez Macquarie"}
         }
         "meta:Malaysia"{
             ls{"eur Malaysia"}
@@ -681,13 +1110,10 @@ br{
             lg{"eur Moris"}
             ls{"eur cʼhoañv Moris"}
         }
-        "meta:Mawson"{
-            ls{"eur Mawson"}
-        }
-        "meta:Mexico_Pacific"{
-            ld{"eur hañv an Habask mecʼhikan"}
-            lg{"eur an Habask mecʼhikan"}
-            ls{"eur cʼhoañv an Habask mecʼhikan"}
+        "meta:Mexico_Northwest"{
+            ld{"eur hañv Gwalarn Mecʼhiko"}
+            lg{"eur Gwalarn Mecʼhiko"}
+            ls{"eur cʼhoañv Gwalarn Mecʼhiko"}
         }
         "meta:Mongolia"{
             ld{"eur hañv Ulaanbaatar"}
@@ -727,27 +1153,12 @@ br{
             ls{"eur Niue"}
         }
         "meta:Norfolk"{
-            ld{"eur hañv Enez Norfolk"}
-            lg{"eur Enez Norfolk"}
-            ls{"eur cʼhoañv Enez Norfolk"}
-        }
-        "meta:Noronha"{
-            ld{"eur hañv Fernando de Noronha"}
-            lg{"eur Fernando de Noronha"}
-            ls{"eur cʼhoañv Fernando de Noronha"}
-        }
-        "meta:North_Mariana"{
-            ls{"eur Mariana an Norzh"}
+            ls{"eur Enez Norfolk"}
         }
         "meta:Novosibirsk"{
             ld{"eur hañv Novosibirsk"}
             lg{"eur Novosibirsk"}
             ls{"eur cʼhoañv Novosibirsk"}
-        }
-        "meta:Omsk"{
-            ld{"eur hañv Omsk"}
-            lg{"eur Omsk"}
-            ls{"eur cʼhoañv Omsk"}
         }
         "meta:Pakistan"{
             ld{"eur hañv Pakistan"}
@@ -756,9 +1167,6 @@ br{
         }
         "meta:Palau"{
             ls{"eur Palau"}
-        }
-        "meta:Papua_New_Guinea"{
-            ls{"eur Papoua-Ginea-Nevez"}
         }
         "meta:Paraguay"{
             ld{"eur hañv Paraguay"}
@@ -775,9 +1183,6 @@ br{
             lg{"eur ar Filipinez"}
             ls{"eur cʼhoañv ar Filipinez"}
         }
-        "meta:Phoenix_Islands"{
-            ls{"eur Inizi Phoenix"}
-        }
         "meta:Pierre_Miquelon"{
             ld{"eur hañv Sant-Pêr-ha-Mikelon"}
             lg{"eur Sant-Pêr-ha-Mikelon"}
@@ -786,17 +1191,8 @@ br{
         "meta:Pitcairn"{
             ls{"eur Pitcairn"}
         }
-        "meta:Ponape"{
-            ls{"eur Pohnpei"}
-        }
-        "meta:Pyongyang"{
-            ls{"eur Pʼyongyang"}
-        }
         "meta:Reunion"{
             ls{"eur ar Reünion"}
-        }
-        "meta:Rothera"{
-            ls{"eur Rothera"}
         }
         "meta:Sakhalin"{
             ld{"eur hañv Sakhalin"}
@@ -823,9 +1219,6 @@ br{
         "meta:Suriname"{
             ls{"eur Surinam"}
         }
-        "meta:Syowa"{
-            ls{"eur Syowa"}
-        }
         "meta:Tahiti"{
             ls{"eur Tahiti"}
         }
@@ -844,9 +1237,6 @@ br{
             ld{"eur hañv Tonga"}
             lg{"eur Tonga"}
             ls{"eur cʼhoañv Tonga"}
-        }
-        "meta:Truk"{
-            ls{"eur Chuuk"}
         }
         "meta:Turkmenistan"{
             ld{"eur hañv Turkmenistan"}
@@ -884,12 +1274,6 @@ br{
             lg{"eur Volgograd"}
             ls{"eur cʼhoañv Volgograd"}
         }
-        "meta:Vostok"{
-            ls{"eur Vostok"}
-        }
-        "meta:Wake"{
-            ls{"eur Wake Island"}
-        }
         "meta:Wallis"{
             ls{"eur Wallis ha Futuna"}
         }
@@ -903,6 +1287,10 @@ br{
             lg{"eur Yekaterinbourg"}
             ls{"eur cʼhoañv Yekaterinbourg"}
         }
+        fallbackFormat{"{1} ({0})"}
+        gmtFormat{"GMT{0}"}
+        gmtZeroFormat{"GMT"}
+        hourFormat{"+HH:mm;-HH:mm"}
         regionFormat{"eur {0}"}
         regionFormatDaylight{"eur hañv {0}"}
         regionFormatStandard{"eur cʼhoañv {0}"}

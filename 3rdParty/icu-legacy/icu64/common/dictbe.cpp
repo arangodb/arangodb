@@ -17,11 +17,7 @@
 #include "dictbe.h"
 #include "unicode/uniset.h"
 #include "unicode/chariter.h"
-#include "unicode/resbund.h"
 #include "unicode/ubrk.h"
-#include "unicode/usetiter.h"
-#include "ubrkimpl.h"
-#include "utracimp.h"
 #include "uvectr32.h"
 #include "uvector.h"
 #include "uassert.h"
@@ -42,7 +38,7 @@ DictionaryBreakEngine::~DictionaryBreakEngine() {
 }
 
 UBool
-DictionaryBreakEngine::handles(UChar32 c, const char*) const {
+DictionaryBreakEngine::handles(UChar32 c) const {
     return fSet.contains(c);
 }
 
@@ -50,17 +46,14 @@ int32_t
 DictionaryBreakEngine::findBreaks( UText *text,
                                  int32_t startPos,
                                  int32_t endPos,
-                                 UVector32 &foundBreaks,
-                                 UBool isPhraseBreaking,
-                                 UErrorCode& status) const {
-    if (U_FAILURE(status)) return 0;
+                                 UVector32 &foundBreaks ) const {
+    (void)startPos;            // TODO: remove this param?
     int32_t result = 0;
 
     // Find the span of characters included in the set.
     //   The span to break begins at the current position in the text, and
     //   extends towards the start or end of the text, depending on 'reverse'.
 
-    utext_setNativeIndex(text, startPos);
     int32_t start = (int32_t)utext_getNativeIndex(text);
     int32_t current;
     int32_t rangeStart;
@@ -72,7 +65,7 @@ DictionaryBreakEngine::findBreaks( UText *text,
     }
     rangeStart = start;
     rangeEnd = current;
-    result = divideUpDictionaryRange(text, rangeStart, rangeEnd, foundBreaks, isPhraseBreaking, status);
+    result = divideUpDictionaryRange(text, rangeStart, rangeEnd, foundBreaks);
     utext_setNativeIndex(text, current);
     
     return result;
@@ -119,7 +112,7 @@ public:
     // Select the currently marked candidate, point after it in the text, and invalidate self
     int32_t   acceptMarked( UText *text );
   
-    // Back up from the current candidate to the next shorter one; return true if that exists
+    // Back up from the current candidate to the next shorter one; return TRUE if that exists
     // and point the text after it
     UBool     backUp( UText *text );
   
@@ -140,7 +133,7 @@ int32_t PossibleWord::candidates( UText *text, DictionaryMatcher *dict, int32_t 
     int32_t start = (int32_t)utext_getNativeIndex(text);
     if (start != offset) {
         offset = start;
-        count = dict->matches(text, rangeEnd-start, UPRV_LENGTHOF(cuLengths), cuLengths, cpLengths, nullptr, &prefix);
+        count = dict->matches(text, rangeEnd-start, UPRV_LENGTHOF(cuLengths), cuLengths, cpLengths, NULL, &prefix);
         // Dictionary leaves text after longest prefix, not longest word. Back up.
         if (count <= 0) {
             utext_setNativeIndex(text, start);
@@ -165,9 +158,9 @@ UBool
 PossibleWord::backUp( UText *text ) {
     if (current > 0) {
         utext_setNativeIndex(text, offset + cuLengths[--current]);
-        return true;
+        return TRUE;
     }
-    return false;
+    return FALSE;
 }
 
 /*
@@ -185,7 +178,7 @@ static const int32_t THAI_ROOT_COMBINE_THRESHOLD = 3;
 // dictionary word, with a preceding word
 static const int32_t THAI_PREFIX_COMBINE_THRESHOLD = 3;
 
-// Elision character
+// Ellision character
 static const int32_t THAI_PAIYANNOI = 0x0E2F;
 
 // Repeat character
@@ -201,15 +194,13 @@ ThaiBreakEngine::ThaiBreakEngine(DictionaryMatcher *adoptDictionary, UErrorCode 
     : DictionaryBreakEngine(),
       fDictionary(adoptDictionary)
 {
-    UTRACE_ENTRY(UTRACE_UBRK_CREATE_BREAK_ENGINE);
-    UTRACE_DATA1(UTRACE_INFO, "dictbe=%s", "Thai");
-    UnicodeSet thaiWordSet(UnicodeString(u"[[:Thai:]&[:LineBreak=SA:]]"), status);
+    fThaiWordSet.applyPattern(UNICODE_STRING_SIMPLE("[[:Thai:]&[:LineBreak=SA:]]"), status);
     if (U_SUCCESS(status)) {
-        setCharacters(thaiWordSet);
+        setCharacters(fThaiWordSet);
     }
-    fMarkSet.applyPattern(UnicodeString(u"[[:Thai:]&[:LineBreak=SA:]&[:M:]]"), status);
+    fMarkSet.applyPattern(UNICODE_STRING_SIMPLE("[[:Thai:]&[:LineBreak=SA:]&[:M:]]"), status);
     fMarkSet.add(0x0020);
-    fEndWordSet = thaiWordSet;
+    fEndWordSet = fThaiWordSet;
     fEndWordSet.remove(0x0E31);             // MAI HAN-AKAT
     fEndWordSet.remove(0x0E40, 0x0E44);     // SARA E through SARA AI MAIMALAI
     fBeginWordSet.add(0x0E01, 0x0E2E);      // KO KAI through HO NOKHUK
@@ -222,7 +213,6 @@ ThaiBreakEngine::ThaiBreakEngine(DictionaryMatcher *adoptDictionary, UErrorCode 
     fEndWordSet.compact();
     fBeginWordSet.compact();
     fSuffixSet.compact();
-    UTRACE_EXIT_STATUS(status);
 }
 
 ThaiBreakEngine::~ThaiBreakEngine() {
@@ -233,10 +223,7 @@ int32_t
 ThaiBreakEngine::divideUpDictionaryRange( UText *text,
                                                 int32_t rangeStart,
                                                 int32_t rangeEnd,
-                                                UVector32 &foundBreaks,
-                                                UBool /* isPhraseBreaking */,
-                                                UErrorCode& status) const {
-    if (U_FAILURE(status)) return 0;
+                                                UVector32 &foundBreaks ) const {
     utext_setNativeIndex(text, rangeStart);
     utext_moveIndex32(text, THAI_MIN_WORD_SPAN);
     if (utext_getNativeIndex(text) >= rangeEnd) {
@@ -249,6 +236,7 @@ ThaiBreakEngine::divideUpDictionaryRange( UText *text,
     int32_t cpWordLength = 0;    // Word Length in Code Points.
     int32_t cuWordLength = 0;    // Word length in code units (UText native indexing)
     int32_t current;
+    UErrorCode status = U_ZERO_ERROR;
     PossibleWord words[THAI_LOOKAHEAD];
     
     utext_setNativeIndex(text, rangeStart);
@@ -273,9 +261,13 @@ ThaiBreakEngine::divideUpDictionaryRange( UText *text,
                 goto foundBest;
             }
             do {
+                int32_t wordsMatched = 1;
                 if (words[(wordsFound + 1) % THAI_LOOKAHEAD].candidates(text, fDictionary, rangeEnd) > 0) {
-                    // Followed by another dictionary word; mark first word as a good candidate
-                    words[wordsFound%THAI_LOOKAHEAD].markCurrent();
+                    if (wordsMatched < 2) {
+                        // Followed by another dictionary word; mark first word as a good candidate
+                        words[wordsFound%THAI_LOOKAHEAD].markCurrent();
+                        wordsMatched = 2;
+                    }
                     
                     // If we're already at the end of the range, we're done
                     if ((int32_t)utext_getNativeIndex(text) >= rangeEnd) {
@@ -444,15 +436,13 @@ LaoBreakEngine::LaoBreakEngine(DictionaryMatcher *adoptDictionary, UErrorCode &s
     : DictionaryBreakEngine(),
       fDictionary(adoptDictionary)
 {
-    UTRACE_ENTRY(UTRACE_UBRK_CREATE_BREAK_ENGINE);
-    UTRACE_DATA1(UTRACE_INFO, "dictbe=%s", "Laoo");
-    UnicodeSet laoWordSet(UnicodeString(u"[[:Laoo:]&[:LineBreak=SA:]]"), status);
+    fLaoWordSet.applyPattern(UNICODE_STRING_SIMPLE("[[:Laoo:]&[:LineBreak=SA:]]"), status);
     if (U_SUCCESS(status)) {
-        setCharacters(laoWordSet);
+        setCharacters(fLaoWordSet);
     }
-    fMarkSet.applyPattern(UnicodeString(u"[[:Laoo:]&[:LineBreak=SA:]&[:M:]]"), status);
+    fMarkSet.applyPattern(UNICODE_STRING_SIMPLE("[[:Laoo:]&[:LineBreak=SA:]&[:M:]]"), status);
     fMarkSet.add(0x0020);
-    fEndWordSet = laoWordSet;
+    fEndWordSet = fLaoWordSet;
     fEndWordSet.remove(0x0EC0, 0x0EC4);     // prefix vowels
     fBeginWordSet.add(0x0E81, 0x0EAE);      // basic consonants (including holes for corresponding Thai characters)
     fBeginWordSet.add(0x0EDC, 0x0EDD);      // digraph consonants (no Thai equivalent)
@@ -462,7 +452,6 @@ LaoBreakEngine::LaoBreakEngine(DictionaryMatcher *adoptDictionary, UErrorCode &s
     fMarkSet.compact();
     fEndWordSet.compact();
     fBeginWordSet.compact();
-    UTRACE_EXIT_STATUS(status);
 }
 
 LaoBreakEngine::~LaoBreakEngine() {
@@ -473,10 +462,7 @@ int32_t
 LaoBreakEngine::divideUpDictionaryRange( UText *text,
                                                 int32_t rangeStart,
                                                 int32_t rangeEnd,
-                                                UVector32 &foundBreaks,
-                                                UBool /* isPhraseBreaking */,
-                                                UErrorCode& status) const {
-    if (U_FAILURE(status)) return 0;
+                                                UVector32 &foundBreaks ) const {
     if ((rangeEnd - rangeStart) < LAO_MIN_WORD_SPAN) {
         return 0;       // Not enough characters for two words
     }
@@ -485,10 +471,11 @@ LaoBreakEngine::divideUpDictionaryRange( UText *text,
     int32_t cpWordLength = 0;
     int32_t cuWordLength = 0;
     int32_t current;
+    UErrorCode status = U_ZERO_ERROR;
     PossibleWord words[LAO_LOOKAHEAD];
-
+    
     utext_setNativeIndex(text, rangeStart);
-
+    
     while (U_SUCCESS(status) && (current = (int32_t)utext_getNativeIndex(text)) < rangeEnd) {
         cuWordLength = 0;
         cpWordLength = 0;
@@ -509,9 +496,13 @@ LaoBreakEngine::divideUpDictionaryRange( UText *text,
                 goto foundBest;
             }
             do {
+                int32_t wordsMatched = 1;
                 if (words[(wordsFound + 1) % LAO_LOOKAHEAD].candidates(text, fDictionary, rangeEnd) > 0) {
-                    // Followed by another dictionary word; mark first word as a good candidate
-                    words[wordsFound%LAO_LOOKAHEAD].markCurrent();
+                    if (wordsMatched < 2) {
+                        // Followed by another dictionary word; mark first word as a good candidate
+                        words[wordsFound%LAO_LOOKAHEAD].markCurrent();
+                        wordsMatched = 2;
+                    }
                     
                     // If we're already at the end of the range, we're done
                     if ((int32_t)utext_getNativeIndex(text) >= rangeEnd) {
@@ -537,7 +528,7 @@ foundBest:
         }
         
         // We come here after having either found a word or not. We look ahead to the
-        // next word. If it's not a dictionary word, we will combine it with the word we
+        // next word. If it's not a dictionary word, we will combine it withe the word we
         // just found (if there is one), but only if the preceding word does not exceed
         // the threshold.
         // The text iterator should now be positioned at the end of the word we found.
@@ -641,21 +632,19 @@ BurmeseBreakEngine::BurmeseBreakEngine(DictionaryMatcher *adoptDictionary, UErro
     : DictionaryBreakEngine(),
       fDictionary(adoptDictionary)
 {
-    UTRACE_ENTRY(UTRACE_UBRK_CREATE_BREAK_ENGINE);
-    UTRACE_DATA1(UTRACE_INFO, "dictbe=%s", "Mymr");
-    fBeginWordSet.add(0x1000, 0x102A);      // basic consonants and independent vowels
-    fEndWordSet.applyPattern(UnicodeString(u"[[:Mymr:]&[:LineBreak=SA:]]"), status);
-    fMarkSet.applyPattern(UnicodeString(u"[[:Mymr:]&[:LineBreak=SA:]&[:M:]]"), status);
-    fMarkSet.add(0x0020);
+    fBurmeseWordSet.applyPattern(UNICODE_STRING_SIMPLE("[[:Mymr:]&[:LineBreak=SA:]]"), status);
     if (U_SUCCESS(status)) {
-        setCharacters(fEndWordSet);
+        setCharacters(fBurmeseWordSet);
     }
+    fMarkSet.applyPattern(UNICODE_STRING_SIMPLE("[[:Mymr:]&[:LineBreak=SA:]&[:M:]]"), status);
+    fMarkSet.add(0x0020);
+    fEndWordSet = fBurmeseWordSet;
+    fBeginWordSet.add(0x1000, 0x102A);      // basic consonants and independent vowels
 
     // Compact for caching.
     fMarkSet.compact();
     fEndWordSet.compact();
     fBeginWordSet.compact();
-    UTRACE_EXIT_STATUS(status);
 }
 
 BurmeseBreakEngine::~BurmeseBreakEngine() {
@@ -666,10 +655,7 @@ int32_t
 BurmeseBreakEngine::divideUpDictionaryRange( UText *text,
                                                 int32_t rangeStart,
                                                 int32_t rangeEnd,
-                                                UVector32 &foundBreaks,
-                                                UBool /* isPhraseBreaking */,
-                                                UErrorCode& status ) const {
-    if (U_FAILURE(status)) return 0;
+                                                UVector32 &foundBreaks ) const {
     if ((rangeEnd - rangeStart) < BURMESE_MIN_WORD_SPAN) {
         return 0;       // Not enough characters for two words
     }
@@ -678,10 +664,11 @@ BurmeseBreakEngine::divideUpDictionaryRange( UText *text,
     int32_t cpWordLength = 0;
     int32_t cuWordLength = 0;
     int32_t current;
+    UErrorCode status = U_ZERO_ERROR;
     PossibleWord words[BURMESE_LOOKAHEAD];
-
+    
     utext_setNativeIndex(text, rangeStart);
-
+    
     while (U_SUCCESS(status) && (current = (int32_t)utext_getNativeIndex(text)) < rangeEnd) {
         cuWordLength = 0;
         cpWordLength = 0;
@@ -702,9 +689,13 @@ BurmeseBreakEngine::divideUpDictionaryRange( UText *text,
                 goto foundBest;
             }
             do {
+                int32_t wordsMatched = 1;
                 if (words[(wordsFound + 1) % BURMESE_LOOKAHEAD].candidates(text, fDictionary, rangeEnd) > 0) {
-                    // Followed by another dictionary word; mark first word as a good candidate
-                    words[wordsFound%BURMESE_LOOKAHEAD].markCurrent();
+                    if (wordsMatched < 2) {
+                        // Followed by another dictionary word; mark first word as a good candidate
+                        words[wordsFound%BURMESE_LOOKAHEAD].markCurrent();
+                        wordsMatched = 2;
+                    }
                     
                     // If we're already at the end of the range, we're done
                     if ((int32_t)utext_getNativeIndex(text) >= rangeEnd) {
@@ -730,7 +721,7 @@ foundBest:
         }
         
         // We come here after having either found a word or not. We look ahead to the
-        // next word. If it's not a dictionary word, we will combine it with the word we
+        // next word. If it's not a dictionary word, we will combine it withe the word we
         // just found (if there is one), but only if the preceding word does not exceed
         // the threshold.
         // The text iterator should now be positioned at the end of the word we found.
@@ -834,15 +825,13 @@ KhmerBreakEngine::KhmerBreakEngine(DictionaryMatcher *adoptDictionary, UErrorCod
     : DictionaryBreakEngine(),
       fDictionary(adoptDictionary)
 {
-    UTRACE_ENTRY(UTRACE_UBRK_CREATE_BREAK_ENGINE);
-    UTRACE_DATA1(UTRACE_INFO, "dictbe=%s", "Khmr");
-    UnicodeSet khmerWordSet(UnicodeString(u"[[:Khmr:]&[:LineBreak=SA:]]"), status);
+    fKhmerWordSet.applyPattern(UNICODE_STRING_SIMPLE("[[:Khmr:]&[:LineBreak=SA:]]"), status);
     if (U_SUCCESS(status)) {
-        setCharacters(khmerWordSet);
+        setCharacters(fKhmerWordSet);
     }
-    fMarkSet.applyPattern(UnicodeString(u"[[:Khmr:]&[:LineBreak=SA:]&[:M:]]"), status);
+    fMarkSet.applyPattern(UNICODE_STRING_SIMPLE("[[:Khmr:]&[:LineBreak=SA:]&[:M:]]"), status);
     fMarkSet.add(0x0020);
-    fEndWordSet = khmerWordSet;
+    fEndWordSet = fKhmerWordSet;
     fBeginWordSet.add(0x1780, 0x17B3);
     //fBeginWordSet.add(0x17A3, 0x17A4);      // deprecated vowels
     //fEndWordSet.remove(0x17A5, 0x17A9);     // Khmer independent vowels that can't end a word
@@ -861,7 +850,6 @@ KhmerBreakEngine::KhmerBreakEngine(DictionaryMatcher *adoptDictionary, UErrorCod
     fEndWordSet.compact();
     fBeginWordSet.compact();
 //    fSuffixSet.compact();
-    UTRACE_EXIT_STATUS(status);
 }
 
 KhmerBreakEngine::~KhmerBreakEngine() {
@@ -872,10 +860,7 @@ int32_t
 KhmerBreakEngine::divideUpDictionaryRange( UText *text,
                                                 int32_t rangeStart,
                                                 int32_t rangeEnd,
-                                                UVector32 &foundBreaks,
-                                                UBool /* isPhraseBreaking */,
-                                                UErrorCode& status ) const {
-    if (U_FAILURE(status)) return 0;
+                                                UVector32 &foundBreaks ) const {
     if ((rangeEnd - rangeStart) < KHMER_MIN_WORD_SPAN) {
         return 0;       // Not enough characters for two words
     }
@@ -884,6 +869,7 @@ KhmerBreakEngine::divideUpDictionaryRange( UText *text,
     int32_t cpWordLength = 0;
     int32_t cuWordLength = 0;
     int32_t current;
+    UErrorCode status = U_ZERO_ERROR;
     PossibleWord words[KHMER_LOOKAHEAD];
 
     utext_setNativeIndex(text, rangeStart);
@@ -909,9 +895,13 @@ KhmerBreakEngine::divideUpDictionaryRange( UText *text,
                 goto foundBest;
             }
             do {
+                int32_t wordsMatched = 1;
                 if (words[(wordsFound + 1) % KHMER_LOOKAHEAD].candidates(text, fDictionary, rangeEnd) > 0) {
-                    // Followed by another dictionary word; mark first word as a good candidate
-                    words[wordsFound % KHMER_LOOKAHEAD].markCurrent();
+                    if (wordsMatched < 2) {
+                        // Followed by another dictionary word; mark first word as a good candidate
+                        words[wordsFound % KHMER_LOOKAHEAD].markCurrent();
+                        wordsMatched = 2;
+                    }
 
                     // If we're already at the end of the range, we're done
                     if ((int32_t)utext_getNativeIndex(text) >= rangeEnd) {
@@ -1054,48 +1044,32 @@ foundBest:
  */
 static const uint32_t kuint32max = 0xFFFFFFFF;
 CjkBreakEngine::CjkBreakEngine(DictionaryMatcher *adoptDictionary, LanguageType type, UErrorCode &status)
-: DictionaryBreakEngine(), fDictionary(adoptDictionary), isCj(false) {
-    UTRACE_ENTRY(UTRACE_UBRK_CREATE_BREAK_ENGINE);
-    UTRACE_DATA1(UTRACE_INFO, "dictbe=%s", "Hani");
-    fMlBreakEngine = nullptr;
-    nfkcNorm2 = Normalizer2::getNFKCInstance(status);
+: DictionaryBreakEngine(), fDictionary(adoptDictionary) {
     // Korean dictionary only includes Hangul syllables
-    fHangulWordSet.applyPattern(UnicodeString(u"[\\uac00-\\ud7a3]"), status);
-    fHangulWordSet.compact();
-    // Digits, open puncutation and Alphabetic characters.
-    fDigitOrOpenPunctuationOrAlphabetSet.applyPattern(
-        UnicodeString(u"[[:Nd:][:Pi:][:Ps:][:Alphabetic:]]"), status);
-    fDigitOrOpenPunctuationOrAlphabetSet.compact();
-    fClosePunctuationSet.applyPattern(UnicodeString(u"[[:Pc:][:Pd:][:Pe:][:Pf:][:Po:]]"), status);
-    fClosePunctuationSet.compact();
+    fHangulWordSet.applyPattern(UNICODE_STRING_SIMPLE("[\\uac00-\\ud7a3]"), status);
+    fHanWordSet.applyPattern(UNICODE_STRING_SIMPLE("[:Han:]"), status);
+    fKatakanaWordSet.applyPattern(UNICODE_STRING_SIMPLE("[[:Katakana:]\\uff9e\\uff9f]"), status);
+    fHiraganaWordSet.applyPattern(UNICODE_STRING_SIMPLE("[:Hiragana:]"), status);
+    nfkcNorm2 = Normalizer2::getNFKCInstance(status);
 
-    // handle Korean and Japanese/Chinese using different dictionaries
-    if (type == kKorean) {
-        if (U_SUCCESS(status)) {
+    if (U_SUCCESS(status)) {
+        // handle Korean and Japanese/Chinese using different dictionaries
+        if (type == kKorean) {
             setCharacters(fHangulWordSet);
-        }
-    } else { // Chinese and Japanese
-        UnicodeSet cjSet(UnicodeString(u"[[:Han:][:Hiragana:][:Katakana:]\\u30fc\\uff70\\uff9e\\uff9f]"), status);
-        isCj = true;
-        if (U_SUCCESS(status)) {
+        } else { //Chinese and Japanese
+            UnicodeSet cjSet;
+            cjSet.addAll(fHanWordSet);
+            cjSet.addAll(fKatakanaWordSet);
+            cjSet.addAll(fHiraganaWordSet);
+            cjSet.add(0xFF70); // HALFWIDTH KATAKANA-HIRAGANA PROLONGED SOUND MARK
+            cjSet.add(0x30FC); // KATAKANA-HIRAGANA PROLONGED SOUND MARK
             setCharacters(cjSet);
-#if UCONFIG_USE_ML_PHRASE_BREAKING
-            fMlBreakEngine = new MlBreakEngine(fDigitOrOpenPunctuationOrAlphabetSet,
-                                               fClosePunctuationSet, status);
-            if (fMlBreakEngine == nullptr) {
-                status = U_MEMORY_ALLOCATION_ERROR;
-            }
-#else
-            initJapanesePhraseParameter(status);
-#endif
         }
     }
-    UTRACE_EXIT_STATUS(status);
 }
 
 CjkBreakEngine::~CjkBreakEngine(){
     delete fDictionary;
-    delete fMlBreakEngine;
 }
 
 // The katakanaCost values below are based on the length frequencies of all
@@ -1116,12 +1090,14 @@ static inline bool isKatakana(UChar32 value) {
             (value >= 0xFF66 && value <= 0xFF9f);
 }
 
+
 // Function for accessing internal utext flags.
 //   Replicates an internal UText function.
 
 static inline int32_t utext_i32_flag(int32_t bitIndex) {
     return (int32_t)1 << bitIndex;
 }
+
        
 /*
  * @param text A UText representing the text
@@ -1134,10 +1110,7 @@ int32_t
 CjkBreakEngine::divideUpDictionaryRange( UText *inText,
         int32_t rangeStart,
         int32_t rangeEnd,
-        UVector32 &foundBreaks,
-        UBool isPhraseBreaking,
-        UErrorCode& status) const {
-    if (U_FAILURE(status)) return 0;
+        UVector32 &foundBreaks ) const {
     if (rangeStart >= rangeEnd) {
         return 0;
     }
@@ -1146,8 +1119,11 @@ CjkBreakEngine::divideUpDictionaryRange( UText *inText,
     UnicodeString inString;
 
     // inputMap[inStringIndex] = corresponding native index from UText inText.
-    // If nullptr then mapping is 1:1
+    // If NULL then mapping is 1:1
     LocalPointer<UVector32>     inputMap;
+
+    UErrorCode     status      = U_ZERO_ERROR;
+
 
     // if UText has the input string as one contiguous UTF-16 chunk
     if ((inText->providerProperties & utext_i32_flag(UTEXT_PROVIDER_STABLE_CHUNKS)) &&
@@ -1157,7 +1133,7 @@ CjkBreakEngine::divideUpDictionaryRange( UText *inText,
 
         // Input UText is in one contiguous UTF-16 chunk.
         // Use Read-only aliasing UnicodeString.
-        inString.setTo(false,
+        inString.setTo(FALSE,
                        inText->chunkContents + rangeStart - inText->chunkNativeStart,
                        rangeEnd - rangeStart);
     } else {
@@ -1262,15 +1238,7 @@ CjkBreakEngine::divideUpDictionaryRange( UText *inText,
             }
         }
     }
-
-#if UCONFIG_USE_ML_PHRASE_BREAKING
-    // PhraseBreaking is supported in ja and ko; MlBreakEngine only supports ja.
-    if (isPhraseBreaking && isCj) {
-        return fMlBreakEngine->divideUpRange(inText, rangeStart, rangeEnd, foundBreaks, inString,
-                                             inputMap, status);
-    }
-#endif
-
+                
     // bestSnlp[i] is the snlp of the best segmentation of the first i
     // code points in the range to be matched.
     UVector32 bestSnlp(numCodePts + 1, status);
@@ -1311,9 +1279,9 @@ CjkBreakEngine::divideUpDictionaryRange( UText *inText,
         int32_t count;
         utext_setNativeIndex(&fu, ix);
         count = fDictionary->matches(&fu, maxWordSize, numCodePts,
-                             nullptr, lengths.getBuffer(), values.getBuffer(), nullptr);
+                             NULL, lengths.getBuffer(), values.getBuffer(), NULL);
                              // Note: lengths is filled with code point lengths
-                             //       The nullptr parameter is the ignored code unit lengths.
+                             //       The NULL parameter is the ignored code unit lengths.
 
         // if there are no single character matches found in the dictionary 
         // starting with this character, treat character as a 1-character word 
@@ -1374,31 +1342,6 @@ CjkBreakEngine::divideUpDictionaryRange( UText *inText,
     if ((uint32_t)bestSnlp.elementAti(numCodePts) == kuint32max) {
         t_boundary.addElement(numCodePts, status);
         numBreaks++;
-    } else if (isPhraseBreaking) {
-        t_boundary.addElement(numCodePts, status);
-        if(U_SUCCESS(status)) {
-            numBreaks++;
-            int32_t prevIdx = numCodePts;
-
-            int32_t codeUnitIdx = -1;
-            int32_t prevCodeUnitIdx = -1;
-            int32_t length = -1;
-            for (int32_t i = prev.elementAti(numCodePts); i > 0; i = prev.elementAti(i)) {
-                codeUnitIdx = inString.moveIndex32(0, i);
-                prevCodeUnitIdx = inString.moveIndex32(0, prevIdx);
-                // Calculate the length by using the code unit.
-                length = prevCodeUnitIdx - codeUnitIdx;
-                prevIdx = i;
-                // Keep the breakpoint if the pattern is not in the fSkipSet and continuous Katakana
-                // characters don't occur.
-                if (!fSkipSet.containsKey(inString.tempSubString(codeUnitIdx, length))
-                    && (!isKatakana(inString.char32At(inString.moveIndex32(codeUnitIdx, -1)))
-                           || !isKatakana(inString.char32At(codeUnitIdx)))) {
-                    t_boundary.addElement(i, status);
-                    numBreaks++;
-                }
-            }
-        }
     } else {
         for (int32_t i = numCodePts; i > 0; i = prev.elementAti(i)) {
             t_boundary.addElement(i, status);
@@ -1419,8 +1362,7 @@ CjkBreakEngine::divideUpDictionaryRange( UText *inText,
     // while reversing t_boundary and pushing values to foundBreaks.
     int32_t prevCPPos = -1;
     int32_t prevUTextPos = -1;
-    int32_t correctedNumBreaks = 0;
-    for (int32_t i = numBreaks - 1; i >= 0; i--) {
+    for (int32_t i = numBreaks-1; i >= 0; i--) {
         int32_t cpPos = t_boundary.elementAti(i);
         U_ASSERT(cpPos > prevCPPos);
         int32_t utextPos =  inputMap.isValid() ? inputMap->elementAti(cpPos) : cpPos + rangeStart;
@@ -1428,15 +1370,7 @@ CjkBreakEngine::divideUpDictionaryRange( UText *inText,
         if (utextPos > prevUTextPos) {
             // Boundaries are added to foundBreaks output in ascending order.
             U_ASSERT(foundBreaks.size() == 0 || foundBreaks.peeki() < utextPos);
-            // In phrase breaking, there has to be a breakpoint between Cj character and close
-            // punctuation.
-            // E.g.［携帯電話］正しい選択 -> ［携帯▁電話］▁正しい▁選択 -> breakpoint between ］ and 正
-            if (utextPos != rangeStart
-                || (isPhraseBreaking && utextPos > 0
-                       && fClosePunctuationSet.contains(utext_char32At(inText, utextPos - 1)))) {
-                foundBreaks.push(utextPos, status);
-                correctedNumBreaks++;
-            }
+            foundBreaks.push(utextPos, status);
         } else {
             // Normalization expanded the input text, the dictionary found a boundary
             // within the expansion, giving two boundaries with the same index in the
@@ -1448,52 +1382,9 @@ CjkBreakEngine::divideUpDictionaryRange( UText *inText,
     }
     (void)prevCPPos; // suppress compiler warnings about unused variable
 
-    UChar32 nextChar = utext_char32At(inText, rangeEnd);
-    if (!foundBreaks.isEmpty() && foundBreaks.peeki() == rangeEnd) {
-        // In phrase breaking, there has to be a breakpoint between Cj character and
-        // the number/open punctuation.
-        // E.g. る文字「そうだ、京都」->る▁文字▁「そうだ、▁京都」-> breakpoint between 字 and「
-        // E.g. 乗車率９０％程度だろうか -> 乗車▁率▁９０％▁程度だろうか -> breakpoint between 率 and ９
-        // E.g. しかもロゴがＵｎｉｃｏｄｅ！ -> しかも▁ロゴが▁Ｕｎｉｃｏｄｅ！-> breakpoint between が and Ｕ
-        if (isPhraseBreaking) {
-            if (!fDigitOrOpenPunctuationOrAlphabetSet.contains(nextChar)) {
-                foundBreaks.popi();
-                correctedNumBreaks--;
-            }
-        } else {
-            foundBreaks.popi();
-            correctedNumBreaks--;
-        }
-    }
-
     // inString goes out of scope
     // inputMap goes out of scope
-    return correctedNumBreaks;
-}
-
-void CjkBreakEngine::initJapanesePhraseParameter(UErrorCode& error) {
-    loadJapaneseExtensions(error);
-    loadHiragana(error);
-}
-
-void CjkBreakEngine::loadJapaneseExtensions(UErrorCode& error) {
-    const char* tag = "extensions";
-    ResourceBundle ja(U_ICUDATA_BRKITR, "ja", error);
-    if (U_SUCCESS(error)) {
-        ResourceBundle bundle = ja.get(tag, error);
-        while (U_SUCCESS(error) && bundle.hasNext()) {
-            fSkipSet.puti(bundle.getNextString(error), 1, error);
-        }
-    }
-}
-
-void CjkBreakEngine::loadHiragana(UErrorCode& error) {
-    UnicodeSet hiraganaWordSet(UnicodeString(u"[:Hiragana:]"), error);
-    hiraganaWordSet.compact();
-    UnicodeSetIterator iterator(hiraganaWordSet);
-    while (iterator.next()) {
-        fSkipSet.puti(UnicodeString(iterator.getCodepoint()), 1, error);
-    }
+    return numBreaks;
 }
 #endif
 

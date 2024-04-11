@@ -1,6 +1,5 @@
 ﻿# © 2016 and later: Unicode, Inc. and others.
-# License & terms of use: http://www.unicode.org/copyright.html
-# Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+# License & terms of use: http://www.unicode.org/copyright.html#License
 #
 # File: InterIndic_Gurmukhi.txt
 # Generated from CLDR
@@ -12,7 +11,7 @@ $vowel = [ਅ-ਔ ਾ-\u0A4D];
 $consonant = [ਕ-ਹ];
 \uE001→\u0A01;       # SIGN CHANDRABINDU
 #rules for BINDI
-# Anusvara is equivalent to BINDI when preceded by a vowel
+# Anusvara is equivalent to BINDI when preceeded by a vowel
 $vowel{\uE002→\u0A02; # SIGN ANUSVARA (\u0A02 = SIGN BINDI)
 # else is equivalent to TIPPI
 $consonant{\uE002→\u0A70; # SIGN TIPPI

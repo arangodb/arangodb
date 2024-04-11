@@ -1,26 +1,24 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ro{
     Keys{
-        calendar{"tip calendar"}
         cf{"Format monedă"}
-        colAlternate{"sortare cu ignorarea simbolurilor"}
-        colBackwards{"sortare inversă după accent"}
-        colCaseFirst{"sortare după majuscule/minuscule"}
-        colCaseLevel{"sortare care ține seama de majuscule/minuscule"}
-        colNormalization{"sortare normalizată"}
-        colNumeric{"sortare numerică"}
-        colStrength{"puterea sortării"}
+        colAlternate{"Ordonare cu simbolurile ignorate"}
+        colBackwards{"Ordonare inversă după accent"}
+        colCaseFirst{"Ordonare după majuscule/minuscule"}
+        colCaseLevel{"Ordonare care ține seama de majuscule/minuscule"}
+        colNormalization{"Ordonare normalizată"}
+        colNumeric{"Ordonare numerică"}
+        colStrength{"Puterea ordonării"}
         collation{"ordine de sortare"}
         currency{"monedă"}
         hc{"ciclu orar (12 sau 24)"}
         lb{"stil de întrerupere a liniei"}
         ms{"sistem de unități de măsură"}
         numbers{"numere"}
-        timezone{"fus orar"}
-        va{"variantă locală"}
-        x{"utilizare privată"}
+        timezone{"Fusul orar"}
+        va{"Varianta locală"}
+        x{"Utilizare privată"}
     }
     Languages{
         aa{"afar"}
@@ -41,7 +39,6 @@ ro{
         am{"amharică"}
         an{"aragoneză"}
         ang{"engleză veche"}
-        ann{"obolo"}
         anp{"angika"}
         ar{"arabă"}
         ar_001{"arabă standard modernă"}
@@ -53,7 +50,6 @@ ro{
         as{"asameză"}
         asa{"asu"}
         ast{"asturiană"}
-        atj{"atikamekw"}
         av{"avară"}
         awa{"awadhi"}
         ay{"aymara"}
@@ -70,7 +66,6 @@ ro{
         bez{"bena"}
         bfd{"bafut"}
         bg{"bulgară"}
-        bgc{"haryanvi"}
         bgn{"baluchi occidentală"}
         bho{"bhojpuri"}
         bi{"bislama"}
@@ -111,21 +106,13 @@ ro{
         chr{"cherokee"}
         chy{"cheyenne"}
         ckb{"kurdă centrală"}
-        clc{"chilcotin"}
         co{"corsicană"}
         cop{"coptă"}
         cr{"cree"}
-        crg{"michif"}
         crh{"turcă crimeeană"}
-        crj{"cree de sud-est"}
-        crk{"cree (Prerii)"}
-        crl{"cree de nord-est"}
-        crm{"cree (Moose)"}
-        crr{"algonquiană Carolina"}
         crs{"creolă franceză seselwa"}
         cs{"cehă"}
         csb{"cașubiană"}
-        csw{"cree (Mlaștini)"}
         cu{"slavonă"}
         cv{"ciuvașă"}
         cy{"galeză"}
@@ -165,14 +152,13 @@ ro{
         eu{"bască"}
         ewo{"ewondo"}
         fa{"persană"}
-        fa_AF{"dari"}
         fan{"fang"}
         fat{"fanti"}
         ff{"fulah"}
         fi{"finlandeză"}
         fil{"filipineză"}
         fj{"fijiană"}
-        fo{"feroeză"}
+        fo{"faroeză"}
         fon{"fon"}
         fr{"franceză"}
         frc{"franceză cajun"}
@@ -209,7 +195,6 @@ ro{
         hai{"haida"}
         hak{"chineză hakka"}
         haw{"hawaiiană"}
-        hax{"haida de sud"}
         he{"ebraică"}
         hi{"hindi"}
         hil{"hiligaynon"}
@@ -222,7 +207,6 @@ ro{
         ht{"haitiană"}
         hu{"maghiară"}
         hup{"hupa"}
-        hur{"halkomelem"}
         hy{"armeană"}
         hz{"herero"}
         ia{"interlingua"}
@@ -233,7 +217,6 @@ ro{
         ig{"igbo"}
         ii{"yi din Sichuan"}
         ik{"inupiak"}
-        ikt{"inuktitut canadiană occidentală"}
         ilo{"iloko"}
         inh{"ingușă"}
         io{"ido"}
@@ -261,7 +244,6 @@ ro{
         kea{"kabuverdianu"}
         kfo{"koro"}
         kg{"congoleză"}
-        kgp{"kaingang"}
         kha{"khasi"}
         kho{"khotaneză"}
         khq{"koyra chiini"}
@@ -292,7 +274,6 @@ ro{
         kut{"kutenai"}
         kv{"komi"}
         kw{"cornică"}
-        kwk{"kwakʼwala"}
         ky{"kârgâză"}
         la{"latină"}
         lad{"ladino"}
@@ -303,8 +284,6 @@ ro{
         lez{"lezghian"}
         lg{"ganda"}
         li{"limburgheză"}
-        lij{"liguriană"}
-        lil{"lillooet"}
         lkt{"lakota"}
         ln{"lingala"}
         lo{"laoțiană"}
@@ -312,7 +291,6 @@ ro{
         lou{"creolă (Louisiana)"}
         loz{"lozi"}
         lrc{"luri de nord"}
-        lsm{"saamia"}
         lt{"lituaniană"}
         lu{"luba-katanga"}
         lua{"luba-lulua"}
@@ -348,7 +326,6 @@ ro{
         mn{"mongolă"}
         mnc{"manciuriană"}
         mni{"manipuri"}
-        moe{"innu-aimun"}
         moh{"mohawk"}
         mos{"mossi"}
         mr{"marathi"}
@@ -397,11 +374,6 @@ ro{
         nzi{"nzima"}
         oc{"occitană"}
         oj{"ojibwa"}
-        ojb{"ojibwa de nord-vest"}
-        ojc{"ojibwa centrală"}
-        ojs{"oji-cree"}
-        ojw{"ojibwa de vest"}
-        oka{"okanagan"}
         om{"oromo"}
         or{"odia"}
         os{"osetă"}
@@ -417,10 +389,8 @@ ro{
         peo{"persană veche"}
         phn{"feniciană"}
         pi{"pali"}
-        pis{"pijin"}
         pl{"poloneză"}
         pon{"pohnpeiană"}
-        pqm{"maliseet-passamaquoddy"}
         prg{"prusacă"}
         pro{"provensală veche"}
         ps{"paștună"}
@@ -431,12 +401,12 @@ ro{
         raj{"rajasthani"}
         rap{"rapanui"}
         rar{"rarotongan"}
-        rhg{"rohingya"}
         rm{"romanșă"}
         rn{"kirundi"}
         ro{"română"}
         rof{"rombo"}
         rom{"romani"}
+        root{"root"}
         ru{"rusă"}
         rup{"aromână"}
         rw{"kinyarwanda"}
@@ -470,7 +440,6 @@ ro{
         sid{"sidamo"}
         sk{"slovacă"}
         sl{"slovenă"}
-        slh{"lushootseed de usd"}
         sm{"samoană"}
         sma{"sami de sud"}
         smj{"sami lule"}
@@ -487,7 +456,6 @@ ro{
         ss{"swati"}
         ssy{"saho"}
         st{"sesotho"}
-        str{"salish (Strâmtori)"}
         su{"sundaneză"}
         suk{"sukuma"}
         sus{"susu"}
@@ -499,16 +467,13 @@ ro{
         syc{"siriacă clasică"}
         syr{"siriacă"}
         ta{"tamilă"}
-        tce{"tutchone de sud"}
         te{"telugu"}
         tem{"timne"}
         teo{"teso"}
         ter{"tereno"}
         tet{"tetum"}
         tg{"tadjică"}
-        tgx{"tagish"}
         th{"thailandeză"}
-        tht{"tahltan"}
         ti{"tigrină"}
         tig{"tigre"}
         tiv{"tiv"}
@@ -521,21 +486,19 @@ ro{
         tn{"setswana"}
         to{"tongană"}
         tog{"nyasa tonga"}
-        tok{"toki pona"}
         tpi{"tok pisin"}
         tr{"turcă"}
         trv{"taroko"}
         ts{"tsonga"}
         tsi{"tsimshian"}
         tt{"tătară"}
-        ttm{"tutchone de nord"}
         tum{"tumbuka"}
         tvl{"tuvalu"}
         tw{"twi"}
         twq{"tasawaq"}
         ty{"tahitiană"}
         tyv{"tuvană"}
-        tzm{"tamazight din Atlasul Central"}
+        tzm{"tamazight din Altasul Central"}
         udm{"udmurt"}
         ug{"uigură"}
         uga{"ugaritică"}
@@ -546,7 +509,6 @@ ro{
         uz{"uzbecă"}
         vai{"vai"}
         ve{"venda"}
-        vec{"venetă"}
         vi{"vietnameză"}
         vo{"volapuk"}
         vot{"votică"}
@@ -568,7 +530,6 @@ ro{
         ybb{"yemba"}
         yi{"idiș"}
         yo{"yoruba"}
-        yrl{"nheengatu"}
         yue{"cantoneză"}
         za{"zhuang"}
         zap{"zapotecă"}
@@ -583,87 +544,45 @@ ro{
         zxx{"fară conținut lingvistic"}
         zza{"zaza"}
     }
-    Languages%long{
-        zh_Hans{"chineză mandarină simplificată"}
-        zh_Hant{"chineză mandarină tradițională"}
-    }
-    Languages%menu{
-        ckb{"kurdă, centrală"}
-        yue{"chineză, cantoneză"}
-        zh{"chineză, mandarină"}
-    }
     Languages%short{
+        az{"azeră"}
         en_US{"engleză (S.U.A)"}
     }
     Languages%variant{
-        ckb{"kurdă sorani"}
-        hi_Latn{"hinglish"}
         ps{"pushto"}
     }
     Scripts{
-        Adlm{"adlam"}
-        Aghb{"albaneză caucaziană"}
-        Ahom{"ahom"}
         Arab{"arabă"}
-        Aran{"nastaaliq"}
-        Armi{"aramaică imperială"}
         Armn{"armeană"}
-        Avst{"avestică"}
         Bali{"balineză"}
-        Bamu{"bamum"}
-        Bass{"bassa vah"}
-        Batk{"batak"}
         Beng{"bengaleză"}
-        Bhks{"bhaiksuki"}
         Bopo{"bopomofo"}
-        Brah{"brahmanică"}
         Brai{"braille"}
-        Bugi{"bugineză"}
-        Buhd{"buhidă"}
-        Cakm{"chakma"}
         Cans{"silabică aborigenă canadiană unificată"}
-        Cari{"cariană"}
-        Cham{"cham"}
-        Cher{"cherokee"}
-        Chrs{"khorezmiană"}
         Copt{"coptă"}
-        Cpmn{"cipro-minoană"}
         Cprt{"cipriotă"}
         Cyrl{"chirilică"}
         Cyrs{"chirilică slavonă bisericească veche"}
         Deva{"devanagari"}
-        Diak{"dives akuru"}
-        Dogr{"dogra"}
         Dsrt{"mormonă"}
-        Dupl{"stenografie duployană"}
         Egyd{"demotică egipteană"}
         Egyh{"hieratică egipteană"}
         Egyp{"hieroglife egiptene"}
-        Elba{"elbasan"}
-        Elym{"elimaică"}
         Ethi{"etiopiană"}
         Geok{"georgiană bisericească"}
         Geor{"georgiană"}
         Glag{"glagolitică"}
-        Gong{"gunjala gondi"}
-        Gonm{"masaram gondi"}
         Goth{"gotică"}
-        Gran{"grantha"}
         Grek{"greacă"}
         Gujr{"gujarati"}
         Guru{"gurmukhi"}
         Hanb{"hanb"}
         Hang{"hangul"}
         Hani{"han"}
-        Hano{"hanunoo"}
         Hans{"simplificată"}
         Hant{"tradițională"}
-        Hatr{"hatrană"}
         Hebr{"ebraică"}
         Hira{"hiragana"}
-        Hluw{"hieroglife anatoliene"}
-        Hmng{"pahawh hmong"}
-        Hmnp{"nyiakeng puachue hmong"}
         Hrkt{"silabică japoneză"}
         Hung{"maghiară veche"}
         Inds{"indus"}
@@ -671,116 +590,36 @@ ro{
         Jamo{"jamo"}
         Java{"javaneză"}
         Jpan{"japoneză"}
-        Kali{"kayah li"}
         Kana{"katakana"}
-        Kawi{"kawi"}
-        Khar{"kharosthi"}
         Khmr{"khmeră"}
-        Khoj{"khojki"}
-        Kits{"litere mici khitane"}
         Knda{"kannada"}
         Kore{"coreeană"}
-        Kthi{"kaithi"}
-        Lana{"lanna"}
         Laoo{"laoțiană"}
         Latf{"latină Fraktur"}
         Latg{"latină gaelică"}
         Latn{"latină"}
-        Lepc{"lepcha"}
-        Limb{"limbu"}
         Lina{"lineară A"}
         Linb{"lineară B"}
-        Lisu{"fraser"}
-        Lyci{"liciană"}
         Lydi{"lidiană"}
-        Mahj{"mahajani"}
-        Maka{"makasar"}
-        Mand{"mandeană"}
-        Mani{"maniheeană"}
-        Marc{"marchen"}
         Maya{"hieroglife maya"}
-        Medf{"medefaidrin"}
-        Mend{"mende"}
-        Merc{"meroitică cursivă"}
-        Mero{"meroitică"}
         Mlym{"malayalam"}
-        Modi{"modi"}
         Mong{"mongolă"}
-        Mroo{"mro"}
-        Mtei{"meitei mayek"}
-        Mult{"multani"}
         Mymr{"birmană"}
-        Nagm{"nag mundari"}
-        Nand{"nandinagari"}
-        Narb{"arabă veche din nord"}
-        Nbat{"nabateeană"}
-        Newa{"newa"}
-        Nkoo{"n’ko"}
-        Nshu{"nüshu"}
-        Ogam{"ogham"}
-        Olck{"ol chiki"}
-        Orkh{"orhon"}
         Orya{"oriya"}
-        Osge{"osage"}
-        Osma{"osmanya"}
-        Ougr{"uigură veche"}
-        Palm{"palmirenă"}
-        Pauc{"pau cin hau"}
-        Perm{"permică veche"}
-        Phag{"phags-pa"}
-        Phli{"pahlavi pentru inscripții"}
-        Phlp{"pahlavi pentru psaltire"}
         Phnx{"feniciană"}
-        Plrd{"pollardă fonetică"}
-        Prti{"partă pentru inscripții"}
-        Qaag{"zawgyi"}
-        Rjng{"rejang"}
-        Rohg{"hanifi"}
         Runr{"runică"}
-        Samr{"samariteană"}
-        Sarb{"arabă veche din sud"}
-        Saur{"saurashtra"}
-        Sgnw{"scrierea simbolică"}
-        Shaw{"savă"}
-        Shrd{"sharadă"}
-        Sidd{"siddham"}
-        Sind{"khudawadi"}
         Sinh{"singaleză"}
-        Sogd{"sogdiană"}
-        Sogo{"sogdiană veche"}
-        Sora{"sora sompeng"}
-        Soyo{"soyombo"}
-        Sund{"sundaneză"}
-        Sylo{"syloti nagri"}
         Syrc{"siriacă"}
         Syrj{"siriacă occidentală"}
         Syrn{"siriacă orientală"}
-        Tagb{"tagbanwa"}
-        Takr{"takri"}
-        Tale{"tai le"}
-        Talu{"tai le nouă"}
         Taml{"tamilă"}
-        Tang{"tangut"}
-        Tavt{"tai viet"}
         Telu{"telugu"}
-        Tfng{"tifinagh"}
-        Tglg{"tagalog"}
+        Tfng{"berberă"}
         Thaa{"thaana"}
         Thai{"thailandeză"}
         Tibt{"tibetană"}
-        Tirh{"tirhuta"}
-        Tnsa{"tangsa"}
-        Toto{"toto"}
-        Ugar{"ugaritică"}
-        Vaii{"vai"}
-        Vith{"vithkuqi"}
-        Wara{"varang kshiti"}
-        Wcho{"wancho"}
         Xpeo{"persană veche"}
         Xsux{"cuneiformă sumero-akkadiană"}
-        Yezi{"yazidită"}
-        Yiii{"yi"}
-        Zanb{"Piața Zanabazar"}
         Zinh{"moștenită"}
         Zmth{"notație matematică"}
         Zsye{"emoji"}
@@ -803,13 +642,13 @@ ro{
             coptic{"calendar copt"}
             dangi{"calendar dangi"}
             ethiopic{"calendar etiopian"}
-            ethiopic-amete-alem{"calendar etiopian amete alem"}
+            ethiopic-amete-alem{"Calendarul etiopian amete alem"}
             gregorian{"calendar gregorian"}
             hebrew{"calendar ebraic"}
             indian{"calendar național indian"}
-            islamic{"calendarul hegirei"}
-            islamic-civil{"calendarul hegirei (tabular, civil)"}
-            islamic-umalqura{"calendarul hegirei (Umm al-Qura)"}
+            islamic{"calendar islamic"}
+            islamic-civil{"calendar islamic civil"}
+            islamic-umalqura{"calendar islamic (Umm al-Qura)"}
             iso8601{"calendar ISO-8601"}
             japanese{"calendar japonez"}
             persian{"calendar persan"}
@@ -852,23 +691,22 @@ ro{
             tertiary{"Ordonați după accente/dimensiunea literei/lățime"}
         }
         collation{
-            big5han{"ordine de sortare a chinezei tradiționale - Big5"}
+            big5han{"sortare pentru chineza tradițională - Big5"}
             compat{"ordine de sortare anterioară, pentru compatibilitate"}
-            dictionary{"ordine de sortare a dicționarului"}
+            dictionary{"Ordine de sortare a dicționarului"}
             ducet{"ordine de sortare Unicode implicită"}
-            emoji{"ordine de sortare a emojiurilor"}
             eor{"regulile europene de sortare"}
-            gb2312han{"ordine de sortare a chinezei simplificate - GB2312"}
-            phonebook{"ordine de sortare după cartea de telefon"}
-            phonetic{"ordine de sortare fonetică"}
-            pinyin{"ordine de sortare pinyin"}
+            gb2312han{"sortare pentru chineza simplificată - GB2312"}
+            phonebook{"sortare după cartea de telefon"}
+            phonetic{"Tip de ordonare fonetică"}
+            pinyin{"sortare pinyin"}
+            reformed{"Ordine de sortare reformată"}
             search{"căutare cu scop general"}
             searchjl{"Căutați în funcție de consoana inițială hangul"}
             standard{"ordine de sortare standard"}
             stroke{"ordine de sortare după trasare"}
-            traditional{"ordine de sortare tradițională"}
-            unihan{"ordine de sortare după radical și trasare"}
-            zhuyin{"ordine de sortare zhuyin"}
+            traditional{"sortare tradițională"}
+            unihan{"Ordine de sortare a liniilor ideogramelor"}
         }
         d0{
             fwidth{"Cu lățime întreagă"}
@@ -896,25 +734,16 @@ ro{
             ussystem{"sistemul american de unități de măsură"}
         }
         numbers{
-            ahom{"cifre ahom"}
             arab{"cifre indo-arabe"}
             arabext{"cifre indo-arabe extinse"}
             armn{"numerale armenești"}
             armnlow{"numerale armenești cu minuscule"}
-            bali{"cifre balineze"}
             beng{"cifre bengaleze"}
-            brah{"cifre brahmi"}
-            cakm{"cifre chakma"}
-            cham{"cifre cham"}
-            cyrl{"cifre chirilice"}
             deva{"cifre devanagari"}
-            diak{"cifre dives akuru"}
             ethi{"numerale etiopiene"}
             finance{"Sistemul numeric financiar"}
             fullwide{"cifre cu lățimea întreagă"}
             geor{"numerale georgiene"}
-            gong{"cifre gunjala gondi"}
-            gonm{"cifre masaram gondi"}
             grek{"numerale grecești"}
             greklow{"numerale grecești cu minuscule"}
             gujr{"cifre gujarati"}
@@ -925,183 +754,40 @@ ro{
             hant{"numerale chinezești tradiționale"}
             hantfin{"numerale financiare chinezești tradiționale"}
             hebr{"numerale ebraice"}
-            hmng{"cifre pahawh hmong"}
-            hmnp{"cifre nyiakeng puachue hmong"}
-            java{"cifre javaneze"}
             jpan{"numerale japoneze"}
             jpanfin{"numerale financiare japoneze"}
-            kali{"cifre kayah li"}
-            kawi{"cifre kawi"}
             khmr{"cifre khmere"}
             knda{"cifre kannada"}
-            lana{"cifre tai tham hora"}
-            lanatham{"cifre tai tham tham"}
             laoo{"cifre laoțiene"}
             latn{"cifre occidentale"}
-            lepc{"cifre lepcha"}
-            limb{"cifre limbu"}
-            mathbold{"cifre matematice aldine"}
-            mathdbl{"cifre matematice cu două linii"}
-            mathmono{"cifre matematice cu un singur spațiu"}
-            mathsanb{"cifre matematice aldine sans serif"}
-            mathsans{"cifre matematice sans serif"}
             mlym{"cifre malayalam"}
-            modi{"cifre modi"}
             mong{"Cifre mongole"}
-            mroo{"cifre mro"}
-            mtei{"cifre meetei mayek"}
             mymr{"cifre birmaneze"}
-            mymrshan{"cifre birmaneze shan"}
-            mymrtlng{"cifre birmaneze tai laing"}
-            nagm{"cifre nag mundari"}
-            native{"cifre native"}
-            nkoo{"cifre n’ko"}
-            olck{"cifre ol chiki"}
+            native{"Cifre native"}
             orya{"cifre oriya"}
-            osma{"cifre osmanya"}
-            rohg{"cifre hanifi rohingya"}
             roman{"numerale romane"}
             romanlow{"numerale romane cu minuscule"}
-            saur{"cifre saurashtra"}
-            shrd{"cifre sharada"}
-            sind{"cifre khudawadi"}
-            sinh{"cifre sinhala lith"}
-            sora{"cifre sora sompeng"}
-            sund{"cifre sundaneze"}
-            takr{"cifre takri"}
-            talu{"cifre tai lue noi"}
             taml{"numerale tradiționale tamile"}
             tamldec{"cifre tamile"}
             telu{"cifre telugu"}
             thai{"cifre thailandeze"}
             tibt{"cifre tibetane"}
-            tirh{"cifre tirhuta"}
-            tnsa{"cifre tangsa"}
             traditional{"Numere tradiționale"}
-            vaii{"cifre vai"}
-            wara{"cifre warang citi"}
-            wcho{"cifre wancho"}
+            vaii{"Cifre Vai"}
         }
     }
     Variants{
-        1606NICT{"franceză medievală târzie până la 1606"}
-        1694ACAD{"franceză modernă veche"}
-        1901{"ortografie germană tradițională"}
-        1959ACAD{"belarusă academică"}
-        1994{"ortografie resiană standardizată"}
-        1996{"ortografie germană de la 1996"}
-        ABL1943{"formularea ortografică de la 1943"}
-        AKUAPEM{"Akuapem"}
-        ALALC97{"ALA-LC, ediția din 1997"}
-        ALUKU{"dialect aluku"}
-        AO1990{"Acordul de ortografie a limbii portugheze de la 1990"}
-        ARANES{"Aranes"}
-        AREVELA{"armeană orientală"}
-        AREVMDA{"armeană occidentală"}
-        ARKAIKA{"Arkaika"}
-        ASANTE{"Asante"}
-        AUVERN{"Auvern"}
-        BAKU1926{"alfabet latin altaic unificat"}
-        BALANKA{"dialectul balanka al limbii anii"}
-        BARLA{"grupul de dialecte barlavento al limbii kabuverdianu"}
-        BASICENG{"Basiceng"}
-        BAUDDHA{"Bauddha"}
-        BISCAYAN{"Biscayan"}
-        BISKE{"dialect San Giorgio/Bila"}
-        BOHORIC{"alfabet Bohorič"}
-        BOONT{"boontling"}
-        BORNHOLM{"Bornholm"}
-        CISAUP{"Cisaup"}
-        COLB1945{"Convenția ortografică a limbii portugheze braziliene de la 1945"}
-        CORNU{"Cornu"}
-        CREISS{"Creiss"}
-        DAJNKO{"alfabet dajnko"}
-        EKAVSK{"sârbă cu pronunție ekaviană"}
-        EMODENG{"limba engleză modernă timpurie"}
-        FONIPA{"alfabet fonetic internațional"}
-        FONKIRSH{"Fonkirsh"}
-        FONNAPA{"Fonnapa"}
-        FONUPA{"alfabet fonetic uralic"}
-        FONXSAMP{"Fonxsamp"}
-        GALLO{"Gallo"}
-        GASCON{"Gascon"}
-        GRCLASS{"Grclass"}
-        GRITAL{"Grital"}
-        GRMISTR{"Grmistr"}
-        HEPBURN{"hepburn"}
-        HOGNORSK{"Hognorsk"}
-        HSISTEMO{"Hsistemo"}
-        IJEKAVSK{"sârbă cu pronunție ijekaviană"}
-        ITIHASA{"Itihasa"}
-        IVANCHOV{"Ivanchov"}
-        JAUER{"Jauer"}
-        JYUTPING{"Jyutping"}
-        KKCOR{"ortografie comuna cornish"}
-        KOCIEWIE{"Kociewie"}
-        KSCOR{"ortografie standard"}
-        LAUKIKA{"Laukika"}
-        LEMOSIN{"Lemosin"}
-        LENGADOC{"Lengadoc"}
-        LIPAW{"dialect lipovaz din resiană"}
-        LUNA1918{"Luna1918"}
-        METELKO{"alfabet metelko"}
-        MONOTON{"monotonică"}
-        NDYUKA{"dialect ndyuka"}
-        NEDIS{"dialect Natisone"}
-        NEWFOUND{"Newfound"}
-        NICARD{"Nicard"}
-        NJIVA{"dialect Gniva/Njiva"}
-        NULIK{"volapük modernă"}
-        OSOJS{"dialect Oseacco/Osojane"}
-        OXENDICT{"ortografia dicționarului Oxford de limbă engleză"}
-        PAHAWH2{"Pahawh2"}
-        PAHAWH3{"Pahawh3"}
-        PAHAWH4{"Pahawh4"}
-        PAMAKA{"dialect pamaka"}
-        PEANO{"Peano"}
-        PETR1708{"Petr1708"}
         PINYIN{"pinyin"}
-        POLYTON{"politonică"}
-        POSIX{"informatică"}
-        PROVENC{"Provenc"}
-        PUTER{"Puter"}
-        REVISED{"ortografie revizuită"}
-        RIGIK{"volapük clasică"}
-        ROZAJ{"dialect resian"}
-        RUMGR{"Rumgr"}
-        SAAHO{"dialect saho"}
         SCOTLAND{"engleză standard scoțiană"}
-        SCOUSE{"dialect scouse"}
-        SIMPLE{"Simple"}
-        SOLBA{"dialect Stolvizza/Solbica"}
-        SOTAV{"grupul de dialecte sotavento al limbii kabuverdianu"}
-        SPANGLIS{"Spanglis"}
-        SURMIRAN{"Surmiran"}
-        SURSILV{"Sursilv"}
-        SUTSILV{"Sutsilv"}
-        SYNNEJYL{"Synnejyl"}
-        TARASK{"ortografie taraskievica"}
-        TONGYONG{"Tongyong"}
-        TUNUMIIT{"Tunumiit"}
-        UCCOR{"ortografie unificată cornish"}
-        UCRCOR{"ortografie revizuită unificată cornish"}
-        ULSTER{"Ulster"}
-        UNIFON{"alfabet fonetic unifon"}
-        VAIDIKA{"Vaidika"}
-        VALENCIA{"valenciană"}
-        VALLADER{"Vallader"}
-        VECDRUKA{"Vecdruka"}
-        VIVARAUP{"Vivaraup"}
         WADEGILE{"Wade-Giles"}
-        XSISTEMO{"Xsistemo"}
     }
+    Version{"2.1.49.82"}
     characterLabelPattern{
         all{"{0} – toate"}
+        category-list{"{0}: {1}"}
         compatibility{"{0} – compatibilitate"}
         enclosed{"{0} – încadrate"}
         extended{"{0} – set extins"}
-        facing-left{"{0} orientate spre stânga"}
-        facing-right{"{0} orientate spre dreapta"}
         historic{"{0} – istorice"}
         miscellaneous{"{0} – diverse"}
         other{"{0} – altele"}
@@ -1111,8 +797,6 @@ ro{
             one{"{0} trasare"}
             other{"{0} de trasări"}
         }
-        subscript{"indice {0}"}
-        superscript{"exponent {0}"}
     }
     codePatterns{
         language{"Limbă: {0}"}

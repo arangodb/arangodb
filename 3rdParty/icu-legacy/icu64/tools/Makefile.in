@@ -17,7 +17,7 @@ subdir = tools
 
 SUBDIRS = toolutil ctestfw makeconv genrb genbrk \
 gencnval gensprep icuinfo genccode gencmn icupkg pkgdata \
-gentest gennorm2 gencfu gendict icuexportdata
+gentest gennorm2 gencfu gendict
 
 ifneq (@platform_make_fragment_name@,mh-cygwin-msvc)
 SUBDIRS += escapesrc

@@ -1,9 +1,8 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ki{
     AuxExemplarCharacters{"[f l p q s v x z]"}
-    ExemplarCharacters{"[a b c d e g h iĩ j k m n o r t uũ w y]"}
+    ExemplarCharacters{"[a b c d e g h i ĩ j k m n o r t u ũ w y]"}
     ExemplarCharactersIndex{"[A B C D E G H I J K M N O R T U W Y]"}
     NumberElements{
         latn{
@@ -13,6 +12,7 @@ ki{
             }
         }
     }
+    Version{"2.1.47.82"}
     calendar{
         generic{
             DateTimePatterns{
@@ -31,11 +31,19 @@ ki{
                 "{1} {0}",
             }
             availableFormats{
+                Hm{"HH:mm"}
+                Hms{"HH:mm:ss"}
+                M{"L"}
                 MEd{"E, M/d"}
+                MMM{"LLL"}
                 MMMEd{"E, MMM d"}
                 MMMMEd{"E, MMMM d"}
+                MMMMd{"MMMM d"}
+                MMMd{"MMM d"}
                 Md{"M/d"}
-                hm{"h:mm a"}
+                d{"d"}
+                hm{"h:mm a"}
+                ms{"mm:ss"}
                 y{"y"}
                 yM{"M/y"}
                 yMEd{"E, M/d/y"}
@@ -47,6 +55,10 @@ ki{
             }
         }
         gregorian{
+            AmPmMarkers{
+                "Kiroko",
+                "Hwaĩ-inĩ",
+            }
             AmPmMarkersAbbr{
                 "Kiroko",
                 "Hwaĩ-inĩ",
@@ -67,11 +79,20 @@ ki{
                 "{1} {0}",
             }
             availableFormats{
+                Hm{"HH:mm"}
+                Hms{"HH:mm:ss"}
+                M{"L"}
                 MEd{"E, M/d"}
+                MMM{"LLL"}
                 MMMEd{"E, MMM d"}
                 MMMMEd{"E, MMMM d"}
+                MMMMd{"MMMM d"}
+                MMMd{"MMM d"}
                 Md{"M/d"}
-                hm{"h:mm a"}
+                d{"d"}
+                hm{"h:mm a"}
+                ms{"mm:ss"}
+                y{"y"}
                 yM{"M/y"}
                 yMEd{"E, M/d/y"}
                 yMMM{"MMM y"}
@@ -188,6 +209,12 @@ ki{
                 }
             }
         }
+    }
+    delimiters{
+        alternateQuotationEnd{"’"}
+        alternateQuotationStart{"‘"}
+        quotationEnd{"”"}
+        quotationStart{"“"}
     }
     fields{
         day{

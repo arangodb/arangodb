@@ -1,29 +1,36 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 vai_Latn{
     %%Parent{"root"}
     ExemplarCharacters{
-        "[aáã b ɓ c d ɗ eéẽ ɛ{ɛ́}{ɛ̃} f g h iíĩ j k l m n ŋ oóõ ɔ{ɔ́}{ɔ̃} p q r s t u"
-        "úũ v w x y z]"
+        "[a á ã b ɓ c d ɗ e é ẽ ɛ {ɛ\u0301} {ɛ\u0303} f g h i í ĩ j k l m n ŋ o ó õ ɔ"
+        " {ɔ\u0301} {ɔ\u0303} p q r s t u ú ũ v w x y z]"
     }
     ExemplarCharactersIndex{"[A B Ɓ C D Ɗ E Ɛ F G H I J K L M N Ŋ O Ɔ P Q R S T U V W X Y Z]"}
+    ExemplarCharactersNumbers{"[\\- , . % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
     NumberElements{
+        default{"latn"}
         latn{
             patterns{
                 accountingFormat{"¤#,##0.00;(¤#,##0.00)"}
                 currencyFormat{"¤#,##0.00"}
+                decimalFormat{"#,##0.###"}
+            }
+            symbols{
+                decimal{"."}
+                group{","}
             }
         }
         native{"vaii"}
     }
+    Version{"2.1.47.82"}
     calendar{
         generic{
             DateTimePatterns{
-                "h:mm:ss a zzzz",
-                "h:mm:ss a z",
-                "h:mm:ss a",
-                "h:mm a",
+                "h:mm:ss a zzzz",
+                "h:mm:ss a z",
+                "h:mm:ss a",
+                "h:mm a",
                 "EEEE, d MMMM y G",
                 "d MMMM y G",
                 "d MMM y G",
@@ -34,23 +41,19 @@ vai_Latn{
                 "{1} {0}",
                 "{1} {0}",
             }
-            DateTimeSkeletons{
-                "ahmmsszzzz",
-                "ahmmssz",
-                "ahmmss",
-                "ahmm",
-                "GyMMMMEEEEd",
-                "GyMMMMd",
-                "GyMMMd",
-                "GyMMdd",
-            }
             availableFormats{
                 Ed{"E d"}
+                Hm{"HH:mm"}
+                Hms{"HH:mm:ss"}
+                M{"L"}
                 MEd{"E, M/d"}
+                MMM{"LLL"}
                 MMMEd{"E, MMM d"}
+                MMMd{"MMM d"}
                 Md{"M/d"}
-                hm{"h:mm a"}
-                hms{"h:mm:ss a"}
+                d{"d"}
+                hm{"h:mm a"}
+                hms{"h:mm:ss a"}
                 ms{"m:ss"}
                 y{"y"}
                 yM{"M/y"}
@@ -65,10 +68,10 @@ vai_Latn{
         }
         gregorian{
             DateTimePatterns{
-                "h:mm:ss a zzzz",
-                "h:mm:ss a z",
-                "h:mm:ss a",
-                "h:mm a",
+                "h:mm:ss a zzzz",
+                "h:mm:ss a z",
+                "h:mm:ss a",
+                "h:mm a",
                 "EEEE, d MMMM y",
                 "d MMMM y",
                 "d MMM y",
@@ -79,24 +82,21 @@ vai_Latn{
                 "{1} {0}",
                 "{1} {0}",
             }
-            DateTimeSkeletons{
-                "ahmmsszzzz",
-                "ahmmssz",
-                "ahmmss",
-                "ahmm",
-                "yMMMMEEEEd",
-                "yMMMMd",
-                "yMMMd",
-                "yMMdd",
-            }
             availableFormats{
                 Ed{"E d"}
+                Hm{"HH:mm"}
+                Hms{"HH:mm:ss"}
+                M{"L"}
                 MEd{"E, M/d"}
+                MMM{"LLL"}
                 MMMEd{"E, MMM d"}
+                MMMd{"MMM d"}
                 Md{"M/d"}
-                hm{"h:mm a"}
-                hms{"h:mm:ss a"}
+                d{"d"}
+                hm{"h:mm a"}
+                hms{"h:mm:ss a"}
                 ms{"m:ss"}
+                y{"y"}
                 yM{"M/y"}
                 yMEd{"E, M/d/y"}
                 yMMM{"MMM y"}
@@ -119,7 +119,31 @@ vai_Latn{
                     }
                 }
             }
+            monthNames{
+                format{
+                    wide{
+                        "luukao kemã",
+                        "ɓandaɓu",
+                        "vɔɔ",
+                        "fulu",
+                        "goo",
+                        "6",
+                        "7",
+                        "kɔnde",
+                        "saah",
+                        "galo",
+                        "kenpkato ɓololɔ",
+                        "luukao lɔma",
+                    }
+                }
+            }
         }
+    }
+    delimiters{
+        alternateQuotationEnd{"’"}
+        alternateQuotationStart{"‘"}
+        quotationEnd{"”"}
+        quotationStart{"“"}
     }
     fields{
         day{

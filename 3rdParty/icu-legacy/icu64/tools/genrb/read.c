@@ -18,11 +18,8 @@
 *******************************************************************************
 */
 
-#include <stdbool.h>
-
 #include "read.h"
 #include "errmsg.h"
-#include "toolutil.h"
 #include "unicode/ustring.h"
 #include "unicode/utf16.h"
 
@@ -53,7 +50,7 @@ static void    seekUntilEndOfComment (UCHARBUF *buf, struct UString *token, UErr
 static UBool   isWhitespace          (UChar32 c);
 static UBool   isNewline             (UChar32 c);
 
-U_CFUNC void resetLineNumber(void) {
+U_CFUNC void resetLineNumber() {
     lineCount = 1;
 }
 
@@ -79,7 +76,7 @@ getNextToken(UCHARBUF* buf,
     }
 
     /* Skip whitespace */
-    c = getNextChar(buf, true, comment, status);
+    c = getNextChar(buf, TRUE, comment, status);
 
     if (U_FAILURE(*status)) {
         return TOK_ERROR;
@@ -129,8 +126,8 @@ static enum ETokenType getStringToken(UCHARBUF* buf,
     UChar    target[3] = { '\0' };
     UChar    *pTarget   = target;
     int      len=0;
-    UBool    isFollowingCharEscaped=false;
-    UBool    isNLUnescaped = false;
+    UBool    isFollowingCharEscaped=FALSE;
+    UBool    isNLUnescaped = FALSE;
     UChar32  prevC=0;
 
     /* We are guaranteed on entry that initialChar is not a whitespace
@@ -143,7 +140,7 @@ static enum ETokenType getStringToken(UCHARBUF* buf,
     }
 
     /* setup */
-    lastStringWasQuoted = false;
+    lastStringWasQuoted = FALSE;
     c = initialChar;
     ustr_setlen(token, 0, status);
 
@@ -161,7 +158,7 @@ static enum ETokenType getStringToken(UCHARBUF* buf,
                 }
             }
 
-            lastStringWasQuoted = true;
+            lastStringWasQuoted = TRUE;
 
             for (;;) {
                 c = ucbuf_getc(buf,status);
@@ -188,23 +185,23 @@ static enum ETokenType getStringToken(UCHARBUF* buf,
                         return TOK_ERROR;
                     }
                     if(c == CR || c == LF){
-                        isNLUnescaped = true;
+                        isNLUnescaped = TRUE;
                     }
                 }               
 
                 if(c==ESCAPE && !isFollowingCharEscaped){
-                    isFollowingCharEscaped = true;
+                    isFollowingCharEscaped = TRUE;
                 }else{
                     U_APPEND_CHAR32(c, pTarget,len);
                     pTarget = target;
                     ustr_uscat(token, pTarget,len, status);
-                    isFollowingCharEscaped = false;
+                    isFollowingCharEscaped = FALSE;
                     len=0;
                     if(c == CR || c == LF){
-                        if(isNLUnescaped == false && prevC!=CR){
+                        if(isNLUnescaped == FALSE && prevC!=CR){
                             lineCount++;
                         }
-                        isNLUnescaped = false;
+                        isNLUnescaped = FALSE;
                     }
                 }
                 
@@ -232,7 +229,7 @@ static enum ETokenType getStringToken(UCHARBUF* buf,
 
             }
 
-            lastStringWasQuoted = false;
+            lastStringWasQuoted = FALSE;
             
             /* if we reach here we are mixing 
              * quoted and unquoted strings
@@ -261,7 +258,7 @@ static enum ETokenType getStringToken(UCHARBUF* buf,
 
             for (;;) {
                 /* DON'T skip whitespace */
-                c = getNextChar(buf, false, NULL, status);
+                c = getNextChar(buf, FALSE, NULL, status);
 
                 /* EOF reached */
                 if (c == U_EOF) {
@@ -306,7 +303,7 @@ static enum ETokenType getStringToken(UCHARBUF* buf,
         }
 
         /* DO skip whitespace */
-        c = getNextChar(buf, true, NULL, status);
+        c = getNextChar(buf, TRUE, NULL, status);
 
         if (U_FAILURE(*status)) {
             return TOK_STRING;
@@ -457,10 +454,10 @@ static UBool isWhitespace(UChar32 c) {
     case 0x0020:
     case 0x0009:
     case 0xFEFF:
-        return true;
+        return TRUE;
 
     default:
-        return false;
+        return FALSE;
     }
 }
 
@@ -471,9 +468,9 @@ static UBool isNewline(UChar32 c) {
     case 0x2029:
         lineCount++;
     case 0x000D:
-        return true;
+        return TRUE;
 
     default:
-        return false;
+        return FALSE;
     }
 }

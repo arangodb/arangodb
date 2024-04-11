@@ -1,7 +1,7 @@
 /**************************************************************************
 *
 *   © 2016 and later: Unicode, Inc. and others.
-*   License & terms of use: http://www.unicode.org/copyright.html
+*   License & terms of use: http://www.unicode.org/copyright.html#License
 *
 ***************************************************************************
 ***************************************************************************
@@ -40,12 +40,12 @@ void iterate(void * p) {
     LEErrorCode status = LE_NO_ERROR;
     LEFontInstance *font = params->font;
     LayoutEngine *engine = LayoutEngine::layoutEngineFactory(font, params->script, -1, status);
-    LEGlyphID *glyphs    = nullptr;
-    le_int32  *indices   = nullptr;
-    float     *positions = nullptr;
+    LEGlyphID *glyphs    = NULL;
+    le_int32  *indices   = NULL;
+    float     *positions = NULL;
     le_int32   glyphCount = 0;
     LEUnicode *chars = params->chars;
-    glyphCount = engine->layoutChars(chars, 0, params->charLen, params->charLen, true, 0.0, 0.0, status);
+    glyphCount = engine->layoutChars(chars, 0, params->charLen, params->charLen, TRUE, 0.0, 0.0, status);
     glyphs    = LE_NEW_ARRAY(LEGlyphID, glyphCount + 10);
     indices   = LE_NEW_ARRAY(le_int32, glyphCount + 10);
     positions = LE_NEW_ARRAY(float, glyphCount + 10);

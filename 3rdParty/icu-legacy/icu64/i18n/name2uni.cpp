@@ -29,10 +29,10 @@ U_NAMESPACE_BEGIN
 
 UOBJECT_DEFINE_RTTI_IMPLEMENTATION(NameUnicodeTransliterator)
 
-static const char16_t OPEN[] = {92,78,126,123,126,0}; // "\N~{~"
-static const char16_t OPEN_DELIM  = 92;  // '\\' first char of OPEN
-static const char16_t CLOSE_DELIM = 125; // '}'
-static const char16_t SPACE       = 32;  // ' '
+static const UChar OPEN[] = {92,78,126,123,126,0}; // "\N~{~"
+static const UChar OPEN_DELIM  = 92;  // '\\' first char of OPEN
+static const UChar CLOSE_DELIM = 125; // '}'
+static const UChar SPACE       = 32;  // ' '
 
 U_CDECL_BEGIN
 
@@ -50,7 +50,7 @@ _set_addRange(USet *set, UChar32 start, UChar32 end) {
 }
 
 static void U_CALLCONV
-_set_addString(USet *set, const char16_t *str, int32_t length) {
+_set_addString(USet *set, const UChar *str, int32_t length) {
     ((UnicodeSet *)set)->add(UnicodeString((UBool)(length<0), str, length));
 }*/
 
@@ -68,10 +68,10 @@ NameUnicodeTransliterator::NameUnicodeTransliterator(UnicodeFilter* adoptedFilte
     USetAdder sa = {
         (USet *)legalPtr, // USet* == UnicodeSet*
         _set_add,
-        nullptr, // Don't need _set_addRange
-        nullptr, // Don't need _set_addString
-        nullptr, // Don't need remove()
-        nullptr
+        NULL, // Don't need _set_addRange
+        NULL, // Don't need _set_addString
+        NULL, // Don't need remove()
+        NULL
     };
     uprv_getCharNameCharacters(&sa);
 }
@@ -100,7 +100,7 @@ NameUnicodeTransliterator::NameUnicodeTransliterator(const NameUnicodeTransliter
 /**
  * Transliterator API.
  */
-NameUnicodeTransliterator* NameUnicodeTransliterator::clone() const {
+Transliterator* NameUnicodeTransliterator::clone(void) const {
     return new NameUnicodeTransliterator(*this);
 }
 
@@ -111,7 +111,7 @@ void NameUnicodeTransliterator::handleTransliterate(Replaceable& text, UTransPos
                                                     UBool isIncremental) const {
     // The failure mode, here and below, is to behave like Any-Null,
     // if either there is no name data (max len == 0) or there is no
-    // memory (malloc() => nullptr).
+    // memory (malloc() => NULL).
 
     int32_t maxLen = uprv_getMaxCharNameLength();
     if (maxLen == 0) {
@@ -119,15 +119,15 @@ void NameUnicodeTransliterator::handleTransliterate(Replaceable& text, UTransPos
         return;
     }
 
-    // Accommodate the longest possible name
+    // Accomodate the longest possible name
     ++maxLen; // allow for temporary trailing space
     char* cbuf = (char*) uprv_malloc(maxLen);
-    if (cbuf == nullptr) {
+    if (cbuf == NULL) {
         offsets.start = offsets.limit;
         return;
     }
 
-    UnicodeString openPat(true, OPEN, -1);
+    UnicodeString openPat(TRUE, OPEN, -1);
     UnicodeString str, name;
 
     int32_t cursor = offsets.start;
@@ -190,7 +190,6 @@ void NameUnicodeTransliterator::handleTransliterate(Replaceable& text, UTransPos
                 }
 
                 if (uprv_isInvariantUString(name.getBuffer(), len)) {
-                    cbuf[0] = 0;
                     name.extract(0, len, cbuf, maxLen, US_INV);
 
                     UErrorCode status = U_ZERO_ERROR;
@@ -222,7 +221,7 @@ void NameUnicodeTransliterator::handleTransliterate(Replaceable& text, UTransPos
             }
             
             // Check if c is a legal char.  We assume here that
-            // legal.contains(OPEN_DELIM) is false, so when we abort a
+            // legal.contains(OPEN_DELIM) is FALSE, so when we abort a
             // name, we don't have to go back to openPos+1.
             if (legal.contains(c)) {
                 name.append(c);

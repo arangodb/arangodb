@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 so{
     Currencies{
         AED{
@@ -27,22 +26,6 @@ so{
             "AOA",
             "Kawansada Angola",
         }
-        ARA{
-            "ARA",
-            "Argentine Austral",
-        }
-        ARL{
-            "ARL",
-            "Beesada Ley ee Arjentiin (1970–1983)",
-        }
-        ARM{
-            "ARM",
-            "Beesada Ley ee Arjentiin (1881–1970)",
-        }
-        ARP{
-            "ARP",
-            "Beesada Ley ee Arjentiin (1883–1985)",
-        }
         ARS{
             "ARS",
             "Beesada Arjentiin",
@@ -58,10 +41,6 @@ so{
         AZN{
             "AZN",
             "Manaata Asarbeyjan",
-        }
-        BAD{
-            "BAD",
-            "Diinaarka BBosnia-Hersogofina 1.00 konfatibal maakta Bosnia-Hersogofina 1 konfatibal maaka Bosnia-Hersogofina (1992–1994)",
         }
         BAM{
             "BAM",
@@ -98,10 +77,6 @@ so{
         BOB{
             "BOB",
             "Bolifiyanada Bolifiya",
-        }
-        BOL{
-            "BOL",
-            "Bolifiyaabka Bolifiyaano(1863–1963)",
         }
         BRL{
             "R$",
@@ -191,10 +166,6 @@ so{
             "DZD",
             "Dinaarka Aljeriya",
         }
-        EEK{
-            "EEK",
-            "Kroonka Estooniya",
-        }
         EGP{
             "EGP",
             "Bowndka Masar",
@@ -210,10 +181,6 @@ so{
         EUR{
             "€",
             "Yuuroo",
-        }
-        FIM{
-            "FIM",
-            "Markkada Fiinishka ah",
         }
         FJD{
             "FJD",
@@ -278,10 +245,6 @@ so{
         IDR{
             "IDR",
             "Rubiah Indonesiya",
-        }
-        IEP{
-            "IEP",
-            "baawnka Ayrishka",
         }
         ILS{
             "₪",
@@ -366,14 +329,6 @@ so{
         LRD{
             "LRD",
             "Doolarka Liberiya",
-        }
-        LSL{
-            "LSL",
-            "Lesotho Loti",
-        }
-        LVR{
-            "LVR",
-            "Rubalka Latfiya",
         }
         LYD{
             "LYD",
@@ -480,7 +435,7 @@ so{
             "Kinada Babua Niyuu Gini",
         }
         PHP{
-            "₱",
+            "PHP",
             "Biso Filibin",
         }
         PKR{
@@ -543,13 +498,9 @@ so{
             "SHP",
             "Bowndka St Helen",
         }
-        SLE{
-            "SLE",
-            "Leonka Sira Leon",
-        }
         SLL{
             "SLL",
-            "Leonka Sira Leon (1964—2022)",
+            "Leonka Sira Leon",
         }
         SOS{
             "S",
@@ -660,7 +611,7 @@ so{
             "Doolarka Iist Kaaribyan",
         }
         XOF{
-            "F CFA",
+            "CFA",
             "Faranka CFA Galbeedka Afrika",
         }
         XPF{
@@ -684,10 +635,113 @@ so{
             "Kawajada Sambiya",
         }
     }
+    Currencies%narrow{
+        AOA{"Kz"}
+        ARS{"$"}
+        AUD{"$"}
+        BAM{"KM"}
+        BBD{"$"}
+        BDT{"৳"}
+        BMD{"$"}
+        BND{"$"}
+        BOB{"Bs"}
+        BRL{"R$"}
+        BSD{"$"}
+        BWP{"P"}
+        BYN{"р."}
+        BZD{"$"}
+        CAD{"$"}
+        CLP{"$"}
+        CNY{"¥"}
+        COP{"$"}
+        CRC{"₡"}
+        CUC{"$"}
+        CUP{"$"}
+        CZK{"Kč"}
+        DKK{"kr"}
+        DOP{"$"}
+        EGP{"E£"}
+        EUR{"€"}
+        FJD{"$"}
+        FKP{"£"}
+        GBP{"£"}
+        GEL{"₾"}
+        GIP{"£"}
+        GNF{"FG"}
+        GTQ{"Q"}
+        GYD{"$"}
+        HKD{"$"}
+        HNL{"L"}
+        HRK{"kn"}
+        HUF{"Ft"}
+        IDR{"Rp"}
+        ILS{"₪"}
+        INR{"₹"}
+        ISK{"kr"}
+        JMD{"$"}
+        JPY{"¥"}
+        KHR{"៛"}
+        KMF{"CF"}
+        KPW{"₩"}
+        KRW{"₩"}
+        KYD{"$"}
+        KZT{"₸"}
+        LAK{"₭"}
+        LBP{"L£"}
+        LKR{"Rs"}
+        LRD{"$"}
+        MGA{"Ar"}
+        MMK{"K"}
+        MNT{"₮"}
+        MUR{"Rs"}
+        MXN{"$"}
+        MYR{"RM"}
+        NAD{"$"}
+        NGN{"₦"}
+        NIO{"C$"}
+        NOK{"kr"}
+        NPR{"Rs"}
+        NZD{"$"}
+        PHP{"₱"}
+        PKR{"Rs"}
+        PLN{"zł"}
+        PYG{"₲"}
+        RON{"lei"}
+        RUB{"₽"}
+        RWF{"RF"}
+        SBD{"$"}
+        SEK{"kr"}
+        SGD{"$"}
+        SHP{"£"}
+        SRD{"$"}
+        SSP{"£"}
+        STN{"Db"}
+        SYP{"£"}
+        THB{"฿"}
+        TOP{"T$"}
+        TRY{"₺"}
+        TTD{"$"}
+        TWD{"$"}
+        UAH{"₴"}
+        USD{"$"}
+        UYU{"$"}
+        VEF{"Bs"}
+        VND{"₫"}
+        XCD{"$"}
+        ZAR{"R"}
+        ZMW{"ZK"}
+    }
+    Currencies%variant{
+        TRY{"TL"}
+    }
     CurrencyPlurals{
         AED{
             one{"dirhamka Isutaga Imaaraatka Carabta"}
             other{"dirhamka Isutaga Imaaraatka Carabta"}
+        }
+        AFN{
+            one{"Afgan Afgani"}
+            other{"Afgan Afgani"}
         }
         ALL{
             one{"lekta Abaniya"}
@@ -705,9 +759,9 @@ so{
             one{"kawansada Angola"}
             other{"kawansada Angola"}
         }
-        ARA{
-            one{"Argentine Austral"}
-            other{"Argentine Australs"}
+        ARS{
+            one{"Beesada Arjentiin"}
+            other{"Beesada Arjentiin"}
         }
         AUD{
             one{"doolarka Astaraaliya"}
@@ -720,13 +774,6 @@ so{
         AZN{
             one{"manaata Asarbeyjan"}
             other{"manaata Asarbeyjan"}
-        }
-        BAD{
-            one{"Diinaarka BBosnia-Hersogofina (1992–1994)"}
-            other{
-                "Diinaarka BBosnia-Hersogofina 1.00 konfatibal maakta Bosnia-Hersogof"
-                "ina 1 konfatibal maaka Bosnia-Hersogofina (1992–1994)"
-            }
         }
         BAM{
             one{"konfatibal maakta Bosnia-Hersogofina"}
@@ -754,11 +801,15 @@ so{
         }
         BMD{
             one{"doolarka Barmuuda"}
-            other{"Doolarka Barmuuda"}
+            other{"doolarada Barmuuda"}
         }
         BND{
             one{"doolarka Buruney"}
             other{"doolarada Buruney"}
+        }
+        BOB{
+            one{"Bolifiyanada Bolifiya"}
+            other{"Bolifiyanada Bolifiya"}
         }
         BRL{
             one{"Realka Barasil"}
@@ -792,6 +843,14 @@ so{
             one{"faranka Kongo"}
             other{"faranka Kongo"}
         }
+        CHF{
+            one{"Faranka Iswiska"}
+            other{"Faranka Iswiska"}
+        }
+        CLP{
+            one{"Beesada Jili"}
+            other{"Beesada Jili"}
+        }
         CNH{
             one{"yuwanta Shiinaha (Ofshoor)"}
             other{"yuwanta Shiinaha (Ofshoor)"}
@@ -800,6 +859,10 @@ so{
             one{"yuwanta Shiinaha"}
             other{"yuwanta Shiinaha"}
         }
+        COP{
+            one{"Beesada Kolombiya"}
+            other{"Beesada Kolombiya"}
+        }
         CRC{
             one{"kolonka Kosta Riika"}
             other{"kolonka Kosta Riika"}
@@ -807,6 +870,10 @@ so{
         CUC{
             one{"beesada konfatibal ee Kuuba"}
             other{"beesada konfatibal ee Kuuba"}
+        }
+        CUP{
+            one{"Beesada Kuuba"}
+            other{"Beesada Kuuba"}
         }
         CVE{
             one{"eskudo Keyb Farde"}
@@ -819,6 +886,10 @@ so{
         DJF{
             one{"faranka Jabuuti"}
             other{"faranka Jabuuti"}
+        }
+        DKK{
+            one{"Koronka Danishka"}
+            other{"Koronka Danishka"}
         }
         DOP{
             one{"beesada Dominiika"}
@@ -848,6 +919,14 @@ so{
             one{"doolarka Fiji"}
             other{"doolarada Fiji"}
         }
+        FKP{
+            one{"Bowndka Faalklaan Aylaanis"}
+            other{"Bowndka Faalklaan Aylaanis"}
+        }
+        GBP{
+            one{"Bowndka Biritishka"}
+            other{"Bowndka Biritishka"}
+        }
         GEL{
             one{"laariga Joorjiya"}
             other{"laariga Joorjiya"}
@@ -859,6 +938,10 @@ so{
         GIP{
             one{"bowndka Gibraltar"}
             other{"bowndka Gibraltar"}
+        }
+        GMD{
+            one{"Dalasida Gambiya"}
+            other{"Dalasida Gambiya"}
         }
         GNF{
             one{"faranka Gini"}
@@ -912,9 +995,9 @@ so{
             one{"riyaalka Iran"}
             other{"riyaalka Iran"}
         }
-        ISJ{
-            one{"krónaha Iceland (1918–1981)"}
-            other{"krónaha Iceland (1918–1981)"}
+        ISK{
+            one{"Koronada Eysland"}
+            other{"Koronada Eysland"}
         }
         JMD{
             one{"doolarka Jamayka"}
@@ -980,14 +1063,6 @@ so{
             one{"doolarka Liberiya"}
             other{"doolarka Liberiya"}
         }
-        LSL{
-            one{"Lesotho loti"}
-            other{"Lesotho lotis"}
-        }
-        LVR{
-            one{"rubalka Latvia"}
-            other{"rubalka Latfiya"}
-        }
         LYD{
             one{"dinaarka Libya"}
             other{"dinaarka Libya"}
@@ -1019,6 +1094,10 @@ so{
         MOP{
             one{"bataka Makana"}
             other{"bataka Makana"}
+        }
+        MRO{
+            one{"Oogiya Mawritaniya (1973–2017)"}
+            other{"Oogiya Mawritaniya (1973–2017)"}
         }
         MRU{
             one{"oogiyada Mawritaniya"}
@@ -1056,6 +1135,14 @@ so{
             one{"nairada Neyjeeriya"}
             other{"nairada Neyjeeriya"}
         }
+        NIO{
+            one{"Kordobada Nikargow"}
+            other{"Kordobada Nikargow"}
+        }
+        NOK{
+            one{"Koronka Norway"}
+            other{"Koronka Norway"}
+        }
         NPR{
             one{"rubiga Nebal"}
             other{"rubiga Nebal"}
@@ -1071,6 +1158,10 @@ so{
         PAB{
             one{"balbaw Banama"}
             other{"balbow Banama"}
+        }
+        PEN{
+            one{"Solsha Beeru"}
+            other{"Solsha Beeru"}
         }
         PGK{
             one{"kinada Babua Niyuu Gini"}
@@ -1088,6 +1179,10 @@ so{
             one{"solotida Bolaan"}
             other{"solotida Bolaan"}
         }
+        PYG{
+            one{"Guranida Baraguway"}
+            other{"Guranida Baraguway"}
+        }
         QAR{
             one{"riyaalka Qatar"}
             other{"riyaalka Qatar"}
@@ -1103,6 +1198,10 @@ so{
         RUB{
             one{"rubalka Ruushka"}
             other{"rubalka Ruushka"}
+        }
+        RWF{
+            one{"Faranka Ruwanda"}
+            other{"Faranka Ruwanda"}
         }
         SAR{
             one{"Riyaalka Sacuudiga"}
@@ -1120,6 +1219,10 @@ so{
             one{"bowndka Suudaan"}
             other{"bowndka Suudaan"}
         }
+        SEK{
+            one{"Koronka Isweden"}
+            other{"Koronka Isweden"}
+        }
         SGD{
             one{"doolarka Singabuur"}
             other{"doolarka Singabuur"}
@@ -1128,17 +1231,17 @@ so{
             one{"bowndka St Helen"}
             other{"Bowndka St Helen"}
         }
-        SLE{
+        SLL{
             one{"leonka Sira Leon"}
             other{"leonka Sira Leon"}
-        }
-        SLL{
-            one{"leonka Sira Leon (1964—2022)"}
-            other{"leonka Sira Leon (1964—2022)"}
         }
         SRD{
             one{"Doolarka Surinamees"}
             other{"Doolarada Surinamees"}
+        }
+        SSP{
+            one{"Bowndka Koonfurta Suudaan"}
+            other{"Bowndka Koonfurta Suudaan"}
         }
         STN{
             one{"dobrada Sao Tome Birinsibi"}
@@ -1184,6 +1287,10 @@ so{
             one{"doolarka Taywaanta Cusub"}
             other{"doolarada Taywaanta Cusub"}
         }
+        TZS{
+            one{"Shilingka Tansaaniya"}
+            other{"Shilingka Tansaaniya"}
+        }
         UAH{
             one{"hirfiniyada Yukreeyn"}
             other{"hirfiniyada Yukreeyn"}
@@ -1196,9 +1303,21 @@ so{
             one{"doolarka Mareeykanka"}
             other{"doolarada Mareeykanka"}
         }
+        UYU{
+            one{"Beesada Urugway"}
+            other{"Beesada Urugway"}
+        }
         UZS{
             one{"somta Usbekistan"}
             other{"somta Usbekistan"}
+        }
+        VEF{
+            one{"Bolifar Fenesuala (2008–2018)"}
+            other{"Bolifar Fenesuala (2008–2018)"}
+        }
+        VES{
+            one{"Bolifarada Fenesuwela"}
+            other{"Bolifarada Fenesuwela"}
         }
         VND{
             one{"dongta Fitnaam"}
@@ -1224,6 +1343,10 @@ so{
             one{"faranka CFA Galbeedka Afrika"}
             other{"faranka CFA Galbeedka Afrika"}
         }
+        XPF{
+            one{"Faranka CFP"}
+            other{"Faranka CFP"}
+        }
         XXX{
             one{"(halbeeg lacag aan la aqoon)"}
             other{"(Lacag aan la aqoon)"}
@@ -1245,4 +1368,5 @@ so{
         one{"{0} {1}"}
         other{"{0} {1}"}
     }
+    Version{"2.1.49.82"}
 }

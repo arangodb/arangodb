@@ -44,7 +44,7 @@ static void TestLegalAndOthers(int32_t inputsize, int32_t outputsize);
 static void TestSingleByte(int32_t inputsize, int32_t outputsize);
 static void TestEBCDIC_STATEFUL_Sub(int32_t inputsize, int32_t outputsize);
 
-/* Following will return false *only* on a mismatch. They will return true on any other error OR success, because
+/* Following will return FALSE *only* on a mismach. They will return TRUE on any other error OR success, because
  * the error would have been emitted to log_err separately. */
 
 UBool testConvertFromUnicode(const UChar *source, int sourceLen,  const uint8_t *expect, int expectLen, 

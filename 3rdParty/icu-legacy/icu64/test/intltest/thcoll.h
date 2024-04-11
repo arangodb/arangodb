@@ -27,7 +27,7 @@ public:
     CollationThaiTest();
     virtual ~CollationThaiTest();
 
-    void runIndexedTest( int32_t index, UBool exec, const char* &name, char* par = nullptr ) override;
+    void runIndexedTest( int32_t index, UBool exec, const char* &name, char* par = NULL );
     
 private:
 
@@ -36,30 +36,30 @@ private:
      * sorted order, and confirm that the collator compares each line as
      * preceding the following line.
      */
-    void TestDictionary();
+    void TestDictionary(void);
     
     /**
      * Odd corner conditions taken from "How to Sort Thai Without Rewriting Sort",
      * by Doug Cooper, http://seasrc.th.net/paper/thaisort.zip
      */
-    void TestCornerCases();
+    void TestCornerCases(void);
     
     /**
      * Read the external names list, and confirms that the collator 
      * gets the same results when comparing lines one to another
      * using regular and iterative comparison.
      */
-    void TestNamesList();
+    void TestNamesList(void);
 
     /** 
      * test that invalid Thai sorts properly
      */
-    void TestInvalidThai();
+    void TestInvalidThai(void);
 
     /** 
      * test that reording is done properly
      */
-    void TestReordering();
+    void TestReordering(void);
 
 private:
 

@@ -86,7 +86,7 @@ private:
      */
     UBool mappingHasCompBoundaryAfter(const BuilderReorderingBuffer &buffer,
                                       Norm::MappingType mappingType) const;
-    /** Returns true if the mapping by itself recomposes, that is, it is not comp-normalized. */
+    /** Returns TRUE if the mapping by itself recomposes, that is, it is not comp-normalized. */
     UBool mappingRecomposes(const BuilderReorderingBuffer &buffer) const;
     void postProcess(Norm &norm);
 

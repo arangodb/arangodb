@@ -36,8 +36,7 @@ CPPFLAGS += -I$(srcdir) -I$(top_srcdir)/common -I$(srcdir)/../toolutil
 DEFS += -DUDATA_SO_SUFFIX=\".$(SO)\" -DSTATIC_O=\"$(STATIC_O)\"
 LIBS = $(LIBICUTOOLUTIL) $(LIBICUI18N) $(LIBICUUC) $(DEFAULT_LIBS) $(LIB_M)
 
-SOURCES = $(shell cat $(srcdir)/sources.txt)
-OBJECTS = $(patsubst %.cpp,%.o,$(patsubst %.c,%.o, $(SOURCES)))
+OBJECTS = pkgdata.o pkgtypes.o
 
 DEPS = $(OBJECTS:.o=.d)
 

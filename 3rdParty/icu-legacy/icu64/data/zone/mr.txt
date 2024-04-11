@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 mr{
+    Version{"2.1.48.42"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"अबिद्जान"}
@@ -258,9 +258,6 @@ mr{
         "America:Chihuahua"{
             ec{"चिहुआहुआ"}
         }
-        "America:Ciudad_Juarez"{
-            ec{"सिउदाद हुआरेझ"}
-        }
         "America:Coral_Harbour"{
             ec{"अॅटिकोकन"}
         }
@@ -465,6 +462,9 @@ mr{
         "America:New_York"{
             ec{"न्यूयॉर्क"}
         }
+        "America:Nipigon"{
+            ec{"निपिगोन"}
+        }
         "America:Nome"{
             ec{"नोम"}
         }
@@ -485,6 +485,9 @@ mr{
         }
         "America:Panama"{
             ec{"पनामा"}
+        }
+        "America:Pangnirtung"{
+            ec{"पँगनिरतुंग"}
         }
         "America:Paramaribo"{
             ec{"पारमरीबो"}
@@ -507,6 +510,9 @@ mr{
         "America:Punta_Arenas"{
             ec{"पुंता अरीनास"}
         }
+        "America:Rainy_River"{
+            ec{"रेनी नदी"}
+        }
         "America:Rankin_Inlet"{
             ec{"रॅनकिन इनलेट"}
         }
@@ -521,6 +527,9 @@ mr{
         }
         "America:Rio_Branco"{
             ec{"रियो ब्रांको"}
+        }
+        "America:Santa_Isabel"{
+            ec{"सांता इसाबेल"}
         }
         "America:Santarem"{
             ec{"सँटारेम"}
@@ -567,6 +576,9 @@ mr{
         "America:Thule"{
             ec{"थुले"}
         }
+        "America:Thunder_Bay"{
+            ec{"थंडर उपसागर"}
+        }
         "America:Tijuana"{
             ec{"तिजुआना"}
         }
@@ -587,6 +599,9 @@ mr{
         }
         "America:Yakutat"{
             ec{"यकुतात"}
+        }
+        "America:Yellowknife"{
+            ec{"यलोनाइफ"}
         }
         "Antarctica:Casey"{
             ec{"कॅसे"}
@@ -912,6 +927,9 @@ mr{
         "Australia:Broken_Hill"{
             ec{"ब्रोकन हिल"}
         }
+        "Australia:Currie"{
+            ec{"कुह्री"}
+        }
         "Australia:Darwin"{
             ec{"डार्विन"}
         }
@@ -995,7 +1013,7 @@ mr{
             ec{"हेलसिंकी"}
         }
         "Europe:Isle_of_Man"{
-            ec{"आयल ऑफ मॅन"}
+            ec{"आइल ऑफ मॅन"}
         }
         "Europe:Istanbul"{
             ec{"इस्तंबूल"}
@@ -1094,6 +1112,9 @@ mr{
         "Europe:Ulyanovsk"{
             ec{"उल्यानोव्स्क"}
         }
+        "Europe:Uzhgorod"{
+            ec{"उझहोरोड"}
+        }
         "Europe:Vaduz"{
             ec{"वडूझ"}
         }
@@ -1115,8 +1136,11 @@ mr{
         "Europe:Zagreb"{
             ec{"झॅग्रेब"}
         }
+        "Europe:Zaporozhye"{
+            ec{"झापोरोझे"}
+        }
         "Europe:Zurich"{
-            ec{"झुरिक"}
+            ec{"झुरिच"}
         }
         "Indian:Antananarivo"{
             ec{"अंटानानारिवो"}
@@ -1196,8 +1220,8 @@ mr{
         "Pacific:Honolulu"{
             ec{"होनोलुलू"}
         }
-        "Pacific:Kanton"{
-            ec{"कँटन"}
+        "Pacific:Johnston"{
+            ec{"जोहान्स्टन"}
         }
         "Pacific:Kiritimati"{
             ec{"किरितिमाती"}
@@ -1302,7 +1326,7 @@ mr{
         }
         "meta:Amazon"{
             ld{"अ‍ॅमेझॉन उन्हाळी वेळ"}
-            lg{"अ‍ॅमेझॉन वेळ"}
+            lg{"अॅमेझॉन वेळ"}
             ls{"अ‍ॅमेझॉन प्रमाण वेळ"}
         }
         "meta:America_Central"{
@@ -1496,7 +1520,7 @@ mr{
             ls{"पूर्व युरोपियन प्रमाण वेळ"}
         }
         "meta:Europe_Further_Eastern"{
-            ls{"अग्र-पौर्वात्य युरोपीयन वेळ"}
+            ls{"अग्र-पौर्वात्य यूरोपीयन वेळ"}
         }
         "meta:Europe_Western"{
             ld{"पश्चिम युरोपियन उन्हाळी वेळ"}
@@ -1652,6 +1676,9 @@ mr{
             lg{"मकाऊ वेळ"}
             ls{"मकाऊ प्रमाणवेळ"}
         }
+        "meta:Macquarie"{
+            ls{"मॅक्वेरी बेट वेळ"}
+        }
         "meta:Magadan"{
             ld{"मॅगाडन उन्हाळी वेळ"}
             lg{"मॅगाडन वेळ"}
@@ -1676,6 +1703,11 @@ mr{
         }
         "meta:Mawson"{
             ls{"मॉसन वेळ"}
+        }
+        "meta:Mexico_Northwest"{
+            ld{"वायव्य मेक्सिको सूर्यप्रकाश वेळ"}
+            lg{"वायव्य मेक्सिको वेळ"}
+            ls{"वायव्य मेक्सिको प्रमाण वेळ"}
         }
         "meta:Mexico_Pacific"{
             ld{"मेक्सिको पॅसिफिक सूर्यप्रकाश वेळ"}
@@ -1720,9 +1752,7 @@ mr{
             ls{"न्युए वेळ"}
         }
         "meta:Norfolk"{
-            ld{"नॉरफोक बेट सूर्यप्रकाश वेळ"}
-            lg{"नॉरफोक बेट वेळ"}
-            ls{"नॉरफोक बेट प्रमाण वेळ"}
+            ls{"नॉरफोक बेट वेळ"}
         }
         "meta:Noronha"{
             ld{"फर्नांडो दी नोरोन्हा उन्हाळी वेळ"}
@@ -1906,11 +1936,10 @@ mr{
             lg{"येकतरिनबर्ग वेळ"}
             ls{"येकतरिनबर्ग प्रमाण वेळ"}
         }
-        "meta:Yukon"{
-            ls{"युकोन वेळ"}
-        }
+        fallbackFormat{"{1} ({0})"}
         gmtFormat{"[GMT]{0}"}
         gmtZeroFormat{"[GMT]"}
+        hourFormat{"+HH:mm;-HH:mm"}
         regionFormat{"{0} वेळ"}
         regionFormatDaylight{"{0} सूर्यप्रकाश वेळ"}
         regionFormatStandard{"{0} प्रमाण वेळ"}

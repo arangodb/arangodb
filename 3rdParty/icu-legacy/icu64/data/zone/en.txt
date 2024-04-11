@@ -1,8 +1,23 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 en{
+    Version{"2.1.48.65"}
     zoneStrings{
+        "Africa:Sao_Tome"{
+            ec{"São Tomé"}
+        }
+        "America:Asuncion"{
+            ec{"Asunción"}
+        }
+        "America:Curacao"{
+            ec{"Curaçao"}
+        }
+        "America:St_Barthelemy"{
+            ec{"St. Barthélemy"}
+        }
+        "Antarctica:DumontDUrville"{
+            ec{"Dumont d’Urville"}
+        }
         "Asia:Qostanay"{
             ec{"Kostanay"}
         }
@@ -18,8 +33,18 @@ en{
         "Europe:Dublin"{
             ld{"Irish Standard Time"}
         }
+        "Europe:Kiev"{
+            ec{"Kiev"}
+            ec%formal{"Kyiv"}
+        }
         "Europe:London"{
             ld{"British Summer Time"}
+        }
+        "Europe:Uzhgorod"{
+            ec{"Uzhhorod"}
+        }
+        "Indian:Reunion"{
+            ec{"Réunion"}
         }
         "Pacific:Honolulu"{
             sd{"HDT"}
@@ -316,11 +341,6 @@ en{
         "meta:Gilbert_Islands"{
             ls{"Gilbert Islands Time"}
         }
-        "meta:Greenland"{
-            ld{"Greenland Summer Time"}
-            lg{"Greenland Time"}
-            ls{"Greenland Standard Time"}
-        }
         "meta:Greenland_Eastern"{
             ld{"East Greenland Summer Time"}
             lg{"East Greenland Time"}
@@ -439,6 +459,9 @@ en{
             lg{"Macao Time"}
             ls{"Macao Standard Time"}
         }
+        "meta:Macquarie"{
+            ls{"Macquarie Island Time"}
+        }
         "meta:Magadan"{
             ld{"Magadan Summer Time"}
             lg{"Magadan Time"}
@@ -463,6 +486,11 @@ en{
         }
         "meta:Mawson"{
             ls{"Mawson Time"}
+        }
+        "meta:Mexico_Northwest"{
+            ld{"Northwest Mexico Daylight Time"}
+            lg{"Northwest Mexico Time"}
+            ls{"Northwest Mexico Standard Time"}
         }
         "meta:Mexico_Pacific"{
             ld{"Mexican Pacific Daylight Time"}
@@ -507,9 +535,7 @@ en{
             ls{"Niue Time"}
         }
         "meta:Norfolk"{
-            ld{"Norfolk Island Daylight Time"}
-            lg{"Norfolk Island Time"}
-            ls{"Norfolk Island Standard Time"}
+            ls{"Norfolk Island Time"}
         }
         "meta:Noronha"{
             ld{"Fernando de Noronha Summer Time"}
@@ -692,9 +718,6 @@ en{
             ld{"Yekaterinburg Summer Time"}
             lg{"Yekaterinburg Time"}
             ls{"Yekaterinburg Standard Time"}
-        }
-        "meta:Yukon"{
-            ls{"Yukon Time"}
         }
         fallbackFormat{"{1} ({0})"}
         gmtFormat{"GMT{0}"}

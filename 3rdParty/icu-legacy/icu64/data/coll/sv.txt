@@ -1,17 +1,10 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 sv{
+    Version{"2.1.19.14"}
     collations{
-        default{"standard"}
-        search{
-            Sequence{
-                "[import und-u-co-search]"
-                "[import sv-u-co-standard]"
-            }
-            Version{"45"}
-        }
-        standard{
+        default{"reformed"}
+        reformed{
             Sequence{
                 "&D<<đ<<<Đ<<ð<<<Ð"
                 "&t<<<þ/h"
@@ -19,9 +12,16 @@ sv{
                 "&Y<<ü<<<Ü<<ű<<<Ű"
                 "&[before 1]ǀ<å<<<Å<ä<<<Ä<<æ<<<Æ<<ę<<<Ę<ö<<<Ö<<ø<<<Ø<<ő<<<Ő<<œ<<<Œ<<ô<<<Ô"
             }
-            Version{"45"}
+            Version{"35.1"}
         }
-        traditional{
+        search{
+            Sequence{
+                "[import und-u-co-search]"
+                "[import sv-u-co-standard]"
+            }
+            Version{"35.1"}
+        }
+        standard{
             Sequence{
                 "&D<<đ<<<Đ<<ð<<<Ð"
                 "&t<<<þ/h"
@@ -30,7 +30,7 @@ sv{
                 "&Y<<ü<<<Ü<<ű<<<Ű"
                 "&[before 1]ǀ<å<<<Å<ä<<<Ä<<æ<<<Æ<<ę<<<Ę<ö<<<Ö<<ø<<<Ø<<ő<<<Ő<<œ<<<Œ<<ô<<<Ô"
             }
-            Version{"45"}
+            Version{"35.1"}
         }
     }
 }

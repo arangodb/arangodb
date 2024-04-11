@@ -36,7 +36,7 @@ static void U_CALLCONV
 _Latin1ToUnicodeWithOffsets(UConverterToUnicodeArgs *pArgs,
                             UErrorCode *pErrorCode) {
     const uint8_t *source;
-    char16_t *target;
+    UChar *target;
     int32_t targetCapacity, length;
     int32_t *offsets;
 
@@ -51,7 +51,7 @@ _Latin1ToUnicodeWithOffsets(UConverterToUnicodeArgs *pArgs,
     sourceIndex=0;
 
     /*
-     * since the conversion here is 1:1 char16_t:uint8_t, we need only one counter
+     * since the conversion here is 1:1 UChar:uint8_t, we need only one counter
      * for the minimum of the sourceLength and targetCapacity
      */
     length=(int32_t)((const uint8_t *)pArgs->sourceLimit-source);
@@ -82,7 +82,7 @@ _Latin1ToUnicodeWithOffsets(UConverterToUnicodeArgs *pArgs,
             source+=8;
         } while(--count>0);
 
-        if(offsets!=nullptr) {
+        if(offsets!=NULL) {
             do {
                 offsets[0]=sourceIndex++;
                 offsets[1]=sourceIndex++;
@@ -108,7 +108,7 @@ _Latin1ToUnicodeWithOffsets(UConverterToUnicodeArgs *pArgs,
     pArgs->target=target;
 
     /* set offsets */
-    if(offsets!=nullptr) {
+    if(offsets!=NULL) {
         while(length>0) {
             *offsets++=sourceIndex++;
             --length;
@@ -137,13 +137,13 @@ static void U_CALLCONV
 _Latin1FromUnicodeWithOffsets(UConverterFromUnicodeArgs *pArgs,
                               UErrorCode *pErrorCode) {
     UConverter *cnv;
-    const char16_t *source, *sourceLimit;
+    const UChar *source, *sourceLimit;
     uint8_t *target, *oldTarget;
     int32_t targetCapacity, length;
     int32_t *offsets;
 
     UChar32 cp;
-    char16_t c, max;
+    UChar c, max;
 
     int32_t sourceIndex;
 
@@ -168,7 +168,7 @@ _Latin1FromUnicodeWithOffsets(UConverterFromUnicodeArgs *pArgs,
     sourceIndex= cp==0 ? 0 : -1;
 
     /*
-     * since the conversion here is 1:1 char16_t:uint8_t, we need only one counter
+     * since the conversion here is 1:1 UChar:uint8_t, we need only one counter
      * for the minimum of the sourceLength and targetCapacity
      */
     length=(int32_t)(sourceLimit-source);
@@ -185,7 +185,7 @@ _Latin1FromUnicodeWithOffsets(UConverterFromUnicodeArgs *pArgs,
     /* unroll the loop with the most common case */
     if(targetCapacity>=16) {
         int32_t count, loops;
-        char16_t u, oredChars;
+        UChar u, oredChars;
 
         loops=count=targetCapacity>>4;
         do {
@@ -233,7 +233,7 @@ _Latin1FromUnicodeWithOffsets(UConverterFromUnicodeArgs *pArgs,
         count=loops-count;
         targetCapacity-=16*count;
 
-        if(offsets!=nullptr) {
+        if(offsets!=NULL) {
             oldTarget+=16*count;
             while(count>0) {
                 *offsets++=sourceIndex++;
@@ -274,7 +274,7 @@ _Latin1FromUnicodeWithOffsets(UConverterFromUnicodeArgs *pArgs,
 getTrail:
             if(source<sourceLimit) {
                 /* test the following code unit */
-                char16_t trail=*source;
+                UChar trail=*source;
                 if(U16_IS_TRAIL(trail)) {
                     ++source;
                     cp=U16_GET_SUPPLEMENTARY(cp, trail);
@@ -300,7 +300,7 @@ getTrail:
 noMoreInput:
 
     /* set offsets since the start */
-    if(offsets!=nullptr) {
+    if(offsets!=NULL) {
         size_t count=target-oldTarget;
         while(count>0) {
             *offsets++=sourceIndex++;
@@ -438,12 +438,12 @@ U_CDECL_END
 static const UConverterImpl _Latin1Impl={
     UCNV_LATIN_1,
 
-    nullptr,
-    nullptr,
+    NULL,
+    NULL,
 
-    nullptr,
-    nullptr,
-    nullptr,
+    NULL,
+    NULL,
+    NULL,
 
     _Latin1ToUnicodeWithOffsets,
     _Latin1ToUnicodeWithOffsets,
@@ -451,13 +451,13 @@ static const UConverterImpl _Latin1Impl={
     _Latin1FromUnicodeWithOffsets,
     _Latin1GetNextUChar,
 
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
     _Latin1GetUnicodeSet,
 
-    nullptr,
+    NULL,
     ucnv_Latin1FromUTF8
 };
 
@@ -465,7 +465,7 @@ static const UConverterStaticData _Latin1StaticData={
     sizeof(UConverterStaticData),
     "ISO-8859-1",
     819, UCNV_IBM, UCNV_LATIN_1, 1, 1,
-    { 0x1a, 0, 0, 0 }, 1, false, false,
+    { 0x1a, 0, 0, 0 }, 1, FALSE, FALSE,
     0,
     0,
     { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 } /* reserved */
@@ -482,7 +482,7 @@ static void U_CALLCONV
 _ASCIIToUnicodeWithOffsets(UConverterToUnicodeArgs *pArgs,
                            UErrorCode *pErrorCode) {
     const uint8_t *source, *sourceLimit;
-    char16_t *target, *oldTarget;
+    UChar *target, *oldTarget;
     int32_t targetCapacity, length;
     int32_t *offsets;
 
@@ -501,7 +501,7 @@ _ASCIIToUnicodeWithOffsets(UConverterToUnicodeArgs *pArgs,
     sourceIndex=0;
 
     /*
-     * since the conversion here is 1:1 char16_t:uint8_t, we need only one counter
+     * since the conversion here is 1:1 UChar:uint8_t, we need only one counter
      * for the minimum of the sourceLength and targetCapacity
      */
     length=(int32_t)(sourceLimit-source);
@@ -512,7 +512,7 @@ _ASCIIToUnicodeWithOffsets(UConverterToUnicodeArgs *pArgs,
     if(targetCapacity>=8) {
         /* This loop is unrolled for speed and improved pipelining. */
         int32_t count, loops;
-        char16_t oredChars;
+        UChar oredChars;
 
         loops=count=targetCapacity>>3;
         do {
@@ -536,7 +536,7 @@ _ASCIIToUnicodeWithOffsets(UConverterToUnicodeArgs *pArgs,
         count=loops-count;
         targetCapacity-=count*8;
 
-        if(offsets!=nullptr) {
+        if(offsets!=NULL) {
             oldTarget+=count*8;
             while(count>0) {
                 offsets[0]=sourceIndex++;
@@ -572,7 +572,7 @@ _ASCIIToUnicodeWithOffsets(UConverterToUnicodeArgs *pArgs,
     }
 
     /* set offsets since the start */
-    if(offsets!=nullptr) {
+    if(offsets!=NULL) {
         size_t count=target-oldTarget;
         while(count>0) {
             *offsets++=sourceIndex++;
@@ -717,12 +717,12 @@ U_CDECL_END
 static const UConverterImpl _ASCIIImpl={
     UCNV_US_ASCII,
 
-    nullptr,
-    nullptr,
+    NULL,
+    NULL,
 
-    nullptr,
-    nullptr,
-    nullptr,
+    NULL,
+    NULL,
+    NULL,
 
     _ASCIIToUnicodeWithOffsets,
     _ASCIIToUnicodeWithOffsets,
@@ -730,13 +730,13 @@ static const UConverterImpl _ASCIIImpl={
     _Latin1FromUnicodeWithOffsets,
     _ASCIIGetNextUChar,
 
-    nullptr,
-    nullptr,
-    nullptr,
-    nullptr,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
     _ASCIIGetUnicodeSet,
 
-    nullptr,
+    NULL,
     ucnv_ASCIIFromUTF8
 };
 
@@ -744,7 +744,7 @@ static const UConverterStaticData _ASCIIStaticData={
     sizeof(UConverterStaticData),
     "US-ASCII",
     367, UCNV_IBM, UCNV_US_ASCII, 1, 1,
-    { 0x1a, 0, 0, 0 }, 1, false, false,
+    { 0x1a, 0, 0, 0 }, 1, FALSE, FALSE,
     0,
     0,
     { 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0 } /* reserved */

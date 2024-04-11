@@ -35,25 +35,25 @@
 U_CAPI int32_t U_EXPORT2
 ucnv_getDisplayName(const UConverter *cnv,
                     const char *displayLocale,
-                    char16_t *displayName, int32_t displayNameCapacity,
+                    UChar *displayName, int32_t displayNameCapacity,
                     UErrorCode *pErrorCode) {
     UResourceBundle *rb;
-    const char16_t *name;
+    const UChar *name;
     int32_t length;
     UErrorCode localStatus = U_ZERO_ERROR;
 
     /* check arguments */
-    if(pErrorCode==nullptr || U_FAILURE(*pErrorCode)) {
+    if(pErrorCode==NULL || U_FAILURE(*pErrorCode)) {
         return 0;
     }
 
-    if(cnv==nullptr || displayNameCapacity<0 || (displayNameCapacity>0 && displayName==nullptr)) {
+    if(cnv==NULL || displayNameCapacity<0 || (displayNameCapacity>0 && displayName==NULL)) {
         *pErrorCode=U_ILLEGAL_ARGUMENT_ERROR;
         return 0;
     }
 
     /* open the resource bundle and get the display name string */
-    rb=ures_open(nullptr, displayLocale, pErrorCode);
+    rb=ures_open(NULL, displayLocale, pErrorCode);
     if(U_FAILURE(*pErrorCode)) {
         return 0;
     }

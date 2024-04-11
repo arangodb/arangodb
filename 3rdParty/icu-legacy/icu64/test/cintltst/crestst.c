@@ -24,9 +24,7 @@
 #include "cmemory.h"
 #include "cstring.h"
 #include "filestrm.h"
-#include <stdbool.h>
 #include <stdlib.h>
-#include <stdio.h>  // for snprintf()
 
 #define RESTEST_HEAP_CHECK 0
 
@@ -36,11 +34,10 @@
 #include "uresimp.h"
 
 static void TestOpenDirect(void);
+static void TestOpenDirectFillIn(void);
 static void TestFallback(void);
 static void TestTable32(void);
 static void TestFileStream(void);
-static void TestAlgorithmicParentFallback(void);
-    
 /*****************************************************************************/
 
 const UChar kERROR[] = { 0x0045 /*E*/, 0x0052 /*'R'*/, 0x0052 /*'R'*/,
@@ -58,23 +55,9 @@ enum E_Where
 typedef enum E_Where E_Where;
 /*****************************************************************************/
 
-#define CONFIRM_EQ(actual,expected) UPRV_BLOCK_MACRO_BEGIN { \
-    if (u_strcmp(expected,actual)==0) { \
-        record_pass(); \
-    } else { \
-        record_fail(); \
-        log_err("%s  returned  %s  instead of %s\n", action, austrdup(actual), austrdup(expected)); \
-    } \
-} UPRV_BLOCK_MACRO_END
+#define CONFIRM_EQ(actual,expected) if (u_strcmp(expected,actual)==0){ record_pass(); } else { record_fail(); log_err("%s  returned  %s  instead of %s\n", action, austrdup(actual), austrdup(expected)); }
 
-#define CONFIRM_ErrorCode(actual,expected) UPRV_BLOCK_MACRO_BEGIN { \
-    if ((expected)==(actual)) { \
-        record_pass(); \
-    } else { \
-        record_fail(); \
-        log_err("%s returned  %s  instead of %s\n", action, myErrorName(actual), myErrorName(expected)); \
-    } \
-} UPRV_BLOCK_MACRO_END
+#define CONFIRM_ErrorCode(actual,expected) if ((expected)==(actual)) { record_pass(); } else { record_fail();  log_err("%s returned  %s  instead of %s\n", action, myErrorName(actual), myErrorName(expected)); }
 
 
 /* Array of our test objects */
@@ -92,12 +75,12 @@ static struct
   /* "IN" means inherits */
   /* "NE" or "ne" means "does not exist" */
 
-  { "root",         U_ZERO_ERROR,             e_Root,    { true, false, false }, { true, false, false } },
-  { "te",           U_ZERO_ERROR,             e_te,      { false, true, false }, { true, true, false } },
-  { "te_IN",        U_ZERO_ERROR,             e_te_IN,   { false, false, true }, { true, true, true } },
-  { "te_NE",        U_USING_FALLBACK_WARNING, e_te,      { false, true, false }, { true, true, false } },
-  { "te_IN_NE",     U_USING_FALLBACK_WARNING, e_te_IN,   { false, false, true }, { true, true, true } },
-  { "ne",           U_USING_DEFAULT_WARNING,  e_Root,    { true, false, false }, { true, false, false } }
+  { "root",         U_ZERO_ERROR,             e_Root,    { TRUE, FALSE, FALSE }, { TRUE, FALSE, FALSE } },
+  { "te",           U_ZERO_ERROR,             e_te,      { FALSE, TRUE, FALSE }, { TRUE, TRUE, FALSE } },
+  { "te_IN",        U_ZERO_ERROR,             e_te_IN,   { FALSE, FALSE, TRUE }, { TRUE, TRUE, TRUE } },
+  { "te_NE",        U_USING_FALLBACK_WARNING, e_te,      { FALSE, TRUE, FALSE }, { TRUE, TRUE, FALSE } },
+  { "te_IN_NE",     U_USING_FALLBACK_WARNING, e_te_IN,   { FALSE, FALSE, TRUE }, { TRUE, TRUE, TRUE } },
+  { "ne",           U_USING_DEFAULT_WARNING,  e_Root,    { TRUE, FALSE, FALSE }, { TRUE, FALSE, FALSE } }
 };
 
 static int32_t bundles_count = UPRV_LENGTHOF(param);
@@ -115,6 +98,7 @@ void addResourceBundleTest(TestNode** root)
 #if !UCONFIG_NO_FILE_IO && !UCONFIG_NO_LEGACY_CONVERSION
     addTest(root, &TestConstruction1, "tsutil/crestst/TestConstruction1");
     addTest(root, &TestOpenDirect, "tsutil/crestst/TestOpenDirect");
+    addTest(root, &TestOpenDirectFillIn, "tsutil/crestst/TestOpenDirectFillIn");
     addTest(root, &TestResourceBundles, "tsutil/crestst/TestResourceBundles");
     addTest(root, &TestTable32, "tsutil/crestst/TestTable32");
     addTest(root, &TestFileStream, "tsutil/crestst/TestFileStream");
@@ -123,7 +107,6 @@ void addResourceBundleTest(TestNode** root)
 #endif
     addTest(root, &TestFallback, "tsutil/crestst/TestFallback");
     addTest(root, &TestAliasConflict, "tsutil/crestst/TestAliasConflict");
-    addTest(root, &TestAlgorithmicParentFallback, "tsutil/crestst/TestAlgorithmicParentFallback");
 
 }
 
@@ -150,17 +133,8 @@ void TestAliasConflict(void) {
 }
 
 
-void TestResourceBundles(void)
+void TestResourceBundles()
 {
-    // The test expectation only works if the default locale is not one of the
-    // locale bundle in the testdata which have those info. Therefore, we skip
-    // the test if the default locale is te, sh, mc, or them with subtags.
-    if (    uprv_strncmp(uloc_getDefault(), "te", 2) == 0 ||
-            uprv_strncmp(uloc_getDefault(), "sh", 2) == 0 ||
-            uprv_strncmp(uloc_getDefault(), "mc", 2) == 0) {
-        return;
-    }
-
     UErrorCode status = U_ZERO_ERROR;
     loadTestData(&status);
     if(U_FAILURE(status)) {
@@ -168,19 +142,19 @@ void TestResourceBundles(void)
         return;
     }
 
-    testTag("only_in_Root", true, false, false);
-    testTag("in_Root_te", true, true, false);
-    testTag("in_Root_te_te_IN", true, true, true);
-    testTag("in_Root_te_IN", true, false, true);
-    testTag("only_in_te", false, true, false);
-    testTag("only_in_te_IN", false, false, true);
-    testTag("in_te_te_IN", false, true, true);
-    testTag("nonexistent", false, false, false);
+    testTag("only_in_Root", TRUE, FALSE, FALSE);
+    testTag("in_Root_te", TRUE, TRUE, FALSE);
+    testTag("in_Root_te_te_IN", TRUE, TRUE, TRUE);
+    testTag("in_Root_te_IN", TRUE, FALSE, TRUE);
+    testTag("only_in_te", FALSE, TRUE, FALSE);
+    testTag("only_in_te_IN", FALSE, FALSE, TRUE);
+    testTag("in_te_te_IN", FALSE, TRUE, TRUE);
+    testTag("nonexistent", FALSE, FALSE, FALSE);
 
     log_verbose("Passed:=  %d   Failed=   %d \n", pass, fail);
 }
 
-void TestConstruction1(void)
+void TestConstruction1()
 {
     UResourceBundle *test1 = 0, *test2 = 0;
     const UChar *result1, *result2;
@@ -302,7 +276,7 @@ UBool testTag(const char* frag,
     {
         ures_close(theBundle);
         log_err("Couldn't open root bundle in %s", testdatapath);
-        return false;
+        return FALSE;
     }
     ures_close(theBundle);
     theBundle = NULL;
@@ -431,12 +405,12 @@ UBool testTag(const char* frag,
     return (UBool)(passNum == pass);
 }
 
-void record_pass(void)
+void record_pass()
 {
   ++pass;
 }
 
-void record_fail(void)
+void record_fail()
 {
   ++fail;
 }
@@ -446,7 +420,7 @@ void record_fail(void)
  * are set correctly
  */
 
-static void TestFallback(void)
+static void TestFallback()
 {
     UErrorCode status = U_ZERO_ERROR;
     UResourceBundle *fr_FR = NULL;
@@ -499,7 +473,7 @@ static void TestFallback(void)
 
 static void
 TestOpenDirect(void) {
-    UResourceBundle *idna_rules, *casing, *te_IN, *ne, *item, *defaultLocale;
+    UResourceBundle *idna_rules, *casing, *te_IN, *ne, *item;
     UErrorCode errorCode;
 
     /*
@@ -560,7 +534,7 @@ TestOpenDirect(void) {
     }
     ures_close(idna_rules);
 
-    errorCode = U_USING_FALLBACK_WARNING;
+    errorCode = U_USING_FALLBACK_WARNING;;
     idna_rules=ures_openDirect("testdata", "idna_rules", &errorCode);
     if(U_FAILURE(errorCode)) {
         log_data_err("ures_openDirect(\"idna_rules\") failed when U_USING_FALLBACK_WARNING was set prior to call: %s\n", u_errorName(errorCode));
@@ -607,19 +581,16 @@ TestOpenDirect(void) {
     ures_close(casing);
 
     /*
-     * verify that ures_open("ne") finds the root bundle or default locale
-     * bundle but ures_openDirect("ne") does not.
+     * verify that ures_open("ne") finds the root bundle but
+     * ures_openDirect("ne") does not
      */
     errorCode=U_ZERO_ERROR;
     ne=ures_open("testdata", "ne", &errorCode);
     if(U_FAILURE(errorCode)) {
         log_data_err("ures_open(\"ne\") failed (expected to get root): %s\n", u_errorName(errorCode));
     }
-    if(    errorCode!=U_USING_DEFAULT_WARNING ||
-           (0!=uprv_strcmp("root", ures_getLocale(ne, &errorCode)) &&
-            0!=uprv_strcmp(uloc_getDefault(), ures_getLocale(ne, &errorCode)))) {
-        log_err("ures_open(\"ne\") found something other than \"root\" "
-                "or default locale \"%s\" - %s\n", uloc_getDefault(), u_errorName(errorCode));
+    if(errorCode!=U_USING_DEFAULT_WARNING || 0!=uprv_strcmp("root", ures_getLocale(ne, &errorCode))) {
+        log_err("ures_open(\"ne\") found something other than \"root\" - %s\n", u_errorName(errorCode));
     }
     ures_close(ne);
 
@@ -644,12 +615,47 @@ TestOpenDirect(void) {
         ures_close(item);
     }
     ures_close(te_IN);
+}
 
-    // ICU-21705
-    // Verify that calling ures_openDirect() with a NULL localeID doesn't crash or assert.
-    errorCode = U_ZERO_ERROR;
-    defaultLocale = ures_openDirect(NULL, NULL, &errorCode);
-    ures_close(defaultLocale);
+static void
+TestOpenDirectFillIn(void) {
+    // Test that ures_openDirectFillIn() opens a stack allocated resource bundle, similar to ures_open().
+    // Since ures_openDirectFillIn is just a wrapper function, this is just a very basic test copied from
+    // the TestOpenDirect test above.
+    UErrorCode errorCode = U_ZERO_ERROR;
+    UResourceBundle *item;
+    UResourceBundle idna_rules;
+    ures_initStackObject(&idna_rules);
+
+    ures_openDirectFillIn(&idna_rules, loadTestData(&errorCode), "idna_rules", &errorCode);
+    if(U_FAILURE(errorCode)) {
+        log_data_err("ures_openDirectFillIn(\"idna_rules\") failed: %s\n", u_errorName(errorCode));
+        return;
+    }
+
+    if(0!=uprv_strcmp("idna_rules", ures_getLocale(&idna_rules, &errorCode))) {
+        log_err("ures_openDirectFillIn(\"idna_rules\").getLocale()!=idna_rules\n");
+    }
+    errorCode=U_ZERO_ERROR;
+
+    /* try an item in idna_rules, must work */
+    item=ures_getByKey(&idna_rules, "UnassignedSet", NULL, &errorCode);
+    if(U_FAILURE(errorCode)) {
+        log_err("translit_index.getByKey(local key) failed: %s\n", u_errorName(errorCode));
+        errorCode=U_ZERO_ERROR;
+    } else {
+        ures_close(item);
+    }
+
+    /* try an item in root, must fail */
+    item=ures_getByKey(&idna_rules, "ShortLanguage", NULL, &errorCode);
+    if(U_FAILURE(errorCode)) {
+        errorCode=U_ZERO_ERROR;
+    } else {
+        log_err("idna_rules.getByKey(root key) succeeded!\n");
+        ures_close(item);
+    }
+    ures_close(&idna_rules);
 }
 
 static int32_t
@@ -1053,76 +1059,4 @@ static void TestGetLocaleByType(void) {
         ures_close(rb);
     }
     ures_close(res);
-}
-
-static void TestAlgorithmicParentFallback(void) {
-    // Test for ICU-21125 and ICU-21126 -- cases where resource fallback isn't determined by lopping fields off
-    // the end of the locale ID (or following a %%Parent directive in a resource bundle)
-    // first column is input locale, second column is expected output locale
-    const char* testCases[] = {
-        "de_Latn_LI", "de_LI",   "de_LI",
-//        "en_VA",      "en_150",  "en",// TODO: put this back in after https://unicode-org.atlassian.net/browse/CLDR-15893 is fixed
-        "yi_Latn_DE", "root",    "yi",
-        "yi_Hebr_DE", "yi",      "yi",
-        "zh_Hant_SG", "zh_Hant", "zh_Hant"
-        // would be nice to test that sr_Latn_ME falls back to sr_Latn, or sr_ME to sr_Latn_ME,
-        // or sr_Latn to root, but all of these resource bundle files actually exist in the project
-    };
-    
-    // fallbacks to "root" in the table above actually fall back to the system default locale.
-    // Trying to compare the locale ID from the resource bundle we get back to uloc_getDefault()
-    // has all kinds of problems, so instead we open a resource bundle with a locale ID that we know
-    // will fall back to the default, save THAT resource bundle's locale ID, and just compare anything
-    // that's supposed to fall back to "root" to THAT.  (If trying to determine the default locale
-    // in this way fails for some reason, we dump out and don't do the rest of the test.)
-    UErrorCode err = U_ZERO_ERROR;
-    UResourceBundle* defaultLocaleRB = ures_open(NULL, "xx_YY", &err);
-    const char* defaultLocaleID = ures_getLocaleByType(defaultLocaleRB, ULOC_ACTUAL_LOCALE, &err);
-    if (U_FAILURE(err)) {
-        log_err("Couldn't create resource bundle for default locale: %s\n", u_errorName(err));
-        return;
-    }
-    // (can't close defaultLocaleRB here because then defaultLocaleID would go bad)
-    
-    for (int32_t i = 0; i < UPRV_LENGTHOF(testCases); i += 3) {
-        const char* testLocale = testCases[i];
-        const char* regularExpected = testCases[i + 1];
-        const char* noDefaultExpected = testCases[i + 2];
-        
-        err = U_ZERO_ERROR;
-        UResourceBundle* regularRB = ures_open(NULL, testLocale, &err);
-        char errorMessage[200];
-        
-        snprintf(errorMessage, sizeof(errorMessage), "Error %s opening resource bundle for locale %s and URES_OPEN_LOCALE_DEFAULT_ROOT", u_errorName(err), testLocale);
-        if (assertSuccess(errorMessage, &err)) {
-            const char* resourceLocale = ures_getLocaleByType(regularRB, ULOC_ACTUAL_LOCALE, &err);
-            
-            snprintf(errorMessage, sizeof(errorMessage), "Error %s getting resource locale for locale %s and URES_OPEN_LOCALE_DEFAULT_ROOT", u_errorName(err), testLocale);
-            if (assertSuccess(errorMessage, &err)) {
-                snprintf(errorMessage, sizeof(errorMessage), "Mismatch for locale %s and URES_OPEN_LOCALE_DEFAULT_ROOT", testLocale);
-                if (uprv_strcmp(regularExpected, "root") == 0) {
-                    assertEquals(errorMessage, defaultLocaleID, resourceLocale);
-                } else {
-                    assertEquals(errorMessage, regularExpected, resourceLocale);
-                }
-            }
-        }
-        ures_close(regularRB);
-
-        err = U_ZERO_ERROR;
-        UResourceBundle* noDefaultRB = ures_openNoDefault(NULL, testLocale, &err);
-        
-        snprintf(errorMessage, sizeof(errorMessage), "Error %s opening resource bundle for locale %s and URES_OPEN_LOCALE_ROOT", u_errorName(err), testLocale);
-        if (assertSuccess(errorMessage, &err)) {
-            const char* resourceLocale = ures_getLocaleByType(noDefaultRB, ULOC_ACTUAL_LOCALE, &err);
-            
-            snprintf(errorMessage, sizeof(errorMessage), "Error %s getting resource locale for locale %s and URES_OPEN_LOCALE_ROOT", u_errorName(err), testLocale);
-            if (assertSuccess(errorMessage, &err)) {
-                snprintf(errorMessage, sizeof(errorMessage), "Mismatch for locale %s and URES_OPEN_LOCALE_ROOT", testLocale);
-                assertEquals(errorMessage, noDefaultExpected, resourceLocale);
-            }
-        }
-        ures_close(noDefaultRB);
-    }
-    ures_close(defaultLocaleRB);
 }

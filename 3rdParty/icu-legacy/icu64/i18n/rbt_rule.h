@@ -108,7 +108,7 @@ private:
     UnicodeFunctor** segments;
 
     /**
-     * The number of elements in segments[] or zero if segments is nullptr.
+     * The number of elements in segments[] or zero if segments is NULL.
      */
     int32_t segmentsCount;
 
@@ -172,9 +172,9 @@ public:
      *                       segments, or null if there are none.  The array itself is adopted,
      *                       but the pointers within it are not.
      * @param segsCount      number of elements in segs[].
-     * @param anchorStart    true if the the rule is anchored on the left to
+     * @param anchorStart    TRUE if the the rule is anchored on the left to
      *                       the context start.
-     * @param anchorEnd      true if the rule is anchored on the right to the
+     * @param anchorEnd      TRUE if the rule is anchored on the right to the
      *                       context limit.
      * @param data           the rule data.
      * @param status         Output parameter filled in with success or failure status.
@@ -217,7 +217,7 @@ public:
      * anchors work.
      * @return    the preceding context length.
      */
-    virtual int32_t getContextLength() const;
+    virtual int32_t getContextLength(void) const;
 
     /**
      * Internal method.  Returns 8-bit index value for this rule.
@@ -267,11 +267,11 @@ public:
      * 
      * @param text the text
      * @param pos the position indices
-     * @param incremental if true, test for partial matches that may
+     * @param incremental if TRUE, test for partial matches that may
      * be completed by additional text inserted at pos.limit.
      * @return one of <code>U_MISMATCH</code>,
      * <code>U_PARTIAL_MATCH</code>, or <code>U_MATCH</code>.  If
-     * incremental is false then U_PARTIAL_MATCH will not be returned.
+     * incremental is FALSE then U_PARTIAL_MATCH will not be returned.
      */
     UMatchDegree matchAndReplace(Replaceable& text,
                                  UTransPosition& pos,

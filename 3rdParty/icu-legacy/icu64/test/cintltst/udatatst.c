@@ -31,9 +31,8 @@
 #include "cintltst.h"
 #include "ubrkimpl.h"
 #include "toolutil.h" /* for uprv_fileExists() */
-#include <stdbool.h>
-#include <stdio.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 /* includes for TestSwapData() */
 #include "udataswp.h"
@@ -117,7 +116,7 @@ static void lots_of_mallocs()
 #endif
 
 #if !UCONFIG_NO_FILE_IO && !UCONFIG_NO_LEGACY_CONVERSION
-static void TestUDataOpen(void){
+static void TestUDataOpen(){
     UDataMemory *result;
     UErrorCode status=U_ZERO_ERROR;
     const char* memMap[][2]={
@@ -442,7 +441,7 @@ static const ICU_COMMON_Data_Header gEmptyHeader = {
 };
 
 
-static void TestUDataSetAppData(void){
+static void TestUDataSetAppData(){
 /*    UDataMemory      *dataItem;*/
 
     UErrorCode        status=U_ZERO_ERROR;
@@ -497,7 +496,7 @@ static void TestUDataSetAppData(void){
         dataItem = udata_open("appData1", "res", "te_IN", &status); **/
 }
 
-static char *safeGetICUDataDirectory(void) {
+static char *safeGetICUDataDirectory() {
     const char *dataDir = u_getDataDirectory();  /* Returned string vanashes with u_cleanup */
     char *retStr = NULL;
     if (dataDir != NULL) {
@@ -507,7 +506,7 @@ static char *safeGetICUDataDirectory(void) {
     return retStr;
 }
     
-static void TestUDataFileAccess(void){
+static void TestUDataFileAccess(){
     UErrorCode status;
     char            *icuDataDir;
     icuDataDir = safeGetICUDataDirectory();   /* save icu data dir, so we can put it back
@@ -559,7 +558,6 @@ static UBool U_CALLCONV
 isAcceptable1(void *context,
              const char *type, const char *name,
              const UDataInfo *pInfo) {
-    (void)context; // suppress compiler warnings about unused variable
 
     if( pInfo->size>=20 &&
         pInfo->isBigEndian==U_IS_BIG_ENDIAN &&
@@ -570,10 +568,10 @@ isAcceptable1(void *context,
         pInfo->dataFormat[3]==0x6c &&
         pInfo->formatVersion[0]==3 )
     {
-        log_verbose("The data from \"%s.%s\" IS acceptable using the verifying function isAcceptable1()\n", name, type);
-        return true;
+        log_verbose("The data from \"%s.%s\" IS acceptable using the verifing function isAcceptable1()\n", name, type);
+        return TRUE;
     } else {
-        log_verbose("The data from \"%s.%s\" IS NOT acceptable using the verifying function isAcceptable1():-\n"
+        log_verbose("The data from \"%s.%s\" IS NOT acceptable using the verifing function isAcceptable1():-\n"
             "\tsize              = %d\n"
             "\tisBigEndian       = %d\n"
             "\tcharsetFamily     = %d\n"
@@ -583,8 +581,8 @@ isAcceptable1(void *context,
             name, type, pInfo->size,  pInfo->isBigEndian, pInfo->charsetFamily, pInfo->formatVersion[0], 
             pInfo->dataVersion[0], pInfo->dataFormat[0], pInfo->dataFormat[1], pInfo->dataFormat[2], 
             pInfo->dataFormat[3]);  
-        log_verbose("Call another verifying function to accept the data\n");
-        return false;
+        log_verbose("Call another verifing function to accept the data\n");
+        return FALSE;
     }
 }
 
@@ -592,7 +590,6 @@ static UBool U_CALLCONV
 isAcceptable2(void *context, 
              const char *type, const char *name,
       const UDataInfo *pInfo){
-    (void)context; // suppress compiler warnings about unused variable
     UVersionInfo unicodeVersion;
 
     u_getUnicodeVersion(unicodeVersion);
@@ -607,12 +604,12 @@ isAcceptable2(void *context,
         pInfo->formatVersion[0]==1 &&
         pInfo->dataVersion[0]==unicodeVersion[0] )
     {
-        log_verbose("The data from \"%s.%s\" IS acceptable using the verifying function isAcceptable2()\n", name, type);
-        return true;
+        log_verbose("The data from \"%s.%s\" IS acceptable using the verifing function isAcceptable2()\n", name, type);
+        return TRUE;
     } else {
-        log_verbose("The data from \"%s.%s\" IS NOT acceptable using the verifying function isAcceptable2()\n", name, type);
+        log_verbose("The data from \"%s.%s\" IS NOT acceptable using the verifing function isAcceptable2()\n", name, type);
 
-        return false;
+        return FALSE;
     }
 
 
@@ -621,7 +618,6 @@ static UBool U_CALLCONV
 isAcceptable3(void *context, 
              const char *type, const char *name,
              const UDataInfo *pInfo){
-    (void)context; // suppress compiler warnings about unused variable
 
     if( pInfo->size>=20 &&
         pInfo->isBigEndian==U_IS_BIG_ENDIAN &&
@@ -632,19 +628,19 @@ isAcceptable3(void *context,
         pInfo->dataFormat[3]==0x74 &&
         pInfo->formatVersion[0]==1 &&
         pInfo->dataVersion[0]==1   ) {
-        log_verbose("The data from \"%s.%s\" IS acceptable using the verifying function isAcceptable3()\n", name, type);
+        log_verbose("The data from \"%s.%s\" IS acceptable using the verifing function isAcceptable3()\n", name, type);
 
-        return true;
+        return TRUE;
     } else {
-        log_verbose("The data from \"%s.%s\" IS NOT acceptable using the verifying function isAcceptable3()\n", name, type);
-        return false;
+        log_verbose("The data from \"%s.%s\" IS NOT acceptable using the verifing function isAcceptable3()\n", name, type);
+        return FALSE;
     }
 
 
 }
 
 #if !UCONFIG_NO_FILE_IO && !UCONFIG_NO_LEGACY_CONVERSION
-static void TestUDataOpenChoiceDemo1(void) {
+static void TestUDataOpenChoiceDemo1() {
     UDataMemory *result;
     UErrorCode status=U_ZERO_ERROR;
 
@@ -732,19 +728,19 @@ isAcceptable(void *context,
         pInfo->formatVersion[0]==1 &&
         pInfo->dataVersion[0]==1   &&
         *((int*)context) == 2 ) {
-        log_verbose("The data from\"%s.%s\" IS acceptable using the verifying function isAcceptable()\n", name, type);
+        log_verbose("The data from\"%s.%s\" IS acceptable using the verifing function isAcceptable()\n", name, type);
 
-        return true;
+        return TRUE;
     } else {
-        log_verbose("The data from \"%s.%s\" IS NOT acceptable using the verifying function isAcceptable()\n", name, type);
-        return false;
+        log_verbose("The data from \"%s.%s\" IS NOT acceptable using the verifing function isAcceptable()\n", name, type);
+        return FALSE;
     }
 }
 
 
 /* This test checks to see if the isAcceptable function is being called correctly. */
 
-static void TestUDataOpenChoiceDemo2(void) {
+static void TestUDataOpenChoiceDemo2() {
     UDataMemory *result;
     UErrorCode status=U_ZERO_ERROR;
     int i;
@@ -791,7 +787,7 @@ static void TestUDataOpenChoiceDemo2(void) {
     }
 }
 
-static void TestUDataGetInfo(void) {
+static void TestUDataGetInfo() {
 
     UDataMemory *result;
     /* UDataInfo cf. udata.h */
@@ -868,7 +864,7 @@ static void TestUDataGetInfo(void) {
     udata_close(result);
 }
 
-static void TestUDataGetMemory(void) {
+static void TestUDataGetMemory() {
 
     UDataMemory *result;
     const int32_t *table=NULL;
@@ -916,7 +912,7 @@ static void TestUDataGetMemory(void) {
 
 }
 
-static void TestErrorConditions(void){
+static void TestErrorConditions(){
 
     UDataMemory *result=NULL;
     UErrorCode status=U_ZERO_ERROR;
@@ -1033,7 +1029,7 @@ static void TestErrorConditions(void){
 }
 
 /* Test whether apps and ICU can each have their own root.res */
-static void TestAppData(void)
+static void TestAppData()
 {
     UResourceBundle *icu, *app;
     UResourceBundle *tmp = NULL;
@@ -1121,7 +1117,7 @@ static void TestAppData(void)
 }
 #endif
 
-static void TestICUDataName(void)
+static void TestICUDataName()
 {
     UVersionInfo icuVersion;
     char expectDataName[20];
@@ -1157,7 +1153,7 @@ static void TestICUDataName(void)
     }
 
     /* Only major number is needed. */
-    snprintf(expectDataName, sizeof(expectDataName), "%s%d%c",
+    sprintf(expectDataName, "%s%d%c",
                 "icudt",
                 (int)icuVersion[0],
                 typeChar);
@@ -1237,8 +1233,7 @@ static const struct {
 
     {0x31, 0x31, 0x31, 0x31},     /* dataFormat="1111" */
     {0, 0, 0, 0},                 /* formatVersion */
-    {0, 0, 0, 0}},                /* dataVersion */
-    0
+    {0, 0, 0, 0}}                 /* dataVersion */
 };
 #endif
 
@@ -1333,7 +1328,7 @@ static const struct {
     /* EUC-TW (3-byte) conversion table file without extension */
     {"ibm-964_P110-1999",        "cnv", ucnv_swap},
     /* GB 18030 (4-byte) conversion table file without extension */
-    {"gb18030-2022",             "cnv", ucnv_swap},
+    {"gb18030",                  "cnv", ucnv_swap},
     /* MBCS conversion table file with extension */
     {"*test4x",                  "cnv", ucnv_swap},
     /*
@@ -1354,7 +1349,7 @@ static const struct {
 
 #if !UCONFIG_NO_BREAK_ITERATION
     {"char",                     "brk", ubrk_swap},
-    {"laodict",                  "dict",udict_swap},
+    {"thaidict",                 "dict",udict_swap},
 #endif
 
 #if 0
@@ -1400,7 +1395,6 @@ static const struct {
 
 static void U_CALLCONV
 printError(void *context, const char *fmt, va_list args) {
-    (void)context; // suppress compiler warnings about unused variable
     vlog_info("[swap] ", fmt, args);
     log_err("\n");  /* Register error */
 }
@@ -1626,12 +1620,12 @@ TestSwapCase(UDataMemory *pData, const char *name,
 
 static void U_CALLCONV
 printErrorToString(void *context, const char *fmt, va_list args) {
-    vsnprintf((char *)context, 100, fmt, args);
+    vsprintf((char *)context, fmt, args);
 }
 
 #if !UCONFIG_NO_FILE_IO && !UCONFIG_NO_LEGACY_CONVERSION
 static void
-TestSwapData(void) {
+TestSwapData() {
     char name[100];
     UDataSwapper *ds;
     UDataMemory *pData;
@@ -1747,7 +1741,7 @@ TestSwapData(void) {
 }
 #endif
 
-static void PointerTableOfContents(void) {
+static void PointerTableOfContents() {
     UDataMemory      *dataItem;
     UErrorCode        status=U_ZERO_ERROR;
        
@@ -1858,7 +1852,7 @@ static void TestTZDataDir(void) {
     //     whatever/.../testdata/out/testdata
     // The test data puts an old (2014a) version of the time zone data there.
 
-    // Switch ICU to the testdata version of zoneinfo64.res, which is version 2014a.
+    // Switch ICU to the testdata version of zoneinfo64.res, which is verison 2014a.
     ctest_resetICU();
     u_setTimeZoneFilesDirectory(testDataPath, &status);
     tzDataVersion = ucal_getTZDataVersion(&status);

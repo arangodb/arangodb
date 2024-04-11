@@ -53,16 +53,16 @@ uspoof_openFromSource(const char *confusables,  int32_t confusablesLen,
                       int32_t *errorType, UParseError *pe, UErrorCode *status) {
     uspoof_internalInitStatics(status);
     if (U_FAILURE(*status)) {
-        return nullptr;
+        return NULL;
     }
 #if UCONFIG_NO_REGULAR_EXPRESSIONS 
     *status = U_UNSUPPORTED_ERROR;      
-    return nullptr;
+    return NULL;
 #else
-    if (errorType!=nullptr) {
+    if (errorType!=NULL) {
         *errorType = 0;
     }
-    if (pe != nullptr) {
+    if (pe != NULL) {
         pe->line = 0;
         pe->offset = 0;
         pe->preContext[0] = 0;
@@ -72,26 +72,26 @@ uspoof_openFromSource(const char *confusables,  int32_t confusablesLen,
     // Set up a shell of a spoof detector, with empty data.
     SpoofData *newSpoofData = new SpoofData(*status);
 
-    if (newSpoofData == nullptr) {
+    if (newSpoofData == NULL) {
         *status = U_MEMORY_ALLOCATION_ERROR;
-        return nullptr;
+        return NULL;
     }
 
     if (U_FAILURE(*status)) {
         delete newSpoofData;
-        return nullptr;
+        return NULL;
     }
     SpoofImpl *This = new SpoofImpl(newSpoofData, *status);
 
-    if (This == nullptr) {
+    if (This == NULL) {
         *status = U_MEMORY_ALLOCATION_ERROR;
         delete newSpoofData; // explicit delete as the destructor for SpoofImpl won't be called.
-        return nullptr;
+        return NULL;
     }
 
     if (U_FAILURE(*status)) {
         delete This; // no delete for newSpoofData, as the SpoofImpl destructor will delete it.
-        return nullptr;
+        return NULL;
     }
 
     // Compile the binary data from the source (text) format.
@@ -99,7 +99,7 @@ uspoof_openFromSource(const char *confusables,  int32_t confusablesLen,
     
     if (U_FAILURE(*status)) {
         delete This;
-        This = nullptr;
+        This = NULL;
     }
     return (USpoofChecker *)This;
 #endif // UCONFIG_NO_REGULAR_EXPRESSIONS 

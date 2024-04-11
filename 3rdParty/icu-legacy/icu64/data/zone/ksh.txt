@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ksh{
+    Version{"2.1.47.82"}
     zoneStrings{
         "Africa:Cairo"{
             ec{"Kaijro"}
@@ -240,6 +240,9 @@ ksh{
         "Europe:Tirane"{
             ec{"Tiraana"}
         }
+        "Europe:Uzhgorod"{
+            ec{"Uschjorod"}
+        }
         "Europe:Vatican"{
             ec{"der Vatikahn"}
         }
@@ -254,6 +257,9 @@ ksh{
         }
         "Europe:Zagreb"{
             ec{"Sagreb"}
+        }
+        "Europe:Zaporozhye"{
+            ec{"Saporischschja"}
         }
         "Europe:Zurich"{
             ec{"Züresch"}
@@ -338,6 +344,9 @@ ksh{
         "meta:Seychelles"{
             ls{"Zigg vun de Seischälle"}
         }
+        fallbackFormat{"{1} ({0})"}
+        gmtFormat{"GMT{0}"}
+        hourFormat{"+HH:mm;-HH:mm"}
         regionFormat{"Zick vun {0}"}
         regionFormatDaylight{"Summerzick vun {0}"}
         regionFormatStandard{"Schtandattzick vun {0}"}

@@ -25,19 +25,19 @@
 class DateFormatRoundTripTest : public IntlTest {    
     
     // IntlTest override
-    void runIndexedTest( int32_t index, UBool exec, const char* &name, char* par ) override;
+    void runIndexedTest( int32_t index, UBool exec, const char* &name, char* par );
 
 public:
     DateFormatRoundTripTest();
     virtual ~DateFormatRoundTripTest();
     
-    void TestDateFormatRoundTrip();
-    void TestCentury();
+    void TestDateFormatRoundTrip(void);
+    void TestCentury(void);
     void test(const Locale& loc);
-    void test(DateFormat *fmt, const Locale &origLocale, UBool timeOnly = false );
+    void test(DateFormat *fmt, const Locale &origLocale, UBool timeOnly = FALSE );
     int32_t getField(UDate d, int32_t f);
     UnicodeString& escape(const UnicodeString& src, UnicodeString& dst);
-    UDate generateDate(); 
+    UDate generateDate(void); 
     UDate generateDate(UDate minDate); 
 
 
@@ -86,7 +86,7 @@ private:
     static int32_t TRIALS;
     static int32_t DEPTH;
 
-    UBool optionv; // true if @v option is given on command line
+    UBool optionv; // TRUE if @v option is given on command line
     SimpleDateFormat *dateFormat;
     UnicodeString fgStr;
     Calendar *getFieldCal;

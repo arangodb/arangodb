@@ -30,7 +30,7 @@ class DataDrivenNumberFormatTestSuite : public IntlTest {
  public:
      DataDrivenNumberFormatTestSuite() {
          for (int32_t i = 0; i < UPRV_LENGTHOF(fPreviousFormatters); ++i) {
-             fPreviousFormatters[i] = nullptr;
+             fPreviousFormatters[i] = NULL;
          }
      }
 
@@ -39,7 +39,7 @@ class DataDrivenNumberFormatTestSuite : public IntlTest {
       *
       * @param fileName is the name of the file in the source/test/testdata.
       *  This should be just a filename such as "numberformattest.txt"
-      * @param runAllTests If true, runs every test in fileName. if false,
+      * @param runAllTests If TRUE, runs every test in fileName. if FALSE,
       *  skips the tests that are known to break for ICU4C.
       */
      void run(const char *fileName, UBool runAllTests);
@@ -53,7 +53,7 @@ class DataDrivenNumberFormatTestSuite : public IntlTest {
      * @param appendErrorMessage any message describing failures appended
      *   here.
      * @param status any error returned here.
-     * @return true if test passed or false if test failed.
+     * @return TRUE if test passed or FALSE if test failed.
      */
     virtual UBool isFormatPass(
             const NumberFormatTestTuple &tuple,
@@ -74,7 +74,7 @@ class DataDrivenNumberFormatTestSuite : public IntlTest {
      * @param appendErrorMessage any message describing failures appended
      *   here.
      * @param status any error returned here.
-     * @return true if test passed or false if test failed.
+     * @return TRUE if test passed or FALSE if test failed.
      */
     virtual UBool isFormatPass(
             const NumberFormatTestTuple &tuple,
@@ -82,7 +82,7 @@ class DataDrivenNumberFormatTestSuite : public IntlTest {
             UnicodeString &appendErrorMessage,
             UErrorCode &status);
     /**
-     * If subclass is testing formatting with copy and assignment, it
+     * If subclass is testing formatting with copy and assignmet, it
      * needs to override this method to return a newly allocated formatter.
      */
     virtual UObject *newFormatter(UErrorCode &status);
@@ -129,7 +129,7 @@ class DataDrivenNumberFormatTestSuite : public IntlTest {
     int32_t splitBy(
             UnicodeString *columnValues,
             int32_t columnValueCount,
-            char16_t delimiter);
+            UChar delimiter);
     void showError(const char *message);
     void showFailure(const UnicodeString &message);
     void showLineInfo();

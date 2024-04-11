@@ -8,7 +8,7 @@
 *
 *  uspoof_impl.h
 *
-*    Implementation header for spoof detection
+*    Implemenation header for spoof detection
 *
 */
 
@@ -28,11 +28,10 @@
 #ifdef __cplusplus
 
 #include "capi_helper.h"
-#include "umutex.h"
 
 U_NAMESPACE_BEGIN
 
-// The maximum length (in UTF-16 UChars) of the skeleton replacement string resulting from
+// The maximium length (in UTF-16 UChars) of the skeleton replacement string resulting from
 //   a single input code point.  This is function of the unicode.org data.
 #define USPOOF_MAX_SKELETON_EXPANSION 20
 
@@ -91,10 +90,10 @@ public:
     bool isIllegalCombiningDotLeadCharacter(UChar32 cp) const;
 
     /** parse a hex number.  Untility used by the builders.   */
-    static UChar32 ScanHex(const char16_t *s, int32_t start, int32_t limit, UErrorCode &status);
+    static UChar32 ScanHex(const UChar *s, int32_t start, int32_t limit, UErrorCode &status);
 
-    static UClassID U_EXPORT2 getStaticClassID();
-    virtual UClassID getDynamicClassID() const override;
+    static UClassID U_EXPORT2 getStaticClassID(void);
+    virtual UClassID getDynamicClassID(void) const;
 
     //
     // Data Members
@@ -158,7 +157,7 @@ public:
 //
 //    String Table:
 //       The strings table contains all of the value strings (those of length two or greater)
-//       concatenated together into one long char16_t (UTF-16) array.
+//       concatentated together into one long UChar (UTF-16) array.
 //
 //       There is no nul character or other mark between adjacent strings.
 //
@@ -223,7 +222,7 @@ class SpoofData: public UMemory {
     SpoofData(const void *serializedData, int32_t length, UErrorCode &status);
 
     //  Check raw Spoof Data Version compatibility.
-    //  Return true it looks good.
+    //  Return TRUE it looks good.
     UBool validateDataVersion(UErrorCode &status) const;
 
     ~SpoofData();                    // Destructor not normally used.
@@ -249,7 +248,7 @@ class SpoofData: public UMemory {
     // Get the confusable skeleton transform for a single code point.
     // The result is a string with a length between 1 and 18 as of Unicode 9.
     // This is the main public endpoint for this class.
-    // @return   The length in UTF-16 code units of the substitution string.
+    // @return   The length in UTF-16 code units of the substition string.
     int32_t confusableLookup(UChar32 inChar, UnicodeString &dest) const;
 
     // Get the number of confusable entries in this SpoofData.
@@ -277,7 +276,7 @@ class SpoofData: public UMemory {
     SpoofDataHeader             *fRawData;          // Ptr to the raw memory-mapped data
     UBool                       fDataOwned;         // True if the raw data is owned, and needs
                                                     //  to be deleted when refcount goes to zero.
-    UDataMemory                 *fUDM;              // If not nullptr, our data came from a
+    UDataMemory                 *fUDM;              // If not NULL, our data came from a
                                                     //   UDataMemory, which we must close when
                                                     //   we are done.
 
@@ -287,7 +286,7 @@ class SpoofData: public UMemory {
     // Confusable data
     int32_t                     *fCFUKeys;
     uint16_t                    *fCFUValues;
-    char16_t                    *fCFUStrings;
+    UChar                       *fCFUStrings;
 
     friend class ConfusabledataBuilder;
 };
@@ -302,7 +301,7 @@ struct SpoofDataHeader {
     int32_t       fMagic;                // (0x3845fdef)
     uint8_t       fFormatVersion[4];     // Data Format. Same as the value in struct UDataInfo
                                          //   if there is one associated with this data.
-    int32_t       fLength;               // Total length in bytes of this spoof data,
+    int32_t       fLength;               // Total lenght in bytes of this spoof data,
                                          //   including all sections, not just the header.
 
     // The following four sections refer to data representing the confusable data

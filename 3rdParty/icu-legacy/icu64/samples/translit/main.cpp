@@ -1,6 +1,6 @@
 /***********************************************************************
  * © 2016 and later: Unicode, Inc. and others.
- * License & terms of use: http://www.unicode.org/copyright.html
+ * License & terms of use: http://www.unicode.org/copyright.html#License
  ***********************************************************************
  ***********************************************************************
  * COPYRIGHT:
@@ -56,7 +56,7 @@ int main(int argc, char **argv) {
 
     // Create a Greek-Latin Transliterator
     greek_latin = Transliterator::createInstance("Greek-Latin", UTRANS_FORWARD, status);
-    if (greek_latin == nullptr) {
+    if (greek_latin == 0) {
         printf("ERROR: Transliterator::createInstance() failed\n");
         exit(1);
     }

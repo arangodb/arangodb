@@ -29,7 +29,7 @@ public:
 protected:
     // Return true if the given status indicates failure.  Also has the side effect
     // of calling errln().  Msg should be of the form "Class::Method" in general.
-    UBool failure(UErrorCode status, const char* msg, UBool possibleDataError=false);
+    UBool failure(UErrorCode status, const char* msg, UBool possibleDataError=FALSE);
 
     // Utility method for formatting dates for printing; useful for Java->C++ conversion.
     // Tries to mimic the Java Date.toString() format.
@@ -54,10 +54,10 @@ protected:
 
     // the 'get()' functions are not static because they can call errln().
     // they are effectively static otherwise.
-     DateFormat*               getDateFormat();
+     DateFormat*               getDateFormat(void);
     static void                releaseDateFormat(DateFormat *f);
 
-     Calendar*                 getCalendar();
+     Calendar*                 getCalendar(void);
     static void                releaseCalendar(Calendar *c);
 };
 

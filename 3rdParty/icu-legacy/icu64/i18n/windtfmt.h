@@ -48,7 +48,7 @@ public:
 
     virtual ~Win32DateFormat();
 
-    virtual Win32DateFormat *clone() const;
+    virtual Format *clone(void) const;
 
     Win32DateFormat &operator=(const Win32DateFormat &other);
 
@@ -99,7 +99,7 @@ public:
      * </pre>
      * @return          The class ID for all objects of this class.
      */
-    U_I18N_API static UClassID U_EXPORT2 getStaticClassID();
+    U_I18N_API static UClassID U_EXPORT2 getStaticClassID(void);
 
     /**
      * Returns a unique class ID POLYMORPHICALLY. Pure virtual override. This
@@ -111,7 +111,7 @@ public:
      *                  given class have the same class ID.  Objects of
      *                  other classes have different class IDs.
      */
-    virtual UClassID getDynamicClassID() const;
+    virtual UClassID getDynamicClassID(void) const;
 
 private:
     void formatDate(const SYSTEMTIME *st, UnicodeString &appendTo) const;

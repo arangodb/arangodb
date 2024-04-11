@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 wo{
     Languages{
         af{"Afrikaans"}
@@ -27,22 +26,14 @@ wo{
         cy{"Wels"}
         da{"Danuwa"}
         de{"Almaa"}
-        de_AT{"Almaa bu Ótiriis"}
-        de_CH{"Almaa bu Kawe bu Swis"}
         dsb{"Sorab-Suuf"}
         dv{"Diweyi"}
         dz{"Dsongkaa"}
         el{"Gereg"}
         en{"Àngale"}
-        en_AU{"Àngale bu Óstraali"}
-        en_CA{"Àngale bu Kanadaa"}
-        en_GB{"Àngale bu Grànd Brëtaañ"}
-        en_US{"Àngale bu Amerik"}
         eo{"Esperantoo"}
         es{"Español"}
-        es_419{"Español bu Amerik Latin"}
-        es_ES{"Español bu Tugël"}
-        es_MX{"Español bu Meksik"}
+        es_419{"Español (Amerik Latin)"}
         et{"Estoñiye"}
         eu{"Bask"}
         fa{"Pers"}
@@ -51,8 +42,6 @@ wo{
         fil{"Filipiye"}
         fo{"Feroos"}
         fr{"Farañse"}
-        fr_CA{"Frañse bu Kanadaa"}
-        fr_CH{"Frañse bu Swis"}
         ga{"Irlànde"}
         gd{"Galuwaa bu Ekos"}
         gl{"Galisiye"}
@@ -117,8 +106,6 @@ wo{
         pl{"Polone"}
         ps{"Pasto"}
         pt{"Purtugees"}
-        pt_BR{"Purtugees bu Bresil"}
-        pt_PT{"Portugees bu Tugël"}
         qu{"Kesuwa"}
         quc{"Kishe"}
         rm{"Romaas"}
@@ -193,5 +180,16 @@ wo{
         numbers{
             latn{"Siifari Tugal"}
         }
+    }
+    Version{"2.1.49.82"}
+    codePatterns{
+        language{"{0}"}
+        script{"{0}"}
+        territory{"{0}"}
+    }
+    localeDisplayPattern{
+        keyTypePattern{"{0}: {1}"}
+        pattern{"{0} ({1})"}
+        separator{"{0}, {1}"}
     }
 }

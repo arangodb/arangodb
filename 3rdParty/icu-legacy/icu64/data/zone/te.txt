@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 te{
+    Version{"2.1.48.17"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"అబిడ్జాన్"}
@@ -258,9 +258,6 @@ te{
         "America:Chihuahua"{
             ec{"చువావా"}
         }
-        "America:Ciudad_Juarez"{
-            ec{"సియుదాద్ హ్వారెజ్"}
-        }
         "America:Coral_Harbour"{
             ec{"అటికోకన్"}
         }
@@ -465,6 +462,9 @@ te{
         "America:New_York"{
             ec{"న్యూయార్క్"}
         }
+        "America:Nipigon"{
+            ec{"నిపిగోన్"}
+        }
         "America:Nome"{
             ec{"నోమ్"}
         }
@@ -485,6 +485,9 @@ te{
         }
         "America:Panama"{
             ec{"పనామా"}
+        }
+        "America:Pangnirtung"{
+            ec{"పాంగ్‌నీర్‌టుంగ్"}
         }
         "America:Paramaribo"{
             ec{"పరామారిబో"}
@@ -507,6 +510,9 @@ te{
         "America:Punta_Arenas"{
             ec{"పుంటా అరీనస్"}
         }
+        "America:Rainy_River"{
+            ec{"రెయినీ రివర్"}
+        }
         "America:Rankin_Inlet"{
             ec{"రన్‌కిన్ ఇన్‌లెట్"}
         }
@@ -521,6 +527,9 @@ te{
         }
         "America:Rio_Branco"{
             ec{"రియో బ్రాంకో"}
+        }
+        "America:Santa_Isabel"{
+            ec{"శాంటా ఇసబెల్"}
         }
         "America:Santarem"{
             ec{"సాంటరెమ్"}
@@ -567,6 +576,9 @@ te{
         "America:Thule"{
             ec{"థులే"}
         }
+        "America:Thunder_Bay"{
+            ec{"థండర్ బే"}
+        }
         "America:Tijuana"{
             ec{"టిజువానా"}
         }
@@ -587,6 +599,9 @@ te{
         }
         "America:Yakutat"{
             ec{"యకుటాట్"}
+        }
+        "America:Yellowknife"{
+            ec{"ఎల్లోనైఫ్"}
         }
         "Antarctica:Casey"{
             ec{"కేసీ"}
@@ -912,6 +927,9 @@ te{
         "Australia:Broken_Hill"{
             ec{"బ్రోకెన్ హిల్"}
         }
+        "Australia:Currie"{
+            ec{"కర్రీ"}
+        }
         "Australia:Darwin"{
             ec{"డార్విన్"}
         }
@@ -1094,6 +1112,9 @@ te{
         "Europe:Ulyanovsk"{
             ec{"ఉల్యనోవ్స్క్"}
         }
+        "Europe:Uzhgorod"{
+            ec{"ఉజ్‌హోరోడ్"}
+        }
         "Europe:Vaduz"{
             ec{"వాడుజ్"}
         }
@@ -1114,6 +1135,9 @@ te{
         }
         "Europe:Zagreb"{
             ec{"జాగ్రెబ్"}
+        }
+        "Europe:Zaporozhye"{
+            ec{"జపరోజై"}
         }
         "Europe:Zurich"{
             ec{"జ్యూరిచ్"}
@@ -1196,8 +1220,8 @@ te{
         "Pacific:Honolulu"{
             ec{"హోనోలులు"}
         }
-        "Pacific:Kanton"{
-            ec{"కాంతోన్"}
+        "Pacific:Johnston"{
+            ec{"జాన్సటన్"}
         }
         "Pacific:Kiritimati"{
             ec{"కిరీటిమాటి"}
@@ -1571,7 +1595,7 @@ te{
             ls{"హోవ్డ్ ప్రామాణిక సమయం"}
         }
         "meta:India"{
-            ls{"భారతదేశ ప్రామాణిక సమయం"}
+            ls{"భారతదేశ సమయం"}
             ss{"IST"}
         }
         "meta:Indian_Ocean"{
@@ -1652,6 +1676,9 @@ te{
             lg{"మకావ్ సమయం"}
             ls{"మకావ్ ప్రామాణిక సమయం"}
         }
+        "meta:Macquarie"{
+            ls{"మాక్క్వారీ దీవి సమయం"}
+        }
         "meta:Magadan"{
             ld{"మగడాన్ వేసవి సమయం"}
             lg{"మగడాన్ సమయం"}
@@ -1676,6 +1703,11 @@ te{
         }
         "meta:Mawson"{
             ls{"మాసన్ సమయం"}
+        }
+        "meta:Mexico_Northwest"{
+            ld{"వాయువ్య మెక్సికో పగటి వెలుతురు సమయం"}
+            lg{"వాయువ్య మెక్సికో సమయం"}
+            ls{"వాయువ్య మెక్సికో ప్రామాణిక సమయం"}
         }
         "meta:Mexico_Pacific"{
             ld{"మెక్సికన్ పసిఫిక్ పగటి వెలుతురు సమయం"}
@@ -1720,9 +1752,7 @@ te{
             ls{"నియూ సమయం"}
         }
         "meta:Norfolk"{
-            ld{"నార్ఫోక్ దీవి పగటి సమయం"}
-            lg{"నార్ఫోక్ దీవి సమయం"}
-            ls{"నార్ఫోక్ దీవి ప్రామాణిక సమయం"}
+            ls{"నార్ఫోక్ దీవి సమయం"}
         }
         "meta:Noronha"{
             ld{"ఫెర్నాండో డి నొరోన్హా వేసవి సమయం"}
@@ -1906,9 +1936,10 @@ te{
             lg{"యెకటెరిన్‌బర్గ్ సమయం"}
             ls{"యెకటెరిన్‌బర్గ్ ప్రామాణిక సమయం"}
         }
-        "meta:Yukon"{
-            ls{"యుకోన్ సమయం"}
-        }
+        fallbackFormat{"{1} ({0})"}
+        gmtFormat{"GMT{0}"}
+        gmtZeroFormat{"GMT"}
+        hourFormat{"+HH:mm;-HH:mm"}
         regionFormat{"{0} సమయం"}
         regionFormatDaylight{"{0} పగటి వెలుతురు సమయం"}
         regionFormatStandard{"{0} ప్రామాణిక సమయం"}

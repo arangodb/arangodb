@@ -37,7 +37,7 @@ format:table(nofallback) {
                     "",
                     "DATE=SHORT,TIME=SHORT",
                     "ERA=1,YEAR=2007,MONTH=AUGUST,DATE=8,HOUR_OF_DAY=18,MINUTE=54,SECOND=0",
-                    "8/8/07, 6:54 PM"
+                    "8/8/07, 6:54 PM"
                },
                {
                     "zh_TW@calendar=roc",
@@ -102,14 +102,14 @@ format:table(nofallback) {
                     "GMT",
                     "TIME=LONG",
                     "ERA=1,YEAR=2012,MONTH=OCTOBER,DATE=8,HOUR_OF_DAY=23,MINUTE=59,SECOND=0",
-                    "11:59:00 PM GMT"
+                    "11:59:00 PM GMT"
                },
                {
                     "en_US@calendar=gregorian",         
                     "GMT",
                     "TIME=LONG",
                     "RELATIVE_ADD:DATE=-1,HOUR_OF_DAY=17,MINUTE=0,SECOND=0", // one day before now at specified time
-                    "5:00:00 PM GMT"
+                    "5:00:00 PM GMT"
                },
                // normal formats, combined using 'at'
                {
@@ -117,7 +117,7 @@ format:table(nofallback) {
                     "GMT",
                     "DATE=RELATIVE_FULL,TIME=LONG",
                     "ERA=1,YEAR=2012,MONTH=OCTOBER,DATE=8,HOUR_OF_DAY=23,MINUTE=59,SECOND=0",
-                    "Monday, October 8, 2012, 11:59:00 PM GMT"
+                    "Monday, October 8, 2012 at 11:59:00 PM GMT"
                },
                // normal formats, combined using ", "
                {
@@ -125,7 +125,7 @@ format:table(nofallback) {
                     "GMT",
                     "DATE=RELATIVE_MEDIUM,TIME=SHORT",
                     "ERA=1,YEAR=2012,MONTH=OCTOBER,DATE=8,HOUR_OF_DAY=23,MINUTE=59,SECOND=0",
-                    "Oct 8, 2012, 11:59 PM"
+                    "Oct 8, 2012, 11:59 PM"
                },
                // formats with relative day, combined using 'at'
                {
@@ -133,7 +133,7 @@ format:table(nofallback) {
                     "GMT",
                     "DATE=RELATIVE_FULL,TIME=LONG",
                     "RELATIVE_ADD:DATE=-1,HOUR_OF_DAY=17,MINUTE=0,SECOND=0", // one day before now at specified time
-                    "yesterday, 5:00:00 PM GMT"
+                    "yesterday at 5:00:00 PM GMT"
                },
                // formats with relative day, combined using ", "
                {
@@ -141,7 +141,7 @@ format:table(nofallback) {
                     "GMT",
                     "DATE=RELATIVE_MEDIUM,TIME=SHORT",
                     "RELATIVE_ADD:DATE=-1,HOUR_OF_DAY=17,MINUTE=0,SECOND=0", // one day before now at specified time
-                    "yesterday, 5:00 PM"
+                    "yesterday, 5:00 PM"
                },
                // normal formats that have quoted literals, combined
                {
@@ -172,14 +172,14 @@ format:table(nofallback) {
                     "GMT",
                     "DATE=RELATIVE_LONG,TIME=MEDIUM",
                     "ERA=1,YEAR=2012,MONTH=OCTOBER,DATE=8,HOUR_OF_DAY=23,MINUTE=59,SECOND=0",
-                    "8 Οκτωβρίου 2012 - 11:59:00 μ.μ."
+                    "8 Οκτωβρίου 2012 - 11:59:00 μ.μ."
                },
                {
                     "el@calendar=gregorian",         
                     "GMT",
                     "DATE=RELATIVE_LONG,TIME=MEDIUM",
                     "RELATIVE_ADD:DATE=-1,HOUR_OF_DAY=17,MINUTE=0,SECOND=0", // one day before now at specified time
-                    "χθες - 5:00:00 μ.μ."
+                    "χθες - 5:00:00 μ.μ."
                },
               // other tests
                {
@@ -554,7 +554,7 @@ format:table(nofallback) {
                     "",
                     "DATE=FULL,TIME=FULL",
                     "MILLIS=3076424179200000",
-                    "Friday, 3 Heshvan 103217 at 12:00:00 AM GMT-08:00"
+                    "Friday, 3 Heshvan 103217 at 12:00:00 AM GMT-08:00"
                },
             }    
         }

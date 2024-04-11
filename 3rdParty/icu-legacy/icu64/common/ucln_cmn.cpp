@@ -37,11 +37,11 @@ static cleanupFunc *gLibCleanupFunctions[UCLN_COMMON];
  Please be sure that you have read ucln.h
  ************************************************/
 U_CAPI void U_EXPORT2
-u_cleanup()
+u_cleanup(void)
 {
     UTRACE_ENTRY_OC(UTRACE_U_CLEANUP);
-    icu::umtx_lock(nullptr);     /* Force a memory barrier, so that we are sure to see   */
-    icu::umtx_unlock(nullptr);   /*   all state left around by any other threads.        */
+    icu::umtx_lock(NULL);     /* Force a memory barrier, so that we are sure to see   */
+    icu::umtx_unlock(NULL);   /*   all state left around by any other threads.        */
 
     ucln_lib_cleanup();
 
@@ -57,7 +57,7 @@ U_CAPI void U_EXPORT2 ucln_cleanupOne(ECleanupLibraryType libType)
     if (gLibCleanupFunctions[libType])
     {
         gLibCleanupFunctions[libType]();
-        gLibCleanupFunctions[libType] = nullptr;
+        gLibCleanupFunctions[libType] = NULL;
     }
 }
 
@@ -65,20 +65,9 @@ U_CFUNC void
 ucln_common_registerCleanup(ECleanupCommonType type,
                             cleanupFunc *func)
 {
-    // Thread safety messiness: From ticket 10295, calls to registerCleanup() may occur
-    // concurrently. Although such cases should be storing the same value, they raise errors
-    // from the thread sanity checker. Doing the store within a mutex avoids those.
-    // BUT that can trigger a recursive entry into std::call_once() in umutex.cpp when this code,
-    // running from the call_once function, tries to grab the ICU global mutex, which
-    // re-enters the mutex init path. So, work-around by special casing UCLN_COMMON_MUTEX, not
-    // using the ICU global mutex for it.
-    //
-    // No other point in ICU uses std::call_once().
-
     U_ASSERT(UCLN_COMMON_START < type && type < UCLN_COMMON_COUNT);
-    if (type == UCLN_COMMON_MUTEX) {
-        gCommonCleanupFunctions[type] = func;
-    } else if (UCLN_COMMON_START < type && type < UCLN_COMMON_COUNT)  {
+    if (UCLN_COMMON_START < type && type < UCLN_COMMON_COUNT)
+    {
         icu::Mutex m;     // See ticket 10295 for discussion.
         gCommonCleanupFunctions[type] = func;
     }
@@ -102,7 +91,7 @@ ucln_registerCleanup(ECleanupLibraryType type,
     }
 }
 
-U_CFUNC UBool ucln_lib_cleanup() {
+U_CFUNC UBool ucln_lib_cleanup(void) {
     int32_t libType = UCLN_START;
     int32_t commonFunc = UCLN_COMMON_START;
 
@@ -114,11 +103,11 @@ U_CFUNC UBool ucln_lib_cleanup() {
         if (gCommonCleanupFunctions[commonFunc])
         {
             gCommonCleanupFunctions[commonFunc]();
-            gCommonCleanupFunctions[commonFunc] = nullptr;
+            gCommonCleanupFunctions[commonFunc] = NULL;
         }
     }
 #if !UCLN_NO_AUTO_CLEANUP && (defined(UCLN_AUTO_ATEXIT) || defined(UCLN_AUTO_LOCAL))
     ucln_unRegisterAutomaticCleanup();
 #endif
-    return true;
+    return TRUE;
 }

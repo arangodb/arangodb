@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 mfe{
     Currencies{
         AED{
@@ -175,13 +174,9 @@ mfe{
             "SHP",
             "liv Sainte-Hélène",
         }
-        SLE{
-            "SLE",
-            "leonn Sierra-Leone",
-        }
         SLL{
             "SLL",
-            "leonn Sierra-Leone (1964—2022)",
+            "leonn Sierra-Leone",
         }
         SOS{
             "SOS",
@@ -220,7 +215,7 @@ mfe{
             "fran CFA (BEAC)",
         }
         XOF{
-            "F CFA",
+            "CFA",
             "fran CFA (BCEAO)",
         }
         ZAR{
@@ -240,4 +235,5 @@ mfe{
             "dolar zimbawe",
         }
     }
+    Version{"2.1.47.82"}
 }

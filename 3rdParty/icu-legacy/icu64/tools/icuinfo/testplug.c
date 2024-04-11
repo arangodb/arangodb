@@ -24,7 +24,6 @@
 #if UCONFIG_ENABLE_PLUGINS
 /* This file isn't usually compiled except on Windows. Guard it. */
 
-#include <stdbool.h>
 #include <stdio.h> /* for fprintf */
 #include <stdlib.h> /* for malloc */
 #include "udbgutil.h"
@@ -203,7 +202,7 @@ UPlugTokenReturn U_EXPORT2 debugMemoryPlugin (
         fprintf(stderr, "MEM: status now %s\n", u_errorName(*status));
     } else if(reason==UPLUG_REASON_UNLOAD) {
         fprintf(stderr, "MEM: not possible to unload this plugin (no way to reset memory functions)...\n");
-        uplug_setPlugNoUnload(data, true);
+        uplug_setPlugNoUnload(data, TRUE);
     }
 
     return UPLUG_TOKEN;

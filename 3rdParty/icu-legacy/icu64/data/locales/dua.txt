@@ -1,15 +1,18 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 dua{
     AuxExemplarCharacters{"[h q v x z]"}
-    ExemplarCharacters{"[aá b ɓ c d ɗ eé ɛ{ɛ́} f g ií j k l m n {ny} ŋ oó ɔ{ɔ́} p r s t uúū w y]"}
+    ExemplarCharacters{
+        "[a á b ɓ c d ɗ e é ɛ {ɛ\u0301} f g i í j k l m n {ny} ŋ o ó ɔ {ɔ\u0301} p r "
+        "s t u ú ū w y]"
+    }
     ExemplarCharactersIndex{"[A B Ɓ C D Ɗ E Ɛ F G I J K L M N Ŋ O Ɔ P S T U W Y]"}
-    ExemplarCharactersNumbers{"[  \\- ‑ , % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
+    ExemplarCharactersNumbers{"[  \\- , % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
     NumberElements{
         latn{
             patterns{
                 currencyFormat{"#,##0.00 ¤"}
+                decimalFormat{"#,##0.###"}
                 percentFormat{"#,##0 %"}
             }
             symbols{
@@ -18,6 +21,7 @@ dua{
             }
         }
     }
+    Version{"2.1.47.82"}
     calendar{
         generic{
             DateTimePatterns{
@@ -35,24 +39,19 @@ dua{
                 "{1} {0}",
                 "{1} {0}",
             }
-            DateTimeSkeletons{
-                "HHmmsszzzz",
-                "HHmmssz",
-                "HHmmss",
-                "HHmm",
-                "GyMMMMEEEEd",
-                "GyMMMMd",
-                "GyMMMd",
-                "GGGGGyMd",
-            }
             availableFormats{
                 Ed{"E d"}
+                Hm{"HH:mm"}
+                Hms{"HH:mm:ss"}
+                M{"L"}
                 MEd{"E d/M"}
+                MMM{"LLL"}
                 MMMEd{"E d MMM"}
                 MMMd{"d MMM"}
                 Md{"d/M"}
-                hm{"h:mm a"}
-                hms{"h:mm:ss a"}
+                d{"d"}
+                hm{"h:mm a"}
+                hms{"h:mm:ss a"}
                 ms{"m:ss"}
                 y{"y"}
                 yM{"M/y"}
@@ -66,6 +65,10 @@ dua{
             }
         }
         gregorian{
+            AmPmMarkers{
+                "idiɓa",
+                "ebyámu",
+            }
             AmPmMarkersAbbr{
                 "idiɓa",
                 "ebyámu",
@@ -85,25 +88,21 @@ dua{
                 "{1} {0}",
                 "{1} {0}",
             }
-            DateTimeSkeletons{
-                "HHmmsszzzz",
-                "HHmmssz",
-                "HHmmss",
-                "HHmm",
-                "yMMMMEEEEd",
-                "yMMMMd",
-                "yMMMd",
-                "yMd",
-            }
             availableFormats{
                 Ed{"E d"}
+                Hm{"HH:mm"}
+                Hms{"HH:mm:ss"}
+                M{"L"}
                 MEd{"E d/M"}
+                MMM{"LLL"}
                 MMMEd{"E d MMM"}
                 MMMd{"d MMM"}
                 Md{"d/M"}
-                hm{"h:mm a"}
-                hms{"h:mm:ss a"}
+                d{"d"}
+                hm{"h:mm a"}
+                hms{"h:mm:ss a"}
                 ms{"m:ss"}
+                y{"y"}
                 yM{"M/y"}
                 yMEd{"E d/M/y"}
                 yMMM{"MMM y"}
@@ -223,6 +222,8 @@ dua{
         }
     }
     delimiters{
+        alternateQuotationEnd{"’"}
+        alternateQuotationStart{"‘"}
         quotationEnd{"»"}
         quotationStart{"«"}
     }

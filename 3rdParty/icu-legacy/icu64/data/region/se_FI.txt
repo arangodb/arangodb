@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 se_FI{
     Countries{
         001{"Máilbmi"}
@@ -27,4 +26,5 @@ se_FI{
     Countries%variant{
         CI{"Côte d’Ivoire"}
     }
+    Version{"2.1.47.83"}
 }

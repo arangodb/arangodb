@@ -15,8 +15,8 @@
 #include "unicode/localpointer.h"
 #include "ustrfmt.h"
 
-static UBool isCROrLF(char16_t c) { return c == 0xa || c == 0xd; }
-static UBool isSpace(char16_t c) { return c == 9 || c == 0x20 || c == 0x3000; }
+static UBool isCROrLF(UChar c) { return c == 0xa || c == 0xd; }
+static UBool isSpace(UChar c) { return c == 9 || c == 0x20 || c == 0x3000; }
 
 void DataDrivenNumberFormatTestSuite::run(const char *fileName, UBool runAllTests) {
     fFileLineNumber = 0;
@@ -32,13 +32,13 @@ void DataDrivenNumberFormatTestSuite::run(const char *fileName, UBool runAllTest
     CharString path(getSourceTestData(status), status);
     path.appendPathPart(fileName, status);
     const char *codePage = "UTF-8";
-    LocalUCHARBUFPointer f(ucbuf_open(path.data(), &codePage, true, false, &status));
+    LocalUCHARBUFPointer f(ucbuf_open(path.data(), &codePage, TRUE, FALSE, &status));
     if (!assertSuccess("Can't open data file", status)) {
         return;
     }
     UnicodeString columnValues[kNumberFormatTestTupleFieldCount];
     ENumberFormatTestTupleField columnTypes[kNumberFormatTestTupleFieldCount];
-    int32_t columnCount = 0;
+    int32_t columnCount;
     int32_t state = 0;
     while(U_SUCCESS(status)) {
         // Read a new line if necessary.
@@ -119,7 +119,7 @@ DataDrivenNumberFormatTestSuite::~DataDrivenNumberFormatTestSuite() {
 }
 
 UBool DataDrivenNumberFormatTestSuite::breaksC() {
-    return (NFTT_GET_FIELD(fTuple, breaks, "").toUpper().indexOf((char16_t)0x43) != -1);
+    return (NFTT_GET_FIELD(fTuple, breaks, "").toUpper().indexOf((UChar)0x43) != -1);
 }
 
 void DataDrivenNumberFormatTestSuite::setTupleField(UErrorCode &status) {
@@ -146,12 +146,12 @@ int32_t
 DataDrivenNumberFormatTestSuite::splitBy(
         UnicodeString *columnValues,
         int32_t columnValuesCount,
-        char16_t delimiter) {
+        UChar delimiter) {
     int32_t colIdx = 0;
     int32_t colStart = 0;
     int32_t len = fFileLine.length();
     for (int32_t idx = 0; colIdx < columnValuesCount - 1 && idx < len; ++idx) {
-        char16_t ch = fFileLine.charAt(idx);
+        UChar ch = fFileLine.charAt(idx);
         if (ch == delimiter) {
             columnValues[colIdx++] = 
                     fFileLine.tempSubString(colStart, idx - colStart);
@@ -175,7 +175,7 @@ void DataDrivenNumberFormatTestSuite::showError(const char *message) {
 }
 
 void DataDrivenNumberFormatTestSuite::showFailure(const UnicodeString &message) {
-    char16_t lineStr[20];
+    UChar lineStr[20];
     uprv_itou(
             lineStr, UPRV_LENGTHOF(lineStr), (uint32_t) fFileLineNumber, 10, 1);
     UnicodeString fullMessage("line ");
@@ -187,23 +187,23 @@ void DataDrivenNumberFormatTestSuite::showFailure(const UnicodeString &message) 
 UBool DataDrivenNumberFormatTestSuite::readLine(
         UCHARBUF *f, UErrorCode &status) {
     int32_t lineLength;
-    const char16_t *line = ucbuf_readline(f, &lineLength, &status);
-    if(line == nullptr || U_FAILURE(status)) {
+    const UChar *line = ucbuf_readline(f, &lineLength, &status);
+    if(line == NULL || U_FAILURE(status)) {
         if (U_FAILURE(status)) {
             errln("Error reading line from file.");
         }
         fFileLine.remove();
-        return false;
+        return FALSE;
     }
     ++fFileLineNumber;
     // Strip trailing CR/LF, comments, and spaces.
     while(lineLength > 0 && isCROrLF(line[lineLength - 1])) { --lineLength; }
-    fFileLine.setTo(false, line, lineLength);
+    fFileLine.setTo(FALSE, line, lineLength);
     while(lineLength > 0 && isSpace(line[lineLength - 1])) { --lineLength; }
     if (lineLength == 0) {
         fFileLine.remove();
     }
-    return true;
+    return TRUE;
 }
 
 UBool DataDrivenNumberFormatTestSuite::isPass(
@@ -211,9 +211,9 @@ UBool DataDrivenNumberFormatTestSuite::isPass(
         UnicodeString &appendErrorMessage,
         UErrorCode &status) {
     if (U_FAILURE(status)) {
-        return false;
+        return FALSE;
     }
-    UBool result = false;
+    UBool result = FALSE;
     if (tuple.formatFlag && tuple.outputFlag) {
         ++fFormatTestNumber;
         result = isFormatPass(
@@ -254,9 +254,9 @@ UBool DataDrivenNumberFormatTestSuite::isFormatPass(
         UnicodeString & /*appendErrorMessage*/,
         UErrorCode &status) {
     if (U_FAILURE(status)) {
-        return false;
+        return FALSE;
     }
-    return true;
+    return TRUE;
 }
     
 UBool DataDrivenNumberFormatTestSuite::isFormatPass(
@@ -269,7 +269,7 @@ UBool DataDrivenNumberFormatTestSuite::isFormatPass(
 
 UObject *DataDrivenNumberFormatTestSuite::newFormatter(
         UErrorCode & /*status*/) {
-    return nullptr;
+    return NULL;
 }
 
 UBool DataDrivenNumberFormatTestSuite::isToPatternPass(
@@ -277,9 +277,9 @@ UBool DataDrivenNumberFormatTestSuite::isToPatternPass(
         UnicodeString & /*appendErrorMessage*/,
         UErrorCode &status) {
     if (U_FAILURE(status)) {
-        return false;
+        return FALSE;
     }
-    return true;
+    return TRUE;
 }
 
 UBool DataDrivenNumberFormatTestSuite::isParsePass(
@@ -287,9 +287,9 @@ UBool DataDrivenNumberFormatTestSuite::isParsePass(
         UnicodeString & /*appendErrorMessage*/,
         UErrorCode &status) {
     if (U_FAILURE(status)) {
-        return false;
+        return FALSE;
     }
-    return true;
+    return TRUE;
 }
 
 UBool DataDrivenNumberFormatTestSuite::isParseCurrencyPass(
@@ -297,9 +297,9 @@ UBool DataDrivenNumberFormatTestSuite::isParseCurrencyPass(
         UnicodeString & /*appendErrorMessage*/,
         UErrorCode &status) {
     if (U_FAILURE(status)) {
-        return false;
+        return FALSE;
     }
-    return true;
+    return TRUE;
 }
 
 UBool DataDrivenNumberFormatTestSuite::isSelectPass(
@@ -307,8 +307,8 @@ UBool DataDrivenNumberFormatTestSuite::isSelectPass(
         UnicodeString & /*appendErrorMessage*/,
         UErrorCode &status) {
     if (U_FAILURE(status)) {
-        return false;
+        return FALSE;
     }
-    return true;
+    return TRUE;
 }
 #endif /* !UCONFIG_NO_FORMATTING */

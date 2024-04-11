@@ -24,7 +24,7 @@ public:
     UVectorTest();
     virtual ~UVectorTest();
 
-    virtual void runIndexedTest(int32_t index, UBool exec, const char* &name, char* par = nullptr ) override;
+    virtual void runIndexedTest(int32_t index, UBool exec, const char* &name, char* par = NULL );
 
     // The following are test functions that are visible from the intltest test framework.
     void UVector_API();

@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 nl{
     Countries{
         001{"wereld"}
@@ -85,7 +84,6 @@ nl{
         CN{"China"}
         CO{"Colombia"}
         CP{"Clipperton"}
-        CQ{"Sark"}
         CR{"Costa Rica"}
         CU{"Cuba"}
         CV{"Kaapverdië"}
@@ -255,7 +253,7 @@ nl{
         SV{"El Salvador"}
         SX{"Sint-Maarten"}
         SY{"Syrië"}
-        SZ{"Eswatini"}
+        SZ{"eSwatini"}
         TA{"Tristan da Cunha"}
         TC{"Turks- en Caicoseilanden"}
         TD{"Tsjaad"}
@@ -299,9 +297,6 @@ nl{
         ZW{"Zimbabwe"}
         ZZ{"onbekend gebied"}
     }
-    Countries%chagos{
-        IO{"Chagoseilanden"}
-    }
     Countries%short{
         GB{"VK"}
         HK{"Hongkong"}
@@ -313,12 +308,11 @@ nl{
     Countries%variant{
         CD{"Congo (DRC)"}
         CG{"Congo (Republiek)"}
-        CI{"Côte d’Ivoire"}
+        CI{"Republiek Ivoorkust"}
         CZ{"Tsjechische Republiek"}
         FK{"Falklandeilanden (Islas Malvinas)"}
-        NZ{"Aotearoa Nieuw-Zeeland"}
         SZ{"Swaziland"}
         TL{"Democratische Republiek Oost-Timor"}
-        TR{"Türkiye"}
     }
+    Version{"2.1.49.82"}
 }

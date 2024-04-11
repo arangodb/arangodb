@@ -20,26 +20,26 @@
  */
 class TimeZoneRuleTest : public CalendarTimeZoneTest {
     // IntlTest override
-    void runIndexedTest(int32_t index, UBool exec, const char*& name, char* par) override;
+    void runIndexedTest(int32_t index, UBool exec, const char*& name, char* par);
 public:
-    void TestSimpleRuleBasedTimeZone();
-    void TestHistoricalRuleBasedTimeZone();
-    void TestOlsonTransition();
-    void TestRBTZTransition();
-    void TestHasEquivalentTransitions();
-    void TestVTimeZoneRoundTrip();
-    void TestVTimeZoneRoundTripPartial();
-    void TestVTimeZoneSimpleWrite();
-    void TestVTimeZoneHeaderProps();
-    void TestGetSimpleRules();
-    void TestTimeZoneRuleCoverage();
-    void TestSimpleTimeZoneCoverage();
-    void TestVTimeZoneCoverage();
-    void TestVTimeZoneParse();
-    void TestT6216();
-    void TestT6669();
-    void TestVTimeZoneWrapper();
-    void TestT8943();
+    void TestSimpleRuleBasedTimeZone(void);
+    void TestHistoricalRuleBasedTimeZone(void);
+    void TestOlsonTransition(void);
+    void TestRBTZTransition(void);
+    void TestHasEquivalentTransitions(void);
+    void TestVTimeZoneRoundTrip(void);
+    void TestVTimeZoneRoundTripPartial(void);
+    void TestVTimeZoneSimpleWrite(void);
+    void TestVTimeZoneHeaderProps(void);
+    void TestGetSimpleRules(void);
+    void TestTimeZoneRuleCoverage(void);
+    void TestSimpleTimeZoneCoverage(void);
+    void TestVTimeZoneCoverage(void);
+    void TestVTimeZoneParse(void);
+    void TestT6216(void);
+    void TestT6669(void);
+    void TestVTimeZoneWrapper(void);
+    void TestT8943(void);
 
 private:
     void verifyTransitions(BasicTimeZone& icutz, UDate start, UDate end);

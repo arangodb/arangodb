@@ -53,7 +53,7 @@ private:
 };
 
 StyleRuns::StyleRuns(const RunArray *styleRunArrays[], le_int32 styleCount)
-    : fStyleCount(styleCount), fRunCount(0), fRunLimits(nullptr), fStyleIndices(nullptr)
+    : fStyleCount(styleCount), fRunCount(0), fRunLimits(NULL), fStyleIndices(NULL)
 {
     le_int32 maxRunCount = 0;
     le_int32 style, run, runStyle;
@@ -112,19 +112,19 @@ StyleRuns::~StyleRuns()
     fRunCount = 0;
 
     LE_DELETE_ARRAY(fStyleIndices);
-    fStyleIndices = nullptr;
+    fStyleIndices = NULL;
 
     LE_DELETE_ARRAY(fRunLimits);
-    fRunLimits = nullptr;
+    fRunLimits = NULL;
 }
 
 le_int32 StyleRuns::getRuns(le_int32 runLimits[], le_int32 styleIndices[])
 {
-    if (runLimits != nullptr) {
+    if (runLimits != NULL) {
         LE_ARRAY_COPY(runLimits, fRunLimits, fRunCount);
     }
 
-    if (styleIndices != nullptr) {
+    if (styleIndices != NULL) {
         LE_ARRAY_COPY(styleIndices, fStyleIndices, fRunCount * fStyleCount);
     }
 
@@ -132,146 +132,146 @@ le_int32 StyleRuns::getRuns(le_int32 runLimits[], le_int32 styleIndices[])
 }
 
 /*
- * NOTE: This table only has "true" values for
+ * NOTE: This table only has "TRUE" values for
  * those scripts which the LayoutEngine can currently
  * process, rather for all scripts which require
  * complex processing for correct rendering.
  */
-static const le_bool complexTable[] = {
-    false , /* Zyyy */
-    false,  /* Qaai */
-    true,   /* Arab */
-    false,  /* Armn */
-    true,   /* Beng */
-    false,  /* Bopo */
-    false,  /* Cher */
-    false,  /* Copt=Qaac */
-    false,  /* Cyrl */
-    false,  /* Dsrt */
-    true,   /* Deva */
-    false,  /* Ethi */
-    false,  /* Geor */
-    false,  /* Goth */
-    false,  /* Grek */
-    true,   /* Gujr */
-    true,   /* Guru */
-    false,  /* Hani */
-    false,  /* Hang */
-    true,   /* Hebr */
-    false,  /* Hira */
-    true,   /* Knda */
-    false,  /* Kana */
-    false,  /* Khmr */
-    false,  /* Laoo */
-    false,  /* Latn */
-    true,   /* Mlym */
-    false,  /* Mong */
-    false,  /* Mymr */
-    false,  /* Ogam */
-    false,  /* Ital */
-    true,   /* Orya */
-    false,  /* Runr */
-    false,  /* Sinh */
-    false,  /* Syrc */
-    true,   /* Taml */
-    true,   /* Telu */
-    false,  /* Thaa */
-    true,   /* Thai */
-    false,  /* Tibt */
-    false,  /* Cans */
-    false,  /* Yiii */
-    false,  /* Tglg */
-    false,  /* Hano */
-    false,  /* Buhd */
-    false,  /* Tagb */
-    false,  /* Brai */
-    false,  /* Cprt */
-    false,  /* Limb */
-    false,  /* Linb */
-    false,  /* Osma */
-    false,  /* Shaw */
-    false,  /* Tale */
-    false,  /* Ugar */
-    false,  /* Hrkt */
-    false,  /* Bugi */
-    false,  /* Glag */
-    false,  /* Khar */
-    false,  /* Sylo */
-    false,  /* Talu */
-    false,  /* Tfng */
-    false,  /* Xpeo */
-    false,  /* Bali */
-    false,  /* Batk */
-    false,  /* Blis */
-    false,  /* Brah */
-    false,  /* Cham */
-    false,  /* Cirt */
-    false,  /* Cyrs */
-    false,  /* Egyd */
-    false,  /* Egyh */
-    false,  /* Egyp */
-    false,  /* Geok */
-    false,  /* Hans */
-    false,  /* Hant */
-    false,  /* Hmng */
-    false,  /* Hung */
-    false,  /* Inds */
-    false,  /* Java */
-    false,  /* Kali */
-    false,  /* Latf */
-    false,  /* Latg */
-    false,  /* Lepc */
-    false,  /* Lina */
-    false,  /* Mand */
-    false,  /* Maya */
-    false,  /* Mero */
-    false,  /* Nkoo */
-    false,  /* Orkh */
-    false,  /* Perm */
-    false,  /* Phag */
-    false,  /* Phnx */
-    false,  /* Plrd */
-    false,  /* Roro */
-    false,  /* Sara */
-    false,  /* Syre */
-    false,  /* Syrj */
-    false,  /* Syrn */
-    false,  /* Teng */
-    false,  /* Taii */
-    false,  /* Visp */
-    false,  /* Xsux */
-    false,  /* Zxxx */
-    false,  /* Zzzz */
-    false,  /* Cari */
-    false,  /* Jpan */
-    false,  /* Lana */
-    false,  /* Lyci */
-    false,  /* Lydi */
-    false,  /* Olck */
-    false,  /* Rjng */
-    false,  /* Saur */
-    false,  /* Sgnw */
-    false,  /* Sund */
-    false,  /* Moon */
-    false,  /* Mtei */
-    false,  /* Armi */
-    false,  /* Avst */
-    false,  /* Cakm */
-    false,  /* Kore */
-    false,  /* Kthi */
-    false,  /* Mani */
-    false,  /* Phli */
-    false,  /* Phlp */
-    false,  /* Phlv */
-    false,  /* Prti */
-    false,  /* Samr */
-    false,  /* Tavt */
-    false,  /* Zmth */
-    false,  /* Zsym */
-    false,  /* Bamu */
-    false,  /* Lisu */
-    false,  /* Nkgb */
-    false   /* Sarb */
+static const le_bool complexTable[scriptCodeCount] = {
+    FALSE , /* Zyyy */
+    FALSE,  /* Qaai */
+    TRUE,   /* Arab */
+    FALSE,  /* Armn */
+    TRUE,   /* Beng */
+    FALSE,  /* Bopo */
+    FALSE,  /* Cher */
+    FALSE,  /* Copt=Qaac */
+    FALSE,  /* Cyrl */
+    FALSE,  /* Dsrt */
+    TRUE,   /* Deva */
+    FALSE,  /* Ethi */
+    FALSE,  /* Geor */
+    FALSE,  /* Goth */
+    FALSE,  /* Grek */
+    TRUE,   /* Gujr */
+    TRUE,   /* Guru */
+    FALSE,  /* Hani */
+    FALSE,  /* Hang */
+    TRUE,   /* Hebr */
+    FALSE,  /* Hira */
+    TRUE,   /* Knda */
+    FALSE,  /* Kana */
+    FALSE,  /* Khmr */
+    FALSE,  /* Laoo */
+    FALSE,  /* Latn */
+    TRUE,   /* Mlym */
+    FALSE,  /* Mong */
+    FALSE,  /* Mymr */
+    FALSE,  /* Ogam */
+    FALSE,  /* Ital */
+    TRUE,   /* Orya */
+    FALSE,  /* Runr */
+    FALSE,  /* Sinh */
+    FALSE,  /* Syrc */
+    TRUE,   /* Taml */
+    TRUE,   /* Telu */
+    FALSE,  /* Thaa */
+    TRUE,   /* Thai */
+    FALSE,  /* Tibt */
+    FALSE,  /* Cans */
+    FALSE,  /* Yiii */
+    FALSE,  /* Tglg */
+    FALSE,  /* Hano */
+    FALSE,  /* Buhd */
+    FALSE,  /* Tagb */
+    FALSE,  /* Brai */
+    FALSE,  /* Cprt */
+    FALSE,  /* Limb */
+    FALSE,  /* Linb */
+    FALSE,  /* Osma */
+    FALSE,  /* Shaw */
+    FALSE,  /* Tale */
+    FALSE,  /* Ugar */
+    FALSE,  /* Hrkt */
+    FALSE,  /* Bugi */
+    FALSE,  /* Glag */
+    FALSE,  /* Khar */
+    FALSE,  /* Sylo */
+    FALSE,  /* Talu */
+    FALSE,  /* Tfng */
+    FALSE,  /* Xpeo */
+    FALSE,  /* Bali */
+    FALSE,  /* Batk */
+    FALSE,  /* Blis */
+    FALSE,  /* Brah */
+    FALSE,  /* Cham */
+    FALSE,  /* Cirt */
+    FALSE,  /* Cyrs */
+    FALSE,  /* Egyd */
+    FALSE,  /* Egyh */
+    FALSE,  /* Egyp */
+    FALSE,  /* Geok */
+    FALSE,  /* Hans */
+    FALSE,  /* Hant */
+    FALSE,  /* Hmng */
+    FALSE,  /* Hung */
+    FALSE,  /* Inds */
+    FALSE,  /* Java */
+    FALSE,  /* Kali */
+    FALSE,  /* Latf */
+    FALSE,  /* Latg */
+    FALSE,  /* Lepc */
+    FALSE,  /* Lina */
+    FALSE,  /* Mand */
+    FALSE,  /* Maya */
+    FALSE,  /* Mero */
+    FALSE,  /* Nkoo */
+    FALSE,  /* Orkh */
+    FALSE,  /* Perm */
+    FALSE,  /* Phag */
+    FALSE,  /* Phnx */
+    FALSE,  /* Plrd */
+    FALSE,  /* Roro */
+    FALSE,  /* Sara */
+    FALSE,  /* Syre */
+    FALSE,  /* Syrj */
+    FALSE,  /* Syrn */
+    FALSE,  /* Teng */
+    FALSE,  /* Taii */
+    FALSE,  /* Visp */
+    FALSE,  /* Xsux */
+    FALSE,  /* Zxxx */
+    FALSE,  /* Zzzz */
+    FALSE,  /* Cari */
+    FALSE,  /* Jpan */
+    FALSE,  /* Lana */
+    FALSE,  /* Lyci */
+    FALSE,  /* Lydi */
+    FALSE,  /* Olck */
+    FALSE,  /* Rjng */
+    FALSE,  /* Saur */
+    FALSE,  /* Sgnw */
+    FALSE,  /* Sund */
+    FALSE,  /* Moon */
+    FALSE,  /* Mtei */
+    FALSE,  /* Armi */
+    FALSE,  /* Avst */
+    FALSE,  /* Cakm */
+    FALSE,  /* Kore */
+    FALSE,  /* Kthi */
+    FALSE,  /* Mani */
+    FALSE,  /* Phli */
+    FALSE,  /* Phlp */
+    FALSE,  /* Phlv */
+    FALSE,  /* Prti */
+    FALSE,  /* Samr */
+    FALSE,  /* Tavt */
+    FALSE,  /* Zmth */
+    FALSE,  /* Zsym */
+    FALSE,  /* Bamu */
+    FALSE,  /* Lisu */
+    FALSE,  /* Nkgb */
+    FALSE   /* Sarb */
 };
 
 
@@ -318,14 +318,14 @@ ParagraphLayout::ParagraphLayout(const LEUnicode chars[], le_int32 count,
                                  UBiDiLevel paragraphLevel, le_bool vertical,
                                  LEErrorCode &status)
                                  : fChars(chars), fCharCount(count),
-                                   fFontRuns(nullptr), fLevelRuns(levelRuns), fScriptRuns(scriptRuns), fLocaleRuns(localeRuns),
-                                   fVertical(vertical), fClientLevels(true), fClientScripts(true), fClientLocales(true), fEmbeddingLevels(nullptr),
+                                   fFontRuns(NULL), fLevelRuns(levelRuns), fScriptRuns(scriptRuns), fLocaleRuns(localeRuns),
+                                   fVertical(vertical), fClientLevels(TRUE), fClientScripts(TRUE), fClientLocales(TRUE), fEmbeddingLevels(NULL),
                                    fAscent(0), fDescent(0), fLeading(0),
-                                   fGlyphToCharMap(nullptr), fCharToMinGlyphMap(nullptr), fCharToMaxGlyphMap(nullptr), fGlyphWidths(nullptr), fGlyphCount(0),
-                                   fParaBidi(nullptr), fLineBidi(nullptr),
-                                   fStyleRunLimits(nullptr), fStyleIndices(nullptr), fStyleRunCount(0),
-                                   fBreakIterator(nullptr), fLineStart(-1), fLineEnd(0),
-                                 /*fVisualRuns(nullptr), fStyleRunInfo(nullptr), fVisualRunCount(-1),
+                                   fGlyphToCharMap(NULL), fCharToMinGlyphMap(NULL), fCharToMaxGlyphMap(NULL), fGlyphWidths(NULL), fGlyphCount(0),
+                                   fParaBidi(NULL), fLineBidi(NULL),
+                                   fStyleRunLimits(NULL), fStyleIndices(NULL), fStyleRunCount(0),
+                                   fBreakIterator(NULL), fLineStart(-1), fLineEnd(0),
+                                 /*fVisualRuns(NULL), fStyleRunInfo(NULL), fVisualRunCount(-1),
                                    fFirstVisualRun(-1), fLastVisualRun(-1),*/ fVisualRunLastX(0), fVisualRunLastY(0)
 {
 
@@ -341,11 +341,11 @@ ParagraphLayout::ParagraphLayout(const LEUnicode chars[], le_int32 count,
 
     computeLevels(paragraphLevel);
 
-    if (scriptRuns == nullptr) {
+    if (scriptRuns == NULL) {
         computeScripts();
     }
 
-    if (localeRuns == nullptr) {
+    if (localeRuns == NULL) {
         computeLocales();
     }
 
@@ -363,11 +363,11 @@ ParagraphLayout::ParagraphLayout(const LEUnicode chars[], le_int32 count,
     StyleRuns styleRuns(styleRunArrays, styleCount);
     LEErrorCode layoutStatus = LE_NO_ERROR;
 
-    fStyleRunCount = styleRuns.getRuns(nullptr, nullptr);
+    fStyleRunCount = styleRuns.getRuns(NULL, NULL);
 
     fStyleRunLimits = LE_NEW_ARRAY(le_int32, fStyleRunCount);
     fStyleIndices   = LE_NEW_ARRAY(le_int32, fStyleRunCount * styleCount);
-    if ((fStyleRunLimits == nullptr) || (fStyleIndices == nullptr)) {
+    if ((fStyleRunLimits == NULL) || (fStyleIndices == NULL)) {
         status = LE_MEMORY_ALLOCATION_ERROR;
         return;
     }
@@ -379,24 +379,24 @@ ParagraphLayout::ParagraphLayout(const LEUnicode chars[], le_int32 count,
     le_int32 run, runStart;
 
     fStyleRunInfo = LE_NEW_ARRAY(StyleRunInfo, fStyleRunCount);
-    if (fStyleRunInfo == nullptr) {
+    if (fStyleRunInfo == NULL) {
         status = LE_MEMORY_ALLOCATION_ERROR;
         return;
     }
     else {
         // initialize
         for (run = 0; run < fStyleRunCount; run += 1) {
-            fStyleRunInfo[run].font = nullptr;
+            fStyleRunInfo[run].font = NULL;
             fStyleRunInfo[run].runBase = 0;
             fStyleRunInfo[run].runLimit = 0;
             fStyleRunInfo[run].script = (UScriptCode)0;
-            fStyleRunInfo[run].locale = nullptr;
+            fStyleRunInfo[run].locale = NULL;
             fStyleRunInfo[run].level = 0;
             fStyleRunInfo[run].glyphBase = 0;
-            fStyleRunInfo[run].engine = nullptr;
+            fStyleRunInfo[run].engine = NULL;
             fStyleRunInfo[run].glyphCount = 0;
-            fStyleRunInfo[run].glyphs = nullptr;
-            fStyleRunInfo[run].positions = nullptr;
+            fStyleRunInfo[run].glyphs = NULL;
+            fStyleRunInfo[run].positions = NULL;
         }
     }
 
@@ -440,8 +440,8 @@ ParagraphLayout::ParagraphLayout(const LEUnicode chars[], le_int32 count,
     fGlyphToCharMap    = LE_NEW_ARRAY(le_int32, fGlyphCount + 1);
     fCharToMinGlyphMap = LE_NEW_ARRAY(le_int32, fCharCount + 1);
     fCharToMaxGlyphMap = LE_NEW_ARRAY(le_int32, fCharCount + 1);
-    if ((fGlyphWidths == nullptr) || (fGlyphToCharMap == nullptr) ||
-        (fCharToMinGlyphMap == nullptr) || (fCharToMaxGlyphMap == nullptr)) {
+    if ((fGlyphWidths == NULL) || (fGlyphToCharMap == NULL) ||
+        (fCharToMinGlyphMap == NULL) || (fCharToMaxGlyphMap == NULL)) {
         status = LE_MEMORY_ALLOCATION_ERROR;
         return;
     }
@@ -455,8 +455,8 @@ ParagraphLayout::ParagraphLayout(const LEUnicode chars[], le_int32 count,
 
         fStyleRunInfo[run].glyphs = LE_NEW_ARRAY(LEGlyphID, glyphCount);
         fStyleRunInfo[run].positions = LE_NEW_ARRAY(float, glyphCount * 2 + 2);
-        if ((fStyleRunInfo[run].glyphs == nullptr) ||
-            (fStyleRunInfo[run].positions == nullptr)) {
+        if ((fStyleRunInfo[run].glyphs == NULL) ||
+            (fStyleRunInfo[run].positions == NULL)) {
             status = LE_MEMORY_ALLOCATION_ERROR;
             return;
         }
@@ -491,7 +491,7 @@ ParagraphLayout::ParagraphLayout(const LEUnicode chars[], le_int32 count,
         runStart = fStyleRunLimits[run];
 
         delete engine;
-        fStyleRunInfo[run].engine = nullptr;
+        fStyleRunInfo[run].engine = NULL;
     }
 
     fGlyphToCharMap[fGlyphCount] = fCharCount;
@@ -531,58 +531,58 @@ ParagraphLayout::~ParagraphLayout()
 
     if (! fClientLevels) {
         delete (ValueRuns *) fLevelRuns;
-        fLevelRuns = nullptr;
+        fLevelRuns = NULL;
 
-        fClientLevels = true;
+        fClientLevels = TRUE;
     }
 
     if (! fClientScripts) {
         delete (ValueRuns *) fScriptRuns;
-        fScriptRuns = nullptr;
+        fScriptRuns = NULL;
 
-        fClientScripts = true;
+        fClientScripts = TRUE;
     }
 
     if (! fClientLocales) {
         delete (LocaleRuns *) fLocaleRuns;
-        fLocaleRuns = nullptr;
+        fLocaleRuns = NULL;
 
-        fClientLocales = true;
+        fClientLocales = TRUE;
     }
 
-    if (fEmbeddingLevels != nullptr) {
+    if (fEmbeddingLevels != NULL) {
         LE_DELETE_ARRAY(fEmbeddingLevels);
-        fEmbeddingLevels = nullptr;
+        fEmbeddingLevels = NULL;
     }
 
-    if (fGlyphToCharMap != nullptr) {
+    if (fGlyphToCharMap != NULL) {
         LE_DELETE_ARRAY(fGlyphToCharMap);
-        fGlyphToCharMap = nullptr;
+        fGlyphToCharMap = NULL;
     }
 
-    if (fCharToMinGlyphMap != nullptr) {
+    if (fCharToMinGlyphMap != NULL) {
         LE_DELETE_ARRAY(fCharToMinGlyphMap);
-        fCharToMinGlyphMap = nullptr;
+        fCharToMinGlyphMap = NULL;
     }
 
-    if (fCharToMaxGlyphMap != nullptr) {
+    if (fCharToMaxGlyphMap != NULL) {
         LE_DELETE_ARRAY(fCharToMaxGlyphMap);
-        fCharToMaxGlyphMap = nullptr;
+        fCharToMaxGlyphMap = NULL;
     }
 
-    if (fGlyphWidths != nullptr) {
+    if (fGlyphWidths != NULL) {
         LE_DELETE_ARRAY(fGlyphWidths);
-        fGlyphWidths = nullptr;
+        fGlyphWidths = NULL;
     }
 
-    if (fParaBidi != nullptr) {
+    if (fParaBidi != NULL) {
         ubidi_close(fParaBidi);
-        fParaBidi = nullptr;
+        fParaBidi = NULL;
     }
 
-    if (fLineBidi != nullptr) {
+    if (fLineBidi != NULL) {
         ubidi_close(fLineBidi);
-        fLineBidi = nullptr;
+        fLineBidi = NULL;
     }
 
     if (fStyleRunCount > 0) {
@@ -595,21 +595,21 @@ ParagraphLayout::~ParagraphLayout()
             LE_DELETE_ARRAY(fStyleRunInfo[run].glyphs);
             LE_DELETE_ARRAY(fStyleRunInfo[run].positions);
 
-            fStyleRunInfo[run].glyphs    = nullptr;
-            fStyleRunInfo[run].positions = nullptr;
+            fStyleRunInfo[run].glyphs    = NULL;
+            fStyleRunInfo[run].positions = NULL;
         }
 
         LE_DELETE_ARRAY(fStyleRunInfo);
 
-        fStyleRunLimits = nullptr;
-        fStyleIndices   = nullptr;
-        fStyleRunInfo        = nullptr;
+        fStyleRunLimits = NULL;
+        fStyleIndices   = NULL;
+        fStyleRunInfo        = NULL;
         fStyleRunCount  = 0;
     }
 
-    if (fBreakIterator != nullptr) {
+    if (fBreakIterator != NULL) {
         delete fBreakIterator;
-        fBreakIterator = nullptr;
+        fBreakIterator = NULL;
     }
 }
 
@@ -619,11 +619,11 @@ le_bool ParagraphLayout::isComplex(const LEUnicode chars[], le_int32 count)
     UErrorCode scriptStatus = U_ZERO_ERROR;
     UScriptCode scriptCode  = USCRIPT_INVALID_CODE;
     UScriptRun *sr = uscript_openRun(chars, count, &scriptStatus);
-    le_bool result = false;
+    le_bool result = FALSE;
 
-    while (uscript_nextRun(sr, nullptr, nullptr, &scriptCode)) {
+    while (uscript_nextRun(sr, NULL, NULL, &scriptCode)) {
         if (isComplex(scriptCode)) {
-            result = true;
+            result = TRUE;
             break;
         }
     }
@@ -667,7 +667,7 @@ le_bool ParagraphLayout::isDone() const
 ParagraphLayout::Line *ParagraphLayout::nextLine(float width)
 {
     if (isDone()) {
-        return nullptr;
+        return NULL;
     }
 
     fLineStart = fLineEnd;
@@ -710,7 +710,7 @@ void ParagraphLayout::computeLevels(UBiDiLevel paragraphLevel)
 {
     UErrorCode bidiStatus = U_ZERO_ERROR;
 
-    if (fLevelRuns != nullptr) {
+    if (fLevelRuns != NULL) {
         le_int32 ch;
         le_int32 run;
 
@@ -729,7 +729,7 @@ void ParagraphLayout::computeLevels(UBiDiLevel paragraphLevel)
     fParaBidi = ubidi_openSized(fCharCount, 0, &bidiStatus);
     ubidi_setPara(fParaBidi, fChars, fCharCount, paragraphLevel, fEmbeddingLevels, &bidiStatus);
 
-    if (fLevelRuns == nullptr) {
+    if (fLevelRuns == NULL) {
         le_int32 levelRunCount = ubidi_countRuns(fParaBidi, &bidiStatus);
         ValueRuns *levelRuns = new ValueRuns(levelRunCount);
 
@@ -745,7 +745,7 @@ void ParagraphLayout::computeLevels(UBiDiLevel paragraphLevel)
         }
 
         fLevelRuns    = levelRuns;
-        fClientLevels = false;
+        fClientLevels = FALSE;
     }
 }
 
@@ -757,14 +757,14 @@ void ParagraphLayout::computeScripts()
     le_int32 limit;
     UScriptCode script;
 
-    while (uscript_nextRun(sr, nullptr, &limit, &script)) {
+    while (uscript_nextRun(sr, NULL, &limit, &script)) {
         scriptRuns->add(script, limit);
     }
 
     uscript_closeRun(sr);
 
     fScriptRuns    = scriptRuns;
-    fClientScripts = false;
+    fClientScripts = FALSE;
 }
 
 void ParagraphLayout::computeLocales()
@@ -775,7 +775,7 @@ void ParagraphLayout::computeLocales()
     localeRuns->add(defaultLocale, fCharCount);
 
     fLocaleRuns    = localeRuns;
-    fClientLocales = false;
+    fClientLocales = FALSE;
 }
 
 void ParagraphLayout::computeSubFonts(const FontRuns *fontRuns, LEErrorCode &status)
@@ -787,7 +787,7 @@ void ParagraphLayout::computeSubFonts(const FontRuns *fontRuns, LEErrorCode &sta
     const RunArray *styleRunArrays[] = {fontRuns, fScriptRuns};
     le_int32 styleCount = sizeof styleRunArrays / sizeof styleRunArrays[0];
     StyleRuns styleRuns(styleRunArrays, styleCount);
-    le_int32 styleRunCount = styleRuns.getRuns(nullptr, nullptr);
+    le_int32 styleRunCount = styleRuns.getRuns(NULL, NULL);
     le_int32 *styleRunLimits = LE_NEW_ARRAY(le_int32, styleRunCount);
     le_int32 *styleIndices = LE_NEW_ARRAY(le_int32, styleRunCount * styleCount);
     FontRuns *subFontRuns  = new FontRuns(0);
@@ -950,7 +950,7 @@ le_int32 ParagraphLayout::getLanguageCode(const Locale *locale)
 
     uprv_strcat(code, language);
 
-    if ((uprv_strcmp(language, "zho") == 0) && country != nullptr) {
+    if ((uprv_strcmp(language, "zho") == 0) && country != NULL) {
         uprv_strcat(code, "_");
         uprv_strcat(code, country);
     }
@@ -974,8 +974,8 @@ le_int32 ParagraphLayout::getLanguageCode(const Locale *locale)
 
 le_bool ParagraphLayout::isComplex(UScriptCode script)
 {
-    if (script < 0 || script >= ARRAY_SIZE(complexTable)) {
-        return false;
+    if (script < 0 || script >= (UScriptCode) scriptCodeCount) {
+        return FALSE;
     }
 
     return complexTable[script];
@@ -992,7 +992,7 @@ le_int32 ParagraphLayout::previousBreak(le_int32 charIndex)
     }
 
     // Create the BreakIterator if we don't already have one
-    if (fBreakIterator == nullptr) {
+    if (fBreakIterator == NULL) {
         Locale thai("th");
         UCharCharacterIterator *iter = new UCharCharacterIterator(fChars, fCharCount);
         UErrorCode status = U_ZERO_ERROR;
@@ -1018,7 +1018,7 @@ ParagraphLayout::Line *ParagraphLayout::computeVisualRuns()
     fFirstVisualRun = getCharRun(fLineStart);
     fLastVisualRun  = getCharRun(fLineEnd - 1);
 
-    if (fLineBidi == nullptr) {
+    if (fLineBidi == NULL) {
         fLineBidi = ubidi_openSized(fCharCount, 0, &bidiStatus);
     }
 
@@ -1201,7 +1201,7 @@ le_int32 ParagraphLayout::Line::getWidth() const
 {
     const VisualRun *lastRun = getVisualRun(fRunCount - 1);
 
-    if (lastRun == nullptr) {
+    if (lastRun == NULL) {
         return 0;
     }
 
@@ -1214,7 +1214,7 @@ le_int32 ParagraphLayout::Line::getWidth() const
 const ParagraphLayout::VisualRun *ParagraphLayout::Line::getVisualRun(le_int32 runIndex) const
 {
     if (runIndex < 0 || runIndex >= fRunCount) {
-        return nullptr;
+        return NULL;
     }
 
     return fRuns[runIndex];

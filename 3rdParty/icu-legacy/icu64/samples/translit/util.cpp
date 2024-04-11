@@ -1,6 +1,6 @@
 /***********************************************************************
  * © 2016 and later: Unicode, Inc. and others.
- * License & terms of use: http://www.unicode.org/copyright.html
+ * License & terms of use: http://www.unicode.org/copyright.html#License
  ***********************************************************************
  ***********************************************************************
  * COPYRIGHT:
@@ -40,7 +40,7 @@ UnicodeString escape(const UnicodeString &source) {
     UnicodeString target;
     target += "\"";
     for (i=0; i<source.length(); ++i) {
-        char16_t ch = source[i];
+        UChar ch = source[i];
         if (ch < 0x09 || (ch > 0x0A && ch < 0x20) || ch > 0x7E) {
             target += "\\u";
             appendHex(ch, 4, target);
@@ -54,7 +54,7 @@ UnicodeString escape(const UnicodeString &source) {
 
 // Print the given string to stdout
 void uprintf(const UnicodeString &str) {
-    char* buf = nullptr;
+    char *buf = 0;
     int32_t len = str.length();
     // int32_t bufLen = str.extract(0, len, buf); // Preflight
     /* Preflighting seems to be broken now, so assume 1-1 conversion,

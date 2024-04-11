@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 teo{
     Currencies{
         AED{
@@ -171,13 +170,9 @@ teo{
             "SHP",
             "Ango’otol lok’ Santahelena",
         }
-        SLE{
-            "SLE",
-            "Leoni",
-        }
         SLL{
             "SLL",
-            "Leoni (1964—2022)",
+            "Leoni",
         }
         SOS{
             "SOS",
@@ -216,7 +211,7 @@ teo{
             "Ango’otol lok’ CFA BEAC",
         }
         XOF{
-            "F CFA",
+            "CFA",
             "Ango’otol lok’ CFA BCEAO",
         }
         ZAR{
@@ -236,4 +231,5 @@ teo{
             "Edola lok’Zimbabwe",
         }
     }
+    Version{"2.1.47.82"}
 }

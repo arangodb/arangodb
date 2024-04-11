@@ -75,7 +75,7 @@ const static UCollationResult results[] = {
     UCOL_GREATER,
     /* test priamry > 8 */
     UCOL_LESS,
-    UCOL_LESS, /*Turkish translator made a primary difference between dotted and dotless I */
+    UCOL_LESS, /*Turkish translator made a primary differnce between dotted and dotless I */
     UCOL_GREATER
 };
 
@@ -90,7 +90,7 @@ void addTurkishCollTest(TestNode** root)
 
 }
 
-static void TestTertiary(void)
+static void TestTertiary( )
 {
     
     int32_t i;
@@ -110,7 +110,7 @@ static void TestTertiary(void)
     ucol_close(myCollation);
 }
 
-static void TestPrimary(void)
+static void TestPrimary()
 {
     
     int32_t i;

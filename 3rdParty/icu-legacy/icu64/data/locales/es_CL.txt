@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 es_CL{
     %%Parent{"es_419"}
     NumberElements{
@@ -14,32 +13,23 @@ es_CL{
             }
         }
     }
+    Version{"2.1.47.70"}
     calendar{
         generic{
             DateTimePatterns{
-                "h:mm:ss a zzzz",
-                "h:mm:ss a z",
-                "h:mm:ss a",
-                "h:mm a",
+                "HH:mm:ss zzzz",
+                "HH:mm:ss z",
+                "HH:mm:ss",
+                "HH:mm",
                 "EEEE, d 'de' MMMM 'de' y G",
                 "d 'de' MMMM 'de' y G",
                 "dd-MM-y G",
                 "dd-MM-y GGGGG",
+                "{1} {0}",
                 "{1}, {0}",
                 "{1}, {0}",
-                "{1}, {0}",
-                "{1}, {0}",
-                "{1}, {0}",
-            }
-            DateTimeSkeletons{
-                "ahmmsszzzz",
-                "ahmmssz",
-                "ahmmss",
-                "ahmm",
-                "GyMMMMEEEEd",
-                "GyMMMMd",
-                "GyMMdd",
-                "GGGGGyMMdd",
+                "{1} {0}",
+                "{1} {0}",
             }
             availableFormats{
                 MEd{"E, dd-MM"}
@@ -50,8 +40,8 @@ es_CL{
             }
             intervalFormats{
                 MEd{
-                    M{"E dd-MM – E dd-MM"}
-                    d{"E dd-MM – E dd-MM"}
+                    M{"E dd-MM – E dd-MM"}
+                    d{"E dd-MM – E dd-MM"}
                 }
                 MMMEd{
                     M{"E d 'de' MMM 'al' E d 'de' MMM"}
@@ -61,18 +51,18 @@ es_CL{
                     M{"d 'de' MMM 'al' d 'de' MMM"}
                 }
                 Md{
-                    M{"dd-MM – dd-MM"}
-                    d{"dd-MM – dd-MM"}
+                    M{"dd-MM – dd-MM"}
+                    d{"dd-MM – dd-MM"}
                 }
                 fallback{"{0} a el {1}"}
                 yM{
-                    M{"MM-y – MM-y G"}
-                    y{"MM-y – MM-y G"}
+                    M{"MM-y – MM-y G"}
+                    y{"MM-y – MM-y G"}
                 }
                 yMEd{
-                    M{"E dd-MM-y – E dd-MM-y G"}
-                    d{"E dd-MM-y – E dd-MM-y G"}
-                    y{"E dd-MM-y – E dd-MM-y G"}
+                    M{"E dd-MM-y – E dd-MM-y G"}
+                    d{"E dd-MM-y – E dd-MM-y G"}
+                    y{"E dd-MM-y – E dd-MM-y G"}
                 }
                 yMMM{
                     y{"MMM 'de' y 'a' MMM 'de' y G"}
@@ -87,9 +77,9 @@ es_CL{
                     y{"d 'de' MMM 'de' y 'al' d 'de' MMM 'de' y G"}
                 }
                 yMd{
-                    M{"dd-MM-y – dd-MM-y G"}
-                    d{"dd-MM-y – dd-MM-y G"}
-                    y{"dd-MM-y – dd-MM-y G"}
+                    M{"dd-MM-y – dd-MM-y G"}
+                    d{"dd-MM-y – dd-MM-y G"}
+                    y{"dd-MM-y – dd-MM-y G"}
                 }
             }
         }
@@ -99,33 +89,23 @@ es_CL{
                 "p. m.",
             }
             AmPmMarkersAbbr{
-                "a. m.",
-                "p. m.",
+                "a. m.",
+                "p. m.",
             }
             DateTimePatterns{
-                "h:mm:ss a zzzz",
-                "h:mm:ss a z",
-                "h:mm:ss a",
-                "h:mm a",
+                "HH:mm:ss zzzz",
+                "HH:mm:ss z",
+                "HH:mm:ss",
+                "HH:mm",
                 "EEEE, d 'de' MMMM 'de' y",
                 "d 'de' MMMM 'de' y",
                 "dd-MM-y",
                 "dd-MM-yy",
+                "{1} {0}",
                 "{1}, {0}",
                 "{1}, {0}",
-                "{1}, {0}",
-                "{1}, {0}",
-                "{1}, {0}",
-            }
-            DateTimeSkeletons{
-                "ahmmsszzzz",
-                "ahmmssz",
-                "ahmmss",
-                "ahmm",
-                "yMMMMEEEEd",
-                "yMMMMd",
-                "yMMdd",
-                "yyMMdd",
+                "{1} {0}",
+                "{1} {0}",
             }
             availableFormats{
                 GyMMMd{"d MMM y G"}
@@ -151,12 +131,12 @@ es_CL{
             dayPeriod{
                 stand-alone{
                     abbreviated{
-                        am{"a. m."}
-                        pm{"p. m."}
+                        am{"a. m."}
+                        pm{"p. m."}
                     }
                     narrow{
-                        am{"a. m."}
-                        pm{"p. m."}
+                        am{"a. m."}
+                        pm{"p. m."}
                     }
                     wide{
                         am{"a. m."}
@@ -166,8 +146,8 @@ es_CL{
             }
             intervalFormats{
                 MEd{
-                    M{"E dd-MM – E dd-MM"}
-                    d{"E dd-MM – E dd-MM"}
+                    M{"E dd-MM – E dd-MM"}
+                    d{"E dd-MM – E dd-MM"}
                 }
                 MMMEd{
                     M{"E d 'de' MMM 'al' E d 'de' MMM"}
@@ -177,21 +157,21 @@ es_CL{
                     M{"d 'de' MMM 'al' d 'de' MMM"}
                 }
                 Md{
-                    M{"dd-MM – dd-MM"}
-                    d{"dd-MM – dd-MM"}
+                    M{"dd-MM – dd-MM"}
+                    d{"dd-MM – dd-MM"}
                 }
                 fallback{"{0} a el {1}"}
                 hm{
-                    h{"h:mm–h:mm a"}
-                    m{"h:mm–h:mm a"}
+                    h{"h:mm–h:mm a"}
+                    m{"h:mm–h:mm a"}
                 }
                 yM{
-                    M{"MM-y – MM-y"}
-                    y{"MM-y – MM-y"}
+                    M{"MM-y – MM-y"}
+                    y{"MM-y – MM-y"}
                 }
                 yMEd{
-                    M{"E dd-MM-y – E dd-MM-y"}
-                    d{"E dd-MM-y – E dd-MM-y"}
+                    M{"E dd-MM-y – E dd-MM-y"}
+                    d{"E dd-MM-y – E dd-MM-y"}
                 }
                 yMMM{
                     y{"MMM 'de' y 'a' MMM 'de' y"}
@@ -206,9 +186,9 @@ es_CL{
                     y{"d 'de' MMM 'de' y 'al' d 'de' MMM 'de' y"}
                 }
                 yMd{
-                    M{"dd-MM-y – dd-MM-y"}
-                    d{"dd-MM-y – dd-MM-y"}
-                    y{"dd-MM-y – dd-MM-y"}
+                    M{"dd-MM-y – dd-MM-y"}
+                    d{"dd-MM-y – dd-MM-y"}
+                    y{"dd-MM-y – dd-MM-y"}
                 }
             }
             monthNames{

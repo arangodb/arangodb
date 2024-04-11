@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ro{
     Currencies{
         ADP{
@@ -17,7 +16,7 @@ ro{
         }
         ALL{
             "ALL",
-            "lek",
+            "leka albaneză",
         }
         AMD{
             "AMD",
@@ -25,7 +24,7 @@ ro{
         }
         ANG{
             "ANG",
-            "gulden neerlandez antilez",
+            "gulden din Antilele Olandeze",
         }
         AOA{
             "AOA",
@@ -65,7 +64,7 @@ ro{
         }
         BAM{
             "BAM",
-            "marcă convertibilă",
+            "marcă convertibilă din Bosnia și Herțegovina",
         }
         BBD{
             "BBD",
@@ -89,7 +88,7 @@ ro{
         }
         BGN{
             "BGN",
-            "leva",
+            "leva bulgărească",
         }
         BHD{
             "BHD",
@@ -109,7 +108,7 @@ ro{
         }
         BOB{
             "BOB",
-            "boliviano",
+            "boliviano bolivian",
         }
         BOP{
             "BOP",
@@ -125,7 +124,7 @@ ro{
         }
         BRL{
             "BRL",
-            "real",
+            "real brazilian",
         }
         BRR{
             "BRR",
@@ -189,7 +188,7 @@ ro{
         }
         CRC{
             "CRC",
-            "colón costarican",
+            "colon costarican",
         }
         CSD{
             "CSD",
@@ -205,7 +204,7 @@ ro{
         }
         CVE{
             "CVE",
-            "escudo caboverdian",
+            "escudo din Capul Verde",
         }
         CYP{
             "CYP",
@@ -349,7 +348,7 @@ ro{
         }
         HRK{
             "HRK",
-            "kuna",
+            "kuna croată",
         }
         HTG{
             "HTG",
@@ -357,7 +356,7 @@ ro{
         }
         HUF{
             "HUF",
-            "forint",
+            "forint maghiar",
         }
         IDR{
             "IDR",
@@ -373,7 +372,7 @@ ro{
         }
         ILS{
             "ILS",
-            "shekel israelian nou",
+            "șechel israelian nou",
         }
         INR{
             "INR",
@@ -513,7 +512,7 @@ ro{
         }
         MKD{
             "MKD",
-            "denar",
+            "dinar macedonean",
         }
         MLF{
             "MLF",
@@ -593,7 +592,7 @@ ro{
         }
         NIO{
             "NIO",
-            "córdoba oro",
+            "cordoba nicaraguană",
         }
         NLG{
             "NLG",
@@ -625,7 +624,7 @@ ro{
         }
         PEN{
             "PEN",
-            "sol",
+            "sol peruvian",
         }
         PES{
             "PES",
@@ -645,7 +644,7 @@ ro{
         }
         PLN{
             "PLN",
-            "zlot",
+            "zlot polonez",
         }
         PLZ{
             "PLZ",
@@ -653,7 +652,7 @@ ro{
         }
         PYG{
             "PYG",
-            "guarani",
+            "guarani paraguayan",
         }
         QAR{
             "QAR",
@@ -693,7 +692,7 @@ ro{
         }
         SCR{
             "SCR",
-            "rupie seychelleză",
+            "rupie din Seychelles",
         }
         SDD{
             "SDD",
@@ -717,7 +716,7 @@ ro{
         }
         SHP{
             "SHP",
-            "liră din Sfânta Elena (Sfânta Elena și Ascension)",
+            "liră Insula Sf. Elena",
         }
         SIT{
             "SIT",
@@ -727,13 +726,9 @@ ro{
             "SKK",
             "coroană slovacă",
         }
-        SLE{
-            "SLE",
-            "leone din Sierra Leone",
-        }
         SLL{
             "SLL",
-            "leone din Sierra Leone (1964—2022)",
+            "leone din Sierra Leone",
         }
         SOS{
             "SOS",
@@ -757,7 +752,7 @@ ro{
         }
         STN{
             "STN",
-            "dobra din São Tomé și Príncipe",
+            "dobra Sao Tome și Principe",
         }
         SUR{
             "SUR",
@@ -813,7 +808,7 @@ ro{
         }
         TTD{
             "TTD",
-            "dolar din Trinidad și Tobago",
+            "dolar din Trinidad-Tobago",
         }
         TWD{
             "TWD",
@@ -825,7 +820,7 @@ ro{
         }
         UAH{
             "UAH",
-            "grivnă",
+            "hryvna ucraineană",
         }
         UAK{
             "UAK",
@@ -873,7 +868,7 @@ ro{
         }
         VES{
             "VES",
-            "bolívar soberano",
+            "bolivar venezuelean",
         }
         VND{
             "VND",
@@ -917,7 +912,7 @@ ro{
         }
         XCD{
             "XCD",
-            "dolar est-caraib",
+            "dolar din Caraibele de Est",
         }
         XDR{
             "XDR",
@@ -936,7 +931,7 @@ ro{
             "franc UIC francez",
         }
         XOF{
-            "F CFA",
+            "CFA",
             "franc CFA BCEAO",
         }
         XPD{
@@ -1013,8 +1008,10 @@ ro{
         }
     }
     Currencies%narrow{
-        BYN{"р."}
         TWD{"NT$"}
+    }
+    Currencies%variant{
+        GEL{"₾"}
     }
     CurrencyPlurals{
         ADP{
@@ -1032,15 +1029,20 @@ ro{
             one{"afgani afgan"}
             other{"afgani afgani"}
         }
+        ALL{
+            few{"leka albaneze"}
+            one{"leka albaneză"}
+            other{"leka albaneze"}
+        }
         AMD{
             few{"drami armenești"}
             one{"dram armenesc"}
             other{"drami armenești"}
         }
         ANG{
-            few{"guldeni neerlandezi antilezi"}
-            one{"gulden neerlandez antilez"}
-            other{"guldeni neerlandezi antilezi"}
+            few{"guldeni din Antilele Olandeze"}
+            one{"gulden din Antilele Olandeze"}
+            other{"guldeni din Antilele Olandeze"}
         }
         AOA{
             few{"kwanze angoleze"}
@@ -1083,14 +1085,19 @@ ro{
             other{"dinari Bosnia-Herțegovina (1992–1994)"}
         }
         BAM{
-            few{"mărci convertibile"}
-            one{"marcă convertibilă"}
-            other{"mărci convertibile"}
+            few{"mărci convertibile din Bosnia și Herțegovina"}
+            one{"marcă convertibilă din Bosnia și Herțegovina"}
+            other{"mărci convertibile din Bosnia și Herțegovina"}
         }
         BBD{
             few{"dolari din Barbados"}
             one{"dolar din Barbados"}
             other{"dolari din Barbados"}
+        }
+        BDT{
+            few{"taka din Bangladesh"}
+            one{"taka din Bangladesh"}
+            other{"taka din Bangladesh"}
         }
         BEC{
             few{"franci belgieni (convertibili)"}
@@ -1108,9 +1115,9 @@ ro{
             other{"franci belgieni (financiari)"}
         }
         BGN{
-            few{"leve"}
-            one{"leva"}
-            other{"leve"}
+            few{"leva bulgărești"}
+            one{"leva bulgărească"}
+            other{"leva bulgărești"}
         }
         BHD{
             few{"dinari din Bahrain"}
@@ -1132,20 +1139,35 @@ ro{
             one{"dolar din Brunei"}
             other{"dolari Brunei"}
         }
+        BOB{
+            few{"boliviano bolivieni"}
+            one{"boliviano bolivian"}
+            other{"boliviano bolivieni"}
+        }
         BOP{
             few{"pesos bolivieni"}
             one{"peso bolivian"}
             other{"pesos bolivieni"}
         }
         BRL{
-            few{"reali"}
-            one{"real"}
-            other{"reali"}
+            few{"reali brazilieni"}
+            one{"real brazilian"}
+            other{"reali brazilieni"}
         }
         BSD{
             few{"dolari din Bahamas"}
             one{"dolar din Bahamas"}
             other{"dolari din Bahamas"}
+        }
+        BTN{
+            few{"ngultrum din Bhutan"}
+            one{"ngultrum din Bhutan"}
+            other{"ngultrum din Bhutan"}
+        }
+        BWP{
+            few{"pula Botswana"}
+            one{"pula Botswana"}
+            other{"pula Botswana"}
         }
         BYN{
             few{"ruble belaruse"}
@@ -1198,9 +1220,9 @@ ro{
             other{"pesos columbieni"}
         }
         CRC{
-            few{"colóni costaricani"}
-            one{"colón costarican"}
-            other{"colóni costaricani"}
+            few{"coloni costaricani"}
+            one{"colon costarican"}
+            other{"coloni costaricani"}
         }
         CSD{
             few{"dinari Serbia și Muntenegru (2002–2006)"}
@@ -1218,9 +1240,9 @@ ro{
             other{"pesos cubanezi"}
         }
         CVE{
-            few{"escudo caboverdieni"}
-            one{"escudo caboverdian"}
-            other{"escudo caboverdieni"}
+            few{"escudo din Capul Verde"}
+            one{"escudo din Capul Verde"}
+            other{"escudo din Capul Verde"}
         }
         CYP{
             few{"lire cipriote"}
@@ -1287,6 +1309,11 @@ ro{
             one{"birr etiopian"}
             other{"birri etiopieni"}
         }
+        EUR{
+            few{"euro"}
+            one{"euro"}
+            other{"euro"}
+        }
         FIM{
             few{"mărci finlandeze"}
             one{"mărci finlandeze"}
@@ -1326,6 +1353,11 @@ ro{
             few{"lire din Gibraltar"}
             one{"liră din Gibraltar"}
             other{"lire Gibraltar"}
+        }
+        GMD{
+            few{"dalasi din Gambia"}
+            one{"dalasi din Gambia"}
+            other{"dalasi din Gambia"}
         }
         GNF{
             few{"franci guineeni"}
@@ -1367,10 +1399,20 @@ ro{
             one{"dinar croat"}
             other{"dinari croați"}
         }
+        HRK{
+            few{"kune croate"}
+            one{"kuna croată"}
+            other{"kune croate"}
+        }
+        HTG{
+            few{"gourde din Haiti"}
+            one{"gourde din Haiti"}
+            other{"gourde din Haiti"}
+        }
         HUF{
-            few{"forinți"}
-            one{"forint"}
-            other{"forinți"}
+            few{"forinți maghiari"}
+            one{"forint maghiar"}
+            other{"forinți maghiari"}
         }
         IDR{
             few{"rupii indoneziene"}
@@ -1388,9 +1430,9 @@ ro{
             other{"lire israeliene"}
         }
         ILS{
-            few{"shekeli israelieni noi"}
-            one{"shekel israelian nou"}
-            other{"shekeli israelieni noi"}
+            few{"șecheli israelieni noi"}
+            one{"șechel israelian nou"}
+            other{"șecheli israelieni noi"}
         }
         INR{
             few{"rupii indiene"}
@@ -1497,11 +1539,6 @@ ro{
             one{"dolar liberian"}
             other{"dolari liberieni"}
         }
-        LSL{
-            few{"maloti lesothieni"}
-            one{"loti lesothian"}
-            other{"maloti lesothieni"}
-        }
         LTL{
             few{"lite lituaniene"}
             one{"litu lituanian"}
@@ -1563,9 +1600,9 @@ ro{
             other{"franci Madagascar"}
         }
         MKD{
-            few{"denari"}
-            one{"denar"}
-            other{"denari"}
+            few{"dinari macedoneni"}
+            one{"dinar macedonean"}
+            other{"dinari macedoneni"}
         }
         MLF{
             few{"franci Mali"}
@@ -1581,6 +1618,11 @@ ro{
             few{"tugrici mongoli"}
             one{"tugrik mongol"}
             other{"tugrici mongoli"}
+        }
+        MOP{
+            few{"pataca din Macao"}
+            one{"pataca din Macao"}
+            other{"pataca din Macao"}
         }
         MRO{
             few{"ouguiya mauritane (1973–2017)"}
@@ -1628,9 +1670,9 @@ ro{
             other{"ringgit malaiezieni"}
         }
         MZN{
-            few{"meticali mozambicani"}
+            few{"metical mozambicani"}
             one{"metical mozambican"}
-            other{"meticali mozambicani"}
+            other{"metical mozambicani"}
         }
         NAD{
             few{"dolari namibieni"}
@@ -1643,9 +1685,9 @@ ro{
             other{"naire nigeriene"}
         }
         NIO{
-            few{"córdobe oro"}
-            one{"córdoba oro"}
-            other{"córdobe oro"}
+            few{"cordobe nicaraguane"}
+            one{"cordoba nicaraguană"}
+            other{"cordobe nicaraguane"}
         }
         NLG{
             few{"guldeni olandezi"}
@@ -1678,14 +1720,19 @@ ro{
             other{"balboa panameze"}
         }
         PEN{
-            few{"soli"}
-            one{"sol"}
-            other{"soli"}
+            few{"soli peruvieni"}
+            one{"sol peruvian"}
+            other{"soli peruvieni"}
         }
         PES{
             few{"soli peruvieni (1863–1965)"}
             one{"sol peruvian (1863–1965)"}
             other{"soli peruvieni (1863–1965)"}
+        }
+        PGK{
+            few{"kina din Papua-Noua Guinee"}
+            one{"kina din Papua-Noua Guinee"}
+            other{"kina din Papua-Noua Guinee"}
         }
         PHP{
             few{"pesos filipinezi"}
@@ -1698,14 +1745,19 @@ ro{
             other{"rupii pakistaneze"}
         }
         PLN{
-            few{"zloți"}
-            one{"zlot"}
-            other{"zloți"}
+            few{"zloți polonezi"}
+            one{"zlot polonez"}
+            other{"zloți polonezi"}
         }
         PLZ{
             few{"zloți polonezi (1950–1995)"}
             one{"zlot polonez (1950–1995)"}
             other{"zloți polonezi (1950–1995)"}
+        }
+        PYG{
+            few{"guarani paraguayeni"}
+            one{"guarani paraguayan"}
+            other{"guarani paraguayeni"}
         }
         QAR{
             few{"riali qatarieni"}
@@ -1753,9 +1805,9 @@ ro{
             other{"dolari din Insulele Solomon"}
         }
         SCR{
-            few{"rupii seychelleze"}
-            one{"rupie seychelleză"}
-            other{"rupii seychelleze"}
+            few{"rupii din Seychelles"}
+            one{"rupie din Seychelles"}
+            other{"rupii din Seychelles"}
         }
         SDD{
             few{"dinari sudanezi"}
@@ -1783,9 +1835,9 @@ ro{
             other{"dolari singaporezi"}
         }
         SHP{
-            few{"lire din Sfânta Elena (Sfânta Elena și Ascension)"}
-            one{"liră din Sfânta Elena (Sfânta Elena și Ascension)"}
-            other{"lire din Sfânta Elena (Sfânta Elena și Ascension)"}
+            few{"lire Insula Sf. Elena"}
+            one{"liră Insula Sf. Elena"}
+            other{"lire Insula Sf. Elena"}
         }
         SIT{
             few{"tolari sloveni"}
@@ -1797,15 +1849,10 @@ ro{
             one{"coroană slovacă"}
             other{"coroane slovace"}
         }
-        SLE{
+        SLL{
             few{"leoni din Sierra Leone"}
             one{"leone din Sierra Leone"}
             other{"leoni din Sierra Leone"}
-        }
-        SLL{
-            few{"leoni din Sierra Leone (1964—2022)"}
-            one{"leone din Sierra Leone (1964—2022)"}
-            other{"leoni din Sierra Leone (1964—2022)"}
         }
         SOS{
             few{"șilingi somalezi"}
@@ -1833,9 +1880,9 @@ ro{
             other{"dobre Sao Tome și Principe (1977–2017)"}
         }
         STN{
-            few{"dobre din São Tomé și Príncipe"}
-            one{"dobra din São Tomé și Príncipe"}
-            other{"dobre din São Tomé și Príncipe"}
+            few{"dobre Sao Tome și Principe"}
+            one{"dobra Sao Tome și Principe"}
+            other{"dobre Sao Tome și Principe"}
         }
         SUR{
             few{"ruble sovietice"}
@@ -1903,9 +1950,9 @@ ro{
             other{"lire turcești"}
         }
         TTD{
-            few{"dolari din Trinidad și Tobago"}
-            one{"dolar din Trinidad și Tobago"}
-            other{"dolari din Trinidad și Tobago"}
+            few{"dolari din Trinidad-Tobago"}
+            one{"dolar din Trinidad-Tobago"}
+            other{"dolari din Trinidad-Tobago"}
         }
         TWD{
             few{"dolari noi din Taiwan"}
@@ -1918,9 +1965,9 @@ ro{
             other{"șilingi tanzanieni"}
         }
         UAH{
-            few{"grivne"}
-            one{"grivnă"}
-            other{"grivne"}
+            few{"hryvna ucrainiene"}
+            one{"hryvna ucrainiană"}
+            other{"hryvna ucrainiene"}
         }
         UAK{
             few{"carboave ucrainiene"}
@@ -1962,6 +2009,11 @@ ro{
             one{"peso uruguayan"}
             other{"pesos uruguayeni"}
         }
+        UZS{
+            few{"sum Uzbekistan"}
+            one{"sum Uzbekistan"}
+            other{"sum Uzbekistan"}
+        }
         VEB{
             few{"bolivari Venezuela (1871–2008)"}
             one{"bolivar Venezuela (1871–2008)"}
@@ -1973,14 +2025,19 @@ ro{
             other{"bolivari venezueleni (2008–2018)"}
         }
         VES{
-            few{"bolívari soberano"}
-            one{"bolívar soberano"}
-            other{"bolívari soberano"}
+            few{"bolivari venezueleni"}
+            one{"bolivar venezuelean"}
+            other{"bolivari venezueleni"}
         }
         VND{
             few{"dongi vietnamezi"}
             one{"dong vietnamez"}
             other{"dongi vietnamezi"}
+        }
+        VUV{
+            few{"vatu din Vanuatu"}
+            one{"vatu din Vanuatu"}
+            other{"vatu din Vanuatu"}
         }
         WST{
             few{"tala samoane"}
@@ -1993,9 +2050,9 @@ ro{
             other{"franci CFA central-africani"}
         }
         XCD{
-            few{"dolari est-caraibi"}
-            one{"dolar est-caraib"}
-            other{"dolari est-caraibi"}
+            few{"dolari din Caraibele de Est"}
+            one{"dolar din Caraibele de Est"}
+            other{"dolari din Caraibele de Est"}
         }
         XFO{
             few{"franci francezi de aur"}
@@ -2073,4 +2130,5 @@ ro{
         one{"{0} {1}"}
         other{"{0} de {1}"}
     }
+    Version{"2.1.49.82"}
 }

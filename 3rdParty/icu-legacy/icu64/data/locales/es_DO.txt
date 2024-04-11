@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 es_DO{
     %%Parent{"es_419"}
     NumberElements{
@@ -10,32 +9,23 @@ es_DO{
             }
         }
     }
+    Version{"2.1.47.70"}
     calendar{
         generic{
             DateTimePatterns{
-                "h:mm:ss a zzzz",
-                "h:mm:ss a z",
-                "h:mm:ss a",
-                "h:mm a",
+                "h:mm:ss a zzzz",
+                "h:mm:ss a z",
+                "h:mm:ss a",
+                "h:mm a",
                 "EEEE, d 'de' MMMM 'de' y G",
                 "d 'de' MMMM 'de' y G",
                 "dd/MM/y G",
-                "d/M/y GGGGG",
+                "dd/MM/yy GGGGG",
+                "{1} {0}",
                 "{1}, {0}",
                 "{1}, {0}",
-                "{1}, {0}",
-                "{1}, {0}",
-                "{1}, {0}",
-            }
-            DateTimeSkeletons{
-                "ahmmsszzzz",
-                "ahmmssz",
-                "ahmmss",
-                "ahmm",
-                "GyMMMMEEEEd",
-                "GyMMMMd",
-                "GyMMdd",
-                "GGGGGyyMMdd",
+                "{1} {0}",
+                "{1} {0}",
             }
         }
         gregorian{
@@ -44,11 +34,39 @@ es_DO{
                 "p. m.",
             }
             AmPmMarkersAbbr{
-                "a. m.",
-                "p. m.",
+                "a. m.",
+                "p. m.",
+            }
+            DateTimePatterns{
+                "h:mm:ss a zzzz",
+                "h:mm:ss a z",
+                "h:mm:ss a",
+                "h:mm a",
+                "EEEE, d 'de' MMMM 'de' y",
+                "d 'de' MMMM 'de' y",
+                "d MMM y",
+                "d/M/yy",
+                "{1} {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1} {0}",
+                "{1} {0}",
             }
             availableFormats{
                 yMMMd{"d MMM 'de' y"}
+            }
+            dayNames{
+                format{
+                    narrow{
+                        "D",
+                        "L",
+                        "M",
+                        "M",
+                        "J",
+                        "V",
+                        "S",
+                    }
+                }
             }
             dayPeriod{
                 format{
@@ -62,13 +80,13 @@ es_DO{
                 }
                 stand-alone{
                     abbreviated{
-                        am{"a. m."}
-                        pm{"p. m."}
+                        am{"a. m."}
+                        pm{"p. m."}
                     }
                     narrow{
-                        am{"a. m."}
+                        am{"a. m."}
                         noon{"m."}
-                        pm{"p. m."}
+                        pm{"p. m."}
                     }
                     wide{
                         am{"a. m."}
@@ -84,6 +102,14 @@ es_DO{
             }
             quarters{
                 format{
+                    abbreviated{
+                        "Q1",
+                        "Q2",
+                        "Q3",
+                        "Q4",
+                    }
+                }
+                stand-alone{
                     abbreviated{
                         "Q1",
                         "Q2",

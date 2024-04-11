@@ -82,7 +82,7 @@ ufmt_digitvalue(UChar c);
  * Determine if a UChar is a digit for a specified radix.
  * @param c The UChar to check.
  * @param radix The desired radix.
- * @return true if <TT>c</TT> is a digit in <TT>radix</TT>, false otherwise.
+ * @return TRUE if <TT>c</TT> is a digit in <TT>radix</TT>, FALSE otherwise.
  */
 UBool
 ufmt_isdigit(UChar     c,
@@ -95,7 +95,7 @@ ufmt_isdigit(UChar     c,
  * the number of UChars written to <TT>buffer</TT>.
  * @param value The value to be converted
  * @param radix The desired radix
- * @param uselower true means lower case will be used, false means upper case
+ * @param uselower TRUE means lower case will be used, FALSE means upper case
  * @param minDigits The minimum number of digits for for the formatted number,
  * which will be padded with zeroes. -1 means do not pad.
  */

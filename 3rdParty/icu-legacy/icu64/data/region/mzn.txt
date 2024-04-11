@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 mzn{
     Countries{
         001{"جهون"}
@@ -144,6 +143,7 @@ mzn{
         IL{"ایسراییل"}
         IM{"من ِجزیره"}
         IN{"هند"}
+        IO{"بریتانیای هند ِاوقیانوس ِمناطق"}
         IQ{"عراق"}
         IR{"ایران"}
         IS{"ایسلند"}
@@ -181,6 +181,7 @@ mzn{
         MF{"سنت مارتین"}
         MG{"ماداگاسکار"}
         MH{"مارشال جزایر"}
+        MK{"مقدونیه"}
         ML{"مالی"}
         MM{"میانمار"}
         MN{"مغولستون"}
@@ -292,6 +293,7 @@ mzn{
         ZZ{"نامَیِّن منطقه"}
     }
     Countries%short{
+        GB{"بریتانیا"}
         HK{"هونگ کونگ"}
         MO{"ماکائو"}
         PS{"فلسطین"}
@@ -302,6 +304,8 @@ mzn{
         CG{"کنگو (جمهوری)"}
         CI{"عاج ساحل"}
         FK{"فالکلند (مالویناس)"}
+        MK{"مقدونیه جمهوری"}
         TL{"شرقی تیمور"}
     }
+    Version{"2.1.47.82"}
 }

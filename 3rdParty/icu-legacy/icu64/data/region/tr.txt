@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 tr{
     Countries{
         001{"Dünya"}
@@ -78,7 +77,7 @@ tr{
         CF{"Orta Afrika Cumhuriyeti"}
         CG{"Kongo - Brazavil"}
         CH{"İsviçre"}
-        CI{"Côte d’Ivoire"}
+        CI{"Fildişi Sahili"}
         CK{"Cook Adaları"}
         CL{"Şili"}
         CM{"Kamerun"}
@@ -87,7 +86,7 @@ tr{
         CP{"Clipperton Adası"}
         CR{"Kosta Rika"}
         CU{"Küba"}
-        CV{"Cabo Verde"}
+        CV{"Cape Verde"}
         CW{"Curaçao"}
         CX{"Christmas Adası"}
         CY{"Kıbrıs"}
@@ -229,7 +228,7 @@ tr{
         PY{"Paraguay"}
         QA{"Katar"}
         QO{"Uzak Okyanusya"}
-        RE{"Reunion"}
+        RE{"Réunion"}
         RO{"Romanya"}
         RS{"Sırbistan"}
         RU{"Rusya"}
@@ -250,7 +249,7 @@ tr{
         SO{"Somali"}
         SR{"Surinam"}
         SS{"Güney Sudan"}
-        ST{"Sao Tome ve Principe"}
+        ST{"São Tomé ve Príncipe"}
         SV{"El Salvador"}
         SX{"Sint Maarten"}
         SY{"Suriye"}
@@ -288,8 +287,6 @@ tr{
         VU{"Vanuatu"}
         WF{"Wallis ve Futuna"}
         WS{"Samoa"}
-        XA{"Psödo Aksanlar"}
-        XB{"Psödo Bidi"}
         XK{"Kosova"}
         YE{"Yemen"}
         YT{"Mayotte"}
@@ -297,9 +294,6 @@ tr{
         ZM{"Zambiya"}
         ZW{"Zimbabve"}
         ZZ{"Bilinmeyen Bölge"}
-    }
-    Countries%chagos{
-        IO{"Chagos Takımadaları"}
     }
     Countries%short{
         GB{"BK"}
@@ -312,11 +306,10 @@ tr{
     Countries%variant{
         CD{"Kongo Demokratik Cumhuriyeti"}
         CG{"Kongo Cumhuriyeti"}
-        CI{"Fildişi Sahili"}
         CZ{"Çek Cumhuriyeti"}
         FK{"Falkland Adaları (Malvinas Adaları)"}
-        NZ{"Aotearoa Yeni Zelanda"}
         SZ{"Svaziland"}
         TL{"Doğu Timor"}
     }
+    Version{"2.1.48.42"}
 }

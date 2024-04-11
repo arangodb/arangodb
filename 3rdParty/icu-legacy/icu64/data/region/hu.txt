@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 hu{
     Countries{
         001{"Világ"}
@@ -74,9 +73,9 @@ hu{
         BZ{"Belize"}
         CA{"Kanada"}
         CC{"Kókusz (Keeling)-szigetek"}
-        CD{"Kongó – Kinshasa"}
+        CD{"Kongó - Kinshasa"}
         CF{"Közép-afrikai Köztársaság"}
-        CG{"Kongó – Brazzaville"}
+        CG{"Kongó - Brazzaville"}
         CH{"Svájc"}
         CI{"Elefántcsontpart"}
         CK{"Cook-szigetek"}
@@ -85,7 +84,6 @@ hu{
         CN{"Kína"}
         CO{"Kolumbia"}
         CP{"Clipperton-sziget"}
-        CQ{"Sark"}
         CR{"Costa Rica"}
         CU{"Kuba"}
         CV{"Zöld-foki Köztársaság"}
@@ -187,7 +185,7 @@ hu{
         MH{"Marshall-szigetek"}
         MK{"Észak-Macedónia"}
         ML{"Mali"}
-        MM{"Mianmar"}
+        MM{"Mianmar (Burma)"}
         MN{"Mongólia"}
         MO{"Makaó KKT"}
         MP{"Északi Mariana-szigetek"}
@@ -224,7 +222,7 @@ hu{
         PM{"Saint-Pierre és Miquelon"}
         PN{"Pitcairn-szigetek"}
         PR{"Puerto Rico"}
-        PS{"Palesztin Autonómia"}
+        PS{"Palesztin Terület"}
         PT{"Portugália"}
         PW{"Palau"}
         PY{"Paraguay"}
@@ -299,9 +297,6 @@ hu{
         ZW{"Zimbabwe"}
         ZZ{"Ismeretlen körzet"}
     }
-    Countries%chagos{
-        IO{"Chagos-szigetcsoport"}
-    }
     Countries%short{
         GB{"UK"}
         HK{"Hongkong"}
@@ -313,10 +308,10 @@ hu{
     Countries%variant{
         CD{"Kongó (KDK)"}
         CG{"Kongó (Köztársaság)"}
+        CI{"CI"}
         CZ{"Cseh Köztársaság"}
         FK{"Falkland-szigetek (Malvin-szigetek)"}
-        NZ{"Aotearoa (Új-Zéland)"}
-        SZ{"Eswatini"}
         TL{"Timor-Leste"}
     }
+    Version{"2.1.48.42"}
 }

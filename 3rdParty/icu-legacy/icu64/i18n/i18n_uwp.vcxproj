@@ -13,10 +13,6 @@
       <Configuration>Debug</Configuration>
       <Platform>ARM</Platform>
     </ProjectConfiguration>
-    <ProjectConfiguration Include="Debug|ARM64">
-      <Configuration>Debug</Configuration>
-      <Platform>ARM64</Platform>
-    </ProjectConfiguration>
     <ProjectConfiguration Include="Release|Win32">
       <Configuration>Release</Configuration>
       <Platform>Win32</Platform>
@@ -28,10 +24,6 @@
     <ProjectConfiguration Include="Release|ARM">
       <Configuration>Release</Configuration>
       <Platform>ARM</Platform>
-    </ProjectConfiguration>
-    <ProjectConfiguration Include="Release|ARM64">
-      <Configuration>Release</Configuration>
-      <Platform>ARM64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
@@ -52,17 +44,27 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC71.props" />
+  </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
     <_ProjectFileVersion>10.0.30319.1</_ProjectFileVersion>
-    <OutDir>.\$(Platform)\$(Configuration)UWP\</OutDir>
-    <IntDir>.\$(Platform)\$(Configuration)UWP\</IntDir>
-    <!-- The ICU projects use "Win32" to mean "x86", so we need to special case it. -->
-    <OutDir Condition="'$(Platform)'=='Win32'">.\x86\$(Configuration)UWP\</OutDir>
-    <IntDir Condition="'$(Platform)'=='Win32'">.\x86\$(Configuration)UWP\</IntDir>
-    <!-- Disable Incremental Linking for Release builds as it prevents Link-time Code Generation -->
-    <LinkIncremental Condition="'$(Configuration)'=='Debug'">true</LinkIncremental>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">.\x86\ReleaseUWP\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">.\x86\ReleaseUWP\</IntDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.\x86\DebugUWP\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.\x86\DebugUWP\</IntDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.\x64\ReleaseUWP\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.\x64\ReleaseUWP\</IntDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.\x64\DebugUWP\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.\x64\DebugUWP\</IntDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">.\arm\ReleaseUWP\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">.\arm\ReleaseUWP\</IntDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">.\arm\DebugUWP\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">.\arm\DebugUWP\</IntDir>
     <LinkIncremental Condition="'$(Configuration)'=='Release'">false</LinkIncremental>
+    <LinkIncremental Condition="'$(Configuration)'=='Debug'">true</LinkIncremental>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <Midl>
@@ -78,6 +80,7 @@
       <ExceptionHandling>
       </ExceptionHandling>
       <FunctionLevelLinking>true</FunctionLevelLinking>
+      <DisableLanguageExtensions>false</DisableLanguageExtensions>
       <TreatWChar_tAsBuiltInType>true</TreatWChar_tAsBuiltInType>
       <WarningLevel>Level3</WarningLevel>
       <SuppressStartupBanner>true</SuppressStartupBanner>
@@ -85,7 +88,6 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <CompileAsWinRT>false</CompileAsWinRT>
       <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
-      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
     </ClCompile>
     <ResourceCompile>
       <Culture>0x0409</Culture>
@@ -125,6 +127,7 @@
       <Optimization>Disabled</Optimization>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
       <BufferSecurityCheck>true</BufferSecurityCheck>
+      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
     </ClCompile>
     <ResourceCompile>
       <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -163,17 +166,6 @@
       <TargetMachine>MachineARM</TargetMachine>
     </Link>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Platform)'=='ARM64'">
-    <Midl>
-      <TargetEnvironment>ARM64</TargetEnvironment>
-    </Midl>
-    <ClCompile>
-      <PreprocessorDefinitions>ARM64;WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-    </ClCompile>
-    <Link>
-      <TargetMachine>MachineARM64</TargetMachine>
-    </Link>
-  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Midl>
       <TypeLibraryName>.\..\..\lib32uwp\icuin.tlb</TypeLibraryName>
@@ -185,7 +177,7 @@
       <ProgramDataBaseFileName>.\x86\ReleaseUWP/</ProgramDataBaseFileName>
     </ClCompile>
     <Link>
-      <OutputFile>..\..\bin32uwp\icuin$(IcuMajorVersion).dll</OutputFile>
+      <OutputFile>..\..\bin32uwp\icuin64.dll</OutputFile>
       <ProgramDatabaseFile>.\..\..\lib32uwp\icuin.pdb</ProgramDatabaseFile>
       <ImportLibrary>..\..\lib32uwp\icuin.lib</ImportLibrary>
       <AdditionalDependencies>..\..\lib32uwp\icuuc.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -202,7 +194,7 @@
       <ProgramDataBaseFileName>.\x86\DebugUWP/</ProgramDataBaseFileName>
     </ClCompile>
     <Link>
-      <OutputFile>..\..\bin32uwp\icuin$(IcuMajorVersion)d.dll</OutputFile>
+      <OutputFile>..\..\bin32uwp\icuin64d.dll</OutputFile>
       <ProgramDatabaseFile>.\..\..\lib32uwp\icuind.pdb</ProgramDatabaseFile>
       <ImportLibrary>..\..\lib32uwp\icuind.lib</ImportLibrary>
       <AdditionalDependencies>..\..\lib32uwp\icuucd.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -219,7 +211,7 @@
       <ProgramDataBaseFileName>.\x64\ReleaseUWP/</ProgramDataBaseFileName>
     </ClCompile>
     <Link>
-      <OutputFile>..\..\bin64uwp\icuin$(IcuMajorVersion).dll</OutputFile>
+      <OutputFile>..\..\bin64uwp\icuin64.dll</OutputFile>
       <ProgramDatabaseFile>.\..\..\lib64uwp\icuin.pdb</ProgramDatabaseFile>
       <ImportLibrary>..\..\lib64uwp\icuin.lib</ImportLibrary>
       <AdditionalDependencies>..\..\lib64uwp\icuuc.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -236,7 +228,7 @@
       <ProgramDataBaseFileName>.\x64\DebugUWP/</ProgramDataBaseFileName>
     </ClCompile>
     <Link>
-      <OutputFile>..\..\bin64uwp\icuin$(IcuMajorVersion)d.dll</OutputFile>
+      <OutputFile>..\..\bin64uwp\icuin64d.dll</OutputFile>
       <ProgramDatabaseFile>.\..\..\lib64uwp\icuind.pdb</ProgramDatabaseFile>
       <ImportLibrary>..\..\lib64uwp\icuind.lib</ImportLibrary>
       <AdditionalDependencies>..\..\lib64uwp\icuucd.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -253,7 +245,7 @@
       <ProgramDataBaseFileName>.\ARM\ReleaseUWP/</ProgramDataBaseFileName>
     </ClCompile>
     <Link>
-      <OutputFile>..\..\binARMuwp\icuin$(IcuMajorVersion).dll</OutputFile>
+      <OutputFile>..\..\binARMuwp\icuin64.dll</OutputFile>
       <ProgramDatabaseFile>.\..\..\libARMuwp\icuin.pdb</ProgramDatabaseFile>
       <ImportLibrary>..\..\libARMuwp\icuin.lib</ImportLibrary>
       <AdditionalDependencies>..\..\libARMuwp\icuuc.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -270,44 +262,10 @@
       <ProgramDataBaseFileName>.\ARM\DebugUWP/</ProgramDataBaseFileName>
     </ClCompile>
     <Link>
-      <OutputFile>..\..\binARMuwp\icuin$(IcuMajorVersion)d.dll</OutputFile>
+      <OutputFile>..\..\binARMuwp\icuin64d.dll</OutputFile>
       <ProgramDatabaseFile>.\..\..\libARMuwp\icuind.pdb</ProgramDatabaseFile>
       <ImportLibrary>..\..\libARMuwp\icuind.lib</ImportLibrary>
       <AdditionalDependencies>..\..\libARMuwp\icuucd.lib;%(AdditionalDependencies)</AdditionalDependencies>
-    </Link>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
-    <Midl>
-      <TypeLibraryName>.\..\..\libARM64uwp\icuin.tlb</TypeLibraryName>
-    </Midl>
-    <ClCompile>
-      <PrecompiledHeaderOutputFile>.\ARM64\ReleaseUWP/i18n.pch</PrecompiledHeaderOutputFile>
-      <AssemblerListingLocation>.\ARM64\ReleaseUWP/</AssemblerListingLocation>
-      <ObjectFileName>.\ARM64\ReleaseUWP/</ObjectFileName>
-      <ProgramDataBaseFileName>.\ARM64\ReleaseUWP/</ProgramDataBaseFileName>
-    </ClCompile>
-    <Link>
-      <OutputFile>..\..\binARM64uwp\icuin$(IcuMajorVersion).dll</OutputFile>
-      <ProgramDatabaseFile>.\..\..\libARM64uwp\icuin.pdb</ProgramDatabaseFile>
-      <ImportLibrary>..\..\libARM64uwp\icuin.lib</ImportLibrary>
-      <AdditionalDependencies>..\..\libARM64uwp\icuuc.lib;%(AdditionalDependencies)</AdditionalDependencies>
-    </Link>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
-    <Midl>
-      <TypeLibraryName>.\..\..\libARM64uwp\icuind.tlb</TypeLibraryName>
-    </Midl>
-    <ClCompile>
-      <PrecompiledHeaderOutputFile>.\ARM64\DebugUWP/i18n.pch</PrecompiledHeaderOutputFile>
-      <AssemblerListingLocation>.\ARM64\DebugUWP/</AssemblerListingLocation>
-      <ObjectFileName>.\ARM64\DebugUWP/</ObjectFileName>
-      <ProgramDataBaseFileName>.\ARM64\DebugUWP/</ProgramDataBaseFileName>
-    </ClCompile>
-    <Link>
-      <OutputFile>..\..\binARM64uwp\icuin$(IcuMajorVersion)d.dll</OutputFile>
-      <ProgramDatabaseFile>.\..\..\libARM64uwp\icuind.pdb</ProgramDatabaseFile>
-      <ImportLibrary>..\..\libARM64uwp\icuind.lib</ImportLibrary>
-      <AdditionalDependencies>..\..\libARM64uwp\icuucd.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -374,10 +332,10 @@
     <ClCompile Include="double-conversion-bignum-dtoa.cpp" />
     <ClCompile Include="double-conversion-bignum.cpp" />
     <ClCompile Include="double-conversion-cached-powers.cpp" />
-    <ClCompile Include="double-conversion-double-to-string.cpp" />
+    <ClCompile Include="double-conversion-diy-fp.cpp" />
     <ClCompile Include="double-conversion-fast-dtoa.cpp" />
-    <ClCompile Include="double-conversion-string-to-double.cpp" />
     <ClCompile Include="double-conversion-strtod.cpp" />
+    <ClCompile Include="double-conversion.cpp" />
     <ClCompile Include="dtfmtsym.cpp" />
     <ClCompile Include="dtitvfmt.cpp" />
     <ClCompile Include="dtitvinf.cpp" />
@@ -398,29 +356,17 @@
     <ClCompile Include="hebrwcal.cpp" />
     <ClCompile Include="indiancal.cpp" />
     <ClCompile Include="islamcal.cpp" />
-    <ClCompile Include="iso8601cal.cpp" />
     <ClCompile Include="japancal.cpp" />
     <ClCompile Include="listformatter.cpp" />
     <ClCompile Include="ulistformatter.cpp" />
     <ClCompile Include="measfmt.cpp" />
     <ClCompile Include="measunit.cpp" />
-    <ClCompile Include="measunit_extra.cpp" />
     <ClCompile Include="measure.cpp" />
-    <ClCompile Include="messageformat2.cpp" />
-    <ClCompile Include="messageformat2_arguments.cpp" />
-    <ClCompile Include="messageformat2_checker.cpp" />
-    <ClCompile Include="messageformat2_data_model.cpp" />
-    <ClCompile Include="messageformat2_errors.cpp" />
-    <ClCompile Include="messageformat2_evaluation.cpp" />
-    <ClCompile Include="messageformat2_formattable.cpp" />
-    <ClCompile Include="messageformat2_formatter.cpp" />
-    <ClCompile Include="messageformat2_function_registry.cpp" />
-    <ClCompile Include="messageformat2_parser.cpp" />
-    <ClCompile Include="messageformat2_serializer.cpp" />
     <ClCompile Include="msgfmt.cpp" />
     <ClCompile Include="nfrs.cpp" />
     <ClCompile Include="nfrule.cpp" />
     <ClCompile Include="nfsubs.cpp" />
+    <ClCompile Include="nounit.cpp" />
     <ClCompile Include="number_affixutils.cpp" />
     <ClCompile Include="number_asformat.cpp" />
     <ClCompile Include="number_compact.cpp" />
@@ -439,17 +385,14 @@
     <ClCompile Include="number_patternstring.cpp" />
     <ClCompile Include="number_rounding.cpp" />
     <ClCompile Include="number_scientific.cpp" />
-    <ClCompile Include="formatted_string_builder.cpp" />
-    <ClCompile Include="number_usageprefs.cpp" />
+    <ClCompile Include="number_stringbuilder.cpp" />
     <ClCompile Include="number_utils.cpp" />
     <ClCompile Include="number_mapper.cpp" />
     <ClCompile Include="number_multiplier.cpp" />
     <ClCompile Include="number_currencysymbols.cpp" />
-    <ClCompile Include="number_simple.cpp" />
     <ClCompile Include="number_skeletons.cpp" />
-    <ClCompile Include="number_symbolswrapper.cpp" />
     <ClCompile Include="number_capi.cpp" />
-    <ClCompile Include="string_segment.cpp" />
+    <ClCompile Include="numparse_stringsegment.cpp" />
     <ClCompile Include="numparse_parsednumber.cpp" />
     <ClCompile Include="numparse_impl.cpp" />
     <ClCompile Include="numparse_symbols.cpp" />
@@ -459,14 +402,12 @@
     <ClCompile Include="numparse_affixes.cpp" />
     <ClCompile Include="numparse_compositions.cpp" />
     <ClCompile Include="numparse_validators.cpp" />
-    <ClCompile Include="numrange_capi.cpp" />
     <ClCompile Include="numrange_fluent.cpp" />
     <ClCompile Include="numrange_impl.cpp" />
     <ClCompile Include="numfmt.cpp" />
     <ClCompile Include="numsys.cpp" />
     <ClCompile Include="olsontz.cpp" />
     <ClCompile Include="persncal.cpp" />
-    <ClCompile Include="pluralranges.cpp" />
     <ClCompile Include="plurfmt.cpp" />
     <ClCompile Include="plurrule.cpp" />
     <ClCompile Include="quantityformatter.cpp" />
@@ -496,11 +437,6 @@
     <ClCompile Include="ufieldpositer.cpp" />
     <ClCompile Include="ulocdata.cpp" />
     <ClCompile Include="umsg.cpp" />
-    <ClCompile Include="units_complexconverter.cpp" />
-    <ClCompile Include="units_converter.cpp" />
-    <ClCompile Include="units_data.cpp" />
-    <ClCompile Include="units_router.cpp" />
-    <ClCompile Include="displayoptions.cpp" />
     <ClCompile Include="unum.cpp" />
     <ClCompile Include="unumsys.cpp" />
     <ClCompile Include="upluralrules.cpp" />
@@ -611,11 +547,8 @@
     <ClInclude Include="double-conversion-bignum.h" />
     <ClInclude Include="double-conversion-cached-powers.h" />
     <ClInclude Include="double-conversion-diy-fp.h" />
-    <ClInclude Include="double-conversion-double-to-string.h" />
     <ClInclude Include="double-conversion-fast-dtoa.h" />
     <ClInclude Include="double-conversion-ieee.h" />
-    <ClInclude Include="double-conversion-string-to-double.h" />
-    <ClInclude Include="double-conversion-strtod.h" />
     <ClInclude Include="double-conversion-utils.h" />
     <ClInclude Include="double-conversion.h" />
     <ClInclude Include="dt_impl.h" />
@@ -627,9 +560,7 @@
     <ClInclude Include="hebrwcal.h" />
     <ClInclude Include="indiancal.h" />
     <ClInclude Include="islamcal.h" />
-    <ClInclude Include="iso8601cal.h" />
     <ClInclude Include="japancal.h" />
-    <ClInclude Include="measunit_impl.h" />
     <ClInclude Include="msgfmt_impl.h" />
     <ClInclude Include="nfrlist.h" />
     <ClInclude Include="nfrs.h" />
@@ -637,7 +568,6 @@
     <ClInclude Include="nfsubs.h" />
     <ClInclude Include="olsontz.h" />
     <ClInclude Include="persncal.h" />
-    <ClInclude Include="pluralranges.h" />
     <ClInclude Include="plurrule_impl.h" />
     <ClInclude Include="quantityformatter.h" />
     <ClInclude Include="sharedbreakiterator.h" />
@@ -716,17 +646,15 @@
     <ClInclude Include="number_patternstring.h" />
     <ClInclude Include="number_roundingutils.h" />
     <ClInclude Include="number_scientific.h" />
-    <ClInclude Include="formatted_string_builder.h" />
+    <ClInclude Include="number_stringbuilder.h" />
     <ClInclude Include="number_types.h" />
-    <ClInclude Include="number_usageprefs.h" />
     <ClInclude Include="number_utypes.h" />
     <ClInclude Include="number_utils.h" />
     <ClInclude Include="number_mapper.h" />
     <ClInclude Include="number_multiplier.h" />
     <ClInclude Include="number_currencysymbols.h" />
     <ClInclude Include="number_skeletons.h" />
-    <ClInclude Include="number_symbolswrapper.h" />
-    <ClInclude Include="string_segment.h" />
+    <ClInclude Include="numparse_stringsegment.h" />
     <ClInclude Include="numparse_impl.h" />
     <ClInclude Include="numparse_symbols.h" />
     <ClInclude Include="numparse_decimal.h" />
@@ -739,10 +667,6 @@
     <ClInclude Include="numparse_utils.h" />
     <ClInclude Include="numrange_impl.h" />
     <ClInclude Include="formattedval_impl.h" />
-    <ClInclude Include="units_complexconverter.h" />
-    <ClInclude Include="units_converter.h" />
-    <ClInclude Include="units_data.h" />
-    <ClInclude Include="units_router.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="i18n.rc" />

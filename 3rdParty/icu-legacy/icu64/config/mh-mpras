@@ -5,7 +5,7 @@
 ## Copyright (c) 2003-2004, International Business Machines Corporation and
 ## others. All Rights Reserved.
 ##
-## Original contributor: Jason Gordon from NCR
+## Original contributer: Jason Gordon from NCR
 
 ## Flags for position independent code
 SHAREDLIBCFLAGS = -K PIC

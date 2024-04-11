@@ -74,7 +74,7 @@ void TransliteratorAPITest::TestgetID() {
     UParseError parseError;
     UErrorCode status = U_ZERO_ERROR;
     Transliterator* t= Transliterator::createInstance(trans, UTRANS_FORWARD, parseError, status);
-    if (t == nullptr || U_FAILURE(status)) {
+    if(t==0 || U_FAILURE(status)){
         dataerrln("FAIL: construction of Latin-Greek -  %s",u_errorName(status));
         return;
     }else{
@@ -91,7 +91,7 @@ void TransliteratorAPITest::TestgetID() {
             continue;
         }   
         t = Transliterator::createInstance(ID, UTRANS_FORWARD, parseError, status);
-        if (t == nullptr) {
+        if(t == 0){
             errln("FAIL: " + ID);
             continue;
         }
@@ -106,7 +106,7 @@ void TransliteratorAPITest::TestgetID() {
 
     Transliterator* t1=Transliterator::createInstance("Latin-Devanagari", UTRANS_FORWARD, parseError, status);
     Transliterator* t2=Transliterator::createInstance("Latin-Greek", UTRANS_FORWARD, parseError, status);
-    if (t1 == nullptr || t2 == nullptr) {
+    if(t1 ==0 || t2 == 0){
         errln("FAIL: construction");
         return;
     }
@@ -120,7 +120,7 @@ void TransliteratorAPITest::TestgetID() {
 
 
     Transliterator* t5=Transliterator::createInstance("Latin-Devanagari", UTRANS_FORWARD, parseError, status);
-    if (t5 == nullptr)
+    if(t5 == 0)
         errln("FAIL: construction");
     else if(t1->getID() != t5->getID() || t5->getID() != t3->getID() || t1->getID() != t3->getID())
         errln("FAIL: getID or clone failed");
@@ -140,7 +140,7 @@ void TransliteratorAPITest::TestgetInverse() {
      Transliterator* invt1 = Transliterator::createInstance("Latin-Katakana", UTRANS_FORWARD, parseError, status);
      Transliterator* t2    = Transliterator::createInstance("Latin-Devanagari", UTRANS_FORWARD, parseError, status);
      Transliterator* invt2 = Transliterator::createInstance("Devanagari-Latin", UTRANS_FORWARD, parseError, status);
-     if (t1 == nullptr || invt1 == nullptr || t2 == nullptr || invt2 == nullptr) {
+     if(t1 == 0 || invt1 == 0 || t2 == 0 || invt2 == 0) {
          dataerrln("FAIL: in instantiation - %s", u_errorName(status));
          return;
      }
@@ -171,7 +171,7 @@ void TransliteratorAPITest::TestgetInverse() {
      };
      for(uint32_t i=0; i<UPRV_LENGTHOF(TransID); i=i+2){
          Transliterator *trans1=Transliterator::createInstance(TransID[i], UTRANS_FORWARD, parseError, status);
-         if (t1 == nullptr) {
+         if(t1 == 0){
            errln("FAIL: in instantiation for" + TransID[i]);
            continue;
          }
@@ -196,7 +196,7 @@ void TransliteratorAPITest::TestClone(){
     UParseError parseError;
     t1=Transliterator::createInstance("Latin-Devanagari", UTRANS_FORWARD, parseError, status);
     t2=Transliterator::createInstance("Latin-Greek", UTRANS_FORWARD, parseError, status);
-    if (t1 == nullptr || t2 == nullptr) {
+    if(t1 == 0 || t2 == 0){
         dataerrln("FAIL: construction - %s", u_errorName(status));
         return;
     }
@@ -245,7 +245,7 @@ void TransliteratorAPITest::TestGetDisplayName() {
 
     for (uint32_t i=0; i<UPRV_LENGTHOF(dispNames); i=i+2 ) {
         t = Transliterator::createInstance(dispNames[i+0], UTRANS_FORWARD, parseError, status);
-        if (t == nullptr) {
+        if(t==0){
              dataerrln("FAIL: construction: " + dispNames[i+0] + " - " + u_errorName(status));
              status = U_ZERO_ERROR;
              continue;
@@ -294,7 +294,7 @@ void TransliteratorAPITest::TestTransliterate1(){
 
     for(uint32_t i=0;i<UPRV_LENGTHOF(Data); i=i+3){
         t=Transliterator::createInstance(Data[i+0], UTRANS_FORWARD, parseError, status);
-        if (t == nullptr) {
+        if(t==0){
             dataerrln("FAIL: construction: " + Data[i+0] + " Error: "  + u_errorName(status));
             dataerrln("PreContext: " + prettify(parseError.preContext) + " PostContext: " + prettify( parseError.postContext) );
             status = U_ZERO_ERROR;
@@ -341,7 +341,7 @@ void TransliteratorAPITest::TestTransliterate2(){
 
     for(uint32_t i=0; i<UPRV_LENGTHOF(Data2); i=i+6){
         t=Transliterator::createInstance(Data2[i+0], UTRANS_FORWARD, parseError, status);
-        if (t == nullptr) {
+        if(t==0){
             dataerrln("FAIL: construction: " + prettify(Data2[i+0]) + " - " + u_errorName(status));
             continue;
         }
@@ -358,7 +358,7 @@ void TransliteratorAPITest::TestTransliterate2(){
         status = U_ZERO_ERROR;
         callEverything(t, __LINE__);
         delete t;
-        t = nullptr;
+        t = NULL;
     }
 
     status = U_ZERO_ERROR;
@@ -400,7 +400,7 @@ void TransliteratorAPITest::TestTransliterate3(){
       return;
     }
 
-    if (t == nullptr)
+    if(t == 0)
         errln("FAIL : construction");
     for(uint32_t i=0; i<UPRV_LENGTHOF(Data); i=i+3){
         start=getInt(Data[i+0]);
@@ -417,7 +417,7 @@ void TransliteratorAPITest::TestSimpleKeyboardTransliterator(){
     UErrorCode status=U_ZERO_ERROR;
     UParseError parseError;
     Transliterator* t=Transliterator::createInstance("Any-Hex", UTRANS_FORWARD, parseError, status);
-    if (t == nullptr) {
+    if(t == 0) {
         UnicodeString context;
 
         if (parseError.preContext[0]) {
@@ -509,15 +509,15 @@ void TransliteratorAPITest::TestKeyboardTransliterator1(){
     s="";
     status=U_ZERO_ERROR;
     index.contextStart = index.contextLimit = index.start = index.limit = 0;
-    logln("Testing transliterate(Replaceable, int32_t, char16_t, UErrorCode)");
+    logln("Testing transliterate(Replaceable, int32_t, UChar, UErrorCode)");
     for(i=10; i<UPRV_LENGTHOF(Data); i=i+2){
         UnicodeString log;
         if (Data[i+0] != "") {
             log = s + " + " + Data[i+0] + " -> ";
-            char16_t c=Data[i+0].charAt(0);
+            UChar c=Data[i+0].charAt(0);
             t->transliterate(s, index, c, status);
             if(U_FAILURE(status)) {
-               errln("FAIL: " + t->getID()+ ".transliterate(Replaceable, int32_t[], char16_t, UErrorCode)-->" + (UnicodeString)u_errorName(status));
+               errln("FAIL: " + t->getID()+ ".transliterate(Replaceable, int32_t[], UChar, UErrorCode)-->" + (UnicodeString)u_errorName(status));
                continue;
             }
         } else {
@@ -557,7 +557,7 @@ void TransliteratorAPITest::TestKeyboardTransliterator2(){
     UParseError parseError;
     rs="Initial String: add--";
     t=Transliterator::createInstance("Any-Hex", UTRANS_FORWARD, parseError, status);
-    if (t == nullptr)
+    if(t == 0)
         dataerrln("FAIL : construction - %s", u_errorName(status));
     else {
         keyboardAux(t, Data, rs, 0, 20);
@@ -566,7 +566,7 @@ void TransliteratorAPITest::TestKeyboardTransliterator2(){
 
     rs="Hindi --";
     t=Transliterator::createInstance("Latin-Devanagari", UTRANS_FORWARD, parseError, status);
-    if (t == nullptr)
+    if(t == 0)
         dataerrln("FAIL : construction - %s", u_errorName(status));
     else
         keyboardAux(t, Data, rs, 20, 40);
@@ -593,7 +593,7 @@ void TransliteratorAPITest::TestKeyboardTransliterator3(){
     UTransPosition index={0, 0, 0, 0};
     logln("Testing transliterate(Replaceable, int32_t, UErrorCode)");
     Transliterator *t=Transliterator::createInstance("Any-Hex", UTRANS_FORWARD, parseError, status);
-    if (t == nullptr || U_FAILURE(status)) {
+    if(t == 0 || U_FAILURE(status)) {
       errln("Error creating transliterator %s", u_errorName(status));
       delete t;
       return;
@@ -620,9 +620,6 @@ void TransliteratorAPITest::TestNullTransliterator(){
     UErrorCode status=U_ZERO_ERROR;
     UnicodeString s("Transliterate using null transliterator");
     Transliterator *nullTrans=Transliterator::createInstance("Any-Null", UTRANS_FORWARD, status);
-    if (!assertSuccess(WHERE, status)) {
-        return;
-    }
     int32_t transLimit;
     int32_t start=0;
     int32_t limit=s.length();
@@ -653,13 +650,13 @@ void TransliteratorAPITest::TestRegisterUnregister(){
    
    UErrorCode status=U_ZERO_ERROR;
     /* Make sure it doesn't exist */
-   if (Transliterator::createInstance("TestA-TestB", UTRANS_FORWARD, status) != nullptr) {
+   if (Transliterator::createInstance("TestA-TestB", UTRANS_FORWARD, status) != NULL) {
       errln("FAIL: TestA-TestB already registered\n");
       return;
    }
    /* Check inverse too 
    if (Transliterator::createInstance("TestA-TestB",
-                                      (UTransDirection)UTRANS_REVERSE) != nullptr) {
+                                      (UTransDirection)UTRANS_REVERSE) != NULL) {
       errln("FAIL: TestA-TestB inverse already registered\n");
       return;
    }
@@ -677,7 +674,7 @@ void TransliteratorAPITest::TestRegisterUnregister(){
 
    /* Now check again -- should exist now*/
    Transliterator *s = Transliterator::createInstance("TestA-TestB", UTRANS_FORWARD, status);
-   if (s == nullptr) {
+   if (s == NULL) {
       errln("FAIL: TestA-TestB not registered\n");
       return;
    }
@@ -688,7 +685,7 @@ void TransliteratorAPITest::TestRegisterUnregister(){
    /* Check inverse too
    s = Transliterator::createInstance("TestA-TestB",
                                       (UTransDirection)UTRANS_REVERSE);
-   if (s == nullptr) {
+   if (s == NULL) {
       errln("FAIL: TestA-TestB inverse not registered\n");
       return;
    }
@@ -698,7 +695,7 @@ void TransliteratorAPITest::TestRegisterUnregister(){
    /*unregister the instance*/
    Transliterator::unregister("TestA-TestB");
    /* now Make sure it doesn't exist */
-   if (Transliterator::createInstance("TestA-TestB", UTRANS_FORWARD, status) != nullptr) {
+   if (Transliterator::createInstance("TestA-TestB", UTRANS_FORWARD, status) != NULL) {
       errln("FAIL: TestA-TestB isn't unregistered\n");
       return;
    }
@@ -714,67 +711,67 @@ int gTestFilter3ClassID = 0;
  * Used by TestFiltering().
  */
 class TestFilter1 : public UnicodeFilter {
-    UClassID getDynamicClassID()const override { return &gTestFilter1ClassID; }
-    virtual TestFilter1* clone() const override {
+    UClassID getDynamicClassID()const { return &gTestFilter1ClassID; }
+    virtual UnicodeFunctor* clone() const {
         return new TestFilter1(*this);
     }
-    virtual UBool contains(UChar32 c) const override {
+    virtual UBool contains(UChar32 c) const {
        if(c==0x63 || c==0x61 || c==0x43 || c==0x41)
-          return false;
+          return FALSE;
        else
-          return true;
+          return TRUE;
     }
     // Stubs
     virtual UnicodeString& toPattern(UnicodeString& result,
-                                     UBool /*escapeUnprintable*/) const override {
+                                     UBool /*escapeUnprintable*/) const {
         return result;
     }
-    virtual UBool matchesIndexValue(uint8_t /*v*/) const override {
-        return false;
+    virtual UBool matchesIndexValue(uint8_t /*v*/) const {
+        return FALSE;
     }
-    virtual void addMatchSetTo(UnicodeSet& /*toUnionTo*/) const override {}
+    virtual void addMatchSetTo(UnicodeSet& /*toUnionTo*/) const {}
 };
 class TestFilter2 : public UnicodeFilter {
-    UClassID getDynamicClassID() const override { return &gTestFilter2ClassID; }
-    virtual TestFilter2* clone() const override {
+    UClassID getDynamicClassID()const { return &gTestFilter2ClassID; }
+    virtual UnicodeFunctor* clone() const {
         return new TestFilter2(*this);
     }
-    virtual UBool contains(UChar32 c) const override {
+    virtual UBool contains(UChar32 c) const {
         if(c==0x65 || c==0x6c)
-           return false;
+           return FALSE;
         else
-           return true;
+           return TRUE;
     }
     // Stubs
     virtual UnicodeString& toPattern(UnicodeString& result,
-                                     UBool /*escapeUnprintable*/) const override {
+                                     UBool /*escapeUnprintable*/) const {
         return result;
     }
-    virtual UBool matchesIndexValue(uint8_t /*v*/) const override {
-        return false;
+    virtual UBool matchesIndexValue(uint8_t /*v*/) const {
+        return FALSE;
     }
-    virtual void addMatchSetTo(UnicodeSet& /*toUnionTo*/) const override {}
+    virtual void addMatchSetTo(UnicodeSet& /*toUnionTo*/) const {}
 };
 class TestFilter3 : public UnicodeFilter {
-    UClassID getDynamicClassID() const override { return &gTestFilter3ClassID; }
-    virtual TestFilter3* clone() const override {
+    UClassID getDynamicClassID()const { return &gTestFilter3ClassID; }
+    virtual UnicodeFunctor* clone() const {
         return new TestFilter3(*this);
     }
-    virtual UBool contains(UChar32 c) const override {
+    virtual UBool contains(UChar32 c) const {
         if(c==0x6f || c==0x77)
-           return false;
+           return FALSE;
         else
-           return true;
+           return TRUE;
     }
     // Stubs
     virtual UnicodeString& toPattern(UnicodeString& result,
-                                     UBool /*escapeUnprintable*/) const override {
+                                     UBool /*escapeUnprintable*/) const {
         return result;
     }
-    virtual UBool matchesIndexValue(uint8_t /*v*/) const override {
-        return false;
+    virtual UBool matchesIndexValue(uint8_t /*v*/) const {
+        return FALSE;
     }
-    virtual void addMatchSetTo(UnicodeSet& /*toUnionTo*/) const override {}
+    virtual void addMatchSetTo(UnicodeSet& /*toUnionTo*/) const {}
 };
 
 
@@ -782,13 +779,13 @@ void TransliteratorAPITest::TestGetAdoptFilter(){
     UErrorCode status = U_ZERO_ERROR;
     UParseError parseError;
     Transliterator *t=Transliterator::createInstance("Any-Hex", UTRANS_FORWARD, parseError, status);
-    if (t == nullptr || U_FAILURE(status)) {
+    if(t == 0 || U_FAILURE(status)) {
         errln("Error creating transliterator %s", u_errorName(status));
         delete t;
         return;
     }
     const UnicodeFilter *u=t->getFilter();
-    if(u != nullptr){
+    if(u != NULL){
         errln("FAIL: getFilter failed. Didn't return null when the transliterator used no filtering");
         delete t;
         return;
@@ -807,8 +804,8 @@ void TransliteratorAPITest::TestGetAdoptFilter(){
     doTest(message, got, exp);
          
     logln("Testing round trip");
-    t->adoptFilter(const_cast<UnicodeFilter*>(u));
-    if(t->getFilter() == nullptr)
+    t->adoptFilter((UnicodeFilter*)u);
+    if(t->getFilter() == NULL)
        logln("OK: adoptFilter and getFilter round trip worked");
     else
        errln("FAIL: adoptFilter or getFilter round trip failed");  
@@ -889,13 +886,13 @@ void TransliteratorAPITest::displayOutput(const UnicodeString& got, const Unicod
     got.extractBetween(index.limit, index.contextLimit, d);
     got.extractBetween(index.contextLimit, got.length(), e);
     log.append(a).
-        append((char16_t)0x7b/*{*/).
+        append((UChar)0x7b/*{*/).
         append(b).
-        append((char16_t)0x7c/*|*/).
+        append((UChar)0x7c/*|*/).
         append(c).
-        append((char16_t)0x7c).
+        append((UChar)0x7c).
         append(d).
-        append((char16_t)0x7d/*}*/).
+        append((UChar)0x7d/*}*/).
         append(e);
     if (got == expected) 
         logln("OK:" + prettify(log));
@@ -918,16 +915,12 @@ void TransliteratorAPITest::doTest(const UnicodeString& message, const UnicodeSt
 //                    transliterator, just to verify that they don't fail in some
 //                    destructive way.
 //
-#define CEASSERT(a) UPRV_BLOCK_MACRO_BEGIN { \
-    if (!(a)) { \
-        errln("FAIL at line %d from line %d: %s", __LINE__, line, #a); \
-        return; \
-    } \
-} UPRV_BLOCK_MACRO_END
+#define CEASSERT(a) {if (!(a)) { \
+errln("FAIL at line %d from line %d: %s", __LINE__, line, #a);  return; }}
 
 void TransliteratorAPITest::callEverything(const Transliterator *tr, int line) {
     Transliterator *clonedTR = tr->clone();
-    CEASSERT(clonedTR != nullptr);
+    CEASSERT(clonedTR != NULL);
 
     int32_t  maxcl = tr->getMaximumContextLength();
     CEASSERT(clonedTR->getMaximumContextLength() == maxcl);
@@ -940,8 +933,8 @@ void TransliteratorAPITest::callEverything(const Transliterator *tr, int line) {
 
     const UnicodeFilter *filter = tr->getFilter();
     const UnicodeFilter *clonedFilter = clonedTR->getFilter();
-    if (filter == nullptr || clonedFilter == nullptr) {
-        // If one filter is nullptr they better both be nullptr.
+    if (filter == NULL || clonedFilter == NULL) {
+        // If one filter is NULL they better both be NULL.
         CEASSERT(filter == clonedFilter);
     } else {
         CEASSERT(filter != clonedFilter);
@@ -949,8 +942,8 @@ void TransliteratorAPITest::callEverything(const Transliterator *tr, int line) {
 
     UnicodeString rules;
     UnicodeString clonedRules;
-    rules = tr->toRules(rules, false);
-    clonedRules = clonedTR->toRules(clonedRules, false);
+    rules = tr->toRules(rules, FALSE);
+    clonedRules = clonedTR->toRules(clonedRules, FALSE);
     CEASSERT(rules == clonedRules);
 
     UnicodeSet sourceSet;
@@ -967,7 +960,7 @@ void TransliteratorAPITest::callEverything(const Transliterator *tr, int line) {
 
     UClassID classID = tr->getDynamicClassID();
     CEASSERT(classID == clonedTR->getDynamicClassID());
-    CEASSERT(classID != nullptr);
+    CEASSERT(classID != 0);
 
     delete clonedTR;
 }
@@ -975,19 +968,19 @@ void TransliteratorAPITest::callEverything(const Transliterator *tr, int line) {
 static const int MyUnicodeFunctorTestClassID = 0;
 class MyUnicodeFunctorTestClass : public UnicodeFunctor {
 public:
-    virtual UnicodeFunctor* clone() const override {return nullptr;}
-    static UClassID getStaticClassID() {return (UClassID)&MyUnicodeFunctorTestClassID;}
-    virtual UClassID getDynamicClassID() const override {return getStaticClassID();}
-    virtual void setData(const TransliterationRuleData*) override {}
+    virtual UnicodeFunctor* clone() const {return NULL;}
+    static UClassID getStaticClassID(void) {return (UClassID)&MyUnicodeFunctorTestClassID;}
+    virtual UClassID getDynamicClassID(void) const {return getStaticClassID();};
+    virtual void setData(const TransliterationRuleData*) {}
 };
 
 void TransliteratorAPITest::TestUnicodeFunctor() {
     MyUnicodeFunctorTestClass myClass;
-    if (myClass.toMatcher() != nullptr) {
-        errln("FAIL: UnicodeFunctor::toMatcher did not return nullptr");
+    if (myClass.toMatcher() != NULL) {
+        errln("FAIL: UnicodeFunctor::toMatcher did not return NULL");
     }
-    if (myClass.toReplacer() != nullptr) {
-        errln("FAIL: UnicodeFunctor::toReplacer did not return nullptr");
+    if (myClass.toReplacer() != NULL) {
+        errln("FAIL: UnicodeFunctor::toReplacer did not return NULL");
     }
 }
 

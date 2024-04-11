@@ -33,7 +33,7 @@ public:
 
     static UnicodeString hex(const UnicodeString& s);
 
-    static UnicodeString hex(const UnicodeString& s, char16_t sep);
+    static UnicodeString hex(const UnicodeString& s, UChar sep);
 
     static UnicodeString hex(const uint8_t* bytes, int32_t len);
 

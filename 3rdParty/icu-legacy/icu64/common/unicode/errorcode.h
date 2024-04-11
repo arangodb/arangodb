@@ -26,9 +26,6 @@
  */
 
 #include "unicode/utypes.h"
-
-#if U_SHOW_CPLUSPLUS_API
-
 #include "unicode/uobject.h"
 
 U_NAMESPACE_BEGIN
@@ -138,7 +135,5 @@ protected:
 };
 
 U_NAMESPACE_END
-
-#endif /* U_SHOW_CPLUSPLUS_API */
 
 #endif  // __ERRORCODE_H__

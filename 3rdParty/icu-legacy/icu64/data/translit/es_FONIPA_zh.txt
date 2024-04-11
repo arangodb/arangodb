@@ -1,12 +1,11 @@
 ﻿# © 2016 and later: Unicode, Inc. and others.
-# License & terms of use: http://www.unicode.org/copyright.html
-# Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+# License & terms of use: http://www.unicode.org/copyright.html#License
 #
 # File: es_FONIPA_zh.txt
 # Generated from CLDR
 #
 
-# Transforms Spanish to Mandarin Chinese. The input Spanish string must be in
+# Tranforms Spanish to Mandarin Chinese. The input Spanish string must be in
 # phonemic IPA transcription (es_FONIPA); the output is in Simplified Chinese.
 $word_boundary = [-\ $];
 $vowel = [aeijouw];       # Vowels and glides
@@ -504,7 +503,7 @@ xwe → 胡埃 ;
 xwi → 惠 ;
 xwo → 霍 ;
 x → 赫 ;
-# 尔 simplification pass.  The idea is to drop most occurrences of 尔
+# 尔 simplification pass.  The idea is to drop most occurences of 尔
 # corresponding to <r> (not to <l> or <ll>) from a word if there is another /l/
 # sound nearby.  There is a vague pattern like this in the data, but the details
 # remain to be determined.  At the moment, this does nothing, it just puts 尔 in

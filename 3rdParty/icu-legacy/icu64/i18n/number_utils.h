@@ -17,11 +17,11 @@
 #include "number_roundingutils.h"
 #include "decNumber.h"
 #include "charstr.h"
-#include "formatted_string_builder.h"
 
 U_NAMESPACE_BEGIN
 
-namespace number::impl {
+namespace number {
+namespace impl {
 
 enum CldrPatternStyle {
     CLDR_PATTERN_STYLE_DECIMAL,
@@ -32,10 +32,52 @@ enum CldrPatternStyle {
     CLDR_PATTERN_STYLE_COUNT,
 };
 
+
+/**
+ * Helper functions for dealing with the Field typedef, which stores fields
+ * in a compressed format.
+ */
+class NumFieldUtils {
+public:
+    struct CategoryFieldPair {
+        int32_t category;
+        int32_t field;
+    };
+
+    /** Compile-time function to construct a Field from a category and a field */
+    template <int32_t category, int32_t field>
+    static constexpr Field compress() {
+        static_assert(category != 0, "cannot use Undefined category in NumFieldUtils");
+        static_assert(category <= 0xf, "only 4 bits for category");
+        static_assert(field <= 0xf, "only 4 bits for field");
+        return static_cast<int8_t>((category << 4) | field);
+    }
+
+    /** Runtime inline function to unpack the category and field from the Field */
+    static inline CategoryFieldPair expand(Field field) {
+        if (field == UNUM_FIELD_COUNT) {
+            return {UFIELD_CATEGORY_UNDEFINED, 0};
+        }
+        CategoryFieldPair ret = {
+            (field >> 4),
+            (field & 0xf)
+        };
+        if (ret.category == 0) {
+            ret.category = UFIELD_CATEGORY_NUMBER;
+        }
+        return ret;
+    }
+
+    static inline bool isNumericField(Field field) {
+        int8_t category = field >> 4;
+        return category == 0 || category == UFIELD_CATEGORY_NUMBER;
+    }
+};
+
 // Namespace for naked functions
 namespace utils {
 
-inline int32_t insertDigitFromSymbols(FormattedStringBuilder& output, int32_t index, int8_t digit,
+inline int32_t insertDigitFromSymbols(NumberStringBuilder& output, int32_t index, int8_t digit,
                                       const DecimalFormatSymbols& symbols, Field field,
                                       UErrorCode& status) {
     if (symbols.getCodePointZero() != -1) {
@@ -48,8 +90,8 @@ inline bool unitIsCurrency(const MeasureUnit& unit) {
     return uprv_strcmp("currency", unit.getType()) == 0;
 }
 
-inline bool unitIsBaseUnit(const MeasureUnit& unit) {
-    return unit == MeasureUnit();
+inline bool unitIsNoUnit(const MeasureUnit& unit) {
+    return uprv_strcmp("none", unit.getType()) == 0;
 }
 
 inline bool unitIsPercent(const MeasureUnit& unit) {
@@ -101,7 +143,8 @@ inline StandardPlural::Form getPluralSafe(
 
 } // namespace utils
 
-} // namespace number::impl
+} // namespace impl
+} // namespace number
 
 U_NAMESPACE_END
 

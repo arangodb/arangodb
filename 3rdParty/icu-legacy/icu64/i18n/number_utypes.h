@@ -10,11 +10,12 @@
 #include "unicode/numberformatter.h"
 #include "number_types.h"
 #include "number_decimalquantity.h"
-#include "formatted_string_builder.h"
+#include "number_stringbuilder.h"
 #include "formattedval_impl.h"
 
-U_NAMESPACE_BEGIN
-namespace number::impl {
+U_NAMESPACE_BEGIN namespace number {
+namespace impl {
+
 
 /** Helper function used in upluralrules.cpp */
 const DecimalQuantity* validateUFormattedNumberToDecimalQuantity(
@@ -27,29 +28,20 @@ const DecimalQuantity* validateUFormattedNumberToDecimalQuantity(
  * This struct is held internally by the C++ version FormattedNumber since the member types are not
  * declared in the public header file.
  *
- * Exported as U_I18N_API for tests
+ * The DecimalQuantity is not currently being used by FormattedNumber, but at some point it could be used
+ * to add a toDecNumber() or similar method.
  */
-class U_I18N_API UFormattedNumberData : public FormattedValueStringBuilderImpl {
+class UFormattedNumberData : public FormattedValueNumberStringBuilderImpl {
 public:
-    UFormattedNumberData() : FormattedValueStringBuilderImpl(kUndefinedField) {}
+    UFormattedNumberData() : FormattedValueNumberStringBuilderImpl(0) {}
     virtual ~UFormattedNumberData();
 
-    UFormattedNumberData(UFormattedNumberData&&) = default;
-    UFormattedNumberData& operator=(UFormattedNumberData&&) = default;
-
-    // The formatted quantity.
     DecimalQuantity quantity;
-
-    // The output unit for the formatted quantity.
-    // TODO(units,hugovdm): populate this correctly for the general case - it's
-    // currently only implemented for the .usage() use case.
-    MeasureUnit outputUnit;
-
-    // The gender of the formatted output.
-    const char *gender = "";
 };
 
-} // namespace number::impl
+
+} // namespace impl
+} // namespace number
 U_NAMESPACE_END
 
 #endif //__SOURCE_NUMBER_UTYPES_H__

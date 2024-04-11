@@ -28,7 +28,7 @@ public:
     virtual ~StringSearchTest();
 
     void runIndexedTest(int32_t index, UBool exec, const char* &name, 
-                        char* par = nullptr) override;
+                        char* par = NULL);
 #if !UCONFIG_NO_BREAK_ITERATION
 private:
     RuleBasedCollator *m_en_us_; 

@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 es_PY{
     %%Parent{"es_419"}
     NumberElements{
@@ -14,6 +13,7 @@ es_PY{
             }
         }
     }
+    Version{"2.1.47.70"}
     calendar{
         gregorian{
             AmPmMarkers{
@@ -21,8 +21,8 @@ es_PY{
                 "p. m.",
             }
             AmPmMarkersAbbr{
-                "a. m.",
-                "p. m.",
+                "a. m.",
+                "p. m.",
             }
             dayNames{
                 format{
@@ -51,13 +51,13 @@ es_PY{
             dayPeriod{
                 stand-alone{
                     abbreviated{
-                        am{"a. m."}
-                        pm{"p. m."}
+                        am{"a. m."}
+                        pm{"p. m."}
                     }
                     narrow{
-                        am{"a. m."}
+                        am{"a. m."}
                         noon{"m."}
-                        pm{"p. m."}
+                        pm{"p. m."}
                     }
                     wide{
                         am{"a. m."}
@@ -71,13 +71,13 @@ es_PY{
                     d{"d/M 'al' d/M"}
                 }
                 h{
-                    a{"h a 'a' h a"}
-                    h{"h 'a' h a"}
+                    a{"h a 'a' h a"}
+                    h{"h 'a' h a"}
                 }
                 hm{
-                    a{"h:mm a 'a' h:mm a"}
-                    h{"h:mm 'a' h:mm a"}
-                    m{"h:mm 'a' h:mm a"}
+                    a{"h:mm a 'a' h:mm a"}
+                    h{"h:mm 'a' h:mm a"}
+                    m{"h:mm 'a' h:mm a"}
                 }
                 yMMM{
                     M{"MMM 'a' MMM y"}
@@ -113,15 +113,52 @@ es_PY{
                         "dic.",
                     }
                 }
+                stand-alone{
+                    abbreviated{
+                        "ene.",
+                        "feb.",
+                        "mar.",
+                        "abr.",
+                        "may.",
+                        "jun.",
+                        "jul.",
+                        "ago.",
+                        "sept.",
+                        "oct.",
+                        "nov.",
+                        "dic.",
+                    }
+                }
             }
         }
     }
     fields{
+        day{
+            relative{
+                "-1"{"ayer"}
+                "-2"{"anteayer"}
+                "0"{"hoy"}
+                "1"{"mañana"}
+                "2"{"pasado mañana"}
+            }
+        }
         mon-narrow{
             relative{
                 "-1"{"el lun. pasado"}
                 "0"{"este lun."}
                 "1"{"el próximo lun."}
+            }
+        }
+        second-narrow{
+            relativeTime{
+                future{
+                    one{"dentro de {0} seg."}
+                    other{"dentro de {0} seg."}
+                }
+                past{
+                    one{"hace {0} seg."}
+                    other{"hace {0} seg."}
+                }
             }
         }
         second-short{

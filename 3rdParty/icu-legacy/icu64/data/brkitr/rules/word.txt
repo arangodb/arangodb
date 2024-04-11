@@ -11,7 +11,7 @@
 #      These rules are based on UAX #29 Revision 34 for Unicode Version 12.0
 #
 # Note:  Updates to word.txt will usually need to be merged into
-#        word_POSIX.txt and word_fi_sv.txt also.
+#        word_POSIX.txt also.
 
 ##############################################################################
 #
@@ -27,12 +27,10 @@
 #  Character Class Definitions.
 #
 
-$Han                = [:Han:];
-
 $CR                 = [\p{Word_Break = CR}];
 $LF                 = [\p{Word_Break = LF}];
-$Newline            = [\p{Word_Break = Newline}];
-$Extend             = [\p{Word_Break = Extend}-$Han];
+$Newline            = [\p{Word_Break = Newline} ];
+$Extend             = [\p{Word_Break = Extend}];
 $ZWJ                = [\p{Word_Break = ZWJ}];
 $Regional_Indicator = [\p{Word_Break = Regional_Indicator}];
 $Format             = [\p{Word_Break = Format}];
@@ -42,15 +40,15 @@ $ALetter            = [\p{Word_Break = ALetter}];
 $Single_Quote       = [\p{Word_Break = Single_Quote}];
 $Double_Quote       = [\p{Word_Break = Double_Quote}];
 $MidNumLet          = [\p{Word_Break = MidNumLet}];
-$MidLetter          = [\p{Word_Break = MidLetter} - [\: \uFE55 \uFF1A]];
+$MidLetter          = [\p{Word_Break = MidLetter}];
 $MidNum             = [\p{Word_Break = MidNum}];
-$Numeric            = [\p{Word_Break = Numeric}];
+$Numeric            = [[\p{Word_Break = Numeric}] [\uFF10-\uff19]];  # Patch for ICU-12079
 $ExtendNumLet       = [\p{Word_Break = ExtendNumLet}];
 $WSegSpace          = [\p{Word_Break = WSegSpace}];
-$Extended_Pict      = [\p{Extended_Pictographic}];
+$Extended_Pict      = [:ExtPict:];
 
+$Han                = [:Han:];
 $Hiragana           = [:Hiragana:];
-$Ideographic        = [\p{Ideographic}];
 
 
 #   Dictionary character set, for triggering language-based break engines. Currently
@@ -65,11 +63,30 @@ $KanaKanji      = [$Han $Hiragana $Katakana];
 $dictionaryCJK  = [$KanaKanji $HangulSyllable];
 $dictionary     = [$ComplexContext $dictionaryCJK];
 
-# TODO: check if handling of katakana in dictionary makes rules incorrect/void
-
 # leave CJK scripts out of ALetterPlus
 $ALetterPlus  = [$ALetter-$dictionaryCJK [$ComplexContext-$Extend-$Control]];
 
+
+#
+#  Rules 4    Ignore Format and Extend characters,
+#             except when they appear at the beginning of a region of text.
+#
+# TODO: check if handling of katakana in dictionary makes rules incorrect/void
+$KatakanaEx           = $Katakana           ($Extend |  $Format | $ZWJ)*;
+$Hebrew_LetterEx      = $Hebrew_Letter      ($Extend |  $Format | $ZWJ)*;
+$ALetterEx            = $ALetterPlus        ($Extend |  $Format | $ZWJ)*;
+$Single_QuoteEx       = $Single_Quote       ($Extend |  $Format | $ZWJ)*;
+$Double_QuoteEx       = $Double_Quote       ($Extend |  $Format | $ZWJ)*;
+$MidNumLetEx          = $MidNumLet          ($Extend |  $Format | $ZWJ)*;
+$MidLetterEx          = $MidLetter          ($Extend |  $Format | $ZWJ)*;
+$MidNumEx             = $MidNum             ($Extend |  $Format | $ZWJ)*;
+$NumericEx            = $Numeric            ($Extend |  $Format | $ZWJ)*;
+$ExtendNumLetEx       = $ExtendNumLet       ($Extend |  $Format | $ZWJ)*;
+$Regional_IndicatorEx = $Regional_Indicator ($Extend |  $Format | $ZWJ)*;
+
+$Ideographic    = [\p{Ideographic}];
+$HiraganaEx     = $Hiragana     ($Extend |  $Format | $ZWJ)*;
+$IdeographicEx  = $Ideographic  ($Extend |  $Format | $ZWJ)*;
 
 ## -------------------------------------------------
 
@@ -77,8 +94,7 @@ $ALetterPlus  = [$ALetter-$dictionaryCJK [$ComplexContext-$Extend-$Control]];
 #
 $CR $LF;
 
-# Rule 3c   Do not break within emoji zwj sequences.
-#             ZWJ ×  \p{Extended_Pictographic}.  Precedes WB4, so no intervening Extend chars allowed.
+# Rule 3c   ZWJ x (Extended_Pict | EmojiNRK).  Precedes WB4, so no intervening Extend chars allowed.
 #
 $ZWJ $Extended_Pict;
 
@@ -87,81 +103,78 @@ $ZWJ $Extended_Pict;
 $WSegSpace $WSegSpace;
 
 # Rule 4 - ignore Format and Extend characters, except when they appear at the beginning
-#          of a region of Text.
+#          of a region of Text.   The rule here comes into play when the start of text
+#          begins with a group of Format chars, or with a "word" consisting of a single
+#          char that is not in any of the listed word break categories followed by
+#          format char(s), or is not a CJK dictionary character.
+[^$CR $LF $Newline]? ($Extend |  $Format | $ZWJ)+;
 
-$ExFm  = [$Extend $Format $ZWJ];
-
-^$ExFm+;            # This rule fires only when there are format or extend characters at the
-                    # start of text, or immediately following another boundary. It groups them, in
-                    # the event there are more than one.
-
-[^$CR $LF $Newline $ExFm] $ExFm*;   # This rule rule attaches trailing format/extends to words,
-                                    # with no special rule status value.
-
-$Numeric $ExFm* {100};              # This group of rules also attach trailing format/extends, but
-$ALetterPlus $ExFm* {200};          # with rule status set based on the word's final base character.
+$NumericEx {100};
+$ALetterEx {200};
 $HangulSyllable {200};
-$Hebrew_Letter $ExFm* {200};
-$Katakana $ExFm* {400};             # note:  these status values override those from rule 5
-$Hiragana $ExFm* {400};             #        by virtue of being numerically larger.
-$Ideographic $ExFm* {400};          #
+$Hebrew_LetterEx{200};
+$KatakanaEx {400};       # note:  these status values override those from rule 5
+$HiraganaEx {400};       #        by virtue of being numerically larger.
+$IdeographicEx {400};    #
+
+$Extended_Pict ($Extend | $Format | $ZWJ)*;
 
 #
 # rule 5
 #    Do not break between most letters.
 #
-($ALetterPlus | $Hebrew_Letter) $ExFm* ($ALetterPlus | $Hebrew_Letter);
+($ALetterEx | $Hebrew_LetterEx)  ($ALetterEx | $Hebrew_LetterEx) {200};
 
 # rule 6 and 7
-($ALetterPlus | $Hebrew_Letter)  $ExFm* ($MidLetter | $MidNumLet | $Single_Quote) $ExFm* ($ALetterPlus | $Hebrew_Letter) {200};
+($ALetterEx | $Hebrew_LetterEx) ($MidLetterEx | $MidNumLetEx | $Single_QuoteEx) ($ALetterEx | $Hebrew_LetterEx) {200};
 
 # rule 7a
-$Hebrew_Letter $ExFm* $Single_Quote {200};
+$Hebrew_LetterEx $Single_QuoteEx {200};
 
 # rule 7b and 7c
-$Hebrew_Letter $ExFm* $Double_Quote $ExFm* $Hebrew_Letter;
+$Hebrew_LetterEx $Double_QuoteEx $Hebrew_LetterEx {200};
 
 # rule 8
 
-$Numeric $ExFm* $Numeric;
+$NumericEx $NumericEx {100};
 
 # rule 9
 
-($ALetterPlus | $Hebrew_Letter)  $ExFm* $Numeric;
+($ALetterEx | $Hebrew_LetterEx) $NumericEx {200};
 
 # rule 10
 
-$Numeric $ExFm* ($ALetterPlus | $Hebrew_Letter);
+$NumericEx ($ALetterEx | $Hebrew_LetterEx) {200};
 
 # rule 11 and 12
 
-$Numeric $ExFm* ($MidNum | $MidNumLet | $Single_Quote) $ExFm* $Numeric;
+$NumericEx ($MidNumEx | $MidNumLetEx | $Single_QuoteEx) $NumericEx {100};
 
 # rule 13
 # to be consistent with $KanaKanji $KanaKanhi, changed
 # from 300 to 400.
 # See also TestRuleStatus in intltest/rbbiapts.cpp
-$Katakana $ExFm*  $Katakana {400};
+$KatakanaEx  $KatakanaEx {400};
 
 # rule 13a/b
 
-$ALetterPlus   $ExFm* $ExtendNumLet {200};    #  (13a)
-$Hebrew_Letter $ExFm* $ExtendNumLet {200};    #  (13a)
-$Numeric       $ExFm* $ExtendNumLet {100};    #  (13a)
-$Katakana      $ExFm* $ExtendNumLet {400};    #  (13a)
-$ExtendNumLet  $ExFm* $ExtendNumLet {200};    #  (13a)
+$ALetterEx       $ExtendNumLetEx {200};    #  (13a)
+$Hebrew_LetterEx $ExtendNumLetEx {200};    #  (13a)
+$NumericEx       $ExtendNumLetEx {100};    #  (13a)
+$KatakanaEx      $ExtendNumLetEx {400};    #  (13a)
+$ExtendNumLetEx  $ExtendNumLetEx {200};    #  (13a)
 
-$ExtendNumLet  $ExFm* $ALetterPlus  {200};    #  (13b)
-$ExtendNumLet  $ExFm* $Hebrew_Letter {200};    #  (13b)
-$ExtendNumLet  $ExFm* $Numeric      {100};    #  (13b)
-$ExtendNumLet  $ExFm* $Katakana     {400};    #  (13b)
+$ExtendNumLetEx  $ALetterEx      {200};    #  (13b)
+$ExtendNumLetEx  $Hebrew_Letter  {200};    #  (13b)
+$ExtendNumLetEx  $NumericEx      {100};    #  (13b)
+$ExtendNumLetEx  $KatakanaEx     {400};    #  (13b)
 
 # rules 15 - 17
 #    Pairs of Regional Indicators stay together.
-#    With incoming rule chaining disabled by ^, this rule will match exactly two of them.
+#    With rule chaining disabled by ^, this rule will match exactly two of them.
 #    No other rule begins with a Regional_Indicator, so chaining cannot extend the match.
 #
-^$Regional_Indicator $ExFm* $Regional_Indicator;
+^$Regional_IndicatorEx $Regional_IndicatorEx;
 
 # special handling for CJK characters: chain for later dictionary segmentation
 $HangulSyllable $HangulSyllable {200};

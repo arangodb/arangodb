@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 tg{
     Countries{
         AC{"Асунсон"}
@@ -42,9 +41,7 @@ tg{
         BZ{"Белиз"}
         CA{"Канада"}
         CC{"Ҷазираҳои Кокос (Килинг)"}
-        CD{"Конго (ҶДК)"}
         CF{"Ҷумҳурии Африқои Марказӣ"}
-        CG{"Конго"}
         CH{"Швейтсария"}
         CI{"Кот-д’Ивуар"}
         CK{"Ҷазираҳои Кук"}
@@ -76,7 +73,7 @@ tg{
         FK{"Ҷазираҳои Фолкленд"}
         FM{"Штатҳои Федеративии Микронезия"}
         FO{"Ҷазираҳои Фарер"}
-        FR{"Фаронса"}
+        FR{"Франсия"}
         GA{"Габон"}
         GB{"Шоҳигарии Муттаҳида"}
         GD{"Гренада"}
@@ -258,4 +255,9 @@ tg{
         MO{"Макао"}
         US{"ИМ"}
     }
+    Countries%variant{
+        CD{"Конго (ҶДК)"}
+        CG{"Конго"}
+    }
+    Version{"2.1.49.82"}
 }

@@ -1,12 +1,11 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 shi_Latn{
     %%Parent{"root"}
     AuxExemplarCharacters{"[o p v]"}
-    ExemplarCharacters{"[a b c dḍ e ɛ f g {gʷ} ɣ hḥ i j k {kʷ} l m n q rṛ sṣ tṭ u w x y z]"}
-    ExemplarCharactersIndex{"[A B C DḌ E Ɛ F G {Gʷ} Ɣ HḤ I J K {Kʷ} L M N Q RṚ SṢ TṬ U W X Y Z]"}
-    ExemplarCharactersNumbers{"[  \\- ‑ , % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
+    ExemplarCharacters{"[a b c d ḍ e ɛ f g {gʷ} ɣ h ḥ i j k {kʷ} l m n q r ṛ s ṣ t ṭ u w x y z]"}
+    ExemplarCharactersIndex{"[A B C D Ḍ E Ɛ F G {Gʷ} Ɣ H Ḥ I J K {Kʷ} L M N Q R Ṛ S Ṣ T Ṭ U W X Y Z]"}
+    ExemplarCharactersNumbers{"[  \\- , % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
     NumberElements{
         latn{
             patterns{
@@ -18,6 +17,7 @@ shi_Latn{
             }
         }
     }
+    Version{"2.1.47.82"}
     calendar{
         generic{
             DateTimePatterns{
@@ -34,16 +34,6 @@ shi_Latn{
                 "{1} {0}",
                 "{1} {0}",
                 "{1} {0}",
-            }
-            DateTimeSkeletons{
-                "HHmmsszzzz",
-                "HHmmssz",
-                "HHmmss",
-                "HHmm",
-                "GyMMMMEEEEd",
-                "GyMMMMd",
-                "GyMMMd",
-                "GGGGGyMd",
             }
             availableFormats{
                 M{"M"}
@@ -67,6 +57,10 @@ shi_Latn{
             }
         }
         gregorian{
+            AmPmMarkers{
+                "tifawt",
+                "tadggʷat",
+            }
             AmPmMarkersAbbr{
                 "tifawt",
                 "tadggʷat",
@@ -86,15 +80,18 @@ shi_Latn{
                 "{1} {0}",
                 "{1} {0}",
             }
-            DateTimeSkeletons{
-                "HHmmsszzzz",
-                "HHmmssz",
-                "HHmmss",
-                "HHmm",
-                "yMMMMEEEEd",
-                "yMMMMd",
-                "yMMMd",
-                "yMd",
+            appendItems{
+                Day{"{0} ({2}: {1})"}
+                Day-Of-Week{"{0} {1}"}
+                Era{"{1} {0}"}
+                Hour{"{0} ({2}: {1})"}
+                Minute{"{0} ({2}: {1})"}
+                Month{"{0} ({2}: {1})"}
+                Quarter{"{0} ({2}: {1})"}
+                Second{"{0} ({2}: {1})"}
+                Timezone{"{0} {1}"}
+                Week{"{0} ({2}: {1})"}
+                Year{"{1} {0}"}
             }
             availableFormats{
                 M{"M"}
@@ -107,6 +104,7 @@ shi_Latn{
                 MMdd{"dd/MM"}
                 Md{"d/M"}
                 ms{"m:ss"}
+                y{"y"}
                 yM{"M/y"}
                 yMEd{"E d/M/y"}
                 yMMM{"MMM y"}

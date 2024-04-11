@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 el{
     Currencies{
         ADP{
@@ -824,13 +823,9 @@ el{
             "SKK",
             "Κορόνα Σλοβενίας",
         }
-        SLE{
-            "SLE",
-            "Λεόνε Σιέρα Λεόνε",
-        }
         SLL{
             "SLL",
-            "Λεόνε Σιέρα Λεόνε (1964—2022)",
+            "Λεόνε Σιέρα Λεόνε",
         }
         SOS{
             "SOS",
@@ -1029,7 +1024,7 @@ el{
             "UIC-Φράγκο Γαλλίας",
         }
         XOF{
-            "F CFA",
+            "CFA",
             "Φράγκο CFA Δυτικής Αφρικής",
         }
         XPF{
@@ -1094,7 +1089,104 @@ el{
         }
     }
     Currencies%narrow{
+        AOA{"Kz"}
+        ARS{"$"}
+        AUD{"$"}
+        BAM{"KM"}
+        BBD{"$"}
+        BDT{"৳"}
+        BMD{"$"}
+        BND{"$"}
+        BOB{"Bs"}
+        BRL{"R$"}
+        BSD{"$"}
+        BWP{"P"}
         BYN{"р."}
+        BZD{"$"}
+        CAD{"$"}
+        CLP{"$"}
+        CNY{"¥"}
+        COP{"$"}
+        CRC{"₡"}
+        CUC{"$"}
+        CUP{"$"}
+        CZK{"Kč"}
+        DKK{"kr"}
+        DOP{"$"}
+        EGP{"E£"}
+        EUR{"€"}
+        FJD{"$"}
+        FKP{"£"}
+        GBP{"£"}
+        GEL{"₾"}
+        GIP{"£"}
+        GNF{"FG"}
+        GTQ{"Q"}
+        GYD{"$"}
+        HKD{"$"}
+        HNL{"L"}
+        HRK{"kn"}
+        HUF{"Ft"}
+        IDR{"Rp"}
+        ILS{"₪"}
+        INR{"₹"}
+        ISK{"kr"}
+        JMD{"$"}
+        JPY{"¥"}
+        KHR{"៛"}
+        KMF{"CF"}
+        KPW{"₩"}
+        KRW{"₩"}
+        KYD{"$"}
+        KZT{"₸"}
+        LAK{"₭"}
+        LBP{"L£"}
+        LKR{"Rs"}
+        LRD{"$"}
+        MGA{"Ar"}
+        MMK{"K"}
+        MNT{"₮"}
+        MUR{"Rs"}
+        MXN{"$"}
+        MYR{"RM"}
+        NAD{"$"}
+        NGN{"₦"}
+        NIO{"C$"}
+        NOK{"kr"}
+        NPR{"Rs"}
+        NZD{"$"}
+        PHP{"₱"}
+        PKR{"Rs"}
+        PLN{"zł"}
+        PYG{"₲"}
+        RON{"lei"}
+        RUB{"₽"}
+        RWF{"RF"}
+        SBD{"$"}
+        SEK{"kr"}
+        SGD{"$"}
+        SHP{"£"}
+        SRD{"$"}
+        SSP{"£"}
+        STN{"Db"}
+        SYP{"£"}
+        THB{"฿"}
+        TOP{"T$"}
+        TRY{"₺"}
+        TTD{"$"}
+        TWD{"$"}
+        UAH{"₴"}
+        USD{"$"}
+        UYU{"$"}
+        VEF{"Bs"}
+        VND{"₫"}
+        XCD{"$"}
+        ZAR{"R"}
+        ZMW{"ZK"}
+    }
+    Currencies%variant{
+        GEL{"₾"}
+        TRY{"TL"}
     }
     CurrencyPlurals{
         ADP{
@@ -1630,8 +1722,8 @@ el{
             other{"δολάρια Λιβερίας"}
         }
         LSL{
-            one{"λότι Λεσότο"}
-            other{"λότι Λεσότο"}
+            one{"λότι Λεσόθο"}
+            other{"λότι Λεσόθο"}
         }
         LTL{
             one{"λίτα Λιθουανίας"}
@@ -1905,13 +1997,9 @@ el{
             one{"κορόνα Σλοβενίας"}
             other{"κορόνες Σλοβενίας"}
         }
-        SLE{
+        SLL{
             one{"λεόνε Σιέρα Λεόνε"}
             other{"λεόνε Σιέρα Λεόνε"}
-        }
-        SLL{
-            one{"λεόνε Σιέρα Λεόνε (1964—2022)"}
-            other{"λεόνε Σιέρα Λεόνε (1964—2022)"}
         }
         SOS{
             one{"σελίνι Σομαλίας"}
@@ -2169,9 +2257,14 @@ el{
             one{"δολάριο Ζιμπάμπουε"}
             other{"δολάρια Ζιμπάμπουε"}
         }
+        ZWL{
+            one{"Δολάριο Ζιμπάμπουε (2009)"}
+            other{"Δολάριο Ζιμπάμπουε (2009)"}
+        }
     }
     CurrencyUnitPatterns{
         one{"{0} {1}"}
         other{"{0} {1}"}
     }
+    Version{"2.1.49.82"}
 }

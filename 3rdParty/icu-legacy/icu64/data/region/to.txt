@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 to{
     Countries{
         001{"Māmani"}
@@ -32,7 +31,6 @@ to{
         151{"ʻEulope fakahahake"}
         154{"ʻEulope fakatokelau"}
         155{"ʻEulope fakahihifo"}
-        202{"ʻAfilika fakasahala-tonga"}
         419{"ʻAmelika fakalatina"}
         AC{"Motu ʻAsenisini"}
         AD{"ʻAnitola"}
@@ -184,7 +182,7 @@ to{
         MF{"Sā Mātini (fakafalanisē)"}
         MG{"Matakasika"}
         MH{"ʻOtumotu Māsolo"}
-        MK{"Masetōnia fakatokelau"}
+        MK{"Masetōnia"}
         ML{"Māli"}
         MM{"Mianimā (Pema)"}
         MN{"Mongokōlia"}
@@ -254,7 +252,7 @@ to{
         SV{"ʻEle Salavatoa"}
         SX{"Sā Mātini (fakahōlani)"}
         SY{"Sīlia"}
-        SZ{"ʻEsuatini"}
+        SZ{"Suasilani"}
         TA{"Tulisitani ta Kunuha"}
         TC{"ʻOtumotu Tuki mo Kaikosi"}
         TD{"Sāti"}
@@ -263,7 +261,7 @@ to{
         TH{"Tailani"}
         TJ{"Tasikitani"}
         TK{"Tokelau"}
-        TL{"Timoa fakahahake"}
+        TL{"Timoa hahake"}
         TM{"Tūkimenisitani"}
         TN{"Tunīsia"}
         TO{"Tonga"}
@@ -288,8 +286,6 @@ to{
         VU{"Vanuatu"}
         WF{"ʻUvea mo Futuna"}
         WS{"Haʻamoa"}
-        XA{"fasiʻalea loi"}
-        XB{"fua-ua loi"}
         XK{"Kōsovo"}
         YE{"Iemeni"}
         YT{"Maiote"}
@@ -298,10 +294,8 @@ to{
         ZW{"Simipapuei"}
         ZZ{"Potu fonua taʻeʻiloa pe hala"}
     }
-    Countries%chagos{
-        IO{"ʻOtu motu Sakōsi"}
-    }
     Countries%short{
+        GB{"Pilitānia"}
         HK{"Hongi Kongi"}
         MO{"Makau"}
         PS{"Palesitaine"}
@@ -311,8 +305,7 @@ to{
         CD{"Kongo (LTK)"}
         CG{"Kongo (Lepupelika)"}
         CZ{"Lepupelika Seki"}
-        FK{"ʻOtumotu Malivina"}
-        NZ{"ʻAotealoa"}
-        SZ{"Suasilani"}
+        MK{"Masetōnia (FYROM)"}
     }
+    Version{"2.1.47.82"}
 }

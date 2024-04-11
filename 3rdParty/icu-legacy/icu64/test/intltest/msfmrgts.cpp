@@ -32,29 +32,29 @@ void
 MessageFormatRegressionTest::runIndexedTest( int32_t index, UBool exec, const char* &name, char* /*par*/ )
 {
     TESTCASE_AUTO_BEGIN;
-    TESTCASE_AUTO(Test4074764);
+    TESTCASE_AUTO(Test4074764)
     //TESTCASE_AUTO(Test4058973)  -- disabled/obsolete in ICU 4.8
-    TESTCASE_AUTO(Test4031438);
-    TESTCASE_AUTO(Test4052223);
-    TESTCASE_AUTO(Test4104976);
-    TESTCASE_AUTO(Test4106659);
-    TESTCASE_AUTO(Test4106660);
-    TESTCASE_AUTO(Test4111739);
-    TESTCASE_AUTO(Test4114743);
-    TESTCASE_AUTO(Test4116444);
-    TESTCASE_AUTO(Test4114739);
-    TESTCASE_AUTO(Test4113018);
-    TESTCASE_AUTO(Test4106661);
-    TESTCASE_AUTO(Test4094906);
-    TESTCASE_AUTO(Test4118592);
-    TESTCASE_AUTO(Test4118594);
-    TESTCASE_AUTO(Test4105380);
-    TESTCASE_AUTO(Test4120552);
-    TESTCASE_AUTO(Test4142938);
-    TESTCASE_AUTO(TestChoicePatternQuote);
-    TESTCASE_AUTO(Test4112104);
-    TESTCASE_AUTO(TestICU12584);
-    TESTCASE_AUTO(TestAPI);
+    TESTCASE_AUTO(Test4031438)
+    TESTCASE_AUTO(Test4052223)
+    TESTCASE_AUTO(Test4104976)
+    TESTCASE_AUTO(Test4106659)
+    TESTCASE_AUTO(Test4106660)
+    TESTCASE_AUTO(Test4111739)
+    TESTCASE_AUTO(Test4114743)
+    TESTCASE_AUTO(Test4116444)
+    TESTCASE_AUTO(Test4114739)
+    TESTCASE_AUTO(Test4113018)
+    TESTCASE_AUTO(Test4106661)
+    TESTCASE_AUTO(Test4094906)
+    TESTCASE_AUTO(Test4118592)
+    TESTCASE_AUTO(Test4118594)
+    TESTCASE_AUTO(Test4105380)
+    TESTCASE_AUTO(Test4120552)
+    TESTCASE_AUTO(Test4142938)
+    TESTCASE_AUTO(TestChoicePatternQuote)
+    TESTCASE_AUTO(Test4112104)
+    TESTCASE_AUTO(TestICU12584)
+    TESTCASE_AUTO(TestAPI)
     TESTCASE_AUTO_END;
 }
 
@@ -67,10 +67,10 @@ MessageFormatRegressionTest::failure(UErrorCode status, const char* msg, UBool p
         } else {
             errln(UnicodeString("FAIL: ") + msg + " failed, error " + u_errorName(status));
         }
-        return true;
+        return TRUE;
     }
 
-    return false;
+    return FALSE;
 }
 
 /* @bug 4074764
@@ -114,15 +114,15 @@ void MessageFormatRegressionTest::Test4074764() {
         failure(status, "messageFormatter->applyPattern");
 
         // {sfb} how much does this apply in C++?
-        // do we want to verify that the Formattable* array is not nullptr,
+        // do we want to verify that the Formattable* array is not NULL,
         // or is that the user's responsibility?
         // additionally, what should be the item count?
         // for bug testing purposes, assume that something was set to
-        // nullptr by mistake, and that the length should be non-zero
+        // NULL by mistake, and that the length should be non-zero
 
-        //tempBuffer = messageFormatter->format(nullptr, 1, tempBuffer, FieldPosition(FieldPosition::DONT_CARE), status);
+        //tempBuffer = messageFormatter->format(NULL, 1, tempBuffer, FieldPosition(FieldPosition::DONT_CARE), status);
         tempBuffer.remove();
-        tempBuffer = messageFormatter->format(nullptr, 0, tempBuffer, pos, status);
+        tempBuffer = messageFormatter->format(NULL, 0, tempBuffer, pos, status);
 
         if( tempBuffer != "Message without param" || failure(status, "messageFormat->format"))
             errln("MessageFormat with no param test failed.");
@@ -131,7 +131,7 @@ void MessageFormatRegressionTest::Test4074764() {
         tempBuffer.remove();
         tempBuffer = messageFormatter->format(params, 2, tempBuffer, pos, status);
          if (tempBuffer != "Message without param" || failure(status, "messageFormat->format"))
-            errln("Formatted with arguments > substitution failed. result = " + tempBuffer);
+            errln("Formatted with arguments > subsitution failed. result = " + tempBuffer);
          logln("Formatted with extra params : " + tempBuffer);
         //This statement gives an exception while formatting...
         //If we use pattern[1] for the message with param,
@@ -186,7 +186,7 @@ void MessageFormatRegressionTest::Test4031438()
     MessageFormat *messageFormatter = new MessageFormat("", status);
     failure(status, "new MessageFormat");
 
-    const UBool possibleDataError = true;
+    const UBool possibleDataError = TRUE;
 
     //try {
         logln("Apply with pattern : " + pattern1);
@@ -205,10 +205,10 @@ void MessageFormatRegressionTest::Test4031438()
         ParsePosition pp(0);
         int32_t count = 0;
         Formattable *objs = messageFormatter->parse(tempBuffer, pp, count);
-        //if(objs[7/*params.length*/] != nullptr)
+        //if(objs[7/*params.length*/] != NULL)
         //    errln("Parse failed with more than expected arguments");
 
-        NumberFormat* fmt = nullptr;
+        NumberFormat *fmt = 0;
         UnicodeString temp, temp1;
 
         for (int i = 0; i < count; i++) {
@@ -243,7 +243,7 @@ void MessageFormatRegressionTest::Test4031438()
                 }
             }
 
-            //if (objs[i] != nullptr && objs[i].getString(temp1) != params[i].getString(temp2)) {
+            //if (objs[i] != NULL && objs[i].getString(temp1) != params[i].getString(temp2)) {
             if (temp != temp1) {
                 errln("Parse failed on object " + objs[i].getString(temp1) + " at index : " + i);
             }
@@ -344,7 +344,7 @@ void MessageFormatRegressionTest::Test4104976()
     failure(status, "new ChoiceFormat");
     //try {
         log("Compares to null is always false, returned : ");
-        logln(cf == nullptr ? "true" : "false");
+        logln(cf == NULL ? "TRUE" : "FALSE");
     /*} catch (Exception foo) {
         errln("ChoiceFormat.equals(null) throws exception.");
     }*/
@@ -368,7 +368,7 @@ void MessageFormatRegressionTest::Test4106659()
     UnicodeString formats [] = {
         "one", "two"
     };
-    ChoiceFormat *cf = nullptr;
+    ChoiceFormat *cf = NULL;
     //try {
     //    cf = new ChoiceFormat(limits, formats, 3);
     //} catch (Exception foo) {
@@ -488,7 +488,7 @@ void MessageFormatRegressionTest::Test4116444()
     for (int i = 0; i < 3; i++) {
         UnicodeString pattern = patterns[i];
         mf->applyPattern(pattern, status);
-        failure(status, "mf->applyPattern", true);
+        failure(status, "mf->applyPattern", TRUE);
 
         //try {
         int32_t count = 0;
@@ -496,7 +496,7 @@ void MessageFormatRegressionTest::Test4116444()
         Formattable *array = mf->parse(UnicodeString(""), pp, count);
             logln("pattern: \"" + pattern + "\"");
             log(" parsedObjects: ");
-            if (array != nullptr) {
+            if (array != NULL) {
                 log("{");
                 for (int j = 0; j < count; j++) {
                     //if (array[j] != null)
@@ -533,9 +533,9 @@ void MessageFormatRegressionTest::Test4114739()
     MessageFormat *mf = new MessageFormat("<{0}>", status);
     failure(status, "new MessageFormat");
 
-    Formattable *objs1 = nullptr;
+    Formattable *objs1 = NULL;
     //Formattable objs2 [] = {};
-    //Formattable *objs3 [] = {nullptr};
+    //Formattable *objs3 [] = {NULL};
     //try {
     UnicodeString pat;
     UnicodeString res;
@@ -640,9 +640,9 @@ void MessageFormatRegressionTest::Test4094906()
 {
     UErrorCode status = U_ZERO_ERROR;
     UnicodeString pattern("-");
-    pattern += (char16_t) 0x221E;
+    pattern += (UChar) 0x221E;
     pattern += "<are negative|0<are no or fraction|1#is one|1<is 1+|";
-    pattern += (char16_t) 0x221E;
+    pattern += (UChar) 0x221E;
     pattern += "<are many.";
 
     ChoiceFormat *fmt = new ChoiceFormat(pattern, status);
@@ -702,7 +702,7 @@ void MessageFormatRegressionTest::Test4118592()
     failure(status, "new messageFormat");
     UnicodeString pattern("{0,choice,1#YES|2#NO}");
     UnicodeString prefix("");
-    Formattable* objs = nullptr;
+    Formattable *objs = 0;
 
     for (int i = 0; i < 5; i++) {
         UnicodeString formatted;
@@ -717,7 +717,7 @@ void MessageFormatRegressionTest::Test4118592()
         UnicodeString pat;
         logln(UnicodeString("") + i + ". pattern :\"" + mf->toPattern(pat) + "\"");
         log(" \"" + formatted + "\" parsed as ");
-        if (objs == nullptr)
+        if (objs == NULL)
             logln("  null");
         else {
             UnicodeString temp;
@@ -738,7 +738,7 @@ void MessageFormatRegressionTest::Test4118592()
 void MessageFormatRegressionTest::Test4118594()
 {
     UErrorCode status = U_ZERO_ERROR;
-    const UBool possibleDataError = true;
+    const UBool possibleDataError = TRUE;
     MessageFormat *mf = new MessageFormat("{0}, {0}, {0}", status);
     failure(status, "new MessageFormat");
     UnicodeString forParsing("x, y, z");
@@ -771,7 +771,7 @@ void MessageFormatRegressionTest::Test4118594()
     pp.setIndex(0);
     Formattable *newobjs = mf->parse(result, pp, count1);
     // newobjs now equals {new Double(3.1)}
-    if (newobjs == nullptr) {
+    if (newobjs == NULL) {
         dataerrln("Error calling MessageFormat::parse");
     } else {
         if (newobjs[0].getDouble() != 3.1)
@@ -790,7 +790,7 @@ void MessageFormatRegressionTest::Test4105380()
     UnicodeString patternText1("The disk \"{1}\" contains {0}.");
     UnicodeString patternText2("There are {0} on the disk \"{1}\"");
     UErrorCode status = U_ZERO_ERROR;
-    const UBool possibleDataError = true;
+    const UBool possibleDataError = TRUE;
     MessageFormat *form1 = new MessageFormat(patternText1, status);
     failure(status, "new MessageFormat");
     MessageFormat *form2 = new MessageFormat(patternText2, status);
@@ -844,7 +844,7 @@ void MessageFormatRegressionTest::Test4120552()
         int32_t count = 0;
         Formattable *objs = mf->parse(texts[i], pp, count);
         log("  text for parsing: \"" + texts[i] + "\"");
-        if (objs == nullptr) {
+        if (objs == NULL) {
             logln("  (incorrectly formatted string)");
             if (pp.getErrorIndex() == -1)
                 errln(UnicodeString("Incorrect error index: ") + pp.getErrorIndex());
@@ -890,7 +890,7 @@ void MessageFormatRegressionTest::Test4142938()
         };
         FieldPosition pos(FieldPosition::DONT_CARE);
         out = mf->format(objs, 1, out, pos, status);
-        if (!failure(status, "mf->format", true)) {
+        if (!failure(status, "mf->format", TRUE)) {
             if (SUFFIX[i] == "") {
                 if (out != PREFIX[i])
                     errln((UnicodeString)"" + i + ": Got \"" + out + "\"; Want \"" + PREFIX[i] + "\"");
@@ -977,7 +977,7 @@ void MessageFormatRegressionTest::Test4112104()
     failure(status, "new MessageFormat");
     //try {
         // This should NOT throw an exception
-        if (format == nullptr) {
+        if (format == NULL) {
             // It also should return false
             errln("MessageFormat.equals(null) returns false");
         }

@@ -105,7 +105,7 @@ ICULIBSUFFIX_VERSION = $(LIB_VERSION_MAJOR)
 #%$(SO_TARGET_VERSION_MAJOR).$(SO): %$(SO_TARGET_VERSION).$(SO)
 #	$(RM) $@ && cp ${<F} $@
 %.$(SO): %$(SO_TARGET_VERSION_MAJOR).$(SO)
-	ln -fs $(subst cyg,lib,${<F}).$(A) $(subst cyg,lib,$@).$(A)
+	$(RM) $(subst cyg,lib,$@).$(A) && ln -s $(subst cyg,lib,${<F}).$(A) $(subst cyg,lib,$@).$(A)
 
 ## Install libraries as executable
 INSTALL-L=$(INSTALL_PROGRAM)

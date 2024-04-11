@@ -9,13 +9,13 @@
 
 #include "numparse_types.h"
 #include "numparse_decimal.h"
-#include "numparse_symbols.h"
 #include "unicode/numberformatter.h"
 
 using icu::number::impl::Grouper;
 
-U_NAMESPACE_BEGIN
-namespace numparse::impl {
+U_NAMESPACE_BEGIN namespace numparse {
+namespace impl {
+
 
 class ScientificMatcher : public NumberParseMatcher, public UMemory {
   public:
@@ -32,12 +32,13 @@ class ScientificMatcher : public NumberParseMatcher, public UMemory {
   private:
     UnicodeString fExponentSeparatorString;
     DecimalMatcher fExponentMatcher;
-    IgnorablesMatcher fIgnorablesMatcher;
     UnicodeString fCustomMinusSign;
     UnicodeString fCustomPlusSign;
 };
 
-} // namespace numparse::impl
+
+} // namespace impl
+} // namespace numparse
 U_NAMESPACE_END
 
 #endif //__NUMPARSE_SCIENTIFIC_H__

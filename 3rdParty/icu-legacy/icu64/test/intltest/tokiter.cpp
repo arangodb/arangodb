@@ -18,7 +18,7 @@
 
 TokenIterator::TokenIterator(TextFile* r) {
     reader = r;
-    done = haveLine = false;
+    done = haveLine = FALSE;
     pos = lastpos = -1;
 }
 
@@ -27,25 +27,25 @@ TokenIterator::~TokenIterator() {
 
 UBool TokenIterator::next(UnicodeString& token, UErrorCode& ec) {
     if (done || U_FAILURE(ec)) {
-        return false;
+        return FALSE;
     }
     token.truncate(0);
     for (;;) {
         if (!haveLine) {
             if (!reader->readLineSkippingComments(line, ec)) {
-                done = true;
-                return false;
+                done = TRUE;
+                return FALSE;
             }
-            haveLine = true;
+            haveLine = TRUE;
             pos = 0;
         }
         lastpos = pos;
         if (!nextToken(token, ec)) {
-            haveLine = false;
-            if (U_FAILURE(ec)) return false;
+            haveLine = FALSE;
+            if (U_FAILURE(ec)) return FALSE;
             continue;
         }
-        return true;
+        return TRUE;
     }
 }
 
@@ -61,23 +61,23 @@ int32_t TokenIterator::getLineNumber() const {
  * is ignored, unless it is backslash-escaped or within quotes.
  * @param token the token is appended to this StringBuffer
  * @param ec input-output error code
- * @return true if a valid token is found, or false if the end
+ * @return TRUE if a valid token is found, or FALSE if the end
  * of the line is reached or an error occurs
  */
 UBool TokenIterator::nextToken(UnicodeString& token, UErrorCode& ec) {
-    ICU_Utility::skipWhitespace(line, pos, true);
+    ICU_Utility::skipWhitespace(line, pos, TRUE);
     if (pos == line.length()) {
-        return false;
+        return FALSE;
     }
-    char16_t c = line.charAt(pos++);
-    char16_t quote = 0;
+    UChar c = line.charAt(pos++);
+    UChar quote = 0;
     switch (c) {
     case 34/*'"'*/:
     case 39/*'\\'*/:
         quote = c;
         break;
     case 35/*'#'*/:
-        return false;
+        return FALSE;
     default:
         token.append(c);
         break;
@@ -88,15 +88,15 @@ UBool TokenIterator::nextToken(UnicodeString& token, UErrorCode& ec) {
             UChar32 c32 = line.unescapeAt(pos);
             if (c32 < 0) {
                 ec = U_MALFORMED_UNICODE_ESCAPE;
-                return false;
+                return FALSE;
             }
             token.append(c32);
         } else if ((quote != 0 && c == quote) ||
                    (quote == 0 && PatternProps::isWhiteSpace(c))) {
             ++pos;
-            return true;
+            return TRUE;
         } else if (quote == 0 && c == '#') {
-            return true; // do NOT increment
+            return TRUE; // do NOT increment
         } else {
             token.append(c);
             ++pos;
@@ -104,7 +104,7 @@ UBool TokenIterator::nextToken(UnicodeString& token, UErrorCode& ec) {
     }
     if (quote != 0) {
         ec = U_UNTERMINATED_QUOTE;
-        return false;
+        return FALSE;
     }
-    return true;
+    return TRUE;
 }

@@ -32,11 +32,11 @@ typedef struct UCHARBUF UCHARBUF;
 /**
  * End of file value
  */
-#define U_EOF ((int32_t)0xFFFFFFFF)
+#define U_EOF 0xFFFFFFFF
 /**
  * Error value if a sequence cannot be unescaped
  */
-#define U_ERR ((int32_t)0xFFFFFFFE)
+#define U_ERR 0xFFFFFFFE
 
 typedef struct ULine ULine;
 
@@ -49,10 +49,10 @@ struct  ULine {
  * Opens the UCHARBUF with the given file stream and code page for conversion
  * @param fileName  Name of the file to open.
  * @param codepage  The encoding of the file stream to convert to Unicode.
- *                  If *codepage is NULL on input the API will try to autodetect
+ *                  If *codepoge is NULL on input the API will try to autodetect
  *                  popular Unicode encodings
  * @param showWarning Flag to print out warnings to STDOUT
- * @param buffered  If true performs a buffered read of the input file. If false reads
+ * @param buffered  If TRUE performs a buffered read of the input file. If FALSE reads
  *                  the whole file into memory and converts it.
  * @param err is a pointer to a valid <code>UErrorCode</code> value. If this value
  *        indicates a failure on entry, the function will immediately return.
@@ -124,7 +124,7 @@ ucbuf_rewind(UCHARBUF* buf,UErrorCode* err);
 /**
  * Returns a pointer to the internal converted buffer
  * @param buf Pointer to UCHARBUF structure
- * @param len Pointer to int32_t to receive the length of buffer
+ * @param len Pointer to int32_t to receive the lenth of buffer
  * @param err is a pointer to a valid <code>UErrorCode</code> value. If this value
  *        indicates a failure on entry, the function will immediately return.
  *        On exit the value will indicate the success of the operation.

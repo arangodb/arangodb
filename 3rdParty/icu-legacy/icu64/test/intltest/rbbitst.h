@@ -17,14 +17,11 @@
 
 #if !UCONFIG_NO_BREAK_ITERATION
 
-#include <stdio.h>
-
 #include <memory>
 
 #include "intltest.h"
 #include "unicode/brkiter.h"
 #include "unicode/rbbi.h"
-#include "unicode/uscript.h"
 
 class  Enumeration;
 class  BITestData;
@@ -44,7 +41,7 @@ public:
     RBBITest();
     virtual ~RBBITest();
 
-    void runIndexedTest( int32_t index, UBool exec, const char* &name, char* par = nullptr ) override;
+    void runIndexedTest( int32_t index, UBool exec, const char* &name, char* par = NULL );
 
     void TestGetAvailableLocales();
     void TestGetDisplayName();
@@ -57,6 +54,7 @@ public:
     void TestMonkey();
 
     void TestExtended();
+    UChar *ReadAndConvertFile(const char *fileName, int &ulen, const char *encoding, UErrorCode &status);
     void executeTest(TestParams *, UErrorCode &status);
 
     void TestWordBreaks();
@@ -84,44 +82,9 @@ public:
     void TestReverse();
     void TestReverse(std::unique_ptr<RuleBasedBreakIterator>bi);
     void TestBug13692();
-    void TestDebugRules();
-    void TestUnpairedSurrogate();
 
     void TestDebug();
     void TestProperties();
-    void Test8BitsTrieWith8BitStateTable();
-    void Test8BitsTrieWith16BitStateTable();
-    void Test16BitsTrieWith8BitStateTable();
-    void Test16BitsTrieWith16BitStateTable();
-    void TestTable_8_16_Bits();
-    void TestBug13590();
-    void TestLSTMThai();
-    void TestLSTMBurmese();
-    void TestRandomAccess();
-    void TestExternalBreakEngineWithFakeTaiLe();
-    void TestExternalBreakEngineWithFakeYue();
-    void TestBug22579();
-    void TestBug22581();
-    void TestBug22584();
-    void TestBug22585();
-    void TestBug22602();
-    void TestBug22636();
-
-#if U_ENABLE_TRACING
-    void TestTraceCreateCharacter();
-    void TestTraceCreateWord();
-    void TestTraceCreateSentence();
-    void TestTraceCreateTitle();
-    void TestTraceCreateLine();
-    void TestTraceCreateLineNormal();
-    void TestTraceCreateLineStrict();
-    void TestTraceCreateLineLoose();
-    void TestTraceCreateLineNormalPhrase();
-    void TestTraceCreateLineLoosePhrase();
-    void TestTraceCreateLineStrictPhrase();
-    void TestTraceCreateLinePhrase();
-    void TestTraceCreateBreakEngine();
-#endif
 
 /***********************/
 private:
@@ -130,13 +93,10 @@ private:
      **/
 
     void RunMonkey(BreakIterator *bi, RBBIMonkeyKind &mk, const char *name, uint32_t  seed,
-        int32_t loopCount, UBool useUText, FILE *exportFile, UBool scalarsOnly);
+        int32_t loopCount, UBool useUText);
 
     // Run one of the Unicode Consortium boundary test data files.
     void runUnicodeTestData(const char *fileName, RuleBasedBreakIterator *bi);
-
-    // Run tests from one of the LSTM test files.
-    void runLSTMTestFromFile(const char* filename, UScriptCode script);
 
     // Run a single test case from one of the Unicode Consortium test files.
     void checkUnicodeTestCase(const char *testFileName, int lineNumber,
@@ -153,20 +113,12 @@ private:
      *  Unicode boundary specifications.
      *  @param testCase the test data string.
      *  @param fileName the Unicode test data file name.
-     *  @return false if the test case should be run, true if it should be skipped.
+     *  @return FALSE if the test case should be run, TRUE if it should be skipped.
      */
     UBool testCaseIsKnownIssue(const UnicodeString &testCase, const char *fileName);
 
     // Test parameters, from the test framework and test invocation.
     const char* fTestParams;
-
-    // Helper functions to test different trie bit sizes and state table bit sizes.
-    void testTrieStateTable(int32_t numChar, bool expectedTrieWidthIn8Bits, bool expectedStateRowIn8Bits);
-
-#if U_ENABLE_TRACING
-    void assertTestTraceResult(int32_t fnNumber, const char* expectedData);
-#endif
-
 };
 
 #endif /* #if !UCONFIG_NO_BREAK_ITERATION */

@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 as{
+    Version{"2.1.48.17"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"আবিডজান"}
@@ -258,9 +258,6 @@ as{
         "America:Chihuahua"{
             ec{"চিহুআহুৱা"}
         }
-        "America:Ciudad_Juarez"{
-            ec{"চিউডে‘ড জৰেজ"}
-        }
         "America:Coral_Harbour"{
             ec{"আটিকোকান"}
         }
@@ -465,6 +462,9 @@ as{
         "America:New_York"{
             ec{"নিউ ইয়ৰ্ক"}
         }
+        "America:Nipigon"{
+            ec{"নিপিগন"}
+        }
         "America:Nome"{
             ec{"নোম"}
         }
@@ -486,6 +486,9 @@ as{
         "America:Panama"{
             ec{"পানামা"}
         }
+        "America:Pangnirtung"{
+            ec{"পাংনিৰ্টুংগ"}
+        }
         "America:Paramaribo"{
             ec{"পাৰামাৰিবো"}
         }
@@ -506,6 +509,9 @@ as{
         }
         "America:Punta_Arenas"{
             ec{"পুণ্টা এৰিনাছ"}
+        }
+        "America:Rainy_River"{
+            ec{"ৰেইনী নদী"}
         }
         "America:Rankin_Inlet"{
             ec{"ৰেংকিন ইনলেট"}
@@ -567,6 +573,9 @@ as{
         "America:Thule"{
             ec{"থ্যুলে"}
         }
+        "America:Thunder_Bay"{
+            ec{"থাণ্ডাৰ উপসাগৰ"}
+        }
         "America:Tijuana"{
             ec{"তিজুৱানা"}
         }
@@ -587,6 +596,9 @@ as{
         }
         "America:Yakutat"{
             ec{"য়াকুটাট"}
+        }
+        "America:Yellowknife"{
+            ec{"য়েল্লোনাইফ"}
         }
         "Antarctica:Casey"{
             ec{"কেছী"}
@@ -912,6 +924,9 @@ as{
         "Australia:Broken_Hill"{
             ec{"ব্ৰোকেন হিল"}
         }
+        "Australia:Currie"{
+            ec{"ক্যুৰি"}
+        }
         "Australia:Darwin"{
             ec{"ডাৰউইন"}
         }
@@ -1094,6 +1109,9 @@ as{
         "Europe:Ulyanovsk"{
             ec{"উল্যানোভ্‌স্ক"}
         }
+        "Europe:Uzhgorod"{
+            ec{"উজ্গোৰোড"}
+        }
         "Europe:Vaduz"{
             ec{"ভাদুজ"}
         }
@@ -1114,6 +1132,9 @@ as{
         }
         "Europe:Zagreb"{
             ec{"জাগ্ৰেব"}
+        }
+        "Europe:Zaporozhye"{
+            ec{"জাপোৰোজাই"}
         }
         "Europe:Zurich"{
             ec{"জুৰিখ"}
@@ -1193,8 +1214,8 @@ as{
         "Pacific:Guam"{
             ec{"গুৱাম"}
         }
-        "Pacific:Kanton"{
-            ec{"কেণ্টন"}
+        "Pacific:Johnston"{
+            ec{"জনষ্টন"}
         }
         "Pacific:Kiritimati"{
             ec{"কিৰিটিমাটি"}
@@ -1608,6 +1629,9 @@ as{
             lg{"লৰ্ড হাওৰ সময়"}
             ls{"লৰ্ড হাওৰ মান সময়"}
         }
+        "meta:Macquarie"{
+            ls{"মেক্‌কুৱেৰী দ্বীপৰ সময়"}
+        }
         "meta:Magadan"{
             ld{"মাগাদানৰ গ্ৰীষ্মকালীন সময়"}
             lg{"মাগাদানৰ সময়"}
@@ -1632,6 +1656,11 @@ as{
         }
         "meta:Mawson"{
             ls{"মাউছনৰ সময়"}
+        }
+        "meta:Mexico_Northwest"{
+            ld{"উত্তৰ-পশ্চিম মেক্সিকোৰ ডেলাইট সময়"}
+            lg{"উত্তৰ-পশ্চিম মেক্সিকোৰ সময়"}
+            ls{"উত্তৰ-পশ্চিম মেক্সিকোৰ মান সময়"}
         }
         "meta:Mexico_Pacific"{
             ld{"মেক্সিকোৰ প্ৰশান্ত ডেলাইট সময়"}
@@ -1676,9 +1705,7 @@ as{
             ls{"নিয়ুৰ সময়"}
         }
         "meta:Norfolk"{
-            ld{"ন’ৰফ’ক দ্বীপৰ গ্ৰীষ্মকালীন সময়"}
-            lg{"ন’ৰফ’ক দ্বীপৰ সময়"}
-            ls{"ন’ৰফ’ক দ্বীপৰ মান্য সময়"}
+            ls{"ন’ৰফ’ক দ্বীপৰ সময়"}
         }
         "meta:Noronha"{
             ld{"ফাৰ্নাণ্ডো ডে নোৰোন্‌হাৰ গ্ৰীষ্মকালীন সময়"}
@@ -1849,9 +1876,10 @@ as{
             lg{"য়েকাটেৰিণবাৰ্গৰ সময়"}
             ls{"য়েকাটেৰিণবাৰ্গৰ মান সময়"}
         }
-        "meta:Yukon"{
-            ls{"য়ুকোন সময়"}
-        }
+        fallbackFormat{"{1} ({0})"}
+        gmtFormat{"GMT{0}"}
+        gmtZeroFormat{"GMT"}
+        hourFormat{"+HH:mm;-HH:mm"}
         regionFormat{"{0} সময়"}
         regionFormatDaylight{"{0} (+1) ডেলাইট সময়"}
         regionFormatStandard{"{0} (+0) মান সময়"}

@@ -10,8 +10,9 @@
 #include "numparse_types.h"
 #include "number_decimfmtprops.h"
 
-U_NAMESPACE_BEGIN
-namespace number::impl {
+U_NAMESPACE_BEGIN namespace number {
+namespace impl {
+
 
 /**
  * Wraps a {@link Multiplier} for use in the number formatting pipeline.
@@ -24,7 +25,7 @@ class U_I18N_API MultiplierFormatHandler : public MicroPropsGenerator, public UM
     void setAndChain(const Scale& multiplier, const MicroPropsGenerator* parent);
 
     void processQuantity(DecimalQuantity& quantity, MicroProps& micros,
-                         UErrorCode& status) const override;
+                         UErrorCode& status) const U_OVERRIDE;
 
   private:
     Scale fMultiplier;
@@ -47,7 +48,9 @@ static inline Scale scaleFromProperties(const DecimalFormatProperties& propertie
     }
 }
 
-} // namespace number::impl
+
+} // namespace impl
+} // namespace number
 U_NAMESPACE_END
 
 #endif //__SOURCE_NUMBER_MULTIPLIER_H__

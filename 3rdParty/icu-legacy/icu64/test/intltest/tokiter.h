@@ -39,7 +39,7 @@ class TokenIterator {
 
     /**
      * Return the next token from this iterator.
-     * @return true if a token was read, or false if no more tokens
+     * @return TRUE if a token was read, or FALSE if no more tokens
      * are available or an error occurred.
      */
     UBool next(UnicodeString& token, UErrorCode& ec);

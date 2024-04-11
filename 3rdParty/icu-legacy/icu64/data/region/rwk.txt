@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 rwk{
     Countries{
         AD{"Andora"}
@@ -93,6 +92,7 @@ rwk{
         IE{"Ayalandi"}
         IL{"Israeli"}
         IN{"India"}
+        IO{"Eneo la Uingereza katika Bahari Hindi"}
         IQ{"Iraki"}
         IR{"Uajemi"}
         IS{"Aislandi"}
@@ -127,6 +127,7 @@ rwk{
         MD{"Moldova"}
         MG{"Bukini"}
         MH{"Visiwa vya Marshal"}
+        MK{"Masedonia"}
         ML{"Mali"}
         MM{"Myama"}
         MN{"Mongolia"}
@@ -226,4 +227,5 @@ rwk{
         ZM{"Zambia"}
         ZW{"Zimbabwe"}
     }
+    Version{"2.1.47.82"}
 }

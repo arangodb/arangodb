@@ -14,8 +14,6 @@
 
 #include "unicode/utypes.h"
 
-#if U_SHOW_CPLUSPLUS_API
-
 /**
  * \file 
  * \brief C++ API: Service for searching text based on RuleBasedCollator.
@@ -37,7 +35,7 @@ U_NAMESPACE_BEGIN
  * StringSearch ensures that language eccentricity can be
  * handled, e.g. for the German collator, characters &szlig; and SS will be matched
  * if case is chosen to be ignored.
- * See the <a href="https://htmlpreview.github.io/?https://github.com/unicode-org/icu-docs/blob/main/design/collation/ICU_collation_design.htm">
+ * See the <a href="http://source.icu-project.org/repos/icu/icuhtml/trunk/design/collation/ICU_collation_design.htm">
  * "ICU Collation Design Document"</a> for more information.
  * <p>
  * There are 2 match options for selection:<br>
@@ -116,12 +114,13 @@ U_NAMESPACE_BEGIN
  * UnicodeString pattern("fox");
  *
  * UErrorCode      error = U_ZERO_ERROR;
- * StringSearch iter(pattern, target, Locale::getUS(), nullptr, status);
+ * StringSearch iter(pattern, target, Locale::getUS(), NULL, status);
  * for (int pos = iter.first(error);
  *      pos != USEARCH_DONE; 
  *      pos = iter.next(error))
  * {
- *     printf("Found match at %d pos, length is %d\n", pos, iter.getMatchedLength());
+ *     printf("Found match at %d pos, length is %d\n", pos, 
+ *                                             iter.getMatchLength());
  * }
  * </code></pre>
  * <p>
@@ -132,7 +131,7 @@ U_NAMESPACE_BEGIN
  * @since ICU 2.0
  */
 
-class U_I18N_API StringSearch final : public SearchIterator
+class U_I18N_API StringSearch U_FINAL : public SearchIterator
 {
 public:
 
@@ -153,8 +152,8 @@ public:
      *                indices in the target text are not boundaries as 
      *                determined by the <tt>BreakIterator</tt> are 
      *                ignored. If this behavior is not desired, 
-     *                <tt>nullptr</tt> can be passed in instead.
-     * @param status  for errors if any. If pattern or text is nullptr, or if
+     *                <tt>NULL</tt> can be passed in instead.
+     * @param status  for errors if any. If pattern or text is NULL, or if
      *               either the length of pattern or text is 0 then an 
      *               U_ILLEGAL_ARGUMENT_ERROR is returned.
      * @stable ICU 2.0
@@ -180,7 +179,7 @@ public:
      *                indices in the target text are not boundaries as 
      *                determined by the <tt>BreakIterator</tt> are 
      *                ignored. If this behavior is not desired, 
-     *                <tt>nullptr</tt> can be passed in instead.
+     *                <tt>NULL</tt> can be passed in instead.
      * @param status for errors if any. If either the length of pattern or 
      *               text is 0 then an U_ILLEGAL_ARGUMENT_ERROR is returned.
      * @stable ICU 2.0
@@ -211,7 +210,7 @@ public:
      *                indices in the target text are not boundaries as 
      *                determined by the <tt>BreakIterator</tt> are 
      *                ignored. If this behavior is not desired, 
-     *                <tt>nullptr</tt> can be passed in instead.
+     *                <tt>NULL</tt> can be passed in instead.
      * @param status for errors if any. If either the length of pattern or 
      *               text is 0 then an U_ILLEGAL_ARGUMENT_ERROR is returned.
      * @stable ICU 2.0
@@ -241,7 +240,7 @@ public:
      *                indices in the target text are not boundaries as 
      *                determined by the <tt>BreakIterator</tt> are 
      *                ignored. If this behavior is not desired, 
-     *                <tt>nullptr</tt> can be passed in instead.
+     *                <tt>NULL</tt> can be passed in instead.
      * @param status for errors if any. If either the length of pattern or 
      *               text is 0 then an U_ILLEGAL_ARGUMENT_ERROR is returned.
      * @stable ICU 2.0
@@ -264,12 +263,12 @@ public:
     * If a collator is created in the constructor, it will be destroyed here.
     * @stable ICU 2.0
     */
-    virtual ~StringSearch();
+    virtual ~StringSearch(void);
 
     /**
      * Clone this object.
      * Clones can be used concurrently in multiple threads.
-     * If an error occurs, then nullptr is returned.
+     * If an error occurs, then NULL is returned.
      * The caller must delete the clone.
      *
      * @return a clone of this object
@@ -292,12 +291,12 @@ public:
     /**
      * Equality operator. 
      * @param that instance to be compared.
-     * @return true if both instances have the same attributes, 
+     * @return TRUE if both instances have the same attributes, 
      *         breakiterators, collators and iterate over the same text 
      *         while looking for the same pattern.
      * @stable ICU 2.0
      */
-    virtual bool operator==(const SearchIterator &that) const override;
+    virtual UBool operator==(const SearchIterator &that) const;
 
     // public get and set methods ----------------------------------------
 
@@ -314,7 +313,7 @@ public:
      * @param status for errors if it occurs
      * @stable ICU 2.0
      */
-    virtual void setOffset(int32_t position, UErrorCode &status) override;
+    virtual void setOffset(int32_t position, UErrorCode &status);
 
     /**
      * Return the current index in the text being searched.
@@ -324,7 +323,7 @@ public:
      * @return current index in the text being searched.
      * @stable ICU 2.0
      */
-    virtual int32_t getOffset() const override;
+    virtual int32_t getOffset(void) const;
 
     /**
      * Set the target text to be searched.
@@ -337,7 +336,7 @@ public:
      *        U_ILLEGAL_ARGUMENT_ERROR is returned.
      * @stable ICU 2.0
      */
-    virtual void setText(const UnicodeString &text, UErrorCode &status) override;
+    virtual void setText(const UnicodeString &text, UErrorCode &status);
     
     /**
      * Set the target text to be searched.
@@ -353,7 +352,7 @@ public:
      *        U_ILLEGAL_ARGUMENT_ERROR is returned.
      * @stable ICU 2.0
      */
-    virtual void setText(CharacterIterator &text, UErrorCode &status) override;
+    virtual void setText(CharacterIterator &text, UErrorCode &status);
 
     /**
      * Gets the collator used for the language rules.
@@ -403,7 +402,7 @@ public:
      * search will begin at the end of the text string.
      * @stable ICU 2.0
      */
-    virtual void reset() override;
+    virtual void reset();
 
     /**
      * Returns a copy of StringSearch with the same behavior, and 
@@ -413,14 +412,14 @@ public:
      * @return cloned object
      * @stable ICU 2.0
      */
-    virtual StringSearch * safeClone() const override;
+    virtual SearchIterator * safeClone(void) const;
     
     /**
      * ICU "poor man's RTTI", returns a UClassID for the actual class.
      *
      * @stable ICU 2.2
      */
-    virtual UClassID getDynamicClassID() const override;
+    virtual UClassID getDynamicClassID() const;
 
     /**
      * ICU "poor man's RTTI", returns a UClassID for this class.
@@ -455,7 +454,7 @@ protected:
      *         USEARCH_DONE if no match was found.
      * @stable ICU 2.0
      */
-    virtual int32_t handleNext(int32_t position, UErrorCode &status) override;
+    virtual int32_t handleNext(int32_t position, UErrorCode &status);
 
     /**
      * Search backward for matching text, starting at a given location.
@@ -479,10 +478,10 @@ protected:
      *         USEARCH_DONE if no match was found.
      * @stable ICU 2.0
      */
-    virtual int32_t handlePrev(int32_t position, UErrorCode &status) override;
+    virtual int32_t handlePrev(int32_t position, UErrorCode &status);
     
 private :
-    StringSearch() = delete; // default constructor not implemented
+    StringSearch(); // default constructor not implemented
 
     // private data members ----------------------------------------------
 
@@ -502,8 +501,6 @@ private :
 U_NAMESPACE_END
 
 #endif /* #if !UCONFIG_NO_COLLATION */
-
-#endif /* U_SHOW_CPLUSPLUS_API */
 
 #endif
 

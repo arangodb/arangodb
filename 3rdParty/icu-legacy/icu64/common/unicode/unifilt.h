@@ -12,10 +12,6 @@
 #ifndef UNIFILT_H
 #define UNIFILT_H
 
-#include "unicode/utypes.h"
-
-#if U_SHOW_CPLUSPLUS_API
-
 #include "unicode/unifunct.h"
 #include "unicode/unimatch.h"
 
@@ -40,8 +36,8 @@ U_NAMESPACE_BEGIN
  *
  * <code>UnicodeFilter</code> defines a protocol for selecting a
  * subset of the full range (U+0000 to U+10FFFF) of Unicode characters.
- * Currently, filters are used in conjunction with classes like
- * {@link Transliterator} to only process selected characters through a
+ * Currently, filters are used in conjunction with classes like {@link
+ * Transliterator} to only process selected characters through a
  * transformation.
  *
  * <p>Note: UnicodeFilter currently stubs out two pure virtual methods
@@ -72,14 +68,6 @@ public:
     virtual ~UnicodeFilter();
 
     /**
-     * Clones this object polymorphically.
-     * The caller owns the result and should delete it when done.
-     * @return clone, or nullptr if an error occurred
-     * @stable ICU 2.4
-     */
-    virtual UnicodeFilter* clone() const override = 0;
-
-    /**
      * Returns <tt>true</tt> for characters that are in the selected
      * subset.  In other words, if a character is <b>to be
      * filtered</b>, then <tt>contains()</tt> returns
@@ -93,7 +81,7 @@ public:
      * and return the pointer.
      * @stable ICU 2.4
      */
-    virtual UnicodeMatcher* toMatcher() const override;
+    virtual UnicodeMatcher* toMatcher() const;
 
     /**
      * Implement UnicodeMatcher API.
@@ -102,13 +90,13 @@ public:
     virtual UMatchDegree matches(const Replaceable& text,
                                  int32_t& offset,
                                  int32_t limit,
-                                 UBool incremental) override;
+                                 UBool incremental);
 
     /**
      * UnicodeFunctor API.  Nothing to do.
      * @stable ICU 2.4
      */
-    virtual void setData(const TransliterationRuleData*) override;
+    virtual void setData(const TransliterationRuleData*);
 
     /**
      * ICU "poor man's RTTI", returns a UClassID for this class.
@@ -130,7 +118,5 @@ protected:
 /*inline UnicodeFilter::UnicodeFilter() {}*/
 
 U_NAMESPACE_END
-
-#endif /* U_SHOW_CPLUSPLUS_API */
 
 #endif

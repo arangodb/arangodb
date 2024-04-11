@@ -1,6 +1,8 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
+/**
+ * ICU <specials> source: <path>/common/main/root.xml
+ */
 root{
     Currencies{
         AUD{
@@ -55,10 +57,6 @@ root{
             "NZ$",
             "NZD",
         }
-        PHP{
-            "₱",
-            "PHP",
-        }
         TWD{
             "NT$",
             "TWD",
@@ -79,12 +77,8 @@ root{
             "EC$",
             "XCD",
         }
-        XCG{
-            "Cg.",
-            "XCG",
-        }
         XOF{
-            "F CFA",
+            "CFA",
             "XOF",
         }
         XPF{
@@ -97,12 +91,9 @@ root{
         }
     }
     Currencies%narrow{
-        AFN{"؋"}
-        AMD{"֏"}
         AOA{"Kz"}
         ARS{"$"}
         AUD{"$"}
-        AZN{"₼"}
         BAM{"KM"}
         BBD{"$"}
         BDT{"৳"}
@@ -112,6 +103,7 @@ root{
         BRL{"R$"}
         BSD{"$"}
         BWP{"P"}
+        BYN{"р."}
         BZD{"$"}
         CAD{"$"}
         CLP{"$"}
@@ -130,7 +122,6 @@ root{
         FKP{"£"}
         GBP{"£"}
         GEL{"₾"}
-        GHS{"GH₵"}
         GIP{"£"}
         GNF{"FG"}
         GTQ{"Q"}
@@ -145,7 +136,6 @@ root{
         ISK{"kr"}
         JMD{"$"}
         JPY{"¥"}
-        KGS{"⃀"}
         KHR{"៛"}
         KMF{"CF"}
         KPW{"₩"}
@@ -176,6 +166,7 @@ root{
         PYG{"₲"}
         RON{"lei"}
         RUB{"₽"}
+        RUR{"р."}
         RWF{"RF"}
         SBD{"$"}
         SEK{"kr"}
@@ -205,15 +196,15 @@ root{
     CurrencyUnitPatterns{
         other{"{0} {1}"}
     }
-    Version{"45"}
+    Version{"2.1.49.82"}
     currencySpacing{
         afterCurrency{
-            currencyMatch{"[[:^S:]&[:^Z:]]"}
+            currencyMatch{"[:^S:]"}
             insertBetween{" "}
             surroundingMatch{"[:digit:]"}
         }
         beforeCurrency{
-            currencyMatch{"[[:^S:]&[:^Z:]]"}
+            currencyMatch{"[:^S:]"}
             insertBetween{" "}
             surroundingMatch{"[:digit:]"}
         }

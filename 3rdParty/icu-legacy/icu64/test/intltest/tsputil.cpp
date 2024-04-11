@@ -108,76 +108,76 @@ PUtilTest::testMaxMin()
     nzero *= -1;
 
     // +Inf with -Inf
-    maxMinTest(pinf, ninf, pinf, true);
-    maxMinTest(pinf, ninf, ninf, false);
+    maxMinTest(pinf, ninf, pinf, TRUE);
+    maxMinTest(pinf, ninf, ninf, FALSE);
 
     // +Inf with +0 and -0
-    maxMinTest(pinf, pzero, pinf, true);
-    maxMinTest(pinf, pzero, pzero, false);
-    maxMinTest(pinf, nzero, pinf, true);
-    maxMinTest(pinf, nzero, nzero, false);
+    maxMinTest(pinf, pzero, pinf, TRUE);
+    maxMinTest(pinf, pzero, pzero, FALSE);
+    maxMinTest(pinf, nzero, pinf, TRUE);
+    maxMinTest(pinf, nzero, nzero, FALSE);
 
     // -Inf with +0 and -0
-    maxMinTest(ninf, pzero, pzero, true);
-    maxMinTest(ninf, pzero, ninf, false);
-    maxMinTest(ninf, nzero, nzero, true);
-    maxMinTest(ninf, nzero, ninf, false);
+    maxMinTest(ninf, pzero, pzero, TRUE);
+    maxMinTest(ninf, pzero, ninf, FALSE);
+    maxMinTest(ninf, nzero, nzero, TRUE);
+    maxMinTest(ninf, nzero, ninf, FALSE);
 
     // NaN with +Inf and -Inf
-    maxMinTest(pinf, nan, nan, true);
-    maxMinTest(pinf, nan, nan, false);
-    maxMinTest(ninf, nan, nan, true);
-    maxMinTest(ninf, nan, nan, false);
+    maxMinTest(pinf, nan, nan, TRUE);
+    maxMinTest(pinf, nan, nan, FALSE);
+    maxMinTest(ninf, nan, nan, TRUE);
+    maxMinTest(ninf, nan, nan, FALSE);
 
     // NaN with NaN
-    maxMinTest(nan, nan, nan, true);
-    maxMinTest(nan, nan, nan, false);
+    maxMinTest(nan, nan, nan, TRUE);
+    maxMinTest(nan, nan, nan, FALSE);
 
     // NaN with +0 and -0
-    maxMinTest(nan, pzero, nan, true);
-    maxMinTest(nan, pzero, nan, false);
-    maxMinTest(nan, nzero, nan, true);
-    maxMinTest(nan, nzero, nan, false);
+    maxMinTest(nan, pzero, nan, TRUE);
+    maxMinTest(nan, pzero, nan, FALSE);
+    maxMinTest(nan, nzero, nan, TRUE);
+    maxMinTest(nan, nzero, nan, FALSE);
 
     // +Inf with DBL_MAX and DBL_MIN
-    maxMinTest(pinf, DBL_MAX, pinf, true);
-    maxMinTest(pinf, -DBL_MAX, pinf, true);
-    maxMinTest(pinf, DBL_MIN, pinf, true);
-    maxMinTest(pinf, -DBL_MIN, pinf, true);
-    maxMinTest(pinf, DBL_MIN, DBL_MIN, false);
-    maxMinTest(pinf, -DBL_MIN, -DBL_MIN, false);
-    maxMinTest(pinf, DBL_MAX, DBL_MAX, false);
-    maxMinTest(pinf, -DBL_MAX, -DBL_MAX, false);
+    maxMinTest(pinf, DBL_MAX, pinf, TRUE);
+    maxMinTest(pinf, -DBL_MAX, pinf, TRUE);
+    maxMinTest(pinf, DBL_MIN, pinf, TRUE);
+    maxMinTest(pinf, -DBL_MIN, pinf, TRUE);
+    maxMinTest(pinf, DBL_MIN, DBL_MIN, FALSE);
+    maxMinTest(pinf, -DBL_MIN, -DBL_MIN, FALSE);
+    maxMinTest(pinf, DBL_MAX, DBL_MAX, FALSE);
+    maxMinTest(pinf, -DBL_MAX, -DBL_MAX, FALSE);
 
     // -Inf with DBL_MAX and DBL_MIN
-    maxMinTest(ninf, DBL_MAX, DBL_MAX, true);
-    maxMinTest(ninf, -DBL_MAX, -DBL_MAX, true);
-    maxMinTest(ninf, DBL_MIN, DBL_MIN, true);
-    maxMinTest(ninf, -DBL_MIN, -DBL_MIN, true);
-    maxMinTest(ninf, DBL_MIN, ninf, false);
-    maxMinTest(ninf, -DBL_MIN, ninf, false);
-    maxMinTest(ninf, DBL_MAX, ninf, false);
-    maxMinTest(ninf, -DBL_MAX, ninf, false);
+    maxMinTest(ninf, DBL_MAX, DBL_MAX, TRUE);
+    maxMinTest(ninf, -DBL_MAX, -DBL_MAX, TRUE);
+    maxMinTest(ninf, DBL_MIN, DBL_MIN, TRUE);
+    maxMinTest(ninf, -DBL_MIN, -DBL_MIN, TRUE);
+    maxMinTest(ninf, DBL_MIN, ninf, FALSE);
+    maxMinTest(ninf, -DBL_MIN, ninf, FALSE);
+    maxMinTest(ninf, DBL_MAX, ninf, FALSE);
+    maxMinTest(ninf, -DBL_MAX, ninf, FALSE);
 
     // +0 with DBL_MAX and DBL_MIN
-    maxMinTest(pzero, DBL_MAX, DBL_MAX, true);
-    maxMinTest(pzero, -DBL_MAX, pzero, true);
-    maxMinTest(pzero, DBL_MIN, DBL_MIN, true);
-    maxMinTest(pzero, -DBL_MIN, pzero, true);
-    maxMinTest(pzero, DBL_MIN, pzero, false);
-    maxMinTest(pzero, -DBL_MIN, -DBL_MIN, false);
-    maxMinTest(pzero, DBL_MAX, pzero, false);
-    maxMinTest(pzero, -DBL_MAX, -DBL_MAX, false);
+    maxMinTest(pzero, DBL_MAX, DBL_MAX, TRUE);
+    maxMinTest(pzero, -DBL_MAX, pzero, TRUE);
+    maxMinTest(pzero, DBL_MIN, DBL_MIN, TRUE);
+    maxMinTest(pzero, -DBL_MIN, pzero, TRUE);
+    maxMinTest(pzero, DBL_MIN, pzero, FALSE);
+    maxMinTest(pzero, -DBL_MIN, -DBL_MIN, FALSE);
+    maxMinTest(pzero, DBL_MAX, pzero, FALSE);
+    maxMinTest(pzero, -DBL_MAX, -DBL_MAX, FALSE);
 
     // -0 with DBL_MAX and DBL_MIN
-    maxMinTest(nzero, DBL_MAX, DBL_MAX, true);
-    maxMinTest(nzero, -DBL_MAX, nzero, true);
-    maxMinTest(nzero, DBL_MIN, DBL_MIN, true);
-    maxMinTest(nzero, -DBL_MIN, nzero, true);
-    maxMinTest(nzero, DBL_MIN, nzero, false);
-    maxMinTest(nzero, -DBL_MIN, -DBL_MIN, false);
-    maxMinTest(nzero, DBL_MAX, nzero, false);
-    maxMinTest(nzero, -DBL_MAX, -DBL_MAX, false);
+    maxMinTest(nzero, DBL_MAX, DBL_MAX, TRUE);
+    maxMinTest(nzero, -DBL_MAX, nzero, TRUE);
+    maxMinTest(nzero, DBL_MIN, DBL_MIN, TRUE);
+    maxMinTest(nzero, -DBL_MIN, nzero, TRUE);
+    maxMinTest(nzero, DBL_MIN, nzero, FALSE);
+    maxMinTest(nzero, -DBL_MIN, -DBL_MIN, FALSE);
+    maxMinTest(nzero, DBL_MAX, nzero, FALSE);
+    maxMinTest(nzero, -DBL_MAX, -DBL_MAX, FALSE);
 }
 
 void
@@ -218,7 +218,7 @@ PUtilTest::maxMinTest(double a, double b, double exp, UBool max)
 // NaN is weird- comparisons with NaN _always_ return false, with the
 // exception of !=, which _always_ returns true
 void
-PUtilTest::testNaN()
+PUtilTest::testNaN(void)
 {
     logln("NaN tests may show that the expected NaN!=NaN etc. is not true on some");
     logln("platforms; however, ICU does not rely on them because it defines");
@@ -238,128 +238,128 @@ PUtilTest::testNaN()
 //==============================
 
 void 
-PUtilTest::testPositiveInfinity()
+PUtilTest::testPositiveInfinity(void)
 {
     double  pinf    = uprv_getInfinity();
     double  ninf    = -uprv_getInfinity();
     double  ten     = 10.0;
 
-    if(uprv_isInfinite(pinf) != true) {
-        errln("FAIL: isInfinite(+Infinity) returned false, should be true.");
+    if(uprv_isInfinite(pinf) != TRUE) {
+        errln("FAIL: isInfinite(+Infinity) returned FALSE, should be TRUE.");
     }
 
-    if(uprv_isPositiveInfinity(pinf) != true) {
-        errln("FAIL: isPositiveInfinity(+Infinity) returned false, should be true.");
+    if(uprv_isPositiveInfinity(pinf) != TRUE) {
+        errln("FAIL: isPositiveInfinity(+Infinity) returned FALSE, should be TRUE.");
     }
 
-    if(uprv_isNegativeInfinity(pinf) != false) {
-        errln("FAIL: isNegativeInfinity(+Infinity) returned true, should be false.");
+    if(uprv_isNegativeInfinity(pinf) != FALSE) {
+        errln("FAIL: isNegativeInfinity(+Infinity) returned TRUE, should be FALSE.");
     }
 
-    if((pinf > DBL_MAX) != true) {
-        errln("FAIL: +Infinity > DBL_MAX returned false, should be true.");
+    if((pinf > DBL_MAX) != TRUE) {
+        errln("FAIL: +Infinity > DBL_MAX returned FALSE, should be TRUE.");
     }
 
-    if((pinf > DBL_MIN) != true) {
-        errln("FAIL: +Infinity > DBL_MIN returned false, should be true.");
+    if((pinf > DBL_MIN) != TRUE) {
+        errln("FAIL: +Infinity > DBL_MIN returned FALSE, should be TRUE.");
     }
 
-    if((pinf > ninf) != true) {
-        errln("FAIL: +Infinity > -Infinity returned false, should be true.");
+    if((pinf > ninf) != TRUE) {
+        errln("FAIL: +Infinity > -Infinity returned FALSE, should be TRUE.");
     }
 
-    if((pinf > ten) != true) {
-        errln("FAIL: +Infinity > 10.0 returned false, should be true.");
+    if((pinf > ten) != TRUE) {
+        errln("FAIL: +Infinity > 10.0 returned FALSE, should be TRUE.");
     }
 }
 
 //==============================
 
 void           
-PUtilTest::testNegativeInfinity()
+PUtilTest::testNegativeInfinity(void)
 {
     double  pinf    = uprv_getInfinity();
     double  ninf    = -uprv_getInfinity();
     double  ten     = 10.0;
 
-    if(uprv_isInfinite(ninf) != true) {
-        errln("FAIL: isInfinite(-Infinity) returned false, should be true.");
+    if(uprv_isInfinite(ninf) != TRUE) {
+        errln("FAIL: isInfinite(-Infinity) returned FALSE, should be TRUE.");
     }
 
-    if(uprv_isNegativeInfinity(ninf) != true) {
-        errln("FAIL: isNegativeInfinity(-Infinity) returned false, should be true.");
+    if(uprv_isNegativeInfinity(ninf) != TRUE) {
+        errln("FAIL: isNegativeInfinity(-Infinity) returned FALSE, should be TRUE.");
     }
 
-    if(uprv_isPositiveInfinity(ninf) != false) {
-        errln("FAIL: isPositiveInfinity(-Infinity) returned true, should be false.");
+    if(uprv_isPositiveInfinity(ninf) != FALSE) {
+        errln("FAIL: isPositiveInfinity(-Infinity) returned TRUE, should be FALSE.");
     }
 
-    if((ninf < DBL_MAX) != true) {
-        errln("FAIL: -Infinity < DBL_MAX returned false, should be true.");
+    if((ninf < DBL_MAX) != TRUE) {
+        errln("FAIL: -Infinity < DBL_MAX returned FALSE, should be TRUE.");
     }
 
-    if((ninf < DBL_MIN) != true) {
-        errln("FAIL: -Infinity < DBL_MIN returned false, should be true.");
+    if((ninf < DBL_MIN) != TRUE) {
+        errln("FAIL: -Infinity < DBL_MIN returned FALSE, should be TRUE.");
     }
 
-    if((ninf < pinf) != true) {
-        errln("FAIL: -Infinity < +Infinity returned false, should be true.");
+    if((ninf < pinf) != TRUE) {
+        errln("FAIL: -Infinity < +Infinity returned FALSE, should be TRUE.");
     }
 
-    if((ninf < ten) != true) {
-        errln("FAIL: -Infinity < 10.0 returned false, should be true.");
+    if((ninf < ten) != TRUE) {
+        errln("FAIL: -Infinity < 10.0 returned FALSE, should be TRUE.");
     }
 }
 
 //==============================
 
 // notes about zero:
-// -0.0 == 0.0 == true
-// -0.0 <  0.0 == false
+// -0.0 == 0.0 == TRUE
+// -0.0 <  0.0 == FALSE
 // generating -0.0 must be done at runtime.  compiler apparently ignores sign?
 void           
-PUtilTest::testZero()
+PUtilTest::testZero(void)
 {
     // volatile is used to fake out the compiler optimizer.  We really want to divide by 0.
     volatile double pzero   = 0.0;
     volatile double nzero   = 0.0;
 
-    nzero = nzero * -1;
+    nzero *= -1;
 
-    if((pzero == nzero) != true) {
-        errln("FAIL: 0.0 == -0.0 returned false, should be true.");
+    if((pzero == nzero) != TRUE) {
+        errln("FAIL: 0.0 == -0.0 returned FALSE, should be TRUE.");
     }
 
-    if((pzero > nzero) != false) {
-        errln("FAIL: 0.0 > -0.0 returned true, should be false.");
+    if((pzero > nzero) != FALSE) {
+        errln("FAIL: 0.0 > -0.0 returned TRUE, should be FALSE.");
     }
 
-    if((pzero >= nzero) != true) {
-        errln("FAIL: 0.0 >= -0.0 returned false, should be true.");
+    if((pzero >= nzero) != TRUE) {
+        errln("FAIL: 0.0 >= -0.0 returned FALSE, should be TRUE.");
     }
 
-    if((pzero < nzero) != false) {
-        errln("FAIL: 0.0 < -0.0 returned true, should be false.");
+    if((pzero < nzero) != FALSE) {
+        errln("FAIL: 0.0 < -0.0 returned TRUE, should be FALSE.");
     }
 
-    if((pzero <= nzero) != true) {
-        errln("FAIL: 0.0 <= -0.0 returned false, should be true.");
+    if((pzero <= nzero) != TRUE) {
+        errln("FAIL: 0.0 <= -0.0 returned FALSE, should be TRUE.");
     }
 #if U_PLATFORM != U_PF_OS400 /* OS/400 will generate divide by zero exception MCH1214 */
-    if(uprv_isInfinite(1/pzero) != true) {
-        errln("FAIL: isInfinite(1/0.0) returned false, should be true.");
+    if(uprv_isInfinite(1/pzero) != TRUE) {
+        errln("FAIL: isInfinite(1/0.0) returned FALSE, should be TRUE.");
     }
 
-    if(uprv_isInfinite(1/nzero) != true) {
-        errln("FAIL: isInfinite(1/-0.0) returned false, should be true.");
+    if(uprv_isInfinite(1/nzero) != TRUE) {
+        errln("FAIL: isInfinite(1/-0.0) returned FALSE, should be TRUE.");
     }
 
-    if(uprv_isPositiveInfinity(1/pzero) != true) {
-        errln("FAIL: isPositiveInfinity(1/0.0) returned false, should be true.");
+    if(uprv_isPositiveInfinity(1/pzero) != TRUE) {
+        errln("FAIL: isPositiveInfinity(1/0.0) returned FALSE, should be TRUE.");
     }
 
-    if(uprv_isNegativeInfinity(1/nzero) != true) {
-        errln("FAIL: isNegativeInfinity(1/-0.0) returned false, should be true.");
+    if(uprv_isNegativeInfinity(1/nzero) != TRUE) {
+        errln("FAIL: isNegativeInfinity(1/-0.0) returned FALSE, should be TRUE.");
     }
 #endif
 }
@@ -367,188 +367,188 @@ PUtilTest::testZero()
 //==============================
 
 void
-PUtilTest::testIsNaN()
+PUtilTest::testIsNaN(void)
 {
     double  pinf    = uprv_getInfinity();
     double  ninf    = -uprv_getInfinity();
     double  nan     = uprv_getNaN();
     double  ten     = 10.0;
 
-    if(uprv_isNaN(nan) == false) {
-        errln("FAIL: isNaN() returned false for NaN.");
+    if(uprv_isNaN(nan) == FALSE) {
+        errln("FAIL: isNaN() returned FALSE for NaN.");
     }
 
-    if(uprv_isNaN(pinf) == true) {
-        errln("FAIL: isNaN() returned true for +Infinity.");
+    if(uprv_isNaN(pinf) == TRUE) {
+        errln("FAIL: isNaN() returned TRUE for +Infinity.");
     }
 
-    if(uprv_isNaN(ninf) == true) {
-        errln("FAIL: isNaN() returned true for -Infinity.");
+    if(uprv_isNaN(ninf) == TRUE) {
+        errln("FAIL: isNaN() returned TRUE for -Infinity.");
     }
 
-    if(uprv_isNaN(ten) == true) {
-        errln("FAIL: isNaN() returned true for 10.0.");
+    if(uprv_isNaN(ten) == TRUE) {
+        errln("FAIL: isNaN() returned TRUE for 10.0.");
     }
 }
 
 //==============================
 
 void
-PUtilTest::NaNGT()
+PUtilTest::NaNGT(void)
 {
     double  pinf    = uprv_getInfinity();
     double  ninf    = -uprv_getInfinity();
     double  nan     = uprv_getNaN();
     double  ten     = 10.0;
 
-    if((nan > nan) != false) {
-        logln("WARNING: NaN > NaN returned true, should be false");
+    if((nan > nan) != FALSE) {
+        logln("WARNING: NaN > NaN returned TRUE, should be FALSE");
     }
 
-    if((nan > pinf) != false) {
-        logln("WARNING: NaN > +Infinity returned true, should be false");
+    if((nan > pinf) != FALSE) {
+        logln("WARNING: NaN > +Infinity returned TRUE, should be FALSE");
     }
 
-    if((nan > ninf) != false) {
-        logln("WARNING: NaN > -Infinity returned true, should be false");
+    if((nan > ninf) != FALSE) {
+        logln("WARNING: NaN > -Infinity returned TRUE, should be FALSE");
     }
 
-    if((nan > ten) != false) {
-        logln("WARNING: NaN > 10.0 returned true, should be false");
+    if((nan > ten) != FALSE) {
+        logln("WARNING: NaN > 10.0 returned TRUE, should be FALSE");
     }
 }
 
 //==============================
 
 void 
-PUtilTest::NaNLT()
+PUtilTest::NaNLT(void)
 {
     double  pinf    = uprv_getInfinity();
     double  ninf    = -uprv_getInfinity();
     double  nan     = uprv_getNaN();
     double  ten     = 10.0;
 
-    if((nan < nan) != false) {
-        logln("WARNING: NaN < NaN returned true, should be false");
+    if((nan < nan) != FALSE) {
+        logln("WARNING: NaN < NaN returned TRUE, should be FALSE");
     }
 
-    if((nan < pinf) != false) {
-        logln("WARNING: NaN < +Infinity returned true, should be false");
+    if((nan < pinf) != FALSE) {
+        logln("WARNING: NaN < +Infinity returned TRUE, should be FALSE");
     }
 
-    if((nan < ninf) != false) {
-        logln("WARNING: NaN < -Infinity returned true, should be false");
+    if((nan < ninf) != FALSE) {
+        logln("WARNING: NaN < -Infinity returned TRUE, should be FALSE");
     }
 
-    if((nan < ten) != false) {
-        logln("WARNING: NaN < 10.0 returned true, should be false");
+    if((nan < ten) != FALSE) {
+        logln("WARNING: NaN < 10.0 returned TRUE, should be FALSE");
     }
 }
 
 //==============================
 
 void                   
-PUtilTest::NaNGTE()
+PUtilTest::NaNGTE(void)
 {
     double  pinf    = uprv_getInfinity();
     double  ninf    = -uprv_getInfinity();
     double  nan     = uprv_getNaN();
     double  ten     = 10.0;
 
-    if((nan >= nan) != false) {
-        logln("WARNING: NaN >= NaN returned true, should be false");
+    if((nan >= nan) != FALSE) {
+        logln("WARNING: NaN >= NaN returned TRUE, should be FALSE");
     }
 
-    if((nan >= pinf) != false) {
-        logln("WARNING: NaN >= +Infinity returned true, should be false");
+    if((nan >= pinf) != FALSE) {
+        logln("WARNING: NaN >= +Infinity returned TRUE, should be FALSE");
     }
 
-    if((nan >= ninf) != false) {
-        logln("WARNING: NaN >= -Infinity returned true, should be false");
+    if((nan >= ninf) != FALSE) {
+        logln("WARNING: NaN >= -Infinity returned TRUE, should be FALSE");
     }
 
-    if((nan >= ten) != false) {
-        logln("WARNING: NaN >= 10.0 returned true, should be false");
+    if((nan >= ten) != FALSE) {
+        logln("WARNING: NaN >= 10.0 returned TRUE, should be FALSE");
     }
 }
 
 //==============================
 
 void                   
-PUtilTest::NaNLTE()
+PUtilTest::NaNLTE(void)
 {
     double  pinf    = uprv_getInfinity();
     double  ninf    = -uprv_getInfinity();
     double  nan     = uprv_getNaN();
     double  ten     = 10.0;
 
-    if((nan <= nan) != false) {
-        logln("WARNING: NaN <= NaN returned true, should be false");
+    if((nan <= nan) != FALSE) {
+        logln("WARNING: NaN <= NaN returned TRUE, should be FALSE");
     }
 
-    if((nan <= pinf) != false) {
-        logln("WARNING: NaN <= +Infinity returned true, should be false");
+    if((nan <= pinf) != FALSE) {
+        logln("WARNING: NaN <= +Infinity returned TRUE, should be FALSE");
     }
 
-    if((nan <= ninf) != false) {
-        logln("WARNING: NaN <= -Infinity returned true, should be false");
+    if((nan <= ninf) != FALSE) {
+        logln("WARNING: NaN <= -Infinity returned TRUE, should be FALSE");
     }
 
-    if((nan <= ten) != false) {
-        logln("WARNING: NaN <= 10.0 returned true, should be false");
+    if((nan <= ten) != FALSE) {
+        logln("WARNING: NaN <= 10.0 returned TRUE, should be FALSE");
     }
 }
 
 //==============================
 
 void                   
-PUtilTest::NaNE()
+PUtilTest::NaNE(void)
 {
     double  pinf    = uprv_getInfinity();
     double  ninf    = -uprv_getInfinity();
     double  nan     = uprv_getNaN();
     double  ten     = 10.0;
 
-    if((nan == nan) != false) {
-        logln("WARNING: NaN == NaN returned true, should be false");
+    if((nan == nan) != FALSE) {
+        logln("WARNING: NaN == NaN returned TRUE, should be FALSE");
     }
 
-    if((nan == pinf) != false) {
-        logln("WARNING: NaN == +Infinity returned true, should be false");
+    if((nan == pinf) != FALSE) {
+        logln("WARNING: NaN == +Infinity returned TRUE, should be FALSE");
     }
 
-    if((nan == ninf) != false) {
-        logln("WARNING: NaN == -Infinity returned true, should be false");
+    if((nan == ninf) != FALSE) {
+        logln("WARNING: NaN == -Infinity returned TRUE, should be FALSE");
     }
 
-    if((nan == ten) != false) {
-        logln("WARNING: NaN == 10.0 returned true, should be false");
+    if((nan == ten) != FALSE) {
+        logln("WARNING: NaN == 10.0 returned TRUE, should be FALSE");
     }
 }
 
 //==============================
 
 void 
-PUtilTest::NaNNE()
+PUtilTest::NaNNE(void)
 {
     double  pinf    = uprv_getInfinity();
     double  ninf    = -uprv_getInfinity();
     double  nan     = uprv_getNaN();
     double  ten     = 10.0;
 
-    if((nan != nan) != true) {
-        logln("WARNING: NaN != NaN returned false, should be true");
+    if((nan != nan) != TRUE) {
+        logln("WARNING: NaN != NaN returned FALSE, should be TRUE");
     }
 
-    if((nan != pinf) != true) {
-        logln("WARNING: NaN != +Infinity returned false, should be true");
+    if((nan != pinf) != TRUE) {
+        logln("WARNING: NaN != +Infinity returned FALSE, should be TRUE");
     }
 
-    if((nan != ninf) != true) {
-        logln("WARNING: NaN != -Infinity returned false, should be true");
+    if((nan != ninf) != TRUE) {
+        logln("WARNING: NaN != -Infinity returned FALSE, should be TRUE");
     }
 
-    if((nan != ten) != true) {
-        logln("WARNING: NaN != 10.0 returned false, should be true");
+    if((nan != ten) != TRUE) {
+        logln("WARNING: NaN != 10.0 returned FALSE, should be TRUE");
     }
 }

@@ -32,18 +32,11 @@ ifneq ($(patsubst %clean,,$(MAKECMDGOALS)),)
 include $(BUILDDIR)/icudefs.mk
 endif
 
-# For MinGW, do we want the DLL to go in the bin location?
-ifeq ($(MINGW_MOVEDLLSTOBINDIR),YES)
-installdir = bin
-else
-installdir = lib
-endif
-
-COM=$(ICUDIR)/$(installdir)/libicuuc.$(SO)
-I18=$(ICUDIR)/$(installdir)/libicui18n.$(SO)
-LEX=$(ICUDIR)/$(installdir)/libiculx.$(SO)
+COM=$(ICUDIR)/lib/libicuuc.$(SO)
+I18=$(ICUDIR)/lib/libicui18n.$(SO)
+LEX=$(ICUDIR)/lib/libiculx.$(SO)
 DAT=$(ICUDIR)/stubdata/libicudata.$(SO)
-UIO=$(ICUDIR)/$(installdir)/libicuio.$(SO)
+UIO=$(ICUDIR)/lib/libicuio.$(SO)
 
 LIBS=$(COM) $(I18) $(LEX) $(UIO)
 

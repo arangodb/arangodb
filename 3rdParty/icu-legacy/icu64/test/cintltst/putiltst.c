@@ -25,7 +25,6 @@
 #include "putilimp.h"
 #include "toolutil.h"
 #include "uinvchar.h"
-#include <stdbool.h>
 #include <stdio.h>
 #if U_PLATFORM_USES_ONLY_WIN32_API 
 #include "wintz.h"
@@ -37,7 +36,7 @@ static void TestSignedRightShiftIsArithmetic(void) {
     int32_t m=-1;
     int32_t x4=x>>4;
     int32_t m1=m>>1;
-    UBool signedRightShiftIsArithmetic= (x4==(int32_t)0xffff5fff && m1==-1);
+    UBool signedRightShiftIsArithmetic= x4==0xffff5fff && m1==-1;
     if(signedRightShiftIsArithmetic==U_SIGNED_RIGHT_SHIFT_IS_ARITHMETIC) {
         log_info("signed right shift is Arithmetic Shift Right: %d\n",
                  signedRightShiftIsArithmetic);
@@ -57,7 +56,7 @@ static void TestPUtilAPI(void){
     double  n1=0.0, y1=0.0, expn1, expy1;
     double  value1 = 0.021;
     char *str=0;
-    UBool isTrue=false;
+    UBool isTrue=FALSE;
 
     log_verbose("Testing the API uprv_modf()\n");
     y1 = uprv_modf(value1, &n1);
@@ -118,32 +117,32 @@ static void TestPUtilAPI(void){
 
     log_verbose("Testing the API uprv_isNegativeInfinity()\n");
     isTrue=uprv_isNegativeInfinity(uprv_getInfinity() * -1);
-    if(isTrue != true){
+    if(isTrue != TRUE){
         log_err("ERROR: uprv_isNegativeInfinity failed.\n");
     }
     log_verbose("Testing the API uprv_isPositiveInfinity()\n");
     isTrue=uprv_isPositiveInfinity(uprv_getInfinity());
-    if(isTrue != true){
+    if(isTrue != TRUE){
         log_err("ERROR: uprv_isPositiveInfinity failed.\n");
     }
     log_verbose("Testing the API uprv_isInfinite()\n");
     isTrue=uprv_isInfinite(uprv_getInfinity());
-    if(isTrue != true){
+    if(isTrue != TRUE){
         log_err("ERROR: uprv_isInfinite failed.\n");
     }
 
     log_verbose("Testing the APIs uprv_add32_overflow and uprv_mul32_overflow\n");
     int32_t overflow_result;
-    doAssert(false, uprv_add32_overflow(INT32_MAX - 2, 1, &overflow_result), "should not overflow");
+    doAssert(FALSE, uprv_add32_overflow(INT32_MAX - 2, 1, &overflow_result), "should not overflow");
     doAssert(INT32_MAX - 1, overflow_result, "should equal INT32_MAX - 1");
-    doAssert(false, uprv_add32_overflow(INT32_MAX - 2, 2, &overflow_result), "should not overflow");
+    doAssert(FALSE, uprv_add32_overflow(INT32_MAX - 2, 2, &overflow_result), "should not overflow");
     doAssert(INT32_MAX, overflow_result, "should equal exactly INT32_MAX");
-    doAssert(true, uprv_add32_overflow(INT32_MAX - 2, 3, &overflow_result), "should overflow");
-    doAssert(false, uprv_mul32_overflow(INT32_MAX / 5, 4, &overflow_result), "should not overflow");
+    doAssert(TRUE, uprv_add32_overflow(INT32_MAX - 2, 3, &overflow_result), "should overflow");
+    doAssert(FALSE, uprv_mul32_overflow(INT32_MAX / 5, 4, &overflow_result), "should not overflow");
     doAssert(INT32_MAX / 5 * 4, overflow_result, "should equal INT32_MAX / 5 * 4");
-    doAssert(true, uprv_mul32_overflow(INT32_MAX / 5, 6, &overflow_result), "should overflow");
+    doAssert(TRUE, uprv_mul32_overflow(INT32_MAX / 5, 6, &overflow_result), "should overflow");
     // Test on negative numbers:
-    doAssert(false, uprv_add32_overflow(-3, -2, &overflow_result), "should not overflow");
+    doAssert(FALSE, uprv_add32_overflow(-3, -2, &overflow_result), "should not overflow");
     doAssert(-5, overflow_result, "should equal -5");
 
 #if 0
@@ -438,14 +437,14 @@ static UBool compareWithNAN(double x, double y)
 {
   if( uprv_isNaN(x) || uprv_isNaN(y) ) {
     if(!uprv_isNaN(x) || !uprv_isNaN(y) ) {
-      return false;
+      return FALSE;
     }
   }
   else if (y != x) { /* no NaN's involved */
-    return false;
+    return FALSE;
   }
 
-  return true;
+  return TRUE;
 }
 
 static void doAssert(double got, double expect, const char *message)
@@ -503,7 +502,7 @@ static const char * dump_binline(uint8_t *bytes) {
   static char buf[512];
   int32_t i;
   for(i=0;i<13;i++) {
-    snprintf(buf+(i*3), sizeof(buf)-(i*3), "%02x ", bytes[i]);
+    sprintf(buf+(i*3), "%02x ", bytes[i]);
   }
   return buf;
 }

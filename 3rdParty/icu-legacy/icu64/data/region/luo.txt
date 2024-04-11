@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 luo{
     Countries{
         AD{"Andorra"}
@@ -93,6 +92,7 @@ luo{
         IE{"Ireland"}
         IL{"Israel"}
         IN{"India"}
+        IO{"British Indian Ocean Territory"}
         IQ{"Iraq"}
         IR{"Iran"}
         IS{"Iceland"}
@@ -127,6 +127,7 @@ luo{
         MD{"Moldova"}
         MG{"Madagascar"}
         MH{"Chuia mar Marshall"}
+        MK{"Macedonia"}
         ML{"Mali"}
         MM{"Myanmar"}
         MN{"Mongolia"}
@@ -226,4 +227,5 @@ luo{
         ZM{"Zambia"}
         ZW{"Zimbabwe"}
     }
+    Version{"2.1.47.82"}
 }

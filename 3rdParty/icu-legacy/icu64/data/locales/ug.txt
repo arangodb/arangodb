@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ug{
     AuxExemplarCharacters{"[\u200E\u200F ئ]"}
     ExemplarCharacters{
@@ -11,14 +10,19 @@ ug{
         "[{ئا} {ئه} {ئو} {ئۇ} {ئۆ} {ئۈ} {ئې} {ئى} ا ە ب پ ت ج چ خ د ر ز ژ س ش غ ف ق ك"
         " گ ڭ ل م ن ھ و ۇ ۆ ۈ ۋ ې ى ي]"
     }
+    ExemplarCharactersNumbers{"[\\- , . % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
     NumberElements{
         latn{
             miscPatterns{
                 atLeast{"{0}+"}
+                range{"{0}–{1}"}
             }
             patterns{
                 accountingFormat{"¤#,##0.00;(¤#,##0.00)"}
                 currencyFormat{"¤#,##0.00"}
+                decimalFormat{"#,##0.###"}
+                percentFormat{"#,##0%"}
+                scientificFormat{"#E0"}
             }
             patternsLong{
                 decimalFormat{
@@ -110,20 +114,51 @@ ug{
                         one{"000مىليارد"}
                         other{"000مىليارد"}
                     }
+                    1000000000000{
+                        one{"0T"}
+                        other{"0T"}
+                    }
+                    10000000000000{
+                        one{"00T"}
+                        other{"00T"}
+                    }
+                    100000000000000{
+                        one{"000T"}
+                        other{"000T"}
+                    }
                 }
+            }
+            symbols{
+                decimal{"."}
+                exponential{"E"}
+                group{","}
+                infinity{"∞"}
+                minusSign{"-"}
+                nan{"NaN"}
+                perMille{"‰"}
+                percentSign{"%"}
+                plusSign{"+"}
+                superscriptingExponent{"×"}
             }
         }
         minimalPairs{
             plural{
-                one{"{0} كىتاب"}
+                one{"{0}  كىتاب"}
                 other{"{0} بېلىق كۆردۈم ۋە ئۇنى يەۋەتتىم."}
             }
         }
         native{"arabext"}
     }
+    Version{"2.1.49.82"}
     calendar{
         buddhist{
             eras{
+                abbreviated{
+                    "BE",
+                }
+                narrow{
+                    "BE",
+                }
                 wide{
                     "بۇددا يىلنامەسى",
                 }
@@ -131,10 +166,10 @@ ug{
         }
         chinese{
             DateTimePatterns{
-                "HH:mm:ss zzzz",
-                "HH:mm:ss z",
-                "HH:mm:ss",
-                "HH:mm",
+                "h:mm:ss a zzzz",
+                "h:mm:ss a z",
+                "h:mm:ss a",
+                "h:mm a",
                 "EEEE، MMMM d، U",
                 "MMMM d، U",
                 "MMM d، U",
@@ -144,16 +179,6 @@ ug{
                 "{1} {0}",
                 "{1} {0}",
                 "{1} {0}",
-            }
-            DateTimeSkeletons{
-                "ahmmsszzzz",
-                "ahmmssz",
-                "ahmmss",
-                "ahmm",
-                "UMMMMEEEEd",
-                "UMMMMd",
-                "UMMMd",
-                "yyMd",
             }
             cyclicNameSets{
                 zodiacs{
@@ -210,10 +235,10 @@ ug{
         }
         generic{
             DateTimePatterns{
-                "HH:mm:ss zzzz",
-                "HH:mm:ss z",
-                "HH:mm:ss",
-                "HH:mm",
+                "h:mm:ss a zzzz",
+                "h:mm:ss a z",
+                "h:mm:ss a",
+                "h:mm a",
                 "EEEE، MMMM d، y G",
                 "MMMM d، y G",
                 "MMM d، y G",
@@ -224,25 +249,19 @@ ug{
                 "{1}، {0}",
                 "{1}، {0}",
             }
-            DateTimeSkeletons{
-                "ahmmsszzzz",
-                "ahmmssz",
-                "ahmmss",
-                "ahmm",
-                "GyMMMMEEEEd",
-                "GyMMMMd",
-                "GyMMMd",
-                "GGGGGyMd",
-            }
             availableFormats{
                 Ed{"d E"}
                 Gy{"y G"}
                 GyMMM{"MMM y G"}
                 GyMMMEd{"E، MMM d، y G"}
                 GyMMMd{"MMM d، y G"}
+                M{"L"}
                 MEd{"E، M/d"}
+                MMM{"LLL"}
                 MMMEd{"E، MMM d"}
+                MMMd{"MMM d"}
                 Md{"M/d"}
+                d{"d"}
                 y{"y G"}
                 yyyy{"y G"}
                 yyyyM{"M/y GGGGG"}
@@ -270,6 +289,7 @@ ug{
                     d{"E، MMM d – E، MMM d"}
                 }
                 MMMd{
+                    M{"MMM d – MMM d"}
                     d{"MMM d – d"}
                 }
                 Md{
@@ -331,10 +351,10 @@ ug{
                 "ك",
             }
             DateTimePatterns{
-                "HH:mm:ss zzzz",
-                "HH:mm:ss z",
-                "HH:mm:ss",
-                "HH:mm",
+                "h:mm:ss a zzzz",
+                "h:mm:ss a z",
+                "h:mm:ss a",
+                "h:mm a",
                 "y d-MMMM، EEEE",
                 "d-MMMM، y",
                 "d-MMM، y",
@@ -345,23 +365,28 @@ ug{
                 "{1}، {0}",
                 "{1}، {0}",
             }
-            DateTimeSkeletons{
-                "ahmmsszzzz",
-                "ahmmssz",
-                "ahmmss",
-                "ahmm",
-                "yMMMMEEEEd",
-                "yMMMMd",
-                "yMMMd",
-                "yMMdd",
+            appendItems{
+                Timezone{"{0} {1}"}
             }
             availableFormats{
+                E{"ccc"}
+                EHm{"E HH:mm"}
+                EHms{"E HH:mm:ss"}
                 Ed{"d E"}
+                Ehm{"E h:mm a"}
+                Ehms{"E h:mm:ss a"}
                 Gy{"y G"}
                 GyMMM{"y MMM G"}
                 GyMMMEd{"y d-MMM، E G"}
                 GyMMMd{"y d-MMM G"}
+                H{"HH"}
+                Hm{"HH:mm"}
+                Hms{"HH:mm:ss"}
+                Hmsv{"HH:mm:ss v"}
+                Hmv{"HH:mm v"}
+                M{"L"}
                 MEd{"d-M، E"}
+                MMM{"LLL"}
                 MMMEd{"d-MMM، E"}
                 MMMMW{
                     one{"MMMM، W-ھەپتە"}
@@ -370,11 +395,23 @@ ug{
                 MMMMd{"d-MMMM"}
                 MMMd{"d-MMM"}
                 Md{"d-M"}
+                d{"d"}
+                h{"h a"}
+                hm{"h:mm a"}
+                hms{"h:mm:ss a"}
+                hmsv{"h:mm:ss a v"}
+                hmv{"h:mm a v"}
+                ms{"mm:ss"}
+                y{"y"}
                 yM{"M-y"}
                 yMEd{"y-d-M، E"}
+                yMMM{"y MMM"}
                 yMMMEd{"y d-MMM، E"}
+                yMMMM{"y MMMM"}
                 yMMMd{"y d-MMM"}
                 yMd{"y-d-M"}
+                yQQQ{"y QQQ"}
+                yQQQQ{"y QQQQ"}
                 yw{
                     one{"Y، w-ھەپتە"}
                     other{"Y، w-ھەپتە"}
@@ -390,6 +427,15 @@ ug{
                         "پە",
                         "جۈ",
                         "شە",
+                    }
+                    narrow{
+                        "ي",
+                        "د",
+                        "س",
+                        "چ",
+                        "پ",
+                        "ج",
+                        "ش",
                     }
                     short{
                         "ي",
@@ -411,6 +457,15 @@ ug{
                     }
                 }
                 stand-alone{
+                    abbreviated{
+                        "يە",
+                        "دۈ",
+                        "سە",
+                        "چا",
+                        "پە",
+                        "جۈ",
+                        "شە",
+                    }
                     narrow{
                         "ي",
                         "د",
@@ -420,10 +475,48 @@ ug{
                         "ج",
                         "ش",
                     }
+                    short{
+                        "ي",
+                        "د",
+                        "س",
+                        "چ",
+                        "پ",
+                        "ج",
+                        "ش",
+                    }
+                    wide{
+                        "يەكشەنبە",
+                        "دۈشەنبە",
+                        "سەيشەنبە",
+                        "چارشەنبە",
+                        "پەيشەنبە",
+                        "جۈمە",
+                        "شەنبە",
+                    }
+                }
+            }
+            dayPeriod{
+                stand-alone{
+                    abbreviated{
+                        am{"چ.ب"}
+                        pm{"چ.ك"}
+                    }
+                    narrow{
+                        am{"چ.ب"}
+                        pm{"چ.ك"}
+                    }
+                    wide{
+                        am{"چ.ب"}
+                        pm{"چ.ك"}
+                    }
                 }
             }
             eras{
                 abbreviated{
+                    "BCE",
+                    "مىلادىيە",
+                }
+                narrow{
                     "BCE",
                     "مىلادىيە",
                 }
@@ -462,6 +555,7 @@ ug{
                     d{"E، MMM d – E، MMM d"}
                 }
                 MMMd{
+                    M{"MMM d – MMM d"}
                     d{"MMM d – d"}
                 }
                 Md{
@@ -473,17 +567,21 @@ ug{
                 }
                 fallback{"{0} – {1}"}
                 h{
+                    a{"h a – h a"}
                     h{"h – h a"}
                 }
                 hm{
+                    a{"h:mm a – h:mm a"}
                     h{"h:mm – h:mm a"}
                     m{"h:mm – h:mm a"}
                 }
                 hmv{
+                    a{"h:mm a – h:mm a v"}
                     h{"h:mm – h:mm a v"}
                     m{"h:mm – h:mm a v"}
                 }
                 hv{
+                    a{"h a – h a v"}
                     h{"h – h a v"}
                 }
                 y{
@@ -524,6 +622,64 @@ ug{
             }
             monthNames{
                 format{
+                    abbreviated{
+                        "يانۋار",
+                        "فېۋرال",
+                        "مارت",
+                        "ئاپرېل",
+                        "ماي",
+                        "ئىيۇن",
+                        "ئىيۇل",
+                        "ئاۋغۇست",
+                        "سېنتەبىر",
+                        "ئۆكتەبىر",
+                        "نويابىر",
+                        "دېكابىر",
+                    }
+                    wide{
+                        "يانۋار",
+                        "فېۋرال",
+                        "مارت",
+                        "ئاپرېل",
+                        "ماي",
+                        "ئىيۇن",
+                        "ئىيۇل",
+                        "ئاۋغۇست",
+                        "سېنتەبىر",
+                        "ئۆكتەبىر",
+                        "نويابىر",
+                        "دېكابىر",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "يانۋار",
+                        "فېۋرال",
+                        "مارت",
+                        "ئاپرېل",
+                        "ماي",
+                        "ئىيۇن",
+                        "ئىيۇل",
+                        "ئاۋغۇست",
+                        "سېنتەبىر",
+                        "ئۆكتەبىر",
+                        "نويابىر",
+                        "دېكابىر",
+                    }
+                    narrow{
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6",
+                        "7",
+                        "8",
+                        "9",
+                        "10",
+                        "11",
+                        "12",
+                    }
                     wide{
                         "يانۋار",
                         "فېۋرال",
@@ -548,6 +704,32 @@ ug{
                         "3-پەسىل",
                         "4-پەسىل",
                     }
+                    narrow{
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                    }
+                    wide{
+                        "بىرىنچى پەسىل",
+                        "ئىككىنچى پەسىل",
+                        "ئۈچىنچى پەسىل",
+                        "تۆتىنچى پەسىل",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "1-پەسىل",
+                        "2-پەسىل",
+                        "3-پەسىل",
+                        "4-پەسىل",
+                    }
+                    narrow{
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                    }
                     wide{
                         "بىرىنچى پەسىل",
                         "ئىككىنچى پەسىل",
@@ -557,12 +739,19 @@ ug{
                 }
             }
         }
+        hebrew{
+            eras{
+                abbreviated{
+                    "AM",
+                }
+            }
+        }
         islamic{
             DateTimePatterns{
-                "HH:mm:ss zzzz",
-                "HH:mm:ss z",
-                "HH:mm:ss",
-                "HH:mm",
+                "h:mm:ss a zzzz",
+                "h:mm:ss a z",
+                "h:mm:ss a",
+                "h:mm a",
                 "EEEE، d MMMM، y G",
                 "d MMMM، y G",
                 "d MMM، y G",
@@ -574,9 +763,12 @@ ug{
                 "{1}، {0}",
             }
             availableFormats{
+                M{"L"}
                 Md{"d/‏M"}
+                d{"d"}
                 yyyyM{"M‏/y G"}
                 yyyyMEd{"E، d/‏M/‏y G"}
+                yyyyMMM{"MMM y G"}
                 yyyyMd{"d‏/M‏/y G"}
             }
             eras{
@@ -619,10 +811,10 @@ ug{
         }
         japanese{
             DateTimePatterns{
-                "HH:mm:ss zzzz",
-                "HH:mm:ss z",
-                "HH:mm:ss",
-                "HH:mm",
+                "h:mm:ss a zzzz",
+                "h:mm:ss a z",
+                "h:mm:ss a",
+                "h:mm a",
                 "EEEE, MMMM d، y G",
                 "MMMM d، y G",
                 "MMM d، y G",
@@ -834,6 +1026,8 @@ ug{
         standard{
             2{"{0} and {1}"}
             end{"{0}, and {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
         }
     }
     measurementSystemNames{

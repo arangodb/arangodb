@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ms{
     Countries{
         001{"Dunia"}
@@ -254,7 +253,7 @@ ms{
         SV{"El Salvador"}
         SX{"Sint Maarten"}
         SY{"Syria"}
-        SZ{"Eswatini"}
+        SZ{"Swaziland"}
         TA{"Tristan da Cunha"}
         TC{"Kepulauan Turks dan Caicos"}
         TD{"Chad"}
@@ -267,7 +266,7 @@ ms{
         TM{"Turkmenistan"}
         TN{"Tunisia"}
         TO{"Tonga"}
-        TR{"Turkiye"}
+        TR{"Turki"}
         TT{"Trinidad dan Tobago"}
         TV{"Tuvalu"}
         TW{"Taiwan"}
@@ -288,8 +287,8 @@ ms{
         VU{"Vanuatu"}
         WF{"Wallis dan Futuna"}
         WS{"Samoa"}
-        XA{"Aksen Pseudo"}
-        XB{"Bidi Pseudo"}
+        XA{"XA"}
+        XB{"XB"}
         XK{"Kosovo"}
         YE{"Yaman"}
         YT{"Mayotte"}
@@ -297,9 +296,6 @@ ms{
         ZM{"Zambia"}
         ZW{"Zimbabwe"}
         ZZ{"Wilayah Tidak Diketahui"}
-    }
-    Countries%chagos{
-        IO{"Kepulauan Chagos"}
     }
     Countries%short{
         GB{"UK"}
@@ -315,9 +311,7 @@ ms{
         CI{"Ivory Coast"}
         CZ{"Republik Czech"}
         FK{"Kepulauan Falkland (Islas Malvinas)"}
-        NZ{"Aotearoa New Zealand"}
-        SZ{"Swaziland"}
         TL{"Timor Timur"}
-        TR{"Turki"}
     }
+    Version{"2.1.49.2"}
 }

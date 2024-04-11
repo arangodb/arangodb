@@ -26,22 +26,22 @@
 class TransliteratorRoundTripTest : public IntlTest {
 
     void runIndexedTest(int32_t index, UBool exec, const char* &name,
-                        char* par=nullptr) override;
+                        char* par=NULL);
 
-    void TestKana();
-    void TestHiragana();
-    void TestKatakana();
-    void TestJamo();
-    void TestHangul();
-    void TestHan();
-    void TestGreek();
-    void TestGreekUNGEGN();
-    void Testel();
-    void TestCyrillic();
-    void TestDevanagariLatin();
-    void TestInterIndic();
-    void TestHebrew();
-    void TestArabic();
+    void TestKana(void);
+    void TestHiragana(void);
+    void TestKatakana(void);
+    void TestJamo(void);
+    void TestHangul(void);
+    void TestHan(void);
+    void TestGreek(void);
+    void TestGreekUNGEGN(void);
+    void Testel(void);
+    void TestCyrillic(void);
+    void TestDevanagariLatin(void);
+    void TestInterIndic(void);
+    void TestHebrew(void);
+    void TestArabic(void);
     void TestDebug(const char* name,const char fromSet[],
                    const char* toSet,const char* exclusions);
 };

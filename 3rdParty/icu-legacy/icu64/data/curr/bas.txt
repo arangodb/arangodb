@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 bas{
     Currencies{
         AED{
@@ -175,13 +174,9 @@ bas{
             "SHP",
             "Paùnd hèlenà",
         }
-        SLE{
-            "SLE",
-            "Lèonɛ̀",
-        }
         SLL{
             "SLL",
-            "Lèonɛ̀ (1964—2022)",
+            "Lèonɛ̀",
         }
         SOS{
             "SOS",
@@ -220,7 +215,7 @@ bas{
             "Frǎŋ CFA (BEAC)",
         }
         XOF{
-            "F CFA",
+            "CFA",
             "Frǎŋ CFA (BCEAO)",
         }
         ZAR{
@@ -240,4 +235,5 @@ bas{
             "Dɔ̀lâr sìmbàbwê",
         }
     }
+    Version{"2.1.47.82"}
 }

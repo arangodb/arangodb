@@ -1,12 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 en_001{
     Currencies{
-        BMD{
-            "BMD",
-            "Bermudian Dollar",
-        }
         BYB{
             "BYB",
             "Belarusian New Rouble (1994–1999)",
@@ -35,10 +30,6 @@ en_001{
             "RUR",
             "Russian Rouble (1991–1998)",
         }
-        SHP{
-            "SHP",
-            "St Helena Pound",
-        }
         TJR{
             "TJR",
             "Tajikistani Rouble",
@@ -49,14 +40,6 @@ en_001{
         }
     }
     CurrencyPlurals{
-        AFN{
-            one{"Afghan afghani"}
-            other{"Afghan afghanis"}
-        }
-        BMD{
-            one{"Bermudian dollar"}
-            other{"Bermudian dollars"}
-        }
         BYB{
             one{"Belarusian new rouble (1994–1999)"}
             other{"Belarusian new roubles (1994–1999)"}
@@ -69,21 +52,9 @@ en_001{
             one{"Belarusian rouble (2000–2016)"}
             other{"Belarusian roubles (2000–2016)"}
         }
-        ETB{
-            other{"Ethiopian birr"}
-        }
-        LSL{
-            other{"Lesotho maloti"}
-        }
         LVR{
             one{"Latvian rouble"}
             other{"Latvian roubles"}
-        }
-        MGA{
-            other{"Malagasy ariary"}
-        }
-        MVR{
-            other{"Maldivian rufiyaa"}
         }
         RUB{
             one{"Russian rouble"}
@@ -93,16 +64,10 @@ en_001{
             one{"Russian rouble (1991–1998)"}
             other{"Russian roubles (1991–1998)"}
         }
-        SHP{
-            one{"St Helena pound"}
-            other{"St Helena pounds"}
-        }
         TJR{
             one{"Tajikistani rouble"}
             other{"Tajikistani roubles"}
         }
-        VUV{
-            other{"Vanuatu vatu"}
-        }
     }
+    Version{"2.1.47.69"}
 }

@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 pl{
     Countries{
         001{"świat"}
@@ -298,9 +297,6 @@ pl{
         ZW{"Zimbabwe"}
         ZZ{"Nieznany region"}
     }
-    Countries%chagos{
-        IO{"Archipelag Czagos"}
-    }
     Countries%short{
         GB{"Wlk. Bryt."}
         HK{"Hongkong"}
@@ -318,4 +314,5 @@ pl{
         SZ{"Suazi"}
         TL{"Timor-Leste"}
     }
+    Version{"2.1.48.42"}
 }

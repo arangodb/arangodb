@@ -56,14 +56,14 @@ void addCollTest(TestNode** root)
 
 
 /*Internal functions used*/
-static char* dumpSk(uint8_t *sourceKey, char *sk, size_t n) {
+static char* dumpSk(uint8_t *sourceKey, char *sk) {
     uint32_t kLen = (uint32_t)strlen((const char *)sourceKey);
     uint32_t i = 0;
     
     *sk = 0;
     
     for(i = 0; i<kLen; i++) {
-        snprintf(sk+2*i, n-2*i, "%02X", sourceKey[i]);
+        sprintf(sk+2*i, "%02X", sourceKey[i]);
     }
     return sk;
 }
@@ -125,8 +125,8 @@ void reportCResult( const UChar source[], const UChar target[],
     if(keyResult != expectedResult || keyResult != compareResult)
     {
         char sk[10000];
-        log_verbose("SortKey1: %s\n", dumpSk(sourceKey, sk, sizeof(sk)));
-        log_verbose("SortKey2: %s\n", dumpSk(targetKey, sk, sizeof(sk)));
+        log_verbose("SortKey1: %s\n", dumpSk(sourceKey, sk));
+        log_verbose("SortKey2: %s\n", dumpSk(targetKey, sk));
     }
 }
 

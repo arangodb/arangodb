@@ -30,12 +30,10 @@
 
 #include <stdio.h>
 #include <sys/stat.h>
-#include <fstream>
-#include <time.h>
 #include "unicode/utypes.h"
 
 #ifndef U_TOOLUTIL_IMPLEMENTATION
-#error U_TOOLUTIL_IMPLEMENTATION not set - must be set for all ICU source files in common/ - see https://unicode-org.github.io/icu/userguide/howtouseicu
+#error U_TOOLUTIL_IMPLEMENTATION not set - must be set for all ICU source files in common/ - see http://userguide.icu-project.org/howtouseicu
 #endif
 
 #if U_PLATFORM_USES_ONLY_WIN32_API
@@ -62,13 +60,12 @@
 
 #include <errno.h>
 
-#include <cstddef>
-
 #include "unicode/errorcode.h"
 #include "unicode/putil.h"
 #include "cmemory.h"
 #include "cstring.h"
 #include "toolutil.h"
+#include "unicode/ucal.h"
 
 U_NAMESPACE_BEGIN
 
@@ -87,11 +84,19 @@ U_NAMESPACE_END
 static int32_t currentYear = -1;
 
 U_CAPI int32_t U_EXPORT2 getCurrentYear() {
+#if !UCONFIG_NO_FORMATTING
+    UErrorCode status=U_ZERO_ERROR;    
+    UCalendar *cal = NULL;
+
     if(currentYear == -1) {
-        time_t now = time(nullptr);
-        tm *fields = gmtime(&now);
-        currentYear = 1900 + fields->tm_year;
+        cal = ucal_open(NULL, -1, NULL, UCAL_TRADITIONAL, &status);
+        ucal_setMillis(cal, ucal_getNow(), &status);
+        currentYear = ucal_get(cal, UCAL_YEAR, &status);
+        ucal_close(cal);
     }
+#else
+    /* No formatting- no way to set the current year. */
+#endif
     return currentYear;
 }
 
@@ -121,8 +126,8 @@ getLongPathname(const char *pathname) {
 
 U_CAPI const char * U_EXPORT2
 findDirname(const char *path, char *buffer, int32_t bufLen, UErrorCode* status) {
-  if(U_FAILURE(*status)) return nullptr;
-  const char *resultPtr = nullptr;
+  if(U_FAILURE(*status)) return NULL;
+  const char *resultPtr = NULL;
   int32_t resultLen = 0;
 
   const char *basename=uprv_strrchr(path, U_FILE_SEP_CHAR);
@@ -150,7 +155,7 @@ findDirname(const char *path, char *buffer, int32_t bufLen, UErrorCode* status) 
     return buffer;
   } else {
     *status = U_BUFFER_OVERFLOW_ERROR;
-    return nullptr;
+    return NULL;
   }
 }
 
@@ -159,15 +164,18 @@ findBasename(const char *filename) {
     const char *basename=uprv_strrchr(filename, U_FILE_SEP_CHAR);
 
 #if U_FILE_ALT_SEP_CHAR!=U_FILE_SEP_CHAR
-    //be lenient about pathname separators on Windows, like official implementation of C++17 std::filesystem in MSVC
-    //would be convenient to merge this loop with the one above, but alas, there is no such solution in the standard library
-    const char *alt_basename=uprv_strrchr(filename, U_FILE_ALT_SEP_CHAR);
-    if(alt_basename>basename) {
-        basename=alt_basename;
+#if !(U_PLATFORM == U_PF_CYGWIN && U_PLATFORM_USES_ONLY_WIN32_API)
+    if(basename==NULL)
+#endif
+    {
+        /* Use lenient matching on Windows, which can accept either \ or /
+           This is useful for environments like Win32+CygWin which have both.
+        */
+        basename=uprv_strrchr(filename, U_FILE_ALT_SEP_CHAR);
     }
 #endif
 
-    if(basename!=nullptr) {
+    if(basename!=NULL) {
         return basename+1;
     } else {
         return filename;
@@ -204,44 +212,12 @@ U_CAPI UBool U_EXPORT2
 uprv_fileExists(const char *file) {
   struct stat stat_buf;
   if (stat(file, &stat_buf) == 0) {
-    return true;
+    return TRUE;
   } else {
-    return false;
+    return FALSE;
   }
 }
 #endif
-
-U_CAPI int32_t U_EXPORT2
-uprv_compareGoldenFiles(
-        const char* buffer, int32_t bufferLen,
-        const char* goldenFilePath,
-        bool overwrite) {
-
-    if (overwrite) {
-        std::ofstream ofs;
-        ofs.open(goldenFilePath);
-        ofs.write(buffer, bufferLen);
-        ofs.close();
-        return -1;
-    }
-
-    std::ifstream ifs(goldenFilePath, std::ifstream::in);
-    int32_t pos = 0;
-    char c;
-    while (ifs.get(c) && pos < bufferLen) {
-        if (c != buffer[pos]) {
-            // Files differ at this position
-            break;
-        }
-        pos++;
-    }
-    if (pos == bufferLen && ifs.eof()) {
-        // Files are same lengths
-        pos = -1;
-    }
-    ifs.close();
-    return pos;
-}
 
 /*U_CAPI UDate U_EXPORT2
 uprv_getModificationDate(const char *pathname, UErrorCode *status)
@@ -267,7 +243,7 @@ struct UToolMemory {
     char name[64];
     int32_t capacity, maxCapacity, size, idx;
     void *array;
-    alignas(std::max_align_t) char staticArray[1];
+    UAlignedMemory staticArray[1];
 };
 
 U_CAPI UToolMemory * U_EXPORT2
@@ -279,7 +255,7 @@ utm_open(const char *name, int32_t initialCapacity, int32_t maxCapacity, int32_t
     }
 
     mem=(UToolMemory *)uprv_malloc(sizeof(UToolMemory)+initialCapacity*size);
-    if(mem==nullptr) {
+    if(mem==NULL) {
         fprintf(stderr, "error: %s - out of memory\n", name);
         exit(U_MEMORY_ALLOCATION_ERROR);
     }
@@ -295,7 +271,7 @@ utm_open(const char *name, int32_t initialCapacity, int32_t maxCapacity, int32_t
 
 U_CAPI void U_EXPORT2
 utm_close(UToolMemory *mem) {
-    if(mem!=nullptr) {
+    if(mem!=NULL) {
         if(mem->array!=mem->staticArray) {
             uprv_free(mem->array);
         }
@@ -337,26 +313,26 @@ utm_hasCapacity(UToolMemory *mem, int32_t capacity) {
 
         if(mem->array==mem->staticArray) {
             mem->array=uprv_malloc(newCapacity*mem->size);
-            if(mem->array!=nullptr) {
+            if(mem->array!=NULL) {
                 uprv_memcpy(mem->array, mem->staticArray, (size_t)mem->idx*mem->size);
             }
         } else {
             mem->array=uprv_realloc(mem->array, newCapacity*mem->size);
         }
 
-        if(mem->array==nullptr) {
+        if(mem->array==NULL) {
             fprintf(stderr, "error: %s - out of memory\n", mem->name);
             exit(U_MEMORY_ALLOCATION_ERROR);
         }
         mem->capacity=newCapacity;
     }
 
-    return true;
+    return TRUE;
 }
 
 U_CAPI void * U_EXPORT2
 utm_alloc(UToolMemory *mem) {
-    char *p=nullptr;
+    char *p=NULL;
     int32_t oldIndex=mem->idx;
     int32_t newIndex=oldIndex+1;
     if(utm_hasCapacity(mem, newIndex)) {
@@ -369,7 +345,7 @@ utm_alloc(UToolMemory *mem) {
 
 U_CAPI void * U_EXPORT2
 utm_allocN(UToolMemory *mem, int32_t n) {
-    char *p=nullptr;
+    char *p=NULL;
     int32_t oldIndex=mem->idx;
     int32_t newIndex=oldIndex+n;
     if(utm_hasCapacity(mem, newIndex)) {

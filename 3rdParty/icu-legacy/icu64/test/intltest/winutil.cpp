@@ -32,7 +32,7 @@
 #   include <stdio.h>
 #   include <string.h>
 
-static Win32Utilities::LCIDRecord *lcidRecords = nullptr;
+static Win32Utilities::LCIDRecord *lcidRecords = NULL;
 static int32_t lcidCount  = 0;
 static int32_t lcidMax = 0;
 
@@ -63,12 +63,12 @@ BOOL CALLBACK EnumLocalesProc(LPSTR lpLocaleString)
         memcpy(lcidRecords[lcidCount].localeID, localeID, localeIDLen);
         lcidRecords[lcidCount].localeID[localeIDLen] = 0;
     } else {
-        lcidRecords[lcidCount].localeID = nullptr;
+        lcidRecords[lcidCount].localeID = NULL;
     }
 
     lcidCount += 1;
 
-    return true;
+    return TRUE;
 }
 
 // TODO: Note that this test will skip locale names and only hit locales with assigned LCIDs
@@ -82,7 +82,7 @@ Win32Utilities::LCIDRecord *Win32Utilities::getLocales(int32_t &localeCount)
     result      = lcidRecords;
 
     lcidCount = lcidMax = 0;
-    lcidRecords = nullptr;
+    lcidRecords = NULL;
 
     return result;
 }

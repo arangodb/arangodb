@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 fr{
     Currencies{
         ADP{
@@ -529,7 +528,7 @@ fr{
         }
         LAK{
             "LAK",
-            "kip laotien",
+            "kip loatien",
         }
         LBP{
             "£LB",
@@ -641,7 +640,7 @@ fr{
         }
         MVR{
             "MVR",
-            "rufiyaa maldivienne",
+            "rufiyaa maldivien",
         }
         MWK{
             "MWK",
@@ -831,13 +830,9 @@ fr{
             "SKK",
             "couronne slovaque",
         }
-        SLE{
-            "SLE",
-            "leone sierra-léonais",
-        }
         SLL{
             "SLL",
-            "leone sierra-léonais (1964—2022)",
+            "leone sierra-léonais",
         }
         SOS{
             "SOS",
@@ -921,7 +916,7 @@ fr{
         }
         TTD{
             "$TT",
-            "dollar de Trinité-et-Tobago",
+            "dollar trinidadien",
         }
         TWD{
             "TWD",
@@ -996,7 +991,7 @@ fr{
             "vatu vanuatuan",
         }
         WST{
-            "$WS",
+            "WS$",
             "tala samoan",
         }
         XAF{
@@ -1031,10 +1026,6 @@ fr{
             "XCD",
             "dollar des Caraïbes orientales",
         }
-        XCG{
-            "Cg.",
-            "florin caribéen",
-        }
         XDR{
             "XDR",
             "droit de tirage spécial",
@@ -1052,7 +1043,7 @@ fr{
             "franc UIC",
         }
         XOF{
-            "F CFA",
+            "CFA",
             "franc CFA (BCEAO)",
         }
         XPD{
@@ -1137,18 +1128,103 @@ fr{
         }
     }
     Currencies%narrow{
+        AOA{"Kz"}
+        ARS{"$"}
+        AUD{"$"}
+        BAM{"KM"}
+        BBD{"$"}
+        BDT{"৳"}
+        BMD{"$"}
+        BND{"$"}
+        BOB{"Bs"}
+        BRL{"R$"}
+        BSD{"$"}
+        BWP{"P"}
         BYN{"р."}
+        BZD{"$"}
+        CAD{"$"}
+        CLP{"$"}
+        CNY{"¥"}
+        COP{"$"}
+        CRC{"₡"}
+        CUC{"$"}
+        CUP{"$"}
+        CZK{"Kč"}
+        DKK{"kr"}
+        DOP{"$"}
         EGP{"£E"}
+        EUR{"€"}
+        FJD{"$"}
+        FKP{"£"}
+        GBP{"£"}
+        GEL{"₾"}
+        GIP{"£"}
+        GNF{"FG"}
+        GTQ{"Q"}
+        GYD{"$"}
+        HKD{"$"}
+        HNL{"L"}
+        HRK{"kn"}
+        HUF{"Ft"}
+        IDR{"Rp"}
+        ILS{"₪"}
+        INR{"₹"}
+        ISK{"kr"}
+        JMD{"$"}
+        JPY{"¥"}
+        KHR{"៛"}
         KMF{"FC"}
+        KPW{"₩"}
+        KRW{"₩"}
+        KYD{"$"}
+        KZT{"₸"}
+        LAK{"₭"}
         LBP{"£L"}
+        LKR{"Rs"}
+        LRD{"$"}
+        MGA{"Ar"}
+        MMK{"K"}
+        MNT{"₮"}
+        MUR{"Rs"}
+        MXN{"$"}
+        MYR{"RM"}
+        NAD{"$"}
+        NGN{"₦"}
         NIO{"$C"}
+        NOK{"kr"}
+        NPR{"Rs"}
+        NZD{"$"}
+        PHP{"₱"}
+        PKR{"Rs"}
+        PLN{"zł"}
+        PYG{"₲"}
         RON{"L"}
+        RUB{"₽"}
         RWF{"FR"}
-        TOP{"$T"}
+        SBD{"$"}
+        SEK{"kr"}
+        SGD{"$"}
+        SHP{"£"}
+        SRD{"$"}
+        SSP{"£"}
+        STN{"Db"}
+        SYP{"£"}
+        THB{"฿"}
+        TOP{"T$"}
+        TRY{"₺"}
+        TTD{"$"}
         TWD{"NT$"}
+        UAH{"₴"}
+        USD{"$"}
+        UYU{"$"}
+        VEF{"Bs"}
+        VND{"₫"}
+        XCD{"$"}
+        ZAR{"R"}
         ZMW{"Kw"}
     }
     Currencies%variant{
+        GEL{"₾"}
         TRY{"LT"}
     }
     CurrencyPlurals{
@@ -1677,8 +1753,8 @@ fr{
             other{"tenges kazakhs"}
         }
         LAK{
-            one{"kip laotien"}
-            other{"kips laotiens"}
+            one{"kip loatien"}
+            other{"kips loatiens"}
         }
         LBP{
             one{"livre libanaise"}
@@ -1980,13 +2056,9 @@ fr{
             one{"couronne slovaque"}
             other{"couronnes slovaques"}
         }
-        SLE{
+        SLL{
             one{"leone sierra-léonais"}
             other{"leones sierra-léonais"}
-        }
-        SLL{
-            one{"leone sierra-léonais (1964—2022)"}
-            other{"leones sierra-léonais (1964—2022)"}
         }
         SOS{
             one{"shilling somalien"}
@@ -2124,6 +2196,10 @@ fr{
             one{"sum ouzbek"}
             other{"sums ouzbeks"}
         }
+        VEB{
+            one{"bolivar vénézuélien (1871–2008)"}
+            other{"bolivar vénézuélien (1871–2008)"}
+        }
         VEF{
             one{"bolivar vénézuélien (2008–2018)"}
             other{"bolivars vénézuéliens (2008–2018)"}
@@ -2175,10 +2251,6 @@ fr{
         XCD{
             one{"dollar des Caraïbes orientales"}
             other{"dollars des Caraïbes orientales"}
-        }
-        XCG{
-            one{"florin caribéen"}
-            other{"florins caribéens"}
         }
         XDR{
             one{"droit de tirage spécial"}
@@ -2281,4 +2353,5 @@ fr{
         one{"{0} {1}"}
         other{"{0} {1}"}
     }
+    Version{"2.1.49.82"}
 }

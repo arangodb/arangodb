@@ -1,23 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 xh{
-    units{
-        coordinate{
-            dnam{"cardinal direction"}
-            east{"{0} east"}
-            north{"{0} north"}
-            south{"{0} south"}
-        }
-    }
-    unitsNarrow{
-        coordinate{
-            south{"{0}S"}
-        }
-    }
-    unitsShort{
-        coordinate{
-            south{"{0} S"}
-        }
-    }
+    Version{"2.1.49.82"}
 }

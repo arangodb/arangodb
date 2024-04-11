@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 sl{
     Countries{
         001{"svet"}
@@ -75,7 +74,7 @@ sl{
         CA{"Kanada"}
         CC{"Kokosovi otoki"}
         CD{"Demokratična republika Kongo"}
-        CF{"Srednjeafriška republika"}
+        CF{"Centralnoafriška republika"}
         CG{"Kongo - Brazzaville"}
         CH{"Švica"}
         CI{"Slonokoščena obala"}
@@ -134,7 +133,7 @@ sl{
         GU{"Guam"}
         GW{"Gvineja Bissau"}
         GY{"Gvajana"}
-        HK{"Posebno upravno območje Ljudske republike Kitajske Hongkong"}
+        HK{"Posebno administrativno območje LR Kitajske Hongkong"}
         HM{"Heardov otok in McDonaldovi otoki"}
         HN{"Honduras"}
         HR{"Hrvaška"}
@@ -188,7 +187,7 @@ sl{
         ML{"Mali"}
         MM{"Mjanmar (Burma)"}
         MN{"Mongolija"}
-        MO{"Posebno upravno območje Ljudske republike Kitajske Macao"}
+        MO{"Posebno administrativno območje LR Kitajske Macao"}
         MP{"Severni Marianski otoki"}
         MQ{"Martinik"}
         MR{"Mavretanija"}
@@ -254,7 +253,7 @@ sl{
         SV{"Salvador"}
         SX{"Sint Maarten"}
         SY{"Sirija"}
-        SZ{"Esvatini"}
+        SZ{"Svazi"}
         TA{"Tristan da Cunha"}
         TC{"Otoki Turks in Caicos"}
         TD{"Čad"}
@@ -298,13 +297,10 @@ sl{
         ZW{"Zimbabve"}
         ZZ{"Neznano ali neveljavno območje"}
     }
-    Countries%chagos{
-        IO{"Otočje Chagos"}
-    }
     Countries%short{
         GB{"ZK"}
         HK{"Hongkong"}
-        MO{"Macao"}
+        MO{"Posebno administrativno območje LR Kitajske Macao"}
         PS{"Palestina"}
         UN{"ZN"}
         US{"ZDA"}
@@ -315,9 +311,7 @@ sl{
         CI{"Côte d’Ivoire"}
         CZ{"Češka republika"}
         FK{"Falklandski otoki (Malvini)"}
-        NZ{"Aotearoa Nova Zelandija"}
-        SZ{"Svazi"}
         TL{"Vzhodni Timor"}
-        TR{"Türkiye"}
     }
+    Version{"2.1.48.42"}
 }

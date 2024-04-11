@@ -6,7 +6,7 @@
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
-*   file name:  stubdata.cpp
+*   file name:  stubdata.c
 *
 *   Define initialized data that will build into a valid, but empty
 *   ICU data library.  Used to bootstrap the ICU build, which has these
@@ -17,11 +17,30 @@
 *
 *   The stub data library (for which this file is the source) is sufficient
 *   for running the data building tools.
+*
 */
+#include "unicode/utypes.h"
+#include "unicode/udata.h"
+#include "unicode/uversion.h"
 
-#include "stubdata.h"
 
-extern "C" U_EXPORT const ICU_Data_Header U_ICUDATA_ENTRY_POINT alignas(16) = {
+typedef struct {
+    uint16_t headerSize;
+    uint8_t magic1, magic2;
+    UDataInfo info;
+    char padding[8];
+    uint32_t count, reserved;
+    /*
+    const struct {
+    const char *const name; 
+    const void *const data;
+    } toc[1];
+    */
+   int   fakeNameAndData[4];       /* TODO:  Change this header type from */
+                                   /*        pointerTOC to OffsetTOC.     */
+} ICU_Data_Header;
+
+extern "C" U_EXPORT const ICU_Data_Header U_ICUDATA_ENTRY_POINT = {
     32,          /* headerSize */
     0xda,        /* magic1,  (see struct MappedData in udata.c)  */
     0x27,        /* magic2     */
@@ -36,17 +55,22 @@ extern "C" U_EXPORT const ICU_Data_Header U_ICUDATA_ENTRY_POINT alignas(16) = {
 #endif
 
         U_CHARSET_FAMILY,
-        sizeof(char16_t),
+        sizeof(UChar),   
         0,               /* reserved      */
-        {0x54, 0x6f, 0x43, 0x50},   /* data format identifier: "ToCP" */
-        {1, 0, 0, 0},   /* format version major, minor, milli, micro */
-        {0, 0, 0, 0}    /* dataVersion   */
+        {                /* data format identifier */
+           0x54, 0x6f, 0x43, 0x50}, /* "ToCP" */
+           {1, 0, 0, 0},   /* format version major, minor, milli, micro */
+           {0, 0, 0, 0}    /* dataVersion   */
     },
-    { 's', 't', 'u', 'b', 'd', 'a', 't', 'a' },  /* Padding[8] */
+    {0,0,0,0,0,0,0,0},  /* Padding[8]   */ 
     0,                  /* count        */
     0,                  /* Reserved     */
     {                   /*  TOC structure */
-        0 , 0           /* name and data entries.  Count says there are none,  */
+/*        {    */
+          0 , 0 , 0, 0  /* name and data entries.  Count says there are none,  */
                         /*  but put one in just in case.                       */
+/*        }  */
     }
 };
+
+

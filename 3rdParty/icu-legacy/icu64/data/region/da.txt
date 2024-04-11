@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 da{
     Countries{
         001{"Verden"}
@@ -70,7 +69,7 @@ da{
         BT{"Bhutan"}
         BV{"Bouvetøen"}
         BW{"Botswana"}
-        BY{"Belarus"}
+        BY{"Hviderusland"}
         BZ{"Belize"}
         CA{"Canada"}
         CC{"Cocosøerne"}
@@ -146,7 +145,7 @@ da{
         IL{"Israel"}
         IM{"Isle of Man"}
         IN{"Indien"}
-        IO{"Det Britiske Territorium i Det Indiske Ocean"}
+        IO{"Det britiske territorium i Det Indiske Ocean"}
         IQ{"Irak"}
         IR{"Iran"}
         IS{"Island"}
@@ -206,7 +205,7 @@ da{
         NF{"Norfolk Island"}
         NG{"Nigeria"}
         NI{"Nicaragua"}
-        NL{"Nederlandene"}
+        NL{"Holland"}
         NO{"Norge"}
         NP{"Nepal"}
         NR{"Nauru"}
@@ -258,7 +257,7 @@ da{
         TA{"Tristan da Cunha"}
         TC{"Turks- og Caicosøerne"}
         TD{"Tchad"}
-        TF{"De Franske Besiddelser i Det Sydlige Indiske Ocean og Antarktis"}
+        TF{"De Franske Besiddelser i Det Sydlige Indiske Ocean"}
         TG{"Togo"}
         TH{"Thailand"}
         TJ{"Tadsjikistan"}
@@ -288,8 +287,6 @@ da{
         VU{"Vanuatu"}
         WF{"Wallis og Futuna"}
         WS{"Samoa"}
-        XA{"pseudo-accenter"}
-        XB{"pseudo-bidi"}
         XK{"Kosovo"}
         YE{"Yemen"}
         YT{"Mayotte"}
@@ -298,22 +295,21 @@ da{
         ZW{"Zimbabwe"}
         ZZ{"Ukendt område"}
     }
-    Countries%chagos{
-        IO{"Chagosøerne"}
-    }
     Countries%short{
+        GB{"UK"}
         HK{"Hongkong"}
         MO{"Macao"}
         PS{"Palæstina"}
         UN{"FN"}
+        US{"USA"}
     }
     Countries%variant{
         CD{"Den Demokratiske Republik Congo (DRC)"}
         CG{"Republikken Congo"}
         CZ{"Den Tjekkiske Republik"}
         FK{"Falklandsøerne (Islas Malvinas)"}
-        NZ{"Aotearoa New Zealand"}
         SZ{"Swaziland"}
         TL{"Østtimor"}
     }
+    Version{"2.1.49.82"}
 }

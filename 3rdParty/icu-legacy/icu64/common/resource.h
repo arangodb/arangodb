@@ -28,7 +28,6 @@
 #include "unicode/utypes.h"
 #include "unicode/unistr.h"
 #include "unicode/ures.h"
-#include "restrace.h"
 
 struct ResourceData;
 
@@ -45,13 +44,11 @@ class ResourceValue;
 class U_COMMON_API ResourceArray {
 public:
     /** Constructs an empty array object. */
-    ResourceArray() : items16(nullptr), items32(nullptr), length(0) {}
+    ResourceArray() : items16(NULL), items32(NULL), length(0) {}
 
     /** Only for implementation use. @internal */
-    ResourceArray(const uint16_t *i16, const uint32_t *i32, int32_t len,
-                  const ResourceTracer& traceInfo) :
-            items16(i16), items32(i32), length(len),
-            fTraceInfo(traceInfo) {}
+    ResourceArray(const uint16_t *i16, const uint32_t *i32, int32_t len) :
+            items16(i16), items32(i32), length(len) {}
 
     /**
      * @return The number of items in the array resource.
@@ -60,7 +57,7 @@ public:
     /**
      * @param i Array item index.
      * @param value Output-only, receives the value of the i'th item.
-     * @return true if i is non-negative and less than getSize().
+     * @return TRUE if i is non-negative and less than getSize().
      */
     UBool getValue(int32_t i, ResourceValue &value) const;
 
@@ -71,7 +68,6 @@ private:
     const uint16_t *items16;
     const uint32_t *items32;
     int32_t length;
-    ResourceTracer fTraceInfo;
 };
 
 /**
@@ -80,33 +76,24 @@ private:
 class U_COMMON_API ResourceTable {
 public:
     /** Constructs an empty table object. */
-    ResourceTable() : keys16(nullptr), keys32(nullptr), items16(nullptr), items32(nullptr), length(0) {}
+    ResourceTable() : keys16(NULL), keys32(NULL), items16(NULL), items32(NULL), length(0) {}
 
     /** Only for implementation use. @internal */
     ResourceTable(const uint16_t *k16, const int32_t *k32,
-                  const uint16_t *i16, const uint32_t *i32, int32_t len,
-                  const ResourceTracer& traceInfo) :
-            keys16(k16), keys32(k32), items16(i16), items32(i32), length(len),
-            fTraceInfo(traceInfo) {}
+                  const uint16_t *i16, const uint32_t *i32, int32_t len) :
+            keys16(k16), keys32(k32), items16(i16), items32(i32), length(len) {}
 
     /**
      * @return The number of items in the array resource.
      */
     int32_t getSize() const { return length; }
     /**
-     * @param i Table item index.
+     * @param i Array item index.
      * @param key Output-only, receives the key of the i'th item.
      * @param value Output-only, receives the value of the i'th item.
-     * @return true if i is non-negative and less than getSize().
+     * @return TRUE if i is non-negative and less than getSize().
      */
     UBool getKeyAndValue(int32_t i, const char *&key, ResourceValue &value) const;
-
-    /**
-     * @param key Key string to find in the table.
-     * @param value Output-only, receives the value of the item with that key.
-     * @return true if the table contains the key.
-     */
-    UBool findValue(const char *key, ResourceValue &value) const;
 
 private:
     const uint16_t *keys16;
@@ -114,7 +101,6 @@ private:
     const uint16_t *items16;
     const uint32_t *items32;
     int32_t length;
-    ResourceTracer fTraceInfo;
 };
 
 /**
@@ -136,23 +122,23 @@ public:
      *
      * @see ures_getString()
      */
-    virtual const char16_t *getString(int32_t &length, UErrorCode &errorCode) const = 0;
+    virtual const UChar *getString(int32_t &length, UErrorCode &errorCode) const = 0;
 
     inline UnicodeString getUnicodeString(UErrorCode &errorCode) const {
         int32_t len = 0;
-        const char16_t *r = getString(len, errorCode);
-        return UnicodeString(true, r, len);
+        const UChar *r = getString(len, errorCode);
+        return UnicodeString(TRUE, r, len);
     }
 
     /**
      * Sets U_RESOURCE_TYPE_MISMATCH if this is not an alias resource.
      */
-    virtual const char16_t *getAliasString(int32_t &length, UErrorCode &errorCode) const = 0;
+    virtual const UChar *getAliasString(int32_t &length, UErrorCode &errorCode) const = 0;
 
     inline UnicodeString getAliasUnicodeString(UErrorCode &errorCode) const {
         int32_t len = 0;
-        const char16_t *r = getAliasString(len, errorCode);
-        return UnicodeString(true, r, len);
+        const UChar *r = getAliasString(len, errorCode);
+        return UnicodeString(TRUE, r, len);
     }
 
     /**
@@ -199,7 +185,7 @@ public:
      * CLDR no-fallback data values of (three empty-set symbols)=={2205, 2205, 2205}
      * when enumerating tables with fallback from the specific resource bundle to root.
      *
-     * @return true if this is a no-inheritance marker string
+     * @return TRUE if this is a no-inheritance marker string
      */
     virtual UBool isNoInheritanceMarker() const = 0;
 
@@ -274,10 +260,8 @@ public:
      *
      * @param key The key string of the enumeration-start resource.
      *     Empty if the enumeration starts at the top level of the bundle.
-     * @param value Call getArray() or getTable() as appropriate. Then reuse for
-     *     output values from Array and Table getters. Note: ResourceTable and
-     *     ResourceArray instances must outlive the ResourceValue instance for
-     *     ResourceTracer to be happy.
+     * @param value Call getArray() or getTable() as appropriate.
+     *     Then reuse for output values from Array and Table getters.
      * @param noFallback true if the bundle has no parent;
      *     that is, its top-level table has the nofallback attribute,
      *     or it is the root bundle of a locale tree.
@@ -286,8 +270,8 @@ public:
                      UErrorCode &errorCode) = 0;
 
 private:
-    ResourceSink(const ResourceSink &) = delete;  // no copy constructor
-    ResourceSink &operator=(const ResourceSink &) = delete;  // no assignment operator
+    ResourceSink(const ResourceSink &);  // no copy constructor
+    ResourceSink &operator=(const ResourceSink &);  // no assignment operator
 };
 
 U_NAMESPACE_END

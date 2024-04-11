@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ur_IN{
     Countries{
         AC{"جزیرہ اسینشن"}
@@ -15,6 +14,7 @@ ur_IN{
         GF{"فرانسیسی گیانا"}
         HM{"جزائر ہرڈ و مکڈونلڈ"}
         IC{"جزائر کناری"}
+        IO{"برطانوی بحرہند خطہ"}
         MH{"جزائر مارشل"}
         MP{"جزائر شمالی ماریانا"}
         NF{"جزیرہ نارفوک"}
@@ -29,4 +29,5 @@ ur_IN{
     Countries%variant{
         FK{"جزائر فاکلینڈ (اسلاس مالویناس)"}
     }
+    Version{"2.1.47.71"}
 }

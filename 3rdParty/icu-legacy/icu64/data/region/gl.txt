@@ -1,12 +1,11 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 gl{
     Countries{
         001{"Mundo"}
         002{"África"}
-        003{"América do Norte"}
-        005{"América do Sur"}
+        003{"Norteamérica"}
+        005{"Suramérica"}
         009{"Oceanía"}
         011{"África Occidental"}
         013{"América Central"}
@@ -15,7 +14,7 @@ gl{
         017{"África Central"}
         018{"África Meridional"}
         019{"América"}
-        021{"América Setentrional"}
+        021{"América do Norte"}
         029{"Caribe"}
         030{"Asia Oriental"}
         034{"Asia Meridional"}
@@ -23,7 +22,7 @@ gl{
         039{"Europa Meridional"}
         053{"Australasia"}
         054{"Melanesia"}
-        057{"Rexión de Micronesia"}
+        057{"Rexión da Micronesia"}
         061{"Polinesia"}
         142{"Asia"}
         143{"Asia Central"}
@@ -78,7 +77,7 @@ gl{
         CF{"República Centroafricana"}
         CG{"República do Congo"}
         CH{"Suíza"}
-        CI{"Côte d’Ivoire"}
+        CI{"Costa do Marfil"}
         CK{"Illas Cook"}
         CL{"Chile"}
         CM{"Camerún"}
@@ -165,7 +164,7 @@ gl{
         KR{"Corea do Sur"}
         KW{"Kuwait"}
         KY{"Illas Caimán"}
-        KZ{"Kazakistán"}
+        KZ{"Casaquistán"}
         LA{"Laos"}
         LB{"O Líbano"}
         LC{"Santa Lucía"}
@@ -179,7 +178,7 @@ gl{
         LY{"Libia"}
         MA{"Marrocos"}
         MC{"Mónaco"}
-        MD{"República Moldova"}
+        MD{"Moldavia"}
         ME{"Montenegro"}
         MF{"Saint Martin"}
         MG{"Madagascar"}
@@ -254,7 +253,7 @@ gl{
         SV{"O Salvador"}
         SX{"Sint Maarten"}
         SY{"Siria"}
-        SZ{"Eswatini"}
+        SZ{"Suazilandia"}
         TA{"Tristán da Cunha"}
         TC{"Illas Turks e Caicos"}
         TD{"Chad"}
@@ -278,9 +277,9 @@ gl{
         UN{"Nacións Unidas"}
         US{"Os Estados Unidos"}
         UY{"O Uruguai"}
-        UZ{"Uzbekistán"}
+        UZ{"Uzbequistán"}
         VA{"Cidade do Vaticano"}
-        VC{"San Vicente e as Granadinas"}
+        VC{"San Vicente e As Granadinas"}
         VE{"Venezuela"}
         VG{"Illas Virxes Británicas"}
         VI{"Illas Virxes Estadounidenses"}
@@ -288,8 +287,6 @@ gl{
         VU{"Vanuatu"}
         WF{"Wallis e Futuna"}
         WS{"Samoa"}
-        XA{"Pseudoacentos"}
-        XB{"Pseudobidireccional"}
         XK{"Kosovo"}
         YE{"O Iemen"}
         YT{"Mayotte"}
@@ -297,9 +294,6 @@ gl{
         ZM{"Zambia"}
         ZW{"Zimbabwe"}
         ZZ{"Rexión descoñecida"}
-    }
-    Countries%chagos{
-        IO{"Arquipélago de Chagos"}
     }
     Countries%short{
         GB{"RU"}
@@ -312,10 +306,11 @@ gl{
     Countries%variant{
         CD{"Congo (RDC)"}
         CG{"Congo (RC)"}
-        CI{"Costa do Marfil"}
+        CI{"CI"}
         CZ{"República Checa"}
         FK{"Illas Malvinas (Falkland)"}
-        NZ{"Aotearoa (Nova Zelandia)"}
-        SZ{"Swazilandia"}
+        SZ{"Suacilandia"}
+        TL{"TL"}
     }
+    Version{"2.1.49.82"}
 }

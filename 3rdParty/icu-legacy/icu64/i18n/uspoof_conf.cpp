@@ -15,7 +15,7 @@
 *   created on: 2009Jan05  (refactoring earlier files)
 *   created by: Andy Heninger
 *
-*   Internal classes for compiling confusable data into its binary (runtime) form.
+*   Internal classes for compililing confusable data into its binary (runtime) form.
 */
 
 #include "unicode/utypes.h"
@@ -63,32 +63,36 @@ U_NAMESPACE_USE
 //         at the same time
 //
 
-SPUString::SPUString(LocalPointer<UnicodeString> s) {
-    fStr = std::move(s);
+SPUString::SPUString(UnicodeString *s) {
+    fStr = s;
     fCharOrStrTableIndex = 0;
 }
 
 
 SPUString::~SPUString() {
+    delete fStr;
 }
 
 
-SPUStringPool::SPUStringPool(UErrorCode &status) : fVec(nullptr), fHash(nullptr) {
-    LocalPointer<UVector> vec(new UVector(status), status);
-    if (U_FAILURE(status)) {
+SPUStringPool::SPUStringPool(UErrorCode &status) : fVec(NULL), fHash(NULL) {
+    fVec = new UVector(status);
+    if (fVec == NULL) {
+        status = U_MEMORY_ALLOCATION_ERROR;
         return;
     }
-    vec->setDeleter(
-        [](void *obj) {delete (SPUString *)obj;});
-    fVec = vec.orphan();
     fHash = uhash_open(uhash_hashUnicodeString,           // key hash function
                        uhash_compareUnicodeString,        // Key Comparator
-                       nullptr,                              // Value Comparator
+                       NULL,                              // Value Comparator
                        &status);
 }
 
 
 SPUStringPool::~SPUStringPool() {
+    int i;
+    for (i=fVec->size()-1; i>=0; i--) {
+        SPUString *s = static_cast<SPUString *>(fVec->elementAt(i));
+        delete s;
+    }
     delete fVec;
     uhash_close(fHash);
 }
@@ -109,7 +113,7 @@ SPUString *SPUStringPool::getByIndex(int32_t index) {
 // by code point order.
 // Conforms to the type signature for a USortComparator in uvector.h
 
-static int32_t U_CALLCONV SPUStringCompare(UHashTok left, UHashTok right) {
+static int8_t U_CALLCONV SPUStringCompare(UHashTok left, UHashTok right) {
 	const SPUString *sL = const_cast<const SPUString *>(
         static_cast<SPUString *>(left.pointer));
  	const SPUString *sR = const_cast<const SPUString *>(
@@ -131,21 +135,18 @@ void SPUStringPool::sort(UErrorCode &status) {
 
 
 SPUString *SPUStringPool::addString(UnicodeString *src, UErrorCode &status) {
-    LocalPointer<UnicodeString> lpSrc(src);
-    if (U_FAILURE(status)) {
-        return nullptr;
-    }
     SPUString *hashedString = static_cast<SPUString *>(uhash_get(fHash, src));
-    if (hashedString != nullptr) {
-        return hashedString;
+    if (hashedString != NULL) {
+        delete src;
+    } else {
+        hashedString = new SPUString(src);
+        if (hashedString == NULL) {
+            status = U_MEMORY_ALLOCATION_ERROR;
+            return NULL;
+        }
+        uhash_put(fHash, src, hashedString, &status);
+        fVec->addElement(hashedString, status);
     }
-    LocalPointer<SPUString> spuStr(new SPUString(std::move(lpSrc)), status);
-    hashedString = spuStr.getAlias();
-    fVec->adoptElement(spuStr.orphan(), status);
-    if (U_FAILURE(status)) {
-        return nullptr;
-    }
-    uhash_put(fHash, src, hashedString, &status);
     return hashedString;
 }
 
@@ -153,43 +154,43 @@ SPUString *SPUStringPool::addString(UnicodeString *src, UErrorCode &status) {
 
 ConfusabledataBuilder::ConfusabledataBuilder(SpoofImpl *spImpl, UErrorCode &status) :
     fSpoofImpl(spImpl),
-    fInput(nullptr),
-    fTable(nullptr),
-    fKeySet(nullptr),
-    fKeyVec(nullptr),
-    fValueVec(nullptr),
-    fStringTable(nullptr),
-    stringPool(nullptr),
-    fParseLine(nullptr),
-    fParseHexNum(nullptr),
+    fInput(NULL),
+    fTable(NULL),
+    fKeySet(NULL),
+    fKeyVec(NULL),
+    fValueVec(NULL),
+    fStringTable(NULL),
+    stringPool(NULL),
+    fParseLine(NULL),
+    fParseHexNum(NULL),
     fLineNum(0)
 {
     if (U_FAILURE(status)) {
         return;
     }
 
-    fTable = uhash_open(uhash_hashLong, uhash_compareLong, nullptr, &status);
+    fTable = uhash_open(uhash_hashLong, uhash_compareLong, NULL, &status);
 
     fKeySet = new UnicodeSet();
-    if (fKeySet == nullptr) {
+    if (fKeySet == NULL) {
         status = U_MEMORY_ALLOCATION_ERROR;
         return;
     }
 
     fKeyVec = new UVector(status);
-    if (fKeyVec == nullptr) {
+    if (fKeyVec == NULL) {
         status = U_MEMORY_ALLOCATION_ERROR;
         return;
     }
 
     fValueVec = new UVector(status);
-    if (fValueVec == nullptr) {
+    if (fValueVec == NULL) {
         status = U_MEMORY_ALLOCATION_ERROR;
         return;
     }
 
     stringPool = new SPUStringPool(status);
-    if (stringPool == nullptr) {
+    if (stringPool == NULL) {
         status = U_MEMORY_ALLOCATION_ERROR;
         return;
     }
@@ -217,7 +218,7 @@ void ConfusabledataBuilder::buildConfusableData(SpoofImpl * spImpl, const char *
     }
     ConfusabledataBuilder builder(spImpl, status);
     builder.build(confusables, confusablesLen, status);
-    if (U_FAILURE(status) && errorType != nullptr) {
+    if (U_FAILURE(status) && errorType != NULL) {
         *errorType = USPOOF_SINGLE_SCRIPT_CONFUSABLE;
         pe->line = builder.fLineNum;
     }
@@ -227,22 +228,22 @@ void ConfusabledataBuilder::buildConfusableData(SpoofImpl * spImpl, const char *
 void ConfusabledataBuilder::build(const char * confusables, int32_t confusablesLen,
                UErrorCode &status) {
 
-    // Convert the user input data from UTF-8 to char16_t (UTF-16)
+    // Convert the user input data from UTF-8 to UChar (UTF-16)
     int32_t inputLen = 0;
     if (U_FAILURE(status)) {
         return;
     }
-    u_strFromUTF8(nullptr, 0, &inputLen, confusables, confusablesLen, &status);
+    u_strFromUTF8(NULL, 0, &inputLen, confusables, confusablesLen, &status);
     if (status != U_BUFFER_OVERFLOW_ERROR) {
         return;
     }
     status = U_ZERO_ERROR;
-    fInput = static_cast<char16_t *>(uprv_malloc((inputLen+1) * sizeof(char16_t)));
-    if (fInput == nullptr) {
+    fInput = static_cast<UChar *>(uprv_malloc((inputLen+1) * sizeof(UChar)));
+    if (fInput == NULL) {
         status = U_MEMORY_ALLOCATION_ERROR;
         return;
     }
-    u_strFromUTF8(fInput, inputLen+1, nullptr, confusables, confusablesLen, &status);
+    u_strFromUTF8(fInput, inputLen+1, NULL, confusables, confusablesLen, &status);
 
 
     // Regular Expression to parse a line from Confusables.txt.  The expression will match
@@ -263,12 +264,12 @@ void ConfusabledataBuilder::build(const char * confusables, int32_t confusablesL
         "|^([ \\t]*(?:#.*?)?)$"       // OR match empty lines or lines with only a #comment
         "|^(.*?)$", -1, US_INV);      // OR match any line, which catches illegal lines.
     // TODO: Why are we using the regex C API here? C++ would just take UnicodeString...
-    fParseLine = uregex_open(pattern.getBuffer(), pattern.length(), 0, nullptr, &status);
+    fParseLine = uregex_open(pattern.getBuffer(), pattern.length(), 0, NULL, &status);
 
     // Regular expression for parsing a hex number out of a space-separated list of them.
     //   Capture group 1 gets the number, with spaces removed.
     pattern = UNICODE_STRING_SIMPLE("\\s*([0-9A-F]+)");
-    fParseHexNum = uregex_open(pattern.getBuffer(), pattern.length(), 0, nullptr, &status);
+    fParseHexNum = uregex_open(pattern.getBuffer(), pattern.length(), 0, NULL, &status);
 
     // Zap any Byte Order Mark at the start of input.  Changing it to a space is benign
     //   given the syntax of the input.
@@ -300,7 +301,7 @@ void ConfusabledataBuilder::build(const char * confusables, int32_t confusablesL
         uregex_setText(fParseHexNum, &fInput[mapStringStart], mapStringLength, &status);
 
         UnicodeString  *mapString = new UnicodeString();
-        if (mapString == nullptr) {
+        if (mapString == NULL) {
             status = U_MEMORY_ALLOCATION_ERROR;
             return;
         }
@@ -370,7 +371,7 @@ void ConfusabledataBuilder::build(const char * confusables, int32_t confusablesL
         for (UChar32 keyChar=fKeySet->getRangeStart(range);
                 keyChar <= fKeySet->getRangeEnd(range); keyChar++) {
             SPUString *targetMapping = static_cast<SPUString *>(uhash_iget(fTable, keyChar));
-            U_ASSERT(targetMapping != nullptr);
+            U_ASSERT(targetMapping != NULL);
 
             // Set an error code if trying to consume a long string.  Otherwise,
             // codePointAndLengthToKey will abort on a U_ASSERT.
@@ -393,6 +394,7 @@ void ConfusabledataBuilder::build(const char * confusables, int32_t confusablesL
 
     // All of the intermediate allocated data belongs to the ConfusabledataBuilder
     //  object  (this), and is deleted in the destructor.
+    return;
 }
 
 //
@@ -406,7 +408,7 @@ void ConfusabledataBuilder::build(const char * confusables, int32_t confusablesL
 //
 void ConfusabledataBuilder::outputData(UErrorCode &status) {
 
-    U_ASSERT(fSpoofImpl->fSpoofData->fDataOwned);
+    U_ASSERT(fSpoofImpl->fSpoofData->fDataOwned == TRUE);
 
     //  The Key Table
     //     While copying the keys to the runtime array,
@@ -458,8 +460,8 @@ void ConfusabledataBuilder::outputData(UErrorCode &status) {
     uint32_t stringsLength = fStringTable->length();
     // Reserve an extra space so the string will be nul-terminated.  This is
     // only a convenience, for when debugging; it is not needed otherwise.
-    char16_t *strings =
-        static_cast<char16_t *>(fSpoofImpl->fSpoofData->reserveSpace(stringsLength*sizeof(char16_t)+2, status));
+    UChar *strings =
+        static_cast<UChar *>(fSpoofImpl->fSpoofData->reserveSpace(stringsLength*sizeof(UChar)+2, status));
     if (U_FAILURE(status)) {
         return;
     }

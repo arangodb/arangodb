@@ -77,15 +77,15 @@ RegexPattern &RegexPattern::operator = (const RegexPattern &other) {
         return *this;
     }
 
-    if (other.fPatternString == nullptr) {
-        fPatternString = nullptr;
-        fPattern = utext_clone(fPattern, other.fPattern, false, true, &fDeferredStatus);
+    if (other.fPatternString == NULL) {
+        fPatternString = NULL;
+        fPattern = utext_clone(fPattern, other.fPattern, FALSE, TRUE, &fDeferredStatus);
     } else {
         fPatternString = new UnicodeString(*(other.fPatternString));
-        if (fPatternString == nullptr) {
+        if (fPatternString == NULL) {
             fDeferredStatus = U_MEMORY_ALLOCATION_ERROR;
         } else {
-            fPattern = utext_openConstUnicodeString(nullptr, fPatternString, &fDeferredStatus);
+            fPattern = utext_openConstUnicodeString(NULL, fPatternString, &fDeferredStatus);
         }
     }
     if (U_FAILURE(fDeferredStatus)) {
@@ -97,6 +97,8 @@ RegexPattern &RegexPattern::operator = (const RegexPattern &other) {
     fMinMatchLen      = other.fMinMatchLen;
     fFrameSize        = other.fFrameSize;
     fDataSize         = other.fDataSize;
+    fStaticSets       = other.fStaticSets;
+    fStaticSets8      = other.fStaticSets8;
 
     fStartType        = other.fStartType;
     fInitialStringIdx = other.fInitialStringIdx;
@@ -117,7 +119,7 @@ RegexPattern &RegexPattern::operator = (const RegexPattern &other) {
     int32_t i;
     int32_t  numSets = other.fSets->size();
     fSets8 = new Regex8BitSet[numSets];
-    if (fSets8 == nullptr) {
+    if (fSets8 == NULL) {
     	fDeferredStatus = U_MEMORY_ALLOCATION_ERROR;
     	return *this;
     }
@@ -127,7 +129,7 @@ RegexPattern &RegexPattern::operator = (const RegexPattern &other) {
         }
         UnicodeSet *sourceSet = (UnicodeSet *)other.fSets->elementAt(i);
         UnicodeSet *newSet    = new UnicodeSet(*sourceSet);
-        if (newSet == nullptr) {
+        if (newSet == NULL) {
             fDeferredStatus = U_MEMORY_ALLOCATION_ERROR;
             break;
         }
@@ -136,20 +138,18 @@ RegexPattern &RegexPattern::operator = (const RegexPattern &other) {
     }
 
     // Copy the named capture group hash map.
-    if (other.fNamedCaptureMap != nullptr && initNamedCaptureMap()) {
-        int32_t hashPos = UHASH_FIRST;
-        while (const UHashElement *hashEl = uhash_nextElement(other.fNamedCaptureMap, &hashPos)) {
-            if (U_FAILURE(fDeferredStatus)) {
-                break;
-            }
-            const UnicodeString *name = (const UnicodeString *)hashEl->key.pointer;
-            UnicodeString *key = new UnicodeString(*name);
-            int32_t val = hashEl->value.integer;
-            if (key == nullptr) {
-                fDeferredStatus = U_MEMORY_ALLOCATION_ERROR;
-            } else {
-                uhash_puti(fNamedCaptureMap, key, val, &fDeferredStatus);
-            }
+    int32_t hashPos = UHASH_FIRST;
+    while (const UHashElement *hashEl = uhash_nextElement(other.fNamedCaptureMap, &hashPos)) {
+        if (U_FAILURE(fDeferredStatus)) {
+            break;
+        }
+        const UnicodeString *name = (const UnicodeString *)hashEl->key.pointer;
+        UnicodeString *key = new UnicodeString(*name);
+        int32_t val = hashEl->value.integer;
+        if (key == NULL) {
+            fDeferredStatus = U_MEMORY_ALLOCATION_ERROR;
+        } else {
+            uhash_puti(fNamedCaptureMap, key, val, &fDeferredStatus);
         }
     }
     return *this;
@@ -164,62 +164,53 @@ RegexPattern &RegexPattern::operator = (const RegexPattern &other) {
 //--------------------------------------------------------------------------
 void RegexPattern::init() {
     fFlags            = 0;
-    fCompiledPat      = nullptr;
+    fCompiledPat      = 0;
     fLiteralText.remove();
-    fSets             = nullptr;
-    fSets8            = nullptr;
+    fSets             = NULL;
+    fSets8            = NULL;
     fDeferredStatus   = U_ZERO_ERROR;
     fMinMatchLen      = 0;
     fFrameSize        = 0;
     fDataSize         = 0;
-    fGroupMap         = nullptr;
+    fGroupMap         = NULL;
+    fStaticSets       = NULL;
+    fStaticSets8      = NULL;
     fStartType        = START_NO_INFO;
     fInitialStringIdx = 0;
     fInitialStringLen = 0;
-    fInitialChars     = nullptr;
+    fInitialChars     = NULL;
     fInitialChar      = 0;
-    fInitialChars8    = nullptr;
-    fNeedsAltInput    = false;
-    fNamedCaptureMap  = nullptr;
+    fInitialChars8    = NULL;
+    fNeedsAltInput    = FALSE;
+    fNamedCaptureMap  = NULL;
 
-    fPattern          = nullptr; // will be set later
-    fPatternString    = nullptr; // may be set later
+    fPattern          = NULL; // will be set later
+    fPatternString    = NULL; // may be set later
     fCompiledPat      = new UVector64(fDeferredStatus);
     fGroupMap         = new UVector32(fDeferredStatus);
     fSets             = new UVector(fDeferredStatus);
     fInitialChars     = new UnicodeSet;
     fInitialChars8    = new Regex8BitSet;
+    fNamedCaptureMap  = uhash_open(uhash_hashUnicodeString,     // Key hash function
+                                   uhash_compareUnicodeString,  // Key comparator function
+                                   uhash_compareLong,           // Value comparator function
+                                   &fDeferredStatus);
     if (U_FAILURE(fDeferredStatus)) {
         return;
     }
-    if (fCompiledPat == nullptr  || fGroupMap == nullptr || fSets == nullptr ||
-            fInitialChars == nullptr || fInitialChars8 == nullptr) {
+    if (fCompiledPat == NULL  || fGroupMap == NULL || fSets == NULL ||
+            fInitialChars == NULL || fInitialChars8 == NULL || fNamedCaptureMap == NULL) {
         fDeferredStatus = U_MEMORY_ALLOCATION_ERROR;
         return;
     }
 
     // Slot zero of the vector of sets is reserved.  Fill it here.
     fSets->addElement((int32_t)0, fDeferredStatus);
-}
-
-
-bool RegexPattern::initNamedCaptureMap() {
-    if (fNamedCaptureMap) {
-        return true;
-    }
-    fNamedCaptureMap  = uhash_openSize(uhash_hashUnicodeString,     // Key hash function
-                                       uhash_compareUnicodeString,  // Key comparator function
-                                       uhash_compareLong,           // Value comparator function
-                                       7,                           // Initial table capacity
-                                       &fDeferredStatus);
-    if (U_FAILURE(fDeferredStatus)) {
-        return false;
-    }
 
     // fNamedCaptureMap owns its key strings, type (UnicodeString *)
     uhash_setKeyDeleter(fNamedCaptureMap, uprv_deleteUObject);
-    return true;
 }
+
 
 //--------------------------------------------------------------------------
 //
@@ -228,35 +219,35 @@ bool RegexPattern::initNamedCaptureMap() {
 //--------------------------------------------------------------------------
 void RegexPattern::zap() {
     delete fCompiledPat;
-    fCompiledPat = nullptr;
+    fCompiledPat = NULL;
     int i;
     for (i=1; i<fSets->size(); i++) {
         UnicodeSet *s;
         s = (UnicodeSet *)fSets->elementAt(i);
-        delete s;
+        if (s != NULL) {
+            delete s;
+        }
     }
     delete fSets;
-    fSets = nullptr;
+    fSets = NULL;
     delete[] fSets8;
-    fSets8 = nullptr;
+    fSets8 = NULL;
     delete fGroupMap;
-    fGroupMap = nullptr;
+    fGroupMap = NULL;
     delete fInitialChars;
-    fInitialChars = nullptr;
+    fInitialChars = NULL;
     delete fInitialChars8;
-    fInitialChars8 = nullptr;
-    if (fPattern != nullptr) {
+    fInitialChars8 = NULL;
+    if (fPattern != NULL) {
         utext_close(fPattern);
-        fPattern = nullptr;
+        fPattern = NULL;
     }
-    if (fPatternString != nullptr) {
+    if (fPatternString != NULL) {
         delete fPatternString;
-        fPatternString = nullptr;
+        fPatternString = NULL;
     }
-    if (fNamedCaptureMap != nullptr) {
-        uhash_close(fNamedCaptureMap);
-        fNamedCaptureMap = nullptr;
-    }
+    uhash_close(fNamedCaptureMap);
+    fNamedCaptureMap = NULL;
 }
 
 
@@ -289,21 +280,21 @@ RegexPattern  *RegexPattern::clone() const {
 //                                 characters can still be considered different.
 //
 //--------------------------------------------------------------------------
-bool    RegexPattern::operator ==(const RegexPattern &other) const {
+UBool   RegexPattern::operator ==(const RegexPattern &other) const {
     if (this->fFlags == other.fFlags && this->fDeferredStatus == other.fDeferredStatus) {
-        if (this->fPatternString != nullptr && other.fPatternString != nullptr) {
+        if (this->fPatternString != NULL && other.fPatternString != NULL) {
             return *(this->fPatternString) == *(other.fPatternString);
-        } else if (this->fPattern == nullptr) {
-            if (other.fPattern == nullptr) {
-                return true;
+        } else if (this->fPattern == NULL) {
+            if (other.fPattern == NULL) {
+                return TRUE;
             }
-        } else if (other.fPattern != nullptr) {
+        } else if (other.fPattern != NULL) {
             UTEXT_SETNATIVEINDEX(this->fPattern, 0);
             UTEXT_SETNATIVEINDEX(other.fPattern, 0);
             return utext_equals(this->fPattern, other.fPattern);
         }
     }
-    return false;
+    return FALSE;
 }
 
 //---------------------------------------------------------------------
@@ -318,7 +309,7 @@ RegexPattern::compile(const UnicodeString &regex,
                       UErrorCode           &status)
 {
     if (U_FAILURE(status)) {
-        return nullptr;
+        return NULL;
     }
 
     const uint32_t allFlags = UREGEX_CANON_EQ | UREGEX_CASE_INSENSITIVE | UREGEX_COMMENTS |
@@ -327,23 +318,23 @@ RegexPattern::compile(const UnicodeString &regex,
 
     if ((flags & ~allFlags) != 0) {
         status = U_REGEX_INVALID_FLAG;
-        return nullptr;
+        return NULL;
     }
 
     if ((flags & UREGEX_CANON_EQ) != 0) {
         status = U_REGEX_UNIMPLEMENTED;
-        return nullptr;
+        return NULL;
     }
 
     RegexPattern *This = new RegexPattern;
-    if (This == nullptr) {
+    if (This == NULL) {
         status = U_MEMORY_ALLOCATION_ERROR;
-        return nullptr;
+        return NULL;
     }
     if (U_FAILURE(This->fDeferredStatus)) {
         status = This->fDeferredStatus;
         delete This;
-        return nullptr;
+        return NULL;
     }
     This->fFlags = flags;
 
@@ -352,7 +343,7 @@ RegexPattern::compile(const UnicodeString &regex,
 
     if (U_FAILURE(status)) {
         delete This;
-        This = nullptr;
+        This = NULL;
     }
 
     return This;
@@ -369,7 +360,7 @@ RegexPattern::compile(UText                *regex,
                       UErrorCode           &status)
 {
     if (U_FAILURE(status)) {
-        return nullptr;
+        return NULL;
     }
 
     const uint32_t allFlags = UREGEX_CANON_EQ | UREGEX_CASE_INSENSITIVE | UREGEX_COMMENTS |
@@ -378,23 +369,23 @@ RegexPattern::compile(UText                *regex,
 
     if ((flags & ~allFlags) != 0) {
         status = U_REGEX_INVALID_FLAG;
-        return nullptr;
+        return NULL;
     }
 
     if ((flags & UREGEX_CANON_EQ) != 0) {
         status = U_REGEX_UNIMPLEMENTED;
-        return nullptr;
+        return NULL;
     }
 
     RegexPattern *This = new RegexPattern;
-    if (This == nullptr) {
+    if (This == NULL) {
         status = U_MEMORY_ALLOCATION_ERROR;
-        return nullptr;
+        return NULL;
     }
     if (U_FAILURE(This->fDeferredStatus)) {
         status = This->fDeferredStatus;
         delete This;
-        return nullptr;
+        return NULL;
     }
     This->fFlags = flags;
 
@@ -403,7 +394,7 @@ RegexPattern::compile(UText                *regex,
 
     if (U_FAILURE(status)) {
         delete This;
-        This = nullptr;
+        This = NULL;
     }
 
     return This;
@@ -477,7 +468,7 @@ uint32_t RegexPattern::flags() const {
 RegexMatcher *RegexPattern::matcher(const UnicodeString &input,
                                     UErrorCode          &status)  const {
     RegexMatcher    *retMatcher = matcher(status);
-    if (retMatcher != nullptr) {
+    if (retMatcher != NULL) {
         retMatcher->fDeferredStatus = status;
         retMatcher->reset(input);
     }
@@ -491,20 +482,20 @@ RegexMatcher *RegexPattern::matcher(const UnicodeString &input,
 //
 //---------------------------------------------------------------------
 RegexMatcher *RegexPattern::matcher(UErrorCode &status)  const {
-    RegexMatcher    *retMatcher = nullptr;
+    RegexMatcher    *retMatcher = NULL;
 
     if (U_FAILURE(status)) {
-        return nullptr;
+        return NULL;
     }
     if (U_FAILURE(fDeferredStatus)) {
         status = fDeferredStatus;
-        return nullptr;
+        return NULL;
     }
 
     retMatcher = new RegexMatcher(this);
-    if (retMatcher == nullptr) {
+    if (retMatcher == NULL) {
         status = U_MEMORY_ALLOCATION_ERROR;
-        return nullptr;
+        return NULL;
     }
     return retMatcher;
 }
@@ -522,11 +513,11 @@ UBool U_EXPORT2 RegexPattern::matches(const UnicodeString   &regex,
                     UParseError     &pe,
                     UErrorCode      &status) {
 
-    if (U_FAILURE(status)) {return false;}
+    if (U_FAILURE(status)) {return FALSE;}
 
     UBool         retVal;
-    RegexPattern *pat     = nullptr;
-    RegexMatcher *matcher = nullptr;
+    RegexPattern *pat     = NULL;
+    RegexMatcher *matcher = NULL;
 
     pat     = RegexPattern::compile(regex, 0, pe, status);
     matcher = pat->matcher(input, status);
@@ -546,11 +537,11 @@ UBool U_EXPORT2 RegexPattern::matches(UText                *regex,
                     UParseError     &pe,
                     UErrorCode      &status) {
 
-    if (U_FAILURE(status)) {return false;}
+    if (U_FAILURE(status)) {return FALSE;}
 
-    UBool         retVal  = false;
-    RegexPattern *pat     = nullptr;
-    RegexMatcher *matcher = nullptr;
+    UBool         retVal  = FALSE;
+    RegexPattern *pat     = NULL;
+    RegexMatcher *matcher = NULL;
 
     pat     = RegexPattern::compile(regex, 0, pe, status);
     matcher = pat->matcher(status);
@@ -574,18 +565,18 @@ UBool U_EXPORT2 RegexPattern::matches(UText                *regex,
 //
 //---------------------------------------------------------------------
 UnicodeString RegexPattern::pattern() const {
-    if (fPatternString != nullptr) {
+    if (fPatternString != NULL) {
         return *fPatternString;
-    } else if (fPattern == nullptr) {
-        return {};
+    } else if (fPattern == NULL) {
+        return UnicodeString();
     } else {
         UErrorCode status = U_ZERO_ERROR;
         int64_t nativeLen = utext_nativeLength(fPattern);
-        int32_t len16 = utext_extract(fPattern, 0, nativeLen, nullptr, 0, &status); // buffer overflow error
+        int32_t len16 = utext_extract(fPattern, 0, nativeLen, NULL, 0, &status); // buffer overflow error
         UnicodeString result;
 
         status = U_ZERO_ERROR;
-        char16_t *resultChars = result.getBuffer(len16);
+        UChar *resultChars = result.getBuffer(len16);
         utext_extract(fPattern, 0, nativeLen, resultChars, len16, &status); // unterminated warning
         result.releaseBuffer(len16);
 
@@ -602,10 +593,10 @@ UnicodeString RegexPattern::pattern() const {
 //
 //---------------------------------------------------------------------
 UText *RegexPattern::patternText(UErrorCode      &status) const {
-    if (U_FAILURE(status)) {return nullptr;}
+    if (U_FAILURE(status)) {return NULL;}
     status = U_ZERO_ERROR;
 
-    if (fPattern != nullptr) {
+    if (fPattern != NULL) {
         return fPattern;
     } else {
         RegexStaticSets::initGlobals(&status);
@@ -627,7 +618,7 @@ int32_t RegexPattern::groupNumberFromName(const UnicodeString &groupName, UError
     // No need to explicitly check for syntactically valid names.
     // Invalid ones will never be in the map, and the lookup will fail.
 
-    int32_t number = fNamedCaptureMap ? uhash_geti(fNamedCaptureMap, &groupName) : 0;
+    int32_t number = uhash_geti(fNamedCaptureMap, &groupName);
     if (number == 0) {
         status = U_REGEX_INVALID_CAPTURE_GROUP_NAME;
     }
@@ -655,7 +646,7 @@ int32_t  RegexPattern::split(const UnicodeString &input,
 {
     if (U_FAILURE(status)) {
         return 0;
-    }
+    };
 
     RegexMatcher  m(this);
     int32_t r = 0;
@@ -676,7 +667,7 @@ int32_t  RegexPattern::split(UText *input,
 {
     if (U_FAILURE(status)) {
         return 0;
-    }
+    };
 
     RegexMatcher  m(this);
     int32_t r = 0;
@@ -786,7 +777,7 @@ void   RegexPattern::dumpOp(int32_t index) const {
         {
             UnicodeString s;
             UnicodeSet *set = (UnicodeSet *)fSets->elementAt(val);
-            set->toPattern(s, true);
+            set->toPattern(s, TRUE);
             printf("%s", CStr(s)());
         }
         break;
@@ -799,8 +790,8 @@ void   RegexPattern::dumpOp(int32_t index) const {
                 printf("NOT ");
                 val &= ~URX_NEG_SET;
             }
-            UnicodeSet &set = RegexStaticSets::gStaticSets->fPropSets[val];
-            set.toPattern(s, true);
+            UnicodeSet *set = fStaticSets[val];
+            set->toPattern(s, TRUE);
             printf("%s", CStr(s)());
         }
         break;
@@ -831,7 +822,7 @@ void RegexPattern::dumpPattern() const {
         printf("   Initial match string: \"%s\"\n", CStr(initialString)());
     } else if (fStartType == START_SET) {
         UnicodeString s;
-        fInitialChars->toPattern(s, true);
+        fInitialChars->toPattern(s, TRUE);
         printf("    Match First Chars: %s\n", CStr(s)());
 
     } else if (fStartType == START_CHAR) {
@@ -844,11 +835,11 @@ void RegexPattern::dumpPattern() const {
     }
 
     printf("Named Capture Groups:\n");
-    if (!fNamedCaptureMap || uhash_count(fNamedCaptureMap) == 0) {
+    if (uhash_count(fNamedCaptureMap) == 0) {
         printf("   None\n");
     } else {
         int32_t pos = UHASH_FIRST;
-        const UHashElement *el = nullptr;
+        const UHashElement *el = NULL;
         while ((el = uhash_nextElement(fNamedCaptureMap, &pos))) {
             const UnicodeString *name = (const UnicodeString *)el->key.pointer;
             int32_t number = el->value.integer;

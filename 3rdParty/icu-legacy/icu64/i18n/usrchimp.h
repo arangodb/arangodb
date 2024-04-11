@@ -43,7 +43,7 @@
 #define isContinuation(CE) (((CE) & UCOL_CONTINUATION_MARKER) == UCOL_CONTINUATION_MARKER)
 
 /**
- * This indicates an error has occurred during processing or there are no more CEs 
+ * This indicates an error has occured during processing or there are no more CEs 
  * to be returned.
  */
 #define UCOL_PROCESSED_NULLORDER        ((int64_t)U_INT64_MAX)
@@ -101,7 +101,7 @@ public:
      * @param ixHigh a pointer to an int32_t to receive the iterator index after fetching the CE.
      * @param status A pointer to an UErrorCode to receive any errors.
      * @return The next collation elements ordering, otherwise returns UCOL_PROCESSED_NULLORDER 
-     *         if an error has occurred or if the end of string has been reached
+     *         if an error has occured or if the end of string has been reached
      */
     int64_t nextProcessed(int32_t *ixLow, int32_t *ixHigh, UErrorCode *status);
     /**
@@ -110,11 +110,11 @@ public:
      *
      * @param ixLow A pointer to an int32_t to receive the iterator index after fetching the CE
      * @param ixHigh A pointer to an int32_t to receiver the iterator index before fetching the CE
-     * @param status A pointer to an UErrorCode to receive any errors. Notably 
+     * @param status A pointer to an UErrorCode to receive any errors. Noteably 
      *               a U_BUFFER_OVERFLOW_ERROR is returned if the internal stack
      *               buffer has been exhausted.
      * @return The previous collation elements ordering, otherwise returns 
-     *         UCOL_PROCESSED_NULLORDER if an error has occurred or if the start of
+     *         UCOL_PROCESSED_NULLORDER if an error has occured or if the start of
      *         string has been reached.
      */
     int64_t previousProcessed(int32_t *ixLow, int32_t *ixHigh, UErrorCode *status);
@@ -127,6 +127,7 @@ private:
 U_NAMESPACE_END
 
 #define INITIAL_ARRAY_SIZE_       256
+#define MAX_TABLE_SIZE_           257
 
 struct USearch {
     // required since collation element iterator does not have a getText API
@@ -135,8 +136,8 @@ struct USearch {
           UBool               isOverlap;
           UBool               isCanonicalMatch;
           int16_t             elementComparisonType;
-          UBreakIterator     *internalBreakIter;  // internal character breakiterator, lazily created.
-          UBreakIterator     *breakIter;          // caller provided character breakiterator
+          UBreakIterator     *internalBreakIter;  //internal character breakiterator
+          UBreakIterator     *breakIter;
     // value USEARCH_DONE is the default value
     // if we are not at the start of the text or the end of the text, 
     // depending on the iteration direction and matchedIndex is USEARCH_DONE 
@@ -159,6 +160,9 @@ struct UPattern {
           int64_t             pcesBuffer[INITIAL_ARRAY_SIZE_];
           UBool               hasPrefixAccents;
           UBool               hasSuffixAccents;
+          int16_t             defaultShiftSize;
+          int16_t             shift[MAX_TABLE_SIZE_];
+          int16_t             backShift[MAX_TABLE_SIZE_];
 };
 
 struct UStringSearch {
@@ -178,6 +182,8 @@ struct UStringSearch {
            uint32_t            ceMask;
            uint32_t            variableTop;
            UBool               toShift;
+           UChar               canonicalPrefixAccents[INITIAL_ARRAY_SIZE_];
+           UChar               canonicalSuffixAccents[INITIAL_ARRAY_SIZE_];
 };
 
 /**
@@ -200,7 +206,7 @@ struct UStringSearch {
 * the text "\u00e6" 
 * @param strsrch string search data
 * @param status error status if any
-* @return true if an exact match is found, false otherwise
+* @return TRUE if an exact match is found, FALSE otherwise
 */
 U_CFUNC
 UBool usearch_handleNextExact(UStringSearch *strsrch, UErrorCode *status);
@@ -211,7 +217,7 @@ UBool usearch_handleNextExact(UStringSearch *strsrch, UErrorCode *status);
 * of beginning and ending accents if it overlaps that region.
 * @param strsrch string search data
 * @param status error status if any
-* @return true if a canonical match is found, false otherwise
+* @return TRUE if a canonical match is found, FALSE otherwise
 */
 U_CFUNC
 UBool usearch_handleNextCanonical(UStringSearch *strsrch, UErrorCode *status);
@@ -221,7 +227,7 @@ UBool usearch_handleNextCanonical(UStringSearch *strsrch, UErrorCode *status);
 * Comments follows from handleNextExact
 * @param strsrch string search data
 * @param status error status if any
-* @return True if a exact math is found, false otherwise.
+* @return True if a exact math is found, FALSE otherwise.
 */
 U_CFUNC
 UBool usearch_handlePreviousExact(UStringSearch *strsrch, UErrorCode *status);
@@ -232,7 +238,7 @@ UBool usearch_handlePreviousExact(UStringSearch *strsrch, UErrorCode *status);
 * of beginning and ending accents if it overlaps that region.
 * @param strsrch string search data
 * @param status error status if any
-* @return true if a canonical match is found, false otherwise
+* @return TRUE if a canonical match is found, FALSE otherwise
 */
 U_CFUNC
 UBool usearch_handlePreviousCanonical(UStringSearch *strsrch, 

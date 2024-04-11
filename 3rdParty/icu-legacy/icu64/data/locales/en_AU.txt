@@ -1,8 +1,8 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 en_AU{
     %%Parent{"en_001"}
+    ExemplarCharactersNumbers{"[↑]"}
     NumberElements{
         latn{
             symbols{
@@ -10,69 +10,74 @@ en_AU{
             }
         }
     }
+    Version{"2.1.48.43"}
     calendar{
-        generic{
-            DateTimePatterns{
-                "h:mm:ss a zzzz",
-                "h:mm:ss a z",
-                "h:mm:ss a",
-                "h:mm a",
-                "EEEE d MMMM y G",
-                "d MMMM y G",
-                "d MMM y G",
-                "dd/MM/y GGGGG",
-                "{1}, {0}",
-                "{1}, {0}",
-                "{1}, {0}",
-                "{1}, {0}",
-                "{1}, {0}",
+        chinese{
+            monthNames{
+                format{
+                    narrow{
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6",
+                        "7",
+                        "8",
+                        "9",
+                        "10",
+                        "11",
+                        "12",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "Mo1",
+                        "Mo2",
+                        "Mo3",
+                        "Mo4",
+                        "Mo5",
+                        "Mo6",
+                        "Mo7",
+                        "Mo8",
+                        "Mo9",
+                        "Mo10",
+                        "Mo11",
+                        "Mo12",
+                    }
+                    wide{
+                        "First Month",
+                        "Second Month",
+                        "Third Month",
+                        "Fourth Month",
+                        "Fifth Month",
+                        "Sixth Month",
+                        "Seventh Month",
+                        "Eighth Month",
+                        "Ninth Month",
+                        "Tenth Month",
+                        "Eleventh Month",
+                        "Twelfth Month",
+                    }
+                }
             }
+        }
+        generic{
             availableFormats{
-                GyMMMEEEEd{"EEEE d MMM y G"}
-                MMMEEEEd{"EEEE d MMM"}
-                MMMMEEEEd{"EEEE d MMMM"}
                 yMEd{"E, dd/MM/y"}
                 yMd{"dd/MM/y"}
-                yyyyMMMEEEEd{"EEEE d MMM y G"}
-                yyyyMMMMEEEEd{"EEEE d MMMM y G"}
             }
             intervalFormats{
-                GyMEd{
-                    G{"E dd/MM/y GGGGG – E dd/MM/y GGGGG"}
-                    M{"E dd/MM/y – E dd/MM/y GGGGG"}
-                    d{"E dd/MM/y – E dd/MM/y GGGGG"}
-                    y{"E dd/MM/y – E dd/MM/y GGGGG"}
-                }
-                GyMMMEd{
-                    G{"E d MMM y G – E d MMM y G"}
-                    M{"E d MMM – E d MMM y G"}
-                    d{"E d MMM – E d MMM y G"}
-                    y{"E d MMM y – E d MMM y G"}
-                }
                 MEd{
-                    M{"E, d/M – E, d/M"}
-                    d{"E, d/M – E, d/M"}
-                }
-                MMMEEEEd{
-                    M{"EEEE d MMM – EEEE d MMM"}
-                    d{"EEEE d MMM – EEEE d MMM"}
+                    M{"E, d/M – E, d/M"}
+                    d{"E, d/M – E, d/M"}
                 }
                 MMMEd{
-                    M{"E, d MMM – E, d MMM"}
-                    d{"E, d MMM – E, d MMM"}
-                }
-                yMMMEEEEd{
-                    M{"EEEE d MMM – EEEE d MMM y G"}
-                    d{"EEEE d MMM – EEEE d MMM y G"}
-                    y{"EEEE d MMM y – EEEE d MMM y G"}
+                    M{"E, d MMM – E, d MMM"}
+                    d{"E, d MMM – E, d MMM"}
                 }
                 yMMMEd{
-                    d{"E, d MMM – E, d MMM y G"}
-                }
-                yMMMMEEEEd{
-                    M{"EEEE d MMMM – EEEE d MMMM y G"}
-                    d{"EEEE d MMMM – EEEE d MMMM y G"}
-                    y{"EEEE d MMMM y – EEEE d MMMM y G"}
+                    d{"E, d MMM – E, d MMM y G"}
                 }
             }
         }
@@ -82,39 +87,23 @@ en_AU{
                 "pm",
             }
             DateTimePatterns{
-                "h:mm:ss a zzzz",
-                "h:mm:ss a z",
-                "h:mm:ss a",
-                "h:mm a",
-                "EEEE d MMMM y",
+                "h:mm:ss a zzzz",
+                "h:mm:ss a z",
+                "h:mm:ss a",
+                "h:mm a",
+                "EEEE, d MMMM y",
                 "d MMMM y",
                 "d MMM y",
                 "d/M/yy",
                 "{1}, {0}",
+                "{1} 'at' {0}",
+                "{1} 'at' {0}",
                 "{1}, {0}",
                 "{1}, {0}",
-                "{1}, {0}",
-                "{1}, {0}",
-            }
-            DateTimeSkeletons{
-                "ahmmsszzzz",
-                "ahmmssz",
-                "ahmmss",
-                "ahmm",
-                "yMMMMEEEEd",
-                "yMMMMd",
-                "yMMMd",
-                "yyMd",
             }
             availableFormats{
-                GyMMMEEEEd{"EEEE d MMM y G"}
-                GyMd{"d/M/y GGGGG"}
                 MEd{"E, d/M"}
-                MMMEEEEd{"EEEE d MMM"}
-                MMMMEEEEd{"EEEE d MMMM"}
                 Md{"d/M"}
-                yMMMEEEEd{"EEEE d MMM y"}
-                yMMMMEEEEd{"EEEE d MMMM y"}
             }
             dayNames{
                 format{
@@ -127,24 +116,53 @@ en_AU{
                         "F.",
                         "Sa.",
                     }
+                    short{
+                        "Su",
+                        "Mon",
+                        "Tu",
+                        "Wed",
+                        "Th",
+                        "Fri",
+                        "Sat",
+                    }
+                }
+                stand-alone{
+                    narrow{
+                        "Su.",
+                        "M.",
+                        "Tu.",
+                        "W.",
+                        "Th.",
+                        "F.",
+                        "Sa.",
+                    }
+                    short{
+                        "Su",
+                        "Mon",
+                        "Tu",
+                        "Wed",
+                        "Th",
+                        "Fri",
+                        "Sat",
+                    }
                 }
             }
             dayPeriod{
                 format{
                     abbreviated{
-                        afternoon1{"in the afternoon"}
-                        evening1{"in the evening"}
+                        afternoon1{"afternoon"}
+                        evening1{"evening"}
                         midnight{"midnight"}
-                        morning1{"in the morning"}
-                        night1{"at night"}
+                        morning1{"morning"}
+                        night1{"night"}
                         noon{"midday"}
                     }
                     narrow{
-                        afternoon1{"in the afternoon"}
-                        evening1{"in the evening"}
+                        afternoon1{"afternoon"}
+                        evening1{"evening"}
                         midnight{"midnight"}
-                        morning1{"in the morning"}
-                        night1{"at night"}
+                        morning1{"morning"}
+                        night1{"night"}
                         noon{"midday"}
                     }
                     wide{
@@ -166,55 +184,9 @@ en_AU{
                     wide{
                         noon{"midday"}
                     }
-                }
-            }
-            intervalFormats{
-                GyMEd{
-                    G{"E, d/M/y G – E, d/M/y G"}
-                    M{"E, d/M/y – E, d/M/y G"}
-                    d{"E, d/M/y – E, d/M/y G"}
-                    y{"E, d/M/y – E, d/M/y G"}
-                }
-                GyMMMEEEEd{
-                    G{"EEEE d MMM y G – EEEE d MMM y G"}
-                    M{"EEEE d MMM – EEEE d MMM y G"}
-                    d{"EEEE d MMM – EEEE d MMM y G"}
-                    y{"EEEE d MMM y – EEEE d MMM y G"}
-                }
-                GyMd{
-                    G{"d/M/y G – d/M/y G"}
-                    M{"d/M/y – d/M/y G"}
-                    d{"d/M/y – d/M/y G"}
-                    y{"d/M/y – d/M/y G"}
-                }
-                yMMMEEEEd{
-                    M{"EEEE d MMM – EEEE d MMM y"}
-                    d{"EEEE d – EEEE d MMM y"}
-                    y{"EEEE d MMM y – EEEE d MMM y"}
-                }
-                yMMMMEEEEd{
-                    M{"EEEE d MMMM – EEEE d MMMM y"}
-                    d{"EEEE d – EEEE d MMMM y"}
-                    y{"EEEE d MMMM y – EEEE d MMMM y"}
                 }
             }
             monthNames{
-                format{
-                    abbreviated{
-                        "Jan",
-                        "Feb",
-                        "Mar",
-                        "Apr",
-                        "May",
-                        "June",
-                        "July",
-                        "Aug",
-                        "Sept",
-                        "Oct",
-                        "Nov",
-                        "Dec",
-                    }
-                }
                 stand-alone{
                     abbreviated{
                         "Jan",
@@ -222,10 +194,10 @@ en_AU{
                         "Mar",
                         "Apr",
                         "May",
-                        "June",
-                        "July",
+                        "Jun",
+                        "Jul",
                         "Aug",
-                        "Sept",
+                        "Sep",
                         "Oct",
                         "Nov",
                         "Dec",
@@ -235,10 +207,8 @@ en_AU{
         }
         islamic{
             availableFormats{
-                Ed{"E d"}
-                M{"LL"}
-                MMMEd{"E, d MMM"}
-                yyyyM{"MM/y GGGGG"}
+                yMEd{"E, dd/MM/y"}
+                yMd{"dd/MM/y"}
             }
         }
     }
@@ -254,62 +224,125 @@ en_AU{
         upwards_arrows{"upward arrows"}
     }
     fields{
-        hour-narrow{
+        day{
+            relative{
+                "-1"{"yesterday"}
+                "0"{"today"}
+                "1"{"tomorrow"}
+            }
+        }
+        day-narrow{
             relativeTime{
                 future{
-                    one{"in {0} hr"}
+                    other{"in {0} days"}
+                }
+            }
+        }
+        fri-short{
+            relativeTime{
+                future{
+                    one{"in {0} Fri."}
+                    other{"in {0} Fri."}
+                }
+                past{
+                    one{"{0} Fri. ago"}
+                    other{"{0} Fri. ago"}
+                }
+            }
+        }
+        hour-narrow{
+            dn{"h"}
+            relativeTime{
+                future{
                     other{"in {0} hrs"}
                 }
                 past{
-                    one{"{0} hr ago"}
                     other{"{0} hrs ago"}
                 }
             }
         }
         hour-short{
+            dn{"h"}
             relativeTime{
                 future{
-                    one{"in {0} hr"}
                     other{"in {0} hrs"}
                 }
                 past{
-                    one{"{0} hr ago"}
                     other{"{0} hrs ago"}
                 }
             }
         }
         minute-narrow{
+            dn{"min."}
             relativeTime{
                 future{
-                    one{"in {0} min"}
+                    one{"in {0} min."}
                     other{"in {0} mins"}
                 }
                 past{
-                    one{"{0} min ago"}
+                    one{"{0} min. ago"}
                     other{"{0} mins ago"}
                 }
             }
         }
         minute-short{
+            dn{"min."}
             relativeTime{
                 future{
-                    one{"in {0} min"}
+                    one{"in {0} min."}
                     other{"in {0} mins"}
                 }
                 past{
-                    one{"{0} min ago"}
+                    one{"{0} min. ago"}
                     other{"{0} mins ago"}
+                }
+            }
+        }
+        mon-short{
+            relativeTime{
+                future{
+                    one{"in {0} Mon."}
+                    other{"in {0} Mon."}
+                }
+                past{
+                    one{"{0} Mon. ago"}
+                    other{"{0} Mon. ago"}
+                }
+            }
+        }
+        month-narrow{
+            dn{"mo."}
+            relativeTime{
+                future{
+                    one{"in {0} mo."}
+                    other{"in {0} mo."}
+                }
+                past{
+                    one{"{0} mo. ago"}
+                    other{"{0} mo. ago"}
+                }
+            }
+        }
+        month-short{
+            dn{"mo."}
+            relativeTime{
+                future{
+                    one{"in {0} mo."}
+                    other{"in {0} mo."}
+                }
+                past{
+                    one{"{0} mo. ago"}
+                    other{"{0} mo. ago"}
                 }
             }
         }
         quarter-narrow{
             relativeTime{
                 future{
-                    one{"in {0} qtr"}
                     other{"in {0} qtrs"}
                 }
                 past{
-                    one{"{0} qtr ago"}
+                    one{"in {0} qtr ago"}
                     other{"{0} qtrs ago"}
                 }
             }
@@ -317,7 +350,6 @@ en_AU{
         quarter-short{
             relativeTime{
                 future{
-                    one{"in {0} qtr"}
                     other{"in {0} qtrs"}
                 }
                 past{
@@ -326,38 +358,105 @@ en_AU{
                 }
             }
         }
-        second-narrow{
+        sat-short{
             relativeTime{
                 future{
-                    one{"in {0} sec"}
+                    one{"in {0} Sat."}
+                    other{"in {0} Sat."}
+                }
+                past{
+                    one{"{0} Sat. ago"}
+                    other{"{0} Sat. ago"}
+                }
+            }
+        }
+        second-narrow{
+            dn{"sec."}
+            relativeTime{
+                future{
+                    one{"in {0} sec."}
                     other{"in {0} secs"}
                 }
                 past{
-                    one{"{0} sec ago"}
+                    one{"{0} sec. ago"}
                     other{"{0} secs ago"}
                 }
             }
         }
         second-short{
+            dn{"sec."}
             relativeTime{
                 future{
-                    one{"in {0} sec"}
+                    one{"in {0} sec."}
                     other{"in {0} secs"}
                 }
                 past{
-                    one{"{0} sec ago"}
+                    one{"{0} sec. ago"}
                     other{"{0} secs ago"}
+                }
+            }
+        }
+        sun-short{
+            relativeTime{
+                future{
+                    one{"in {0} Sun."}
+                    other{"in {0} Sun."}
+                }
+                past{
+                    one{"{0} Sun. ago"}
+                    other{"{0} Sun. ago"}
+                }
+            }
+        }
+        thu-short{
+            relativeTime{
+                future{
+                    one{"in {0} Thu."}
+                    other{"in {0} Thu."}
+                }
+                past{
+                    one{"{0} Thu. ago"}
+                    other{"{0} Thu. ago"}
+                }
+            }
+        }
+        tue-short{
+            relativeTime{
+                future{
+                    one{"in {0} Tue."}
+                    other{"in {0} Tue."}
+                }
+                past{
+                    one{"{0} Tue. ago"}
+                    other{"{0} Tue. ago"}
+                }
+            }
+        }
+        wed-narrow{
+            relativeTime{
+                past{
+                    one{"{0} W ago"}
+                }
+            }
+        }
+        wed-short{
+            relativeTime{
+                future{
+                    one{"in {0} Wed."}
+                    other{"in {0} Wed."}
+                }
+                past{
+                    one{"{0} Wed. ago"}
+                    other{"{0} Wed. ago"}
                 }
             }
         }
         week-narrow{
             relativeTime{
                 future{
-                    one{"in {0} wk"}
                     other{"in {0} wks"}
                 }
                 past{
-                    one{"{0} wk ago"}
                     other{"{0} wks ago"}
                 }
             }
@@ -365,23 +464,25 @@ en_AU{
         week-short{
             relativeTime{
                 future{
-                    one{"in {0} wk"}
                     other{"in {0} wks"}
                 }
                 past{
-                    one{"{0} wk ago"}
                     other{"{0} wks ago"}
                 }
             }
         }
+        weekOfMonth-short{
+            dn{"wk of mo."}
+        }
+        weekdayOfMonth-short{
+            dn{"wkday of mo."}
+        }
         year-narrow{
             relativeTime{
                 future{
-                    one{"in {0} yr"}
                     other{"in {0} yrs"}
                 }
                 past{
-                    one{"{0} yr ago"}
                     other{"{0} yrs ago"}
                 }
             }
@@ -389,14 +490,23 @@ en_AU{
         year-short{
             relativeTime{
                 future{
-                    one{"in {0} yr"}
                     other{"in {0} yrs"}
                 }
                 past{
-                    one{"{0} yr ago"}
                     other{"{0} yrs ago"}
                 }
             }
+        }
+    }
+    listPattern{
+        or{
+            end{"{0} or {1}"}
+        }
+        standard{
+            end{"{0} and {1}"}
+        }
+        standard-short{
+            end{"{0} and {1}"}
         }
     }
 }

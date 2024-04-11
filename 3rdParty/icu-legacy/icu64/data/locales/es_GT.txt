@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 es_GT{
     %%Parent{"es_419"}
     NumberElements{
@@ -36,86 +35,39 @@ es_GT{
                         other{"¤0000M"}
                     }
                     10000000000{
-                        one{"¤00MRD"}
-                        other{"¤00MRD"}
+                        one{"¤00MRD "}
+                        other{"¤00MRD "}
                     }
                     100000000000{
-                        one{"¤000MRD"}
-                        other{"¤000MRD"}
-                    }
-                }
-                currencyFormat%alphaNextToNumber{
-                    1000{
-                        one{"¤ 0K"}
-                        other{"¤ 0K"}
-                    }
-                    10000{
-                        one{"¤ 00K"}
-                        other{"¤ 00K"}
-                    }
-                    100000{
-                        one{"¤ 000K"}
-                        other{"¤ 000K"}
-                    }
-                    1000000{
-                        one{"¤ 0M"}
-                        other{"¤ 0M"}
-                    }
-                    10000000{
-                        one{"¤ 00M"}
-                        other{"¤ 00M"}
-                    }
-                    100000000{
-                        one{"¤ 000M"}
-                        other{"¤ 000M"}
-                    }
-                    1000000000{
-                        one{"¤ 0000M"}
-                        other{"¤ 0000M"}
-                    }
-                    10000000000{
-                        one{"¤ 00MRD"}
-                        other{"¤ 00MRD"}
-                    }
-                    100000000000{
-                        one{"¤ 000MRD"}
-                        other{"¤ 000MRD"}
+                        one{"¤000MRD "}
+                        other{"¤000MRD "}
                     }
                 }
             }
         }
     }
+    Version{"2.1.47.70"}
     calendar{
         generic{
             DateTimePatterns{
-                "h:mm:ss a zzzz",
-                "h:mm:ss a z",
-                "h:mm:ss a",
-                "h:mm a",
+                "HH:mm:ss zzzz",
+                "HH:mm:ss z",
+                "HH:mm:ss",
+                "HH:mm",
                 "EEEE, d 'de' MMMM 'de' y G",
                 "d 'de' MMMM 'de' y G",
                 "d/MM/y G",
                 "d/MM/yy GGGGG",
+                "{1} {0}",
                 "{1}, {0}",
                 "{1}, {0}",
-                "{1}, {0}",
-                "{1}, {0}",
-                "{1}, {0}",
-            }
-            DateTimeSkeletons{
-                "ahmmsszzzz",
-                "ahmmssz",
-                "ahmmss",
-                "ahmm",
-                "GyMMMMEEEEd",
-                "GyMMMMd",
-                "GyMMd",
-                "GGGGGyyMMd",
+                "{1} {0}",
+                "{1} {0}",
             }
             intervalFormats{
                 MEd{
-                    M{"E d/MM – E d/MM"}
-                    d{"E d/MM – E d/MM"}
+                    M{"E d/MM – E d/MM"}
+                    d{"E d/MM – E d/MM"}
                 }
                 MMMEd{
                     M{"E d 'de' MMM 'al' E d 'de' MMM"}
@@ -125,18 +77,18 @@ es_GT{
                     M{"d 'de' MMM 'al' d 'de' MMM"}
                 }
                 Md{
-                    M{"d/MM – d/MM"}
-                    d{"d/MM – d/MM"}
+                    M{"d/MM – d/MM"}
+                    d{"d/MM – d/MM"}
                 }
                 fallback{"{0} a el {1}"}
                 yM{
-                    M{"MM/y – MM/y"}
-                    y{"MM/y – MM/y"}
+                    M{"MM/y – MM/y"}
+                    y{"MM/y – MM/y"}
                 }
                 yMEd{
-                    M{"E d/MM/y – E d/MM/y"}
-                    d{"E d/MM/y – E d/MM/y"}
-                    y{"E d/MM/y – E d/MM/y"}
+                    M{"E d/MM/y – E d/MM/y"}
+                    d{"E d/MM/y – E d/MM/y"}
+                    y{"E d/MM/y – E d/MM/y"}
                 }
                 yMMM{
                     M{"MMM–MMM 'de' y"}
@@ -153,9 +105,9 @@ es_GT{
                     y{"d 'de' MMM 'de' y 'al' d 'de' MMM 'de' y"}
                 }
                 yMd{
-                    M{"d/MM/y – d/MM/y"}
-                    d{"d/MM/y – d/MM/y"}
-                    y{"d/MM/y – d/MM/y"}
+                    M{"d/MM/y – d/MM/y"}
+                    d{"d/MM/y – d/MM/y"}
+                    y{"d/MM/y – d/MM/y"}
                 }
             }
         }
@@ -165,43 +117,33 @@ es_GT{
                 "p. m.",
             }
             AmPmMarkersAbbr{
-                "a. m.",
-                "p. m.",
+                "a. m.",
+                "p. m.",
             }
             DateTimePatterns{
-                "h:mm:ss a zzzz",
-                "h:mm:ss a z",
-                "h:mm:ss a",
-                "h:mm a",
+                "HH:mm:ss zzzz",
+                "HH:mm:ss z",
+                "HH:mm:ss",
+                "HH:mm",
                 "EEEE, d 'de' MMMM 'de' y",
                 "d 'de' MMMM 'de' y",
                 "d/MM/y",
                 "d/MM/yy",
+                "{1} {0}",
                 "{1}, {0}",
                 "{1}, {0}",
-                "{1}, {0}",
-                "{1}, {0}",
-                "{1}, {0}",
-            }
-            DateTimeSkeletons{
-                "ahmmsszzzz",
-                "ahmmssz",
-                "ahmmss",
-                "ahmm",
-                "yMMMMEEEEd",
-                "yMMMMd",
-                "yMMd",
-                "yyMMd",
+                "{1} {0}",
+                "{1} {0}",
             }
             dayPeriod{
                 stand-alone{
                     abbreviated{
-                        am{"a. m."}
-                        pm{"p. m."}
+                        am{"a. m."}
+                        pm{"p. m."}
                     }
                     narrow{
-                        am{"a. m."}
-                        pm{"p. m."}
+                        am{"a. m."}
+                        pm{"p. m."}
                     }
                     wide{
                         am{"a. m."}
@@ -211,8 +153,8 @@ es_GT{
             }
             intervalFormats{
                 MEd{
-                    M{"E d/MM – E d/MM"}
-                    d{"E d/MM – E d/MM"}
+                    M{"E d/MM – E d/MM"}
+                    d{"E d/MM – E d/MM"}
                 }
                 MMMEd{
                     M{"E d 'de' MMM 'al' E d 'de' MMM"}
@@ -222,24 +164,24 @@ es_GT{
                     M{"d 'de' MMM 'al' d 'de' MMM"}
                 }
                 Md{
-                    M{"d/MM – d/MM"}
-                    d{"d/MM – d/MM"}
+                    M{"d/MM – d/MM"}
+                    d{"d/MM – d/MM"}
                 }
                 hm{
-                    h{"h:mm–h:mm a"}
-                    m{"h:mm–h:mm a"}
+                    h{"h:mm–h:mm a"}
+                    m{"h:mm–h:mm a"}
                 }
                 y{
                     y{"y 'al' y"}
                 }
                 yM{
-                    M{"MM/y – MM/y"}
-                    y{"MM/y – MM/y"}
+                    M{"MM/y – MM/y"}
+                    y{"MM/y – MM/y"}
                 }
                 yMEd{
-                    M{"E d/MM/y – E d/MM/y"}
-                    d{"E d/MM/y – E d/MM/y"}
-                    y{"E d/MM/y – E d/MM/y"}
+                    M{"E d/MM/y – E d/MM/y"}
+                    d{"E d/MM/y – E d/MM/y"}
+                    y{"E d/MM/y – E d/MM/y"}
                 }
                 yMMM{
                     y{"MMM 'de' y 'a' MMM 'de' y"}
@@ -254,14 +196,23 @@ es_GT{
                     y{"d 'de' MMM 'de' y 'al' d 'de' MMM 'de' y"}
                 }
                 yMd{
-                    M{"d/MM/y – d/MM/y"}
-                    d{"d/MM/y – d/MM/y"}
-                    y{"d/MM/y – d/MM/y"}
+                    M{"d/MM/y – d/MM/y"}
+                    d{"d/MM/y – d/MM/y"}
+                    y{"d/MM/y – d/MM/y"}
                 }
             }
         }
     }
     fields{
+        day{
+            relative{
+                "-1"{"ayer"}
+                "-2"{"anteayer"}
+                "0"{"hoy"}
+                "1"{"mañana"}
+                "2"{"pasado mañana"}
+            }
+        }
         dayperiod{
             dn{"a. m./p. m."}
         }

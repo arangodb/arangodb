@@ -14,67 +14,69 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
   </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC71.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC71.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC71.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC71.props" />
+  </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
     <_ProjectFileVersion>10.0.30319.1</_ProjectFileVersion>
-    <OutDir>.\$(Platform)\$(Configuration)\</OutDir>
-    <IntDir>.\$(Platform)\$(Configuration)\</IntDir>
-    <!-- The ICU projects use "Win32" to mean "x86", so we need to special case it. -->
-    <OutDir Condition="'$(Platform)'=='Win32'">.\x86\$(Configuration)\</OutDir>
-    <IntDir Condition="'$(Platform)'=='Win32'">.\x86\$(Configuration)\</IntDir>
-    <!-- Disable Incremental Linking for Release builds as it prevents Link-time Code Generation -->
-    <LinkIncremental Condition="'$(Configuration)'=='Debug'">true</LinkIncremental>
-    <LinkIncremental Condition="'$(Configuration)'=='Release'">false</LinkIncremental>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">.\..\..\..\lib\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">.\x86\Release\</IntDir>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</LinkIncremental>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.\..\..\..\lib\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">.\x86\Debug\</IntDir>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</LinkIncremental>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.\x64\Release\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|x64'">.\x64\Release\</IntDir>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</LinkIncremental>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.\x64\Debug\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">.\x64\Debug\</IntDir>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</LinkIncremental>
   </PropertyGroup>
   <!-- Options that are common to *all* project configurations -->
   <ItemDefinitionGroup>
     <ClCompile>
-      <AdditionalIncludeDirectories>..\..\..\include;..\..\common;..\..\i18n;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+       <AdditionalIncludeDirectories>..\..\..\include;..\..\common;..\..\i18n;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions>U_TOOLUTIL_IMPLEMENTATION;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <DisableLanguageExtensions>false</DisableLanguageExtensions>
       <WarningLevel>Level3</WarningLevel>
-      <CompileAs>Default</CompileAs>
     </ClCompile>
-  </ItemDefinitionGroup>
-  <!-- Options that are common to all 'Debug' project configurations -->
-  <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
-    <ClCompile>
-      <BrowseInformation>true</BrowseInformation>
-      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
-      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
-    </ClCompile>
-    <Link>
-      <AdditionalDependencies>icuucd.lib;icuind.lib;%(AdditionalDependencies)</AdditionalDependencies>
-    </Link>
-  </ItemDefinitionGroup>
-  <!-- Options that are common to all 'Release' project configurations -->
-  <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
-    <ClCompile>
-      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
-      <FunctionLevelLinking>true</FunctionLevelLinking>
-    </ClCompile>
-    <Link>
-      <AdditionalDependencies>icuuc.lib;icuin.lib;%(AdditionalDependencies)</AdditionalDependencies>
-    </Link>
-  </ItemDefinitionGroup>
-  <!-- Options that are common to all 'Win32' project configurations -->
-  <ItemDefinitionGroup Condition="'$(Platform)'=='Win32'">
-    <ClCompile>
-      <PrecompiledHeaderOutputFile>.\x86\$(Configuration)/toolutil.pch</PrecompiledHeaderOutputFile>
-      <AssemblerListingLocation>.\x86\$(Configuration)/</AssemblerListingLocation>
-      <ObjectFileName>.\x86\$(Configuration)/</ObjectFileName>
-      <ProgramDataBaseFileName>.\x86\$(Configuration)/</ProgramDataBaseFileName>
-    </ClCompile>
-    <Link>
-      <AdditionalLibraryDirectories>..\..\..\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-    </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Midl>
       <TypeLibraryName>.\..\..\..\lib\icutu.tlb</TypeLibraryName>
     </Midl>
+    <ClCompile>
+      <WholeProgramOptimization>true</WholeProgramOptimization>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <PrecompiledHeaderOutputFile>.\x86\Release/toolutil.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>.\x86\Release/</AssemblerListingLocation>
+      <ObjectFileName>.\x86\Release/</ObjectFileName>
+      <ProgramDataBaseFileName>.\x86\Release/</ProgramDataBaseFileName>
+      <CompileAs>Default</CompileAs>
+    </ClCompile>
     <Link>
-      <OutputFile>..\..\..\bin\icutu$(IcuMajorVersion).dll</OutputFile>
+      <OutputFile>..\..\..\bin\icutu64.dll</OutputFile>
+      <AdditionalDependencies>icuuc.lib;icuin.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\..\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ProgramDatabaseFile>.\..\..\..\lib\icutu.pdb</ProgramDatabaseFile>
+      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <BaseAddress>0x4ac00000</BaseAddress>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>
       </DataExecutionPrevention>
       <ImportLibrary>..\..\..\lib\icutu.lib</ImportLibrary>
@@ -84,24 +86,25 @@
     <Midl>
       <TypeLibraryName>.\..\..\..\lib\icutud.tlb</TypeLibraryName>
     </Midl>
+    <ClCompile>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <PrecompiledHeaderOutputFile>.\x86\Debug/toolutil.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>.\x86\Debug/</AssemblerListingLocation>
+      <ObjectFileName>.\x86\Debug/</ObjectFileName>
+      <ProgramDataBaseFileName>.\x86\Debug/</ProgramDataBaseFileName>
+      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+      <CompileAs>Default</CompileAs>
+    </ClCompile>
     <Link>
-      <OutputFile>..\..\..\bin\icutu$(IcuMajorVersion)d.dll</OutputFile>
+      <OutputFile>..\..\..\bin\icutu64d.dll</OutputFile>
+      <AdditionalDependencies>icuucd.lib;icuind.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\..\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ProgramDatabaseFile>.\..\..\..\lib\icutud.pdb</ProgramDatabaseFile>
+      <BaseAddress>0x4ac00000</BaseAddress>
+      <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <DataExecutionPrevention>
       </DataExecutionPrevention>
       <ImportLibrary>..\..\..\lib\icutud.lib</ImportLibrary>
-    </Link>
-  </ItemDefinitionGroup>
-  <!-- Options that are common to all 'x64' project configurations -->
-  <ItemDefinitionGroup Condition="'$(Platform)'=='x64'">
-    <ClCompile>
-      <PrecompiledHeaderOutputFile>.\x64\$(Configuration)/toolutil.pch</PrecompiledHeaderOutputFile>
-      <AssemblerListingLocation>.\x64\$(Configuration)/</AssemblerListingLocation>
-      <ObjectFileName>.\x64\$(Configuration)/</ObjectFileName>
-      <ProgramDataBaseFileName>.\x64\$(Configuration)/</ProgramDataBaseFileName>
-    </ClCompile>
-    <Link>
-      <AdditionalLibraryDirectories>..\..\..\lib64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -110,10 +113,21 @@
     </Midl>
     <ClCompile>
       <WholeProgramOptimization>true</WholeProgramOptimization>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <PrecompiledHeaderOutputFile>.\x64\Release/toolutil.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>.\x64\Release/</AssemblerListingLocation>
+      <ObjectFileName>.\x64\Release/</ObjectFileName>
+      <ProgramDataBaseFileName>.\x64\Release/</ProgramDataBaseFileName>
+      <CompileAs>Default</CompileAs>
     </ClCompile>
     <Link>
-      <OutputFile>..\..\..\bin64\icutu$(IcuMajorVersion).dll</OutputFile>
+      <OutputFile>..\..\..\bin64\icutu64.dll</OutputFile>
+      <AdditionalDependencies>icuuc.lib;icuin.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\..\lib64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ProgramDatabaseFile>.\..\..\..\lib64\icutu.pdb</ProgramDatabaseFile>
+      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <BaseAddress>0x4ac00000</BaseAddress>
       <ImportLibrary>..\..\..\lib64\icutu.lib</ImportLibrary>
     </Link>
   </ItemDefinitionGroup>
@@ -121,94 +135,50 @@
     <Midl>
       <TypeLibraryName>.\..\..\..\lib64\icutud.tlb</TypeLibraryName>
     </Midl>
+    <ClCompile>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <PrecompiledHeaderOutputFile>.\x64\Debug/toolutil.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>.\x64\Debug/</AssemblerListingLocation>
+      <ObjectFileName>.\x64\Debug/</ObjectFileName>
+      <ProgramDataBaseFileName>.\x64\Debug/</ProgramDataBaseFileName>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <CompileAs>Default</CompileAs>
+    </ClCompile>
     <Link>
-      <OutputFile>..\..\..\bin64\icutu$(IcuMajorVersion)d.dll</OutputFile>
+      <OutputFile>..\..\..\bin64\icutu64d.dll</OutputFile>
+      <AdditionalDependencies>icuucd.lib;icuind.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\..\lib64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ProgramDatabaseFile>.\..\..\..\lib64\icutud.pdb</ProgramDatabaseFile>
+      <BaseAddress>0x4ac00000</BaseAddress>
       <ImportLibrary>..\..\..\lib64\icutud.lib</ImportLibrary>
     </Link>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Platform)'=='ARM'">
-    <ClCompile>
-      <PrecompiledHeaderOutputFile>.\ARM\$(Configuration)/toolutil.pch</PrecompiledHeaderOutputFile>
-      <AssemblerListingLocation>.\ARM\$(Configuration)/</AssemblerListingLocation>
-      <ObjectFileName>.\ARM\$(Configuration)/</ObjectFileName>
-      <ProgramDataBaseFileName>.\ARM\$(Configuration)/</ProgramDataBaseFileName>
-    </ClCompile>
-    <Link>
-      <AdditionalLibraryDirectories>.\..\..\..\libARM;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-    </Link>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">
-    <Midl>
-      <TypeLibraryName>..\..\..\libARM\icutu.tlb</TypeLibraryName>
-    </Midl>
-    <Link>
-      <OutputFile>..\..\..\binARM\icutu$(IcuMajorVersion).dll</OutputFile>
-      <ProgramDatabaseFile>.\..\..\..\libARM\icutu.pdb</ProgramDatabaseFile>
-      <ImportLibrary>..\..\..\libARM\icutu.lib</ImportLibrary>
-    </Link>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM'">
-    <Midl>
-      <TypeLibraryName>.\..\..\..\libARM\icutud.tlb</TypeLibraryName>
-    </Midl>
-    <ClCompile>
-      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-    </ClCompile>
-    <Link>
-      <OutputFile>..\..\..\binARM\icutu$(IcuMajorVersion)d.dll</OutputFile>
-      <ProgramDatabaseFile>.\..\..\..\libARM\icutud.pdb</ProgramDatabaseFile>
-      <ImportLibrary>..\..\..\libARM\icutud.lib</ImportLibrary>
-    </Link>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Platform)'=='ARM64'">
-    <ClCompile>
-      <PrecompiledHeaderOutputFile>.\ARM64\$(Configuration)/toolutil.pch</PrecompiledHeaderOutputFile>
-      <AssemblerListingLocation>.\ARM64\$(Configuration)/</AssemblerListingLocation>
-      <ObjectFileName>.\ARM64\$(Configuration)/</ObjectFileName>
-      <ProgramDataBaseFileName>.\ARM64\$(Configuration)/</ProgramDataBaseFileName>
-    </ClCompile>
-    <Link>
-      <AdditionalLibraryDirectories>.\..\..\..\libARM64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-    </Link>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
-    <Midl>
-      <TypeLibraryName>.\..\..\..\libARM64\icutu.tlb</TypeLibraryName>
-    </Midl>
-    <Link>
-      <OutputFile>..\..\..\binARM64\icutu$(IcuMajorVersion).dll</OutputFile>
-      <ProgramDatabaseFile>.\..\..\..\libARM64\icutu.pdb</ProgramDatabaseFile>
-      <ImportLibrary>..\..\..\libARM64\icutu.lib</ImportLibrary>
-    </Link>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
-    <Midl>
-      <TypeLibraryName>.\..\..\..\libARM64\icutud.tlb</TypeLibraryName>
-    </Midl>
-    <ClCompile>
-      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-    </ClCompile>
-    <Link>
-      <OutputFile>..\..\..\binARM64\icutu$(IcuMajorVersion)d.dll</OutputFile>
-      <ProgramDatabaseFile>.\..\..\..\libARM64\icutud.pdb</ProgramDatabaseFile>
-      <ImportLibrary>..\..\..\libARM64\icutud.lib</ImportLibrary>
-    </Link>
-  </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="collationinfo.cpp" />
+    <ClCompile Include="collationinfo.cpp">
+      <DisableLanguageExtensions>false</DisableLanguageExtensions>
+    </ClCompile>
     <ClCompile Include="denseranges.cpp" />
     <ClCompile Include="filestrm.cpp" />
     <ClCompile Include="filetools.cpp" />
     <ClCompile Include="flagparser.cpp" />
     <ClCompile Include="package.cpp" />
-    <ClCompile Include="pkg_genc.cpp" />
-    <ClCompile Include="pkg_gencmn.cpp" />
+    <ClCompile Include="pkg_genc.cpp">
+      <DisableLanguageExtensions>false</DisableLanguageExtensions>
+    </ClCompile>
+    <ClCompile Include="pkg_gencmn.cpp">
+      <DisableLanguageExtensions>false</DisableLanguageExtensions>
+    </ClCompile>
     <ClCompile Include="pkg_icu.cpp" />
     <ClCompile Include="pkgitems.cpp" />
-    <ClCompile Include="ppucd.cpp" />
-    <ClCompile Include="swapimpl.cpp" />
-    <ClCompile Include="toolutil.cpp" />
+    <ClCompile Include="ppucd.cpp">
+      <DisableLanguageExtensions>false</DisableLanguageExtensions>
+    </ClCompile>
+    <ClCompile Include="swapimpl.cpp">
+      <DisableLanguageExtensions>false</DisableLanguageExtensions>
+    </ClCompile>
+    <ClCompile Include="toolutil.cpp">
+      <DisableLanguageExtensions>false</DisableLanguageExtensions>
+    </ClCompile>
     <ClCompile Include="ucbuf.cpp" />
     <ClCompile Include="ucm.cpp" />
     <ClCompile Include="ucmstate.cpp" />
@@ -216,10 +186,18 @@
     <ClCompile Include="uoptions.cpp" />
     <ClCompile Include="uparse.cpp" />
     <ClCompile Include="writesrc.cpp" />
-    <ClCompile Include="xmlparser.cpp" />
-    <ClCompile Include="dbgutil.cpp" />
-    <ClCompile Include="udbgutil.cpp" />
-    <ClCompile Include="ucln_tu.cpp" />
+    <ClCompile Include="xmlparser.cpp">
+      <DisableLanguageExtensions>false</DisableLanguageExtensions>
+    </ClCompile>
+    <ClCompile Include="dbgutil.cpp">
+      <DisableLanguageExtensions>false</DisableLanguageExtensions>
+    </ClCompile>
+    <ClCompile Include="udbgutil.cpp">
+      <DisableLanguageExtensions>false</DisableLanguageExtensions>
+    </ClCompile>
+    <ClCompile Include="ucln_tu.cpp">
+      <DisableLanguageExtensions>false</DisableLanguageExtensions>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="collationinfo.h" />

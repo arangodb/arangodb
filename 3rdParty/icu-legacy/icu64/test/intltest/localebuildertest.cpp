@@ -25,7 +25,6 @@ void LocaleBuilderTest::runIndexedTest( int32_t index, UBool exec, const char* &
     TESTCASE_AUTO(TestAddUnicodeLocaleAttributeIllFormed);
     TESTCASE_AUTO(TestLocaleBuilder);
     TESTCASE_AUTO(TestLocaleBuilderBasic);
-    TESTCASE_AUTO(TestLocaleBuilderBasicWithExtensionsOnDefaultLocale);
     TESTCASE_AUTO(TestPosixCases);
     TESTCASE_AUTO(TestSetExtensionOthers);
     TESTCASE_AUTO(TestSetExtensionPU);
@@ -56,19 +55,8 @@ void LocaleBuilderTest::runIndexedTest( int32_t index, UBool exec, const char* &
 
 void LocaleBuilderTest::Verify(LocaleBuilder& bld, const char* expected, const char* msg) {
     UErrorCode status = U_ZERO_ERROR;
-    UErrorCode copyStatus = U_ZERO_ERROR;
-    UErrorCode errorStatus = U_ILLEGAL_ARGUMENT_ERROR;
-    if (bld.copyErrorTo(copyStatus)) {
-        errln(msg, u_errorName(copyStatus));
-    }
-    if (!bld.copyErrorTo(errorStatus) || errorStatus != U_ILLEGAL_ARGUMENT_ERROR) {
-        errln("Should always get the previous error and return false");
-    }
     Locale loc = bld.build(status);
     if (U_FAILURE(status)) {
-        errln(msg, u_errorName(status));
-    }
-    if (status != copyStatus) {
         errln(msg, u_errorName(status));
     }
     std::string tag = loc.toLanguageTag<std::string>(status);
@@ -83,7 +71,7 @@ void LocaleBuilderTest::Verify(LocaleBuilder& bld, const char* expected, const c
 
 void LocaleBuilderTest::TestLocaleBuilder() {
     // The following test data are copy from
-    // icu4j/main/core/src/test/java/com/ibm/icu/dev/test/util/LocaleBuilderTest.java
+    // icu4j/main/tests/core/src/com/ibm/icu/dev/test/util/LocaleBuilderTest.java
     // "L": +1 = language
     // "S": +1 = script
     // "R": +1 = region
@@ -137,7 +125,7 @@ void LocaleBuilderTest::TestLocaleBuilder() {
         {"U", "ja_JP@calendar=japanese;currency=JPY", "E", "u",
           "attr1-ca-gregory", "T", "ja-JP-u-attr1-ca-gregory",
           "ja_JP@attribute=attr1;calendar=gregorian"},
-        {"U", "en@colnumeric=yes", "K", "kn", "true", "T", "en-u-kn",
+        {"U", "en@colnumeric=yes", "K", "kn", "true", "T", "en-u-kn-true",
           "en@colnumeric=yes"},
         {"L", "th", "R", "th", "K", "nu", "thai", "T", "th-TH-u-nu-thai",
           "th_TH@numbers=thai"},
@@ -153,7 +141,7 @@ void LocaleBuilderTest::TestLocaleBuilder() {
         // However, once the legacy keyword is translated back to BCP 47 u extension, key "0a" is unknown,
         // so "yes" is preserved - not mapped to "true". We could change the code to automatically transform
         // key = alphanum alpha
-        {"L", "en", "E", "u", "bbb-aaa-0a", "T", "en-u-aaa-bbb-0a",
+        {"L", "en", "E", "u", "bbb-aaa-0a", "T", "en-u-aaa-bbb-0a-yes",
          "en@0a=yes;attribute=aaa-bbb"},
         {"L", "fr", "R", "FR", "P", "Yoshito-ICU", "T", "fr-FR-x-yoshito-icu",
           "fr_FR@x=yoshito-icu"},
@@ -167,13 +155,13 @@ void LocaleBuilderTest::TestLocaleBuilder() {
         {"L", "en", "K", "tz", "usnyc", "R", "US", "T", "en-US-u-tz-usnyc",
           "en_US@timezone=America/New_York"},
         {"L", "de", "K", "co", "phonebk", "K", "ks", "level1", "K", "kk",
-          "true", "T", "de-u-co-phonebk-kk-ks-level1",
+          "true", "T", "de-u-co-phonebk-kk-true-ks-level1",
           "de@collation=phonebook;colnormalization=yes;colstrength=primary"},
         {"L", "en", "R", "US", "K", "ca", "gregory", "T", "en-US-u-ca-gregory",
           "en_US@calendar=gregorian"},
         {"L", "en", "R", "US", "K", "cal", "gregory", "X"},
         {"L", "en", "R", "US", "K", "ca", "gregorian", "X"},
-        {"L", "en", "R", "US", "K", "kn", "true", "T", "en-US-u-kn",
+        {"L", "en", "R", "US", "K", "kn", "true", "T", "en-US-u-kn-true",
           "en_US@colnumeric=yes"},
         {"B", "de-DE-u-co-phonebk", "C", "L", "pt", "T", "pt", "pt"},
         {"B", "ja-jp-u-ca-japanese", "N", "T", "ja-JP", "ja_JP"},
@@ -202,67 +190,39 @@ void LocaleBuilderTest::TestLocaleBuilder() {
         status = U_ZERO_ERROR;
         bld.clear();
         while (true) {
-            status = U_ZERO_ERROR;
-            UErrorCode copyStatus = U_ZERO_ERROR;
             method = testCase[i++];
             if (strcmp("L", method) == 0) {
-                bld.setLanguage(testCase[i++]);
-                bld.copyErrorTo(copyStatus);
-                bld.build(status);
+                bld.setLanguage(testCase[i++]).build(status);
             } else if (strcmp("S", method) == 0) {
-                bld.setScript(testCase[i++]);
-                bld.copyErrorTo(copyStatus);
-                bld.build(status);
+                bld.setScript(testCase[i++]).build(status);
             } else if (strcmp("R", method) == 0) {
-                bld.setRegion(testCase[i++]);
-                bld.copyErrorTo(copyStatus);
-                bld.build(status);
+                bld.setRegion(testCase[i++]).build(status);
             } else if (strcmp("V", method) == 0) {
-                bld.setVariant(testCase[i++]);
-                bld.copyErrorTo(copyStatus);
-                bld.build(status);
+                bld.setVariant(testCase[i++]).build(status);
             } else if (strcmp("K", method) == 0) {
                 const char* key = testCase[i++];
                 const char* type = testCase[i++];
-                bld.setUnicodeLocaleKeyword(key, type);
-                bld.copyErrorTo(copyStatus);
-                bld.build(status);
+                bld.setUnicodeLocaleKeyword(key, type).build(status);
             } else if (strcmp("A", method) == 0) {
-                bld.addUnicodeLocaleAttribute(testCase[i++]);
-                bld.copyErrorTo(copyStatus);
-                bld.build(status);
+                bld.addUnicodeLocaleAttribute(testCase[i++]).build(status);
             } else if (strcmp("E", method) == 0) {
                 const char* key = testCase[i++];
                 const char* value = testCase[i++];
-                bld.setExtension(key[0], value);
-                bld.copyErrorTo(copyStatus);
-                bld.build(status);
+                bld.setExtension(key[0], value).build(status);
             } else if (strcmp("P", method) == 0) {
-                bld.setExtension('x', testCase[i++]);
-                bld.copyErrorTo(copyStatus);
-                bld.build(status);
+                bld.setExtension('x', testCase[i++]).build(status);
             } else if (strcmp("U", method) == 0) {
-                bld.setLocale(Locale(testCase[i++]));
-                bld.copyErrorTo(copyStatus);
-                bld.build(status);
+                bld.setLocale(Locale(testCase[i++])).build(status);
             } else if (strcmp("B", method) == 0) {
-                bld.setLanguageTag(testCase[i++]);
-                bld.copyErrorTo(copyStatus);
-                bld.build(status);
+                bld.setLanguageTag(testCase[i++]).build(status);
             }
             // clear / remove
             else if (strcmp("C", method) == 0) {
-                bld.clear();
-                bld.copyErrorTo(copyStatus);
-                bld.build(status);
+                bld.clear().build(status);
             } else if (strcmp("N", method) == 0) {
-                bld.clearExtensions();
-                bld.copyErrorTo(copyStatus);
-                bld.build(status);
+                bld.clearExtensions().build(status);
             } else if (strcmp("D", method) == 0) {
-                bld.removeUnicodeLocaleAttribute(testCase[i++]);
-                bld.copyErrorTo(copyStatus);
-                bld.build(status);
+                bld.removeUnicodeLocaleAttribute(testCase[i++]).build(status);
             }
             // result
             else if (strcmp("X", method) == 0) {
@@ -272,9 +232,6 @@ void LocaleBuilderTest::TestLocaleBuilder() {
             } else if (strcmp("T", method) == 0) {
                 status = U_ZERO_ERROR;
                 Locale loc = bld.build(status);
-                if (status != copyStatus) {
-                    errln("copyErrorTo not matching");
-                }
                 if (U_FAILURE(status) ||
                     strcmp(loc.getName(), testCase[i + 1]) != 0) {
                     errln("FAIL: Wrong locale ID - %s %s %s", loc.getName(),
@@ -287,12 +244,9 @@ void LocaleBuilderTest::TestLocaleBuilder() {
                 }
                 break;
             } else {
-                // Unknown test method
+                // Unknow test method
                 errln("Unknown test case method: There is an error in the test case data.");
                 break;
-            }
-            if (status != copyStatus) {
-                errln("copyErrorTo not matching");
             }
             if (U_FAILURE(status)) {
                 if (strcmp("X", testCase[i]) == 0) {
@@ -364,25 +318,6 @@ void LocaleBuilderTest::TestLocaleBuilderBasic() {
            "setRegion('') got Error: %s\n");
 }
 
-void LocaleBuilderTest::TestLocaleBuilderBasicWithExtensionsOnDefaultLocale() {
-    // Change the default locale to one with extension tags.
-    UErrorCode status = U_ZERO_ERROR;
-    Locale originalDefault;
-    Locale::setDefault(Locale::createFromName("en-US-u-hc-h12"), status);
-    if (U_FAILURE(status)) {
-        errln("ERROR: Could not change the default locale");
-        return;
-    }
-
-    // Invoke the basic test now that the default locale has been changed.
-    TestLocaleBuilderBasic();
-
-    Locale::setDefault(originalDefault, status);
-    if (U_FAILURE(status)) {
-        errln("ERROR: Could not restore the default locale");
-    }
-}
-
 void LocaleBuilderTest::TestSetLanguageWellFormed() {
     // http://www.unicode.org/reports/tr35/tr35.html#unicode_language_subtag
     // unicode_language_subtag = alpha{2,3} | alpha{5,8};
@@ -445,7 +380,7 @@ void LocaleBuilderTest::TestSetLanguageIllFormed() {
         "F",
         "2",
         "0",
-        "9",
+        "9"
         "{",
         ".",
         "[",
@@ -540,7 +475,7 @@ void LocaleBuilderTest::TestSetScriptIllFormed() {
         "F",
         "2",
         "0",
-        "9",
+        "9"
         "{",
         ".",
         "[",
@@ -639,7 +574,7 @@ void LocaleBuilderTest::TestSetRegionIllFormed() {
         "F",
         "2",
         "0",
-        "9",
+        "9"
         "{",
         ".",
         "[",
@@ -783,7 +718,7 @@ void LocaleBuilderTest::TestSetVariantIllFormed() {
         "F",
         "2",
         "0",
-        "9",
+        "9"
         "{",
         ".",
         "[",
@@ -1248,7 +1183,7 @@ void LocaleBuilderTest::TestSetExtensionValidateUWellFormed() {
             errln("setExtension('u', \"%s\") got Error: %s\n",
                   extension, u_errorName(status));
         }
-    }
+    };
 }
 
 void LocaleBuilderTest::TestSetExtensionValidateUIllFormed() {
@@ -1384,7 +1319,7 @@ void LocaleBuilderTest::TestSetExtensionValidateTWellFormed() {
             errln("setExtension('t', \"%s\") got Error: %s\n",
                   extension, u_errorName(status));
         }
-    }
+    };
 }
 
 void LocaleBuilderTest::TestSetExtensionValidateTIllFormed() {
@@ -1395,7 +1330,7 @@ void LocaleBuilderTest::TestSetExtensionValidateTIllFormed() {
         "9-",
         "-9",
         "-z",
-        "Latn",
+        // "Latn", // Per 2019-01-23 ICUTC, still accept 4alpha. See ICU-20321
         "Latn-",
         "en-",
         "nob-",
@@ -1420,8 +1355,6 @@ void LocaleBuilderTest::TestSetExtensionValidateTIllFormed() {
         "gab-Thai-TH-0bde-z9-abcde123-a1-",
         "gab-Thai-TH-0bde-z9-abcde123-a1-a",
         "gab-Thai-TH-0bde-z9-abcde123-a1-ab",
-        // ICU-21408
-        "root",
     };
     for (const char* ill : illFormed) {
         UErrorCode status = U_ZERO_ERROR;
@@ -1491,7 +1424,7 @@ void LocaleBuilderTest::TestSetExtensionValidatePUWellFormed() {
             errln("setExtension('x', \"%s\") got Error: %s\n",
                   extension, u_errorName(status));
         }
-    }
+    };
 }
 
 void LocaleBuilderTest::TestSetExtensionValidatePUIllFormed() {
@@ -1580,7 +1513,7 @@ void LocaleBuilderTest::TestSetExtensionValidateOthersWellFormed() {
             errln("setExtension('%c', \"%s\") got Error: %s\n",
                   ch, extension, u_errorName(status));
         }
-    }
+    };
 
     const char* someChars =
         "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789`~!@#$%^&*()-_=+;:,.<>?";

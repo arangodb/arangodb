@@ -31,8 +31,7 @@ TARGET = $(BINDIR)/$(TARGET_STUB_NAME)$(EXEEXT)
 CPPFLAGS += -I$(top_srcdir)/common -I$(top_srcdir)/i18n -I$(srcdir)/../toolutil
 LIBS = $(LIBICUTOOLUTIL) $(LIBICUI18N) $(LIBICUUC) $(DEFAULT_LIBS) $(LIB_M)
 
-SOURCES = $(shell cat $(srcdir)/sources.txt)
-OBJECTS = $(SOURCES:.cpp=.o)
+OBJECTS = gencfu.o
 
 DEPS = $(OBJECTS:.o=.d)
 

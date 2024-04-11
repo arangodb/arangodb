@@ -121,13 +121,13 @@ LIBCTESTFW=	$(top_builddir)/tools/ctestfw/$(LIBICU)$(CTESTFW_STUBNAME)$(ICULIBSU
 LIBICUTOOLUTIL=	$(LIBDIR)/$(LIBICU)$(TOOLUTIL_STUBNAME)$(ICULIBSUFFIX).lib
 
 ## These are the library specific LDFLAGS
-LDFLAGSICUDT+=	-NOENTRY# The NOENTRY option is required for creating a resource-only DLL.
-LDFLAGSICUUC=# Unused for now.
-LDFLAGSICUI18N=# Unused for now.
-LDFLAGSICUIO=# Unused for now.
-LDFLAGSICULX=# Unused for now.
+LDFLAGSICUDT+=	-base:"0x4ad00000" -NOENTRY# The NOENTRY option is required for creating a resource-only DLL.
+LDFLAGSICUUC=	-base:"0x4a800000"# in-uc = 1MB
+LDFLAGSICUI18N=	-base:"0x4a900000"# io-in = 2MB
+LDFLAGSICUIO=	-base:"0x4ab00000"# le-io = 1MB
+LDFLAGSICULX=	-base:"0x4ac80000"
 LDFLAGSCTESTFW=# Unused for now.
-LDFLAGSICUTOOLUTIL=# Unused for now.
+LDFLAGSICUTOOLUTIL=	-base:"0x4ac00000"# Same as layout. Layout and tools probably won't mix.
 
 # The #M# is used to delete lines for icu-config
 # Current full path directory.
@@ -154,10 +154,10 @@ endif
 
 
 ## Dependency rules
-## This is a start to how dependencies could work
+## This is a start to how depdendencies could work
 # The commented out rules may not properly delete the file when ^C is pressed
 #   or the compiler fails.
-# make currently doesn't like rules with C:\\PROGRA~1\\.. in the dependency.
+# make currently doesn't like rules with C:\\PROGRA~1\\.. in the depedency.
 #   So system headers are ignored by ignoring \\
 %.d : $(srcdir)/%.c
 	@echo "generating dependency information for $<"

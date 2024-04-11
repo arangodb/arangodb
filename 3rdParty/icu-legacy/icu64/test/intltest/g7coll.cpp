@@ -18,7 +18,7 @@
 #include "sfwdchit.h"
 #include "cmemory.h"
 
-static const char16_t testCases[][G7CollationTest::MAX_TOKEN_LEN] = {
+static const UChar testCases[][G7CollationTest::MAX_TOKEN_LEN] = {
     {  0x0062 /*'b'*/, 0x006c /*'l'*/, 0x0061 /*'a'*/, 0x0062 /*'c'*/, 0x006b /*'k'*/, 
         0x0062 /*'b'*/, 0x0069 /*'i'*/, 0x0072 /*'r'*/, 0x0064 /*'d'*/, 0x0073 /*'s'*/, 0x0000},                    /* 9 */
     { 0x0050 /*'P'*/, 0x0061 /*'a'*/, 0x0074/*'t'*/, 0x0000},                                                    /* 1 */
@@ -111,11 +111,11 @@ void G7CollationTest::TestG7Locales(/* char* par */)
             continue;
         }
 
-        const UnicodeString &rules = (dynamic_cast<RuleBasedCollator*>(myCollation.getAlias()))->getRules();
+        const UnicodeString &rules = ((RuleBasedCollator*)myCollation.getAlias())->getRules();
         if (rules.isEmpty() &&
                 (locale == Locale::getCanadaFrench() || locale == Locale::getJapanese())) {
             dataerrln("%s Collator missing rule string", locale.getName());
-            if (logKnownIssue("ICU-10671", "TestG7Locales does not test ignore-punctuation")) {
+            if (logKnownIssue("10671", "TestG7Locales does not test ignore-punctuation")) {
                 continue;
             }
         } else {
@@ -156,7 +156,7 @@ void G7CollationTest::TestDemo1(/* char* par */)
       errcheckln(status, "Couldn't instantiate collator. Error: %s", u_errorName(status));
       return;
     }
-    const UnicodeString baseRules = (dynamic_cast<RuleBasedCollator*>(col))->getRules();
+    const UnicodeString baseRules = ((RuleBasedCollator*)col)->getRules();
     UnicodeString newRules(" & Z < p, P");
     newRules.insert(0, baseRules);
     RuleBasedCollator *myCollation = new RuleBasedCollator(newRules, status);
@@ -190,7 +190,7 @@ void G7CollationTest::TestDemo2(/* char* par */)
       errcheckln(status, "Couldn't instantiate collator. Error: %s", u_errorName(status));
       return;
     }
-    const UnicodeString baseRules = (dynamic_cast<RuleBasedCollator*>(col))->getRules();
+    const UnicodeString baseRules = ((RuleBasedCollator*)col)->getRules();
     UnicodeString newRules("& C < ch , cH, Ch, CH");
     newRules.insert(0, baseRules);
     RuleBasedCollator *myCollation = new RuleBasedCollator(newRules, status);
@@ -224,7 +224,7 @@ void G7CollationTest::TestDemo3(/* char* par */)
       delete col;
       return;
     }
-    const UnicodeString baseRules = (dynamic_cast<RuleBasedCollator*>(col))->getRules();
+    const UnicodeString baseRules = ((RuleBasedCollator*)col)->getRules();
     UnicodeString newRules = "& Question'-'mark ; '?' & Hash'-'mark ; '#' & Ampersand ; '&'";
     newRules.insert(0, baseRules);
     RuleBasedCollator *myCollation = new RuleBasedCollator(newRules, status);
@@ -259,7 +259,7 @@ void G7CollationTest::TestDemo4(/* char* par */)
       return;
     }
 
-    const UnicodeString baseRules = (dynamic_cast<RuleBasedCollator*>(col))->getRules();
+    const UnicodeString baseRules = ((RuleBasedCollator*)col)->getRules();
     UnicodeString newRules = " & aa ; a'-' & ee ; e'-' & ii ; i'-' & oo ; o'-' & uu ; u'-' ";
     newRules.insert(0, baseRules);
     RuleBasedCollator *myCollation = new RuleBasedCollator(newRules, status);

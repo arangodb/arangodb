@@ -1,7 +1,12 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 or{
+    Version{"2.1.49.82"}
+    durationUnits{
+        hm{"h:mm"}
+        hms{"h:mm:ss"}
+        ms{"m:ss"}
+    }
     units{
         acceleration{
             g-force{
@@ -9,7 +14,7 @@ or{
                 one{"{0} ଜି-ଫୋର୍ସ୍"}
                 other{"{0} ଜି-ଫୋର୍ସ୍"}
             }
-            meter-per-square-second{
+            meter-per-second-squared{
                 dnam{"ମିଟର୍ ପ୍ରତି ସେକେଣ୍ଡ୍ ବର୍ଗ"}
                 one{"{0} ମିଟର୍ ପ୍ରତି ସେକେଣ୍ଡ୍ ବର୍ଗ"}
                 other{"{0} ମିଟର୍ ପ୍ରତି ସେକେଣ୍ଡ୍ ବର୍ଗ"}
@@ -27,10 +32,12 @@ or{
                 other{"{0} ଆର୍କସେକେଣ୍ଡ୍"}
             }
             degree{
+                dnam{"ଡିଗ୍ରୀ"}
                 one{"{0} ଡିଗ୍ରୀ"}
                 other{"{0} ଡିଗ୍ରୀ"}
             }
             radian{
+                dnam{"ରେଡିଆନ୍"}
                 one{"{0} ରେଡିଆନ୍"}
                 other{"{0} ରେଡିଆନ୍"}
             }
@@ -41,7 +48,18 @@ or{
             }
         }
         area{
+            acre{
+                dnam{"ଏକର"}
+                one{"{0} ଏକର"}
+                other{"{0} ଏକର"}
+            }
+            dunam{
+                dnam{"ଡୁନାମ"}
+                one{"{0} ଡୁନାମ"}
+                other{"{0} ଡୁନାମ"}
+            }
             hectare{
+                dnam{"ହେକ୍ଟର୍"}
                 one{"{0} ହେକ୍ଟର୍"}
                 other{"{0} ହେକ୍ଟର୍"}
             }
@@ -52,6 +70,7 @@ or{
                 per{"{0} ପ୍ରତି ବର୍ଗ ସେଣ୍ଟିମିଟର୍"}
             }
             square-foot{
+                dnam{"ବର୍ଗ ଫିଟ୍"}
                 one{"{0} ବର୍ଗ ଫୁଟ୍"}
                 other{"{0} ବର୍ଗ ଫିଟ୍"}
             }
@@ -74,6 +93,9 @@ or{
                 per{"{0} ପ୍ରତି ବର୍ଗ ମିଟର୍"}
             }
             square-mile{
+                dnam{"ବର୍ଗ ମାଇଲ୍"}
+                one{"{0} ବର୍ଗ ମାଇଲ୍"}
+                other{"{0} ବର୍ଗ ମାଇଲ୍"}
                 per{"{0} ପ୍ରତି ବର୍ଗ ମାଇଲ୍"}
             }
             square-yard{
@@ -83,69 +105,15 @@ or{
             }
         }
         compound{
-            1024p2{"mebi{0}"}
-            1024p4{"tebi{0}"}
-            1024p5{"pebi{0}"}
-            1024p6{"exbi{0}"}
-            1024p7{"zebi{0}"}
-            1024p8{"yobi{0}"}
-            10p-1{"ଡେସି{0}"}
-            10p-12{"ପିକୋ{0}"}
-            10p-15{"ଫିମଟୋ{0}"}
-            10p-18{"ଅଟୋ{0}"}
-            10p-2{"ସେଣ୍ଟି{0}"}
-            10p-21{"ଜିପୋଟ{0}"}
-            10p-24{"ୟୋକଟ{0}"}
-            10p-3{"ମିଲି{0}"}
-            10p-6{"ମାଇକ୍ରୋ{0}"}
-            10p-9{"ନାନୋ{0}"}
-            10p1{"ଡେକା{0}"}
-            10p12{"ଟେରା{0}"}
-            10p15{"ପିଟା{0}"}
-            10p18{"ଏକ୍ସା{0}"}
-            10p2{"ହେକ୍ଟା{0}"}
-            10p21{"ଜିଟା{0}"}
-            10p24{"ୟୋଟା{0}"}
-            10p3{"କିଲୋ{0}"}
-            10p6{"ମେଗା{0}"}
-            10p9{"ଗିଗା{0}"}
             per{"{1} ପ୍ରତି {0}"}
-            power2{
-                one{
-                    _{
-                        _{"ସ୍କୋୟାର୍{0}"}
-                    }
-                }
-                other{
-                    _{
-                        _{"ସ୍କୋ{0}"}
-                    }
-                }
-            }
-            power3{
-                one{
-                    _{
-                        _{"କ୍ୟୁବିକ୍ {0}"}
-                    }
-                }
-                other{
-                    _{
-                        _{"କ୍ୟୁ {0}"}
-                    }
-                }
-            }
         }
         concentr{
-            item{
-                dnam{"ଆଇଟମ୍‌ଗୁଡିକ"}
-                one{"{0} ଆଇଟମ୍"}
-                other{"{0} ଆଇଟମ୍‌ଗୁଡିକ"}
-            }
             karat{
+                dnam{"କ୍ୟାରେଟ୍"}
                 one{"{0} କ୍ୟାରେଟ୍"}
                 other{"{0} କ୍ୟାରେଟ୍"}
             }
-            milligram-ofglucose-per-deciliter{
+            milligram-per-deciliter{
                 dnam{"ମିଲିଗ୍ରାମ୍ ପ୍ରତି ଡେସିଲିଟର୍"}
                 one{"{0} ମିଲିଗ୍ରାମ୍ ପ୍ରତି ଡେସିଲିଟର୍"}
                 other{"{0} ମିଲିଗ୍ରାମ୍ ପ୍ରତି ଡେସିଲିଟର୍"}
@@ -160,26 +128,29 @@ or{
                 one{"{0} ମୋଲ"}
                 other{"{0} ମୋଲସ"}
             }
-            percent{
-                one{"{0} ଶତକଡ଼ା"}
-                other{"{0} ଶତକଡ଼ା"}
-            }
-            permille{
-                one{"{0} ପରମିଲ"}
-                other{"{0} ପରମିଲ"}
-            }
-            permillion{
+            part-per-million{
                 dnam{"ଅଂଶ ପ୍ରତି ନିୟୁତ"}
                 one{"{0} ଅଂଶ ପ୍ରତି ନିୟୁତ"}
                 other{"{0} ଅଂଶ ପ୍ରତି ନିୟୁତ"}
             }
+            percent{
+                dnam{"ଶତକଡ଼ା"}
+                one{"{0} ଶତକଡ଼ା"}
+                other{"{0} ଶତକଡ଼ା"}
+            }
+            permille{
+                dnam{"ପରମିଲ"}
+                one{"{0} ପରମିଲ"}
+                other{"{0} ପରମିଲ"}
+            }
             permyriad{
+                dnam{"ପରମାଇରିଆଡ"}
                 one{"{0} ପରମାଇରିଆଡ"}
                 other{"{0} ପରମାଇରିଆଡ"}
             }
         }
         consumption{
-            liter-per-100-kilometer{
+            liter-per-100kilometers{
                 dnam{"100 କିଲୋମିଟର୍ ପ୍ରତି ଲିଟର୍"}
                 one{"100 କିଲୋମିଟର୍ ପ୍ରତି {0} ଲିଟର୍"}
                 other{"100 କିଲୋମିଟର୍ ପ୍ରତି {0} ଲିଟର୍"}
@@ -208,6 +179,16 @@ or{
             west{"{0} ପଶ୍ଚିମ"}
         }
         digital{
+            bit{
+                dnam{"ବିଟ୍"}
+                one{"{0} ବିଟ୍"}
+                other{"{0} ବିଟ୍"}
+            }
+            byte{
+                dnam{"ବାଇଟ୍"}
+                one{"{0} ବାଇଟ୍"}
+                other{"{0} ବାଇଟ୍"}
+            }
             gigabit{
                 dnam{"ଗିଗାବିଟ୍"}
                 one{"{0} ଗିଗାବିଟ୍"}
@@ -240,6 +221,8 @@ or{
             }
             petabyte{
                 dnam{"PB"}
+                one{"{0} PB"}
+                other{"{0} PB"}
             }
             terabit{
                 dnam{"ଟେରାବିଟ୍"}
@@ -259,13 +242,15 @@ or{
                 other{"{0} ଶତାବ୍ଦୀ"}
             }
             day{
+                dnam{"ଦିନ"}
+                one{"{0} ଦିନ"}
+                other{"{0} ଦିନ"}
                 per{"ଦିନକୁ {0}"}
             }
-            decade{
-                one{"{0} ଦଶନ୍ଧି"}
-                other{"{0} ଦଶନ୍ଧି"}
-            }
             hour{
+                dnam{"ଘଣ୍ଟା"}
+                one{"{0} ଘଣ୍ଟା"}
+                other{"{0} ଘଣ୍ଟା"}
                 per{"ଘଣ୍ଟା ପ୍ରତି {0}"}
             }
             microsecond{
@@ -274,15 +259,20 @@ or{
                 other{"{0} ମାଇକ୍ରୋସେକେଣ୍ଡ"}
             }
             millisecond{
+                dnam{"ମିଲିସେକେଣ୍ଡ"}
                 one{"{0} ମିଲିସେକେଣ୍ଡ"}
                 other{"{0} ମିଲିସେକେଣ୍ଡ"}
             }
             minute{
+                dnam{"ମିନିଟ୍‌"}
                 one{"{0} ମିନିଟ୍‌"}
                 other{"{0} ମିନିଟ୍"}
                 per{"ମିନିଟ୍‌ ପ୍ରତି {0}"}
             }
             month{
+                dnam{"ମାସ"}
+                one{"{0} ମାସ"}
+                other{"{0} ମାସ"}
                 per{"ମାସକୁ {0}"}
             }
             nanosecond{
@@ -290,17 +280,22 @@ or{
                 one{"{0} ନାନୋସେକେଣ୍ଡ"}
                 other{"{0} ନାନୋସେକେଣ୍ଡ"}
             }
-            quarter{
-                one{"{0} କ୍ୱାର୍ଟର୍"}
-                other{"{0} କ୍ୱାର୍ଟର୍ସ"}
-            }
             second{
+                dnam{"ସେକେଣ୍ଡ"}
+                one{"{0} ସେକେଣ୍ଡ"}
+                other{"{0} ସେକେଣ୍ଡ"}
                 per{"{0} ପ୍ରତି ସେକେଣ୍ଡ"}
             }
             week{
+                dnam{"ସପ୍ତାହ"}
+                one{"{0} ସପ୍ତାହ"}
+                other{"{0} ସପ୍ତାହ"}
                 per{"ସପ୍ତାହକୁ {0}"}
             }
             year{
+                dnam{"ବର୍ଷ"}
+                one{"{0} ବର୍ଷ"}
+                other{"{0} ବର୍ଷ"}
                 per{"ବର୍ଷକୁ {0}"}
             }
         }
@@ -316,10 +311,12 @@ or{
                 other{"{0} ମିଲିଆମ୍ପିୟର୍"}
             }
             ohm{
+                dnam{"ଓହମ୍"}
                 one{"{0} ଓହମ୍"}
                 other{"{0} ଓହମ୍"}
             }
             volt{
+                dnam{"ଭୋଲ୍ଟ୍"}
                 one{"{0} ଭୋଲ୍ଟ୍"}
                 other{"{0} ଭୋଲ୍ଟ୍"}
             }
@@ -336,6 +333,7 @@ or{
                 other{"{0} କ୍ୟାଲୋରୀ"}
             }
             electronvolt{
+                dnam{"ଇଲେକ୍ଟ୍ରୋନ୍‌ ଭୋଲ୍ଟ"}
                 one{"{0} ଇଲେକ୍ଟ୍ରୋନ୍‌ ଭୋଲ୍ଟ"}
                 other{"{0} ଇଲେକ୍ଟ୍ରୋନ୍‌ ଭୋଲ୍ଟ"}
             }
@@ -345,6 +343,7 @@ or{
                 other{"{0} କ୍ୟାଲୋରୀ"}
             }
             joule{
+                dnam{"ଜୁଲ୍"}
                 one{"{0} ଜୁଲ୍"}
                 other{"{0} ଜୁଲ୍"}
             }
@@ -354,6 +353,7 @@ or{
                 other{"{0} କିଲୋକ୍ୟାଲୋରୀ"}
             }
             kilojoule{
+                dnam{"କିଲୋଜୁଲ୍"}
                 one{"{0} କିଲୋଜୁଲ୍"}
                 other{"{0} କିଲୋଜୁଲ୍"}
             }
@@ -364,11 +364,6 @@ or{
             }
         }
         force{
-            kilowatt-hour-per-100-kilometer{
-                dnam{"100 କିଲୋମିଟର୍‌ ପ୍ରତି କିଲୋୱାଟ୍‌-ଘଣ୍ଟା"}
-                one{"{0} 100 କିଲୋମିଟର୍‌ ପ୍ରତି କିଲୋୱାଟ୍‌-ଘଣ୍ଟା"}
-                other{"{0} 100 କିଲୋମିଟର୍‌ ପ୍ରତି କିଲୋୱାଟ୍‌-ଘଣ୍ଟା"}
-            }
             newton{
                 dnam{"ନ୍ୟୁଟନ୍ସ"}
                 one{"{0} ନ୍ୟୁଟନ"}
@@ -402,45 +397,6 @@ or{
                 other{"{0} ମେଗାହର୍ଜ୍"}
             }
         }
-        graphics{
-            dot{
-                one{"{0} ବିନ୍ଦୁ"}
-                other{"{0} ବି"}
-            }
-            dot-per-centimeter{
-                dnam{"ବିନ୍ଦୁ ପ୍ରତି ସେଣ୍ଟିମିଟର"}
-                one{"{0} ବିନ୍ଦୁ ପ୍ରତି ସେଣ୍ଟିମିଟର"}
-                other{"{0} ବିନ୍ଦୁ ପ୍ରତି ସେଣ୍ଟିମିଟର"}
-            }
-            dot-per-inch{
-                dnam{"ପ୍ରତି ଇଞ୍ଚରେ ବିନ୍ଦୁ"}
-                one{"{0} ପ୍ରତି ଇଞ୍ଚରେ ବିନ୍ଦୁ"}
-                other{"{0} ପ୍ରତି ଇଞ୍ଚରେ ବିନ୍ଦୁ"}
-            }
-            em{
-                dnam{"ଟାଇପୋଗ୍ରାଫିକ୍ ems"}
-            }
-            megapixel{
-                dnam{"ମେଗାପିକ୍ସେଲ"}
-                one{"{0} ମେଗାପିକ୍ସେଲ"}
-                other{"{0} ମେଗାପିକ୍ସେଲ୍ସ"}
-            }
-            pixel{
-                dnam{"ପିକ୍ସେଲ"}
-                one{"{0} ପିକ୍ସେଲ"}
-                other{"{0} ପିକ୍ସେଲ୍ସ"}
-            }
-            pixel-per-centimeter{
-                dnam{"ପିକ୍ସେଲ ପ୍ରତି ସେଣ୍ଟିମିଟର"}
-                one{"{0} ପିକ୍ସେଲ ପ୍ରତି ସେଣ୍ଟିମିଟର"}
-                other{"{0} ପିକ୍ସେଲ ପ୍ରତି ସେଣ୍ଟିମିଟର"}
-            }
-            pixel-per-inch{
-                dnam{"ପ୍ରତି ଇଞ୍ଚରେ ପିକ୍ସେଲ"}
-                one{"{0} ପ୍ରତି ଇଞ୍ଚରେ ପିକ୍ସେଲ"}
-                other{"{0} ପ୍ରତି ଇଞ୍ଚରେ ପିକ୍ସେଲ"}
-            }
-        }
         length{
             astronomical-unit{
                 dnam{"ଖଗୋଲୀୟ ଏକକ"}
@@ -458,26 +414,16 @@ or{
                 one{"{0} ଡେସିମିଟର୍"}
                 other{"{0} ଡେସିମିଟର୍"}
             }
-            earth-radius{
-                dnam{"ପୃଥିବୀ ବ୍ୟାସାର୍ଦ୍ଧ"}
-                one{"{0} ପୃଥିବୀ ବ୍ୟାସାର୍ଦ୍ଧ"}
-                other{"{0} ପୃଥିବୀ ବ୍ୟାସାର୍ଦ୍ଧ"}
-            }
-            fathom{
-                dnam{"ଫାଟୋମସ୍"}
-                one{"{0} ଫାଟୋମ"}
-                other{"{0} ଫାଟୋମସ୍"}
-            }
             foot{
+                dnam{"ଫିଟ୍"}
                 one{"{0} ଫୁଟ୍"}
                 other{"{0} ଫିଟ୍"}
                 per{"{0} ପ୍ରତି ଫୁଟ୍"}
             }
-            furlong{
-                one{"{0} ଫର୍ଲଙ୍ଗ୍"}
-                other{"{0} ଫର୍ଲଙ୍ଗସ୍"}
-            }
             inch{
+                dnam{"ଇଞ୍ଚ୍"}
+                one{"{0} ଇଞ୍ଚ୍"}
+                other{"{0} ଇଞ୍ଚ୍"}
                 per{"{0} ପ୍ରତି ଇଞ୍ଚ୍"}
             }
             kilometer{
@@ -487,6 +433,7 @@ or{
                 per{"{0} ପ୍ରତି କିଲୋମିଟର୍"}
             }
             light-year{
+                dnam{"ଆଲୋକ ବର୍ଷ"}
                 one{"{0} ଆଲୋକ ବର୍ଷ"}
                 other{"{0} ଆଲୋକ ବର୍ଷ"}
             }
@@ -502,6 +449,7 @@ or{
                 other{"{0} ମାଇକ୍ରୋମିଟର୍"}
             }
             mile{
+                dnam{"ମାଇଲ୍"}
                 one{"{0} ମାଇଲ୍"}
                 other{"{0} ମାଇଲ୍"}
             }
@@ -526,6 +474,7 @@ or{
                 other{"{0} ନଟିକାଲ୍ ମାଇଲ୍"}
             }
             parsec{
+                dnam{"ପାରସେକ୍"}
                 one{"{0} ପାରସେକ୍"}
                 other{"{0} ପାରସେକ୍"}
             }
@@ -535,39 +484,51 @@ or{
                 other{"{0} ପିକୋମିଟର୍"}
             }
             point{
+                dnam{"ପଏଣ୍ଟ୍"}
                 one{"{0} ପଏଣ୍ଟ୍"}
                 other{"{0} ପଏଣ୍ଟ୍"}
             }
             solar-radius{
+                dnam{"ସୋଲାର ରାଡି"}
                 one{"{0} ସୋଲାର ବ୍ୟାସାର୍ଦ୍ଧ"}
                 other{"{0} ସୋଲାର ରାଡି"}
             }
+            yard{
+                dnam{"ୟାର୍ଡ୍"}
+                one{"{0} ୟାର୍ଡ୍"}
+                other{"{0} ୟାର୍ଡ୍"}
+            }
         }
         light{
-            candela{
-                dnam{"candela"}
-                one{"{0} candela"}
-                other{"{0} candela"}
+            lux{
+                dnam{"ଲକ୍ସ"}
+                one{"{0} ଲକ୍ସ"}
+                other{"{0} ଲକ୍ସ"}
             }
             solar-luminosity{
+                dnam{"ସୋଲର ଲ୍ୟୁମିନୋସିଟିସ"}
                 one{"{0} ସୋଲର ଲ୍ୟୁମିନୋସିଟି"}
                 other{"{0} ସୋଲର ଲ୍ୟୁମିନୋସିଟିସ"}
             }
         }
         mass{
             carat{
+                dnam{"କ୍ୟାରେଟ୍"}
                 one{"{0} କ୍ୟାରେଟ୍"}
                 other{"{0} କ୍ୟାରେଟ୍"}
             }
             dalton{
+                dnam{"ଡାଲ୍ଟନ"}
                 one{"{0} ଡାଲ୍ଟନ"}
                 other{"{0} ଡାଲ୍ଟନ"}
             }
             earth-mass{
+                dnam{"ଅର୍ଥ ମାସେସ"}
                 one{"{0} ଅର୍ଥ ମାସ"}
                 other{"{0} ଅର୍ଥ ମାସେସ"}
             }
             gram{
+                dnam{"ଗ୍ରାମ୍"}
                 one{"{0} ଗ୍ରାମ୍"}
                 other{"{0} ଗ୍ରାମ୍"}
                 per{"{0} ପ୍ରତି ଗ୍ରାମ୍"}
@@ -577,6 +538,11 @@ or{
                 one{"{0} କିଲୋଗ୍ରାମ୍"}
                 other{"{0} କିଲୋଗ୍ରାମ୍"}
                 per{"{0} ପ୍ରତି କିଲୋଗ୍ରାମ୍"}
+            }
+            metric-ton{
+                dnam{"ମେଟ୍ରିକ୍ ଟନ୍"}
+                one{"{0} ମେଟ୍ରିକ୍ ଟନ୍"}
+                other{"{0} ମେଟ୍ରିକ୍ ଟନ୍"}
             }
             microgram{
                 dnam{"ମାଇକ୍ରୋଗ୍ରାମ୍"}
@@ -600,23 +566,20 @@ or{
                 other{"{0} ଟ୍ରୋୟ ଆଉନ୍ସ"}
             }
             pound{
+                dnam{"ପାଉଣ୍ଡ୍"}
+                one{"{0} ପାଉଣ୍ଡ୍"}
+                other{"{0} ପାଉଣ୍ଡ୍"}
                 per{"{0} ପ୍ରତି ପାଉଣ୍ଡ୍"}
             }
             solar-mass{
+                dnam{"ସୋଲର ମାସେସ"}
                 one{"{0} ସୋଲର ମାସ"}
                 other{"{0} ସୋଲର ମାସେସ"}
             }
-            stone{
-                one{"{0} ଷ୍ଟୋନ୍"}
-                other{"{0} ଷ୍ଟୋନସ୍"}
-            }
             ton{
                 dnam{"ଟନ୍"}
-            }
-            tonne{
-                dnam{"ମେଟ୍ରିକ୍ ଟନ୍"}
-                one{"{0} ମେଟ୍ରିକ୍ ଟନ୍"}
-                other{"{0} ମେଟ୍ରିକ୍ ଟନ୍"}
+                one{"{0} ଟନ୍"}
+                other{"{0} ଟନ୍"}
             }
         }
         power{
@@ -646,6 +609,7 @@ or{
                 other{"{0} ମିଲିୱାଟ୍"}
             }
             watt{
+                dnam{"ୱାଟ୍"}
                 one{"{0} ୱାଟ୍"}
                 other{"{0} ୱାଟ୍"}
             }
@@ -661,7 +625,7 @@ or{
                 one{"{0} ହେକ୍ଟୋପାସ୍କେଲ୍"}
                 other{"{0} ହେକ୍ଟୋପାସ୍କେଲ୍"}
             }
-            inch-ofhg{
+            inch-hg{
                 dnam{"ପାରାର ଇଞ୍ଜି"}
                 one{"ପାରାର {0} ଇଞ୍ଜି"}
                 other{"ପାରାର {0} ଇଞ୍ଜି"}
@@ -681,12 +645,12 @@ or{
                 one{"{0} ମିଲିବାର୍"}
                 other{"{0} ମିଲିବାର୍"}
             }
-            millimeter-ofhg{
+            millimeter-of-mercury{
                 dnam{"ପାରାର ମିଲିମିଟର୍"}
                 one{"ପାରାର {0} ମିଲିମିଟର୍"}
                 other{"ପାରାର {0} ମିଲିମିଟର୍"}
             }
-            pound-force-per-square-inch{
+            pound-per-square-inch{
                 dnam{"ପାଉଣ୍ଡ୍ ପ୍ରତି ବର୍ଗ ଇଞ୍ଚ"}
                 one{"ପ୍ରତି ବର୍ଗ ଇଞ୍ଚ {0} ପାଉଣ୍ଡ୍"}
                 other{"ପ୍ରତି ବର୍ଗ ଇଞ୍ଚ {0} ପାଉଣ୍ଡ୍"}
@@ -697,6 +661,11 @@ or{
                 dnam{"କିଲୋମିଟର୍ ପ୍ରତି ଘଣ୍ଟା"}
                 one{"{0} କିଲୋମିଟର୍ ପ୍ରତି ଘଣ୍ଟା"}
                 other{"{0} କିଲୋମିଟର୍ ପ୍ରତି ଘଣ୍ଟା"}
+            }
+            knot{
+                dnam{"ନଟ୍"}
+                one{"{0} ନଟ୍"}
+                other{"{0} ନଟ୍"}
             }
             meter-per-second{
                 dnam{"ମିଟର୍ ପ୍ରତି ସେକେଣ୍ଡ୍"}
@@ -720,6 +689,11 @@ or{
                 one{"{0} ଡିଗ୍ରୀ ଫାରେନହାଇଟ୍"}
                 other{"{0} ଡିଗ୍ରୀ ଫାରେନହାଇଟ୍"}
             }
+            generic{
+                dnam{"°"}
+                one{"{0}°"}
+                other{"{0}°"}
+            }
             kelvin{
                 dnam{"କେଲଭିନ୍"}
                 one{"{0} କେଲଭିନ୍"}
@@ -732,7 +706,7 @@ or{
                 one{"{0} ନ୍ୟୁଟନ-ମିଟର"}
                 other{"{0} ନ୍ୟୁଟନ-ମିଟର୍ସ"}
             }
-            pound-force-foot{
+            pound-foot{
                 dnam{"ପାଉଣ୍ଡ-ଫିଟ"}
                 one{"{0} ପାଉଣ୍ଡ-ଫୁଟ"}
                 other{"{0} ପାଉଣ୍ଡ-ଫିଟ"}
@@ -745,6 +719,7 @@ or{
                 other{"{0} ଏକର-ଫିଟ୍"}
             }
             barrel{
+                dnam{"ବାରେଲ"}
                 one{"{0} ବାରେଲ"}
                 other{"{0} ବାରେଲ"}
             }
@@ -791,6 +766,7 @@ or{
                 other{"{0} କ୍ୟୁବିକ୍ ୟାର୍ଡ୍"}
             }
             cup{
+                dnam{"କପ୍"}
                 one{"{0} କପ୍"}
                 other{"{0} କପ୍"}
             }
@@ -803,11 +779,6 @@ or{
                 dnam{"ଡେସିଲିଟର୍"}
                 one{"{0} ଡେସିଲିଟର୍"}
                 other{"{0} ଡେସିଲିଟର୍"}
-            }
-            dessert-spoon{
-                dnam{"ଡିଜଟ୍ ସ୍ପୁନ୍"}
-                one{"{0} ଡିଜଟ୍ ସ୍ପୁନ୍"}
-                other{"{0} ଡିଜଟ୍ ସ୍ପୁନ୍"}
             }
             fluid-ounce{
                 dnam{"ଫ୍ଲୁଇଡ୍ ଆଉନ୍ସ"}
@@ -837,6 +808,7 @@ or{
                 other{"{0} ହେକ୍ଟୋଲିଟର୍"}
             }
             liter{
+                dnam{"ଲିଟର୍"}
                 one{"{0} ଲିଟର୍"}
                 other{"{0} ଲିଟର୍"}
                 per{"{0} ପ୍ରତି ଲିଟର୍"}
@@ -851,190 +823,91 @@ or{
                 one{"{0} ମିଲିଲିଟର୍"}
                 other{"{0} ମିଲିଲିଟର୍"}
             }
+            pint{
+                dnam{"ପାଇଣ୍ଟ୍"}
+                one{"{0} ପାଇଣ୍ଟ୍"}
+                other{"{0} ପାଇଣ୍ଟ୍"}
+            }
             pint-metric{
                 dnam{"ମେଟ୍ରିକ୍ ପାଇଣ୍ଟ୍"}
                 one{"{0} ମେଟ୍ରିକ୍ ପାଇଣ୍ଟ୍"}
                 other{"{0} ମେଟ୍ରିକ୍ ପାଇଣ୍ଟ୍"}
             }
+            quart{
+                dnam{"କ୍ଵାର୍ଟ୍"}
+                one{"{0} କ୍ଵାର୍ଟ୍"}
+                other{"{0} କ୍ଵାର୍ଟ୍"}
+            }
+            tablespoon{
+                dnam{"ଖାଇବା ଚାମଚ"}
+                one{"{0} ଖାଇବା ଚାମଚ"}
+                other{"{0} ଖାଇବା ଚାମଚ"}
+            }
+            teaspoon{
+                dnam{"ଛୋଟ ଚାମଚ"}
+                one{"{0} ଛୋଟ ଚାମଚ"}
+                other{"{0} ଛୋଟ ଚାମଚ"}
+            }
         }
     }
     unitsNarrow{
-        acceleration{
-            g-force{
-                dnam{"ଜି-ଫୋର୍ସ୍"}
-                one{"{0}ମା. ବଳ"}
-                other{"{0}ମା. ବଳ"}
-            }
-        }
-        angle{
-            arc-minute{
-                dnam{"ଆର୍କ-ମିନିଟ୍"}
-                one{"{0} ଆର୍କମି"}
-                other{"{0}′"}
-            }
-            radian{
-                one{"{0} ରେଡିଆନ୍"}
-                other{"{0} ରେଡିଆନ୍"}
-            }
-            revolution{
-                dnam{"ଘୂର୍ଣନ"}
-                one{"{0} ଘୂର୍ଣନ"}
-                other{"{0} ଘୂର୍ଣନ"}
-            }
-        }
-        area{
-            dunam{
-                dnam{"ଡୋନମ୍"}
-                one{"{0} ଡୋନମ୍"}
-                other{"{0} ଡୋନମ୍"}
-            }
-            square-centimeter{
-                dnam{"ବର୍ଗସେମି"}
-                one{"{0} /ବର୍ଗସେମି"}
-                other{"{0} /ବର୍ଗସେମି"}
-                per{"{0} /ବର୍ଗସେମି"}
-            }
-            square-inch{
-                dnam{"ବର୍ଗଇଞ୍ଚ"}
-                one{"{0} /ବର୍ଗଇଞ୍ଚ"}
-                other{"{0} /ବର୍ଗଇଞ୍ଚ"}
-                per{"{0} /ବର୍ଗଇଞ୍ଚ"}
-            }
-            square-kilometer{
-                dnam{"ବର୍ଗକିମି"}
-                per{"{0}/ବର୍ଗକିମି"}
-            }
-            square-meter{
-                dnam{"ବର୍ଗମି"}
-                one{"{0} ବର୍ଗମି"}
-                other{"{0} ବର୍ଗମି"}
-            }
-            square-mile{
-                one{"{0}ବର୍ଗମାଇଲ୍"}
-                other{"{0}ବର୍ଗମାଇଲ୍"}
-                per{"{0}/ବର୍ଗମାଇଲ୍"}
-            }
-            square-yard{
-                dnam{"ବର୍ଗଗଜ"}
-                one{"{0} ବର୍ଗଗଜ"}
-                other{"{0} ବର୍ଗଗଜ"}
-            }
-        }
         compound{
-            10p-1{"ଡେସି{0}"}
-            10p-12{"ପି{0}"}
-            10p-15{"ଫି{0}"}
-            10p-18{"ଅ{0}"}
-            10p-2{"ସେ{0}"}
-            10p-21{"ଜି{0}"}
-            10p-24{"ୟୋ{0}"}
-            10p-3{"ମି{0}"}
-            10p-9{"ନେ{0}"}
-            10p1{"ଡେ{0}"}
-            10p12{"ଟେ{0}"}
-            10p15{"ପି{0}"}
-            10p18{"ଏ{0}"}
-            10p2{"ହେ{0}"}
-            10p21{"ଜି{0}"}
-            10p24{"ୟୋ{0}"}
-            10p3{"କି{0}"}
-            10p6{"ମେ{0}"}
-            10p9{"ଗି{0}"}
+            per{"{0}/{1}"}
         }
         concentr{
-            item{
-                one{"{0}ଆଇଟମ୍"}
-                other{"{0}ଆଇଟମ୍"}
-            }
-            karat{
-                one{"{0}kt"}
-                other{"{0}kt"}
-            }
-            milligram-ofglucose-per-deciliter{
-                dnam{"ମି.ଗ୍ରା./ଡେ.ଲି."}
-                one{"{0} ମି.ଗ୍ରା./ଡେ.ଲି."}
-                other{"{0} ମି.ଗ୍ରା./ଡେ.ଲି."}
-            }
-            millimole-per-liter{
-                dnam{"ମିଲିମୋଲ୍/ଲି"}
-                one{"{0}ମିଲିମୋଲ୍/ଲି"}
-                other{"{0}ମିଲିମୋଲ୍/ଲି"}
-            }
-            mole{
-                one{"{0}ମୋଲ"}
-                other{"{0}ମୋଲ"}
-            }
             percent{
                 dnam{"%"}
-            }
-            permille{
-                dnam{"‰"}
-            }
-            permillion{
-                dnam{"ପିପିଏମ୍"}
-                one{"{0}ପିପିଏମ୍"}
-                other{"{0}ପିପିଏମ୍"}
-            }
-            permyriad{
-                dnam{"‱"}
+                one{"{0}%"}
+                other{"{0}%"}
             }
         }
         consumption{
-            liter-per-100-kilometer{
+            liter-per-100kilometers{
                 dnam{"ଲି/100କିମି"}
                 one{"{0}ଲି/100 କିମି"}
                 other{"{0}ଲି/100 କିମି"}
             }
-            mile-per-gallon{
-                dnam{"ମାଇଲ୍/ଗେଲନ୍"}
-            }
-            mile-per-gallon-imperial{
-                dnam{"mpg UK"}
-                one{"{0}m/gUK"}
-                other{"{0}m/gUK"}
-            }
         }
         coordinate{
+            dnam{"ଦିଗ"}
+            east{"{0} ପୂ"}
             north{"{0}ଉ"}
+            south{"{0} ଦ"}
+            west{"{0} ପ"}
         }
         duration{
-            century{
-                one{"{0} ଶତକ"}
-                other{"{0} ଶତକ"}
-            }
             day{
+                dnam{"ଦିନ"}
                 one{"{0}ଦିନ"}
                 other{"{0}ଦିନ"}
             }
-            decade{
-                dnam{"ଦଶନ୍ଧି"}
-                one{"{0} ଦଶନ୍ଧି"}
-                other{"{0} ଦଶନ୍ଧି"}
-            }
             hour{
+                dnam{"ଘଣ୍ଟା"}
                 one{"{0}ଘଣ୍ଟା"}
                 other{"{0}ଘଣ୍ଟା"}
-                per{"{0}/ଘ."}
             }
             millisecond{
+                dnam{"ମିଲିସେକେଣ୍ଡ"}
                 one{"{0}ms"}
                 other{"{0} ms"}
             }
             minute{
+                dnam{"ମିନିଟ୍‌"}
                 one{"{0}ମିନିଟ୍‌"}
                 other{"{0}ମିନିଟ୍‌"}
-                per{"{0}/ମି"}
             }
             month{
+                dnam{"ମାସ"}
                 one{"{0}ମାସ"}
                 other{"{0}ମାସ"}
             }
             second{
+                dnam{"ସେକେଣ୍ଡ"}
                 one{"{0}ସେକ୍"}
                 other{"{0}ସେକ୍"}
-                per{"{0}/ସେ"}
             }
             week{
+                dnam{"ସପ୍ତାହ"}
                 one{"{0}ସପ୍"}
                 other{"{0} ସପ୍"}
             }
@@ -1044,313 +917,70 @@ or{
                 other{"{0}ବର୍ଷ"}
             }
         }
-        electric{
-            ampere{
-                dnam{"ଏମ୍ପି."}
-            }
-            ohm{
-                dnam{"ଓମ୍"}
-            }
-        }
-        energy{
-            british-thermal-unit{
-                dnam{"BTU"}
-            }
-            kilowatt-hour{
-                one{"{0}kWh"}
-                other{"{0} କିୱାଘ"}
-            }
-            therm-us{
-                dnam{"ୟୁଏସ୍ଥର୍ମ"}
-                one{"{0} ୟୁଏସ୍ଥର୍ମ"}
-                other{"{0} ୟୁଏସ୍ଥର୍ମ"}
-            }
-        }
-        force{
-            newton{
-                dnam{"ନ୍ୟୁ."}
-                one{"{0} ନ୍ୟୁ."}
-                other{"{0} ନ୍ୟୁ."}
-            }
-        }
-        graphics{
-            dot{
-                dnam{"ବିନ୍ଦୁ"}
-            }
-            dot-per-centimeter{
-                dnam{"ବିନ୍ଦୁ ପ୍ରତି ସେଣ୍ଟିମିଟର"}
-                one{"{0}dpcm"}
-                other{"{0}dpcm"}
-            }
-            dot-per-inch{
-                one{"{0}dpi"}
-                other{"{0}dpi"}
-            }
-        }
         length{
-            astronomical-unit{
-                dnam{"ଖଗୋ. ଇକା."}
-                one{"{0} ଖଗୋ. ଇକା."}
-                other{"{0} ଖଗୋ. ଇକା."}
-            }
             centimeter{
+                dnam{"ସେମି"}
                 one{"{0} ସେମି"}
                 other{"{0}ସେମି"}
-                per{"{0}/ସେ.ମି."}
             }
-            decimeter{
-                dnam{"ଡେ. ମି."}
-                one{"{0} ଡେ. ମି."}
-                other{"{0} ଡେ. ମି."}
+            kilometer{
+                dnam{"କିମି"}
+                one{"{0} କିମି"}
+                other{"{0} କିମି"}
             }
-            earth-radius{
-                one{"{0} R⊕"}
-                other{"{0}R⊕"}
-            }
-            fathom{
-                dnam{"ଫେଦମ୍"}
-            }
-            furlong{
-                dnam{"ଫର୍ଲଙ୍ଗ୍"}
-                one{"{0} ଫର୍ଲଙ୍ଗ୍"}
-                other{"{0} ଫର୍ଲଙ୍ଗ୍"}
-            }
-            micrometer{
-                dnam{"μm"}
-                one{"{0}μm"}
-                other{"{0}μm"}
-            }
-            mile{
-                one{"{0}ମାଇଲ"}
-                other{"{0}ମାଇଲ"}
-            }
-            mile-scandinavian{
-                dnam{"smi"}
-                one{"{0}smi"}
-                other{"{0}smi"}
+            meter{
+                dnam{"ମି"}
+                one{"{0} ମି"}
+                other{"{0} ମି"}
             }
             millimeter{
+                dnam{"ମିମି"}
                 one{"{0}ମିମି"}
                 other{"{0}ମିମି"}
             }
-            nanometer{
-                dnam{"nm"}
-                one{"{0}nm"}
-                other{"{0}nm"}
-            }
-            nautical-mile{
-                dnam{"nmi"}
-                one{"{0}nmi"}
-                other{"{0}nmi"}
-            }
-            parsec{
-                dnam{"ପାର୍ସେ"}
-            }
-            picometer{
-                dnam{"pm"}
-                one{"{0}ପି.ମି."}
-                other{"{0}ପି.ମି."}
-            }
-            yard{
-                dnam{"ଗଜ"}
-                one{"{0}ଗଜ"}
-                other{"{0}ଗଜ"}
-            }
         }
         mass{
-            dalton{
-                dnam{"ଡାଲଟନ୍"}
-                one{"{0} ଡାଲଟନ୍"}
-                other{"{0} ଡାଲଟନ୍"}
-            }
-            earth-mass{
-                dnam{"ଅର୍ଥ ମାସ୍"}
-            }
             gram{
+                dnam{"ଗ୍ରାମ୍"}
                 one{"{0}ଗ୍ରା"}
                 other{"{0}ଗ୍ରା"}
-                per{"{0}/ଗ୍ରା."}
             }
             kilogram{
+                dnam{"କିଗ୍ରା"}
                 one{"{0}କିଗ୍ରା"}
                 other{"{0}କିଗ୍ରା"}
-                per{"{0}/କି. ଗ୍ରା."}
-            }
-            microgram{
-                one{"{0} μg"}
-                other{"{0} ମା. ଗ୍ରା."}
-            }
-            milligram{
-                dnam{"ମି. ଗ୍ରା."}
-                one{"{0} ମି. ଗ୍ରା."}
-                other{"{0} ମି. ଗ୍ରା."}
-            }
-            ounce{
-                dnam{"ଅନ୍ସ"}
-                one{"{0}ଅ."}
-                other{"{0}ଅ."}
-                per{"{0}/ଅନ୍ସ"}
-            }
-            ounce-troy{
-                dnam{"ଅନ୍ସ-ଟ୍ରାଇ"}
-                one{"{0} ଅନ୍ସ-ଟ୍ରାଇ"}
-                other{"{0} ଅନ୍ସ-ଟ୍ରାଇ"}
-            }
-            ton{
-                dnam{"ଟନ୍"}
-            }
-            tonne{
-                dnam{"ମେଟ୍ରିକଟନ"}
-                one{"{0} ମେଟ୍ରିକଟନ"}
-                other{"{0} ମେଟ୍ରିକଟନ"}
-            }
-        }
-        power{
-            horsepower{
-                dnam{"ଏଚ୍ପୀ"}
-                one{"{0}ଏଚ୍ପୀ"}
-                other{"{0}ଏଚ୍ପୀ"}
-            }
-        }
-        pressure{
-            kilopascal{
-                dnam{"କି.ପା."}
-                one{"{0} କି.ପା."}
-                other{"{0} କି.ପା."}
-            }
-            megapascal{
-                dnam{"ମେ.ପା."}
-                one{"{0} ମେ.ପା."}
-                other{"{0} ମେ.ପା."}
-            }
-            pascal{
-                dnam{"ପା."}
-                one{"{0} ପା."}
-                other{"{0} ପା."}
             }
         }
         speed{
-            beaufort{
-                one{"B{0}"}
-                other{"B{0}"}
-            }
             kilometer-per-hour{
                 dnam{"କିମି/ଘ"}
                 one{"{0}କେପିଏଚ୍"}
                 other{"{0}କେପିଏଚ୍"}
             }
-            knot{
-                dnam{"ଗଣ୍ଠି"}
-            }
-            meter-per-second{
-                dnam{"ମିଟର/ସେ"}
-            }
         }
         temperature{
             celsius{
                 dnam{"°ସେ"}
-            }
-            fahrenheit{
-                dnam{"ଡିଗ୍ରୀଫାରେନ୍ହାଇଟ୍"}
-            }
-        }
-        torque{
-            newton-meter{
-                dnam{"ନ୍ୟୁ.ମି."}
-                one{"{0} ନ୍ୟୁ.ମି."}
-                other{"{0} ନ୍ୟୁ.ମି."}
+                one{"{0}°ସେ"}
+                other{"{0}°ସେ"}
             }
         }
         volume{
-            acre-foot{
-                dnam{"ଏକରଫୁଟ"}
-                one{"{0} ଏକରଫୁଟ"}
-                other{"{0} ଏକରଫୁଟ"}
-            }
-            barrel{
-                dnam{"ବ୍ୟାରେଲ୍"}
-                one{"{0} ବ୍ୟାରେଲ୍"}
-                other{"{0} ବ୍ୟାରେଲ୍"}
-            }
-            centiliter{
-                dnam{"ସେ. ଲି."}
-                one{"{0} ସେ. ଲି."}
-                other{"{0} ସେ. ଲି."}
-            }
-            cubic-centimeter{
-                dnam{"ଘନସେମି"}
-                one{"{0}/ଘନସେମି"}
-                other{"{0}/ଘନସେମି"}
-                per{"{0}/ଘନସେମି"}
-            }
-            cubic-inch{
-                dnam{"ଘନଇଞ୍ଚ"}
-                one{"{0} ଘନଇଞ୍ଚ"}
-                other{"{0} ଘନଇଞ୍ଚ"}
-            }
-            cubic-kilometer{
-                dnam{"ଘନକି.ମି."}
-                one{"{0}ଘନକି.ମି."}
-                other{"{0}ଘନକି.ମି."}
-            }
-            cubic-meter{
-                dnam{"ଘନମି"}
-                one{"{0}/ ଘନମି"}
-                other{"{0}/ ଘନମି"}
-                per{"{0}/ ଘନମି"}
-            }
-            cubic-mile{
-                dnam{"ଘନମାଇଲ୍"}
-                one{"{0}ଘନମାଇଲ୍"}
-                other{"{0}ଘନମାଇଲ୍"}
-            }
-            cup{
-                one{"{0} କପ"}
-                other{"{0} କପ"}
-            }
-            deciliter{
-                dnam{"ଡେ. ଲି."}
-                one{"{0} ଡେ. ଲି."}
-                other{"{0} ଡେ. ଲି."}
-            }
-            drop{
-                dnam{"dr"}
-            }
-            gallon{
-                dnam{"ଗେଲନ୍"}
-                one{"{0} ଗେ"}
-                other{"{0} ଗେ"}
-                per{"{0}/ ଗେ"}
-            }
-            gallon-imperial{
-                dnam{"ଇମ୍ପିଗେଲନ୍"}
-                one{"{0} ଇମ୍ପିଗେଲନ୍"}
-                other{"{0} ଇମ୍ପିଗେଲନ୍"}
-                per{"{0}/ ଇମ୍ପିଗେଲନ୍"}
-            }
             liter{
+                dnam{"ଲିଟର୍"}
                 one{"{0}ଲି"}
                 other{"{0}ଲି"}
-            }
-            milliliter{
-                dnam{"ମି. ଲି."}
-                one{"{0} ମି. ଲି."}
-                other{"{0} ମି. ଲି."}
-            }
-            pinch{
-                dnam{"ଚିମୁଟ"}
-                one{"{0} ଚିମୁଟ"}
-                other{"{0} ଚିମୁଟ"}
             }
         }
     }
     unitsShort{
         acceleration{
             g-force{
+                dnam{"ଜି-ଫୋର୍ସ୍"}
                 one{"{0} ଜି"}
                 other{"{0} ଜି"}
             }
-            meter-per-square-second{
+            meter-per-second-squared{
                 dnam{"ମିଟର୍/ସେ²"}
                 one{"{0} ମି/ସେ²"}
                 other{"{0} ମି/ସେ²"}
@@ -1364,7 +994,7 @@ or{
             }
             arc-second{
                 dnam{"ଆର୍କସେ"}
-                one{"{0} ଆର୍କସେ"}
+                one{"{0}″"}
                 other{"{0} ଆର୍କସେ"}
             }
             degree{
@@ -1441,36 +1071,15 @@ or{
             }
         }
         compound{
-            10p-1{"ଡେ{0}"}
-            10p-12{"ପିକ{0}"}
-            10p-15{"ଫି.{0}"}
-            10p-18{"ଅ.{0}"}
-            10p-2{"ସେ.{0}"}
-            10p-21{"ଜିପ{0}"}
-            10p-24{"ୟୋକ{0}"}
-            10p-3{"ମି.{0}"}
-            10p-9{"ନେ.{0}"}
-            10p1{"ଡେକ{0}"}
-            10p12{"ଟେ.{0}"}
-            10p15{"ପି.{0}"}
-            10p18{"ଏ.{0}"}
-            10p2{"ହେ.{0}"}
-            10p21{"ଜି.{0}"}
-            10p24{"ୟୋ.{0}"}
-            10p3{"କି.{0}"}
-            10p6{"ମେ.{0}"}
-            10p9{"ଗି.{0}"}
+            per{"{0}/{1}"}
         }
         concentr{
-            item{
-                dnam{"ଆଇଟମ୍"}
-                one{"{0} ଆଇଟମ୍"}
-                other{"{0} ଆଇଟମ୍"}
-            }
             karat{
                 dnam{"କ୍ୟାରେଟ୍"}
+                one{"{0} kt"}
+                other{"{0} kt"}
             }
-            milligram-ofglucose-per-deciliter{
+            milligram-per-deciliter{
                 dnam{"ମିଗ୍ରା/ଡେଲି"}
                 one{"{0} ମିଗ୍ରା/ଡେଲି"}
                 other{"{0} ମିଗ୍ରା/ଡେଲି"}
@@ -1483,25 +1092,31 @@ or{
             mole{
                 dnam{"ମୋଲ"}
                 one{"ମୋଲ"}
-                other{"{0} ମୋଲ"}
+                other{"{0} mol"}
             }
-            percent{
-                dnam{"ଶତକଡ଼ା"}
-            }
-            permille{
-                dnam{"ପରମିଲ"}
-            }
-            permillion{
+            part-per-million{
                 dnam{"ଅଂଶ/ନିୟୁତ"}
                 one{"{0} ପିପିଏମ୍"}
                 other{"{0} ପିପିଏମ୍"}
             }
+            percent{
+                dnam{"ଶତକଡ଼ା"}
+                one{"{0}%"}
+                other{"{0}%"}
+            }
+            permille{
+                dnam{"ପରମିଲ"}
+                one{"{0}‰"}
+                other{"{0}‰"}
+            }
             permyriad{
                 dnam{"ପରମାଇରିଆଡ"}
+                one{"{0}‱"}
+                other{"{0}‱"}
             }
         }
         consumption{
-            liter-per-100-kilometer{
+            liter-per-100kilometers{
                 dnam{"ଲି/100 କିମି"}
                 one{"{0} ଲି/100 କିମି"}
                 other{"{0} ଲି/100 କିମି"}
@@ -1542,42 +1157,61 @@ or{
             }
             gigabit{
                 dnam{"ଜିବିଟ୍"}
+                one{"{0} Gb"}
+                other{"{0} Gb"}
             }
             gigabyte{
                 dnam{"ଜିବାଇଟ୍"}
+                one{"{0} GB"}
+                other{"{0} GB"}
             }
             kilobit{
                 dnam{"କେବିଟ୍"}
+                one{"{0} kb"}
+                other{"{0} kb"}
             }
             kilobyte{
                 dnam{"କେବାଇଟ୍"}
+                one{"{0} kB"}
+                other{"{0} kB"}
             }
             megabit{
                 dnam{"ମେବିଟ୍"}
+                one{"{0} Mb"}
+                other{"{0} Mb"}
             }
             megabyte{
                 dnam{"ମେବାଇଟ୍"}
+                one{"{0} MB"}
+                other{"{0} MB"}
             }
             petabyte{
                 dnam{"PByte"}
+                one{"{0} PB"}
+                other{"{0} PB"}
             }
             terabit{
                 dnam{"ଟିବିଟ୍"}
+                one{"{0} Tb"}
+                other{"{0} Tb"}
             }
             terabyte{
                 dnam{"ଟିବାଇଟ୍"}
+                one{"{0} TB"}
+                other{"{0} TB"}
             }
         }
         duration{
+            century{
+                dnam{"c"}
+                one{"{0} c"}
+                other{"{0} c"}
+            }
             day{
                 dnam{"ଦିନ"}
                 one{"{0} ଦିନ"}
                 other{"{0} ଦିନ"}
                 per{"{0}/ଦିନ"}
-            }
-            decade{
-                one{"{0} ଦଶନ୍ଧି"}
-                other{"{0} dec"}
             }
             hour{
                 dnam{"ଘଣ୍ଟା"}
@@ -1587,9 +1221,13 @@ or{
             }
             microsecond{
                 dnam{"μସେକେଣ୍ଡ"}
+                one{"{0} μs"}
+                other{"{0} μs"}
             }
             millisecond{
                 dnam{"ମିଲିସେକେଣ୍ଡ"}
+                one{"{0} ms"}
+                other{"{0} ms"}
             }
             minute{
                 dnam{"ମିନିଟ୍‌"}
@@ -1603,11 +1241,10 @@ or{
                 other{"{0} ମାସ"}
                 per{"{0}/ମାସ"}
             }
-            quarter{
-                dnam{"କ୍ୱାର୍ଟର୍ସ"}
-                one{"{0} କ୍ୱାର୍ଟର୍ସ"}
-                other{"{0} କ୍ୱାର୍ଟର୍ସ"}
-                per{"{0}/କ୍ୱାର୍ଟର୍ସ"}
+            nanosecond{
+                dnam{"ns"}
+                one{"{0} ns"}
+                other{"{0} ns"}
             }
             second{
                 dnam{"ସେକେଣ୍ଡ"}
@@ -1641,6 +1278,8 @@ or{
             }
             ohm{
                 dnam{"ଓହମ୍"}
+                one{"{0} Ω"}
+                other{"{0} Ω"}
             }
             volt{
                 dnam{"ଭୋଲ୍ଟ୍"}
@@ -1649,6 +1288,11 @@ or{
             }
         }
         energy{
+            british-thermal-unit{
+                dnam{"Btu"}
+                one{"{0} Btu"}
+                other{"{0} Btu"}
+            }
             calorie{
                 dnam{"କ୍ୟାଲ୍"}
                 one{"{0} କ୍ୟାଲ୍"}
@@ -1656,6 +1300,8 @@ or{
             }
             electronvolt{
                 dnam{"ଇଲେକ୍ଟ୍ରୋନ୍‌ ଭୋଲ୍ଟ"}
+                one{"{0} eV"}
+                other{"{0} eV"}
             }
             foodcalorie{
                 dnam{"କ୍ୟାଲ୍"}
@@ -1682,35 +1328,39 @@ or{
                 one{"{0} କିୱାଘ"}
                 other{"{0} କିୱାଘ"}
             }
-            therm-us{
-                dnam{"ୟୁଏସ୍‌ ଥର୍ମ"}
-                one{"{0} ୟୁଏସ୍‌ ଥର୍ମ"}
-                other{"{0} ୟୁଏସ୍‌ ଥର୍ମ"}
-            }
         }
         force{
             newton{
                 dnam{"ନ୍ୟୁଟନ"}
+                one{"{0} N"}
+                other{"{0} N"}
             }
             pound-force{
                 dnam{"ପାଉଣ୍ଡ-ଫୋର୍ସ"}
+                one{"{0} lbf"}
+                other{"{0} lbf"}
             }
         }
-        graphics{
-            dot{
-                dnam{"ବି."}
-                one{"{0} ବିନ୍ଦୁ"}
-                other{"{0} ବିନ୍ଦୁ"}
+        frequency{
+            gigahertz{
+                dnam{"GHz"}
+                one{"{0} GHz"}
+                other{"{0} GHz"}
             }
-            dot-per-centimeter{
-                dnam{"dpcm"}
-                one{"{0} dpcm"}
-                other{"{0} dpcm"}
+            hertz{
+                dnam{"Hz"}
+                one{"{0} Hz"}
+                other{"{0} Hz"}
             }
-            dot-per-inch{
-                dnam{"dpi"}
-                one{"{0} dpi"}
-                other{"{0} dpi"}
+            kilohertz{
+                dnam{"kHz"}
+                one{"{0} kHz"}
+                other{"{0} kHz"}
+            }
+            megahertz{
+                dnam{"MHz"}
+                one{"{0} MHz"}
+                other{"{0} MHz"}
             }
         }
         length{
@@ -1730,20 +1380,11 @@ or{
                 one{"{0} ଡେମି"}
                 other{"{0} ଡେମି"}
             }
-            fathom{
-                one{"{0} ଫାଟୋମ"}
-                other{"{0} fth"}
-            }
             foot{
                 dnam{"ଫିଟ୍"}
                 one{"{0} ଫିଟ୍"}
                 other{"{0} ଫିଟ୍"}
                 per{"{0}/ଫିଟ୍"}
-            }
-            furlong{
-                dnam{"ଫର୍ଲଙ୍ଗସ୍"}
-                one{"{0} ଫର୍ଲଙ୍ଗ୍"}
-                other{"{0} fur"}
             }
             inch{
                 dnam{"ଇଞ୍ଚ୍"}
@@ -1769,9 +1410,9 @@ or{
                 per{"{0}/ମି"}
             }
             micrometer{
-                dnam{"μମିଟର୍"}
-                one{"{0} μମି"}
-                other{"{0} μମି"}
+                dnam{"µମିଟର୍"}
+                one{"{0} µମି"}
+                other{"{0} µମି"}
             }
             mile{
                 dnam{"ମାଇଲ୍"}
@@ -1815,6 +1456,8 @@ or{
             }
             solar-radius{
                 dnam{"ସୋଲାର ରାଡି"}
+                one{"{0} R☉"}
+                other{"{0} R☉"}
             }
             yard{
                 dnam{"ୟାର୍ଡ୍"}
@@ -1830,6 +1473,8 @@ or{
             }
             solar-luminosity{
                 dnam{"ସୋଲର ଲ୍ୟୁମିନୋସିଟିସ"}
+                one{"{0} L☉"}
+                other{"{0} L☉"}
             }
         }
         mass{
@@ -1845,11 +1490,8 @@ or{
             }
             earth-mass{
                 dnam{"ଅର୍ଥ ମାସେସ"}
-            }
-            grain{
-                dnam{"ଗ୍ରେନ୍"}
-                one{"{0} ଗ୍ରେନ୍"}
-                other{"{0} ଗ୍ରେନ୍"}
+                one{"{0} M⊕"}
+                other{"{0} M⊕"}
             }
             gram{
                 dnam{"ଗ୍ରାମ୍"}
@@ -1862,6 +1504,16 @@ or{
                 one{"{0} କିଗ୍ରା"}
                 other{"{0} କିଗ୍ରା"}
                 per{"{0}/କିଗ୍ରା"}
+            }
+            metric-ton{
+                dnam{"ଟ"}
+                one{"{0} ଟ"}
+                other{"{0} ଟ"}
+            }
+            microgram{
+                dnam{"µg"}
+                one{"{0} µg"}
+                other{"{0} µg"}
             }
             milligram{
                 dnam{"ମିଗ୍ରା"}
@@ -1887,20 +1539,13 @@ or{
             }
             solar-mass{
                 dnam{"ସୋଲର ମାସେସ"}
-            }
-            stone{
-                dnam{"ଷ୍ଟୋନସ୍"}
-                one{"{0} ଷ୍ଟ."}
-                other{"{0} ଷ୍ଟ."}
+                one{"{0} M☉"}
+                other{"{0} M☉"}
             }
             ton{
+                dnam{"ଟନ୍"}
                 one{"{0} ଟନ୍"}
                 other{"{0} ଟନ୍"}
-            }
-            tonne{
-                dnam{"ଟ"}
-                one{"{0} ଟ"}
-                other{"{0} ଟ"}
             }
         }
         power{
@@ -1936,20 +1581,45 @@ or{
             }
         }
         pressure{
-            bar{
-                dnam{"ବାର୍‌"}
-                one{"{0} ବାର୍‌"}
-                other{"{0} ବାର୍‌"}
+            atmosphere{
+                dnam{"atm"}
+                one{"{0} atm"}
+                other{"{0} atm"}
             }
-            millimeter-ofhg{
+            hectopascal{
+                dnam{"hPa"}
+                one{"{0} hPa"}
+                other{"{0} hPa"}
+            }
+            inch-hg{
+                dnam{"inHg"}
+                one{"{0} inHg"}
+                other{"{0} inHg"}
+            }
+            kilopascal{
+                dnam{"kPa"}
+                one{"{0} kPa"}
+                other{"{0} kPa"}
+            }
+            megapascal{
+                dnam{"MPa"}
+                one{"{0} MPa"}
+                other{"{0} MPa"}
+            }
+            millibar{
+                dnam{"mbar"}
+                one{"{0} mbar"}
+                other{"{0} mbar"}
+            }
+            millimeter-of-mercury{
                 dnam{"mmHg"}
                 one{"{0} mmHg"}
                 other{"{0} mmHg"}
             }
-            pascal{
-                dnam{"ପା"}
-                one{"{0} ପା"}
-                other{"{0} ପା"}
+            pound-per-square-inch{
+                dnam{"psi"}
+                one{"{0} psi"}
+                other{"{0} psi"}
             }
         }
         speed{
@@ -1985,8 +1655,27 @@ or{
                 one{"{0}°ଫା"}
                 other{"{0}°ଫା"}
             }
+            generic{
+                dnam{"°"}
+                one{"{0}°"}
+                other{"{0}°"}
+            }
             kelvin{
                 dnam{"କେ"}
+                one{"{0} K"}
+                other{"{0} K"}
+            }
+        }
+        torque{
+            newton-meter{
+                dnam{"N⋅m"}
+                one{"{0} N⋅m"}
+                other{"{0} N⋅m"}
+            }
+            pound-foot{
+                dnam{"lbf⋅ft"}
+                one{"{0} lbf⋅ft"}
+                other{"{0} lbf⋅ft"}
             }
         }
         volume{
@@ -1997,6 +1686,8 @@ or{
             }
             barrel{
                 dnam{"ବାରେଲ"}
+                one{"{0} bbl"}
+                other{"{0} bbl"}
             }
             centiliter{
                 dnam{"ସେଲି"}
@@ -2062,6 +1753,8 @@ or{
             }
             fluid-ounce-imperial{
                 dnam{"ଇମ୍ପ. ଏଫଏଲ ଓଜେ"}
+                one{"{0} fl oz Imp."}
+                other{"{0} fl oz Imp."}
             }
             gallon{
                 dnam{"ଗ୍ୟାଲ୍"}

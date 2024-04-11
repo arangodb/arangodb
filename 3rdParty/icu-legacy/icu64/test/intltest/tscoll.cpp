@@ -91,7 +91,7 @@ void IntlTestCollator::runIndexedTest( int32_t index, UBool exec, const char* &n
 }
 
 UCollationResult 
-IntlTestCollator::compareUsingPartials(UCollator *coll, const char16_t source[], int32_t sLen, const char16_t target[], int32_t tLen, int32_t pieceSize, UErrorCode &status) {
+IntlTestCollator::compareUsingPartials(UCollator *coll, const UChar source[], int32_t sLen, const UChar target[], int32_t tLen, int32_t pieceSize, UErrorCode &status) {
   int32_t partialSKResult = 0;
   uint8_t sBuf[512], tBuf[512];
   UCharIterator sIter, tIter;
@@ -146,8 +146,8 @@ IntlTestCollator::doTestVariant(Collator* col, const UnicodeString &source, cons
     UColAttributeValue norm = ucol_getAttribute(myCollation, UCOL_NORMALIZATION_MODE, &status);
 
     int32_t sLen = source.length(), tLen = target.length();
-    const char16_t* src = source.getBuffer();
-    const char16_t* trg = target.getBuffer();
+    const UChar* src = source.getBuffer();
+    const UChar* trg = target.getBuffer();
     UCollationResult compareResultIter = (UCollationResult)result;
 
     {
@@ -238,7 +238,7 @@ IntlTestCollator::doTestVariant(Collator* col, const UnicodeString &source, cons
 }
 
 void
-IntlTestCollator::doTest(Collator* col, const char16_t *source, const char16_t *target, Collator::EComparisonResult result) {
+IntlTestCollator::doTest(Collator* col, const UChar *source, const UChar *target, Collator::EComparisonResult result) {
   doTest(col, UnicodeString(source), UnicodeString(target), result);
 }
 
@@ -254,7 +254,7 @@ IntlTestCollator::doTest(Collator* col, const UnicodeString &source, const Unico
     }
 
     UErrorCode status = U_ZERO_ERROR;
-    LocalPointer<CollationElementIterator> c((dynamic_cast<RuleBasedCollator *>(col))->createCollationElementIterator(source));
+    LocalPointer<CollationElementIterator> c(((RuleBasedCollator *)col)->createCollationElementIterator(source));
     logln("Testing iterating source: "+source);
     backAndForth(*c);
     c->setText(target, status);

@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ee{
     Keys{
         calendar{"kalenda"}
@@ -242,6 +241,8 @@ ee{
             gregorian{"Gregorian kalenda"}
             hebrew{"hebritɔwo ƒe kalenda"}
             indian{"india dukɔ ƒe kalenda"}
+            islamic{"islam subɔlawo ƒe kalenda"}
+            islamic-civil{"islam subɔlawo ƒe sivil kalenda"}
             japanese{"japantɔwo ƒe kalenda"}
             persian{"persiatɔwo ƒe kalenda"}
             roc{"china repɔbliktɔwo ƒe kalenda tso 1912"}
@@ -253,7 +254,9 @@ ee{
             gb2312han{"chinagbe yeye ƒe ɖoɖomɔ nu"}
             phonebook{"fonegbalẽ me ɖoɖomɔ nu"}
             pinyin{"pinyin ɖoɖomɔ nu"}
+            reformed{"nugbugbɔtoɖo ƒe ɖoɖomɔ nu"}
             search{"nudidi hena zazã gbadza"}
+            standard{"standard"}
             stroke{"stroke ɖoɖomɔ nu"}
             traditional{"blema ɖoɖomɔ nu"}
             unihan{"ɖoɖomɔnutɔxɛ manɔŋu stroke ƒe ɖoɖo nu"}
@@ -296,6 +299,7 @@ ee{
             tibt{"tibet digitwo"}
         }
     }
+    Version{"2.1.47.82"}
     codePatterns{
         language{"gbegbɔgblɔ {0}"}
         script{"gbeŋɔŋlɔ {0}"}

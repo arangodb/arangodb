@@ -8,15 +8,15 @@
 #  ********************************************************************
 #
 #  regexcst.pl
-#            Compile the regular expression parser state table data into initialized C data.
+#            Compile the regular expression paser state table data into initialized C data.
 #            Usage:
-#                   cd icu4c/source/i18n
+#                   cd icu/source/i18n
 #                   perl regexcst.pl < regexcst.txt > regexcst.h
 #
 #             The output file, regexcst.h, is included by some of the .cpp regex
 #             implementation files.   This perl script is NOT run as part
 #             of a normal ICU build.  It is run by hand when needed, and the
-#             regexcst.h generated file is put back into the source code repository.
+#             regexcst.h generated file is put back into cvs.
 #
 #             See regexcst.txt for a description of the input format for this script.
 #
@@ -110,9 +110,9 @@ line_loop: while (<>) {
     #
     # do the 'n' flag
     #
-    $state_flag[$num_states] = "false";
+    $state_flag[$num_states] = "FALSE";
     if ($fields[0] eq "n") {
-        $state_flag[$num_states] = "true";
+        $state_flag[$num_states] = "TRUE";
         shift @fields;
     }
 
@@ -201,8 +201,6 @@ for ($state=1; $state<$num_states; $state++) {
 
 die if ($errors>0);
 
-print "// © 2016 and later: Unicode, Inc. and others.\n";
-print "// License & terms of use: http://www.unicode.org/copyright.html\n";
 print "//---------------------------------------------------------------------------------\n";
 print "//\n";
 print "// Generated Header File.  Do not edit by hand.\n";
@@ -222,7 +220,7 @@ print "\n";
 print "U_NAMESPACE_BEGIN\n";
 
 #
-# Emit the constants for indices of Unicode Sets
+# Emit the constants for indicies of Unicode Sets
 #   Define one constant for each of the character classes encountered.
 #   At the same time, store the index corresponding to the set name back into hash.
 #
@@ -248,7 +246,6 @@ foreach $setName (keys %charClasses) {
         $i++;
     }
 }
-print "    constexpr uint32_t kRuleSet_count = $i-128;";
 print "\n\n";
 
 #
@@ -261,7 +258,7 @@ foreach $act (keys %actions) {
 print "    rbbiLastAction};\n\n";
 
 #
-# Emit the struct definition for transition table elements.
+# Emit the struct definition for transtion table elements.
 #
 print "//-------------------------------------------------------------------------------\n";
 print "//\n";
@@ -282,7 +279,7 @@ print "};\n\n";
 # emit the state transition table
 #
 print "static const struct RegexTableEl gRuleParseStateTable[] = {\n";
-print "    {doNOP, 0, 0, 0, true}\n";    # State 0 is a dummy.  Real states start with index = 1.
+print "    {doNOP, 0, 0, 0, TRUE}\n";    # State 0 is a dummy.  Real states start with index = 1.
 for ($state=1; $state < $num_states; $state++) {
     print "    , {$state_func_name[$state],";
     if ($state_literal_chars[$state] ne "") {

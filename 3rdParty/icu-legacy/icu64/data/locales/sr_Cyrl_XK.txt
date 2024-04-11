@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 sr_Cyrl_XK{
+    Version{"2.1.47.71"}
     calendar{
         generic{
             intervalFormats{
@@ -40,6 +40,22 @@ sr_Cyrl_XK{
             }
             monthNames{
                 format{
+                    abbreviated{
+                        "јан",
+                        "феб",
+                        "март",
+                        "апр",
+                        "мај",
+                        "јун",
+                        "јул",
+                        "авг",
+                        "септ",
+                        "окт",
+                        "нов",
+                        "дец",
+                    }
+                }
+                stand-alone{
                     abbreviated{
                         "јан",
                         "феб",

@@ -14,8 +14,6 @@
 
 #include "unicode/utypes.h"
 
-#if U_SHOW_CPLUSPLUS_API
-
 /**
  * \file 
  * \brief C++ API: UnicodeReplacer
@@ -77,7 +75,7 @@ class U_I18N_API UnicodeReplacer /* not : public UObject because this is an inte
      * replacer that is equal to this one.
      * @param result the string to receive the pattern.  Previous
      * contents will be deleted.
-     * @param escapeUnprintable if true then convert unprintable
+     * @param escapeUnprintable if TRUE then convert unprintable
      * character to their hex escape representations, \\uxxxx or
      * \\Uxxxxxxxx.  Unprintable characters are defined by
      * Utility.isUnprintable().
@@ -97,7 +95,5 @@ class U_I18N_API UnicodeReplacer /* not : public UObject because this is an inte
 };
 
 U_NAMESPACE_END
-
-#endif /* U_SHOW_CPLUSPLUS_API */
 
 #endif

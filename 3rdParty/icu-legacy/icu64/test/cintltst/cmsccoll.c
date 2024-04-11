@@ -15,7 +15,6 @@
  * to fit.
  */
 
-#include <stdbool.h>
 #include <stdio.h>
 
 #include "unicode/utypes.h"
@@ -589,13 +588,11 @@ static void TestComposeDecompose(void) {
     coll = ucol_open("", &status);
     if (U_FAILURE(status)) {
         log_data_err("Error opening collator -> %s (Are you missing data?)\n", u_errorName(status));
-        uset_close(charsToTest);
         return;
     }
     charsToTestSize = uset_size(charsToTest);
     if (charsToTestSize <= 0) {
         log_err("Set was zero. Missing data?\n");
-        uset_close(charsToTest);
         return;
     }
     t = (tester **)malloc(charsToTestSize * sizeof(tester *));
@@ -1044,7 +1041,7 @@ static void TestIncrementalNormalize(void) {
         doTest(coll, strA, strB, UCOL_GREATER);
     }
 
-    /*  Test 4:  Embedded nulls do not terminate a string when length is specified.*/
+    /*  Test 4:  Imbedded nulls do not terminate a string when length is specified.*/
 
     {
         static const UChar strA[] = {0x41, 0x00, 0x42, 0x00};
@@ -1457,14 +1454,14 @@ static void TestContraction(void) {
             UCollationElements *iter2 = ucol_openElements(coll,
                                                          &(testdata[i][j]),
                                                          1, &status);
-            int32_t ce;
+            uint32_t ce;
             if (U_FAILURE(status)) {
                 log_err("Collation iterator creation failed\n");
                 return;
             }
             ce = ucol_next(iter2, &status);
             while (ce != UCOL_NULLORDER) {
-                if (ucol_next(iter1, &status) != ce) {
+                if ((uint32_t)ucol_next(iter1, &status) != ce) {
                     log_err("Collation elements in contraction split does not match\n");
                     return;
                 }
@@ -1791,7 +1788,7 @@ static void TestVariableTopSetting(void) {
     ucol_setVariableTop(coll, first, -1, &status);
 
     if(U_SUCCESS(status)) {
-      log_err("Invalid contraction succeeded in setting variable top!\n");
+      log_err("Invalid contraction succeded in setting variable top!\n");
     }
 
   }
@@ -2050,7 +2047,7 @@ static void TestPrefix(void) {
   }
 }
 
-/* This test uses data supplied by Masashiko Maedera to test the implementation */
+/* This test uses data suplied by Masashiko Maedera to test the implementation */
 /* JIS X 4061 collation order implementation                                   */
 static void TestNewJapanese(void) {
 
@@ -3213,7 +3210,7 @@ static void TestSeparateTrees(void) {
     }
 
     /*
-U_CAPI int32_t U_EXPORT2
+U_DRAFT int32_t U_EXPORT2
 ucol_getFunctionalEquivalent(char* result, int32_t resultCapacity,
                              const char* locale, UBool* isAvailable,
                              UErrorCode* status);
@@ -3223,16 +3220,16 @@ ucol_getFunctionalEquivalent(char* result, int32_t resultCapacity,
                                      &isAvailable, &ec);
     if (assertSuccess("getFunctionalEquivalent", &ec)) {
         assertEquals("getFunctionalEquivalent(de)", "root", loc);
-        assertTrue("getFunctionalEquivalent(de).isAvailable==true",
-                   isAvailable == true);
+        assertTrue("getFunctionalEquivalent(de).isAvailable==TRUE",
+                   isAvailable == TRUE);
     }
 
     n = ucol_getFunctionalEquivalent(loc, sizeof(loc), "collation", "de_DE",
                                      &isAvailable, &ec);
     if (assertSuccess("getFunctionalEquivalent", &ec)) {
         assertEquals("getFunctionalEquivalent(de_DE)", "root", loc);
-        assertTrue("getFunctionalEquivalent(de_DE).isAvailable==false",
-                   isAvailable == false);
+        assertTrue("getFunctionalEquivalent(de_DE).isAvailable==FALSE",
+                   isAvailable == FALSE);
     }
 }
 
@@ -3523,7 +3520,7 @@ TestJ5223(void)
   ucol_setAttribute(coll, UCOL_STRENGTH, UCOL_PRIMARY, &status);
   ucol_setAttribute(coll, UCOL_NORMALIZATION_MODE, UCOL_ON, &status);
   if (U_FAILURE(status)) {
-    log_err("Failed setting attributes\n");
+    log_err("Failed setting atributes\n");
     return;
   }
   sortkey_length = ucol_getSortKey(coll, ustr, ustr_length, NULL, 0);
@@ -4008,7 +4005,7 @@ TestOutOfBuffer5468(void)
     ucol_setAttribute(coll, UCOL_STRENGTH, UCOL_PRIMARY, &status);
     ucol_setAttribute(coll, UCOL_NORMALIZATION_MODE, UCOL_ON, &status);
     if (U_FAILURE(status)) {
-      log_err("Failed setting attributes\n");
+      log_err("Failed setting atributes\n");
       return;
     }
 
@@ -4033,7 +4030,7 @@ TestSortKeyConsistency(void)
     uint8_t bufPart[TSKC_DATA_SIZE][TSKC_BUF_SIZE];
     int32_t i, j, i2;
 
-    ucol = ucol_openFromShortString("LEN_S4", false, NULL, &icuRC);
+    ucol = ucol_openFromShortString("LEN_S4", FALSE, NULL, &icuRC);
     if (U_FAILURE(icuRC))
     {
         log_err_status(icuRC, "ucol_openFromShortString failed -> %s\n", u_errorName(icuRC));
@@ -4063,8 +4060,8 @@ TestSortKeyConsistency(void)
 
         for (i2=0; i2<i; i2++)
         {
-            UBool fullMatch = true;
-            UBool partMatch = true;
+            UBool fullMatch = TRUE;
+            UBool partMatch = TRUE;
             for (j=0; j<TSKC_BUF_SIZE; j++)
             {
                 fullMatch = fullMatch && (bufFull[i][j] != bufFull[i2][j]);
@@ -4099,7 +4096,7 @@ static void TestCroatianSortKey(void) {
     size_t actualSortKeyLen;
     uint32_t uStateInfo[2] = { 0, 0 };
 
-    ucol = ucol_openFromShortString(collString, false, NULL, &status);
+    ucol = ucol_openFromShortString(collString, FALSE, NULL, &status);
     if (U_FAILURE(status)) {
         log_err_status(status, "ucol_openFromShortString error in Craotian test. -> %s\n", u_errorName(status));
         return;
@@ -4143,7 +4140,7 @@ static void TestHiragana(void) {
     int32_t keySize1;
     int32_t keySize2;
 
-    ucol = ucol_openFromShortString("LJA_AN_CX_EX_FX_HO_NX_S4", false, NULL,
+    ucol = ucol_openFromShortString("LJA_AN_CX_EX_FX_HO_NX_S4", FALSE, NULL,
             &status);
     if (U_FAILURE(status)) {
         log_err_status(status, "Error status: %s; Unable to open collator from short string.\n", u_errorName(status));
@@ -4362,7 +4359,7 @@ static void TestSameStrengthListQwerty(void)
     /* Quoted characters also will work if two quoted characters are not consecutive.  */
     "&\\u0071<*'\\u0077'\\u0065\\u0072 &\\u0077<<*\\u0074'\\u0079'\\u0075 &\\u0074<<<*\\u0069\\u006f'\\u0070' &'\\u006f'=*\\u0061\\u0073\\u0064",
 
-    /* Consecutive quoted characters do not work, because a '' will be treated as a quote character. */
+    /* Consecutive quoted charactes do not work, because a '' will be treated as a quote character. */
     /* "&\\u0071<*'\\u0077''\\u0065''\\u0072' &\\u0077<<*'\\u0074''\\u0079''\\u0075' &\\u0074<<<*'\\u0069''\\u006f''\\u0070' &'\\u006f'=*\\u0061\\u0073\\u0064",*/
 
  };
@@ -4598,7 +4595,7 @@ static void TestBeforeRuleWithScriptReordering(void)
     ucol_getSortKey(myCollation, base, baseLen, baseKey, 256);
     ucol_getSortKey(myCollation, before, beforeLen, beforeKey, 256);
     if (baseKey[0] != beforeKey[0]) {
-        log_err("Different lead byte for sort keys using before rule and after script reordering. base character lead byte = %02x, before character lead byte = %02x\n", baseKey[0], beforeKey[0]);
+        log_err("Different lead byte for sort keys using before fule and after script reordering. base character lead byte = %02x, before character lead byte = %02x\n", baseKey[0], beforeKey[0]);
     }
 
     ucol_close(myCollation);
@@ -4945,9 +4942,9 @@ static void TestReorderingAPIWithRuleCreatedCollator(void)
 static UBool containsExpectedScript(const int32_t scripts[], int32_t length, int32_t expectedScript) {
     int32_t i;
     for (i = 0; i < length; ++i) {
-        if (expectedScript == scripts[i]) { return true; }
+        if (expectedScript == scripts[i]) { return TRUE; }
     }
-    return false;
+    return FALSE;
 }
 
 static void TestEquivalentReorderingScripts(void) {

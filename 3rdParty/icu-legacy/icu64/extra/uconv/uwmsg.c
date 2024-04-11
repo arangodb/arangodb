@@ -24,7 +24,6 @@
 #include "cmemory.h"
 #include "cstring.h"
 
-#include <stdbool.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -69,7 +68,7 @@ uprint(const UChar *s,
         /* perform the conversion */
         ucnv_fromUnicode(converter, &myTarget,  myTarget + arraySize,
             &mySource, mySourceEnd, NULL,
-            true, status);
+            TRUE, status);
 
         /* Write the converted data to the FILE* */
         fwrite(buf, sizeof(char), myTarget - buf, f);

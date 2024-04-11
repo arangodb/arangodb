@@ -21,18 +21,18 @@ TestLog::~TestLog() {}
 IcuTestErrorCode::~IcuTestErrorCode() {
     // Safe because our errlog() does not throw exceptions.
     if(isFailure()) {
-        errlog(false, u"destructor: expected success", nullptr);
+        errlog(FALSE, u"destructor: expected success", nullptr);
     }
 }
 
 UBool IcuTestErrorCode::errIfFailureAndReset() {
     if(isFailure()) {
-        errlog(false, u"expected success", nullptr);
+        errlog(FALSE, u"expected success", nullptr);
         reset();
-        return true;
+        return TRUE;
     } else {
         reset();
-        return false;
+        return FALSE;
     }
 }
 
@@ -41,25 +41,25 @@ UBool IcuTestErrorCode::errIfFailureAndReset(const char *fmt, ...) {
         char buffer[4000];
         va_list ap;
         va_start(ap, fmt);
-        vsnprintf(buffer, sizeof(buffer), fmt, ap);
+        vsprintf(buffer, fmt, ap);
         va_end(ap);
-        errlog(false, u"expected success", buffer);
+        errlog(FALSE, u"expected success", buffer);
         reset();
-        return true;
+        return TRUE;
     } else {
         reset();
-        return false;
+        return FALSE;
     }
 }
 
 UBool IcuTestErrorCode::errDataIfFailureAndReset() {
     if(isFailure()) {
-        errlog(true, u"data: expected success", nullptr);
+        errlog(TRUE, u"data: expected success", nullptr);
         reset();
-        return true;
+        return TRUE;
     } else {
         reset();
-        return false;
+        return FALSE;
     }
 }
 
@@ -68,20 +68,20 @@ UBool IcuTestErrorCode::errDataIfFailureAndReset(const char *fmt, ...) {
         char buffer[4000];
         va_list ap;
         va_start(ap, fmt);
-        vsnprintf(buffer, sizeof(buffer), fmt, ap);
+        vsprintf(buffer, fmt, ap);
         va_end(ap);
-        errlog(true, u"data: expected success", buffer);
+        errlog(TRUE, u"data: expected success", buffer);
         reset();
-        return true;
+        return TRUE;
     } else {
         reset();
-        return false;
+        return FALSE;
     }
 }
 
 UBool IcuTestErrorCode::expectErrorAndReset(UErrorCode expectedError) {
     if(get() != expectedError) {
-        errlog(false, UnicodeString(u"expected: ") + u_errorName(expectedError), nullptr);
+        errlog(FALSE, UnicodeString(u"expected: ") + u_errorName(expectedError), nullptr);
     }
     UBool retval = isFailure();
     reset();
@@ -93,9 +93,9 @@ UBool IcuTestErrorCode::expectErrorAndReset(UErrorCode expectedError, const char
         char buffer[4000];
         va_list ap;
         va_start(ap, fmt);
-        vsnprintf(buffer, sizeof(buffer), fmt, ap);
+        vsprintf(buffer, fmt, ap);
         va_end(ap);
-        errlog(false, UnicodeString(u"expected: ") + u_errorName(expectedError), buffer);
+        errlog(FALSE, UnicodeString(u"expected: ") + u_errorName(expectedError), buffer);
     }
     UBool retval = isFailure();
     reset();
@@ -111,7 +111,7 @@ void IcuTestErrorCode::setScope(const UnicodeString& message) {
 }
 
 void IcuTestErrorCode::handleFailure() const {
-    errlog(false, u"(handleFailure)", nullptr);
+    errlog(FALSE, u"(handleFailure)", nullptr);
 }
 
 void IcuTestErrorCode::errlog(UBool dataErr, const UnicodeString& mainMessage, const char* extraMessage) const {
@@ -137,9 +137,9 @@ void IcuTestErrorCode::errlog(UBool dataErr, const UnicodeString& mainMessage, c
 TestDataModule *TestDataModule::getTestDataModule(const char* name, TestLog& log, UErrorCode &status)
 {
   if(U_FAILURE(status)) {
-    return nullptr;
+    return NULL;
   }
-  TestDataModule *result = nullptr;
+  TestDataModule *result = NULL;
 
   // TODO: probe for resource bundle and then for XML.
   // According to that, construct an appropriate driver object
@@ -149,19 +149,21 @@ TestDataModule *TestDataModule::getTestDataModule(const char* name, TestLog& log
     return result;
   } else {
     delete result;
-    return nullptr;
+    return NULL;
   }
 }
 
 TestDataModule::TestDataModule(const char* name, TestLog& log, UErrorCode& /*status*/)
 : testName(name),
-fInfo(nullptr),
+fInfo(NULL),
 fLog(log)
 {
 }
 
 TestDataModule::~TestDataModule() {
-  delete fInfo;
+  if(fInfo != NULL) {
+    delete fInfo;
+  }
 }
 
 const char * TestDataModule::getName() const
@@ -181,21 +183,21 @@ RBTestDataModule::~RBTestDataModule()
 
 RBTestDataModule::RBTestDataModule(const char* name, TestLog& log, UErrorCode& status) 
 : TestDataModule(name, log, status),
-  fModuleBundle(nullptr),
-  fTestData(nullptr),
-  fInfoRB(nullptr),
-  tdpath(nullptr)
+  fModuleBundle(NULL),
+  fTestData(NULL),
+  fInfoRB(NULL),
+  tdpath(NULL)
 {
   fNumberOfTests = 0;
-  fDataTestValid = true;
+  fDataTestValid = TRUE;
   fModuleBundle = getTestBundle(name, status);
   if(fDataTestValid) {
-    fTestData = ures_getByKey(fModuleBundle, "TestData", nullptr, &status);
+    fTestData = ures_getByKey(fModuleBundle, "TestData", NULL, &status);
     fNumberOfTests = ures_getSize(fTestData);
-    fInfoRB = ures_getByKey(fModuleBundle, "Info", nullptr, &status);
+    fInfoRB = ures_getByKey(fModuleBundle, "Info", NULL, &status);
     if(status != U_ZERO_ERROR) {
-      log.errln(UNICODE_STRING_SIMPLE("Unable to initialize test data - missing mandatory description resources!"));
-      fDataTestValid = false;
+      log.errln(UNICODE_STRING_SIMPLE("Unable to initalize test data - missing mandatory description resources!"));
+      fDataTestValid = FALSE;
     } else {
       fInfo = new RBDataMap(fInfoRB, status);
     }
@@ -206,21 +208,21 @@ UBool RBTestDataModule::getInfo(const DataMap *& info, UErrorCode &/*status*/) c
 {
     info = fInfo;
     if(fInfo) {
-        return true;
+        return TRUE;
     } else {
-        return false;
+        return FALSE;
     }
 }
 
 TestData* RBTestDataModule::createTestData(int32_t index, UErrorCode &status) const 
 {
-  TestData *result = nullptr;
+  TestData *result = NULL;
   UErrorCode intStatus = U_ZERO_ERROR;
 
-  if(fDataTestValid == true) {
+  if(fDataTestValid == TRUE) {
     // Both of these resources get adopted by a TestData object.
-    UResourceBundle *DataFillIn = ures_getByIndex(fTestData, index, nullptr, &status); 
-    UResourceBundle *headers = ures_getByKey(fInfoRB, "Headers", nullptr, &intStatus);
+    UResourceBundle *DataFillIn = ures_getByIndex(fTestData, index, NULL, &status); 
+    UResourceBundle *headers = ures_getByKey(fInfoRB, "Headers", NULL, &intStatus);
   
     if(U_SUCCESS(status)) {
       result = new RBTestData(DataFillIn, headers, status);
@@ -237,18 +239,18 @@ TestData* RBTestDataModule::createTestData(int32_t index, UErrorCode &status) co
   } else {
     status = U_MISSING_RESOURCE_ERROR;
   }
-  return nullptr;
+  return NULL;
 }
 
 TestData* RBTestDataModule::createTestData(const char* name, UErrorCode &status) const
 {
-  TestData *result = nullptr;
+  TestData *result = NULL;
   UErrorCode intStatus = U_ZERO_ERROR;
 
-  if(fDataTestValid == true) {
+  if(fDataTestValid == TRUE) {
     // Both of these resources get adopted by a TestData object.
-    UResourceBundle *DataFillIn = ures_getByKey(fTestData, name, nullptr, &status); 
-    UResourceBundle *headers = ures_getByKey(fInfoRB, "Headers", nullptr, &intStatus);
+    UResourceBundle *DataFillIn = ures_getByKey(fTestData, name, NULL, &status); 
+    UResourceBundle *headers = ures_getByKey(fInfoRB, "Headers", NULL, &intStatus);
    
     if(U_SUCCESS(status)) {
       result = new RBTestData(DataFillIn, headers, status);
@@ -264,7 +266,7 @@ TestData* RBTestDataModule::createTestData(const char* name, UErrorCode &status)
   } else {
     status = U_MISSING_RESOURCE_ERROR;
   }
-  return nullptr;
+  return NULL;
 }
 
 
@@ -274,18 +276,18 @@ UResourceBundle*
 RBTestDataModule::getTestBundle(const char* bundleName, UErrorCode &status) 
 {
   if(U_SUCCESS(status)) {
-    UResourceBundle *testBundle = nullptr;
+    UResourceBundle *testBundle = NULL;
     const char* icu_data = fLog.getTestDataPath(status);
-    if (testBundle == nullptr) {
+    if (testBundle == NULL) {
         testBundle = ures_openDirect(icu_data, bundleName, &status);
         if (status != U_ZERO_ERROR) {
             fLog.dataerrln(UNICODE_STRING_SIMPLE("Could not load test data from resourcebundle: ") + UnicodeString(bundleName, -1, US_INV));
-            fDataTestValid = false;
+            fDataTestValid = FALSE;
         }
     }
     return testBundle;
   } else {
-    return nullptr;
+    return NULL;
   }
 }
 

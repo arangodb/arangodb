@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 or{
     Countries{
         001{"ବିଶ୍ୱ"}
@@ -74,7 +73,7 @@ or{
         BZ{"ବେଲିଜ୍"}
         CA{"କାନାଡା"}
         CC{"କୋକୋସ୍ (କୀଲିଂ) ଦ୍ଵୀପପୁଞ୍ଜ"}
-        CD{"କଙ୍ଗୋ (ଡିଆରସି)"}
+        CD{"କଙ୍ଗୋ-କିନସାସା"}
         CF{"ମଧ୍ୟ ଆଫ୍ରିକୀୟ ସାଧାରଣତନ୍ତ୍ର"}
         CG{"କଙ୍ଗୋ-ବ୍ରାଜିଭିଲ୍ଲେ"}
         CH{"ସ୍ୱିଜରଲ୍ୟାଣ୍ଡ"}
@@ -306,12 +305,13 @@ or{
         US{"ଯୁକ୍ତରାଷ୍ଟ୍ର"}
     }
     Countries%variant{
+        CD{"କଙ୍ଗୋ (ଡିଆରସି)"}
         CG{"କଙ୍ଗୋ (ସାଧାରଣତନ୍ତ୍ର)"}
         CI{"ଆଇଭରୀ କୋଷ୍ଟ"}
         CZ{"ଚେକ୍‌ ସାଧାରଣତନ୍ତ୍ର"}
         FK{"ଫକଲ୍ୟାଣ୍ଡ ଦ୍ୱୀପପୁଞ୍ଜ (ଇସଲାସ୍‌ ମାଲଭିନାସ୍‌)"}
-        NZ{"ଆଓଟେରୋଆ ନ୍ୟୁଜିଲାଣ୍ଡ"}
         SZ{"ସ୍ୱାଜିଲ୍ୟାଣ୍ଡ"}
         TL{"ପୂର୍ବ ତିମୋର୍‌"}
     }
+    Version{"2.1.49.82"}
 }

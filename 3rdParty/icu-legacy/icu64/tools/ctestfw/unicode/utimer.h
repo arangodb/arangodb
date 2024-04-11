@@ -33,9 +33,9 @@
  *    <code>
  *      typedef Params Params;
  *      struct Params{
- *          char16_t* target;
+ *          UChar* target;
  *          int32_t targetLen;
- *          const char16_t* source;
+ *          const UChar* source;
  *          int32_t sourceLen;
  *          UNormalizationMode mode;
  *      }
@@ -68,13 +68,13 @@
  *          int  line;
  *          int  loops;
  *          UErrorCode error = U_ZERO_ERROR;
- *          char16_t* dest=nullptr;
+ *          UChar* dest=NULL;
  *          int32_t destCapacity=0;
  *          int len =-1;
  *          double elapsedTime = 0; 
  *          int retVal=0;
  *
- *          char16_t arr[5000];
+ *          UChar arr[5000];
  *          dest=arr;
  *          destCapacity = 5000;
  *          UTimer start;
@@ -82,7 +82,7 @@
  *          // Initialize cache and ensure the data is loaded.
  *          // This loop checks for errors in Normalization. Once we pass the initialization
  *          // without errors we can safelly assume that there are no errors while timing the 
- *          // function
+ *          // funtion
  *          for (loops=0; loops<10; loops++) {
  *              for (line=0; line < gNumFileLines; line++) {
  *                  if (opt_uselen) {
@@ -125,7 +125,7 @@
  * iii) Let a higher level function do the calculation of confidence levels etc.
  *     Example:
  *     <code>
- *       void perf(UTimer* timer, char16_t* source, int32_t sourceLen, char16_t* target, int32_t targetLen, int32_t loopCount,UNormalizationMode mode, UErrorCode* error){
+ *       void perf(UTimer* timer, UChar* source, int32_t sourceLen, UChar* target, int32_t targetLen, int32_t loopCount,UNormalizationMode mode, UErrorCode* error){
  *              int32_t loops;
  *              for (loops=0; loops<loopCount; loops++) {
  *                  unorm_normalize(source,sourceLen,target, targetLen,mode,error);
@@ -159,7 +159,7 @@
 
 typedef struct UTimer UTimer;
 
-typedef void FunctionToBeTimed(void* param);
+typedef void FuntionToBeTimed(void* param);
 
 
 #if U_PLATFORM_USES_ONLY_WIN32_API
@@ -197,7 +197,7 @@ static    int32_t uprv_initFrequency(UTimer* /*timer*/)
     }
 static    void uprv_start(UTimer* timer)
     {
-        gettimeofday(&timer->start, nullptr);
+        gettimeofday(&timer->start, 0);
     }
 static    double uprv_delta(UTimer* timer1, UTimer* timer2){
         double t1, t2;
@@ -207,14 +207,14 @@ static    double uprv_delta(UTimer* timer1, UTimer* timer2){
         return (t2-t1);
     }
 static    UBool uprv_compareFrequency(UTimer* /*timer1*/, UTimer* /*timer2*/){
-        return true;
+        return TRUE;
     }
 
 #endif
 /**
- * Initializes the timer with the current time
+ * Intializes the timer with the current time
  *
- * @param timer A pointer to UTimer struct to receive the current time
+ * @param timer A pointer to UTimer struct to recieve the current time
  */
 static inline void U_EXPORT2
 utimer_getTime(UTimer* timer){
@@ -256,15 +256,15 @@ utimer_getElapsedSeconds(UTimer* timer){
  * Executes the function pointed to for a given time and returns exact time
  * taken and number of iterations of the loop
  * @param thresholTimeVal 
- * @param loopCount output param to receive the number of iterations
- * @param fn    The function to be executed
+ * @param loopCount output param to recieve the number of iterations
+ * @param fn    The funtion to be executed
  * @param param Parameters to be passed to the fn
  * @return the time elapsed in seconds
  */
 static inline double U_EXPORT2
 utimer_loopUntilDone(double thresholdTimeVal,
                      int32_t* loopCount, 
-                     FunctionToBeTimed fn, 
+                     FuntionToBeTimed fn, 
                      void* param){
     UTimer timer;
     double currentVal=0;

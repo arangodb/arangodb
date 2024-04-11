@@ -36,9 +36,8 @@ the runConfigureICU command:
 
 The following names can be supplied as the argument for platform:
 
-    AIX                 Use the IBM XL xlclang/xlclang compilers on AIX
+    AIX                 Use the IBM Visual Age xlc_r/xlC_r compilers on AIX
     AIX/GCC             Use the GNU gcc/g++ compilers on AIX
-    AIX/OpenXL          Use the IBM Open XL ibm-clang_r/ibm-clang++_r compilers on AIX
     Cygwin              Use the GNU gcc/g++ compilers on Cygwin
     Cygwin/MSVC         Use the Microsoft Visual C++ compiler on Cygwin
     Cygwin/MSVC2005     Use the Microsoft Visual C++ 2005 compiler on Cygwin
@@ -46,16 +45,15 @@ The following names can be supplied as the argument for platform:
     FreeBSD             Use the clang/clang++ or GNU gcc/g++ compilers on FreeBSD
     HP-UX/ACC           Use the HP ANSI C/Advanced C++ compilers on HP-UX 11
     IBMi                Use the iCC compilers on IBM i, i5/OS, OS/400
-    Linux               Use the default cc/c++ compilers on Linux
-    Linux/clang         Use the clang/clang++ compilers on Linux
+    Linux               Use the clang/clang++ or GNU gcc/g++ compilers on Linux
     Linux/gcc           Use the GNU gcc/g++ compilers on Linux
     Linux/ECC           Use the Intel ECC compiler on Linux
     Linux/ICC           Use the Intel ICC compiler on Linux
-    Linux/VA            Use the IBM XL compiler on Power PC Linux
+    Linux/VA            Use the IBM Visual Age compiler on Power PC Linux
     MacOSX              Use the default compilers on MacOS X (Darwin)
     MacOSX/GCC          Use the GNU gcc/g++ compilers on MacOSX (Darwin)
     MinGW               Use the GNU gcc/g++ compilers on MinGW
-    MSYS/MSVC           Use the Microsoft Visual C++ compiler on MSYS
+    MSYS/MSVC           Use the Microsoft Visual C++ computer on MSYS
     QNX                 Use the QNX QCC compiler on QNX/Neutrino
     Solaris             Use the Sun cc/CC compilers on Solaris
     Solaris/GCC         Use the GNU gcc/g++ compilers on Solaris
@@ -136,17 +134,17 @@ fi
 case $platform in
     AIX)
         THE_OS=AIX
-        THE_COMP="xlclang"
-        CC=`which xlclang`; export CC
+        THE_COMP="xlC_r"
+        CC=`which xlc_r`; export CC
         if [ ! -x $CC ]; then
-           echo "ERROR: xlclang was not found, please check the PATH to make sure it is correct."; exit 1
+           echo "ERROR: xlc_r was not found, please check the PATH to make sure it is correct."; exit 1
         fi
-        CXX=`which xlclang++`; export CXX
+        CXX=`which xlC_r`; export CXX
         if [ ! -x $CXX ]; then
-           echo "ERROR: xlclang++ was not found, please check the PATH to make sure it is correct."; exit 1
+           echo "ERROR: xlC_r was not found, please check the PATH to make sure it is correct."; exit 1
         fi
-        RELEASE_CFLAGS="-O3 -qstrict=ieeefp"
-        RELEASE_CXXFLAGS="-O3 -qstrict=ieeefp"
+        RELEASE_CFLAGS="-O2 -qmaxmem=-1"
+        RELEASE_CXXFLAGS="-O2 -qmaxmem=-1"
         ;;
     AIX/GCC)
         THE_OS=AIX
@@ -156,20 +154,6 @@ case $platform in
         DEBUG_CFLAGS='-g -O0'
         DEBUG_CXXFLAGS='-g -O0'
         ;;
-    AIX/OpenXL)
-        THE_OS=AIX
-        THE_COMP="ibm-clang_r"
-        CC=`which ibm-clang_r`; export CC
-        if [ ! -x $CC ]; then
-           echo "ERROR: ibm-clang_r was not found, please check the PATH to make sure it is correct."; exit 1
-        fi
-        CXX=`which ibm-clang++_r`; export CXX
-        if [ ! -x $CXX ]; then
-           echo "ERROR: ibm-clang++_r was not found, please check the PATH to make sure it is correct."; exit 1
-        fi
-        RELEASE_CFLAGS="-O3"
-        RELEASE_CXXFLAGS="-O3"
-	;;
     Solaris)
         THE_OS=SOLARIS
         THE_COMP="Sun's CC"
@@ -244,11 +228,11 @@ case $platform in
         ;;
     Linux/VA)
         THE_OS="Linux"
-        THE_COMP="IBM XL C++ Compiler"
-        CC=`which xlclang`; export CC
-        CXX=`which xlclang++`; export CXX
-        RELEASE_CFLAGS="-O3"
-        RELEASE_CXXFLAGS="-O3"
+        THE_COMP="IBM Visual Age C++ Compiler"
+        CC=`which xlc_r`; export CC
+        CXX=`which xlC_r`; export CXX
+        RELEASE_CFLAGS="-O2 -qmaxmem=-1"
+        RELEASE_CXXFLAGS="-O2 -qmaxmem=-1"
         ;;
     Linux/gcc)
         THE_OS="Linux"
@@ -260,19 +244,9 @@ case $platform in
         DEBUG_CFLAGS='-g'
         DEBUG_CXXFLAGS='-g'
         ;;
-    Linux/clang)
-        THE_OS="Linux"
-        THE_COMP="the Clang C++"
-        CC=clang; export CC
-        CXX=clang++; export CXX
-        RELEASE_CFLAGS='-O3'
-        RELEASE_CXXFLAGS='-O3'
-        DEBUG_CFLAGS='-g'
-        DEBUG_CXXFLAGS='-g'
-        ;;
     Linux*)
         THE_OS="Linux"
-        THE_COMP="the default C++"
+        THE_COMP="the clang or else GNU C++"
         RELEASE_CFLAGS='-O3'
         RELEASE_CXXFLAGS='-O3'
         DEBUG_CFLAGS='-g'

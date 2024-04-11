@@ -1,10 +1,11 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ps_PK{
+    Version{"2.1.49.34"}
     units{
         acceleration{
             g-force{
+                dnam{"د جاذبے قوه"}
                 one{"{0} د جاذبے قوه"}
                 other{"{0} د جاذبے قوه"}
             }
@@ -16,21 +17,27 @@ ps_PK{
                 other{"{0} آرک ثانيے"}
             }
             degree{
+                dnam{"درجے"}
                 one{"{0} درجے"}
                 other{"{0} درجے"}
             }
         }
         area{
             hectare{
+                dnam{"هيکترے"}
                 one{"{0} هيکتر"}
                 other{"{0} هيکترے"}
             }
         }
         duration{
             day{
+                dnam{"ورځے"}
+                one{"{0} ورځ"}
+                other{"{0} ورځے"}
                 per{"{0} په هره ورځ کے"}
             }
             month{
+                dnam{"مياشتے"}
                 one{"{0} مياشت"}
                 other{"{0} مياشتے"}
             }
@@ -45,17 +52,18 @@ ps_PK{
                 other{"{0} فلکي احدے"}
             }
             inch{
+                dnam{"انچے"}
                 one{"{0} انچ"}
                 other{"{0} انچے"}
             }
         }
         pressure{
-            inch-ofhg{
+            inch-hg{
                 dnam{"د پارے انچے"}
                 one{"{0} د پارے انچ"}
                 other{"{0} د پارے انچے"}
             }
-            millimeter-ofhg{
+            millimeter-of-mercury{
                 dnam{"د پارے ملي مترز"}
                 one{"{0} د پارے ملي متر"}
                 other{"{0} د پارے ملي مترز"}
@@ -75,6 +83,7 @@ ps_PK{
         }
         volume{
             cup{
+                dnam{"پيالے"}
                 one{"{0} پياله"}
                 other{"{0} پيالے"}
             }
@@ -82,13 +91,6 @@ ps_PK{
                 dnam{"د ميز کاچوغے"}
                 one{"{0} د ميز کاچوغه"}
                 other{"{0} د ميز کاچوغے"}
-            }
-        }
-    }
-    unitsNarrow{
-        angle{
-            degree{
-                dnam{"درجے"}
             }
         }
     }

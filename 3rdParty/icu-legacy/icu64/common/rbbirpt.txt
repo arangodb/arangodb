@@ -2,7 +2,7 @@
 #*****************************************************************************
 #
 #   Copyright (C) 2016 and later: Unicode, Inc. and others.
-#   License & terms of use: http://www.unicode.org/copyright.html
+#   License & terms of use: http://www.unicode.org/copyright.html#License
 #
 #*****************************************************************************
 #*****************************************************************************
@@ -50,7 +50,7 @@
 #       |                     character from the input only if 'n' appears here.
 #       |
 #       |--- Character or named character classes to test for.  If the current character being scanned
-#            matches, perform the actions and go to the state specified on this line.
+#            matches, peform the actions and go to the state specified on this line.
 #            The input character is tested sequentally, in the order written.  The characters and
 #            character classes tested for do not need to be mutually exclusive.  The first match wins.
 #            
@@ -258,7 +258,7 @@ expr-cont-no-tag:
 #                    to go to after completion of the variable name scanning.
 #
 #                    The current input character must be the $ that introduces the name.
-#                    The $ is consumed here rather than in the state that first detected it
+#                    The $ is consummed here rather than in the state that first detected it
 #                    so that the doStartVariableName action only needs to happen in one
 #                    place (here), and the other states don't need to worry about it.
 #

@@ -18,9 +18,9 @@
 #include "unicode/uniset.h"
 #include "funcrepl.h"
 
-static const char16_t AMPERSAND = 38; // '&'
-static const char16_t OPEN[]    = {40,32,0}; // "( "
-static const char16_t CLOSE[]   = {32,41,0}; // " )"
+static const UChar AMPERSAND = 38; // '&'
+static const UChar OPEN[]    = {40,32,0}; // "( "
+static const UChar CLOSE[]   = {32,41,0}; // " )"
 
 U_NAMESPACE_BEGIN
 
@@ -59,7 +59,7 @@ FunctionReplacer::~FunctionReplacer() {
 /**
  * Implement UnicodeFunctor
  */
-FunctionReplacer* FunctionReplacer::clone() const {
+UnicodeFunctor* FunctionReplacer::clone() const {
     return new FunctionReplacer(*this);
 }
 

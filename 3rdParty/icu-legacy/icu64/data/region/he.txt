@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 he{
     Countries{
         001{"העולם"}
@@ -69,7 +68,7 @@ he{
         BS{"איי בהאמה"}
         BT{"בהוטן"}
         BV{"האי בובה"}
-        BW{"בוטסואנה"}
+        BW{"בוצוואנה"}
         BY{"בלארוס"}
         BZ{"בליז"}
         CA{"קנדה"}
@@ -244,7 +243,7 @@ he{
         SI{"סלובניה"}
         SJ{"סבאלברד ויאן מאיין"}
         SK{"סלובקיה"}
-        SL{"סיירה לאון"}
+        SL{"סיירה לאונה"}
         SM{"סן מרינו"}
         SN{"סנגל"}
         SO{"סומליה"}
@@ -288,8 +287,6 @@ he{
         VU{"ונואטו"}
         WF{"איי ווליס ופוטונה"}
         WS{"סמואה"}
-        XA{"מבטאים חלקיים"}
-        XB{"דו-כיווני חלקי"}
         XK{"קוסובו"}
         YE{"תימן"}
         YT{"מאיוט"}
@@ -298,10 +295,8 @@ he{
         ZW{"זימבבואה"}
         ZZ{"אזור לא ידוע"}
     }
-    Countries%chagos{
-        IO{"ארכיפלג צ׳גוס"}
-    }
     Countries%short{
+        GB{"בריטניה"}
         HK{"הונג קונג"}
         MO{"מקאו"}
         PS{"פלסטין"}
@@ -313,8 +308,8 @@ he{
         CI{"קוט דיוואר"}
         CZ{"הרפובליקה הצ׳כית"}
         FK{"איי פוקלנד (איי מלווינס)"}
-        NZ{"אאוטארואה"}
         SZ{"סווזילנד"}
         TL{"מזרח טימור"}
     }
+    Version{"2.1.48.42"}
 }

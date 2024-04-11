@@ -34,7 +34,7 @@
 #include "sfwdchit.h"
 
 CollationSpanishTest::CollationSpanishTest()
-: myCollation(nullptr)
+: myCollation(0)
 {
     UErrorCode status = U_ZERO_ERROR;
     myCollation = Collator::createInstance(Locale("es", "ES", ""),status);
@@ -45,7 +45,7 @@ CollationSpanishTest::~CollationSpanishTest()
     delete myCollation;
 }
 
-const char16_t CollationSpanishTest::testSourceCases[][CollationSpanishTest::MAX_TOKEN_LEN] = {
+const UChar CollationSpanishTest::testSourceCases[][CollationSpanishTest::MAX_TOKEN_LEN] = {
     {0x61, 0x6c, 0x69, 0x61, 0x73, 0},
     {0x45, 0x6c, 0x6c, 0x69, 0x6f, 0x74, 0},
     {0x48, 0x65, 0x6c, 0x6c, 0x6f, 0},
@@ -57,7 +57,7 @@ const char16_t CollationSpanishTest::testSourceCases[][CollationSpanishTest::MAX
     {0x48, 0x65, 0x6c, 0x6c, 0x6f, 0},
 };
 
-const char16_t CollationSpanishTest::testTargetCases[][CollationSpanishTest::MAX_TOKEN_LEN] = {
+const UChar CollationSpanishTest::testTargetCases[][CollationSpanishTest::MAX_TOKEN_LEN] = {
     {0x61, 0x6c, 0x6c, 0x69, 0x61, 0x73, 0},
     {0x45, 0x6d, 0x69, 0x6f, 0x74, 0},
     {0x68, 0x65, 0x6c, 0x6c, 0x4f, 0},

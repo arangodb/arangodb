@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 so{
+    Version{"2.1.49.82"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"Abidjaan"}
@@ -9,14 +9,23 @@ so{
         "Africa:Accra"{
             ec{"Akra"}
         }
+        "Africa:Addis_Ababa"{
+            ec{"Addis Ababa"}
+        }
         "Africa:Algiers"{
             ec{"Aljeeris"}
+        }
+        "Africa:Asmera"{
+            ec{"Asmara"}
         }
         "Africa:Bamako"{
             ec{"Bamaako"}
         }
         "Africa:Bangui"{
             ec{"Baagi"}
+        }
+        "Africa:Banjul"{
+            ec{"Banjul"}
         }
         "Africa:Bissau"{
             ec{"Bisaaw"}
@@ -26,6 +35,9 @@ so{
         }
         "Africa:Brazzaville"{
             ec{"Barasafil"}
+        }
+        "Africa:Bujumbura"{
+            ec{"Bujumbura"}
         }
         "Africa:Cairo"{
             ec{"Qaahira"}
@@ -38,6 +50,9 @@ so{
         }
         "Africa:Conakry"{
             ec{"Conakri"}
+        }
+        "Africa:Dakar"{
+            ec{"Dakar"}
         }
         "Africa:Dar_es_Salaam"{
             ec{"Daresalaam"}
@@ -63,11 +78,20 @@ so{
         "Africa:Johannesburg"{
             ec{"Johansbaag"}
         }
+        "Africa:Juba"{
+            ec{"Juba"}
+        }
         "Africa:Kampala"{
             ec{"Kambaala"}
         }
         "Africa:Khartoum"{
             ec{"Khartuum"}
+        }
+        "Africa:Kigali"{
+            ec{"Kigali"}
+        }
+        "Africa:Kinshasa"{
+            ec{"Kinshasa"}
         }
         "Africa:Lagos"{
             ec{"Laagoos"}
@@ -86,6 +110,9 @@ so{
         }
         "Africa:Lusaka"{
             ec{"Lusaaka"}
+        }
+        "Africa:Malabo"{
+            ec{"Malabo"}
         }
         "Africa:Maputo"{
             ec{"Mabuuto"}
@@ -132,6 +159,9 @@ so{
         "Africa:Windhoek"{
             ec{"Windhook"}
         }
+        "America:Adak"{
+            ec{"Adak"}
+        }
         "America:Anchorage"{
             ec{"Anjorage"}
         }
@@ -150,6 +180,9 @@ so{
         "America:Argentina:Rio_Gallegos"{
             ec{"Riyo Jalejos"}
         }
+        "America:Argentina:Salta"{
+            ec{"Salta"}
+        }
         "America:Argentina:San_Juan"{
             ec{"San Juwaan"}
         }
@@ -162,6 +195,9 @@ so{
         "America:Argentina:Ushuaia"{
             ec{"Ushuaay"}
         }
+        "America:Aruba"{
+            ec{"Aruba"}
+        }
         "America:Asuncion"{
             ec{"Asunkiyon"}
         }
@@ -171,6 +207,12 @@ so{
         "America:Bahia_Banderas"{
             ec{"Bahiya Banderas"}
         }
+        "America:Barbados"{
+            ec{"Barbados"}
+        }
+        "America:Belem"{
+            ec{"Belem"}
+        }
         "America:Belize"{
             ec{"Beliise"}
         }
@@ -179,6 +221,9 @@ so{
         }
         "America:Boa_Vista"{
             ec{"Bow Fista"}
+        }
+        "America:Bogota"{
+            ec{"Bogota"}
         }
         "America:Boise"{
             ec{"Boyse"}
@@ -212,9 +257,6 @@ so{
         }
         "America:Chihuahua"{
             ec{"Jiwaahuu"}
-        }
-        "America:Ciudad_Juarez"{
-            ec{"Magaalada Juarez"}
         }
         "America:Coral_Harbour"{
             ec{"Atikokaan"}
@@ -252,6 +294,9 @@ so{
         "America:Dominica"{
             ec{"Dominiika"}
         }
+        "America:Edmonton"{
+            ec{"Edmonton"}
+        }
         "America:Eirunepe"{
             ec{"Iiruneeb"}
         }
@@ -266,6 +311,9 @@ so{
         }
         "America:Glace_Bay"{
             ec{"Galeys Baay"}
+        }
+        "America:Godthab"{
+            ec{"Nuuk"}
         }
         "America:Goose_Bay"{
             ec{"Guus Baay"}
@@ -330,6 +378,9 @@ so{
         "America:Jamaica"{
             ec{"Jamayka"}
         }
+        "America:Jujuy"{
+            ec{"Jujuy"}
+        }
         "America:Juneau"{
             ec{"Juniyuu"}
         }
@@ -368,6 +419,9 @@ so{
         }
         "America:Martinique"{
             ec{"Maartiniikuyuu"}
+        }
+        "America:Matamoros"{
+            ec{"Matamoros"}
         }
         "America:Mazatlan"{
             ec{"Mazaatlan"}
@@ -408,8 +462,14 @@ so{
         "America:New_York"{
             ec{"Niyuu Yook"}
         }
+        "America:Nipigon"{
+            ec{"Nibiigoon"}
+        }
         "America:Nome"{
             ec{"Noom"}
+        }
+        "America:Noronha"{
+            ec{"Noroonha"}
         }
         "America:North_Dakota:Beulah"{
             ec{"Biyuulah, Waqooyiga Dakoota"}
@@ -426,6 +486,12 @@ so{
         "America:Panama"{
             ec{"Banaama"}
         }
+        "America:Pangnirtung"{
+            ec{"Bangnirtuung"}
+        }
+        "America:Paramaribo"{
+            ec{"Baramaribo"}
+        }
         "America:Phoenix"{
             ec{"Foonikis"}
         }
@@ -435,11 +501,17 @@ so{
         "America:Port_of_Spain"{
             ec{"Boort of Isbayn"}
         }
+        "America:Porto_Velho"{
+            ec{"Boorto Felho"}
+        }
         "America:Puerto_Rico"{
             ec{"Boorta Riiko"}
         }
         "America:Punta_Arenas"{
             ec{"Bunta Arinaas"}
+        }
+        "America:Rainy_River"{
+            ec{"Reyni Rifer"}
         }
         "America:Rankin_Inlet"{
             ec{"Raankin Inleet"}
@@ -501,8 +573,14 @@ so{
         "America:Thule"{
             ec{"Tuul"}
         }
+        "America:Thunder_Bay"{
+            ec{"Tanda Baay"}
+        }
         "America:Tijuana"{
             ec{"Tijuwaana"}
+        }
+        "America:Toronto"{
+            ec{"Toronto"}
         }
         "America:Tortola"{
             ec{"Tortoola"}
@@ -519,6 +597,9 @@ so{
         "America:Yakutat"{
             ec{"Yakutaat"}
         }
+        "America:Yellowknife"{
+            ec{"Yelowneyf"}
+        }
         "Antarctica:Casey"{
             ec{"Kaysee"}
         }
@@ -530,6 +611,9 @@ so{
         }
         "Antarctica:Macquarie"{
             ec{"Makquwariy"}
+        }
+        "Antarctica:Mawson"{
+            ec{"Mawson"}
         }
         "Antarctica:McMurdo"{
             ec{"MakMurdo"}
@@ -567,6 +651,12 @@ so{
         "Asia:Aqtau"{
             ec{"Aktaw"}
         }
+        "Asia:Aqtobe"{
+            ec{"Aqtobe"}
+        }
+        "Asia:Ashgabat"{
+            ec{"Ashgabat"}
+        }
         "Asia:Atyrau"{
             ec{"Atiyraw"}
         }
@@ -576,6 +666,9 @@ so{
         "Asia:Bahrain"{
             ec{"Baxreyn"}
         }
+        "Asia:Baku"{
+            ec{"Baku"}
+        }
         "Asia:Bangkok"{
             ec{"Bangkook"}
         }
@@ -584,6 +677,9 @@ so{
         }
         "Asia:Beirut"{
             ec{"Beyruud"}
+        }
+        "Asia:Bishkek"{
+            ec{"Bishkek"}
         }
         "Asia:Brunei"{
             ec{"Buruney"}
@@ -606,11 +702,23 @@ so{
         "Asia:Dhaka"{
             ec{"Dhaaka"}
         }
+        "Asia:Dili"{
+            ec{"Dili"}
+        }
         "Asia:Dubai"{
             ec{"Dubay"}
         }
+        "Asia:Dushanbe"{
+            ec{"Dushanbe"}
+        }
+        "Asia:Famagusta"{
+            ec{"Famagusta"}
+        }
         "Asia:Gaza"{
             ec{"Qasa"}
+        }
+        "Asia:Hebron"{
+            ec{"Hebron"}
         }
         "Asia:Hong_Kong"{
             ec{"Hoong Koong"}
@@ -681,6 +789,12 @@ so{
         "Asia:Novosibirsk"{
             ec{"Nofosibirsik"}
         }
+        "Asia:Omsk"{
+            ec{"Omsk"}
+        }
+        "Asia:Oral"{
+            ec{"Oral"}
+        }
         "Asia:Phnom_Penh"{
             ec{"Benom Ben"}
         }
@@ -699,11 +813,17 @@ so{
         "Asia:Qyzylorda"{
             ec{"Qiyslorda"}
         }
+        "Asia:Rangoon"{
+            ec{"Yangon"}
+        }
         "Asia:Riyadh"{
             ec{"Riyaad"}
         }
         "Asia:Saigon"{
             ec{"Hoo Ji Mih Siti"}
+        }
+        "Asia:Sakhalin"{
+            ec{"Sakhalin"}
         }
         "Asia:Samarkand"{
             ec{"Samarkaan"}
@@ -734,6 +854,21 @@ so{
         }
         "Asia:Thimphu"{
             ec{"Timbu"}
+        }
+        "Asia:Tokyo"{
+            ec{"Tokyo"}
+        }
+        "Asia:Tomsk"{
+            ec{"Tomsk"}
+        }
+        "Asia:Ulaanbaatar"{
+            ec{"Ulaanbaatar"}
+        }
+        "Asia:Urumqi"{
+            ec{"Urumqi"}
+        }
+        "Asia:Ust-Nera"{
+            ec{"Ust-Nera"}
         }
         "Asia:Vientiane"{
             ec{"Fiyaantiyaan"}
@@ -766,13 +901,16 @@ so{
             ec{"Farow"}
         }
         "Atlantic:Madeira"{
-            ec{"Madira"}
+            ec{"Madeera"}
         }
         "Atlantic:Reykjavik"{
             ec{"Reykjafik"}
         }
         "Atlantic:South_Georgia"{
             ec{"Sowt Joorjiya"}
+        }
+        "Atlantic:St_Helena"{
+            ec{"St. Helena"}
         }
         "Atlantic:Stanley"{
             ec{"Istaanley"}
@@ -786,11 +924,20 @@ so{
         "Australia:Broken_Hill"{
             ec{"Boroken Hil"}
         }
+        "Australia:Currie"{
+            ec{"Kuriy"}
+        }
+        "Australia:Darwin"{
+            ec{"Darwin"}
+        }
         "Australia:Eucla"{
             ec{"Yukla"}
         }
         "Australia:Hobart"{
             ec{"Hubaart"}
+        }
+        "Australia:Lindeman"{
+            ec{"Lindeman"}
         }
         "Australia:Lord_Howe"{
             ec{"Lod How"}
@@ -806,7 +953,6 @@ so{
         }
         "Etc:UTC"{
             ls{"Waqtiga Isku-xiran ee Caalamka"}
-            ss{"Waqtiga UTC"}
         }
         "Etc:Unknown"{
             ec{"Magaalo Aan La Garanayn"}
@@ -824,7 +970,7 @@ so{
             ec{"Atens"}
         }
         "Europe:Belgrade"{
-            ec{"Belgaraydh"}
+            ec{"Bilgaraydh"}
         }
         "Europe:Berlin"{
             ec{"Barliin"}
@@ -854,6 +1000,9 @@ so{
             ec{"Dhaablin"}
             ld{"Waqtiga Caadiga Ah ee Ayrishka"}
         }
+        "Europe:Gibraltar"{
+            ec{"Gibraltar"}
+        }
         "Europe:Guernsey"{
             ec{"Geernisi"}
         }
@@ -869,11 +1018,17 @@ so{
         "Europe:Jersey"{
             ec{"Jaarsey"}
         }
+        "Europe:Kaliningrad"{
+            ec{"Kaliningrad"}
+        }
         "Europe:Kiev"{
-            ec{"Kiyeef"}
+            ec{"Kiyf"}
         }
         "Europe:Kirov"{
             ec{"Kiroof"}
+        }
+        "Europe:Lisbon"{
+            ec{"Lisbon"}
         }
         "Europe:Ljubljana"{
             ec{"Lubalaana"}
@@ -883,10 +1038,13 @@ so{
             ld{"Waqtiga Xagaaga ee Biritishka"}
         }
         "Europe:Luxembourg"{
-            ec{"Luksemberg"}
+            ec{"Luksembaag"}
         }
         "Europe:Madrid"{
-            ec{"Madriid"}
+            ec{"Maadriid"}
+        }
+        "Europe:Malta"{
+            ec{"Malta"}
         }
         "Europe:Mariehamn"{
             ec{"Maarihaam"}
@@ -899,6 +1057,9 @@ so{
         }
         "Europe:Moscow"{
             ec{"Moskow"}
+        }
+        "Europe:Oslo"{
+            ec{"Oslo"}
         }
         "Europe:Paris"{
             ec{"Baariis"}
@@ -914,6 +1075,9 @@ so{
         }
         "Europe:Rome"{
             ec{"Rooma"}
+        }
+        "Europe:Samara"{
+            ec{"Samara"}
         }
         "Europe:San_Marino"{
             ec{"San Mariino"}
@@ -945,6 +1109,9 @@ so{
         "Europe:Ulyanovsk"{
             ec{"Ulyanofisk"}
         }
+        "Europe:Uzhgorod"{
+            ec{"Usgorod"}
+        }
         "Europe:Vaduz"{
             ec{"Faduus"}
         }
@@ -952,7 +1119,7 @@ so{
             ec{"Fatikaan"}
         }
         "Europe:Vienna"{
-            ec{"Fiyeena"}
+            ec{"Fiyaana"}
         }
         "Europe:Vilnius"{
             ec{"Finiyuus"}
@@ -960,11 +1127,17 @@ so{
         "Europe:Volgograd"{
             ec{"Folgograd"}
         }
+        "Europe:Warsaw"{
+            ec{"Warsaw"}
+        }
         "Europe:Zagreb"{
-            ec{"Saqrib"}
+            ec{"Sagreb"}
+        }
+        "Europe:Zaporozhye"{
+            ec{"Saborosey"}
         }
         "Europe:Zurich"{
-            ec{"Suurikh"}
+            ec{"Surij"}
         }
         "Indian:Antananarivo"{
             ec{"Antananarifo"}
@@ -983,6 +1156,9 @@ so{
         }
         "Indian:Kerguelen"{
             ec{"Kergalen"}
+        }
+        "Indian:Mahe"{
+            ec{"Mahe"}
         }
         "Indian:Maldives"{
             ec{"Maldifis"}
@@ -1011,11 +1187,20 @@ so{
         "Pacific:Easter"{
             ec{"Iistar"}
         }
+        "Pacific:Efate"{
+            ec{"Efate"}
+        }
         "Pacific:Enderbury"{
             ec{"Enderburi"}
         }
         "Pacific:Fakaofo"{
             ec{"fakofo"}
+        }
+        "Pacific:Fiji"{
+            ec{"Fiji"}
+        }
+        "Pacific:Funafuti"{
+            ec{"Funafuti"}
         }
         "Pacific:Galapagos"{
             ec{"Galabagos"}
@@ -1029,8 +1214,8 @@ so{
         "Pacific:Guam"{
             ec{"Guwam"}
         }
-        "Pacific:Kanton"{
-            ec{"Kantoon"}
+        "Pacific:Johnston"{
+            ec{"Joonston"}
         }
         "Pacific:Kiritimati"{
             ec{"Kiritimaati"}
@@ -1046,6 +1231,9 @@ so{
         }
         "Pacific:Marquesas"{
             ec{"Marquwesas"}
+        }
+        "Pacific:Midway"{
+            ec{"Midway"}
         }
         "Pacific:Nauru"{
             ec{"Nawroo"}
@@ -1074,8 +1262,17 @@ so{
         "Pacific:Port_Moresby"{
             ec{"Boort Moresbi"}
         }
+        "Pacific:Rarotonga"{
+            ec{"Rarotonga"}
+        }
         "Pacific:Saipan"{
             ec{"Seyban"}
+        }
+        "Pacific:Tahiti"{
+            ec{"Tahiti"}
+        }
+        "Pacific:Tarawa"{
+            ec{"Tarawa"}
         }
         "Pacific:Tongatapu"{
             ec{"Tongatabu"}
@@ -1083,13 +1280,11 @@ so{
         "Pacific:Truk"{
             ec{"Juuk"}
         }
+        "Pacific:Wake"{
+            ec{"Wake"}
+        }
         "Pacific:Wallis"{
             ec{"Walis"}
-        }
-        "meta:Acre"{
-            ld{"Wakhtiga Kulka ee Acre"}
-            lg{"Wakhtiga Acre"}
-            ls{"Wakhtiga Caadiga ah ee Acre"}
         }
         "meta:Afghanistan"{
             ls{"Waqtiga Afggaanistaan"}
@@ -1112,11 +1307,6 @@ so{
             ld{"Waqtiga Dharaarta ee Alaska"}
             lg{"Waqtiga Alaska"}
             ls{"Waqtiga Caadiga Ah ee Alaska"}
-        }
-        "meta:Almaty"{
-            ld{"Saacada Waqtiga Kulaylaha ee Almaty"}
-            lg{"Waqtiga Almaty"}
-            ls{"Waqtiga Caadiga ah ee Almaty"}
         }
         "meta:Amazon"{
             ld{"Waqtiga Xagaaga ee Amason"}
@@ -1143,25 +1333,10 @@ so{
             lg{"Waqtiga Basifika ee Waqooyiga Ameerika"}
             ls{"Waqtiga Caadiga ah ee Basifika Waqooyiga Ameerika"}
         }
-        "meta:Anadyr"{
-            ld{"Wakhtiga Kulka ee Anadyr"}
-            lg{"Wakhtiga Anadyr"}
-            ls{"Wakhtiga Caadiga ah ee Anadyr"}
-        }
         "meta:Apia"{
             ld{"Waqtiga Dharaarta ee Abiya"}
             lg{"Waqtiga Abiya"}
             ls{"Waqtiga Caadiga Ah ee Abiya"}
-        }
-        "meta:Aqtau"{
-            ld{"Saacada Waqtiga Kulaylaha Aqtau"}
-            lg{"Waqtiga Aqtau"}
-            ls{"Waqtiga Caadiga ah ee Aqtau"}
-        }
-        "meta:Aqtobe"{
-            ld{"Saacada Waqtiga kulaylaha Aqtobe"}
-            lg{"Waqtiga Aqtobe"}
-            ls{"Waqtiga Caadiga ah ee Aqtobe"}
         }
         "meta:Arabian"{
             ld{"Waqtiga Dharaarta ee Carabta"}
@@ -1338,7 +1513,7 @@ so{
             ls{"Waqtiga Koonfurta Faransiiska & Antaarktik"}
         }
         "meta:GMT"{
-            ls{"Wakhtiga Giriinwij"}
+            ls{"Waqtiga Celceliska Giriinwij"}
         }
         "meta:Galapagos"{
             ls{"Waqtiga Galabagos"}
@@ -1374,9 +1549,6 @@ so{
             ld{"Waqtiga Dharaarta ee Hawaay-Alutiyaan"}
             lg{"Waqtiga Hawaay-Alutiyaan"}
             ls{"Waqtiga Caadiga Ah ee Hawaay-Alutiyaan"}
-            sd{"HADT"}
-            sg{"HAT"}
-            ss{"HAST"}
         }
         "meta:Hong_Kong"{
             ld{"Waqtiga Xagaaga ee Hoong Koong"}
@@ -1426,11 +1598,6 @@ so{
             lg{"Waqtiga Jabaan"}
             ls{"Waqtiga Caadiga Ah ee Jabaan"}
         }
-        "meta:Kamchatka"{
-            ld{"Wakhtiga Kulka ee Petropavlovsk-Kamchatski"}
-            lg{"Wakhtiga Petropavlovsk-Kamchatski"}
-            ls{"Wakhtiga Caadiga ah ee Petropavlovsk-Kamchatski"}
-        }
         "meta:Kazakhstan_Eastern"{
             ls{"Waqtiga Bariga Kasakhistaan"}
         }
@@ -1461,6 +1628,9 @@ so{
             lg{"Waqtiga Lod How"}
             ls{"Waqtiga Caadiga Ah ee Lod How"}
         }
+        "meta:Macquarie"{
+            ls{"Waqtiga Makquwariy Aylaan"}
+        }
         "meta:Magadan"{
             ld{"Waqtiga Xagaaga ee Magedan"}
             lg{"Watiga Magedan"}
@@ -1485,6 +1655,11 @@ so{
         }
         "meta:Mawson"{
             ls{"Waqtiga Mawson"}
+        }
+        "meta:Mexico_Northwest"{
+            ld{"Waqtiga Dharaarta ee Waqooyi-Galbeed Meksiko"}
+            lg{"Waqtiga Waqooyi-Galbeed Meksiko"}
+            ls{"Waqtiga Caadiga Ah ee Waqooyi-Galbeed Meksiko"}
         }
         "meta:Mexico_Pacific"{
             ld{"Waqtiga Dharaarta ee Baasifikada Meksiko"}
@@ -1529,9 +1704,7 @@ so{
             ls{"Waqtiga Niyuu"}
         }
         "meta:Norfolk"{
-            ld{"Waqtiga Maalinta ee Norfolk Island"}
-            lg{"Waqtiga Norfolk Island"}
-            ls{"Waqtiga Caadiga ah ee Norfolk Island"}
+            ls{"Waqtiga Noorfek Aylaan"}
         }
         "meta:Noronha"{
             ld{"Waqtiga Xagaaga ee Farnaando de Nooronha"}
@@ -1591,11 +1764,6 @@ so{
         "meta:Pyongyang"{
             ls{"Waqtiga Boyongyang"}
         }
-        "meta:Qyzylorda"{
-            ld{"Saacada Waqtiga Kulaylaha Qyzylorda"}
-            lg{"Waqtiga Qyzylorda"}
-            ls{"Waqtiga Caadiga ah ee Qyzylorda"}
-        }
         "meta:Reunion"{
             ls{"Waqtiga Riyuuniyon"}
         }
@@ -1606,11 +1774,6 @@ so{
             ld{"Waqtiga Xagaaga ee Sakhalin"}
             lg{"Waqtiga Sakhalin"}
             ls{"Waqtiga Caadiga Ah ee Sakhalin"}
-        }
-        "meta:Samara"{
-            ld{"Wakhtiga Kulka ee Samara"}
-            lg{"Wakhtiga Samara"}
-            ls{"Wakhtiga Caadiga ah ee Samara"}
         }
         "meta:Samoa"{
             ld{"Waqtiga Dharaarta ee Samoa"}
@@ -1712,9 +1875,10 @@ so{
             lg{"Waqtiga Yekaterinbaag"}
             ls{"Waqtiga Caadiga Ah ee Yekaterinbaag"}
         }
-        "meta:Yukon"{
-            ls{"Waqtiga Yukon"}
-        }
+        fallbackFormat{"{1} ({0})"}
+        gmtFormat{"GMT{0}"}
+        gmtZeroFormat{"GMT"}
+        hourFormat{"+HH:mm;-HH:mm"}
         regionFormat{"Waqtiga {0}"}
         regionFormatDaylight{"Waqtiga Dharaarta ee {0}"}
         regionFormatStandard{"Waqtiga Caadiga Ah ee {0}"}

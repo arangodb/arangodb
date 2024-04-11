@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 it{
     Countries{
         001{"Mondo"}
@@ -107,7 +106,7 @@ it{
         ER{"Eritrea"}
         ES{"Spagna"}
         ET{"Etiopia"}
-        EU{"Unione europea"}
+        EU{"Unione Europea"}
         EZ{"Eurozona"}
         FI{"Finlandia"}
         FJ{"Figi"}
@@ -119,7 +118,7 @@ it{
         GB{"Regno Unito"}
         GD{"Grenada"}
         GE{"Georgia"}
-        GF{"Guyana Francese"}
+        GF{"Guyana francese"}
         GG{"Guernsey"}
         GH{"Ghana"}
         GI{"Gibilterra"}
@@ -129,7 +128,7 @@ it{
         GP{"Guadalupa"}
         GQ{"Guinea Equatoriale"}
         GR{"Grecia"}
-        GS{"Georgia del Sud e Sandwich Australi"}
+        GS{"Georgia del Sud e Sandwich australi"}
         GT{"Guatemala"}
         GU{"Guam"}
         GW{"Guinea-Bissau"}
@@ -213,7 +212,7 @@ it{
         NU{"Niue"}
         NZ{"Nuova Zelanda"}
         OM{"Oman"}
-        PA{"Panama"}
+        PA{"Panamá"}
         PE{"Perù"}
         PF{"Polinesia francese"}
         PG{"Papua Nuova Guinea"}
@@ -254,7 +253,7 @@ it{
         SV{"El Salvador"}
         SX{"Sint Maarten"}
         SY{"Siria"}
-        SZ{"Eswatini"}
+        SZ{"Swaziland"}
         TA{"Tristan da Cunha"}
         TC{"Isole Turks e Caicos"}
         TD{"Ciad"}
@@ -274,7 +273,7 @@ it{
         TZ{"Tanzania"}
         UA{"Ucraina"}
         UG{"Uganda"}
-        UM{"Isole Minori Esterne degli Stati Uniti"}
+        UM{"Altre isole americane del Pacifico"}
         UN{"Nazioni Unite"}
         US{"Stati Uniti"}
         UY{"Uruguay"}
@@ -288,8 +287,8 @@ it{
         VU{"Vanuatu"}
         WF{"Wallis e Futuna"}
         WS{"Samoa"}
-        XA{"Pseudo-accenti"}
-        XB{"Pseudo-bidi"}
+        XA{"pseudo-accenti"}
+        XB{"pseudo-bidi"}
         XK{"Kosovo"}
         YE{"Yemen"}
         YT{"Mayotte"}
@@ -297,9 +296,6 @@ it{
         ZM{"Zambia"}
         ZW{"Zimbabwe"}
         ZZ{"Regione sconosciuta"}
-    }
-    Countries%chagos{
-        IO{"Arcipelago Chagos"}
     }
     Countries%short{
         GB{"UK"}
@@ -315,9 +311,7 @@ it{
         CI{"Côte d’Ivoire"}
         CZ{"Repubblica Ceca"}
         FK{"Isole Falkland (Isole Malvine)"}
-        NZ{"Nuova Zelanda (Aotearoa)"}
-        SZ{"Regno di Eswatini"}
-        TL{"Timor Leste"}
-        TR{"Türkiye"}
+        SZ{"Regno di eSwatini"}
     }
+    Version{"2.1.48.42"}
 }

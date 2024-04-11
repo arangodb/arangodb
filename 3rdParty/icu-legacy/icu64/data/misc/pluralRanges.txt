@@ -1,95 +1,90 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 pluralRanges:table(nofallback){
     locales{
-        af{"set04"}
-        ak{"set07"}
+        af{"set05"}
+        ak{"set02"}
         am{"set01"}
-        an{"set04"}
-        ar{"set21"}
+        ar{"set18"}
         as{"set01"}
-        az{"set03"}
-        be{"set18"}
-        bg{"set04"}
+        az{"set04"}
+        be{"set15"}
+        bg{"set05"}
         bn{"set01"}
-        bs{"set12"}
-        ca{"set15"}
-        cs{"set17"}
-        cy{"set20"}
-        da{"set05"}
-        de{"set03"}
-        el{"set03"}
-        en{"set04"}
-        es{"set15"}
-        et{"set04"}
-        eu{"set04"}
-        fa{"set07"}
-        fi{"set04"}
-        fil{"set05"}
-        fr{"set13"}
-        ga{"set19"}
-        gl{"set03"}
-        gsw{"set03"}
+        bs{"set11"}
+        ca{"set05"}
+        cs{"set14"}
+        cy{"set17"}
+        da{"set06"}
+        de{"set04"}
+        el{"set04"}
+        en{"set05"}
+        es{"set05"}
+        et{"set05"}
+        eu{"set05"}
+        fa{"set02"}
+        fi{"set05"}
+        fil{"set06"}
+        fr{"set01"}
+        ga{"set16"}
+        gl{"set04"}
+        gsw{"set04"}
         gu{"set01"}
-        he{"set10"}
+        he{"set13"}
         hi{"set01"}
-        hr{"set12"}
-        hu{"set03"}
+        hr{"set11"}
+        hu{"set04"}
         hy{"set01"}
-        ia{"set04"}
+        ia{"set05"}
         id{"set00"}
-        io{"set04"}
-        is{"set05"}
-        it{"set14"}
+        io{"set05"}
+        is{"set06"}
+        it{"set04"}
         ja{"set00"}
-        ka{"set02"}
-        kk{"set03"}
+        ka{"set03"}
+        kk{"set04"}
         km{"set00"}
         kn{"set01"}
         ko{"set00"}
-        ky{"set03"}
-        lij{"set03"}
+        ky{"set04"}
         lo{"set00"}
-        lt{"set18"}
+        lt{"set15"}
         lv{"set09"}
         mk{"set08"}
-        ml{"set03"}
-        mn{"set03"}
+        ml{"set04"}
+        mn{"set04"}
         mr{"set01"}
         ms{"set00"}
         my{"set00"}
-        nb{"set04"}
-        ne{"set03"}
-        nl{"set03"}
-        no{"set04"}
-        or{"set07"}
-        pa{"set05"}
-        pcm{"set04"}
-        pl{"set17"}
+        nb{"set05"}
+        ne{"set04"}
+        nl{"set04"}
+        or{"set02"}
+        pa{"set06"}
+        pl{"set14"}
         ps{"set01"}
-        pt{"set13"}
-        ro{"set11"}
-        ru{"set18"}
-        sc{"set03"}
-        scn{"set03"}
-        sd{"set07"}
-        si{"set06"}
-        sk{"set17"}
-        sl{"set16"}
-        sq{"set03"}
-        sr{"set12"}
-        sv{"set04"}
-        sw{"set03"}
-        ta{"set03"}
-        te{"set03"}
+        pt{"set01"}
+        ro{"set10"}
+        ru{"set15"}
+        sc{"set04"}
+        scn{"set04"}
+        sd{"set02"}
+        si{"set07"}
+        sk{"set14"}
+        sl{"set12"}
+        sq{"set04"}
+        sr{"set11"}
+        sv{"set05"}
+        sw{"set04"}
+        ta{"set04"}
+        te{"set04"}
         th{"set00"}
-        tk{"set03"}
-        tr{"set03"}
-        ug{"set03"}
-        uk{"set18"}
-        ur{"set04"}
-        uz{"set03"}
+        tk{"set04"}
+        tr{"set04"}
+        ug{"set04"}
+        uk{"set15"}
+        ur{"set05"}
+        uz{"set04"}
         vi{"set00"}
         yue{"set00"}
         zh{"set00"}
@@ -123,13 +118,18 @@ pluralRanges:table(nofallback){
         set02{
             {
                 "one",
-                "other",
                 "one",
+                "other",
+            }
+            {
+                "one",
+                "other",
+                "other",
             }
             {
                 "other",
                 "one",
-                "other",
+                "one",
             }
             {
                 "other",
@@ -141,12 +141,12 @@ pluralRanges:table(nofallback){
             {
                 "one",
                 "other",
-                "other",
+                "one",
             }
             {
                 "other",
                 "one",
-                "one",
+                "other",
             }
             {
                 "other",
@@ -163,7 +163,7 @@ pluralRanges:table(nofallback){
             {
                 "other",
                 "one",
-                "other",
+                "one",
             }
             {
                 "other",
@@ -174,18 +174,13 @@ pluralRanges:table(nofallback){
         set05{
             {
                 "one",
-                "one",
-                "one",
-            }
-            {
-                "one",
                 "other",
                 "other",
             }
             {
                 "other",
                 "one",
-                "one",
+                "other",
             }
             {
                 "other",
@@ -207,7 +202,7 @@ pluralRanges:table(nofallback){
             {
                 "other",
                 "one",
-                "other",
+                "one",
             }
             {
                 "other",
@@ -219,7 +214,7 @@ pluralRanges:table(nofallback){
             {
                 "one",
                 "one",
-                "other",
+                "one",
             }
             {
                 "one",
@@ -229,7 +224,7 @@ pluralRanges:table(nofallback){
             {
                 "other",
                 "one",
-                "one",
+                "other",
             }
             {
                 "other",
@@ -309,8 +304,8 @@ pluralRanges:table(nofallback){
         set10{
             {
                 "one",
-                "two",
-                "other",
+                "few",
+                "few",
             }
             {
                 "one",
@@ -318,19 +313,24 @@ pluralRanges:table(nofallback){
                 "other",
             }
             {
-                "two",
-                "other",
-                "other",
-            }
-            {
-                "other",
+                "few",
                 "one",
+                "few",
+            }
+            {
+                "few",
+                "few",
+                "few",
+            }
+            {
+                "few",
+                "other",
                 "other",
             }
             {
                 "other",
-                "two",
-                "other",
+                "few",
+                "few",
             }
             {
                 "other",
@@ -341,6 +341,11 @@ pluralRanges:table(nofallback){
         set11{
             {
                 "one",
+                "one",
+                "one",
+            }
+            {
+                "one",
                 "few",
                 "few",
             }
@@ -352,7 +357,7 @@ pluralRanges:table(nofallback){
             {
                 "few",
                 "one",
-                "few",
+                "one",
             }
             {
                 "few",
@@ -363,6 +368,11 @@ pluralRanges:table(nofallback){
                 "few",
                 "other",
                 "other",
+            }
+            {
+                "other",
+                "one",
+                "one",
             }
             {
                 "other",
@@ -379,7 +389,12 @@ pluralRanges:table(nofallback){
             {
                 "one",
                 "one",
+                "few",
+            }
+            {
                 "one",
+                "two",
+                "two",
             }
             {
                 "one",
@@ -392,9 +407,34 @@ pluralRanges:table(nofallback){
                 "other",
             }
             {
+                "two",
+                "one",
+                "few",
+            }
+            {
+                "two",
+                "two",
+                "two",
+            }
+            {
+                "two",
+                "few",
+                "few",
+            }
+            {
+                "two",
+                "other",
+                "other",
+            }
+            {
                 "few",
                 "one",
-                "one",
+                "few",
+            }
+            {
+                "few",
+                "two",
+                "two",
             }
             {
                 "few",
@@ -409,7 +449,12 @@ pluralRanges:table(nofallback){
             {
                 "other",
                 "one",
-                "one",
+                "few",
+            }
+            {
+                "other",
+                "two",
+                "two",
             }
             {
                 "other",
@@ -425,13 +470,53 @@ pluralRanges:table(nofallback){
         set13{
             {
                 "one",
+                "two",
+                "other",
+            }
+            {
                 "one",
-                "one",
+                "many",
+                "many",
             }
             {
                 "one",
                 "other",
                 "other",
+            }
+            {
+                "two",
+                "many",
+                "other",
+            }
+            {
+                "two",
+                "other",
+                "other",
+            }
+            {
+                "many",
+                "many",
+                "many",
+            }
+            {
+                "many",
+                "other",
+                "many",
+            }
+            {
+                "other",
+                "one",
+                "other",
+            }
+            {
+                "other",
+                "two",
+                "other",
+            }
+            {
+                "other",
+                "many",
+                "many",
             }
             {
                 "other",
@@ -442,6 +527,51 @@ pluralRanges:table(nofallback){
         set14{
             {
                 "one",
+                "few",
+                "few",
+            }
+            {
+                "one",
+                "many",
+                "many",
+            }
+            {
+                "one",
+                "other",
+                "other",
+            }
+            {
+                "few",
+                "few",
+                "few",
+            }
+            {
+                "few",
+                "many",
+                "many",
+            }
+            {
+                "few",
+                "other",
+                "other",
+            }
+            {
+                "many",
+                "one",
+                "one",
+            }
+            {
+                "many",
+                "few",
+                "few",
+            }
+            {
+                "many",
+                "many",
+                "many",
+            }
+            {
+                "many",
                 "other",
                 "other",
             }
@@ -449,6 +579,16 @@ pluralRanges:table(nofallback){
                 "other",
                 "one",
                 "one",
+            }
+            {
+                "other",
+                "few",
+                "few",
+            }
+            {
+                "other",
+                "many",
+                "many",
             }
             {
                 "other",
@@ -459,13 +599,78 @@ pluralRanges:table(nofallback){
         set15{
             {
                 "one",
+                "one",
+                "one",
+            }
+            {
+                "one",
+                "few",
+                "few",
+            }
+            {
+                "one",
+                "many",
+                "many",
+            }
+            {
+                "one",
+                "other",
+                "other",
+            }
+            {
+                "few",
+                "one",
+                "one",
+            }
+            {
+                "few",
+                "few",
+                "few",
+            }
+            {
+                "few",
+                "many",
+                "many",
+            }
+            {
+                "few",
+                "other",
+                "other",
+            }
+            {
+                "many",
+                "one",
+                "one",
+            }
+            {
+                "many",
+                "few",
+                "few",
+            }
+            {
+                "many",
+                "many",
+                "many",
+            }
+            {
+                "many",
                 "other",
                 "other",
             }
             {
                 "other",
                 "one",
+                "one",
+            }
+            {
                 "other",
+                "few",
+                "few",
+            }
+            {
+                "other",
+                "many",
+                "many",
             }
             {
                 "other",
@@ -476,11 +681,6 @@ pluralRanges:table(nofallback){
         set16{
             {
                 "one",
-                "one",
-                "few",
-            }
-            {
-                "one",
                 "two",
                 "two",
             }
@@ -491,23 +691,23 @@ pluralRanges:table(nofallback){
             }
             {
                 "one",
-                "other",
-                "other",
+                "many",
+                "many",
             }
             {
-                "two",
                 "one",
-                "few",
-            }
-            {
-                "two",
-                "two",
-                "two",
+                "other",
+                "other",
             }
             {
                 "two",
                 "few",
                 "few",
+            }
+            {
+                "two",
+                "many",
+                "many",
             }
             {
                 "two",
@@ -516,28 +716,33 @@ pluralRanges:table(nofallback){
             }
             {
                 "few",
+                "few",
+                "few",
+            }
+            {
+                "few",
+                "many",
+                "many",
+            }
+            {
+                "few",
+                "other",
+                "other",
+            }
+            {
+                "many",
+                "many",
+                "many",
+            }
+            {
+                "many",
+                "other",
+                "other",
+            }
+            {
+                "other",
                 "one",
-                "few",
-            }
-            {
-                "few",
-                "two",
-                "two",
-            }
-            {
-                "few",
-                "few",
-                "few",
-            }
-            {
-                "few",
-                "other",
-                "other",
-            }
-            {
-                "other",
                 "one",
-                "few",
             }
             {
                 "other",
@@ -548,6 +753,11 @@ pluralRanges:table(nofallback){
                 "other",
                 "few",
                 "few",
+            }
+            {
+                "other",
+                "many",
+                "many",
             }
             {
                 "other",
@@ -557,6 +767,36 @@ pluralRanges:table(nofallback){
         }
         set17{
             {
+                "zero",
+                "one",
+                "one",
+            }
+            {
+                "zero",
+                "two",
+                "two",
+            }
+            {
+                "zero",
+                "few",
+                "few",
+            }
+            {
+                "zero",
+                "many",
+                "many",
+            }
+            {
+                "zero",
+                "other",
+                "other",
+            }
+            {
+                "one",
+                "two",
+                "two",
+            }
+            {
                 "one",
                 "few",
                 "few",
@@ -572,9 +812,19 @@ pluralRanges:table(nofallback){
                 "other",
             }
             {
+                "two",
                 "few",
                 "few",
-                "few",
+            }
+            {
+                "two",
+                "many",
+                "many",
+            }
+            {
+                "two",
+                "other",
+                "other",
             }
             {
                 "few",
@@ -585,21 +835,6 @@ pluralRanges:table(nofallback){
                 "few",
                 "other",
                 "other",
-            }
-            {
-                "many",
-                "one",
-                "one",
-            }
-            {
-                "many",
-                "few",
-                "few",
-            }
-            {
-                "many",
-                "many",
-                "many",
             }
             {
                 "many",
@@ -610,6 +845,11 @@ pluralRanges:table(nofallback){
                 "other",
                 "one",
                 "one",
+            }
+            {
+                "other",
+                "two",
+                "two",
             }
             {
                 "other",
@@ -628,277 +868,6 @@ pluralRanges:table(nofallback){
             }
         }
         set18{
-            {
-                "one",
-                "one",
-                "one",
-            }
-            {
-                "one",
-                "few",
-                "few",
-            }
-            {
-                "one",
-                "many",
-                "many",
-            }
-            {
-                "one",
-                "other",
-                "other",
-            }
-            {
-                "few",
-                "one",
-                "one",
-            }
-            {
-                "few",
-                "few",
-                "few",
-            }
-            {
-                "few",
-                "many",
-                "many",
-            }
-            {
-                "few",
-                "other",
-                "other",
-            }
-            {
-                "many",
-                "one",
-                "one",
-            }
-            {
-                "many",
-                "few",
-                "few",
-            }
-            {
-                "many",
-                "many",
-                "many",
-            }
-            {
-                "many",
-                "other",
-                "other",
-            }
-            {
-                "other",
-                "one",
-                "one",
-            }
-            {
-                "other",
-                "few",
-                "few",
-            }
-            {
-                "other",
-                "many",
-                "many",
-            }
-            {
-                "other",
-                "other",
-                "other",
-            }
-        }
-        set19{
-            {
-                "one",
-                "two",
-                "two",
-            }
-            {
-                "one",
-                "few",
-                "few",
-            }
-            {
-                "one",
-                "many",
-                "many",
-            }
-            {
-                "one",
-                "other",
-                "other",
-            }
-            {
-                "two",
-                "few",
-                "few",
-            }
-            {
-                "two",
-                "many",
-                "many",
-            }
-            {
-                "two",
-                "other",
-                "other",
-            }
-            {
-                "few",
-                "few",
-                "few",
-            }
-            {
-                "few",
-                "many",
-                "many",
-            }
-            {
-                "few",
-                "other",
-                "other",
-            }
-            {
-                "many",
-                "many",
-                "many",
-            }
-            {
-                "many",
-                "other",
-                "other",
-            }
-            {
-                "other",
-                "one",
-                "one",
-            }
-            {
-                "other",
-                "two",
-                "two",
-            }
-            {
-                "other",
-                "few",
-                "few",
-            }
-            {
-                "other",
-                "many",
-                "many",
-            }
-            {
-                "other",
-                "other",
-                "other",
-            }
-        }
-        set20{
-            {
-                "zero",
-                "one",
-                "one",
-            }
-            {
-                "zero",
-                "two",
-                "two",
-            }
-            {
-                "zero",
-                "few",
-                "few",
-            }
-            {
-                "zero",
-                "many",
-                "many",
-            }
-            {
-                "zero",
-                "other",
-                "other",
-            }
-            {
-                "one",
-                "two",
-                "two",
-            }
-            {
-                "one",
-                "few",
-                "few",
-            }
-            {
-                "one",
-                "many",
-                "many",
-            }
-            {
-                "one",
-                "other",
-                "other",
-            }
-            {
-                "two",
-                "few",
-                "few",
-            }
-            {
-                "two",
-                "many",
-                "many",
-            }
-            {
-                "two",
-                "other",
-                "other",
-            }
-            {
-                "few",
-                "many",
-                "many",
-            }
-            {
-                "few",
-                "other",
-                "other",
-            }
-            {
-                "many",
-                "other",
-                "other",
-            }
-            {
-                "other",
-                "one",
-                "one",
-            }
-            {
-                "other",
-                "two",
-                "two",
-            }
-            {
-                "other",
-                "few",
-                "few",
-            }
-            {
-                "other",
-                "many",
-                "many",
-            }
-            {
-                "other",
-                "other",
-                "other",
-            }
-        }
-        set21{
             {
                 "zero",
                 "one",

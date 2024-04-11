@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 se_FI{
     NumberElements{
         latn{
@@ -63,6 +62,7 @@ se_FI{
             }
         }
     }
+    Version{"2.1.47.83"}
     calendar{
         generic{
             DateTimePatterns{
@@ -79,16 +79,6 @@ se_FI{
                 "{1} {0}",
                 "{1} {0}",
                 "{1} {0}",
-            }
-            DateTimeSkeletons{
-                "HHmmsszzzz",
-                "HHmmssz",
-                "HHmmss",
-                "HHmm",
-                "GyMMMMEEEEd",
-                "GyMMMMd",
-                "GyMMMd",
-                "GGGGGyMd",
             }
             availableFormats{
                 Ed{"E d"}
@@ -115,57 +105,57 @@ se_FI{
             }
             intervalFormats{
                 M{
-                    M{"M – M"}
+                    M{"M – M"}
                 }
                 MEd{
-                    M{"E d.M – E d.M"}
-                    d{"E d.M – E d.M"}
+                    M{"E d.M – E d.M"}
+                    d{"E d.M – E d.M"}
                 }
                 MMM{
-                    M{"MMM – MMM"}
+                    M{"MMM – MMM"}
                 }
                 MMMEd{
-                    M{"E d MMM – E d MMM"}
-                    d{"E d MMM – E d MMM"}
+                    M{"E d MMM – E d MMM"}
+                    d{"E d MMM – E d MMM"}
                 }
                 MMMd{
-                    M{"d MMM – d MMM"}
+                    M{"d MMM – d MMM"}
                     d{"d–d MMM"}
                 }
                 Md{
-                    M{"d.M – d.M"}
+                    M{"d.M – d.M"}
                     d{"d.M –d.M"}
                 }
                 y{
                     y{"y–y G"}
                 }
                 yM{
-                    M{"M.y – M.y GGGG"}
-                    y{"M.y – M.y GGGG"}
+                    M{"M.y – M.y GGGG"}
+                    y{"M.y – M.y GGGG"}
                 }
                 yMEd{
-                    M{"E d.M.y – E.d.M.y GGGG"}
-                    d{"E d.M.y – E d.M.y GGGG"}
-                    y{"E d.M.y – E d.M.y GGGG"}
+                    M{"E d.M.y – E.d.M.y GGGG"}
+                    d{"E d.M.y – E d.M.y GGGG"}
+                    y{"E d.M.y – E d.M.y GGGG"}
                 }
                 yMMMEd{
-                    M{"E d MMM y – E d MMM y G"}
-                    d{"E d MMM y – E d MMM y G"}
-                    y{"E d MMM y – E d MMM y G"}
+                    M{"E d MMM y – E d MMM y G"}
+                    d{"E d MMM y – E d MMM y G"}
+                    y{"E d MMM y – E d MMM y G"}
                 }
                 yMMMM{
-                    M{"MMMM – MMMM y G"}
-                    y{"MMMM y – MMMM y G"}
+                    M{"MMMM – MMMM y G"}
+                    y{"MMMM y – MMMM y G"}
                 }
                 yMMMd{
-                    M{"d.MMM – d.MMM y G"}
+                    M{"d.MMM – d.MMM y G"}
                     d{"d–d.MMM y G"}
-                    y{"d MMM y – d MMM y G"}
+                    y{"d MMM y – d MMM y G"}
                 }
                 yMd{
-                    M{"d.M.y – d.M.y GGGG"}
-                    d{"d.M.y – d.M.y GGGG"}
-                    y{"d.M.y – d.M.y GGGG"}
+                    M{"d.M.y – d.M.y GGGG"}
+                    d{"d.M.y – d.M.y GGGG"}
+                    y{"d.M.y – d.M.y GGGG"}
                 }
             }
         }
@@ -360,35 +350,35 @@ se_FI{
                 }
                 yM{
                     M{"M.y–M.y"}
-                    y{"M.y – M.y"}
+                    y{"M.y – M.y"}
                 }
                 yMEd{
-                    M{"E d.M.y – E d.M.y"}
-                    d{"E d.M.y – E d.M.y"}
-                    y{"E d.M.y – E d.M.y"}
+                    M{"E d.M.y – E d.M.y"}
+                    d{"E d.M.y – E d.M.y"}
+                    y{"E d.M.y – E d.M.y"}
                 }
                 yMMM{
-                    M{"MMM – MMM y"}
-                    y{"MMM y – MMM y"}
+                    M{"MMM – MMM y"}
+                    y{"MMM y – MMM y"}
                 }
                 yMMMEd{
-                    M{"E d MMM – E d MMM y"}
-                    d{"E d MMM – E d MMM y"}
-                    y{"E d MMM y – E d MMM y"}
+                    M{"E d MMM – E d MMM y"}
+                    d{"E d MMM – E d MMM y"}
+                    y{"E d MMM y – E d MMM y"}
                 }
                 yMMMM{
-                    M{"MMMM – MMMM y"}
-                    y{"MMMM y – MMMM y"}
+                    M{"MMMM – MMMM y"}
+                    y{"MMMM y – MMMM y"}
                 }
                 yMMMd{
-                    M{"d MMM – d MMM y"}
+                    M{"d MMM – d MMM y"}
                     d{"d–d MMM y"}
-                    y{"d MMM y – d MMM y"}
+                    y{"d MMM y – d MMM y"}
                 }
                 yMd{
-                    M{"d.M.y – d.M.y"}
-                    d{"d.M.y – d.M.y"}
-                    y{"d.M.y – d.M.y"}
+                    M{"d.M.y – d.M.y"}
+                    d{"d.M.y – d.M.y"}
+                    y{"d.M.y – d.M.y"}
                 }
             }
             monthNames{
@@ -442,7 +432,7 @@ se_FI{
                 }
                 stand-alone{
                     abbreviated{
-                        "1Q",
+                        "Q1",
                         "2Q",
                         "3Q",
                         "4Q",
@@ -460,7 +450,10 @@ se_FI{
     fields{
         day{
             relative{
+                "-1"{"ikte"}
                 "-2"{"ovddet beaivvi"}
+                "0"{"odne"}
+                "1"{"ihttin"}
                 "2"{"don beaivve"}
             }
             relativeTime{
@@ -476,11 +469,41 @@ se_FI{
                 }
             }
         }
+        day-narrow{
+            dn{"b."}
+            relativeTime{
+                future{
+                    one{"{0} beaivve siste"}
+                    other{"{0} beaivve siste"}
+                    two{"{0} beaivve siste"}
+                }
+                past{
+                    one{"ikte"}
+                    other{"{0} beaivve dás ovdal"}
+                    two{"ovddet beaivve"}
+                }
+            }
+        }
         day-short{
             dn{"b."}
+            relativeTime{
+                future{
+                    one{"{0} beaivve siste"}
+                    other{"{0} beaivve siste"}
+                    two{"{0} beaivve siste"}
+                }
+                past{
+                    one{"ikte"}
+                    other{"{0} beaivve dás ovdal"}
+                    two{"ovddet beaivve"}
+                }
+            }
         }
         dayOfYear{
             dn{"jagi beaivi"}
+        }
+        dayOfYear-narrow{
+            dn{"j. beaivi"}
         }
         dayOfYear-short{
             dn{"j. beaivi"}
@@ -488,8 +511,14 @@ se_FI{
         dayperiod{
             dn{"ib/eb"}
         }
+        dayperiod-short{
+            dn{"ib/eb"}
+        }
         era{
             dn{"áigodat"}
+        }
+        era-narrow{
+            dn{"áig."}
         }
         era-short{
             dn{"áig."}
@@ -514,6 +543,11 @@ se_FI{
             }
         }
         fri-narrow{
+            relative{
+                "-1"{"mannan be"}
+                "0"{"dán be"}
+                "1"{"boahtte be"}
+            }
             relativeTime{
                 future{
                     one{"boahtte {0} be"}
@@ -563,6 +597,21 @@ se_FI{
                 }
             }
         }
+        hour-narrow{
+            dn{"dmu"}
+            relativeTime{
+                future{
+                    one{"{0} dmu siste"}
+                    other{"{0} dmu siste"}
+                    two{"{0} diimmu siste"}
+                }
+                past{
+                    one{"{0} dmu áigi"}
+                    other{"{0} dmu áigi"}
+                    two{"{0} diimmu áigi"}
+                }
+            }
+        }
         hour-short{
             dn{"dmu"}
             relativeTime{
@@ -591,6 +640,21 @@ se_FI{
                 past{
                     one{"{0} minuhtta áigi"}
                     other{"{0} minuhta áigi"}
+                    two{"{0} minuhta áigi"}
+                }
+            }
+        }
+        minute-narrow{
+            dn{"min."}
+            relativeTime{
+                future{
+                    one{"{0} min. siste"}
+                    other{"{0} min. siste"}
+                    two{"{0} minuhta siste"}
+                }
+                past{
+                    one{"{0} min. áigi"}
+                    other{"{0} min. áigi"}
                     two{"{0} minuhta áigi"}
                 }
             }
@@ -630,7 +694,17 @@ se_FI{
             }
         }
         mon-narrow{
+            relative{
+                "-1"{"mannan má"}
+                "0"{"dán má"}
+                "1"{"boahtte má"}
+            }
             relativeTime{
+                future{
+                    one{"{0} boahtte má"}
+                    other{"{0} boahtte má"}
+                    two{"{0} boahtte mánnodaga"}
+                }
                 past{
                     one{"{0} mannan má"}
                     other{"{0} má dás ovdal"}
@@ -677,16 +751,34 @@ se_FI{
             }
         }
         month-narrow{
+            dn{"m."}
             relativeTime{
                 future{
                     one{"{0} mánu geahčen"}
                     other{"{0} mánu geahčen"}
                     two{"{0} mánu geahčen"}
                 }
+                past{
+                    one{"{0} mánnu dás ovdal"}
+                    other{"{0} mánu dás ovdal"}
+                    two{"{0} mánu dás ovdal"}
+                }
             }
         }
         month-short{
             dn{"m."}
+            relativeTime{
+                future{
+                    one{"{0} mánu siste"}
+                    other{"{0} mánu siste"}
+                    two{"{0} mánu siste"}
+                }
+                past{
+                    one{"{0} mánnu dás ovdal"}
+                    other{"{0} mánu dás ovdal"}
+                    two{"{0} mánu dás ovdal"}
+                }
+            }
         }
         quarter{
             dn{"njealjádasjahki"}
@@ -711,6 +803,11 @@ se_FI{
         quarter-narrow{
             dn{"jahkenjealjádas"}
             relativeTime{
+                future{
+                    one{"boahtte {0} njealj.j."}
+                    other{"boahtte {0} njealj.j."}
+                    two{"boahtte {0} njealjádasjagi"}
+                }
                 past{
                     one{"{0} njealj.j. dás ovdal"}
                     other{"{0} njealj.j. dás ovdal"}
@@ -753,7 +850,17 @@ se_FI{
             }
         }
         sat-narrow{
+            relative{
+                "-1"{"mannan lá"}
+                "0"{"dán lá"}
+                "1"{"boahtte lá"}
+            }
             relativeTime{
+                future{
+                    one{"+{0} boahtte lá"}
+                    other{"boahtte {0} lá"}
+                    two{"boahtte {0} lá"}
+                }
                 past{
                     one{"{0} mannan lá"}
                     other{"-{0} lá dás ovdal"}
@@ -797,6 +904,21 @@ se_FI{
                 }
             }
         }
+        second-narrow{
+            dn{"sek."}
+            relativeTime{
+                future{
+                    one{"{0} sek. siste"}
+                    other{"{0} sek. siste"}
+                    two{"{0} sekundda siste"}
+                }
+                past{
+                    one{"{0} sek. áigi"}
+                    other{"{0} sek. áigi"}
+                    two{"{0} sekundda áigi"}
+                }
+            }
+        }
         second-short{
             dn{"sek."}
             relativeTime{
@@ -832,6 +954,11 @@ se_FI{
             }
         }
         sun-narrow{
+            relative{
+                "-1"{"mannan so"}
+                "0"{"dán so"}
+                "1"{"boahtte so"}
+            }
             relativeTime{
                 future{
                     one{"{0} boahtte so"}
@@ -884,6 +1011,11 @@ se_FI{
             }
         }
         thu-narrow{
+            relative{
+                "-1"{"mannan du"}
+                "0"{"dán du"}
+                "1"{"boahtte du"}
+            }
             relativeTime{
                 future{
                     one{"{0} boahtte du"}
@@ -936,6 +1068,11 @@ se_FI{
             }
         }
         tue-narrow{
+            relative{
+                "-1"{"mannan di"}
+                "0"{"dán di"}
+                "1"{"boahtte di"}
+            }
             relativeTime{
                 future{
                     one{"{0} boahtte di"}
@@ -988,6 +1125,11 @@ se_FI{
             }
         }
         wed-narrow{
+            relative{
+                "-1"{"mannan ga"}
+                "0"{"dán ga"}
+                "1"{"boahtte ga"}
+            }
             relativeTime{
                 future{
                     one{"{0} boahtte ga"}
@@ -1042,6 +1184,8 @@ se_FI{
             }
         }
         week-narrow{
+            dn{"v(k)"}
+            relativePeriod{"{0} vahkku"}
             relativeTime{
                 future{
                     one{"{0} v(k) geahčen"}
@@ -1057,6 +1201,7 @@ se_FI{
         }
         week-short{
             dn{"v(k)"}
+            relativePeriod{"{0} vahkku"}
             relativeTime{
                 future{
                     one{"{0} v(k) siste"}
@@ -1073,17 +1218,26 @@ se_FI{
         weekOfMonth{
             dn{"mánu vahkku"}
         }
+        weekOfMonth-narrow{
+            dn{"m. v(k)"}
+        }
         weekOfMonth-short{
             dn{"m. v(k)"}
         }
         weekday{
             dn{"vahkkobeaivi"}
         }
+        weekday-narrow{
+            dn{"v(k) beaivi"}
+        }
         weekday-short{
             dn{"v(k) beaivi"}
         }
         weekdayOfMonth{
             dn{"mánu vahkkobeaivi"}
+        }
+        weekdayOfMonth-narrow{
+            dn{"m. v(k)b."}
         }
         weekdayOfMonth-short{
             dn{"m. v(k)b."}
@@ -1109,6 +1263,7 @@ se_FI{
             }
         }
         year-narrow{
+            dn{"j."}
             relativeTime{
                 future{
                     one{"{0} jagi siste"}
@@ -1124,6 +1279,10 @@ se_FI{
         }
         year-short{
             dn{"j."}
+            relative{
+                "0"{"dán jagi"}
+                "1"{"boahtte jagi"}
+            }
             relativeTime{
                 future{
                     one{"{0} j. siste"}
@@ -1136,6 +1295,9 @@ se_FI{
                     two{"ovddet jagi"}
                 }
             }
+        }
+        zone-narrow{
+            dn{"á.av."}
         }
         zone-short{
             dn{"á.av."}

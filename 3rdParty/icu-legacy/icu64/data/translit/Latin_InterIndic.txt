@@ -1,6 +1,5 @@
 ﻿# © 2016 and later: Unicode, Inc. and others.
-# License & terms of use: http://www.unicode.org/copyright.html
-# Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+# License & terms of use: http://www.unicode.org/copyright.html#License
 #
 # File: Latin_InterIndic.txt
 # Generated from CLDR
@@ -100,7 +99,7 @@ $om = \uE050; # OM
 $lm = \uE055;#  Telugu Length Mark
 $ailm=\uE056;#  AI Length Mark
 $aulm=\uE057;#  AU Length Mark
-#urdu compatibility forms
+#urdu compatibity forms
 $uka=\uE058;
 $ukha=\uE059;
 $ugha=\uE05A;
@@ -180,7 +179,7 @@ x→$ka$virama$sa;
 \u0314o\u0306→$co;
 \u0314e→$se;
 \u0314o→$so;
-# preceded by consonants
+# preceeded by consonants
 $consonants{ a\u0304→$aa;
 $consonants{ ai→$ai;
 $consonants{ au→$au;

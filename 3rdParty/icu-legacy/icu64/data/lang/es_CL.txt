@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 es_CL{
     %%Parent{"es_419"}
     Languages{
@@ -24,4 +23,5 @@ es_CL{
             phonebook{"orden de directorio telefónico"}
         }
     }
+    Version{"2.1.47.70"}
 }

@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ru{
     Currencies{
         ADP{
@@ -541,7 +540,7 @@ ru{
         }
         LSL{
             "LSL",
-            "лоти",
+            "Лоти",
         }
         LTL{
             "LTL",
@@ -827,13 +826,9 @@ ru{
             "SKK",
             "Словацкая крона",
         }
-        SLE{
-            "SLE",
-            "леоне",
-        }
         SLL{
             "SLL",
-            "леоне (1964—2022)",
+            "леоне",
         }
         SOS{
             "SOS",
@@ -1044,7 +1039,7 @@ ru{
             "Французский UIC-франк",
         }
         XOF{
-            "F CFA",
+            "CFA",
             "франк КФА ВСЕАО",
         }
         XPD{
@@ -1125,12 +1120,104 @@ ru{
         }
     }
     Currencies%narrow{
+        AOA{"Kz"}
+        ARS{"$"}
+        AUD{"$"}
+        BAM{"KM"}
+        BBD{"$"}
+        BDT{"৳"}
+        BMD{"$"}
+        BND{"$"}
+        BOB{"Bs"}
+        BRL{"R$"}
+        BSD{"$"}
+        BWP{"P"}
         BYN{"р."}
+        BZD{"$"}
+        CAD{"$"}
+        CLP{"$"}
+        CNY{"¥"}
+        COP{"$"}
+        CRC{"₡"}
+        CUC{"$"}
+        CUP{"$"}
+        CZK{"Kč"}
+        DKK{"kr"}
+        DOP{"$"}
+        EGP{"E£"}
+        EUR{"€"}
+        FJD{"$"}
+        FKP{"£"}
+        GBP{"£"}
         GEL{"ლ"}
+        GIP{"£"}
+        GNF{"FG"}
+        GTQ{"Q"}
+        GYD{"$"}
+        HKD{"$"}
+        HNL{"L"}
+        HRK{"kn"}
+        HUF{"Ft"}
+        IDR{"Rp"}
+        ILS{"₪"}
+        INR{"₹"}
+        ISK{"kr"}
+        JMD{"$"}
+        JPY{"¥"}
+        KHR{"៛"}
+        KMF{"CF"}
+        KPW{"₩"}
+        KRW{"₩"}
+        KYD{"$"}
+        KZT{"₸"}
+        LAK{"₭"}
+        LBP{"L£"}
+        LKR{"Rs"}
+        LRD{"$"}
+        MGA{"Ar"}
+        MMK{"K"}
+        MNT{"₮"}
+        MUR{"Rs"}
+        MXN{"$"}
+        MYR{"RM"}
+        NAD{"$"}
+        NGN{"₦"}
+        NIO{"C$"}
+        NOK{"kr"}
+        NPR{"Rs"}
+        NZD{"$"}
+        PHP{"₱"}
+        PKR{"Rs"}
+        PLN{"zł"}
+        PYG{"₲"}
         RON{"L"}
+        RUB{"₽"}
+        RWF{"RF"}
+        SBD{"$"}
+        SEK{"kr"}
+        SGD{"$"}
+        SHP{"£"}
+        SRD{"$"}
+        SSP{"£"}
+        STN{"Db"}
+        SYP{"£"}
+        THB{"฿"}
+        TOP{"T$"}
+        TRY{"₺"}
+        TTD{"$"}
         TWD{"NT$"}
+        UAH{"₴"}
+        USD{"$"}
+        UYU{"$"}
+        VEF{"Bs"}
+        VND{"₫"}
+        XCD{"$"}
+        ZAR{"R"}
+        ZMW{"ZK"}
     }
     Currencies%variant{
+        GEL{"₾"}
+        TRY{"TL"}
         UAH{"грн."}
     }
     CurrencyPlurals{
@@ -1145,6 +1232,12 @@ ru{
             many{"дирхамов ОАЭ"}
             one{"дирхам ОАЭ"}
             other{"дирхама ОАЭ"}
+        }
+        AFN{
+            few{"афгани"}
+            many{"афгани"}
+            one{"афгани"}
+            other{"афгани"}
         }
         ALL{
             few{"албанских лека"}
@@ -1362,6 +1455,12 @@ ru{
             one{"кубинский песо"}
             other{"кубинского песо"}
         }
+        CVE{
+            few{"эскудо Кабо-Верде"}
+            many{"эскудо Кабо-Верде"}
+            one{"эскудо Кабо-Верде"}
+            other{"эскудо Кабо-Верде"}
+        }
         CZK{
             few{"чешские кроны"}
             many{"чешских крон"}
@@ -1409,6 +1508,12 @@ ru{
             many{"эфиопских быров"}
             one{"эфиопский быр"}
             other{"эфиопского быра"}
+        }
+        EUR{
+            few{"евро"}
+            many{"евро"}
+            one{"евро"}
+            other{"евро"}
         }
         FJD{
             few{"доллара Фиджи"}
@@ -1902,6 +2007,12 @@ ru{
             one{"фунт острова Святой Елены"}
             other{"фунта острова Святой Елены"}
         }
+        SLL{
+            few{"леоне"}
+            many{"леоне"}
+            one{"леоне"}
+            other{"леоне"}
+        }
         SOS{
             few{"сомалийских шиллинга"}
             many{"сомалийских шиллингов"}
@@ -2052,6 +2163,12 @@ ru{
             one{"вьетнамский донг"}
             other{"вьетнамского донга"}
         }
+        VUV{
+            few{"вату Вануату"}
+            many{"вату Вануату"}
+            one{"вату Вануату"}
+            other{"вату Вануату"}
+        }
         WST{
             few{"самоанские талы"}
             many{"самоанских тал"}
@@ -2119,4 +2236,5 @@ ru{
         one{"{0} {1}"}
         other{"{0} {1}"}
     }
+    Version{"2.1.49.82"}
 }

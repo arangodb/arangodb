@@ -24,14 +24,14 @@ public:
 
     LotusCollationKoreanTest();
     virtual ~LotusCollationKoreanTest();
-    void runIndexedTest( int32_t index, UBool exec, const char* &name, char* par = nullptr ) override;
+    void runIndexedTest( int32_t index, UBool exec, const char* &name, char* par = NULL );
 
     // performs test with strength TERIARY
     void TestTertiary(/* char* par */);
 
 private:
-    static const char16_t testSourceCases[][MAX_TOKEN_LEN];
-    static const char16_t testTargetCases[][MAX_TOKEN_LEN];
+    static const UChar testSourceCases[][MAX_TOKEN_LEN];
+    static const UChar testTargetCases[][MAX_TOKEN_LEN];
     static const Collator::EComparisonResult results[];
 
     Collator *myCollation;

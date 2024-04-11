@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 si{
+    Version{"2.1.48.17"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"අබිජාන්"}
@@ -258,9 +258,6 @@ si{
         "America:Chihuahua"{
             ec{"චිහුආහුආ"}
         }
-        "America:Ciudad_Juarez"{
-            ec{"සියුඩාඩ් ජුවාරෙස්"}
-        }
         "America:Coral_Harbour"{
             ec{"ඇටිකොකන්"}
         }
@@ -465,6 +462,9 @@ si{
         "America:New_York"{
             ec{"නිව්යෝක්"}
         }
+        "America:Nipigon"{
+            ec{"නිපිගන්"}
+        }
         "America:Nome"{
             ec{"නෝම්"}
         }
@@ -485,6 +485,9 @@ si{
         }
         "America:Panama"{
             ec{"පැනමා"}
+        }
+        "America:Pangnirtung"{
+            ec{"පැන්නීටන්"}
         }
         "America:Paramaribo"{
             ec{"පැරාමරිබෝ"}
@@ -507,6 +510,9 @@ si{
         "America:Punta_Arenas"{
             ec{"පුන්ටා ඇරිනාස්"}
         }
+        "America:Rainy_River"{
+            ec{"රෙයිනි ගඟ"}
+        }
         "America:Rankin_Inlet"{
             ec{"රැන්කින් පිවිසුම"}
         }
@@ -521,6 +527,9 @@ si{
         }
         "America:Rio_Branco"{
             ec{"රියෝ බ්‍රන්කෝ"}
+        }
+        "America:Santa_Isabel"{
+            ec{"සැන්ටා ඉසබෙල්"}
         }
         "America:Santarem"{
             ec{"සන්ටරේම්"}
@@ -567,6 +576,9 @@ si{
         "America:Thule"{
             ec{"තුලේ"}
         }
+        "America:Thunder_Bay"{
+            ec{"තන්ඩර් බොක්ක"}
+        }
         "America:Tijuana"{
             ec{"ටිජුආනා"}
         }
@@ -587,6 +599,9 @@ si{
         }
         "America:Yakutat"{
             ec{"යකුටට්"}
+        }
+        "America:Yellowknife"{
+            ec{"යෙලෝනයිෆ්"}
         }
         "Antarctica:Casey"{
             ec{"කැසේ"}
@@ -795,9 +810,6 @@ si{
         "Asia:Qatar"{
             ec{"කටාර්"}
         }
-        "Asia:Qostanay"{
-            ec{"කොස්තානේ"}
-        }
         "Asia:Qyzylorda"{
             ec{"ක්යිසිලෝර්ඩා"}
         }
@@ -911,6 +923,9 @@ si{
         }
         "Australia:Broken_Hill"{
             ec{"බ්‍රෝකන් හිල්"}
+        }
+        "Australia:Currie"{
+            ec{"කුරී"}
         }
         "Australia:Darwin"{
             ec{"ඩාවින්"}
@@ -1094,6 +1109,9 @@ si{
         "Europe:Ulyanovsk"{
             ec{"උල්යනොව්ස්ක්"}
         }
+        "Europe:Uzhgorod"{
+            ec{"උස්ගොරෝඩ්"}
+        }
         "Europe:Vaduz"{
             ec{"වඩුස්"}
         }
@@ -1114,6 +1132,9 @@ si{
         }
         "Europe:Zagreb"{
             ec{"සග්රෙබ්"}
+        }
+        "Europe:Zaporozhye"{
+            ec{"සපොරෝසියේ"}
         }
         "Europe:Zurich"{
             ec{"සූරිච්"}
@@ -1196,8 +1217,8 @@ si{
         "Pacific:Honolulu"{
             ec{"හොනොලුලු"}
         }
-        "Pacific:Kanton"{
-            ec{"කැන්ටන්"}
+        "Pacific:Johnston"{
+            ec{"ජොන්ස්ටන්"}
         }
         "Pacific:Kiritimati"{
             ec{"කිරිමටි"}
@@ -1613,6 +1634,9 @@ si{
             lg{"ලෝර්ඩ් හෝව් වේලාව"}
             ls{"ලෝර්ඩ් හෝව් සම්මත වේලාව"}
         }
+        "meta:Macquarie"{
+            ls{"මැක්කුඅරි දුපත් වේලාව"}
+        }
         "meta:Magadan"{
             ld{"මෙගඩන් ග්‍රීෂ්ම වේලාව"}
             lg{"මෙගඩන් වේලාව"}
@@ -1637,6 +1661,11 @@ si{
         }
         "meta:Mawson"{
             ls{"මොව්සන් වේලාව"}
+        }
+        "meta:Mexico_Northwest"{
+            ld{"වයඹ මෙක්සිකෝ දිවාආලෝක වේලාව"}
+            lg{"වයඹ මෙක්සිකෝ වේලාව"}
+            ls{"වයඹ මෙක්සිකෝ සම්මත වේලාව"}
         }
         "meta:Mexico_Pacific"{
             ld{"මෙක්සිකෝ පැසිෆික් දිවාආලෝක වේලාව"}
@@ -1681,9 +1710,7 @@ si{
             ls{"නියු වේලාව"}
         }
         "meta:Norfolk"{
-            ld{"නොෆොල්ක් දුපත් ග්‍රීෂ්ම වේලාව"}
-            lg{"නොෆොල්ක් දුපත් වේලාව"}
-            ls{"නොෆොල්ක් දුපත් සම්මත වේලාව"}
+            ls{"නොෆොල්ක් දුපත් වේලාව"}
         }
         "meta:Noronha"{
             ld{"ෆර්නැන්ඩෝ ඩි නොරොන්හා ග්‍රීෂ්ම කාලය"}
@@ -1854,9 +1881,7 @@ si{
             lg{"යෙකටෙරින්බර්ග් වේලාව"}
             ls{"යෙකටෙරින්බර්ග් සම්මත වේලාව"}
         }
-        "meta:Yukon"{
-            ls{"යුකොන් වේලාව"}
-        }
+        fallbackFormat{"{1} ({0})"}
         gmtFormat{"ග්‍රිමවේ{0}"}
         gmtZeroFormat{"ග්‍රිමවේ"}
         hourFormat{"+HH.mm;-HH.mm"}

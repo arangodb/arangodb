@@ -55,7 +55,7 @@ static int dotestname(const char *name, const char *standard, const char *expect
     return res;
 }
 
-static void TestStandardName(void)
+static void TestStandardName()
 {
     int res = 1;
 
@@ -139,7 +139,7 @@ static int dotestconv(const char *name, const char *standard, const char *expect
     return res;
 }
 
-static void TestCanonicalName(void)
+static void TestCanonicalName()
 {
     /* Test for some expected results. */
 
@@ -184,7 +184,7 @@ static UBool doTestNames(const char *name, const char *standard, const char **ex
         return 0;
     }
     if (size < 0 && myEnum) {
-        log_err("FAIL: size < 0, but received an actual object\n");
+        log_err("FAIL: size < 0, but recieved an actual object\n");
         return 0;
     }
     log_verbose("\n%s %s\n", name, standard);
@@ -236,7 +236,7 @@ static UBool doTestUCharNames(const char *name, const char *standard, const char
         return 0;
     }
     if (size < 0 && myEnum) {
-        log_err("FAIL: size < 0, but received an actual object\n");
+        log_err("FAIL: size < 0, but recieved an actual object\n");
         return 0;
     }
     log_verbose("\n%s %s\n", name, standard);
@@ -267,7 +267,7 @@ static UBool doTestUCharNames(const char *name, const char *standard, const char
     return 1;
 }
 
-static void TestStandardNames(void)
+static void TestStandardNames()
 {
     static const char *asciiIANA[] = {
         "ANSI_X3.4-1968",

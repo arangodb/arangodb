@@ -1,14 +1,14 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 tr{
+    Version{"2.1.19.14"}
     collations{
         search{
             Sequence{
                 "[import und-u-co-search]"
                 "[import tr-u-co-standard]"
             }
-            Version{"45"}
+            Version{"35.1"}
         }
         standard{
             Sequence{
@@ -20,7 +20,7 @@ tr{
                 "&S<ş<<<Ş"
                 "&U<ü<<<Ü"
             }
-            Version{"45"}
+            Version{"35.1"}
         }
     }
 }

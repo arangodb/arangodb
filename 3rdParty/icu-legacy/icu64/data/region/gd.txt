@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 gd{
     Countries{
         001{"An Saoghal"}
@@ -85,7 +84,6 @@ gd{
         CN{"An t-Sìn"}
         CO{"Coloimbia"}
         CP{"Eilean Clipperton"}
-        CQ{"Sarc"}
         CR{"Costa Rìcea"}
         CU{"Cùba"}
         CV{"An Ceap Uaine"}
@@ -243,7 +241,7 @@ gd{
         SG{"Singeapòr"}
         SH{"Eilean Naomh Eilidh"}
         SI{"An t-Slòbhain"}
-        SJ{"Svalbard is Jan Mayen"}
+        SJ{"Svalbard agus Jan Mayen"}
         SK{"An t-Slòbhac"}
         SL{"Siarra Leòmhann"}
         SM{"San Marino"}
@@ -255,7 +253,7 @@ gd{
         SV{"An Salbhador"}
         SX{"Sint Maarten"}
         SY{"Siridhea"}
-        SZ{"eSwatini"}
+        SZ{"Dùthaich nan Suasaidh"}
         TA{"Tristan da Cunha"}
         TC{"Na h-Eileanan Turcach is Caiceo"}
         TD{"An t-Seàd"}
@@ -289,8 +287,6 @@ gd{
         VU{"Vanuatu"}
         WF{"Uallas agus Futuna"}
         WS{"Samotha"}
-        XA{"Sràcan fuadain"}
-        XB{"Dà-chomhaireach fuadain"}
         XK{"A’ Chosobho"}
         YE{"An Eaman"}
         YT{"Mayotte"}
@@ -298,9 +294,6 @@ gd{
         ZM{"Sàimbia"}
         ZW{"An t-Sìombab"}
         ZZ{"Roinn-dùthcha neo-aithnichte"}
-    }
-    Countries%chagos{
-        IO{"Innis-mhuir Chagos"}
     }
     Countries%short{
         GB{"RA"}
@@ -315,8 +308,7 @@ gd{
         CI{"An Costa Ìbhri"}
         CZ{"Poblachd na Seice"}
         FK{"Na h-Eileanan Fàclannach (Islas Malvinas)"}
-        NZ{"Aotearoa Sealainn Nuadh"}
-        SZ{"Dùthaich nan Suasaidh"}
         TL{"Tìomor an Ear"}
     }
+    Version{"2.1.49.82"}
 }

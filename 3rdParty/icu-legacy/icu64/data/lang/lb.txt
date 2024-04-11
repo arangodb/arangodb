@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 lb{
     Keys{
         calendar{"Kalenner"}
@@ -456,6 +455,7 @@ lb{
         ro_MD{"Moldawesch"}
         rof{"Rombo"}
         rom{"Romani"}
+        root{"Root"}
         rtm{"Rotumanesch"}
         ru{"Russesch"}
         rue{"Russinesch"}
@@ -622,6 +622,7 @@ lb{
     }
     Scripts{
         Arab{"Arabesch"}
+        Armi{"Armi"}
         Armn{"Armenesch"}
         Avst{"Avestesch"}
         Bali{"Balinesesch"}
@@ -635,6 +636,7 @@ lb{
         Buhd{"Buhid"}
         Cans{"UCAS"}
         Cari{"Karesch"}
+        Cham{"Cham"}
         Cher{"Cherokee"}
         Cirt{"Cirth"}
         Copt{"Koptesch"}
@@ -757,6 +759,8 @@ lb{
             gregorian{"Gregorianesche Kalenner"}
             hebrew{"Hebräesche Kalenner"}
             indian{"Indeschen Nationalkalenner"}
+            islamic{"Islamesche Kalenner"}
+            islamic-civil{"Biergerlechen islamesche Kalenner"}
             iso8601{"ISO-8601-Kalenner"}
             japanese{"Japanesche Kalenner"}
             persian{"Persesche Kalenner"}
@@ -770,6 +774,7 @@ lb{
             gb2312han{"Vereinfacht Chinesesch - GB2312"}
             phonebook{"Telefonsbuch-Zortéierung"}
             pinyin{"Pinyin-Zortéierregelen"}
+            reformed{"Reforméiert Zortéierreiefolleg"}
             search{"Allgemeng Sich"}
             searchjl{"Sich no Ufanksbuschtawen aus dem koreaneschen Alphabet"}
             standard{"Standard Zortéierreiefolleg"}
@@ -870,9 +875,15 @@ lb{
         VALENCIA{"Valencianesch"}
         WADEGILE{"Wade-Giles"}
     }
+    Version{"2.1.49.82"}
     codePatterns{
         language{"Sprooch: {0}"}
         script{"Schrëft: {0}"}
         territory{"Regioun: {0}"}
+    }
+    localeDisplayPattern{
+        keyTypePattern{"{0}: {1}"}
+        pattern{"{0} ({1})"}
+        separator{"{0}, {1}"}
     }
 }

@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 sn{
     Countries{
         AD{"Andora"}
@@ -93,6 +92,7 @@ sn{
         IE{"Ireland"}
         IL{"Izuraeri"}
         IN{"India"}
+        IO{"British Indian Ocean Territory"}
         IQ{"Iraq"}
         IR{"Iran"}
         IS{"Iceland"}
@@ -127,6 +127,7 @@ sn{
         MD{"Moldova"}
         MG{"Madagascar"}
         MH{"Zvitsuwa zveMarshall"}
+        MK{"Macedonia"}
         ML{"Mali"}
         MM{"Myanmar"}
         MN{"Mongolia"}
@@ -225,4 +226,5 @@ sn{
         ZM{"Zambia"}
         ZW{"Zimbabwe"}
     }
+    Version{"2.1.48.4"}
 }

@@ -193,6 +193,7 @@ static WithQuantityExpected kEnglishShort[] = {
         {0.5, UDAT_DIRECTION_NEXT, UDAT_RELATIVE_YEARS, "in 0.5 yr."},
         {1.0, UDAT_DIRECTION_NEXT, UDAT_RELATIVE_YEARS, "in 1 yr."},
         {2.0, UDAT_DIRECTION_NEXT, UDAT_RELATIVE_YEARS, "in 2 yr."},
+                
         {0.0, UDAT_DIRECTION_LAST, UDAT_RELATIVE_SECONDS, "0 sec. ago"},
         {0.5, UDAT_DIRECTION_LAST, UDAT_RELATIVE_SECONDS, "0.5 sec. ago"},
         {1.0, UDAT_DIRECTION_LAST, UDAT_RELATIVE_SECONDS, "1 sec. ago"},
@@ -221,66 +222,6 @@ static WithQuantityExpected kEnglishShort[] = {
         {0.5, UDAT_DIRECTION_LAST, UDAT_RELATIVE_YEARS, "0.5 yr. ago"},
         {1.0, UDAT_DIRECTION_LAST, UDAT_RELATIVE_YEARS, "1 yr. ago"},
         {2.0, UDAT_DIRECTION_LAST, UDAT_RELATIVE_YEARS, "2 yr. ago"} 
-};
-
-static WithQuantityExpected kEnglishNarrow[] = {
-        {0.0, UDAT_DIRECTION_NEXT, UDAT_RELATIVE_SECONDS, "in 0s"},
-        {0.5, UDAT_DIRECTION_NEXT, UDAT_RELATIVE_SECONDS, "in 0.5s"},
-        {1.0, UDAT_DIRECTION_NEXT, UDAT_RELATIVE_SECONDS, "in 1s"},
-        {2.0, UDAT_DIRECTION_NEXT, UDAT_RELATIVE_SECONDS, "in 2s"},
-        {0.0, UDAT_DIRECTION_NEXT, UDAT_RELATIVE_MINUTES, "in 0m"},
-        {0.5, UDAT_DIRECTION_NEXT, UDAT_RELATIVE_MINUTES, "in 0.5m"},
-        {1.0, UDAT_DIRECTION_NEXT, UDAT_RELATIVE_MINUTES, "in 1m"},
-        {2.0, UDAT_DIRECTION_NEXT, UDAT_RELATIVE_MINUTES, "in 2m"},
-        {0.0, UDAT_DIRECTION_NEXT, UDAT_RELATIVE_HOURS, "in 0h"},
-        {0.5, UDAT_DIRECTION_NEXT, UDAT_RELATIVE_HOURS, "in 0.5h"},
-        {1.0, UDAT_DIRECTION_NEXT, UDAT_RELATIVE_HOURS, "in 1h"},
-        {2.0, UDAT_DIRECTION_NEXT, UDAT_RELATIVE_HOURS, "in 2h"},
-        {0.0, UDAT_DIRECTION_NEXT, UDAT_RELATIVE_DAYS, "in 0d"},
-        {0.5, UDAT_DIRECTION_NEXT, UDAT_RELATIVE_DAYS, "in 0.5d"},
-        {1.0, UDAT_DIRECTION_NEXT, UDAT_RELATIVE_DAYS, "in 1d"},
-        {2.0, UDAT_DIRECTION_NEXT, UDAT_RELATIVE_DAYS, "in 2d"},
-        {0.0, UDAT_DIRECTION_NEXT, UDAT_RELATIVE_WEEKS, "in 0w"},
-        {0.5, UDAT_DIRECTION_NEXT, UDAT_RELATIVE_WEEKS, "in 0.5w"},
-        {1.0, UDAT_DIRECTION_NEXT, UDAT_RELATIVE_WEEKS, "in 1w"},
-        {2.0, UDAT_DIRECTION_NEXT, UDAT_RELATIVE_WEEKS, "in 2w"},
-        {0.0, UDAT_DIRECTION_NEXT, UDAT_RELATIVE_MONTHS, "in 0mo"},
-        {0.5, UDAT_DIRECTION_NEXT, UDAT_RELATIVE_MONTHS, "in 0.5mo"},
-        {1.0, UDAT_DIRECTION_NEXT, UDAT_RELATIVE_MONTHS, "in 1mo"},
-        {2.0, UDAT_DIRECTION_NEXT, UDAT_RELATIVE_MONTHS, "in 2mo"},
-        {0.0, UDAT_DIRECTION_NEXT, UDAT_RELATIVE_YEARS, "in 0y"},
-        {0.5, UDAT_DIRECTION_NEXT, UDAT_RELATIVE_YEARS, "in 0.5y"},
-        {1.0, UDAT_DIRECTION_NEXT, UDAT_RELATIVE_YEARS, "in 1y"},
-        {2.0, UDAT_DIRECTION_NEXT, UDAT_RELATIVE_YEARS, "in 2y"},
-
-        {0.0, UDAT_DIRECTION_LAST, UDAT_RELATIVE_SECONDS, "0s ago"},
-        {0.5, UDAT_DIRECTION_LAST, UDAT_RELATIVE_SECONDS, "0.5s ago"},
-        {1.0, UDAT_DIRECTION_LAST, UDAT_RELATIVE_SECONDS, "1s ago"},
-        {2.0, UDAT_DIRECTION_LAST, UDAT_RELATIVE_SECONDS, "2s ago"},
-        {0.0, UDAT_DIRECTION_LAST, UDAT_RELATIVE_MINUTES, "0m ago"},
-        {0.5, UDAT_DIRECTION_LAST, UDAT_RELATIVE_MINUTES, "0.5m ago"},
-        {1.0, UDAT_DIRECTION_LAST, UDAT_RELATIVE_MINUTES, "1m ago"},
-        {2.0, UDAT_DIRECTION_LAST, UDAT_RELATIVE_MINUTES, "2m ago"},
-        {0.0, UDAT_DIRECTION_LAST, UDAT_RELATIVE_HOURS, "0h ago"},
-        {0.5, UDAT_DIRECTION_LAST, UDAT_RELATIVE_HOURS, "0.5h ago"},
-        {1.0, UDAT_DIRECTION_LAST, UDAT_RELATIVE_HOURS, "1h ago"},
-        {2.0, UDAT_DIRECTION_LAST, UDAT_RELATIVE_HOURS, "2h ago"},
-        {0.0, UDAT_DIRECTION_LAST, UDAT_RELATIVE_DAYS, "0d ago"},
-        {0.5, UDAT_DIRECTION_LAST, UDAT_RELATIVE_DAYS, "0.5d ago"},
-        {1.0, UDAT_DIRECTION_LAST, UDAT_RELATIVE_DAYS, "1d ago"},
-        {2.0, UDAT_DIRECTION_LAST, UDAT_RELATIVE_DAYS, "2d ago"},
-        {0.0, UDAT_DIRECTION_LAST, UDAT_RELATIVE_WEEKS, "0w ago"},
-        {0.5, UDAT_DIRECTION_LAST, UDAT_RELATIVE_WEEKS, "0.5w ago"},
-        {1.0, UDAT_DIRECTION_LAST, UDAT_RELATIVE_WEEKS, "1w ago"},
-        {2.0, UDAT_DIRECTION_LAST, UDAT_RELATIVE_WEEKS, "2w ago"},
-        {0.0, UDAT_DIRECTION_LAST, UDAT_RELATIVE_MONTHS, "0mo ago"},
-        {0.5, UDAT_DIRECTION_LAST, UDAT_RELATIVE_MONTHS, "0.5mo ago"},
-        {1.0, UDAT_DIRECTION_LAST, UDAT_RELATIVE_MONTHS, "1mo ago"},
-        {2.0, UDAT_DIRECTION_LAST, UDAT_RELATIVE_MONTHS, "2mo ago"},
-        {0.0, UDAT_DIRECTION_LAST, UDAT_RELATIVE_YEARS, "0y ago"},
-        {0.5, UDAT_DIRECTION_LAST, UDAT_RELATIVE_YEARS, "0.5y ago"},
-        {1.0, UDAT_DIRECTION_LAST, UDAT_RELATIVE_YEARS, "1y ago"},
-        {2.0, UDAT_DIRECTION_LAST, UDAT_RELATIVE_YEARS, "2y ago"}
 };
 
 static WithQuantityExpected kEnglishDecimal[] = {
@@ -345,8 +286,6 @@ static WithoutQuantityExpected kEnglishNoQuantity[] = {
         {UDAT_DIRECTION_THIS, UDAT_ABSOLUTE_FRIDAY, "this Friday"},
         {UDAT_DIRECTION_THIS, UDAT_ABSOLUTE_SATURDAY, "this Saturday"},
         {UDAT_DIRECTION_THIS, UDAT_ABSOLUTE_SUNDAY, "this Sunday"},
-        {UDAT_DIRECTION_THIS, UDAT_ABSOLUTE_HOUR, "this hour"},
-        {UDAT_DIRECTION_THIS, UDAT_ABSOLUTE_MINUTE, "this minute"},
         
         {UDAT_DIRECTION_PLAIN, UDAT_ABSOLUTE_DAY, "day"},
         {UDAT_DIRECTION_PLAIN, UDAT_ABSOLUTE_WEEK, "week"},
@@ -360,8 +299,6 @@ static WithoutQuantityExpected kEnglishNoQuantity[] = {
         {UDAT_DIRECTION_PLAIN, UDAT_ABSOLUTE_FRIDAY, "Friday"},
         {UDAT_DIRECTION_PLAIN, UDAT_ABSOLUTE_SATURDAY, "Saturday"},
         {UDAT_DIRECTION_PLAIN, UDAT_ABSOLUTE_SUNDAY, "Sunday"},
-        {UDAT_DIRECTION_PLAIN, UDAT_ABSOLUTE_HOUR, "hour"},
-        {UDAT_DIRECTION_PLAIN, UDAT_ABSOLUTE_MINUTE, "minute"},
         
         {UDAT_DIRECTION_PLAIN, UDAT_ABSOLUTE_NOW, "now"}
 };
@@ -531,10 +468,10 @@ static WithoutQuantityExpected kEnglishNoQuantityNarrow[] = {
         {UDAT_DIRECTION_THIS, UDAT_ABSOLUTE_SUNDAY, "this Su"},
         
         {UDAT_DIRECTION_PLAIN, UDAT_ABSOLUTE_DAY, "day"},
-        {UDAT_DIRECTION_PLAIN, UDAT_ABSOLUTE_WEEK, "wk"},
-        {UDAT_DIRECTION_PLAIN, UDAT_ABSOLUTE_MONTH, "mo"},
-        {UDAT_DIRECTION_PLAIN, UDAT_ABSOLUTE_QUARTER, "qtr"},
-        {UDAT_DIRECTION_PLAIN, UDAT_ABSOLUTE_YEAR, "yr"},
+        {UDAT_DIRECTION_PLAIN, UDAT_ABSOLUTE_WEEK, "wk."},
+        {UDAT_DIRECTION_PLAIN, UDAT_ABSOLUTE_MONTH, "mo."},
+        {UDAT_DIRECTION_PLAIN, UDAT_ABSOLUTE_QUARTER, "qtr."},
+        {UDAT_DIRECTION_PLAIN, UDAT_ABSOLUTE_YEAR, "yr."},
         {UDAT_DIRECTION_PLAIN, UDAT_ABSOLUTE_MONDAY, "M"},
         {UDAT_DIRECTION_PLAIN, UDAT_ABSOLUTE_TUESDAY, "T"},
         {UDAT_DIRECTION_PLAIN, UDAT_ABSOLUTE_WEDNESDAY, "W"},
@@ -686,11 +623,11 @@ static WithQuantityExpectedRelativeDateTimeUnit kEnglishFormat[] = {
         {0.5, UDAT_REL_UNIT_SECOND, "in 0.5 seconds"},
         {1.0, UDAT_REL_UNIT_SECOND, "in 1 second"},
         {2.0, UDAT_REL_UNIT_SECOND, "in 2 seconds"},
-        {0.0, UDAT_REL_UNIT_MINUTE, "this minute"},
+        {0.0, UDAT_REL_UNIT_MINUTE, "in 0 minutes"},
         {0.5, UDAT_REL_UNIT_MINUTE, "in 0.5 minutes"},
         {1.0, UDAT_REL_UNIT_MINUTE, "in 1 minute"},
         {2.0, UDAT_REL_UNIT_MINUTE, "in 2 minutes"},
-        {0.0, UDAT_REL_UNIT_HOUR, "this hour"},
+        {0.0, UDAT_REL_UNIT_HOUR, "in 0 hours"},
         {0.5, UDAT_REL_UNIT_HOUR, "in 0.5 hours"},
         {1.0, UDAT_REL_UNIT_HOUR, "in 1 hour"},
         {2.0, UDAT_REL_UNIT_HOUR, "in 2 hours"},
@@ -747,11 +684,11 @@ static WithQuantityExpectedRelativeDateTimeUnit kEnglishFormat[] = {
         {-0.5, UDAT_REL_UNIT_SECOND, "0.5 seconds ago"},
         {-1.0, UDAT_REL_UNIT_SECOND, "1 second ago"},
         {-2.0, UDAT_REL_UNIT_SECOND, "2 seconds ago"},
-        {-0.0, UDAT_REL_UNIT_MINUTE, "this minute"},
+        {-0.0, UDAT_REL_UNIT_MINUTE, "0 minutes ago"},
         {-0.5, UDAT_REL_UNIT_MINUTE, "0.5 minutes ago"},
         {-1.0, UDAT_REL_UNIT_MINUTE, "1 minute ago"},
         {-2.0, UDAT_REL_UNIT_MINUTE, "2 minutes ago"},
-        {-0.0, UDAT_REL_UNIT_HOUR, "this hour"},
+        {-0.0, UDAT_REL_UNIT_HOUR, "0 hours ago"},
         {-0.5, UDAT_REL_UNIT_HOUR, "0.5 hours ago"},
         {-1.0, UDAT_REL_UNIT_HOUR, "1 hour ago"},
         {-2.0, UDAT_REL_UNIT_HOUR, "2 hours ago"},
@@ -805,34 +742,13 @@ static WithQuantityExpectedRelativeDateTimeUnit kEnglishFormat[] = {
         {-2.0, UDAT_REL_UNIT_SATURDAY, "2 Saturdays ago"}
 };
 
-static WithQuantityExpected kAfrikaans[] = {
-        {1.0, UDAT_DIRECTION_NEXT, UDAT_RELATIVE_MONTHS, "oor 1 maand"},
-        {2.0, UDAT_DIRECTION_NEXT, UDAT_RELATIVE_MONTHS, "oor 2 maande"},
-        {1.0, UDAT_DIRECTION_LAST, UDAT_RELATIVE_MONTHS, "1 maand gelede"},
-        {2.0, UDAT_DIRECTION_LAST, UDAT_RELATIVE_MONTHS, "2 maande gelede"},
-};
-
-static WithoutQuantityExpected kAfrikaansNoQuantity[] = {
-        {UDAT_DIRECTION_NEXT, UDAT_ABSOLUTE_MONTH, "volgende maand"},
-        {UDAT_DIRECTION_LAST, UDAT_ABSOLUTE_MONTH, "verlede maand"},
-};
-
-static WithQuantityExpectedRelativeDateTimeUnit kAfrikaansFormatNumeric[] = {
-        {0.0, UDAT_REL_UNIT_MONTH, "oor 0 maande"},
-        {1.0, UDAT_REL_UNIT_MONTH, "oor 1 maand"},
-        {2.0, UDAT_REL_UNIT_MONTH, "oor 2 maande"},
-        {-0.0, UDAT_REL_UNIT_MONTH, "0 maande gelede"},
-        {-1.0, UDAT_REL_UNIT_MONTH, "1 maand gelede"},
-        {-2.0, UDAT_REL_UNIT_MONTH, "2 maande gelede"},
-};
 
 class RelativeDateTimeFormatterTest : public IntlTestWithFieldPosition {
 public:
     RelativeDateTimeFormatterTest() {
     }
 
-    void runIndexedTest(int32_t index, UBool exec, const char*& name, char* par = nullptr) override;
-
+    void runIndexedTest(int32_t index, UBool exec, const char *&name, char *par=0);
 private:
     void TestEnglish();
     void TestEnglishCaps();
@@ -845,7 +761,6 @@ private:
     void TestEnglishNoQuantityShort();
     void TestEnglishNoQuantityNarrow();
     void TestSpanishNoQuantity();
-    void TestAfrikaans();
     void TestFormatWithQuantityIllegalArgument();
     void TestFormatWithoutQuantityIllegalArgument();
     void TestCustomNumberFormat();
@@ -918,7 +833,7 @@ private:
             const RelativeDateTimeFormatter& fmt,
             UDateDirection direction,
             UDateAbsoluteUnit unit);
-    void TestSidewaysDataLoading();
+    void TestSidewaysDataLoading(void);
 };
 
 void RelativeDateTimeFormatterTest::runIndexedTest(
@@ -938,7 +853,6 @@ void RelativeDateTimeFormatterTest::runIndexedTest(
     TESTCASE_AUTO(TestEnglishNoQuantityShort);
     TESTCASE_AUTO(TestEnglishNoQuantityNarrow);
     TESTCASE_AUTO(TestSpanishNoQuantity);
-    TESTCASE_AUTO(TestAfrikaans);
     TESTCASE_AUTO(TestFormatWithQuantityIllegalArgument);
     TESTCASE_AUTO(TestFormatWithoutQuantityIllegalArgument);
     TESTCASE_AUTO(TestCustomNumberFormat);
@@ -962,12 +876,12 @@ void RelativeDateTimeFormatterTest::TestEnglishCaps() {
     UErrorCode status = U_ZERO_ERROR;
     RelativeDateTimeFormatter fmt(
             "en",
-            nullptr,
+            NULL,
             UDAT_STYLE_LONG,
             UDISPCTX_CAPITALIZATION_FOR_BEGINNING_OF_SENTENCE,
             status);
     if (U_FAILURE(status)) {
-        dataerrln("Failed call to RelativeDateTimeFormatter(\"en\", nullptr, UDAT_STYLE_LONG, UDISPCTX_CAPITALIZATION_FOR_BEGINNING_OF_SENTENCE, status); : %s", u_errorName(status));
+        dataerrln("Failed call to RelativeDateTimeFormatter(\"en\", NULL, UDAT_STYLE_LONG, UDISPCTX_CAPITALIZATION_FOR_BEGINNING_OF_SENTENCE, status); : %s", u_errorName(status));
         return;
     }
     RelativeDateTimeFormatter fmt3(status);
@@ -984,7 +898,7 @@ void RelativeDateTimeFormatterTest::TestEnglishShort() {
 }
 
 void RelativeDateTimeFormatterTest::TestEnglishNarrow() {
-    RunTest("en", UDAT_STYLE_NARROW, kEnglishNarrow, UPRV_LENGTHOF(kEnglishNarrow));
+    RunTest("en", UDAT_STYLE_NARROW, kEnglishShort, UPRV_LENGTHOF(kEnglishShort));
 }
 
 void RelativeDateTimeFormatterTest::TestSerbian() {
@@ -1003,11 +917,11 @@ void RelativeDateTimeFormatterTest::TestEnglishNoQuantityCaps() {
     UErrorCode status = U_ZERO_ERROR;
     RelativeDateTimeFormatter fmt(
             "en",
-            nullptr,
+            NULL,
             UDAT_STYLE_LONG,
             UDISPCTX_CAPITALIZATION_FOR_BEGINNING_OF_SENTENCE,
             status);
-    if (assertSuccess("RelativeDateTimeFormatter", status, true) == false) {
+    if (assertSuccess("RelativeDateTimeFormatter", status, TRUE) == FALSE) {
         return;
     }
     RunTest(
@@ -1035,12 +949,6 @@ void RelativeDateTimeFormatterTest::TestEnglishNoQuantityNarrow() {
 
 void RelativeDateTimeFormatterTest::TestSpanishNoQuantity() {
     RunTest("es", kSpanishNoQuantity, UPRV_LENGTHOF(kSpanishNoQuantity));
-}
-
-void RelativeDateTimeFormatterTest::TestAfrikaans() {
-    RunTest("af", kAfrikaans, UPRV_LENGTHOF(kAfrikaans));
-    RunTest("af", kAfrikaansNoQuantity, UPRV_LENGTHOF(kAfrikaansNoQuantity));
-    RunTest("af", kAfrikaansFormatNumeric, UPRV_LENGTHOF(kAfrikaansFormatNumeric), true);
 }
 
 void RelativeDateTimeFormatterTest::TestFormatWithQuantityIllegalArgument() {
@@ -1076,7 +984,7 @@ void RelativeDateTimeFormatterTest::TestCustomNumberFormat() {
                     "Failure creating format object - %s", u_errorName(status));
             return;
         }
-        nf = fmt.getNumberFormat().clone();
+        nf = (NumberFormat *) fmt.getNumberFormat().clone();
     }
     nf->setMinimumFractionDigits(1);
     nf->setMaximumFractionDigits(1);
@@ -1096,12 +1004,12 @@ void RelativeDateTimeFormatterTest::TestGetters() {
     UErrorCode status = U_ZERO_ERROR;
     RelativeDateTimeFormatter fmt(
             "en",
-            nullptr,
+            NULL,
             UDAT_STYLE_NARROW,
             UDISPCTX_CAPITALIZATION_FOR_MIDDLE_OF_SENTENCE,
             status);
     if (U_FAILURE(status)) {
-        dataerrln("Failed call to RelativeDateTimeFormatter(\"en\", nullptr, UDAT_STYLE_NARROW, UDISPCTX_CAPITALIZATION_FOR_MIDDLE_OF_SENTENCE, status);) : %s", u_errorName(status));
+        dataerrln("Failed call to RelativeDateTimeFormatter(\"en\", NULL, UDAT_STYLE_NARROW, UDISPCTX_CAPITALIZATION_FOR_MIDDLE_OF_SENTENCE, status);) : %s", u_errorName(status));
         return;
     }
     RelativeDateTimeFormatter fmt3(status);
@@ -1139,7 +1047,7 @@ void RelativeDateTimeFormatterTest::TestCombineDateAndTime() {
 void RelativeDateTimeFormatterTest::TestBadDisplayContext() {
     UErrorCode status = U_ZERO_ERROR;
     RelativeDateTimeFormatter fmt(
-            "en", nullptr, UDAT_STYLE_LONG, UDISPCTX_STANDARD_NAMES, status);
+            "en", NULL, UDAT_STYLE_LONG, UDISPCTX_STANDARD_NAMES, status);
     if (status != U_ILLEGAL_ARGUMENT_ERROR) {
         errln("Expected U_ILLEGAL_ARGUMENT_ERROR, got %s", u_errorName(status));
     }
@@ -1182,7 +1090,7 @@ void RelativeDateTimeFormatterTest::RunTest(
         int32_t expectedResultLength) {
     UErrorCode status = U_ZERO_ERROR;
     RelativeDateTimeFormatter fmt(
-            locale, nullptr, style, UDISPCTX_CAPITALIZATION_NONE, status);
+            locale, NULL, style, UDISPCTX_CAPITALIZATION_NONE, status);
     if (U_FAILURE(status)) {
         dataerrln("Unable to create format object - %s", u_errorName(status));
         return;
@@ -1210,7 +1118,7 @@ void RelativeDateTimeFormatterTest::RunTest(
         int32_t expectedResultLength) {
     UErrorCode status = U_ZERO_ERROR;
     RelativeDateTimeFormatter fmt(
-            locale, nullptr, style, UDISPCTX_CAPITALIZATION_NONE, status);
+            locale, NULL, style, UDISPCTX_CAPITALIZATION_NONE, status);
     if (U_FAILURE(status)) {
         dataerrln("Unable to create format object - %s", u_errorName(status));
         return;
@@ -1259,8 +1167,8 @@ void RelativeDateTimeFormatterTest::CheckExpectedResult(
     UnicodeString expected(expectedResult.expected, -1, US_INV);
     expected = expected.unescape();
     char buffer[256];
-    snprintf(
-            buffer, sizeof(buffer),
+    sprintf(
+            buffer,
             "%s, %f, %s, %s",
             description,
             expectedResult.value,
@@ -1288,8 +1196,8 @@ void RelativeDateTimeFormatterTest::CheckExpectedResult(
     UnicodeString expected(expectedResult.expected, -1, US_INV);
     expected = expected.unescape();
     char buffer[256];
-    snprintf(
-            buffer, sizeof(buffer),
+    sprintf(
+            buffer,
             "%s, %f, %s",
             description,
             expectedResult.value,
@@ -1311,8 +1219,8 @@ void RelativeDateTimeFormatterTest::CheckExpectedResult(
     UnicodeString expected(expectedResult.expected, -1, US_INV);
     expected = expected.unescape();
     char buffer[256];
-    snprintf(
-            buffer, sizeof(buffer),
+    sprintf(
+            buffer,
             "%s, %s, %s",
             description,
             DirectionStr(expectedResult.direction),
@@ -1349,13 +1257,13 @@ void RelativeDateTimeFormatterTest::VerifyIllegalArgument(
 }
 
 /* Add tests to check "sideways" data loading. */
-void RelativeDateTimeFormatterTest::TestSidewaysDataLoading() {
+void RelativeDateTimeFormatterTest::TestSidewaysDataLoading(void) {
     UErrorCode status = U_ZERO_ERROR;
     UnicodeString actual;
     UnicodeString expected;
     Locale enGbLocale("en_GB");
 
-    RelativeDateTimeFormatter fmt(enGbLocale, nullptr, UDAT_STYLE_NARROW,
+    RelativeDateTimeFormatter fmt(enGbLocale, NULL, UDAT_STYLE_NARROW,
                                   UDISPCTX_CAPITALIZATION_NONE, status);
     if (U_FAILURE(status)) {
         dataerrln("Unable to create RelativeDateTimeFormatter - %s", u_errorName(status));
@@ -1376,17 +1284,17 @@ void RelativeDateTimeFormatterTest::TestSidewaysDataLoading() {
     fmt.format(-3.0, UDAT_DIRECTION_LAST, UDAT_RELATIVE_DAYS, actual.remove(), status);
     assertEquals("3 days ago (negative 3.0): ", expected, actual);
 
-    expected = "next yr";
+    expected = "next yr.";
     fmt.format(UDAT_DIRECTION_NEXT, UDAT_ABSOLUTE_YEAR, actual.remove(), status);
     assertEquals("next year: ", expected, actual);
 
     // Testing the SHORT style
-    RelativeDateTimeFormatter fmtshort(enGbLocale, nullptr, UDAT_STYLE_SHORT,
+    RelativeDateTimeFormatter fmtshort(enGbLocale, NULL, UDAT_STYLE_SHORT,
                                   UDISPCTX_CAPITALIZATION_NONE, status);
     expected = "now";
     fmtshort.format(0.0, UDAT_DIRECTION_NEXT, UDAT_RELATIVE_SECONDS, actual.remove(), status);
 
-    expected = "next yr";
+    expected = "next yr.";
     fmt.format(UDAT_DIRECTION_NEXT, UDAT_ABSOLUTE_YEAR, actual.remove(), status);
     assertEquals("next year: ", expected, actual);
 }

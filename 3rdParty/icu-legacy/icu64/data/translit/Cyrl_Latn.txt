@@ -1,6 +1,5 @@
 ﻿# © 2016 and later: Unicode, Inc. and others.
-# License & terms of use: http://www.unicode.org/copyright.html
-# Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+# License & terms of use: http://www.unicode.org/copyright.html#License
 #
 # File: Cyrl_Latn.txt
 # Generated from CLDR
@@ -13,8 +12,7 @@
 # :: [\u0000-\u007E ʹ ʺ [:Cyrillic:] [:Latin:] [:nonspacing mark:]] ;
 ### WARNING, \u0308 must be added to the generated filters, in both directions ###
 # MINIMAL FILTER
-# Cyrillic-Latin
-:: [ҺһңҢҰұҮүөӨҚқ\u0308Ă-ăĔ-ĕĞ-ğĬ-ĭŎ-ŏŬ-ŭ\u0306Ѐ-џҐ-ҕҘ-ҙӁ-ӂӐ-ӟӢ-ӧӬ-ӵӸ-ӹḜ-ḝẮ-ặᾰᾸῐῘῠῨ] ;
+:: [Ққ\u0308Ă-ăĔ-ĕĞ-ğĬ-ĭŎ-ŏŬ-ŭ\u0306Ѐ-џҐ-ҕҘ-ҙӁ-ӂӐ-ӟӢ-ӧӬ-ӵӸ-ӹḜ-ḝẮ-ặᾰᾸῐῘῠῨ] ;
 :: NFD (NFC) ;
 $modprime = ʹ;
 $modprime2 = ʺ;
@@ -27,13 +25,7 @@ $caron = \u030C ;
 $comma = \u0326 ;
 $under = \u0331 ;
 $descender = ˌ;
-$umlaut = \u0308 ;
-$macron = \u0304 ;
-$breveBelow = \u032E;
-$ignoreForCase = [‧[:Mn:][:Me:]] ;
-$lower = [[:Latin:][:Cyrillic:] & [:Ll:]];
-$beforeLower = $ignoreForCase * $lower ;
-# Move up so not masked
+# move up so not masked
 я ↔ a  $hat ; # CYRILLIC SMALL LETTER YA
 Я ↔  A $hat ; # CYRILLIC CAPITAL LETTER YA
 ч ↔ c $caron ; # CYRILLIC SMALL LETTER CHE
@@ -70,10 +62,6 @@ $beforeLower = $ignoreForCase * $lower ;
 Ћ ↔ C $acute ; # CYRILLIC CAPITAL LETTER TSHE
 џ ↔ d $hat ; # CYRILLIC SMALL LETTER DZHE
 Џ ↔ D $hat ; # CYRILLIC CAPITAL LETTER DZHE
-# https://www.eki.ee/wgrs/v2_2/rom2_az.htm
-# but modified to not collide with Cyrillic HA
-һ ↔ h $breveBelow ; # CYRILLIC SMALL LETTER SHHA
-Һ ↔ H $breveBelow; # CYRILLIC CAPITAL LETTER SHHA
 # Normal order
 а ↔ a ; # CYRILLIC SMALL LETTER A
 А ↔ A ; # CYRILLIC CAPITAL LETTER A
@@ -127,18 +115,18 @@ $beforeLower = $ignoreForCase * $lower ;
 Л ↔ L; # CYRILLIC CAPITAL LETTER EL
 м ↔ m ; # CYRILLIC SMALL LETTER EM
 М ↔ M ; # CYRILLIC CAPITAL LETTER EM
-ң ↔ n$caron ; # CYRILLIC SMALL LETTER EN WITH DESCENDER
-Ң ↔ N$caron ; # CYRILLIC CAPITAL LETTER EN WITH DESCENDER
 н ↔ n ; # CYRILLIC SMALL LETTER EN
 Н ↔ N; # CYRILLIC CAPITAL LETTER EN
+# ң ↔ XXX ; # CYRILLIC SMALL LETTER EN WITH DESCENDER
+# Ң ↔ XXX ; # CYRILLIC CAPITAL LETTER EN WITH DESCENDER
 # ӈ ↔ XXX ; # CYRILLIC SMALL LETTER EN WITH HOOK
 # Ӈ ↔ XXX ; # CYRILLIC CAPITAL LETTER EN WITH HOOK
 # ҥ ↔ XXX ; # CYRILLIC SMALL LIGATURE EN GHE
 # Ҥ ↔ XXX ; # CYRILLIC CAPITAL LIGATURE EN GHE
-ө ↔ o $umlaut ; # CYRILLIC SMALL LETTER BARRED O
-Ө ↔ O $umlaut ; # CYRILLIC CAPITAL LETTER BARRED O
 о ↔ o ; # CYRILLIC SMALL LETTER O
 О ↔ O ; # CYRILLIC CAPITAL LETTER O
+# ө ↔ XXX ; # CYRILLIC SMALL LETTER BARRED O
+# Ө ↔ XXX ; # CYRILLIC CAPITAL LETTER BARRED O
 п ↔ p ; # CYRILLIC SMALL LETTER PE
 П ↔ P ; # CYRILLIC CAPITAL LETTER PE
 # ҧ ↔ XXX ; # CYRILLIC SMALL LETTER PE WITH MIDDLE HOOK
@@ -157,13 +145,12 @@ $beforeLower = $ignoreForCase * $lower ;
 Т ↔ T ; # CYRILLIC CAPITAL LETTER TE
 # ҭ ↔ XXX ; # CYRILLIC SMALL LETTER TE WITH DESCENDER
 # Ҭ ↔ XXX ; # CYRILLIC CAPITAL LETTER TE WITH DESCENDER
-#https://en.wikipedia.org/wiki/Kazakh_alphabets
-ұ ↔ u$macron ; # CYRILLIC SMALL LETTER STRAIGHT U WITH STROKE
-Ұ ↔ U$macron ; # CYRILLIC CAPITAL LETTER STRAIGHT U WITH STROKE
-ү ↔ u$umlaut ; # CYRILLIC SMALL LETTER STRAIGHT U
-Ү ↔ U$umlaut ; # CYRILLIC CAPITAL LETTER STRAIGHT U
 у ↔ u ; # CYRILLIC SMALL LETTER U
 У ↔ U ; # CYRILLIC CAPITAL LETTER U
+# ү ↔ XXX ; # CYRILLIC SMALL LETTER STRAIGHT U
+# Ү ↔ XXX ; # CYRILLIC CAPITAL LETTER STRAIGHT U
+# ұ ↔ XXX ; # CYRILLIC SMALL LETTER STRAIGHT U WITH STROKE
+# Ұ ↔ XXX ; # CYRILLIC CAPITAL LETTER STRAIGHT U WITH STROKE
 # ѹ ↔ XXX ; # CYRILLIC SMALL LETTER UK
 # Ѹ ↔ XXX ; # CYRILLIC CAPITAL LETTER UK
 ф ↔ f ; # CYRILLIC SMALL LETTER EF
@@ -172,6 +159,8 @@ $beforeLower = $ignoreForCase * $lower ;
 Х ↔ H; # CYRILLIC CAPITAL LETTER HA
 # ҳ ↔ XXX ; # CYRILLIC SMALL LETTER HA WITH DESCENDER
 # Ҳ ↔ XXX ; # CYRILLIC CAPITAL LETTER HA WITH DESCENDER
+# һ ↔ XXX ; # CYRILLIC SMALL LETTER SHHA
+# Һ ↔ XXX ; # CYRILLIC CAPITAL LETTER SHHA
 # ѡ ↔ XXX ; # CYRILLIC SMALL LETTER OMEGA
 # Ѡ ↔ XXX ; # CYRILLIC CAPITAL LETTER OMEGA
 # ѿ ↔ XXX ; # CYRILLIC SMALL LETTER OT
@@ -281,7 +270,7 @@ $ignore = [[:Mark:]''] * ;
 | ks ← x ;
 :: NFC (NFD) ;
 # note: a global filter is more efficient, but MUST include all source chars!!
-# :: ([\u0000-\u007E ʹ ʺ [:Cyrillic:] [:Latin:] [:nonspacing mark:] ‧]);
+# :: ([\u0000-\u007E ʹ ʺ [:Cyrillic:] [:Latin:] [:nonspacing mark:]]);
 # MINIMAL FILTER: Latin-Cyrillic
-:: ( [ḫḪhH‧ˌ\u0308A-Za-zÀ-ÏÑ-ÖÙ-Ýà-ïñ-öù-ýÿ-ĥĨ-İĴ-ķĹ-ľŃ-ňŌ-őŔ-ťŨ-žƏƠ-ơƯ-ưǍ-ǜǞ-ǣǦ-ǰǴ-ǵǸ-țȞ-ȟȦ-ȳəʹ-ʺ\u0300-\u0302\u0306-\u0307\u030C\u0326\u0331\u0340-\u0341\u0344ʹ΅-ΆΈ-ΊΌΎ-ΐά-ΰό-ώϓЀЃЌ-ЎЙйѐѓќ-ўӁ-ӂӐ-ӑӖ-ӗḀ-ẙẛẠ-ỹἂ-ἅἊ-Ἅἒ-ἕἚ-Ἕἢ-ἥἪ-Ἥἲ-ἵἺ-Ἵὂ-ὅὊ-Ὅὒ-ὕὛὝὢ-ὥὪ-Ὥὰ-ώᾂ-ᾅᾊ-ᾍᾒ-ᾕᾚ-ᾝᾢ-ᾥᾪ-ᾭᾰᾲᾴᾸᾺ-ΆῂῄῈ-Ή῍-῎ῐῒ-ΐῘῚ-Ί῝-῞ῠῢ-ΰῨῪ-Ύ῭-΅ῲῴῸ-ΏK-Å] ) ;
+:: ( [ˌ\u0308A-Za-zÀ-ÏÑ-ÖÙ-Ýà-ïñ-öù-ýÿ-ĥĨ-İĴ-ķĹ-ľŃ-ňŌ-őŔ-ťŨ-žƏƠ-ơƯ-ưǍ-ǜǞ-ǣǦ-ǰǴ-ǵǸ-țȞ-ȟȦ-ȳəʹ-ʺ\u0300-\u0302\u0306-\u0307\u030C\u0326\u0331\u0340-\u0341\u0344ʹ΅-ΆΈ-ΊΌΎ-ΐά-ΰό-ώϓЀЃЌ-ЎЙйѐѓќ-ўӁ-ӂӐ-ӑӖ-ӗḀ-ẙẛẠ-ỹἂ-ἅἊ-Ἅἒ-ἕἚ-Ἕἢ-ἥἪ-Ἥἲ-ἵἺ-Ἵὂ-ὅὊ-Ὅὒ-ὕὛὝὢ-ὥὪ-Ὥὰ-ώᾂ-ᾅᾊ-ᾍᾒ-ᾕᾚ-ᾝᾢ-ᾥᾪ-ᾭᾰᾲᾴᾸᾺ-ΆῂῄῈ-Ή῍-῎ῐῒ-ΐῘῚ-Ί῝-῞ῠῢ-ΰῨῪ-Ύ῭-΅ῲῴῸ-ΏK-Å] ) ;
 

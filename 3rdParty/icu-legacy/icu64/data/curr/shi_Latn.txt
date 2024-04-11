@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 shi_Latn{
     %%Parent{"root"}
     Currencies{
@@ -176,13 +175,9 @@ shi_Latn{
             "SHP",
             "ajnih n santilin",
         }
-        SLE{
-            "SLE",
-            "liyun",
-        }
         SLL{
             "SLL",
-            "liyun (1964—2022)",
+            "liyun",
         }
         SOS{
             "SOS",
@@ -221,7 +216,7 @@ shi_Latn{
             "frank ṣifa",
         }
         XOF{
-            "F CFA",
+            "CFA",
             "frank ṣifa bisaw",
         }
         ZAR{
@@ -241,4 +236,5 @@ shi_Latn{
             "adular n zimbabwi",
         }
     }
+    Version{"2.1.47.82"}
 }

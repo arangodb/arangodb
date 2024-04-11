@@ -31,7 +31,7 @@
 
 CollationMonkeyTest::CollationMonkeyTest()
 : source("-abcdefghijklmnopqrstuvwxyz#&^$@", ""),
-  myCollator(nullptr)
+  myCollator(0)
 {
     UErrorCode status = U_ZERO_ERROR;
     myCollator = Collator::createInstance("en_US", status);
@@ -78,7 +78,7 @@ void CollationMonkeyTest::TestCollationKey(/* char* par */)
         return;
     }
 
-    srand( (unsigned)time( nullptr ) );
+    srand( (unsigned)time( NULL ) );
     int32_t s = checkValue(rand() % source.length());
     int32_t t = checkValue(rand() % source.length());
     int32_t slen = checkValue((rand() - source.length()) % source.length());
@@ -153,7 +153,7 @@ CollationMonkeyTest::TestCompare(/* char* par */)
     /* Seed the random-number generator with current time so that
      * the numbers will be different every time we run.
      */
-    srand( (unsigned)time( nullptr ) );
+    srand( (unsigned)time( NULL ) );
     int32_t s = checkValue(rand() % source.length());
     int32_t t = checkValue(rand() % source.length());
     int32_t slen = checkValue((rand() - source.length()) % source.length());
@@ -206,12 +206,12 @@ CollationMonkeyTest::TestCompare(/* char* par */)
     }
 }
 void CollationMonkeyTest::TestRules(/* char* par */){
-    char16_t testSourceCases[][10] = {
+    UChar testSourceCases[][10] = {
     {0x0061, 0x0062, 0x007a, 0},
     {0x0061, 0x0062, 0x007a, 0},
     };
 
-    char16_t testTargetCases[][10] = {
+    UChar testTargetCases[][10] = {
         {0x0061, 0x0062, 0x00e4, 0},
         {0x0061, 0x0062, 0x0061, 0x0308, 0},
     };
@@ -220,9 +220,9 @@ void CollationMonkeyTest::TestRules(/* char* par */){
     logln("Demo Test 1 : Create a new table collation with rules \"& z < 0x00e4\"");
     UErrorCode status = U_ZERO_ERROR;
     Collator *col = Collator::createInstance("en_US", status);
-    const UnicodeString baseRules = (dynamic_cast<RuleBasedCollator*>(col))->getRules();
+    const UnicodeString baseRules = ((RuleBasedCollator*)col)->getRules();
     UnicodeString newRules(" & z < ");
-    newRules.append((char16_t)0x00e4);
+    newRules.append((UChar)0x00e4);
     newRules.insert(0, baseRules);
     RuleBasedCollator *myCollation = new RuleBasedCollator(newRules, status);
     if (U_FAILURE(status)) {
@@ -237,7 +237,7 @@ void CollationMonkeyTest::TestRules(/* char* par */){
     logln("Demo Test 2 : Create a new table collation with rules \"& z < a 0x0308\"");
     newRules.remove();
     newRules.append(" & z < a");
-    newRules.append((char16_t)0x0308);
+    newRules.append((UChar)0x0308);
     newRules.insert(0, baseRules);
     myCollation = new RuleBasedCollator(newRules, status);
     if (U_FAILURE(status)) {

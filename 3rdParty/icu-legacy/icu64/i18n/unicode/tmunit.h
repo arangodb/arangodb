@@ -16,9 +16,6 @@
  * \brief C++ API: time unit object
  */
 
-#include "unicode/utypes.h"
-
-#if U_SHOW_CPLUSPLUS_API
 
 #include "unicode/measunit.h"
 
@@ -73,7 +70,7 @@ public:
      * Override clone.
      * @stable ICU 4.2
      */
-    virtual TimeUnit* clone() const override;
+    virtual UObject* clone() const;
 
     /**
      * Copy operator.
@@ -95,7 +92,7 @@ public:
      * different class IDs.
      * @stable ICU 4.2
      */
-    virtual UClassID getDynamicClassID() const override;
+    virtual UClassID getDynamicClassID() const;
 
     /**
      * Returns the class ID for this class. This is used to compare to
@@ -134,8 +131,6 @@ private:
 U_NAMESPACE_END
 
 #endif /* #if !UCONFIG_NO_FORMATTING */
-
-#endif /* U_SHOW_CPLUSPLUS_API */
 
 #endif // __TMUNIT_H__
 //eof

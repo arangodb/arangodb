@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 es_419{
     RBNFRules{
         OrdinalRules{
@@ -21,14 +20,9 @@ es_419{
             "%digits-ordinal-feminine:",
             "-x: \u2212>>;",
             "0: =#,##0=\u00AA.;",
-            "%digits-ordinal-masculine-plural:",
-            "-x: \u2212>>;",
-            "0: =#,##0=\u1D52\u02E2.;",
-            "%digits-ordinal-feminine-plural:",
-            "-x: \u2212>>;",
-            "0: =#,##0=\u1D43\u02E2.;",
             "%digits-ordinal:",
             "0: =%digits-ordinal-masculine=;",
         }
     }
+    Version{"2.1.21.54"}
 }

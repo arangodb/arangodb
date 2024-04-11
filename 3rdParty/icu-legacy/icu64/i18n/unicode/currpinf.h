@@ -11,8 +11,6 @@
 
 #include "unicode/utypes.h"
 
-#if U_SHOW_CPLUSPLUS_API
-
 /**
  * \file
  * \brief C++ API: Currency Plural Information used by Decimal Format
@@ -92,7 +90,7 @@ public:
      *
      * @stable ICU 4.2
      */
-    bool operator==(const CurrencyPluralInfo& info) const;
+    UBool operator==(const CurrencyPluralInfo& info) const;
 
 
     /**
@@ -100,7 +98,7 @@ public:
      *
      * @stable ICU 4.2
      */
-    bool operator!=(const CurrencyPluralInfo& info) const;
+    UBool operator!=(const CurrencyPluralInfo& info) const;
 
 
     /**
@@ -184,7 +182,7 @@ public:
      *
      * @stable ICU 4.2
      */
-    virtual UClassID getDynamicClassID() const override;
+    virtual UClassID getDynamicClassID() const;
 
     /**
      * ICU "poor man's RTTI", returns a UClassID for this class.
@@ -259,7 +257,7 @@ private:
 };
 
 
-inline bool
+inline UBool
 CurrencyPluralInfo::operator!=(const CurrencyPluralInfo& info) const {
     return !operator==(info);
 }  
@@ -267,8 +265,6 @@ CurrencyPluralInfo::operator!=(const CurrencyPluralInfo& info) const {
 U_NAMESPACE_END
 
 #endif /* #if !UCONFIG_NO_FORMATTING */
-
-#endif /* U_SHOW_CPLUSPLUS_API */
 
 #endif // _CURRPINFO
 //eof

@@ -1,16 +1,8 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 kea{
     Keys{
         calendar{"Kalendáriu"}
-        cf{"Formatu di mueda"}
-        collation{"Ordenason"}
-        currency{"Mueda"}
-        hc{"Siklu oráriu (12 o 24)"}
-        lb{"Stilu di kebra di linha"}
-        ms{"Sistema di midida"}
-        numbers{"Nunbru"}
     }
     Languages{
         ab{"abkáziu"}
@@ -23,12 +15,9 @@ kea{
         arn{"araukanu"}
         as{"asames"}
         asa{"asu"}
-        ast{"asturianu"}
         ay{"aimara"}
         az{"azerbaijanu"}
         ba{"baxkir"}
-        ban{"balines"}
-        bas{"basa"}
         be{"bielorusu"}
         bem{"bemba"}
         bez{"bena"}
@@ -40,22 +29,19 @@ kea{
         brx{"bodo"}
         bs{"bosniu"}
         ca{"katalãu"}
-        ccp{"xakma"}
         ce{"txetxenu"}
-        ceb{"sebuanu"}
         cgg{"xiga"}
         chr{"xeroki"}
         ckb{"kurdu sentral"}
         co{"kórsiku"}
         cs{"txeku"}
-        cu{"slavu klériku"}
         cv{"txuvaxi"}
         cy{"gales"}
         da{"dinamarkes"}
         dav{"taita"}
-        de{"alemon"}
-        de_AT{"alemon austríaku"}
-        de_CH{"alemon altu suisu"}
+        de{"alimãu"}
+        de_AT{"alimãu austriaku"}
+        de_CH{"altu alimãu suisu"}
         dje{"zarma"}
         dsb{"sórbiu baxu"}
         dua{"duala"}
@@ -67,7 +53,7 @@ kea{
         en{"ingles"}
         en_AU{"ingles australianu"}
         en_CA{"ingles kanadianu"}
-        en_GB{"ingles britániku"}
+        en_GB{"ingles britaniku"}
         en_US{"ingles merkanu"}
         eo{"sperantu"}
         es{"spanhol"}
@@ -76,9 +62,7 @@ kea{
         es_MX{"spanhol mexikanu"}
         et{"stonianu"}
         eu{"basku"}
-        ewo{"ewondo"}
         fa{"persa"}
-        ff{"fula"}
         fi{"finlandes"}
         fil{"filipinu"}
         fj{"fijianu"}
@@ -86,13 +70,12 @@ kea{
         fr{"franses"}
         fr_CA{"franses kanadianu"}
         fr_CH{"franses suisu"}
-        fur{"friulanu"}
         fy{"fríziu osidental"}
         ga{"irlandes"}
         gag{"gagauz"}
         gl{"galegu"}
         gn{"guarani"}
-        gsw{"alemon suisu"}
+        gsw{"alimãu suísu"}
         gu{"gujarati"}
         guz{"gusii"}
         gv{"manks"}
@@ -100,13 +83,11 @@ kea{
         haw{"avaianu"}
         he{"ebraiku"}
         hi{"indi"}
-        hmn{"hmong"}
         hr{"kroata"}
         hsb{"sórbiu altu"}
         ht{"aitianu"}
         hu{"úngaru"}
         hy{"arméniu"}
-        ia{"interlingua"}
         id{"indonéziu"}
         ig{"ibo"}
         ii{"nuosu"}
@@ -120,12 +101,10 @@ kea{
         ka{"jorjianu"}
         kab{"kabila"}
         kam{"kamba"}
-        kde{"makonde"}
         kea{"kabuverdianu"}
         khq{"koira txiini"}
         ki{"kikuiu"}
         kk{"kazak"}
-        kkj{"kako"}
         kl{"groenlandes"}
         kln{"kalenjin"}
         km{"kmer"}
@@ -135,24 +114,16 @@ kea{
         kok{"konkani"}
         ks{"kaxmira"}
         ksf{"bafia"}
-        ksh{"kolonhanu"}
         ku{"kurdu"}
         kw{"kórniku"}
         ky{"kirgiz"}
         la{"latin"}
-        lag{"langi"}
         lb{"luxemburges"}
         lg{"luganda"}
-        lkt{"lakota"}
-        ln{"lingala"}
         lo{"lausianu"}
-        lt{"lituanu"}
-        lu{"luba-katanga"}
-        luo{"luo"}
-        luy{"luyia"}
+        lt{"lituanes"}
         lv{"letãu"}
         mg{"malgaxi"}
-        mgh{"makua"}
         mi{"maori"}
         mk{"masedóniu"}
         ml{"malaialam"}
@@ -161,7 +132,6 @@ kea{
         mt{"maltes"}
         my{"birmanes"}
         nb{"norueges bokmål"}
-        nds{"alemon baxu"}
         ne{"nepales"}
         nl{"olandes"}
         nl_BE{"flamengu"}
@@ -169,10 +139,8 @@ kea{
         nn{"norueges nynorsk"}
         om{"oromo"}
         or{"odía"}
-        os{"osétiku"}
         pa{"pandjabi"}
         pl{"pulaku"}
-        prg{"prusianu"}
         ps{"paxto"}
         pt{"purtuges"}
         pt_BR{"purtuges brazileru"}
@@ -180,13 +148,10 @@ kea{
         qu{"kexua"}
         quc{"kitxe"}
         rm{"romanxi"}
-        rn{"rundi"}
         ro{"rumenu"}
         ro_MD{"rumenu moldáviku"}
-        rof{"rombu"}
         ru{"rusu"}
         rw{"kiniaruanda"}
-        rwk{"rwa"}
         sa{"sánskritu"}
         sd{"sindi"}
         ses{"koiraboro seni"}
@@ -210,7 +175,7 @@ kea{
         to{"tonganes"}
         tr{"turku"}
         tt{"tatar"}
-        tzm{"tamaziti di Atlas Sentral"}
+        tzm{"tamazait di Atlas Sentral"}
         ug{"uigur"}
         uk{"ukranianu"}
         und{"língua diskonxedu"}
@@ -220,21 +185,11 @@ kea{
         wo{"uolof"}
         xh{"koza"}
         yo{"ioruba"}
-        yue{"kantunes"}
-        zgh{"tamazait marokinu padron"}
         zh{"xines"}
         zh_Hans{"xines simplifikadu"}
         zh_Hant{"xines tradisional"}
         zu{"zulu"}
         zxx{"sen kontiudu linguístiku"}
-    }
-    Languages%long{
-        zh_Hans{"xines mandarin (simplificadu)"}
-        zh_Hant{"xines mandarin (tradisional)"}
-    }
-    Languages%menu{
-        yue{"kantunes (tradisional)"}
-        zh{"xines, mandarin"}
     }
     Languages%short{
         az{"azeri"}
@@ -260,7 +215,6 @@ kea{
         Hant{"tradisional"}
         Hebr{"ebraiku"}
         Hira{"iragana"}
-        Hrkt{"silabáriu japunes"}
         Jpan{"japones"}
         Kana{"katakana"}
         Khmr{"kmer"}
@@ -278,8 +232,6 @@ kea{
         Thaa{"taana"}
         Thai{"tailandes"}
         Tibt{"tibetanu"}
-        Zmth{"notason matimátiku"}
-        Zsye{"emoji"}
         Zsym{"símbulus"}
         Zxxx{"nãu skritu"}
         Zyyy{"komun"}
@@ -291,52 +243,21 @@ kea{
     }
     Types{
         calendar{
-            buddhist{"Kalendáriu budista"}
-            chinese{"Kalendáriu xines"}
-            coptic{"Kalendáriu kopta"}
-            dangi{"Kalendáriu dangi"}
-            ethiopic{"Kalendáriu etiópiku"}
-            ethiopic-amete-alem{"Kalendáriu etíopi ameti alem"}
             gregorian{"Kalendáriu Gregorianu"}
-            hebrew{"Kalendáriu ebraiku"}
-            indian{"Kalendáriu nasional indianu"}
-            iso8601{"Kalendáriu ISO-8601"}
-            japanese{"Kalendáriu japones"}
-            persian{"Kalendáriu persa"}
-            roc{"Kalendáriu di Repúblika di Xina"}
-        }
-        cf{
-            account{"Formatu di mueda kontabilístiku"}
-            standard{"Formatu di mueda padron"}
-        }
-        collation{
-            ducet{"Órdi padron di Unicode"}
-            search{"Piskiza di uzu jeral"}
-            standard{"Órdi padron"}
-        }
-        hc{
-            h11{"Sistema di 12 ora (0–11)"}
-            h12{"Sistema di 12 ora (1–12)"}
-            h23{"Sistema di 24 ora (0–23)"}
-            h24{"Sistema di 24 ora (1–24)"}
-        }
-        lb{
-            loose{"Stilu fleksível di kebra di linha"}
-            normal{"Stilu padron di kebra di linha"}
-            strict{"Stilu ríjidu di kebra di linha"}
-        }
-        ms{
-            metric{"Sistema métriku"}
-            uksystem{"Sistema di midida britániku"}
-            ussystem{"Sistema di midida merkanu"}
         }
         numbers{
-            latn{"Nunbru osidental"}
+            latn{"Númerus Arábikus"}
         }
     }
+    Version{"2.1.48.9"}
     codePatterns{
         language{"Lingua: {0}"}
         script{"Skrita: {0}"}
-        territory{"Rejion: {0}"}
+        territory{"Rejiãu: {0}"}
+    }
+    localeDisplayPattern{
+        keyTypePattern{"{0}: {1}"}
+        pattern{"{0} ({1})"}
+        separator{"{0}, {1}"}
     }
 }

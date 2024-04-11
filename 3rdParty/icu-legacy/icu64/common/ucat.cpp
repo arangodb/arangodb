@@ -43,18 +43,18 @@ u_catopen(const char* name, const char* locale, UErrorCode* ec) {
 
 U_CAPI void U_EXPORT2
 u_catclose(u_nl_catd catd) {
-    ures_close((UResourceBundle*) catd); /* may be nullptr */
+    ures_close((UResourceBundle*) catd); /* may be NULL */
 }
 
-U_CAPI const char16_t* U_EXPORT2
+U_CAPI const UChar* U_EXPORT2
 u_catgets(u_nl_catd catd, int32_t set_num, int32_t msg_num,
-          const char16_t* s,
+          const UChar* s,
           int32_t* len, UErrorCode* ec) {
 
     char key[MAX_KEY_LEN];
-    const char16_t* result;
+    const UChar* result;
 
-    if (ec == nullptr || U_FAILURE(*ec)) {
+    if (ec == NULL || U_FAILURE(*ec)) {
         goto ERROR;
     }
 
@@ -69,7 +69,7 @@ u_catgets(u_nl_catd catd, int32_t set_num, int32_t msg_num,
 
  ERROR:
     /* In case of any failure, return s */
-    if (len != nullptr) {
+    if (len != NULL) {
         *len = u_strlen(s);
     }
     return s;

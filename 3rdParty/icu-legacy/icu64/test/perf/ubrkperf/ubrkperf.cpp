@@ -1,6 +1,6 @@
 /***********************************************************************
  * © 2016 and later: Unicode, Inc. and others.
- * License & terms of use: http://www.unicode.org/copyright.html
+ * License & terms of use: http://www.unicode.org/copyright.html#License
  *
  ***********************************************************************
  ***********************************************************************
@@ -41,13 +41,13 @@ void createMACBrkIt() {
   LocaleRef lref;
   status = LocaleRefFromLocaleString(opt_locale, &lref);
   status = UCCreateTextBreakLocator(lref, 0, kUCTextBreakAllMask, (TextBreakLocatorRef*)&breakRef);
-  if(opt_char == true) {
+  if(opt_char == TRUE) {
     macBreakType = kUCTextBreakClusterMask;
-  } else if(opt_word == true) {
+  } else if(opt_word == TRUE) {
     macBreakType = kUCTextBreakWordMask;
-  } else if(opt_line == true) {
+  } else if(opt_line == TRUE) {
     macBreakType = kUCTextBreakLineMask;
-  } else if(opt_sentence == true) {
+  } else if(opt_sentence == TRUE) {
     // error
     // brkit = BreakIterator::createSentenceInstance(opt_locale, status);
   } else {
@@ -59,7 +59,7 @@ void createMACBrkIt() {
 
 
 void doForwardTest() {
-  if (opt_terse == false) {
+  if (opt_terse == FALSE) {
     printf("Doing the forward test\n");
   }
   int32_t noBreaks = 0;
@@ -70,14 +70,14 @@ void doForwardTest() {
     createICUBrkIt();
     brkit->setText(text);
     brkit->first();
-    if (opt_terse == false) {
+    if (opt_terse == FALSE) {
       printf("Warmup\n");
     }
     while(brkit->next() != BreakIterator::DONE) {
       noBreaks++;
     }
   
-    if (opt_terse == false) {
+    if (opt_terse == FALSE) {
       printf("Measure\n");
     } 
     startTime = timeGetTime();
@@ -131,7 +131,7 @@ void doForwardTest() {
   }
 
 
-  if (opt_terse == false) {
+  if (opt_terse == FALSE) {
   int32_t loopTime = (int)(float(1000) * ((float)elapsedTime/(float)opt_loopCount));
       int32_t timePerCU = (int)(float(1000) * ((float)loopTime/(float)textSize));
       int32_t timePerBreak = (int)(float(1000) * ((float)loopTime/(float)noBreaks));
@@ -162,12 +162,12 @@ UPerfFunction* BreakIteratorPerformanceTest::TestICUIsBound()
 
 UPerfFunction* BreakIteratorPerformanceTest::TestDarwinForward()
 {
-  return nullptr;
+  return NULL;
 }
 
 UPerfFunction* BreakIteratorPerformanceTest::TestDarwinIsBound()
 {
-  return nullptr;
+  return NULL;
 }
 
 UPerfFunction* BreakIteratorPerformanceTest::runIndexedTest(int32_t index, UBool exec,
@@ -181,9 +181,9 @@ UPerfFunction* BreakIteratorPerformanceTest::runIndexedTest(int32_t index, UBool
 		TESTCASE(3, TestDarwinIsBound);
         default: 
             name = ""; 
-            return nullptr;
+            return NULL;
     }
-    return nullptr;
+    return NULL;
 }
 
 UOption options[]={
@@ -193,8 +193,8 @@ UOption options[]={
 
 BreakIteratorPerformanceTest::BreakIteratorPerformanceTest(int32_t argc, const char* argv[], UErrorCode& status)
 : UPerfTest(argc,argv,status),
-m_mode_(nullptr),
-m_file_(nullptr),
+m_mode_(NULL),
+m_file_(NULL),
 m_fileLen_(0)
 {
 
@@ -249,7 +249,7 @@ int main(int argc, const char** argv) {
     if(U_FAILURE(status)){
         return status;
     }
-    if(test.run()==false){
+    if(test.run()==FALSE){
         fprintf(stderr,"FAILED: Tests could not be run please check the arguments.\n");
         return -1;
     }

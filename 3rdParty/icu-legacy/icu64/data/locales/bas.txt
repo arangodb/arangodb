@@ -1,19 +1,21 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 bas{
     AuxExemplarCharacters{"[q x]"}
     ExemplarCharacters{
-        "[aáàâǎā{a᷆}{a᷇} b ɓ c d eéèêěē{e᷆}{e᷇} ɛ{ɛ́}{ɛ̀}{ɛ̂}{ɛ̌}{ɛ̄}{ɛ᷆}{ɛ᷇} f g h i"
-        "íìîǐī{i᷆}{i᷇} j k l m nńǹ ŋ oóòôǒō{o᷆}{o᷇} ɔ{ɔ́}{ɔ̀}{ɔ̂}{ɔ̌}{ɔ̄}{ɔ᷆}{ɔ᷇} p r"
-        " s t uúùûǔū{u᷆}{u᷇} v w y z]"
+        "[a á à â ǎ ā {a\u1DC6}{a\u1DC7} b ɓ c d e é è ê ě ē {e\u1DC6}{e\u1DC7} ɛ {ɛ"
+        "\u0301} {ɛ\u0300} {ɛ\u0302} {ɛ\u030C} {ɛ\u0304} {ɛ\u1DC6}{ɛ\u1DC7} f g h i í"
+        " ì î ǐ ī {i\u1DC6}{i\u1DC7} j k l m n ń ǹ ŋ o ó ò ô ǒ ō {o\u1DC6}{o\u1DC7} ɔ"
+        " {ɔ\u0301} {ɔ\u0300} {ɔ\u0302} {ɔ\u030C} {ɔ\u0304} {ɔ\u1DC6}{ɔ\u1DC7} p r s "
+        "t u ú ù û ǔ ū {u\u1DC6}{u\u1DC7} v w y z]"
     }
     ExemplarCharactersIndex{"[A B Ɓ C D E Ɛ F G H I J K L M N Ŋ O Ɔ P R S T U V W Y Z]"}
-    ExemplarCharactersNumbers{"[  \\- ‑ , % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
+    ExemplarCharactersNumbers{"[  \\- , % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
     NumberElements{
         latn{
             patterns{
                 currencyFormat{"#,##0.00 ¤"}
+                decimalFormat{"#,##0.###"}
                 percentFormat{"#,##0 %"}
             }
             symbols{
@@ -22,6 +24,7 @@ bas{
             }
         }
     }
+    Version{"2.1.47.82"}
     calendar{
         generic{
             DateTimePatterns{
@@ -39,24 +42,19 @@ bas{
                 "{1} {0}",
                 "{1} {0}",
             }
-            DateTimeSkeletons{
-                "HHmmsszzzz",
-                "HHmmssz",
-                "HHmmss",
-                "HHmm",
-                "GyMMMMEEEEd",
-                "GyMMMMd",
-                "GyMMMd",
-                "GGGGGyMd",
-            }
             availableFormats{
                 Ed{"E d"}
+                Hm{"HH:mm"}
+                Hms{"HH:mm:ss"}
+                M{"L"}
                 MEd{"E d/M"}
+                MMM{"LLL"}
                 MMMEd{"E d MMM"}
                 MMMd{"d MMM"}
                 Md{"d/M"}
-                hm{"h:mm a"}
-                hms{"h:mm:ss a"}
+                d{"d"}
+                hm{"h:mm a"}
+                hms{"h:mm:ss a"}
                 ms{"m:ss"}
                 y{"y"}
                 yM{"M/y"}
@@ -75,8 +73,8 @@ bas{
                 "I ɓugajɔp",
             }
             AmPmMarkersAbbr{
-                "I bikɛ̂glà",
-                "I ɓugajɔp",
+                "I bikɛ̂glà",
+                "I ɓugajɔp",
             }
             DateTimePatterns{
                 "HH:mm:ss zzzz",
@@ -93,25 +91,21 @@ bas{
                 "{1} {0}",
                 "{1} {0}",
             }
-            DateTimeSkeletons{
-                "HHmmsszzzz",
-                "HHmmssz",
-                "HHmmss",
-                "HHmm",
-                "yMMMMEEEEd",
-                "yMMMMd",
-                "yMMMd",
-                "yMd",
-            }
             availableFormats{
                 Ed{"E d"}
+                Hm{"HH:mm"}
+                Hms{"HH:mm:ss"}
+                M{"L"}
                 MEd{"E d/M"}
+                MMM{"LLL"}
                 MMMEd{"E d MMM"}
                 MMMd{"d MMM"}
                 Md{"d/M"}
-                hm{"h:mm a"}
-                hms{"h:mm:ss a"}
+                d{"d"}
+                hm{"h:mm a"}
+                hms{"h:mm:ss a"}
                 ms{"m:ss"}
+                y{"y"}
                 yM{"M/y"}
                 yMEd{"E d/M/y"}
                 yMMM{"MMM y"}

@@ -1,13 +1,13 @@
 #**************************************************************************
 #   Copyright (C) 2016 and later: Unicode, Inc. and others.
-#   License & terms of use: http://www.unicode.org/copyright.html
+#   License & terms of use: http://www.unicode.org/copyright.html#License
 #**************************************************************************
 #**************************************************************************
 #   Copyright (C) 2002-2016 International Business Machines Corporation
 #   and others. All rights reserved.
 #**************************************************************************
 #
-#  rbbicst   Compile the RBBI rule parser state table data into initialized C data.
+#  rbbicst   Compile the RBBI rule paser state table data into initialized C data.
 #            Usage:
 #                   cd icu/source/common
 #                   perl rbbicst.pl    < rbbirpt.txt > rbbirpt.h
@@ -111,9 +111,9 @@ line_loop: while (<>) {
     #
     # do the 'n' flag
     #
-    $state_flag[$num_states] = "false";
+    $state_flag[$num_states] = $javaOutput? "false" : "FALSE";
     if ($fields[0] eq "n") {
-        $state_flag[$num_states] = "true";
+        $state_flag[$num_states] = $javaOutput? "true": "TRUE";
         shift @fields;
     }
 
@@ -357,7 +357,7 @@ else
     print "U_NAMESPACE_BEGIN\n";
 
     #
-    # Emit the constants for indices of Unicode Sets
+    # Emit the constants for indicies of Unicode Sets
     #   Define one constant for each of the character classes encountered.
     #   At the same time, store the index corresponding to the set name back into hash.
     #
@@ -382,7 +382,7 @@ else
     print "    rbbiLastAction};\n\n";
 
     #
-    # Emit the struct definition for transition table elements.
+    # Emit the struct definition for transtion table elements.
     #
     print "//-------------------------------------------------------------------------------\n";
     print "//\n";
@@ -403,7 +403,7 @@ else
     # emit the state transition table
     #
     print "static const struct RBBIRuleTableEl gRuleParseStateTable[] = {\n";
-    print "    {doNOP, 0, 0, 0, true}\n";    # State 0 is a dummy.  Real states start with index = 1.
+    print "    {doNOP, 0, 0, 0, TRUE}\n";    # State 0 is a dummy.  Real states start with index = 1.
     for ($state=1; $state < $num_states; $state++) {
         print "    , {$state_func_name[$state],";
         if ($state_literal_chars[$state] ne "") {

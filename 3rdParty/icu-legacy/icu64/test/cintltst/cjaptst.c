@@ -115,7 +115,7 @@ void addKannaCollTest(TestNode** root)
     addTest(root, &TestChooonKigoo, "tscoll/cjacoll/TestChooonKigoo");
 }
 
-static void TestTertiary(void)
+static void TestTertiary( )
 {
     int32_t i;
     UErrorCode status = U_ZERO_ERROR;
@@ -135,7 +135,7 @@ static void TestTertiary(void)
 }
 
 /* Testing base letters */
-static void TestBase(void)
+static void TestBase()
 {
     int32_t i;
     UErrorCode status = U_ZERO_ERROR;

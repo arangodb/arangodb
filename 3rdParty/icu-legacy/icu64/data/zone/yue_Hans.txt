@@ -1,8 +1,8 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 yue_Hans{
     %%Parent{"root"}
+    Version{"2.1.49.82"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"阿比让"}
@@ -259,9 +259,6 @@ yue_Hans{
         "America:Chihuahua"{
             ec{"奇华华"}
         }
-        "America:Ciudad_Juarez"{
-            ec{"华雷斯城"}
-        }
         "America:Coral_Harbour"{
             ec{"阿蒂科肯"}
         }
@@ -466,6 +463,9 @@ yue_Hans{
         "America:New_York"{
             ec{"纽约"}
         }
+        "America:Nipigon"{
+            ec{"尼皮冈"}
+        }
         "America:Nome"{
             ec{"诺姆"}
         }
@@ -486,6 +486,9 @@ yue_Hans{
         }
         "America:Panama"{
             ec{"巴拿马"}
+        }
+        "America:Pangnirtung"{
+            ec{"潘尼尔东"}
         }
         "America:Paramaribo"{
             ec{"巴拉马利波"}
@@ -508,6 +511,9 @@ yue_Hans{
         "America:Punta_Arenas"{
             ec{"蓬塔阿雷纳斯"}
         }
+        "America:Rainy_River"{
+            ec{"雨河镇"}
+        }
         "America:Rankin_Inlet"{
             ec{"兰今湾"}
         }
@@ -522,6 +528,9 @@ yue_Hans{
         }
         "America:Rio_Branco"{
             ec{"里约布兰"}
+        }
+        "America:Santa_Isabel"{
+            ec{"圣伊萨贝尔"}
         }
         "America:Santarem"{
             ec{"圣塔伦"}
@@ -568,6 +577,9 @@ yue_Hans{
         "America:Thule"{
             ec{"杜里"}
         }
+        "America:Thunder_Bay"{
+            ec{"珊德湾"}
+        }
         "America:Tijuana"{
             ec{"提华纳"}
         }
@@ -588,6 +600,9 @@ yue_Hans{
         }
         "America:Yakutat"{
             ec{"雅库塔"}
+        }
+        "America:Yellowknife"{
+            ec{"耶洛奈夫"}
         }
         "Antarctica:Casey"{
             ec{"凯西"}
@@ -796,9 +811,6 @@ yue_Hans{
         "Asia:Qatar"{
             ec{"卡达"}
         }
-        "Asia:Qostanay"{
-            ec{"科斯塔奈"}
-        }
         "Asia:Qyzylorda"{
             ec{"克孜勒奥尔达"}
         }
@@ -912,6 +924,9 @@ yue_Hans{
         }
         "Australia:Broken_Hill"{
             ec{"布罗肯希尔"}
+        }
+        "Australia:Currie"{
+            ec{"克黎"}
         }
         "Australia:Darwin"{
             ec{"达尔文"}
@@ -1095,6 +1110,9 @@ yue_Hans{
         "Europe:Ulyanovsk"{
             ec{"乌里扬诺夫斯克"}
         }
+        "Europe:Uzhgorod"{
+            ec{"乌兹哥洛"}
+        }
         "Europe:Vaduz"{
             ec{"瓦都兹"}
         }
@@ -1115,6 +1133,9 @@ yue_Hans{
         }
         "Europe:Zagreb"{
             ec{"札格瑞布"}
+        }
+        "Europe:Zaporozhye"{
+            ec{"札波罗结"}
         }
         "Europe:Zurich"{
             ec{"苏黎世"}
@@ -1197,8 +1218,8 @@ yue_Hans{
         "Pacific:Honolulu"{
             ec{"檀香山"}
         }
-        "Pacific:Kanton"{
-            ec{"坎顿"}
+        "Pacific:Johnston"{
+            ec{"强斯顿"}
         }
         "Pacific:Kiritimati"{
             ec{"基里地马地岛"}
@@ -1655,6 +1676,9 @@ yue_Hans{
             lg{"澳门时间"}
             ls{"澳门标准时间"}
         }
+        "meta:Macquarie"{
+            ls{"麦觉理时间"}
+        }
         "meta:Magadan"{
             ld{"马加丹夏令时间"}
             lg{"马加丹时间"}
@@ -1679,6 +1703,11 @@ yue_Hans{
         }
         "meta:Mawson"{
             ls{"莫森时间"}
+        }
+        "meta:Mexico_Northwest"{
+            ld{"墨西哥西北部夏令时间"}
+            lg{"墨西哥西北部时间"}
+            ls{"墨西哥西北部标准时间"}
         }
         "meta:Mexico_Pacific"{
             ld{"墨西哥太平洋夏令时间"}
@@ -1723,9 +1752,7 @@ yue_Hans{
             ls{"纽埃岛时间"}
         }
         "meta:Norfolk"{
-            ld{"诺福克岛夏令时间"}
-            lg{"诺福克岛时间"}
-            ls{"诺福克岛标准时间"}
+            ls{"诺福克岛时间"}
         }
         "meta:Noronha"{
             ld{"费尔南多 - 迪诺罗尼亚夏令时间"}
@@ -1909,9 +1936,12 @@ yue_Hans{
             lg{"叶卡捷琳堡时间"}
             ls{"叶卡捷琳堡标准时间"}
         }
-        "meta:Yukon"{
-            ls{"育空时间"}
-        }
+        fallbackFormat{"{1} ({0})"}
+        gmtFormat{"GMT{0}"}
+        gmtZeroFormat{"GMT"}
+        hourFormat{"+HH:mm;-HH:mm"}
         regionFormat{"{0}时间"}
+        regionFormatDaylight{"{0} (+1)"}
+        regionFormatStandard{"{0} (+0)"}
     }
 }

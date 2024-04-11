@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 sr_Cyrl_XK{
     Languages{
         bm{"бамананкан"}
@@ -13,8 +12,10 @@ sr_Cyrl_XK{
         nqo{"н’ко"}
         shi{"јужни шилха"}
         si{"синхалски"}
+        tzm{"централноатласки тамашек"}
         xh{"исикоса"}
         zgh{"стандардни марокански тамашек"}
         zu{"исизулу"}
     }
+    Version{"2.1.47.71"}
 }

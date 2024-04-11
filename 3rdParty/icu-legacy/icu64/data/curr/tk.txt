@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 tk{
     Currencies{
         AED{
@@ -335,10 +334,6 @@ tk{
             "LRD",
             "Liberiýa dollary",
         }
-        LSL{
-            "LSL",
-            "Lesoto lotisi",
-        }
         LYD{
             "LYD",
             "Liwiýa dinary",
@@ -507,13 +502,9 @@ tk{
             "SHP",
             "Keramatly Ýelena adasynyň funty",
         }
-        SLE{
-            "SLE",
-            "Sýerra-Leone leony",
-        }
         SLL{
             "SLL",
-            "Sýerra-Leone leony (1964—2022)",
+            "Sýerra-Leone leony",
         }
         SOS{
             "SOS",
@@ -628,7 +619,7 @@ tk{
             "Gündogar karib dollary",
         }
         XOF{
-            "F CFA",
+            "CFA",
             "KFA BCEAO franky",
         }
         XPF{
@@ -653,9 +644,109 @@ tk{
         }
     }
     Currencies%narrow{
+        AOA{"Kz"}
+        ARS{"$"}
+        AUD{"$"}
+        BAM{"KM"}
+        BBD{"$"}
+        BDT{"৳"}
+        BMD{"$"}
+        BND{"$"}
+        BOB{"Bs"}
+        BRL{"R$"}
+        BSD{"$"}
+        BWP{"P"}
         BYN{"р."}
+        BZD{"$"}
+        CAD{"$"}
+        CLP{"$"}
+        CNY{"¥"}
+        COP{"$"}
+        CRC{"₡"}
+        CUC{"$"}
+        CUP{"$"}
+        CZK{"Kč"}
+        DKK{"kr"}
+        DOP{"$"}
+        EGP{"E£"}
+        EUR{"€"}
+        FJD{"$"}
+        FKP{"£"}
+        GBP{"£"}
+        GEL{"₾"}
+        GIP{"£"}
+        GNF{"FG"}
+        GTQ{"Q"}
+        GYD{"$"}
+        HKD{"$"}
+        HNL{"L"}
+        HRK{"kn"}
+        HUF{"Ft"}
+        IDR{"Rp"}
+        ILS{"₪"}
+        INR{"₹"}
+        ISK{"kr"}
+        JMD{"$"}
+        JPY{"¥"}
+        KHR{"៛"}
+        KMF{"CF"}
+        KPW{"₩"}
+        KRW{"₩"}
+        KYD{"$"}
+        KZT{"₸"}
+        LAK{"₭"}
+        LBP{"L£"}
+        LKR{"Rs"}
+        LRD{"$"}
+        MGA{"Ar"}
+        MMK{"K"}
+        MNT{"₮"}
+        MUR{"Rs"}
+        MXN{"$"}
+        MYR{"RM"}
+        NAD{"$"}
+        NGN{"₦"}
+        NIO{"C$"}
+        NOK{"kr"}
+        NPR{"Rs"}
+        NZD{"$"}
+        PHP{"₱"}
+        PKR{"Rs"}
+        PLN{"zł"}
+        PYG{"₲"}
+        RON{"lei"}
+        RUB{"₽"}
+        RWF{"RF"}
+        SBD{"$"}
+        SEK{"kr"}
+        SGD{"$"}
+        SHP{"£"}
+        SRD{"$"}
+        SSP{"£"}
+        SYP{"£"}
+        THB{"฿"}
+        TOP{"T$"}
+        TRY{"₺"}
+        TTD{"$"}
+        TWD{"$"}
+        UAH{"₴"}
+        USD{"$"}
+        UYU{"$"}
+        VEF{"Bs"}
+        VND{"₫"}
+        XCD{"$"}
+        ZAR{"R"}
+        ZMW{"ZK"}
+    }
+    Currencies%variant{
+        GEL{"₾"}
+        TRY{"TL"}
     }
     CurrencyPlurals{
+        AED{
+            one{"BAE dirhemi"}
+            other{"BAE dirhemi"}
+        }
         AFN{
             one{"owgan afganisi"}
             other{"owgan afganisi"}
@@ -1152,13 +1243,9 @@ tk{
             one{"keramatly ýelena adasynyň funty"}
             other{"keramatly ýelena adasynyň funty"}
         }
-        SLE{
+        SLL{
             one{"sýerra-leone leony"}
             other{"sýerra-leone leony"}
-        }
-        SLL{
-            one{"sýerra-leone leony (1964—2022)"}
-            other{"sýerra-leone leony (1964—2022)"}
         }
         SOS{
             one{"somali şillingi"}
@@ -1232,6 +1319,10 @@ tk{
             one{"uganda şillingi"}
             other{"uganda şillingi"}
         }
+        USD{
+            one{"ABŞ dollary"}
+            other{"ABŞ dollary"}
+        }
         UYU{
             one{"urugwaý pesosy"}
             other{"urugwaý pesosy"}
@@ -1260,9 +1351,17 @@ tk{
             one{"samoa talasy"}
             other{"samoa talasy"}
         }
+        XAF{
+            one{"KFA BEAC franky"}
+            other{"KFA BEAC franky"}
+        }
         XCD{
             one{"gündogar karib dollary"}
             other{"gündogar karib dollary"}
+        }
+        XOF{
+            one{"KFA BCEAO franky"}
+            other{"KFA BCEAO franky"}
         }
         XPF{
             one{"fransuz ýuwaş umman franky"}
@@ -1289,4 +1388,5 @@ tk{
         one{"{0} {1}"}
         other{"{0} {1}"}
     }
+    Version{"2.1.49.82"}
 }

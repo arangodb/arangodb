@@ -1,6 +1,5 @@
 ﻿# © 2016 and later: Unicode, Inc. and others.
-# License & terms of use: http://www.unicode.org/copyright.html
-# Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+# License & terms of use: http://www.unicode.org/copyright.html#License
 #
 # File: sat_Olck_sat_FONIPA.txt
 # Generated from CLDR
@@ -59,7 +58,7 @@ $inword = [[:L:][:M:]];
 # Some online texts use U+1C7C PHAARKAA instead of U+1C7B RELAA for indicating
 # long phonemes, presumably because the graphemes look similar in some fonts.
 # Since phaarkaa is used for voicing ejectives and plosives (which cannot
-# be lengthened), we rewrite phaarkaa to relaa.
+# be lenghtened), we rewrite phaarkaa to relaa.
 [ᱚᱟᱤᱩᱮᱳᱶᱢᱝᱞᱱ] [ᱹᱸᱺ]* {ᱼ} → ᱻ ;
 ::null();
 ᱚᱹᱻ → ɔː ;

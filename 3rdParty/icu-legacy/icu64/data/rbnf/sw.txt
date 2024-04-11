@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 sw{
     RBNFRules{
         SpelloutRules{
@@ -49,4 +48,5 @@ sw{
             "3: wa =%spellout-cardinal=;",
         }
     }
+    Version{"2.1.38.68"}
 }

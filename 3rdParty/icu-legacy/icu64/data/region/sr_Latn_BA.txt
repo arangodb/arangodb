@@ -1,47 +1,23 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 sr_Latn_BA{
     Countries{
-        001{"svijet"}
-        003{"Sjevernoamerički kontinent"}
-        015{"Sjeverna Afrika"}
-        019{"Sjeverna i Južna Amerika"}
-        021{"Sjeverna Amerika"}
-        154{"Sjeverna Evropa"}
-        AC{"ostrvo Asension"}
-        AX{"Olandska ostrva"}
-        BL{"Sen Bartelemi"}
-        BN{"Bruneji"}
-        BV{"ostrvo Buve"}
         BY{"Bjelorusija"}
-        CC{"Kokosova (Kiling) ostrva"}
-        CP{"ostrvo Kliperton"}
+        CG{"Kongo"}
+        CV{"Kabo Verde"}
         CZ{"Češka Republika"}
         DE{"Njemačka"}
-        FK{"Foklandska ostrva"}
-        FO{"Farska ostrva"}
-        GS{"Južna Džordžija i Južna Sendvička ostrva"}
-        GU{"Gvam"}
-        GW{"Gvineja Bisao"}
-        HK{"Hongkong (SAO Kine)"}
-        HM{"ostrvo Herd i ostrva Makdonald"}
-        KM{"Komori"}
-        KP{"Sjeverna Koreja"}
-        MK{"Sjeverna Makedonija"}
-        MM{"Mjanmar (Burma)"}
-        MP{"Sjeverna Marijanska ostrva"}
-        NF{"ostrvo Norfok"}
-        NU{"Nijue"}
-        PS{"palestinske teritorije"}
+        KN{"Sveti Kits i Nevis"}
+        MO{"SAR Makao"}
+        PM{"Sveti Pjer i Mikelon"}
         RE{"Reunion"}
-        TF{"Francuske južne teritorije"}
-        UM{"Spoljna ostrva SAD"}
+        UM{"Manja udaljena ostrva SAD"}
         VC{"Sveti Vinsent i Grenadini"}
-        VG{"Britanska Djevičanska ostrva"}
-        VI{"Američka Djevičanska ostrva"}
+        VG{"Britanska Djevičanska Ostrva"}
+        VI{"Američka Djevičanska Ostrva"}
     }
     Countries%variant{
-        FK{"Folklandska (Malvinska) ostrva"}
+        MK{"BJR Makedonija"}
     }
+    Version{"2.1.48.77"}
 }

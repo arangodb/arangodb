@@ -1,7 +1,7 @@
 /*
 ***********************************************************************
 * © 2016 and later: Unicode, Inc. and others.
-* License & terms of use: http://www.unicode.org/copyright.html
+* License & terms of use: http://www.unicode.org/copyright.html#License
 ***********************************************************************
 ***********************************************************************
 * Copyright (c) 2002-2005, International Business Machines
@@ -68,7 +68,7 @@ public:
     virtual void call(UErrorCode* pErrorCode){
         (this->*op)();
     }
-    void add(){
+    void add (void){
         us.clear();
         for (UChar32 cp=0; cp<0x110000; ++cp) {
             if (bs.get((int32_t) cp)) {
@@ -77,7 +77,7 @@ public:
         }
     }
 
-    void contains(){
+    void contains(void){
         int32_t temp = 0;
         us.clear();
         for (UChar32 cp=0; cp<0x110000; ++cp) {
@@ -87,7 +87,7 @@ public:
         }
     }
 
-    void iterator(){
+    void iterator(void){
         int32_t temp = 0;
         UnicodeSetIterator uit(us);
         while (uit.next()) {
@@ -101,7 +101,7 @@ public:
     UsetPerformanceTest(int32_t argc, const char *argv[], UErrorCode &status) :UPerfTest(argc,argv,status){
     }
 
-    virtual UPerfFunction* runIndexedTest( int32_t index, UBool exec, const char* &name, char* par = nullptr ){
+    virtual UPerfFunction* runIndexedTest( int32_t index, UBool exec, const char* &name, char* par = NULL ){
         switch (index) {
             case 0: name = "titlecase_letter_add"; 
                 if (exec) return new CmdOp(U_TITLECASE_LETTER, &CmdOp::add) ; break;
@@ -123,7 +123,7 @@ public:
                 if (exec) return new CmdPattern(PAT[2])  ; break;
             default: name = ""; break;
         }
-        return nullptr;
+        return NULL;
     }
 };
 
@@ -138,7 +138,7 @@ int main(int argc, const char *argv[])
         return status;
     }
         
-    if (test.run() == false){
+    if (test.run() == FALSE){
         fprintf(stderr, "FAILED: Tests could not be run please check the "
 			            "arguments.\n");
         return -1;

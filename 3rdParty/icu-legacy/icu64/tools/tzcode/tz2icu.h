@@ -40,7 +40,7 @@ typedef unsigned char ICUZoneinfoVersion;
 #define ICU_TZ_RESOURCE_OLD "zoneinfo"
 #define ICU_TZ_RESOURCE "zoneinfo64"
 
-/* File containing custom zone-region mapping. */
+/* File containinng custom zone-region mapping. */
 #define ICU_REGIONS "icuregions"
 
 #endif

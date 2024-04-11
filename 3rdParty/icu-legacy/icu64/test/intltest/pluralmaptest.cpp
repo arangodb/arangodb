@@ -17,7 +17,7 @@
 
 class PluralMapForPluralMapTest : public PluralMap<UnicodeString> {
 public:
-    bool operator==(const PluralMapForPluralMapTest &other) const {
+    UBool operator==(const PluralMapForPluralMapTest &other) {
         return equals(other, strEqual);
     }
 private:
@@ -36,7 +36,7 @@ public:
     void TestIterate();
     void TestEqual();
     void TestCopyAndAssign();
-    void runIndexedTest(int32_t index, UBool exec, const char*& name, char* par = nullptr) override;
+    void runIndexedTest(int32_t index, UBool exec, const char *&name, char *par=0);
     void addVariant(
             PluralMapBase::Category v,
             const UnicodeString &value,
@@ -78,8 +78,8 @@ void PluralMapTest::TestToCategory() {
 }
 
 void PluralMapTest::TestGetCategoryName() {
-    assertTrue("", PluralMapBase::getCategoryName(PluralMapBase::NONE) == nullptr);
-    assertTrue("", PluralMapBase::getCategoryName(PluralMapBase::CATEGORY_COUNT) == nullptr);
+    assertTrue("", PluralMapBase::getCategoryName(PluralMapBase::NONE) == NULL);
+    assertTrue("", PluralMapBase::getCategoryName(PluralMapBase::CATEGORY_COUNT) == NULL);
     assertEquals("", "other", PluralMapBase::getCategoryName(PluralMapBase::OTHER));
     assertEquals("", "zero", PluralMapBase::getCategoryName(PluralMapBase::ZERO));
     assertEquals("", "one", PluralMapBase::getCategoryName(PluralMapBase::ONE));
@@ -126,7 +126,7 @@ void PluralMapTest::TestIterate() {
     assertEquals("", (int32_t)PluralMapBase::FEW, index);
     current = map.next(index);
     assertEquals("", (int32_t)PluralMapBase::CATEGORY_COUNT, index);
-    assertTrue("", current == nullptr);
+    assertTrue("", current == NULL);
 
     PluralMapForPluralMapTest map2;
     index = PluralMapBase::NONE;
@@ -135,7 +135,7 @@ void PluralMapTest::TestIterate() {
     assertEquals("", (int32_t)PluralMapBase::OTHER, index);
     current = map2.next(index);
     assertEquals("", (int32_t)PluralMapBase::CATEGORY_COUNT, index);
-    assertTrue("", current == nullptr);
+    assertTrue("", current == NULL);
 }
 
 void PluralMapTest::TestEqual() {
@@ -169,7 +169,7 @@ void PluralMapTest::TestCopyAndAssign() {
     addVariant(PluralMapBase::FEW, "picklefew", control);
     {
         PluralMapForPluralMapTest *rhs = new PluralMapForPluralMapTest();
-        if (rhs == nullptr) {
+        if (rhs == NULL) {
             errln("Memory allocation error.");
             return;
         }
@@ -182,7 +182,7 @@ void PluralMapTest::TestCopyAndAssign() {
     }
     {
         PluralMapForPluralMapTest *rhs = new PluralMapForPluralMapTest();
-        if (rhs == nullptr) {
+        if (rhs == NULL) {
             errln("Memory allocation error.");
             return;
         }

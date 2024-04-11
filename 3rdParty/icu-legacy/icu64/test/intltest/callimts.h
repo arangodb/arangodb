@@ -23,7 +23,7 @@
  */
 class CalendarLimitTest: public CalendarTimeZoneTest {
     // IntlTest override
-    void runIndexedTest( int32_t index, UBool exec, const char* &name, char* par ) override;
+    void runIndexedTest( int32_t index, UBool exec, const char* &name, char* par );
 public: // package
     //test routine used by TestCalendarLimit
     virtual void test(UDate millis, Calendar *cal, DateFormat *fmt);
@@ -35,9 +35,9 @@ public: // package
 
 public:
     // test behaviour and error reporting at boundaries of defined range
-    virtual void TestCalendarExtremeLimit();
+    virtual void TestCalendarExtremeLimit(void);
 
-    void TestLimits();
+    void TestLimits(void);
     void TestLimitsThread(int32_t threadNumber);
 
 private:

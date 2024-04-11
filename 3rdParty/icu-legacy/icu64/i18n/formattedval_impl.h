@@ -18,7 +18,7 @@
 #include "fphdlimp.h"
 #include "util.h"
 #include "uvectr32.h"
-#include "formatted_string_builder.h"
+#include "number_stringbuilder.h"
 
 
 /**
@@ -67,12 +67,7 @@ typedef enum UCFPosConstraintType {
 U_NAMESPACE_BEGIN
 
 
-/**
- * Implementation of FormattedValue using FieldPositionHandler to accept fields.
- *
- * TODO(ICU-20897): This class is unused. If it is not needed when fixing ICU-20897,
- * it should be deleted.
- */
+/** Implementation using FieldPositionHandler to accept fields. */
 class FormattedValueFieldPositionIteratorImpl : public UMemory, public FormattedValue {
 public:
 
@@ -83,10 +78,10 @@ public:
 
     // Implementation of FormattedValue (const):
 
-    UnicodeString toString(UErrorCode& status) const override;
-    UnicodeString toTempString(UErrorCode& status) const override;
-    Appendable& appendTo(Appendable& appendable, UErrorCode& status) const override;
-    UBool nextPosition(ConstrainedFieldPosition& cfpos, UErrorCode& status) const override;
+    UnicodeString toString(UErrorCode& status) const U_OVERRIDE;
+    UnicodeString toTempString(UErrorCode& status) const U_OVERRIDE;
+    Appendable& appendTo(Appendable& appendable, UErrorCode& status) const U_OVERRIDE;
+    UBool nextPosition(ConstrainedFieldPosition& cfpos, UErrorCode& status) const U_OVERRIDE;
 
     // Additional methods used during construction phase only (non-const):
 
@@ -117,85 +112,31 @@ private:
 };
 
 
-// Internal struct that must be exported for MSVC
-struct U_I18N_API SpanInfo {
-    UFieldCategory category;
-    int32_t spanValue;
-    int32_t start;
-    int32_t length;
-};
-
-// Export an explicit template instantiation of the MaybeStackArray that
-//    is used as a data member of CEBuffer.
-//
-//    When building DLLs for Windows this is required even though
-//    no direct access to the MaybeStackArray leaks out of the i18n library.
-//
-// See digitlst.h, pluralaffix.h, datefmt.h, and others for similar examples.
-//
-#if U_PF_WINDOWS <= U_PLATFORM && U_PLATFORM <= U_PF_CYGWIN
-template class U_I18N_API MaybeStackArray<SpanInfo, 8>;
-#endif
-
-/**
- * Implementation of FormattedValue based on FormattedStringBuilder.
- *
- * The implementation currently revolves around numbers and number fields.
- * However, it can be generalized in the future when there is a need.
- *
- * @author sffc (Shane Carr)
- */
-// Exported as U_I18N_API for tests
-class U_I18N_API FormattedValueStringBuilderImpl : public UMemory, public FormattedValue {
+class FormattedValueNumberStringBuilderImpl : public UMemory, public FormattedValue {
 public:
 
-    FormattedValueStringBuilderImpl(FormattedStringBuilder::Field numericField);
+    FormattedValueNumberStringBuilderImpl(number::impl::Field numericField);
 
-    virtual ~FormattedValueStringBuilderImpl();
-
-    FormattedValueStringBuilderImpl(FormattedValueStringBuilderImpl&&) = default;
-    FormattedValueStringBuilderImpl& operator=(FormattedValueStringBuilderImpl&&) = default;
+    virtual ~FormattedValueNumberStringBuilderImpl();
 
     // Implementation of FormattedValue (const):
 
-    UnicodeString toString(UErrorCode& status) const override;
-    UnicodeString toTempString(UErrorCode& status) const override;
-    Appendable& appendTo(Appendable& appendable, UErrorCode& status) const override;
-    UBool nextPosition(ConstrainedFieldPosition& cfpos, UErrorCode& status) const override;
+    UnicodeString toString(UErrorCode& status) const U_OVERRIDE;
+    UnicodeString toTempString(UErrorCode& status) const U_OVERRIDE;
+    Appendable& appendTo(Appendable& appendable, UErrorCode& status) const U_OVERRIDE;
+    UBool nextPosition(ConstrainedFieldPosition& cfpos, UErrorCode& status) const U_OVERRIDE;
 
-    // Additional helper functions:
-    UBool nextFieldPosition(FieldPosition& fp, UErrorCode& status) const;
-    void getAllFieldPositions(FieldPositionIteratorHandler& fpih, UErrorCode& status) const;
-    inline FormattedStringBuilder& getStringRef() {
+    inline number::impl::NumberStringBuilder& getStringRef() {
         return fString;
     }
-    inline const FormattedStringBuilder& getStringRef() const {
+
+    inline const number::impl::NumberStringBuilder& getStringRef() const {
         return fString;
     }
-    void resetString();
-
-    /**
-     * Adds additional metadata used for span fields.
-     *
-     * category: the category to use for the span field.
-     * spanValue: the value of the span field: index of the list item, for example.
-     * start: the start position within the string of the span. -1 if unknown.
-     * length: the length of the span, used to split adjacent fields.
-     */
-    void appendSpanInfo(UFieldCategory category, int32_t spanValue, int32_t start, int32_t length, UErrorCode& status);
-    void prependSpanInfo(UFieldCategory category, int32_t spanValue, int32_t start, int32_t length, UErrorCode& status);
 
 private:
-    FormattedStringBuilder fString;
-    FormattedStringBuilder::Field fNumericField;
-    MaybeStackArray<SpanInfo, 8> spanIndices;
-    int32_t spanIndicesCount = 0;
-
-    bool nextPositionImpl(ConstrainedFieldPosition& cfpos, FormattedStringBuilder::Field numericField, UErrorCode& status) const;
-    static bool isIntOrGroup(FormattedStringBuilder::Field field);
-    static bool isTrimmable(FormattedStringBuilder::Field field);
-    int32_t trimBack(int32_t limit) const;
-    int32_t trimFront(int32_t start) const;
+    number::impl::NumberStringBuilder fString;
+    number::impl::Field fNumericField;
 };
 
 
@@ -222,7 +163,7 @@ struct UFormattedValueImpl : public UMemory, public UFormattedValueApiHelper {
 
 /** Implementation of the methods from U_FORMATTED_VALUE_SUBCLASS_AUTO. */
 #define UPRV_FORMATTED_VALUE_SUBCLASS_AUTO_IMPL(Name) \
-    Name::Name(Name&& src) noexcept \
+    Name::Name(Name&& src) U_NOEXCEPT \
             : fData(src.fData), fErrorCode(src.fErrorCode) { \
         src.fData = nullptr; \
         src.fErrorCode = U_INVALID_STATE_ERROR; \
@@ -231,7 +172,7 @@ struct UFormattedValueImpl : public UMemory, public UFormattedValueApiHelper {
         delete fData; \
         fData = nullptr; \
     } \
-    Name& Name::operator=(Name&& src) noexcept { \
+    Name& Name::operator=(Name&& src) U_NOEXCEPT { \
         delete fData; \
         fData = src.fData; \
         src.fData = nullptr; \
@@ -252,7 +193,7 @@ struct UFormattedValueImpl : public UMemory, public UFormattedValueApiHelper {
         return fData->appendTo(appendable, status); \
     } \
     UBool Name::nextPosition(ConstrainedFieldPosition& cfpos, UErrorCode& status) const { \
-        UPRV_FORMATTED_VALUE_METHOD_GUARD(false) \
+        UPRV_FORMATTED_VALUE_METHOD_GUARD(FALSE) \
         return fData->nextPosition(cfpos, status); \
     }
 
@@ -271,7 +212,7 @@ struct UFormattedValueImpl : public UMemory, public UFormattedValueApiHelper {
         } \
         return static_cast<HelperType*>(impl)->exportForC(); \
     } \
-    U_CAPI const UFormattedValue* U_EXPORT2 \
+    U_DRAFT const UFormattedValue* U_EXPORT2 \
     Prefix ## _resultAsValue (const CType* uresult, UErrorCode* ec) { \
         const ImplType* result = HelperType::validate(uresult, *ec); \
         if (U_FAILURE(*ec)) { return nullptr; } \

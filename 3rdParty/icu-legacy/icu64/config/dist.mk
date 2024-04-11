@@ -38,7 +38,7 @@ DISTY_DAT:=$(firstword $(wildcard data/out/tmp/icudt$(SO_TARGET_VERSION_MAJOR)*.
 
 DISTY_FILES_SRC=$(DISTY_FILE_TGZ) $(DISTY_FILE_ZIP)
 DISTY_FILES=$(DISTY_FILES_SRC) $(DISTY_DOC_ZIP)
-# colon-equals because we want to run this once!
+# colon-equals because we watn to run this once!
 EXCLUDES_FILE:=$(shell mktemp)
 
 $(DISTY_FILE_DIR):
@@ -66,15 +66,13 @@ $(DISTY_FILE_TGZ) $(DISTY_FILE_ZIP) $(DISTY_DATA_ZIP):  $(DISTY_DAT) $(DISTY_TMP
 	-$(RMV) $(DISTY_FILE) $(DISTY_TMP)
 	$(MKINSTALLDIRS) $(DISTY_TMP)
 	( cd $(ICU4CTOP)/.. && git archive --format=tar --prefix=icu/ HEAD:icu4c/ ) | ( cd "$(DISTY_TMP)" && tar xf - )
-    # special handling for LICENSE file. The symlinks will be included as files by tar and zip.
-	cp -fv $(ICU4CTOP)/LICENSE "$(DISTY_TMP)/LICENSE"
 	( cd $(DISTY_TMP)/icu/source ; zip -rlq $(DISTY_DATA_ZIP) data )
 	$(MKINSTALLDIRS) $(DISTY_IN)
 	echo DISTY_DAT=$(DISTY_DAT)
 	cp $(DISTY_DAT) $(DISTY_IN)
 	$(RMV) $(DISTY_RMDIR)
 	( cd $(DISTY_TMP)/icu ; python as_is/bomlist.py > as_is/bomlist.txt || rm -f as_is/bomlist.txt )
-	( cd $(DISTY_TMP) ; tar cfpzh $(DISTY_FILE_TGZ) icu )
+	( cd $(DISTY_TMP) ; tar cfpz $(DISTY_FILE_TGZ) icu )
 	( cd $(DISTY_TMP) ; zip -rlq $(DISTY_FILE_ZIP) icu )
 	$(RMV) $(DISTY_TMP)
 	ln -sf $(shell basename $(DISTY_FILE_ZIP)) $(DISTY_FILE_DIR)/icu4c-src.zip
@@ -85,8 +83,8 @@ $(DISTY_FILE_TGZ) $(DISTY_FILE_ZIP) $(DISTY_DATA_ZIP):  $(DISTY_DAT) $(DISTY_TMP
 	ln -f $(DISTY_DATA_ZIP) $(DISTY_FILE_DIR)/icu4c-$(DISTY_VER)-data.zip
 	ls -l $(DISTY_FILE_TGZ) $(DISTY_FILE_ZIP) $(DISTY_DATA_ZIP)
 
+
 dist-local: $(DISTY_FILES)
-	VERSION=$(VERSION) $(SHELL) $(top_srcdir)/config/dist-data.sh
 
 distcheck: distcheck-tgz
 

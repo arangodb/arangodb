@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 uz{
     Countries{
         001{"Dunyo"}
@@ -108,7 +107,7 @@ uz{
         ES{"Ispaniya"}
         ET{"Efiopiya"}
         EU{"Yevropa Ittifoqi"}
-        EZ{"Yevrozona"}
+        EZ{"yevrozona"}
         FI{"Finlandiya"}
         FJ{"Fiji"}
         FK{"Folklend orollari"}
@@ -288,8 +287,6 @@ uz{
         VU{"Vanuatu"}
         WF{"Uollis va Futuna"}
         WS{"Samoa"}
-        XA{"Qalbaki urg‘u"}
-        XB{"Qalbaki Bidi"}
         XK{"Kosovo"}
         YE{"Yaman"}
         YT{"Mayotta"}
@@ -312,7 +309,7 @@ uz{
         CI{"Fil suyagi qirg‘og‘i"}
         CZ{"Chexiya Respublikasi"}
         FK{"Folklend (Malvin) orollari"}
-        NZ{"Aotearoa Yangi Zelandiya"}
         TL{"Sharqiy Timor"}
     }
+    Version{"2.1.49.82"}
 }

@@ -62,6 +62,7 @@ void MultithreadTest::runIndexedTest( int32_t index, UBool exec,
 
     TESTCASE_AUTO_BEGIN;
     TESTCASE_AUTO(TestThreads);
+    TESTCASE_AUTO(TestMutex);
 #if !UCONFIG_NO_FORMATTING
     TESTCASE_AUTO(TestThreadedIntl);
 #endif
@@ -71,6 +72,7 @@ void MultithreadTest::runIndexedTest( int32_t index, UBool exec,
     TESTCASE_AUTO(TestString);
     TESTCASE_AUTO(TestArabicShapingThreads);
     TESTCASE_AUTO(TestAnyTranslit);
+    TESTCASE_AUTO(TestConditionVariables);
     TESTCASE_AUTO(TestUnifiedCache);
 #if !UCONFIG_NO_TRANSLITERATION
     TESTCASE_AUTO(TestBreakTranslit);
@@ -79,7 +81,7 @@ void MultithreadTest::runIndexedTest( int32_t index, UBool exec,
     TESTCASE_AUTO(Test20104);
 #endif /* #if !UCONFIG_NO_FORMATTING */
 #endif /* #if !UCONFIG_NO_TRANSLITERATION */
-    TESTCASE_AUTO_END;
+    TESTCASE_AUTO_END
 }
 
 
@@ -96,9 +98,8 @@ class TestThreadsThread : public SimpleThread
 {
 public:
     TestThreadsThread(char* whatToChange) { fWhatToChange = whatToChange; }
-    virtual void run() override {
-        Mutex m;
-        *fWhatToChange = '*';
+    virtual void run() { Mutex m;
+                         *fWhatToChange = '*';
     }
 private:
     char *fWhatToChange;
@@ -159,18 +160,18 @@ void MultithreadTest::TestThreads()
 class TestArabicShapeThreads : public SimpleThread
 {
 public:
-    TestArabicShapeThreads() {}
-    virtual void run() override { doTailTest(); }
+    TestArabicShapeThreads() {};
+    virtual void run() { doTailTest(); };
 private:
 	void doTailTest();
 };
 
 
-void TestArabicShapeThreads::doTailTest() {
-    static const char16_t src[] = { 0x0020, 0x0633, 0 };
-    static const char16_t dst_old[] = { 0xFEB1, 0x200B,0 };
-    static const char16_t dst_new[] = { 0xFEB1, 0xFE73,0 };
-    char16_t dst[3] = { 0x0000, 0x0000,0 };
+void TestArabicShapeThreads::doTailTest(void) {
+    static const UChar src[] = { 0x0020, 0x0633, 0 };
+    static const UChar dst_old[] = { 0xFEB1, 0x200B,0 };
+    static const UChar dst_new[] = { 0xFEB1, 0xFE73,0 };
+    UChar dst[3] = { 0x0000, 0x0000,0 };
     int32_t length;
     UErrorCode status;
 
@@ -207,6 +208,7 @@ void TestArabicShapeThreads::doTailTest() {
             return;
         }
     }
+    return;
 }
 	
 
@@ -227,6 +229,109 @@ void MultithreadTest::TestArabicShapingThreads()
         threads[i].join();
     }
     logln("->TestArabicShapingThreads <- Got all threads! cya");
+}
+
+
+//-----------------------------------------------------------------------
+//
+//  TestMutex  - a simple (non-stress) test to verify that ICU mutexes
+//               and condition variables are functioning.  Does not test the use of
+//               mutexes within ICU services, but rather that the
+//               platform's mutex support is at least superficially there.
+//
+//----------------------------------------------------------------------
+static UMutex *gTestMutexA() {
+    static UMutex m = U_MUTEX_INITIALIZER;
+    return &m;
+}
+static UConditionVar *gThreadsCountChanged() {
+    static UConditionVar cv = U_CONDITION_INITIALIZER;
+    return &cv;
+}
+
+static int     gThreadsStarted = 0;
+static int     gThreadsInMiddle = 0;
+static int     gThreadsDone = 0;
+
+static const int TESTMUTEX_THREAD_COUNT = 40;
+
+class TestMutexThread : public SimpleThread
+{
+public:
+    virtual void run() {
+        // This is the code that each of the spawned threads runs.
+        // All threads move together throught the started - middle - done sequence together,
+        // waiting for all other threads to reach each point before advancing.
+        umtx_lock(gTestMutexA());
+        gThreadsStarted += 1;
+        umtx_condBroadcast(gThreadsCountChanged());
+        while (gThreadsStarted < TESTMUTEX_THREAD_COUNT) {
+            if (gThreadsInMiddle != 0) {
+                IntlTest::gTest->errln(
+                    "%s:%d gThreadsInMiddle = %d. Expected 0.", __FILE__, __LINE__, gThreadsInMiddle);
+                return;
+            }
+            umtx_condWait(gThreadsCountChanged(), gTestMutexA());
+        }
+
+        gThreadsInMiddle += 1;
+        umtx_condBroadcast(gThreadsCountChanged());
+        while (gThreadsInMiddle < TESTMUTEX_THREAD_COUNT) {
+            if (gThreadsDone != 0) {
+                IntlTest::gTest->errln(
+                    "%s:%d gThreadsDone = %d. Expected 0.", __FILE__, __LINE__, gThreadsDone);
+                return;
+            }
+            umtx_condWait(gThreadsCountChanged(), gTestMutexA());
+        }
+
+        gThreadsDone += 1;
+        umtx_condBroadcast(gThreadsCountChanged());
+        while (gThreadsDone < TESTMUTEX_THREAD_COUNT) {
+            umtx_condWait(gThreadsCountChanged(), gTestMutexA());
+        }
+        umtx_unlock(gTestMutexA());
+    }
+};
+
+void MultithreadTest::TestMutex()
+{
+    gThreadsStarted = 0;
+    gThreadsInMiddle = 0;
+    gThreadsDone = 0;
+    int32_t i = 0;
+    TestMutexThread  threads[TESTMUTEX_THREAD_COUNT];
+    umtx_lock(gTestMutexA());
+    for (i=0; i<TESTMUTEX_THREAD_COUNT; i++) {
+        if (threads[i].start() != 0) {
+            errln("%s:%d Error starting thread %d", __FILE__, __LINE__, i);
+            return;
+        }
+    }
+
+    // Because we are holding gTestMutexA, all of the threads should be blocked
+    // at the start of their run() function.
+    if (gThreadsStarted != 0) {
+        errln("%s:%d gThreadsStarted=%d. Expected 0.", __FILE__, __LINE__, gThreadsStarted);
+        return;
+    }
+
+    while (gThreadsInMiddle < TESTMUTEX_THREAD_COUNT) {
+        if (gThreadsDone != 0) {
+            errln("%s:%d gThreadsDone=%d. Expected 0.", __FILE__, __LINE__, gThreadsStarted);
+            return;
+        }
+        umtx_condWait(gThreadsCountChanged(), gTestMutexA());
+    }
+
+    while (gThreadsDone < TESTMUTEX_THREAD_COUNT) {
+        umtx_condWait(gThreadsCountChanged(), gTestMutexA());
+    }
+    umtx_unlock(gTestMutexA());
+
+    for (i=0; i<TESTMUTEX_THREAD_COUNT; i++) {
+        threads[i].join();
+    }
 }
 
 
@@ -336,24 +441,24 @@ class ThreadSafeFormatSharedData {
     UnicodeString  fBBDStr;
 };
 
-const ThreadSafeFormatSharedData *gSharedData = nullptr;
+const ThreadSafeFormatSharedData *gSharedData = NULL;
 
 ThreadSafeFormatSharedData::ThreadSafeFormatSharedData(UErrorCode &status) {
     fFormat.adoptInstead(NumberFormat::createCurrencyInstance(Locale::getUS(), status));
-    static const char16_t *kYDD = u"YDD";
-    static const char16_t *kBBD = u"BBD";
+    static const UChar *kYDD = u"YDD";
+    static const UChar *kBBD = u"BBD";
     fYDDThing.adoptObject(new CurrencyAmount(123.456, kYDD, status));
     fBBDThing.adoptObject(new CurrencyAmount(987.654, kBBD, status));
     if (U_FAILURE(status)) {
         return;
     }
-    fFormat->format(fYDDThing, fYDDStr, nullptr, status);
-    fFormat->format(fBBDThing, fBBDStr, nullptr, status);
+    fFormat->format(fYDDThing, fYDDStr, NULL, status);
+    fFormat->format(fBBDThing, fBBDStr, NULL, status);
     gSharedData = this;
 }
 
 ThreadSafeFormatSharedData::~ThreadSafeFormatSharedData() {
-    gSharedData = nullptr;
+    gSharedData = NULL;
 }
 
 /**
@@ -377,10 +482,10 @@ ThreadSafeFormat::ThreadSafeFormat(UErrorCode &status) {
   fFormat.adoptInstead(NumberFormat::createCurrencyInstance(Locale::getUS(), status));
 }
 
-static const char16_t *kUSD = u"USD";
+static const UChar *kUSD = u"USD";
 
 UBool ThreadSafeFormat::doStuff(int32_t offset, UnicodeString &appendErr, UErrorCode &status) const {
-  UBool okay = true;
+  UBool okay = TRUE;
 
   if(u_strcmp(fFormat->getCurrency(), kUSD)) {
     appendErr.append(u"fFormat currency != ")
@@ -388,7 +493,7 @@ UBool ThreadSafeFormat::doStuff(int32_t offset, UnicodeString &appendErr, UError
       .append(u", =")
       .append(fFormat->getCurrency())
       .append(u"! ");
-    okay = false;
+    okay = FALSE;
   }
 
   if(u_strcmp(gSharedData->fFormat->getCurrency(), kUSD)) {
@@ -397,32 +502,32 @@ UBool ThreadSafeFormat::doStuff(int32_t offset, UnicodeString &appendErr, UError
       .append(u", =")
       .append(gSharedData->fFormat->getCurrency())
       .append(u"! ");
-    okay = false;
+    okay = FALSE;
   }
   UnicodeString str;
-  const UnicodeString *o=nullptr;
+  const UnicodeString *o=NULL;
   Formattable f;
-  const NumberFormat *nf = nullptr; // only operate on it as const.
+  const NumberFormat *nf = NULL; // only operate on it as const.
   switch(offset%4) {
   case 0:  f = gSharedData->fYDDThing;  o = &gSharedData->fYDDStr;  nf = gSharedData->fFormat.getAlias();  break;
   case 1:  f = gSharedData->fBBDThing;  o = &gSharedData->fBBDStr;  nf = gSharedData->fFormat.getAlias();  break;
   case 2:  f = gSharedData->fYDDThing;  o = &gSharedData->fYDDStr;  nf = fFormat.getAlias();  break;
   case 3:  f = gSharedData->fBBDThing;  o = &gSharedData->fBBDStr;  nf = fFormat.getAlias();  break;
   }
-  nf->format(f, str, nullptr, status);
+  nf->format(f, str, NULL, status);
 
   if(*o != str) {
     appendErr.append(showDifference(*o, str));
-    okay = false;
+    okay = FALSE;
   }
   return okay;
 }
 
 UBool U_CALLCONV isAcceptable(void *, const char *, const char *, const UDataInfo *) {
-    return true;
+    return TRUE;
 }
 
-//static UMTX debugMutex = nullptr;
+//static UMTX debugMutex = NULL;
 //static UMTX gDebugMutex;
 
 
@@ -438,7 +543,7 @@ public:
         : SimpleThread(),
         fNum(0),
         fTraceInfo(0),
-        fTSF(nullptr),
+        fTSF(NULL),
         fOffset(0)
         // the locale to use
     {
@@ -450,7 +555,7 @@ public:
     }
 
 
-    virtual void run() override
+    virtual void run()
     {
         fTraceInfo                     = 1;
         LocalPointer<NumberFormat> percentFormatter;
@@ -477,8 +582,8 @@ public:
         int m;
         for (m=0; m<4000; m++) {
             status         = U_ZERO_ERROR;
-            UResourceBundle *res   = nullptr;
-            const char *localeName = nullptr;
+            UResourceBundle *res   = NULL;
+            const char *localeName = NULL;
 
             Locale  loc = Locale::getEnglish();
 
@@ -487,7 +592,7 @@ public:
 
             // ResourceBundle bund = ResourceBundle(0, loc, status);
             //umtx_lock(&gDebugMutex);
-            res = ures_open(nullptr, localeName, &status);
+            res = ures_open(NULL, localeName, &status);
             //umtx_unlock(&gDebugMutex);
 
             //umtx_lock(&gDebugMutex);
@@ -664,7 +769,7 @@ void MultithreadTest::TestThreadedIntl()
     UErrorCode threadSafeErr = U_ZERO_ERROR;
 
     ThreadSafeFormatSharedData sharedData(threadSafeErr);
-    assertSuccess(WHERE, threadSafeErr, true);
+    assertSuccess(WHERE, threadSafeErr, TRUE);
 
     //
     //  Create and start the test threads
@@ -706,7 +811,7 @@ void MultithreadTest::TestThreadedIntl()
 #define kCollatorThreadPatience kCollatorThreadThreads*30
 
 struct Line {
-    char16_t buff[25];
+    UChar buff[25];
     int32_t buflen;
 } ;
 
@@ -725,12 +830,12 @@ private:
     UBool isAtLeastUCA62;
 public:
     CollatorThreadTest()  : SimpleThread(),
-        coll(nullptr),
-        lines(nullptr),
+        coll(NULL),
+        lines(NULL),
         noLines(0),
-        isAtLeastUCA62(true)
+        isAtLeastUCA62(TRUE)
     {
-    }
+    };
     void setCollator(Collator *c, Line *l, int32_t nl, UBool atLeastUCA62)
     {
         coll = c;
@@ -738,9 +843,9 @@ public:
         noLines = nl;
         isAtLeastUCA62 = atLeastUCA62;
     }
-    virtual void run() override {
+    virtual void run() {
         uint8_t sk1[1024], sk2[1024];
-        uint8_t *oldSk = nullptr, *newSk = sk1;
+        uint8_t *oldSk = NULL, *newSk = sk1;
         int32_t oldLen = 0;
         int32_t prev = 0;
         int32_t i = 0;
@@ -750,7 +855,7 @@ public:
 
             int32_t resLen = coll->getSortKey(lines[i].buff, lines[i].buflen, newSk, 1024);
 
-            if(oldSk != nullptr) {
+            if(oldSk != NULL) {
                 int32_t skres = strcmp((char *)oldSk, (char *)newSk);
                 int32_t cmpres = coll->compare(lines[prev].buff, lines[prev].buflen, lines[i].buff, lines[i].buflen);
                 int32_t cmpres2 = coll->compare(lines[i].buff, lines[i].buflen, lines[prev].buff, lines[prev].buflen);
@@ -794,7 +899,7 @@ void MultithreadTest::TestCollators()
 {
 
     UErrorCode status = U_ZERO_ERROR;
-    FILE *testFile = nullptr;
+    FILE *testFile = NULL;
     char testDataPath[1024];
     strcpy(testDataPath, IntlTest::getSourceTestData(status));
     if (U_FAILURE(status)) {
@@ -824,17 +929,17 @@ void MultithreadTest::TestCollators()
 
     testFile = fopen(buffer, "rb");
 
-    if (testFile == nullptr) {
+    if(testFile == 0) {
         strcpy(buffer+bufLen, "_SHORT");
         strcat(buffer, ext);
         testFile = fopen(buffer, "rb");
 
-        if (testFile == nullptr) {
+        if(testFile == 0) {
             strcpy(buffer+bufLen, "_STUB");
             strcat(buffer, ext);
             testFile = fopen(buffer, "rb");
 
-            if (testFile == nullptr) {
+            if (testFile == 0) {
                 *(buffer+bufLen) = 0;
                 dataerrln("could not open any of the conformance test files, tried opening base %s", buffer);
                 return;
@@ -843,7 +948,7 @@ void MultithreadTest::TestCollators()
                     "INFO: Working with the stub file.\n"
                     "If you need the full conformance test, please\n"
                     "download the appropriate data files from:\n"
-                    "https://github.com/unicode-org/cldr/tree/main/common/uca");
+                    "http://source.icu-project.org/repos/icu/tools/trunk/unicodetools/com/ibm/text/data/");
             }
         }
     }
@@ -852,10 +957,10 @@ void MultithreadTest::TestCollators()
     memset(lines.getAlias(), 0, sizeof(Line)*200000);
     int32_t lineNum = 0;
 
-    char16_t bufferU[1024];
+    UChar bufferU[1024];
     uint32_t first = 0;
 
-    while (fgets(buffer, 1024, testFile) != nullptr) {
+    while (fgets(buffer, 1024, testFile) != NULL) {
         if(*buffer == 0 || buffer[0] == '#') {
             // Store empty and comment lines so that errors are reported
             // for the real test file lines.
@@ -942,10 +1047,10 @@ public:
         : SimpleThread(),
         fTraceInfo(0)
     {
-    }
+    };
 
 
-    virtual void run() override
+    virtual void run()
     {
         fTraceInfo    = 1;
         int loopCount = 0;
@@ -969,7 +1074,7 @@ public:
 
 };
 
-const UnicodeString *StringThreadTest2::gSharedString = nullptr;
+const UnicodeString *StringThreadTest2::gSharedString = NULL;
 
 // ** The actual test function.
 
@@ -997,7 +1102,7 @@ void MultithreadTest::TestString()
     }
 
     delete StringThreadTest2::gSharedString;
-    StringThreadTest2::gSharedString = nullptr;
+    StringThreadTest2::gSharedString = NULL;
 }
 
 
@@ -1009,12 +1114,12 @@ void MultithreadTest::TestString()
 //
 
 #if !UCONFIG_NO_TRANSLITERATION
-Transliterator *gSharedTranslit = nullptr;
+Transliterator *gSharedTranslit = NULL;
 class TxThread: public SimpleThread {
   public:
-    TxThread() {}
+    TxThread() {};
     ~TxThread();
-    void run() override;
+    void run();
 };
 
 TxThread::~TxThread() {}
@@ -1042,10 +1147,101 @@ void MultithreadTest::TestAnyTranslit() {
     for (i=0; i<UPRV_LENGTHOF(threads); i++) {
         threads[i].join();
     }
-    gSharedTranslit = nullptr;
+    gSharedTranslit = NULL;
 #endif  // !UCONFIG_NO_TRANSLITERATION
 }
 
+
+//
+// Condition Variables Test
+//   Create a swarm of threads.
+//   Using a mutex and a condition variables each thread
+//     Increments a global count of started threads.
+//     Broadcasts that it has started.
+//     Waits on the condition that all threads have started.
+//     Increments a global count of finished threads.
+//     Waits on the condition that all threads have finished.
+//     Exits.
+//
+
+class CondThread: public SimpleThread {
+  public:
+    CondThread() :fFinished(false)  {};
+    ~CondThread() {};
+    void run();
+    bool  fFinished;
+};
+
+static UMutex *gCTMutex() {
+    static UMutex m = U_MUTEX_INITIALIZER;
+    return &m;
+}
+static UConditionVar *gCTConditionVar() {
+    static UConditionVar cv = U_CONDITION_INITIALIZER;
+    return &cv;
+}
+int gConditionTestOne = 1;   // Value one. Non-const, extern linkage to inhibit
+                             //   compiler assuming a known value.
+int gStartedThreads;
+int gFinishedThreads;
+static const int NUMTHREADS = 10;
+
+
+// Worker thread function.
+void CondThread::run() {
+    umtx_lock(gCTMutex());
+    gStartedThreads += gConditionTestOne;
+    umtx_condBroadcast(gCTConditionVar());
+
+    while (gStartedThreads < NUMTHREADS) {
+        if (gFinishedThreads != 0) {
+            IntlTest::gTest->errln("File %s, Line %d: Error, gStartedThreads = %d, gFinishedThreads = %d",
+                             __FILE__, __LINE__, gStartedThreads, gFinishedThreads);
+        }
+        umtx_condWait(gCTConditionVar(), gCTMutex());
+    }
+
+    gFinishedThreads += gConditionTestOne;
+    fFinished = true;
+    umtx_condBroadcast(gCTConditionVar());
+
+    while (gFinishedThreads < NUMTHREADS) {
+        umtx_condWait(gCTConditionVar(), gCTMutex());
+    }
+    umtx_unlock(gCTMutex());
+}
+
+void MultithreadTest::TestConditionVariables() {
+    gStartedThreads = 0;
+    gFinishedThreads = 0;
+    int i;
+
+    umtx_lock(gCTMutex());
+    CondThread *threads[NUMTHREADS];
+    for (i=0; i<NUMTHREADS; ++i) {
+        threads[i] = new CondThread;
+        threads[i]->start();
+    }
+
+    while (gStartedThreads < NUMTHREADS) {
+        umtx_condWait(gCTConditionVar(), gCTMutex());
+    }
+
+    while (gFinishedThreads < NUMTHREADS) {
+        umtx_condWait(gCTConditionVar(), gCTMutex());
+    }
+
+    umtx_unlock(gCTMutex());
+
+    for (i=0; i<NUMTHREADS; ++i) {
+        assertTrue(WHERE, threads[i]->fFinished);
+    }
+
+    for (i=0; i<NUMTHREADS; ++i) {
+        threads[i]->join();
+        delete threads[i];
+    }
+}
 
 
 //
@@ -1071,7 +1267,7 @@ static const int32_t CACHE_LOAD = 3;
 class UCTMultiThreadItem : public SharedObject {
   public:
     char *value;
-    UCTMultiThreadItem(const char *x) : value(nullptr) {
+    UCTMultiThreadItem(const char *x) : value(NULL) {
         value = uprv_strdup(x);
     }
     virtual ~UCTMultiThreadItem() {
@@ -1081,17 +1277,14 @@ class UCTMultiThreadItem : public SharedObject {
 
 U_NAMESPACE_BEGIN
 
-static std::mutex *gCTMutex = nullptr;
-static std::condition_variable *gCTConditionVar = nullptr;
-
 template<> U_EXPORT
 const UCTMultiThreadItem *LocaleCacheKey<UCTMultiThreadItem>::createObject(
         const void *context, UErrorCode &status) const {
-    const UnifiedCache *cacheContext = static_cast<const UnifiedCache*>(context);
+    const UnifiedCache *cacheContext = (const UnifiedCache *) context;
 
     if (uprv_strcmp(fLoc.getLanguage(), fLoc.getName()) != 0) {
-        const UCTMultiThreadItem *result = nullptr;
-        if (cacheContext == nullptr) {
+        const UCTMultiThreadItem *result = NULL;
+        if (cacheContext == NULL) {
             UnifiedCache::getByLocale(fLoc.getLanguage(), result, status);
             return result;
         }
@@ -1099,27 +1292,25 @@ const UCTMultiThreadItem *LocaleCacheKey<UCTMultiThreadItem>::createObject(
         return result;
     }
 
-    bool firstObject = false;
-    {
-        std::unique_lock<std::mutex> lock(*gCTMutex);
-        firstObject = (gObjectsCreated == 0);
-        if (firstObject) {
-            // Force the first object creation that comes through to wait
-            // until other have completed. Verifies that cache doesn't
-            // deadlock when a creation is slow.
+    umtx_lock(gCTMutex());
+    bool firstObject = (gObjectsCreated == 0);
+    if (firstObject) {
+        // Force the first object creation that comes through to wait
+        // until other have completed. Verifies that cache doesn't
+        // deadlock when a creation is slow.
 
-            // Note that gObjectsCreated needs to be incremented from 0 to 1
-            // early, to keep subsequent threads from entering this path.
-            gObjectsCreated = 1;
-            while (gObjectsCreated < 3) {
-                gCTConditionVar->wait(lock);
-            }
+        // Note that gObjectsCreated needs to be incremeneted from 0 to 1
+        // early, to keep subsequent threads from entering this path.
+        gObjectsCreated = 1;
+        while (gObjectsCreated < 3) {
+            umtx_condWait(gCTConditionVar(), gCTMutex());
         }
     }
+    umtx_unlock(gCTMutex());
 
     const UCTMultiThreadItem *result =
         new UCTMultiThreadItem(fLoc.getLanguage());
-    if (result == nullptr) {
+    if (result == NULL) {
         status = U_MEMORY_ALLOCATION_ERROR;
     } else {
         result->addRef();
@@ -1127,13 +1318,12 @@ const UCTMultiThreadItem *LocaleCacheKey<UCTMultiThreadItem>::createObject(
  
     // Log that we created an object. The first object was already counted,
     //    don't do it again.
-    {
-        std::unique_lock<std::mutex> lock(*gCTMutex);
-        if (!firstObject) {
-            gObjectsCreated += 1;
-        }
-        gCTConditionVar->notify_all();
+    umtx_lock(gCTMutex());
+    if (!firstObject) {
+        gObjectsCreated += 1;
     }
+    umtx_condBroadcast(gCTConditionVar());
+    umtx_unlock(gCTMutex());
 
     return result;
 }
@@ -1145,9 +1335,9 @@ class UnifiedCacheThread: public SimpleThread {
     UnifiedCacheThread(
             const UnifiedCache *cache,
             const char *loc,
-            const char *loc2) : fCache(cache), fLoc(loc), fLoc2(loc2) {}
-    ~UnifiedCacheThread() {}
-    void run() override;
+            const char *loc2) : fCache(cache), fLoc(loc), fLoc2(loc2) {};
+    ~UnifiedCacheThread() {};
+    void run();
     void exerciseByLocale(const Locale &);
     const UnifiedCache *fCache;
     Locale fLoc;
@@ -1156,7 +1346,7 @@ class UnifiedCacheThread: public SimpleThread {
 
 void UnifiedCacheThread::exerciseByLocale(const Locale &locale) {
     UErrorCode status = U_ZERO_ERROR;
-    const UCTMultiThreadItem *origItem = nullptr;
+    const UCTMultiThreadItem *origItem = NULL;
     fCache->get(
             LocaleCacheKey<UCTMultiThreadItem>(locale), fCache, origItem, status);
     U_ASSERT(U_SUCCESS(status));
@@ -1165,11 +1355,11 @@ void UnifiedCacheThread::exerciseByLocale(const Locale &locale) {
     // Fetch the same item again many times. We should always get the same
     // pointer since this client is already holding onto it
     for (int32_t i = 0; i < 1000; ++i) {
-        const UCTMultiThreadItem *item = nullptr;
+        const UCTMultiThreadItem *item = NULL;
         fCache->get(
                 LocaleCacheKey<UCTMultiThreadItem>(locale), fCache, item, status);
         IntlTest::gTest->assertTrue(WHERE, item == origItem);
-        if (item != nullptr) {
+        if (item != NULL) {
             item->removeRef();
         }
     }
@@ -1195,9 +1385,7 @@ void MultithreadTest::TestUnifiedCache() {
     cache.setEvictionPolicy(2, 0, status);
     U_ASSERT(U_SUCCESS(status));
 
-    gCTMutex = new std::mutex();
-    gCTConditionVar = new std::condition_variable();
-
+    gFinishedThreads = 0;
     gObjectsCreated = 0;
 
     UnifiedCacheThread *threads[CACHE_LOAD][UPRV_LENGTHOF(gCacheLocales)];
@@ -1239,8 +1427,6 @@ void MultithreadTest::TestUnifiedCache() {
             delete threads[i][j];
         }
     }
-    delete gCTMutex;
-    delete gCTConditionVar;
 }
 
 #if !UCONFIG_NO_TRANSLITERATION
@@ -1255,9 +1441,9 @@ static const UnicodeString *gTranslitExpected;
 
 class BreakTranslitThread: public SimpleThread {
   public:
-    BreakTranslitThread() {}
-    ~BreakTranslitThread() {}
-    void run() override;
+    BreakTranslitThread() {};
+    ~BreakTranslitThread() {};
+    void run();
 };
 
 void BreakTranslitThread::run() {
@@ -1298,15 +1484,15 @@ void MultithreadTest::TestBreakTranslit() {
     }
 
     delete gSharedTransliterator;
-    gTranslitInput = nullptr;
-    gTranslitExpected = nullptr;
+    gTranslitInput = NULL;
+    gTranslitExpected = NULL;
 }
 
 
 class TestIncDecThread : public SimpleThread {
 public:
-    TestIncDecThread() {}
-    virtual void run() override;
+    TestIncDecThread() { };
+    virtual void run();
 };
 
 static u_atomic_int32_t gIncDecCounter;
@@ -1338,8 +1524,8 @@ static Calendar  *gSharedCalendar = {};
 
 class Test20104Thread : public SimpleThread {
 public:
-    Test20104Thread() {}
-    virtual void run() override;
+    Test20104Thread() { };
+    virtual void run();
 };
 
 void Test20104Thread::run() {

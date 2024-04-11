@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ksh{
     Currencies{
         AED{
@@ -460,7 +459,7 @@ ksh{
             "papua neujinejaanesche Kina",
         }
         PHP{
-            "₱",
+            "PHP",
             "fillipiinesche Pesos",
         }
         PKR{
@@ -531,13 +530,9 @@ ksh{
             "SKK",
             "ßlovaakesche Kruhne",
         }
-        SLE{
-            "SLE",
-            "ẞjärra-lejoneesesche Leone",
-        }
         SLL{
             "SLL",
-            "ẞjärra-lejoneesesche Leone (1964—2022)",
+            "ẞjärra-lejoneesesche Leone",
         }
         SOS{
             "SOS",
@@ -672,7 +667,7 @@ ksh{
             "franzüüsesche Joldfranke",
         }
         XOF{
-            "F CFA",
+            "CFA",
             "Frang uß de Älfebeinköß",
         }
         XPD{
@@ -736,6 +731,11 @@ ksh{
             other{"Brunei-Dollaaa"}
             zero{"Brunei-Dollaaa"}
         }
+        BOB{
+            one{"Bollivijano"}
+            other{"Bollivijano"}
+            zero{"Bollivijano"}
+        }
         BTN{
             one{"Bhutanesesche Ngultrum"}
             other{"Bhutanesesche Ngultrum"}
@@ -761,6 +761,31 @@ ksh{
             other{"Kaßtarikaanesche Colón"}
             zero{"Kaßtarikaanesche Colón"}
         }
+        CUC{
+            one{"ömtuuschbaa kubaanesche Pesos"}
+            other{"ömtuuschbaa kubaanesche Pesos"}
+            zero{"ömtuuschbaa kubaanesche Pesos"}
+        }
+        CUP{
+            one{"kubaanesche Peesos"}
+            other{"kubaanesche Peesos"}
+            zero{"kubaanesche Peesos"}
+        }
+        CVE{
+            one{"kapverdesche Eskuudos"}
+            other{"kapverdesche Eskuudos"}
+            zero{"kapverdesche Eskuudos"}
+        }
+        CZK{
+            one{"tschäschesche Kruhne"}
+            other{"tschäschesche Kruhne"}
+            zero{"tschäschesche Kruhne"}
+        }
+        DKK{
+            one{"dänesche Kruhne"}
+            other{"dänesche Kruhne"}
+            zero{"dänesche Kruhne"}
+        }
         DOP{
             one{"dommenikaanesche Peeso"}
             other{"dommenikaanesche Peesos"}
@@ -776,6 +801,16 @@ ksh{
             other{"Jineea-Franke"}
             zero{"Jineea-Franke"}
         }
+        ISK{
+            one{"ißländesche Kruhne"}
+            other{"ißländesche Kruhne"}
+            zero{"ißländesche Kruhne"}
+        }
+        KES{
+            one{"Kenjaanesche Schillinge"}
+            other{"Kenjaanesche Schillinge"}
+            zero{"Kenjaanesche Schillinge"}
+        }
         KZT{
             one{"kasakstaanesche Tenge"}
             other{"kasakstaanesche Tenge"}
@@ -786,10 +821,96 @@ ksh{
             other{"schri-lankesche Ruupije"}
             zero{"schri-lankesche Ruupije"}
         }
+        MXN{
+            one{"mexekaanesche Peeso"}
+            other{"mexekaanesche Peeso"}
+            zero{"mexekaanesche Peeso"}
+        }
+        NIO{
+            one{"nikarajaanesche Córdoba"}
+            other{"nikarajaanesche Córdoba"}
+            zero{"nikarajaanesche Córdoba"}
+        }
+        NOK{
+            one{"norrweejesche Kruhne"}
+            other{"norrweejesche Kruhne"}
+            zero{"norrweejesche Kruhne"}
+        }
+        PAB{
+            one{"pannameesesche Balboa"}
+            other{"pannameesesche Balboa"}
+            zero{"pannameesesche Balboa"}
+        }
+        PHP{
+            one{"fillipiinesche Pesos"}
+            other{"fillipiinesche Pesos"}
+            zero{"fillipiinesche Pesos"}
+        }
+        PLN{
+            one{"polnesche Złoty"}
+            other{"polnesche Złoty"}
+            zero{"polnesche Złoty"}
+        }
+        SEK{
+            one{"schweedesche Kruhne"}
+            other{"schweedesche Kruhne"}
+            zero{"schweedesche Kruhne"}
+        }
+        SOS{
+            one{"somaalesche Schillenge"}
+            other{"somaalesche Schillenge"}
+            zero{"somaalesche Schillenge"}
+        }
+        SSP{
+            one{"södsudaneesesche Pongk"}
+            other{"södsudaneesesche Pongk"}
+            zero{"södsudaneesesche Pongk"}
+        }
+        STD{
+            one{"Dobra vun São Tomé un Príncipe (1977–2017)"}
+            other{"Dobra vun São Tomé un Príncipe (1977–2017)"}
+            zero{"Dobra vun São Tomé un Príncipe (1977–2017)"}
+        }
+        STN{
+            one{"Dobra vun São Tomé un Príncipe"}
+            other{"Dobra vun São Tomé un Príncipe"}
+            zero{"Dobra vun São Tomé un Príncipe"}
+        }
+        TMT{
+            one{"turkmeneßtaanesche Manat"}
+            other{"turkmeneßtaanesche Manat"}
+            zero{"turkmeneßtaanesche Manat"}
+        }
+        TTD{
+            one{"Dollaa uß Trinidad un Tobääjo"}
+            other{"Dollaa uß Trinidad un Tobääjo"}
+            zero{"Dollaa uß Trinidad un Tobääjo"}
+        }
+        TZS{
+            one{"tansaanesche Schillenge"}
+            other{"tansaanesche Schillenge"}
+            zero{"tansaanesche Schillenge"}
+        }
+        UGX{
+            one{"ujandesche Schillenge"}
+            other{"ujandesche Schillenge"}
+            zero{"ujandesche Schillenge"}
+        }
+        UYU{
+            one{"urrujuwaische Peeso"}
+            other{"urrujuwaische Peeso"}
+            zero{"urrujuwaische Peeso"}
+        }
+        XPF{
+            one{"polineesesche Frang"}
+            other{"polineesesche Frang"}
+            zero{"polineesesche Frang"}
+        }
     }
     CurrencyUnitPatterns{
         one{"{0} {1}"}
         other{"{0} {1}"}
         zero{"{0} {1}"}
     }
+    Version{"2.1.47.82"}
 }

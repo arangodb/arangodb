@@ -1,21 +1,22 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 lkt{
     AuxExemplarCharacters{"[c d f {ȟʼ} j q r {sʼ} {šʼ} v x]"}
     ExemplarCharacters{
-        "[aá {aŋ} b č {čh} {čʼ} eé g ǧ h ȟ ií {iŋ} k {kh} {kȟ} {kʼ} l m n ŋ oó p {ph}"
-        " {pȟ} {pʼ} s š t {th} {tȟ} {tʼ} uú {uŋ} w y z ž ʼ]"
+        "[a á {aŋ} b č {čh} {čʼ} e é g ǧ h ȟ i í {iŋ} k {kh} {kȟ} {kʼ} l m n ŋ o ó p "
+        "{ph} {pȟ} {pʼ} s š t {th} {tȟ} {tʼ} u ú {uŋ} w y z ž ʼ]"
     }
     ExemplarCharactersIndex{"[A B Č E G Ǧ H Ȟ I K L M N Ŋ O P S Š T U W Y Z Ž]"}
-    ExemplarCharactersPunctuation{"[\\- ‐‑ – — , ; \\: ! ? . \u0022“” ( ) \\[ \\] @ * / \\& #]"}
+    ExemplarCharactersNumbers{"[\\- , . % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
+    ExemplarCharactersPunctuation{"[\\- ‐ – — , ; \\: ! ? . \u0022 “ ” ( ) \\[ \\] @ * / \\& #]"}
+    Version{"2.1.48.22"}
     calendar{
         gregorian{
             DateTimePatterns{
-                "h:mm:ss a zzzz",
-                "h:mm:ss a z",
-                "h:mm:ss a",
-                "h:mm a",
+                "h:mm:ss a zzzz",
+                "h:mm:ss a z",
+                "h:mm:ss a",
+                "h:mm a",
                 "EEEE, MMMM d, y",
                 "MMMM d, y",
                 "MMM d, y",
@@ -25,16 +26,6 @@ lkt{
                 "{1} {0}",
                 "{1} {0}",
                 "{1} {0}",
-            }
-            DateTimeSkeletons{
-                "ahmmsszzzz",
-                "ahmmssz",
-                "ahmmss",
-                "ahmm",
-                "yMMMMEEEEd",
-                "yMMMMd",
-                "yMMMd",
-                "yyMd",
             }
             dayNames{
                 format{
@@ -228,5 +219,8 @@ lkt{
                 }
             }
         }
+    }
+    measurementSystemNames{
+        US{"US"}
     }
 }

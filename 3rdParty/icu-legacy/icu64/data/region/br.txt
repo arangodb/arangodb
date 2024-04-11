@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 br{
     Countries{
         001{"Bed"}
@@ -146,6 +145,7 @@ br{
         IL{"Israel"}
         IM{"Enez Vanav"}
         IN{"India"}
+        IO{"Tiriad breizhveurat Meurvor Indez"}
         IQ{"Iraq"}
         IR{"Iran"}
         IS{"Island"}
@@ -183,7 +183,7 @@ br{
         MF{"Saint Martin"}
         MG{"Madagaskar"}
         MH{"Inizi Marshall"}
-        MK{"Makedonia an Norzh"}
+        MK{"Makedonia"}
         ML{"Mali"}
         MM{"Myanmar (Birmania)"}
         MN{"Mongolia"}
@@ -253,7 +253,7 @@ br{
         SV{"Salvador"}
         SX{"Sint Maarten"}
         SY{"Siria"}
-        SZ{"Eswatini"}
+        SZ{"Swaziland"}
         TA{"Tristan da Cunha"}
         TC{"Inizi Turks ha Caicos"}
         TD{"Tchad"}
@@ -287,8 +287,6 @@ br{
         VU{"Vanuatu"}
         WF{"Wallis ha Futuna"}
         WS{"Samoa"}
-        XA{"pouez-mouezh gaou"}
-        XB{"BiDi gaou"}
         XK{"Kosovo"}
         YE{"Yemen"}
         YT{"Mayotte"}
@@ -310,8 +308,8 @@ br{
         CI{"Aod Olifant"}
         CZ{"Republik Tchek"}
         FK{"Inizi Falkland (Inizi Maloù)"}
-        NZ{"Aotearoa Zeland-Nevez"}
-        SZ{"Swaziland"}
+        MK{"Makedonia (RYKM)"}
         TL{"Timor ar Reter"}
     }
+    Version{"2.1.48.86"}
 }

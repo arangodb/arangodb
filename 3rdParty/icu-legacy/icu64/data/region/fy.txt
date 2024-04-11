@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 fy{
     Countries{
         001{"Wrâld"}
@@ -144,6 +143,7 @@ fy{
         IL{"Israël"}
         IM{"Isle of Man"}
         IN{"India"}
+        IO{"Britse Gebieden yn de Indyske Oseaan"}
         IQ{"Irak"}
         IR{"Iran"}
         IS{"Yslân"}
@@ -181,6 +181,7 @@ fy{
         MF{"Saint-Martin"}
         MG{"Madeiaskar"}
         MH{"Marshalleilannen"}
+        MK{"Macedonië"}
         ML{"Mali"}
         MM{"Myanmar (Birma)"}
         MN{"Mongolië"}
@@ -302,5 +303,7 @@ fy{
         CD{"Congo (DRC)"}
         CG{"Congo (Republyk)"}
         FK{"Falklâneilannen (Islas Malvinas)"}
+        MK{"Macedonië (FYROM)"}
     }
+    Version{"2.1.47.82"}
 }

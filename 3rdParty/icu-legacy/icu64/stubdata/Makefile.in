@@ -48,8 +48,7 @@ DYNAMICCXXFLAGS = $(SHAREDLIBCXXFLAGS)
 CPPFLAGS += -I$(top_srcdir)/common $(LIBCPPFLAGS)
 LDFLAGS += $(LDFLAGSICUDT)
 
-SOURCES = $(shell cat $(srcdir)/sources.txt)
-OBJECTS = $(SOURCES:.cpp=.o)
+OBJECTS = stubdata.o
 
 ## Header files to install
 HEADERS = 
@@ -88,17 +87,11 @@ ifneq ($(ENABLE_STATIC),)
 	$(INSTALL-L) $(TARGET) $(DESTDIR)$(libdir)
 endif
 ifneq ($(ENABLE_SHARED),)
-# For MinGW, do we want the DLL to go in the bin location?
-ifeq ($(MINGW_MOVEDLLSTOBINDIR),YES)
-	$(MKINSTALLDIRS) $(DESTDIR)$(bindir)
-	$(INSTALL-L) $(FINAL_SO_TARGET) $(DESTDIR)$(bindir)
-else
 	$(INSTALL-L) $(FINAL_SO_TARGET) $(DESTDIR)$(libdir)
 ifneq ($(FINAL_SO_TARGET),$(SO_TARGET))
 	cd $(DESTDIR)$(libdir) && $(RM) $(notdir $(SO_TARGET)) && ln -s $(notdir $(FINAL_SO_TARGET)) $(notdir $(SO_TARGET))
 ifneq ($(FINAL_SO_TARGET),$(MIDDLE_SO_TARGET))
 	cd $(DESTDIR)$(libdir) && $(RM) $(notdir $(MIDDLE_SO_TARGET)) && ln -s $(notdir $(FINAL_SO_TARGET)) $(notdir $(MIDDLE_SO_TARGET))
-endif
 endif
 endif
 ifneq ($(IMPORT_LIB_EXT),)

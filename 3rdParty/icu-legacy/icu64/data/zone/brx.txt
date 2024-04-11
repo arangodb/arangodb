@@ -1,28 +1,28 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 brx{
+    Version{"2.1.47.82"}
     zoneStrings{
         "Africa:Abidjan"{
-            ec{"अबिदजान"}
+            ec{"अबिद्जान"}
         }
         "Africa:Accra"{
             ec{"आक्रा"}
         }
         "Africa:Addis_Ababa"{
-            ec{"एद्दिस आबाबा"}
+            ec{"ऍडिस अबाबा"}
         }
         "Africa:Algiers"{
-            ec{"आल्जीएर्स"}
+            ec{"आल्जीए"}
         }
         "Africa:Asmera"{
-            ec{"आस्मारा"}
+            ec{"अस्मेरा"}
         }
         "Africa:Bamako"{
-            ec{"बामाक’"}
+            ec{"बामाको"}
         }
         "Africa:Bangui"{
-            ec{"बांगूई"}
+            ec{"बाँगी"}
         }
         "Africa:Banjul"{
             ec{"बन्जुल"}
@@ -31,25 +31,25 @@ brx{
             ec{"बिस्साउ"}
         }
         "Africa:Blantyre"{
-            ec{"ब्लान्टाईर"}
+            ec{"ब्लांटीर"}
         }
         "Africa:Brazzaville"{
-            ec{"ब्राज्जाभील"}
+            ec{"ब्राज़ावील"}
         }
         "Africa:Bujumbura"{
             ec{"बुजुम्बुरा"}
         }
         "Africa:Cairo"{
-            ec{"कायर’"}
+            ec{"कायरो"}
         }
         "Africa:Casablanca"{
-            ec{"कासाब्लांका"}
+            ec{"काज़ाब्लाँका"}
         }
         "Africa:Ceuta"{
             ec{"सेउता"}
         }
         "Africa:Conakry"{
-            ec{"कनाक्री"}
+            ec{"कोनाक्री"}
         }
         "Africa:Dakar"{
             ec{"डाकार"}
@@ -58,31 +58,28 @@ brx{
             ec{"दार एस सलाम"}
         }
         "Africa:Djibouti"{
-            ec{"जिबौटी"}
+            ec{"ड्जिबुटी"}
         }
         "Africa:Douala"{
             ec{"दुआला"}
         }
         "Africa:El_Aaiun"{
-            ec{"एल आइऊन"}
+            ec{"अल आइउन"}
         }
         "Africa:Freetown"{
-            ec{"फ्रीटाउन"}
+            ec{"फ़्रीटाउन"}
         }
         "Africa:Gaborone"{
             ec{"गैबोरोन"}
         }
         "Africa:Harare"{
-            ec{"हारारे"}
+            ec{"हरारे"}
         }
         "Africa:Johannesburg"{
-            ec{"जहान्सबार्ग"}
-        }
-        "Africa:Juba"{
-            ec{"जुबा"}
+            ec{"जोहानेसबर्ग"}
         }
         "Africa:Kampala"{
-            ec{"काम्पाला"}
+            ec{"कंपाला"}
         }
         "Africa:Khartoum"{
             ec{"खार्तूम"}
@@ -94,16 +91,16 @@ brx{
             ec{"किन्शासा"}
         }
         "Africa:Lagos"{
-            ec{"लाग’स"}
+            ec{"लागोस"}
         }
         "Africa:Libreville"{
-            ec{"लिब्रेभिल"}
+            ec{"लिब्रविल"}
         }
         "Africa:Lome"{
-            ec{"लमे"}
+            ec{"लोमे"}
         }
         "Africa:Luanda"{
-            ec{"लुआन्डा"}
+            ec{"लुआँडा"}
         }
         "Africa:Lubumbashi"{
             ec{"लुबुम्बाशी"}
@@ -112,25 +109,25 @@ brx{
             ec{"लुसाका"}
         }
         "Africa:Malabo"{
-            ec{"मालाब’"}
+            ec{"मालाबो"}
         }
         "Africa:Maputo"{
-            ec{"मापुट’"}
+            ec{"मापुटो"}
         }
         "Africa:Maseru"{
-            ec{"मासेरू"}
+            ec{"मसेरू"}
         }
         "Africa:Mbabane"{
-            ec{"म्बाबाने"}
+            ec{"म्बाबने"}
         }
         "Africa:Mogadishu"{
-            ec{"मगाडिशु"}
+            ec{"मोगाडिशू"}
         }
         "Africa:Monrovia"{
-            ec{"मन्र’भिया"}
+            ec{"मोनरोविया"}
         }
         "Africa:Nairobi"{
-            ec{"नाईरौबी"}
+            ec{"नैरोबी"}
         }
         "Africa:Ndjamena"{
             ec{"न्जामेना"}
@@ -139,52 +136,49 @@ brx{
             ec{"नीआमे"}
         }
         "Africa:Nouakchott"{
-            ec{"न्वाकश’त"}
+            ec{"न्वाकशॉट"}
         }
         "Africa:Ouagadougou"{
             ec{"ऊगाडुगु"}
         }
         "Africa:Porto-Novo"{
-            ec{"पर्ट’-नभ’"}
+            ec{"पोर्टो-नोवो"}
         }
         "Africa:Sao_Tome"{
-            ec{"साव टमे"}
+            ec{"साँव टोमे"}
         }
         "Africa:Tripoli"{
-            ec{"त्रिप’ली"}
+            ec{"त्रिपोली"}
         }
         "Africa:Tunis"{
             ec{"ट्यूनिस"}
         }
         "Africa:Windhoek"{
-            ec{"विन्दह’क"}
+            ec{"विन्डोक"}
         }
         "America:Adak"{
             ec{"एडेक"}
         }
         "America:Anchorage"{
-            ec{"एंकरेज"}
+            ec{"ऐन्करेज"}
         }
         "America:Anguilla"{
-            ec{"एंग्वीला"}
+            ec{"एंगिला"}
         }
         "America:Antigua"{
-            ec{"एन्टिगुवा"}
+            ec{"एंटिगुआ"}
         }
         "America:Araguaina"{
-            ec{"आरागुआईना"}
+            ec{"अरागुआईना"}
         }
         "America:Argentina:La_Rioja"{
-            ec{"ला रिअजा"}
+            ec{"ला रिओख़ा"}
         }
         "America:Argentina:Rio_Gallegos"{
-            ec{"रिअ गालेगस"}
-        }
-        "America:Argentina:Salta"{
-            ec{"साल्टा"}
+            ec{"रियो गालेगोस"}
         }
         "America:Argentina:San_Juan"{
-            ec{"सान हुवान"}
+            ec{"सान हुआँ"}
         }
         "America:Argentina:San_Luis"{
             ec{"सान लुईस"}
@@ -196,49 +190,46 @@ brx{
             ec{"उशूआयिया"}
         }
         "America:Aruba"{
-            ec{"आरूबा"}
+            ec{"अरूबा"}
         }
         "America:Asuncion"{
-            ec{"आसुनसीअन"}
+            ec{"आसुनसीओन"}
         }
         "America:Bahia"{
             ec{"बाहिया"}
         }
-        "America:Bahia_Banderas"{
-            ec{"बाहिया बान्देरास"}
-        }
         "America:Barbados"{
-            ec{"बार्बाड’स"}
+            ec{"बार्बाडोस"}
         }
         "America:Belem"{
             ec{"बेलेम"}
         }
         "America:Belize"{
-            ec{"बेलिज"}
+            ec{"बेलिज़"}
         }
         "America:Blanc-Sablon"{
-            ec{"ब्लांक- साब्लन"}
+            ec{"ब्लाँ-साबलोन"}
         }
         "America:Boa_Vista"{
-            ec{"बआ भिस्ता"}
+            ec{"बोआ विस्टा"}
         }
         "America:Bogota"{
-            ec{"बग’टा"}
+            ec{"बोगोटा"}
         }
         "America:Boise"{
-            ec{"बयसि"}
+            ec{"ब्वाज़"}
         }
         "America:Buenos_Aires"{
-            ec{"बुएन’स एरेस"}
+            ec{"बुएनोस एरेस"}
         }
         "America:Cambridge_Bay"{
-            ec{"केम्ब्रिज गाथोन"}
+            ec{"केम्ब्रिज खाडी"}
         }
         "America:Campo_Grande"{
-            ec{"केम्प ग्रान्ड"}
+            ec{"काम्पो ग्रांडे"}
         }
         "America:Cancun"{
-            ec{"कांकुन"}
+            ec{"कानकुन"}
         }
         "America:Caracas"{
             ec{"काराकास"}
@@ -250,82 +241,76 @@ brx{
             ec{"कायेन"}
         }
         "America:Cayman"{
-            ec{"कैमेन"}
+            ec{"केमॅन"}
         }
         "America:Chicago"{
-            ec{"शिकाग’"}
+            ec{"शिकागो"}
         }
         "America:Chihuahua"{
-            ec{"चुहभाभा"}
+            ec{"चिवावा"}
         }
         "America:Coral_Harbour"{
-            ec{"आतिककान"}
+            ec{"कॉरल बन्दरगाह"}
         }
         "America:Cordoba"{
-            ec{"कर्डबा"}
+            ec{"कोर्डोबा"}
         }
         "America:Costa_Rica"{
-            ec{"कस्टा रिका"}
-        }
-        "America:Creston"{
-            ec{"क्रेस्टन"}
+            ec{"कॉस्टा रिका"}
         }
         "America:Cuiaba"{
             ec{"कुईआबा"}
         }
         "America:Curacao"{
-            ec{"कूरासाव"}
+            ec{"क्यूरासाओं"}
         }
         "America:Danmarkshavn"{
-            ec{"डानमार्कस्भान"}
+            ec{"डेनमार्क्सहैवन"}
         }
         "America:Dawson"{
-            ec{"डावस’न"}
+            ec{"डॉसन"}
         }
         "America:Dawson_Creek"{
-            ec{"डावस’न क्रीक"}
+            ec{"डॉसन क्रिक"}
         }
         "America:Denver"{
-            ec{"डेनभोर"}
+            ec{"डॅनवर"}
         }
         "America:Detroit"{
-            ec{"डेट्र’ईत"}
+            ec{"डेट्रोई"}
         }
         "America:Dominica"{
-            ec{"डमिनिका"}
+            ec{"डॉमिनिका"}
         }
         "America:Edmonton"{
-            ec{"एडमन्टन"}
+            ec{"एडमंटन"}
         }
         "America:Eirunepe"{
             ec{"एईरुनेपे"}
         }
         "America:El_Salvador"{
-            ec{"एल साल्भाडर"}
-        }
-        "America:Fort_Nelson"{
-            ec{"फर्त नेलसन"}
+            ec{"ऍल साल्वादोर"}
         }
         "America:Fortaleza"{
-            ec{"फर्टालेजा"}
+            ec{"फ़ोर्टालेज़ा"}
         }
         "America:Glace_Bay"{
-            ec{"ग्लेस बेइ"}
+            ec{"ग्लास (खाडी) बे"}
         }
         "America:Godthab"{
-            ec{"नूक"}
+            ec{"गॉडथैब"}
         }
         "America:Goose_Bay"{
-            ec{"गूज बेइ"}
+            ec{"गूस (खाडी) बे"}
         }
         "America:Grand_Turk"{
-            ec{"ग्रेण्ड तार्क"}
+            ec{"ग्रॅंड टर्क"}
         }
         "America:Grenada"{
             ec{"ग्रेनाडा"}
         }
         "America:Guadeloupe"{
-            ec{"ग्वादेलूप"}
+            ec{"गुआदलुप"}
         }
         "America:Guatemala"{
             ec{"ग्वाटेमाला"}
@@ -337,46 +322,46 @@ brx{
             ec{"गुयाना"}
         }
         "America:Halifax"{
-            ec{"हेलिफेक्स"}
+            ec{"हैलिफेक्स"}
         }
         "America:Havana"{
-            ec{"हाभाना"}
+            ec{"हवाना"}
         }
         "America:Hermosillo"{
-            ec{"हार्म’सिल्ल’"}
+            ec{"हर्मोसिलो"}
         }
         "America:Indiana:Knox"{
-            ec{"नक्स, इण्डियाना"}
+            ec{"नॉक्स"}
         }
         "America:Indiana:Marengo"{
-            ec{"मारेङ’, इण्डियाना"}
+            ec{"मारेंगो"}
         }
         "America:Indiana:Petersburg"{
-            ec{"पितार्सबार्ग, इण्डियाना"}
+            ec{"पिटर्सबर्ग"}
         }
         "America:Indiana:Tell_City"{
-            ec{"तेल नोगोर, इण्डियाना"}
+            ec{"टॅल सिटी"}
         }
         "America:Indiana:Vevay"{
-            ec{"भेभै, इण्डियाना"}
+            ec{"वेवे"}
         }
         "America:Indiana:Vincennes"{
-            ec{"भानसेन्नेस, इण्डियाना"}
+            ec{"वॅंसेन्"}
         }
         "America:Indiana:Winamac"{
-            ec{"विनामेक, इण्डियाना"}
+            ec{"विनामॅक"}
         }
         "America:Indianapolis"{
-            ec{"इण्डियानापलिस"}
+            ec{"इन्डियानापोलिस"}
         }
         "America:Inuvik"{
             ec{"इनूविक"}
         }
         "America:Iqaluit"{
-            ec{"इकालुईत"}
+            ec{"इकाल्यूईत"}
         }
         "America:Jamaica"{
-            ec{"जामाईका"}
+            ec{"जमैका"}
         }
         "America:Jujuy"{
             ec{"जुजुई"}
@@ -385,25 +370,19 @@ brx{
             ec{"जुनो"}
         }
         "America:Kentucky:Monticello"{
-            ec{"मन्टिछेल’, केन्टाकी"}
-        }
-        "America:Kralendijk"{
-            ec{"क्रालेणजीक"}
+            ec{"मोंटीचेलो"}
         }
         "America:La_Paz"{
-            ec{"ला पाज"}
+            ec{"ला पाज़"}
         }
         "America:Lima"{
             ec{"लीमा"}
         }
         "America:Los_Angeles"{
-            ec{"लस एन्जेलोस"}
+            ec{"लोस ऐंजिलेस"}
         }
         "America:Louisville"{
             ec{"लुईवील"}
-        }
-        "America:Lower_Princes"{
-            ec{"लवार प्रिन्सोस क्वार्तार"}
         }
         "America:Maceio"{
             ec{"माचेईओ"}
@@ -414,251 +393,221 @@ brx{
         "America:Manaus"{
             ec{"मनाउस"}
         }
-        "America:Marigot"{
-            ec{"मेरिगत"}
-        }
         "America:Martinique"{
             ec{"मार्टीनीक"}
         }
-        "America:Matamoros"{
-            ec{"मेतामरस"}
-        }
         "America:Mazatlan"{
-            ec{"माजाटलान"}
+            ec{"माज़ाट्लान"}
         }
         "America:Mendoza"{
-            ec{"मेन्ड’जा"}
+            ec{"मेंडोज़ा"}
         }
         "America:Menominee"{
-            ec{"मेन’मीनी"}
+            ec{"मेनोमिनी"}
         }
         "America:Merida"{
             ec{"मेरिडा"}
         }
-        "America:Metlakatla"{
-            ec{"मेत्लाकात्ला"}
-        }
         "America:Mexico_City"{
-            ec{"मेक्सिक’ सिती"}
+            ec{"मेक्सिको सिटी"}
         }
         "America:Miquelon"{
-            ec{"मिक्वेल’न"}
+            ec{"मिकलों"}
         }
         "America:Moncton"{
-            ec{"मक्ट’न"}
+            ec{"मोंक्ट्न"}
         }
         "America:Monterrey"{
-            ec{"मन्टेर्रे"}
+            ec{"मोंटेरे"}
         }
         "America:Montevideo"{
-            ec{"मन्टेभिडिअ"}
+            ec{"मोन्टेवीडिओ"}
         }
         "America:Montserrat"{
-            ec{"मनसेर्रात"}
+            ec{"मॉंसेरा"}
         }
         "America:Nassau"{
             ec{"नास्साउ"}
         }
         "America:New_York"{
-            ec{"निउ यर्क"}
+            ec{"न्यू यार्क"}
+        }
+        "America:Nipigon"{
+            ec{"निपिगॉन"}
         }
         "America:Nome"{
-            ec{"न’म"}
+            ec{"नोम"}
         }
         "America:Noronha"{
-            ec{"नर’न्हा"}
-        }
-        "America:North_Dakota:Beulah"{
-            ec{"बेऊलाह, साहा डाक’ता"}
+            ec{"नोरोन्हा"}
         }
         "America:North_Dakota:Center"{
-            ec{"सेन्टोर, साहा डाक’ता"}
+            ec{"सैन्टर"}
         }
         "America:North_Dakota:New_Salem"{
-            ec{"निउ सालेम, साहा डाक’ता"}
-        }
-        "America:Ojinaga"{
-            ec{"आजिनागा"}
+            ec{"न्यू सॅलेम"}
         }
         "America:Panama"{
-            ec{"पानामा"}
+            ec{"पनामा"}
+        }
+        "America:Pangnirtung"{
+            ec{"पंग्नीरटुँग्"}
         }
         "America:Paramaribo"{
-            ec{"पारामारिब’"}
+            ec{"पारामारिबो"}
         }
         "America:Phoenix"{
             ec{"फीनिक्स"}
         }
         "America:Port-au-Prince"{
-            ec{"पर्ट-आऊ-प्रिन्स"}
+            ec{"पॉर-ओ-प्रँस"}
         }
         "America:Port_of_Spain"{
-            ec{"पर्ट अफ स्पैन"}
+            ec{"पोर्ट ऑफ़ स्पेन"}
         }
         "America:Porto_Velho"{
-            ec{"पर्ट’ भेल्ह’"}
+            ec{"पोर्टो वेल्हो"}
         }
         "America:Puerto_Rico"{
-            ec{"पुएर्ट’ रिक’"}
+            ec{"पुएर्तो रिको"}
         }
-        "America:Punta_Arenas"{
-            ec{"पुन्टा आरेनास"}
+        "America:Rainy_River"{
+            ec{"रेनी रीवर"}
         }
         "America:Rankin_Inlet"{
             ec{"रेनकिन इनलेट"}
         }
         "America:Recife"{
-            ec{"रेसिफे"}
+            ec{"रेसीफ़े"}
         }
         "America:Regina"{
             ec{"रेजिना"}
         }
         "America:Resolute"{
-            ec{"रेजल्युत"}
+            ec{"रॅज़ोल्यूट"}
         }
         "America:Rio_Branco"{
-            ec{"रिअ ब्रान्क’"}
-        }
-        "America:Santarem"{
-            ec{"सान्तारेम"}
+            ec{"रियो ब्रान्को"}
         }
         "America:Santiago"{
-            ec{"सान्तिआग’"}
+            ec{"सेंटिआगो"}
         }
         "America:Santo_Domingo"{
-            ec{"सान्तो डमिग’"}
+            ec{"साँतो डोमिंगो"}
         }
         "America:Sao_Paulo"{
-            ec{"साव पावल’"}
+            ec{"साँव पावलो"}
         }
         "America:Scoresbysund"{
-            ec{"ईत्त’क्वर्तूमी"}
-        }
-        "America:Sitka"{
-            ec{"सित्का"}
-        }
-        "America:St_Barthelemy"{
-            ec{"सैन्ट बार्थेलेमी"}
+            ec{"स्कोर्सबाइसुंड"}
         }
         "America:St_Johns"{
-            ec{"सैन्ट जन्स"}
+            ec{"सेंट जोन्स"}
         }
         "America:St_Kitts"{
-            ec{"सैन्ट कीत्स"}
+            ec{"सेंट किट्स"}
         }
         "America:St_Lucia"{
-            ec{"सैन्ट लुसिया"}
+            ec{"सेंट लुसीया"}
         }
         "America:St_Thomas"{
-            ec{"सैन्ट थमास"}
+            ec{"सेंट टॉमस"}
         }
         "America:St_Vincent"{
-            ec{"सैन्ट भिन्सेन्ट"}
+            ec{"सेंट विन्संट"}
         }
         "America:Swift_Current"{
-            ec{"सुईफत कार्रेन्त"}
-        }
-        "America:Tegucigalpa"{
-            ec{"तेगुसिगाल्पा"}
+            ec{"स्विफ्ट करंट"}
         }
         "America:Thule"{
             ec{"थ्यूल"}
+        }
+        "America:Thunder_Bay"{
+            ec{"थंडर खाडी"}
         }
         "America:Tijuana"{
             ec{"टिहुआना"}
         }
         "America:Toronto"{
-            ec{"टरन्ट’"}
+            ec{"टोरोंटो"}
         }
         "America:Tortola"{
-            ec{"टर्त’ला"}
+            ec{"टॉरटोला"}
         }
         "America:Vancouver"{
-            ec{"भेनकूभर"}
+            ec{"वानकुवर"}
         }
         "America:Whitehorse"{
-            ec{"व्हाईतहर्स"}
+            ec{"व्हाईट हॉर्स"}
         }
         "America:Winnipeg"{
-            ec{"वीनीपेग"}
+            ec{"विनीपॅग"}
         }
         "America:Yakutat"{
-            ec{"याकुतात"}
+            ec{"यकूतत"}
+        }
+        "America:Yellowknife"{
+            ec{"यलोनाईफ"}
         }
         "Antarctica:Casey"{
             ec{"केसी"}
         }
         "Antarctica:Davis"{
-            ec{"डेभिस"}
+            ec{"डेविस"}
         }
         "Antarctica:DumontDUrville"{
-            ec{"डुमन्त-डीआर्भील"}
-        }
-        "Antarctica:Macquarie"{
-            ec{"माक्वारी"}
+            ec{"डुमॉं ड्युरवील"}
         }
         "Antarctica:Mawson"{
-            ec{"मौसन"}
+            ec{"मॉसन"}
         }
         "Antarctica:McMurdo"{
-            ec{"मेकमार्ड’"}
+            ec{"मकमर्डो"}
         }
         "Antarctica:Palmer"{
-            ec{"पालमार"}
+            ec{"पामर"}
         }
         "Antarctica:Rothera"{
-            ec{"रथेरा"}
+            ec{"रोथेरा"}
         }
         "Antarctica:Syowa"{
-            ec{"सीअवा"}
-        }
-        "Antarctica:Troll"{
-            ec{"त्र’ल"}
+            ec{"स्योवा"}
         }
         "Antarctica:Vostok"{
-            ec{"भस्त’क"}
-        }
-        "Arctic:Longyearbyen"{
-            ec{"लंयारब्येन"}
+            ec{"वॉस्तॉक"}
         }
         "Asia:Aden"{
-            ec{"एडेन"}
+            ec{"एडन"}
         }
         "Asia:Almaty"{
-            ec{"आल्माटी"}
+            ec{"अल्माटी"}
         }
         "Asia:Amman"{
-            ec{"आम्मान"}
+            ec{"अमान"}
         }
         "Asia:Anadyr"{
-            ec{"आनाडीर"}
+            ec{"अनाडीर"}
         }
         "Asia:Aqtau"{
             ec{"अक्ताउ"}
         }
         "Asia:Aqtobe"{
-            ec{"आक्त’बे"}
+            ec{"अक़्टोबे"}
         }
         "Asia:Ashgabat"{
             ec{"अश्गाबात"}
         }
-        "Asia:Atyrau"{
-            ec{"आतीराउ"}
-        }
         "Asia:Baghdad"{
-            ec{"बाघदाद"}
+            ec{"बग़दाद"}
         }
         "Asia:Bahrain"{
-            ec{"बाहरैन"}
+            ec{"बहरीन"}
         }
         "Asia:Baku"{
             ec{"बाकू"}
         }
         "Asia:Bangkok"{
             ec{"बैंगकॉक"}
-        }
-        "Asia:Barnaul"{
-            ec{"बार्नौल"}
         }
         "Asia:Beirut"{
             ec{"बैरुत"}
@@ -669,47 +618,35 @@ brx{
         "Asia:Brunei"{
             ec{"ब्रुनइ"}
         }
-        "Asia:Calcutta"{
-            ec{"कलकाता"}
-        }
-        "Asia:Chita"{
-            ec{"चीता"}
-        }
         "Asia:Choibalsan"{
-            ec{"च’इबालसान"}
+            ec{"चोइबालसन"}
         }
         "Asia:Colombo"{
-            ec{"कलम्ब’"}
+            ec{"कोलंबो"}
         }
         "Asia:Damascus"{
-            ec{"दामास्कास"}
+            ec{"दमास्कस"}
         }
         "Asia:Dhaka"{
-            ec{"धाका"}
+            ec{"ढाका"}
         }
         "Asia:Dili"{
             ec{"डिली"}
         }
         "Asia:Dubai"{
-            ec{"दुबाई"}
+            ec{"दुबई"}
         }
         "Asia:Dushanbe"{
-            ec{"दुशान्बे"}
-        }
-        "Asia:Famagusta"{
-            ec{"फामागुस्ता"}
+            ec{"दुशांबे"}
         }
         "Asia:Gaza"{
-            ec{"गाजा"}
-        }
-        "Asia:Hebron"{
-            ec{"हेब्र’न"}
+            ec{"गाज़ा"}
         }
         "Asia:Hong_Kong"{
-            ec{"हंकं"}
+            ec{"हाँगकाँग"}
         }
         "Asia:Hovd"{
-            ec{"ह’भ्द"}
+            ec{"होव्ड"}
         }
         "Asia:Irkutsk"{
             ec{"ईर्कुत्स्क"}
@@ -721,25 +658,22 @@ brx{
             ec{"जयापुरा"}
         }
         "Asia:Jerusalem"{
-            ec{"जेरुजालेम"}
+            ec{"येरुसलम"}
         }
         "Asia:Kabul"{
             ec{"काबूल"}
         }
         "Asia:Kamchatka"{
-            ec{"कामचाटका"}
+            ec{"कामचटका"}
         }
         "Asia:Karachi"{
             ec{"कराची"}
         }
         "Asia:Katmandu"{
-            ec{"काठमान्डु"}
-        }
-        "Asia:Khandyga"{
-            ec{"खान्दीगा"}
+            ec{"काठमांडौ"}
         }
         "Asia:Krasnoyarsk"{
-            ec{"क्रास्न’यार्स्क"}
+            ec{"क्रास्नोयार्स्क"}
         }
         "Asia:Kuala_Lumpur"{
             ec{"क्वाला लम्पुर"}
@@ -751,10 +685,10 @@ brx{
             ec{"कुवैत"}
         }
         "Asia:Macau"{
-            ec{"माकाऊ"}
+            ec{"मकाऊ"}
         }
         "Asia:Magadan"{
-            ec{"मागादान"}
+            ec{"मगदन"}
         }
         "Asia:Makassar"{
             ec{"माकास्सार"}
@@ -763,22 +697,19 @@ brx{
             ec{"मनीला"}
         }
         "Asia:Muscat"{
-            ec{"मास्केट"}
+            ec{"मस्कट"}
         }
         "Asia:Nicosia"{
-            ec{"निक’सिया"}
-        }
-        "Asia:Novokuznetsk"{
-            ec{"नभ’कुज्नेत्स्क"}
+            ec{"निकोसिया"}
         }
         "Asia:Novosibirsk"{
-            ec{"नभ’सिबिर्स्क"}
+            ec{"नोवोसिबिर्स्क"}
         }
         "Asia:Omsk"{
-            ec{"अम्स्क"}
+            ec{"ओम्स्क"}
         }
         "Asia:Oral"{
-            ec{"अराल"}
+            ec{"ओराल"}
         }
         "Asia:Phnom_Penh"{
             ec{"नॉम पेन"}
@@ -787,16 +718,13 @@ brx{
             ec{"पोंतिआनाक"}
         }
         "Asia:Pyongyang"{
-            ec{"प्यंयां"}
+            ec{"प्योंगयाँग"}
         }
         "Asia:Qatar"{
-            ec{"कातार"}
-        }
-        "Asia:Qostanay"{
-            ec{"कस्तानै"}
+            ec{"क़तार"}
         }
         "Asia:Qyzylorda"{
-            ec{"कीजीलर्डा"}
+            ec{"कीज़ीलोर्डा"}
         }
         "Asia:Rangoon"{
             ec{"रंगून"}
@@ -808,28 +736,22 @@ brx{
             ec{"साइगॉन"}
         }
         "Asia:Sakhalin"{
-            ec{"साखालिन"}
+            ec{"सख़ालिन"}
         }
         "Asia:Samarkand"{
-            ec{"समरकान्द"}
+            ec{"समरकंद"}
         }
         "Asia:Seoul"{
-            ec{"स’उल"}
-        }
-        "Asia:Shanghai"{
-            ec{"शांघाई"}
+            ec{"सोल"}
         }
         "Asia:Singapore"{
             ec{"सिंगापुर"}
         }
-        "Asia:Srednekolymsk"{
-            ec{"स्रेदनेक’लिम्स्क"}
-        }
         "Asia:Taipei"{
-            ec{"ताईपेइ"}
+            ec{"ताइपेइ"}
         }
         "Asia:Tashkent"{
-            ec{"ताशकेन्त"}
+            ec{"ताशकंद"}
         }
         "Asia:Tbilisi"{
             ec{"तिबिलिसी"}
@@ -838,130 +760,115 @@ brx{
             ec{"तेहरान"}
         }
         "Asia:Thimphu"{
-            ec{"थिम्फु"}
+            ec{"थिम्पु"}
         }
         "Asia:Tokyo"{
-            ec{"ट’क्य’"}
-        }
-        "Asia:Tomsk"{
-            ec{"तम्स्क"}
+            ec{"टोक्यो"}
         }
         "Asia:Ulaanbaatar"{
-            ec{"उलानबातार"}
+            ec{"उलानबातर"}
         }
         "Asia:Urumqi"{
             ec{"उरुमकी"}
-        }
-        "Asia:Ust-Nera"{
-            ec{"आस्त-नेरा"}
         }
         "Asia:Vientiane"{
             ec{"वियंसियान"}
         }
         "Asia:Vladivostok"{
-            ec{"भ्लादिभस्त’क"}
+            ec{"व्लाडिवॉस्टोक"}
         }
         "Asia:Yakutsk"{
             ec{"याकूत्स्क"}
         }
         "Asia:Yekaterinburg"{
-            ec{"येकातेरीनाबुर्ग"}
+            ec{"येकातेरिनबर्ग"}
         }
         "Asia:Yerevan"{
-            ec{"येरेभान"}
+            ec{"येरेवान"}
         }
         "Atlantic:Azores"{
-            ec{"आज’र्स"}
+            ec{"अज़ोर"}
         }
         "Atlantic:Bermuda"{
-            ec{"बार्मुडा"}
+            ec{"बर्मुडा"}
         }
         "Atlantic:Canary"{
-            ec{"केनेरी"}
+            ec{"कनेरी द्वीप"}
         }
         "Atlantic:Cape_Verde"{
-            ec{"केप भेर्दे"}
+            ec{"केप वॅर्दे"}
         }
         "Atlantic:Faeroe"{
-            ec{"फेरौ"}
+            ec{"फ़ैरो"}
         }
         "Atlantic:Madeira"{
-            ec{"माडैरा"}
+            ec{"माडेरा"}
         }
         "Atlantic:Reykjavik"{
-            ec{"रीकयाभिक"}
+            ec{"रीकयाविक"}
         }
         "Atlantic:South_Georgia"{
-            ec{"खोला जर्जिया"}
+            ec{"साउथ जॉर्जिया"}
         }
         "Atlantic:St_Helena"{
-            ec{"सैन्ट हेलेना"}
+            ec{"सेंट हेलेना"}
         }
         "Atlantic:Stanley"{
-            ec{"स्टेनली"}
+            ec{"स्टैनली"}
         }
         "Australia:Adelaide"{
-            ec{"एडेलैड"}
+            ec{"एडलेड्"}
         }
         "Australia:Brisbane"{
-            ec{"ब्रीसबेन"}
+            ec{"ब्रीसबेन्"}
         }
         "Australia:Broken_Hill"{
-            ec{"ब्र’केन हिल"}
+            ec{"ब्रोकन हिल्"}
+        }
+        "Australia:Currie"{
+            ec{"करी"}
         }
         "Australia:Darwin"{
-            ec{"डार्वीन"}
+            ec{"डार्विन्"}
         }
         "Australia:Eucla"{
             ec{"यूक्ला"}
         }
         "Australia:Hobart"{
-            ec{"हबार्ट"}
+            ec{"होबार्ट्"}
         }
         "Australia:Lindeman"{
-            ec{"लिण्डमेन"}
+            ec{"लिंडमेन्"}
         }
         "Australia:Lord_Howe"{
-            ec{"लर्ड हावि"}
+            ec{"लोर्ड होव्"}
         }
         "Australia:Melbourne"{
-            ec{"मेलबौर्न"}
+            ec{"मेलबोर्न्"}
         }
         "Australia:Perth"{
-            ec{"पोर्थ"}
+            ec{"पर्थ"}
         }
         "Australia:Sydney"{
             ec{"सिडनी"}
         }
-        "Etc:UTC"{
-            ls{"गोरोबहोनाय मुलुगनां सम"}
-        }
         "Etc:Unknown"{
-            ec{"मिथियै नोगोर"}
+            ec{"अज्ञात"}
         }
         "Europe:Amsterdam"{
-            ec{"ऐम्स्टरडाम"}
+            ec{"ऐम्स्टरडम"}
         }
         "Europe:Andorra"{
-            ec{"आन्ड’रा"}
-        }
-        "Europe:Astrakhan"{
-            ec{"आस्त्राखान"}
+            ec{"अंडोरा"}
         }
         "Europe:Athens"{
-            ec{"एथेन्स"}
-        }
-        "Europe:Belgrade"{
-            ec{"बेलग्रेड"}
+            ec{"एथन्स"}
         }
         "Europe:Berlin"{
-            ec{"बार्लिन"}
-        }
-        "Europe:Bratislava"{
-            ec{"ब्रातिस्लाभा"}
+            ec{"बर्लिन"}
         }
         "Europe:Brussels"{
-            ec{"ब्रुस्सेल्स"}
+            ec{"ब्रसल्स"}
         }
         "Europe:Bucharest"{
             ec{"बुकारेस्ट"}
@@ -969,244 +876,199 @@ brx{
         "Europe:Budapest"{
             ec{"बुदापेस्ट"}
         }
-        "Europe:Busingen"{
-            ec{"बुसिंगेन"}
-        }
         "Europe:Chisinau"{
             ec{"चिसीनौ"}
         }
         "Europe:Copenhagen"{
-            ec{"कपेनहेगेन"}
+            ec{"कोपनहागन"}
         }
         "Europe:Dublin"{
-            ec{"डाबलिन"}
-            ld{"आईरीश थाखोआरि सम"}
+            ec{"डबलिन"}
+            ld{"आईरीश समर टाईम"}
         }
         "Europe:Gibraltar"{
-            ec{"जिब्राल्टार"}
-        }
-        "Europe:Guernsey"{
-            ec{"गार्नसी"}
+            ec{"जिब्राल्टर"}
         }
         "Europe:Helsinki"{
-            ec{"हेल्सिंकी"}
-        }
-        "Europe:Isle_of_Man"{
-            ec{"आयोल अफ मेन"}
+            ec{"हैल्सिंकी"}
         }
         "Europe:Istanbul"{
-            ec{"इस्तानबुल"}
-        }
-        "Europe:Jersey"{
-            ec{"जार्सी"}
+            ec{"इस्तांबुल"}
         }
         "Europe:Kaliningrad"{
-            ec{"कालिनींग्राद"}
+            ec{"कालिलीनग्राड"}
         }
         "Europe:Kiev"{
-            ec{"कीभ"}
-        }
-        "Europe:Kirov"{
-            ec{"किर’भ"}
+            ec{"कीव"}
         }
         "Europe:Lisbon"{
             ec{"लिस्बन"}
         }
-        "Europe:Ljubljana"{
-            ec{"जुब्ल्याना"}
-        }
         "Europe:London"{
-            ec{"लन्दन"}
-            ld{"ब्रीटीश दैज्लां सम"}
+            ec{"लंदन"}
+            ld{"ब्रीटीश समर टाईम"}
         }
         "Europe:Luxembourg"{
-            ec{"लाक्जेम्बार्ग"}
+            ec{"लक्ज़मबर्ग"}
         }
         "Europe:Madrid"{
-            ec{"माद्रिद"}
+            ec{"मैड्रिड"}
         }
         "Europe:Malta"{
             ec{"माल्टा"}
-        }
-        "Europe:Mariehamn"{
-            ec{"मारैहाम"}
         }
         "Europe:Minsk"{
             ec{"मिन्स्क"}
         }
         "Europe:Monaco"{
-            ec{"मनाक’"}
+            ec{"मोनाको"}
         }
         "Europe:Moscow"{
-            ec{"मस्कौ"}
+            ec{"मॉस्को"}
         }
         "Europe:Oslo"{
-            ec{"अस्ल’"}
+            ec{"ओस्लो"}
         }
         "Europe:Paris"{
-            ec{"पेरिस"}
-        }
-        "Europe:Podgorica"{
-            ec{"पदग’रिका"}
-        }
-        "Europe:Prague"{
-            ec{"प्रेग"}
+            ec{"पॅरिस"}
         }
         "Europe:Riga"{
             ec{"रिगा"}
         }
         "Europe:Rome"{
-            ec{"र’म"}
+            ec{"रोम"}
         }
         "Europe:Samara"{
-            ec{"सामारा"}
-        }
-        "Europe:San_Marino"{
-            ec{"सान मारिन’"}
-        }
-        "Europe:Sarajevo"{
-            ec{"साराजेभ’"}
-        }
-        "Europe:Saratov"{
-            ec{"सारात’भ"}
+            ec{"समारा"}
         }
         "Europe:Simferopol"{
-            ec{"सिम्फेर’प’ल"}
-        }
-        "Europe:Skopje"{
-            ec{"स्क’प्जे"}
+            ec{"सिम्फेरोपोल"}
         }
         "Europe:Sofia"{
-            ec{"सफिया"}
+            ec{"सोफ़िया"}
         }
         "Europe:Stockholm"{
-            ec{"स्ट’कह’म"}
+            ec{"स्टॉकहॉम"}
         }
         "Europe:Tallinn"{
-            ec{"टेलिन"}
+            ec{"टैलिन"}
         }
         "Europe:Tirane"{
-            ec{"टिरेन"}
+            ec{"टिरान"}
         }
-        "Europe:Ulyanovsk"{
-            ec{"ऊल्यान’भ्स्क"}
+        "Europe:Uzhgorod"{
+            ec{"उज़्गोरोड्"}
         }
         "Europe:Vaduz"{
-            ec{"भाडुज"}
-        }
-        "Europe:Vatican"{
-            ec{"भेटिकान"}
+            ec{"वादुज़"}
         }
         "Europe:Vienna"{
-            ec{"भियेन्ना"}
+            ec{"वियेना"}
         }
         "Europe:Vilnius"{
             ec{"विल्निउस"}
         }
         "Europe:Volgograd"{
-            ec{"भल्ग’ग्रेद"}
+            ec{"वोल्गोग्राड"}
         }
         "Europe:Warsaw"{
-            ec{"वारसौ"}
+            ec{"वॉरसॉ"}
         }
-        "Europe:Zagreb"{
-            ec{"जाग्रेब"}
+        "Europe:Zaporozhye"{
+            ec{"झापरोझ्य"}
         }
         "Europe:Zurich"{
-            ec{"जुरिख"}
+            ec{"ज़्युरिक"}
         }
         "Indian:Antananarivo"{
-            ec{"एन्टानानारिभ’"}
+            ec{"ऐंटनानरीवो"}
         }
         "Indian:Chagos"{
-            ec{"चाग’स"}
+            ec{"चागोस"}
         }
         "Indian:Christmas"{
-            ec{"ख्रीस्टमास द्वीप"}
+            ec{"क्रिस्मस आइलैंड"}
         }
         "Indian:Cocos"{
-            ec{"कक’स"}
+            ec{"कोकोस"}
         }
         "Indian:Comoro"{
-            ec{"कम’र’"}
+            ec{"कोमोरो"}
         }
         "Indian:Kerguelen"{
-            ec{"केर्गेलेन"}
+            ec{"कॅरगेइलेन"}
         }
         "Indian:Mahe"{
             ec{"माहे"}
         }
         "Indian:Maldives"{
-            ec{"मालदीभ्स"}
+            ec{"मालदीव"}
         }
         "Indian:Mauritius"{
-            ec{"मरिशियास"}
+            ec{"मॉरिशस"}
         }
         "Indian:Mayotte"{
-            ec{"माय’त्ते"}
+            ec{"मायोट"}
         }
         "Indian:Reunion"{
-            ec{"रेयूनिय’न"}
+            ec{"रेयूनियॉं"}
         }
         "Pacific:Apia"{
-            ec{"आपिया"}
+            ec{"आपिआ"}
         }
         "Pacific:Auckland"{
             ec{"औकलैण्ड"}
         }
-        "Pacific:Bougainville"{
-            ec{"बुगैनभील"}
-        }
         "Pacific:Chatham"{
-            ec{"चाथाम"}
+            ec{"चॅथम"}
         }
         "Pacific:Easter"{
-            ec{"सानजायारि"}
+            ec{"ईस्टर आइलैंड"}
         }
         "Pacific:Efate"{
-            ec{"एफाटे"}
+            ec{"एफ़ाटे"}
         }
         "Pacific:Enderbury"{
-            ec{"एन्डारबारी"}
+            ec{"एंडरबरी"}
         }
         "Pacific:Fakaofo"{
-            ec{"फाकाअफ’"}
+            ec{"फ़काओफ़ो"}
         }
         "Pacific:Fiji"{
-            ec{"फिजी"}
+            ec{"फ़िजी"}
         }
         "Pacific:Funafuti"{
-            ec{"फुनाफूटी"}
+            ec{"फ़ुनाफ़ूटी"}
         }
         "Pacific:Galapagos"{
-            ec{"गालापाग’स"}
+            ec{"गॅलापागोस"}
         }
         "Pacific:Gambier"{
-            ec{"गाम्बियेर"}
+            ec{"गाम्बिये"}
         }
         "Pacific:Guadalcanal"{
-            ec{"ग्वाडालकेनेल"}
+            ec{"ग्वाडालकनाल"}
         }
         "Pacific:Guam"{
-            ec{"गुवाम"}
+            ec{"ग्वाम"}
         }
         "Pacific:Honolulu"{
-            ec{"हनलुलु"}
+            ec{"होनोलुलु"}
         }
-        "Pacific:Kanton"{
-            ec{"केन्ट’न"}
+        "Pacific:Johnston"{
+            ec{"जौन्स्टन"}
         }
         "Pacific:Kiritimati"{
             ec{"किरीतिमाति"}
         }
         "Pacific:Kosrae"{
-            ec{"कस्रे"}
+            ec{"कोसराए"}
         }
         "Pacific:Kwajalein"{
             ec{"क्वाजालैन"}
         }
         "Pacific:Majuro"{
-            ec{"माजूर’"}
+            ec{"मजूरो"}
         }
         "Pacific:Marquesas"{
             ec{"मार्केसास"}
@@ -1215,82 +1077,82 @@ brx{
             ec{"मीडवे"}
         }
         "Pacific:Nauru"{
-            ec{"नाऊरु"}
+            ec{"नौरू"}
         }
         "Pacific:Niue"{
-            ec{"नीऊए"}
+            ec{"नियुएई"}
         }
         "Pacific:Norfolk"{
-            ec{"नरफ’क"}
+            ec{"नोरफ़ोक"}
         }
         "Pacific:Noumea"{
             ec{"नूमिया"}
         }
         "Pacific:Pago_Pago"{
-            ec{"पाग’ पाग’"}
+            ec{"पागो पागो"}
         }
         "Pacific:Palau"{
-            ec{"पालाउ"}
+            ec{"पलाऊ"}
         }
         "Pacific:Pitcairn"{
-            ec{"पिटकैर्न"}
+            ec{"पिट्कैर्न"}
         }
         "Pacific:Ponape"{
-            ec{"पनापे"}
+            ec{"पोनापे"}
         }
         "Pacific:Port_Moresby"{
-            ec{"पर्ट मर्सबी"}
+            ec{"पोर्ट मोर्सबी"}
         }
         "Pacific:Rarotonga"{
-            ec{"रार’टंगा"}
+            ec{"रारोटॉंगा"}
         }
         "Pacific:Saipan"{
-            ec{"साइपान"}
+            ec{"सइपान"}
         }
         "Pacific:Tahiti"{
             ec{"टाहिटी"}
         }
         "Pacific:Tarawa"{
-            ec{"तारावा"}
+            ec{"तरावा"}
         }
         "Pacific:Tongatapu"{
-            ec{"टंगाटापु"}
+            ec{"टॉंगाटापु"}
         }
         "Pacific:Truk"{
-            ec{"चूक"}
+            ec{"ट्रुक"}
         }
         "Pacific:Wake"{
-            ec{"वेक"}
+            ec{"वाके"}
         }
         "Pacific:Wallis"{
-            ec{"वालिस"}
+            ec{"वॅलिस"}
         }
         "meta:Acre"{
             ld{"आकर समर टाईम"}
-            lg{"एकोर सम"}
+            lg{"आकर टाईम"}
             ls{"आकर स्टैंडर्ड टाईम"}
         }
         "meta:Afghanistan"{
-            ls{"आफगानीस्तान सम"}
+            ls{"अफ़गानी स्टैंडर्ड टाईम"}
         }
         "meta:Africa_Central"{
-            ls{"मिरु आफ्रिका सम"}
+            ls{"मध्य अफ्रीका स्टैंडर्ड टाईम"}
         }
         "meta:Africa_Eastern"{
-            ls{"सानजा आफ्रिका सम"}
+            ls{"पूर्वी अफ्रीका स्टैंडर्ड टाईम"}
         }
         "meta:Africa_Southern"{
-            ls{"खोला आफ्रिकानि थाखोआरि सम"}
+            ls{"दक्षिण अफ्रीका स्टैंडर्ड टाईम"}
         }
         "meta:Africa_Western"{
-            ld{"सोनाब आफ्रिकानि दैज्लां सम"}
-            lg{"सोनाब आफ्रिकानि सम"}
-            ls{"सोनाब आफ्रिकानि थाखोआरि सम"}
+            ld{"पश्चीम अफ्रीका समर टाईम"}
+            lg{"पश्चीम अफ्रीका टाईम"}
+            ls{"पश्चीम अफ्रीका स्टैंडर्ड टाईम"}
         }
         "meta:Alaska"{
-            ld{"आलास्कानि सानारि सम"}
-            lg{"आलास्कानि सम"}
-            ls{"आलास्का स्टेन्डार्ड सम"}
+            ld{"अलास्का डेलाईट टाईम"}
+            lg{"अलास्का टाईम"}
+            ls{"अलास्का स्टैंडर्ड टाईम"}
         }
         "meta:Almaty"{
             ld{"अलमाटी समर टाईम"}
@@ -1298,281 +1160,273 @@ brx{
             ls{"अलमाटी स्टैंडर्ड टाईम"}
         }
         "meta:Amazon"{
-            ld{"आमाजन दैज्लां सम"}
-            lg{"आमाजन सम"}
-            ls{"आमाजन थाखोआऱि सम"}
+            ld{"अमाज़ोन समर टाईम"}
+            lg{"अमाज़ोन टाईम"}
+            ls{"अमाज़ोन स्टैंडर्ड टाईम"}
         }
         "meta:America_Central"{
-            ld{"साहा आमेरिकानि मिरु सानारि सम"}
-            lg{"साहा आमेरिकानि मिरु सम"}
-            ls{"साहा आमेरिकानि मिरु मानथाखोआरि सम"}
+            ld{"सैंट्रल अमरिका डेलाईट टाईम"}
+            lg{"सैंट्रल अमरिका टाईम"}
+            ls{"सैंट्रल अमरिका स्टैंडर्ड टाईम"}
         }
         "meta:America_Eastern"{
-            ld{"साहा आमेरिकानि सानजायारि सानारि सम"}
-            lg{"साहा आमेरिकानि सानजायारि सम"}
-            ls{"साहा आमेरिकानि सानजायारि थाखोआरि सम"}
+            ld{"ईस्टर्न अमरिका डेलाईट टाईम"}
+            lg{"ईस्टर्न अमरिका टाईम"}
+            ls{"ईस्टर्न अमरिका स्टैंडर्ड टाईम"}
         }
         "meta:America_Mountain"{
-            ld{"साहा आमोरिकानि हाजोमायारि सानारि सम"}
-            lg{"साहा आमेरिकानि हाजोमायारि सम"}
-            ls{"साहा आमेरिकानि हाजोमायारि थाखोआरि सम"}
+            ld{"अमरिका माऊन्टन डेलाईट टाईम"}
+            lg{"अमरिका माऊन्टन टाईम"}
+            ls{"अमरिका माऊन्टन स्टैंडर्ड टाईम"}
         }
         "meta:America_Pacific"{
-            ld{"साहा आमेरिकानि पेसिफिक सानारि सम"}
-            lg{"साहा आमेरिकानि पेसिफिक सम"}
-            ls{"साहा आमेरिकानि पेसिफिक थाखोआरि सम"}
+            ld{"पैसीफीक डेलाईट टाईम"}
+            lg{"पैसीफीक टाईम"}
+            ls{"पैसीफीक स्टैंडर्ड टाईम"}
         }
         "meta:Anadyr"{
             ld{"अनादीर समर टाईम"}
-            lg{"आनादीर सम"}
+            lg{"अनादीर टाईम"}
             ls{"अनादीर स्टैंडर्ड टाईम"}
-        }
-        "meta:Apia"{
-            ld{"आपिया सान सम"}
-            lg{"आपिया सम"}
-            ls{"आपिया थाखोआरि सम"}
         }
         "meta:Aqtau"{
             ld{"अक़्टाऊ समर टाईम"}
-            lg{"अक्टाऊ सम"}
+            lg{"अक़्टाऊ टाईम"}
             ls{"अक़्टाऊ स्टैंडर्ड टाईम"}
         }
         "meta:Aqtobe"{
             ld{"अक़्टोबे समर टाईम"}
-            lg{"आक्त’ब सम"}
+            lg{"अक़्टोबे टाईम"}
             ls{"अक़्टोबे स्टैंडर्ड टाईम"}
         }
         "meta:Arabian"{
-            ld{"आराबीयान सानारि सम"}
-            lg{"आराबीयान सम"}
-            ls{"आराबीयान थाखोआरि सम"}
+            ld{"अरबी डेलाईट टाईम"}
+            lg{"अरबी टाईम"}
+            ls{"अरबी स्टैंडर्ड टाईम"}
         }
         "meta:Argentina"{
-            ld{"आर्जेन्टिना दैज्लां सम"}
-            lg{"आर्जेन्टिना सम"}
-            ls{"आर्जेन्टिना थाखोआरि सम"}
+            ld{"अर्जण्टिना समर टाईम"}
+            lg{"अर्जनटिना टाईम"}
+            ls{"अर्जनटिना स्टैंडर्ड टाईम"}
         }
         "meta:Argentina_Western"{
-            ld{"सोनाब आर्जेन्टिना दैज्लां सम"}
-            lg{"सोनाब आर्जेन्टिना सम"}
-            ls{"सोनाब आर्जेन्टिना थाखोआरि सम"}
+            ld{"पश्चीम अर्जण्टिना समर टाईम"}
+            lg{"पश्चीम अर्जण्टिना टाईम"}
+            ls{"पश्चीम अर्जण्टिना स्टैंडर्ड टाईम"}
         }
         "meta:Armenia"{
-            ld{"आर्मेनिया दैज्लां सम"}
-            lg{"आर्मेनिया सम"}
-            ls{"आर्मेनिया थाखोआरि सम"}
+            ld{"आरमीनी समर टाईम"}
+            lg{"आरमीनी टाईम"}
+            ls{"आरमीनी स्टैंडर्ड टाईम"}
         }
         "meta:Atlantic"{
-            ld{"आटलान्टिक सानारि सम"}
-            lg{"आटलान्टिक सम"}
-            ls{"आटलान्टिक थाखोआरि सम"}
+            ld{"अटलांटीक डेलाईट टाईम"}
+            lg{"अटलांटीक टाईम"}
+            ls{"अटलांटीक स्टैंडर्ड टाईम"}
         }
         "meta:Australia_Central"{
-            ld{"अ’स्ट्रेलिया मिरु सानारि सम"}
-            lg{"मिरु अ’स्ट्रेलिया सम"}
-            ls{"अ’स्ट्रेलियानि मिरु थाखोआरि सम"}
+            ld{"मध्य ओस्ट्रेलिया डेलाईट टाईम"}
+            lg{"ओस्ट्रेलिया टाईम"}
+            ls{"मध्य ओस्ट्रेलिया स्टैंडर्ड टाईम"}
         }
         "meta:Australia_CentralWestern"{
-            ld{"अस्ट्रेलियानि मिरु सोनाबारि सानारि सम"}
-            lg{"अस्ट्रेलियानि मिरु सोनाबारि सम"}
-            ls{"अस्ट्रेलियानि मिरु सोनाबारि थाखोआरि सम"}
+            ld{"मध्य-पश्चीम ओस्ट्रेलिया डेलाईट टाईम"}
+            lg{"मध्य-पश्चीम ओस्ट्रेलिया टाईम"}
+            ls{"मध्य-पश्चीम ओस्ट्रेलिया स्टैंडर्ड टाईम"}
         }
         "meta:Australia_Eastern"{
-            ld{"अस्ट्रेलियानि सानजायारि सानारि सम"}
-            lg{"सानजायारि अस्ट्रेलिया सम"}
-            ls{"अस्ट्रेलियानि सानजायारि थाखोआरि सम"}
+            ld{"पूर्वी ओस्ट्रेलिया डेलाईट टाईम"}
+            lg{"पूर्वी ओस्ट्रेलिया टाईम"}
+            ls{"पूर्वी ओस्ट्रेलिया स्टैंडर्ड टाईम"}
         }
         "meta:Australia_Western"{
-            ld{"अस्ट्रेलियानि सोनाबारि सानारि सम"}
-            lg{"सोनाबारि अस्ट्रेलिया सम"}
-            ls{"अस्ट्रेलियानि सोनाबारि थाखोआरि सम"}
+            ld{"दक्षिण ओस्ट्रेलिया डेलाईट टाईम"}
+            lg{"दक्षिण ओस्ट्रेलिया टाईम"}
+            ls{"दक्षिण ओस्ट्रेलिया स्टैंडर्ड टाईम"}
         }
         "meta:Azerbaijan"{
-            ld{"आजारबाईजान दैज्लां सम"}
-            lg{"आजारबाईजान सम"}
-            ls{"आजारबाईजान थाखोआरि सम"}
+            ld{"आज़रबैजान समर टाईम"}
+            lg{"आज़रबैजान टाईम"}
+            ls{"आज़रबैजान स्टैंडर्ड टाईम"}
         }
         "meta:Azores"{
-            ld{"आज’र्सनि दैज्लां सम"}
-            lg{"आज’र्सनि सम"}
-            ls{"आज’र्सनि थाखोआरि सम"}
+            ld{"आज़ोर समर टाईम"}
+            lg{"आज़ोर टाईम"}
+            ls{"आज़ोर स्टैंडर्ड टाईम"}
         }
         "meta:Bangladesh"{
-            ld{"बांलादेश दैज्लां सम"}
-            lg{"बांलादेश सम"}
-            ls{"बांलादेश थाखोआरि सम"}
+            ld{"बांगलादेश समर टाईम"}
+            lg{"बांगलादेश टाईम"}
+            ls{"बांगलादेश स्टैंडर्ड टाईम"}
         }
         "meta:Bhutan"{
-            ls{"भुटान सम"}
+            ls{"भुटान स्टैंडर्ड टाईम"}
         }
         "meta:Bolivia"{
-            ls{"बलिभिया सम"}
+            ls{"बोलिविया स्टैंडर्ड टाईम"}
         }
         "meta:Brasilia"{
-            ld{"ब्राजीलिया दैज्लां सम"}
-            lg{"ब्राजीलिया सम"}
-            ls{"ब्राजीलिया थाखोआरि सम"}
+            ld{"ब्राज़ीलिया समर टाईम"}
+            lg{"ब्राज़ीलिया टाईम"}
+            ls{"ब्राज़ीलिया स्टैंडर्ड टाईम"}
         }
         "meta:Brunei"{
             ls{"ब्रुनेई दर उस सलाम स्टैंडर्ड टाईम"}
         }
         "meta:Cape_Verde"{
-            ld{"केप भेर्दे दैज्लां सम"}
-            lg{"केप भेर्दे सम"}
-            ls{"केप भेर्दे थाखोआरि सम"}
+            ld{"काप वेर्दे समर टाईम"}
+            lg{"काप वेर्दे टाईम"}
+            ls{"काप वेर्दे स्टैंडर्ड टाईम"}
         }
         "meta:Chamorro"{
-            ls{"चाम’र्र’ थाखोआरि सम"}
+            ls{"चामरो स्टैंडर्ड टाईम"}
         }
         "meta:Chatham"{
-            ld{"चेथाम सानारि सम"}
-            lg{"चेथाम सम"}
-            ls{"चेथाम थाखोआरि सम"}
+            ld{"चैथम डेलाईट टाईम"}
+            lg{"चैथम टाईम"}
+            ls{"चैथम स्टैंडर्ड टाईम"}
         }
         "meta:Chile"{
-            ld{"चीले दैज्लां सम"}
-            lg{"चीले सम"}
-            ls{"चीले थाखोआरि सम"}
+            ld{"चीली समर टाईम"}
+            lg{"चीली टाईम"}
+            ls{"चीली स्टैंडर्ड टाईम"}
         }
         "meta:China"{
-            ld{"चाईना सानारि सम"}
-            lg{"चाईना सम"}
-            ls{"चाईना थाखोआरि सम"}
+            ld{"चाईना डेलाईट टाईम"}
+            lg{"चाईना टाईम"}
+            ls{"चाईना स्टैंडर्ड टाईम"}
         }
         "meta:Choibalsan"{
-            ld{"च’इबालसान दैज्लां सम"}
-            lg{"च’इबालसान सम"}
-            ls{"च’इबालसान थाखोआरि सम"}
+            ld{"चोईबालसान समर टाईम"}
+            lg{"चोईबालसान टाईम"}
+            ls{"चोईबालसान स्टैंडर्ड टाईम"}
         }
         "meta:Christmas"{
-            ls{"ख्रीस्टमास द्वीप सम"}
+            ls{"क्रीसमस स्टैंडर्ड टाईम"}
         }
         "meta:Cocos"{
-            ls{"कक’स द्वीपफोरनि सम"}
+            ls{"कोको द्वीप स्टैंडर्ड टाईम"}
         }
         "meta:Colombia"{
-            ld{"कलम्बिया दैज्लां सम"}
-            lg{"कलम्बिया सम"}
-            ls{"कलम्बिया थाखोआरि सम"}
+            ld{"कोलंबिया समर टाईम"}
+            lg{"कोलंबिया टाईम"}
+            ls{"कोलंबिया स्टैंडर्ड टाईम"}
         }
         "meta:Cook"{
-            ld{"कुक द्वीपफोरनि खावसे दैज्लां सम"}
-            lg{"कुक द्वीपफोरनि सम"}
-            ls{"कुक द्वीपफोरनि थाखोआरि सम"}
+            ld{"कुक द्वीप अर्ध समर टाईम"}
+            lg{"कुक द्वीप टाईम"}
+            ls{"कुक द्वीप स्टैंडर्ड टाईम"}
         }
         "meta:Cuba"{
-            ld{"किउबा सानारि सम"}
-            lg{"किउबा सम"}
-            ls{"किउबा थाखोआरि सम"}
+            ld{"क्युबा डेलाईट टाईम"}
+            lg{"क्युबा टाईम"}
+            ls{"क्युबा स्टैंडर्ड टाईम"}
         }
         "meta:Davis"{
-            ls{"डेभिस सम"}
+            ls{"डेवीस स्टैंडर्ड टाईम"}
         }
         "meta:DumontDUrville"{
-            ls{"डुमन्त-डीआर्भील सम"}
+            ls{"ड्युमों ड्युरवील स्टैंडर्ड टाईम"}
         }
         "meta:East_Timor"{
             ls{"ईस्ट टीमोर स्टैंडर्ड टाईम"}
         }
         "meta:Easter"{
-            ld{"सानजायारि द्वीप दैज्लां सम"}
-            lg{"सानजायारि द्वीप सम"}
-            ls{"सानजायारि द्वीप थाखोआरि सम"}
+            ld{"ईस्टर आईलंड समर टाईम"}
+            lg{"ईस्टर आईलंड टाईम"}
+            ls{"ईस्टर आईलंड स्टैंडर्ड टाईम"}
         }
         "meta:Ecuador"{
-            ls{"एकुवाडर सम"}
+            ls{"एक्वाडौर स्टैंडर्ड टाईम"}
         }
         "meta:Europe_Central"{
-            ld{"मिरु युर’पनि दैज्लां सम"}
-            lg{"मिरु युर’पनि सम"}
-            ls{"मिरु युर’पनि थाखोआरि सम"}
+            ld{"मध्य यूरोप समर टाईम"}
+            lg{"मध्य यूरोप टाईम"}
+            ls{"मध्य यूरोप स्टैंडर्ड टाईम"}
         }
         "meta:Europe_Eastern"{
-            ld{"सानजायारि युर’पनि दैज्लां सम"}
-            lg{"सानजायारि युर’पनि सम"}
-            ls{"सानजायारि युर’पनि थाखोआरि सम"}
-        }
-        "meta:Europe_Further_Eastern"{
-            ls{"गोजानसिन-सानजायारि युर’पनि सम"}
+            ld{"ईस्टर्न यूरोप समर टाईम"}
+            lg{"ईस्टर्न यूरोप टाईम"}
+            ls{"ईस्टर्न यूरोप स्टैंडर्ड टाईम"}
         }
         "meta:Europe_Western"{
-            ld{"सोनाब युर’पनि दैज्लां सम"}
-            lg{"सोनाब युर’पनि सम"}
-            ls{"सोनाब युर’पनि थाखोआरि सम"}
+            ld{"वेस्टर्न यूरोप समर टाईम"}
+            lg{"वेस्टर्न यूरोप टाईम"}
+            ls{"वेस्टर्न यूरोप स्टैंडर्ड टाईम"}
         }
         "meta:Falkland"{
-            ld{"फकलेण्ड द्वीपफोरनि दैज्लां सम"}
-            lg{"फकलेण्ड द्वीपफोरनि सम"}
-            ls{"फकलेण्ड द्वीपफोरनि थाखोआरि सम"}
+            ld{"फ़ाल्कलैण्ड समर टाईम"}
+            lg{"फ़ाल्कलैण्ड टाईम"}
+            ls{"फ़ाल्कलैण्ड स्टैंडर्ड टाईम"}
         }
         "meta:Fiji"{
-            ld{"फीजी दैज्लां सम"}
-            lg{"फीजी सम"}
-            ls{"फीजी थाखोआरि सम"}
+            ld{"फीजी समर टाईम"}
+            lg{"फीजी टाईम"}
+            ls{"फीजी स्टैंडर्ड टाईम"}
         }
         "meta:French_Guiana"{
-            ls{"फ्रेन्च गुईयाना सम"}
+            ls{"फ्रान्सीसी गुयाना स्टैंडर्ड टाईम"}
         }
         "meta:French_Southern"{
-            ls{"फ्रेन्च खोलायारि आरो एन्टार्कटिक सम"}
+            ls{"दक्षिण फ्रान्सीसी स्टैंडर्ड टाईम"}
         }
         "meta:GMT"{
-            ls{"ग्रिनवीच गेजेरारि सम"}
+            ls{"ग्रीनीच स्टैंडर्ड टाईम"}
         }
         "meta:Galapagos"{
-            ls{"गालापाग’स सम"}
+            ls{"गालापागोस स्टैंडर्ड टाईम"}
         }
         "meta:Gambier"{
-            ls{"गाम्बियेर सम"}
+            ls{"गांबिये स्टैंडर्ड टाईम"}
         }
         "meta:Georgia"{
-            ld{"जर्जिया दैज्लां सम"}
-            lg{"जर्जिया सम"}
-            ls{"जर्जिया थाखोआरि सम"}
+            ld{"जोर्जिया समर टाईम"}
+            lg{"जोर्जिया टाईम"}
+            ls{"जोर्जिया स्टैंडर्ड टाईम"}
         }
         "meta:Gilbert_Islands"{
-            ls{"गीलबार्ट द्वीपफोरनि सम"}
+            ls{"गीलबर्ट द्वीप स्टैंडर्ड टाईम"}
         }
         "meta:Greenland_Eastern"{
-            ld{"सानडजा ग्रीनलेण्ड दैज्लां सम"}
-            lg{"सानजा ग्रीनलेण्ड सम"}
-            ls{"सानजा ग्रीनलेण्ड थाखोआरि सम"}
+            ld{"ग्रीनलैण्ड ईस्टर्न समर टाईम"}
+            lg{"ग्रीनलैण्ड ईस्टर्न टाईम"}
+            ls{"ग्रीनलैण्ड ईस्टर्न स्टैंडर्ड टाईम"}
         }
         "meta:Greenland_Western"{
-            ld{"सेनाब ग्रीनलेण्ड दैज्लां सम"}
-            lg{"सोनाब ग्रीनलेण्ड सम"}
-            ls{"सोनाब ग्रीनलेण्ड थाखोआरि सम"}
+            ld{"ग्रीनलैण्ड वेस्टर्न समर टाईम"}
+            lg{"ग्रीनलैण्ड वेस्टर्न टाईम"}
+            ls{"ग्रीनलैण्ड वेस्टर्न स्टैंडर्ड टाईम"}
         }
         "meta:Guam"{
             ls{"गुआम स्टैंडर्ड टाईम"}
         }
         "meta:Gulf"{
-            ls{"गाल्फ थाखोआरि सम"}
+            ls{"गल्फ़ स्टैंडर्ड टाईम"}
         }
         "meta:Guyana"{
-            ls{"गुयाना सम"}
+            ls{"गुयाना स्टैंडर्ड टाईम"}
         }
         "meta:Hawaii_Aleutian"{
-            ld{"हावाई-एल्युतियान सानारि सम"}
-            lg{"हावाई-एल्युतियान सम"}
-            ls{"हावाई-एल्युतियान थाखोआरि सम"}
+            ld{"हवाई आलटन डेलाईट टाईम"}
+            lg{"हवाई आलटन टाईम"}
+            ls{"हवाई आलटन स्टैंडर्ड टाईम"}
         }
         "meta:Hong_Kong"{
-            ld{"हंकं दैज्लां सम"}
-            lg{"हंकं सम"}
-            ls{"हंकं थाखोआरि सम"}
+            ld{"हाँगकॉंग समर टाईम"}
+            lg{"हाँगकॉंग टाईम"}
+            ls{"हाँगकॉंग स्टैंडर्ड टाईम"}
         }
         "meta:Hovd"{
-            ld{"ह’भ्द दैज्लां सम"}
-            lg{"ह’भ्द सम"}
-            ls{"ह’भ्द थाखोआरि सम"}
+            ld{"होव्ड समर टाईम"}
+            lg{"होव्ड टाईम"}
+            ls{"होव्ड स्टैंडर्ड टाईम"}
         }
         "meta:India"{
-            ls{"भारतारि थाखोआरि सम"}
+            ls{"भारतीय स्टैंडर्ड टाईम"}
             ss{"IST"}
         }
         "meta:Indian_Ocean"{
-            ls{"भारत लैथोमायारि सम"}
+            ls{"भारतीय महासगर स्टैंडर्ड टाईम"}
         }
         "meta:Indochina"{
             ls{"ईंडो चइना स्टैंडर्ड टाईम"}
@@ -1587,200 +1441,190 @@ brx{
             ls{"वेस्टर्न ईंडोनीशिया स्टैंडर्ड टाईम"}
         }
         "meta:Iran"{
-            ld{"इरान सानारि सम"}
-            lg{"इरान सम"}
-            ls{"इरान थाखोआरि सम"}
+            ld{"ईरान डेलाईट टाईम"}
+            lg{"ईरान टाईम"}
+            ls{"ईरान स्टैंडर्ड टाईम"}
         }
         "meta:Irkutsk"{
-            ld{"ईर्कुत्स्क दैज्लांं सम"}
-            lg{"ईर्कुत्स्क सम"}
-            ls{"ईर्कुत्स्क थाखोआरि सम"}
+            ld{"ईरकुर्त्स्क समर टाईम"}
+            lg{"ईरकुर्त्स्क टाईम"}
+            ls{"ईरकुर्त्स्क स्टैंडर्ड टाईम"}
         }
         "meta:Israel"{
-            ld{"इज्राईल सानारि सम"}
-            lg{"इज्राईल सम"}
-            ls{"इज्राईल थाखोआरि सम"}
+            ld{"ईस्राइल डेलाईट टाईम"}
+            lg{"ईस्राइल टाईम"}
+            ls{"ईस्राइल स्टैंडर्ड टाईम"}
         }
         "meta:Japan"{
-            ld{"जापान सानारि सम"}
-            lg{"जापान सम"}
-            ls{"जापान थाखोआरि सम"}
+            ld{"जपान डेलाईट टाईम"}
+            lg{"जपान टाईम"}
+            ls{"जपान स्टैंडर्ड टाईम"}
         }
         "meta:Kamchatka"{
             ld{"पेत्रोपावलोस्क कामचटका समर टाईम"}
-            lg{"पेत्र’पाभ्ल’भ्स्क-कामचात्स्कि सम"}
+            lg{"पेत्रोपावलोस्क कामचटका टाईम"}
             ls{"पेत्रोपावलोस्क कामचटका स्टैंडर्ड टाईम"}
         }
         "meta:Kazakhstan_Eastern"{
-            ls{"सानजा काजाखस्तान सम"}
+            ls{"क़ज़ाख़स्तान टाईम"}
         }
         "meta:Kazakhstan_Western"{
-            ls{"सोनाब काजाखस्तान सम"}
+            ls{"वेस्टर्न क़ज़ाख़स्तान टाईम"}
         }
         "meta:Korea"{
-            ld{"क’रिया सानारि सम"}
-            lg{"क’रिया सम"}
-            ls{"क’रिया थाखोआरि सम"}
+            ld{"कोरिया डेलाईट टाईम"}
+            lg{"कोरिया टाईम"}
+            ls{"कोरिया स्टैंडर्ड टाईम"}
         }
         "meta:Kosrae"{
-            ls{"कस्रे सम"}
+            ls{"कोसरी स्टैंडर्ड टाईम"}
         }
         "meta:Krasnoyarsk"{
-            ld{"क्रास्न’यार्स्क दैज्लांं सम"}
-            lg{"क्रास्न’यार्स्क सम"}
-            ls{"क्रास्न’यार्स्क थाखोआरि सम"}
+            ld{"क्रासनोयार्स्क समर टाईम"}
+            lg{"क्रासनोयार्स्क टाईम"}
+            ls{"क्रासनोयार्स्क स्टैंडर्ड टाईम"}
         }
         "meta:Kyrgystan"{
-            ls{"कीर्गीस्तान सम"}
+            ls{"क़ीर्ग़स्तान स्टैंडर्ड टाईम"}
         }
         "meta:Lanka"{
             ls{"लंका स्टैंडर्ड टाईम"}
         }
         "meta:Line_Islands"{
-            ls{"लाईन द्वीपफोरनि सम"}
+            ls{"लाईन द्वीप स्टैंडर्ड टाईम"}
         }
         "meta:Lord_Howe"{
-            ld{"लर्ड हावि सानारि सम"}
-            lg{"लर्ड हावि सम"}
-            ls{"लर्ड हावि थाखोआरि सम"}
+            ld{"लार्ड़ होव डेलाईट टाईम"}
+            lg{"लार्ड़ होव टाईम"}
+            ls{"लार्ड़ होव स्टैंडर्ड टाईम"}
         }
         "meta:Macau"{
             ld{"माकाऊ समर टाईम"}
-            lg{"माकाऊ सम"}
+            lg{"माकाऊ टाईम"}
             ls{"माकाऊ स्टैंडर्ड टाईम"}
         }
         "meta:Magadan"{
-            ld{"मागादान दैज्लां सम"}
-            lg{"मागादान सम"}
-            ls{"मागादान थाखोआरि सम"}
+            ld{"मगदन समर टाईम"}
+            lg{"मगदन टाईम"}
+            ls{"मगदन स्टैंडर्ड टाईम"}
         }
         "meta:Malaysia"{
             ls{"मलेशिया स्टैंडर्ड टाईम"}
         }
         "meta:Maldives"{
-            ls{"मालदीभ्स सम"}
+            ls{"मालदीव स्टैंडर्ड टाईम"}
         }
         "meta:Marquesas"{
-            ls{"मार्केसास सम"}
+            ls{"मार्केज़ास स्टैंडर्ड टाईम"}
         }
         "meta:Marshall_Islands"{
-            ls{"मार्शेल द्वीपफोरनि सम"}
+            ls{"मार्शल र्स्टैंडर्ड टाईम"}
         }
         "meta:Mauritius"{
-            ld{"म’रिशियासनि दैज्लां सम"}
-            lg{"म’रिशियासनि सम"}
-            ls{"म’रिशियासनि थाखोआरि सम"}
+            ld{"मॉरिशीयस समर टाईम"}
+            lg{"मॉरिशीयस टाईम"}
+            ls{"मॉरिशीयस स्टैंडर्ड टाईम"}
         }
         "meta:Mawson"{
-            ls{"मौसन सम"}
-        }
-        "meta:Mexico_Pacific"{
-            ld{"मेक्सिक’नि पेसिफिक सानारि सम"}
-            lg{"मेक्सिक’नि पेसिफिक सम"}
-            ls{"मेक्सिक’नि पेसिफिक थाखोआरि सम"}
+            ls{"मॉसन स्टैंडर्ड टाईम"}
         }
         "meta:Mongolia"{
-            ld{"उलानबातार दैज्लां सम"}
-            lg{"उलानबातार सम"}
-            ls{"उलानबातार थाखोआरि सम"}
+            ld{"मँगोलिया समर टाईम"}
+            lg{"मँगोलिया टाईम"}
+            ls{"मँगोलिया स्टैंडर्ड टाईम"}
         }
         "meta:Moscow"{
-            ld{"मस्कौ दैज्लां सम"}
-            lg{"मस्कौ सम"}
-            ls{"मस्कौ थाखोआरि सम"}
+            ld{"मॉस्को समर टाईम"}
+            lg{"मॉस्को टाईम"}
+            ls{"मॉस्को स्टैंडर्ड टाईम"}
         }
         "meta:Myanmar"{
             ls{"म्यानमार स्टैंडर्ड टाईम"}
         }
         "meta:Nauru"{
-            ls{"नाऊरु सम"}
+            ls{"नाऊरु स्टैंडर्ड टाईम"}
         }
         "meta:Nepal"{
-            ls{"नेपाल सम"}
+            ls{"नेपाल स्टैंडर्ड टाईम"}
         }
         "meta:New_Caledonia"{
-            ld{"गोदान केलेडनिया दैज्लां सम"}
-            lg{"गोदान केलेडनिया सम"}
-            ls{"गोदान केलेडनिया थाखोआरि सम"}
+            ld{"न्यु कैलेडोनिया समर टाईम"}
+            lg{"न्यु कैलेडोनिया टाईम"}
+            ls{"न्यु कैलेडोनिया स्टैंडर्ड टाईम"}
         }
         "meta:New_Zealand"{
-            ld{"निउजिलेण्ड सानारि सम"}
-            lg{"निउजिलेण्ड सम"}
-            ls{"निउजिलेण्ड थाखोआरि सम"}
+            ld{"न्युज़ीलैण्ड डेलाईट टाईम"}
+            lg{"न्युज़ीलैण्ड टाईम"}
+            ls{"न्युज़ीलैण्ड स्टैंडर्ड टाईम"}
         }
         "meta:Newfoundland"{
-            ld{"निउफाउन्दलेन्द सानारि सम"}
-            lg{"निउफाउन्दलेन्द सम"}
-            ls{"निउफाउन्दलेन्द थाखोआरि सम"}
+            ld{"न्युफाऊंडलैण्ड डेलाईट टाईम"}
+            lg{"न्युफाऊंडलैण्ड टाईम"}
+            ls{"न्युफाऊंडलैण्ड स्टैंडर्ड टाईम"}
         }
         "meta:Niue"{
-            ls{"नीऊए सम"}
+            ls{"नीऊई स्टैंडर्ड टाईम"}
         }
         "meta:Norfolk"{
-            ld{"नरफ’क द्वीप सानारि सम"}
-            lg{"नरफ’क द्वीप सम"}
-            ls{"नरफ’क द्वीप थाखोआरि सम"}
+            ls{"नॉरफोक स्टैंडर्ड टाईम"}
         }
         "meta:Noronha"{
-            ld{"फेरनान्द’ दे नर’न्हा दैज्लां सम"}
-            lg{"फेरनान्द’ दे नर’न्हा सम"}
-            ls{"फेरनान्द’ दे नर’न्हा थाखोआरि सम"}
+            ld{"फेरनान्दो द नोरोन्हा समर टाईम"}
+            lg{"फेरनान्दो द नोरोन्हा टाईम"}
+            ls{"फेरनान्दो द नोरोन्हा स्टैंडर्ड टाईम"}
         }
         "meta:North_Mariana"{
             ls{"नॉर्थ मारिआना स्टैंडर्ड टाईम"}
         }
         "meta:Novosibirsk"{
-            ld{"नभ’सिबिर्स्क दैज्लां सम"}
-            lg{"नभ’सिबिर्स्क सम"}
-            ls{"नभ’सिबिर्स्क थाखोआरि सम"}
+            ld{"नोवोसीबीर्स्क समर टाईम"}
+            lg{"नोवोसीबीर्स्क टाईम"}
+            ls{"नोवोसीबीर्स्क स्टैंडर्ड टाईम"}
         }
         "meta:Omsk"{
-            ld{"अम्स्क दैज्लां सम"}
-            lg{"अम्स्क सम"}
-            ls{"अम्स्क थाखोआरि सम"}
+            ld{"ओम्स्क समर टाईम"}
+            lg{"ओम्स्क टाईम"}
+            ls{"ओम्स्क स्टैंडर्ड टाईम"}
         }
         "meta:Pakistan"{
-            ld{"पाकिस्तान दैज्लां सम"}
-            lg{"पाकिस्तान सम"}
-            ls{"पाकिस्तान थाखोआरि सम"}
+            ld{"पाकिस्तान समर टाईम"}
+            lg{"पाकिस्तान टाईम"}
+            ls{"पाकिस्तान स्टैंडर्ड टाईम"}
         }
         "meta:Palau"{
-            ls{"पालाउ सम"}
+            ls{"पलाऊ स्टैंडर्ड टाईम"}
         }
         "meta:Papua_New_Guinea"{
-            ls{"पापुआ निउ गिनी सम"}
+            ls{"पापुआ न्यु गीनी स्टैंडर्ड टाईम"}
         }
         "meta:Paraguay"{
-            ld{"पारागुवे दैज्लां सम"}
-            lg{"पारागुवे सम"}
-            ls{"पारागुवे थाखोआरि सम"}
+            ld{"पारागुए समर टाईम"}
+            lg{"पारागुए टाईम"}
+            ls{"पारागुए स्टैंडर्ड टाईम"}
         }
         "meta:Peru"{
-            ld{"पेरु दैज्लां सम"}
-            lg{"पेरु सम"}
-            ls{"पेरु थाखोआरि सम"}
+            ld{"पेरु समर टाईम"}
+            lg{"पेरु टाईम"}
+            ls{"पेरु स्टैंडर्ड टाईम"}
         }
         "meta:Philippines"{
             ld{"फीलीपीन्स समर टाईम"}
-            lg{"फिलीपीन्स सम"}
+            lg{"फीलीपीन्स टाईम"}
             ls{"फीलीपीन्स स्टैंडर्ड टाईम"}
         }
         "meta:Phoenix_Islands"{
-            ls{"फनीक्स द्वीपफोरनि सम"}
+            ls{"फीनीक्स द्वीप स्टैंडर्ड टाईम"}
         }
         "meta:Pierre_Miquelon"{
-            ld{"सैन्ट पियेर आरो मिक्वेलन सानारि सम"}
-            lg{"सैन्ट पियेर आरो मिक्वेलन सम"}
-            ls{"सैन्ट पियेर आरो मिक्वेलन थाखोआरि सम"}
+            ld{"सेँ पीयॅर एवं मीकलों डेलाईट टाईम"}
+            lg{"सेँ पीयॅर एवं मीकलों टाईम"}
+            ls{"सेँ पीयॅर एवं मीकलों स्टैंडर्ड टाईम"}
         }
         "meta:Pitcairn"{
-            ls{"पीटकैर्न सम"}
+            ls{"पीटकैर्न स्टैंडर्ड टाईम"}
         }
         "meta:Ponape"{
-            ls{"पनापे सम"}
-        }
-        "meta:Pyongyang"{
-            ls{"प्यंयां सम"}
+            ls{"पोनापे (पोह्नपेई) स्टैंडर्ड टाईम"}
         }
         "meta:Qyzylorda"{
             ld{"क़ीज़ीलोर्डा समर टाईम"}
@@ -1788,15 +1632,15 @@ brx{
             ls{"क़ीज़ीलोर्डा स्टैंडर्ड टाईम"}
         }
         "meta:Reunion"{
-            ls{"रियूनियन सम"}
+            ls{"रियूनियन स्टैंडर्ड टाईम"}
         }
         "meta:Rothera"{
-            ls{"रथेरा सम"}
+            ls{"रोथेरा स्टैंडर्ड टाईम"}
         }
         "meta:Sakhalin"{
-            ld{"साखालिन दैज्लां सम"}
-            lg{"साखालिन सम"}
-            ls{"साखालिन थाखोआरि सम"}
+            ld{"सख़ालीन समर टाईम"}
+            lg{"सख़ालीन टाईम"}
+            ls{"सख़ालीन स्टैंडर्ड टाईम"}
         }
         "meta:Samara"{
             ld{"समारा समर टाईम"}
@@ -1804,112 +1648,99 @@ brx{
             ls{"समारा स्टैंडर्ड टाईम"}
         }
         "meta:Samoa"{
-            ld{"साम’वा सानारि सम"}
-            lg{"साम’वा सम"}
-            ls{"साम’वा थाखोआरि सम"}
+            ld{"समोआ समर टाईम"}
+            lg{"समोआ टाईम"}
+            ls{"समोआ स्टैंडर्ड टाईम"}
         }
         "meta:Seychelles"{
-            ls{"सेशेल्स सम"}
+            ls{"सेशेल्स स्टैंडर्ड टाईम"}
         }
         "meta:Singapore"{
             ls{"सींगापुर स्टैंडर्ड टाईम"}
         }
         "meta:Solomon"{
-            ls{"सल’मन द्वीपफोरनि सम"}
+            ls{"सॉलॉमन स्टैंडर्ड टाईम"}
         }
         "meta:South_Georgia"{
-            ls{"खोला जर्जिया सम"}
+            ls{"साऊथ जॉर्जिया स्टैंडर्ड टाईम"}
         }
         "meta:Suriname"{
-            ls{"सुरीनाम सम"}
+            ls{"सुरीनाम स्टैंडर्ड टाईम"}
         }
         "meta:Syowa"{
-            ls{"सीअवा सम"}
+            ls{"सीओवा स्टैंडर्ड टाईम"}
         }
         "meta:Tahiti"{
-            ls{"टाहिटी सम"}
-        }
-        "meta:Taipei"{
-            ld{"ताईपेइ सानारि सम"}
-            lg{"ताईपेइ सम"}
-            ls{"ताईपेइ थाखोआरि सम"}
+            ls{"टाहिटी स्टैंडर्ड टाईम"}
         }
         "meta:Tajikistan"{
-            ls{"ताजिकिस्तान सम"}
+            ls{"ताजीक़ीस्तान स्टैंडर्ड टाईम"}
         }
         "meta:Tokelau"{
-            ls{"टकेलौ सम"}
+            ls{"टोकेलौ स्टैंडर्ड टाईम"}
         }
         "meta:Tonga"{
-            ld{"टंगा दैज्लां सम"}
-            lg{"टंगा सम"}
-            ls{"टंगा थाखोआरि सम"}
+            ld{"टॉंगा समर टाईम"}
+            lg{"टॉंगा टाईम"}
+            ls{"टॉंगा स्टैंडर्ड टाईम"}
         }
         "meta:Truk"{
-            ls{"चूक सम"}
+            ls{"ट्रुक स्टैंडर्ड टाईम"}
         }
         "meta:Turkmenistan"{
-            ld{"तुर्कमेनीस्तान दैज्लां सम"}
-            lg{"तुर्कमेनीस्तान सम"}
-            ls{"तुर्कमेनीस्तान थाखोआरि सम"}
+            ld{"तुर्कमेनीस्तान समर टाईम"}
+            lg{"तुर्कमेनीस्तान टाईम"}
+            ls{"तुर्कमेनीस्तान स्टैंडर्ड टाईम"}
         }
         "meta:Tuvalu"{
-            ls{"तुभालु सम"}
+            ls{"तुवालु स्टैंडर्ड टाईम"}
         }
         "meta:Uruguay"{
-            ld{"उरुगुवे दैज्लां सम"}
-            lg{"उरुगुवे सम"}
-            ls{"उरुगुवे थाखोआरि सम"}
+            ld{"ऊरुगुए समर टाईम"}
+            lg{"ऊरुगुए टाईम"}
+            ls{"ऊरुगुए स्टैंडर्ड टाईम"}
         }
         "meta:Uzbekistan"{
-            ld{"उजबेकिस्तान दैज्लां सम"}
-            lg{"उजबेकिस्तान सम"}
-            ls{"उजबेकिस्तान थाखोआरि सम"}
+            ld{"ऊज़्बेकिस्तान समर टाईम"}
+            lg{"ऊज़्बेकिस्तान टाईम"}
+            ls{"ऊज़्बेकिस्तान स्टैंडर्ड टाईम"}
         }
         "meta:Vanuatu"{
-            ld{"वानुआटु दैज्लां सम"}
-            lg{"वानुआटु सम"}
-            ls{"वानुआटु थाखोआरि सम"}
+            ld{"वनुआटु समर टाईम"}
+            lg{"वनुआटु टाईम"}
+            ls{"वनुआटु स्टैंडर्ड टाईम"}
         }
         "meta:Venezuela"{
-            ls{"भेनेजुवेला सम"}
+            ls{"वेनेज़ुएला स्टैंडर्ड टाईम"}
         }
         "meta:Vladivostok"{
-            ld{"भ्लादिभस्त’क दैज्लां सम"}
-            lg{"भ्लादिभस्त’क सम"}
-            ls{"भ्लादिभस्त’क थाखोआरि सम"}
+            ld{"व्लादीवॉस्तॉक डेलाईट टाईम"}
+            lg{"व्लादीवॉस्तॉक टाईम"}
+            ls{"व्लादीवॉस्तॉक स्टैंडर्ड टाईम"}
         }
         "meta:Volgograd"{
-            ld{"भल्ग’ग्रेद दैज्लां सम"}
-            lg{"भल्ग’ग्रेद सम"}
-            ls{"भल्ग’ग्रेद थाखोआरि सम"}
+            ld{"वॉलगोग्राद समर टाईम"}
+            lg{"वॉलगोग्राद टाईम"}
+            ls{"वॉलगोग्राद स्टैंडर्ड टाईम"}
         }
         "meta:Vostok"{
-            ls{"भस्त’क सम"}
+            ls{"वॉस्तॉक स्टैंडर्ड टाईम"}
         }
         "meta:Wake"{
-            ls{"वैक द्वीप सम"}
+            ls{"वाके द्वीप स्टैंडर्ड टाईम"}
         }
         "meta:Wallis"{
-            ls{"वालीस आरो फुतुना सम"}
+            ls{"वालीस एवं फ़ुतुना स्टैंडर्ड टाईम"}
         }
         "meta:Yakutsk"{
-            ld{"याकुत्स्क दैज्लां सम"}
-            lg{"याकुत्स्क सम"}
-            ls{"याकुत्स्क थाखोआरि सम"}
+            ld{"याकुट्स्क समर टाईम"}
+            lg{"याकुट्स्क टाईम"}
+            ls{"याकुट्स्क स्टैंडर्ड टाईम"}
         }
         "meta:Yekaterinburg"{
-            ld{"येकातेरीनाबुर्ग दैज्लां सम"}
-            lg{"येकातेरीनाबुर्ग सम"}
-            ls{"येकातेरीनाबुर्ग थाखोआरि सम"}
+            ld{"येकातेरीनाबुर्ग समर टाईम"}
+            lg{"येकातेरीनाबुर्ग टाईम"}
+            ls{"येकातेरीनाबुर्ग स्टैंडर्ड टाईम"}
         }
-        "meta:Yukon"{
-            ls{"यूकन सम"}
-        }
-        gmtFormat{"जि.एम.ति {0}"}
-        gmtZeroFormat{"जि.एम.ति"}
-        regionFormat{"{0} सम"}
-        regionFormatDaylight{"{0} साननि सोरां सम"}
-        regionFormatStandard{"{0} थाखोआरि सम"}
     }
 }

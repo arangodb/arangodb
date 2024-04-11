@@ -76,7 +76,7 @@ public:
         if(rangeIndex<UPRV_LENGTHOF(ranges)) {
             return ranges+rangeIndex++;
         } else {
-            return nullptr;
+            return NULL;
         }
     }
 private:
@@ -123,7 +123,7 @@ Normalizer2DataBuilder::setUnicodeVersion(const char *v) {
 }
 
 Norm *Normalizer2DataBuilder::checkNormForMapping(Norm *p, UChar32 c) {
-    if(p!=nullptr) {
+    if(p!=NULL) {
         if(p->mappingType!=Norm::NONE) {
             if( overrideHandling==OVERRIDE_NONE ||
                 (overrideHandling==OVERRIDE_PREVIOUS && p->mappingPhase==phase)
@@ -135,7 +135,7 @@ Norm *Normalizer2DataBuilder::checkNormForMapping(Norm *p, UChar32 c) {
                 exit(U_INVALID_FORMAT_ERROR);
             }
             delete p->mapping;
-            p->mapping=nullptr;
+            p->mapping=NULL;
         }
         p->mappingPhase=phase;
     }
@@ -154,7 +154,7 @@ void Normalizer2DataBuilder::setCC(UChar32 c, uint8_t cc) {
 
 static UBool isWellFormed(const UnicodeString &s) {
     UErrorCode errorCode=U_ZERO_ERROR;
-    u_strToUTF8(nullptr, 0, nullptr, toUCharPtr(s.getBuffer()), s.length(), &errorCode);
+    u_strToUTF8(NULL, 0, NULL, toUCharPtr(s.getBuffer()), s.length(), &errorCode);
     return U_SUCCESS(errorCode) || errorCode==U_BUFFER_OVERFLOW_ERROR;
 }
 
@@ -213,11 +213,11 @@ void Normalizer2DataBuilder::removeMapping(UChar32 c) {
 UBool Normalizer2DataBuilder::mappingHasCompBoundaryAfter(const BuilderReorderingBuffer &buffer,
                                                           Norm::MappingType mappingType) const {
     if(buffer.isEmpty()) {
-        return false;  // Maps-to-empty-string is no boundary of any kind.
+        return FALSE;  // Maps-to-empty-string is no boundary of any kind.
     }
     int32_t lastStarterIndex=buffer.lastStarterIndex();
     if(lastStarterIndex<0) {
-        return false;  // no starter
+        return FALSE;  // no starter
     }
     const int32_t lastIndex=buffer.length()-1;
     if(mappingType==Norm::ONE_WAY && lastStarterIndex<lastIndex && buffer.ccAt(lastIndex)>1) {
@@ -226,12 +226,12 @@ UBool Normalizer2DataBuilder::mappingHasCompBoundaryAfter(const BuilderReorderin
         // which means that another combining mark can reorder before it.
         // By contrast, in a round-trip mapping this does not prevent a boundary as long as
         // the starter or composite does not combine-forward with a following combining mark.
-        return false;
+        return FALSE;
     }
     UChar32 starter=buffer.charAt(lastStarterIndex);
     if(lastStarterIndex==0 && norms.combinesBack(starter)) {
         // The last starter is at the beginning of the mapping and combines backward.
-        return false;
+        return FALSE;
     }
     if(Hangul::isJamoL(starter) ||
             (Hangul::isJamoV(starter) &&
@@ -255,14 +255,14 @@ UBool Normalizer2DataBuilder::mappingHasCompBoundaryAfter(const BuilderReorderin
     const Norm *starterNorm=norms.getNorm(starter);
     if(i==lastStarterIndex &&
             (starterNorm==nullptr || starterNorm->compositions==nullptr)) {
-        return true;  // The last starter does not combine forward.
+        return TRUE;  // The last starter does not combine forward.
     }
     uint8_t prevCC=0;
     while(++i<buffer.length()) {
         uint8_t cc=buffer.ccAt(i);  // !=0 if after last starter
         if(i>lastStarterIndex && norms.combinesWithCCBetween(*starterNorm, prevCC, cc)) {
             // The starter combines with a mark that reorders before the current one.
-            return false;
+            return FALSE;
         }
         UChar32 c=buffer.charAt(i);
         if(starterNorm!=nullptr && (prevCC<cc || prevCC==0) &&
@@ -271,14 +271,14 @@ UBool Normalizer2DataBuilder::mappingHasCompBoundaryAfter(const BuilderReorderin
             starterNorm=norms.getNorm(starter);
             if(i>=lastStarterIndex &&
                     (starterNorm==nullptr || starterNorm->compositions==nullptr)) {
-                return true;  // The composite does not combine further.
+                return TRUE;  // The composite does not combine further.
             }
             // Keep prevCC because we "removed" the combining mark.
         } else if(cc==0) {
             starterNorm=norms.getNorm(c);
             if(i==lastStarterIndex &&
                     (starterNorm==nullptr || starterNorm->compositions==nullptr)) {
-                return true;  // The new starter does not combine forward.
+                return TRUE;  // The new starter does not combine forward.
             }
             prevCC=0;
         } else {
@@ -286,18 +286,18 @@ UBool Normalizer2DataBuilder::mappingHasCompBoundaryAfter(const BuilderReorderin
         }
     }
     if(prevCC==0) {
-        return false;  // forward-combining starter at the very end
+        return FALSE;  // forward-combining starter at the very end
     }
     if(norms.combinesWithCCBetween(*starterNorm, prevCC, 256)) {
         // The starter combines with another mark.
-        return false;
+        return FALSE;
     }
-    return true;
+    return TRUE;
 }
 
 UBool Normalizer2DataBuilder::mappingRecomposes(const BuilderReorderingBuffer &buffer) const {
     if(buffer.lastStarterIndex()<0) {
-        return false;  // no starter
+        return FALSE;  // no starter
     }
     const Norm *starterNorm=nullptr;
     uint8_t prevCC=0;
@@ -306,11 +306,11 @@ UBool Normalizer2DataBuilder::mappingRecomposes(const BuilderReorderingBuffer &b
         uint8_t cc=buffer.ccAt(i);
         if(starterNorm!=nullptr && (prevCC<cc || prevCC==0) &&
                 norms.getNormRef(c).combinesBack && starterNorm->combine(c)>=0) {
-            return true;  // normal composite
+            return TRUE;  // normal composite
         } else if(cc==0) {
             if(Hangul::isJamoL(c)) {
                 if((i+1)<buffer.length() && Hangul::isJamoV(buffer.charAt(i+1))) {
-                    return true;  // Hangul syllable
+                    return TRUE;  // Hangul syllable
                 }
                 starterNorm=nullptr;
             } else {
@@ -319,7 +319,7 @@ UBool Normalizer2DataBuilder::mappingRecomposes(const BuilderReorderingBuffer &b
         }
         prevCC=cc;
     }
-    return false;
+    return FALSE;
 }
 
 void Normalizer2DataBuilder::postProcess(Norm &norm) {
@@ -360,13 +360,13 @@ void Normalizer2DataBuilder::postProcess(Norm &norm) {
         if(norm.combinesBack) {
             norm.error="combines-back and decomposes, not possible in Unicode normalization";
         } else if(norm.mappingType==Norm::ROUND_TRIP) {
-            if(norm.compositions!=nullptr) {
+            if(norm.compositions!=NULL) {
                 norm.type=Norm::YES_NO_COMBINES_FWD;
             } else {
                 norm.type=Norm::YES_NO_MAPPING_ONLY;
             }
         } else {  // one-way mapping
-            if(norm.compositions!=nullptr) {
+            if(norm.compositions!=NULL) {
                 norm.error="combines-forward and has a one-way mapping, "
                            "not possible in Unicode normalization";
             } else if(buffer.isEmpty()) {
@@ -410,7 +410,7 @@ class Norm16Writer : public Norms::Enumerator {
 public:
     Norm16Writer(UMutableCPTrie *trie, Norms &n, Normalizer2DataBuilder &b) :
             Norms::Enumerator(n), builder(b), norm16Trie(trie) {}
-    void rangeHandler(UChar32 start, UChar32 end, Norm &norm) override {
+    void rangeHandler(UChar32 start, UChar32 end, Norm &norm) U_OVERRIDE {
         builder.writeNorm16(norm16Trie, start, end, norm);
     }
     Normalizer2DataBuilder &builder;
@@ -509,7 +509,7 @@ void Normalizer2DataBuilder::setHangulData(UMutableCPTrie *norm16Trie) {
     HangulIterator hi;
     const HangulIterator::Range *range;
     // Check that none of the Hangul/Jamo code points have data.
-    while((range=hi.nextRange())!=nullptr) {
+    while((range=hi.nextRange())!=NULL) {
         for(UChar32 c=range->start; c<=range->end; ++c) {
             if(umutablecptrie_get(norm16Trie, c)>Normalizer2Impl::INERT) {
                 fprintf(stderr,
@@ -563,7 +563,7 @@ LocalUCPTriePointer Normalizer2DataBuilder::processData() {
     // Recursively decompose all mappings.
     Decomposer decomposer(norms);
     do {
-        decomposer.didDecompose=false;
+        decomposer.didDecompose=FALSE;
         norms.enumRanges(decomposer);
     } while(decomposer.didDecompose);
 
@@ -596,7 +596,7 @@ LocalUCPTriePointer Normalizer2DataBuilder::processData() {
     // Pad the maybeYesCompositions length to a multiple of 4,
     // so that NO_NO_DELTA bits 2..1 can be used without subtracting the center.
     while(extra.maybeYesCompositions.length()&3) {
-        extra.maybeYesCompositions.append((char16_t)0);
+        extra.maybeYesCompositions.append((UChar)0);
     }
     extraData.insert(0, extra.maybeYesCompositions);
     indexes[Normalizer2Impl::IX_MIN_MAYBE_YES]=
@@ -605,7 +605,7 @@ LocalUCPTriePointer Normalizer2DataBuilder::processData() {
 
     // Pad to even length for 4-byte alignment of following data.
     if(extraData.length()&1) {
-        extraData.append((char16_t)0);
+        extraData.append((UChar)0);
     }
 
     int32_t minNoNoDelta=getMinNoNoDelta();
@@ -780,8 +780,8 @@ void Normalizer2DataBuilder::writeBinaryFile(const char *filename) {
 
     IcuToolErrorCode errorCode("gennorm2/writeBinaryFile()");
     UNewDataMemory *pData=
-        udata_create(nullptr, nullptr, filename, &dataInfo,
-                     haveCopyright ? U_COPYRIGHT_STRING : nullptr, errorCode);
+        udata_create(NULL, NULL, filename, &dataInfo,
+                     haveCopyright ? U_COPYRIGHT_STRING : NULL, errorCode);
     if(errorCode.isFailure()) {
         fprintf(stderr, "gennorm2 error: unable to create the output file %s - %s\n",
                 filename, errorCode.errorName());
@@ -813,14 +813,14 @@ Normalizer2DataBuilder::writeCSourceFile(const char *filename) {
     CharString path(filename, (int32_t)(basename-filename), errorCode);
     CharString dataName(basename, errorCode);
     const char *extension=strrchr(basename, '.');
-    if(extension!=nullptr) {
+    if(extension!=NULL) {
         dataName.truncate((int32_t)(extension-basename));
     }
     const char *name=dataName.data();
     errorCode.assertSuccess();
 
     FILE *f=usrc_create(path.data(), basename, 2016, "icu/source/tools/gennorm2/n2builder.cpp");
-    if(f==nullptr) {
+    if(f==NULL) {
         fprintf(stderr, "gennorm2/writeCSourceFile() error: unable to create the output file %s\n",
                 filename);
         exit(U_FILE_ACCESS_ERROR);
@@ -828,19 +828,19 @@ Normalizer2DataBuilder::writeCSourceFile(const char *filename) {
     fputs("#ifdef INCLUDED_FROM_NORMALIZER2_CPP\n\n", f);
 
     char line[100];
-    snprintf(line, sizeof(line), "static const UVersionInfo %s_formatVersion={", name);
-    usrc_writeArray(f, line, dataInfo.formatVersion, 8, 4, "", "};\n");
-    snprintf(line, sizeof(line), "static const UVersionInfo %s_dataVersion={", name);
-    usrc_writeArray(f, line, dataInfo.dataVersion, 8, 4, "", "};\n\n");
-    snprintf(line, sizeof(line), "static const int32_t %s_indexes[Normalizer2Impl::IX_COUNT]={\n", name);
-    usrc_writeArray(f, line, indexes, 32, Normalizer2Impl::IX_COUNT, "", "\n};\n\n");
+    sprintf(line, "static const UVersionInfo %s_formatVersion={", name);
+    usrc_writeArray(f, line, dataInfo.formatVersion, 8, 4, "};\n");
+    sprintf(line, "static const UVersionInfo %s_dataVersion={", name);
+    usrc_writeArray(f, line, dataInfo.dataVersion, 8, 4, "};\n\n");
+    sprintf(line, "static const int32_t %s_indexes[Normalizer2Impl::IX_COUNT]={\n", name);
+    usrc_writeArray(f, line, indexes, 32, Normalizer2Impl::IX_COUNT, "\n};\n\n");
 
-    usrc_writeUCPTrie(f, name, norm16Trie.getAlias(), UPRV_TARGET_SYNTAX_CCODE);
+    usrc_writeUCPTrie(f, name, norm16Trie.getAlias());
 
-    snprintf(line, sizeof(line), "static const uint16_t %s_extraData[%%ld]={\n", name);
-    usrc_writeArray(f, line, extraData.getBuffer(), 16, extraData.length(), "", "\n};\n\n");
-    snprintf(line, sizeof(line), "static const uint8_t %s_smallFCD[%%ld]={\n", name);
-    usrc_writeArray(f, line, smallFCD, 8, sizeof(smallFCD), "", "\n};\n\n");
+    sprintf(line, "static const uint16_t %s_extraData[%%ld]={\n", name);
+    usrc_writeArray(f, line, extraData.getBuffer(), 16, extraData.length(), "\n};\n\n");
+    sprintf(line, "static const uint8_t %s_smallFCD[%%ld]={\n", name);
+    usrc_writeArray(f, line, smallFCD, 8, sizeof(smallFCD), "\n};\n\n");
 
     fputs("#endif  // INCLUDED_FROM_NORMALIZER2_CPP\n", f);
     fclose(f);

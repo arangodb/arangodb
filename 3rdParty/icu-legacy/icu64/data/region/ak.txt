@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ak{
     Countries{
         AD{"Andora"}
@@ -93,6 +92,7 @@ ak{
         IE{"Aereland"}
         IL{"Israel"}
         IN{"India"}
+        IO{"Britenfo Hɔn Man Wɔ India Po No Mu"}
         IQ{"Irak"}
         IR{"Iran"}
         IS{"Aesland"}
@@ -127,6 +127,7 @@ ak{
         MD{"Mɔldova"}
         MG{"Madagaska"}
         MH{"Marshall Islands"}
+        MK{"Masedonia"}
         ML{"Mali"}
         MM{"Miyanma"}
         MN{"Mɔngolia"}
@@ -226,4 +227,5 @@ ak{
         ZM{"Zambia"}
         ZW{"Zembabwe"}
     }
+    Version{"2.1.47.82"}
 }

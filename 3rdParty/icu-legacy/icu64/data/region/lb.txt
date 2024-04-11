@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 lb{
     Countries{
         001{"Welt"}
@@ -144,6 +143,7 @@ lb{
         IL{"Israel"}
         IM{"Isle of Man"}
         IN{"Indien"}
+        IO{"Britescht Territorium am Indeschen Ozean"}
         IQ{"Irak"}
         IR{"Iran"}
         IS{"Island"}
@@ -304,4 +304,5 @@ lb{
         CG{"Kongo (Republik)"}
         CI{"Elfebeeküst"}
     }
+    Version{"2.1.49.82"}
 }

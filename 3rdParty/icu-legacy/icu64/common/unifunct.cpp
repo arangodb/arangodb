@@ -16,11 +16,11 @@ UOBJECT_DEFINE_ABSTRACT_RTTI_IMPLEMENTATION(UnicodeFunctor)
 UnicodeFunctor::~UnicodeFunctor() {}
 
 UnicodeMatcher* UnicodeFunctor::toMatcher() const {
-    return nullptr;
+    return 0;
 }
 
 UnicodeReplacer* UnicodeFunctor::toReplacer() const {
-    return nullptr;
+    return 0;
 }
 
 U_NAMESPACE_END

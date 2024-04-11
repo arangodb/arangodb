@@ -1,4 +1,4 @@
-#! /usr/bin/python3 -B
+#! /usr/bin/python -B
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2016 and later: Unicode, Inc. and others.
@@ -105,30 +105,10 @@ def _ReadLibrary(root_path, library_name):
 # in a limited (not transitive) context.  List of (file_name, symbol)
 # TODO: Move this data to dependencies.txt?
 allowed_errors = (
+  ("common/umutex.o", "operator new(unsigned long)"),
+  ("common/umutex.o", "std::__throw_bad_alloc()"),
   ("common/umutex.o", "std::__throw_system_error(int)"),
   ("common/umutex.o", "std::uncaught_exception()"),
-  ("common/umutex.o", "std::__once_callable"),
-  ("common/umutex.o", "std::__once_call"),
-  ("common/umutex.o", "__once_proxy"),
-  ("common/umutex.o", "__tls_get_addr"),
-  ("common/unifiedcache.o", "std::__throw_system_error(int)"),
-  # Some of the MessageFormat 2 modules reference exception-related symbols
-  # in instantiations of the `std::get()` method that gets an alternative
-  # from a `std::variant`.
-  # These instantiations of `std::get()` are only called by compiler-generated
-  # code (the implementations of built-in `swap()` methods for types
-  # that include a `std::variant`; and `std::__detail::__variant::__gen_vtable_impl()`,
-  # which constructs vtables. The MessageFormat 2 code itself only calls
-  # `std::get_if()`, which is exception-free; never `std::get()`.
-  ("i18n/messageformat2_data_model.o", "typeinfo for std::exception"),
-  ("i18n/messageformat2_data_model.o", "vtable for std::exception"),
-  ("i18n/messageformat2_data_model.o", "std::exception::~exception()"),
-  ("i18n/messageformat2_formattable.o", "typeinfo for std::exception"),
-  ("i18n/messageformat2_formattable.o", "vtable for std::exception"),
-  ("i18n/messageformat2_formattable.o", "std::exception::~exception()"),
-  ("i18n/messageformat2_function_registry.o", "typeinfo for std::exception"),
-  ("i18n/messageformat2_function_registry.o", "vtable for std::exception"),
-  ("i18n/messageformat2_function_registry.o", "std::exception::~exception()")
 )
 
 def _Resolve(name, parents):
@@ -141,7 +121,7 @@ def _Resolve(name, parents):
   # Check if already cached.
   exports = item.get("exports")
   if exports != None: return item
-  # Calculate recursively.
+  # Calculcate recursively.
   parents.append(name)
   imports = set()
   exports = set()

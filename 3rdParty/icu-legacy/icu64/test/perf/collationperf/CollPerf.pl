@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 #  ********************************************************************
 #  * Copyright (C) 2016 and later: Unicode, Inc. and others.
-#  * License & terms of use: http://www.unicode.org/copyright.html
+#  * License & terms of use: http://www.unicode.org/copyright.html#License
 #  ********************************************************************
 #  * COPYRIGHT:
 #  * Copyright (c) 2002-2013, International Business Machines Corporation and

@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 es_CO{
     %%Parent{"es_419"}
     NumberElements{
@@ -14,13 +13,14 @@ es_CO{
             }
         }
     }
+    Version{"2.1.47.70"}
     calendar{
         generic{
             DateTimePatterns{
-                "h:mm:ss a zzzz",
-                "h:mm:ss a z",
-                "h:mm:ss a",
-                "h:mm a",
+                "h:mm:ss a zzzz",
+                "h:mm:ss a z",
+                "h:mm:ss a",
+                "h:mm a",
                 "EEEE, d 'de' MMMM 'de' y G",
                 "d 'de' MMMM 'de' y G",
                 "d/MM/y G",
@@ -30,16 +30,6 @@ es_CO{
                 "{1}, {0}",
                 "{1}, {0}",
                 "{1}, {0}",
-            }
-            DateTimeSkeletons{
-                "ahmmsszzzz",
-                "ahmmssz",
-                "ahmmss",
-                "ahmm",
-                "GyMMMMEEEEd",
-                "GyMMMMd",
-                "GyMMd",
-                "GGGGGyyMMd",
             }
             availableFormats{
                 GyMMMEd{"E, d MMM 'de' y G"}
@@ -114,14 +104,14 @@ es_CO{
                 "p. m.",
             }
             AmPmMarkersAbbr{
-                "a. m.",
-                "p. m.",
+                "a. m.",
+                "p. m.",
             }
             DateTimePatterns{
-                "h:mm:ss a zzzz",
-                "h:mm:ss a z",
-                "h:mm:ss a",
-                "h:mm a",
+                "h:mm:ss a zzzz",
+                "h:mm:ss a z",
+                "h:mm:ss a",
+                "h:mm a",
                 "EEEE, d 'de' MMMM 'de' y",
                 "d 'de' MMMM 'de' y",
                 "d/MM/y",
@@ -131,16 +121,6 @@ es_CO{
                 "{1}, {0}",
                 "{1}, {0}",
                 "{1}, {0}",
-            }
-            DateTimeSkeletons{
-                "ahmmsszzzz",
-                "ahmmssz",
-                "ahmmss",
-                "ahmm",
-                "yMMMMEEEEd",
-                "yMMMMd",
-                "yMMd",
-                "yyMMd",
             }
             availableFormats{
                 GyMMM{"MMM 'de' y G"}
@@ -161,7 +141,7 @@ es_CO{
                         "D",
                         "L",
                         "M",
-                        "m",
+                        "M",
                         "J",
                         "V",
                         "S",
@@ -190,13 +170,14 @@ es_CO{
                 }
                 stand-alone{
                     abbreviated{
-                        am{"a. m."}
+                        am{"a. m."}
                         noon{"m."}
-                        pm{"p. m."}
+                        pm{"p. m."}
                     }
                     narrow{
-                        am{"a. m."}
-                        pm{"p. m."}
+                        am{"a. m."}
+                        noon{"m."}
+                        pm{"p. m."}
                     }
                     wide{
                         am{"a. m."}
@@ -246,22 +227,22 @@ es_CO{
                 }
                 fallback{"{0} ‘al’ {1}"}
                 h{
-                    a{"h a 'a' h a"}
-                    h{"h 'a' h a"}
+                    a{"h a 'a' h a"}
+                    h{"h 'a' h a"}
                 }
                 hm{
-                    a{"h:mm a 'a' h:mm a"}
-                    h{"h:mm 'a' h:mm a"}
-                    m{"h:mm 'a' h:mm a"}
+                    a{"h:mm a 'a' h:mm a"}
+                    h{"h:mm 'a' h:mm a"}
+                    m{"h:mm 'a' h:mm a"}
                 }
                 hmv{
-                    a{"h:mm a 'a' h:mm a v"}
-                    h{"h:mm 'a' h:mm a v"}
-                    m{"h:mm 'a' h:mm a v"}
+                    a{"h:mm a 'a' h:mm a v"}
+                    h{"h:mm 'a' h:mm a v"}
+                    m{"h:mm 'a' h:mm a v"}
                 }
                 hv{
-                    a{"h a 'a' h a v"}
-                    h{"h 'a' h a v"}
+                    a{"h a 'a' h a v"}
+                    h{"h 'a' h a v"}
                 }
                 y{
                     y{"y 'a' y"}

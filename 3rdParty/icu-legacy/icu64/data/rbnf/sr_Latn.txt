@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 sr_Latn{
     %%Parent{"root"}
     RBNFRules{
@@ -106,10 +105,10 @@ sr_Latn{
             "1000000000000000000: =#,##0=;",
             "%%ordi:",
             "0: i;",
-            "1: \u2018 i =%spellout-ordinal=;",
+            "1: ' i =%spellout-ordinal=;",
             "%%ordti:",
             "0: ti;",
-            "1: \u2018 =%spellout-ordinal=;",
+            "1: ' =%spellout-ordinal=;",
             "%spellout-ordinal:",
             "-x: minus >>;",
             "x.x: =#,##0.#=;",
@@ -147,4 +146,5 @@ sr_Latn{
             "400: <%spellout-cardinal-feminine<sto>%%ordti>;",
         }
     }
+    Version{"2.1.44.50"}
 }

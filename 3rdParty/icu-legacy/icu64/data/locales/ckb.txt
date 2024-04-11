@@ -1,30 +1,63 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ckb{
-    AuxExemplarCharacters{"[\u200E\u200F ً ٌ ٍ َ ُ ِ ّ ْ ء آ أ ؤ إ ة ث ذ ص ض ط ظ ك ھ ى ي]"}
-    ExemplarCharacters{"[ئ ا ب پ ت ج چ ح خ د ر ز ڕ ژ س ش ع غ ف ڤ ق ک گ ل ڵ م ن ه ە و ۆ ی ێ]"}
-    ExemplarCharactersNumbers{"[\u200E\u200F \\- ‑ , ٫ ٬ . % ٪ ‰ ؉ + 0٠ 1١ 2٢ 3٣ 4٤ 5٥ 6٦ 7٧ 8٨ 9٩]"}
-    ExemplarCharactersPunctuation{"[\\- ‐‑ – — ، ؛ \\: ! ؟ . … ' \u0022 « » ( ) \\[ \\]]"}
+    AuxExemplarCharacters{
+        "[\u200E\u200F \u064B \u064C \u064D \u064E \u064F \u0650 \u0651 \u0652 ء آ أ "
+        "ؤ إ ة ث ذ ص ض ط ظ ك ه ى ي]"
+    }
+    ExemplarCharacters{"[ئ ا ب پ ت ج چ ح خ د ر ز ڕ ژ س ش ع غ ف ڤ ق ک گ ل ڵ م ن ھ ە و ۆ ی ێ]"}
+    ExemplarCharactersNumbers{"[\u200E\u200F \\- , ٫ ٬ . % ٪ ‰ ؉ + 0٠ 1١ 2٢ 3٣ 4٤ 5٥ 6٦ 7٧ 8٨ 9٩]"}
     NumberElements{
         arab{
             patterns{
+                currencyFormat{"#,##0.00 ¤"}
+                decimalFormat{"#,##0.###"}
                 percentFormat{"#,##0 %"}
+                scientificFormat{"#E0"}
             }
             symbols{
+                decimal{"٫"}
+                exponential{"اس"}
+                group{"٬"}
+                infinity{"∞"}
                 minusSign{"‏-"}
+                nan{"NaN"}
+                perMille{"؉"}
                 percentSign{"٪"}
                 plusSign{"‏+"}
+                superscriptingExponent{"×"}
             }
         }
         default{"arab"}
         latn{
+            miscPatterns{
+                atLeast{"≥{0}"}
+                range{"{0}–{1}"}
+            }
+            patterns{
+                accountingFormat{"¤ #,##0.00"}
+                currencyFormat{"¤ #,##0.00"}
+                decimalFormat{"#,##0.###"}
+                percentFormat{"#,##0%"}
+                scientificFormat{"#E0"}
+            }
             symbols{
+                decimal{"."}
+                exponential{"E"}
+                group{","}
+                infinity{"∞"}
+                minusSign{"-"}
+                nan{"NaN"}
+                perMille{"‰"}
+                percentSign{"%"}
                 plusSign{"‎+"}
+                superscriptingExponent{"×"}
             }
         }
+        minimumGroupingDigits{"1"}
         native{"arab"}
     }
+    Version{"2.1.47.72"}
     calendar{
         generic{
             DateTimePatterns{
@@ -43,18 +76,42 @@ ckb{
                 "{1} {0}",
             }
             availableFormats{
+                E{"ccc"}
                 Ed{"E dھەم"}
+                Gy{"G y"}
+                GyMMM{"G y MMM"}
+                GyMMMEd{"G y MMM d, E"}
+                GyMMMd{"G y MMM d"}
+                M{"L"}
                 MEd{"E، M/d"}
+                MMM{"LLL"}
                 MMMEd{"E، dی MMM"}
+                MMMMd{"MMMM d"}
                 MMMd{"dی MMM"}
+                Md{"MM-dd"}
+                d{"d"}
+                y{"G y"}
                 yM{"M/y"}
                 yMEd{"E، d/M/y"}
                 yMMM{"MMMی y"}
                 yMMMEd{"E، dی MMMی y"}
                 yMMMd{"dی MMMی y"}
                 yMd{"d/M/y"}
+                yyyy{"G y"}
+                yyyyM{"GGGGG y-MM"}
+                yyyyMEd{"GGGGG y-MM-dd, E"}
+                yyyyMMM{"G y MMM"}
+                yyyyMMMEd{"G y MMM d, E"}
+                yyyyMMMM{"G y MMMM"}
+                yyyyMMMd{"G y MMM d"}
+                yyyyMd{"GGGGG y-MM-dd"}
+                yyyyQQQ{"G y QQQ"}
+                yyyyQQQQ{"G y QQQQ"}
             }
             intervalFormats{
+                M{
+                    M{"MM–MM"}
+                }
                 MEd{
                     M{"E، M/d – E، M/d"}
                     d{"E، M/d – E، M/d"}
@@ -63,12 +120,28 @@ ckb{
                     M{"MMM–MMM"}
                 }
                 MMMEd{
+                    M{"MMM d, E – MMM d, E"}
                     d{"E، dی MMM – E، dی MMM"}
                 }
                 MMMd{
+                    M{"MMM d – MMM d"}
                     d{"d–dی MMM"}
                 }
+                Md{
+                    M{"MM-dd – MM-dd"}
+                    d{"MM-dd – MM-dd"}
+                }
+                d{
+                    d{"d–d"}
+                }
                 fallback{"{0} – {1}"}
+                y{
+                    y{"G y–y"}
+                }
+                yM{
+                    M{"GGGGG y-MM – y-MM"}
+                    y{"GGGGG y-MM – y-MM"}
+                }
                 yMEd{
                     M{"E، d/M/y – E، d/M/y"}
                     d{"E، d/M/y – E، d/M/y"}
@@ -78,18 +151,37 @@ ckb{
                     M{"MMM–MMMی y"}
                     y{"MMMی y – MMMی y"}
                 }
+                yMMMEd{
+                    M{"G y MMM d, E – MMM d, E"}
+                    d{"G y MMM d, E – MMM d, E"}
+                    y{"G y MMM d, E – y MMM d, E"}
+                }
+                yMMMM{
+                    M{"G y MMMM–MMMM"}
+                    y{"G y MMMM – y MMMM"}
+                }
                 yMMMd{
                     M{"dی MMM – dی MMMی y"}
                     d{"d–dی MMMی y"}
                     y{"dی MMMMی y – dی MMMMی y"}
                 }
                 yMd{
+                    M{"GGGGG y-MM-dd – y-MM-dd"}
+                    d{"GGGGG y-MM-dd – y-MM-dd"}
                     y{"d/M/y – d/M/y"}
                 }
             }
         }
         gregorian{
+            AmPmMarkers{
+                "ب.ن",
+                "د.ن",
+            }
             AmPmMarkersAbbr{
+                "ب.ن",
+                "د.ن",
+            }
+            AmPmMarkersNarrow{
                 "ب.ن",
                 "د.ن",
             }
@@ -108,32 +200,53 @@ ckb{
                 "{1} {0}",
                 "{1} {0}",
             }
-            DateTimeSkeletons{
-                "ahmmsszzzz",
-                "ahmmssz",
-                "ahmmss",
-                "ahmm",
-                "yMMMMEEEEd",
-                "yMMMMd",
-                "yMMMd",
-                "yMMdd",
+            appendItems{
+                Timezone{"{0} {1}"}
             }
             availableFormats{
+                E{"ccc"}
+                EHm{"E HH:mm"}
+                EHms{"E HH:mm:ss"}
                 Ed{"E dھەم"}
+                Ehm{"E h:mm a"}
+                Ehms{"E h:mm:ss a"}
+                Gy{"G y"}
+                GyMMM{"G y MMM"}
+                GyMMMEd{"G y MMM d, E"}
+                GyMMMd{"G y MMM d"}
+                H{"HH"}
+                Hm{"HH:mm"}
+                Hms{"HH:mm:ss"}
+                Hmsv{"HH:mm:ss v"}
+                Hmv{"HH:mm v"}
+                M{"L"}
                 MEd{"E، M/d"}
+                MMM{"LLL"}
                 MMMEd{"E، dی MMM"}
                 MMMMW{
                     one{"هەفتەی W ی MMMM"}
                     other{"هەفتەی W ی MMMM"}
                 }
+                MMMMd{"MMMM d"}
                 MMMd{"dی MMM"}
+                Md{"MM-dd"}
+                d{"d"}
                 h{"hی a"}
+                hm{"h:mm a"}
+                hms{"h:mm:ss a"}
+                hmsv{"h:mm:ss a v"}
+                hmv{"h:mm a v"}
+                ms{"mm:ss"}
+                y{"y"}
                 yM{"M/y"}
                 yMEd{"E، d/M/y"}
                 yMMM{"MMMی y"}
                 yMMMEd{"E، dی MMMی y"}
+                yMMMM{"y MMMM"}
                 yMMMd{"dی MMMی y"}
                 yMd{"d/M/y"}
+                yQQQ{"y QQQ"}
+                yQQQQ{"y QQQQ"}
                 yw{
                     one{"هەفتەی w ی Y"}
                     other{"هەفتەی w ی Y"}
@@ -141,6 +254,24 @@ ckb{
             }
             dayNames{
                 format{
+                    abbreviated{
+                        "یەکشەممە",
+                        "دووشەممە",
+                        "سێشەممە",
+                        "چوارشەممە",
+                        "پێنجشەممە",
+                        "ھەینی",
+                        "شەممە",
+                    }
+                    narrow{
+                        "ی",
+                        "د",
+                        "س",
+                        "چ",
+                        "پ",
+                        "ھ",
+                        "ش",
+                    }
                     short{
                         "١ش",
                         "٢ش",
@@ -161,6 +292,15 @@ ckb{
                     }
                 }
                 stand-alone{
+                    abbreviated{
+                        "یەکشەممە",
+                        "دووشەممە",
+                        "سێشەممە",
+                        "چوارشەممە",
+                        "پێنجشەممە",
+                        "ھەینی",
+                        "شەممە",
+                    }
                     narrow{
                         "ی",
                         "د",
@@ -169,6 +309,40 @@ ckb{
                         "پ",
                         "ھ",
                         "ش",
+                    }
+                    short{
+                        "١ش",
+                        "٢ش",
+                        "٣ش",
+                        "٤ش",
+                        "٥ش",
+                        "ھ",
+                        "ش",
+                    }
+                    wide{
+                        "یەکشەممە",
+                        "دووشەممە",
+                        "سێشەممە",
+                        "چوارشەممە",
+                        "پێنجشەممە",
+                        "ھەینی",
+                        "شەممە",
+                    }
+                }
+            }
+            dayPeriod{
+                stand-alone{
+                    abbreviated{
+                        am{"ب.ن"}
+                        pm{"د.ن"}
+                    }
+                    narrow{
+                        am{"ب.ن"}
+                        pm{"د.ن"}
+                    }
+                    wide{
+                        am{"ب.ن"}
+                        pm{"د.ن"}
                     }
                 }
             }
@@ -181,12 +355,45 @@ ckb{
                     "BCE",
                     "CE",
                 }
-            }
-            intervalFormats{
-                fallback{"{0} – {1}"}
+                wide{
+                    "پێش زایین",
+                    "زایینی",
+                }
+                wide%variant{
+                    "BCE",
+                    "CE",
+                }
             }
             monthNames{
                 format{
+                    abbreviated{
+                        "کانوونی دووەم",
+                        "شوبات",
+                        "ئازار",
+                        "نیسان",
+                        "ئایار",
+                        "حوزەیران",
+                        "تەمووز",
+                        "ئاب",
+                        "ئەیلوول",
+                        "تشرینی یەکەم",
+                        "تشرینی دووەم",
+                        "کانونی یەکەم",
+                    }
+                    narrow{
+                        "ک",
+                        "ش",
+                        "ئ",
+                        "ن",
+                        "ئ",
+                        "ح",
+                        "ت",
+                        "ئ",
+                        "ئ",
+                        "ت",
+                        "ت",
+                        "ک",
+                    }
                     wide{
                         "کانوونی دووەم",
                         "شوبات",
@@ -203,6 +410,20 @@ ckb{
                     }
                 }
                 stand-alone{
+                    abbreviated{
+                        "کانوونی دووەم",
+                        "شوبات",
+                        "ئازار",
+                        "نیسان",
+                        "ئایار",
+                        "حوزەیران",
+                        "تەمووز",
+                        "ئاب",
+                        "ئەیلوول",
+                        "تشرینی یەکەم",
+                        "تشرینی دووەم",
+                        "کانونی یەکەم",
+                    }
                     narrow{
                         "ک",
                         "ش",
@@ -217,6 +438,20 @@ ckb{
                         "ت",
                         "ک",
                     }
+                    wide{
+                        "کانوونی دووەم",
+                        "شوبات",
+                        "ئازار",
+                        "نیسان",
+                        "ئایار",
+                        "حوزەیران",
+                        "تەمووز",
+                        "ئاب",
+                        "ئەیلوول",
+                        "تشرینی یەکەم",
+                        "تشرینی دووەم",
+                        "کانونی یەکەم",
+                    }
                 }
             }
             quarters{
@@ -227,6 +462,12 @@ ckb{
                         "چ٣",
                         "چ٤",
                     }
+                    narrow{
+                        "١",
+                        "٢",
+                        "٣",
+                        "٤",
+                    }
                     wide{
                         "چارەکی یەکەم",
                         "چارەکی دووەم",
@@ -235,11 +476,23 @@ ckb{
                     }
                 }
                 stand-alone{
+                    abbreviated{
+                        "چ١",
+                        "چ٢",
+                        "چ٣",
+                        "چ٤",
+                    }
                     narrow{
                         "١",
                         "٢",
                         "٣",
                         "٤",
+                    }
+                    wide{
+                        "چارەکی یەکەم",
+                        "چارەکی دووەم",
+                        "چارەکی سێەم",
+                        "چارەکی چوارەم",
                     }
                 }
             }

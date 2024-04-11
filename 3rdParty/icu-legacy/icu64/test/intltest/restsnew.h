@@ -19,35 +19,26 @@ public:
     NewResourceBundleTest();
     virtual ~NewResourceBundleTest();
     
-    void runIndexedTest( int32_t index, UBool exec, const char* &name, char* par = nullptr ) override;
+    void runIndexedTest( int32_t index, UBool exec, const char* &name, char* par = NULL );
 
     /** 
      * Perform several extensive tests using the subtest routine testTag
      **/
-    void TestResourceBundles();
+    void TestResourceBundles(void);
     /** 
      * Test construction of ResourceBundle accessing a custom test resource-file
      **/
-    void TestConstruction();
+    void TestConstruction(void);
 
-    void TestIteration();
+    void TestIteration(void);
 
-    void TestOtherAPI();
+    void TestOtherAPI(void);
 
-    void TestNewTypes();
+    void TestNewTypes(void);
 
-    void TestGetByFallback();
+    void TestGetByFallback(void);
 
-    void TestFilter();
-
-    void TestIntervalAliasFallbacks();
-
-#if U_ENABLE_TRACING
-    void TestTrace();
-#endif
-
-    void TestOpenDirectFillIn();
-    void TestStackReuse();
+    void TestFilter(void);
 
 private:
     /**
@@ -61,8 +52,8 @@ private:
      **/
     UBool testTag(const char* frag, UBool in_Root, UBool in_te, UBool in_te_IN);
 
-    void record_pass();
-    void record_fail();
+    void record_pass(void);
+    void record_fail(void);
 
     int32_t pass;
     int32_t fail;

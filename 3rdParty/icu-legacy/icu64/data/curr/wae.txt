@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 wae{
     Currencies{
         BRL{
@@ -49,13 +48,38 @@ wae{
             one{"Chinesišä Yuan"}
             other{"Chinesiši Yuan"}
         }
+        EUR{
+            one{"Euro"}
+            other{"Euro"}
+        }
+        GBP{
+            one{"Pfund"}
+            other{"Pfund"}
+        }
         INR{
             one{"Indišä Rupie"}
             other{"Indiši Rupie"}
+        }
+        JPY{
+            one{"Yen"}
+            other{"Yen"}
+        }
+        RUB{
+            one{"Rubel"}
+            other{"Rubel"}
+        }
+        USD{
+            one{"Dollar"}
+            other{"Dollar"}
+        }
+        XXX{
+            one{"Unbekannti Wãrig"}
+            other{"Unbekannti Wãrig"}
         }
     }
     CurrencyUnitPatterns{
         one{"{0} {1}"}
         other{"{0} {1}"}
     }
+    Version{"2.1.47.82"}
 }

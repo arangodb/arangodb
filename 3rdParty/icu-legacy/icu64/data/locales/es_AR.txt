@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 es_AR{
     %%Parent{"es_419"}
     NumberElements{
@@ -15,6 +14,7 @@ es_AR{
             }
         }
     }
+    Version{"2.1.47.70"}
     calendar{
         generic{
             availableFormats{
@@ -28,18 +28,35 @@ es_AR{
                 "p. m.",
             }
             AmPmMarkersAbbr{
-                "a. m.",
-                "p. m.",
+                "a. m.",
+                "p. m.",
             }
             availableFormats{
                 GyMMMEd{"E, d 'de' MMM 'de' y G"}
                 GyMMMd{"d MMM y G"}
+                Hmsv{"HH:mm:ss v"}
                 Hmsvvvv{"HH:mm:ss (vvvv)"}
+                Hmv{"HH:mm v"}
                 MEd{"E d-M"}
                 hms{"hh:mm:ss"}
                 yM{"M-y"}
                 yMEd{"E, d/M/y"}
+                yMMM{"MMM y"}
+                yMMMEd{"E, d MMM y"}
                 yMMMd{"d 'de' MMM 'de' y"}
+            }
+            dayNames{
+                format{
+                    narrow{
+                        "D",
+                        "L",
+                        "M",
+                        "M",
+                        "J",
+                        "V",
+                        "S",
+                    }
+                }
             }
             dayPeriod{
                 format{
@@ -50,16 +67,23 @@ es_AR{
                         night1{"noche"}
                         noon{"mediodía"}
                     }
+                    wide{
+                        evening1{"tarde"}
+                        morning1{"madrugada"}
+                        morning2{"mañana"}
+                        night1{"noche"}
+                        noon{"mediodía"}
+                    }
                 }
                 stand-alone{
                     abbreviated{
-                        am{"a. m."}
-                        pm{"p. m."}
+                        am{"a. m."}
+                        pm{"p. m."}
                     }
                     narrow{
-                        am{"a. m."}
+                        am{"a. m."}
                         noon{"m."}
-                        pm{"p. m."}
+                        pm{"p. m."}
                     }
                     wide{
                         am{"a. m."}
@@ -83,8 +107,8 @@ es_AR{
                     H{"HH–HH v"}
                 }
                 MEd{
-                    M{"E dd/MM – E dd/MM"}
-                    d{"E dd/MM – E dd/MM"}
+                    M{"E dd/MM – E dd/MM"}
+                    d{"E dd/MM – E dd/MM"}
                 }
                 MMMEd{
                     M{"E d 'de' MMM 'al' E d 'de' MMM"}
@@ -92,34 +116,34 @@ es_AR{
                 }
                 MMMd{
                     M{"d 'de' MMM 'al' d 'de' MMM"}
-                    d{"dd – dd 'de' MM"}
+                    d{"dd – dd 'de' MM"}
                 }
                 Md{
-                    M{"dd/MM – dd/MM"}
-                    d{"dd/MM – dd/MM"}
+                    M{"dd/MM – dd/MM"}
+                    d{"dd/MM – dd/MM"}
                 }
                 fallback{"{0} a el {1}"}
                 h{
-                    a{"h a – h a"}
+                    a{"h a – h a"}
                 }
                 hm{
-                    h{"h:mm–h:mm a"}
-                    m{"h:mm–h:mm a"}
+                    h{"h:mm–h:mm a"}
+                    m{"h:mm–h:mm a"}
                 }
                 hmv{
-                    a{"h:mm a – h:mm a v"}
+                    a{"h:mm a – h:mm a v"}
                 }
                 hv{
-                    a{"h a – h a v"}
+                    a{"h a – h a v"}
                 }
                 yM{
-                    M{"MM/y – MM/y"}
-                    y{"MM/y – MM/y"}
+                    M{"MM/y – MM/y"}
+                    y{"MM/y – MM/y"}
                 }
                 yMEd{
-                    M{"E, dd/MM/y – E, dd/MM/y"}
-                    d{"E, dd/MM/y – E, dd/MM/y"}
-                    y{"E, dd/MM/y – E, dd/MM/y"}
+                    M{"E, dd/MM/y – E, dd/MM/y"}
+                    d{"E, dd/MM/y – E, dd/MM/y"}
+                    y{"E, dd/MM/y – E, dd/MM/y"}
                 }
                 yMMM{
                     y{"MMM 'de' y 'a' MMM 'de' y"}
@@ -138,9 +162,9 @@ es_AR{
                     y{"d 'de' MMM 'de' y 'al' d 'de' MMM 'de' y"}
                 }
                 yMd{
-                    M{"dd/MM/y – dd/MM/y"}
-                    d{"dd/MM/y – dd/MM/y"}
-                    y{"dd/MM/y – dd/MM/y"}
+                    M{"dd/MM/y – dd/MM/y"}
+                    d{"dd/MM/y – dd/MM/y"}
+                    y{"dd/MM/y – dd/MM/y"}
                 }
             }
             quarters{
@@ -190,6 +214,19 @@ es_AR{
         }
         dayperiod{
             dn{"a. m./p. m."}
+        }
+        second-narrow{
+            dn{"seg."}
+            relativeTime{
+                future{
+                    one{"dentro de {0} seg."}
+                    other{"dentro de {0} seg."}
+                }
+                past{
+                    one{"hace {0} seg."}
+                    other{"hace {0} seg."}
+                }
+            }
         }
         second-short{
             dn{"seg."}

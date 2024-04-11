@@ -23,7 +23,7 @@
 
 class CollationAPITest: public IntlTestCollator {
 public:
-    void runIndexedTest( int32_t index, UBool exec, const char* &name, char* /*par = nullptr */) override;
+    void runIndexedTest( int32_t index, UBool exec, const char* &name, char* /*par = NULL */);
     void doAssert(UBool condition, const char *message);
 
     /**
@@ -102,7 +102,7 @@ public:
      * - creation of a CollationElementIterator object
      * - == and != operators
      * - iterating forward
-     * - resetting the iterator index
+     * - reseting the iterator index
      * - requesting the order properties(primary, secondary or tertiary)
      */
     void TestElemIter(/* char* par */);
@@ -165,16 +165,15 @@ public:
     void TestUClassID();
 
     /**
-    * Test nullptr
+    * Test NULL
     */
-    void TestNullptrCharTailoring();
+    void TestNULLCharTailoring();
 
     void TestClone();
     void TestCloneBinary();
     void TestIterNumeric();
     void TestBadKeywords();
     void TestGapTooSmall();
-    void TestNFCNull();
 
 private:
     // If this is too small for the test data, just increase it.

@@ -8,5 +8,5 @@ This test may be tested on a linux machine like so:
 
 Where /path/to/icu-build is the path to an ICU build dir
 
-And where icurun is from : https://github.com/unicode-org/icu/blob/main/tools/scripts/icurun
+And where icurun is from : http://source.icu-project.org/repos/icu/tools/trunk/scripts/icurun
 

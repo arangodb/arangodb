@@ -14,9 +14,6 @@
 #define __COMPACT_DECIMAL_FORMAT_H__
 
 #include "unicode/utypes.h"
-
-#if U_SHOW_CPLUSPLUS_API
-
 /**
  * \file
  * \brief C++ API: Compatibility APIs for compact decimal number formatting.
@@ -88,7 +85,7 @@ public:
      * Destructor.
      * @stable ICU 51
      */
-    ~CompactDecimalFormat() override;
+    ~CompactDecimalFormat() U_OVERRIDE;
 
     /**
      * Assignment operator.
@@ -105,7 +102,7 @@ public:
      * @return    a polymorphic copy of this CompactDecimalFormat.
      * @stable ICU 51
      */
-    CompactDecimalFormat* clone() const override;
+    Format* clone() const U_OVERRIDE;
 
     using DecimalFormat::format;
 
@@ -119,7 +116,7 @@ public:
      * @stable ICU 51
      */
     void parse(const UnicodeString& text, Formattable& result,
-               ParsePosition& parsePosition) const override;
+               ParsePosition& parsePosition) const U_OVERRIDE;
 
     /**
      * CompactDecimalFormat does not support parsing. This implementation
@@ -130,7 +127,7 @@ public:
      * @param status    Always set to U_UNSUPPORTED_ERROR.
      * @stable ICU 51
      */
-    void parse(const UnicodeString& text, Formattable& result, UErrorCode& status) const override;
+    void parse(const UnicodeString& text, Formattable& result, UErrorCode& status) const U_OVERRIDE;
 
 #ifndef U_HIDE_INTERNAL_API
     /**
@@ -141,7 +138,7 @@ public:
      * This method will fail if this format is not a currency format,
      * that is, if it does not contain the currency pattern symbol
      * (U+00A4) in its prefix or suffix. This implementation always returns
-     * nullptr.
+     * NULL.
      *
      * @param text the string to parse
      * @param pos  input-output position; on input, the position within text
@@ -150,10 +147,10 @@ public:
      *             If the parse fails, the position in unchanged upon output.
      * @return     if parse succeeds, a pointer to a newly-created CurrencyAmount
      *             object (owned by the caller) containing information about
-     *             the parsed currency; if parse fails, this is nullptr.
+     *             the parsed currency; if parse fails, this is NULL.
      * @internal
      */
-    CurrencyAmount* parseCurrency(const UnicodeString& text, ParsePosition& pos) const override;
+    CurrencyAmount* parseCurrency(const UnicodeString& text, ParsePosition& pos) const U_OVERRIDE;
 #endif  /* U_HIDE_INTERNAL_API */
 
     /**
@@ -180,7 +177,7 @@ public:
      *                  other classes have different class IDs.
      * @stable ICU 51
      */
-    UClassID getDynamicClassID() const override;
+    UClassID getDynamicClassID() const U_OVERRIDE;
 
   private:
     CompactDecimalFormat(const Locale& inLocale, UNumberCompactStyle style, UErrorCode& status);
@@ -189,8 +186,6 @@ public:
 U_NAMESPACE_END
 
 #endif /* #if !UCONFIG_NO_FORMATTING */
-
-#endif /* U_SHOW_CPLUSPLUS_API */
 
 #endif // __COMPACT_DECIMAL_FORMAT_H__
 //eof

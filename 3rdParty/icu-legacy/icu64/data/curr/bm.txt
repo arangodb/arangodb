@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 bm{
     Currencies{
         AED{
@@ -175,13 +174,9 @@ bm{
             "SHP",
             "Ɛlɛni-Senu Livri",
         }
-        SLE{
-            "SLE",
-            "siyeralewɔni Lewɔni",
-        }
         SLL{
             "SLL",
-            "siyeralewɔni Lewɔni (1964—2022)",
+            "siyeralewɔni Lewɔni",
         }
         SOS{
             "SOS",
@@ -220,7 +215,7 @@ bm{
             "sefa Fraŋ (BEAC)",
         }
         XOF{
-            "F CFA",
+            "CFA",
             "sefa Fraŋ (BCEAO)",
         }
         ZAR{
@@ -240,4 +235,5 @@ bm{
             "zimbabuwe Dolar",
         }
     }
+    Version{"2.1.47.82"}
 }

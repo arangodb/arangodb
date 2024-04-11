@@ -52,7 +52,7 @@ public:
 
     G7CollationTest() {}
     virtual ~G7CollationTest();
-    void runIndexedTest( int32_t index, UBool exec, const char* &name, char* par = nullptr ) override;
+    void runIndexedTest( int32_t index, UBool exec, const char* &name, char* par = NULL );
 
 
     // perform test for G7 locales

@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 dz{
     Keys{
         calendar{"ཟླ་ཐོ"}
@@ -235,9 +234,11 @@ dz{
             tibt{"ང་བཅས་ཀྱི་ཨང་ཡིག"}
         }
     }
+    Version{"2.1.47.82"}
     codePatterns{
         language{"ཁ་སྐད་: {0}"}
         script{"ཡིག་གཟུགས་: {0}"}
+        territory{"{0}"}
     }
     localeDisplayPattern{
         keyTypePattern{"{0}།: {1}"}

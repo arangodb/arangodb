@@ -49,14 +49,14 @@ struct TestInput
 
 /* Returns the path to icu/source/test/testdata/ */
 const char *getSourceTestData() {
-    const char *srcDataDir = nullptr;
+    const char *srcDataDir = NULL;
 #ifdef U_TOPSRCDIR
     srcDataDir =  U_TOPSRCDIR  U_FILE_SEP_STRING "test" U_FILE_SEP_STRING "testdata" U_FILE_SEP_STRING;
 #else
     srcDataDir = ".."U_FILE_SEP_STRING".."U_FILE_SEP_STRING"test"U_FILE_SEP_STRING"testdata"U_FILE_SEP_STRING;
     FILE *f = fopen(".."U_FILE_SEP_STRING".."U_FILE_SEP_STRING"test"U_FILE_SEP_STRING"testdata"U_FILE_SEP_STRING"rbbitst.txt", "r");
 
-    if (f != nullptr) {
+    if (f != NULL) {
         /* We're in icu/source/test/letest/ */
         fclose(f);
     } else {
@@ -109,7 +109,7 @@ void dumpLongs(FILE *file, const char *tag, le_int32 *longs, le_int32 count) {
             bufp = 0;
         }
 
-        bufp += snprintf(&lineBuffer[bufp], sizeof(lineBuffer) - bufp, "0x%8.8X, ", longs[i]);
+        bufp += sprintf(&lineBuffer[bufp], "0x%8.8X, ", longs[i]);
     }
 
     if (bufp != 0) {
@@ -132,7 +132,7 @@ void dumpFloats(FILE *file, const char *tag, float *floats, le_int32 count) {
             bufp = 0;
         }
 
-        bufp += snprintf(&lineBuffer[bufp], sizeof(lineBuffer) - bufp, "%f, ", floats[i]);
+        bufp += sprintf(&lineBuffer[bufp], "%f, ", floats[i]);
     }
 
     if (bufp != 0) {
@@ -151,7 +151,7 @@ int main(int argc, char *argv[])
     if(argc>2) {
       gendataFile = argv[2];
     }
-    time_t now = time(nullptr);
+    time_t now = time(NULL);
     struct tm *local = localtime(&now);
     const char *tmFormat = "%m/%d/%Y %I:%M:%S %p %Z";
     char  tmString[64];
@@ -162,7 +162,7 @@ int main(int argc, char *argv[])
     UXMLParser  *parser = UXMLParser::createParser(status);
     UXMLElement *root   = parser->parseFile(gendataFile, status);
 
-    if (root == nullptr) {
+    if (root == NULL) {
       printf("Error: Could not open %s\n", gendataFile);
         delete parser;
         return -1;
@@ -188,14 +188,14 @@ int main(int argc, char *argv[])
     const UXMLElement *testCase;
     int32_t tc = 0;
 
-    while((testCase = root->nextChildElement(tc)) != nullptr) {
+    while((testCase = root->nextChildElement(tc)) != NULL) {
         if (testCase->getTagName().compare(test_case) == 0) {
             char *id = getCString(testCase->getAttribute(id_attr));
             char *script = getCString(testCase->getAttribute(script_attr));
             char *lang   = getCString(testCase->getAttribute(lang_attr));
             ++count;
             printf("\n ID %s\n", id);
-            LEFontInstance *font = nullptr;
+            LEFontInstance *font = NULL;
             const UXMLElement *element;
             int32_t ec = 0;
             int32_t charCount = 0;
@@ -205,10 +205,10 @@ int main(int argc, char *argv[])
             UnicodeString text;
             int32_t glyphCount = 0;
             LEErrorCode leStatus = LE_NO_ERROR;
-            LayoutEngine *engine = nullptr;
-            LEGlyphID *glyphs    = nullptr;
-            le_int32  *indices   = nullptr;
-            float     *positions = nullptr;
+            LayoutEngine *engine = NULL;
+            LEGlyphID *glyphs    = NULL;
+            le_int32  *indices   = NULL;
+            float     *positions = NULL;
 
             uscript_getCode(script, &scriptCode, 1, &status);
             if (LE_FAILURE(status)) {
@@ -216,7 +216,7 @@ int main(int argc, char *argv[])
                 goto free_c_strings;
             }
 
-            if (lang != nullptr) {
+            if (lang != NULL) {
                 languageCode = getLanguageCode(lang);
 
                 if (languageCode < 0) {
@@ -229,13 +229,13 @@ int main(int argc, char *argv[])
                 fprintf(outputFile, "    <test-case id=\"%s\" script=\"%s\">\n", id, script);
             }
 
-            while((element = testCase->nextChildElement(ec)) != nullptr) {
+            while((element = testCase->nextChildElement(ec)) != NULL) {
                 UnicodeString tag = element->getTagName();
 
                 // TODO: make sure that each element is only used once.
                 if (tag.compare(test_font) == 0) {
                     char *fontName  = getCString(element->getAttribute(name_attr));
-                    const char *version = nullptr;
+                    const char *version = NULL;
                     char buf[2048];
                     PortableFontInstance *pfi = new PortableFontInstance(getPath(buf,fontName), 12, leStatus);
                     
@@ -251,13 +251,13 @@ int main(int argc, char *argv[])
 
                     // The standard recommends that the Macintosh Roman/English name string be present, but
                     // if it's not, try the Microsoft Unicode/English string.
-                    if (version == nullptr) {
+                    if (version == NULL) {
                         const LEUnicode16 *uversion = pfi->getUnicodeNameString(NAME_VERSION_STRING, PLATFORM_MICROSOFT, MICROSOFT_UNICODE_BMP, MICROSOFT_ENGLISH);
 
-                        if (uversion != nullptr) {
+                        if (uversion != NULL) {
                           char uversion_utf8[300];
                           UErrorCode status2 = U_ZERO_ERROR;
-                          u_strToUTF8(uversion_utf8, 300, nullptr, uversion, -1, &status2);
+                          u_strToUTF8(uversion_utf8, 300, NULL, uversion, -1, &status2);
                           if(U_FAILURE(status2)) {
                             uversion_utf8[0]=0;
                           }
@@ -281,9 +281,9 @@ int main(int argc, char *argv[])
 
                     font = pfi;
                 } else if (tag.compare(test_text) == 0) {
-                    char *utf8 = nullptr;
+                    char *utf8 = NULL;
 
-                    text = element->getText(true);
+                    text = element->getText(TRUE);
                     charCount = text.length();
 
                     utf8 = getUTF8String(&text);
@@ -299,7 +299,7 @@ int main(int argc, char *argv[])
                 }
             }
 
-            if (font == nullptr) {
+            if (font == NULL) {
                 LEErrorCode fontStatus = LE_NO_ERROR;
 
                 font = new SimpleFontInstance(12, fontStatus);

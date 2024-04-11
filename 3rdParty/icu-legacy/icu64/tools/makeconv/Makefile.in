@@ -31,8 +31,7 @@ TARGET = $(BINDIR)/$(TARGET_STUB_NAME)$(EXEEXT)
 CPPFLAGS += -I$(srcdir) -I$(top_srcdir)/common -I$(srcdir)/../toolutil
 LIBS = $(LIBICUTOOLUTIL) $(LIBICUI18N) $(LIBICUUC) $(DEFAULT_LIBS) $(LIB_M)
 
-SOURCES = $(shell cat $(srcdir)/sources.txt)
-OBJECTS = $(patsubst %.cpp,%.o,$(patsubst %.c,%.o, $(SOURCES)))
+OBJECTS = makeconv.o ucnvstat.o genmbcs.o gencnvex.o
 
 DEPS = $(OBJECTS:.o=.d)
 

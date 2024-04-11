@@ -82,7 +82,7 @@ static void TestBug672Normalize(void);
 */
 static void TestSmallBuffer(void);
 /**
-* Tests the discontiguous contractions
+* Tests the discontiguos contractions
 */
 static void TestDiscontiguos(void);
 /**

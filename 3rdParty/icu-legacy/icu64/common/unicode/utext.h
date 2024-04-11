@@ -180,8 +180,27 @@ typedef struct UText UText; /**< C typedef for struct UText. @stable ICU 3.6 */
   *
   * @stable ICU 3.4
   */
-U_CAPI UText * U_EXPORT2
+U_STABLE UText * U_EXPORT2
 utext_close(UText *ut);
+
+#if U_SHOW_CPLUSPLUS_API
+
+U_NAMESPACE_BEGIN
+
+/**
+ * \class LocalUTextPointer
+ * "Smart pointer" class, closes a UText via utext_close().
+ * For most methods see the LocalPointerBase base class.
+ *
+ * @see LocalPointerBase
+ * @see LocalPointer
+ * @stable ICU 4.4
+ */
+U_DEFINE_LOCAL_OPEN_POINTER(LocalUTextPointer, UText, utext_close);
+
+U_NAMESPACE_END
+
+#endif
 
 /**
  * Open a read-only UText implementation for UTF-8 strings.
@@ -204,7 +223,7 @@ utext_close(UText *ut);
  *               will always be used and returned.
  * @stable ICU 3.4
  */
-U_CAPI UText * U_EXPORT2
+U_STABLE UText * U_EXPORT2
 utext_openUTF8(UText *ut, const char *s, int64_t length, UErrorCode *status);
 
 
@@ -222,7 +241,7 @@ utext_openUTF8(UText *ut, const char *s, int64_t length, UErrorCode *status);
  *               will always be used and returned.
  * @stable ICU 3.4
  */
-U_CAPI UText * U_EXPORT2
+U_STABLE UText * U_EXPORT2
 utext_openUChars(UText *ut, const UChar *s, int64_t length, UErrorCode *status);
 
 
@@ -230,8 +249,8 @@ utext_openUChars(UText *ut, const UChar *s, int64_t length, UErrorCode *status);
 /**
  * Open a writable UText for a non-const UnicodeString. 
  * 
- * @param ut      Pointer to a UText struct.  If nullptr, a new UText will be created.
- *                 If non-nullptr, must refer to an initialized UText struct, which will then
+ * @param ut      Pointer to a UText struct.  If NULL, a new UText will be created.
+ *                 If non-NULL, must refer to an initialized UText struct, which will then
  *                 be reset to reference the specified input string.
  * @param s       A UnicodeString.
  * @param status Errors are returned here.
@@ -239,15 +258,15 @@ utext_openUChars(UText *ut, const UChar *s, int64_t length, UErrorCode *status);
  *                 will always be used and returned.
  * @stable ICU 3.4
  */
-U_CAPI UText * U_EXPORT2
+U_STABLE UText * U_EXPORT2
 utext_openUnicodeString(UText *ut, icu::UnicodeString *s, UErrorCode *status);
 
 
 /**
  * Open a UText for a const UnicodeString.   The resulting UText will not be writable.
  * 
- * @param ut    Pointer to a UText struct.  If nullptr, a new UText will be created.
- *               If non-nullptr, must refer to an initialized UText struct, which will then
+ * @param ut    Pointer to a UText struct.  If NULL, a new UText will be created.
+ *               If non-NULL, must refer to an initialized UText struct, which will then
  *               be reset to reference the specified input string.
  * @param s      A const UnicodeString to be wrapped.
  * @param status Errors are returned here.
@@ -255,14 +274,14 @@ utext_openUnicodeString(UText *ut, icu::UnicodeString *s, UErrorCode *status);
  *               will always be used and returned.
  * @stable ICU 3.4
  */
-U_CAPI UText * U_EXPORT2
+U_STABLE UText * U_EXPORT2
 utext_openConstUnicodeString(UText *ut, const icu::UnicodeString *s, UErrorCode *status);
 
 
 /**
  * Open a writable UText implementation for an ICU Replaceable object.
- * @param ut    Pointer to a UText struct.  If nullptr, a new UText will be created.
- *               If non-nullptr, must refer to an already existing UText, which will then
+ * @param ut    Pointer to a UText struct.  If NULL, a new UText will be created.
+ *               If non-NULL, must refer to an already existing UText, which will then
  *               be reset to reference the specified replaceable text.
  * @param rep    A Replaceable text object.
  * @param status Errors are returned here.
@@ -271,13 +290,13 @@ utext_openConstUnicodeString(UText *ut, const icu::UnicodeString *s, UErrorCode 
  * @see Replaceable
  * @stable ICU 3.4
  */
-U_CAPI UText * U_EXPORT2
+U_STABLE UText * U_EXPORT2
 utext_openReplaceable(UText *ut, icu::Replaceable *rep, UErrorCode *status);
 
 /**
  * Open a  UText implementation over an ICU CharacterIterator.
- * @param ut    Pointer to a UText struct.  If nullptr, a new UText will be created.
- *               If non-nullptr, must refer to an already existing UText, which will then
+ * @param ut    Pointer to a UText struct.  If NULL, a new UText will be created.
+ *               If non-NULL, must refer to an already existing UText, which will then
  *               be reset to reference the specified replaceable text.
  * @param ci     A Character Iterator.
  * @param status Errors are returned here.
@@ -286,7 +305,7 @@ utext_openReplaceable(UText *ut, icu::Replaceable *rep, UErrorCode *status);
  * @see Replaceable
  * @stable ICU 3.4
  */
-U_CAPI UText * U_EXPORT2
+U_STABLE UText * U_EXPORT2
 utext_openCharacterIterator(UText *ut, icu::CharacterIterator *ci, UErrorCode *status);
 
 #endif
@@ -323,7 +342,7 @@ utext_openCharacterIterator(UText *ut, icu::CharacterIterator *ci, UErrorCode *s
   *  shallow clones provide some protection against errors of this type by
   *  disabling text modification via the cloned UText.
   *
-  *  A shallow clone made with the readOnly parameter == false will preserve the 
+  *  A shallow clone made with the readOnly parameter == FALSE will preserve the 
   *  utext_isWritable() state of the source object.  Note, however, that
   *  write operations must be avoided while more than one UText exists that refer
   *  to the same underlying text.
@@ -339,8 +358,8 @@ utext_openCharacterIterator(UText *ut, icu::CharacterIterator *ci, UErrorCode *s
   *                If non-NULL, must refer to an already existing UText, which will then
   *                be reset to become the clone.
   *  @param src    The UText to be cloned.
-  *  @param deep   true to request a deep clone, false for a shallow clone.
-  *  @param readOnly true to request that the cloned UText have read only access to the 
+  *  @param deep   TRUE to request a deep clone, FALSE for a shallow clone.
+  *  @param readOnly TRUE to request that the cloned UText have read only access to the 
   *                underlying text.  
 
   *  @param status Errors are returned here.  For deep clones, U_UNSUPPORTED_ERROR
@@ -349,7 +368,7 @@ utext_openCharacterIterator(UText *ut, icu::CharacterIterator *ci, UErrorCode *s
   *  @return       The newly created clone, or NULL if the clone operation failed.
   *  @stable ICU 3.4
   */
-U_CAPI UText * U_EXPORT2
+U_STABLE UText * U_EXPORT2
 utext_clone(UText *dest, const UText *src, UBool deep, UBool readOnly, UErrorCode *status);
 
 
@@ -357,14 +376,14 @@ utext_clone(UText *dest, const UText *src, UBool deep, UBool readOnly, UErrorCod
   *  Compare two UText objects for equality.
   *  UTexts are equal if they are iterating over the same text, and
   *    have the same iteration position within the text.
-  *    If either or both of the parameters are NULL, the comparison is false.
+  *    If either or both of the parameters are NULL, the comparison is FALSE.
   *
   *  @param a   The first of the two UTexts to compare.
   *  @param b   The other UText to be compared.
-  *  @return    true if the two UTexts are equal.
+  *  @return    TRUE if the two UTexts are equal.
   *  @stable ICU 3.6
   */
-U_CAPI UBool U_EXPORT2
+U_STABLE UBool U_EXPORT2
 utext_equals(const UText *a, const UText *b);
 
 
@@ -385,11 +404,11 @@ utext_equals(const UText *a, const UText *b);
   *
   * @stable ICU 3.4
   */
-U_CAPI int64_t U_EXPORT2
+U_STABLE int64_t U_EXPORT2
 utext_nativeLength(UText *ut);
 
 /**
- *  Return true if calculating the length of the text could be expensive.
+ *  Return TRUE if calculating the length of the text could be expensive.
  *  Finding the length of NUL terminated strings is considered to be expensive.
  *
  *  Note that the value of this function may change
@@ -398,10 +417,10 @@ utext_nativeLength(UText *ut);
  *  be expensive to report it.
  *
  * @param ut the text to be accessed.
- * @return true if determining the length of the text could be time consuming.
+ * @return TRUE if determining the length of the text could be time consuming.
  * @stable ICU 3.4
  */
-U_CAPI UBool U_EXPORT2
+U_STABLE UBool U_EXPORT2
 utext_isLengthExpensive(const UText *ut);
 
 /**
@@ -429,7 +448,7 @@ utext_isLengthExpensive(const UText *ut);
  * @return the code point at the specified index.
  * @stable ICU 3.4
  */
-U_CAPI UChar32 U_EXPORT2
+U_STABLE UChar32 U_EXPORT2
 utext_char32At(UText *ut, int64_t nativeIndex);
 
 
@@ -443,7 +462,7 @@ utext_char32At(UText *ut, int64_t nativeIndex);
  * @return the Unicode code point at the current iterator position.
  * @stable ICU 3.4
  */
-U_CAPI UChar32 U_EXPORT2
+U_STABLE UChar32 U_EXPORT2
 utext_current32(UText *ut);
 
 
@@ -465,7 +484,7 @@ utext_current32(UText *ut);
  * @see UTEXT_NEXT32
  * @stable ICU 3.4
  */
-U_CAPI UChar32 U_EXPORT2
+U_STABLE UChar32 U_EXPORT2
 utext_next32(UText *ut);
 
 
@@ -486,7 +505,7 @@ utext_next32(UText *ut);
  *  @see UTEXT_PREVIOUS32
  *  @stable ICU 3.4
  */
-U_CAPI UChar32 U_EXPORT2
+U_STABLE UChar32 U_EXPORT2
 utext_previous32(UText *ut);
 
 
@@ -508,7 +527,7 @@ utext_previous32(UText *ut);
   *         or U_SENTINEL (-1) if it is out of bounds.
   * @stable ICU 3.4
   */
-U_CAPI UChar32 U_EXPORT2
+U_STABLE UChar32 U_EXPORT2
 utext_next32From(UText *ut, int64_t nativeIndex);
 
 
@@ -528,7 +547,7 @@ utext_next32From(UText *ut, int64_t nativeIndex);
   *
   * @stable ICU 3.4
   */
-U_CAPI UChar32 U_EXPORT2
+U_STABLE UChar32 U_EXPORT2
 utext_previous32From(UText *ut, int64_t nativeIndex);
 
 /**
@@ -543,7 +562,7 @@ utext_previous32From(UText *ut, int64_t nativeIndex);
   * @return the current index position, in the native units of the text provider.
   * @stable ICU 3.4
   */
-U_CAPI int64_t U_EXPORT2
+U_STABLE int64_t U_EXPORT2
 utext_getNativeIndex(const UText *ut);
 
 /**
@@ -569,7 +588,7 @@ utext_getNativeIndex(const UText *ut);
  * @param nativeIndex the native unit index of the new iteration position.
  * @stable ICU 3.4
  */
-U_CAPI void U_EXPORT2
+U_STABLE void U_EXPORT2
 utext_setNativeIndex(UText *ut, int64_t nativeIndex);
 
 /**
@@ -584,11 +603,11 @@ utext_setNativeIndex(UText *ut, int64_t nativeIndex);
  *
  * @param ut the text to be accessed.
  * @param delta the signed number of code points to move the iteration position.
- * @return true if the position could be moved the requested number of positions while
+ * @return TRUE if the position could be moved the requested number of positions while
  *              staying within the range [0 - text length].
  * @stable ICU 3.4
  */
-U_CAPI UBool U_EXPORT2
+U_STABLE UBool U_EXPORT2
 utext_moveIndex32(UText *ut, int32_t delta);
 
 /**
@@ -613,7 +632,7 @@ utext_moveIndex32(UText *ut, int32_t delta);
  *         or zero if the current position is at the start of the text.
  * @stable ICU 3.6
  */
-U_CAPI int64_t U_EXPORT2
+U_STABLE int64_t U_EXPORT2
 utext_getPreviousNativeIndex(UText *ut); 
 
 
@@ -651,7 +670,7 @@ utext_getPreviousNativeIndex(UText *ut);
  *
  * @stable ICU 3.4
  */
-U_CAPI int32_t U_EXPORT2
+U_STABLE int32_t U_EXPORT2
 utext_extract(UText *ut,
              int64_t nativeStart, int64_t nativeLimit,
              UChar *dest, int32_t destCapacity,
@@ -747,14 +766,12 @@ utext_extract(UText *ut,
   *
   * @stable ICU 3.8
   */
-#define UTEXT_SETNATIVEINDEX(ut, ix) UPRV_BLOCK_MACRO_BEGIN { \
-    int64_t __offset = (ix) - (ut)->chunkNativeStart; \
-    if (__offset>=0 && __offset<(int64_t)(ut)->nativeIndexingLimit && (ut)->chunkContents[__offset]<0xdc00) { \
-        (ut)->chunkOffset=(int32_t)__offset; \
-    } else { \
-        utext_setNativeIndex((ut), (ix)); \
-    } \
-} UPRV_BLOCK_MACRO_END
+#define UTEXT_SETNATIVEINDEX(ut, ix)                       \
+    { int64_t __offset = (ix) - (ut)->chunkNativeStart; \
+      if (__offset>=0 && __offset<(int64_t)(ut)->nativeIndexingLimit && (ut)->chunkContents[__offset]<0xdc00) { \
+          (ut)->chunkOffset=(int32_t)__offset; \
+      } else { \
+          utext_setNativeIndex((ut), (ix)); } }
 
 
 
@@ -768,16 +785,16 @@ utext_extract(UText *ut,
 
 
 /**
- *  Return true if the text can be written (modified) with utext_replace() or
+ *  Return TRUE if the text can be written (modified) with utext_replace() or
  *  utext_copy().  For the text to be writable, the text provider must
  *  be of a type that supports writing and the UText must not be frozen.
  *
- *  Attempting to modify text when utext_isWriteable() is false will fail -
+ *  Attempting to modify text when utext_isWriteable() is FALSE will fail -
  *  the text will not be modified, and an error will be returned from the function
  *  that attempted the modification.
  *
  * @param  ut   the UText to be tested.
- * @return true if the text is modifiable.
+ * @return TRUE if the text is modifiable.
  *
  * @see    utext_freeze()
  * @see    utext_replace()
@@ -785,7 +802,7 @@ utext_extract(UText *ut,
  * @stable ICU 3.4
  *
  */
-U_CAPI UBool U_EXPORT2
+U_STABLE UBool U_EXPORT2
 utext_isWritable(const UText *ut);
 
 
@@ -794,10 +811,10 @@ utext_isWritable(const UText *ut);
   * @see Replaceable::hasMetaData()
   *
   * @param ut The UText to be tested
-  * @return true if the underlying text includes meta data.
+  * @return TRUE if the underlying text includes meta data.
   * @stable ICU 3.4
   */
-U_CAPI UBool U_EXPORT2
+U_STABLE UBool U_EXPORT2
 utext_hasMetaData(const UText *ut);
 
 
@@ -808,7 +825,7 @@ utext_hasMetaData(const UText *ut);
  *  newly inserted replacement text.
  *
  * This function is only available on UText types that support writing,
- * that is, ones where utext_isWritable() returns true.
+ * that is, ones where utext_isWritable() returns TRUE.
  *
  * When using this function, there should be only a single UText opened onto the
  * underlying native text string.  Behavior after a replace operation
@@ -828,7 +845,7 @@ utext_hasMetaData(const UText *ut);
  *
  * @stable ICU 3.4
  */
-U_CAPI int32_t U_EXPORT2
+U_STABLE int32_t U_EXPORT2
 utext_replace(UText *ut,
              int64_t nativeStart, int64_t nativeLimit,
              const UChar *replacementText, int32_t replacementLength,
@@ -850,7 +867,7 @@ utext_replace(UText *ut,
  * at the destination position.
  *
  * This function is only available on UText types that support writing,
- * that is, ones where utext_isWritable() returns true.
+ * that is, ones where utext_isWritable() returns TRUE.
  *
  * When using this function, there should be only a single UText opened onto the
  * underlying native text string.  Behavior after a copy operation
@@ -863,12 +880,12 @@ utext_replace(UText *ut,
  *                     to be copied.
  * @param destIndex    The native destination index to which the source substring is
  *                     copied or moved.
- * @param move         If true, then the substring is moved, not copied/duplicated.
+ * @param move         If TRUE, then the substring is moved, not copied/duplicated.
  * @param status       receives any error status.  Possible errors include U_NO_WRITE_PERMISSION
  *                       
  * @stable ICU 3.4
  */
-U_CAPI void U_EXPORT2
+U_STABLE void U_EXPORT2
 utext_copy(UText *ut,
           int64_t nativeStart, int64_t nativeLimit,
           int64_t destIndex,
@@ -897,7 +914,7 @@ utext_copy(UText *ut,
   *  @see   utext_isWritable()
   *  @stable ICU 3.6
   */
-U_CAPI void U_EXPORT2
+U_STABLE void U_EXPORT2
 utext_freeze(UText *ut);
 
 
@@ -972,7 +989,7 @@ enum {
   *  @param dest   A UText struct to be filled in with the result of the clone operation,
   *                or NULL if the clone function should heap-allocate a new UText struct.
   *  @param src    The UText to be cloned.
-  *  @param deep   true to request a deep clone, false for a shallow clone.
+  *  @param deep   TRUE to request a deep clone, FALSE for a shallow clone.
   *  @param status Errors are returned here.  For deep clones, U_UNSUPPORTED_ERROR
   *                should be returned if the text provider is unable to clone the
   *                original text.
@@ -1008,9 +1025,9 @@ UTextNativeLength(UText *ut);
  *
  * @param ut          the UText being accessed.
  * @param nativeIndex Requested index of the text to be accessed.
- * @param forward     If true, then the returned chunk must contain text
+ * @param forward     If TRUE, then the returned chunk must contain text
  *                    starting from the index, so that start<=index<limit.
- *                    If false, then the returned chunk must contain text
+ *                    If FALSE, then the returned chunk must contain text
  *                    before the index, so that start<index<=limit.
  * @return            True if the requested index could be accessed.  The chunk
  *                    will contain the requested text.
@@ -1114,7 +1131,7 @@ UTextReplace(UText *ut,
  * @param nativeStart  The index of the start of the region to be copied or moved
  * @param nativeLimit  The index of the character following the region to be replaced.
  * @param nativeDest   The destination index to which the source substring is copied or moved.
- * @param move         If true, then the substring is moved, not copied/duplicated.
+ * @param move         If TRUE, then the substring is moved, not copied/duplicated.
  * @param status       receives any error status.  Possible errors include U_NO_WRITE_PERMISSION
  *
  * @stable ICU 3.4
@@ -1535,7 +1552,7 @@ struct UText {
  * @return pointer to the UText, allocated if necessary, with extra space set up if requested.
  * @stable ICU 3.4
  */
-U_CAPI UText * U_EXPORT2
+U_STABLE UText * U_EXPORT2
 utext_setup(UText *ut, int32_t extraSpace, UErrorCode *status);
 
 // do not use #ifndef U_HIDE_INTERNAL_API around the following!
@@ -1579,25 +1596,6 @@ enum {
 
 U_CDECL_END
 
-
-#if U_SHOW_CPLUSPLUS_API
-
-U_NAMESPACE_BEGIN
-
-/**
- * \class LocalUTextPointer
- * "Smart pointer" class, closes a UText via utext_close().
- * For most methods see the LocalPointerBase base class.
- *
- * @see LocalPointerBase
- * @see LocalPointer
- * @stable ICU 4.4
- */
-U_DEFINE_LOCAL_OPEN_POINTER(LocalUTextPointer, UText, utext_close);
-
-U_NAMESPACE_END
-
-#endif
 
 
 #endif

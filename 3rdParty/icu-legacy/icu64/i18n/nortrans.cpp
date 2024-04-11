@@ -45,13 +45,13 @@ void NormalizationTransliterator::registerIDs() {
     Transliterator::_registerFactory(UNICODE_STRING_SIMPLE("Any-FCC"),
                                      _create, cstrToken("nfc\0\3"));
     Transliterator::_registerSpecialInverse(UNICODE_STRING_SIMPLE("NFC"),
-                                            UNICODE_STRING_SIMPLE("NFD"), true);
+                                            UNICODE_STRING_SIMPLE("NFD"), TRUE);
     Transliterator::_registerSpecialInverse(UNICODE_STRING_SIMPLE("NFKC"),
-                                            UNICODE_STRING_SIMPLE("NFKD"), true);
+                                            UNICODE_STRING_SIMPLE("NFKD"), TRUE);
     Transliterator::_registerSpecialInverse(UNICODE_STRING_SIMPLE("FCC"),
-                                            UNICODE_STRING_SIMPLE("NFD"), false);
+                                            UNICODE_STRING_SIMPLE("NFD"), FALSE);
     Transliterator::_registerSpecialInverse(UNICODE_STRING_SIMPLE("FCD"),
-                                            UNICODE_STRING_SIMPLE("FCD"), false);
+                                            UNICODE_STRING_SIMPLE("FCD"), FALSE);
 }
 
 /**
@@ -62,11 +62,11 @@ Transliterator* NormalizationTransliterator::_create(const UnicodeString& ID,
     const char *name = (const char *)context.pointer;
     UNormalization2Mode mode = (UNormalization2Mode)uprv_strchr(name, 0)[1];
     UErrorCode errorCode = U_ZERO_ERROR;
-    const Normalizer2 *norm2 = Normalizer2::getInstance(nullptr, name, mode, errorCode);
+    const Normalizer2 *norm2 = Normalizer2::getInstance(NULL, name, mode, errorCode);
     if(U_SUCCESS(errorCode)) {
         return new NormalizationTransliterator(ID, *norm2);
     } else {
-        return nullptr;
+        return NULL;
     }
 }
 
@@ -75,7 +75,7 @@ Transliterator* NormalizationTransliterator::_create(const UnicodeString& ID,
  */
 NormalizationTransliterator::NormalizationTransliterator(const UnicodeString& id,
                                                          const Normalizer2 &norm2) :
-    Transliterator(id, nullptr), fNorm2(norm2) {}
+    Transliterator(id, 0), fNorm2(norm2) {}
 
 /**
  * Destructor.
@@ -92,7 +92,7 @@ NormalizationTransliterator::NormalizationTransliterator(const NormalizationTran
 /**
  * Transliterator API.
  */
-NormalizationTransliterator* NormalizationTransliterator::clone() const {
+Transliterator* NormalizationTransliterator::clone(void) const {
     return new NormalizationTransliterator(*this);
 }
 

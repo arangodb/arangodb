@@ -1,7 +1,7 @@
 /*  
  ***********************************************************************
  * © 2016 and later: Unicode, Inc. and others.
- * License & terms of use: http://www.unicode.org/copyright.html
+ * License & terms of use: http://www.unicode.org/copyright.html#License
  ***********************************************************************
  ***********************************************************************
  *   Copyright (C) 2002-2014, International Business Machines
@@ -47,8 +47,8 @@ U_NAMESPACE_END
 class UTrie2PerfTest : public UPerfTest {
 public:
     UTrie2PerfTest(int32_t argc, const char *argv[], UErrorCode &status)
-            : UPerfTest(argc, argv, nullptr, 0, "", status),
-              utf8(nullptr), utf8Length(0), countInputCodePoints(0) {
+            : UPerfTest(argc, argv, NULL, 0, "", status),
+              utf8(NULL), utf8Length(0), countInputCodePoints(0) {
         if (U_SUCCESS(status)) {
 #if 0       // See comment at unorm_initUTrie2() forward declaration.
             unorm_initUTrie2(&status);
@@ -60,12 +60,12 @@ public:
                 countInputCodePoints = u_countChar32(buffer, bufferLen);
 
                 // Preflight the UTF-8 length and allocate utf8.
-                u_strToUTF8(nullptr, 0, &utf8Length, buffer, bufferLen, &status);
+                u_strToUTF8(NULL, 0, &utf8Length, buffer, bufferLen, &status);
                 if(status==U_BUFFER_OVERFLOW_ERROR) {
                     utf8=(char *)malloc(utf8Length);
-                    if(utf8!=nullptr) {
+                    if(utf8!=NULL) {
                         status=U_ZERO_ERROR;
-                        u_strToUTF8(utf8, utf8Length, nullptr, buffer, bufferLen, &status);
+                        u_strToUTF8(utf8, utf8Length, NULL, buffer, bufferLen, &status);
                     } else {
                         status=U_MEMORY_ALLOCATION_ERROR;
                     }
@@ -81,9 +81,9 @@ public:
         }
     }
 
-    virtual UPerfFunction* runIndexedTest(int32_t index, UBool exec, const char* &name, char* par = nullptr);
+    virtual UPerfFunction* runIndexedTest(int32_t index, UBool exec, const char* &name, char* par = NULL);
 
-    const char16_t *getBuffer() const { return buffer; }
+    const UChar *getBuffer() const { return buffer; }
     int32_t getBufferLen() const { return bufferLen; }
 
     char *utf8;
@@ -163,7 +163,7 @@ public:
         return new CheckFCDUTF8(testcase);
     }
     virtual void call(UErrorCode* pErrorCode) {
-        UBool isFCD=unorm_checkFCDUTF8((const uint8_t *)testcase.utf8, testcase.utf8Length, nullptr);
+        UBool isFCD=unorm_checkFCDUTF8((const uint8_t *)testcase.utf8, testcase.utf8Length, NULL);
         if(isFCD>1) {
             fprintf(stderr, "error: bogus result from unorm_checkFCDUTF8()\n");
         }
@@ -178,9 +178,9 @@ protected:
         UErrorCode errorCode=U_ZERO_ERROR;
         destCapacity=unorm_normalize(testcase.getBuffer(), testcase.getBufferLen(),
                                      UNORM_NFC, 0,
-                                     nullptr, 0,
+                                     NULL, 0,
                                      &errorCode);
-        dest=new char16_t[destCapacity];
+        dest=new UChar[destCapacity];
     }
     ~ToNFC() {
         delete [] dest;
@@ -202,7 +202,7 @@ public:
     }
 
 private:
-    char16_t *dest;
+    UChar *dest;
     int32_t destCapacity;
 };
 
@@ -214,7 +214,7 @@ public:
         return new GetBiDiClass(testcase);
     }
     virtual void call(UErrorCode* pErrorCode) {
-        const char16_t *buffer=testcase.getBuffer();
+        const UChar *buffer=testcase.getBuffer();
         int32_t length=testcase.getBufferLen();
         UChar32 c;
         int32_t i;
@@ -240,7 +240,7 @@ UPerfFunction* UTrie2PerfTest::runIndexedTest(int32_t index, UBool exec, const c
 #endif
         default: name = ""; break;
     }
-    return nullptr;
+    return NULL;
 }
 
 int main(int argc, const char *argv[]) {
@@ -253,7 +253,7 @@ int main(int argc, const char *argv[]) {
         return status;
     }
         
-    if (test.run() == false){
+    if (test.run() == FALSE){
         fprintf(stderr, "FAILED: Tests could not be run please check the "
 			            "arguments.\n");
         return -1;

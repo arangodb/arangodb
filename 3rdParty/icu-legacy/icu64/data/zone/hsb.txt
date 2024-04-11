@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 hsb{
+    Version{"2.1.47.82"}
     zoneStrings{
         "Africa:Accra"{
             ec{"Akkra"}
@@ -11,6 +11,9 @@ hsb{
         }
         "Africa:Algiers"{
             ec{"Algier"}
+        }
+        "Africa:Asmera"{
+            ec{"Asmara"}
         }
         "Africa:Cairo"{
             ec{"Kairo"}
@@ -54,14 +57,50 @@ hsb{
         "America:Cayman"{
             ec{"Kaimanske kupy"}
         }
+        "America:Coral_Harbour"{
+            ec{"Atikokan"}
+        }
         "America:Curacao"{
             ec{"Curaçao"}
+        }
+        "America:El_Salvador"{
+            ec{"El Salvador"}
+        }
+        "America:Godthab"{
+            ec{"Nuuk"}
         }
         "America:Havana"{
             ec{"Havanna"}
         }
+        "America:Indiana:Knox"{
+            ec{"Knox, Indiana"}
+        }
+        "America:Indiana:Marengo"{
+            ec{"Marengo, Indiana"}
+        }
+        "America:Indiana:Petersburg"{
+            ec{"Petersburg, Indiana"}
+        }
+        "America:Indiana:Tell_City"{
+            ec{"Tell City, Indiana"}
+        }
+        "America:Indiana:Vevay"{
+            ec{"Vevay, Indiana"}
+        }
+        "America:Indiana:Vincennes"{
+            ec{"Vincennes, Indiana"}
+        }
+        "America:Indiana:Winamac"{
+            ec{"Winamac, Indiana"}
+        }
         "America:Jamaica"{
             ec{"Jamaika"}
+        }
+        "America:Kentucky:Monticello"{
+            ec{"Monticello, Kentucky"}
+        }
+        "America:Lower_Princes"{
+            ec{"Lower Prince’s Quarter"}
         }
         "America:Mexico_City"{
             ec{"Mexiko město"}
@@ -81,8 +120,26 @@ hsb{
         "America:Sao_Paulo"{
             ec{"São Paulo"}
         }
+        "America:Scoresbysund"{
+            ec{"Ittoqqortoormiit"}
+        }
         "America:St_Barthelemy"{
             ec{"St.Barthélemy"}
+        }
+        "America:St_Johns"{
+            ec{"St. John’s"}
+        }
+        "America:St_Kitts"{
+            ec{"St. Kitts"}
+        }
+        "America:St_Lucia"{
+            ec{"St. Lucia"}
+        }
+        "America:St_Thomas"{
+            ec{"St. Thomas"}
+        }
+        "America:St_Vincent"{
+            ec{"St. Vincent"}
         }
         "Antarctica:DumontDUrville"{
             ec{"Dumont D’Urville"}
@@ -117,11 +174,14 @@ hsb{
         "Asia:Kamchatka"{
             ec{"Kamčatka"}
         }
-        "Asia:Karachi"{
-            ec{"Karači"}
+        "Asia:Katmandu"{
+            ec{"Kathmandu"}
         }
         "Asia:Krasnoyarsk"{
             ec{"Krasnojarsk"}
+        }
+        "Asia:Macau"{
+            ec{"Macao"}
         }
         "Asia:Muscat"{
             ec{"Muskat"}
@@ -141,9 +201,6 @@ hsb{
         "Asia:Qatar"{
             ec{"Katar"}
         }
-        "Asia:Rangoon"{
-            ec{"Rangun"}
-        }
         "Asia:Riyadh"{
             ec{"Riad"}
         }
@@ -161,6 +218,9 @@ hsb{
         }
         "Asia:Tashkent"{
             ec{"Taškent"}
+        }
+        "Asia:Tbilisi"{
+            ec{"Tbilisi"}
         }
         "Asia:Tehran"{
             ec{"Teheran"}
@@ -201,8 +261,8 @@ hsb{
         "Atlantic:South_Georgia"{
             ec{"Južna Georgiska"}
         }
-        "Etc:UTC"{
-            ls{"koordinowany swětowy čas"}
+        "Atlantic:St_Helena"{
+            ec{"St. Helena"}
         }
         "Etc:Unknown"{
             ec{"njeznate"}
@@ -255,17 +315,26 @@ hsb{
         "Europe:Tirane"{
             ec{"Tirana"}
         }
+        "Europe:Uzhgorod"{
+            ec{"Užgorod"}
+        }
         "Europe:Vatican"{
             ec{"Vatikan"}
         }
         "Europe:Vienna"{
             ec{"Wien"}
         }
+        "Europe:Vilnius"{
+            ec{"Vilnius"}
+        }
         "Europe:Volgograd"{
             ec{"Wolgograd"}
         }
         "Europe:Warsaw"{
             ec{"Waršawa"}
+        }
+        "Europe:Zaporozhye"{
+            ec{"Zaporižžja"}
         }
         "Europe:Zurich"{
             ec{"Zürich"}
@@ -287,6 +356,12 @@ hsb{
         }
         "Pacific:Fiji"{
             ec{"Fidźi"}
+        }
+        "Pacific:Ponape"{
+            ec{"Pohnpei"}
+        }
+        "Pacific:Truk"{
+            ec{"Chuuk"}
         }
         "meta:Afghanistan"{
             ls{"afghanski čas"}
@@ -639,6 +714,9 @@ hsb{
             lg{"čas kupy Lord-Howe"}
             ls{"standardny čas kupy Lord-Howe"}
         }
+        "meta:Macquarie"{
+            ls{"čas kupy Macquarie"}
+        }
         "meta:Magadan"{
             ld{"Magadanski lětni čas"}
             lg{"Magadanski čas"}
@@ -663,6 +741,11 @@ hsb{
         }
         "meta:Mawson"{
             ls{"Mawsonski čas"}
+        }
+        "meta:Mexico_Northwest"{
+            ld{"mexiski sewjerozapadny lětni čas"}
+            lg{"mexiski sewjerozapadny čas"}
+            ls{"mexiski sewjerozapadny standardny čas"}
         }
         "meta:Mexico_Pacific"{
             ld{"mexiski pacifiski lětni čas"}
@@ -707,9 +790,7 @@ hsb{
             ls{"niueski čas"}
         }
         "meta:Norfolk"{
-            ld{"lětni čas kupy Norfolk"}
-            lg{"čas kupy Norfolk"}
-            ls{"standardny čas kupy Norfolk"}
+            ls{"čas kupy Norfolk"}
         }
         "meta:Noronha"{
             ld{"lětni čas kupow Fernando de Noronha"}
@@ -765,9 +846,6 @@ hsb{
         }
         "meta:Ponape"{
             ls{"ponapeski čas"}
-        }
-        "meta:Pyongyang"{
-            ls{"Pjöngjangski čas"}
         }
         "meta:Reunion"{
             ls{"reunionski čas"}
@@ -880,9 +958,10 @@ hsb{
             lg{"Jekaterinburgski čas"}
             ls{"Jekaterinburgski standardny čas"}
         }
-        "meta:Yukon"{
-            ls{"Yukonowy čas"}
-        }
+        fallbackFormat{"{1} ({0})"}
+        gmtFormat{"GMT{0}"}
+        gmtZeroFormat{"GMT"}
+        hourFormat{"+HH:mm;-HH:mm"}
         regionFormat{"časowe pasmo {0}"}
         regionFormatDaylight{"{0} lětni čas"}
         regionFormatStandard{"{0} zymski čas"}

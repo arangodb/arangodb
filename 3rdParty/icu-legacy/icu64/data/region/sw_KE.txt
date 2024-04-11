@@ -1,46 +1,31 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 sw_KE{
     Countries{
-        001{"dunia"}
-        011{"Afrika Magharibi"}
-        014{"Afrika Mashariki"}
-        015{"Afrika Kaskazini"}
-        030{"Asia Mashariki"}
-        034{"Asia Kusini"}
-        035{"Kusini Mashariki mwa Asia"}
-        039{"Ulaya Kusini"}
-        057{"Maikronesia"}
-        061{"Polinesia"}
-        145{"Asia Magharibi"}
-        151{"Ulaya Mashariki"}
-        154{"Ulaya Kaskazini"}
-        155{"Ulaya Magharibi"}
-        202{"Kusini mwa Jangwa la Sahara"}
         AF{"Afghanistani"}
-        AG{"Antigua na Babuda"}
         AI{"Anguila"}
         AQ{"Antaktika"}
         AZ{"Azabajani"}
-        BB{"Babados"}
         BJ{"Benini"}
-        BS{"Bahamas"}
         BT{"Bhutani"}
         BY{"Belarusi"}
         CC{"Visiwa vya Kokos (Keeling)"}
         CD{"Kongo - Kinshasa"}
-        CV{"Kepuvede"}
-        CW{"Kurakao"}
+        CI{"Ivorikosti"}
+        CY{"Saiprasi"}
+        DK{"Denmaki"}
         EA{"Keuta na Melilla"}
         EC{"Ekwado"}
+        FM{"Mikronesia"}
         GA{"Gaboni"}
+        GL{"Grinilandi"}
         GP{"Gwadelupe"}
-        GS{"Visiwa vya Jojia Kusini na Sandwich Kusini"}
-        GT{"Gwatemala"}
+        GS{"Visiwa vya Jojia ya Kusini na Sandwich ya Kusini"}
         GU{"Guami"}
         HR{"Kroashia"}
+        IO{"Himaya ya Uingereza katika Bahari Hindi"}
         JO{"Yordani"}
+        KY{"Visiwa vya Kaimani"}
         LA{"Laosi"}
         LB{"Lebanoni"}
         LI{"Lishenteni"}
@@ -51,7 +36,10 @@ sw_KE{
         MC{"Monako"}
         MK{"Masedonia"}
         MM{"Myama (Burma)"}
+        MO{"Makau SAR China"}
+        MQ{"Martiniki"}
         MS{"Montserati"}
+        MV{"Maldivi"}
         NC{"Nyukaledonia"}
         NE{"Nijeri"}
         NO{"Norwe"}
@@ -60,15 +48,13 @@ sw_KE{
         PF{"Polinesia ya Ufaransa"}
         PG{"Papua Guinea Mpya"}
         PL{"Polandi"}
-        PM{"St. Pierre na Miquelon"}
-        PR{"Pwetoriko"}
+        PR{"Puetoriko"}
         PS{"Himaya za Palestina"}
         PY{"Paragwai"}
         QA{"Katari"}
-        QO{"Eneo la Oceania"}
         SG{"Singapuri"}
+        SR{"Surinamu"}
         ST{"Sao Tome na Prinsipe"}
-        SV{"Elsalvado"}
         SY{"Shamu"}
         TD{"Chadi"}
         TH{"Thailandi"}
@@ -79,12 +65,14 @@ sw_KE{
         VA{"Mji wa Vatikani"}
         VG{"Visiwa vya Virgin vya Uingereza"}
         VI{"Visiwa vya Virgin vya Marekani"}
-        XA{"Lafudhi za Kigeni"}
-        XB{"Lugha Bandia"}
+        VN{"Vietnamu"}
         YT{"Mayote"}
-        ZZ{"Eneo Lisilojulikana"}
     }
     Countries%short{
-        US{"Marekani"}
+        MO{"Makau"}
     }
+    Countries%variant{
+        MK{"Masedonia (FYROM)"}
+    }
+    Version{"2.1.47.71"}
 }

@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 rm{
     Countries{
         001{"mund"}
@@ -14,8 +13,7 @@ rm{
         015{"Africa dal Nord"}
         017{"Africa Centrala"}
         018{"Africa Meridiunala"}
-        019{"americas"}
-        021{"Amercia dal Nord"}
+        019{"America dal Nord, America Centrala ed America dal Sid"}
         029{"Caribica"}
         030{"Asia da l’Ost"}
         034{"Asia dal Sid"}
@@ -32,9 +30,7 @@ rm{
         151{"Europa Orientala"}
         154{"Europa dal Nord"}
         155{"Europa dal Vest"}
-        202{"Africa Subsaharica"}
         419{"America Latina"}
-        AC{"Insla d’Ascensiun"}
         AD{"Andorra"}
         AE{"Emirats Arabs Unids"}
         AF{"Afghanistan"}
@@ -64,7 +60,6 @@ rm{
         BM{"Bermudas"}
         BN{"Brunei"}
         BO{"Bolivia"}
-        BQ{"Antillas Ollandaisas"}
         BR{"Brasilia"}
         BS{"Bahamas"}
         BT{"Bhutan"}
@@ -74,7 +69,7 @@ rm{
         BZ{"Belize"}
         CA{"Canada"}
         CC{"Inslas Cocos"}
-        CD{"Congo - Kinshasa"}
+        CD{"Republica Democratica dal Congo"}
         CF{"Republica Centralafricana"}
         CG{"Congo"}
         CH{"Svizra"}
@@ -84,22 +79,18 @@ rm{
         CM{"Camerun"}
         CN{"China"}
         CO{"Columbia"}
-        CP{"Insla da Clipperton"}
         CR{"Costa Rica"}
         CU{"Cuba"}
         CV{"Cap Verd"}
-        CW{"Curaçao"}
-        CX{"Insla da Nadal"}
+        CX{"Insla da Christmas"}
         CY{"Cipra"}
-        CZ{"Tschechia"}
+        CZ{"Republica Tscheca"}
         DE{"Germania"}
-        DG{"Diego Garcia"}
         DJ{"Dschibuti"}
         DK{"Danemarc"}
         DM{"Dominica"}
         DO{"Republica Dominicana"}
         DZ{"Algeria"}
-        EA{"Ceuta e Melilla"}
         EC{"Ecuador"}
         EE{"Estonia"}
         EG{"Egipta"}
@@ -107,8 +98,7 @@ rm{
         ER{"Eritrea"}
         ES{"Spagna"}
         ET{"Etiopia"}
-        EU{"Uniun Europeica"}
-        EZ{"zona da l’euro"}
+        EU{"Uniun europeica"}
         FI{"Finlanda"}
         FJ{"Fidschi"}
         FK{"Inslas dal Falkland"}
@@ -140,12 +130,12 @@ rm{
         HR{"Croazia"}
         HT{"Haiti"}
         HU{"Ungaria"}
-        IC{"Inslas Canarias"}
         ID{"Indonesia"}
         IE{"Irlanda"}
         IL{"Israel"}
         IM{"Insla da Man"}
         IN{"India"}
+        IO{"Territori Britannic en l’Ocean Indic"}
         IQ{"Irac"}
         IR{"Iran"}
         IS{"Islanda"}
@@ -155,7 +145,7 @@ rm{
         JO{"Jordania"}
         JP{"Giapun"}
         KE{"Kenia"}
-        KG{"Kirgisistan"}
+        KG{"Kirghisistan"}
         KH{"Cambodscha"}
         KI{"Kiribati"}
         KM{"Comoras"}
@@ -183,9 +173,9 @@ rm{
         MF{"Saint Martin"}
         MG{"Madagascar"}
         MH{"Inslas da Marshall"}
-        MK{"Macedonia dal Nord"}
+        MK{"Macedonia"}
         ML{"Mali"}
-        MM{"Myanmar (Burma)"}
+        MM{"Myanmar"}
         MN{"Mongolia"}
         MO{"Regiun d’administraziun speziala Macao, China"}
         MP{"Inslas Mariannas dal Nord"}
@@ -234,7 +224,7 @@ rm{
         RU{"Russia"}
         RW{"Ruanda"}
         SA{"Arabia Saudita"}
-        SB{"Inslas Salomonas"}
+        SB{"Salomonas"}
         SC{"Seychellas"}
         SD{"Sudan"}
         SE{"Svezia"}
@@ -248,13 +238,10 @@ rm{
         SN{"Senegal"}
         SO{"Somalia"}
         SR{"Surinam"}
-        SS{"Sudan dal Sid"}
-        ST{"São Tomé & Príncipe"}
+        ST{"São Tomé e Principe"}
         SV{"El Salvador"}
-        SX{"Sint Maarten"}
         SY{"Siria"}
-        SZ{"Eswatini"}
-        TA{"Tristan da Cunha"}
+        SZ{"Swaziland"}
         TC{"Inslas Turks e Caicos"}
         TD{"Tschad"}
         TF{"Territoris Franzos Meridiunals"}
@@ -273,8 +260,7 @@ rm{
         TZ{"Tansania"}
         UA{"Ucraina"}
         UG{"Uganda"}
-        UM{"Inslas Pitschnas Perifericas dals Stadis Unids da l’America"}
-        UN{"Naziuns Unidas"}
+        UM{"Inslas pitschnas perifericas dals Stadis Unids da l’America"}
         US{"Stadis Unids da l’America"}
         UY{"Uruguay"}
         UZ{"Usbekistan"}
@@ -285,30 +271,14 @@ rm{
         VI{"Inslas Virginas Americanas"}
         VN{"Vietnam"}
         VU{"Vanuatu"}
-        WF{"Wallis & Futuna"}
+        WF{"Wallis e Futuna"}
         WS{"Samoa"}
-        XA{"accents pseudo"}
-        XB{"pseudo-bidirecziunal"}
-        XK{"Cosovo"}
         YE{"Jemen"}
         YT{"Mayotte"}
         ZA{"Africa dal Sid"}
         ZM{"Sambia"}
         ZW{"Simbabwe"}
-        ZZ{"regiun nunenconuschenta"}
+        ZZ{"Regiun betg encouschenta u nunvalaivla"}
     }
-    Countries%short{
-        GB{"GB"}
-        HK{"Hong Kong"}
-        MO{"Macao"}
-        PS{"Palestina"}
-        US{"US"}
-    }
-    Countries%variant{
-        CD{"Congo (DRC)"}
-        CG{"Congo (republica)"}
-        CZ{"Republica Tscheca"}
-        FK{"Inslas Falkland"}
-        SZ{"Swaziland"}
-    }
+    Version{"2.1.48.4"}
 }

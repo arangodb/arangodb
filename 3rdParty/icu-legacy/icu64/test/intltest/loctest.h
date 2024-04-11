@@ -17,127 +17,111 @@ public:
     LocaleTest();
     virtual ~LocaleTest();
     
-    void runIndexedTest( int32_t index, UBool exec, const char* &name, char* par = nullptr ) override;
+    void runIndexedTest( int32_t index, UBool exec, const char* &name, char* par = NULL );
 
     /**
      * Test methods to set and get data fields
      **/
-    void TestBasicGetters();
-    void TestVariantLengthLimit();
+    void TestBasicGetters(void);
     /**
      * Test methods to set and get data fields
      **/
-    void TestParallelAPIValues();
+    void TestParallelAPIValues(void);
     /**
      * Use Locale to access Resource file data and compare against expected values
      **/
-    void TestSimpleResourceInfo();
+    void TestSimpleResourceInfo(void);
     /**
      * Use Locale to access Resource file display names and compare against expected values
      **/
-    void TestDisplayNames();
+    void TestDisplayNames(void);
     /**
      * Test methods for basic object behaviour
      **/
-    void TestSimpleObjectStuff();
+    void TestSimpleObjectStuff(void);
     /**
      * Test methods for POSIX parsing behavior
      **/
-    void TestPOSIXParsing();
+    void TestPOSIXParsing(void);
     /**
      * Test Locale::getAvailableLocales
      **/
-    void TestGetAvailableLocales();
+    void TestGetAvailableLocales(void);
     /**
      * Test methods to set and access a custom data directory
      **/
-    void TestDataDirectory();
+    void TestDataDirectory(void);
 
-    void TestISO3Fallback();
-    void TestGetLangsAndCountries();
-    void TestSimpleDisplayNames();
-    void TestUninstalledISO3Names();
-    void TestAtypicalLocales();
+    void TestISO3Fallback(void);
+    void TestGetLangsAndCountries(void);
+    void TestSimpleDisplayNames(void);
+    void TestUninstalledISO3Names(void);
+    void TestAtypicalLocales(void);
 #if !UCONFIG_NO_FORMATTING
-    void TestThaiCurrencyFormat();
-    void TestEuroSupport();
+    void TestThaiCurrencyFormat(void);
+    void TestEuroSupport(void);
 #endif
-    void TestToString();
+    void TestToString(void);
 #if !UCONFIG_NO_FORMATTING
-    void Test4139940();
-    void Test4143951();
+    void Test4139940(void);
+    void Test4143951(void);
 #endif
-    void Test4147315();
-    void Test4147317();
-    void Test4147552();
-
-    void Test20639_DeprecatesISO3Language();
+    void Test4147315(void);
+    void Test4147317(void);
+    void Test4147552(void);
     
-    void TestVariantParsing();
+    void TestVariantParsing(void);
 
    /* Test getting keyword enumeration */
-   void TestKeywordVariants();
-   void TestCreateUnicodeKeywords();
+   void TestKeywordVariants(void);
+   void TestCreateUnicodeKeywords(void);
 
    /* Test getting keyword values */
-   void TestKeywordVariantParsing();
-   void TestCreateKeywordSet();
-   void TestCreateKeywordSetEmpty();
-   void TestCreateKeywordSetWithPrivateUse();
-   void TestCreateUnicodeKeywordSet();
-   void TestCreateUnicodeKeywordSetEmpty();
-   void TestCreateUnicodeKeywordSetWithPrivateUse();
-   void TestGetKeywordValueStdString();
-   void TestGetUnicodeKeywordValueStdString();
+   void TestKeywordVariantParsing(void);
+   void TestCreateKeywordSet(void);
+   void TestCreateUnicodeKeywordSet(void);
+   void TestGetKeywordValueStdString(void);
+   void TestGetUnicodeKeywordValueStdString(void);
 
    /* Test setting keyword values */
-   void TestSetKeywordValue();
-   void TestSetKeywordValueStringPiece();
-   void TestSetUnicodeKeywordValueStringPiece();
+   void TestSetKeywordValue(void);
+   void TestSetKeywordValueStringPiece(void);
+   void TestSetUnicodeKeywordValueStringPiece(void);
 
    /* Test getting the locale base name */
-   void TestGetBaseName();
+   void TestGetBaseName(void);
     
 #if !UCONFIG_NO_FORMATTING
-    void Test4105828() ;
+    void Test4105828(void) ;
 #endif
 
-    void TestSetIsBogus();
+    void TestSetIsBogus(void);
 
-    void TestGetLocale();
+    void TestGetLocale(void);
 
-    void TestVariantWithOutCountry();
+    void TestVariantWithOutCountry(void);
 
-    void TestCanonicalization();
-
-    void TestCanonicalize();
+    void TestCanonicalization(void);
 
 #if !UCONFIG_NO_FORMATTING
     static UDate date(int32_t y, int32_t m, int32_t d, int32_t hr = 0, int32_t min = 0, int32_t sec = 0);
 #endif
 
-    void TestCurrencyByDate();
+    void TestCurrencyByDate(void);
 
-    void TestGetVariantWithKeywords();
+    void TestGetVariantWithKeywords(void);
     void TestIsRightToLeft();
     void TestBug11421();
     void TestBug13277();
     void TestBug13554();
     void TestBug20410();
-    void TestBug20900();
-    void TestLocaleCanonicalizationFromFile();
-    void TestKnownCanonicalizedListCorrect();
-    void TestConstructorAcceptsBCP47();
 
     void TestAddLikelySubtags();
     void TestMinimizeSubtags();
     void TestAddLikelyAndMinimizeSubtags();
-    void TestDataDrivenLikelySubtags();
 
     void TestForLanguageTag();
-    void TestForLanguageTagLegacyTagBug21676();
     void TestToLanguageTag();
-    void TestToLanguageTagOmitTrue();
 
     void TestMoveAssign();
     void TestMoveCtor();
@@ -152,17 +136,6 @@ public:
     void TestUndScript();
     void TestUndRegion();
     void TestUndCAPI();
-    void TestRangeIterator();
-    void TestPointerConvertingIterator();
-    void TestTagConvertingIterator();
-    void TestCapturingTagConvertingIterator();
-    void TestSetUnicodeKeywordValueInLongLocale();
-    void TestSetUnicodeKeywordValueNullInLongLocale();
-    void TestLeak21419();
-    void TestNullDereferenceWrite21597();
-    void TestLongLocaleSetKeywordAssign();
-    void TestLongLocaleSetKeywordMoveAssign();
-    void TestSierraLeoneCurrency21997();
 
 private:
     void _checklocs(const char* label,
@@ -177,9 +150,9 @@ private:
      **/
     void doTestDisplayNames(Locale& inLocale, int32_t compareIndex);
     /**
-     * additional initialization for datatables storing expected values
+     * additional intialization for datatables storing expected values
      **/
-    void setUpDataTable();
+    void setUpDataTable(void);
 
     UnicodeString** dataTable;
     
@@ -236,6 +209,6 @@ private:
      * Check on registered collators.
      * @param expectExtra if non-null, the locale ID of an 'extra' locale that is registered.
      */
-    void checkRegisteredCollators(const char *expectExtra = nullptr);
+    void checkRegisteredCollators(const char *expectExtra = NULL);
 #endif
 };

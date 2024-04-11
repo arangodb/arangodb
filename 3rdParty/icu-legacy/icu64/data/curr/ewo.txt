@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ewo{
     Currencies{
         AED{
@@ -175,13 +174,9 @@ ewo{
             "SHP",
             "Lívələ yá Ǹfúfúb Elɛ́n",
         }
-        SLE{
-            "SLE",
-            "Leóne yá Sierá-leónə",
-        }
         SLL{
             "SLL",
-            "Leóne yá Sierá-leónə (1964—2022)",
+            "Leóne yá Sierá-leónə",
         }
         SOS{
             "SOS",
@@ -220,7 +215,7 @@ ewo{
             "Fəláŋ CFA (BEAC)",
         }
         XOF{
-            "F CFA",
+            "CFA",
             "Fəláŋ CFA (BCEAO)",
         }
         ZAR{
@@ -240,4 +235,5 @@ ewo{
             "Dolár yá Zimbabwé",
         }
     }
+    Version{"2.1.47.82"}
 }

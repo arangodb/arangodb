@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ko{
     Keys{
         calendar{"달력"}
@@ -42,7 +41,6 @@ ko{
         am{"암하라어"}
         an{"아라곤어"}
         ang{"고대 영어"}
-        ann{"오볼로어"}
         anp{"앙가어"}
         ar{"아랍어"}
         ar_001{"현대 표준 아랍어"}
@@ -57,7 +55,6 @@ ko{
         as{"아삼어"}
         asa{"아수어"}
         ast{"아스투리아어"}
-        atj{"아티카메쿠어"}
         av{"아바릭어"}
         awa{"아와히어"}
         ay{"아이마라어"}
@@ -74,7 +71,6 @@ ko{
         bez{"베나어"}
         bfd{"바푸트어"}
         bg{"불가리아어"}
-        bgc{"하리안비어"}
         bgn{"서부 발로치어"}
         bho{"호즈푸리어"}
         bi{"비슬라마어"}
@@ -116,21 +112,13 @@ ko{
         chr{"체로키어"}
         chy{"샤이엔어"}
         ckb{"소라니 쿠르드어"}
-        clc{"칠코틴어"}
         co{"코르시카어"}
         cop{"콥트어"}
         cr{"크리어"}
-        crg{"미치프어"}
         crh{"크리민 터키어; 크리민 타타르어"}
-        crj{"남동부 크리어"}
-        crk{"평원 크리어"}
-        crl{"북동부 크리어"}
-        crm{"무스크리어"}
-        crr{"캐롤라이나 알곤킨어"}
         crs{"세이셸 크리올 프랑스어"}
         cs{"체코어"}
         csb{"카슈비아어"}
-        csw{"습지 크리어"}
         cu{"교회 슬라브어"}
         cv{"추바시어"}
         cy{"웨일스어"}
@@ -162,6 +150,7 @@ ko{
         el{"그리스어"}
         elx{"엘람어"}
         en{"영어"}
+        en_AU{"영어(호주)"}
         enm{"중세 영어"}
         eo{"에스페란토어"}
         es{"스페인어"}
@@ -170,7 +159,6 @@ ko{
         eu{"바스크어"}
         ewo{"이원도어"}
         fa{"페르시아어"}
-        fa_AF{"다리어"}
         fan{"팡그어"}
         fat{"판티어"}
         ff{"풀라어"}
@@ -217,7 +205,6 @@ ko{
         hai{"하이다어"}
         hak{"하카어"}
         haw{"하와이어"}
-        hax{"남부 하이다어"}
         he{"히브리어"}
         hi{"힌디어"}
         hif{"피지 힌디어"}
@@ -231,7 +218,6 @@ ko{
         ht{"아이티어"}
         hu{"헝가리어"}
         hup{"후파어"}
-        hur{"할코멜렘어"}
         hy{"아르메니아어"}
         hz{"헤레로어"}
         ia{"인터링구아"}
@@ -242,7 +228,6 @@ ko{
         ig{"이그보어"}
         ii{"쓰촨 이어"}
         ik{"이누피아크어"}
-        ikt{"캐나다 서부 이누크티투트어"}
         ilo{"이로코어"}
         inh{"인귀시어"}
         io{"이도어"}
@@ -270,7 +255,6 @@ ko{
         kea{"크리올어"}
         kfo{"코로어"}
         kg{"콩고어"}
-        kgp{"카잉강어"}
         kha{"카시어"}
         kho{"호탄어"}
         khq{"코이라 친니어"}
@@ -302,7 +286,6 @@ ko{
         kut{"쿠테네어"}
         kv{"코미어"}
         kw{"콘월어"}
-        kwk{"곽왈라어"}
         ky{"키르기스어"}
         la{"라틴어"}
         lad{"라디노어"}
@@ -314,7 +297,6 @@ ko{
         lfn{"링구아 프랑카 노바"}
         lg{"간다어"}
         li{"림버거어"}
-        lil{"릴루엣어"}
         lkt{"라코타어"}
         ln{"링갈라어"}
         lo{"라오어"}
@@ -322,7 +304,6 @@ ko{
         lou{"루이지애나 크리올어"}
         loz{"로지어"}
         lrc{"북부 루리어"}
-        lsm{"사미아어"}
         lt{"리투아니아어"}
         lu{"루바-카탄가어"}
         lua{"루바-룰루아어"}
@@ -358,7 +339,6 @@ ko{
         mn{"몽골어"}
         mnc{"만주어"}
         mni{"마니푸리어"}
-        moe{"이누아문"}
         moh{"모호크어"}
         mos{"모시어"}
         mr{"마라티어"}
@@ -408,11 +388,6 @@ ko{
         nzi{"느지마어"}
         oc{"오크어"}
         oj{"오지브와어"}
-        ojb{"북서부 오지브와어"}
-        ojc{"중앙 오지브와어"}
-        ojs{"오지 크리어"}
-        ojw{"서부 오지브와어"}
-        oka{"오카나간어"}
         om{"오로모어"}
         or{"오리야어"}
         os{"오세트어"}
@@ -428,11 +403,9 @@ ko{
         peo{"고대 페르시아어"}
         phn{"페니키아어"}
         pi{"팔리어"}
-        pis{"피진어"}
         pl{"폴란드어"}
         pnt{"폰틱어"}
         pon{"폼페이어"}
-        pqm{"말리시트 파사마쿼디어"}
         prg{"프러시아어"}
         pro{"고대 프로방스어"}
         ps{"파슈토어"}
@@ -443,13 +416,13 @@ ko{
         raj{"라자스탄어"}
         rap{"라파뉴이"}
         rar{"라로통가어"}
-        rhg{"로힝야어"}
         rm{"로만시어"}
         rn{"룬디어"}
         ro{"루마니아어"}
         ro_MD{"몰도바어"}
         rof{"롬보어"}
         rom{"집시어"}
+        root{"어근"}
         ru{"러시아어"}
         rue{"루신어"}
         rup{"아로마니아어"}
@@ -480,11 +453,10 @@ ko{
         shi{"타셸히트어"}
         shn{"샨어"}
         shu{"차디언 아라비아어"}
-        si{"싱할라어"}
+        si{"스리랑카어"}
         sid{"시다모어"}
         sk{"슬로바키아어"}
         sl{"슬로베니아어"}
-        slh{"남부 루슈트시드어"}
         sm{"사모아어"}
         sma{"남부 사미어"}
         smj{"룰레 사미어"}
@@ -501,7 +473,6 @@ ko{
         ss{"시스와티어"}
         ssy{"사호어"}
         st{"남부 소토어"}
-        str{"해안 살리시어"}
         su{"순다어"}
         suk{"수쿠마어"}
         sus{"수수어"}
@@ -513,16 +484,13 @@ ko{
         syc{"고전 시리아어"}
         syr{"시리아어"}
         ta{"타밀어"}
-        tce{"남부 투톤어"}
         te{"텔루구어"}
         tem{"팀니어"}
         teo{"테조어"}
         ter{"테레노어"}
         tet{"테툼어"}
         tg{"타지크어"}
-        tgx{"타기시어"}
         th{"태국어"}
-        tht{"탈탄어"}
         ti{"티그리냐어"}
         tig{"티그레어"}
         tiv{"티브어"}
@@ -537,14 +505,12 @@ ko{
         tn{"츠와나어"}
         to{"통가어"}
         tog{"니아사 통가어"}
-        tok{"도기 보나"}
         tpi{"토크 피신어"}
         tr{"터키어"}
         trv{"타로코어"}
         ts{"총가어"}
         tsi{"트심시안어"}
         tt{"타타르어"}
-        ttm{"북부 투톤어"}
         tum{"툼부카어"}
         tvl{"투발루어"}
         tw{"트위어"}
@@ -583,7 +549,6 @@ ko{
         ybb{"옘바어"}
         yi{"이디시어"}
         yo{"요루바어"}
-        yrl{"넨가투어"}
         yue{"광둥어"}
         za{"주앙어"}
         zap{"사포테크어"}
@@ -596,28 +561,13 @@ ko{
         zxx{"언어 관련 내용 없음"}
         zza{"자자어"}
     }
-    Languages%long{
-        zh_Hans{"중국어(만다린, 간체)"}
-        zh_Hant{"중국어(만다린, 번체)"}
-    }
-    Languages%menu{
-        ckb{"쿠르드어(소라니)"}
-        yue{"중국어(광둥어)"}
-        zh{"중국어(만다린)"}
-    }
     Languages%short{
         az{"아제리어"}
     }
-    Languages%variant{
-        ckb{"쿠르드어(소라니)"}
-        hi_Latn{"힝글리시"}
-    }
     Scripts{
-        Adlm{"아들람 문자"}
         Afak{"아파카 문자"}
         Aghb{"코카시안 알바니아 문자"}
         Arab{"아랍 문자"}
-        Aran{"나스탈리크체"}
         Armi{"아랍제국 문자"}
         Armn{"아르메니아 문자"}
         Avst{"아베스타 문자"}
@@ -633,7 +583,7 @@ ko{
         Bugi{"부기 문자"}
         Buhd{"부히드 문자"}
         Cakm{"차크마 문자"}
-        Cans{"통합 캐나다 원주민 음절문자"}
+        Cans{"통합 캐나다 토착어"}
         Cari{"카리 문자"}
         Cham{"칸 고어"}
         Cher{"체로키 문자"}
@@ -682,7 +632,7 @@ ko{
         Khmr{"크메르 문자"}
         Khoj{"코즈키 문자"}
         Knda{"칸나다 문자"}
-        Kore{"한국 문자"}
+        Kore{"한국어"}
         Kpel{"크펠레 문자"}
         Kthi{"카이시 문자"}
         Lana{"란나 문자"}
@@ -730,9 +680,7 @@ ko{
         Phnx{"페니키아 문자"}
         Plrd{"폴라드 표음 문자"}
         Prti{"명문 파라티아 문자"}
-        Qaag{"저지 문자"}
         Rjng{"레장 문자"}
-        Rohg{"하니피 문자"}
         Roro{"롱고롱고"}
         Runr{"룬 문자"}
         Samr{"사마리아 문자"}
@@ -801,9 +749,9 @@ ko{
             gregorian{"양력"}
             hebrew{"히브리력"}
             indian{"인도력"}
-            islamic{"히즈라력"}
-            islamic-civil{"히즈라 상용력"}
-            islamic-umalqura{"히즈라력(움 알 쿠라)"}
+            islamic{"이슬람력"}
+            islamic-civil{"이슬람 상용력"}
+            islamic-umalqura{"이슬람력(움 알 쿠라)"}
             iso8601{"ISO-8601 달력"}
             japanese{"일본력"}
             persian{"페르시안력"}
@@ -855,6 +803,7 @@ ko{
             phonebook{"전화번호부순"}
             phonetic{"소리나는 대로 정렬 순서"}
             pinyin{"병음순"}
+            reformed{"개정 정렬순"}
             search{"범용 검색"}
             searchjl{"한글 자음으로 검색"}
             standard{"표준 정렬 순서"}
@@ -973,13 +922,13 @@ ko{
         VAIDIKA{"바이디카"}
         VALLADER{"발라더"}
     }
+    Version{"2.1.49.82"}
     characterLabelPattern{
         all{"{0} — 전체"}
+        category-list{"{0}: {1}"}
         compatibility{"{0} — 호환"}
         enclosed{"{0} — 닫힘"}
         extended{"{0} — 확장"}
-        facing-left{"왼쪽을 향한 {0}"}
-        facing-right{"오른쪽을 향한 {0}"}
         historic{"{0} — 고전"}
         miscellaneous{"{0} — 기타"}
         other{"{0} — 기타"}
@@ -987,8 +936,6 @@ ko{
         strokes{
             other{"{0}획"}
         }
-        subscript{"아래 첨자 {0}"}
-        superscript{"위 첨자 {0}"}
     }
     codePatterns{
         language{"언어: {0}"}
@@ -996,6 +943,8 @@ ko{
         territory{"지역: {0}"}
     }
     localeDisplayPattern{
+        keyTypePattern{"{0}: {1}"}
         pattern{"{0}({1})"}
+        separator{"{0}, {1}"}
     }
 }

@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 pt{
     Countries{
         001{"Mundo"}
@@ -57,7 +56,7 @@ pt{
         BE{"Bélgica"}
         BF{"Burquina Faso"}
         BG{"Bulgária"}
-        BH{"Barein"}
+        BH{"Bahrein"}
         BI{"Burundi"}
         BJ{"Benin"}
         BL{"São Bartolomeu"}
@@ -113,7 +112,7 @@ pt{
         FJ{"Fiji"}
         FK{"Ilhas Malvinas"}
         FM{"Micronésia"}
-        FO{"Ilhas Faroé"}
+        FO{"Ilhas Faroe"}
         FR{"França"}
         GA{"Gabão"}
         GB{"Reino Unido"}
@@ -179,7 +178,7 @@ pt{
         LY{"Líbia"}
         MA{"Marrocos"}
         MC{"Mônaco"}
-        MD{"Moldávia"}
+        MD{"Moldova"}
         ME{"Montenegro"}
         MF{"São Martinho"}
         MG{"Madagascar"}
@@ -254,7 +253,7 @@ pt{
         SV{"El Salvador"}
         SX{"Sint Maarten"}
         SY{"Síria"}
-        SZ{"Essuatíni"}
+        SZ{"Suazilândia"}
         TA{"Tristão da Cunha"}
         TC{"Ilhas Turcas e Caicos"}
         TD{"Chade"}
@@ -289,7 +288,7 @@ pt{
         WF{"Wallis e Futuna"}
         WS{"Samoa"}
         XA{"Pseudossotaques"}
-        XB{"Pseudobidirecional"}
+        XB{"Pseudobidi"}
         XK{"Kosovo"}
         YE{"Iêmen"}
         YT{"Mayotte"}
@@ -298,10 +297,8 @@ pt{
         ZW{"Zimbábue"}
         ZZ{"Região desconhecida"}
     }
-    Countries%chagos{
-        IO{"Arquipélago de Chagos"}
-    }
     Countries%short{
+        GB{"Reino Unido"}
         HK{"Hong Kong"}
         MO{"Macau"}
         PS{"Palestina"}
@@ -313,9 +310,8 @@ pt{
         CG{"Congo"}
         CI{"Côte d’Ivoire"}
         CZ{"República Tcheca"}
-        FK{"Ilhas Malvinas (Ilhas Falkland)"}
-        NZ{"Aotearoa da Nova Zelândia"}
-        SZ{"Suazilândia"}
+        FK{"Ilhas Falkland (Ilhas Malvinas)"}
         TL{"República Democrática de Timor-Leste"}
     }
+    Version{"2.1.48.42"}
 }

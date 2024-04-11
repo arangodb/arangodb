@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 af{
     Countries{
         001{"Wêreld"}
@@ -82,7 +81,7 @@ af{
         CK{"Cookeilande"}
         CL{"Chili"}
         CM{"Kameroen"}
-        CN{"China"}
+        CN{"Sjina"}
         CO{"Colombië"}
         CP{"Clippertoneiland"}
         CR{"Costa Rica"}
@@ -134,7 +133,7 @@ af{
         GU{"Guam"}
         GW{"Guinee-Bissau"}
         GY{"Guyana"}
-        HK{"Hongkong SAS China"}
+        HK{"Hongkong SAS Sjina"}
         HM{"Heardeiland en McDonaldeilande"}
         HN{"Honduras"}
         HR{"Kroasië"}
@@ -184,11 +183,11 @@ af{
         MF{"Sint Martin"}
         MG{"Madagaskar"}
         MH{"Marshalleilande"}
-        MK{"Noord-Macedonië"}
+        MK{"Macedonië"}
         ML{"Mali"}
         MM{"Mianmar (Birma)"}
         MN{"Mongolië"}
-        MO{"Macau SAS China"}
+        MO{"Macau SAS Sjina"}
         MP{"Noord-Mariane-eilande"}
         MQ{"Martinique"}
         MR{"Mauritanië"}
@@ -223,7 +222,7 @@ af{
         PM{"Sint Pierre en Miquelon"}
         PN{"Pitcairneilande"}
         PR{"Puerto Rico"}
-        PS{"Palestynse Grondgebiede"}
+        PS{"Palestynse gebiede"}
         PT{"Portugal"}
         PW{"Palau"}
         PY{"Paraguay"}
@@ -242,7 +241,7 @@ af{
         SG{"Singapoer"}
         SH{"Sint Helena"}
         SI{"Slowenië"}
-        SJ{"Spitsbergen en Jan Mayen"}
+        SJ{"Svalbard en Jan Mayen"}
         SK{"Slowakye"}
         SL{"Sierra Leone"}
         SM{"San Marino"}
@@ -254,7 +253,7 @@ af{
         SV{"El Salvador"}
         SX{"Sint Maarten"}
         SY{"Sirië"}
-        SZ{"Eswatini"}
+        SZ{"Swaziland"}
         TA{"Tristan da Cunha"}
         TC{"Turks- en Caicoseilande"}
         TD{"Tsjad"}
@@ -288,8 +287,6 @@ af{
         VU{"Vanuatu"}
         WF{"Wallis en Futuna"}
         WS{"Samoa"}
-        XA{"Pseudoaksente"}
-        XB{"Pseudotweerigting"}
         XK{"Kosovo"}
         YE{"Jemen"}
         YT{"Mayotte"}
@@ -311,5 +308,7 @@ af{
         CG{"Kongo (Republiek die)"}
         CZ{"Tsjeggiese Republiek"}
         FK{"Falklandeilande (Malvinas)"}
+        MK{"Macedonië (VJRM)"}
     }
+    Version{"2.1.48.17"}
 }

@@ -1,14 +1,14 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 fi{
+    Version{"2.1.19.14"}
     collations{
         search{
             Sequence{
                 "[import und-u-co-search]"
-                "[import fi-u-co-standard]"
+                "[import fi-u-co-trad]"
             }
-            Version{"45"}
+            Version{"35.1"}
         }
         standard{
             Sequence{
@@ -20,7 +20,7 @@ fi{
                 "&Z\u0335<<ʒ<<<Ʒ"
                 "&[before 1]ǀ<å<<<Å<ä<<<Ä<<æ<<<Æ<ö<<<Ö<<ø<<<Ø"
             }
-            Version{"45"}
+            Version{"35.1"}
         }
         traditional{
             Sequence{
@@ -31,7 +31,7 @@ fi{
                 "&Y<<ü<<<Ü<<ű<<<Ű"
                 "&[before 1]ǀ<å<<<Å<ä<<<Ä<<æ<<<Æ<ö<<<Ö<<ø<<<Ø<<ő<<<Ő<<õ<<<Õ<<œ<<<Œ"
             }
-            Version{"45"}
+            Version{"35.1"}
         }
     }
 }

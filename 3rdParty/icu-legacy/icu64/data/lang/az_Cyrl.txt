@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 az_Cyrl{
     %%Parent{"root"}
     Languages{
@@ -289,6 +288,7 @@ az_Cyrl{
         rn{"рунди"}
         ro{"румын"}
         rof{"ромбо"}
+        root{"рут"}
         ru{"рус"}
         rup{"ароман"}
         rw{"кинјарванда"}
@@ -399,6 +399,7 @@ az_Cyrl{
     Scripts{
         Cyrl{"Кирил"}
     }
+    Version{"2.1.47.82"}
     codePatterns{
         language{"Дил: {0}"}
         script{"Скрипт: {0}"}

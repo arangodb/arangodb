@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 fo{
     Keys{
         calendar{"kalendari"}
@@ -60,7 +59,6 @@ fo{
         bug{"buginesiskt"}
         byn{"blin"}
         ca{"katalani"}
-        ccp{"khakma"}
         ce{"tjetjenskt"}
         ceb{"cebuano"}
         cgg{"chiga"}
@@ -103,7 +101,6 @@ fo{
         eu{"baskiskt"}
         ewo{"ewondo"}
         fa{"persiskt"}
-        fa_AF{"dari"}
         ff{"fulah"}
         fi{"finskt"}
         fil{"filipiniskt"}
@@ -304,6 +301,7 @@ fo{
         ro{"rumenskt"}
         ro_MD{"moldaviskt"}
         rof{"rombo"}
+        root{"root"}
         ru{"russiskt"}
         rup{"aromenskt"}
         rw{"kinyarwanda"}
@@ -413,21 +411,10 @@ fo{
         zxx{"einki málsligt innihald"}
         zza{"zaza"}
     }
-    Languages%long{
-        zh_Hans{"mandarin kinesiskt (einkult)"}
-        zh_Hant{"mandarin kinesiskt (vanligt)"}
-    }
-    Languages%menu{
-        ckb{"kurdiskt, mið"}
-        yue{"kinesiskt, kantonesiskt"}
-        zh{"kinesiskt, mandarin"}
-    }
     Languages%short{
         az{"azeri"}
-    }
-    Languages%variant{
-        ckb{"kurdiskt, sorani"}
-        hi_Latn{"hinglish"}
+        en_GB{"enskt (UK)"}
+        en_US{"enskt (USA)"}
     }
     Scripts{
         Arab{"arabisk"}
@@ -487,6 +474,7 @@ fo{
             ethiopic{"etiopiskur kalendari"}
             gregorian{"gregorianskur kalendari"}
             hebrew{"hebraiskur kalendari"}
+            islamic{"islamiskur kalendari"}
             iso8601{"ISO-8601 kalendari"}
             japanese{"japanskur kalendari"}
             persian{"persiskur kalendari"}
@@ -562,8 +550,10 @@ fo{
         POLYTON{"polytonísk"}
         WADEGILE{"Wade-Giles"}
     }
+    Version{"2.1.48.9"}
     characterLabelPattern{
         all{"{0} — Alt"}
+        category-list{"{0}: {1}"}
         compatibility{"{0} — Sambæri"}
         enclosed{"{0} — Girða"}
         extended{"{0} — Víðkað"}
@@ -575,12 +565,15 @@ fo{
             one{"{0} strok"}
             other{"{0} strok"}
         }
-        subscript{"lágskrift {0}"}
-        superscript{"háskrift {0}"}
     }
     codePatterns{
         language{"Mál: {0}"}
         script{"Skrift: {0}"}
         territory{"Øki: {0}"}
+    }
+    localeDisplayPattern{
+        keyTypePattern{"{0}: {1}"}
+        pattern{"{0} ({1})"}
+        separator{"{0}, {1}"}
     }
 }

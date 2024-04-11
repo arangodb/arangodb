@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 he{
+    Version{"2.1.48.42"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"אביג׳אן"}
@@ -94,7 +94,7 @@ he{
             ec{"קינשסה"}
         }
         "Africa:Lagos"{
-            ec{"לאגוס"}
+            ec{"לגוס"}
         }
         "Africa:Libreville"{
             ec{"ליברוויל"}
@@ -257,9 +257,6 @@ he{
         }
         "America:Chihuahua"{
             ec{"צ׳יוואווה"}
-        }
-        "America:Ciudad_Juarez"{
-            ec{"סיודד חוארס"}
         }
         "America:Coral_Harbour"{
             ec{"אטיקוקן"}
@@ -465,6 +462,9 @@ he{
         "America:New_York"{
             ec{"ניו יורק"}
         }
+        "America:Nipigon"{
+            ec{"ניפיגון"}
+        }
         "America:Nome"{
             ec{"נום"}
         }
@@ -472,19 +472,22 @@ he{
             ec{"נורוניה"}
         }
         "America:North_Dakota:Beulah"{
-            ec{"ביולה, דקוטה הצפונית"}
+            ec{"ביולה, צפון דקוטה"}
         }
         "America:North_Dakota:Center"{
-            ec{"סנטר, דקוטה הצפונית"}
+            ec{"סנטר, צפון דקוטה"}
         }
         "America:North_Dakota:New_Salem"{
-            ec{"ניו סיילם, דקוטה הצפונית"}
+            ec{"ניו סיילם, צפון דקוטה"}
         }
         "America:Ojinaga"{
             ec{"אוג׳ינאגה"}
         }
         "America:Panama"{
             ec{"פנמה"}
+        }
+        "America:Pangnirtung"{
+            ec{"פנגנירטונג"}
         }
         "America:Paramaribo"{
             ec{"פרמריבו"}
@@ -507,6 +510,9 @@ he{
         "America:Punta_Arenas"{
             ec{"פונטה ארנס"}
         }
+        "America:Rainy_River"{
+            ec{"רייני ריבר"}
+        }
         "America:Rankin_Inlet"{
             ec{"רנקין אינלט"}
         }
@@ -521,6 +527,9 @@ he{
         }
         "America:Rio_Branco"{
             ec{"ריו ברנקו"}
+        }
+        "America:Santa_Isabel"{
+            ec{"סנטה איזבל"}
         }
         "America:Santarem"{
             ec{"סנטרם"}
@@ -567,6 +576,9 @@ he{
         "America:Thule"{
             ec{"תולה"}
         }
+        "America:Thunder_Bay"{
+            ec{"ת׳אנדר ביי"}
+        }
         "America:Tijuana"{
             ec{"טיחואנה"}
         }
@@ -588,8 +600,11 @@ he{
         "America:Yakutat"{
             ec{"יקוטאט"}
         }
+        "America:Yellowknife"{
+            ec{"ילונייף"}
+        }
         "Antarctica:Casey"{
-            ec{"קייסי"}
+            ec{"קאסיי"}
         }
         "Antarctica:Davis"{
             ec{"דיוויס"}
@@ -598,7 +613,7 @@ he{
             ec{"דומון ד׳אורוויל"}
         }
         "Antarctica:Macquarie"{
-            ec{"מקווארי"}
+            ec{"מקרי"}
         }
         "Antarctica:Mawson"{
             ec{"מוסון"}
@@ -613,7 +628,7 @@ he{
             ec{"רות׳רה"}
         }
         "Antarctica:Syowa"{
-            ec{"סייווה"}
+            ec{"סיוואה"}
         }
         "Antarctica:Troll"{
             ec{"טרול"}
@@ -850,7 +865,7 @@ he{
             ec{"טומסק"}
         }
         "Asia:Ulaanbaatar"{
-            ec{"אולאן באטור"}
+            ec{"אולאאנבטאר"}
         }
         "Asia:Urumqi"{
             ec{"אורומקי"}
@@ -859,7 +874,7 @@ he{
             ec{"אוסט-נרה"}
         }
         "Asia:Vientiane"{
-            ec{"ויינטיאן"}
+            ec{"האנוי"}
         }
         "Asia:Vladivostok"{
             ec{"ולדיווסטוק"}
@@ -911,6 +926,9 @@ he{
         }
         "Australia:Broken_Hill"{
             ec{"ברוקן היל"}
+        }
+        "Australia:Currie"{
+            ec{"קרי"}
         }
         "Australia:Darwin"{
             ec{"דרווין"}
@@ -1094,6 +1112,9 @@ he{
         "Europe:Ulyanovsk"{
             ec{"אוליאנובסק"}
         }
+        "Europe:Uzhgorod"{
+            ec{"אוז׳הורוד"}
+        }
         "Europe:Vaduz"{
             ec{"ואדוץ"}
         }
@@ -1114,6 +1135,9 @@ he{
         }
         "Europe:Zagreb"{
             ec{"זאגרב"}
+        }
+        "Europe:Zaporozhye"{
+            ec{"זפורוז׳יה"}
         }
         "Europe:Zurich"{
             ec{"ציריך"}
@@ -1196,8 +1220,8 @@ he{
         "Pacific:Honolulu"{
             ec{"הונולולו"}
         }
-        "Pacific:Kanton"{
-            ec{"קנטון"}
+        "Pacific:Johnston"{
+            ec{"ג׳ונסטון"}
         }
         "Pacific:Kiritimati"{
             ec{"קיריטימאטי"}
@@ -1386,9 +1410,9 @@ he{
             ls{"שעון מערב אוסטרליה (חורף)"}
         }
         "meta:Azerbaijan"{
-            ld{"שעון אזרבייג׳ן (קיץ)"}
-            lg{"שעון אזרבייג׳ן"}
-            ls{"שעון אזרבייג׳ן (חורף)"}
+            ld{"שעון אזרבייג׳אן (קיץ)"}
+            lg{"שעון אזרבייג׳אן"}
+            ls{"שעון אזרבייג׳אן (חורף)"}
         }
         "meta:Azores"{
             ld{"שעון האיים האזוריים (קיץ)"}
@@ -1643,6 +1667,9 @@ he{
             lg{"שעון מקאו"}
             ls{"שעון חורף מקאו"}
         }
+        "meta:Macquarie"{
+            ls{"שעון מקווארי"}
+        }
         "meta:Magadan"{
             ld{"שעון מגדן (קיץ)"}
             lg{"שעון מגדן"}
@@ -1668,15 +1695,20 @@ he{
         "meta:Mawson"{
             ls{"שעון מאוסון"}
         }
+        "meta:Mexico_Northwest"{
+            ld{"שעון צפון-מערב מקסיקו (קיץ)"}
+            lg{"שעון צפון-מערב מקסיקו"}
+            ls{"שעון צפון-מערב מקסיקו (חורף)"}
+        }
         "meta:Mexico_Pacific"{
             ld{"שעון מערב מקסיקו (קיץ)"}
             lg{"שעון מערב מקסיקו"}
             ls{"שעון מערב מקסיקו (חורף)"}
         }
         "meta:Mongolia"{
-            ld{"שעון אולאן באטור (קיץ)"}
-            lg{"שעון אולאן באטור"}
-            ls{"שעון אולאן באטור (חורף)"}
+            ld{"שעון אולן בטור (קיץ)"}
+            lg{"שעון אולן בטור"}
+            ls{"שעון אולן בטור (חורף)"}
         }
         "meta:Moscow"{
             ld{"שעון מוסקבה (קיץ)"}
@@ -1711,9 +1743,7 @@ he{
             ls{"שעון ניואה"}
         }
         "meta:Norfolk"{
-            ld{"שעון האי נורפוק (קיץ)"}
-            lg{"שעון האי נורפוק"}
-            ls{"שעון האי נורפוק (חורף)"}
+            ls{"שעון האי נורפוק"}
         }
         "meta:Noronha"{
             ld{"שעון פרננדו די נורוניה (קיץ)"}
@@ -1897,10 +1927,9 @@ he{
             lg{"שעון יקטרינבורג"}
             ls{"שעון יקטרינבורג (חורף)"}
         }
-        "meta:Yukon"{
-            ls{"שעון יוקון"}
-        }
+        fallbackFormat{"{1} ({0})"}
         gmtFormat{"GMT{0}‎"}
+        gmtZeroFormat{"GMT"}
         hourFormat{"‎+HH:mm;-HH:mm‎"}
         regionFormat{"שעון {0}"}
         regionFormatDaylight{"שעון {0} (קיץ)"}

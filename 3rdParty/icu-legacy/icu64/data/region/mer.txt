@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 mer{
     Countries{
         AD{"Andora"}
@@ -93,6 +92,7 @@ mer{
         IE{"Aelandi"}
         IL{"Isiraeli"}
         IN{"India"}
+        IO{"Nthĩ cia Ngeretha gatagatĩ ka ĩria ria Hindi"}
         IQ{"Iraki"}
         IR{"Irani"}
         IS{"Aisilandi"}
@@ -127,6 +127,7 @@ mer{
         MD{"Moldova"}
         MG{"Madagasika"}
         MH{"Aĩrandi cia Marshal"}
+        MK{"Macedonia"}
         ML{"Mali"}
         MM{"Myanima"}
         MN{"Mongolia"}
@@ -226,4 +227,5 @@ mer{
         ZM{"Zambia"}
         ZW{"Zimbabwe"}
     }
+    Version{"2.1.47.82"}
 }

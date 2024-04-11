@@ -1,5 +1,5 @@
 # Copyright (C) 2016 and later: Unicode, Inc. and others.
-# License & terms of use: http://www.unicode.org/copyright.html
+# License & terms of use: http://www.unicode.org/copyright.html#License
 #
 # Copyright (c) 2000-2002 IBM, Inc. and others
 # sample code makefile

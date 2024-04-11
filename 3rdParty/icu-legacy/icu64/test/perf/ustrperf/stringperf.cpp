@@ -1,6 +1,6 @@
 /***********************************************************************
  * © 2016 and later: Unicode, Inc. and others.
- * License & terms of use: http://www.unicode.org/copyright.html
+ * License & terms of use: http://www.unicode.org/copyright.html#License
  *
  ***********************************************************************
  ***********************************************************************
@@ -33,7 +33,7 @@ int main(int argc, const char *argv[])
 {
     UErrorCode status = U_ZERO_ERROR;
 
-    bCatenatePrealloc=true;
+    bCatenatePrealloc=TRUE;
 
     StringPerformanceTest test(argc, argv, status);
     if (U_FAILURE(status)){
@@ -54,7 +54,7 @@ int main(int argc, const char *argv[])
         catStd = new stlstring();
     }
 
-    if (test.run() == false){
+    if (test.run() == FALSE){
         fprintf(stderr, "FAILED: Tests could not be run please check the "
             "arguments.\n");
         return -1;
@@ -69,8 +69,8 @@ StringPerformanceTest::StringPerformanceTest(int32_t argc, const char *argv[],
                                              UErrorCode &status)
                                              : UPerfTest(argc, argv, status)
 {
-    filelines_=nullptr;
-    StrBuffer=nullptr;
+    filelines_=NULL;
+    StrBuffer=NULL;
     StrBufferLen=0;
 
     int32_t len =0;
@@ -96,20 +96,20 @@ StringPerformanceTest::StringPerformanceTest(int32_t argc, const char *argv[],
         filelines_ = new ULine[numLines];
         for (int i =0; i < numLines; i++) {
             len = filelines[i].len;
-            filelines_[i].name  = new char16_t[len];
+            filelines_[i].name  = new UChar[len];
             filelines_[i].len   = len;
             memcpy(filelines_[i].name, filelines[i].name, len * U_SIZEOF_UCHAR);
         }
 
     }else if(bulk_mode){
         int32_t srcLen = 0;
-        const char16_t* src = getBuffer(srcLen,status);
+        const UChar* src = getBuffer(srcLen,status);
         if(U_FAILURE(status)){
             fprintf(stderr, "FAILED to read buffer from file and create UPerfTest object. Error: %s\n", u_errorName(status));
             return;
         }
 
-        StrBuffer = new char16_t[srcLen];
+        StrBuffer = new UChar[srcLen];
         StrBufferLen = srcLen;
         memcpy(StrBuffer, src, srcLen * U_SIZEOF_UCHAR);
 
@@ -155,9 +155,9 @@ UPerfFunction* StringPerformanceTest::runIndexedTest(int32_t index, UBool exec,
 
         default: 
             name = ""; 
-            return nullptr;
+            return NULL;
     }
-    return nullptr;
+    return NULL;
 }
 
 UPerfFunction* StringPerformanceTest::TestCtor()

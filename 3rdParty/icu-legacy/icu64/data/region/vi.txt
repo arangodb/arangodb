@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 vi{
     Countries{
         001{"Thế giới"}
@@ -21,9 +20,9 @@ vi{
         034{"Nam Á"}
         035{"Đông Nam Á"}
         039{"Nam Âu"}
-        053{"Australasia"}
+        053{"Úc và New Zealand"}
         054{"Melanesia"}
-        057{"Vùng Micronesia"}
+        057{"Vùng Micronesian"}
         061{"Polynesia"}
         142{"Châu Á"}
         143{"Trung Á"}
@@ -118,7 +117,7 @@ vi{
         GA{"Gabon"}
         GB{"Vương quốc Anh"}
         GD{"Grenada"}
-        GE{"Georgia"}
+        GE{"Gruzia"}
         GF{"Guiana thuộc Pháp"}
         GG{"Guernsey"}
         GH{"Ghana"}
@@ -134,7 +133,7 @@ vi{
         GU{"Guam"}
         GW{"Guinea-Bissau"}
         GY{"Guyana"}
-        HK{"Đặc khu Hành chính Hồng Kông, Trung Quốc"}
+        HK{"Hồng Kông, Trung Quốc"}
         HM{"Quần đảo Heard và McDonald"}
         HN{"Honduras"}
         HR{"Croatia"}
@@ -188,7 +187,7 @@ vi{
         ML{"Mali"}
         MM{"Myanmar (Miến Điện)"}
         MN{"Mông Cổ"}
-        MO{"Đặc khu Hành chính Macao, Trung Quốc"}
+        MO{"Macao, Trung Quốc"}
         MP{"Quần đảo Bắc Mariana"}
         MQ{"Martinique"}
         MR{"Mauritania"}
@@ -254,7 +253,7 @@ vi{
         SV{"El Salvador"}
         SX{"Sint Maarten"}
         SY{"Syria"}
-        SZ{"Eswatini"}
+        SZ{"Swaziland"}
         TA{"Tristan da Cunha"}
         TC{"Quần đảo Turks và Caicos"}
         TD{"Chad"}
@@ -283,13 +282,13 @@ vi{
         VC{"St. Vincent và Grenadines"}
         VE{"Venezuela"}
         VG{"Quần đảo Virgin thuộc Anh"}
-        VI{"Quần đảo Virgin thuộc Hoa Kỳ"}
+        VI{"Quần đảo Virgin thuộc Mỹ"}
         VN{"Việt Nam"}
         VU{"Vanuatu"}
         WF{"Wallis và Futuna"}
         WS{"Samoa"}
-        XA{"Pseudo-Accents"}
-        XB{"Pseudo-Bidi"}
+        XA{"XA"}
+        XB{"XB"}
         XK{"Kosovo"}
         YE{"Yemen"}
         YT{"Mayotte"}
@@ -298,13 +297,13 @@ vi{
         ZW{"Zimbabwe"}
         ZZ{"Vùng không xác định"}
     }
-    Countries%chagos{
-        IO{"Quần đảo Chagos"}
-    }
     Countries%short{
+        GB{"Vương quốc Anh"}
         HK{"Hồng Kông"}
         MO{"Macao"}
         PS{"Palestine"}
+        UN{"Liên hiệp quốc"}
+        US{"Hoa Kỳ"}
     }
     Countries%variant{
         CD{"Cộng hòa Dân chủ Congo"}
@@ -312,8 +311,7 @@ vi{
         CI{"Bờ Biển Ngà"}
         CZ{"Cộng hòa Séc"}
         FK{"Quần đảo Falkland (Islas Malvinas)"}
-        NZ{"Aotearoa New Zealand"}
-        SZ{"Swaziland"}
         TL{"Đông Timor"}
     }
+    Version{"2.1.49.82"}
 }

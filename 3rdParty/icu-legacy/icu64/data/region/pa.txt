@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 pa{
     Countries{
         001{"ਸੰਸਾਰ"}
@@ -184,7 +183,7 @@ pa{
         MF{"ਸੇਂਟ ਮਾਰਟਿਨ"}
         MG{"ਮੈਡਾਗਾਸਕਰ"}
         MH{"ਮਾਰਸ਼ਲ ਟਾਪੂ"}
-        MK{"ਉੱਤਰੀ ਮੈਕਡੋਨੀਆ"}
+        MK{"ਮੈਕਡੋਨੀਆ"}
         ML{"ਮਾਲੀ"}
         MM{"ਮਿਆਂਮਾਰ (ਬਰਮਾ)"}
         MN{"ਮੰਗੋਲੀਆ"}
@@ -288,8 +287,6 @@ pa{
         VU{"ਵਾਨੂਆਟੂ"}
         WF{"ਵਾਲਿਸ ਅਤੇ ਫੂਟੂਨਾ"}
         WS{"ਸਾਮੋਆ"}
-        XA{"ਗਲਤ-ਉਚਾਰਨ"}
-        XB{"ਲਿਖਤ ਦੀ ਗਲਤ ਦਿਸ਼ਾ"}
         XK{"ਕੋਸੋਵੋ"}
         YE{"ਯਮਨ"}
         YT{"ਮਾਯੋਟੀ"}
@@ -297,9 +294,6 @@ pa{
         ZM{"ਜ਼ਾਮਬੀਆ"}
         ZW{"ਜ਼ਿੰਬਾਬਵੇ"}
         ZZ{"ਅਣਪਛਾਤਾ ਇਲਾਕਾ"}
-    }
-    Countries%chagos{
-        IO{"ਚਗੋਸ ਟਾਪੂ"}
     }
     Countries%short{
         GB{"ਯੂ.ਕੇ."}
@@ -315,8 +309,9 @@ pa{
         CI{"ਆਇਵਰੀ ਕੋਸਟ"}
         CZ{"ਚੈੱਕ ਗਣਰਾਜ"}
         FK{"ਫ਼ਾਕਲੈਂਡ ਟਾਪੂ (ਆਈਲਾਸ ਮਾਲਵਿਨਾਸ)"}
-        NZ{"ਐਓਟੇਰੋਆ ਨਿਊਜ਼ੀਲੈਂਡ"}
+        MK{"ਮੈਕਡੋਨੀਆ (ਪੂਰਵ ਯੂਗੋਸਲਾਵ ਮੈਕਡੋਨੀਆਈ ਗਣਰਾਜ)"}
         SZ{"ਸਵਾਜ਼ੀਲੈਂਡ"}
         TL{"ਪੂਰਬ ਤਿਮੋਰ"}
     }
+    Version{"2.1.48.20"}
 }

@@ -19,7 +19,7 @@ U_NAMESPACE_BEGIN
 const char RunArray::fgClassID = 0;
 
 RunArray::RunArray(le_int32 initialCapacity)
-    : fClientArrays(false), fLimits(nullptr), fCount(0), fCapacity(initialCapacity)
+    : fClientArrays(FALSE), fLimits(NULL), fCount(0), fCapacity(initialCapacity)
 {
     if (initialCapacity > 0) {
         fLimits = LE_NEW_ARRAY(le_int32, fCapacity);
@@ -30,7 +30,7 @@ RunArray::~RunArray()
 {
     if (! fClientArrays) {
         LE_DELETE_ARRAY(fLimits);
-        fLimits = nullptr;
+        fLimits = NULL;
     }
 }
 
@@ -76,7 +76,7 @@ le_int32 RunArray::add(le_int32 limit)
 const char FontRuns::fgClassID = 0;
 
 FontRuns::FontRuns(le_int32 initialCapacity)
-    : RunArray(initialCapacity), fFonts(nullptr)
+    : RunArray(initialCapacity), fFonts(NULL)
 {
     if (initialCapacity > 0) {
         fFonts = LE_NEW_ARRAY(const LEFontInstance *, initialCapacity);
@@ -87,7 +87,7 @@ FontRuns::~FontRuns()
 {
     if (! fClientArrays) {
         LE_DELETE_ARRAY(fFonts);
-        fFonts = nullptr;
+        fFonts = NULL;
     }
 }
 
@@ -119,7 +119,7 @@ le_int32 FontRuns::add(const LEFontInstance *font, le_int32 limit)
 const LEFontInstance *FontRuns::getFont(le_int32 run) const
 {
     if (run < 0 || run >= getCount()) {
-        return nullptr;
+        return NULL;
     }
 
     return fFonts[run];
@@ -128,7 +128,7 @@ const LEFontInstance *FontRuns::getFont(le_int32 run) const
 const char LocaleRuns::fgClassID = 0;
 
 LocaleRuns::LocaleRuns(le_int32 initialCapacity)
-    : RunArray(initialCapacity), fLocales(nullptr)
+    : RunArray(initialCapacity), fLocales(NULL)
 {
     if (initialCapacity > 0) {
         fLocales = LE_NEW_ARRAY(const Locale *, initialCapacity);
@@ -139,7 +139,7 @@ LocaleRuns::~LocaleRuns()
 {
     if (! fClientArrays) {
         LE_DELETE_ARRAY(fLocales);
-        fLocales = nullptr;
+        fLocales = NULL;
     }
 }
 
@@ -171,7 +171,7 @@ le_int32 LocaleRuns::add(const Locale *locale, le_int32 limit)
 const Locale *LocaleRuns::getLocale(le_int32 run) const
 {
     if (run < 0 || run >= getCount()) {
-        return nullptr;
+        return NULL;
     }
 
     return fLocales[run];
@@ -180,7 +180,7 @@ const Locale *LocaleRuns::getLocale(le_int32 run) const
 const char ValueRuns::fgClassID = 0;
 
 ValueRuns::ValueRuns(le_int32 initialCapacity)
-    : RunArray(initialCapacity), fValues(nullptr)
+    : RunArray(initialCapacity), fValues(NULL)
 {
     if (initialCapacity > 0) {
         fValues = LE_NEW_ARRAY(le_int32, initialCapacity);
@@ -191,7 +191,7 @@ ValueRuns::~ValueRuns()
 {
     if (! fClientArrays) {
         LE_DELETE_ARRAY(fValues);
-        fValues = nullptr;
+        fValues = NULL;
     }
 }
 

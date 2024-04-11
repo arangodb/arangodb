@@ -19,7 +19,7 @@
  * Tests for DateFormatSymbols
  **/
 class IntlTestDateFormatSymbols: public IntlTest {
-    void runIndexedTest( int32_t index, UBool exec, const char* &name, char* par = nullptr ) override;
+    void runIndexedTest( int32_t index, UBool exec, const char* &name, char* par = NULL );  
 
 private:
     /**
@@ -29,12 +29,12 @@ private:
     /**
      * Test getMonths.
      */
-    void TestGetMonths();
-    void TestGetMonths2();
+    void TestGetMonths(void);
+    void TestGetMonths2(void);
 
-    void TestGetWeekdays2();
-    void TestGetEraNames();
-    void TestGetSetSpecificItems();
+    void TestGetWeekdays2(void);
+    void TestGetEraNames(void);
+    void TestGetSetSpecificItems(void);
 
     UBool UnicodeStringsArePrefixes(int32_t count, int32_t prefixLen, const UnicodeString *prefixArray, const UnicodeString *baseArray);
 };

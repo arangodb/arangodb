@@ -21,35 +21,35 @@
 class MessageFormatRegressionTest: public IntlTest {
 
     // IntlTest override
-    void runIndexedTest( int32_t index, UBool exec, const char* &name, char* par ) override;
+    void runIndexedTest( int32_t index, UBool exec, const char* &name, char* par );
 public:
 
-    void Test4074764();
-    void Test4058973();
-    void Test4031438();
-    void Test4052223();
-    void Test4104976();
-    void Test4106659();
-    void Test4106660();
-    void Test4111739();
-    void Test4114743();
-    void Test4116444();
-    void Test4114739();
-    void Test4113018();
-    void Test4106661();
-    void Test4094906();
-    void Test4118592();
-    void Test4118594();
-    void Test4105380();
-    void Test4120552();
-    void Test4142938();
-    void TestChoicePatternQuote();
-    void Test4112104();
-    void TestICU12584();
-    void TestAPI();
+    void Test4074764(void);
+    void Test4058973(void);
+    void Test4031438(void);
+    void Test4052223(void);
+    void Test4104976(void);
+    void Test4106659(void);
+    void Test4106660(void);
+    void Test4111739(void);
+    void Test4114743(void);
+    void Test4116444(void);
+    void Test4114739(void);
+    void Test4113018(void);
+    void Test4106661(void);
+    void Test4094906(void);
+    void Test4118592(void);
+    void Test4118594(void);
+    void Test4105380(void);
+    void Test4120552(void);
+    void Test4142938(void);
+    void TestChoicePatternQuote(void);
+    void Test4112104(void);
+    void TestICU12584(void);
+    void TestAPI(void);
 
 protected:
-    UBool failure(UErrorCode status, const char* msg, UBool possibleDataError=false);
+    UBool failure(UErrorCode status, const char* msg, UBool possibleDataError=FALSE);
 
 };
 

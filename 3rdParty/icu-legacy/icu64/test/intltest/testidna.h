@@ -29,13 +29,13 @@
 
 U_CDECL_BEGIN
 typedef int32_t  
-(U_EXPORT2 *TestFunc) (   const char16_t *src, int32_t srcLength,
-                char16_t *dest, int32_t destCapacity,
+(U_EXPORT2 *TestFunc) (   const UChar *src, int32_t srcLength,
+                UChar *dest, int32_t destCapacity,
                 int32_t options, UParseError *parseError,
                 UErrorCode *status);
 typedef int32_t  
-(U_EXPORT2 *CompareFunc) (const char16_t *s1, int32_t s1Len,
-                const char16_t *s2, int32_t s2Len,
+(U_EXPORT2 *CompareFunc) (const UChar *s1, int32_t s1Len,
+                const UChar *s2, int32_t s2Len,
                 int32_t options,
                 UErrorCode *status);
 
@@ -52,7 +52,7 @@ class NamePrepTransform;
  */
 class TestIDNA : public IntlTest {
 public:
-    void runIndexedTest(int32_t index, UBool exec, const char* &name, char* par=nullptr) override;
+    void runIndexedTest(int32_t index, UBool exec, const char* &name, char* par=NULL);
     void TestDataFile();
     void TestToASCII();
     void TestToUnicode();
@@ -66,9 +66,8 @@ public:
     void TestRefIDNA();
     void TestIDNAMonkeyTest();
     void TestConformance();
-    NamePrepTransform* getInstance(UErrorCode& status);
-    NamePrepTransform* gPrep;
-    TestIDNA() : gPrep(nullptr) {}
+    static NamePrepTransform* getInstance(UErrorCode& status);
+    static NamePrepTransform* gPrep;
     virtual ~TestIDNA();
 
 private:
@@ -79,28 +78,28 @@ private:
     void testCompare(const char* testName, CompareFunc func);
     void testChaining(const char* toASCIIName, TestFunc toASCII,
                     const char* toUnicodeName, TestFunc toUnicode);
-    void debug(const char16_t* src, int32_t srcLength, int32_t options);
+    void debug(const UChar* src, int32_t srcLength, int32_t options);
     // main testing functions
-    void testAPI(const char16_t *src, const char16_t *expected, const char *testName,
+    void testAPI(const UChar *src, const UChar *expected, const char *testName, 
              UBool useSTD3ASCIIRules, UErrorCode expectedStatus,
-             UBool doCompare, UBool testUnassigned, TestFunc func, UBool testSTD3ASCIIRules=true);
+             UBool doCompare, UBool testUnassigned, TestFunc func, UBool testSTD3ASCIIRules=TRUE);
 
-    void testCompare(const char16_t* s1, int32_t s1Len,
-                        const char16_t* s2, int32_t s2Len,
+    void testCompare(const UChar* s1, int32_t s1Len,
+                        const UChar* s2, int32_t s2Len,
                         const char* testName, CompareFunc func,
                         UBool isEqual);
 
     void testErrorCases(const char* IDNToASCIIName, TestFunc IDNToASCII,
                     const char* IDNToUnicodeName, TestFunc IDNToUnicode);
 
-    void testChaining(const char16_t* src,int32_t numIterations,const char* testName,
+    void testChaining(const UChar* src,int32_t numIterations,const char* testName,
                   UBool useSTD3ASCIIRules, UBool caseInsensitive, TestFunc func);
 
     void testRootLabelSeparator(const char* testName, CompareFunc func, 
                             const char* IDNToASCIIName, TestFunc IDNToASCII,
                             const char* IDNToUnicodeName, TestFunc IDNToUnicode);
 
-    void testCompareReferenceImpl(const char16_t* src, int32_t srcLen);
+    void testCompareReferenceImpl(const UChar* src, int32_t srcLen);
     
     UnicodeString testCompareReferenceImpl(UnicodeString& src, 
                                 TestFunc refIDNA, const char* refIDNAName,

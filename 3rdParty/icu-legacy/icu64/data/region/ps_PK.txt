@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ps_PK{
     Countries{
         019{"امريکے"}
@@ -8,4 +7,5 @@ ps_PK{
         TC{"د ترکیے او کیکاسو ټاپو"}
         TF{"د فرانسے جنوبي سیمے"}
     }
+    Version{"2.1.49.34"}
 }

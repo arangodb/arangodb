@@ -15,8 +15,6 @@
 
 #if !UCONFIG_NO_FORMATTING
 
-#include <stdbool.h>
-
 #include "unicode/ustring.h"
 #include "unicode/uregion.h"
 #include "unicode/uenum.h"
@@ -26,7 +24,6 @@
 
 static void TestKnownRegions(void);
 static void TestGetContainedRegions(void);
-static void TestGroupingChildren(void);
 static void TestGetContainedRegionsWithType(void);
 static void TestGetContainingRegion(void);
 static void TestGetContainingRegionWithType(void);
@@ -41,7 +38,6 @@ void addURegionTest(TestNode** root)
 {
     TESTCASE(TestKnownRegions);
     TESTCASE(TestGetContainedRegions);
-    TESTCASE(TestGroupingChildren);
     TESTCASE(TestGetContainedRegionsWithType);
     TESTCASE(TestGetContainingRegion);
     TESTCASE(TestGetContainingRegionWithType);
@@ -362,7 +358,7 @@ static KnownRegion knownRegions[] = {
     };
 
 
-static void TestKnownRegions(void) {
+static void TestKnownRegions() {
     const KnownRegion * rd;
     for (rd = knownRegions; rd->code != NULL ; rd++ ) {
         UErrorCode status = U_ZERO_ERROR;
@@ -389,7 +385,7 @@ static void TestKnownRegions(void) {
     }
 }
 
-static void TestGetContainedRegions(void) {
+static void TestGetContainedRegions() {
     const KnownRegion * rd;
     for (rd = knownRegions; rd->code != NULL ; rd++ ) {
         UErrorCode status = U_ZERO_ERROR;
@@ -418,59 +414,7 @@ static void TestGetContainedRegions(void) {
     }
 }
 
-static void TestGroupingChildren(void) {
-    const char* testGroupings[] = {
-        "003", "021,013,029",
-        "419", "013,029,005",
-        "EU",  "AT,BE,CY,CZ,DE,DK,EE,ES,FI,FR,GR,HR,HU,IE,IT,LT,LU,LV,MT,NL,PL,PT,SE,SI,SK,BG,RO"
-    };
-
-    for (int32_t i = 0; i < UPRV_LENGTHOF(testGroupings); i += 2) {
-        const char* groupingCode = testGroupings[i];
-        const char* expectedChildren = testGroupings[i + 1];
-        
-        UErrorCode err = U_ZERO_ERROR;
-        const URegion* grouping = uregion_getRegionFromCode(groupingCode, &err);
-        if (U_SUCCESS(err)) {
-            UEnumeration* actualChildren = uregion_getContainedRegions(grouping, &err);
-            if (U_SUCCESS(err)) {
-                int32_t numActualChildren = uenum_count(actualChildren, &err);
-                int32_t numExpectedChildren = 0;
-                const char* expectedChildStart = expectedChildren;
-                const char* expectedChildEnd = NULL;
-                const char* actualChild = NULL;
-                while ((actualChild = uenum_next(actualChildren, NULL, &err)) != NULL && *expectedChildStart != '\0') {
-                    expectedChildEnd = uprv_strchr(expectedChildStart, ',');
-                    if (expectedChildEnd == NULL) {
-                        expectedChildEnd = expectedChildStart + uprv_strlen(expectedChildStart);
-                    }
-                    if (uprv_strlen(actualChild) != (size_t)(expectedChildEnd - expectedChildStart) || uprv_strncmp(actualChild, expectedChildStart, expectedChildEnd - expectedChildStart) != 0) {
-                        log_err("Mismatch in child list for %s at position %d: expected %s, got %s\n", groupingCode, i, expectedChildStart, actualChild);
-                    }
-                    expectedChildStart = (*expectedChildEnd != '\0') ? expectedChildEnd + 1 : expectedChildEnd;
-                    ++numExpectedChildren;
-                }
-                if (expectedChildEnd == NULL) {
-                    expectedChildEnd = expectedChildren;
-                }
-                while (expectedChildEnd != NULL && *expectedChildEnd != '\0') {
-                    expectedChildEnd = uprv_strchr(expectedChildEnd + 1, ',');
-                    ++numExpectedChildren;
-                }
-                if (numExpectedChildren != numActualChildren) {
-                    log_err("Wrong number of children for %s: expected %d, got %d\n", groupingCode, numExpectedChildren, numActualChildren);
-                }
-                uenum_close(actualChildren);
-            } else {
-                log_err("Couldn't create iterator for children of %s\n", groupingCode);
-            }
-        } else {
-            log_err("Region %s not found\n", groupingCode);
-        }
-    }
-}
-
-static void TestGetContainedRegionsWithType(void) {
+static void TestGetContainedRegionsWithType() {
     const KnownRegion * rd;
     for (rd = knownRegions; rd->code != NULL ; rd++ ) {
         UErrorCode status = U_ZERO_ERROR;
@@ -499,7 +443,7 @@ static void TestGetContainedRegionsWithType(void) {
     }
 }
 
-static void TestGetContainingRegion(void) {
+static void TestGetContainingRegion() {        
     const KnownRegion * rd;
     for (rd = knownRegions; rd->code != NULL ; rd++ ) {
         UErrorCode status = U_ZERO_ERROR;
@@ -523,7 +467,7 @@ static void TestGetContainingRegion(void) {
     }
 }
 
-static void TestGetContainingRegionWithType(void) {
+static void TestGetContainingRegionWithType() {        
     const KnownRegion * rd;
     for (rd = knownRegions; rd->code != NULL ; rd++ ) {
         UErrorCode status = U_ZERO_ERROR;
@@ -563,7 +507,7 @@ static const char ** expectPrefRegionsTestData[] = {
     NULL
 };
 
-static void TestGetPreferredValues(void) {
+static void TestGetPreferredValues() {
     const char *** testDataPtr = expectPrefRegionsTestData;
     const char ** regionListPtr;
     while ( (regionListPtr = *testDataPtr++) != NULL ) {
@@ -577,11 +521,11 @@ static void TestGetPreferredValues(void) {
                     const char * preferredCode;
                     while ( (preferredCode = *regionListPtr++) != NULL ) {
                         const char *check;
-                        UBool found = false;
+                        UBool found = FALSE;
                         uenum_reset(preferredRegions, &status);
                         while ((check = uenum_next(preferredRegions, NULL, &status)) != NULL && U_SUCCESS(status) ) {
                             if ( !uprv_strcmp(check,preferredCode) ) {
-                                found = true;
+                                found = TRUE;
                                 break;
                             }
                         }
@@ -600,7 +544,7 @@ static void TestGetPreferredValues(void) {
     }
 }
 
-static void TestContains(void) {
+static void TestContains() {
     const KnownRegion * rd;
     for (rd = knownRegions; rd->code != NULL ; rd++ ) {
         UErrorCode status = U_ZERO_ERROR;

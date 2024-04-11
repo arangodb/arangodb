@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ne{
+    Version{"2.1.49.82"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"अविड्जान"}
@@ -258,9 +258,6 @@ ne{
         "America:Chihuahua"{
             ec{"चिहुवाहुवा"}
         }
-        "America:Ciudad_Juarez"{
-            ec{"जुआरेज सहर"}
-        }
         "America:Coral_Harbour"{
             ec{"एटिकोकान"}
         }
@@ -465,6 +462,9 @@ ne{
         "America:New_York"{
             ec{"न्युयोर्क"}
         }
+        "America:Nipigon"{
+            ec{"निपिगन"}
+        }
         "America:Nome"{
             ec{"नोम"}
         }
@@ -485,6 +485,9 @@ ne{
         }
         "America:Panama"{
             ec{"पानामा"}
+        }
+        "America:Pangnirtung"{
+            ec{"पाङ्निरतुङ"}
         }
         "America:Paramaribo"{
             ec{"पारामारिवो"}
@@ -507,6 +510,9 @@ ne{
         "America:Punta_Arenas"{
             ec{"पुन्टा अरिनाज"}
         }
+        "America:Rainy_River"{
+            ec{"रेनिरिभर"}
+        }
         "America:Rankin_Inlet"{
             ec{"रान्किन इन्लेट"}
         }
@@ -521,6 +527,9 @@ ne{
         }
         "America:Rio_Branco"{
             ec{"रियो ब्रान्को"}
+        }
+        "America:Santa_Isabel"{
+            ec{"सान्टा ईसाबेल"}
         }
         "America:Santarem"{
             ec{"सान्टारेम"}
@@ -567,11 +576,14 @@ ne{
         "America:Thule"{
             ec{"थुले"}
         }
+        "America:Thunder_Bay"{
+            ec{"थण्डर बे"}
+        }
         "America:Tijuana"{
             ec{"तिजुआना"}
         }
         "America:Toronto"{
-            ec{"टोरोन्टो"}
+            ec{"टोरोण्टो"}
         }
         "America:Tortola"{
             ec{"टार्टोला"}
@@ -587,6 +599,9 @@ ne{
         }
         "America:Yakutat"{
             ec{"याकुटाट"}
+        }
+        "America:Yellowknife"{
+            ec{"येल्लोनाइफ"}
         }
         "Antarctica:Casey"{
             ec{"केजे"}
@@ -795,9 +810,6 @@ ne{
         "Asia:Qatar"{
             ec{"कतार"}
         }
-        "Asia:Qostanay"{
-            ec{"कस्टाने"}
-        }
         "Asia:Qyzylorda"{
             ec{"किजिलोर्डा"}
         }
@@ -911,6 +923,9 @@ ne{
         }
         "Australia:Broken_Hill"{
             ec{"ब्रोकन हिल"}
+        }
+        "Australia:Currie"{
+            ec{"क्युरी"}
         }
         "Australia:Darwin"{
             ec{"डार्विन"}
@@ -1094,6 +1109,9 @@ ne{
         "Europe:Ulyanovsk"{
             ec{"उल्यानोभ्स्क"}
         }
+        "Europe:Uzhgorod"{
+            ec{"उझगोरद"}
+        }
         "Europe:Vaduz"{
             ec{"भाडुज"}
         }
@@ -1114,6 +1132,9 @@ ne{
         }
         "Europe:Zagreb"{
             ec{"जाग्रेब"}
+        }
+        "Europe:Zaporozhye"{
+            ec{"जापोरोझ्ये"}
         }
         "Europe:Zurich"{
             ec{"जुरिक"}
@@ -1196,8 +1217,8 @@ ne{
         "Pacific:Honolulu"{
             ec{"होनोलुलु"}
         }
-        "Pacific:Kanton"{
-            ec{"कान्टोन"}
+        "Pacific:Johnston"{
+            ec{"जोन्सटन"}
         }
         "Pacific:Kiritimati"{
             ec{"किरितिमाटी"}
@@ -1610,6 +1631,9 @@ ne{
             lg{"लर्ड हावे समय"}
             ls{"लर्ड हावे मानक समय"}
         }
+        "meta:Macquarie"{
+            ls{"माक्वेरी टापु समय"}
+        }
         "meta:Magadan"{
             ld{"मागादान ग्रीष्मकालीन समय"}
             lg{"मागादान समय"}
@@ -1634,6 +1658,11 @@ ne{
         }
         "meta:Mawson"{
             ls{"म्वसन समय"}
+        }
+        "meta:Mexico_Northwest"{
+            ld{"उत्तर पश्चिम मेक्सिकोको दिवा समय"}
+            lg{"उत्तर पश्चिम मेक्सिको समय"}
+            ls{"उत्तर पश्चिम मेक्सिकोको मानक समय"}
         }
         "meta:Mexico_Pacific"{
             ld{"मेक्सिकन प्यासिफिक दिवा समय"}
@@ -1678,9 +1707,7 @@ ne{
             ls{"निउए समय"}
         }
         "meta:Norfolk"{
-            ld{"नोर्फोक टापूको ग्रीष्मकालीन समय"}
-            lg{"नोर्फोक टापूको समय"}
-            ls{"नोर्फोक टापूको मानक समय"}
+            ls{"नोर्फल्क टापू समय"}
         }
         "meta:Noronha"{
             ld{"फर्नान्डो डे नोरोन्हा ग्रीष्मकालीन समय"}
@@ -1851,9 +1878,10 @@ ne{
             lg{"येकाटेरिनबर्ग समय"}
             ls{"येकाटेरिनबर्ग मानक समय"}
         }
-        "meta:Yukon"{
-            ls{"युकोनको समय"}
-        }
+        fallbackFormat{"{1} ({0})"}
+        gmtFormat{"GMT{0}"}
+        gmtZeroFormat{"GMT"}
+        hourFormat{"+HH:mm;-HH:mm"}
         regionFormat{"{0} समय"}
         regionFormatDaylight{"{0} (+१)"}
         regionFormatStandard{"{0} (+०)"}

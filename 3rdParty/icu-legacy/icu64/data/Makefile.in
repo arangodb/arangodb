@@ -136,30 +136,25 @@ cleanpackage:
 	$(RMV) $(LIBDIR)/*$(LIB_ICUDATA_NAME)*.$(SO)* $(LIBDIR)/$(LIB_STATIC_ICUDATA_NAME).$(A)
 
 check-local:
-	PYTHONPATH=$(top_srcdir)/python @PYTHON@ -m icutools.databuilder.test
+	PYTHONPATH=$(srcdir) @PYTHON@ -m buildtool.test
 
 # Find out if we have a source archive.
 # If we have that, then use that instead of building everything from scratch.
 ICUDATA_SOURCE_ARCHIVE = $(wildcard $(srcdir)/in/$(ICUDATA_PLATFORM_NAME).dat)
 ifeq ($(ICUDATA_SOURCE_ARCHIVE),)
 ICUDATA_ARCHIVE = $(firstword $(wildcard $(srcdir)/in/$(ICUDATA_BASENAME_VERSION)*.dat))
-# We don't have the data in the current endianness or charset.
+# We don't have the data in the current endianess or charset.
 # See if we can find data of any archive type,
 # and convert it to the current type.
 ifneq ($(ICUDATA_ARCHIVE),)
 ICUDATA_SOURCE_ARCHIVE = $(OUTDIR)/$(ICUDATA_PLATFORM_NAME).dat
-$(ICUDATA_SOURCE_ARCHIVE): $(ICUDATA_ARCHIVE)
-	$(MKINSTALLDIRS) $(OUTDIR)
+$(ICUDATA_SOURCE_ARCHIVE): $(ICUDATA_ARCHIVE) $(OUTDIR)
 	$(INVOKE) $(TOOLBINDIR)/icupkg -t$(ICUDATA_CHAR) $(ICUDATA_ARCHIVE) $(ICUDATA_SOURCE_ARCHIVE)
-	
-$(OUTDIR):
-	mkdir -p $(OUTDIR)
-
 endif
 else
 ifneq ($(ENABLE_STATIC),YES)
 ifeq ($(PKGDATA_MODE),common)
-# We have a source data common archive in the native endianness,
+# We have a source data common archive in the native endianess,
 # and it's what we want to build. Try to not run any of ICU's tools.
 ICUDATA_SOURCE_IS_NATIVE_TARGET=YES
 endif
@@ -196,21 +191,11 @@ ifeq ($(PKGDATA_MODE),files)
 endif
 ifneq ($(ENABLE_STATIC),)
 ifeq ($(PKGDATA_MODE),dll)
-# For MinGW, do we want the DLL to go in the bin location?
-ifeq ($(MINGW_MOVEDLLSTOBINDIR),YES)
-	$(PKGDATA_INVOKE) $(PKGDATA) -m static -e $(ICUDATA_ENTRY_POINT) -T $(OUTTMPDIR) -s $(BUILDDIR) -p $(ICUDATA_NAME) $(PKGDATA_LIBSTATICNAME) $(PKGDATA_LIST) -I $(DESTDIR)$(bindir)
-else
 	$(PKGDATA_INVOKE) $(PKGDATA) -m static -e $(ICUDATA_ENTRY_POINT) -T $(OUTTMPDIR) -s $(BUILDDIR) -p $(ICUDATA_NAME) $(PKGDATA_LIBSTATICNAME) $(PKGDATA_LIST) -I $(ICUPKGDATA_INSTALL_LIBDIR)
 endif
 endif
-endif
 ifneq ($(ICUDATA_SOURCE_IS_NATIVE_TARGET),YES)
-# For MinGW, do we want the DLL to go in the bin location?
-ifeq ($(MINGW_MOVEDLLSTOBINDIR),YES)
-	$(PKGDATA_INVOKE) $(PKGDATA) -m $(PKGDATA_MODE) $(PKGDATA_VERSIONING) -e $(ICUDATA_ENTRY_POINT) -T $(OUTTMPDIR) -s $(BUILDDIR) -p $(ICUDATA_NAME) $(PKGDATA_LIBNAME) $(PKGDATA_LIST) -I $(DESTDIR)$(bindir)
-else
 	$(PKGDATA_INVOKE) $(PKGDATA) -m $(PKGDATA_MODE) $(PKGDATA_VERSIONING) -e $(ICUDATA_ENTRY_POINT) -T $(OUTTMPDIR) -s $(BUILDDIR) -p $(ICUDATA_NAME) $(PKGDATA_LIBNAME) $(PKGDATA_LIST) -I $(ICUPKGDATA_INSTALL_DIR)
-endif
 else
 	$(INSTALL_DATA) $(ICUDATA_SOURCE_ARCHIVE) $(DESTDIR)$(ICUPKGDATA_DIR)
 endif
@@ -240,7 +225,7 @@ include $(top_builddir)/$(subdir)/rules.mk
 ifeq ($(ENABLE_SO_VERSION_DATA),1)
 ifeq ($(PKGDATA_MODE),dll)
 SO_VERSION_DATA = $(OUTTMPDIR)/icudata.res
-$(SO_VERSION_DATA) : $(MISCSRCDIR)/icudata.rc | $(TMP_DIR)/dirs.timestamp
+$(SO_VERSION_DATA) : $(MISCSRCDIR)/icudata.rc
 ifeq ($(MSYS_RC_MODE),1)
 	rc.exe -i$(srcdir)/../common -i$(top_builddir)/common -fo$@ $(CPPFLAGS) $<
 else
@@ -281,7 +266,7 @@ ifeq ($(TZDATA),)
 TZDATA = $(firstword $(wildcard $(top_builddir)/tools/tzcode/tzdata*.tar.gz) $(wildcard $(top_srcdir)/tools/tzcode/tzdata*.tar.gz))
 endif
 
-# TODO(ICU-20466): Make the TZDATA override part of Python icutools.databuilder
+# TODO(ICU-20466): Make the TZDATA override part of Python buildtool
 ifneq ($(TZDATA),)
 
 TZCODE_DIR=$(top_builddir)/tools/tzcode

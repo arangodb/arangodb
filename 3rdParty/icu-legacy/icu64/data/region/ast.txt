@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ast{
     Countries{
         001{"Mundu"}
@@ -145,6 +144,7 @@ ast{
         IL{"Israel"}
         IM{"Islla de Man"}
         IN{"India"}
+        IO{"Territoriu Británicu del Océanu Índicu"}
         IQ{"Iraq"}
         IR{"Irán"}
         IS{"Islandia"}
@@ -182,6 +182,7 @@ ast{
         MF{"Saint Martin"}
         MG{"Madagascar"}
         MH{"Islles Marshall"}
+        MK{"Macedonia"}
         ML{"Malí"}
         MM{"Myanmar (Birmania)"}
         MN{"Mongolia"}
@@ -306,6 +307,8 @@ ast{
         CI{"Costa del Marfil"}
         CZ{"República Checa"}
         FK{"Islles Malvines (Falkland Islands)"}
+        MK{"Macedonia (ARYDM)"}
         TL{"Timor Este"}
     }
+    Version{"2.1.47.82"}
 }

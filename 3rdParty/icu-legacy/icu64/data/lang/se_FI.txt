@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 se_FI{
     Languages{
         ace{"ačehgiella"}
@@ -33,6 +32,10 @@ se_FI{
         vi{"vietnamagiella"}
         zh_Hans{"álkes kiinnágiella"}
     }
+    Languages%short{
+        en_GB{"brihttalaš eaŋgalsgiella"}
+        en_US{"amerihkálaš eaŋgalsgiella"}
+    }
     Scripts{
         Arab{"arábalaš"}
         Hani{"kiinnálaš"}
@@ -40,6 +43,10 @@ se_FI{
         Hant{"árbevirolaš kiinnálaš"}
         Zxxx{"orrut čállojuvvot"}
         Zzzz{"dovdameahttun čállin"}
+    }
+    Scripts%stand-alone{
+        Hans{"álkes kiinnálaš"}
+        Hant{"árbevirolaš kiinnálaš"}
     }
     Types{
         calendar{
@@ -51,7 +58,11 @@ se_FI{
             ethiopic-amete-alem{"etiohpalaš-amete-alem kaleandar"}
             gregorian{"gregorialaš kalendar"}
         }
+        numbers{
+            fullwide{"fullwide"}
+        }
     }
+    Version{"2.1.47.83"}
     codePatterns{
         script{"čállin: {0}"}
     }

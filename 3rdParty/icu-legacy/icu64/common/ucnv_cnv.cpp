@@ -62,7 +62,7 @@ ucnv_fromUWriteBytes(UConverter *cnv,
     int32_t *o;
 
     /* write bytes */
-    if(offsets==nullptr || (o=*offsets)==nullptr) {
+    if(offsets==NULL || (o=*offsets)==NULL) {
         while(length>0 && t<targetLimit) {
             *t++=*bytes++;
             --length;
@@ -80,7 +80,7 @@ ucnv_fromUWriteBytes(UConverter *cnv,
 
     /* write overflow */
     if(length>0) {
-        if(cnv!=nullptr) {
+        if(cnv!=NULL) {
             t=(char *)cnv->charErrorBuffer;
             cnv->charErrorBufferLength=(int8_t)length;
             do {
@@ -93,16 +93,16 @@ ucnv_fromUWriteBytes(UConverter *cnv,
 
 U_CFUNC void
 ucnv_toUWriteUChars(UConverter *cnv,
-                    const char16_t *uchars, int32_t length,
-                    char16_t **target, const char16_t *targetLimit,
+                    const UChar *uchars, int32_t length,
+                    UChar **target, const UChar *targetLimit,
                     int32_t **offsets,
                     int32_t sourceIndex,
                     UErrorCode *pErrorCode) {
-    char16_t *t=*target;
+    UChar *t=*target;
     int32_t *o;
 
     /* write UChars */
-    if(offsets==nullptr || (o=*offsets)==nullptr) {
+    if(offsets==NULL || (o=*offsets)==NULL) {
         while(length>0 && t<targetLimit) {
             *t++=*uchars++;
             --length;
@@ -120,7 +120,7 @@ ucnv_toUWriteUChars(UConverter *cnv,
 
     /* write overflow */
     if(length>0) {
-        if(cnv!=nullptr) {
+        if(cnv!=NULL) {
             t=cnv->UCharErrorBuffer;
             cnv->UCharErrorBufferLength=(int8_t)length;
             do {
@@ -134,30 +134,30 @@ ucnv_toUWriteUChars(UConverter *cnv,
 U_CFUNC void
 ucnv_toUWriteCodePoint(UConverter *cnv,
                        UChar32 c,
-                       char16_t **target, const char16_t *targetLimit,
+                       UChar **target, const UChar *targetLimit,
                        int32_t **offsets,
                        int32_t sourceIndex,
                        UErrorCode *pErrorCode) {
-    char16_t *t;
+    UChar *t;
     int32_t *o;
 
     t=*target;
 
     if(t<targetLimit) {
         if(c<=0xffff) {
-            *t++=(char16_t)c;
+            *t++=(UChar)c;
             c=U_SENTINEL;
         } else /* c is a supplementary code point */ {
             *t++=U16_LEAD(c);
             c=U16_TRAIL(c);
             if(t<targetLimit) {
-                *t++=(char16_t)c;
+                *t++=(UChar)c;
                 c=U_SENTINEL;
             }
         }
 
         /* write offsets */
-        if(offsets!=nullptr && (o=*offsets)!=nullptr) {
+        if(offsets!=NULL && (o=*offsets)!=NULL) {
             *o++=sourceIndex;
             if((*target+1)<t) {
                 *o++=sourceIndex;
@@ -170,7 +170,7 @@ ucnv_toUWriteCodePoint(UConverter *cnv,
 
     /* write overflow from c */
     if(c>=0) {
-        if(cnv!=nullptr) {
+        if(cnv!=NULL) {
             int8_t i=0;
             U16_APPEND_UNSAFE(cnv->UCharErrorBuffer, i, c);
             cnv->UCharErrorBufferLength=i;

@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 tt{
     Languages{
         af{"африкаанс"}
@@ -28,18 +27,14 @@ tt{
         cy{"уэльс"}
         da{"дания"}
         de{"алман"}
-        de_CH{"югары алман (Швейцария)"}
         dsb{"түбән сорб"}
         dv{"мальдив"}
         dz{"дзонг-кха"}
         el{"грек"}
         en{"инглиз"}
-        en_GB{"Британия инглизчәсе"}
-        en_US{"Америка инглизчәсе"}
         eo{"эсперанто"}
         es{"испан"}
         es_419{"испан (Латин Америкасы)"}
-        es_ES{"испан (Европа)"}
         et{"эстон"}
         eu{"баск"}
         fa{"фарсы"}
@@ -111,7 +106,6 @@ tt{
         pl{"поляк"}
         ps{"пушту"}
         pt{"португал"}
-        pt_PT{"португал (Европа)"}
         qu{"кечуа"}
         quc{"киче"}
         rm{"ретороман"}
@@ -155,20 +149,9 @@ tt{
         wo{"волоф"}
         yi{"идиш"}
         yo{"йоруба"}
-        zh{"кытай"}
+        zh{"кытай (тәрҗемә киңәше: аерым алганда, мандарин кытайчасы)"}
         zh_Hans{"гадиләштерелгән кытай"}
         zh_Hant{"традицион кытай"}
-    }
-    Languages%long{
-        zh_Hans{"гадиләштерелгән мандарин кытайчасы"}
-        zh_Hant{"традицион мандарин кытайчасы"}
-    }
-    Languages%menu{
-        zh{"мандарин кытайчасы"}
-    }
-    Languages%short{
-        en_GB{"инглиз (Берләшкән Корольлек)"}
-        en_US{"инглиз (АКШ)"}
     }
     Scripts{
         Arab{"гарәп"}
@@ -194,9 +177,15 @@ tt{
             latn{"көнбатыш цифрлары"}
         }
     }
+    Version{"2.1.49.82"}
     codePatterns{
         language{"Тел: {0}"}
         script{"Язу: {0}"}
         territory{"Төбәк: {0}"}
+    }
+    localeDisplayPattern{
+        keyTypePattern{"{0}: {1}"}
+        pattern{"{0} ({1})"}
+        separator{"{0}, {1}"}
     }
 }

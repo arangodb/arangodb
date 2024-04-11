@@ -1,5 +1,5 @@
 Copyright (C) 2016 and later: Unicode, Inc. and others.
-License & terms of use: http://www.unicode.org/copyright.html
+License & terms of use: http://www.unicode.org/copyright.html#License
 
 Copyright (C) 2008-2013, International Business Machines
 Corporation and others.  All Rights Reserved.
@@ -49,7 +49,7 @@ Running Performance Test:
    (e.g. convperf (Conversion tests)). Go to each directory and execute the perl script for each test
    you want to run. (e.g. CharPerf_r.pl in CharPerf directory)
    * You only need to run the perl script from the latest ICU version.  The corresponding perl script 
-     in the previous versions of ICU do not need to be run separately.
+     in the previous versions of ICU do not need to be run seperately.
 
 
 Note: When running on Windows, cygwin is preferred.

@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 vi{
+    Version{"2.1.19.14"}
     collations{
         standard{
             Sequence{
@@ -13,7 +13,7 @@ vi{
                 "&o<ô<<<Ô<ơ<<<Ơ"
                 "&u<ư<<<Ư"
             }
-            Version{"45"}
+            Version{"35.1"}
         }
         traditional{
             Sequence{
@@ -32,7 +32,7 @@ vi{
                 "&T<th<<<Th<<<TH<tr<<<Tr<<<TR"
                 "&u<ư<<<Ư"
             }
-            Version{"45"}
+            Version{"35.1"}
         }
     }
 }

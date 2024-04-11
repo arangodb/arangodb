@@ -42,9 +42,9 @@ class TestReplaceable : public Replaceable {
     UnicodeString chars;
     UnicodeString styles;
     
-    static const char16_t NO_STYLE;
+    static const UChar NO_STYLE;
 
-    static const char16_t NO_STYLE_MARK;
+    static const UChar NO_STYLE_MARK;
 
     /**
      * The address of this static class variable serves as this class's ID
@@ -64,18 +64,18 @@ public:
                 if (text.charAt(i) == NO_STYLE_MARK) {
                     s.append(NO_STYLE);
                 } else {
-                    s.append((char16_t)(i + 0x0031));
+                    s.append((UChar)(i + 0x0031));
                 }
             }
         }
         this->styles = s;
     }
 
-    virtual TestReplaceable *clone() const override {
+    virtual Replaceable *clone() const {
         return new TestReplaceable(chars, styles);
     }
 
-    ~TestReplaceable() {}
+    ~TestReplaceable(void) {}
 
     UnicodeString getStyles() {
         return styles;
@@ -89,7 +89,7 @@ public:
         return s;
     }
 
-    void extractBetween(int32_t start, int32_t limit, UnicodeString& result) const override {
+    void extractBetween(int32_t start, int32_t limit, UnicodeString& result) const {
         chars.extractBetween(start, limit, result);
     }
 
@@ -105,23 +105,23 @@ public:
      *
      * @draft ICU 2.2
      */
-    virtual inline UClassID getDynamicClassID() const override { return getStaticClassID(); }
+    virtual inline UClassID getDynamicClassID() const { return getStaticClassID(); }
 
 protected:
-    virtual int32_t getLength() const override {
+    virtual int32_t getLength() const {
         return chars.length();
     }
 
-    virtual char16_t getCharAt(int32_t offset) const override {
+    virtual UChar getCharAt(int32_t offset) const{
         return chars.charAt(offset);
     }
 
-    virtual UChar32 getChar32At(int32_t offset) const override {
+    virtual UChar32 getChar32At(int32_t offset) const{
         return chars.char32At(offset);
     }
 
     void fixStyles(int32_t start, int32_t limit, int32_t newLen) {
-        char16_t newStyle = NO_STYLE;
+        UChar newStyle = NO_STYLE;
         if (start != limit && styles.charAt(start) != NO_STYLE) {
             newStyle = styles.charAt(start);
         } else if (start > 0 && getCharAt(start-1) != NO_STYLE_MARK) {
@@ -144,7 +144,7 @@ protected:
         styles.replaceBetween(start, limit, s);
     }
 
-    virtual void handleReplaceBetween(int32_t start, int32_t limit, const UnicodeString& text) override {
+    virtual void handleReplaceBetween(int32_t start, int32_t limit, const UnicodeString& text) {
         UnicodeString s;
         this->extractBetween(start, limit, s);
         if (s == text) return; // NO ACTION!
@@ -153,7 +153,7 @@ protected:
     }
     
 
-    virtual void copy(int32_t start, int32_t limit, int32_t dest) override {
+    virtual void copy(int32_t start, int32_t limit, int32_t dest) {
         chars.copy(start, limit, dest);
         styles.copy(start, limit, dest);
     }
@@ -161,9 +161,9 @@ protected:
 
 const char TestReplaceable::fgClassID=0;
 
-const char16_t TestReplaceable::NO_STYLE  = 0x005F;
+const UChar TestReplaceable::NO_STYLE  = 0x005F;
 
-const char16_t TestReplaceable::NO_STYLE_MARK = 0xFFFF;
+const UChar TestReplaceable::NO_STYLE_MARK = 0xFFFF;
 
 void
 ReplaceableTest::runIndexedTest(int32_t index, UBool exec,
@@ -179,32 +179,32 @@ ReplaceableTest::runIndexedTest(int32_t index, UBool exec,
  */
 class NoopReplaceable : public Replaceable {
 public:
-    virtual int32_t getLength() const override {
+    virtual int32_t getLength() const {
         return 0;
     }
 
-    virtual char16_t getCharAt(int32_t /*offset*/) const override {
+    virtual UChar getCharAt(int32_t /*offset*/) const{
         return 0xffff;
     }
 
-    virtual UChar32 getChar32At(int32_t /*offset*/) const override {
+    virtual UChar32 getChar32At(int32_t /*offset*/) const{
         return 0xffff;
     }
 
-    void extractBetween(int32_t /*start*/, int32_t /*limit*/, UnicodeString& result) const override {
+    void extractBetween(int32_t /*start*/, int32_t /*limit*/, UnicodeString& result) const {
         result.remove();
     }
 
-    virtual void handleReplaceBetween(int32_t /*start*/, int32_t /*limit*/, const UnicodeString &/*text*/) override {
+    virtual void handleReplaceBetween(int32_t /*start*/, int32_t /*limit*/, const UnicodeString &/*text*/) {
         /* do nothing */
     }
 
-    virtual void copy(int32_t /*start*/, int32_t /*limit*/, int32_t /*dest*/) override {
+    virtual void copy(int32_t /*start*/, int32_t /*limit*/, int32_t /*dest*/) {
         /* do nothing */
     }
 
     static inline UClassID getStaticClassID() { return (UClassID)&fgClassID; }
-    virtual inline UClassID getDynamicClassID() const override { return getStaticClassID(); }
+    virtual inline UClassID getDynamicClassID() const { return getStaticClassID(); }
 
 private:
     static const char fgClassID;
@@ -212,8 +212,8 @@ private:
 
 const char NoopReplaceable::fgClassID=0;
 
-void ReplaceableTest::TestReplaceableClass() {
-    char16_t rawTestArray[][6] = {
+void ReplaceableTest::TestReplaceableClass(void) {
+    UChar rawTestArray[][6] = {
         {0x0041, 0x0042, 0x0043, 0x0044, 0x0000, 0x0000}, // ABCD
         {0x0061, 0x0062, 0x0063, 0x0064, 0x00DF, 0x0000}, // abcd\u00DF
         {0x0061, 0x0042, 0x0043, 0x0044, 0x0000, 0x0000}, // aBCD
@@ -244,29 +244,29 @@ void ReplaceableTest::TestReplaceableClass() {
     // improve API/code coverage
     NoopReplaceable noop;
     Replaceable *p;
-    if((p=noop.clone())!=nullptr) {
-        errln("Replaceable::clone() does not return nullptr");
+    if((p=noop.clone())!=NULL) {
+        errln("Replaceable::clone() does not return NULL");
         delete p;
     }
 
     if(!noop.hasMetaData()) {
-        errln("Replaceable::hasMetaData() does not return true");
+        errln("Replaceable::hasMetaData() does not return TRUE");
     }
 
     // try to call the compiler-provided
     // UMemory/UObject/Replaceable assignment operators
     NoopReplaceable noop2;
     noop2=noop;
-    if((p=noop2.clone())!=nullptr) {
-        errln("noop2.Replaceable::clone() does not return nullptr");
+    if((p=noop2.clone())!=NULL) {
+        errln("noop2.Replaceable::clone() does not return NULL");
         delete p;
     }
 
     // try to call the compiler-provided
     // UMemory/UObject/Replaceable copy constructors
     NoopReplaceable noop3(noop);
-    if((p=noop3.clone())!=nullptr) {
-        errln("noop3.Replaceable::clone() does not return nullptr");
+    if((p=noop3.clone())!=NULL) {
+        errln("noop3.Replaceable::clone() does not return NULL");
         delete p;
     }
 }
@@ -289,8 +289,8 @@ void ReplaceableTest::check(const UnicodeString& transliteratorName,
                                             pe, status);
 
         // test clone()
-        TestReplaceable *tr2 = tr->clone();
-        if(tr2 != nullptr) {
+        TestReplaceable *tr2 = (TestReplaceable *)tr->clone();
+        if(tr2 != NULL) {
             delete tr;
             tr = tr2;
         }

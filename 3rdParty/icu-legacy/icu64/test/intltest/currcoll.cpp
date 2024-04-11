@@ -44,7 +44,7 @@ CollationCurrencyTest::~CollationCurrencyTest()
 void CollationCurrencyTest::currencyTest(/*char *par*/)
 {
     // All the currency symbols, in collation order
-    static const char16_t currency[][2] =
+    static const UChar currency[][2] =
     {
       { 0x00A4, 0x0000}, /*00A4; L; [14 36, 03, 03]    # [082B.0020.0002] # CURRENCY SIGN*/
       { 0x00A2, 0x0000}, /*00A2; L; [14 38, 03, 03]    # [082C.0020.0002] # CENT SIGN*/
@@ -67,8 +67,7 @@ void CollationCurrencyTest::currencyTest(/*char *par*/)
       { 0x20A4, 0x0000}, /*20A4; L; [14 50, 03, 03]    # [0838.0020.0002] # LIRA SIGN*/
       { 0x20A5, 0x0000}, /*20A5; L; [14 52, 03, 03]    # [0839.0020.0002] # MILL SIGN*/
       { 0x20A6, 0x0000}, /*20A6; L; [14 54, 03, 03]    # [083A.0020.0002] # NAIRA SIGN*/
-      // Unicode 15.1: ₧ now sorts like "Pts", no longer as a stand-alone symbol.
-      // { 0x20A7, 0x0000}, /*20A7; L; [14 56, 03, 03]    # [083B.0020.0002] # PESETA SIGN*/
+      { 0x20A7, 0x0000}, /*20A7; L; [14 56, 03, 03]    # [083B.0020.0002] # PESETA SIGN*/
       { 0x20A9, 0x0000}, /*20A9; L; [14 58, 03, 03]    # [083C.0020.0002] # WON SIGN*/
       { 0xFFE6, 0x0000}, /*FFE6; L; [14 58, 03, 05]    # [083C.0020.0003] # FULLWIDTH WON SIGN*/
       { 0x20AA, 0x0000}, /*20AA; L; [14 5A, 03, 03]    # [083D.0020.0002] # NEW SHEQEL SIGN*/
@@ -83,7 +82,7 @@ void CollationCurrencyTest::currencyTest(/*char *par*/)
     uint32_t i, j;
     UErrorCode status = U_ZERO_ERROR;
     Collator::EComparisonResult expectedResult = Collator::EQUAL;
-    RuleBasedCollator *c = dynamic_cast<RuleBasedCollator*>(Collator::createInstance("en_US", status));
+    RuleBasedCollator *c = (RuleBasedCollator *)Collator::createInstance("en_US", status);
 
     if (U_FAILURE(status))
     {

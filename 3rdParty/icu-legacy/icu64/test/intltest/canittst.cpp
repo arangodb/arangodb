@@ -53,15 +53,19 @@ static UnicodeString str(const char *input)
 
 
 CanonicalIteratorTest::CanonicalIteratorTest() :
-nameTrans(nullptr), hexTrans(nullptr)
+nameTrans(NULL), hexTrans(NULL)
 {
 }
 
 CanonicalIteratorTest::~CanonicalIteratorTest()
 {
 #if !UCONFIG_NO_TRANSLITERATION
+  if(nameTrans != NULL) {
     delete(nameTrans);
+  }
+  if(hexTrans != NULL) {
     delete(hexTrans);
+  }
 #endif
 }
 
@@ -126,11 +130,11 @@ void CanonicalIteratorTest::TestBasic() {
     // check permute
     // NOTE: we use a TreeSet below to sort the output, which is not guaranteed to be sorted!
 
-    Hashtable *permutations = new Hashtable(false, status);
+    Hashtable *permutations = new Hashtable(FALSE, status);
     permutations->setValueDeleter(uprv_deleteUObject);
     UnicodeString toPermute("ABC");
 
-    CanonicalIterator::permute(toPermute, false, permutations, status);
+    CanonicalIterator::permute(toPermute, FALSE, permutations, status);
 
     logln("testing permutation");
   
@@ -140,7 +144,7 @@ void CanonicalIteratorTest::TestBasic() {
     
     // try samples
     logln("testing samples");
-    Hashtable *set = new Hashtable(false, status);
+    Hashtable *set = new Hashtable(FALSE, status);
     set->setValueDeleter(uprv_deleteUObject);
     int32_t i = 0;
     CanonicalIterator it("", status);
@@ -173,12 +177,12 @@ void CanonicalIteratorTest::characterTest(UnicodeString &s, UChar32 ch, Canonica
 {
     UErrorCode status = U_ZERO_ERROR;
     UnicodeString decomp, comp;
-    UBool gotDecomp = false;
-    UBool gotComp = false;
-    UBool gotSource = false;
+    UBool gotDecomp = FALSE;
+    UBool gotComp = FALSE;
+    UBool gotSource = FALSE;
 
-    Normalizer::decompose(s, false, 0, decomp, status);
-    Normalizer::compose(s, false, 0, comp, status);
+    Normalizer::decompose(s, FALSE, 0, decomp, status);
+    Normalizer::compose(s, FALSE, 0, comp, status);
     
     // skip characters that don't have either decomp.
     // need quick test for this!
@@ -191,9 +195,9 @@ void CanonicalIteratorTest::characterTest(UnicodeString &s, UChar32 ch, Canonica
     for (;;) {
         UnicodeString item = it.next();
         if (item.isBogus()) break;
-        if (item == s) gotSource = true;
-        if (item == decomp) gotDecomp = true;
-        if (item == comp) gotComp = true;
+        if (item == s) gotSource = TRUE;
+        if (item == decomp) gotDecomp = TRUE;
+        if (item == comp) gotComp = TRUE;
     }
     
     if (!gotSource || !gotDecomp || !gotComp) {
@@ -220,14 +224,14 @@ UnicodeString CanonicalIteratorTest::getReadable(const UnicodeString &s) {
     // set up for readable display
 #if !UCONFIG_NO_TRANSLITERATION
     if(verbose) {
-      if (nameTrans == nullptr)
+      if (nameTrans == NULL)
           nameTrans = Transliterator::createInstance("[^\\ -\\u007F] name", UTRANS_FORWARD, status);
       UnicodeString sName = s;
       nameTrans->transliterate(sName);
       result += sName;
       result += ";";
     }
-    if (hexTrans == nullptr)
+    if (hexTrans == NULL)
         hexTrans = Transliterator::createInstance("[^\\ -\\u007F] hex", UTRANS_FORWARD, status);
 #endif
     UnicodeString sHex = s;
@@ -244,8 +248,8 @@ UnicodeString CanonicalIteratorTest::getReadable(const UnicodeString &s) {
 
 U_CFUNC int U_CALLCONV
 compareUnicodeStrings(const void *s1, const void *s2) {
-  UnicodeString **st1 = static_cast<UnicodeString **>(const_cast<void*>(s1));
-  UnicodeString **st2 = static_cast<UnicodeString **>(const_cast<void*>(s2));
+  UnicodeString **st1 = (UnicodeString **)s1;
+  UnicodeString **st2 = (UnicodeString **)s2;
 
   return (*st1)->compare(**st2);
 }
@@ -259,14 +263,14 @@ UnicodeString CanonicalIteratorTest::collectionToString(Hashtable *col) {
     UnicodeString **resArray = new UnicodeString*[col->count()];
     int32_t i = 0;
 
-    const UHashElement *ne = nullptr;
+    const UHashElement *ne = NULL;
     int32_t el = UHASH_FIRST;
     //Iterator it = basic.iterator();
     ne = col->nextElement(el);
     //while (it.hasNext()) 
-    while (ne != nullptr) {
+    while (ne != NULL) {
       //String item = (String) it.next();
-      UnicodeString *item = static_cast<UnicodeString *>(ne->value.pointer);
+      UnicodeString *item = (UnicodeString *)(ne->value.pointer);
       resArray[i++] = item;
       ne = col->nextElement(el);
     }

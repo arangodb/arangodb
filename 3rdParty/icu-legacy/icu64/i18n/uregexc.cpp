@@ -29,11 +29,11 @@ uregex_openC( const char           *pattern,
                     UParseError    *pe,
                     UErrorCode     *status) {
     if (U_FAILURE(*status)) {
-        return nullptr;
+        return NULL;
     }
-    if (pattern == nullptr) {
+    if (pattern == NULL) {
         *status = U_ILLEGAL_ARGUMENT_ERROR;
-        return nullptr;
+        return NULL;
     }
 
     UnicodeString patString(pattern);

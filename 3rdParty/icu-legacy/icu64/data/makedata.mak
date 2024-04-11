@@ -12,14 +12,14 @@
 
 ##############################################################################
 # Keep the following in sync with the version - see common/unicode/uvernum.h
-U_ICUDATA_NAME=icudt75
+U_ICUDATA_NAME=icudt64
 ##############################################################################
 !IF "$(UWP)" == "UWP"
 # Optionally change the name of the data file for the UWP version.
-U_ICUDATA_NAME=icudt75
+U_ICUDATA_NAME=icudt64
 !ENDIF
 U_ICUDATA_ENDIAN_SUFFIX=l
-UNICODE_VERSION=15.1
+UNICODE_VERSION=12.1
 ICU_LIB_TARGET=$(DLL_OUTPUT)\$(U_ICUDATA_NAME).dll
 
 #  ICUMAKE
@@ -71,25 +71,24 @@ ICUSRCDATA_RELATIVE_PATH=..\..\..
 # Timestamp files to keep track of current build state
 TOOLS_TS=$(ICUTMP)\tools.timestamp
 COREDATA_TS=$(ICUTMP)\coredata.timestamp
-ARM_CROSSBUILD_TS=
 
 #  ICUCOL
-#       The directory that contains *.txt collation data files
+#       The directory that contains colfiles.mk files along with *.txt collation data files
 #
 ICUCOL=coll
 
 #  ICURBNF
-#       The directory that contains *.txt RBNF data files
+#       The directory that contains rbnffiles.mk files along with *.txt RBNF data files
 #
 ICURBNF=rbnf
 
 #  ICUTRNS
-#       The directory that contains *.txt transliterator files
+#       The directory that contains trfiles.mk files along with *.txt transliterator files
 #
 ICUTRNS=translit
 
 #  ICUBRK
-#       The directory that contains *.txt break iterator files
+#       The directory that contains resfiles.mk files along with *.txt break iterator files
 #
 ICUBRK=brkitr
 
@@ -107,8 +106,6 @@ ICUDATA=$(ICUP)\source\data
 #
 !IF "$(CFG)" == "ARM\Release" || "$(CFG)" == "ARM\Debug"
 DLL_OUTPUT=$(ICUP)\binARM$(UWP)
-!ELSE IF "$(CFG)" == "ARM64\Release" || "$(CFG)" == "ARM64\Debug"
-DLL_OUTPUT=$(ICUP)\binARM64$(UWP)
 !ELSE IF "$(CFG)" == "x64\Release" || "$(CFG)" == "x64\Debug"
 DLL_OUTPUT=$(ICUP)\bin64$(UWP)
 !ELSE IF "$(UWP)" == "UWP"
@@ -116,7 +113,6 @@ DLL_OUTPUT=$(ICUP)\bin32$(UWP)
 !ELSE
 DLL_OUTPUT=$(ICUP)\bin$(UWP)
 !ENDIF
-!MESSAGE ICU data DLL_OUTPUT path is $(DLL_OUTPUT)
 
 #
 #  TESTDATA
@@ -130,7 +126,7 @@ TESTDATAOUT=$(ICUP)\source\test\testdata\out
 
 #
 #   TESTDATABLD
-#		The build directory for test data intermediate files
+#		The build directory for test data intermidiate files
 #		(Tests are NOT run from this makefile,
 #         only the data is put in place.)
 TESTDATABLD=$(ICUP)\source\test\testdata\out\build
@@ -142,68 +138,23 @@ TESTDATABLD=$(ICUP)\source\test\testdata\out\build
 ICUTOOLS=$(ICUP)\source\tools
 !MESSAGE ICU tools path is $(ICUTOOLS)
 
-NATIVE_ARM=
-!IF "$(PROCESSOR_ARCHITECTURE)" == "ARM64" || "$(PROCESSOR_ARCHITEW6432)" == "ARM64"
-NATIVE_ARM=ARM64
-!ELSE IF "$(PROCESSOR_ARCHITECTURE)" == "ARM" || "$(PROCESSOR_ARCHITEW6432)" == "ARM"
-NATIVE_ARM=ARM
-!ENDIF
-
-#   ARM_CROSS_BUILD
-#       In order to support cross-compiling for ARM/ARM64 using the x64 tools
-#       we need to know if we're building the ARM/ARM64 data DLL, otherwise
-#       the existence of the x64 bits will cause us to think we are already done.
-#    Note: This is only for the "regular" builds, the UWP builds have a separate project file entirely.
-ARM_CROSS_BUILD=
-!IF "$(UWP)" == "" && "$(NATIVE_ARM)" == ""
-!IF "$(CFG)" == "ARM\Release" || "$(CFG)" == "ARM\Debug"
-ARM_CROSS_BUILD=ARM
-ARM_CROSSBUILD_TS=$(ICUTMP)\$(ARM_CROSS_BUILD).timestamp
-!ELSE IF "$(CFG)" == "ARM64\Release"  || "$(CFG)" == "ARM64\Debug"
-ARM_CROSS_BUILD=ARM64
-ARM_CROSSBUILD_TS=$(ICUTMP)\$(ARM_CROSS_BUILD).timestamp
-!ENDIF
-!ENDIF
-
 #
 #  TOOLS CFG PATH
-#      Generally the tools want to run on the same architecture as is being built.
-#      Thus ARM and ARM64 need to use another build of the other tools, so make sure to get an usable CFG path.
+#      ARM needs to use one of the other tools, so make sure to get an usable cfg path
 #      Since tools, particularly pkggen, have architecture built-in, we made x64 on
-#      Windows be machine-independent and use those tools for both ARM and ARM64.
-#      Note: If we're building ARM/ARM64 Debug, then we'll use the x64 Debug tools.
-#      If we're building ARM/ARM64 Release, then we'll use the x64 Release tools.
+#      Windows be machine-independent and use those tools.
 #
-!IF "$(ARM_CROSS_BUILD)" == ""
 CFGTOOLS=$(CFG)
-!ELSE
-!IF "$(CFG)" == "ARM\Release" || "$(CFG)" == "ARM64\Release"
+!IF "$(CFG)" == "ARM\Release" || "$(CFG)" == "ARM\Debug"
 CFGTOOLS=x64\Release
-!ENDIF
-!IF "$(CFG)" == "ARM\Debug" || "$(CFG)" == "ARM64\Debug"
-CFGTOOLS=x64\Debug
-!ENDIF
 !ENDIF
 !MESSAGE ICU tools CFG subpath is $(CFGTOOLS)
 
-
 # The current ICU tools need to be in the path first.
-# x86 uses x86; x64, arm, and arm64 use x64
+# x86 uses x86, x64 and arm use x64
 !IF "$(CFG)" == "x86\Release" || "$(CFG)" == "x86\Debug"
 PATH = $(ICUP)\bin;$(PATH)
 ICUPBIN=$(ICUP)\bin
-# Use these path whether or not it's UWP build.
-!ELSE IF "$(NATIVE_ARM)" != ""
-!IF "$(CFG)" == "ARM\Release" || "$(CFG)" == "ARM\Debug"
-PATH = $(ICUP)\binARM;$(PATH)
-ICUPBIN=$(ICUP)\binARM
-!ELSE IF "$(CFG)" == "ARM64\Release" || "$(CFG)" == "ARM64\Debug"
-PATH = $(ICUP)\binARM64;$(PATH)
-ICUPBIN=$(ICUP)\binARM64
-!ELSE
-!ERROR Cross-build from ARM to x86 is not supported!
-!ENDIF
-# Build x86_64 or cross-build ARM
 !ELSE
 PATH = $(ICUP)\bin64;$(PATH)
 ICUPBIN=$(ICUP)\bin64
@@ -239,15 +190,9 @@ COMMON_ICUDATA_DEPENDENCIES="$(ICUPBIN)\pkgdata.exe" "$(ICUTMP)\icudata.res" "$(
 COMMON_ICUDATA_ARGUMENTS=-f -e $(U_ICUDATA_NAME) -v $(ICU_PACKAGE_MODE) -c -p $(ICUPKG) -T "$(ICUTMP)" -L $(U_ICUDATA_NAME) -d "$(ICUBLD_PKG)" -s .
 !IF "$(UWP)" == "UWP"
 COMMON_ICUDATA_ARGUMENTS=$(COMMON_ICUDATA_ARGUMENTS) -u
-!ENDIF
-!IF "$(CFG)" == "x64\Release" || "$(CFG)" == "x64\Debug"
-COMMON_ICUDATA_ARGUMENTS=$(COMMON_ICUDATA_ARGUMENTS) -a X64
-!ENDIF
 !IF "$(CFG)" == "ARM\Release" || "$(CFG)" == "ARM\Debug"
-COMMON_ICUDATA_ARGUMENTS=$(COMMON_ICUDATA_ARGUMENTS) -a ARM
+COMMON_ICUDATA_ARGUMENTS=$(COMMON_ICUDATA_ARGUMENTS) -a
 !ENDIF
-!IF "$(CFG)" == "ARM64\Release" || "$(CFG)" == "ARM64\Debug"
-COMMON_ICUDATA_ARGUMENTS=$(COMMON_ICUDATA_ARGUMENTS) -a ARM64
 !ENDIF
 
 #############################################################################
@@ -259,7 +204,6 @@ COMMON_ICUDATA_ARGUMENTS=$(COMMON_ICUDATA_ARGUMENTS) -a ARM64
 #				Building the common dll in $(ICUBLD_PKG) unconditionally copies it to $(DLL_OUTPUT) too.
 #
 #############################################################################
-!IF "$(ARM_CROSS_BUILD)" == ""
 ALL : GODATA "$(ICU_LIB_TARGET)" "$(TESTDATAOUT)\testdata.dat"
 	@echo All targets are up to date
 
@@ -268,18 +212,6 @@ ALL : GODATA "$(ICU_LIB_TARGET)" "$(TESTDATAOUT)\testdata.dat"
     copy "$(ICUOUT)\$(U_ICUDATA_NAME)$(U_ICUDATA_ENDIAN_SUFFIX).dat" "$(ICUMAKE)\..\..\commondata\"
 !ENDIF
 
-!ELSE
-ALL : GODATA "$(ICU_LIB_TARGET)" "$(TESTDATAOUT)\testdata.dat" $(ARM_CROSSBUILD_TS)
-	@echo All targets are up to date
-
-!ENDIF
-
-# Verbose output when building the data for Debug builds.
-!IF "$(DEBUG)" == "true"
-ICU_DATA_BUILD_VERBOSE=--verbose
-!ELSE
-ICU_DATA_BUILD_VERBOSE=
-!ENDIF
 
 # Three main targets: tools, core data, and test data.
 # Keep track of whether they are built via timestamp files.
@@ -301,17 +233,15 @@ $(TOOLS_TS): "$(ICUTOOLS)\genrb\$(CFGTOOLS)\genrb.exe" "$(ICUTOOLS)\gencnval\$(C
 
 $(COREDATA_TS):
 	@cd "$(ICUSRCDATA)"
-	set PYTHONPATH=$(ICUP)\source\python;%PYTHONPATH%
-	py -3 -B -m icutools.databuilder \
+	py -3 -B -m buildtool \
 		--mode windows-exec \
 		--src_dir "$(ICUSRCDATA)" \
 		--tool_dir "$(ICUTOOLS)" \
-		--tool_cfg "$(CFGTOOLS)" \
+		--tool_cfg "$(CFG)" \
 		--out_dir "$(ICUBLD_PKG)" \
-		--tmp_dir "$(ICUTMP)" \
+		--tmp_dir "$(ICUTMP)"
 		--filter_file "$(ICU_DATA_FILTER_FILE)" \
-		$(ICU_DATA_BUILD_VERBOSE) \
-		$(ICU_DATA_BUILDTOOL_OPTS)
+		$(ICU_DATA_BUILDTOOL_OPTS) \
 	@echo "timestamp" > $(COREDATA_TS)
 
 	
@@ -362,7 +292,7 @@ generate-data: GODATA "$(ICUOUT)\$(ICUPKG).dat" uni-core-data
 
 ## Compare to:  source\data\Makefile.in and source\test\testdata\Makefile.in
 
-DEBUGUTILITIESDATA_DIR=main\core\src\test\java\com\ibm\icu\dev\test\util
+DEBUGUTILITIESDATA_DIR=main\tests\core\src\com\ibm\icu\dev\test\util
 DEBUGUTILITIESDATA_SRC=DebugUtilitiesData.java
 
 # Build DebugUtilitiesData.java
@@ -412,7 +342,7 @@ icu4j-data-install :
 #
 # testdata - nmake will invoke pkgdata, which will create testdata.dat
 #
-"$(TESTDATAOUT)\testdata.dat": "$(TESTDATA)\*" $(TOOLS_TS)
+"$(TESTDATAOUT)\testdata.dat": "$(TESTDATA)\*" $(TOOLS_TS) $(COREDATA_TS)
 	@cd "$(TESTDATA)"
 	@echo building testdata...
 	nmake /nologo /f "$(TESTDATA)\testdata.mak" TESTDATA=. ICUTOOLS="$(ICUTOOLS)" ICUPBIN="$(ICUPBIN)" ICUP="$(ICUP)" CFG=$(CFGTOOLS) TESTDATAOUT="$(TESTDATAOUT)" TESTDATABLD="$(TESTDATABLD)" ICUSRCDATA="$(ICUSRCDATA)" DLL_OUTPUT="$(DLL_OUTPUT)"
@@ -448,18 +378,6 @@ icu4j-data-install :
 	-@erase "$(ICUTMP)\$(ICUPKG).dat"
 !ENDIF
 
-"$(ARM_CROSSBUILD_TS)" : $(COMMON_ICUDATA_DEPENDENCIES) "$(ICU_LIB_TARGET)"
-	@echo Building ICU data for "$(ARM_CROSS_BUILD)" from x64
-	cd "$(ICUBLD_PKG)"
-	"$(ICUPBIN)\pkgdata" $(COMMON_ICUDATA_ARGUMENTS) $(ICUTMP)\icudata.lst
-	-@erase "$(ICU_LIB_TARGET)"
-	@if not exist "$(DLL_OUTPUT)" mkdir "$(DLL_OUTPUT)"
-	copy "$(U_ICUDATA_NAME).dll" "$(ICU_LIB_TARGET)"
-	-@erase "$(U_ICUDATA_NAME).dll"
-	copy "$(ICUTMP)\$(ICUPKG).dat" "$(ICUOUT)\$(U_ICUDATA_NAME)$(U_ICUDATA_ENDIAN_SUFFIX).dat"
-	-@erase "$(ICUTMP)\$(ICUPKG).dat"
-	@echo "timestamp" > $(ARM_CROSSBUILD_TS)
-
 # utility target to create missing directories
 # Most directories are made by Python, but still create ICUTMP
 # so it works in the source archive
@@ -468,7 +386,6 @@ CREATE_DIRS :
 	@if not exist "$(ICUTMP)\$(NULL)" mkdir "$(ICUTMP)"
 	@if not exist "$(ICUOUT)\build\$(NULL)" mkdir "$(ICUOUT)\build"
 	@if not exist "$(ICUBLD_PKG)\$(NULL)" mkdir "$(ICUBLD_PKG)"
-	@if not exist "$(TESTDATAOUT)" mkdir "$(TESTDATAOUT)"
 
 # utility target to send us to the right dir
 GODATA : CREATE_DIRS
@@ -477,11 +394,60 @@ GODATA : CREATE_DIRS
 # This is to remove all the data files
 CLEAN : GODATA
 	@echo Cleaning up the data files.
+	@cd "$(ICUBLD_PKG)"
+	-@erase "*.cnv"
+	-@erase "*.exp"
+	-@erase "*.icu"
+	-@erase "*.lib"
+	-@erase "*.nrm"
+	-@erase "*.res"
+	-@erase "*.spp"
+	-@erase "*.txt"
+	-@erase "*.cfu"
+	-@erase "curr\*.res"
+	-@erase "curr\*.txt"
+	-@erase "lang\*.res"
+	-@erase "lang\*.txt"
+	-@erase "region\*.res"
+	-@erase "region\*.txt"
+	-@erase "zone\*.res"
+	-@erase "zone\*.txt"
+	@cd "$(ICUBLD_PKG)\$(ICUBRK)"
+	-@erase "*.brk"
+	-@erase "*.res"
+	-@erase "*.txt"
+	-@erase "*.dict"
+	@cd "$(ICUBLD_PKG)\$(ICUCOL)"
+	-@erase "*.res"
+	-@erase "*.txt"
+	@cd "$(ICUBLD_PKG)\$(ICURBNF)"
+	-@erase "*.res"
+	-@erase "*.txt"
+	@cd "$(ICUBLD_PKG)\$(ICUTRNS)"
+	-@erase "*.res"
 	@cd "$(ICUOUT)"
-	-@erase "$(ICUOUT)\*.dat"
-	@rmdir $(ICUBLD) /s /q
-	@rmdir $(ICUTMP) /s /q
-	@rmdir $(TESTDATAOUT) /s /q
+	-@erase "*.dat"
+	@cd "$(ICUTMP)"
+	-@erase "*.html"
+	-@erase "*.lst"
+	-@erase "*.mak"
+	-@erase "*.obj"
+	-@erase "*.res"
+	-@erase "*.timestamp"
+	@cd "$(TESTDATABLD)"
+	-@erase "*.cnv"
+	-@erase "*.icu"
+	-@erase "*.mak"
+	-@erase "*.nrm"
+	-@erase "*.res"
+	-@erase "*.spp"
+	-@erase "*.txt"
+	@cd "$(TESTDATAOUT)"
+	-@erase "*.dat"
+	@cd "$(TESTDATAOUT)\testdata"
+	-@erase "*.typ"
+	@cd "$(ICUBLD_PKG)"
+
 
 # DLL version information
 # If you modify this, modify winmode.c in pkgdata.
@@ -513,9 +479,6 @@ CLEAN : GODATA
 	"$(ICUPBIN)\icupkg" -tl $? $@
 
 "$(ICUBLD_PKG)\nfkc_cf.nrm": $(ICUSRCDATA_RELATIVE_PATH)\in\nfkc_cf.nrm
-	"$(ICUPBIN)\icupkg" -tl $? $@
-
-"$(ICUBLD_PKG)\nfkc_scf.nrm": $(ICUSRCDATA_RELATIVE_PATH)\in\nfkc_scf.nrm
 	"$(ICUPBIN)\icupkg" -tl $? $@
 
 "$(ICUBLD_PKG)\uts46.nrm": $(ICUSRCDATA_RELATIVE_PATH)\in\uts46.nrm

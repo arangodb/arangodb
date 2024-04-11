@@ -1,8 +1,15 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 sq{
     AuxExemplarCharacters{"[w]"}
+    Ellipsis{
+        final{"{0}…"}
+        initial{"…{0}"}
+        medial{"{0}…{1}"}
+        word-final{"{0} …"}
+        word-initial{"… {0}"}
+        word-medial{"{0} … {1}"}
+    }
     ExemplarCharacters{
         "[a b c ç d {dh} e ë f g {gj} h i j k l {ll} m n {nj} o p q r {rr} s {sh} t {"
         "th} u v x {xh} y z {zh}]"
@@ -11,22 +18,26 @@ sq{
         "[A B C Ç D {DH} E Ë F G {GJ} H I J K L {LL} M N {NJ} O P Q R {RR} S {SH} T {"
         "TH} U V X {XH} Y Z {ZH}]"
     }
-    ExemplarCharactersNumbers{"[  \\- ‑ , % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
+    ExemplarCharactersNumbers{"[  \\- , % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
     ExemplarCharactersPunctuation{
-        "[\\- ‐‑ – — , ; \\: ! ? . … '‘’ \u0022“” « » ( ) \\[ \\] § @ * / \\& # ′ ″ ~"
-        "]"
+        "[\\- ‐ – — , ; \\: ! ? . … ' ‘ ’ \u0022 “ ” « » ( ) \\[ \\] § @ * / \\& # ′ "
+        "″ ~]"
     }
+    MoreInformation{"?"}
     NumberElements{
+        default{"latn"}
         latn{
             miscPatterns{
                 approximately{"≈{0}"}
+                atLeast{"≥{0}"}
+                atMost{"≤{0}"}
                 range{"{0}-{1}"}
             }
             patterns{
                 accountingFormat{"#,##0.00 ¤;(#,##0.00 ¤)"}
-                accountingFormat%noCurrency{"#,##0.00;(#,##0.00)"}
                 currencyFormat{"#,##0.00 ¤"}
-                currencyPatternAppendISO{"{0} ¤¤"}
+                percentFormat{"#,##0%"}
+                scientificFormat{"#E0"}
             }
             patternsLong{
                 decimalFormat{
@@ -183,9 +194,15 @@ sq{
                 }
             }
             symbols{
-                approximatelySign{"≈"}
                 decimal{","}
+                exponential{"E"}
                 group{" "}
+                infinity{"∞"}
+                nan{"NaN"}
+                perMille{"‰"}
+                percentSign{"%"}
+                superscriptingExponent{"×"}
+                timeSeparator{":"}
             }
         }
         minimalPairs{
@@ -200,63 +217,58 @@ sq{
             }
         }
         minimumGroupingDigits{"2"}
+        native{"latn"}
     }
+    Version{"2.1.48.42"}
     calendar{
         generic{
             DateTimePatterns{
-                "h:mm:ss a, zzzz",
-                "h:mm:ss a, z",
-                "h:mm:ss a",
-                "h:mm a",
+                "h:mm:ss a, zzzz",
+                "h:mm:ss a, z",
+                "h:mm:ss a",
+                "h:mm a",
                 "EEEE, d MMM y G",
                 "d MMM y G",
                 "d MMM y G",
                 "d.M.y GGGGG",
                 "{1}, {0}",
-                "{1}, {0}",
-                "{1}, {0}",
-                "{1}, {0}",
-                "{1}, {0}",
-            }
-            DateTimePatterns%atTime{
                 "{1} 'në' {0}",
                 "{1} 'në' {0}",
                 "{1}, {0}",
                 "{1}, {0}",
-            }
-            DateTimeSkeletons{
-                "ahmmsszzzz",
-                "ahmmssz",
-                "ahmmss",
-                "ahmm",
-                "GyMMMEEEEd",
-                "GyMMMd",
-                "GyMMMd",
-                "GGGGGyMd",
             }
             availableFormats{
+                Bh{"h B"}
+                Bhm{"h:mm B"}
+                Bhms{"h:mm:ss B"}
+                E{"ccc"}
                 EBhm{"E, h:mm B"}
                 EBhms{"E, h:mm:ss B"}
                 EHm{"E, HH:mm"}
                 EHms{"E, HH:mm:ss"}
                 Ed{"E, d"}
-                Ehm{"E, h:mm a"}
-                Ehms{"E, h:mm:ss a"}
+                Ehm{"E, h:mm a"}
+                Ehms{"E, h:mm:ss a"}
                 Gy{"y G"}
                 GyMMM{"MMM y G"}
                 GyMMMEd{"E, d MMM y G"}
                 GyMMMd{"d MMM y G"}
-                GyMd{"d.M.y GGGGG"}
+                H{"HH"}
+                Hm{"HH:mm"}
+                Hms{"HH:mm:ss"}
+                M{"L"}
                 MEd{"E, d.M"}
+                MMM{"LLL"}
                 MMMEd{"E, d MMM"}
                 MMMMEd{"E, d MMM"}
                 MMMMd{"d MMMM"}
                 MMMd{"d MMM"}
-                MMdd{"dd.MM"}
                 Md{"d.M"}
-                h{"h a"}
-                hm{"h:mm a"}
-                hms{"h:mm:ss a"}
+                d{"d"}
+                h{"h a"}
+                hm{"h:mm a"}
+                hms{"h:mm:ss a"}
+                ms{"mm:ss"}
                 y{"y G"}
                 yyyy{"y G"}
                 yyyyM{"M.y GGGGG"}
@@ -271,129 +283,126 @@ sq{
             }
             intervalFormats{
                 Bh{
-                    B{"h B – h B"}
-                    h{"h – h B"}
+                    B{"h B – h B"}
+                    h{"h – h B"}
                 }
                 Bhm{
-                    B{"h:mm B – h:mm B"}
-                    h{"h:mm – h:mm B"}
-                    m{"h:mm – h:mm B"}
+                    B{"h:mm B – h:mm B"}
+                    h{"h:mm – h:mm B"}
+                    m{"h:mm – h:mm B"}
                 }
                 Gy{
-                    G{"y G – y G"}
-                    y{"y – y G"}
+                    G{"y G – y G"}
+                    y{"y – y G"}
                 }
                 GyM{
-                    G{"M.y GGGGG – M.y GGGGG"}
-                    M{"M.y – M.y GGGGG"}
-                    y{"M.y – M.y GGGGG"}
+                    G{"M.y GGGGG – M.y GGGGG"}
+                    M{"M.y – M.y GGGGG"}
+                    y{"M.y – M.y GGGGG"}
                 }
                 GyMEd{
-                    G{"E, d.M.y GGGGG – E, d.M.y GGGGG"}
-                    M{"E, d.M.y – E, d.M.y GGGGG"}
-                    d{"E, d.M.y – E, d.M.y GGGGG"}
-                    y{"E, d.M.y – E, d.M.y GGGGG"}
+                    G{"E, d.M.y GGGGG – E, d.M.y GGGGG"}
+                    M{"E, d.M.y – E, d.M.y GGGGG"}
+                    d{"E, d.M.y – E, d.M.y GGGGG"}
+                    y{"E, d.M.y – E, d.M.y GGGGG"}
                 }
                 GyMMM{
-                    G{"MMM y G – MMM y G"}
-                    M{"MMM – MMM y G"}
-                    y{"MMM y – MMM y G"}
+                    G{"MMM y G – MMM y G"}
+                    M{"MMM – MMM y G"}
+                    y{"MMM y – MMM y G"}
                 }
                 GyMMMEd{
-                    G{"E, d MMM y G – E, d MMM y G"}
-                    M{"E, d MMM – E, d MMM y G"}
-                    d{"E, d MMM – E, d MMM y G"}
-                    y{"E, d MMM y – E, d MMM y G"}
+                    G{"E, d MMM y G – E, d MMM y G"}
+                    M{"E, d MMM – E, d MMM y G"}
+                    d{"E, d MMM – E, d MMM y G"}
+                    y{"E, d MMM y – E, d MMM y G"}
                 }
                 GyMMMd{
-                    G{"d MMM y G – d MMM y G"}
-                    M{"d MMM – d MMM y G"}
-                    d{"d – d MMM y G"}
-                    y{"d MMM y – d MMM y G"}
+                    G{"d MMM y G – d MMM y G"}
+                    M{"d MMM – d MMM y G"}
+                    d{"d – d MMM y G"}
+                    y{"d MMM y – d MMM y G"}
                 }
                 GyMd{
-                    G{"d.M.y GGGGG – d.M.y GGGGG"}
-                    M{"d.M.y – d.M.y GGGGG"}
-                    d{"d.M.y – d.M.y GGGGG"}
-                    y{"d.M.y – d.M.y GGGGG"}
+                    G{"d.M.y GGGGG – d.M.y GGGGG"}
+                    M{"d.M.y – d.M.y GGGGG"}
+                    d{"d.M.y – d.M.y GGGGG"}
+                    y{"d.M.y – d.M.y GGGGG"}
+                }
+                H{
+                    H{"HH–HH"}
+                }
+                Hm{
+                    H{"HH:mm–HH:mm"}
+                    m{"HH:mm–HH:mm"}
+                }
+                Hmv{
+                    H{"HH:mm–HH:mm v"}
+                    m{"HH:mm–HH:mm v"}
+                }
+                Hv{
+                    H{"HH–HH v"}
                 }
                 M{
-                    M{"M – M"}
+                    M{"M – M"}
                 }
                 MEd{
-                    M{"E, d.M – E, d.M"}
-                    d{"E, d.M – E, d.M"}
+                    M{"E, d.M – E, d.M"}
+                    d{"E, d.M – E, d.M"}
                 }
                 MMM{
-                    M{"MMM – MMM"}
+                    M{"MMM – MMM"}
                 }
                 MMMEd{
-                    M{"E, d MMM – E, d MMM"}
-                    d{"E, d MMM – E, d MMM"}
+                    M{"E, d MMM – E, d MMM"}
+                    d{"E, d MMM – E, d MMM"}
                 }
                 MMMd{
-                    M{"d MMM – d MMM"}
-                    d{"d – d MMM"}
+                    M{"d MMM – d MMM"}
+                    d{"d – d MMM"}
                 }
                 Md{
-                    M{"d.M – d.M"}
-                    d{"d.M – d.M"}
+                    M{"d.M – d.M"}
+                    d{"d.M – d.M"}
                 }
                 d{
-                    d{"d – d"}
+                    d{"d – d"}
                 }
-                h{
-                    a{"h a – h a"}
-                    h{"h – h a"}
-                }
-                hm{
-                    a{"h:mm a – h:mm a"}
-                    h{"h:mm – h:mm a"}
-                    m{"h:mm – h:mm a"}
-                }
-                hmv{
-                    a{"h:mm a – h:mm a v"}
-                    h{"h:mm – h:mm a v"}
-                    m{"h:mm – h:mm a v"}
-                }
-                hv{
-                    a{"h a – h a v"}
-                    h{"h – h a v"}
-                }
+                fallback{"{0} - {1}"}
                 y{
-                    y{"y – y G"}
+                    y{"y – y G"}
                 }
                 yM{
-                    M{"M.y – M.y GGGGG"}
-                    y{"M.y – M.y GGGGG"}
+                    M{"M.y – M.y GGGGG"}
+                    y{"M.y – M.y GGGGG"}
                 }
                 yMEd{
-                    M{"E, d.M.y – E, d.M.y GGGGG"}
-                    d{"E, d.M.y – E, d.M.y GGGGG"}
-                    y{"E, d.M.y – E, d.M.y GGGGG"}
+                    M{"E, d.M.y – E, d.M.y GGGGG"}
+                    d{"E, d.M.y – E, d.M.y GGGGG"}
+                    y{"E, d.M.y – E, d.M.y GGGGG"}
                 }
                 yMMM{
-                    M{"MMM – MMM y G"}
-                    y{"MMM y – MMM y G"}
+                    M{"MMM – MMM y G"}
+                    y{"MMM y – MMM y G"}
                 }
                 yMMMEd{
-                    M{"E, d MMM – E, d MMM y G"}
-                    d{"E, d MMM – E, d MMM y G"}
-                    y{"E, d MMM y – E, d MMM y G"}
+                    M{"E, d MMM – E, d MMM y G"}
+                    d{"E, d MMM – E, d MMM y G"}
+                    y{"E, d MMM y – E, d MMM y G"}
                 }
                 yMMMM{
-                    M{"MMMM – MMMM y G"}
-                    y{"MMMM y – MMMM y G"}
+                    M{"MMMM – MMMM y G"}
+                    y{"MMMM y – MMMM y G"}
                 }
                 yMMMd{
-                    M{"d MMM – d MMM y G"}
-                    d{"d – d MMM y G"}
-                    y{"d MMM y – d MMM y G"}
+                    M{"d MMM – d MMM y G"}
+                    d{"d – d MMM y G"}
+                    y{"d MMM y – d MMM y G"}
                 }
                 yMd{
-                    M{"d.M.y – d.M.y GGGGG"}
-                    d{"d.M.y – d.M.y GGGGG"}
-                    y{"d.M.y – d.M.y GGGGG"}
+                    M{"d.M.y – d.M.y GGGGG"}
+                    d{"d.M.y – d.M.y GGGGG"}
+                    y{"d.M.y – d.M.y GGGGG"}
                 }
             }
         }
@@ -406,54 +415,52 @@ sq{
                 "p.d.",
                 "m.d.",
             }
+            AmPmMarkersNarrow{
+                "p.d.",
+                "m.d.",
+            }
             DateTimePatterns{
-                "h:mm:ss a, zzzz",
-                "h:mm:ss a, z",
-                "h:mm:ss a",
-                "h:mm a",
+                "h:mm:ss a, zzzz",
+                "h:mm:ss a, z",
+                "h:mm:ss a",
+                "h:mm a",
                 "EEEE, d MMMM y",
                 "d MMMM y",
                 "d MMM y",
                 "d.M.yy",
                 "{1}, {0}",
-                "{1}, {0}",
-                "{1}, {0}",
-                "{1}, {0}",
-                "{1}, {0}",
-            }
-            DateTimePatterns%atTime{
                 "{1} 'në' {0}",
                 "{1} 'në' {0}",
                 "{1}, {0}",
                 "{1}, {0}",
-            }
-            DateTimeSkeletons{
-                "ahmmsszzzz",
-                "ahmmssz",
-                "ahmmss",
-                "ahmm",
-                "yMMMMEEEEd",
-                "yMMMMd",
-                "yMMMd",
-                "yyMd",
             }
             appendItems{
                 Timezone{"{0}, {1}"}
             }
             availableFormats{
+                Bh{"h B"}
+                Bhm{"h:mm B"}
+                Bhms{"h:mm:ss B"}
+                E{"ccc"}
+                EBhm{"E h:mm B"}
+                EBhms{"E h:mm:ss B"}
                 EHm{"E, HH:mm"}
                 EHms{"E, HH:mm:ss"}
                 Ed{"E, d"}
-                Ehm{"E, h:mm a"}
-                Ehms{"E, h:mm:ss a"}
+                Ehm{"E, h:mm a"}
+                Ehms{"E, h:mm:ss a"}
                 Gy{"y G"}
                 GyMMM{"MMM y G"}
                 GyMMMEd{"E, d MMM y G"}
                 GyMMMd{"d MMM y G"}
-                GyMd{"d.M.y GGGG"}
+                H{"HH"}
+                Hm{"HH:mm"}
+                Hms{"HH:mm:ss"}
                 Hmsv{"HH:mm:ss, v"}
                 Hmv{"HH:mm, v"}
+                M{"L"}
                 MEd{"E, d.M"}
+                MMM{"LLL"}
                 MMMEd{"E, d MMM"}
                 MMMMEd{"E, d MMMM"}
                 MMMMW{
@@ -464,11 +471,14 @@ sq{
                 MMMd{"d MMM"}
                 MMdd{"d.M"}
                 Md{"d.M"}
-                h{"h a"}
-                hm{"h:mm a"}
-                hms{"h:mm:ss a"}
-                hmsv{"h:mm:ss a, v"}
-                hmv{"h:mm a, v"}
+                d{"d"}
+                h{"h a"}
+                hm{"h:mm a"}
+                hms{"h:mm:ss a"}
+                hmsv{"h:mm:ss a, v"}
+                hmv{"h:mm a, v"}
+                ms{"mm:ss"}
+                y{"y"}
                 yM{"M.y"}
                 yMEd{"E, d.M.y"}
                 yMMM{"MMM y"}
@@ -486,6 +496,24 @@ sq{
             dayNames{
                 format{
                     abbreviated{
+                        "Die",
+                        "Hën",
+                        "Mar",
+                        "Mër",
+                        "Enj",
+                        "Pre",
+                        "Sht",
+                    }
+                    narrow{
+                        "d",
+                        "h",
+                        "m",
+                        "m",
+                        "e",
+                        "p",
+                        "sh",
+                    }
+                    short{
                         "die",
                         "hën",
                         "mar",
@@ -505,6 +533,15 @@ sq{
                     }
                 }
                 stand-alone{
+                    abbreviated{
+                        "die",
+                        "hën",
+                        "mar",
+                        "mër",
+                        "enj",
+                        "pre",
+                        "sht",
+                    }
                     narrow{
                         "d",
                         "h",
@@ -513,6 +550,24 @@ sq{
                         "e",
                         "p",
                         "sh",
+                    }
+                    short{
+                        "die",
+                        "hën",
+                        "mar",
+                        "mër",
+                        "enj",
+                        "pre",
+                        "sht",
+                    }
+                    wide{
+                        "e diel",
+                        "e hënë",
+                        "e martë",
+                        "e mërkurë",
+                        "e enjte",
+                        "e premte",
+                        "e shtunë",
                     }
                 }
             }
@@ -527,19 +582,57 @@ sq{
                         night1{"e natës"}
                         noon{"e mesditës"}
                     }
+                    narrow{
+                        afternoon1{"e pasdites"}
+                        evening1{"e mbrëmjes"}
+                        midnight{"e mesnatës"}
+                        morning1{"e mëngjesit"}
+                        morning2{"e paradites"}
+                        night1{"e natës"}
+                        noon{"e mesditës"}
+                    }
+                    wide{
+                        afternoon1{"e pasdites"}
+                        evening1{"e mbrëmjes"}
+                        midnight{"e mesnatës"}
+                        morning1{"e mëngjesit"}
+                        morning2{"e paradites"}
+                        night1{"e natës"}
+                        noon{"e mesditës"}
+                    }
                 }
                 stand-alone{
                     abbreviated{
                         afternoon1{"pasdite"}
+                        am{"p.d."}
                         evening1{"mbrëmje"}
                         midnight{"mesnatë"}
                         morning1{"mëngjes"}
                         morning2{"paradite"}
                         night1{"natë"}
                         noon{"mesditë"}
+                        pm{"m.d."}
+                    }
+                    narrow{
+                        afternoon1{"pasdite"}
+                        am{"p.d."}
+                        evening1{"mbrëmje"}
+                        midnight{"mesnatë"}
+                        morning1{"mëngjes"}
+                        morning2{"paradite"}
+                        night1{"natë"}
+                        noon{"mesditë"}
+                        pm{"m.d."}
                     }
                     wide{
+                        afternoon1{"pasdite"}
                         am{"paradite"}
+                        evening1{"mbrëmje"}
+                        midnight{"mesnatë"}
+                        morning1{"mëngjes"}
+                        morning2{"paradite"}
+                        night1{"natë"}
+                        noon{"mesditë"}
                         pm{"pasdite"}
                     }
                 }
@@ -550,6 +643,14 @@ sq{
                     "mb.K.",
                 }
                 abbreviated%variant{
+                    "p.e.s.",
+                    "e.s.",
+                }
+                narrow{
+                    "p.K.",
+                    "mb.K.",
+                }
+                narrow%variant{
                     "p.e.s.",
                     "e.s.",
                 }
@@ -564,143 +665,144 @@ sq{
             }
             intervalFormats{
                 Bh{
-                    B{"h B – h B"}
-                    h{"h – h B"}
+                    B{"h B – h B"}
+                    h{"h – h B"}
                 }
                 Bhm{
-                    B{"h:mm B – h:mm B"}
-                    h{"h:mm – h:mm B"}
-                    m{"h:mm – h:mm B"}
+                    B{"h:mm B – h:mm B"}
+                    h{"h:mm – h:mm B"}
+                    m{"h:mm – h:mm B"}
                 }
                 Gy{
-                    G{"y G – y G"}
-                    y{"y – y G"}
+                    G{"y G – y G"}
+                    y{"y – y G"}
                 }
                 GyM{
-                    G{"M.y GGGGG – M.y GGGGG"}
-                    M{"M.y – M.y GGGGG"}
-                    y{"M.y – M.y GGGGG"}
+                    G{"M.y GGGGG – M.y GGGGG"}
+                    M{"M.y – M.y GGGGG"}
+                    y{"M.y – M.y GGGGG"}
                 }
                 GyMEd{
-                    G{"E, d.M.y GGGGG – E, d.M.y GGGGG"}
-                    M{"E, d.M.y – E, d.M.y GGGGG"}
-                    d{"E, d.M.y – E, d.M.y GGGGG"}
-                    y{"E, d.M.y – E, d.M.y GGGGG"}
+                    G{"E, d.M.y GGGGG – E, d.M.y GGGGG"}
+                    M{"E, d.M.y – E, d.M.y GGGGG"}
+                    d{"E, d.M.y – E, d.M.y GGGGG"}
+                    y{"E, d.M.y – E, d.M.y GGGGG"}
                 }
                 GyMMM{
-                    G{"MMM y G – MMM y G"}
-                    M{"MMM y G – MMM y G"}
-                    y{"MMM y G – MMM y G"}
+                    G{"MMM y G – MMM y G"}
+                    M{"MMM y G – MMM y G"}
+                    y{"MMM y G – MMM y G"}
                 }
                 GyMMMEd{
-                    G{"E, d MMM y G – E, d MMM y G"}
-                    M{"E, d MMM – E, d MMM y G"}
-                    d{"E, d MMM – E, d MMM y G"}
-                    y{"E, d MMM y – E, d MMM y G"}
+                    G{"E, d MMM y G – E, d MMM y G"}
+                    M{"E, d MMM – E, d MMM y G"}
+                    d{"E, d MMM – E, d MMM y G"}
+                    y{"E, d MMM y – E, d MMM y G"}
                 }
                 GyMMMd{
-                    G{"d MMM y G – d MMM y G"}
-                    M{"d MMM – d MMM y G"}
-                    d{"d – d MMM y G"}
-                    y{"d MMM y – d MMM y G"}
+                    G{"d MMM y G – d MMM y G"}
+                    M{"d MMM – d MMM y G"}
+                    d{"d – d MMM y G"}
+                    y{"d MMM y – d MMM y G"}
                 }
                 GyMd{
-                    G{"d.M.y GGGGG – d.M.y GGGGG"}
-                    M{"d.M.y – d.M.y GGGGG"}
-                    d{"d.M.y – d.M.y GGGGG"}
-                    y{"d.M.y – d.M.y GGGGG"}
+                    G{"d.M.y GGGGG – d.M.y GGGGG"}
+                    M{"d.M.y – d.M.y GGGGG"}
+                    d{"d.M.y – d.M.y GGGGG"}
+                    y{"d.M.y – d.M.y GGGGG"}
                 }
                 H{
-                    H{"HH – HH"}
+                    H{"HH – HH"}
                 }
                 Hm{
-                    H{"HH:mm – HH:mm"}
-                    m{"HH:mm – HH:mm"}
+                    H{"HH:mm – HH:mm"}
+                    m{"HH:mm – HH:mm"}
                 }
                 Hmv{
-                    H{"HH:mm – HH:mm, v"}
-                    m{"HH:mm – HH:mm, v"}
+                    H{"HH:mm – HH:mm, v"}
+                    m{"HH:mm – HH:mm, v"}
                 }
                 Hv{
-                    H{"HH – HH, v"}
+                    H{"HH – HH, v"}
                 }
                 M{
-                    M{"M – M"}
+                    M{"M – M"}
                 }
                 MEd{
-                    M{"E, d.M – E, d.M"}
-                    d{"E, d.M – E, d.M"}
+                    M{"E, d.M – E, d.M"}
+                    d{"E, d.M – E, d.M"}
                 }
                 MMM{
-                    M{"MMM – MMM"}
+                    M{"MMM – MMM"}
                 }
                 MMMEd{
-                    M{"E, d MMM – E, d MMM"}
-                    d{"E, d MMM – E, d MMM"}
+                    M{"E, d MMM – E, d MMM"}
+                    d{"E, d MMM – E, d MMM"}
                 }
                 MMMd{
-                    M{"d MMM – d MMM"}
-                    d{"d – d MMM"}
+                    M{"d MMM – d MMM"}
+                    d{"d – d MMM"}
                 }
                 Md{
-                    M{"d.M – d.M"}
-                    d{"d.M – d.M"}
+                    M{"d.M – d.M"}
+                    d{"d.M – d.M"}
                 }
                 d{
-                    d{"d – d"}
+                    d{"d – d"}
                 }
+                fallback{"{0} - {1}"}
                 h{
-                    a{"h a – h a"}
-                    h{"h – h a"}
+                    a{"h a – h a"}
+                    h{"h – h a"}
                 }
                 hm{
-                    a{"h:mm a – h:mm a"}
-                    h{"h:mm – h:mm a"}
-                    m{"h:mm – h:mm a"}
+                    a{"h:mm a – h:mm a"}
+                    h{"h:mm – h:mm a"}
+                    m{"h:mm – h:mm a"}
                 }
                 hmv{
-                    a{"h:mm a – h:mm a, v"}
-                    h{"h:mm – h:mm a, v"}
-                    m{"h:mm – h:mm a, v"}
+                    a{"h:mm a – h:mm a, v"}
+                    h{"h:mm – h:mm a, v"}
+                    m{"h:mm – h:mm a, v"}
                 }
                 hv{
-                    a{"h a – h a, v"}
-                    h{"h – h a, v"}
+                    a{"h a – h a, v"}
+                    h{"h – h a, v"}
                 }
                 y{
-                    y{"y – y"}
+                    y{"y – y"}
                 }
                 yM{
-                    M{"M.y – M.y"}
-                    y{"M.y – M.y"}
+                    M{"M.y – M.y"}
+                    y{"M.y – M.y"}
                 }
                 yMEd{
-                    M{"E, d.M.y – E, d.M.y"}
-                    d{"E, d.M.y – E, d.M.y"}
-                    y{"E, d.M.y – E, d.M.y"}
+                    M{"E, d.M.y – E, d.M.y"}
+                    d{"E, d.M.y – E, d.M.y"}
+                    y{"E, d.M.y – E, d.M.y"}
                 }
                 yMMM{
-                    M{"MMM – MMM y"}
-                    y{"MMM y – MMM y"}
+                    M{"MMM – MMM y"}
+                    y{"MMM y – MMM y"}
                 }
                 yMMMEd{
-                    M{"E, d MMM – E, d MMM y"}
-                    d{"E, d – E, d MMM y"}
-                    y{"E, d MMM y – E, d MMM y"}
+                    M{"E, d MMM – E, d MMM y"}
+                    d{"E, d – E, d MMM y"}
+                    y{"E, d MMM y – E, d MMM y"}
                 }
                 yMMMM{
-                    M{"MMMM – MMMM y"}
-                    y{"MMMM y – MMMM y"}
+                    M{"MMMM – MMMM y"}
+                    y{"MMMM y – MMMM y"}
                 }
                 yMMMd{
-                    M{"d MMM – d MMM y"}
-                    d{"d – d MMM y"}
-                    y{"d MMM y – d MMM y"}
+                    M{"d MMM – d MMM y"}
+                    d{"d – d MMM y"}
+                    y{"d MMM y – d MMM y"}
                 }
                 yMd{
-                    M{"d.M.y – d.M.y"}
-                    d{"d.M.y – d.M.y"}
-                    y{"d.M.y – d.M.y"}
+                    M{"d.M.y – d.M.y"}
+                    d{"d.M.y – d.M.y"}
+                    y{"d.M.y – d.M.y"}
                 }
             }
             monthNames{
@@ -719,6 +821,20 @@ sq{
                         "nën",
                         "dhj",
                     }
+                    narrow{
+                        "j",
+                        "sh",
+                        "m",
+                        "p",
+                        "m",
+                        "q",
+                        "k",
+                        "g",
+                        "sh",
+                        "t",
+                        "n",
+                        "dh",
+                    }
                     wide{
                         "janar",
                         "shkurt",
@@ -735,6 +851,20 @@ sq{
                     }
                 }
                 stand-alone{
+                    abbreviated{
+                        "jan",
+                        "shk",
+                        "mar",
+                        "pri",
+                        "maj",
+                        "qer",
+                        "korr",
+                        "gush",
+                        "sht",
+                        "tet",
+                        "nën",
+                        "dhj",
+                    }
                     narrow{
                         "j",
                         "sh",
@@ -749,6 +879,20 @@ sq{
                         "n",
                         "dh",
                     }
+                    wide{
+                        "janar",
+                        "shkurt",
+                        "mars",
+                        "prill",
+                        "maj",
+                        "qershor",
+                        "korrik",
+                        "gusht",
+                        "shtator",
+                        "tetor",
+                        "nëntor",
+                        "dhjetor",
+                    }
                 }
             }
             quarters{
@@ -758,6 +902,12 @@ sq{
                         "tremujori II",
                         "tremujori III",
                         "tremujori IV",
+                    }
+                    narrow{
+                        "1",
+                        "2",
+                        "3",
+                        "4",
                     }
                     wide{
                         "tremujori i parë",
@@ -773,101 +923,17 @@ sq{
                         "Tremujori III",
                         "Tremujori IV",
                     }
+                    narrow{
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                    }
                     wide{
                         "Tremujori i 1-rë",
                         "Tremujori i 2-të",
                         "Tremujori i 3-të",
                         "Tremujori i 4-t",
-                    }
-                }
-            }
-        }
-        islamic{
-            DateTimePatterns{
-                "h:mm:ss a, zzzz",
-                "h:mm:ss a, z",
-                "h:mm:ss a",
-                "h:mm a",
-                "EEEE, d MMMM y G",
-                "d MMMM y G",
-                "d MMM y G",
-                "d.M.y GGGGG",
-                "{1}, {0}",
-                "{1}, {0}",
-                "{1}, {0}",
-                "{1}, {0}",
-                "{1}, {0}",
-            }
-            availableFormats{
-                GyMMM{"M.y G"}
-                GyMMMEd{"E, d.M.y G"}
-                GyMMMd{"d.M.y G"}
-                MMMMEd{"E, d MMMM"}
-            }
-            eras{
-                abbreviated{
-                    "H.",
-                }
-            }
-            monthNames{
-                format{
-                    abbreviated{
-                        "muh.",
-                        "sef.",
-                        "reb. I",
-                        "reb. II",
-                        "xhum. I",
-                        "xhum. II",
-                        "rexh.",
-                        "sha.",
-                        "ram.",
-                        "shev.",
-                        "dhul-k.",
-                        "dhul-h.",
-                    }
-                    wide{
-                        "muharrem",
-                        "sefer",
-                        "rebiul-evel",
-                        "rebiu-theni",
-                        "xhumadel-ula",
-                        "xhumade-theni",
-                        "rexheb",
-                        "shaban",
-                        "ramazan",
-                        "sheval",
-                        "dhul-kade",
-                        "dhul-hixhe",
-                    }
-                }
-                stand-alone{
-                    abbreviated{
-                        "Muh.",
-                        "Sef.",
-                        "Reb. I",
-                        "Reb. II",
-                        "Xhum. I",
-                        "Xhum. II",
-                        "Rexh.",
-                        "Sha.",
-                        "Ram.",
-                        "Shev.",
-                        "Dhul-k.",
-                        "Dhul-h.",
-                    }
-                    wide{
-                        "Muharrem",
-                        "Sefer",
-                        "Rebiul-evel",
-                        "Rebiu-theni",
-                        "Xhumadel-ula",
-                        "Xhumade-theni",
-                        "Rexheb",
-                        "Shaban",
-                        "Ramazan",
-                        "Sheval",
-                        "Dhul-kade",
-                        "Dhul-hixhe",
                     }
                 }
             }
@@ -894,11 +960,13 @@ sq{
         downwards_arrows{"shigjeta për së poshti"}
         downwards_upwards_arrows{"shigjeta lart-poshtë"}
         east_asian_scripts{"shkrime të Azisë Lindore"}
+        emoji{"emoji"}
         european_scripts{"shkrime evropiane"}
         female{"femër"}
         flag{"flamur"}
         flags{"flamuj"}
         food_drink{"ushqim dhe pije"}
+        format{"format"}
         format_whitespace{"format dhe hapësirë e bardhë"}
         full_width_form_variant{"variant i formës me gjerësi të plotë"}
         geometric_shapes{"forma gjeometrike"}
@@ -932,6 +1000,7 @@ sq{
         objects{"objekte"}
         other{"tjetër"}
         paired{"i çiftuar"}
+        person{"person"}
         phonetic_alphabet{"alfabet fonetik"}
         pictographs{"piktografi"}
         place{"vend"}
@@ -945,6 +1014,7 @@ sq{
         south_asian_scripts{"shkrime të Azisë Jugore"}
         southeast_asian_scripts{"shkrime të Azisë Juglindore"}
         spacing{"hapësirë"}
+        sport{"sport"}
         symbols{"simbole"}
         technical_symbols{"simbole teknike"}
         tone_marks{"tregues tonaliteti"}
@@ -982,16 +1052,94 @@ sq{
                 }
             }
         }
+        day-narrow{
+            dn{"ditë"}
+            relativeTime{
+                future{
+                    one{"pas {0} dite"}
+                    other{"pas {0} ditësh"}
+                }
+                past{
+                    one{"{0} ditë më parë"}
+                    other{"{0} ditë më parë"}
+                }
+            }
+        }
+        day-short{
+            dn{"ditë"}
+            relativeTime{
+                future{
+                    one{"pas {0} dite"}
+                    other{"pas {0} ditësh"}
+                }
+                past{
+                    one{"{0} ditë më parë"}
+                    other{"{0} ditë më parë"}
+                }
+            }
+        }
         dayOfYear{
+            dn{"ditë e vitit"}
+        }
+        dayOfYear-narrow{
+            dn{"ditë e vitit"}
+        }
+        dayOfYear-short{
             dn{"ditë e vitit"}
         }
         dayperiod{
             dn{"paradite/pasdite"}
         }
+        dayperiod-narrow{
+            dn{"paradite/pasdite"}
+        }
+        dayperiod-short{
+            dn{"paradite/pasdite"}
+        }
         era{
             dn{"erë"}
         }
+        era-narrow{
+            dn{"erë"}
+        }
+        era-short{
+            dn{"erë"}
+        }
         fri{
+            relative{
+                "-1"{"të premten e kaluar"}
+                "0"{"këtë të premte"}
+                "1"{"të premten e ardhshme"}
+            }
+            relativeTime{
+                future{
+                    one{"pas {0} të premteje"}
+                    other{"pas {0} të premtesh"}
+                }
+                past{
+                    one{"{0} të premte më parë"}
+                    other{"{0} të premte më parë"}
+                }
+            }
+        }
+        fri-narrow{
+            relative{
+                "-1"{"të premten e kaluar"}
+                "0"{"këtë të premte"}
+                "1"{"të premten e ardhshme"}
+            }
+            relativeTime{
+                future{
+                    one{"pas {0} të premteje"}
+                    other{"pas {0} të premtesh"}
+                }
+                past{
+                    one{"{0} të premte më parë"}
+                    other{"{0} të premte më parë"}
+                }
+            }
+        }
+        fri-short{
             relative{
                 "-1"{"të premten e kaluar"}
                 "0"{"këtë të premte"}
@@ -1024,6 +1172,32 @@ sq{
                 }
             }
         }
+        hour-narrow{
+            dn{"orë"}
+            relativeTime{
+                future{
+                    one{"pas {0} ore"}
+                    other{"pas {0} orësh"}
+                }
+                past{
+                    one{"{0} orë më parë"}
+                    other{"{0} orë më parë"}
+                }
+            }
+        }
+        hour-short{
+            dn{"orë"}
+            relativeTime{
+                future{
+                    one{"pas {0} ore"}
+                    other{"pas {0} orësh"}
+                }
+                past{
+                    one{"{0} orë më parë"}
+                    other{"{0} orë më parë"}
+                }
+            }
+        }
         minute{
             dn{"minutë"}
             relative{
@@ -1037,6 +1211,19 @@ sq{
                 past{
                     one{"{0} minutë më parë"}
                     other{"{0} minuta më parë"}
+                }
+            }
+        }
+        minute-narrow{
+            dn{"min"}
+            relativeTime{
+                future{
+                    one{"pas {0} min"}
+                    other{"pas {0} min"}
+                }
+                past{
+                    one{"{0} min më parë"}
+                    other{"{0} min më parë"}
                 }
             }
         }
@@ -1070,7 +1257,77 @@ sq{
                 }
             }
         }
+        mon-narrow{
+            relative{
+                "-1"{"të hënën e kaluar"}
+                "0"{"këtë të hënë"}
+                "1"{"të hënën e ardhshme"}
+            }
+            relativeTime{
+                future{
+                    one{"pas {0} të hëne"}
+                    other{"pas {0} të hënash"}
+                }
+                past{
+                    one{"{0} të hënë më parë"}
+                    other{"{0} të hëna më parë"}
+                }
+            }
+        }
+        mon-short{
+            relative{
+                "-1"{"të hënën e kaluar"}
+                "0"{"këtë të hënë"}
+                "1"{"të hënën e ardhshme"}
+            }
+            relativeTime{
+                future{
+                    one{"pas {0} të hëne"}
+                    other{"pas {0} të hënash"}
+                }
+                past{
+                    one{"{0} të hënë më parë"}
+                    other{"{0} të hëna më parë"}
+                }
+            }
+        }
         month{
+            dn{"muaj"}
+            relative{
+                "-1"{"muajin e kaluar"}
+                "0"{"këtë muaj"}
+                "1"{"muajin e ardhshëm"}
+            }
+            relativeTime{
+                future{
+                    one{"pas {0} muaji"}
+                    other{"pas {0} muajsh"}
+                }
+                past{
+                    one{"{0} muaj më parë"}
+                    other{"{0} muaj më parë"}
+                }
+            }
+        }
+        month-narrow{
+            dn{"muaj"}
+            relative{
+                "-1"{"muajin e kaluar"}
+                "0"{"këtë muaj"}
+                "1"{"muajin e ardhshëm"}
+            }
+            relativeTime{
+                future{
+                    one{"pas {0} muaji"}
+                    other{"pas {0} muajsh"}
+                }
+                past{
+                    one{"{0} muaj më parë"}
+                    other{"{0} muaj më parë"}
+                }
+            }
+        }
+        month-short{
             dn{"muaj"}
             relative{
                 "-1"{"muajin e kaluar"}
@@ -1106,7 +1363,77 @@ sq{
                 }
             }
         }
+        quarter-narrow{
+            dn{"tremujor"}
+            relative{
+                "-1"{"tremujorin e kaluar"}
+                "0"{"këtë tremujor"}
+                "1"{"tremujorin e ardhshëm"}
+            }
+            relativeTime{
+                future{
+                    one{"pas {0} tremujori"}
+                    other{"pas {0} tremujorësh"}
+                }
+                past{
+                    one{"{0} tremujor më parë"}
+                    other{"{0} tremujorë më parë"}
+                }
+            }
+        }
+        quarter-short{
+            dn{"tremujor"}
+            relative{
+                "-1"{"tremujorin e kaluar"}
+                "0"{"këtë tremujor"}
+                "1"{"tremujorin e ardhshëm"}
+            }
+            relativeTime{
+                future{
+                    one{"pas {0} tremujori"}
+                    other{"pas {0} tremujorësh"}
+                }
+                past{
+                    one{"{0} tremujor më parë"}
+                    other{"{0} tremujorë më parë"}
+                }
+            }
+        }
         sat{
+            relative{
+                "-1"{"të shtunën e kaluar"}
+                "0"{"këtë të shtunë"}
+                "1"{"të shtunën e ardhshme"}
+            }
+            relativeTime{
+                future{
+                    one{"pas {0} të shtune"}
+                    other{"pas {0} të shtunash"}
+                }
+                past{
+                    one{"{0} të shtunë më parë"}
+                    other{"{0} të shtuna më parë"}
+                }
+            }
+        }
+        sat-narrow{
+            relative{
+                "-1"{"të shtunën e kaluar"}
+                "0"{"këtë të shtunë"}
+                "1"{"të shtunën e ardhshme"}
+            }
+            relativeTime{
+                future{
+                    one{"pas {0} të shtune"}
+                    other{"pas {0} të shtunash"}
+                }
+                past{
+                    one{"{0} të shtunë më parë"}
+                    other{"{0} të shtuna më parë"}
+                }
+            }
+        }
+        sat-short{
             relative{
                 "-1"{"të shtunën e kaluar"}
                 "0"{"këtë të shtunë"}
@@ -1136,6 +1463,19 @@ sq{
                 past{
                     one{"{0} sekondë më parë"}
                     other{"{0} sekonda më parë"}
+                }
+            }
+        }
+        second-narrow{
+            dn{"sek"}
+            relativeTime{
+                future{
+                    one{"pas {0} sek"}
+                    other{"pas {0} sek"}
+                }
+                past{
+                    one{"{0} sek më parë"}
+                    other{"{0} sek më parë"}
                 }
             }
         }
@@ -1169,7 +1509,75 @@ sq{
                 }
             }
         }
+        sun-narrow{
+            relative{
+                "-1"{"të dielën e kaluar"}
+                "0"{"këtë të diel"}
+                "1"{"të dielën e ardhshme"}
+            }
+            relativeTime{
+                future{
+                    one{"pas {0} të diele"}
+                    other{"pas {0} të dielash"}
+                }
+                past{
+                    one{"{0} të dielë më parë"}
+                    other{"{0} të diela më parë"}
+                }
+            }
+        }
+        sun-short{
+            relative{
+                "-1"{"të dielën e kaluar"}
+                "0"{"këtë të diel"}
+                "1"{"të dielën e ardhshme"}
+            }
+            relativeTime{
+                future{
+                    one{"pas {0} të diele"}
+                    other{"pas {0} të dielash"}
+                }
+                past{
+                    one{"{0} të dielë më parë"}
+                    other{"{0} të diela më parë"}
+                }
+            }
+        }
         thu{
+            relative{
+                "-1"{"të enjten e kaluar"}
+                "0"{"këtë të enjte"}
+                "1"{"të enjten e ardhshme"}
+            }
+            relativeTime{
+                future{
+                    one{"pas {0} të enjteje"}
+                    other{"pas {0} të enjtesh"}
+                }
+                past{
+                    one{"{0} të enjte më parë"}
+                    other{"{0} të enjte më parë"}
+                }
+            }
+        }
+        thu-narrow{
+            relative{
+                "-1"{"të enjten e kaluar"}
+                "0"{"këtë të enjte"}
+                "1"{"të enjten e ardhshme"}
+            }
+            relativeTime{
+                future{
+                    one{"pas {0} të enjteje"}
+                    other{"pas {0} të enjtesh"}
+                }
+                past{
+                    one{"{0} të enjte më parë"}
+                    other{"{0} të enjte më parë"}
+                }
+            }
+        }
+        thu-short{
             relative{
                 "-1"{"të enjten e kaluar"}
                 "0"{"këtë të enjte"}
@@ -1203,7 +1611,75 @@ sq{
                 }
             }
         }
+        tue-narrow{
+            relative{
+                "-1"{"të martën e kaluar"}
+                "0"{"këtë të martë"}
+                "1"{"të martën e ardhshme"}
+            }
+            relativeTime{
+                future{
+                    one{"pas {0} të marte"}
+                    other{"pas {0} të martash"}
+                }
+                past{
+                    one{"{0} të martë më parë"}
+                    other{"{0} të marta më parë"}
+                }
+            }
+        }
+        tue-short{
+            relative{
+                "-1"{"të martën e kaluar"}
+                "0"{"këtë të martë"}
+                "1"{"të martën e ardhshme"}
+            }
+            relativeTime{
+                future{
+                    one{"pas {0} të marte"}
+                    other{"pas {0} të martash"}
+                }
+                past{
+                    one{"{0} të martë më parë"}
+                    other{"{0} të marta më parë"}
+                }
+            }
+        }
         wed{
+            relative{
+                "-1"{"të mërkurën e kaluar"}
+                "0"{"këtë të mërkurë"}
+                "1"{"të mërkurën e ardhshme"}
+            }
+            relativeTime{
+                future{
+                    one{"pas {0} të mërkure"}
+                    other{"pas {0} të mërkurash"}
+                }
+                past{
+                    one{"{0} të mërkurë më parë"}
+                    other{"{0} të mërkura më parë"}
+                }
+            }
+        }
+        wed-narrow{
+            relative{
+                "-1"{"të mërkurën e kaluar"}
+                "0"{"këtë të mërkurë"}
+                "1"{"të mërkurën e ardhshme"}
+            }
+            relativeTime{
+                future{
+                    one{"pas {0} të mërkure"}
+                    other{"pas {0} të mërkurash"}
+                }
+                past{
+                    one{"{0} të mërkurë më parë"}
+                    other{"{0} të mërkura më parë"}
+                }
+            }
+        }
+        wed-short{
             relative{
                 "-1"{"të mërkurën e kaluar"}
                 "0"{"këtë të mërkurë"}
@@ -1239,13 +1715,69 @@ sq{
                 }
             }
         }
+        week-narrow{
+            dn{"javë"}
+            relative{
+                "-1"{"javën e kaluar"}
+                "0"{"këtë javë"}
+                "1"{"javën e ardhshme"}
+            }
+            relativePeriod{"java e {0}"}
+            relativeTime{
+                future{
+                    one{"pas {0} jave"}
+                    other{"pas {0} javësh"}
+                }
+                past{
+                    one{"{0} javë më parë"}
+                    other{"{0} javë më parë"}
+                }
+            }
+        }
+        week-short{
+            dn{"javë"}
+            relative{
+                "-1"{"javën e kaluar"}
+                "0"{"këtë javë"}
+                "1"{"javën e ardhshme"}
+            }
+            relativePeriod{"java e {0}"}
+            relativeTime{
+                future{
+                    one{"pas {0} jave"}
+                    other{"pas {0} javësh"}
+                }
+                past{
+                    one{"{0} javë më parë"}
+                    other{"{0} javë më parë"}
+                }
+            }
+        }
         weekOfMonth{
+            dn{"javë e muajit"}
+        }
+        weekOfMonth-narrow{
+            dn{"javë e muajit"}
+        }
+        weekOfMonth-short{
             dn{"javë e muajit"}
         }
         weekday{
             dn{"ditë e javës"}
         }
+        weekday-narrow{
+            dn{"ditë e javës"}
+        }
+        weekday-short{
+            dn{"ditë e javës"}
+        }
         weekdayOfMonth{
+            dn{"ditë pune e muajit"}
+        }
+        weekdayOfMonth-narrow{
+            dn{"ditë pune e muajit"}
+        }
+        weekdayOfMonth-short{
             dn{"ditë pune e muajit"}
         }
         year{
@@ -1266,14 +1798,49 @@ sq{
                 }
             }
         }
-        year-short{
+        year-narrow{
+            dn{"vit"}
             relative{
                 "-1"{"vitin e kaluar"}
                 "0"{"këtë vit"}
                 "1"{"vitin e ardhshëm"}
             }
+            relativeTime{
+                future{
+                    one{"pas {0} viti"}
+                    other{"pas {0} vjetësh"}
+                }
+                past{
+                    one{"{0} vit më parë"}
+                    other{"{0} vjet më parë"}
+                }
+            }
+        }
+        year-short{
+            dn{"vit"}
+            relative{
+                "-1"{"vitin e kaluar"}
+                "0"{"këtë vit"}
+                "1"{"vitin e ardhshëm"}
+            }
+            relativeTime{
+                future{
+                    one{"pas {0} viti"}
+                    other{"pas {0} vjetësh"}
+                }
+                past{
+                    one{"{0} vit më parë"}
+                    other{"{0} vjet më parë"}
+                }
+            }
         }
         zone{
+            dn{"brezi orar"}
+        }
+        zone-narrow{
+            dn{"brezi orar"}
+        }
+        zone-short{
             dn{"brezi orar"}
         }
     }
@@ -1281,14 +1848,44 @@ sq{
         or{
             2{"{0} ose {1}"}
             end{"{0} ose {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
         }
         standard{
             2{"{0} dhe {1}"}
             end{"{0} dhe {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+        standard-narrow{
+            2{"{0} dhe {1}"}
+            end{"{0} dhe {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+        standard-short{
+            2{"{0} dhe {1}"}
+            end{"{0} dhe {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+        unit{
+            2{"{0} e {1}"}
+            end{"{0} e {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+        unit-narrow{
+            2{"{0} e {1}"}
+            end{"{0} e {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
         }
         unit-short{
             2{"{0} e {1}"}
             end{"{0} e {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
         }
     }
     measurementSystemNames{
@@ -1296,53 +1893,32 @@ sq{
         US{"amerikan"}
         metric{"metrik"}
     }
-    personNames{
-        nameOrderLocales{
-            givenFirst{
-                "und",
-                "sq",
-            }
-            surnameFirst{
-                "ko",
-                "vi",
-                "yue",
-                "zh",
+    parse{
+        date{
+            lenient{
+                "[\\--/]",
+                "[\\:∶]",
             }
         }
-        namePattern{
-            givenFirst-long-addressing-formal{"{title} {surname}"}
-            givenFirst-long-addressing-informal{"{title} {given-informal}"}
-            givenFirst-long-monogram-formal{"{given-monogram-allCaps}{surname-monogram-allCaps}"}
-            givenFirst-long-referring-formal{"{title} {given} {surname}, {credentials}"}
-            givenFirst-long-referring-informal{"{title} {given} {surname}"}
-            givenFirst-medium-addressing-formal{"{title} {surname}"}
-            givenFirst-medium-addressing-informal{"{title} {given-informal}"}
-            givenFirst-medium-referring-informal{"{title} {given} {surname}"}
-            givenFirst-short-addressing-formal{"{title} {surname}"}
-            givenFirst-short-addressing-informal{"{title} {given-informal}"}
-            givenFirst-short-referring-informal{"{title} {given} {surname}"}
-            sorting-long-referring-formal{"{title} {surname-core}, {given} {surname-prefix}"}
-            sorting-long-referring-informal{"{title} {surname}, {given-informal}"}
-            sorting-medium-referring-informal{"{title} {surname}, {given-informal}"}
-            sorting-short-referring-informal{"{title} {surname}, {given-informal}"}
-            surnameFirst-long-addressing-formal{"{title} {surname}"}
-            surnameFirst-long-addressing-informal{"{title} {given-informal}"}
-            surnameFirst-long-monogram-informal{"{surname-monogram-allCaps}{given-informal-monogram-allCaps}"}
-            surnameFirst-long-referring-formal{"{title} {surname}, {given} {given2-initial}, {credentials}"}
-            surnameFirst-long-referring-informal{"{title} {surname}, {given}"}
-            surnameFirst-medium-addressing-formal{"{title} {surname}"}
-            surnameFirst-medium-addressing-informal{"{title} {given-informal}"}
-            surnameFirst-medium-monogram-formal{"{surname-monogram-allCaps}"}
-            surnameFirst-medium-monogram-informal{"{given-informal-monogram-allCaps}"}
-            surnameFirst-medium-referring-informal{"{title} {surname}, {given}"}
-            surnameFirst-short-addressing-formal{"{title} {surname}"}
-            surnameFirst-short-addressing-informal{"{title} {given-informal}"}
-            surnameFirst-short-monogram-formal{"{surname-monogram-allCaps}"}
-            surnameFirst-short-monogram-informal{"{given-informal-monogram-allCaps}"}
-            surnameFirst-short-referring-informal{"{title} {surname}, {given}"}
+        general{
+            lenient{
+                "[.․。︒﹒．｡]",
+                "['ʼ՚᾽᾿’＇]",
+                "[%٪﹪％]",
+                "[؉‰]",
+                "[\$﹩＄$]",
+                "[£₤]",
+                "[¥￥]",
+                "[₩￦]",
+                "[₨₹{Rp}{Rs}]",
+            }
         }
-        parameterDefault{
-            formality{"informal"}
+        number{
+            lenient{
+                "[\\-‒⁻₋−➖﹣－]",
+                "[,،٫、︐︑﹐﹑，､]",
+                "[+⁺₊➕﬩﹢＋]",
+            }
         }
     }
 }

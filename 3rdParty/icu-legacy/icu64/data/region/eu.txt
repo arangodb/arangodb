@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 eu{
     Countries{
         001{"Mundua"}
@@ -8,30 +7,30 @@ eu{
         003{"Ipar Amerika"}
         005{"Hego Amerika"}
         009{"Ozeania"}
-        011{"Mendebaldeko Afrika"}
+        011{"Afrika mendebaldea"}
         013{"Erdialdeko Amerika"}
-        014{"Ekialdeko Afrika"}
-        015{"Ipar Afrika"}
+        014{"Afrika ekialdea"}
+        015{"Afrika iparraldea"}
         017{"Erdialdeko Afrika"}
-        018{"Hegoaldeko Afrika"}
+        018{"Afrika hegoaldea"}
         019{"Amerika"}
         021{"Amerikako iparraldea"}
         029{"Karibea"}
-        030{"Ekialdeko Asia"}
-        034{"Hego Asia"}
-        035{"Hego-ekialdeko Asia"}
-        039{"Hego Europa"}
+        030{"Asia ekialdea"}
+        034{"Asia hegoaldea"}
+        035{"Asiako hego-ekialdea"}
+        039{"Europa hegoaldea"}
         053{"Australasia"}
         054{"Melanesia"}
         057{"Mikronesia eskualdea"}
         061{"Polinesia"}
         142{"Asia"}
-        143{"Erdialdeko Asia"}
-        145{"Mendebaldeko Asia"}
+        143{"Asia erdialdea"}
+        145{"Asia mendebaldea"}
         150{"Europa"}
-        151{"Ekialdeko Europa"}
-        154{"Ipar Europa"}
-        155{"Mendebaldeko Europa"}
+        151{"Europa ekialdea"}
+        154{"Europa iparraldea"}
+        155{"Europa mendebaldea"}
         202{"Saharaz hegoaldeko Afrika"}
         419{"Latinoamerika"}
         AC{"Ascension uhartea"}
@@ -288,8 +287,6 @@ eu{
         VU{"Vanuatu"}
         WF{"Wallis eta Futuna"}
         WS{"Samoa"}
-        XA{"Sasiazentuak"}
-        XB{"Pseudobidia"}
         XK{"Kosovo"}
         YE{"Yemen"}
         YT{"Mayotte"}
@@ -297,9 +294,6 @@ eu{
         ZM{"Zambia"}
         ZW{"Zimbabwe"}
         ZZ{"Eskualde ezezaguna"}
-    }
-    Countries%chagos{
-        IO{"Chagos uhartedia"}
     }
     Countries%short{
         GB{"EB"}
@@ -311,9 +305,10 @@ eu{
     Countries%variant{
         CD{"Kongo (DR)"}
         CG{"Kongoko Errepublika"}
-        CI{"C¨ôte d’Ivore"}
+        CI{"CI"}
         CZ{"Txekiar Errepublika"}
         FK{"Falklandak (Malvinak)"}
-        NZ{"Aotearoa / Zeelanda Berria"}
+        TL{"TL"}
     }
+    Version{"2.1.49.82"}
 }

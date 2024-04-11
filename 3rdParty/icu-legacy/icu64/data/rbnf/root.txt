@@ -1,6 +1,8 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
+/**
+ * ICU <specials> source: <path>/xml/rbnf/root.xml
+ */
 root{
     RBNFRules{
         DurationRules{
@@ -461,11 +463,11 @@ root{
             "61: \u05E1\u05F4>%hebrew-item>;",
             "70: \u05F4\u05E2;",
             "71: \u05E2\u05F4>%hebrew-item>;",
-            "80: \u05F4\u05E3;",
+            "80: \u05F4\u05E4;",
             "81: \u05E4\u05F4>%hebrew-item>;",
             "90: \u05F4\u05E6;",
             "91: \u05E6\u05F4>%hebrew-item>;",
-            "%%hebrew-item-hundreds:",
+            "%hebrew-item:",
             "-x: \u2212>>;",
             "x.x: =#,##0.00=;",
             "0: \u05F4;",
@@ -488,8 +490,7 @@ root{
             "50: \u05E0[>>];",
             "60: \u05E1[>>];",
             "70: \u05E2[>>];",
-            "80: \u05E3;",
-            "81: \u05E4[>>];",
+            "80: \u05E4[>>];",
             "90: \u05E6[>>];",
             "100: \u05E7[>>];",
             "200: \u05E8[>>];",
@@ -522,32 +523,6 @@ root{
             "1900/100: \u05EA\u05EA\u05EA\u05EA\u05E9[>>];",
             "2000/100: \u05EA\u05EA\u05EA\u05EA\u05EA[>>];",
             "2100: =#,##0=;",
-            "%hebrew-item:",
-            "-x: \u2212>>;",
-            "x.x: =#,##0.00=;",
-            "0: \u05F4;",
-            "1: \u05D0;",
-            "2: \u05D1;",
-            "3: \u05D2;",
-            "4: \u05D3;",
-            "5: \u05D4;",
-            "6: \u05D5;",
-            "7: \u05D6;",
-            "8: \u05D7;",
-            "9: \u05D8;",
-            "10: \u05D9[>>];",
-            "15: \u05D8\u05D5;",
-            "16: \u05D8\u05D6;",
-            "17: \u05D9>>;",
-            "20: \u05DB[>>];",
-            "30: \u05DC[>>];",
-            "40: \u05DE[>>];",
-            "50: \u05E0[>>];",
-            "60: \u05E1[>>];",
-            "70: \u05E2[>>];",
-            "80: \u05E4[>>];",
-            "90: \u05E6[>>];",
-            "100: =%%hebrew-item-hundreds=;",
             "%roman-lower:",
             "-x: \u2212>>;",
             "x.x: =#,##0.00=;",
@@ -661,8 +636,6 @@ root{
             "%%tamil-thousands:",
             "0: =%tamil=;",
             "1000: <<\u0BF2[>>];",
-            "%zz-default:",
-            "0: =#,##0=;",
         }
         OrdinalRules{
             "%digits-ordinal:",
@@ -685,5 +658,5 @@ root{
             "0: =#,##0.#=.;",
         }
     }
-    Version{"45"}
+    Version{"2.1.27.22"}
 }

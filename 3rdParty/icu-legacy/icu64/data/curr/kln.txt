@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 kln{
     Currencies{
         AED{
@@ -171,13 +170,9 @@ kln{
             "SHP",
             "Pouditab helena ne tilil",
         }
-        SLE{
-            "SLE",
-            "Leonit",
-        }
         SLL{
             "SLL",
-            "Leonit (1964—2022)",
+            "Leonit",
         }
         SOS{
             "SOS",
@@ -216,7 +211,7 @@ kln{
             "Rabisiekab CFA BEAC",
         }
         XOF{
-            "F CFA",
+            "CFA",
             "Rabisiekab CFA BCEAO",
         }
         ZAR{
@@ -236,4 +231,5 @@ kln{
             "Dolaitab ya Zimbabwe",
         }
     }
+    Version{"2.1.47.82"}
 }

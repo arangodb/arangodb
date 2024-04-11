@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 zh_Hant{
     %%Parent{"root"}
     Countries{
@@ -255,7 +254,7 @@ zh_Hant{
         SV{"薩爾瓦多"}
         SX{"荷屬聖馬丁"}
         SY{"敘利亞"}
-        SZ{"史瓦帝尼"}
+        SZ{"史瓦濟蘭"}
         TA{"特里斯坦達庫尼亞群島"}
         TC{"土克斯及開科斯群島"}
         TD{"查德"}
@@ -299,19 +298,19 @@ zh_Hant{
         ZW{"辛巴威"}
         ZZ{"未知區域"}
     }
-    Countries%chagos{
-        IO{"查哥斯群島"}
-    }
     Countries%short{
+        GB{"英國"}
         HK{"香港"}
         MO{"澳門"}
         PS{"巴勒斯坦"}
+        UN{"聯合國"}
+        US{"美國"}
     }
     Countries%variant{
         CD{"剛果民主共和國"}
         CG{"剛果共和國"}
         CZ{"捷克共和國"}
         FK{"福克蘭群島（馬爾維納斯群島）"}
-        SZ{"史瓦濟蘭"}
     }
+    Version{"2.1.49.82"}
 }

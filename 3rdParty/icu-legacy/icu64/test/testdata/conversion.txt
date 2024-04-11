@@ -108,19 +108,11 @@ conversion:table(nofallback) {
           :intvector{ 0,1,4,4,4,4,5,5,5,5,6,7,7,7,7,8,9,11 },
           :int{1}, :int{0}, "", "&C", :bin{""}
         }
-        { // gb18030-2022 changes mapping for 0xFE90
-          "gb18030",
-          :bin{ 618130fc318130fc8181303c3e813cfc817afe90a8bc },
-          "a\u05ed\\x810\u9f07\\x810<>\\x81<\u9f07z\u9fba\u1e3f",
-          :intvector{ 0,1,5,5,5,5,6,7,9,9,9,9,10,11,12,13,13,13,13,14,15,17,18,20 },
-          :int{1}, :int{0}, "", "&C", :bin{""}
-        }
-        // GB18030: ICU-22420 adds two reverse fallbacks
         {
           "gb18030",
-          :bin{ 80a1a1a2e3a3a0 },
-          "\u20AC\u3000\u20AC\u3000",
-          :intvector{ 0,1,3,5 },
+          :bin{ 618130fc318130fc8181303c3e813cfc817afe90a8bc },
+          "a\u05ed\\x810\u9f07\\x810<>\\x81<\u9f07z\ue854\u1e3f",
+          :intvector{ 0,1,5,5,5,5,6,7,9,9,9,9,10,11,12,13,13,13,13,14,15,17,18,20 },
           :int{1}, :int{0}, "", "&C", :bin{""}
         }
         {
@@ -832,27 +824,6 @@ conversion:table(nofallback) {
           :bin{ 8130D2398130D3308136A5318136A532 },
           "\u0450\u0452\u200F\u2011",
           :intvector{ 0, 4, 8, 12 },
-          :int{1}, :int{0}, "", "?", :bin{""}
-        }
-        { // gb18030->U 2005 vs 2022 part 1 (gb18030 2-byte)
-          "gb18030",
-          :bin{ A6D9 A6DA A6DB A6DC A6DF A6EC A6ED A6F3 FE59 FE61 FE66 FE67 FE6D FE7E FE90 FEA0 },
-          "\uFE10\uFE12\uFE11\uFE13\uFE16\uFE17\uFE18\uFE19\u9FB4\u9FB5\u9FB6\u9FB7\u9FB8\u9FB9\u9FBA\u9FBB", // -2005: "\uE78D\uE78E\uE78F\uE790\uE793\uE794\uE795\uE796\uE81E\uE826\uE82B\uE82C\uE832\uE843\uE854\uE864"
-          :intvector{ 0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30 },
-          :int{1}, :int{0}, "", "?", :bin{""}
-        }
-        { // gb18030->U 2005 vs 2022 part 2 (gb18030 4-byte)
-          "gb18030",
-          :bin{ 82359037 82359038 82359039 82359130 82359131 82359132 82359133 82359134 84318236 84318239 84318332 84318335 },
-          "\u9FB4\u9FB5\u9FB6\u9FB7\u9FB8\u9FB9\u9FBA\u9FBB\uFE10\uFE13\uFE16\uFE19", // unchanged from 2005 mapping
-          :intvector{ 0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44 },
-          :int{1}, :int{0}, "", "?", :bin{""}
-        }
-        { // gb18030->U 2005 vs 2022 part 3 (gb18030 4-byte), non-changing mappings next to or in linear ranges partially overridden by new explicit maps
-          "gb18030",
-          :bin{ 82358F33823590368235913584318235843183368431843684318537 },
-          "\u9FA6\u9FB3\u9FBC\uFE0F\uFE1A\uFE24\uFE2F",
-          :intvector{ 0, 4, 8, 12, 16, 20, 24 },
           :int{1}, :int{0}, "", "?", :bin{""}
         }
         {
@@ -1846,32 +1817,11 @@ conversion:table(nofallback) {
           :intvector{},
           :int{1}, :int{0}, "", "0", ""
         }
-        { // gb18030-2022 changes mappings for 0xA6DC,0xA6DB
+        {
           "gb18030",
-          "\U00020087\ufe13\ufe11\u1e3f",
+          "\U00020087\ue790\ue78f\u1e3f",
           :bin{ 95329031a6dca6dba8bc },
           :intvector{ 0,0,0,0,2,2,3,3,4,4 },
-          :int{1}, :int{0}, "", "0", ""
-        }
-        { // U->gb18030 2005 vs 2022 part 1 (gb18030 2-byte)
-          "gb18030",
-          "\uFE10\uFE12\uFE11\uFE13\uFE16\uFE17\uFE18\uFE19\u9FB4\u9FB5\u9FB6\u9FB7\u9FB8\u9FB9\u9FBA\u9FBB", // -2005: "\uE78D\uE78E\uE78F\uE790\uE793\uE794\uE795\uE796\uE81E\uE826\uE82B\uE82C\uE832\uE843\uE854\uE864"
-          :bin{ A6D9A6DAA6DBA6DCA6DFA6ECA6EDA6F3FE59FE61FE66FE67FE6DFE7EFE90FEA0 },
-          :intvector{ 0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,12,12,13,13,14,14,15,15 },
-          :int{1}, :int{0}, "", "0", ""
-        }
-        { // U->gb18030 2005 vs 2022 part 2 (gb18030 fallback mappings from Unicode PUA)
-          "gb18030",
-          "\uE78D\uE793\uE794\uE795\uE796\uE81E\uE826\uE82B\uE82C\uE832\uE843\uE854\uE864",
-          :bin{ A6D9A6DFA6ECA6EDA6F3FE59FE61FE66FE67FE6DFE7EFE90FEA0 },
-          :intvector{ 0,0,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8,8,9,9,10,10,11,11,12,12 },
-          :int{1}, :int{0}, "", "0", ""
-        }
-        { // U->gb18030 2005 vs 2022 part 3 (gb18030 4-byte), non-changing mappings next to or in linear ranges partially overridden by new explicit maps
-          "gb18030",
-          "\u9FA6\u9FB3\u9FBC\uFE0F\uFE1A\uFE24\uFE2F",
-          :bin{ 82358F33823590368235913584318235843183368431843684318537 },
-          :intvector{ 0,0,0,0,1,1,1,1,2,2,2,2,3,3,3,3,4,4,4,4,5,5,5,5,6,6,6,6 },
           :int{1}, :int{0}, "", "0", ""
         }
         {

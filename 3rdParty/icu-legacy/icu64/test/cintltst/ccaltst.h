@@ -72,10 +72,6 @@
      * Test ambiguous wall time
      */
     static void TestAmbiguousWallTime(void);
-    /**
-     * Test ucal_getIanaTimeZoneID()
-     */
-    static void TestGetIanaTimeZoneID(void);
 
 /*Internal functions used*/
     /**

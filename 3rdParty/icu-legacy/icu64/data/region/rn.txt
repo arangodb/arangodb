@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 rn{
     Countries{
         AD{"Andora"}
@@ -93,6 +92,7 @@ rn{
         IE{"Irilandi"}
         IL{"Isiraheli"}
         IN{"Ubuhindi"}
+        IO{"Intara y’Ubwongereza yo mu birwa by’Abahindi"}
         IQ{"Iraki"}
         IR{"Irani"}
         IS{"Ayisilandi"}
@@ -127,6 +127,7 @@ rn{
         MD{"Moludavi"}
         MG{"Madagasikari"}
         MH{"Izinga rya Marishari"}
+        MK{"Masedoniya"}
         ML{"Mali"}
         MM{"Birimaniya"}
         MN{"Mongoliya"}
@@ -226,4 +227,5 @@ rn{
         ZM{"Zambiya"}
         ZW{"Zimbabwe"}
     }
+    Version{"2.1.47.82"}
 }

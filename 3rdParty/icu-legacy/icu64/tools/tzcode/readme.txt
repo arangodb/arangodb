@@ -25,7 +25,7 @@ behavior, as well as the full set of Olson compatibility IDs.
 
 References:
 
-ICU4C:  https://icu.unicode.org/
+ICU4C:  http://www.icu-project.org/
 Olson:  ftp://ftp.iana.org/tz/releases/
 
 ----------------------------------------------------------------------

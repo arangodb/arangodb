@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 mgh{
     Countries{
         AD{"Uandora"}
@@ -77,6 +76,7 @@ mgh{
         LY{"Ulibya"}
         ME{"Umantegro"}
         MG{"Ubukini"}
+        MK{"Umasedonia"}
         MW{"Umalawi"}
         MZ{"Umozambiki"}
         NE{"Unijeri"}
@@ -140,4 +140,5 @@ mgh{
         ZM{"Uzambia"}
         ZW{"Uzimbabwe"}
     }
+    Version{"2.1.47.82"}
 }

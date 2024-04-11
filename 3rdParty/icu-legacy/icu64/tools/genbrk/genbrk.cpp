@@ -22,8 +22,9 @@
 //
 //   The input rule file is a plain text file containing break rules
 //    in the input format accepted by RuleBasedBreakIterators.  The
-//    file can be encoded as UTF-8 or UTF-16 (either endian).  Files
-//    encoded as UTF-16 must include a BOM.
+//    file can be encoded as utf-8, or utf-16 (either endian), or
+//    in the default code page (platform dependent.).  utf encoded
+//    files must include a BOM.
 //
 //--------------------------------------------------------------------
 
@@ -52,8 +53,8 @@ static UOption options[]={
     UOPTION_HELP_H,             /* 0 */
     UOPTION_HELP_QUESTION_MARK, /* 1 */
     UOPTION_VERBOSE,            /* 2 */
-    { "rules", nullptr, nullptr, nullptr, 'r', UOPT_REQUIRES_ARG, 0 },   /* 3 */
-    { "out",   nullptr, nullptr, nullptr, 'o', UOPT_REQUIRES_ARG, 0 },   /* 4 */
+    { "rules", NULL, NULL, NULL, 'r', UOPT_REQUIRES_ARG, 0 },   /* 3 */
+    { "out",   NULL, NULL, NULL, 'o', UOPT_REQUIRES_ARG, 0 },   /* 4 */
     UOPTION_ICUDATADIR,         /* 5 */
     UOPTION_DESTDIR,            /* 6 */
     UOPTION_COPYRIGHT,          /* 7 */
@@ -62,9 +63,7 @@ static UOption options[]={
 
 void usageAndDie(int retCode) {
         printf("Usage: %s [-v] [-options] -r rule-file -o output-file\n", progName);
-        printf("\tRead in break iteration rules text and write out the binary data.\n"
-            "\tIf the rule file does not have a Unicode signature byte sequence, it is assumed\n"
-            "\tto be UTF-8.\n"
+        printf("\tRead in break iteration rules text and write out the binary data\n"
             "options:\n"
             "\t-h or -? or --help  this usage text\n"
             "\t-V or --version     show a version message\n"
@@ -132,8 +131,8 @@ int  main(int argc, char **argv) {
     UErrorCode  status = U_ZERO_ERROR;
     const char *ruleFileName;
     const char *outFileName;
-    const char *outDir = nullptr;
-    const char *copyright = nullptr;
+    const char *outDir = NULL;
+    const char *copyright = NULL;
 
     //
     // Pick up and check the command line arguments,
@@ -180,11 +179,11 @@ int  main(int argc, char **argv) {
     char msg[1024];
 
     /* write message with just the name */
-    snprintf(msg, sizeof(msg), "genbrk writes dummy %s because of UCONFIG_NO_BREAK_ITERATION and/or UCONFIG_NO_FILE_IO, see uconfig.h", outFileName);
+    sprintf(msg, "genbrk writes dummy %s because of UCONFIG_NO_BREAK_ITERATION and/or UCONFIG_NO_FILE_IO, see uconfig.h", outFileName);
     fprintf(stderr, "%s\n", msg);
 
     /* write the dummy data file */
-    pData = udata_create(outDir, nullptr, outFileName, &dummyDataInfo, nullptr, &status);
+    pData = udata_create(outDir, NULL, outFileName, &dummyDataInfo, NULL, &status);
     udata_writeBlock(pData, msg, strlen(msg));
     udata_finish(pData, &status);
     return (int)status;
@@ -208,7 +207,7 @@ int  main(int argc, char **argv) {
     char        *ruleBufferC;
 
     file = fopen(ruleFileName, "rb");
-    if (file == nullptr) {
+    if( file == 0 ) {
         fprintf(stderr, "Could not open file \"%s\"\n", ruleFileName);
         exit(-1);
     }
@@ -235,10 +234,7 @@ int  main(int argc, char **argv) {
     if (U_FAILURE(status)) {
         exit(status);
     }
-    if (encoding == nullptr) {
-        // In the absence of a BOM, assume the rule file is in UTF-8.
-        encoding = "UTF-8";
-    } else {
+    if(encoding!=NULL ){
         ruleSourceC  += signatureLength;
         ruleFileSize -= signatureLength;
     }
@@ -254,11 +250,11 @@ int  main(int argc, char **argv) {
     }
 
     //
-    // Convert the rules to char16_t.
+    // Convert the rules to UChar.
     //  Preflight first to determine required buffer size.
     //
     uint32_t destCap = ucnv_toUChars(conv,
-                       nullptr,           //  dest,
+                       NULL,           //  dest,
                        0,              //  destCapacity,
                        ruleSourceC,
                        ruleFileSize,
@@ -266,10 +262,10 @@ int  main(int argc, char **argv) {
     if (status != U_BUFFER_OVERFLOW_ERROR) {
         fprintf(stderr, "ucnv_toUChars: ICU Error \"%s\"\n", u_errorName(status));
         exit(status);
-    }
+    };
 
     status = U_ZERO_ERROR;
-    char16_t *ruleSourceU = new char16_t[destCap+1];
+    UChar *ruleSourceU = new UChar[destCap+1];
     ucnv_toUChars(conv,
                   ruleSourceU,     //  dest,
                   destCap+1,
@@ -279,14 +275,14 @@ int  main(int argc, char **argv) {
     if (U_FAILURE(status)) {
         fprintf(stderr, "ucnv_toUChars: ICU Error \"%s\"\n", u_errorName(status));
         exit(status);
-    }
+    };
     ucnv_close(conv);
 
 
     //
     //  Put the source rules into a UnicodeString
     //
-    UnicodeString ruleSourceS(false, ruleSourceU, destCap);
+    UnicodeString ruleSourceS(FALSE, ruleSourceU, destCap);
 
     //
     //  Create the break iterator from the rules
@@ -300,7 +296,7 @@ int  main(int argc, char **argv) {
         fprintf(stderr, "createRuleBasedBreakIterator: ICU Error \"%s\"  at line %d, column %d\n",
                 u_errorName(status), (int)parseError.line, (int)parseError.offset);
         exit(status);
-    }
+    };
 
 
     //
@@ -318,7 +314,7 @@ int  main(int argc, char **argv) {
     //
     size_t bytesWritten;
     UNewDataMemory *pData;
-    pData = udata_create(outDir, nullptr, outFileName, &(dh.info), copyright, &status);
+    pData = udata_create(outDir, NULL, outFileName, &(dh.info), copyright, &status);
     if(U_FAILURE(status)) {
         fprintf(stderr, "genbrk: Could not open output file \"%s\", \"%s\"\n", 
                          outFileName, u_errorName(status));

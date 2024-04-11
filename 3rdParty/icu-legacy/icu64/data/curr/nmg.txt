@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 nmg{
     Currencies{
         AED{
@@ -175,13 +174,9 @@ nmg{
             "SHP",
             "Mɔn má Saint Lina",
         }
-        SLE{
-            "SLE",
-            "Mɔn Leɔne",
-        }
         SLL{
             "SLL",
-            "Mɔn Leɔn (1964—2022)¨",
+            "Mɔn Leɔne",
         }
         SOS{
             "SOS",
@@ -220,7 +215,7 @@ nmg{
             "Fraŋ CFA BEAC",
         }
         XOF{
-            "F CFA",
+            "CFA",
             "Fraŋ CFA BCEAO",
         }
         ZAR{
@@ -240,4 +235,5 @@ nmg{
             "Dɔ́llɔ Zimbabwǝ (1980–2008)",
         }
     }
+    Version{"2.1.47.82"}
 }

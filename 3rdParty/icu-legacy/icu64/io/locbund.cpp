@@ -35,31 +35,31 @@
 static UNumberFormat *gPosixNumberFormat[ULOCALEBUNDLE_NUMBERFORMAT_COUNT];
 
 U_CDECL_BEGIN
-static UBool U_CALLCONV locbund_cleanup() {
+static UBool U_CALLCONV locbund_cleanup(void) {
     int32_t style;
     for (style = 0; style < ULOCALEBUNDLE_NUMBERFORMAT_COUNT; style++) {
         unum_close(gPosixNumberFormat[style]);
-        gPosixNumberFormat[style] = nullptr;
+        gPosixNumberFormat[style] = NULL;
     }
-    return true;
+    return TRUE;
 }
 U_CDECL_END
 
 static inline UNumberFormat * copyInvariantFormatter(ULocaleBundle *result, UNumberFormatStyle style) {
     U_NAMESPACE_USE
-    static UMutex gLock;
+    static UMutex gLock = U_MUTEX_INITIALIZER;
     Mutex lock(&gLock);
-    if (result->fNumberFormat[style-1] == nullptr) {
-        if (gPosixNumberFormat[style-1] == nullptr) {
+    if (result->fNumberFormat[style-1] == NULL) {
+        if (gPosixNumberFormat[style-1] == NULL) {
             UErrorCode status = U_ZERO_ERROR;
-            UNumberFormat *formatAlias = unum_open(style, nullptr, 0, "en_US_POSIX", nullptr, &status);
+            UNumberFormat *formatAlias = unum_open(style, NULL, 0, "en_US_POSIX", NULL, &status);
             if (U_SUCCESS(status)) {
                 gPosixNumberFormat[style-1] = formatAlias;
                 ucln_io_registerCleanup(UCLN_IO_LOCBUND, locbund_cleanup);
             }
         }
         /* Copy the needed formatter. */
-        if (gPosixNumberFormat[style-1] != nullptr) {
+        if (gPosixNumberFormat[style-1] != NULL) {
             UErrorCode status = U_ZERO_ERROR;
             result->fNumberFormat[style-1] = unum_clone(gPosixNumberFormat[style-1], &status);
         }
@@ -72,10 +72,10 @@ u_locbund_init(ULocaleBundle *result, const char *loc)
 {
     int32_t len;
 
-    if (result == nullptr)
-        return nullptr;
+    if(result == 0)
+        return 0;
 
-    if (loc == nullptr) {
+    if (loc == NULL) {
         loc = uloc_getDefault();
     }
 
@@ -83,8 +83,8 @@ u_locbund_init(ULocaleBundle *result, const char *loc)
 
     len = (int32_t)strlen(loc);
     result->fLocale = (char*) uprv_malloc(len + 1);
-    if (result->fLocale == nullptr) {
-        return nullptr;
+    if(result->fLocale == 0) {
+        return 0;
     }
 
     uprv_strcpy(result->fLocale, loc);
@@ -124,11 +124,11 @@ u_locbund_clone(const ULocaleBundle *bundle)
         if (result->fNumberFormat[styleIdx]) {
             result->fNumberFormat[styleIdx] = unum_clone(bundle->fNumberFormat[styleIdx], &status);
             if (U_FAILURE(status)) {
-                result->fNumberFormat[styleIdx] = nullptr;
+                result->fNumberFormat[styleIdx] = NULL;
             }
         }
         else {
-            result->fNumberFormat[styleIdx] = nullptr;
+            result->fNumberFormat[styleIdx] = NULL;
         }
     }
     result->fDateFormat         = (bundle->fDateFormat == 0 ? 0 :
@@ -159,19 +159,19 @@ u_locbund_close(ULocaleBundle *bundle)
 U_CAPI UNumberFormat *
 u_locbund_getNumberFormat(ULocaleBundle *bundle, UNumberFormatStyle style)
 {
-    UNumberFormat *formatAlias = nullptr;
+    UNumberFormat *formatAlias = NULL;
     if (style > UNUM_IGNORE) {
         formatAlias = bundle->fNumberFormat[style-1];
-        if (formatAlias == nullptr) {
+        if (formatAlias == NULL) {
             if (bundle->isInvariantLocale) {
                 formatAlias = copyInvariantFormatter(bundle, style);
             }
             else {
                 UErrorCode status = U_ZERO_ERROR;
-                formatAlias = unum_open(style, nullptr, 0, bundle->fLocale, nullptr, &status);
+                formatAlias = unum_open(style, NULL, 0, bundle->fLocale, NULL, &status);
                 if (U_FAILURE(status)) {
                     unum_close(formatAlias);
-                    formatAlias = nullptr;
+                    formatAlias = NULL;
                 }
                 else {
                     bundle->fNumberFormat[style-1] = formatAlias;

@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 mt{
     Keys{
         calendar{"Kalendarju"}
@@ -379,6 +378,7 @@ mt{
         ro_MD{"Moldovan"}
         rof{"Rombo"}
         rom{"Romanesk"}
+        root{"Root"}
         ru{"Russu"}
         rup{"Aromanjan"}
         rw{"Kinjarwanda"}
@@ -440,7 +440,7 @@ mt{
         teo{"Teso"}
         ter{"Tereno"}
         tet{"Tetum"}
-        tg{"Taġik"}
+        tg{"Tajik"}
         th{"Tajlandiż"}
         ti{"Tigrinya"}
         tig{"Tigre"}
@@ -516,12 +516,10 @@ mt{
     }
     Scripts{
         Arab{"Għarbi"}
-        Brai{"Braille"}
         Cyrl{"Ċirilliku"}
         Grek{"Grieg"}
         Hans{"Simplifikat"}
         Hant{"Tradizzjonali"}
-        Jpan{"Ġappuniż"}
         Latn{"Latin"}
         Xpeo{"Persjan Antik"}
         Zxxx{"Mhux Miktub"}
@@ -540,6 +538,8 @@ mt{
             ethiopic{"Kalendarju Etjopiku"}
             gregorian{"Kalendarju Gregorjan"}
             hebrew{"Kalendarju Ebrajk"}
+            islamic{"Kalendarju Iżlamiku"}
+            islamic-civil{"Kalendarju Islamiku-Ċivili"}
             iso8601{"Kalendarju ISO-8601"}
             japanese{"Kalendarju Ġappuniż"}
         }
@@ -559,9 +559,15 @@ mt{
     Variants{
         REVISED{"Ortografija Irriveda"}
     }
+    Version{"2.1.49.82"}
     codePatterns{
         language{"Lingwa: {0}"}
         script{"Skript: {0}"}
         territory{"Reġjun: {0}"}
+    }
+    localeDisplayPattern{
+        keyTypePattern{"{0}: {1}"}
+        pattern{"{0} ({1})"}
+        separator{"{0}, {1}"}
     }
 }

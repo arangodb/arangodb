@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 xog{
     Countries{
         AD{"Andora"}
@@ -93,6 +92,7 @@ xog{
         IE{"Ayalandi"}
         IL{"Yisirayeri"}
         IN{"Buyindi"}
+        IO{"Ebizinga bya Cago"}
         IQ{"Yiraaka"}
         IR{"Yiraani"}
         IS{"Ayisirandi"}
@@ -127,6 +127,7 @@ xog{
         MD{"Molodova"}
         MG{"Madagasika"}
         MH{"Bizinga bya Mariso"}
+        MK{"Masedoniya"}
         ML{"Mali"}
         MM{"Myanima"}
         MN{"Mongoliya"}
@@ -225,4 +226,5 @@ xog{
         ZM{"Zambya"}
         ZW{"Zimbabwe"}
     }
+    Version{"2.1.47.82"}
 }

@@ -15,16 +15,16 @@
 #include "patternprops.h"
 #include "util.h"
 
-// Define char16_t constants using hex for EBCDIC compatibility
+// Define UChar constants using hex for EBCDIC compatibility
 
-static const char16_t BACKSLASH  = 0x005C; /*\*/
-static const char16_t UPPER_U    = 0x0055; /*U*/
-static const char16_t LOWER_U    = 0x0075; /*u*/
-static const char16_t APOSTROPHE = 0x0027; // '\''
-static const char16_t SPACE      = 0x0020; // ' '
+static const UChar BACKSLASH  = 0x005C; /*\*/
+static const UChar UPPER_U    = 0x0055; /*U*/
+static const UChar LOWER_U    = 0x0075; /*u*/
+static const UChar APOSTROPHE = 0x0027; // '\''
+static const UChar SPACE      = 0x0020; // ' '
 
 // "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-static const char16_t DIGITS[] = {
+static const UChar DIGITS[] = {
     48,49,50,51,52,53,54,55,56,57,
     65,66,67,68,69,70,71,72,73,74,
     75,76,77,78,79,80,81,82,83,84,
@@ -37,12 +37,12 @@ UnicodeString& ICU_Utility::appendNumber(UnicodeString& result, int32_t n,
                                      int32_t radix, int32_t minDigits) {
     if (radix < 2 || radix > 36) {
         // Bogus radix
-        return result.append((char16_t)63/*?*/);
+        return result.append((UChar)63/*?*/);
     }
     // Handle negatives
     if (n < 0) {
         n = -n;
-        result.append((char16_t)45/*-*/);
+        result.append((UChar)45/*-*/);
     }
     // First determine the number of digits
     int32_t nn = n;
@@ -65,52 +65,38 @@ UnicodeString& ICU_Utility::appendNumber(UnicodeString& result, int32_t n,
     return result;
 }
 
+/**
+ * Return true if the character is NOT printable ASCII.
+ */
 UBool ICU_Utility::isUnprintable(UChar32 c) {
     return !(c >= 0x20 && c <= 0x7E);
 }
 
-UBool ICU_Utility::shouldAlwaysBeEscaped(UChar32 c) {
-    if (c < 0x20) {
-        return true;  // C0 control codes
-    } else if (c <= 0x7e) {
-        return false;  // printable ASCII
-    } else if (c <= 0x9f) {
-        return true;  // C1 control codes
-    } else if (c < 0xd800) {
-        return false;  // most of the BMP
-    } else if (c <= 0xdfff || (0xfdd0 <= c && c <= 0xfdef) || (c & 0xfffe) == 0xfffe) {
-        return true;  // surrogate or noncharacter code points
-    } else if (c <= 0x10ffff) {
-        return false;  // all else
-    } else {
-        return true;  // not a code point
-    }
-}
-
+/**
+ * Escape unprintable characters using \uxxxx notation for U+0000 to
+ * U+FFFF and \Uxxxxxxxx for U+10000 and above.  If the character is
+ * printable ASCII, then do nothing and return FALSE.  Otherwise,
+ * append the escaped notation and return TRUE.
+ */
 UBool ICU_Utility::escapeUnprintable(UnicodeString& result, UChar32 c) {
     if (isUnprintable(c)) {
-        escape(result, c);
-        return true;
+        result.append(BACKSLASH);
+        if (c & ~0xFFFF) {
+            result.append(UPPER_U);
+            result.append(DIGITS[0xF&(c>>28)]);
+            result.append(DIGITS[0xF&(c>>24)]);
+            result.append(DIGITS[0xF&(c>>20)]);
+            result.append(DIGITS[0xF&(c>>16)]);
+        } else {
+            result.append(LOWER_U);
+        }
+        result.append(DIGITS[0xF&(c>>12)]);
+        result.append(DIGITS[0xF&(c>>8)]);
+        result.append(DIGITS[0xF&(c>>4)]);
+        result.append(DIGITS[0xF&c]);
+        return TRUE;
     }
-    return false;
-}
-
-UnicodeString &ICU_Utility::escape(UnicodeString& result, UChar32 c) {
-    result.append(BACKSLASH);
-    if (c & ~0xFFFF) {
-        result.append(UPPER_U);
-        result.append(DIGITS[0xF&(c>>28)]);
-        result.append(DIGITS[0xF&(c>>24)]);
-        result.append(DIGITS[0xF&(c>>20)]);
-        result.append(DIGITS[0xF&(c>>16)]);
-    } else {
-        result.append(LOWER_U);
-    }
-    result.append(DIGITS[0xF&(c>>12)]);
-    result.append(DIGITS[0xF&(c>>8)]);
-    result.append(DIGITS[0xF&(c>>4)]);
-    result.append(DIGITS[0xF&c]);
-    return result;
+    return FALSE;
 }
 
 /**
@@ -122,9 +108,9 @@ UnicodeString &ICU_Utility::escape(UnicodeString& result, UChar32 c) {
 /*
 int32_t ICU_Utility::quotedIndexOf(const UnicodeString& text,
                                int32_t start, int32_t limit,
-                               char16_t charToFind) {
+                               UChar charToFind) {
     for (int32_t i=start; i<limit; ++i) {
-        char16_t c = text.charAt(i);
+        UChar c = text.charAt(i);
         if (c == BACKSLASH) {
             ++i;
         } else if (c == APOSTROPHE) {
@@ -149,7 +135,7 @@ int32_t ICU_Utility::quotedIndexOf(const UnicodeString& text,
 int32_t ICU_Utility::skipWhitespace(const UnicodeString& str, int32_t& pos,
                                     UBool advance) {
     int32_t p = pos;
-    const char16_t* s = str.getBuffer();
+    const UChar* s = str.getBuffer();
     p = (int32_t)(PatternProps::skipWhiteSpace(s + p, str.length() - p) - s);
     if (advance) {
         pos = p;
@@ -212,16 +198,16 @@ int32_t ICU_Utility::skipWhitespace(const UnicodeString& str, int32_t& pos,
  * @return true if 'ch' is seen preceded by zero or more
  * whitespace characters.
  */
-UBool ICU_Utility::parseChar(const UnicodeString& id, int32_t& pos, char16_t ch) {
+UBool ICU_Utility::parseChar(const UnicodeString& id, int32_t& pos, UChar ch) {
     int32_t start = pos;
-    skipWhitespace(id, pos, true);
+    skipWhitespace(id, pos, TRUE);
     if (pos == id.length() ||
         id.charAt(pos) != ch) {
         pos = start;
-        return false;
+        return FALSE;
     }
     ++pos;
-    return true;
+    return TRUE;
 }
 
 /**
@@ -290,19 +276,9 @@ int32_t ICU_Utility::parsePattern(const UnicodeString& pat,
     return -1; // text ended before end of pat
 }
 
-int32_t ICU_Utility::parseAsciiInteger(const UnicodeString& str, int32_t& pos) {
-    int32_t result = 0;
-    char16_t c;
-    while (pos < str.length() && (c = str.charAt(pos)) >= u'0' && c <= u'9') {
-        result = result * 10 + (c - u'0');
-        pos++;
-    }
-    return result;
-}
-
 /**
  * Append a character to a rule that is being built up.  To flush
- * the quoteBuf to rule, make one final call with isLiteral == true.
+ * the quoteBuf to rule, make one final call with isLiteral == TRUE.
  * If there is no final character, pass in (UChar32)-1 as c.
  * @param rule the string to append the character to
  * @param c the character to append, or (UChar32)-1 if none.
@@ -425,10 +401,10 @@ void ICU_Utility::appendToRule(UnicodeString& rule,
                                const UnicodeMatcher* matcher,
                                UBool escapeUnprintable,
                                UnicodeString& quoteBuf) {
-    if (matcher != nullptr) {
+    if (matcher != NULL) {
         UnicodeString pat;
         appendToRule(rule, matcher->toPattern(pat, escapeUnprintable),
-                     true, escapeUnprintable, quoteBuf);
+                     TRUE, escapeUnprintable, quoteBuf);
     }
 }
 

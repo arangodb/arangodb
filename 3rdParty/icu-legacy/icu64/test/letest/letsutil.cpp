@@ -33,12 +33,12 @@ U_NAMESPACE_USE
 
 char *getCString(const UnicodeString *uString)
 {
-    if (uString == nullptr) {
-        return nullptr;
+    if (uString == NULL) {
+        return NULL;
     }
 
     le_int32 uLength = uString->length();
-    le_int32 cLength = uString->extract(0, uLength, nullptr, 0, US_INV);
+    le_int32 cLength = uString->extract(0, uLength, NULL, 0, US_INV);
     char *cString = NEW_ARRAY(char, cLength + 1);
 
     uString->extract(0, uLength, cString, cLength, US_INV);
@@ -49,8 +49,8 @@ char *getCString(const UnicodeString *uString)
 
 char *getCString(const LEUnicode16 *uChars)
 {
-    if (uChars == nullptr) {
-        return nullptr;
+    if (uChars == NULL) {
+        return NULL;
     }
 
     const UnicodeString ustring(uChars);
@@ -60,12 +60,12 @@ char *getCString(const LEUnicode16 *uChars)
 
 char *getUTF8String(const UnicodeString *uString)
 {
-    if (uString == nullptr) {
-        return nullptr;
+    if (uString == NULL) {
+        return NULL;
     }
 
     le_int32 uLength = uString->length();
-    le_int32 cLength = uString->extract(0, uLength, nullptr, 0, "UTF-8");
+    le_int32 cLength = uString->extract(0, uLength, NULL, 0, "UTF-8");
     char *cString = NEW_ARRAY(char, cLength + 1);
 
     uString->extract(0, uLength, cString, cLength, "UTF-8");
@@ -88,7 +88,7 @@ le_bool getRTL(const UnicodeString &text)
     le_int32 limit = -1;
     UBiDi *ubidi = ubidi_openSized(charCount, 0, &status);
 
-    ubidi_setPara(ubidi, text.getBuffer(), charCount, UBIDI_DEFAULT_LTR, nullptr, &status);
+    ubidi_setPara(ubidi, text.getBuffer(), charCount, UBIDI_DEFAULT_LTR, NULL, &status);
 
     // TODO: Should check that there's only a single logical run...
     ubidi_getLogicalRun(ubidi, 0, &limit, &level);

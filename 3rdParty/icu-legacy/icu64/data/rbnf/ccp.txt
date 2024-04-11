@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ccp{
     RBNFRules{
         SpelloutRules{
@@ -52,4 +51,5 @@ ccp{
             "0: =%spellout-numbering= \U0001111B\U00011133\U00011106\U00011118\U00011133\U00011120\U0001112C;",
         }
     }
+    Version{"2.1.38.68"}
 }

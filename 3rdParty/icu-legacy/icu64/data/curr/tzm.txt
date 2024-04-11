@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 tzm{
     Currencies{
         AED{
@@ -175,13 +174,9 @@ tzm{
             "SHP",
             "Junih Usantehilini",
         }
-        SLE{
-            "SLE",
-            "Lyun Usirralyuni",
-        }
         SLL{
             "SLL",
-            "Lyun Usirralyuni (1964—2022)",
+            "Lyun Usirralyuni",
         }
         SOS{
             "SOS",
@@ -220,7 +215,7 @@ tzm{
             "Frank CFA (BEAC)",
         }
         XOF{
-            "F CFA",
+            "CFA",
             "Frank CFA (BCEAO)",
         }
         ZAR{
@@ -240,4 +235,5 @@ tzm{
             "Ḍular Uzimbabwi",
         }
     }
+    Version{"2.1.47.82"}
 }

@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 chr{
+    Version{"2.1.49.82"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"ᎠᏈᏣᏂ"}
@@ -258,9 +258,6 @@ chr{
         "America:Chihuahua"{
             ec{"ᏥᏩᏩ"}
         }
-        "America:Ciudad_Juarez"{
-            ec{"ᏏᏳᏓ ᏆᎡᏏ"}
-        }
         "America:Coral_Harbour"{
             ec{"ᎠᏘᎪᎦᏂ"}
         }
@@ -465,6 +462,9 @@ chr{
         "America:New_York"{
             ec{"ᏄᏯᎩ"}
         }
+        "America:Nipigon"{
+            ec{"ᏂᏈᎪᏂ"}
+        }
         "America:Nome"{
             ec{"ᏃᎺ"}
         }
@@ -486,6 +486,9 @@ chr{
         "America:Panama"{
             ec{"ᏆᎾᎹ"}
         }
+        "America:Pangnirtung"{
+            ec{"ᏆᏂᏂᏚᏂᎦ"}
+        }
         "America:Paramaribo"{
             ec{"ᏆᎳᎹᎴᏉ"}
         }
@@ -506,6 +509,9 @@ chr{
         }
         "America:Punta_Arenas"{
             ec{"ᏊᏔ ᎡᏫᎾᏍ"}
+        }
+        "America:Rainy_River"{
+            ec{"ᎠᎦᏍᎦ ᎤᏪᏴ"}
         }
         "America:Rankin_Inlet"{
             ec{"ᎴᏂᎩᏂ ᎢᏂᎴᏘ"}
@@ -567,6 +573,9 @@ chr{
         "America:Thule"{
             ec{"ᏡᎵ"}
         }
+        "America:Thunder_Bay"{
+            ec{"ᎠᏴᏓᏆᎶᏍᎦ ᎡᏉᏄᎸᏗ"}
+        }
         "America:Tijuana"{
             ec{"ᏘᏳᏩᎾ"}
         }
@@ -587,6 +596,9 @@ chr{
         }
         "America:Yakutat"{
             ec{"ᏯᎫᏔᏘ"}
+        }
+        "America:Yellowknife"{
+            ec{"ᏓᎶᏂᎨ ᎭᏰᏍᏗ"}
         }
         "Antarctica:Casey"{
             ec{"ᎨᏏ"}
@@ -795,9 +807,6 @@ chr{
         "Asia:Qatar"{
             ec{"ᎧᏔᎵ"}
         }
-        "Asia:Qostanay"{
-            ec{"ᎧᏍᏔᏁ"}
-        }
         "Asia:Qyzylorda"{
             ec{"ᎩᏏᎶᎳᏓ"}
         }
@@ -911,6 +920,9 @@ chr{
         }
         "Australia:Broken_Hill"{
             ec{"ᎤᏲᏨᎯ ᎦᏚᏏ"}
+        }
+        "Australia:Currie"{
+            ec{"ᎫᎵ"}
         }
         "Australia:Darwin"{
             ec{"ᏓᏩᏂ"}
@@ -1094,6 +1106,9 @@ chr{
         "Europe:Ulyanovsk"{
             ec{"ᎤᎵᏯᏃᏬᏍᎧ"}
         }
+        "Europe:Uzhgorod"{
+            ec{"ᎤᏍᎪᎶᏗ"}
+        }
         "Europe:Vaduz"{
             ec{"ᏩᏚᏏ"}
         }
@@ -1114,6 +1129,9 @@ chr{
         }
         "Europe:Zagreb"{
             ec{"ᏌᏇᏈ"}
+        }
+        "Europe:Zaporozhye"{
+            ec{"ᏌᏉᎶᏌᏱ"}
         }
         "Europe:Zurich"{
             ec{"ᏑᎵᏥ"}
@@ -1199,8 +1217,8 @@ chr{
             sg{"HST"}
             ss{"HST"}
         }
-        "Pacific:Kanton"{
-            ec{"ᎧᏛᏂ"}
+        "Pacific:Johnston"{
+            ec{"ᏣᏂᏏᏂ"}
         }
         "Pacific:Kiritimati"{
             ec{"ᎩᎵᏘᎹᏘ"}
@@ -1634,6 +1652,9 @@ chr{
             lg{"ᎤᎬᏫᏳᎯ ᎭᏫ ᎠᏟᎢᎵᏒ"}
             ls{"ᎤᎬᏫᏳᎯ ᎭᏫ ᎠᏟᎶᏍᏗ ᎠᏟᎢᎵᏒ"}
         }
+        "meta:Macquarie"{
+            ls{"ᎹᏇᎵ ᎤᎦᏚᏛᎢ ᎠᏟᎢᎵᏒ"}
+        }
         "meta:Magadan"{
             ld{"ᎹᎦᏓᏂ ᎪᎩ ᎠᏟᎢᎵᏒ"}
             lg{"ᎹᎦᏓᏂ ᎠᏟᎢᎵᏒ"}
@@ -1658,6 +1679,11 @@ chr{
         }
         "meta:Mawson"{
             ls{"ᎹᏌᏂ ᎠᏟᎢᎵᏒ"}
+        }
+        "meta:Mexico_Northwest"{
+            ld{"ᏧᏴᏢ ᏭᏕᎵᎬ ᎠᏂᏍᏆᏂ ᎪᎯ ᎢᎦ ᎠᏟᎢᎵᏒ"}
+            lg{"ᏧᏴᏢ ᏭᏕᎵᎬ ᎠᏂᏍᏆᏂ ᎠᏟᎢᎵᏒ"}
+            ls{"ᏧᏴᏢ ᏭᏕᎵᎬ ᎠᏂᏍᏆᏂ ᎠᏟᎶᏍᏗ ᎠᏟᎢᎵᏒ"}
         }
         "meta:Mexico_Pacific"{
             ld{"ᎠᏂᏍᏆᏂ ᏭᏕᎵᎬ ᎪᎯ ᎢᎦ ᎠᏟᎢᎵᏒ"}
@@ -1702,9 +1728,7 @@ chr{
             ls{"ᏂᏳ ᎠᏟᎢᎵᏒ"}
         }
         "meta:Norfolk"{
-            ld{"ᏃᎵᏬᎵᎩ ᎤᎦᏚᏛᎢ ᎪᎩ ᎠᏟᎢᎵᏒ"}
-            lg{"ᏃᎵᏬᎵᎩ ᎤᎦᏚᏛᎢ ᎠᏟᎢᎵᏒ"}
-            ls{"ᏃᎵᏬᎵᎩ ᎤᎦᏚᏛᎢ ᎠᏟᎶᏍᏗ ᎠᏟᎢᎵᏒ"}
+            ls{"ᏃᎵᏬᎵᎩ ᎤᎦᏚᏛᎢ ᎠᏟᎢᎵᏒ"}
         }
         "meta:Noronha"{
             ld{"ᏪᎾᏅᏙ Ꮥ ᏃᎶᎾᎭ ᎪᎩ ᎠᏟᎢᎵᏒ"}
@@ -1875,9 +1899,10 @@ chr{
             lg{"ᏰᎧᏖᎵᏂᏊᎦ ᎠᏟᎢᎵᏒ"}
             ls{"ᏰᎧᏖᎵᏂᏊᎦ ᎠᏟᎶᏍᏗ ᎠᏟᎢᎵᏒ"}
         }
-        "meta:Yukon"{
-            ls{"ᏳᎧᏂ ᎠᏟᎢᎵᏒ"}
-        }
+        fallbackFormat{"{1} ({0})"}
+        gmtFormat{"GMT{0}"}
+        gmtZeroFormat{"GMT"}
+        hourFormat{"+HH:mm;-HH:mm"}
         regionFormat{"{0} ᎠᏟᎢᎵᏒ"}
         regionFormatDaylight{"{0} ᎪᎯ ᎢᎦ ᎠᏟᎢᎵᏒ"}
         regionFormatStandard{"{0} ᎠᏟᎶᏍᏗ ᎠᏟᎢᎵᏒ"}

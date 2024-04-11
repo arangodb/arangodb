@@ -1,54 +1,33 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 en_GB{
     %%Parent{"en_001"}
+    Version{"2.1.47.86"}
     calendar{
         generic{
-            DateTimePatterns{
-                "HH:mm:ss zzzz",
-                "HH:mm:ss z",
-                "HH:mm:ss",
-                "HH:mm",
-                "EEEE d MMMM y G",
-                "d MMMM y G",
-                "d MMM y G",
-                "dd/MM/y GGGGG",
-                "{1}, {0}",
-                "{1}, {0}",
-                "{1}, {0}",
-                "{1}, {0}",
-                "{1}, {0}",
-            }
             availableFormats{
-                GyMMMEEEEd{"EEEE d MMM y G"}
-                MMMEEEEd{"EEEE d MMM"}
-                MMMMEEEEd{"EEEE d MMMM"}
-                yyyyMMMEEEEd{"EEEE d MMM y G"}
-                yyyyMMMMEEEEd{"EEEE d MMMM y G"}
+                MEd{"E dd/MM"}
+                MMMEd{"E d MMM"}
             }
             intervalFormats{
-                GyMMMEEEEd{
-                    G{"EEEE d MMM y G – EEEE d MMM y G"}
-                    M{"EEEE d MMM – EEEE d MMM y G"}
-                    d{"EEEE d MMM – EEEE d MMM y G"}
-                    y{"EEEE d MMM y – EEEE d MMM y G"}
+                M{
+                    M{"M–M"}
                 }
-                MMMEd{
-                    d{"E d MMM – E d MMM"}
+                MMMd{
+                    d{"d–d MMM"}
                 }
-                yMMMEEEEd{
-                    M{"EEEE d MMM – EEEE d MMM y G"}
-                    d{"EEEE d MMM – EEEE d MMM y G"}
-                    y{"EEEE d MMM y – EEEE d MMM y G"}
+                Md{
+                    M{"dd/MM–dd/MM"}
+                    d{"dd/MM–dd/MM"}
                 }
-                yMMMEd{
-                    d{"E, d MMM – E, d MMM y G"}
+                d{
+                    d{"d–d"}
                 }
-                yMMMMEEEEd{
-                    M{"EEEE d MMMM – EEEE d MMMM y G"}
-                    d{"EEEE d MMMM – EEEE d MMMM y G"}
-                    y{"EEEE d MMMM y – EEEE d MMMM y G"}
+                y{
+                    y{"y–y G"}
+                }
+                yMMMd{
+                    d{"d–d MMM y G"}
                 }
             }
         }
@@ -58,70 +37,121 @@ en_GB{
                 "HH:mm:ss z",
                 "HH:mm:ss",
                 "HH:mm",
-                "EEEE d MMMM y",
+                "EEEE, d MMMM y",
                 "d MMMM y",
                 "d MMM y",
                 "dd/MM/y",
                 "{1}, {0}",
-                "{1}, {0}",
-                "{1}, {0}",
+                "{1} 'at' {0}",
+                "{1} 'at' {0}",
                 "{1}, {0}",
                 "{1}, {0}",
             }
-            DateTimeSkeletons{
-                "HHmmsszzzz",
-                "HHmmssz",
-                "HHmmss",
-                "HHmm",
-                "yMMMMEEEEd",
-                "yMMMMd",
-                "yMMMd",
-                "yMMdd",
-            }
-            availableFormats{
-                GyMMMEEEEd{"EEEE d MMM y G"}
-                GyMd{"dd/MM/y G"}
-                MMMEEEEd{"EEEE d MMM"}
-                MMMMEEEEd{"EEEE d MMMM"}
-                yMMMEEEEd{"EEEE d MMM y"}
-                yMMMMEEEEd{"EEEE d MMMM y"}
+            dayPeriod{
+                format{
+                    abbreviated{
+                        noon{"noon"}
+                    }
+                    narrow{
+                        noon{"n"}
+                    }
+                    wide{
+                        noon{"noon"}
+                    }
+                }
+                stand-alone{
+                    narrow{
+                        pm{"pm"}
+                    }
+                }
             }
             intervalFormats{
-                GyMMMEEEEd{
-                    G{"EEEE d MMM y G – EEEE d MMM y G"}
-                    M{"EEEE d MMM – EEEE d MMM y G"}
-                    d{"EEEE d MMM – EEEE d MMM y G"}
-                    y{"EEEE d MMM y – EEEE d MMM y G"}
+                H{
+                    H{"HH–HH"}
                 }
-                MMMEd{
-                    d{"E d MMM – E d MMM"}
+                Hm{
+                    H{"HH:mm–HH:mm"}
+                    m{"HH:mm–HH:mm"}
                 }
-                yMMMEEEEd{
-                    M{"EEEE d MMM – EEEE d MMM y"}
-                    d{"EEEE d MMM – EEEE d MMM y"}
-                    y{"EEEE d MMM y – EEEE d MMM y"}
+                Hmv{
+                    H{"HH:mm–HH:mm v"}
+                    m{"HH:mm–HH:mm v"}
                 }
-                yMMMEd{
-                    d{"E, d MMM – E, d MMM y"}
+                Hv{
+                    H{"HH–HH v"}
                 }
-                yMMMMEEEEd{
-                    M{"EEEE d MMMM – EEEE d MMMM y"}
-                    d{"EEEE d MMMM – EEEE d MMMM y"}
-                    y{"EEEE d MMMM y – EEEE d MMMM y"}
+                M{
+                    M{"M–M"}
+                }
+                MMMd{
+                    d{"d–d MMM"}
+                }
+                d{
+                    d{"d–d"}
+                }
+                h{
+                    h{"h–h a"}
+                }
+                hv{
+                    h{"h–h a v"}
+                }
+                y{
+                    y{"y–y"}
+                }
+                yMMMd{
+                    d{"d–d MMM y"}
                 }
             }
         }
         islamic{
             availableFormats{
-                Ed{"E d"}
-                M{"LL"}
-                yyyyM{"MM/y GGGGG"}
+                MEd{"E dd/MM"}
+                MMMEd{"E d MMM"}
             }
         }
     }
-    personNames{
-        initialPattern{
-            initial{"{0}"}
+    characterLabel{
+        math_symbols{"maths symbol"}
+    }
+    fields{
+        day{
+            relative{
+                "-1"{"yesterday"}
+                "0"{"today"}
+                "1"{"tomorrow"}
+            }
+        }
+        day-narrow{
+            relative{
+                "-1"{"yesterday"}
+                "0"{"today"}
+                "1"{"tomorrow"}
+            }
+        }
+        day-short{
+            relative{
+                "-1"{"yesterday"}
+            }
+            relativeTime{
+                future{
+                    other{"in {0} days"}
+                }
+                past{
+                    other{"{0} days ago"}
+                }
+            }
+        }
+    }
+    listPattern{
+        or{
+            end{"{0} or {1}"}
+        }
+        standard{
+            end{"{0} and {1}"}
+        }
+        standard-short{
+            2{"{0} and {1}"}
+            end{"{0} and {1}"}
         }
     }
 }

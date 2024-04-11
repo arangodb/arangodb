@@ -21,15 +21,11 @@
 
 #if !UCONFIG_NO_FORMATTING
 
-#include <stdbool.h>
-
 #include "unicode/uloc.h"
 #include "unicode/udat.h"
 #include "unicode/ucal.h"
-#include "unicode/uchar.h"
 #include "unicode/unum.h"
 #include "unicode/ustring.h"
-#include "unicode/utf16.h"
 #include "cintltst.h"
 #include "cdtrgtst.h"
 #include "cmemory.h"
@@ -52,7 +48,7 @@ void addDateForRgrTest(TestNode** root)
 /**
  * @bug 4029195
  */
-void Test4029195(void)
+void Test4029195() 
 {
     int32_t resultlength, resultlengthneeded;
     UChar  *fmdt, *todayS, *rt;
@@ -73,13 +69,13 @@ void Test4029195(void)
         return;
     }
     resultlength=0;
-    resultlengthneeded=udat_toPattern(df, true, NULL, resultlength, &status);
+    resultlengthneeded=udat_toPattern(df, TRUE, NULL, resultlength, &status);
     if(status==U_BUFFER_OVERFLOW_ERROR)
     {
         status=U_ZERO_ERROR;
         resultlength=resultlengthneeded + 1;
         pat=(UChar*)malloc(sizeof(UChar) * resultlength);
-        udat_toPattern(df, true, pat, resultlength, &status);
+        udat_toPattern(df, TRUE, pat, resultlength, &status);
     }
     
     log_verbose("pattern: %s\n", austrdup(pat));
@@ -89,13 +85,13 @@ void Test4029195(void)
     if(fmdt) {
       log_verbose("today: %s\n", austrdup(fmdt));
     } else {
-      log_data_err("ERROR: couldn't format, exiting test");
+      log_data_err("ERROR: couldn't format, exitting test");
       return;
     }
     
     temp=(UChar*)malloc(sizeof(UChar) * 10);
     u_uastrcpy(temp, "M yyyy dd");
-    udat_applyPattern(df, true, temp, u_strlen(temp));
+    udat_applyPattern(df, TRUE, temp, u_strlen(temp));
     
     todayS =myFormatit(df, today);
     log_verbose("After the pattern is applied\n today: %s\n", austrdup(todayS) );
@@ -128,7 +124,7 @@ void Test4029195(void)
  * @bug 4056591
  * Verify the function of the [s|g]et2DigitYearStart() API.
  */
-void Test4056591(void)
+void Test4056591() 
 {
     int i;
     UCalendar *cal;
@@ -170,7 +166,6 @@ void Test4056591(void)
     if(U_FAILURE(status))
     {
         log_data_err("FAIL: error in creating the dateformat using u_openPattern(): %s - (Are you missing data?)\n", myErrorName(status));
-        ucal_close(cal);
         return;
     }
     start = 1800;
@@ -192,12 +187,8 @@ void Test4056591(void)
             log_err("myFormatit failed!\n");
         }
         else if(u_strcmp(gotdate, expdate) !=0){
-            if (strcmp("gregorian", ucal_getType(udat_getCalendar(def), &status)) == 0) {
-                // Only report error if the calendar is gregorian because the
-                // expectation is only for gregorian.
-                log_err("set2DigitYearStart broken for %s \n  got: %s, expected: %s\n", austrdup(s),
-                    austrdup(gotdate), austrdup(expdate) );
-            }
+            log_err("set2DigitYearStart broken for %s \n  got: %s, expected: %s\n", austrdup(s),
+                austrdup(gotdate), austrdup(expdate) );
         }
     }
     
@@ -210,7 +201,7 @@ void Test4056591(void)
  * SimpleDateFormat does not properly parse date strings without delimiters
  * @bug 4059917
  */
-void Test4059917(void)
+void Test4059917() 
 {
     UDateFormat* def;
     UChar *myDate;
@@ -247,30 +238,6 @@ void Test4059917(void)
     free(myDate);
 }
 
-UBool EqualIgnoreNumberingSystem(UChar* a, UChar* b);
-// This function return true if the sting contains the same value or the
-// numerical values are the same if we ignore the numbering system.
-UBool EqualIgnoreNumberingSystem(UChar* a, UChar* b) {
-    // len1 and len2 may not be the same if one of them are numeric outside BMP.
-    int32_t len1 = u_strlen(a);
-    int32_t len2 = u_strlen(b);
-    UChar32 ch1, ch2;
-    int32_t idx1, idx2;
-    idx1=idx2=0;
-    // U16_NEXT will increment idx1 and idx2 inside the loop.
-    while (idx1 < len1 && idx2 < len2) {
-        U16_NEXT(a, idx1, len1, ch1);
-        U16_NEXT(b, idx2, len2, ch2);
-        if (ch1 != ch2) {
-            int32_t digit1 = u_charDigitValue(ch1);
-            int32_t digit2 = u_charDigitValue(ch2);
-            if (digit1 < 0 || digit1 != digit2) { return false; }
-        }
-    }
-    // only return true if both reach end of the string.
-    return idx1 == len1 && idx2 == len2;
-}
-
 void aux917( UDateFormat *fmt, UChar* str) 
 {    
     int32_t resultlength, resultlengthneeded;
@@ -280,13 +247,13 @@ void aux917( UDateFormat *fmt, UChar* str)
     UDate d1=1000000000.0;
    
     resultlength=0;
-    resultlengthneeded=udat_toPattern(fmt, true, NULL, resultlength, &status);
+    resultlengthneeded=udat_toPattern(fmt, TRUE, NULL, resultlength, &status);
     if(status==U_BUFFER_OVERFLOW_ERROR)
     {
         status=U_ZERO_ERROR;
         resultlength=resultlengthneeded + 1;
         pat=(UChar*)malloc(sizeof(UChar) * (resultlength));
-        udat_toPattern(fmt, true, pat, resultlength, &status);
+        udat_toPattern(fmt, TRUE, pat, resultlength, &status);
     }
     if(U_FAILURE(status)){
         log_err("failure in retrieving the pattern: %s\n", myErrorName(status));
@@ -296,14 +263,7 @@ void aux917( UDateFormat *fmt, UChar* str)
     status = U_ZERO_ERROR;
     formatted = myFormatit(fmt, d1);
     if( u_strcmp(formatted,str)!=0) {
-        // We may get non-ASCII result back for some locale such as ne_NP
-        // which use numbering systems other than latn
-        if (strcmp("gregorian", ucal_getType(udat_getCalendar(fmt), &status)) != 0) {
-          log_verbose("Skipping Test4059917 when the default date time format is not using gregorian calendar.");
-
-        } else if (!EqualIgnoreNumberingSystem(formatted,str)) {
-          log_err("Fail: Want %s Got: %s\n", austrdup(str),  austrdup(formatted) );
-        }
+        log_err("Fail: Want %s Got: %s\n", austrdup(str),  austrdup(formatted) );
     }
     free(pat);
 }
@@ -311,7 +271,7 @@ void aux917( UDateFormat *fmt, UChar* str)
 /**
  * @bug 4060212
  */
-void Test4060212(void)
+void Test4060212() 
 {
     int32_t pos;
     UCalendar *cal;
@@ -359,7 +319,7 @@ void Test4060212(void)
 /**
  * @bug 4061287
  */
-void Test4061287(void)
+void Test4061287() 
 {
     UBool ok;
     int32_t pos;
@@ -380,17 +340,17 @@ void Test4061287(void)
 
     pos=0;
     
-    udat_setLenient(df, false);
+    udat_setLenient(df, FALSE);
     ok=udat_isLenient(df);
-    if(ok==true)
+    if(ok==TRUE)
         log_err("setLenient nor working\n");
-    ok = false;
+    ok = FALSE;
     myDate = udat_parse(df, dateString, u_strlen(dateString), &pos, &status);
     (void)myDate;   /* Suppress set but not used warning. */
     if(U_FAILURE(status))
-        ok = true;
-    if(ok!=true) 
-        log_err("Fail: Lenient not working: does lenient parsing in spite of setting Lenient as false ");
+        ok = TRUE;
+    if(ok!=TRUE) 
+        log_err("Fail: Lenient not working: does lenient parsing in spite of setting Leninent as FALSE ");
 
     udat_close(df);
     
@@ -411,7 +371,7 @@ void Test4061287(void)
 /**
  * @bug 4073003
  */
-void Test4073003(void)
+void Test4073003() 
 {
     int32_t pos,i;
     UDate d,dd;
@@ -435,7 +395,7 @@ void Test4073003(void)
         return;
     }
     u_uastrcpy(temp, "m/D/yy");
-    udat_applyPattern(fmt, false, temp, u_strlen(temp));
+    udat_applyPattern(fmt, FALSE, temp, u_strlen(temp));
 
     for(i= 0; i < 4; i+=2) {
         status=U_ZERO_ERROR;
@@ -463,7 +423,7 @@ void Test4073003(void)
         result =myFormatit(fmt, d);
         result2 =myFormatit(fmt, dd);
         if(!result || !result2) {
-            log_data_err("Fail: could not format - exiting test\n");
+            log_data_err("Fail: could not format - exitting test\n");
             return;
         }
         if (u_strcmp(result, result2)!=0){
@@ -480,7 +440,7 @@ void Test4073003(void)
 /**
  * @bug 4162071
  **/
-void Test4162071(void)
+void Test4162071() 
 {
     int32_t pos;
     UDate x;
@@ -513,10 +473,11 @@ void Test4162071(void)
 void Test714(void)
 {
     UDate d=978103543000.0;
+    UChar temp[20];
     UErrorCode status = U_ZERO_ERROR;
     UDateFormat *fmt;
     UChar *result;
-    const UChar* expect =  u"7:25:43\u202FAM";
+    const char* expect =  "7:25:43 AM";
     
     ctest_setTimeZone(NULL, &status);
 
@@ -529,14 +490,15 @@ void Test714(void)
     }
     result =myFormatit(fmt, d);
     if(!result) {
-      log_data_err("Fail: could not format - exiting test\n");
+      log_data_err("Fail: could not format - exitting test\n");
       return;
     }
-    if (u_strcmp(result, expect)!=0){
-      log_err("Fail: %s != %s\n", austrdup(result), austrdup(expect));
+    u_uastrcpy(temp, expect);
+    if (u_strcmp(result, temp)!=0){
+      log_err("Fail: %s != %s\n", austrdup(result), expect);
     }
     else{
-      log_verbose("Ok: %s == %s\n", austrdup(result), austrdup(expect));
+      log_verbose("Ok: %s == %s\n", austrdup(result), expect );
     }
         
     udat_close(fmt);
@@ -613,7 +575,7 @@ void Test_GEec(void)
             int32_t dmyGnTextLen;
             UDate   dateResult;
 
-            udat_applyPattern(dtfmt, false, patTextPtr->pattern, -1);
+            udat_applyPattern(dtfmt, FALSE, patTextPtr->pattern, -1);
             dmyGnTextLen = udat_format(dtfmt, july022008, dmyGnText, DATE_TEXT_MAX_CHARS, NULL, &status);
             (void)dmyGnTextLen;   /* Suppress set but not used warning. */ 
             if ( U_FAILURE(status) ) {

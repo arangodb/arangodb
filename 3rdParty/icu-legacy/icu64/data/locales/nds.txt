@@ -1,79 +1,11 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 nds{
-    AuxExemplarCharacters{"[áàăâā æ ç éèĕêëęē íìĭîïī ñ óòŏôøō œ úùŭûū ÿ]"}
-    ExemplarCharacters{"[aåä b c d e f g h i j k l m n oö p q r s t uü v w x y z]"}
+    ExemplarCharacters{"[a å ä b c d e f g h i j k l m n o ö p q r s t u ü v w x y z]"}
+    ExemplarCharactersNumbers{"[\\- , . % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
     ExemplarCharactersPunctuation{
-        "[\\- ‐‑ – — , ; \\: ! ? . … '‘‚ \u0022“„ « » ( ) \\[ \\] \\{ \\} § @ * / \\&"
-        " #]"
+        "[\\- ‐ – — , ; \\: ! ? . … ' ‘ ‚ \u0022 “ „ « » ( ) \\[ \\] \\{ \\} § @ * / "
+        "\\& #]"
     }
-    NumberElements{
-        latn{
-            patterns{
-                currencyFormat{"#,##0.00 ¤"}
-                percentFormat{"#,##0 %"}
-            }
-            symbols{
-                decimal{","}
-                group{"."}
-            }
-        }
-    }
-    calendar{
-        gregorian{
-            availableFormats{
-                Hm{"'Kl'. H.mm"}
-                Hms{"'Klock' H.mm:ss"}
-                Hmsv{"'Klock' H.mm:ss v"}
-                hm{"'Kl'. h.mm a"}
-                hms{"'Klock' h.mm:ss a"}
-                hmsv{"'Klock' h.mm:ss a v"}
-                yMMMd{"d. MMM y"}
-                yMd{"d.M.y"}
-            }
-            dayNames{
-                format{
-                    wide{
-                        "Sünndag",
-                        "Maandag",
-                        "Dingsdag",
-                        "Middeweken",
-                        "Dunnersdag",
-                        "Freedag",
-                        "Sünnavend",
-                    }
-                }
-            }
-            monthNames{
-                format{
-                    wide{
-                        "Januaar",
-                        "Februaar",
-                        "März",
-                        "April",
-                        "Mai",
-                        "Juni",
-                        "Juli",
-                        "August",
-                        "September",
-                        "Oktover",
-                        "November",
-                        "Dezember",
-                    }
-                }
-            }
-        }
-    }
-    delimiters{
-        alternateQuotationEnd{"‘"}
-        alternateQuotationStart{"‚"}
-        quotationEnd{"“"}
-        quotationStart{"„"}
-    }
-    measurementSystemNames{
-        UK{"Engelsch"}
-        US{"US-amerikaansch"}
-        metric{"Metersch"}
-    }
+    Version{"2.1.47.82"}
 }

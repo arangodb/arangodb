@@ -18,9 +18,6 @@
 #include "unicode/testlog.h"
 #include "unicode/uniset.h"
 
-#include <vector>
-#include <string>
-
 U_NAMESPACE_USE
 
 #if U_PLATFORM == U_PF_OS390
@@ -32,7 +29,7 @@ U_NAMESPACE_USE
 //-----------------------------------------------------------------------------
 //convenience classes to ease porting code that uses the Java
 //string-concatenation operator (moved from findword test by rtg)
-UnicodeString UCharToUnicodeString(char16_t c);
+UnicodeString UCharToUnicodeString(UChar c);
 UnicodeString Int64ToUnicodeString(int64_t num);
 UnicodeString DoubleToUnicodeString(double num);
 //UnicodeString operator+(const UnicodeString& left, int64_t num); // Some compilers don't allow this because of the long type.
@@ -87,7 +84,7 @@ UnicodeString toString(UBool b);
 //|     TESTCASE_AUTO_END;
 //| }
 #define TESTCASE_AUTO_BEGIN \
-    do { \
+    for(;;) { \
         int32_t testCaseAutoNumber = 0
 
 #define TESTCASE_AUTO(test) \
@@ -99,7 +96,7 @@ UnicodeString toString(UBool b);
                 test(); \
             } \
             break; \
-        } else (void)0
+        }
 
 #define TESTCASE_AUTO_CLASS(TestClass) \
         if (index == testCaseAutoNumber++) { \
@@ -111,7 +108,7 @@ UnicodeString toString(UBool b);
                 callTest(test, par); \
             } \
             break; \
-        } else (void)0
+        }
 
 #define TESTCASE_AUTO_CREATE_CLASS(TestClass) \
         if (index == testCaseAutoNumber++) { \
@@ -123,12 +120,12 @@ UnicodeString toString(UBool b);
                 callTest(*test, par); \
             } \
             break; \
-        } else (void)0
+        }
 
 #define TESTCASE_AUTO_END \
         name = ""; \
         break; \
-    } while (true)
+    }
 
 
 // WHERE Macro yields a literal string of the form "source_file_name:line number "
@@ -142,76 +139,73 @@ public:
     IntlTest();
     // TestLog has a virtual destructor.
 
-    virtual UBool runTest( char* name = nullptr, char* par = nullptr, char *baseName = nullptr); // not to be overridden
+    virtual UBool runTest( char* name = NULL, char* par = NULL, char *baseName = NULL); // not to be overidden
 
-    virtual UBool setVerbose( UBool verbose = true );
-    virtual UBool setNoErrMsg( UBool no_err_msg = true );
-    virtual UBool setQuick( UBool quick = true );
-    virtual UBool setLeaks( UBool leaks = true );
-    virtual UBool setNotime( UBool no_time = true );
-    virtual UBool setWarnOnMissingData( UBool warn_on_missing_data = true );
-    virtual UBool setWriteGoldenData( UBool write_golden_data = true );
+    virtual UBool setVerbose( UBool verbose = TRUE );
+    virtual UBool setNoErrMsg( UBool no_err_msg = TRUE );
+    virtual UBool setQuick( UBool quick = TRUE );
+    virtual UBool setLeaks( UBool leaks = TRUE );
+    virtual UBool setNotime( UBool no_time = TRUE );
+    virtual UBool setWarnOnMissingData( UBool warn_on_missing_data = TRUE );
     virtual int32_t setThreadCount( int32_t count = 1);
 
-    virtual int32_t getErrors();
-    virtual int32_t getDataErrors();
+    virtual int32_t getErrors( void );
+    virtual int32_t getDataErrors (void );
 
     virtual void setCaller( IntlTest* callingTest ); // for internal use only
     virtual void setPath( char* path ); // for internal use only
 
     virtual void log( const UnicodeString &message );
 
-    virtual void logln( const UnicodeString &message ) override;
+    virtual void logln( const UnicodeString &message );
 
-    virtual void logln();
+    virtual void logln( void );
 
     /**
-     * Logs that an issue is known. Can be called multiple times.
+     * Replaces isICUVersionAtLeast and isICUVersionBefore
+     * log that an issue is known.
      * Usually used this way:
-     * <code>if( ... && logKnownIssue("ICU-12345", "some bug")) continue; </code>
-     * @param ticket ticket string, "ICU-12345" or "CLDR-1234"
+     * <code>if( ... && logKnownIssue("12345", "some bug")) continue; </code>
+     * @param ticket ticket string, "12345" or "cldrbug:1234"
      * @param message optional message string
      * @return true if test should be skipped
      */
     UBool logKnownIssue( const char *ticket, const UnicodeString &message );
     /**
-     * Logs that an issue is known. Can be called multiple times.
+     * Replaces isICUVersionAtLeast and isICUVersionBefore
+     * log that an issue is known.
      * Usually used this way:
-     * <code>if( ... && logKnownIssue("ICU-12345", "some bug")) continue; </code>
-     * @param ticket ticket string, "ICU-12345" or "CLDR-1234"
+     * <code>if( ... && logKnownIssue("12345", "some bug")) continue; </code>
+     * @param ticket ticket string, "12345" or "cldrbug:1234"
      * @return true if test should be skipped
      */
     UBool logKnownIssue( const char *ticket );
     /**
-     * Log that an issue is known. Can be called multiple times.
+     * Replaces isICUVersionAtLeast and isICUVersionBefore
+     * log that an issue is known.
      * Usually used this way:
-     * <code>if( ... && logKnownIssue("ICU-12345", "some bug")) continue; </code>
-     * @param ticket ticket string, "ICU-12345" or "CLDR-1234"
+     * <code>if( ... && logKnownIssue("12345", "some bug")) continue; </code>
+     * @param ticket ticket string, "12345" or "cldrbug:1234"
      * @param message optional message string
      * @return true if test should be skipped
      */
     UBool logKnownIssue( const char *ticket, const char *fmt, ...);
 
-#if !UCONFIG_NO_BREAK_ITERATION
-    UBool skipDictionaryTest();
-    UBool skipLSTMTest();
-#endif /* #if !UCONFIG_NO_BREAK_ITERATION */
-
     virtual void info( const UnicodeString &message );
 
     virtual void infoln( const UnicodeString &message );
 
-    virtual void infoln();
+    virtual void infoln( void );
 
-    virtual void err();
+    virtual void err(void);
 
     virtual void err( const UnicodeString &message );
 
-    virtual void errln( const UnicodeString &message ) override;
+    virtual void errln( const UnicodeString &message );
 
     virtual void dataerr( const UnicodeString &message );
 
-    virtual void dataerrln( const UnicodeString &message ) override;
+    virtual void dataerrln( const UnicodeString &message );
 
     void errcheckln(UErrorCode status, const UnicodeString &message );
 
@@ -236,10 +230,10 @@ public:
     // Print ALL named errors encountered so far
     void printErrors();
 
-    // print known issues. return true if there were any.
+    // print known issues. return TRUE if there were any.
     UBool printKnownIssues();
 
-    virtual void usage() ;
+    virtual void usage( void ) ;
 
     /**
      * Returns a uniform random value x, with 0.0 <= x < 1.0.  Use
@@ -286,84 +280,49 @@ public:
     virtual void setProperty(const char* propline);
     virtual const char* getProperty(const char* prop);
 
-    /* JUnit-like assertions. Each returns true if it succeeds. */
-    UBool assertTrue(const char* message, UBool condition, UBool quiet=false, UBool possibleDataError=false, const char *file=nullptr, int line=0);
-    UBool assertFalse(const char* message, UBool condition, UBool quiet=false, UBool possibleDataError=false);
+    /* JUnit-like assertions. Each returns TRUE if it succeeds. */
+    UBool assertTrue(const char* message, UBool condition, UBool quiet=FALSE, UBool possibleDataError=FALSE, const char *file=NULL, int line=0);
+    UBool assertFalse(const char* message, UBool condition, UBool quiet=FALSE, UBool possibleDataError=FALSE);
     /**
-     * @param possibleDataError - if true, use dataerrln instead of errcheckln on failure
-     * @return true on success, false on failure.
+     * @param possibleDataError - if TRUE, use dataerrln instead of errcheckln on failure
+     * @return TRUE on success, FALSE on failure.
      */
-    UBool assertSuccess(const char* message, UErrorCode ec, UBool possibleDataError=false, const char *file=nullptr, int line=0);
+    UBool assertSuccess(const char* message, UErrorCode ec, UBool possibleDataError=FALSE, const char *file=NULL, int line=0);
     UBool assertEquals(const char* message, const UnicodeString& expected,
-                       const UnicodeString& actual, UBool possibleDataError=false);
+                       const UnicodeString& actual, UBool possibleDataError=FALSE);
     UBool assertEquals(const char* message, const char* expected, const char* actual);
     UBool assertEquals(const char* message, UBool expected, UBool actual);
     UBool assertEquals(const char* message, int32_t expected, int32_t actual);
     UBool assertEquals(const char* message, int64_t expected, int64_t actual);
     UBool assertEquals(const char* message, double expected, double actual);
-    /**
-     * Asserts that two doubles are equal to within a positive delta. Returns
-     * false if they are not.
-     *
-     * NaNs are considered equal: assertEquals(msg, NaN, NaN, *) passes.
-     * Infs are considered equal: assertEquals(msg, inf, inf, *) passes.
-     *
-     * @param message - the identifying message for the AssertionError.
-     * @param expected - expected value.
-     * @param actual - the value to check against expected.
-     * @param delta - the maximum delta for the absolute difference between
-     * expected and actual for which both numbers are still considered equal.
-     */
-    UBool assertEqualsNear(const char* message, double expected, double actual, double delta);
     UBool assertEquals(const char* message, UErrorCode expected, UErrorCode actual);
     UBool assertEquals(const char* message, const UnicodeSet& expected, const UnicodeSet& actual);
-    UBool assertEquals(const char* message,
-        const std::vector<std::string>& expected, const std::vector<std::string>& actual);
-
 #if !UCONFIG_NO_FORMATTING
     UBool assertEquals(const char* message, const Formattable& expected,
-                       const Formattable& actual, UBool possibleDataError=false);
+                       const Formattable& actual, UBool possibleDataError=FALSE);
     UBool assertEquals(const UnicodeString& message, const Formattable& expected,
                        const Formattable& actual);
 #endif
-    UBool assertNotEquals(const char* message, int32_t expectedNot, int32_t actual);
-    UBool assertTrue(const UnicodeString& message, UBool condition, UBool quiet=false, UBool possibleDataError=false);
-    UBool assertFalse(const UnicodeString& message, UBool condition, UBool quiet=false, UBool possibleDataError=false);
+    UBool assertTrue(const UnicodeString& message, UBool condition, UBool quiet=FALSE, UBool possibleDataError=FALSE);
+    UBool assertFalse(const UnicodeString& message, UBool condition, UBool quiet=FALSE, UBool possibleDataError=FALSE);
     UBool assertSuccess(const UnicodeString& message, UErrorCode ec);
     UBool assertEquals(const UnicodeString& message, const UnicodeString& expected,
-                       const UnicodeString& actual, UBool possibleDataError=false);
+                       const UnicodeString& actual, UBool possibleDataError=FALSE);
     UBool assertEquals(const UnicodeString& message, const char* expected, const char* actual);
     UBool assertEquals(const UnicodeString& message, UBool expected, UBool actual);
     UBool assertEquals(const UnicodeString& message, int32_t expected, int32_t actual);
     UBool assertEquals(const UnicodeString& message, int64_t expected, int64_t actual);
     UBool assertEquals(const UnicodeString& message, double expected, double actual);
-    /**
-     * Asserts that two doubles are equal to within a positive delta. Returns
-     * false if they are not.
-     *
-     * NaNs are considered equal: assertEquals(msg, NaN, NaN, *) passes.
-     * Infs are considered equal: assertEquals(msg, inf, inf, *) passes.
-     *
-     * @param message - the identifying message for the AssertionError.
-     * @param expected - expected value.
-     * @param actual - the value to check against expected.
-     * @param delta - the maximum delta between expected and actual for which
-     * both numbers are still considered equal.
-     */
-    UBool assertEqualsNear(const UnicodeString& message, double expected, double actual, double delta);
     UBool assertEquals(const UnicodeString& message, UErrorCode expected, UErrorCode actual);
     UBool assertEquals(const UnicodeString& message, const UnicodeSet& expected, const UnicodeSet& actual);
-    UBool assertEquals(const UnicodeString& message,
-        const std::vector<std::string>& expected, const std::vector<std::string>& actual);
-    UBool assertNotEquals(const UnicodeString& message, int32_t expectedNot, int32_t actual);
 
-    virtual void runIndexedTest( int32_t index, UBool exec, const char* &name, char* par = nullptr ); // override !
+    virtual void runIndexedTest( int32_t index, UBool exec, const char* &name, char* par = NULL ); // overide !
 
     virtual UBool runTestLoop( char* testname, char* par, char *baseName );
 
-    virtual int32_t IncErrorCount();
+    virtual int32_t IncErrorCount( void );
 
-    virtual int32_t IncDataErrorCount();
+    virtual int32_t IncDataErrorCount( void );
 
     virtual UBool callTest( IntlTest& testToBeCalled, char* par );
 
@@ -373,7 +332,6 @@ public:
     UBool       quick;
     UBool       leaks;
     UBool       warn_on_missing_data;
-    UBool       write_golden_data;
     UBool       no_time;
     int32_t     threadCount;
 
@@ -402,7 +360,7 @@ protected:
     // used for collation result reporting, defined here for convenience
 
     static UnicodeString &prettify(const UnicodeString &source, UnicodeString &target);
-    static UnicodeString prettify(const UnicodeString &source, UBool parseBackslash=false);
+    static UnicodeString prettify(const UnicodeString &source, UBool parseBackslash=FALSE);
     // digits=-1 determines the number of digits automatically
     static UnicodeString &appendHex(uint32_t number, int32_t digits, UnicodeString &target);
     static UnicodeString toHex(uint32_t number, int32_t digits=-1);
@@ -418,11 +376,9 @@ public:
 public:
     UBool run_phase2( char* name, char* par ); // internally, supports reporting memory leaks
     static const char* loadTestData(UErrorCode& err);
-    virtual const char* getTestDataPath(UErrorCode& err) override;
+    virtual const char* getTestDataPath(UErrorCode& err);
     static const char* getSourceTestData(UErrorCode& err);
     static char *getUnidataPath(char path[]);
-    char16_t *ReadAndConvertFile(const char *fileName, int &ulen, const char *encoding, UErrorCode &status);
-
 
 // static members
 public:
@@ -433,11 +389,11 @@ public:
 
 void it_log( UnicodeString message );
 void it_logln( UnicodeString message );
-void it_logln();
+void it_logln( void );
 void it_info( UnicodeString message );
 void it_infoln( UnicodeString message );
-void it_infoln();
-void it_err();
+void it_infoln( void );
+void it_err(void);
 void it_err( UnicodeString message );
 void it_errln( UnicodeString message );
 void it_dataerr( UnicodeString message );

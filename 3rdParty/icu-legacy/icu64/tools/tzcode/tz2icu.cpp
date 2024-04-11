@@ -51,7 +51,7 @@
 
 using namespace std;
 
-bool ICU44PLUS = true;
+bool ICU44PLUS = TRUE;
 string TZ_RESOURCE_NAME = ICU_TZ_RESOURCE;
 
 //--------------------------------------------------------------------
@@ -218,7 +218,7 @@ void ZoneInfo::addAlias(int32_t index) {
 
 void ZoneInfo::setAliasTo(int32_t index) {
     assert(index >= 0);
-    assert(aliases.empty());
+    assert(aliases.size() == 0);
     aliasTo = index;
 }
 
@@ -373,11 +373,11 @@ void readzoneinfo(ifstream& file, ZoneInfo& info, bool is64bitData) {
                     }
                 } else if (transitionTimes[i] > HIGHEST_TIME32) {
                     // Skipping the rest of the transition data.  We cannot put such
-                    // transitions into zoneinfo.res, because data is limited to signed
+                    // transitions into zoneinfo.res, because data is limited to singed
                     // 32bit int by the ICU resource bundle.
                     break;
                 } else {
-                    info.transitions.emplace_back(transitionTimes[i], transitionTypes[i]);
+                    info.transitions.push_back(Transition(transitionTimes[i], transitionTypes[i]));
                 }
             }
     
@@ -393,7 +393,7 @@ void readzoneinfo(ifstream& file, ZoneInfo& info, bool is64bitData) {
         }
     } else {
         for (i=0; i<timecnt; ++i) {
-            info.transitions.emplace_back(transitionTimes[i], transitionTypes[i]);
+            info.transitions.push_back(Transition(transitionTimes[i], transitionTypes[i]));
         }
     }
 
@@ -461,7 +461,7 @@ void readzoneinfo(ifstream& file, ZoneInfo& info, bool is64bitData) {
         for (char* p=str; p<limit; ++p) {
             char* start = p;
             while (*p != 0) ++p;
-            info.abbrs.emplace_back(start, p - start);
+            info.abbrs.push_back(string(start, p-start));
             abbroffset.push_back(start-str);
         }
 
@@ -650,7 +650,7 @@ void scandir(string dir, string prefix="") {
     vector<string> subdirs;
     vector<string> subfiles;
 
-    if ((dp = opendir(dir.c_str())) == nullptr) {
+    if ((dp = opendir(dir.c_str())) == NULL) {
         cerr << "Error: Invalid directory: " << dir << endl;
         exit(1);
     }
@@ -659,7 +659,7 @@ void scandir(string dir, string prefix="") {
         exit(1);
     }
     chdir(dir.c_str());
-    while ((dir_entry = readdir(dp)) != nullptr) {
+    while ((dir_entry = readdir(dp)) != NULL) {
         string name = dir_entry->d_name;
         string path = dir + "/" + name;
         lstat(dir_entry->d_name,&stat_info);
@@ -774,16 +774,16 @@ struct FinalRulePart {
     // wall time, local standard time, and GMT standard time.
     // Here is how the isstd & isgmt flags are set by zic:
     //| case 's':       /* Standard */
-    //|         rp->r_todisstd = true;
-    //|         rp->r_todisgmt = false;
+    //|         rp->r_todisstd = TRUE;
+    //|         rp->r_todisgmt = FALSE;
     //| case 'w':       /* Wall */
-    //|         rp->r_todisstd = false;
-    //|         rp->r_todisgmt = false;
+    //|         rp->r_todisstd = FALSE;
+    //|         rp->r_todisgmt = FALSE;
     //| case 'g':       /* Greenwich */
     //| case 'u':       /* Universal */
     //| case 'z':       /* Zulu */
-    //|         rp->r_todisstd = true;
-    //|         rp->r_todisgmt = true;
+    //|         rp->r_todisstd = TRUE;
+    //|         rp->r_todisgmt = TRUE;
     bool isstd;
     bool isgmt;
 
@@ -999,7 +999,7 @@ void readFinalZonesAndRules(istream& in) {
     ruleIDset.clear();
     for_each(finalRules.begin(), finalRules.end(), insertRuleID);
     for_each(finalZones.begin(), finalZones.end(), eraseRuleID);
-    if (!ruleIDset.empty()) {
+    if (ruleIDset.size() != 0) {
         throw invalid_argument("Unused rules");
     }
 }
@@ -1015,7 +1015,7 @@ void ZoneInfo::print(ostream& os, const string& id) const {
   os << "  /* " << id << " */ ";
 
     if (aliasTo >= 0) {
-        assert(aliases.empty());
+        assert(aliases.size() == 0);
         os << ":int { " << aliasTo << " } "; // No endl - save room for comment.
         return;
     }
@@ -1047,7 +1047,7 @@ void ZoneInfo::print(ostream& os, const string& id) const {
             os << " }" << endl;
         }
 
-        // 32bit transitions
+        // 32bit transtions
         if (trn != transitions.end() && trn->time < HIGHEST_TIME32) {
             os << "    trans:intvector { ";
             for (first = true; trn != transitions.end() && trn->time < HIGHEST_TIME32; ++trn) {
@@ -1060,7 +1060,7 @@ void ZoneInfo::print(ostream& os, const string& id) const {
             os << " }" << endl;
         }
 
-        // post 32bit transitions
+        // post 32bit transitons
         if (trn != transitions.end()) {
             os << "    transPost32:intvector { ";
             for (first = true; trn != transitions.end(); ++trn) {
@@ -1097,7 +1097,7 @@ void ZoneInfo::print(ostream& os, const string& id) const {
     os << " }" << endl;
 
     if (ICU44PLUS) {
-        if (!transitions.empty()) {
+        if (transitions.size() != 0) {
             os << "    typeMap:bin { \"" << hex << setfill('0');
             for (trn = transitions.begin(); trn != transitions.end(); ++trn) {
                 os << setw(2) << trn->type;
@@ -1126,7 +1126,7 @@ void ZoneInfo::print(ostream& os, const string& id) const {
     }
 
     // Alias list, if any
-    if (!aliases.empty()) {
+    if (aliases.size() != 0) {
         first = true;
         if (ICU44PLUS) {
             os << "    links:intvector { ";
@@ -1190,6 +1190,11 @@ ostream& printStringList( ostream& os, const ZoneMap& zoneinfo) {
 // main
 //--------------------------------------------------------------------
 
+// Unary predicate for finding transitions after a given time
+bool isAfter(const Transition t, int64_t thresh) {
+    return t.time >= thresh;
+}
+
 /**
  * A zone type that contains only the raw and dst offset.  Used by the
  * optimizeTypeList() method.
@@ -1240,7 +1245,7 @@ void ZoneInfo::optimizeTypeList() {
         // by inserting the dummy transition indirectly.
 
         // If there are zero transitions and one type, then leave that as-is.
-        if (transitions.empty()) {
+        if (transitions.size() == 0) {
             if (types.size() != 1) {
                 cerr << "Error: transition count = 0, type count = " << types.size() << endl;
             }
@@ -1322,10 +1327,10 @@ void ZoneInfo::optimizeTypeList() {
 
             // Replace type list
             types.clear();
-            types.emplace_back(initialSimplifiedType);
+            types.push_back(initialSimplifiedType);
             for (set<SimplifiedZoneType>::const_iterator i=simpleset.begin(); i!=simpleset.end(); ++i) {
                 if (*i < initialSimplifiedType || initialSimplifiedType < *i) {
-                    types.emplace_back(*i);
+                    types.push_back(*i);
                 }
             }
 
@@ -1366,7 +1371,7 @@ void ZoneInfo::mergeFinalData(const FinalZone& fz) {
 
     vector<Transition>::iterator it =
         find_if(transitions.begin(), transitions.end(),
-                [seconds](const Transition& t) { return t.time >= seconds; });
+                bind2nd(ptr_fun(isAfter), seconds));
     transitions.erase(it, transitions.end());
 
     if (finalYear != -1) {
@@ -1426,19 +1431,19 @@ void FinalRule::print(ostream& os) const {
 
 int main(int argc, char *argv[]) {
     string rootpath, zonetab, version;
-    bool validArgs = false;
+    bool validArgs = FALSE;
 
     if (argc == 4 || argc == 5) {
-        validArgs = true;
+        validArgs = TRUE;
         rootpath = argv[1];
         zonetab = argv[2];
         version = argv[3];
         if (argc == 5) {
             if (strcmp(argv[4], "--old") == 0) {
-                ICU44PLUS = false;
+                ICU44PLUS = FALSE;
                 TZ_RESOURCE_NAME = ICU_TZ_RESOURCE_OLD;
             } else {
-                validArgs = false;
+                validArgs = FALSE;
             }
         }
     }
@@ -1667,7 +1672,7 @@ int main(int argc, char *argv[]) {
                 string zone, country;
                 istringstream is(line);
                 is >> zone >> country;
-                if (zone.empty()) continue;
+                if (zone.size() == 0) continue;
                 if (country.size() < 2) {
                     cerr << "Error: Can't parse " << line << " in " << ICU_REGIONS << endl;
                     return 1;
@@ -1698,8 +1703,8 @@ int main(int argc, char *argv[]) {
             string country, coord, zone;
             istringstream is(line);
             is >> country >> coord >> zone;
-            if (country.empty()) continue;
-            if (country.size() != 2 || zone.empty()) {
+            if (country.size() == 0) continue;
+            if (country.size() != 2 || zone.size() < 1) {
                 cerr << "Error: Can't parse " << line << " in " << zonetab << endl;
                 return 1;
             }
@@ -1776,6 +1781,7 @@ int main(int argc, char *argv[]) {
     time_t sec;
     time(&sec);
     struct tm* now = localtime(&sec);
+    int32_t thisYear = now->tm_year + 1900;
 
     string filename = TZ_RESOURCE_NAME + ".txt";
     // Write out a resource-bundle source file containing data for
@@ -1784,7 +1790,7 @@ int main(int argc, char *argv[]) {
     if (file) {
         file << "//---------------------------------------------------------" << endl
              << "// Copyright (C) 2016 and later: Unicode, Inc. and others." << endl
-             << "// License & terms of use: http://www.unicode.org/copyright.html" << endl
+             << "// License & terms of use: http://www.unicode.org/copyright.html#License" << endl
              << "//---------------------------------------------------------" << endl
              << "// Build tool:  tz2icu" << endl
              << "// Build date:  " << asctime(now) /* << endl -- asctime emits CR */

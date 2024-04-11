@@ -62,7 +62,7 @@ pl_getParagraphLevel(pl_paragraph *paragraph)
 {
     ParagraphLayout *pl = (ParagraphLayout *) paragraph;
 
-    if (pl == nullptr) {
+    if (pl == NULL) {
         return 0;
     }
 
@@ -74,7 +74,7 @@ pl_getTextDirection(pl_paragraph *paragraph)
 {
     ParagraphLayout *pl = (ParagraphLayout *) paragraph;
 
-    if (pl == nullptr) {
+    if (pl == NULL) {
         return UBIDI_LTR;
     }
 
@@ -86,7 +86,7 @@ pl_getAscent(const pl_paragraph *paragraph)
 {
     ParagraphLayout *pl = (ParagraphLayout *) paragraph;
 
-    if (pl == nullptr) {
+    if (pl == NULL) {
         return 0;
     }
 
@@ -98,7 +98,7 @@ pl_getDescent(const pl_paragraph *paragraph)
 {
     ParagraphLayout *pl = (ParagraphLayout *) paragraph;
 
-    if (pl == nullptr) {
+    if (pl == NULL) {
         return 0;
     }
 
@@ -110,7 +110,7 @@ pl_getLeading(const pl_paragraph *paragraph)
 {
     ParagraphLayout *pl = (ParagraphLayout *) paragraph;
 
-    if (pl == nullptr) {
+    if (pl == NULL) {
         return 0;
     }
 
@@ -122,7 +122,7 @@ pl_reflow(pl_paragraph *paragraph)
 {
     ParagraphLayout *pl = (ParagraphLayout *) paragraph;
 
-    if (pl == nullptr) {
+    if (pl == NULL) {
         return;
     }
 
@@ -134,8 +134,8 @@ pl_nextLine(pl_paragraph *paragraph, float width)
 {
     ParagraphLayout *pl = (ParagraphLayout *) paragraph;
 
-    if (pl == nullptr) {
-        return nullptr;
+    if (pl == NULL) {
+        return NULL;
     }
 
     return (pl_line *) pl->nextLine(width);
@@ -154,7 +154,7 @@ pl_countLineRuns(const pl_line *line)
 {
     ParagraphLayout::Line *ll = (ParagraphLayout::Line *) line;
 
-    if (ll == nullptr) {
+    if (ll == NULL) {
         return 0;
     }
 
@@ -166,7 +166,7 @@ pl_getLineAscent(const pl_line *line)
 {
     ParagraphLayout::Line *ll = (ParagraphLayout::Line *) line;
 
-    if (ll == nullptr) {
+    if (ll == NULL) {
         return 0;
     }
 
@@ -178,7 +178,7 @@ pl_getLineDescent(const pl_line *line)
 {
     ParagraphLayout::Line *ll = (ParagraphLayout::Line *) line;
 
-    if (ll == nullptr) {
+    if (ll == NULL) {
         return 0;
     }
 
@@ -190,7 +190,7 @@ pl_getLineLeading(const pl_line *line)
 {
     ParagraphLayout::Line *ll = (ParagraphLayout::Line *) line;
 
-    if (ll == nullptr) {
+    if (ll == NULL) {
         return 0;
     }
 
@@ -202,7 +202,7 @@ pl_getLineWidth(const pl_line *line)
 {
     ParagraphLayout::Line *ll = (ParagraphLayout::Line *) line;
 
-    if (ll == nullptr) {
+    if (ll == NULL) {
         return 0;
     }
 
@@ -214,8 +214,8 @@ pl_getLineVisualRun(const pl_line *line, le_int32 runIndex)
 {
     ParagraphLayout::Line *ll = (ParagraphLayout::Line *) line;
 
-    if (ll == nullptr) {
-        return nullptr;
+    if (ll == NULL) {
+        return 0;
     }
 
     return (pl_visualRun *) ll->getVisualRun(runIndex);
@@ -226,8 +226,8 @@ pl_getVisualRunFont(const pl_visualRun *run)
 {
     ParagraphLayout::VisualRun *vr = (ParagraphLayout::VisualRun *) run;
 
-    if (vr == nullptr) {
-        return nullptr;
+    if (vr == NULL) {
+        return NULL;
     }
 
     return (const le_font *) vr->getFont();
@@ -238,7 +238,7 @@ pl_getVisualRunDirection(const pl_visualRun *run)
 {
     ParagraphLayout::VisualRun *vr = (ParagraphLayout::VisualRun *) run;
 
-    if (vr == nullptr) {
+    if (vr == NULL) {
         return UBIDI_LTR;
     }
 
@@ -250,7 +250,7 @@ pl_getVisualRunGlyphCount(const pl_visualRun *run)
 {
     ParagraphLayout::VisualRun *vr = (ParagraphLayout::VisualRun *) run;
 
-    if (vr == nullptr) {
+    if (vr == NULL) {
         return -1;
     }
 
@@ -262,8 +262,8 @@ pl_getVisualRunGlyphs(const pl_visualRun *run)
 {
     ParagraphLayout::VisualRun *vr = (ParagraphLayout::VisualRun *) run;
 
-    if (vr == nullptr) {
-        return nullptr;
+    if (vr == NULL) {
+        return NULL;
     }
 
     return vr->getGlyphs();
@@ -274,8 +274,8 @@ pl_getVisualRunPositions(const pl_visualRun *run)
 {
     ParagraphLayout::VisualRun *vr = (ParagraphLayout::VisualRun *) run;
 
-    if (vr == nullptr) {
-        return nullptr;
+    if (vr == NULL) {
+        return NULL;
     }
 
     return vr->getPositions();
@@ -286,8 +286,8 @@ pl_getVisualRunGlyphToCharMap(const pl_visualRun *run)
 {
     ParagraphLayout::VisualRun *vr = (ParagraphLayout::VisualRun *) run;
 
-    if (vr == nullptr) {
-        return nullptr;
+    if (vr == NULL) {
+        return NULL;
     }
 
     return vr->getGlyphToCharMap();
@@ -298,7 +298,7 @@ pl_getVisualRunAscent(const pl_visualRun *run)
 {
     ParagraphLayout::VisualRun *vr = (ParagraphLayout::VisualRun *) run;
 
-    if (vr == nullptr) {
+    if (vr == NULL) {
         return 0;
     }
 
@@ -310,7 +310,7 @@ pl_getVisualRunDescent(const pl_visualRun *run)
 {
     ParagraphLayout::VisualRun *vr = (ParagraphLayout::VisualRun *) run;
 
-    if (vr == nullptr) {
+    if (vr == NULL) {
         return 0;
     }
 
@@ -322,7 +322,7 @@ pl_getVisualRunLeading(const pl_visualRun *run)
 {
     ParagraphLayout::VisualRun *vr = (ParagraphLayout::VisualRun *) run;
 
-    if (vr == nullptr) {
+    if (vr == NULL) {
         return 0;
     }
 

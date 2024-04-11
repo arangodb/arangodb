@@ -18,7 +18,7 @@
 class UCTItem : public SharedObject {
   public:
     char *value;
-    UCTItem(const char *x) : value(nullptr) { 
+    UCTItem(const char *x) : value(NULL) { 
         value = uprv_strdup(x);
     }
     virtual ~UCTItem() {
@@ -34,20 +34,20 @@ U_NAMESPACE_BEGIN
 template<> U_EXPORT
 const UCTItem *LocaleCacheKey<UCTItem>::createObject(
         const void *context, UErrorCode &status) const {
-    const UnifiedCache *cacheContext = static_cast<const UnifiedCache *>(context);
+    const UnifiedCache *cacheContext = (const UnifiedCache *) context;
     if (uprv_strcmp(fLoc.getName(), "zh") == 0) {
         status = U_MISSING_RESOURCE_ERROR;
-        return nullptr;
+        return NULL;
     }
     if (uprv_strcmp(fLoc.getLanguage(), fLoc.getName()) != 0) {
-        const UCTItem *item = nullptr;
-        if (cacheContext == nullptr) {
+        const UCTItem *item = NULL;
+        if (cacheContext == NULL) {
             UnifiedCache::getByLocale(fLoc.getLanguage(), item, status);
         } else {
             cacheContext->get(LocaleCacheKey<UCTItem>(fLoc.getLanguage()), item, status);
         }
         if (U_FAILURE(status)) {
-            return nullptr;
+            return NULL;
         }
         return item;
     }
@@ -59,7 +59,7 @@ const UCTItem *LocaleCacheKey<UCTItem>::createObject(
 template<> U_EXPORT
 const UCTItem2 *LocaleCacheKey<UCTItem2>::createObject(
         const void * /*unused*/, UErrorCode & /*status*/) const {
-    return nullptr;
+    return NULL;
 }
 
 U_NAMESPACE_END
@@ -69,8 +69,7 @@ class UnifiedCacheTest : public IntlTest {
 public:
     UnifiedCacheTest() {
     }
-    void runIndexedTest(int32_t index, UBool exec, const char*& name, char* par = nullptr) override;
-
+    void runIndexedTest(int32_t index, UBool exec, const char *&name, char *par=0);
 private:
     void TestEvictionPolicy();
     void TestBounded();
@@ -123,15 +122,15 @@ void UnifiedCacheTest::TestEvictionPolicy() {
     UnifiedCache cache(status);
     assertSuccess("", status);
 
-    // Don't allow unused entries to exceed more than 100% of in use entries.
+    // Don't allow unused entries to exeed more than 100% of in use entries.
     cache.setEvictionPolicy(0, 100, status);
 
     static const char *locales[] = {
             "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
             "11", "12", "13", "14", "15", "16", "17", "18", "19", "20"};
 
-    const UCTItem *usedReferences[] = {nullptr, nullptr, nullptr, nullptr, nullptr};
-    const UCTItem *unusedReference = nullptr;
+    const UCTItem *usedReferences[] = {NULL, NULL, NULL, NULL, NULL};
+    const UCTItem *unusedReference = NULL;
 
     // Add 5 in-use entries
     for (int32_t i = 0; i < UPRV_LENGTHOF(usedReferences); i++) {
@@ -153,7 +152,7 @@ void UnifiedCacheTest::TestEvictionPolicy() {
     }
     unusedReference->removeRef();
 
-    // unused count not to exceed in use count
+    // unused count not to exeed in use count
     assertEquals("T1", UPRV_LENGTHOF(usedReferences), cache.unusedCount());
     assertEquals("T2", 2*UPRV_LENGTHOF(usedReferences), cache.keyCount());
 
@@ -196,11 +195,11 @@ void UnifiedCacheTest::TestBounded() {
     // We first add 5 key-value pairs with two distinct values, "en" and "fr"
     // keeping all those references.
 
-    const UCTItem *en = nullptr;
-    const UCTItem *enGb = nullptr;
-    const UCTItem *enUs = nullptr;
-    const UCTItem *fr = nullptr;
-    const UCTItem *frFr = nullptr;
+    const UCTItem *en = NULL;
+    const UCTItem *enGb = NULL;
+    const UCTItem *enUs = NULL;
+    const UCTItem *fr = NULL;
+    const UCTItem *frFr = NULL;
     cache.get(LocaleCacheKey<UCTItem>("en_US"), &cache, enUs, status);
     cache.get(LocaleCacheKey<UCTItem>("en"), &cache, en, status);
     assertEquals("T1", 1, cache.unusedCount());
@@ -217,7 +216,7 @@ void UnifiedCacheTest::TestBounded() {
     // the last one. At the end of this, we will hold references to one
     // additional distinct value, so we will have references to 3 distinct
     // values.
-    const UCTItem *throwAway = nullptr;
+    const UCTItem *throwAway = NULL;
     cache.get(LocaleCacheKey<UCTItem>("zn_AA"), &cache, throwAway, status);
     cache.get(LocaleCacheKey<UCTItem>("sr_AA"), &cache, throwAway, status);
     cache.get(LocaleCacheKey<UCTItem>("de_AU"), &cache, throwAway, status);
@@ -265,8 +264,8 @@ void UnifiedCacheTest::TestBounded() {
 
     // Now we hold a references to two more distinct values. Cache size 
     // should grow to 8.
-    const UCTItem *es = nullptr;
-    const UCTItem *ru = nullptr;
+    const UCTItem *es = NULL;
+    const UCTItem *ru = NULL;
     cache.get(LocaleCacheKey<UCTItem>("es"), &cache, es, status);
     cache.get(LocaleCacheKey<UCTItem>("ru"), &cache, ru, status);
     assertEquals("T14", 3, cache.unusedCount());
@@ -301,12 +300,12 @@ void UnifiedCacheTest::TestBasic() {
     assertSuccess("", status);
     cache->flush();
     int32_t baseCount = cache->keyCount();
-    const UCTItem *en = nullptr;
-    const UCTItem *enGb = nullptr;
-    const UCTItem *enGb2 = nullptr;
-    const UCTItem *enUs = nullptr;
-    const UCTItem *fr = nullptr;
-    const UCTItem *frFr = nullptr;
+    const UCTItem *en = NULL;
+    const UCTItem *enGb = NULL;
+    const UCTItem *enGb2 = NULL;
+    const UCTItem *enUs = NULL;
+    const UCTItem *fr = NULL;
+    const UCTItem *frFr = NULL;
     cache->get(LocaleCacheKey<UCTItem>("en"), en, status);
     cache->get(LocaleCacheKey<UCTItem>("en_US"), enUs, status);
     cache->get(LocaleCacheKey<UCTItem>("en_GB"), enGb, status);
@@ -356,9 +355,9 @@ void UnifiedCacheTest::TestError() {
     assertSuccess("", status);
     cache->flush();
     int32_t baseCount = cache->keyCount();
-    const UCTItem *zh = nullptr;
-    const UCTItem *zhTw = nullptr;
-    const UCTItem *zhHk = nullptr;
+    const UCTItem *zh = NULL;
+    const UCTItem *zhTw = NULL;
+    const UCTItem *zhHk = NULL;
 
     status = U_ZERO_ERROR;
     cache->get(LocaleCacheKey<UCTItem>("zh"), zh, status);

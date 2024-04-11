@@ -37,7 +37,7 @@ void addUFormattedValueTest(TestNode** root) {
 }
 
 
-static void TestBasic(void) {
+static void TestBasic() {
     UErrorCode status = U_ZERO_ERROR;
     UConstrainedFieldPosition* ucfpos = ucfpos_open(&status);
     assertSuccess("opening ucfpos", &status);
@@ -56,7 +56,7 @@ static void TestBasic(void) {
     ucfpos_close(ucfpos);
 }
 
-void TestSetters(void) {
+void TestSetters() {
     UErrorCode status = U_ZERO_ERROR;
     UConstrainedFieldPosition* ucfpos = ucfpos_open(&status);
     assertSuccess("opening ucfpos", &status);
@@ -213,7 +213,6 @@ void checkFormattedValue(
         UFieldCategory expectedCategory,
         const UFieldPosition* expectedFieldPositions,
         int32_t expectedFieldPositionsLength) {
-    (void)expectedFieldPositionsLength; // suppress compiler warnings about unused variable
     UErrorCode ec = U_ZERO_ERROR;
     checkFormattedValueString(message, fv, expectedString, &ec);
     if (U_FAILURE(ec)) { return; }
@@ -245,7 +244,6 @@ void checkMixedFormattedValue(
         const UChar* expectedString,
         const UFieldPositionWithCategory* expectedFieldPositions,
         int32_t length) {
-    (void)length; // suppress compiler warnings about unused variable
     UErrorCode ec = U_ZERO_ERROR;
     checkFormattedValueString(message, fv, expectedString, &ec);
     if (U_FAILURE(ec)) { return; }

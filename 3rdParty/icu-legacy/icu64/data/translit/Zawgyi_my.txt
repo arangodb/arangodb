@@ -1,6 +1,5 @@
 ﻿# © 2016 and later: Unicode, Inc. and others.
-# License & terms of use: http://www.unicode.org/copyright.html
-# Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+# License & terms of use: http://www.unicode.org/copyright.html#License
 #
 # File: Zawgyi_my.txt
 # Generated from CLDR
@@ -55,14 +54,14 @@ $wspace = [\u0020\u00a0\u1680\u2000-\u200d\u2060\u202f\u205f\u3000\ufeff];
 \u1090 → \u101B ;
 \u1086 → \u103F ;
 # yapin
-[\u103A\u107d] → \u103B ;
+[\u103A|\u107d] → \u103B ;
 # yayit
 ($zmedialra)+ → \u103C ;
 # wasway
 \u103C* \u108A → \u103D \u103E;  # To avoid duplicate medials
 \u103C → \u103D ;
 # hatoh
-[\u103D\u1087] → \u103E ;
+[\u103D|\u1087] → \u103E ;
 \u1088 → \u103E \u102F ;
 \u1089 → \u103E \u1030 ;
 # Vowels

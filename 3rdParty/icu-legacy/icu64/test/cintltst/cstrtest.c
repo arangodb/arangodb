@@ -15,8 +15,6 @@
 *******************************************************************************
 */
 
-#include <stdbool.h>
-
 #include "unicode/ustring.h"
 #include "unicode/ucnv.h"
 #include "cstring.h"
@@ -29,17 +27,11 @@ void addCStringTest(TestNode** root);
 
 static void TestInvariant(void);
 static void TestCompareInvEbcdicAsAscii(void);
-static void TestLocaleAtSign(void);
-static void TestNoInvariantAtSign(void);
-static void TestInvCharToAscii(void);
 
 void addCStringTest(TestNode** root) {
-    addTest(root, &TestAPI, "tsutil/cstrtest/TestAPI");
-    addTest(root, &TestInvariant, "tsutil/cstrtest/TestInvariant");
+    addTest(root, &TestAPI,   "tsutil/cstrtest/TestAPI");
+    addTest(root, &TestInvariant,   "tsutil/cstrtest/TestInvariant");
     addTest(root, &TestCompareInvEbcdicAsAscii, "tsutil/cstrtest/TestCompareInvEbcdicAsAscii");
-    addTest(root, &TestLocaleAtSign, "tsutil/cstrtest/TestLocaleAtSign");
-    addTest(root, &TestNoInvariantAtSign, "tsutil/cstrtest/TestNoInvariantAtSign");
-    addTest(root, &TestInvCharToAscii, "tsutil/cstrtest/TestInvCharToAscii");
 }
 
 static void TestAPI(void)
@@ -125,10 +117,10 @@ static void TestAPI(void)
         log_err("FAIL: uprv_stricmp() where the second string is null failed. Expected: 1, returned %d\n", intValue);
     }
     if((intValue=uprv_stricmp(NULL, NULL)) != 0){
-        log_err("FAIL: uprv_stricmp(NULL, NULL) failed.  Expected:  0, returned %d\n", intValue);
+        log_err("FAIL: uprv_stricmp(NULL, NULL) failed.  Expected:  0, returned %d\n", intValue);;
     }
     if((intValue=uprv_stricmp("", "")) != 0){
-        log_err("FAIL: uprv_stricmp(\"\", \"\") failed.  Expected:  0, returned %d\n", intValue);
+        log_err("FAIL: uprv_stricmp(\"\", \"\") failed.  Expected:  0, returned %d\n", intValue);;
     }
     if((intValue=uprv_stricmp("", "abc")) != -1){
         log_err("FAIL: uprv_stricmp(\"\", \"abc\") failed.  Expected: -1, returned %d\n", intValue);
@@ -154,10 +146,10 @@ static void TestAPI(void)
         log_err("FAIL: uprv_strnicmp() where the second string is null failed. Expected: 1, returned %d\n", intValue);
     }
     if((intValue=uprv_strnicmp(NULL, NULL, 10)) != 0){
-        log_err("FAIL: uprv_strnicmp(NULL, NULL, 10) failed.  Expected:  0, returned %d\n", intValue);
+        log_err("FAIL: uprv_strnicmp(NULL, NULL, 10) failed.  Expected:  0, returned %d\n", intValue);;
     }
     if((intValue=uprv_strnicmp("", "", 10)) != 0){
-        log_err("FAIL: uprv_strnicmp(\"\", \"\") failed.  Expected:  0, returned %d\n", intValue);
+        log_err("FAIL: uprv_strnicmp(\"\", \"\") failed.  Expected:  0, returned %d\n", intValue);;
     }
     if((intValue=uprv_strnicmp("", "abc", 10)) != -1){
         log_err("FAIL: uprv_stricmp(\"\", \"abc\", 10) failed.  Expected: -1, returned %d\n", intValue);
@@ -170,7 +162,7 @@ static void TestAPI(void)
 
 /* test invariant-character handling */
 static void
-TestInvariant(void) {
+TestInvariant() {
     /* all invariant graphic chars and some control codes (not \n!) */
     const char invariantChars[]=
         "\t\r \"%&'()*+,-./"
@@ -279,7 +271,7 @@ TestInvariant(void) {
         log_err("uprv_isInvariantString(\"\\0\") failed\n");
     }
 
-    for(i=0; i<(int32_t)(sizeof(variantChars)-1); ++i) {
+    for(i=0; i<(sizeof(variantChars)-1); ++i) {
         if(uprv_isInvariantString(variantChars+i, 1)) {
             log_err("uprv_isInvariantString(variantChars[%d]) failed\n", i);
         }
@@ -306,7 +298,7 @@ static int32_t getSign(int32_t n) {
 }
 
 static void
-TestCompareInvEbcdicAsAscii(void) {
+TestCompareInvEbcdicAsAscii() {
     static const char *const invStrings[][2]={
         /* invariant-character strings in ascending ASCII order */
         /* EBCDIC       native */
@@ -345,55 +337,5 @@ TestCompareInvEbcdicAsAscii(void) {
             log_err("uprv_compareInvEbcdicAsAscii(%s, %s)=%hd is wrong\n",
                     invStrings[i][1], invStrings[i-1][1], (short)diff2);
         }
-    }
-}
-
-// See U_CHARSET_FAMILY in unicode/platform.h.
-static const char *nativeInvChars =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    "abcdefghijklmnopqrstuvwxyz"
-    "0123456789 \"%&'()*+,-./:;<=>?_";
-static const UChar *asciiInvChars =
-    u"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    u"abcdefghijklmnopqrstuvwxyz"
-    u"0123456789 \"%&'()*+,-./:;<=>?_";
-
-static void
-TestLocaleAtSign(void) {
-    static const char *invLocale = "de-Latn_DE@PHONEBOOK";
-    for (int32_t i = 0;; ++i) {
-        char ic = invLocale[i];
-        if (ic == 0) { break; }
-        UBool expected = i == 10;
-        UBool actual = uprv_isAtSign(ic);
-        if (actual != expected) {
-            log_err("uprv_isAtSign('%c')=%d is wrong\n", ic, (int)actual);
-        }
-    }
-}
-
-// The at sign is not an invariant character.
-static void
-TestNoInvariantAtSign(void) {
-    for (int32_t i = 0;; ++i) {
-        char ic = nativeInvChars[i];
-        UBool actual = uprv_isAtSign(ic);
-        if (actual) {
-            log_err("uprv_isAtSign(invariant '%c')=true is wrong\n", ic);
-        }
-        if (ic == 0) { break; }
-    }
-}
-
-static void
-TestInvCharToAscii(void) {
-    for (int32_t i = 0;; ++i) {
-        char ic = nativeInvChars[i];
-        uint8_t ac = (uint8_t)asciiInvChars[i];
-        uint8_t actual = uprv_invCharToAscii(ic);
-        if (actual != ac) {
-            log_err("uprv_invCharToAscii('%c') did not convert to ASCII 0x%02x\n", ic, (int)ac);
-        }
-        if (ic == 0) { break; }
     }
 }

@@ -111,10 +111,6 @@ void NumberParserTest::testBasic() {
                  {3, u"𝟱.𝟭𝟰𝟮E𝟯", u"0", 12, 5142.},
                  {3, u"𝟱.𝟭𝟰𝟮E-𝟯", u"0", 13, 0.005142},
                  {3, u"𝟱.𝟭𝟰𝟮e-𝟯", u"0", 13, 0.005142},
-                 {3, u"5.142e+3", u"0", 8, 5142.0 },
-                 {3, u"5.142\u200Ee+3", u"0", 9, 5142.0},
-                 {3, u"5.142e\u200E+3", u"0", 9, 5142.0},
-                 {3, u"5.142e+\u200E3", u"0", 9, 5142.0},
                  {7, u"5,142.50 Canadian dollars", u"#,##,##0 ¤¤¤", 25, 5142.5},
                  {3, u"a$ b5", u"a ¤ b0", 5, 5.0},
                  {3, u"📺1.23", u"📺0;📻0", 6, 1.23},
@@ -126,7 +122,7 @@ void NumberParserTest::testBasic() {
                  {3, u"0", u"0", 1, 0.0}};
 
     parse_flags_t parseFlags = PARSE_FLAG_IGNORE_CASE | PARSE_FLAG_INCLUDE_UNPAIRED_AFFIXES;
-    for (const auto& cas : cases) {
+    for (auto& cas : cases) {
         UnicodeString inputString(cas.inputString);
         UnicodeString patternString(cas.patternString);
         LocalPointer<const NumberParserImpl> parser(
@@ -192,12 +188,11 @@ void NumberParserTest::testSeriesMatcher() {
     }
     PlusSignMatcher m0(symbols, false);
     MinusSignMatcher m1(symbols, false);
-    IgnorablesMatcher m2(0);
+    IgnorablesMatcher m2(unisets::DEFAULT_IGNORABLES);
     PercentMatcher m3(symbols);
-    IgnorablesMatcher m4(0);
+    IgnorablesMatcher m4(unisets::DEFAULT_IGNORABLES);
 
-    ArraySeriesMatcher::MatcherArray matchers(5, status);
-    status.assertSuccess();
+    ArraySeriesMatcher::MatcherArray matchers(5);
     matchers[0] = &m0;
     matchers[1] = &m1;
     matchers[2] = &m2;
@@ -227,7 +222,7 @@ void NumberParserTest::testSeriesMatcher() {
                  {u"+-  %  ", 7, true},
                  {u"+-%$", 3, false}};
 
-    for (const auto& cas : cases) {
+    for (auto& cas : cases) {
         UnicodeString input(cas.input);
 
         StringSegment segment(input, false);
@@ -243,7 +238,7 @@ void NumberParserTest::testSeriesMatcher() {
 void NumberParserTest::testCombinedCurrencyMatcher() {
     IcuTestErrorCode status(*this, "testCombinedCurrencyMatcher");
 
-    IgnorablesMatcher ignorables(0);
+    IgnorablesMatcher ignorables(unisets::DEFAULT_IGNORABLES);
     Locale locale = Locale::getEnglish();
 
     DecimalFormatSymbols dfs(locale, status);
@@ -275,7 +270,7 @@ void NumberParserTest::testCombinedCurrencyMatcher() {
               {u"euros", u"EUR", u""},
               {u"ICU", u"ICU", u"ICU"},
               {u"IU$", u"ICU", u"ICU"}};
-    for (const auto& cas : cases) {
+    for (auto& cas : cases) {
         UnicodeString input(cas.input);
 
         {
@@ -310,7 +305,7 @@ void NumberParserTest::testCombinedCurrencyMatcher() {
 void NumberParserTest::testAffixPatternMatcher() {
     IcuTestErrorCode status(*this, "testAffixPatternMatcher");
     Locale locale = Locale::getEnglish();
-    IgnorablesMatcher ignorables(0);
+    IgnorablesMatcher ignorables(unisets::DEFAULT_IGNORABLES);
 
     DecimalFormatSymbols dfs(locale, status);
     dfs.setSymbol(DecimalFormatSymbols::kCurrencySymbol, u"IU$", status);
@@ -333,7 +328,7 @@ void NumberParserTest::testAffixPatternMatcher() {
                  {true, u"abc", 3, u"abc"},
                  {false, u"hello-to+this%very¤long‰string", 59, u"hello-to+this%very USD long‰string"}};
 
-    for (const auto& cas : cases) {
+    for (auto& cas : cases) {
         UnicodeString affixPattern(cas.affixPattern);
         UnicodeString sampleParseableString(cas.sampleParseableString);
         int parseFlags = cas.exactMatch ? PARSE_FLAG_EXACT_AFFIX : 0;

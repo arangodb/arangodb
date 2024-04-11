@@ -29,7 +29,7 @@ public:
     SSearchTest();
     virtual ~SSearchTest();
 
-    virtual void runIndexedTest(int32_t index, UBool exec, const char* &name, char* params = nullptr ) override;
+    virtual void runIndexedTest(int32_t index, UBool exec, const char* &name, char* params = NULL );
 #if !UCONFIG_NO_BREAK_ITERATION
 
     virtual void searchTest();

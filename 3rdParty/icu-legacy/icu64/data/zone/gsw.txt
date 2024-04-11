@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 gsw{
+    Version{"2.1.47.82"}
     zoneStrings{
         "Africa:Accra"{
             ec{"Akkra"}
@@ -63,6 +63,21 @@ gsw{
         "America:Port_of_Spain"{
             ec{"Port-of-Spain"}
         }
+        "America:Scoresbysund"{
+            ec{"Ittoqqortoormiit"}
+        }
+        "America:St_Kitts"{
+            ec{"St. Kitts"}
+        }
+        "America:St_Lucia"{
+            ec{"St. Lucia"}
+        }
+        "America:St_Thomas"{
+            ec{"St. Thomas"}
+        }
+        "America:St_Vincent"{
+            ec{"St. Vincent"}
+        }
         "Antarctica:DumontDUrville"{
             ec{"Dumont D’Urville"}
         }
@@ -92,6 +107,9 @@ gsw{
         }
         "Asia:Krasnoyarsk"{
             ec{"Krasnojarsk"}
+        }
+        "Asia:Macau"{
+            ec{"Macao"}
         }
         "Asia:Muscat"{
             ec{"Muschkat"}
@@ -165,6 +183,9 @@ gsw{
         "Atlantic:South_Georgia"{
             ec{"Süüd-Georgie"}
         }
+        "Atlantic:St_Helena"{
+            ec{"St. Helena"}
+        }
         "Etc:Unknown"{
             ec{"Unbekannt"}
         }
@@ -201,6 +222,9 @@ gsw{
         "Europe:Tirane"{
             ec{"Tirana"}
         }
+        "Europe:Uzhgorod"{
+            ec{"Uschgorod"}
+        }
         "Europe:Vienna"{
             ec{"Wien"}
         }
@@ -209,6 +233,9 @@ gsw{
         }
         "Europe:Warsaw"{
             ec{"Warschau"}
+        }
+        "Europe:Zaporozhye"{
+            ec{"Saporischja"}
         }
         "Europe:Zurich"{
             ec{"Züri"}
@@ -302,5 +329,8 @@ gsw{
             lg{"Moskauer Ziit"}
             ls{"Moskauer Schtandardziit"}
         }
+        fallbackFormat{"{1} ({0})"}
+        gmtFormat{"GMT{0}"}
+        hourFormat{"+HH:mm;-HH:mm"}
     }
 }

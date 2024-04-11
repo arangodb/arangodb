@@ -89,28 +89,6 @@
 "abc(?!def)"              b    "<r><0>abc</0></r>xyz"
 
 #
-# Nested Lookahead / Behind
-#
-"one(?=(?:(?!<out>).)*</out>)"  "<out><0>one</0> stuff</out>"
-"one(?=(?:(?!<out>).)*</out>)"  "<out>one  <out></out>"
-
-# More nesting lookaround: pattern matches "qq" when not preceded by 'a' and followed by 'z'
-"(?<!a(?!...z))qq"               "<0>qq</0>c"
-"(?<!a(?!...z))qq"               "f<0>qq</0>c"
-"(?<!a(?!...z))qq"               "aqqz"
-
-# More nested lookaround: match any two chars preceded and followed by an upper case letter.
-# With gratuitous nesting of look-arounds and capture from the look-arounds.
-
-"(?=(?<=(\p{Lu})(?=..(\p{Lu})))).."     "<1>A</1><0>jk</0><2>B</2>"
-"(?=(?<=(\p{Lu})(?=..(\p{Lu})))).."     "ajkB"
-"(?=(?<=(\p{Lu})(?=..(\p{Lu})))).."     "Ajkb"
-
-# Nested lookaround cases from bug ICU-20564
-"(?<=(?<=((?=)){0}+))"         "<0></0>abc"
-"(?<=c(?<=c((?=c)){1}+))"      "c<0><1></1></0>cc"
-
-#
 #  Anchoring Bounds
 #
 "^def$"                        "abc<r><0>def</0></r>ghi"           # anchoring (default) bounds
@@ -317,21 +295,11 @@
 "(\S+).*?(\S+).*"              "<0><1>Not-spaces</1>   <2>more-non-spaces</2>  </0>"
 
 # \X  consume one Grapheme Cluster.
-"(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?"  v  "<0><1>A</1><2>B</2><3> </3><4>\r\n</4></0>"
-"(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?"  v  "<0><1>A\u0301</1><2>\n</2><3>\u0305</3><4>a\u0302\u0303\u0304</4></0>"
-"(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?"  v  "<0><1>\u1100\u1161\u11a8</1><2>\u115f\u11a2\u11f9</2></0>"
-"(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?"  v  "<0><1>\u1100\uac01</1><2>\uac02</2><3>\uac03\u11b0</3></0>"
-"(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?"  v  "<0><1>\u1100\u1101\uac02\u0301</1><2>\u1100</2></0>"
-# Regional indicator pairs are grapheme clusters
-"(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?"  v  "<0><1>\U0001f1e6\U0001f1e8</1><2>\U0001f1ea\U0001f1ff</2></0>"
-# Grapheme Break rule 9b:  Prepend x
-"(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?"	v  "<0><1>\U000111C2x</1></0>"
-
-# Grapheme clusters that straddle a match region. Matching is pinned to the region limits,
-# giving boundaries inside grapheme clusters
-"(\X)?(\X)?(\X)?"        v      "a\u0301<r><0><1>\u0301\u0301</1><2>z\u0302</2></0></r>\u0302\u0302"
-# Same as previous test case, but without the region limits.
-"(\X)?(\X)?(\X)?"        v      "<0><1>a\u0301\u0301\u0301</1><2>z\u0302\u0302\u0302</2></0>"
+"(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?"   "<0><1>A</1><2>B</2><3> </3><4>\r\n</4></0>"
+"(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?"   "<0><1>A\u0301</1><2>\n</2><3>\u0305</3><4>a\u0302\u0303\u0304</4></0>"
+"(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?"   "<0><1>\u1100\u1161\u11a8</1><2>\u115f\u11a2\u11f9</2></0>"
+"(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?"   "<0><1>\u1100\uac01</1><2>\uac02</2><3>\uac03\u11b0</3></0>"
+"(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?(\X)?"   "<0><1>\u1100\u1101\uac02\u0301</1><2>\u1100</2></0>"
 
 # ^ matches only at beginning of line
 ".*^(Hello)"                   "<0><1>Hello</1></0> Hello Hello Hello Goodbye"
@@ -389,7 +357,7 @@
 "(a?)*"                        "<0><1></1></0>xyz"
 "(a?)+"                        "<0><1></1></0>xyz"
 "^(?:a?b?)*$"	               "a--"
-"(x?)*xyz"                     "<0>xx<1></1>xyz</0>"    # Sligthtly weird, but correct.  The "last" time through (x?),
+"(x?)*xyz"                     "<0>xx<1></1>xyz</0>"    # Sligthly wierd, but correct.  The "last" time through (x?),
                                                         #   it matches the empty string.
 
 # Set expressions, basic operators and escapes work
@@ -518,7 +486,7 @@
 "(abcd) \1"                Z   "<0><1>abcd</1> abcd</0>"
 "(abcd) \1"                Z   "<0><1>abcd</1> abcd</0> "
 
-# Case Insensitive back references that hit/don't hit end.
+# Case Insensitve back references that hit/don't hit end.
 "(abcd) \1"                zi  "abcd abc"
 "(abcd) \1"                Zi  "<0><1>abcd</1> ABCD</0>"
 "(abcd) \1"                Zi  "<0><1>abcd</1> ABCD</0> "
@@ -1031,7 +999,7 @@
 #
 #    These tests are only to verify that the names are recognized and the
 #    implementation isn't dead.  They are not intended to verify that the
-#    function definitions are 100% correct.
+#    function defintions are 100% correct.
 #
 "[:InBasic Latin:]+"               "ΓΔΕΖΗΘ<0>hello, world.</0>ニヌネノハバパ"
 "[:^InBasic Latin:]+"              "<0>ΓΔΕΖΗΘ</0>hello, world.ニヌネノハバパ"
@@ -1143,7 +1111,7 @@
 "((a|b){2})|c"              s     "C"
 
 #
-# bug 5617  ZWJ \u200d shouldn't cause word boundaries
+# bug 5617  ZWJ \u200d shoudn't cause word boundaries
 #
 ".+?\b"                           "<0> </0>\u0935\u0915\u094D\u200D\u0924\u0947 "
 ".+?\b"                       2   " <0>\u0935\u0915\u094D\u200D\u0924\u0947</0> "
@@ -1471,39 +1439,12 @@
 "[^\u0000-\U0010ffff]"             "a"
 "[^[^\u0000-\U0010ffff]]"          "<0>a</0>"
 
-"This is a string with (?:one |two |three )endings"   "<0>This is a string with two endings</0>"
-
-# Bug ICU-20544. Similar to 20385, above. Assertion failure with a negative look-behind assertion containing
-#                a set with no contents. Look-behind pattern includes more than just the empty set.
-
-"(?<![ⰿ&&m]c)"                     "<0></0>abc"   # note: first 'ⰿ' is \u2c3f, hence empty set.
-"(?<![^\u0000-\U0010ffff]c)"       "<0></0>abc"
-"(?<=[^[^]]†)"                 "abc"          # Problem also exists w positive look-behind
-
-# Bug ICU-20391. Crash in computation of minimum match length with nested look-around patterns.
-#
-"(?<=(?<=((?=)){0}+)"         E    "aaa"
-"(?<=(?<=((?=)){0}+))"             "<0></0>"
-"(?<=c(?<=b((?=a)){1}+))"          "aaa"
-"abc(?=de(?=f))...g"               "<0>abcdefg</0>"
-"abc(?=de(?=f))...g"               "abcdxfg"
-
-# Bug ICU-20618 Assertion failure with nested look-around expressions.
-#
-"(?<=(?<=b?(?=a)))"               "hello, world."
-
-# Bug ICU-20939
-# Incorrect word \b boundaries w UTF-8 input and non-ASCII text
-#
-"(?w)\b"                     v2     "äää<0></0> äää"
-
-# Bug ICU-21492 Assertion failure with nested look-around expressions.
-#
-"(?<=(?:(?<=(?:(?<=(?:(?<=)){2})){3})){4}"   E  "<0></0>"  # orig failure from bug report, w mismatched parens.
-"(?:(?<=(?:(?<=)){2}))"            "<0></0>"               # Simplified case, with a valid pattern.
 
 #  Random debugging, Temporary
 #
+
+
+
 
 #
 #  Regexps from http://www.regexlib.com
@@ -1926,13 +1867,13 @@
 "/\*[\d\D]*?\*/"   G "<0>/* my multiline comment */</0>"
 "/\*[\d\D]*?\*/"   G "<0>/* my nested comment */</0>"
 "/\*[\d\D]*?\*/"     "*/ anything here /*"
-"/\*[\d\D]*?\*/"     "anything between 2 separate comments"
+"/\*[\d\D]*?\*/"     "anything between 2 seperate comments"
 "/\*[\d\D]*?\*/"     "\* *\"
 "/\*[\p{N}\P{N}]*?\*/"   G "<0>/* my comment */</0>"
 "/\*[\p{N}\P{N}]*?\*/"   G "<0>/* my multiline comment */</0>"
 "/\*[\p{N}\P{N}]*?\*/"   G "<0>/* my nested comment */</0>"
 "/\*[\p{N}\P{N}]*?\*/"     "*/ anything here /*"
-"/\*[\p{N}\P{N}]*?\*/"     "anything between 2 separate comments"
+"/\*[\p{N}\P{N}]*?\*/"     "anything between 2 seperate comments"
 "/\*[\p{N}\P{N}]*?\*/"     "\* *\"
 "((0?[13578]|10|12)(-|\/)((0[0-9])|([12])([0-9]?)|(3[01]?))(-|\/)((\d{4})|(\d{2}))|(0?[2469]|11)(-|\/)((0[0-9])|([12])([0-9]?)|(3[0]?))(-|\/)((\d{4}|\d{2})))"   G "<0>1/31/2002</0>"
 "((0?[13578]|10|12)(-|\/)((0[0-9])|([12])([0-9]?)|(3[01]?))(-|\/)((\d{4})|(\d{2}))|(0?[2469]|11)(-|\/)((0[0-9])|([12])([0-9]?)|(3[0]?))(-|\/)((\d{4}|\d{2})))"   G "<0>04-30-02</0>"
@@ -2058,7 +1999,7 @@
 "^((((31\/(0?[13578]|1[02]))|((29|30)\/(0?[1,3-9]|1[0-2])))\/(1[6-9]|[2-9]\d)?\d{2})|(29\/0?2\/(((1[6-9]|[2-9]\d)?(0[48]|[2468][048]|[13579][26])|((16|[2468][048]|[3579][26])00))))|(0?[1-9]|1\d|2[0-8])\/((0?[1-9])|(1[0-2]))\/((1[6-9]|[2-9]\d)?\d{2})) (20|21|22|23|[0-1]?\d):[0-5]?\d:[0-5]?\d$"     "29/02/2003 20:15:15"
 "^((((31\/(0?[13578]|1[02]))|((29|30)\/(0?[1,3-9]|1[0-2])))\/(1[6-9]|[2-9]\d)?\d{2})|(29\/0?2\/(((1[6-9]|[2-9]\d)?(0[48]|[2468][048]|[13579][26])|((16|[2468][048]|[3579][26])00))))|(0?[1-9]|1\d|2[0-8])\/((0?[1-9])|(1[0-2]))\/((1[6-9]|[2-9]\d)?\d{2})) (20|21|22|23|[0-1]?\d):[0-5]?\d:[0-5]?\d$"     "2/29/04 20:15:15"
 "^((((31\/(0?[13578]|1[02]))|((29|30)\/(0?[1,3-9]|1[0-2])))\/(1[6-9]|[2-9]\d)?\d{2})|(29\/0?2\/(((1[6-9]|[2-9]\d)?(0[48]|[2468][048]|[13579][26])|((16|[2468][048]|[3579][26])00))))|(0?[1-9]|1\d|2[0-8])\/((0?[1-9])|(1[0-2]))\/((1[6-9]|[2-9]\d)?\d{2})) (20|21|22|23|[0-1]?\d):[0-5]?\d:[0-5]?\d$"     "31/3/4 9:20:17"
-"^([a-zA-Z0-9_\-\.]+)@([a-zA-Z0-9_\-\.]+)\.([a-zA-Z]{2,5})$"   G "<0>something@someserver.com</0>"
+"^([a-zA-Z0-9_\-\.]+)@([a-zA-Z0-9_\-\.]+)\.([a-zA-Z]{2,5})$"   G "<0>somthing@someserver.com</0>"
 "^([a-zA-Z0-9_\-\.]+)@([a-zA-Z0-9_\-\.]+)\.([a-zA-Z]{2,5})$"   G "<0>firstname.lastname@mailserver.domain.com</0>"
 "^([a-zA-Z0-9_\-\.]+)@([a-zA-Z0-9_\-\.]+)\.([a-zA-Z]{2,5})$"   G "<0>username-something@some-server.nl</0>"
 "^([a-zA-Z0-9_\-\.]+)@([a-zA-Z0-9_\-\.]+)\.([a-zA-Z]{2,5})$"     "username@someserver.domain.c"
@@ -2227,7 +2168,7 @@
 #'<[^>]*name[\s]*=[\s]*"?[^\w_]*"?[^>]*>'   G '<0><form></0>'    #TODO:  Debug
 '<[^>]*name[\s]*=[\s]*"?[^\w_]*"?[^>]*>'     "<input type = submit>"   # TODO:  \w in pattern
 '<[^>]*name[\s]*=[\s]*"?[^\w_]*"?[^>]*>'     '<font face = "arial">'   # TODO:  \w in pattern
-'<[^>]*name[\s]*=[\s]*"?[^\w_]*"?[^>]*>'      "The dirty brown fox stank like"
+'<[^>]*name[\s]*=[\s]*"?[^\w_]*"?[^>]*>'      "The drity brown fox stank like"
 "^(1|01|2|02|3|03|4|04|5|05|6|06|7|07|8|08|9|09|10|11|12{1,2}):(([0-5]{1}[0-9]{1}\s{0,1})([AM|PM|am|pm]{2,2}))\W{0}$"   G "<0>1:00 AM</0>"
 "^(1|01|2|02|3|03|4|04|5|05|6|06|7|07|8|08|9|09|10|11|12{1,2}):(([0-5]{1}[0-9]{1}\s{0,1})([AM|PM|am|pm]{2,2}))\W{0}$"   G "<0>12:00 PM</0>"
 "^(1|01|2|02|3|03|4|04|5|05|6|06|7|07|8|08|9|09|10|11|12{1,2}):(([0-5]{1}[0-9]{1}\s{0,1})([AM|PM|am|pm]{2,2}))\W{0}$"   G "<0>1:00am</0>"

@@ -12,7 +12,6 @@
 #include "numparse_types.h"
 #include "numparse_symbols.h"
 #include "numparse_utils.h"
-#include "string_segment.h"
 
 using namespace icu;
 using namespace icu::numparse;
@@ -69,12 +68,8 @@ UnicodeString SymbolMatcher::toString() const {
 }
 
 
-IgnorablesMatcher::IgnorablesMatcher(parse_flags_t parseFlags) :
-        SymbolMatcher(
-            {},
-            (0 != (parseFlags & PARSE_FLAG_STRICT_IGNORABLES)) ?
-                unisets::STRICT_IGNORABLES :
-                unisets::DEFAULT_IGNORABLES) {
+IgnorablesMatcher::IgnorablesMatcher(unisets::Key key)
+        : SymbolMatcher({}, key) {
 }
 
 bool IgnorablesMatcher::isFlexible() const {

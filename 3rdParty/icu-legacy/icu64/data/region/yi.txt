@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 yi{
     Countries{
         001{"וועלט"}
@@ -140,6 +139,7 @@ yi{
         ME{"מאנטענעגרא"}
         MG{"מאַדאַגאַסקאַר"}
         MH{"מאַרשאַל אינזלען"}
+        MK{"מאַקעדאניע"}
         ML{"מאַלי"}
         MM{"מיאַנמאַר"}
         MN{"מאנגאליי"}
@@ -201,7 +201,6 @@ yi{
         TD{"טשאַד"}
         TG{"טאגא"}
         TH{"טיילאַנד"}
-        TL{"מזרח טימאר"}
         TM{"טורקמעניסטאַן"}
         TN{"טוניסיע"}
         TO{"טאנגאַ"}
@@ -229,4 +228,8 @@ yi{
     Countries%short{
         US{"פֿ\u0022ש"}
     }
+    Countries%variant{
+        TL{"מזרח טימאר"}
+    }
+    Version{"2.1.47.82"}
 }

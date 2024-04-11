@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 de_CH{
     Currencies{
         BYN{
@@ -11,6 +10,10 @@ de_CH{
             "BYR",
             "Weissrussischer Rubel (2000–2016)",
         }
+        CHF{
+            "CHF",
+            "Schweizer Franken",
+        }
         EUR{
             "EUR",
             "Euro",
@@ -18,6 +21,14 @@ de_CH{
         STN{
             "STN",
             "São-toméischer Dobra (2018)",
+        }
+        VEF{
+            "VEF",
+            "Venezolanischer Bolívar",
+        }
+        VES{
+            "VES",
+            "VES",
         }
     }
     Currencies%narrow{
@@ -36,5 +47,14 @@ de_CH{
             one{"São-toméischer Dobra (2018)"}
             other{"São-toméischer Dobra (2018)"}
         }
+        VEF{
+            one{"Venezolanischer Bolívar"}
+            other{"Venezolanische Bolívares"}
+        }
+        VES{
+            one{"VES"}
+            other{"VES"}
+        }
     }
+    Version{"2.1.47.86"}
 }

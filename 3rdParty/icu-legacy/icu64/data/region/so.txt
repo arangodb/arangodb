@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 so{
     Countries{
         001{"Dunida"}
@@ -36,7 +35,7 @@ so{
         419{"Laatiin Ameerika"}
         AC{"Jasiiradda Asensiyoon"}
         AD{"Andora"}
-        AE{"Midawga Imaaraatka Carabta"}
+        AE{"Imaaraadka Carabta ee Midoobay"}
         AF{"Afgaanistaan"}
         AG{"Antigua & Barbuuda"}
         AI{"Anguula"}
@@ -53,7 +52,7 @@ so{
         AZ{"Asarbajan"}
         BA{"Boosniya & Harsegofina"}
         BB{"Baarbadoos"}
-        BD{"Bangaladhesh"}
+        BD{"Bangladesh"}
         BE{"Biljam"}
         BF{"Burkiina Faaso"}
         BG{"Bulgaariya"}
@@ -62,7 +61,7 @@ so{
         BJ{"Biniin"}
         BL{"St. Baathelemiy"}
         BM{"Barmuuda"}
-        BN{"Buruneey"}
+        BN{"Buruneeya"}
         BO{"Boliifiya"}
         BQ{"Karibiyaan Nadarlands"}
         BR{"Baraasiil"}
@@ -83,9 +82,9 @@ so{
         CL{"Jili"}
         CM{"Kaameruun"}
         CN{"Shiinaha"}
-        CO{"Koloombiya"}
+        CO{"Kolombiya"}
         CP{"Jasiiradda Kilibarton"}
-        CR{"Costa Rica"}
+        CR{"Kosta Riika"}
         CU{"Kuuba"}
         CV{"Jasiiradda Kayb Faarde"}
         CW{"Kurakaaw"}
@@ -146,7 +145,7 @@ so{
         IL{"Israaʼiil"}
         IM{"Jasiiradda Isle of Man"}
         IN{"Hindiya"}
-        IO{"Dhul xadeedka Badweynta Hindiya ee Ingiriiska"}
+        IO{"Dhul xadeedka Badweynta Hindiya ee Biritishka"}
         IQ{"Ciraaq"}
         IR{"Iiraan"}
         IS{"Ayslaand"}
@@ -160,7 +159,7 @@ so{
         KH{"Kamboodiya"}
         KI{"Kiribati"}
         KM{"Komooros"}
-        KN{"St. Kitts iyo Nevis"}
+        KN{"St. Kitts & Nefis"}
         KP{"Kuuriyada Waqooyi"}
         KR{"Kuuriyada Koonfureed"}
         KW{"Kuwayt"}
@@ -186,7 +185,7 @@ so{
         MH{"Jasiiradda Maarshal"}
         MK{"Masedooniya Waqooyi"}
         ML{"Maali"}
-        MM{"Mayanmar"}
+        MM{"Miyanmar"}
         MN{"Mongooliya"}
         MO{"Makaaw"}
         MP{"Jasiiradda Waqooyiga Mariaana"}
@@ -195,10 +194,10 @@ so{
         MS{"Montserrat"}
         MT{"Maalta"}
         MU{"Mawrishiyaas"}
-        MV{"Maaldiifis"}
+        MV{"Maaldiqeen"}
         MW{"Malaawi"}
         MX{"Meksiko"}
-        MY{"Malaysiya"}
+        MY{"Malaysia"}
         MZ{"Musambiik"}
         NA{"Namiibiya"}
         NC{"Jasiiradda Niyuu Kaledooniya"}
@@ -216,14 +215,14 @@ so{
         PA{"Baanama"}
         PE{"Beeru"}
         PF{"Booliyneesiya Faransiiska"}
-        PG{"Babwa Niyuu Gini"}
+        PG{"Babua Niyuu Gini"}
         PH{"Filibiin"}
         PK{"Bakistaan"}
         PL{"Booland"}
-        PM{"St. Pierre iyo Miquelon"}
+        PM{"Saint Pierre and Miquelon"}
         PN{"Bitkairn"}
         PR{"Bueerto Riiko"}
-        PS{"Dhulka Falastiiniyiinta daanta galbeed iyo marinka qasa"}
+        PS{"Falastiin Daanka galbeed iyo Qasa"}
         PT{"Bortugaal"}
         PW{"Balaaw"}
         PY{"Baraguaay"}
@@ -240,7 +239,7 @@ so{
         SD{"Suudaan"}
         SE{"Iswidhan"}
         SG{"Singaboor"}
-        SH{"Saynt Helena"}
+        SH{"Saint Helena"}
         SI{"Islofeeniya"}
         SJ{"Jasiiradda Sfaldbaad & Jaan Mayen"}
         SK{"Islofaakiya"}
@@ -278,7 +277,7 @@ so{
         UN{"Qaramada Midoobay"}
         US{"Maraykanka"}
         UY{"Uruguwaay"}
-        UZ{"Usbakistan"}
+        UZ{"Uusbakistaan"}
         VA{"Faatikaan"}
         VC{"St. Finsent & Girenadiins"}
         VE{"Fenisuweela"}
@@ -288,30 +287,31 @@ so{
         VU{"Fanuaatu"}
         WF{"Walis & Futuna"}
         WS{"Samoowa"}
-        XA{"Lahjadaha Pseudo"}
-        XB{"Pseudo-Bidi"}
+        XA{"XA"}
+        XB{"XB"}
         XK{"Koosofo"}
         YE{"Yaman"}
         YT{"Mayotte"}
         ZA{"Koonfur Afrika"}
         ZM{"Saambiya"}
         ZW{"Simbaabwe"}
-        ZZ{"Gobol aan la aqoonin"}
-    }
-    Countries%chagos{
-        IO{"Chagos Archipelago"}
+        ZZ{"Gobol aan la aqoonin amase aan saxnayn"}
     }
     Countries%short{
         GB{"UK"}
+        HK{"Hong Kong"}
+        MO{"Makaaw"}
         PS{"Falastiin"}
+        US{"US"}
     }
     Countries%variant{
         CD{"Jamhuuriyadda Dimuqaadiga Kongo"}
         CG{"Jamhuuriyadda Kongo"}
+        CI{"Aayforikoost"}
         CZ{"Jamhuuriyadda Jek"}
         FK{"Jasiiradaha Fookland"}
-        NZ{"Aotearoa New Zealand"}
         SZ{"Iswaasilaan"}
-        TL{"Bariga Timor"}
+        TL{"Timoor Bari"}
     }
+    Version{"2.1.49.82"}
 }

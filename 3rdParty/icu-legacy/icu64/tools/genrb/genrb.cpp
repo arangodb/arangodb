@@ -33,7 +33,6 @@
 #include "filterrb.h"
 #include "reslist.h"
 #include "ucmndata.h"  /* TODO: for reading the pool bundle */
-#include "collationroot.h"
 
 U_NAMESPACE_USE
 
@@ -49,16 +48,16 @@ static char *make_res_filename(const char *filename, const char *outputDir,
 #define RES_SUFFIX ".res"
 #define COL_SUFFIX ".col"
 
-const char *gCurrentFileName = nullptr;
+const char *gCurrentFileName = NULL;
 #ifdef XP_MAC_CONSOLE
 #include <console.h>
 #endif
 
 void ResFile::close() {
     delete[] fBytes;
-    fBytes = nullptr;
+    fBytes = NULL;
     delete fStrings;
-    fStrings = nullptr;
+    fStrings = NULL;
 }
 
 enum
@@ -85,9 +84,7 @@ enum
     WRITE_POOL_BUNDLE,
     USE_POOL_BUNDLE,
     INCLUDE_UNIHAN_COLL,
-    FILTERDIR,
-    ICU4X_MODE,
-    UCADATA
+    FILTERDIR
 };
 
 UOption options[]={
@@ -114,31 +111,29 @@ UOption options[]={
                       UOPTION_DEF("usePoolBundle", '\x01', UOPT_OPTIONAL_ARG),/* 20 */
                       UOPTION_DEF("includeUnihanColl", '\x01', UOPT_NO_ARG),/* 21 */ /* temporary, don't display in usage info */
                       UOPTION_DEF("filterDir", '\x01', UOPT_OPTIONAL_ARG), /* 22 */
-                      UOPTION_DEF("icu4xMode", 'X', UOPT_NO_ARG),/* 23 */
-                      UOPTION_DEF("ucadata", '\x01', UOPT_REQUIRES_ARG),/* 24 */
                   };
 
-static     UBool       write_java = false;
-static     UBool       write_xliff = false;
+static     UBool       write_java = FALSE;
+static     UBool       write_xliff = FALSE;
 static     const char* outputEnc ="";
 
 static ResFile poolBundle;
 
 /*added by Jing*/
-static     const char* language = nullptr;
-static     const char* xliffOutputFileName = nullptr;
+static     const char* language = NULL;
+static     const char* xliffOutputFileName = NULL;
 int
 main(int argc,
      char* argv[])
 {
     UErrorCode  status    = U_ZERO_ERROR;
-    const char *arg       = nullptr;
-    const char *outputDir = nullptr; /* nullptr = no output directory, use current */
-    const char *inputDir  = nullptr;
-    const char *filterDir = nullptr;
+    const char *arg       = NULL;
+    const char *outputDir = NULL; /* NULL = no output directory, use current */
+    const char *inputDir  = NULL;
+    const char *filterDir = NULL;
     const char *encoding  = "";
     int         i;
-    UBool illegalArg = false;
+    UBool illegalArg = FALSE;
 
     U_MAIN_INIT_ARGS(argc, argv);
 
@@ -149,28 +144,24 @@ main(int argc,
     /* error handling, printing usage message */
     if(argc<0) {
         fprintf(stderr, "%s: error in command line argument \"%s\"\n", argv[0], argv[-argc]);
-        illegalArg = true;
+        illegalArg = TRUE;
     } else if(argc<2) {
-        illegalArg = true;
+        illegalArg = TRUE;
     }
     if(options[WRITE_POOL_BUNDLE].doesOccur && options[USE_POOL_BUNDLE].doesOccur) {
         fprintf(stderr, "%s: cannot combine --writePoolBundle and --usePoolBundle\n", argv[0]);
-        illegalArg = true;
-    }
-    if (options[ICU4X_MODE].doesOccur && !options[UCADATA].doesOccur) {
-        fprintf(stderr, "%s: --icu4xMode requires --ucadata\n", argv[0]);
-        illegalArg = true;
+        illegalArg = TRUE;
     }
     if(options[FORMAT_VERSION].doesOccur) {
         const char *s = options[FORMAT_VERSION].value;
         if(uprv_strlen(s) != 1 || (s[0] < '1' && '3' < s[0])) {
             fprintf(stderr, "%s: unsupported --formatVersion %s\n", argv[0], s);
-            illegalArg = true;
+            illegalArg = TRUE;
         } else if(s[0] == '1' &&
                   (options[WRITE_POOL_BUNDLE].doesOccur || options[USE_POOL_BUNDLE].doesOccur)
         ) {
             fprintf(stderr, "%s: cannot combine --formatVersion 1 with --writePoolBundle or --usePoolBundle\n", argv[0]);
-            illegalArg = true;
+            illegalArg = TRUE;
         } else {
             setFormatVersion(s[0] - '0');
         }
@@ -182,7 +173,7 @@ main(int argc,
                 "%s error: command line argument --java-package or --bundle-name "
                 "without --write-java\n",
                 argv[0]);
-        illegalArg = true;
+        illegalArg = TRUE;
     }
 
     if(options[VERSION].doesOccur) {
@@ -214,10 +205,10 @@ main(int argc,
                 "\t-c or --copyright        include copyright notice\n");
         fprintf(stderr,
                 "\t-e or --encoding         encoding of source files\n"
-                "\t-d or --destdir          destination directory, followed by the path, defaults to '%s'\n"
-                "\t-s or --sourcedir        source directory for files followed by path, defaults to '%s'\n"
+                "\t-d of --destdir          destination directory, followed by the path, defaults to %s\n"
+                "\t-s or --sourcedir        source directory for files followed by path, defaults to %s\n"
                 "\t-i or --icudatadir       directory for locating any needed intermediate data files,\n"
-                "\t                         followed by path, defaults to '%s'\n",
+                "\t                         followed by path, defaults to %s\n",
                 u_getDataDirectory(), u_getDataDirectory(), u_getDataDirectory());
         fprintf(stderr,
                 "\t-j or --write-java       write a Java ListResourceBundle for ICU4J, followed by optional encoding\n"
@@ -249,23 +240,23 @@ main(int argc,
                 "\t                           (--writePoolBundle and --usePoolBundle cannot be combined)\n");
         fprintf(stderr,
                 "\t      --filterDir          Input directory where filter files are available.\n"
-                "\t                           For more on filter files, see ICU Data Build Tool.\n");
+                "\t                           For more on filter files, see Python buildtool.\n");
 
         return illegalArg ? U_ILLEGAL_ARGUMENT_ERROR : U_ZERO_ERROR;
     }
 
     if(options[VERBOSE].doesOccur) {
-        setVerbose(true);
+        setVerbose(TRUE);
     }
 
     if(options[QUIET].doesOccur) {
-        setShowWarning(false);
+        setShowWarning(FALSE);
     }
     if(options[STRICT].doesOccur) {
-        setStrict(true);
+        setStrict(TRUE);
     }
     if(options[COPYRIGHT].doesOccur){
-        setIncludeCopyright(true);
+        setIncludeCopyright(TRUE);
     }
 
     if(options[SOURCEDIR].doesOccur) {
@@ -300,24 +291,15 @@ main(int argc,
     }
     status = U_ZERO_ERROR;
     if(options[WRITE_JAVA].doesOccur) {
-        write_java = true;
+        write_java = TRUE;
         outputEnc = options[WRITE_JAVA].value;
     }
 
     if(options[WRITE_XLIFF].doesOccur) {
-        write_xliff = true;
-        if(options[WRITE_XLIFF].value != nullptr){
+        write_xliff = TRUE;
+        if(options[WRITE_XLIFF].value != NULL){
             xliffOutputFileName = options[WRITE_XLIFF].value;
         }
-    }
-
-    if (options[UCADATA].doesOccur) {
-#if !UCONFIG_NO_COLLATION
-        CollationRoot::forceLoadFromFile(options[UCADATA].value, status);
-#else
-        fprintf(stderr, "--ucadata was used with UCONFIG_NO_COLLATION\n");
-        return status;
-#endif
     }
 
     initParser();
@@ -329,14 +311,14 @@ main(int argc,
 
     LocalPointer<SRBRoot> newPoolBundle;
     if(options[WRITE_POOL_BUNDLE].doesOccur) {
-        newPoolBundle.adoptInsteadAndCheckErrorCode(new SRBRoot(nullptr, true, status), status);
+        newPoolBundle.adoptInsteadAndCheckErrorCode(new SRBRoot(NULL, TRUE, status), status);
         if(U_FAILURE(status)) {
             fprintf(stderr, "unable to create an empty bundle for the pool keys: %s\n", u_errorName(status));
             return status;
         } else {
             const char *poolResName = "pool.res";
             char *nameWithoutSuffix = static_cast<char *>(uprv_malloc(uprv_strlen(poolResName) + 1));
-            if (nameWithoutSuffix == nullptr) {
+            if (nameWithoutSuffix == NULL) {
                 fprintf(stderr, "out of memory error\n");
                 return U_MEMORY_ALLOCATION_ERROR;
             }
@@ -360,7 +342,7 @@ main(int argc,
          * Also, make_res_filename() seems to be unused. Review and remove.
          */
         CharString poolFileName;
-        if (options[USE_POOL_BUNDLE].value!=nullptr) {
+        if (options[USE_POOL_BUNDLE].value!=NULL) {
             poolFileName.append(options[USE_POOL_BUNDLE].value, status);
         } else if (inputDir) {
             poolFileName.append(inputDir, status);
@@ -370,7 +352,7 @@ main(int argc,
             return status;
         }
         poolFile = T_FileStream_open(poolFileName.data(), "rb");
-        if (poolFile == nullptr) {
+        if (poolFile == NULL) {
             fprintf(stderr, "unable to open pool bundle file %s\n", poolFileName.data());
             return 1;
         }
@@ -380,7 +362,7 @@ main(int argc,
             return 1;
         }
         poolBundle.fBytes = new uint8_t[(poolFileSize + 15) & ~15];
-        if (poolFileSize > 0 && poolBundle.fBytes == nullptr) {
+        if (poolFileSize > 0 && poolBundle.fBytes == NULL) {
             fprintf(stderr, "unable to allocate memory for the pool bundle file %s\n", poolFileName.data());
             return U_MEMORY_ALLOCATION_ERROR;
         }
@@ -441,15 +423,15 @@ main(int argc,
         // an explicit string length that exceeds the number of remaining 16-bit units.
         int32_t stringUnitsLength = (poolBundle.fIndexes[URES_INDEX_16BIT_TOP] - keysTop) * 2;
         if (stringUnitsLength >= 2 && getFormatVersion() >= 3) {
-            poolBundle.fStrings = new PseudoListResource(nullptr, status);
-            if (poolBundle.fStrings == nullptr) {
+            poolBundle.fStrings = new PseudoListResource(NULL, status);
+            if (poolBundle.fStrings == NULL) {
                 fprintf(stderr, "unable to allocate memory for the pool bundle strings %s\n",
                         poolFileName.data());
                 return U_MEMORY_ALLOCATION_ERROR;
             }
             // The PseudoListResource constructor call did not allocate further memory.
             assert(U_SUCCESS(status));
-            const char16_t *p = (const char16_t *)(pRoot + keysTop);
+            const UChar *p = (const UChar *)(pRoot + keysTop);
             int32_t remaining = stringUnitsLength;
             do {
                 int32_t first = *p;
@@ -492,7 +474,7 @@ main(int argc,
                     StringResource *sr =
                             new StringResource(poolStringIndex, numCharsForLength,
                                                p, length, status);
-                    if (sr == nullptr) {
+                    if (sr == NULL) {
                         fprintf(stderr, "unable to allocate memory for a pool bundle string %s\n",
                                 poolFileName.data());
                         return U_MEMORY_ALLOCATION_ERROR;
@@ -507,13 +489,13 @@ main(int argc,
             } while (remaining > 0);
             if (poolBundle.fStrings->fCount == 0) {
                 delete poolBundle.fStrings;
-                poolBundle.fStrings = nullptr;
+                poolBundle.fStrings = NULL;
             }
         }
 
         T_FileStream_close(poolFile);
-        setUsePoolBundle(true);
-        if (isVerbose() && poolBundle.fStrings != nullptr) {
+        setUsePoolBundle(TRUE);
+        if (isVerbose() && poolBundle.fStrings != NULL) {
             printf("number of shared strings: %d\n", (int)poolBundle.fStrings->fCount);
             int32_t length = poolBundle.fStringIndexLimit + 1;  // incl. last NUL
             printf("16-bit units for strings: %6d = %6d bytes\n",
@@ -522,7 +504,7 @@ main(int argc,
     }
 
     if(!options[FORMAT_VERSION].doesOccur && getFormatVersion() == 3 &&
-            poolBundle.fStrings == nullptr &&
+            poolBundle.fStrings == NULL &&
             !options[WRITE_POOL_BUNDLE].doesOccur) {
         // If we just default to formatVersion 3
         // but there are no pool bundle strings to share
@@ -559,7 +541,7 @@ main(int argc,
         if (isVerbose()) {
             printf("Processing file \"%s\"\n", theCurrentFileName.data());
         }
-        processFile(arg, encoding, inputDir, outputDir, filterDir, nullptr,
+        processFile(arg, encoding, inputDir, outputDir, filterDir, NULL,
                     newPoolBundle.getAlias(),
                     options[NO_BINARY_COLLATION].doesOccur, status);
     }
@@ -568,13 +550,13 @@ main(int argc,
 
     if(U_SUCCESS(status) && options[WRITE_POOL_BUNDLE].doesOccur) {
         const char* writePoolDir;
-        if (options[WRITE_POOL_BUNDLE].value!=nullptr) {
+        if (options[WRITE_POOL_BUNDLE].value!=NULL) {
             writePoolDir = options[WRITE_POOL_BUNDLE].value;
         } else {
             writePoolDir = outputDir;
         }
         char outputFileName[256];
-        newPoolBundle->write(writePoolDir, nullptr, outputFileName, sizeof(outputFileName), status);
+        newPoolBundle->write(writePoolDir, NULL, outputFileName, sizeof(outputFileName), status);
         if(U_FAILURE(status)) {
             fprintf(stderr, "unable to write the pool bundle: %s\n", u_errorName(status));
         }
@@ -582,7 +564,7 @@ main(int argc,
 
     u_cleanup();
 
-    /* Don't return warnings as a failure */
+    /* Dont return warnings as a failure */
     if (U_SUCCESS(status)) {
         return 0;
     }
@@ -608,14 +590,14 @@ processFile(const char *filename, const char *cp,
     if (U_FAILURE(status)) {
         return;
     }
-    if(filename==nullptr){
+    if(filename==NULL){
         status=U_ILLEGAL_ARGUMENT_ERROR;
         return;
     }
 
-    if(inputDir == nullptr) {
+    if(inputDir == NULL) {
         const char *filenameBegin = uprv_strrchr(filename, U_FILE_SEP_CHAR);
-        if (filenameBegin != nullptr) {
+        if (filenameBegin != NULL) {
             /*
              * When a filename ../../../data/root.txt is specified,
              * we presume that the input directory is ../../../data
@@ -634,7 +616,7 @@ processFile(const char *filename, const char *cp,
         if(inputDir[dirlen-1] != U_FILE_SEP_CHAR) {
             /*
              * append the input dir to openFileName if the first char in
-             * filename is not file separation char and the last char input directory is  not '.'.
+             * filename is not file seperation char and the last char input directory is  not '.'.
              * This is to support :
              * genrb -s. /home/icu/data
              * genrb -s. icu/data
@@ -657,7 +639,7 @@ processFile(const char *filename, const char *cp,
         return;
     }
 
-    ucbuf.adoptInstead(ucbuf_open(openFileName.data(), &cp,getShowWarning(),true, &status));
+    ucbuf.adoptInstead(ucbuf_open(openFileName.data(), &cp,getShowWarning(),TRUE, &status));
     if(status == U_FILE_ACCESS_ERROR) {
 
         fprintf(stderr, "couldn't open file %s\n", openFileName.data());
@@ -669,12 +651,12 @@ processFile(const char *filename, const char *cp,
         return;
     }
     /* auto detected popular encodings? */
-    if (cp!=nullptr && isVerbose()) {
+    if (cp!=NULL && isVerbose()) {
         printf("autodetected encoding %s\n", cp);
     }
     /* Parse the data into an SRBRoot */
     data.adoptInstead(parse(ucbuf.getAlias(), inputDir, outputDir, filename,
-            !omitBinaryCollation, options[NO_COLLATION_RULES].doesOccur, options[ICU4X_MODE].doesOccur, &status));
+            !omitBinaryCollation, options[NO_COLLATION_RULES].doesOccur, &status));
 
     if (data.isNull() || U_FAILURE(status)) {
         fprintf(stderr, "couldn't parse the file %s. Error:%s\n", filename, u_errorName(status));
@@ -748,11 +730,11 @@ processFile(const char *filename, const char *cp,
                 filename, u_errorName(status));
         return;
     }
-    if(write_java== true){
+    if(write_java== TRUE){
         bundle_write_java(data.getAlias(), outputDir, outputEnc,
                           outputFileName, sizeof(outputFileName),
                           options[JAVA_PACKAGE].value, options[BUNDLE_NAME].value, &status);
-    }else if(write_xliff ==true){
+    }else if(write_xliff ==TRUE){
         bundle_write_xml(data.getAlias(), outputDir, outputEnc,
                          filename, outputFileName, sizeof(outputFileName),
                          language, xliffOutputFileName, &status);
@@ -779,20 +761,20 @@ make_res_filename(const char *filename,
 
 
     if (U_FAILURE(status)) {
-        return nullptr;
+        return 0;
     }
 
-    if(packageName != nullptr)
+    if(packageName != NULL)
     {
         pkgLen = (int32_t)(1 + uprv_strlen(packageName));
     }
 
     /* setup */
-    basename = dirname = resName = nullptr;
+    basename = dirname = resName = 0;
 
     /* determine basename, and compiled file names */
     basename = (char*) uprv_malloc(sizeof(char) * (uprv_strlen(filename) + 1));
-    if (basename == nullptr) {
+    if(basename == 0) {
         status = U_MEMORY_ALLOCATION_ERROR;
         goto finish;
     }
@@ -800,27 +782,27 @@ make_res_filename(const char *filename,
     get_basename(basename, filename);
 
     dirname = (char*) uprv_malloc(sizeof(char) * (uprv_strlen(filename) + 1));
-    if (dirname == nullptr) {
+    if(dirname == 0) {
         status = U_MEMORY_ALLOCATION_ERROR;
         goto finish;
     }
 
     get_dirname(dirname, filename);
 
-    if (outputDir == nullptr) {
+    if (outputDir == NULL) {
         /* output in same dir as .txt */
         resName = (char*) uprv_malloc(sizeof(char) * (uprv_strlen(dirname)
                                       + pkgLen
                                       + uprv_strlen(basename)
                                       + uprv_strlen(RES_SUFFIX) + 8));
-        if (resName == nullptr) {
+        if(resName == 0) {
             status = U_MEMORY_ALLOCATION_ERROR;
             goto finish;
         }
 
         uprv_strcpy(resName, dirname);
 
-        if(packageName != nullptr)
+        if(packageName != NULL)
         {
             uprv_strcat(resName, packageName);
             uprv_strcat(resName, "_");
@@ -834,7 +816,7 @@ make_res_filename(const char *filename,
 
         resName = (char*) uprv_malloc(sizeof(char) * (dirlen + pkgLen + basenamelen + 8));
 
-        if (resName == nullptr) {
+        if (resName == NULL) {
             status = U_MEMORY_ALLOCATION_ERROR;
             goto finish;
         }
@@ -846,7 +828,7 @@ make_res_filename(const char *filename,
             resName[dirlen + 1] = '\0';
         }
 
-        if(packageName != nullptr)
+        if(packageName != NULL)
         {
             uprv_strcat(resName, packageName);
             uprv_strcat(resName, "_");

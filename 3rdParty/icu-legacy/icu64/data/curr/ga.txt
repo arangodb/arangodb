@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ga{
     Currencies{
         ADP{
@@ -69,7 +68,7 @@ ga{
         }
         ATS{
             "ATS",
-            "Scilling na hOstaire",
+            "ATS",
         }
         AUD{
             "A$",
@@ -105,7 +104,7 @@ ga{
         }
         BEC{
             "BEC",
-            "Franc na Beilge (inmhalartaithe)",
+            "BEC",
         }
         BEF{
             "BEF",
@@ -113,7 +112,7 @@ ga{
         }
         BEL{
             "BEL",
-            "Franc na Beilge (airgeadais)",
+            "BEL",
         }
         BGL{
             "BGL",
@@ -241,7 +240,7 @@ ga{
         }
         CNH{
             "CNH",
-            "Yuan na Síne (seachairgeadra)",
+            "CNH",
         }
         CNY{
             "CN¥",
@@ -285,7 +284,7 @@ ga{
         }
         DDM{
             "DDM",
-            "Marc Ghearmáin an Oirthir",
+            "DDM",
         }
         DEM{
             "DEM",
@@ -353,7 +352,7 @@ ga{
         }
         FRF{
             "FRF",
-            "Franc na Fraince",
+            "FRF",
         }
         GBP{
             "£",
@@ -553,7 +552,7 @@ ga{
         }
         LUC{
             "LUC",
-            "Franc Inmhalartach Lucsamburgach",
+            "LUC",
         }
         LUF{
             "LUF",
@@ -565,7 +564,7 @@ ga{
         }
         LVR{
             "LVR",
-            "Rúbal na Laitvia",
+            "LVR",
         }
         LYD{
             "LYD",
@@ -653,7 +652,7 @@ ga{
         }
         MXV{
             "MXV",
-            "Aonad Infheistíochta Meicsiceach",
+            "MXV",
         }
         MYR{
             "MYR",
@@ -728,7 +727,7 @@ ga{
             "Kina Nua-Ghuine Phapua",
         }
         PHP{
-            "₱",
+            "PHP",
             "Peso na nOileán Filipíneach",
         }
         PKR{
@@ -823,13 +822,9 @@ ga{
             "SKK",
             "Koruna na Slóvaice",
         }
-        SLE{
-            "SLE",
-            "Leone Shiarra Leon",
-        }
         SLL{
             "SLL",
-            "Leone Shiarra Leon (1964—2022)",
+            "Leone Shiarra Leon",
         }
         SOS{
             "SOS",
@@ -1040,7 +1035,7 @@ ga{
             "UIC-Franc Francach",
         }
         XOF{
-            "F CFA",
+            "CFA",
             "Franc CFA Iarthar na hAfraice",
         }
         XPD{
@@ -1077,7 +1072,7 @@ ga{
         }
         YUN{
             "YUN",
-            "Dinar Inmhalartaithe Iúgslavach (1990–1992)",
+            "YUN",
         }
         ZAL{
             "ZAL",
@@ -1109,8 +1104,104 @@ ga{
         }
     }
     Currencies%narrow{
+        AOA{"Kz"}
+        ARS{"$"}
+        AUD{"$"}
+        BAM{"KM"}
+        BBD{"$"}
+        BDT{"৳"}
+        BMD{"$"}
+        BND{"$"}
+        BOB{"Bs"}
+        BRL{"R$"}
+        BSD{"$"}
+        BWP{"P"}
+        BZD{"$"}
+        CAD{"$"}
+        CLP{"$"}
+        CNY{"¥"}
+        COP{"$"}
+        CRC{"₡"}
+        CUC{"$"}
+        CUP{"$"}
+        CZK{"Kč"}
+        DKK{"kr"}
+        DOP{"$"}
+        EGP{"E£"}
+        ESP{"₧"}
+        EUR{"€"}
+        FJD{"$"}
+        FKP{"£"}
+        GBP{"£"}
+        GEL{"₾"}
+        GIP{"£"}
+        GNF{"FG"}
+        GTQ{"Q"}
+        GYD{"$"}
+        HKD{"$"}
+        HNL{"L"}
+        HRK{"kn"}
+        HUF{"Ft"}
+        IDR{"Rp"}
+        ILS{"₪"}
+        INR{"₹"}
+        ISK{"kr"}
+        JMD{"$"}
+        JPY{"¥"}
+        KHR{"៛"}
+        KMF{"CF"}
+        KPW{"₩"}
+        KRW{"₩"}
+        KYD{"$"}
+        KZT{"₸"}
+        LAK{"₭"}
+        LBP{"L£"}
+        LKR{"Rs"}
+        LRD{"$"}
+        MGA{"Ar"}
+        MMK{"K"}
+        MNT{"₮"}
+        MUR{"Rs"}
+        MXN{"$"}
+        MYR{"RM"}
+        NAD{"$"}
+        NGN{"₦"}
+        NIO{"C$"}
+        NOK{"kr"}
+        NPR{"Rs"}
+        NZD{"$"}
+        PHP{"₱"}
+        PKR{"Rs"}
+        PLN{"zł"}
+        PYG{"₲"}
+        RON{"lei"}
+        RUB{"₽"}
         RUR{"р."}
+        RWF{"RF"}
+        SBD{"$"}
+        SEK{"kr"}
+        SGD{"$"}
+        SHP{"£"}
+        SRD{"$"}
+        SSP{"£"}
+        STN{"Db"}
+        SYP{"£"}
+        THB{"฿"}
+        TOP{"T$"}
+        TRY{"₺"}
+        TTD{"$"}
         TWD{"NT$"}
+        UAH{"₴"}
+        USD{"$"}
+        UYU{"$"}
+        VEF{"Bs"}
+        VND{"₫"}
+        XCD{"$"}
+        ZAR{"R"}
+        ZMW{"ZK"}
+    }
+    Currencies%variant{
+        TRY{"TL"}
     }
     CurrencyPlurals{
         ADP{
@@ -1126,6 +1217,13 @@ ga{
             one{"dirham Aontas na nÉimíríochtaí Arabacha"}
             other{"dirham Aontas na nÉimíríochtaí Arabacha"}
             two{"dhirham Aontas na nÉimíríochtaí Arabacha"}
+        }
+        AFA{
+            few{"Afgainí (1927–2002)"}
+            many{"Afgainí (1927–2002)"}
+            one{"Afgainí (1927–2002)"}
+            other{"Afgainí (1927–2002)"}
+            two{"Afgainí (1927–2002)"}
         }
         AFN{
             few{"afghani na hAfganastáine"}
@@ -1168,6 +1266,34 @@ ga{
             one{"kwanza Angóla"}
             other{"kwanza Angóla"}
             two{"kwanza Angóla"}
+        }
+        AOK{
+            few{"Kwanza Angólach (1977–1990)"}
+            many{"Kwanza Angólach (1977–1990)"}
+            one{"Kwanza Angólach (1977–1990)"}
+            other{"Kwanza Angólach (1977–1990)"}
+            two{"Kwanza Angólach (1977–1990)"}
+        }
+        AON{
+            few{"Kwanza Nua Angólach (1990–2000)"}
+            many{"Kwanza Nua Angólach (1990–2000)"}
+            one{"Kwanza Nua Angólach (1990–2000)"}
+            other{"Kwanza Nua Angólach (1990–2000)"}
+            two{"Kwanza Nua Angólach (1990–2000)"}
+        }
+        AOR{
+            few{"Kwanza Reajustado Angólach (1995–1999)"}
+            many{"Kwanza Reajustado Angólach (1995–1999)"}
+            one{"Kwanza Reajustado Angólach (1995–1999)"}
+            other{"Kwanza Reajustado Angólach (1995–1999)"}
+            two{"Kwanza Reajustado Angólach (1995–1999)"}
+        }
+        ARA{
+            few{"Austral Airgintíneach"}
+            many{"Austral Airgintíneach"}
+            one{"Austral Airgintíneach"}
+            other{"Austral Airgintíneach"}
+            two{"Austral Airgintíneach"}
         }
         ARM{
             few{"pheso na hAirgintíne (1881–1970)"}
@@ -1225,6 +1351,13 @@ ga{
             other{"manat na hAsarbaiseáine"}
             two{"mhanat na hAsarbaiseáine"}
         }
+        BAD{
+            few{"Dínear Bhoisnia-Heirseagaivéin (1992–1994)"}
+            many{"Dínear Bhoisnia-Heirseagaivéin (1992–1994)"}
+            one{"Dínear Bhoisnia-Heirseagaivéin (1992–1994)"}
+            other{"Dínear Bhoisnia-Heirseagaivéin (1992–1994)"}
+            two{"Dínear Bhoisnia-Heirseagaivéin (1992–1994)"}
+        }
         BAM{
             few{"mharg inmhalartaithe na Boisnia-Heirseagaivéine"}
             many{"marg inmhalartaithe na Boisnia-Heirseagaivéine"}
@@ -1252,6 +1385,13 @@ ga{
             one{"Franc Beilgeach (inathraithe)"}
             other{"Franc Beilgeach (inathraithe)"}
             two{"Franc Beilgeach (inathraithe)"}
+        }
+        BEF{
+            few{"Franc Beilgeach"}
+            many{"Franc Beilgeach"}
+            one{"Franc Beilgeach"}
+            other{"Franc Beilgeach"}
+            two{"Franc Beilgeach"}
         }
         BEL{
             few{"Franc Beilgeach (airgeadúil)"}
@@ -1463,12 +1603,26 @@ ga{
             other{"escudo na Sile"}
             two{"escudo na Sile"}
         }
+        CLF{
+            few{"Unidades de Fomento na Sile"}
+            many{"Unidades de Fomento na Sile"}
+            one{"Unidades de Fomento na Sile"}
+            other{"Unidades de Fomento na Sile"}
+            two{"Unidades de Fomento na Sile"}
+        }
         CLP{
             few{"pheso na Sile"}
             many{"bpeso na Sile"}
             one{"pheso na Sile"}
             other{"peso na Sile"}
             two{"pheso na Sile"}
+        }
+        CNH{
+            few{"CNH"}
+            many{"CNH"}
+            one{"CNH"}
+            other{"CNH"}
+            two{"CNH"}
         }
         CNY{
             few{"yuan na Síne"}
@@ -1547,6 +1701,13 @@ ga{
             other{"Ostmark na hOirGhearmáine"}
             two{"Ostmark na hOirGhearmáine"}
         }
+        DEM{
+            few{"Deutsche Mark"}
+            many{"Deutsche Mark"}
+            one{"Deutsche Mark"}
+            other{"Deutsche Mark"}
+            two{"Deutsche Mark"}
+        }
         DJF{
             few{"fhranc Djibouti"}
             many{"bhfranc Djibouti"}
@@ -1574,6 +1735,27 @@ ga{
             one{"dinar na hAilgéire"}
             other{"dinar na hAilgéire"}
             two{"dhinar na hAilgéire"}
+        }
+        ECS{
+            few{"Sucre Eacuadóir"}
+            many{"Sucre Eacuadóir"}
+            one{"Sucre Eacuadóir"}
+            other{"Sucre Eacuadóir"}
+            two{"Sucre Eacuadóir"}
+        }
+        ECV{
+            few{"Unidad de Valor Constante (UVC) Eacuadóir"}
+            many{"Unidad de Valor Constante (UVC) Eacuadóir"}
+            one{"Unidad de Valor Constante (UVC) Eacuadóir"}
+            other{"Unidad de Valor Constante (UVC) Eacuadóir"}
+            two{"Unidad de Valor Constante (UVC) Eacuadóir"}
+        }
+        EEK{
+            few{"Kroon na hEastóine"}
+            many{"Kroon na hEastóine"}
+            one{"Kroon na hEastóine"}
+            other{"Kroon na hEastóine"}
+            two{"Kroon na hEastóine"}
         }
         EGP{
             few{"phunt na hÉigipte"}
@@ -1610,6 +1792,13 @@ ga{
             other{"euro"}
             two{"euro"}
         }
+        FIM{
+            few{"Markka Fionnlannach"}
+            many{"Markka Fionnlannach"}
+            one{"Markka Fionnlannach"}
+            other{"Markka Fionnlannach"}
+            two{"Markka Fionnlannach"}
+        }
         FJD{
             few{"dhollar Fhidsí"}
             many{"ndollar Fhidsí"}
@@ -1637,6 +1826,13 @@ ga{
             one{"phunt steirling"}
             other{"punt steirling"}
             two{"phunt steirling"}
+        }
+        GEK{
+            few{"Kupon Larit na Grúise"}
+            many{"Kupon Larit na Grúise"}
+            one{"Kupon Larit na Grúise"}
+            other{"Kupon Larit na Grúise"}
+            two{"Kupon Larit na Grúise"}
         }
         GEL{
             few{"lari na Seoirsia"}
@@ -1680,6 +1876,13 @@ ga{
             other{"franc na Guine"}
             two{"fhranc na Guine"}
         }
+        GNS{
+            few{"Syli Guine"}
+            many{"Syli Guine"}
+            one{"Syli Guine"}
+            other{"Syli Guine"}
+            two{"Syli Guine"}
+        }
         GQE{
             few{"Ekwele Guineana na Guine Meánchiorclaí"}
             many{"Ekwele Guineana na Guine Meánchiorclaí"}
@@ -1687,12 +1890,33 @@ ga{
             other{"Ekwele Guineana na Guine Meánchriosaí"}
             two{"Ekwele Guineana na Guine Meánchiorclaí"}
         }
+        GRD{
+            few{"Drachma Gréagach"}
+            many{"Drachma Gréagach"}
+            one{"Drachma Gréagach"}
+            other{"Drachma Gréagach"}
+            two{"Drachma Gréagach"}
+        }
         GTQ{
             few{"quetzal Ghuatamala"}
             many{"quetzal Ghuatamala"}
             one{"quetzal Ghuatamala"}
             other{"quetzal Ghuatamala"}
             two{"quetzal Ghuatamala"}
+        }
+        GWE{
+            few{"Escudo na Guine Portaingéalaí"}
+            many{"Escudo na Guine Portaingéalaí"}
+            one{"Escudo na Guine Portaingéalaí"}
+            other{"Escudo na Guine Portaingéalaí"}
+            two{"Escudo na Guine Portaingéalaí"}
+        }
+        GWP{
+            few{"Peso Guine-Bhissau"}
+            many{"Peso Guine-Bhissau"}
+            one{"Peso Guine-Bhissau"}
+            other{"Peso Guine-Bhissau"}
+            two{"Peso Guine-Bhissau"}
         }
         GYD{
             few{"dhollar na Guáine"}
@@ -1714,6 +1938,13 @@ ga{
             one{"lempira Hondúras"}
             other{"lempira Hondúras"}
             two{"lempira Hondúras"}
+        }
+        HRD{
+            few{"Dínear na Cróite"}
+            many{"Dínear na Cróite"}
+            one{"Dínear na Cróite"}
+            other{"Dínear na Cróite"}
+            two{"Dínear na Cróite"}
         }
         HRK{
             few{"kuna na Cróite"}
@@ -1742,6 +1973,20 @@ ga{
             one{"rupiah na hIndinéise"}
             other{"rupiah na hIndinéise"}
             two{"rupiah na hIndinéise"}
+        }
+        IEP{
+            few{"Punt Éireannach"}
+            many{"Punt Éireannach"}
+            one{"Punt Éireannach"}
+            other{"Punt Éireannach"}
+            two{"Punt Éireannach"}
+        }
+        ILP{
+            few{"Punt Iosraelach"}
+            many{"Punt Iosraelach"}
+            one{"Punt Iosraelach"}
+            other{"Punt Iosraelach"}
+            two{"Punt Iosraelach"}
         }
         ILS{
             few{"sheiceal nua Iosrael"}
@@ -1898,10 +2143,10 @@ ga{
             two{"dhollar na Libéire"}
         }
         LSL{
-            few{"loti Leosóta"}
-            many{"loti Leosóta"}
-            one{"loti Leosóta"}
-            other{"loti Leosóta"}
+            few{"Loti Leosóta"}
+            many{"Loti Leosóta"}
+            one{"Loti Leosóta"}
+            other{"Loti Leosóta"}
             two{"Loti Leosóta"}
         }
         LTL{
@@ -1910,6 +2155,27 @@ ga{
             one{"litas na Liotuáine"}
             other{"litas na Liotuáine"}
             two{"litas na Liotuáine"}
+        }
+        LTT{
+            few{"Talonas Liotuánach"}
+            many{"Talonas Liotuánach"}
+            one{"Talonas Liotuánach"}
+            other{"Talonas Liotuánach"}
+            two{"Talonas Liotuánach"}
+        }
+        LUC{
+            few{"LUC"}
+            many{"LUC"}
+            one{"LUC"}
+            other{"LUC"}
+            two{"LUC"}
+        }
+        LUF{
+            few{"Franc Lucsamburg"}
+            many{"Franc Lucsamburg"}
+            one{"Franc Lucsamburg"}
+            other{"Franc Lucsamburg"}
+            two{"Franc Lucsamburg"}
         }
         LVL{
             few{"lats na Laitvia"}
@@ -1960,12 +2226,26 @@ ga{
             other{"ariary Mhadagascar"}
             two{"ariary Mhadagascar"}
         }
+        MGF{
+            few{"Franc Madagascar"}
+            many{"Franc Madagascar"}
+            one{"Franc Madagascar"}
+            other{"Franc Madagascar"}
+            two{"Franc Madagascar"}
+        }
         MKD{
             few{"dhenar na Macadóine"}
             many{"ndenar na Macadóine"}
             one{"denar na Macadóine"}
             other{"denar na Macadóine"}
             two{"dhenar na Macadóine"}
+        }
+        MLF{
+            few{"Franc Mhailí"}
+            many{"Franc Mhailí"}
+            one{"Franc Mhailí"}
+            other{"Franc Mhailí"}
+            two{"Franc Mhailí"}
         }
         MMK{
             few{"kyat Mhaenmar"}
@@ -2072,6 +2352,20 @@ ga{
             other{"ringgit na Malaeisia"}
             two{"ringgit na Malaeisia"}
         }
+        MZE{
+            few{"Escudo Mósaimbíce"}
+            many{"Escudo Mósaimbíce"}
+            one{"Escudo Mósaimbíce"}
+            other{"Escudo Mósaimbíce"}
+            two{"Escudo Mósaimbíce"}
+        }
+        MZM{
+            few{"Metical Mósaimbíce"}
+            many{"Metical Mósaimbíce"}
+            one{"Metical Mósaimbíce"}
+            other{"Metical Mósaimbíce"}
+            two{"Metical Mósaimbíce"}
+        }
         MZN{
             few{"mhetical Mhósaimbíc"}
             many{"metical Mhósaimbíc"}
@@ -2107,6 +2401,13 @@ ga{
             other{"córdoba Nicearagua"}
             two{"chórdoba Nicearagua"}
         }
+        NLG{
+            few{"Guilder Ísiltíreach"}
+            many{"Guilder Ísiltíreach"}
+            one{"Guilder Ísiltíreach"}
+            other{"Guilder Ísiltíreach"}
+            two{"Guilder Ísiltíreach"}
+        }
         NOK{
             few{"choróin na hIorua"}
             many{"gcoróin na hIorua"}
@@ -2141,6 +2442,13 @@ ga{
             one{"bhalboa Phanama"}
             other{"balboa Phanama"}
             two{"bhalboa Phanama"}
+        }
+        PEI{
+            few{"Inti Pheiriú"}
+            many{"Inti Pheiriú"}
+            one{"Inti Pheiriú"}
+            other{"Inti Pheiriú"}
+            two{"Inti Pheiriú"}
         }
         PEN{
             few{"sol Pheiriú"}
@@ -2183,6 +2491,13 @@ ga{
             one{"zloty na Polainne"}
             other{"zloty na Polainne"}
             two{"zloty na Polainne"}
+        }
+        PLZ{
+            few{"Zloty Polannach (1950–1995)"}
+            many{"Zloty Polannach (1950–1995)"}
+            one{"Zloty Polannach (1950–1995)"}
+            other{"Zloty Polannach (1950–1995)"}
+            two{"Zloty Polannach (1950–1995)"}
         }
         PTE{
             few{"escudo na Portaingéile"}
@@ -2324,19 +2639,12 @@ ga{
             other{"koruna na Slóvaice"}
             two{"koruna na Slóvaice"}
         }
-        SLE{
+        SLL{
             few{"leone Shiarra Leon"}
             many{"leone Shiarra Leon"}
             one{"leone Shiarra Leon"}
             other{"leone Shiarra Leon"}
             two{"leone Shiarra Leon"}
-        }
-        SLL{
-            few{"leone Shiarra Leon (1964—2022)"}
-            many{"leone Shiarra Leon (1964—2022)"}
-            one{"leone Shiarra Leon (1964—2022)"}
-            other{"leone Shiarra Leon (1964—2022)"}
-            two{"leone Shiarra Leon (1964—2022)"}
         }
         SOS{
             few{"scilling na Somáile"}
@@ -2415,12 +2723,26 @@ ga{
             other{"baht na Téalainne"}
             two{"bhaht na Téalainne"}
         }
+        TJR{
+            few{"Rúbal na Táidsíceastáine"}
+            many{"Rúbal na Táidsíceastáine"}
+            one{"Rúbal na Táidsíceastáine"}
+            other{"Rúbal na Táidsíceastáine"}
+            two{"Rúbal na Táidsíceastáine"}
+        }
         TJS{
             few{"shomoni na Táidsíceastáine"}
             many{"somoni na Táidsíceastáine"}
             one{"somoni na Táidsíceastáine"}
             other{"somoni na Táidsíceastáine"}
             two{"shomoni na Táidsíceastáine"}
+        }
+        TMM{
+            few{"Manat na Tuircméanastáine (1993–2009)"}
+            many{"Manat na Tuircméanastáine (1993–2009)"}
+            one{"Manat na Tuircméanastáine (1993–2009)"}
+            other{"Manat na Tuircméanastáine (1993–2009)"}
+            two{"Manat na Tuircméanastáine (1993–2009)"}
         }
         TMT{
             few{"mhanat na Tuircméanastáine"}
@@ -2442,6 +2764,13 @@ ga{
             one{"phaʻanga Thonga"}
             other{"paʻanga Thonga"}
             two{"phaʻanga Thonga"}
+        }
+        TPE{
+            few{"Escudo Tíomóir"}
+            many{"Escudo Tíomóir"}
+            one{"Escudo Tíomóir"}
+            other{"Escudo Tíomóir"}
+            two{"Escudo Tíomóir"}
         }
         TRL{
             few{"lira na Tuirce (1922–2005)"}
@@ -2484,6 +2813,20 @@ ga{
             one{"hryvnia na hÚcráine"}
             other{"hryvnia na hÚcráine"}
             two{"hryvnia na hÚcráine"}
+        }
+        UAK{
+            few{"Karbovanets Úcránach"}
+            many{"Karbovanets Úcránach"}
+            one{"Karbovanets Úcránach"}
+            other{"Karbovanets Úcránach"}
+            two{"Karbovanets Úcránach"}
+        }
+        UGS{
+            few{"Scilling Uganda (1966–1987)"}
+            many{"Scilling Uganda (1966–1987)"}
+            one{"Scilling Uganda (1966–1987)"}
+            other{"Scilling Uganda (1966–1987)"}
+            two{"Scilling Uganda (1966–1987)"}
         }
         UGX{
             few{"scilling Uganda"}
@@ -2604,12 +2947,68 @@ ga{
             other{"unsaí troí óir"}
             two{"unsa troí óir"}
         }
+        XBA{
+            few{"Aonad Ilchodach Eorpach"}
+            many{"Aonad Ilchodach Eorpach"}
+            one{"Aonad Ilchodach Eorpach"}
+            other{"Aonad Ilchodach Eorpach"}
+            two{"Aonad Ilchodach Eorpach"}
+        }
+        XBB{
+            few{"Aonad Airgeadaíochta Eorpach"}
+            many{"Aonad Airgeadaíochta Eorpach"}
+            one{"Aonad Airgeadaíochta Eorpach"}
+            other{"Aonad Airgeadaíochta Eorpach"}
+            two{"Aonad Airgeadaíochta Eorpach"}
+        }
+        XBC{
+            few{"Aonad Cuntais Eorpach (XBC)"}
+            many{"Aonad Cuntais Eorpach (XBC)"}
+            one{"Aonad Cuntais Eorpach (XBC)"}
+            other{"Aonad Cuntais Eorpach (XBC)"}
+            two{"Aonad Cuntais Eorpach (XBC)"}
+        }
+        XBD{
+            few{"Aonad Cuntais Eorpach (XBD)"}
+            many{"Aonad Cuntais Eorpach (XBD)"}
+            one{"Aonad Cuntais Eorpach (XBD)"}
+            other{"Aonad Cuntais Eorpach (XBD)"}
+            two{"Aonad Cuntais Eorpach (XBD)"}
+        }
         XCD{
             few{"dhollar na Cairibe Thoir"}
             many{"ndollar na Cairibe Thoir"}
             one{"dollar na Cairibe Thoir"}
             other{"dollar na Cairibe Thoir"}
             two{"dhollar na Cairibe Thoir"}
+        }
+        XDR{
+            few{"Cearta Speisialta Tarraingthe"}
+            many{"Cearta Speisialta Tarraingthe"}
+            one{"Cearta Speisialta Tarraingthe"}
+            other{"Cearta Speisialta Tarraingthe"}
+            two{"Cearta Speisialta Tarraingthe"}
+        }
+        XEU{
+            few{"Aonad Airgeadra Eorpach"}
+            many{"Aonad Airgeadra Eorpach"}
+            one{"Aonad Airgeadra Eorpach"}
+            other{"Aonad Airgeadra Eorpach"}
+            two{"Aonad Airgeadra Eorpach"}
+        }
+        XFO{
+            few{"Franc Ór Francach"}
+            many{"Franc Ór Francach"}
+            one{"Franc Ór Francach"}
+            other{"Franc Ór Francach"}
+            two{"Franc Ór Francach"}
+        }
+        XFU{
+            few{"UIC-Franc Francach"}
+            many{"UIC-Franc Francach"}
+            one{"UIC-Franc Francach"}
+            other{"UIC-Franc Francach"}
+            two{"UIC-Franc Francach"}
         }
         XOF{
             few{"fhranc CFA Iarthar na hAfraice"}
@@ -2646,12 +3045,33 @@ ga{
             other{"(airgeadra anaithnid)"}
             two{"(airgeadra anaithnid)"}
         }
+        YDD{
+            few{"Dínear Éimin"}
+            many{"Dínear Éimin"}
+            one{"Dínear Éimin"}
+            other{"Dínear Éimin"}
+            two{"Dínear Éimin"}
+        }
         YER{
             few{"rial Éimin"}
             many{"rial Éimin"}
             one{"rial Éimin"}
             other{"rial Éimin"}
             two{"rial Éimin"}
+        }
+        YUD{
+            few{"Dínear Crua Iúgslavach (1966–1990)"}
+            many{"Dínear Crua Iúgslavach (1966–1990)"}
+            one{"Dínear Crua Iúgslavach (1966–1990)"}
+            other{"Dínear Crua Iúgslavach (1966–1990)"}
+            two{"Dínear Crua Iúgslavach (1966–1990)"}
+        }
+        YUM{
+            few{"Dínear Nua Iúgslavach (1994–2002)"}
+            many{"Dínear Nua Iúgslavach (1994–2002)"}
+            one{"Dínear Nua Iúgslavach (1994–2002)"}
+            other{"Dínear Nua Iúgslavach (1994–2002)"}
+            two{"Dínear Nua Iúgslavach (1994–2002)"}
         }
         YUN{
             few{"Dínear Inathraithe Iúgslavach"}
@@ -2660,6 +3080,13 @@ ga{
             other{"Dínear Inathraithe Iúgslavach"}
             two{"Dínear Inathraithe Iúgslavach"}
         }
+        ZAL{
+            few{"Rand na hAfraice Theas (airgeadúil)"}
+            many{"Rand na hAfraice Theas (airgeadúil)"}
+            one{"Rand na hAfraice Theas (airgeadúil)"}
+            other{"Rand na hAfraice Theas (airgeadúil)"}
+            two{"Rand na hAfraice Theas (airgeadúil)"}
+        }
         ZAR{
             few{"rand na hAfraice Theas"}
             many{"rand na hAfraice Theas"}
@@ -2667,12 +3094,40 @@ ga{
             other{"rand na hAfraice Theas"}
             two{"rand na hAfraice Theas"}
         }
+        ZMK{
+            few{"Kwacha Saimbiach (1968–2012)"}
+            many{"Kwacha Saimbiach (1968–2012)"}
+            one{"Kwacha Saimbiach (1968–2012)"}
+            other{"Kwacha Saimbiach (1968–2012)"}
+            two{"Kwacha Saimbiach (1968–2012)"}
+        }
         ZMW{
             few{"kwacha na Saimbia"}
             many{"kwacha na Saimbia"}
             one{"kwacha na Saimbia"}
             other{"kwacha na Saimbia"}
             two{"kwacha na Saimbia"}
+        }
+        ZRN{
+            few{"Zaire Nua Sáíreach"}
+            many{"Zaire Nua Sáíreach"}
+            one{"Zaire Nua Sáíreach"}
+            other{"Zaire Nua Sáíreach"}
+            two{"Zaire Nua Sáíreach"}
+        }
+        ZRZ{
+            few{"Zaire Sáíreach"}
+            many{"Zaire Sáíreach"}
+            one{"Zaire Sáíreach"}
+            other{"Zaire Sáíreach"}
+            two{"Zaire Sáíreach"}
+        }
+        ZWD{
+            few{"Dollar Siombábach (1980–2008)"}
+            many{"Dollar Siombábach (1980–2008)"}
+            one{"Dollar Siombábach (1980–2008)"}
+            other{"Dollar Siombábach (1980–2008)"}
+            two{"Dollar Siombábach (1980–2008)"}
         }
     }
     CurrencyUnitPatterns{
@@ -2682,4 +3137,5 @@ ga{
         other{"{0} {1}"}
         two{"{0} {1}"}
     }
+    Version{"2.1.49.82"}
 }

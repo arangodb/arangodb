@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 hsb{
     Currencies{
         ADP{
@@ -210,10 +209,6 @@ hsb{
         CLP{
             "CLP",
             "chilski peso",
-        }
-        CNH{
-            "CNH",
-            "chinski yuan (offshore)",
         }
         CNY{
             "CN¥",
@@ -427,10 +422,6 @@ hsb{
             "LRD",
             "liberiski dolar",
         }
-        LSL{
-            "LSL",
-            "lesothiski loti",
-        }
         LTL{
             "LTL",
             "litawski litas",
@@ -552,7 +543,7 @@ hsb{
             "papua-nowoginejski kina",
         }
         PHP{
-            "₱",
+            "PHP",
             "filipinski peso",
         }
         PKR{
@@ -615,13 +606,9 @@ hsb{
             "SHP",
             "St. Helenski punt",
         }
-        SLE{
-            "SLE",
-            "sierra-leoneski leone",
-        }
         SLL{
             "SLL",
-            "sierra-leoneski leone (1964—2022)",
+            "sierra-leoneski leone",
         }
         SOS{
             "SOS",
@@ -740,7 +727,7 @@ hsb{
             "wuchodnokaribiski dolar",
         }
         XOF{
-            "F CFA",
+            "CFA",
             "CFA-frank (BCEAO)",
         }
         XPF{
@@ -763,6 +750,9 @@ hsb{
             "ZMW",
             "sambiski kwacha",
         }
+    }
+    Currencies%narrow{
+        EUR{"€"}
     }
     CurrencyPlurals{
         ADP{
@@ -1076,12 +1066,6 @@ hsb{
             one{"chilski peso"}
             other{"chilskich pesow"}
             two{"chilskej pesaj"}
-        }
-        CNH{
-            few{"chinske yuany (offshore)"}
-            one{"chinski yuan (offshore)"}
-            other{"chinskich yuanow (offshore)"}
-            two{"chinskej yuanaj (offshore)"}
         }
         CNY{
             few{"chinske yuany"}
@@ -1401,12 +1385,6 @@ hsb{
             other{"liberiskich dolarow"}
             two{"liberiskej dolaraj"}
         }
-        LSL{
-            few{"lesothiske lotije"}
-            one{"lesothiski loti"}
-            other{"lesothiskich lotijow"}
-            two{"lesothiskej lotijej"}
-        }
         LTL{
             few{"litawske litasy"}
             one{"litawski litas"}
@@ -1683,17 +1661,11 @@ hsb{
             other{"St. Helenskich puntow"}
             two{"St. Helenskej puntaj"}
         }
-        SLE{
+        SLL{
             few{"sierra-leoneske leony"}
             one{"sierra-leoneski leone"}
             other{"sierra-leoneskich leonow"}
             two{"sierra-leoneskej leonaj"}
-        }
-        SLL{
-            few{"sierra-leoneske leony (1964—2022)"}
-            one{"sierra-leoneski leone (1964—2022)"}
-            other{"sierra-leoneskich leonow (1964—2022)"}
-            two{"sierra-leoneskej leonaj (1964—2022)"}
         }
         SOS{
             few{"somaliske šilingi"}
@@ -1912,4 +1884,5 @@ hsb{
         other{"{0} {1}"}
         two{"{0} {1}"}
     }
+    Version{"2.1.47.82"}
 }

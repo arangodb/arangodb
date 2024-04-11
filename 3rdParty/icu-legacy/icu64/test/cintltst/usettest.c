@@ -6,15 +6,12 @@
 * Corporation and others.  All Rights Reserved.
 **********************************************************************
 */
-
-#include <stdbool.h>
-#include <stdlib.h>
-#include <string.h>
-
 #include "unicode/uset.h"
 #include "unicode/ustring.h"
 #include "cintltst.h"
 #include "cmemory.h"
+#include <stdlib.h>
+#include <string.h>
 
 #define TEST(x) addTest(root, &x, "uset/" # x)
 
@@ -54,7 +51,7 @@ addUSetTest(TestNode** root) {
  * Tests
  *------------------------------------------------------------------*/
 
-static void Testj2269(void) {
+static void Testj2269() {
   UErrorCode status = U_ZERO_ERROR;
   UChar a[4] = { 0x61, 0x62, 0x63, 0 };
   USet *s = uset_open(1, 0);
@@ -82,7 +79,7 @@ static const int32_t STR_ab_LEN = UPRV_LENGTHOF(STR_ab) - 1;
 /**
  * Basic API test for uset.x
  */
-static void TestAPI(void) {
+static void TestAPI() {
     USet* set;
     USet* set2;
     UErrorCode ec;
@@ -104,9 +101,6 @@ static void TestAPI(void) {
     /* [ABC] */
     set = uset_open(0x0041, 0x0043);
     expect(set, "ABC", "DEF{ab}", NULL);
-    if(uset_hasStrings(set)) {
-        log_err("uset_hasStrings([ABC]) = true");
-    }
     uset_close(set);
 
     /* [a-c{ab}] */
@@ -118,9 +112,6 @@ static void TestAPI(void) {
     }
     if(!uset_resemblesPattern(PAT, PAT_LEN, 0)) {
         log_err("uset_resemblesPattern of PAT failed\n");
-    }
-    if(!uset_hasStrings(set)) {
-        log_err("uset_hasStrings([a-c{ab}]) = false");
     }
     expect(set, "abc{ab}", "def{bc}", &ec);
 
@@ -137,7 +128,7 @@ static void TestAPI(void) {
     uset_removeString(set, STR_ab, STR_ab_LEN);
     expect(set, "acd{bc}", "bfg{ab}", NULL);
 
-    /* [[^acd]{bc}] */
+    /* [^acd{bc}] */
     uset_complement(set);
     expect(set, "bef{bc}", "acd{ac}", NULL);
 
@@ -176,16 +167,13 @@ static void TestAPI(void) {
         return;
     }
     expect(set, "0123456789ABCDEFabcdef", "GHIjkl{bc}", NULL);
-    if (uset_size(set) != 22 || uset_getRangeCount(set) != 3 || uset_getItemCount(set) != 3) {
-        log_err("line %d: uset_size()/uset_getRangeCount()/uset_getItemCount() wrong", __LINE__);
-    }
 
     /* [ab] */
     uset_clear(set);
     uset_addAllCodePoints(set, STR_ab, STR_ab_LEN);
     expect(set, "ab", "def{ab}", NULL);
     if (uset_containsAllCodePoints(set, STR_bc, STR_bc_LEN)){
-        log_err("set should not contain all characters of \"bc\" \n");
+        log_err("set should not conatin all characters of \"bc\" \n");
     }
 
     /* [] */
@@ -223,48 +211,6 @@ static void TestAPI(void) {
     uset_retainAll(set2, set);
     expect(set2, "ghi", "abcdef{bc}", NULL);
 
-    // ICU 69 added some missing functions for parity with C++ and Java.
-    uset_applyPattern(set, u"[abcdef{ch}{sch}]", -1, 0, &ec);
-    if(U_FAILURE(ec)) {
-        log_err("uset_openPattern([abcdef{ch}{sch}]) failed - %s\n", u_errorName(ec));
-        return;
-    }
-    expect(set, "abcdef{ch}{sch}", "", NULL);
-
-    uset_removeAllCodePoints(set, u"ce", 2);
-    expect(set, "abdf{ch}{sch}", "ce", NULL);
-
-    uset_complementRange(set, u'b', u'f');
-    expect(set, "ace{ch}{sch}", "bdf", NULL);
-
-    uset_complementString(set, u"ch", -1);
-    expect(set, "ace{sch}", "bdf{ch}", NULL);
-
-    uset_complementString(set, u"xy", -1);
-    expect(set, "ace{sch}{xy}", "bdf{ch}", NULL);
-
-    uset_complementAllCodePoints(set, u"abef", 4);
-    expect(set, "bcf{sch}{xy}", "ade{ch}", NULL);
-
-    uset_retainAllCodePoints(set, u"abef", -1);
-    expect(set, "bf", "acde{ch}{sch}{xy}", NULL);
-
-    uset_applyPattern(set, u"[abcdef{ch}{sch}]", -1, 0, &ec);
-    if(U_FAILURE(ec)) {
-        log_err("uset_openPattern([abcdef{ch}{sch}]) failed - %s\n", u_errorName(ec));
-        return;
-    }
-    expect(set, "abcdef{ch}{sch}", "", NULL);
-    if (uset_size(set) != 8 || uset_getRangeCount(set) != 1 || uset_getItemCount(set) != 3) {
-        log_err("line %d: uset_size()/uset_getRangeCount()/uset_getItemCount() wrong", __LINE__);
-    }
-
-    uset_retainString(set, u"sch", 3);
-    expect(set, "{sch}", "abcdef{ch}", NULL);
-
-    uset_retainString(set, u"ch", 3);
-    expect(set, "", "abcdef{ch}{sch}", NULL);
-
     uset_close(set);
     uset_close(set2);
 }
@@ -300,8 +246,8 @@ static void expect(const USet* set,
         log_err("FAIL: USet is NULL\n");
         return;
     }
-    expectContainment(set, inList, true);
-    expectContainment(set, outList, false);
+    expectContainment(set, inList, TRUE);
+    expectContainment(set, outList, FALSE);
     expectItems(set, inList);
 }
 
@@ -315,7 +261,7 @@ static void expectContainment(const USet* set,
     int32_t rangeStart = -1, rangeEnd = -1, length;
             
     ec = U_ZERO_ERROR;
-    length = uset_toPattern(set, ustr, sizeof(ustr), true, &ec);
+    length = uset_toPattern(set, ustr, sizeof(ustr), TRUE, &ec);
     if(U_FAILURE(ec)) {
         log_err("FAIL: uset_toPattern() fails in expectContainment() - %s\n", u_errorName(ec));
         return;
@@ -415,15 +361,13 @@ static void expectItems(const USet* set,
     char *pat;
     UErrorCode ec;
     int32_t expectedSize = 0;
-    int32_t rangeCount = uset_getRangeCount(set);
     int32_t itemCount = uset_getItemCount(set);
     int32_t itemIndex = 0;
     UChar32 start = 1, end = 0;
     int32_t itemLen = 0, length;
-    bool isString = false;
 
     ec = U_ZERO_ERROR;
-    length = uset_toPattern(set, ustr, sizeof(ustr), true, &ec);
+    length = uset_toPattern(set, ustr, sizeof(ustr), TRUE, &ec);
     if (U_FAILURE(ec)) {
         log_err("FAIL: uset_toPattern => %s\n", u_errorName(ec));
         return;
@@ -433,11 +377,11 @@ static void expectItems(const USet* set,
     if (uset_isEmpty(set) != (strlen(items)==0)) {
         log_data_err("FAIL: %s should return %s from isEmpty (Are you missing data?)\n",
                 pat,
-                strlen(items)==0 ? "true" : "false");
+                strlen(items)==0 ? "TRUE" : "FALSE");
     }
 
-    /* Don't test patterns starting with "[^" or "[\\u0000". */
-    if ((u_strlen(ustr) > 2 && ustr[1] == u'^') || uset_contains(set, 0)) {
+    /* Don't test patterns starting with "[^" */
+    if (u_strlen(ustr) > 2 && ustr[1] == 0x5e /*'^'*/) {
         return;
     }
 
@@ -452,26 +396,17 @@ static void expectItems(const USet* set,
                 return;
             }
 
-            // Pass in NULL pointers where we expect them to be ok.
-            if (itemIndex < rangeCount) {
-                itemLen = uset_getItem(set, itemIndex, &start, &end, NULL, 0, &ec);
-            } else {
-                itemLen = uset_getItem(set, itemIndex, NULL, NULL,
-                                       itemStr, UPRV_LENGTHOF(itemStr), &ec);
-                isString = true;
-            }
+            itemLen = uset_getItem(set, itemIndex, &start, &end,
+                                   itemStr, sizeof(itemStr), &ec);
             if (U_FAILURE(ec) || itemLen < 0) {
                 log_err("FAIL: uset_getItem => %s\n", u_errorName(ec));
                 return;
             }
 
-            if (!isString) {
+            if (itemLen == 0) {
                 log_verbose("Ok: %s item %d is %c-%c\n", pat,
                             itemIndex, oneUCharToChar(start),
                             oneUCharToChar(end));
-                if (itemLen != 0) {
-                    log_err("FAIL: uset_getItem(%d) => length %d\n", itemIndex, itemLen);
-                }
             } else {
                 itemStr[itemLen] = 0;
                 u_UCharsToChars(itemStr, buf, itemLen+1);
@@ -495,7 +430,7 @@ static void expectItems(const USet* set,
             u_charsToUChars(stringStart, ustr, stringLength);
             ustr[stringLength] = 0;
             
-            if (!isString) {
+            if (itemLen == 0) {
                 log_err("FAIL: for %s expect \"%s\" next, but got a char\n",
                         pat, strCopy);
                 return;
@@ -514,19 +449,18 @@ static void expectItems(const USet* set,
             u_charsToUChars(p, ustr, 1);
             c = ustr[0];
 
-            if (isString) {
+            if (itemLen != 0) {
                 log_err("FAIL: for %s expect '%c' next, but got a string\n",
                         pat, *p);
                 return;
             }
 
-            if (c != start) {
+            if (c != start++) {
                 log_err("FAIL: for %s expect '%c' next\n",
                         pat, *p);
                 return;
             }
 
-            ++start;
             ++p;
         }
     }
@@ -540,7 +474,7 @@ static void expectItems(const USet* set,
 }
 
 static void
-TestSerialized(void) {
+TestSerialized() {
     uint16_t buffer[1000];
     USerializedSet sset;
     USet *set;
@@ -583,7 +517,7 @@ TestSerialized(void) {
  * JB#3795.
  */
 static void
-TestNonInvariantPattern(void) {
+TestNonInvariantPattern() {
     UErrorCode ec = U_ZERO_ERROR;
     /* The critical part of this test is that the following pattern
        must contain a non-invariant character. */
@@ -608,14 +542,14 @@ static void TestBadPattern(void) {
     }
 }
 
-static USet *openIDSet(void) {
+static USet *openIDSet() {
     UErrorCode errorCode = U_ZERO_ERROR;
     U_STRING_DECL(pattern, "[:ID_Continue:]", 15);
     U_STRING_INIT(pattern, "[:ID_Continue:]", 15);
     return uset_openPattern(pattern, 15, &errorCode);
 }
 
-static void TestFreezable(void) {
+static void TestFreezable() {
     USet *idSet;
     USet *frozen;
     USet *thawed;
@@ -666,7 +600,7 @@ static void TestFreezable(void) {
     uset_close(thawed);
 }
 
-static void TestSpan(void) {
+static void TestSpan() {
     static const UChar s16[2]={ 0xe01, 0x3000 };
     static const char* s8="\xE0\xB8\x81\xE3\x80\x80";
 

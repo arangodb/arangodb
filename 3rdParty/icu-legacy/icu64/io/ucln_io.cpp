@@ -16,14 +16,13 @@
 *   created by: George Rhoten
 */
 
-#include "unicode/utypes.h"
 #include "mutex.h"
 #include "ucln.h"
 #include "ucln_io.h"
 #include "uassert.h"
 
 #ifndef U_IO_IMPLEMENTATION
-#error U_IO_IMPLEMENTATION not set - must be set for all ICU source files in io/ - see https://unicode-org.github.io/icu/userguide/howtouseicu
+#error U_IO_IMPLEMENTATION not set - must be set for all ICU source files in io/ - see http://userguide.icu-project.org/howtouseicu
 #endif
 
 
@@ -36,7 +35,7 @@ static const char copyright[] = U_COPYRIGHT_STRING;
 
 static cleanupFunc *gCleanupFunctions[UCLN_IO_COUNT];
 
-static UBool U_CALLCONV io_cleanup()
+static UBool U_CALLCONV io_cleanup(void)
 {
     int32_t libType = UCLN_IO_START;
 
@@ -45,13 +44,13 @@ static UBool U_CALLCONV io_cleanup()
         if (gCleanupFunctions[libType])
         {
             gCleanupFunctions[libType]();
-            gCleanupFunctions[libType] = nullptr;
+            gCleanupFunctions[libType] = NULL;
         }
     }
 #if !UCLN_NO_AUTO_CLEANUP && (defined(UCLN_AUTO_ATEXIT) || defined(UCLN_AUTO_LOCAL))
     ucln_unRegisterAutomaticCleanup();
 #endif
-    return true;
+    return TRUE;
 }
 
 void ucln_io_registerCleanup(ECleanupIOType type,
@@ -69,3 +68,4 @@ void ucln_io_registerCleanup(ECleanupIOType type,
     ucln_registerAutomaticCleanup();
 #endif
 }
+

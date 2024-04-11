@@ -16,7 +16,7 @@ class StaticUnicodeSetsTest : public IntlTest {
     void testSetCoverage();
     void testNonEmpty();
 
-    void runIndexedTest(int32_t index, UBool exec, const char*& name, char* par = nullptr) override;
+    void runIndexedTest(int32_t index, UBool exec, const char *&name, char *par = 0);
 
   private:
     void assertInSet(const UnicodeString& localeName, const UnicodeString &setName,
@@ -61,7 +61,7 @@ void StaticUnicodeSetsTest::testSetCoverage() {
     UnicodeSet grouping;
     grouping.addAll(decimals);
     grouping.addAll(*get(unisets::OTHER_GROUPING_SEPARATORS));
-    grouping.freeze();
+    decimals.freeze();
 
     const UnicodeSet &plusSign = *get(unisets::PLUS_SIGN);
     const UnicodeSet &minusSign = *get(unisets::MINUS_SIGN);
@@ -73,19 +73,14 @@ void StaticUnicodeSetsTest::testSetCoverage() {
     const Locale* allAvailableLocales = Locale::getAvailableLocales(localeCount);
     for (int32_t i = 0; i < localeCount; i++) {
         Locale locale = allAvailableLocales[i];
-        const char* locName = locale.getName();
         DecimalFormatSymbols dfs(locale, status);
         UnicodeString localeName;
         locale.getDisplayName(localeName);
         assertSuccess(UnicodeString("Making DFS for ") + localeName, status);
 
 #define ASSERT_IN_SET(name, foo) assertInSet(localeName, UnicodeString("" #name ""), name, foo)
-
         ASSERT_IN_SET(decimals, dfs.getConstSymbol(DecimalFormatSymbols::kDecimalSeparatorSymbol));
-        if (locName==nullptr || uprv_strncmp(locName,"nqo",3) != 0 ||
-                !logKnownIssue("CLDR-17023", "Number symbols and/or parseLenients messed up for N’Ko")) {
-            ASSERT_IN_SET(grouping, dfs.getConstSymbol(DecimalFormatSymbols::kGroupingSeparatorSymbol));
-        }
+        ASSERT_IN_SET(grouping, dfs.getConstSymbol(DecimalFormatSymbols::kGroupingSeparatorSymbol));
         ASSERT_IN_SET(plusSign, dfs.getConstSymbol(DecimalFormatSymbols::kPlusSignSymbol));
         ASSERT_IN_SET(minusSign, dfs.getConstSymbol(DecimalFormatSymbols::kMinusSignSymbol));
         ASSERT_IN_SET(percent, dfs.getConstSymbol(DecimalFormatSymbols::kPercentSymbol));
@@ -101,7 +96,7 @@ void StaticUnicodeSetsTest::testNonEmpty() {
         }
         const UnicodeSet* uset = get(static_cast<unisets::Key>(i));
         // Can fail if no data:
-        assertFalse(UnicodeString("Set should not be empty: ") + i, uset->isEmpty(), false, true);
+        assertFalse(UnicodeString("Set should not be empty: ") + i, uset->isEmpty(), FALSE, TRUE);
     }
 }
 
@@ -116,9 +111,8 @@ void StaticUnicodeSetsTest::assertInSet(const UnicodeString &localeName, const U
 
 void StaticUnicodeSetsTest::assertInSet(const UnicodeString &localeName, const UnicodeString &setName,
                               const UnicodeSet &set, UChar32 cp) {
-    // If this test case fails, add the specified code point to the corresponding set in either:
-    // - parseLenients in CLDR root.xml
-    // - harded-coded sets in StaticUnicodeSets.java and static_unicode_sets.cpp
+    // If this test case fails, add the specified code point to the corresponding set in
+    // UnicodeSetStaticCache.java and numparse_unisets.cpp
     assertTrue(
             localeName + UnicodeString(u" ") + UnicodeString(cp) + UnicodeString(u" is missing in ") +
             setName, set.contains(cp));

@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 yue_Hans{
     %%Parent{"root"}
     Countries{
@@ -290,7 +289,6 @@ yue_Hans{
         WF{"瓦利斯同富图纳群岛"}
         WS{"萨摩亚"}
         XA{"伪口音"}
-        XB{"伪 Bidi"}
         XK{"科索沃"}
         YE{"叶门"}
         YT{"马约特"}
@@ -299,19 +297,18 @@ yue_Hans{
         ZW{"辛巴威"}
         ZZ{"未知区域"}
     }
-    Countries%chagos{
-        IO{"查哥斯群岛"}
-    }
     Countries%short{
+        GB{"英国"}
         HK{"香港"}
         MO{"澳门"}
         PS{"巴勒斯坦"}
+        US{"美国"}
     }
     Countries%variant{
         CD{"刚果民主共和国"}
         CG{"刚果共和国"}
         CZ{"捷克共和国"}
         FK{"福克兰群岛 (马尔维纳斯群岛)"}
-        SZ{"斯威士兰"}
     }
+    Version{"2.1.49.82"}
 }

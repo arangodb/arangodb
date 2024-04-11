@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 hsb{
     Countries{
         001{"swět"}
@@ -32,7 +31,6 @@ hsb{
         151{"wuchodna Europa"}
         154{"sewjerna Europa"}
         155{"zapadna Europa"}
-        202{"subsaharaska Afrika"}
         419{"Łaćonska Amerika"}
         AC{"Ascension"}
         AD{"Andorra"}
@@ -108,7 +106,6 @@ hsb{
         ES{"Španiska"}
         ET{"Etiopiska"}
         EU{"Europska unija"}
-        EZ{"europasmo"}
         FI{"Finska"}
         FJ{"Fidźi"}
         FK{"Falklandske kupy"}
@@ -184,7 +181,7 @@ hsb{
         MF{"St. Martin"}
         MG{"Madagaskar"}
         MH{"Marshallowe kupy"}
-        MK{"Serwjerna Makedonska"}
+        MK{"Makedonska"}
         ML{"Mali"}
         MM{"Myanmar"}
         MN{"Mongolska"}
@@ -275,7 +272,6 @@ hsb{
         UA{"Ukraina"}
         UG{"Uganda"}
         UM{"Ameriska Oceaniska"}
-        UN{"Zjednoćene narody"}
         US{"Zjednoćene staty Ameriki"}
         UY{"Uruguay"}
         UZ{"Uzbekistan"}
@@ -288,8 +284,6 @@ hsb{
         VU{"Vanuatu"}
         WF{"Wallis a Futuna"}
         WS{"Samoa"}
-        XA{"pseudo-akcenty"}
-        XB{"pseudo-bidi"}
         XK{"Kosowo"}
         YE{"Jemen"}
         YT{"Mayotte"}
@@ -297,9 +291,6 @@ hsb{
         ZM{"Sambija"}
         ZW{"Simbabwe"}
         ZZ{"njeznaty region"}
-    }
-    Countries%chagos{
-        IO{"Chagoske kupy"}
     }
     Countries%short{
         GB{"UK"}
@@ -313,7 +304,8 @@ hsb{
         CG{"Kongo (Republika)"}
         CI{"Słonowinowy pobrjóh"}
         FK{"Falklandske kupy (Malwiny)"}
-        NZ{"Aotearoa Nowoseelandska"}
+        MK{"Makedonska (FYROM)"}
         TL{"Wuchodny Timor"}
     }
+    Version{"2.1.47.82"}
 }

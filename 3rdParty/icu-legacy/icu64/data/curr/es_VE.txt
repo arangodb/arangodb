@@ -1,12 +1,11 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 es_VE{
     %%Parent{"es_419"}
     Currencies{
         VEF{
             "Bs.",
-            "bolívar venezolano (2008–2018)",
+            "bolívar venezolano",
         }
         VES{
             "Bs.S",
@@ -15,6 +14,7 @@ es_VE{
     }
     Currencies%narrow{
         VEF{"Bs."}
+        VES{"Bs.S"}
     }
     CurrencyPlurals{
         VES{
@@ -22,4 +22,5 @@ es_VE{
             other{"bolívares soberanos"}
         }
     }
+    Version{"2.1.47.70"}
 }

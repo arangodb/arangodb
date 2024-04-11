@@ -2,7 +2,7 @@
 
 #  ********************************************************************
 #  * Copyright (C) 2016 and later: Unicode, Inc. and others.
-#  * License & terms of use: http://www.unicode.org/copyright.html
+#  * License & terms of use: http://www.unicode.org/copyright.html#License
 #  ********************************************************************
 #  ********************************************************************
 #  * COPYRIGHT:
@@ -190,6 +190,8 @@ sub setupOutput {
   @headers = split(/ /, $headers);
   my ($t, $rest);
   ($t, $rest) = split(/\.\w+/, $0);
+  $t =~ /^.*\W(\w+)$/;
+  $t = $1;
   if($outType eq 'HTML') {
     $html = $date;
     $html =~ s/://g; # ':' illegal

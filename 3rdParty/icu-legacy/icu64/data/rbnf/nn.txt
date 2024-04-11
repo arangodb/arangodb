@@ -1,10 +1,13 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
+/**
+ * ICU <specials> source: <path>/xml/rbnf/nn.xml
+ */
 nn{
-    %%Parent{"no"}
     RBNFRules{
         SpelloutRules{
+            "%%lenient-parse:",
+            "&[last primary ignorable ] << ' ' << ',' << '-' << '\u00AD';",
             "%spellout-numbering-year:",
             "-x: minus >>;",
             "x.x: =0.0=;",
@@ -51,20 +54,21 @@ nn{
             "40: f\u00F8rti[\u00AD>>];",
             "50: femti[\u00AD>>];",
             "60: seksti[\u00AD>>];",
-            "70: sytti[\u00AD>>];",
+            "70: s\u00F8tti[\u00AD>>];",
             "80: \u00E5tti[\u00AD>>];",
             "90: nitti[\u00AD>>];",
             "100: <%spellout-cardinal-neuter< hundre[ og >>];",
             "1000: <%spellout-cardinal-neuter< tusen[ og >>];",
-            "1000000: \u00E9in million[ >>];",
-            "2000000: << millionar[ >>];",
-            "1000000000: \u00E9in milliard[ >>];",
-            "2000000000: << milliardar[ >>];",
-            "1000000000000: \u00E9in billion[ >>];",
-            "2000000000000: << billionar[ >>];",
-            "1000000000000000: \u00E9in billiard[ >>];",
-            "2000000000000000: << biliardar[ >>];",
+            "1000000: \u00E9in miljon[ >>];",
+            "2000000: << miljoner[ >>];",
+            "1000000000: \u00E9in miljard[ >>];",
+            "2000000000: << miljarder[ >>];",
+            "1000000000000: \u00E9in biljon[ >>];",
+            "2000000000000: << biljoner[ >>];",
+            "1000000000000000: \u00E9in biljard[ >>];",
+            "2000000000000000: << biljarder[ >>];",
             "1000000000000000000: =#,##0=;",
         }
     }
+    Version{"2.1.27.22"}
 }

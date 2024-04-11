@@ -35,14 +35,12 @@ U_NAMESPACE_BEGIN
 //-------------------------------------------------------------------------------
 class U_I18N_API ScriptSet: public UMemory {
   public:
-    static constexpr int32_t SCRIPT_LIMIT = 224;  // multiple of 32!
-
     ScriptSet();
     ScriptSet(const ScriptSet &other);
     ~ScriptSet();
 
-    bool operator == (const ScriptSet &other) const;
-    bool operator != (const ScriptSet &other) const {return !(*this == other);}
+    UBool operator == (const ScriptSet &other) const;
+    UBool operator != (const ScriptSet &other) const {return !(*this == other);}
     ScriptSet & operator = (const ScriptSet &other);
 
     UBool      test(UScriptCode script, UErrorCode &status) const;
@@ -51,7 +49,7 @@ class U_I18N_API ScriptSet: public UMemory {
     ScriptSet &reset(UScriptCode script, UErrorCode &status);
     ScriptSet &intersect(const ScriptSet &other);
     ScriptSet &intersect(UScriptCode script, UErrorCode &status);
-    UBool      intersects(const ScriptSet &other) const;  // Sets contain at least one script in common.
+    UBool      intersects(const ScriptSet &other) const;  // Sets contain at least one script in commmon.
     UBool      contains(const ScriptSet &other) const;    // All set bits in other are also set in this.
 
     ScriptSet &setAll();
@@ -69,7 +67,7 @@ class U_I18N_API ScriptSet: public UMemory {
     void setScriptExtensions(UChar32 codePoint, UErrorCode& status);
 
   private:
-    uint32_t  bits[SCRIPT_LIMIT / 32];
+    uint32_t  bits[6];
 };
 
 U_NAMESPACE_END
@@ -83,7 +81,4 @@ uhash_hashScriptSet(const UElement key);
 U_CAPI void U_EXPORT2
 uhash_deleteScriptSet(void *obj);
 
-U_CAPI UBool U_EXPORT2
-uhash_equalsScriptSet(const UElement key1, const UElement key2);
-
-#endif // __SCRIPTSET_H_
+#endif // __SCRIPTSET_H__

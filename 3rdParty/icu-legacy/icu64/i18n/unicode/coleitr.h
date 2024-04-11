@@ -35,8 +35,6 @@
 
 #include "unicode/utypes.h"
 
-#if U_SHOW_CPLUSPLUS_API
-
 #if !UCONFIG_NO_COLLATION
 
 #include "unicode/unistr.h"
@@ -103,7 +101,7 @@ class UVector32;
 * to reset the status, shifting pointers to either the end or the start of
 * the string (reset() or setText()), or the specified position (setOffset()).
 * Hence at the next call of next() or previous(), the first or last collation order,
-* or collation order at the specified position will be returned. If a change of
+* or collation order at the spefcifieid position will be returned. If a change of
 * direction is done without one of these calls, the result is undefined.
 * <p>
 * The result of a forward iterate (next()) and reversed result of the backward
@@ -118,14 +116,14 @@ class UVector32;
 * @see     RuleBasedCollator
 * @version 1.8 Jan 16 2001
 */
-class U_I18N_API CollationElementIterator final : public UObject {
+class U_I18N_API CollationElementIterator U_FINAL : public UObject {
 public: 
 
     // CollationElementIterator public data member ------------------------------
 
     enum {
         /**
-         * NULLORDER indicates that an error has occurred while processing
+         * NULLORDER indicates that an error has occured while processing
          * @stable ICU 2.0
          */
         NULLORDER = (int32_t)0xffffffff
@@ -156,7 +154,7 @@ public:
     * @return         true if "other" is the same as "this"
     * @stable ICU 2.0
     */
-    bool operator==(const CollationElementIterator& other) const;
+    UBool operator==(const CollationElementIterator& other) const;
 
     /**
     * Returns true if "other" is not the same as "this".
@@ -165,19 +163,19 @@ public:
     * @return         true if "other" is not the same as "this"
     * @stable ICU 2.0
     */
-    bool operator!=(const CollationElementIterator& other) const;
+    UBool operator!=(const CollationElementIterator& other) const;
 
     /**
     * Resets the cursor to the beginning of the string.
     * @stable ICU 2.0
     */
-    void reset();
+    void reset(void);
 
     /**
     * Gets the ordering priority of the next character in the string.
     * @param status the error code status.
     * @return the next character's ordering. otherwise returns NULLORDER if an 
-    *         error has occurred or if the end of string has been reached
+    *         error has occured or if the end of string has been reached
     * @stable ICU 2.0
     */
     int32_t next(UErrorCode& status);
@@ -186,7 +184,7 @@ public:
     * Get the ordering priority of the previous collation element in the string.
     * @param status the error code status.
     * @return the previous element's ordering. otherwise returns NULLORDER if an 
-    *         error has occurred or if the start of string has been reached
+    *         error has occured or if the start of string has been reached
     * @stable ICU 2.0
     */
     int32_t previous(UErrorCode& status);
@@ -253,7 +251,7 @@ public:
     /**
     * Checks if a comparison order is ignorable.
     * @param order the collation order.
-    * @return true if a character is ignorable, false otherwise.
+    * @return TRUE if a character is ignorable, FALSE otherwise.
     * @stable ICU 2.0
     */
     static inline UBool isIgnorable(int32_t order);
@@ -263,7 +261,7 @@ public:
     * @return the offset of the character.
     * @stable ICU 2.0
     */
-    int32_t getOffset() const;
+    int32_t getOffset(void) const;
 
     /**
     * Sets the offset of the currently processed character in the source string.
@@ -279,7 +277,7 @@ public:
     *
     * @stable ICU 2.2
     */
-    virtual UClassID getDynamicClassID() const override;
+    virtual UClassID getDynamicClassID() const;
 
     /**
     * ICU "poor man's RTTI", returns a UClassID for this class.
@@ -351,7 +349,7 @@ private:
     const CollationElementIterator&
         operator=(const CollationElementIterator& other);
 
-    CollationElementIterator() = delete; // default constructor not implemented
+    CollationElementIterator(); // default constructor not implemented
 
     /** Normalizes dir_=1 (just after setOffset()) to dir_=0 (just after reset()). */
     inline int8_t normalizeDir() const { return dir_ == 1 ? 0 : dir_; }
@@ -405,7 +403,5 @@ inline UBool CollationElementIterator::isIgnorable(int32_t order)
 U_NAMESPACE_END
 
 #endif /* #if !UCONFIG_NO_COLLATION */
-
-#endif /* U_SHOW_CPLUSPLUS_API */
 
 #endif

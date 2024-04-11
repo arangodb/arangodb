@@ -41,7 +41,6 @@ void addURegionTest(TestNode** root);
 void addUListFmtTest(TestNode** root);
 void addUNumberFormatterTest(TestNode** root);
 void addUFormattedValueTest(TestNode** root);
-void addUNumberRangeFormatterTest(TestNode** root);
 
 void addFormatTest(TestNode** root);
 
@@ -66,7 +65,6 @@ void addFormatTest(TestNode** root)
     addUListFmtTest(root);
     addUNumberFormatterTest(root);
     addUFormattedValueTest(root);
-    addUNumberRangeFormatterTest(root);
 }
 /*Internal functions used*/
 

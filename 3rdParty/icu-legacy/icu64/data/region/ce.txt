@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ce{
     Countries{
         001{"Дерригдуьненан"}
@@ -145,6 +144,7 @@ ce{
         IL{"Израиль"}
         IM{"Мэн гӀайре"}
         IN{"ХӀинди"}
+        IO{"Британин латта Индин океанехь"}
         IQ{"Ӏиракъ"}
         IR{"ГӀажарийчоь"}
         IS{"Исланди"}
@@ -182,6 +182,7 @@ ce{
         MF{"Сен-Мартен"}
         MG{"Мадагаскар"}
         MH{"Маршаллан гӀайренаш"}
+        MK{"Македони"}
         ML{"Мали"}
         MM{"Мьянма (Бирма)"}
         MN{"Монголи"}
@@ -294,6 +295,7 @@ ce{
         ZZ{"Йоьвзуш йоцу регион"}
     }
     Countries%short{
+        GB{"Йоккха Британи"}
         HK{"Гонконг"}
         MO{"Макао"}
         PS{"ПалестӀина"}
@@ -306,4 +308,5 @@ ce{
         FK{"Фолклендан гӀайренаш (Мальвинаш)"}
         TL{"Тимор-Лесте"}
     }
+    Version{"2.1.47.82"}
 }

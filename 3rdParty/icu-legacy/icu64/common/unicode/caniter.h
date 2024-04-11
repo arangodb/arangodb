@@ -12,8 +12,6 @@
 
 #include "unicode/utypes.h"
 
-#if U_SHOW_CPLUSPLUS_API
-
 #if !UCONFIG_NO_NORMALIZATION
 
 #include "unicode/uobject.h"
@@ -25,11 +23,11 @@
  */
  
 /** Should permutation skip characters with combining class zero
- *  Should be either true or false. This is a compile time option
+ *  Should be either TRUE or FALSE. This is a compile time option
  *  @stable ICU 2.4
  */
 #ifndef CANITER_SKIP_ZEROES
-#define CANITER_SKIP_ZEROES true
+#define CANITER_SKIP_ZEROES TRUE
 #endif
 
 U_NAMESPACE_BEGIN
@@ -73,7 +71,7 @@ Results for: {LATIN CAPITAL LETTER A WITH RING ABOVE}{LATIN SMALL LETTER D}{COMB
  * @author C++ port by V. Weinstein
  * @stable ICU 2.4
  */
-class U_COMMON_API CanonicalIterator final : public UObject {
+class U_COMMON_API CanonicalIterator U_FINAL : public UObject {
 public:
     /**
      * Construct a CanonicalIterator object
@@ -128,10 +126,9 @@ public:
      * @param skipZeros  determine if skip zeros
      * @param result     the results in a set.
      * @param status       Fill-in parameter which receives the status of this operation.
-     * @param depth     depth of the call.
      * @internal
      */
-    static void U_EXPORT2 permute(UnicodeString &source, UBool skipZeros, Hashtable *result, UErrorCode &status, int32_t depth=0);
+    static void U_EXPORT2 permute(UnicodeString &source, UBool skipZeros, Hashtable *result, UErrorCode &status);
 #endif  /* U_HIDE_INTERNAL_API */
 
     /**
@@ -146,25 +143,25 @@ public:
      *
      * @stable ICU 2.2
      */
-    virtual UClassID getDynamicClassID() const override;
+    virtual UClassID getDynamicClassID() const;
 
 private:
     // ===================== PRIVATES ==============================
     // private default constructor
-    CanonicalIterator() = delete;
+    CanonicalIterator();
 
 
     /**
      * Copy constructor. Private for now.
      * @internal (private)
      */
-    CanonicalIterator(const CanonicalIterator& other) = delete;
+    CanonicalIterator(const CanonicalIterator& other);
 
     /**
      * Assignment operator. Private for now.
      * @internal (private)
      */
-    CanonicalIterator& operator=(const CanonicalIterator& other) = delete;
+    CanonicalIterator& operator=(const CanonicalIterator& other);
 
     // fields
     UnicodeString source;
@@ -183,8 +180,8 @@ private:
     // transient fields
     UnicodeString buffer;
 
-    const Normalizer2 *nfd;
-    const Normalizer2Impl *nfcImpl;
+    const Normalizer2 &nfd;
+    const Normalizer2Impl &nfcImpl;
 
     // we have a segment, in NFD. Find all the strings that are canonically equivalent to it.
     UnicodeString *getEquivalents(const UnicodeString &segment, int32_t &result_len, UErrorCode &status); //private String[] getEquivalents(String segment)
@@ -195,7 +192,7 @@ private:
 
     /**
      * See if the decomposition of cp2 is at segment starting at segmentPos
-     * (with canonical rearrangement!)
+     * (with canonical rearrangment!)
      * If so, take the remainder, and return the equivalents
      */
     //Set extract(int comp, String segment, int segmentPos, StringBuffer buffer);
@@ -209,7 +206,5 @@ private:
 U_NAMESPACE_END
 
 #endif /* #if !UCONFIG_NO_NORMALIZATION */
-
-#endif /* U_SHOW_CPLUSPLUS_API */
 
 #endif

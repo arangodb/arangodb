@@ -1,7 +1,7 @@
 /*
  ***********************************************************************
  * © 2016 and later: Unicode, Inc. and others.
- * License & terms of use: http://www.unicode.org/copyright.html
+ * License & terms of use: http://www.unicode.org/copyright.html#License
  ***********************************************************************
  ***********************************************************************
  * Copyright (c) 2011-2012,International Business Machines
@@ -20,7 +20,7 @@
 /**
  * Calculate the standardized sieve time (1 run)
  */
-U_CAPI double uprv_calcSieveTime(void);
+U_INTERNAL double uprv_calcSieveTime(void);
 
 /**
  * Calculate the mean time, with margin of error
@@ -29,13 +29,13 @@ U_CAPI double uprv_calcSieveTime(void);
  * @param marginOfError out parameter: gives +/- margin of err at 95% confidence
  * @return the mean time, or negative if error/imprecision.
  */
-U_CAPI double uprv_getMeanTime(double *times, uint32_t *timeCount, double *marginOfError);
+U_INTERNAL double uprv_getMeanTime(double *times, uint32_t *timeCount, double *marginOfError);
 
 /**
  * Get the standardized sieve time. (Doesn't recalculate if already computed.
  * @param marginOfError out parameter: gives +/- margin of error at 95% confidence.
  * @return the mean time, or negative if error/imprecision.
  */
-U_CAPI double uprv_getSieveTime(double *marginOfError);
+U_INTERNAL double uprv_getSieveTime(double *marginOfError);
 
 #endif

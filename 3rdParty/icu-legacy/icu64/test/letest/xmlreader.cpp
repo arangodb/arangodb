@@ -139,7 +139,7 @@ void readTestFile(const char *testFilePath, TestCaseCallback callback)
     UXMLParser  *parser = UXMLParser::createParser(status);
     UXMLElement *root   = parser->parseFile(testFilePath, status);
 
-    if (root == nullptr) {
+    if (root == NULL) {
         log_err("Could not open the test data file: %s\n", testFilePath);
         delete parser;
         return;
@@ -165,14 +165,14 @@ void readTestFile(const char *testFilePath, TestCaseCallback callback)
     const UXMLElement *testCase;
     int32_t tc = 0;
 
-    while((testCase = root->nextChildElement(tc)) != nullptr) {
+    while((testCase = root->nextChildElement(tc)) != NULL) {
         if (testCase->getTagName().compare(test_case) == 0) {
             char *id = getCString(testCase->getAttribute(id_attr));
             char *script    = getCString(testCase->getAttribute(script_attr));
             char *lang      = getCString(testCase->getAttribute(lang_attr));
-            char *fontName  = nullptr;
-			char *fontVer   = nullptr;
-			char *fontCksum = nullptr;
+            char *fontName  = NULL;
+			char *fontVer   = NULL;
+			char *fontCksum = NULL;
             const UXMLElement *element;
             int32_t ec = 0;
             int32_t charCount = 0;
@@ -181,7 +181,7 @@ void readTestFile(const char *testFilePath, TestCaseCallback callback)
             le_int32 languageCode = -1;
             UnicodeString text, glyphs, indices, positions;
             int32_t glyphCount = 0, indexCount = 0, positionCount = 0;
-            TestResult expected = {0, nullptr, nullptr, nullptr};
+            TestResult expected = {0, NULL, NULL, NULL};
 
             uscript_getCode(script, &scriptCode, 1, &status);
             if (LE_FAILURE(status)) {
@@ -189,7 +189,7 @@ void readTestFile(const char *testFilePath, TestCaseCallback callback)
                 goto free_c_strings;
             }
 
-            if (lang != nullptr) {
+            if (lang != NULL) {
                 languageCode = getLanguageCode(lang);
 
                 if (languageCode < 0) {
@@ -198,7 +198,7 @@ void readTestFile(const char *testFilePath, TestCaseCallback callback)
                 }
             }
 
-            while((element = testCase->nextChildElement(ec)) != nullptr) {
+            while((element = testCase->nextChildElement(ec)) != NULL) {
                 UnicodeString tag = element->getTagName();
 
                 // TODO: make sure that each element is only used once.
@@ -208,14 +208,14 @@ void readTestFile(const char *testFilePath, TestCaseCallback callback)
                     fontCksum = getCString(element->getAttribute(cksum_attr));
 
                 } else if (tag.compare(test_text) == 0) {
-                    text = element->getText(true);
+                    text = element->getText(TRUE);
                     charCount = text.length();
                 } else if (tag.compare(result_glyphs) == 0) {
-                    glyphs = element->getText(true);
+                    glyphs = element->getText(TRUE);
                 } else if (tag.compare(result_indices) == 0) {
-                    indices = element->getText(true);
+                    indices = element->getText(TRUE);
                 } else if (tag.compare(result_positions) == 0) {
-                    positions = element->getText(true);
+                    positions = element->getText(TRUE);
                 } else {
                     // an unknown tag...
                     char *cTag = getCString(&tag);

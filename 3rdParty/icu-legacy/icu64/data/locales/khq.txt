@@ -1,11 +1,10 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 khq{
     AuxExemplarCharacters{"[v]"}
-    ExemplarCharacters{"[aã b c d eẽ f g h i j k l m n ɲ ŋ oõ p q r sš t u w x y zž]"}
-    ExemplarCharactersIndex{"[AÃ B C D EẼ F G H I J K L M N Ɲ Ŋ OÕ P Q R SŠ T U W X Y ZŽ]"}
-    ExemplarCharactersNumbers{"[  \\- ‑ . % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
+    ExemplarCharacters{"[a ã b c d e ẽ f g h i j k l m n ɲ ŋ o õ p q r s š t u w x y z ž]"}
+    ExemplarCharactersIndex{"[A Ã B C D E Ẽ F G H I J K L M N Ɲ Ŋ O Õ P Q R S Š T U W X Y Z Ž]"}
+    ExemplarCharactersNumbers{"[  \\- . % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
     NumberElements{
         latn{
             patterns{
@@ -16,6 +15,7 @@ khq{
             }
         }
     }
+    Version{"2.1.47.82"}
     calendar{
         generic{
             DateTimePatterns{
@@ -32,16 +32,6 @@ khq{
                 "{1} {0}",
                 "{1} {0}",
                 "{1} {0}",
-            }
-            DateTimeSkeletons{
-                "HHmmsszzzz",
-                "HHmmssz",
-                "HHmmss",
-                "HHmm",
-                "GyMMMMEEEEd",
-                "GyMMMMd",
-                "GyMMMd",
-                "GGGGGyMd",
             }
             availableFormats{
                 M{"M"}
@@ -67,6 +57,10 @@ khq{
             }
         }
         gregorian{
+            AmPmMarkers{
+                "Adduha",
+                "Aluula",
+            }
             AmPmMarkersAbbr{
                 "Adduha",
                 "Aluula",
@@ -86,15 +80,18 @@ khq{
                 "{1} {0}",
                 "{1} {0}",
             }
-            DateTimeSkeletons{
-                "HHmmsszzzz",
-                "HHmmssz",
-                "HHmmss",
-                "HHmm",
-                "yMMMMEEEEd",
-                "yMMMMd",
-                "yMMMd",
-                "yMd",
+            appendItems{
+                Day{"{0} ({2}: {1})"}
+                Day-Of-Week{"{0} {1}"}
+                Era{"{1} {0}"}
+                Hour{"{0} ({2}: {1})"}
+                Minute{"{0} ({2}: {1})"}
+                Month{"{0} ({2}: {1})"}
+                Quarter{"{0} ({2}: {1})"}
+                Second{"{0} ({2}: {1})"}
+                Timezone{"{0} {1}"}
+                Week{"{0} ({2}: {1})"}
+                Year{"{1} {0}"}
             }
             availableFormats{
                 M{"M"}
@@ -107,6 +104,7 @@ khq{
                 MMdd{"dd/MM"}
                 Md{"d/M"}
                 ms{"m:ss"}
+                y{"y"}
                 yM{"M/y"}
                 yMEd{"E d/M/y"}
                 yMM{"MM/y"}
@@ -225,6 +223,12 @@ khq{
                 }
             }
         }
+    }
+    delimiters{
+        alternateQuotationEnd{"’"}
+        alternateQuotationStart{"‘"}
+        quotationEnd{"”"}
+        quotationStart{"“"}
     }
     fields{
         day{

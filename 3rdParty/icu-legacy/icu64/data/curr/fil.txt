@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 fil{
     Currencies{
         AED{
@@ -13,7 +12,7 @@ fil{
         }
         ALL{
             "ALL",
-            "Lek ng Albania",
+            "Albanian Lek",
         }
         AMD{
             "AMD",
@@ -97,7 +96,7 @@ fil{
         }
         BYN{
             "BYN",
-            "Ruble ng Belarus",
+            "Belarusian Ruble",
         }
         BYR{
             "BYR",
@@ -122,10 +121,6 @@ fil{
         CLP{
             "CLP",
             "Piso ng Chile",
-        }
-        CNH{
-            "CNH",
-            "Chinese Yuan (offshore)",
         }
         CNY{
             "CN¥",
@@ -153,7 +148,7 @@ fil{
         }
         CZK{
             "CZK",
-            "Koruna ng Czech Republic",
+            "Czech Republic Koruna",
         }
         DEM{
             "DEM",
@@ -181,7 +176,7 @@ fil{
         }
         EGP{
             "EGP",
-            "Pound ng Egypt",
+            "Egyptian Pound",
         }
         ERN{
             "ERN",
@@ -221,7 +216,7 @@ fil{
         }
         GIP{
             "GIP",
-            "Pound ng Gibraltar",
+            "Gibraltar Pound",
         }
         GMD{
             "GMD",
@@ -249,7 +244,7 @@ fil{
         }
         HRK{
             "HRK",
-            "Kuna ng Croatia",
+            "Croatian Kuna",
         }
         HTG{
             "HTG",
@@ -257,7 +252,7 @@ fil{
         }
         HUF{
             "HUF",
-            "Forint ng Hungary",
+            "Hungarian Forint",
         }
         IDR{
             "IDR",
@@ -265,7 +260,7 @@ fil{
         }
         ILS{
             "₪",
-            "New Shekel ng Israel",
+            "Israeli New Sheqel",
         }
         INR{
             "₹",
@@ -361,7 +356,7 @@ fil{
         }
         LYD{
             "LYD",
-            "Dinar ng Libya",
+            "Libyan Dinar",
         }
         MAD{
             "MAD",
@@ -369,7 +364,7 @@ fil{
         }
         MDL{
             "MDL",
-            "Leu ng Moldova",
+            "Moldovan Leu",
         }
         MGA{
             "MGA",
@@ -377,7 +372,7 @@ fil{
         }
         MKD{
             "MKD",
-            "Denar ng Macedonia",
+            "Macedonian Denar",
         }
         MMK{
             "MMK",
@@ -473,7 +468,7 @@ fil{
         }
         PLN{
             "PLN",
-            "Zloty ng Poland",
+            "Polish Zloty",
         }
         PYG{
             "PYG",
@@ -485,15 +480,15 @@ fil{
         }
         RON{
             "RON",
-            "Leu ng Romania",
+            "Romanian Leu",
         }
         RSD{
             "RSD",
-            "Dinar ng Serbia",
+            "Serbian Dinar",
         }
         RUB{
             "RUB",
-            "Ruble ng Russia",
+            "Russian Ruble",
         }
         RWF{
             "RWF",
@@ -535,13 +530,9 @@ fil{
             "SKK",
             "Slovak Koruna",
         }
-        SLE{
-            "SLE",
-            "Sierra Leonean Leone",
-        }
         SLL{
             "SLL",
-            "Sierra Leonean Leone (1964—2022)",
+            "Sierra Leonean Leone",
         }
         SOS{
             "SOS",
@@ -561,7 +552,7 @@ fil{
         }
         STN{
             "STN",
-            "São Tomé & Príncipe Dobra",
+            "São Tomé & Príncipe Dobra (2018)",
         }
         SYP{
             "SYP",
@@ -609,7 +600,7 @@ fil{
         }
         UAH{
             "UAH",
-            "Hryvnia ng Ukraine",
+            "Ukrainian Hryvnia",
         }
         UGX{
             "UGX",
@@ -660,7 +651,7 @@ fil{
             "Dolyar ng Silangang Caribbean",
         }
         XOF{
-            "F CFA",
+            "CFA",
             "CFA Franc ng Kanlurang Africa",
         }
         XPF{
@@ -689,12 +680,104 @@ fil{
         }
     }
     Currencies%narrow{
-        BYN{"р."}
+        AOA{"Kz"}
+        ARS{"$"}
+        AUD{"$"}
+        BAM{"KM"}
+        BBD{"$"}
+        BDT{"৳"}
+        BMD{"$"}
+        BND{"$"}
+        BOB{"Bs"}
+        BRL{"R$"}
+        BSD{"$"}
+        BWP{"P"}
+        BZD{"$"}
+        CAD{"$"}
+        CLP{"$"}
+        CNY{"¥"}
+        COP{"$"}
+        CRC{"₡"}
+        CUC{"$"}
+        CUP{"$"}
+        CZK{"Kč"}
+        DKK{"kr"}
+        DOP{"$"}
+        EGP{"E£"}
+        EUR{"€"}
+        FJD{"$"}
+        FKP{"£"}
+        GBP{"£"}
+        GIP{"£"}
+        GNF{"FG"}
+        GTQ{"Q"}
+        GYD{"$"}
+        HKD{"$"}
+        HNL{"L"}
+        HRK{"kn"}
+        HUF{"Ft"}
+        IDR{"Rp"}
+        ILS{"₪"}
+        INR{"₹"}
+        ISK{"kr"}
+        JMD{"$"}
+        JPY{"¥"}
+        KHR{"៛"}
+        KMF{"CF"}
+        KPW{"₩"}
+        KRW{"₩"}
+        KYD{"$"}
+        KZT{"₸"}
+        LAK{"₭"}
+        LBP{"L£"}
+        LKR{"Rs"}
+        LRD{"$"}
+        MGA{"Ar"}
+        MMK{"K"}
+        MNT{"₮"}
+        MUR{"Rs"}
+        MXN{"$"}
+        MYR{"RM"}
+        NAD{"$"}
+        NGN{"₦"}
+        NIO{"C$"}
+        NOK{"kr"}
+        NPR{"Rs"}
+        NZD{"$"}
+        PHP{"₱"}
+        PKR{"Rs"}
+        PLN{"zł"}
+        PYG{"₲"}
+        RUB{"₽"}
+        RWF{"RF"}
+        SBD{"$"}
+        SEK{"kr"}
+        SGD{"$"}
+        SHP{"£"}
+        SRD{"$"}
+        SSP{"£"}
+        SYP{"£"}
+        THB{"฿"}
+        TOP{"T$"}
+        TRY{"₺"}
+        TTD{"$"}
         TWD{"NT$"}
+        UAH{"₴"}
+        USD{"$"}
+        UYU{"$"}
+        VEF{"Bs"}
+        VND{"₫"}
+        XCD{"$"}
+        ZAR{"R"}
+        ZMW{"ZK"}
+    }
+    Currencies%variant{
+        GEL{"₾"}
+        TRY{"TL"}
     }
     CurrencyPlurals{
         AED{
-            one{"dirham ng UAE"}
+            one{"UAE dirham"}
             other{"UAE dirhams"}
         }
         AFN{
@@ -702,8 +785,8 @@ fil{
             other{"Afghan Afghanis"}
         }
         ALL{
-            one{"lek ng Albania"}
-            other{"leke ng Albania"}
+            one{"Albanian lek"}
+            other{"Albanian leke"}
         }
         AMD{
             one{"Armenian dram"}
@@ -786,8 +869,8 @@ fil{
             other{"Botswanan pulas"}
         }
         BYN{
-            one{"ruble ng Belarus"}
-            other{"rubles ng Belarus"}
+            one{"Belarusian ruble"}
+            other{"Belarusian rubles"}
         }
         BYR{
             one{"Belarusian ruble (2000–2016)"}
@@ -813,10 +896,6 @@ fil{
             one{"piso ng Chile"}
             other{"piso ng Chile"}
         }
-        CNH{
-            one{"Chinese yuan (offshore)"}
-            other{"Chinese yuan (offshore)"}
-        }
         CNY{
             one{"Chinese yuan"}
             other{"Chinese yuan"}
@@ -831,7 +910,7 @@ fil{
         }
         CUC{
             one{"Convertible na piso ng Cuba"}
-            other{"Convertible na piso ng Cuba"}
+            other{"Convertible na Piso ng Cuba"}
         }
         CUP{
             one{"piso ng Cuba"}
@@ -842,8 +921,8 @@ fil{
             other{"Cape Verdean escudos"}
         }
         CZK{
-            one{"koruna ng Czech Republic"}
-            other{"korunas ng Czech Republic"}
+            one{"Czech Republic koruna"}
+            other{"Czech Republic korunas"}
         }
         DJF{
             one{"Djiboutian franc"}
@@ -858,11 +937,11 @@ fil{
             other{"piso ng Dominican"}
         }
         DZD{
-            one{"dinar ng Algeria"}
+            one{"Algerian dinar"}
             other{"Algerian dinars"}
         }
         EGP{
-            one{"pound ng Egypt"}
+            one{"Egyptian pound"}
             other{"Egyptian pounds"}
         }
         ERN{
@@ -898,8 +977,8 @@ fil{
             other{"Ghanian cedis"}
         }
         GIP{
-            one{"pound ng Gibraltar"}
-            other{"pounds ng Gilbraltar"}
+            one{"Gibraltar pound"}
+            other{"Gibraltar pounds"}
         }
         GMD{
             one{"Gambian dalasi"}
@@ -926,24 +1005,24 @@ fil{
             other{"lempiras ng Honduras"}
         }
         HRK{
-            one{"kuna ng Croatia"}
-            other{"kunas ng Croatia"}
+            one{"Croatian kuna"}
+            other{"Croatian kunas"}
         }
         HTG{
             one{"gourde ng Haiti"}
             other{"gourdes ng Haiti"}
         }
         HUF{
-            one{"forint ng Hungary"}
-            other{"forints ng Hungary"}
+            one{"Hungarian forint"}
+            other{"Hungarian forints"}
         }
         IDR{
             one{"Indonesian rupiah"}
             other{"Indonesian rupiahs"}
         }
         ILS{
-            one{"new shekel ng Israel"}
-            other{"new shekels ng Israel"}
+            one{"Israeli new sheqel"}
+            other{"Israeli new sheqels"}
         }
         INR{
             one{"Indian rupee"}
@@ -1025,10 +1104,6 @@ fil{
             one{"dolyar ng Liberia"}
             other{"dolyares ng Liberia"}
         }
-        LSL{
-            one{"Lesotho loti"}
-            other{"Lesotho lotis"}
-        }
         LTL{
             one{"Lithuanian litas"}
             other{"Lithuanian litai"}
@@ -1038,24 +1113,24 @@ fil{
             other{"Latvian lati"}
         }
         LYD{
-            one{"dinar ng Libya"}
-            other{"mga dinar ng Libya"}
+            one{"Libyan dinar"}
+            other{"Libyan dinars"}
         }
         MAD{
             one{"Moroccan dirham"}
             other{"Moroccan dirhams"}
         }
         MDL{
-            one{"leu ng Moldova"}
-            other{"lei ng Moldova"}
+            one{"Moldovan leu"}
+            other{"Moldovan lei"}
         }
         MGA{
             one{"Malagasy Ariary"}
             other{"Malagasy Ariaries"}
         }
         MKD{
-            one{"denar ng North Macedonia"}
-            other{"denari ng North Macedonia"}
+            one{"Macedonian denar"}
+            other{"Macedonian denari"}
         }
         MMK{
             one{"Myanmar kyat"}
@@ -1111,7 +1186,7 @@ fil{
         }
         NIO{
             one{"córdoba ng Nicaragua"}
-            other{"Córdoba ng Nicaragua"}
+            other{"Nicaraguan córdobas"}
         }
         NOK{
             one{"Norwegian krone"}
@@ -1150,8 +1225,8 @@ fil{
             other{"Pakistani rupees"}
         }
         PLN{
-            one{"zloty ng Poland"}
-            other{"zlotys ng Poland"}
+            one{"Polish zloty"}
+            other{"Polish zlotys"}
         }
         PYG{
             one{"Paraguayan guarani"}
@@ -1162,15 +1237,15 @@ fil{
             other{"Qatari rials"}
         }
         RON{
-            one{"leu ng Romania"}
-            other{"lei ng Romania"}
+            one{"Romanian leu"}
+            other{"Romanian lei"}
         }
         RSD{
-            one{"dinar ng Serbia"}
+            one{"Serbian dinar"}
             other{"Serbian dinars"}
         }
         RUB{
-            one{"ruble ng Russia"}
+            one{"Russian ruble"}
             other{"Russian rubles"}
         }
         RWF{
@@ -1205,13 +1280,9 @@ fil{
             one{"Saint Helena pound"}
             other{"Saint Helena pounds"}
         }
-        SLE{
+        SLL{
             one{"Sierra Leonean leone"}
             other{"Sierra Leonean leones"}
-        }
-        SLL{
-            one{"Sierra Leonean leone (1964—2022)"}
-            other{"Sierra Leonean leones (1964—2022)"}
         }
         SOS{
             one{"Somali shilling"}
@@ -1278,8 +1349,8 @@ fil{
             other{"Tanzanian shillings"}
         }
         UAH{
-            one{"hryvnia ng Ukraine"}
-            other{"hryvnias ng Ukraine"}
+            one{"Ukrainian hryvnia"}
+            other{"Ukrainian hryvnias"}
         }
         UGX{
             one{"Ugandan shilling"}
@@ -1354,4 +1425,5 @@ fil{
         one{"{0} {1}"}
         other{"{0} {1}"}
     }
+    Version{"2.1.49.82"}
 }

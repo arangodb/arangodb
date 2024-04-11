@@ -44,7 +44,7 @@
 
 U_NAMESPACE_BEGIN
 
-UBool beVerbose=false, haveCopyright=true;
+UBool beVerbose=FALSE, haveCopyright=TRUE;
 
 #if !UCONFIG_NO_NORMALIZATION
 void parseFile(std::ifstream &f, Normalizer2DataBuilder &builder);
@@ -104,7 +104,7 @@ main(int argc, char* argv[]) {
             "Reads the infiles with normalization data and\n"
             "creates a binary file, or a C source file (--csource), with the data,\n"
             "or writes a data file with the combined data (--combined).\n"
-            "See https://unicode-org.github.io/icu/userguide/transforms/normalization#data-file-syntax\n"
+            "See http://userguide.icu-project.org/transforms/normalization#TOC-Data-File-Syntax\n"
             "\n"
             "Alternate usage: %s [-options] a.txt b.txt minus p.txt q.txt -o outputfilename\n"
             "\n"
@@ -146,7 +146,7 @@ main(int argc, char* argv[]) {
         "gennorm2 writes a dummy binary data file "
         "because UCONFIG_NO_NORMALIZATION is set, \n"
         "see icu/source/common/unicode/uconfig.h\n");
-    udata_createDummy(nullptr, nullptr, options[OUTPUT_FILENAME].value, errorCode);
+    udata_createDummy(NULL, NULL, options[OUTPUT_FILENAME].value, errorCode);
     // Should not return an error since this is the expected behaviour if UCONFIG_NO_NORMALIZATION is on.
     // return U_UNSUPPORTED_ERROR;
     return 0;
@@ -238,9 +238,13 @@ void parseFile(std::ifstream &f, Normalizer2DataBuilder &builder) {
         if (lineString.empty()) {
             continue;  // skip empty lines.
         }
+#if (U_CPLUSPLUS_VERSION >= 11)
         char *line = &lineString.front();
+#else
+        char *line = &lineString.at(0);
+#endif
         char *comment=(char *)strchr(line, '#');
-        if(comment!=nullptr) {
+        if(comment!=NULL) {
             *comment=0;
         }
         u_rtrim(line);
@@ -292,13 +296,13 @@ void parseFile(std::ifstream &f, Normalizer2DataBuilder &builder) {
             continue;
         }
         if(*delimiter=='=' || *delimiter=='>') {
-            char16_t uchars[Normalizer2Impl::MAPPING_LENGTH_MASK];
-            int32_t length=u_parseString(delimiter+1, uchars, UPRV_LENGTHOF(uchars), nullptr, errorCode);
+            UChar uchars[Normalizer2Impl::MAPPING_LENGTH_MASK];
+            int32_t length=u_parseString(delimiter+1, uchars, UPRV_LENGTHOF(uchars), NULL, errorCode);
             if(errorCode.isFailure()) {
                 fprintf(stderr, "gennorm2 error: parsing mapping string from %s\n", line);
                 exit(errorCode.reset());
             }
-            UnicodeString mapping(false, uchars, length);
+            UnicodeString mapping(FALSE, uchars, length);
             if(*delimiter=='=') {
                 if(rangeLength!=1) {
                     fprintf(stderr,

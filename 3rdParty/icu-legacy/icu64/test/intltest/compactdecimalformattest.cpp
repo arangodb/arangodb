@@ -23,7 +23,6 @@
 
 typedef struct ExpectedResult {
   double value;
-  // Invariant characters, will be converted to UTF-16 and then unescaped.
   const char *expected;
 } ExpectedResult;
 
@@ -114,12 +113,7 @@ static ExpectedResult kJapaneseShort[] = {
   {1.23456789E11, "1200\\u5104"},
   {1.23456789E12, "1.2\\u5146"},
   {1.23456789E13, "12\\u5146"},
-  {1.23456789E14, "120\\u5146"},
-  {1.23456789E15, "1200\\u5146"},
-  {1.23456789E16, "1.2\\u4EAC"},
-  {1.23456789E17, "12\\u4EAC"},
-  {1.23456789E18, "120\\u4EAC"},
-  {1.23456789E19, "1200\\u4EAC"}};
+  {1.23456789E14, "120\\u5146"}};
 
 static ExpectedResult kSwahiliShort[] = {
   {1234.0, "elfu\\u00a01.2"},
@@ -174,55 +168,55 @@ static ExpectedResult kArabicLong[] = {
   {-5300.0, "\\u061C-\\u0665\\u066B\\u0663 \\u0623\\u0644\\u0641"}};
 
 static ExpectedResult kChineseCurrencyTestData[] = {
-        {1.0, "\\u00A51"},
-        {12.0, "\\u00A512"},
-        {123.0, "\\u00A5120"},
-        {1234.0, "\\u00A51200"},
-        {12345.0, "\\u00A51.2\\u4E07"},
-        {123456.0, "\\u00A512\\u4E07"},
-        {1234567.0, "\\u00A5120\\u4E07"},
-        {12345678.0, "\\u00A51200\\u4E07"},
-        {123456789.0, "\\u00A51.2\\u4EBF"},
-        {1234567890.0, "\\u00A512\\u4EBF"},
-        {12345678901.0, "\\u00A5120\\u4EBF"},
-        {123456789012.0, "\\u00A51200\\u4EBF"},
-        {1234567890123.0, "\\u00A51.2\\u4E07\\u4EBF"},
-        {12345678901234.0, "\\u00A512\\u4E07\\u4EBF"},
-        {123456789012345.0, "\\u00A5120\\u4E07\\u4EBF"},
+        {1.0, "\\uFFE51"},
+        {12.0, "\\uFFE512"},
+        {123.0, "\\uFFE5120"},
+        {1234.0, "\\uFFE51200"},
+        {12345.0, "\\uFFE51.2\\u4E07"},
+        {123456.0, "\\uFFE512\\u4E07"},
+        {1234567.0, "\\uFFE5120\\u4E07"},
+        {12345678.0, "\\uFFE51200\\u4E07"},
+        {123456789.0, "\\uFFE51.2\\u4EBF"},
+        {1234567890.0, "\\uFFE512\\u4EBF"},
+        {12345678901.0, "\\uFFE5120\\u4EBF"},
+        {123456789012.0, "\\uFFE51200\\u4EBF"},
+        {1234567890123.0, "\\uFFE51.2\\u5146"},
+        {12345678901234.0, "\\uFFE512\\u5146"},
+        {123456789012345.0, "\\uFFE5120\\u5146"},
 };
 static ExpectedResult kGermanCurrencyTestData[] = {
-        {1.0, "1\\u00A0\\u20AC"},
-        {12.0, "12\\u00A0\\u20AC"},
-        {123.0, "120\\u00A0\\u20AC"},
-        {1234.0, "1200\\u00A0\\u20AC"},
-        {12345.0, "12.000\\u00A0\\u20AC"},
-        {123456.0, "120.000\\u00A0\\u20AC"},
-        {1234567.0, "1,2\\u00A0Mio.\\u00A0\\u20AC"},
-        {12345678.0, "12\\u00A0Mio.\\u00A0\\u20AC"},
-        {123456789.0, "120\\u00A0Mio.\\u00A0\\u20AC"},
-        {1234567890.0, "1,2\\u00A0Mrd.\\u00A0\\u20AC"},
-        {12345678901.0, "12\\u00A0Mrd.\\u00A0\\u20AC"},
-        {123456789012.0, "120\\u00A0Mrd.\\u00A0\\u20AC"},
-        {1234567890123.0, "1,2\\u00A0Bio.\\u00A0\\u20AC"},
-        {12345678901234.0, "12\\u00A0Bio.\\u00A0\\u20AC"},
-        {123456789012345.0, "120\\u00A0Bio.\\u00A0\\u20AC"},
+        {1.0, u8"1\\u00A0\\u20AC"},
+        {12.0, u8"12\\u00A0\\u20AC"},
+        {123.0, u8"120\\u00A0\\u20AC"},
+        {1234.0, u8"1200\\u00A0\\u20AC"},
+        {12345.0, u8"12.000\\u00A0\\u20AC"},
+        {123456.0, u8"120.000\\u00A0\\u20AC"},
+        {1234567.0, u8"1,2\\u00A0Mio.\\u00A0\\u20AC"},
+        {12345678.0, u8"12\\u00A0Mio.\\u00A0\\u20AC"},
+        {123456789.0, u8"120\\u00A0Mio.\\u00A0\\u20AC"},
+        {1234567890.0, u8"1,2\\u00A0Mrd.\\u00A0\\u20AC"},
+        {12345678901.0, u8"12\\u00A0Mrd.\\u00A0\\u20AC"},
+        {123456789012.0, u8"120\\u00A0Mrd.\\u00A0\\u20AC"},
+        {1234567890123.0, u8"1,2\\u00A0Bio.\\u00A0\\u20AC"},
+        {12345678901234.0, u8"12\\u00A0Bio.\\u00A0\\u20AC"},
+        {123456789012345.0, u8"120\\u00A0Bio.\\u00A0\\u20AC"},
 };
 static ExpectedResult kEnglishCurrencyTestData[] = {
-        {1.0, "$1"},
-        {12.0, "$12"},
-        {123.0, "$120"},
-        {1234.0, "$1.2K"},
-        {12345.0, "$12K"},
-        {123456.0, "$120K"},
-        {1234567.0, "$1.2M"},
-        {12345678.0, "$12M"},
-        {123456789.0, "$120M"},
-        {1234567890.0, "$1.2B"},
-        {12345678901.0, "$12B"},
-        {123456789012.0, "$120B"},
-        {1234567890123.0, "$1.2T"},
-        {12345678901234.0, "$12T"},
-        {123456789012345.0, "$120T"},
+        {1.0, u8"$1"},
+        {12.0, u8"$12"},
+        {123.0, u8"$120"},
+        {1234.0, u8"$1.2K"},
+        {12345.0, u8"$12K"},
+        {123456.0, u8"$120K"},
+        {1234567.0, u8"$1.2M"},
+        {12345678.0, u8"$12M"},
+        {123456789.0, u8"$120M"},
+        {1234567890.0, u8"$1.2B"},
+        {12345678901.0, u8"$12B"},
+        {123456789012.0, u8"$120B"},
+        {1234567890123.0, u8"$1.2T"},
+        {12345678901234.0, u8"$12T"},
+        {123456789012345.0, u8"$120T"},
 };
 
 
@@ -231,8 +225,7 @@ public:
     CompactDecimalFormatTest() {
     }
 
-    void runIndexedTest(int32_t index, UBool exec, const char*& name, char* par = nullptr) override;
-
+    void runIndexedTest(int32_t index, UBool exec, const char *&name, char *par=0);
 private:
     void TestEnglishShort();
     void TestSerbianShort();
@@ -255,7 +248,7 @@ private:
     void CheckLocale(
         const Locale& locale, UNumberCompactStyle style,
         const ExpectedResult* expectedResults, int32_t expectedResultLength);
-    void CheckLocaleWithCurrency(const Locale& locale, UNumberCompactStyle style, const char16_t* currency,
+    void CheckLocaleWithCurrency(const Locale& locale, UNumberCompactStyle style, const UChar* currency,
                                  const ExpectedResult* expectedResults, int32_t expectedResultLength);
     void CheckExpectedResult(
         const CompactDecimalFormat* cdf, const ExpectedResult* expectedResult,
@@ -495,7 +488,7 @@ void CompactDecimalFormatTest::TestBug12975() {
     if (assertSuccess("", status, true, __FILE__, __LINE__)) {
         UnicodeString resultCdf;
         cdf->format(12000, resultCdf);
-        LocalPointer<DecimalFormat> df(dynamic_cast<DecimalFormat*>(DecimalFormat::createInstance(locale, status)));
+        LocalPointer<DecimalFormat> df((DecimalFormat*) DecimalFormat::createInstance(locale, status));
         UnicodeString resultDefault;
         df->format(12000, resultDefault);
         assertEquals("CompactDecimalFormat should use default pattern when compact pattern is unavailable",
@@ -514,14 +507,14 @@ void CompactDecimalFormatTest::CheckLocale(const Locale& locale, UNumberCompactS
     return;
   }
   char description[256];
-  snprintf(description, sizeof(description), "%s - %s", locale.getName(), StyleStr(style));
+  sprintf(description,"%s - %s", locale.getName(), StyleStr(style));
   for (int32_t i = 0; i < expectedResultLength; i++) {
     CheckExpectedResult(cdf.getAlias(), &expectedResults[i], description);
   }
 }
 
 void CompactDecimalFormatTest::CheckLocaleWithCurrency(const Locale& locale, UNumberCompactStyle style,
-                                                       const char16_t* currency,
+                                                       const UChar* currency,
                                                        const ExpectedResult* expectedResults,
                                                        int32_t expectedResultLength) {
     UErrorCode status = U_ZERO_ERROR;
@@ -533,7 +526,7 @@ void CompactDecimalFormatTest::CheckLocaleWithCurrency(const Locale& locale, UNu
     cdf->setCurrency(currency, status);
     assertSuccess("Failed to set currency", status);
     char description[256];
-    snprintf(description, sizeof(description), "%s - %s", locale.getName(), StyleStr(style));
+    sprintf(description,"%s - %s", locale.getName(), StyleStr(style));
     for (int32_t i = 0; i < expectedResultLength; i++) {
         CheckExpectedResult(cdf.getAlias(), &expectedResults[i], description);
     }
@@ -556,7 +549,7 @@ CompactDecimalFormat*
 CompactDecimalFormatTest::createCDFInstance(const Locale& locale, UNumberCompactStyle style, UErrorCode& status) {
   CompactDecimalFormat* result = CompactDecimalFormat::createInstance(locale, style, status);
   if (U_FAILURE(status)) {
-    return nullptr;
+    return NULL;
   }
   // All tests are written for two significant digits, so we explicitly set here
   // in case default significant digits change.

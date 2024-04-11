@@ -31,7 +31,7 @@ class DataMap;
 
 class DataDrivenFormatTest : public IntlTest {
     void runIndexedTest(int32_t index, UBool exec, const char* &name,
-            char* par = nullptr) override;
+            char* par = NULL);
 public:
     DataDrivenFormatTest();
     virtual ~DataDrivenFormatTest();

@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 fa_AF{
     Countries{
         AD{"اندورا"}
@@ -24,6 +23,7 @@ fa_AF{
         CO{"کولمبیا"}
         CR{"کاستریکا"}
         CU{"کیوبا"}
+        CZ{"چک"}
         DK{"دنمارک"}
         EA{"سئوتا و ملیلا"}
         EE{"استونیا"}
@@ -96,4 +96,8 @@ fa_AF{
     Countries%short{
         HK{"هانگ کانگ"}
     }
+    Countries%variant{
+        CZ{"جمهوری چک"}
+    }
+    Version{"2.1.47.86"}
 }

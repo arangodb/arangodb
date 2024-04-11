@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 zh_Hant_HK{
+    Version{"2.1.47.86"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"阿比贊"}
@@ -108,9 +108,6 @@ zh_Hant_HK{
         "America:Chihuahua"{
             ec{"芝娃娃"}
         }
-        "America:Ciudad_Juarez"{
-            ec{"華雷斯城"}
-        }
         "America:Cordoba"{
             ec{"科爾多瓦"}
         }
@@ -210,6 +207,9 @@ zh_Hant_HK{
         "America:Nassau"{
             ec{"拿騷"}
         }
+        "America:Nipigon"{
+            ec{"尼皮貢"}
+        }
         "America:Noronha"{
             ec{"諾羅尼亞"}
         }
@@ -255,6 +255,9 @@ zh_Hant_HK{
         "America:Thule"{
             ec{"圖勒"}
         }
+        "America:Thunder_Bay"{
+            ec{"雷灣"}
+        }
         "America:Tijuana"{
             ec{"蒂華納"}
         }
@@ -263,6 +266,9 @@ zh_Hant_HK{
         }
         "America:Yakutat"{
             ec{"亞庫塔特"}
+        }
+        "America:Yellowknife"{
+            ec{"黃刀鎮"}
         }
         "Antarctica:Casey"{
             ec{"凱西站"}
@@ -372,6 +378,9 @@ zh_Hant_HK{
         "Australia:Brisbane"{
             ec{"布里斯本"}
         }
+        "Australia:Currie"{
+            ec{"卡里"}
+        }
         "Australia:Hobart"{
             ec{"荷伯特"}
         }
@@ -410,6 +419,9 @@ zh_Hant_HK{
         }
         "Europe:Skopje"{
             ec{"斯科普里"}
+        }
+        "Europe:Uzhgorod"{
+            ec{"烏日哥羅德"}
         }
         "Europe:Vaduz"{
             ec{"華杜茲"}
@@ -461,6 +473,9 @@ zh_Hant_HK{
         }
         "Pacific:Guadalcanal"{
             ec{"瓜達爾卡納爾島"}
+        }
+        "Pacific:Johnston"{
+            ec{"約翰斯頓環礁"}
         }
         "Pacific:Kosrae"{
             ec{"科斯雷"}
@@ -515,6 +530,9 @@ zh_Hant_HK{
             lg{"北美太平洋時間"}
             ls{"北美太平洋標準時間"}
         }
+        "meta:Aqtau"{
+            lg{"阿克陶時間"}
+        }
         "meta:Azerbaijan"{
             ld{"亞塞拜疆夏令時間"}
             lg{"亞塞拜疆時間"}
@@ -548,8 +566,14 @@ zh_Hant_HK{
         "meta:Guyana"{
             ls{"圭亞那時間"}
         }
+        "meta:Hawaii_Aleutian"{
+            lg{"夏威夷-阿留申時間"}
+        }
         "meta:India"{
             ls{"印度時間"}
+        }
+        "meta:Indochina"{
+            ls{"中南半島時間"}
         }
         "meta:Irkutsk"{
             ld{"伊爾庫茨克夏令時間"}
@@ -558,6 +582,9 @@ zh_Hant_HK{
         }
         "meta:Kosrae"{
             ls{"科斯雷時間"}
+        }
+        "meta:Macquarie"{
+            ls{"麥夸里群島時間"}
         }
         "meta:Maldives"{
             ls{"馬爾代夫時間"}

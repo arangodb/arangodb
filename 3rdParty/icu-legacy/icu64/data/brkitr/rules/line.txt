@@ -7,8 +7,8 @@
 #
 #         Line Breaking Rules
 #         Implement default line breaking as defined by
-#         Unicode Standard Annex #14 (https://www.unicode.org/reports/tr14/)
-#         for Unicode 14.0, with the following modification:
+#         Unicode Standard Annex #14 Revision 42 for Unicode 12.0
+#         http://www.unicode.org/reports/tr14/, with the following modification:
 #
 #         Boundaries between hyphens and following letters are suppressed when
 #         there is a boundary preceding the hyphen. See rule 20.9
@@ -24,10 +24,7 @@
 !!quoted_literals_only;
 
 $AI = [:LineBreak =  Ambiguous:];
-$AK = [:LineBreak =  Aksara:];
 $AL = [:LineBreak =  Alphabetic:];
-$AP = [:LineBreak =  Aksara_Prebase:];
-$AS = [:LineBreak =  Aksara_Start:];
 $BA = [:LineBreak =  Break_After:];
 $HH = [\u2010];     # \u2010 is HYPHEN, default line break is BA.
 $BB = [:LineBreak =  Break_Before:];
@@ -67,21 +64,10 @@ $SA = [:LineBreak =  Complex_Context:];
 $SG = [:LineBreak =  Surrogate:];
 $SP = [:LineBreak =  Space:];
 $SY = [:LineBreak =  Break_Symbols:];
-$VF = [:LineBreak =  Virama_Final:];
-$VI = [:LineBreak =  Virama:];
 $WJ = [:LineBreak =  Word_Joiner:];
 $XX = [:LineBreak =  Unknown:];
 $ZW = [:LineBreak =  ZWSpace:];
 $ZWJ = [:LineBreak = ZWJ:];
-
-# OP30 and CP30 are variants of OP and CP that appear in-line in rule LB30 from UAX 14,
-# without a formal name. Because ICU rules require multiple uses of the expressions,
-# give them a single definition with a name
-
-$OP30 = [$OP - [\p{ea=F}\p{ea=W}\p{ea=H}]];
-$CP30 = [$CP - [\p{ea=F}\p{ea=W}\p{ea=H}]];
-
-$ExtPictUnassigned = [\p{Extended_Pictographic} & \p{Cn}];
 
 # By LB9, a ZWJ also behaves as a CM. Including it in the definition of CM avoids having to explicitly
 #         list it in the numerous rules that use CM.
@@ -122,7 +108,7 @@ $CANT_CM = [ $SP $BK $CR $LF $NL $ZW $CM];       # Bases that can't take CMs
 # AL_FOLLOW  set of chars that can unconditionally follow an AL
 #            Needed in rules where stand-alone $CM s are treated as AL.
 #
-$AL_FOLLOW      = [$BK $CR $LF $NL $ZW $SP $CL $CP $EX $HL $IS $SY $WJ $GL $OP30 $QU $BA $HY $NS $IN $NU $PR $PO $ALPlus];
+$AL_FOLLOW      = [$BK $CR $LF $NL $ZW $SP $CL $CP $EX $HL $IS $SY $WJ $GL $OP $QU $BA $HY $NS $IN $NU $PR $PO $ALPlus];
 
 
 #
@@ -189,7 +175,7 @@ $GL $CM* .;
 
 
 
-# LB 13   Don't break before ']' or '!' or '/', even after spaces.
+# LB 13   Don't break before ']' or '!' or or '/', even after spaces.
 #
 $LB8NonBreaks $CL;
 $CAN_CM $CM*  $CL;
@@ -220,37 +206,17 @@ $OP $CM* $SP+ $CM+ $AL_FOLLOW?;    # by rule 10, stand-alone CM behaves as AL
                                    # by rule 8, CM following a SP is stand-alone.
 
 
-# LB 15a
-($OP $CM* $SP+ | [$OP $QU $GL] $CM*) ([\p{Pi} & $QU] $CM* $SP*)+ .;
-($OP $CM* $SP+ | [$OP $QU $GL] $CM*) ([\p{Pi} & $QU] $CM* $SP*)+ $SP $CM+ $AL_FOLLOW?;
-^([\p{Pi} & $QU] $CM* $SP*)+ .;
-^([\p{Pi} & $QU] $CM* $SP*)+ $SP $CM+ $AL_FOLLOW?;
-
-# LB 15b
-$LB8NonBreaks [\p{Pf} & $QU] $CM* [$SP $GL $WJ $CL $QU $CP $EX $IS $SY $BK $CR $LF $NL $ZW {eof}];
-$CAN_CM $CM*  [\p{Pf} & $QU] $CM* [$SP $GL $WJ $CL $QU $CP $EX $IS $SY $BK $CR $LF $NL $ZW {eof}];
-^$CM+  [\p{Pf} & $QU] $CM* [$SP $GL $WJ $CL $QU $CP $EX $IS $SY $BK $CR $LF $NL $ZW {eof}];
-
-# Messy interaction: manually chain between LB 15b and LB 15a on Pf Pi.
-$LB8NonBreaks [\p{Pf} & $QU] $CM* ([\p{Pi} & $QU] $CM* $SP*)+ .;
-$LB8NonBreaks [\p{Pf} & $QU] $CM* ([\p{Pi} & $QU] $CM* $SP*)+ $SP $CM+ $AL_FOLLOW?;
-$CAN_CM $CM*  [\p{Pf} & $QU] $CM* ([\p{Pi} & $QU] $CM* $SP*)+ .;
-$CAN_CM $CM*  [\p{Pf} & $QU] $CM* ([\p{Pi} & $QU] $CM* $SP*)+ $SP $CM+ $AL_FOLLOW?;
-^$CM+  [\p{Pf} & $QU] $CM* ([\p{Pi} & $QU] $CM* $SP*)+ .;
-^$CM+  [\p{Pf} & $QU] $CM* ([\p{Pi} & $QU] $CM* $SP*)+ $SP $CM+ $AL_FOLLOW?;
-
-
-# LB 15c Force a break before start of a number with a leading decimal pt, e.g. " .23"
+# LB 14a Force a break before start of a number with a leading decimal pt, e.g. " .23"
 #        Note: would be simpler to express as "$SP / $IS $CM* $NU;", but ICU rules have limitations.
 #        See issue ICU-20303
 
 
-$CanFollowIS = [$BK $CR $LF $NL $SP $ZW $WJ $GL $CL $CP $EX $IS $SY $QU $BA $HY $NS $ALPlus $HL $IN];
+$CanFollowIS = [$BK $CR $LF $NL $SP $ZW $WJ $GL $CL $CP $EX $IS $SY $QU $BA $HY $NS $ALPlus $HL];
 $SP $IS           / [^ $CanFollowIS $NU $CM];
 $SP $IS $CM* $CMX / [^ $CanFollowIS $NU $CM];
 
 #
-# LB 15d Do not break before numeric separators (IS), even after spaces.
+# LB 14b Do not break before numeric separators (IS), even after spaces.
 
 [$LB8NonBreaks - $SP] $IS;
 $SP $IS $CM* [$CanFollowIS {eof}];
@@ -259,6 +225,9 @@ $SP $IS $CM* $ZWJ [^$CM $NU];
 $CAN_CM $CM*  $IS;
 ^$CM+         $IS;              # by rule 10, stand-alone CM behaves as AL
 
+
+# LB 15
+$QU $CM* $SP* $OP;
 
 # LB 16
 ($CL | $CP) $CM* $SP* $NS;
@@ -313,13 +282,16 @@ $HL $CM* ($HY | $BA) $CM* [^$CB]?;
 # (break between HL and SY already disallowed by LB 13 above)
 $SY $CM* $HL;
 
-# LB 22  Do not break before ellipses
-#
-$LB20NonBreaks $CM*    $IN;
-^$CM+ $IN;
+# LB 22
+($ALPlus | $HL) $CM* $IN;
+^$CM+    $IN;     #  by rule 10, any otherwise unattached CM behaves as AL
+$EX $CM*    $IN;
+($ID | $EB | $EM) $CM*  $IN;
+$IN $CM*    $IN;
+$NU $CM*    $IN;
 
 
-# LB 23
+# $LB 23
 #
 ($ALPlus | $HL) $CM* $NU;
 ^$CM+  $NU;       # Rule 10, any otherwise unattached CM behaves as AL
@@ -351,6 +323,7 @@ $JL $CM* ($JL | $JV | $H2 | $H3);
 ($JT | $H3) $CM* $JT;
 
 # LB 27  Treat korean Syllable Block the same as ID  (don't break it)
+($JL | $JV | $JT | $H2 | $H3) $CM* $IN;
 ($JL | $JV | $JT | $H2 | $H3) $CM* $PO;
 $PR $CM* ($JL | $JV | $JT | $H2 | $H3);
 
@@ -360,29 +333,25 @@ $PR $CM* ($JL | $JV | $JT | $H2 | $H3);
 ($ALPlus | $HL) $CM* ($ALPlus | $HL);
 ^$CM+ ($ALPlus | $HL);      # The $CM+ is from rule 10, an unattached CM is treated as AL
 
-#LB 28a  Do not break Orthographic syllables
-($AP $CM*)? ($AS | $AK | [◌] ) ($CM* $VI $CM* ($AK | [◌] ))* ($CM* $VI | (($CM* ($AS | $AK | [◌] ) )? $CM* $VF))?;
-
 # LB 29
 $IS $CM* ($ALPlus | $HL);
 
 # LB 30
-($ALPlus | $HL | $NU) $CM* $OP30;
-^$CM+ $OP30;         # The $CM+ is from rule 10, an unattached CM is treated as AL.
-$CP30 $CM* ($ALPlus | $HL | $NU);
+($ALPlus | $HL | $NU) $CM* $OP;
+^$CM+ $OP;         # The $CM+ is from rule 10, an unattached CM is treated as AL.
+$CP $CM* ($ALPlus | $HL | $NU);
 
 # LB 30a  Do not break between regional indicators. Break after pairs of them.
 #         Tricky interaction with LB8a: ZWJ x .   together with ZWJ acting like a CM.
-$RI $CM* $RI                 / [[^$BK $CR $LF $NL $SP $ZW $WJ $CL $CP $EX $IS $SY $GL $QU $BA $HY $NS $IN $CM]];
-$RI $CM* $RI $CM* [$CM-$ZWJ] / [[^$BK $CR $LF $NL $SP $ZW $WJ $CL $CP $EX $IS $SY $GL $QU $BA $HY $NS $IN $CM]];
-$RI $CM* $RI $CM* [$BK $CR $LF $NL $SP $ZW $WJ $CL $CP $EX $IS $SY $GL $QU $BA $HY $NS $IN $ZWJ {eof}];
+$RI $CM* $RI                 / [[^$BK $CR $LF $NL $SP $ZW $WJ $CL $CP $EX $IS $SY $GL $QU $BA $HY $NS $CM]];
+$RI $CM* $RI $CM* [$CM-$ZWJ] / [[^$BK $CR $LF $NL $SP $ZW $WJ $CL $CP $EX $IS $SY $GL $QU $BA $HY $NS $CM]];
+$RI $CM* $RI $CM* [$BK $CR $LF $NL $SP $ZW $WJ $CL $CP $EX $IS $SY $GL $QU $BA $HY $NS $ZWJ {eof}];
 # note: the preceding rule includes {eof} rather than having the last [set] term qualified with '?'
 #       because of the chain-out behavior difference. The rule must chain out only from the [set characters],
 #       not from the preceding $RI or $CM, which it would be able to do if the set were optional.
 
-# LB30b Do not break between an emoji base (or potential emoji) and an emoji modifier.
+# LB 30b Do not break between an Emoji Base and an Emoji Modifier
 $EB $CM* $EM;
-$ExtPictUnassigned $CM* $EM;
 
 # LB 31 Break everywhere else.
 #       Match a single code point if no other rule applies.

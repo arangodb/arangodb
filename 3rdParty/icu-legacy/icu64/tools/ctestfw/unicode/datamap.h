@@ -121,16 +121,16 @@ public:
 
   virtual const ResourceBundle *getItem(const char* key, UErrorCode &status) const;
 
-  virtual const UnicodeString getString(const char* key, UErrorCode &status) const override;
-  virtual int32_t getInt28(const char* key, UErrorCode &status) const override;
-  virtual uint32_t getUInt28(const char* key, UErrorCode &status) const override;
-  virtual const int32_t *getIntVector(int32_t &length, const char *key, UErrorCode &status) const override;
-  virtual const uint8_t *getBinary(int32_t &length, const char *key, UErrorCode &status) const override;
+  virtual const UnicodeString getString(const char* key, UErrorCode &status) const;
+  virtual int32_t getInt28(const char* key, UErrorCode &status) const;
+  virtual uint32_t getUInt28(const char* key, UErrorCode &status) const;
+  virtual const int32_t *getIntVector(int32_t &length, const char *key, UErrorCode &status) const;
+  virtual const uint8_t *getBinary(int32_t &length, const char *key, UErrorCode &status) const;
 
-  virtual int32_t getInt(const char* key, UErrorCode &status) const override;
+  virtual int32_t getInt(const char* key, UErrorCode &status) const;
   
-  virtual const UnicodeString* getStringArray(int32_t& count, const char* key, UErrorCode &status) const override;
-  virtual const int32_t* getIntArray(int32_t& count, const char* key, UErrorCode &status) const override;
+  virtual const UnicodeString* getStringArray(int32_t& count, const char* key, UErrorCode &status) const;
+  virtual const int32_t* getIntArray(int32_t& count, const char* key, UErrorCode &status) const;
 
   // ... etc ...
 };

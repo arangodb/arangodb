@@ -18,7 +18,7 @@ void DecimalQuantityTest::runIndexedTest(int32_t index, UBool exec, const char *
     }
     TESTCASE_AUTO_BEGIN;
         TESTCASE_AUTO(testDecimalQuantityBehaviorStandalone);
-        TESTCASE_AUTO(testSwitchStorage);
+        TESTCASE_AUTO(testSwitchStorage);;
         TESTCASE_AUTO(testCopyMove);
         TESTCASE_AUTO(testAppend);
         if (!quick) {
@@ -27,13 +27,9 @@ void DecimalQuantityTest::runIndexedTest(int32_t index, UBool exec, const char *
         }
         TESTCASE_AUTO(testUseApproximateDoubleWhenAble);
         TESTCASE_AUTO(testHardDoubleConversion);
-        TESTCASE_AUTO(testFitsInLong);
         TESTCASE_AUTO(testToDouble);
         TESTCASE_AUTO(testMaxDigits);
         TESTCASE_AUTO(testNickelRounding);
-        TESTCASE_AUTO(testScientificAndCompactSuppressedExponent);
-        TESTCASE_AUTO(testSuppressedExponentUnchangedByInitialScaling);
-        TESTCASE_AUTO(testDecimalQuantityParseFormatRoundTrip);
     TESTCASE_AUTO_END;
 }
 
@@ -92,7 +88,7 @@ void DecimalQuantityTest::testDecimalQuantityBehaviorStandalone() {
 
     fq.setToLong(90909090909000L);
     assertToStringAndHealth(fq, u"<DecimalQuantity 0:0 long 90909090909E3>");
-    fq.increaseMinIntegerTo(2);
+    fq.setMinInteger(2);
     fq.applyMaxInteger(5);
     assertToStringAndHealth(fq, u"<DecimalQuantity 2:0 long 9E3>");
     fq.setMinFraction(3);
@@ -102,11 +98,8 @@ void DecimalQuantityTest::testDecimalQuantityBehaviorStandalone() {
     assertToStringAndHealth(fq, u"<DecimalQuantity 2:-3 long 987654321E-6>");
     fq.roundToInfinity();
     assertToStringAndHealth(fq, u"<DecimalQuantity 2:-3 long 987654321E-6>");
-    fq.roundToIncrement(4, -3, RoundingMode::UNUM_ROUND_HALFEVEN, status);
+    fq.roundToIncrement(0.005, RoundingMode::UNUM_ROUND_HALFEVEN, status);
     assertSuccess("Rounding to increment", status);
-    assertToStringAndHealth(fq, u"<DecimalQuantity 2:-3 long 987656E-3>");
-    fq.roundToNickel(-3, RoundingMode::UNUM_ROUND_HALFEVEN, status);
-    assertSuccess("Rounding to nickel", status);
     assertToStringAndHealth(fq, u"<DecimalQuantity 2:-3 long 987655E-3>");
     fq.roundToMagnitude(-2, RoundingMode::UNUM_ROUND_HALFEVEN, status);
     assertSuccess("Rounding to magnitude", status);
@@ -240,6 +233,8 @@ void DecimalQuantityTest::testConvertToAccurateDouble() {
     // based on https://github.com/google/double-conversion/issues/28
     static double hardDoubles[] = {
             1651087494906221570.0,
+            -5074790912492772E-327,
+            83602530019752571E-327,
             2.207817077636718750000000000000,
             1.818351745605468750000000000000,
             3.941719055175781250000000000000,
@@ -264,11 +259,9 @@ void DecimalQuantityTest::testConvertToAccurateDouble() {
             1.305290222167968750000000000000,
             3.834922790527343750000000000000,};
 
-    static double exactDoubles[] = {
+    static double integerDoubles[] = {
             51423,
             51423e10,
-            -5074790912492772E-327,
-            83602530019752571E-327,
             4.503599627370496E15,
             6.789512076111555E15,
             9.007199254740991E15,
@@ -278,7 +271,7 @@ void DecimalQuantityTest::testConvertToAccurateDouble() {
         checkDoubleBehavior(d, true);
     }
 
-    for (double d : exactDoubles) {
+    for (double d : integerDoubles) {
         checkDoubleBehavior(d, false);
     }
 
@@ -321,7 +314,7 @@ void DecimalQuantityTest::testUseApproximateDoubleWhenAble() {
                  {1.235, 3, RoundingMode::UNUM_ROUND_CEILING, true}};
 
     UErrorCode status = U_ZERO_ERROR;
-    for (const TestCase& cas : cases) {
+    for (TestCase cas : cases) {
         DecimalQuantity fq;
         fq.setToDouble(cas.d);
         assertTrue("Should be using approximate double", !fq.isExplicitExactDouble());
@@ -353,51 +346,13 @@ void DecimalQuantityTest::testHardDoubleConversion() {
             { 4096.000000000006, u"4096.000000000006" },
             { 4096.000000000007, u"4096.000000000007" } };
 
-    for (const auto& cas : cases) {
+    for (auto& cas : cases) {
         DecimalQuantity q;
         q.setToDouble(cas.input);
         q.roundToInfinity();
         UnicodeString actualOutput = q.toPlainString();
         assertEquals("", cas.expectedOutput, actualOutput);
     }
-}
-
-void DecimalQuantityTest::testFitsInLong() {
-    IcuTestErrorCode status(*this, "testFitsInLong");
-    DecimalQuantity quantity;
-    quantity.setToInt(0);
-    assertTrue("Zero should fit", quantity.fitsInLong());
-    quantity.setToInt(42);
-    assertTrue("Small int should fit", quantity.fitsInLong());
-    quantity.setToDouble(0.1);
-    assertFalse("Fraction should not fit", quantity.fitsInLong());
-    quantity.setToDouble(42.1);
-    assertFalse("Fraction should not fit", quantity.fitsInLong());
-    quantity.setToLong(1000000);
-    assertTrue("Large low-precision int should fit", quantity.fitsInLong());
-    quantity.setToLong(1000000000000000000L);
-    assertTrue("10^19 should fit", quantity.fitsInLong());
-    quantity.setToLong(1234567890123456789L);
-    assertTrue("A number between 10^19 and max long should fit", quantity.fitsInLong());
-    quantity.setToLong(1234567890000000000L);
-    assertTrue("A number with trailing zeros less than max long should fit", quantity.fitsInLong());
-    quantity.setToLong(9223372026854775808L);
-    assertTrue("A number less than max long but with similar digits should fit",
-            quantity.fitsInLong());
-    quantity.setToLong(9223372036854775806L);
-    assertTrue("One less than max long should fit", quantity.fitsInLong());
-    quantity.setToLong(9223372036854775807L);
-    assertTrue("Max long should fit", quantity.fitsInLong());
-    assertEquals("Max long should equal toLong", 9223372036854775807L, quantity.toLong(false));
-    quantity.setToDecNumber("9223372036854775808", status);
-    assertFalse("One greater than max long should not fit", quantity.fitsInLong());
-    assertEquals("toLong(true) should truncate", 223372036854775808L, quantity.toLong(true));
-    quantity.setToDecNumber("9223372046854775806", status);
-    assertFalse("A number between max long and 10^20 should not fit", quantity.fitsInLong());
-    quantity.setToDecNumber("9223372046800000000", status);
-    assertFalse("A large 10^19 number with trailing zeros should not fit", quantity.fitsInLong());
-    quantity.setToDecNumber("10000000000000000000", status);
-    assertFalse("10^20 should not fit", quantity.fitsInLong());
 }
 
 void DecimalQuantityTest::testToDouble() {
@@ -410,7 +365,7 @@ void DecimalQuantityTest::testToDouble() {
             { "514.23", 514.23 },
             { "-3.142E-271", -3.142e-271 } };
 
-    for (const auto& cas : cases) {
+    for (auto& cas : cases) {
         status.setScope(cas.input);
         DecimalQuantity q;
         q.setToDecNumber({cas.input, -1}, status);
@@ -424,7 +379,7 @@ void DecimalQuantityTest::testMaxDigits() {
     DecimalQuantity dq;
     dq.setToDouble(876.543);
     dq.roundToInfinity();
-    dq.increaseMinIntegerTo(0);
+    dq.setMinInteger(0);
     dq.applyMaxInteger(2);
     dq.setMinFraction(0);
     dq.roundToMagnitude(-2, UNUM_ROUND_FLOOR, status);
@@ -456,9 +411,6 @@ void DecimalQuantityTest::testNickelRounding() {
         {1.024, -2, UNUM_ROUND_HALFEVEN, u"1"},
         {1.025, -2, UNUM_ROUND_HALFEVEN, u"1"},
         {1.025, -2, UNUM_ROUND_HALFDOWN, u"1"},
-        {1.025, -2, UNUM_ROUND_HALF_ODD, u"1.05"},
-        {1.025, -2, UNUM_ROUND_HALF_CEILING, u"1.05"},
-        {1.025, -2, UNUM_ROUND_HALF_FLOOR, u"1"},
         {1.025, -2, UNUM_ROUND_HALFUP,   u"1.05"},
         {1.026, -2, UNUM_ROUND_HALFEVEN, u"1.05"},
         {1.030, -2, UNUM_ROUND_HALFEVEN, u"1.05"},
@@ -468,9 +420,6 @@ void DecimalQuantityTest::testNickelRounding() {
         {1.070, -2, UNUM_ROUND_HALFEVEN, u"1.05"},
         {1.074, -2, UNUM_ROUND_HALFEVEN, u"1.05"},
         {1.075, -2, UNUM_ROUND_HALFDOWN, u"1.05"},
-        {1.075, -2, UNUM_ROUND_HALF_ODD, u"1.05"},
-        {1.075, -2, UNUM_ROUND_HALF_CEILING, u"1.1"},
-        {1.075, -2, UNUM_ROUND_HALF_FLOOR, u"1.05"},
         {1.075, -2, UNUM_ROUND_HALFUP,   u"1.1"},
         {1.075, -2, UNUM_ROUND_HALFEVEN, u"1.1"},
         {1.076, -2, UNUM_ROUND_HALFEVEN, u"1.1"},
@@ -481,9 +430,6 @@ void DecimalQuantityTest::testNickelRounding() {
         {2.25, -1, UNUM_ROUND_HALFEVEN, u"2"},
         {2.25, -1, UNUM_ROUND_HALFUP,   u"2.5"},
         {2.75, -1, UNUM_ROUND_HALFDOWN, u"2.5"},
-        {2.75, -1, UNUM_ROUND_HALF_ODD, u"2.5"},
-        {2.75, -1, UNUM_ROUND_HALF_CEILING, u"3"},
-        {2.75, -1, UNUM_ROUND_HALF_FLOOR, u"2.5"},
         {2.75, -1, UNUM_ROUND_HALFEVEN, u"3"},
         {3.00, -1, UNUM_ROUND_CEILING, u"3"},
         {3.25, -1, UNUM_ROUND_CEILING, u"3.5"},
@@ -519,258 +465,6 @@ void DecimalQuantityTest::testNickelRounding() {
     dq.setToDouble(7.1);
     dq.roundToNickel(-1, UNUM_ROUND_UNNECESSARY, status);
     status.expectErrorAndReset(U_FORMAT_INEXACT_ERROR);
-}
-
-void DecimalQuantityTest::testScientificAndCompactSuppressedExponent() {
-    IcuTestErrorCode status(*this, "testScientificAndCompactSuppressedExponent");
-    Locale ulocale("fr-FR");
-
-    struct TestCase {
-        UnicodeString skeleton;
-        double input;
-        const char16_t* expectedString;
-        int64_t expectedLong;
-        double expectedDouble;
-        const char16_t* expectedPlainString;
-        int32_t expectedSuppressedScientificExponent;
-        int32_t expectedSuppressedCompactExponent;
-    } cases[] = {
-        // unlocalized formatter skeleton, input, string output, long output,
-        // double output, BigDecimal output, plain string,
-        // suppressed scientific exponent, suppressed compact exponent
-        {u"",              123456789, u"123 456 789",  123456789L, 123456789.0, u"123456789", 0, 0},
-        {u"compact-long",  123456789, u"123 millions", 123000000L, 123000000.0, u"123000000", 6, 6},
-        {u"compact-short", 123456789, u"123 M",        123000000L, 123000000.0, u"123000000", 6, 6},
-        {u"scientific",    123456789, u"1,234568E8",   123456800L, 123456800.0, u"123456800", 8, 8},
-
-        {u"",              1234567, u"1 234 567",   1234567L, 1234567.0, u"1234567", 0, 0},
-        {u"compact-long",  1234567, u"1,2 million", 1200000L, 1200000.0, u"1200000", 6, 6},
-        {u"compact-short", 1234567, u"1,2 M",       1200000L, 1200000.0, u"1200000", 6, 6},
-        {u"scientific",    1234567, u"1,234567E6",  1234567L, 1234567.0, u"1234567", 6, 6},
-
-        {u"",              123456, u"123 456",   123456L, 123456.0, u"123456", 0, 0},
-        {u"compact-long",  123456, u"123 mille", 123000L, 123000.0, u"123000", 3, 3},
-        {u"compact-short", 123456, u"123 k",     123000L, 123000.0, u"123000", 3, 3},
-        {u"scientific",    123456, u"1,23456E5", 123456L, 123456.0, u"123456", 5, 5},
-
-        {u"",              123, u"123",    123L, 123.0, u"123", 0, 0},
-        {u"compact-long",  123, u"123",    123L, 123.0, u"123", 0, 0},
-        {u"compact-short", 123, u"123",    123L, 123.0, u"123", 0, 0},
-        {u"scientific",    123, u"1,23E2", 123L, 123.0, u"123", 2, 2},
-
-        {u"",              1.2, u"1,2",   1L, 1.2, u"1.2", 0, 0},
-        {u"compact-long",  1.2, u"1,2",   1L, 1.2, u"1.2", 0, 0},
-        {u"compact-short", 1.2, u"1,2",   1L, 1.2, u"1.2", 0, 0},
-        {u"scientific",    1.2, u"1,2E0", 1L, 1.2, u"1.2", 0, 0},
-
-        {u"",              0.12, u"0,12",   0L, 0.12, u"0.12",  0,  0},
-        {u"compact-long",  0.12, u"0,12",   0L, 0.12, u"0.12",  0,  0},
-        {u"compact-short", 0.12, u"0,12",   0L, 0.12, u"0.12",  0,  0},
-        {u"scientific",    0.12, u"1,2E-1", 0L, 0.12, u"0.12", -1, -1},
-
-        {u"",              0.012, u"0,012",   0L, 0.012, u"0.012",  0,  0},
-        {u"compact-long",  0.012, u"0,012",   0L, 0.012, u"0.012",  0,  0},
-        {u"compact-short", 0.012, u"0,012",   0L, 0.012, u"0.012",  0,  0},
-        {u"scientific",    0.012, u"1,2E-2",  0L, 0.012, u"0.012", -2, -2},
-
-        {u"",              999.9, u"999,9",     999L,  999.9,  u"999.9", 0, 0},
-        {u"compact-long",  999.9, u"mille",     1000L, 1000.0, u"1000",  3, 3},
-        {u"compact-short", 999.9, u"1 k",       1000L, 1000.0, u"1000",  3, 3},
-        {u"scientific",    999.9, u"9,999E2",   999L,  999.9,  u"999.9", 2, 2},
-
-        {u"",              1000.0, u"1 000",     1000L, 1000.0, u"1000", 0, 0},
-        {u"compact-long",  1000.0, u"mille",     1000L, 1000.0, u"1000", 3, 3},
-        {u"compact-short", 1000.0, u"1 k",       1000L, 1000.0, u"1000", 3, 3},
-        {u"scientific",    1000.0, u"1E3",       1000L, 1000.0, u"1000", 3, 3},
-    };
-    for (const auto& cas : cases) {
-        // test the helper methods used to compute plural operand values
-
-        LocalizedNumberFormatter formatter =
-            NumberFormatter::forSkeleton(cas.skeleton, status)
-              .locale(ulocale);
-        FormattedNumber fn = formatter.formatDouble(cas.input, status);
-        DecimalQuantity dq;
-        fn.getDecimalQuantity(dq, status);
-        UnicodeString actualString = fn.toString(status);
-        int64_t actualLong = dq.toLong();
-        double actualDouble = dq.toDouble();
-        UnicodeString actualPlainString = dq.toPlainString();
-        int32_t actualSuppressedScientificExponent = dq.getExponent();
-        int32_t actualSuppressedCompactExponent = dq.getExponent();
-
-        assertEquals(
-                u"formatted number " + cas.skeleton + u" toString: " + cas.input,
-                cas.expectedString,
-                actualString);
-        assertEquals(
-                u"formatted number " + cas.skeleton + u" toLong: " + cas.input,
-                cas.expectedLong,
-                actualLong);
-        assertDoubleEquals(
-                u"formatted number " + cas.skeleton + u" toDouble: " + cas.input,
-                cas.expectedDouble,
-                actualDouble);
-        assertEquals(
-                u"formatted number " + cas.skeleton + u" toPlainString: " + cas.input,
-                cas.expectedPlainString,
-                actualPlainString);
-        assertEquals(
-                u"formatted number " + cas.skeleton + u" suppressed scientific exponent: " + cas.input,
-                cas.expectedSuppressedScientificExponent,
-                actualSuppressedScientificExponent);
-        assertEquals(
-                u"formatted number " + cas.skeleton + u" suppressed compact exponent: " + cas.input,
-                cas.expectedSuppressedCompactExponent,
-                actualSuppressedCompactExponent);
-
-        // test the actual computed values of the plural operands
-
-        double expectedNOperand = cas.expectedDouble;
-        double expectedIOperand = static_cast<double>(cas.expectedLong);
-        double expectedEOperand = cas.expectedSuppressedScientificExponent;
-        double expectedCOperand = cas.expectedSuppressedCompactExponent;
-        double actualNOperand = dq.getPluralOperand(PLURAL_OPERAND_N);
-        double actualIOperand = dq.getPluralOperand(PLURAL_OPERAND_I);
-        double actualEOperand = dq.getPluralOperand(PLURAL_OPERAND_E);
-        double actualCOperand = dq.getPluralOperand(PLURAL_OPERAND_C);
-
-        assertDoubleEquals(
-                u"formatted number " + cas.skeleton + u" n operand: " + cas.input,
-                expectedNOperand,
-                actualNOperand);
-        assertDoubleEquals(
-                u"formatted number " + cas.skeleton + u" i operand: " + cas.input,
-                expectedIOperand,
-                actualIOperand);
-        assertDoubleEquals(
-                u"formatted number " + cas.skeleton + " e operand: " + cas.input,
-                expectedEOperand,
-                actualEOperand);
-        assertDoubleEquals(
-                u"formatted number " + cas.skeleton + " c operand: " + cas.input,
-                expectedCOperand,
-                actualCOperand);
-    }
-}
-
-void DecimalQuantityTest::testSuppressedExponentUnchangedByInitialScaling() {
-    IcuTestErrorCode status(*this, "testSuppressedExponentUnchangedByInitialScaling");
-    Locale ulocale("fr-FR");
-    LocalizedNumberFormatter withLocale = NumberFormatter::withLocale(ulocale);
-    LocalizedNumberFormatter compactLong =
-        withLocale.notation(Notation::compactLong());
-    LocalizedNumberFormatter compactScaled =
-        compactLong.scale(Scale::powerOfTen(3));
-    
-    struct TestCase {
-        int32_t input;
-        UnicodeString expectedString;
-        double expectedNOperand;
-        double expectedIOperand;
-        double expectedEOperand;
-        double expectedCOperand;
-    } cases[] = {
-        // input, compact long string output,
-        // compact n operand, compact i operand, compact e operand,
-        // compact c operand
-        {123456789, "123 millions", 123000000.0, 123000000.0, 6.0, 6.0},
-        {1234567,   "1,2 million",  1200000.0,   1200000.0,   6.0, 6.0},
-        {123456,    "123 mille",    123000.0,    123000.0,    3.0, 3.0},
-        {123,       "123",          123.0,       123.0,       0.0, 0.0},
-    };
-
-    for (const auto& cas : cases) {
-        FormattedNumber fnCompactScaled = compactScaled.formatInt(cas.input, status);
-        DecimalQuantity dqCompactScaled;
-        fnCompactScaled.getDecimalQuantity(dqCompactScaled, status);
-        double compactScaledCOperand = dqCompactScaled.getPluralOperand(PLURAL_OPERAND_C);
-
-        FormattedNumber fnCompact = compactLong.formatInt(cas.input, status);
-        DecimalQuantity dqCompact;
-        fnCompact.getDecimalQuantity(dqCompact, status);
-        UnicodeString actualString = fnCompact.toString(status);
-        double compactNOperand = dqCompact.getPluralOperand(PLURAL_OPERAND_N);
-        double compactIOperand = dqCompact.getPluralOperand(PLURAL_OPERAND_I);
-        double compactEOperand = dqCompact.getPluralOperand(PLURAL_OPERAND_E);
-        double compactCOperand = dqCompact.getPluralOperand(PLURAL_OPERAND_C);
-        assertEquals(
-                u"formatted number " + Int64ToUnicodeString(cas.input) + " compactLong toString: ",
-                cas.expectedString,
-                actualString);
-        assertDoubleEquals(
-                u"compact decimal " + DoubleToUnicodeString(cas.input) + ", n operand vs. expected",
-                cas.expectedNOperand,
-                compactNOperand);
-        assertDoubleEquals(
-                u"compact decimal " + DoubleToUnicodeString(cas.input) + ", i operand vs. expected",
-                cas.expectedIOperand,
-                compactIOperand);
-        assertDoubleEquals(
-                u"compact decimal " + DoubleToUnicodeString(cas.input) + ", e operand vs. expected",
-                cas.expectedEOperand,
-                compactEOperand);
-        assertDoubleEquals(
-                u"compact decimal " + DoubleToUnicodeString(cas.input) + ", c operand vs. expected",
-                cas.expectedCOperand,
-                compactCOperand);
-
-        // By scaling by 10^3 in a locale that has words / compact notation
-        // based on powers of 10^3, we guarantee that the suppressed
-        // exponent will differ by 3.
-        assertDoubleEquals(
-                u"decimal " + DoubleToUnicodeString(cas.input) + ", c operand for compact vs. compact scaled",
-                compactCOperand + 3,
-                compactScaledCOperand);
-    }
-}
-
-
-void DecimalQuantityTest::testDecimalQuantityParseFormatRoundTrip() {
-    IcuTestErrorCode status(*this, "testDecimalQuantityParseFormatRoundTrip");
-    
-    struct TestCase {
-        UnicodeString numberString;
-    } cases[] = {
-        // number string
-        { u"0" },
-        { u"1" },
-        { u"1.0" },
-        { u"1.00" },
-        { u"1.1" },
-        { u"1.10" },
-        { u"-1.10" },
-        { u"0.0" },
-        { u"1c5" },
-        { u"1.0c5" },
-        { u"1.1c5" },
-        { u"1.10c5" },
-        { u"0.00" },
-        { u"0.1" },
-        { u"1c-1" },
-        { u"1.0c-1" }
-    };
-
-    for (const auto& cas : cases) {
-        UnicodeString numberString = cas.numberString;
-
-        DecimalQuantity dq = DecimalQuantity::fromExponentString(numberString, status);
-        UnicodeString roundTrip = dq.toExponentString();
-
-        assertEquals("DecimalQuantity format(parse(s)) should equal original s", numberString, roundTrip);
-    }
-
-    DecimalQuantity dq = DecimalQuantity::fromExponentString(u"1c0", status);
-    assertEquals("Zero ignored for visible exponent",
-                u"1",
-                dq.toExponentString());
-
-    dq.clear();
-    dq = DecimalQuantity::fromExponentString(u"1.0c0", status);
-    assertEquals("Zero ignored for visible exponent",
-                u"1.0",
-                dq.toExponentString());
-
 }
 
 #endif /* #if !UCONFIG_NO_FORMATTING */

@@ -1,6 +1,5 @@
 ﻿# © 2016 and later: Unicode, Inc. and others.
-# License & terms of use: http://www.unicode.org/copyright.html
-# Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+# License & terms of use: http://www.unicode.org/copyright.html#License
 #
 # File: Grek_Latn_UNGEGN.txt
 # Generated from CLDR
@@ -37,7 +36,7 @@ $caron = \u030C;
 $afterLetter = [:L:] [\'$accent]* ;
 $beforeLetter = [\'$accent]* [:L:] ;
 # Fix punctuation
-# preserve original
+# preserve orginal
 \: ↔ \: $under ;
 \? ↔ \? $under ;
 \; ↔ \? ;

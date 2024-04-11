@@ -1,7 +1,7 @@
 /*
 ***********************************************************************
 * © 2016 and later: Unicode, Inc. and others.
-* License & terms of use: http://www.unicode.org/copyright.html
+* License & terms of use: http://www.unicode.org/copyright.html#License
 ***********************************************************************
 ***********************************************************************
 * Copyright (c) 2002-2016,International Business Machines
@@ -47,7 +47,7 @@ using namespace std;
 #else
 #define _UNICODE
 typedef int DWORD;
-inline int FoldStringW(DWORD dwMapFlags, const char16_t* lpSrcStr,int cchSrc, char16_t* lpDestStr,int cchDest);
+inline int FoldStringW(DWORD dwMapFlags, const UChar* lpSrcStr,int cchSrc, UChar* lpDestStr,int cchDest);
 #endif
 
 class BreakItFunction : public UPerfFunction
@@ -110,7 +110,7 @@ public:
 
 	void printUnicodeString(const UnicodeString &s) {
 		char charBuf[1000];
-		s.extract(0, s.length(), charBuf, sizeof(charBuf) - 1, nullptr);
+		s.extract(0, s.length(), charBuf, sizeof(charBuf)-1, 0);   
 		charBuf[sizeof(charBuf)-1] = 0;          
 		printf("%s", charBuf);
 	}
@@ -129,7 +129,7 @@ public:
 
 	// Print the given string to stdout (for debugging purposes)
 	void uprintf(const UnicodeString &str) {
-		char* buf = nullptr;
+		char *buf = 0;
 		int32_t len = str.length();
 		int32_t bufLen = len + 16;
 		int32_t actualLen;
@@ -215,7 +215,7 @@ public:
 
 	// Print the given string to stdout (for debugging purposes)
 	void uprintf(const UnicodeString &str) {
-		char* buf = nullptr;
+		char *buf = 0;
 		int32_t len = str.length();
 		int32_t bufLen = len + 16;
 		int32_t actualLen;
@@ -637,19 +637,19 @@ public:
                 return UnicodeString(buf, "");
             }
         case Formattable::kString:
-            return UnicodeString((char16_t)U_DQUOTE).append(f.getString()).append((char16_t)U_DQUOTE);
+            return UnicodeString((UChar)U_DQUOTE).append(f.getString()).append((UChar)U_DQUOTE);
         case Formattable::kArray:
             {
                 int32_t i, count;
                 const Formattable* array = f.getArray(count);
-                UnicodeString result((char16_t)U_LEFT_SQUARE_BRACKET);
+                UnicodeString result((UChar)U_LEFT_SQUARE_BRACKET);
                 for (i=0; i<count; ++i) {
                     if (i > 0) {
-                        (result += (char16_t)U_COMMA) += (char16_t)U_SPACE;
+                        (result += (UChar)U_COMMA) += (UChar)U_SPACE;
                     }
                     result += formattableToString(array[i]);
                 }
-                result += (char16_t)U_RIGHT_SQUARE_BRACKET;
+                result += (UChar)U_RIGHT_SQUARE_BRACKET;
                 return result;
             }
         default:
@@ -665,7 +665,7 @@ public:
     // Print the given string to stdout using the UTF-8 converter (for debugging purposes only)
     void uprintf(const UnicodeString &str) {
         char stackBuffer[100];
-        char* buf = nullptr;
+        char *buf = 0;
 
         int32_t bufLen = str.extract(0, 0x7fffffff, stackBuffer, sizeof(stackBuffer), "UTF-8");
         if(bufLen < sizeof(stackBuffer)) {

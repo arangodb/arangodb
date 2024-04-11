@@ -1,6 +1,5 @@
 ﻿# © 2016 and later: Unicode, Inc. and others.
-# License & terms of use: http://www.unicode.org/copyright.html
-# Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+# License & terms of use: http://www.unicode.org/copyright.html#License
 #
 # File: am_am_Latn_BGN.txt
 # Generated from CLDR
@@ -27,7 +26,7 @@ $ejective = ’;
 $glottal  = ’;
 $pharyngeal = ‘;
 # Use this $wordBoundary until bug 2034 is fixed in ICU:
-# https://unicode-org.atlassian.net/browse/ICU-2034
+# http://bugs.icu-project.org/trac/ticket/2034
 $wordBoundary =  [^[:L:][:M:][:N:]] ;
 ########################################################################
 # Start of Syllabic Transformations

@@ -11,8 +11,9 @@
 #include "unicode/uniset.h"
 #include "static_unicode_sets.h"
 
-U_NAMESPACE_BEGIN
-namespace numparse::impl {
+U_NAMESPACE_BEGIN namespace numparse {
+namespace impl {
+
 
 /**
  * A base class for many matchers that performs a simple match against a UnicodeString and/or UnicodeSet.
@@ -49,7 +50,7 @@ class U_I18N_API IgnorablesMatcher : public SymbolMatcher {
   public:
     IgnorablesMatcher() = default;  // WARNING: Leaves the object in an unusable state
 
-    IgnorablesMatcher(parse_flags_t parseFlags);
+    IgnorablesMatcher(unisets::Key key);
 
     bool isFlexible() const override;
 
@@ -163,7 +164,9 @@ class U_I18N_API PlusSignMatcher : public SymbolMatcher {
     bool fAllowTrailing;
 };
 
-} // namespace numparse::impl
+
+} // namespace impl
+} // namespace numparse
 U_NAMESPACE_END
 
 #endif //__NUMPARSE_SYMBOLS_H__

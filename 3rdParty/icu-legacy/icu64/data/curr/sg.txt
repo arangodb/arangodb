@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 sg{
     Currencies{
         AED{
@@ -171,13 +170,9 @@ sg{
             "SHP",
             "pôndo tî Zûâ Sênt-Helêna",
         }
-        SLE{
-            "SLE",
-            "leône tî Sierâ-Leône",
-        }
         SLL{
             "SLL",
-            "leône tî Sierâ-Leône (1964—2022)",
+            "leône tî Sierâ-Leône",
         }
         SOS{
             "SOS",
@@ -216,7 +211,7 @@ sg{
             "farânga CFA (BEAC)",
         }
         XOF{
-            "F CFA",
+            "CFA",
             "farânga CFA (BCEAO)",
         }
         ZAR{
@@ -236,4 +231,5 @@ sg{
             "dolära tî Zimbäbwe",
         }
     }
+    Version{"2.1.47.82"}
 }

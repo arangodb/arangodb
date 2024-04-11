@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 gd{
     Currencies{
         ADP{
@@ -899,10 +898,6 @@ gd{
             "SKK",
             "Koruna Slòbhacach",
         }
-        SLE{
-            "SLE",
-            "Leone Siarra Leòmhannach ùr",
-        }
         SLL{
             "SLL",
             "Leone Siarra Leòmhannach",
@@ -1039,10 +1034,6 @@ gd{
             "UYU",
             "Peso Uruguaidheach",
         }
-        UYW{
-            "UYW",
-            "Aonad inneacs tuarastail ainmeach Uruguaidh",
-        }
         UZS{
             "UZS",
             "Som Usbagach",
@@ -1050,10 +1041,6 @@ gd{
         VEB{
             "VEB",
             "Bolívar Bheinisealach (1871–2008)",
-        }
-        VED{
-            "VED",
-            "Bolívar Soberano",
         }
         VEF{
             "VEF",
@@ -1128,7 +1115,7 @@ gd{
             "Franc UIC Frangach",
         }
         XOF{
-            "F CFA",
+            "CFA",
             "Franc CFA Afraga an Iar",
         }
         XPD{
@@ -1225,9 +1212,7 @@ gd{
         }
     }
     Currencies%narrow{
-        BYN{"р."}
         RON{"leu"}
-        RUR{"р."}
         TWD{"NT$"}
     }
     CurrencyPlurals{
@@ -2575,12 +2560,6 @@ gd{
             other{"koruna Slòbhacach"}
             two{"koruna Slòbhacach"}
         }
-        SLE{
-            few{"leone Siarra Leòmhannach ùr"}
-            one{"leone Siarra Leòmhannach ùr"}
-            other{"leone Siarra Leòmhannach ùr"}
-            two{"leone Siarra Leòmhannach ùr"}
-        }
         SLL{
             few{"leone Siarra Leòmhannach"}
             one{"leone Siarra Leòmhannach"}
@@ -2785,12 +2764,6 @@ gd{
             other{"peso Uruguaidheach"}
             two{"pheso Uruguaidheach"}
         }
-        UYW{
-            few{"aonadan inneacs tuarastail ainmeach Uruguaidh"}
-            one{"aonad inneacs tuarastail ainmeach Uruguaidh"}
-            other{"aonad inneacs tuarastail ainmeach Uruguaidh"}
-            two{"aonad inneacs tuarastail ainmeach Uruguaidh"}
-        }
         UZS{
             few{"som Usbagach"}
             one{"som Usbagach"}
@@ -2802,12 +2775,6 @@ gd{
             one{"bholívar Bheinisealach (1871–2008)"}
             other{"bolívar Bheinisealach (1871–2008)"}
             two{"bholívar Bheinisealach (1871–2008)"}
-        }
-        VED{
-            few{"bolívar Soberano"}
-            one{"bholívar Soberano"}
-            other{"bolívar Soberano"}
-            two{"bholívar Soberano"}
         }
         VEF{
             few{"bolívar Bheinisealach (2008–2018)"}
@@ -3068,4 +3035,5 @@ gd{
         other{"{0} {1}"}
         two{"{0} {1}"}
     }
+    Version{"2.1.49.82"}
 }

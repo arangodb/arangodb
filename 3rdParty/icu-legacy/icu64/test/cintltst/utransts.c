@@ -14,7 +14,6 @@
 
 #if !UCONFIG_NO_TRANSLITERATION
 
-#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
 #include "unicode/utrans.h"
@@ -142,7 +141,7 @@ static void InitXReplaceableCallbacks(UReplaceableCallbacks* callbacks) {
  * Tests
  *------------------------------------------------------------------*/
 
-static void TestAPI(void) {
+static void TestAPI() {
     enum { BUF_CAP = 128 };
     char buf[BUF_CAP], buf2[BUF_CAP];
     UErrorCode status = U_ZERO_ERROR;
@@ -184,7 +183,7 @@ static void TestAPI(void) {
     }
 }
 
-static void TestUnicodeIDs(void) {
+static void TestUnicodeIDs() {
     UEnumeration *uenum;
     UTransliterator *utrans;
     const UChar *id, *id2;
@@ -249,7 +248,7 @@ static void TestUnicodeIDs(void) {
     uenum_close(uenum);
 }
 
-static void TestOpenInverse(void){
+static void TestOpenInverse(){
     UErrorCode status=U_ZERO_ERROR;
     UTransliterator* t1=NULL;
     UTransliterator* inverse1=NULL;
@@ -297,7 +296,7 @@ static void TestOpenInverse(void){
    }
 }
 
-static void TestClone(void){
+static void TestClone(){
     UErrorCode status=U_ZERO_ERROR;
     UTransliterator* t1=NULL;
     UTransliterator* t2=NULL;
@@ -344,7 +343,7 @@ static void TestClone(void){
 
 }
 
-static void TestRegisterUnregister(void){
+static void TestRegisterUnregister(){
     UErrorCode status=U_ZERO_ERROR;
     UTransliterator* t1=NULL;
     UTransliterator* rules=NULL, *rules2;
@@ -439,12 +438,12 @@ static void TestRegisterUnregister(void){
     utrans_close(inverse1);
 }
 
-static void TestSimpleRules(void) {
+static void TestSimpleRules() {
     /* Test rules */
     /* Example: rules 1. ab>x|y
      *                2. yc>z
      *
-     * []|eabcd  start - no match, copy e to translated buffer
+     * []|eabcd  start - no match, copy e to tranlated buffer
      * [e]|abcd  match rule 1 - copy output & adjust cursor
      * [ex|y]cd  match rule 2 - copy output & adjust cursor
      * [exz]|d   no match, copy d to transliterated buffer
@@ -492,7 +491,7 @@ static void TestSimpleRules(void) {
                  "abc ababc aba", "xy abxy z"); 
 }
 
-static void TestFilter(void) {
+static void TestFilter() {
     UErrorCode status = U_ZERO_ERROR;
     UChar filt[128];
     UChar buf[128];
@@ -558,7 +557,7 @@ static void TestFilter(void) {
  * Test the UReplaceableCallback extractBetween support.  We use a
  * transliterator known to rely on this call.
  */
-static void TestExtractBetween(void) {
+static void TestExtractBetween() {
 
     UTransliterator *trans;
     UErrorCode status = U_ZERO_ERROR;
@@ -586,8 +585,8 @@ static void TestExtractBetween(void) {
 static const UChar transSimpleID[] = { 0x79,0x6F,0x2D,0x79,0x6F,0x5F,0x42,0x4A,0 }; /* "yo-yo_BJ" */
 static const char* transSimpleCName = "yo-yo_BJ";
 
-enum { kUBufMax = 512 };
-static void TestGetRulesAndSourceSet(void) {
+enum { kUBufMax = 256 };
+static void TestGetRulesAndSourceSet() {
     UErrorCode status = U_ZERO_ERROR;
     UTransliterator *utrans = utrans_openU(transSimpleID, -1, UTRANS_FORWARD, NULL, 0, NULL, &status);
     if ( U_SUCCESS(status) ) {
@@ -596,29 +595,29 @@ static void TestGetRulesAndSourceSet(void) {
         int32_t ulen;
 
         status = U_ZERO_ERROR;
-        ulen = utrans_toRules(utrans, false, ubuf, kUBufMax, &status);
+        ulen = utrans_toRules(utrans, FALSE, ubuf, kUBufMax, &status);
         if ( U_FAILURE(status) || ulen <= 50 || ulen >= 100) {
             log_err("FAIL: utrans_toRules unescaped, expected noErr and len 50-100, got error=%s and len=%d\n",
                     u_errorName(status), ulen);
         }
 
         status = U_ZERO_ERROR;
-        ulen = utrans_toRules(utrans, false, NULL, 0, &status);
+        ulen = utrans_toRules(utrans, FALSE, NULL, 0, &status);
         if ( status != U_BUFFER_OVERFLOW_ERROR || ulen <= 50 || ulen >= 100) {
             log_err("FAIL: utrans_toRules unescaped, expected U_BUFFER_OVERFLOW_ERROR and len 50-100, got error=%s and len=%d\n",
                     u_errorName(status), ulen);
         }
 
         status = U_ZERO_ERROR;
-        ulen = utrans_toRules(utrans, true, ubuf, kUBufMax, &status);
+        ulen = utrans_toRules(utrans, TRUE, ubuf, kUBufMax, &status);
         if ( U_FAILURE(status) || ulen <= 100 || ulen >= 200) {
             log_err("FAIL: utrans_toRules escaped, expected noErr and len 100-200, got error=%s and len=%d\n",
                     u_errorName(status), ulen);
         }
 
         status = U_ZERO_ERROR;
-        uset = utrans_getSourceSet(utrans, false, NULL, &status);
-        ulen = uset_toPattern(uset, ubuf, kUBufMax, false, &status);
+        uset = utrans_getSourceSet(utrans, FALSE, NULL, &status);
+        ulen = uset_toPattern(uset, ubuf, kUBufMax, FALSE, &status);
         uset_close(uset);
         if ( U_FAILURE(status) || ulen <= 4 || ulen >= 20) {
             log_err("FAIL: utrans_getSourceSet useFilter, expected noErr and len 4-20, got error=%s and len=%d\n",
@@ -626,8 +625,8 @@ static void TestGetRulesAndSourceSet(void) {
         }
 
         status = U_ZERO_ERROR;
-        uset = utrans_getSourceSet(utrans, true, NULL, &status);
-        ulen = uset_toPattern(uset, ubuf, kUBufMax, false, &status);
+        uset = utrans_getSourceSet(utrans, TRUE, NULL, &status);
+        ulen = uset_toPattern(uset, ubuf, kUBufMax, FALSE, &status);
         uset_close(uset);
         if ( U_FAILURE(status) || ulen <= 4 || ulen >= 20) {
             log_err("FAIL: utrans_getSourceSet ignoreFilter, expected noErr and len 4-20, got error=%s and len=%d\n",
@@ -656,7 +655,7 @@ static const TransIDSourceTarg dataVarCompItems[] = {
       "\\uFF33\\uFF41\\uFF4D\\uFF50\\uFF4C\\uFF45\\u3000\\uFF54\\uFF45\\uFF58\\uFF54\\uFF0C\\u3000\\u30B5\\u30F3\\u30D7\\u30EB\\u30C6\\u30AD\\u30B9\\u30C8\\uFF0E" },
     { "Han-Latin/Names; Latin-Bopomofo",
        "\\u4E07\\u4FDF\\u919C\\u5974\\u3001\\u533A\\u695A\\u826F\\u3001\\u4EFB\\u70E8\\u3001\\u5CB3\\u98DB",
-       "\\u3107\\u311B\\u02CB \\u3111\\u3127\\u02CA \\u3114\\u3121\\u02C7 \\u310B\\u3128\\u02CA, \\u3121 \\u3114\\u3128\\u02C7 \\u310C\\u3127\\u3124\\u02CA, \\u3116\\u3123\\u02CA \\u3127\\u311D\\u02CB, \\u3129\\u311D\\u02CB \\u3108\\u311F" },
+       "\\u3107\\u311B\\u02CB \\u3111\\u3127\\u02CA \\u3114\\u3121\\u02C7 \\u310B\\u3128\\u02CA\\u3001 \\u3121 \\u3114\\u3128\\u02C7 \\u310C\\u3127\\u3124\\u02CA\\u3001 \\u3116\\u3123\\u02CA \\u3127\\u311D\\u02CB\\u3001 \\u3129\\u311D\\u02CB \\u3108\\u311F" },
     { "Greek-Latin",
       "\\u1F08 \\u1FBC \\u1F89 \\u1FEC",
       "A \\u0100I H\\u0100I RH" },
@@ -671,8 +670,8 @@ static const TransIDSourceTarg dataVarCompItems[] = {
     { NULL, NULL, NULL }
 };
 
-enum { kBBufMax = 1024 };
-static void TestDataVariantsCompounds(void) {
+enum { kBBufMax = 384 };
+static void TestDataVariantsCompounds() {
     const TransIDSourceTarg* itemsPtr;
     for (itemsPtr = dataVarCompItems; itemsPtr->transID != NULL; itemsPtr++) {
         UErrorCode status = U_ZERO_ERROR;
@@ -694,8 +693,8 @@ static void TestDataVariantsCompounds(void) {
             int32_t expectLen =  u_unescape(itemsPtr->targetText, expect, kUBufMax);
             if (textLen != expectLen || u_strncmp(text, expect, textLen) != 0) {
                 char btext[kBBufMax], bexpect[kBBufMax];
-                u_austrncpy(btext, text, kUBufMax);
-                u_austrncpy(bexpect, expect, kUBufMax);
+                u_austrncpy(btext, text, textLen);
+                u_austrncpy(bexpect, expect, expectLen);
                 log_err("FAIL: utrans_transUChars(%s),\n       expect %s\n       get    %s\n", itemsPtr->transID, bexpect, btext);
             }
         }

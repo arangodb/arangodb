@@ -38,9 +38,6 @@
  */
 
 #include "unicode/utypes.h"
-
-#if U_SHOW_CPLUSPLUS_API
-
 #include "unicode/uobject.h"
 #include "unicode/std_string.h"
 
@@ -70,38 +67,6 @@ public:
    * @stable ICU 4.2
    */
   virtual void Append(const char* bytes, int32_t n) = 0;
-
-  /**
-   * Appends n bytes to this. Same as Append().
-   * Call AppendU8() with u8"string literals" which are const char * in C++11
-   * but const char8_t * in C++20.
-   * If the compiler does support char8_t as a distinct type,
-   * then an AppendU8() overload for that is defined and will be chosen.
-   *
-   * @param bytes the pointer to the bytes
-   * @param n the number of bytes; must be non-negative
-   * @stable ICU 67
-   */
-  inline void AppendU8(const char* bytes, int32_t n) {
-    Append(bytes, n);
-  }
-
-#if defined(__cpp_char8_t) || defined(U_IN_DOXYGEN)
-  /**
-   * Appends n bytes to this. Same as Append() but for a const char8_t * pointer.
-   * Call AppendU8() with u8"string literals" which are const char * in C++11
-   * but const char8_t * in C++20.
-   * If the compiler does support char8_t as a distinct type,
-   * then this AppendU8() overload for that is defined and will be chosen.
-   *
-   * @param bytes the pointer to the bytes
-   * @param n the number of bytes; must be non-negative
-   * @stable ICU 67
-   */
-  inline void AppendU8(const char8_t* bytes, int32_t n) {
-    Append(reinterpret_cast<const char*>(bytes), n);
-  }
-#endif
 
   /**
    * Returns a writable buffer for appending and writes the buffer's capacity to
@@ -195,7 +160,7 @@ public:
    * Returns the sink to its original state, without modifying the buffer.
    * Useful for reusing both the buffer and the sink for multiple streams.
    * Resets the state to NumberOfBytesWritten()=NumberOfBytesAppended()=0
-   * and Overflowed()=false.
+   * and Overflowed()=FALSE.
    * @return *this
    * @stable ICU 4.6
    */
@@ -206,7 +171,7 @@ public:
    * @param n the number of bytes; must be non-negative
    * @stable ICU 4.2
    */
-  virtual void Append(const char* bytes, int32_t n) override;
+  virtual void Append(const char* bytes, int32_t n);
   /**
    * Returns a writable buffer for appending and writes the buffer's capacity to
    * *result_capacity. For details see the base class documentation.
@@ -224,7 +189,7 @@ public:
   virtual char* GetAppendBuffer(int32_t min_capacity,
                                 int32_t desired_capacity_hint,
                                 char* scratch, int32_t scratch_capacity,
-                                int32_t* result_capacity) override;
+                                int32_t* result_capacity);
   /**
    * Returns the number of bytes actually written to the sink.
    * @return number of bytes written to the buffer
@@ -234,7 +199,7 @@ public:
   /**
    * Returns true if any bytes were discarded, i.e., if there was an
    * attempt to write more than 'capacity' bytes.
-   * @return true if more than 'capacity' bytes were Append()ed
+   * @return TRUE if more than 'capacity' bytes were Append()ed
    * @stable ICU 4.2
    */
   UBool Overflowed() const { return overflowed_; }
@@ -291,7 +256,7 @@ class StringByteSink : public ByteSink {
    * @param n the number of bytes; must be non-negative
    * @stable ICU 4.2
    */
-  virtual void Append(const char* data, int32_t n) override { dest_->append(data, n); }
+  virtual void Append(const char* data, int32_t n) { dest_->append(data, n); }
  private:
   StringClass* dest_;
 
@@ -301,7 +266,5 @@ class StringByteSink : public ByteSink {
 };
 
 U_NAMESPACE_END
-
-#endif /* U_SHOW_CPLUSPLUS_API */
 
 #endif  // __BYTESTREAM_H__

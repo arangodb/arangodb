@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 supplementalData:table(nofallback){
     CurrencyMap{
         AC{
@@ -197,7 +196,6 @@ supplementalData:table(nofallback){
         AQ{
             {
                 id{"XXX"}
-                tender{"false"}
             }
         }
         AR{
@@ -513,7 +511,6 @@ supplementalData:table(nofallback){
                     0,
                 }
                 id{"BEL"}
-                tender{"false"}
                 to:intvector{
                     148,
                     1026440191,
@@ -525,7 +522,6 @@ supplementalData:table(nofallback){
                     0,
                 }
                 id{"BEC"}
-                tender{"false"}
                 to:intvector{
                     148,
                     1026440191,
@@ -691,7 +687,6 @@ supplementalData:table(nofallback){
             }
             {
                 id{"BOV"}
-                tender{"false"}
             }
         }
         BQ{
@@ -995,11 +990,9 @@ supplementalData:table(nofallback){
             }
             {
                 id{"CHE"}
-                tender{"false"}
             }
             {
                 id{"CHW"}
-                tender{"false"}
             }
         }
         CI{
@@ -1041,7 +1034,6 @@ supplementalData:table(nofallback){
             }
             {
                 id{"CLF"}
-                tender{"false"}
             }
         }
         CM{
@@ -1067,7 +1059,6 @@ supplementalData:table(nofallback){
                     528958464,
                 }
                 id{"CNX"}
-                tender{"false"}
                 to:intvector{
                     213,
                     320765951,
@@ -1079,7 +1070,6 @@ supplementalData:table(nofallback){
                     -402654208,
                 }
                 id{"CNH"}
-                tender{"false"}
             }
         }
         CO{
@@ -1092,13 +1082,11 @@ supplementalData:table(nofallback){
             }
             {
                 id{"COU"}
-                tender{"false"}
             }
         }
         CP{
             {
                 id{"XXX"}
-                tender{"false"}
             }
         }
         CR{
@@ -1159,10 +1147,6 @@ supplementalData:table(nofallback){
                     1468155904,
                 }
                 id{"CUC"}
-                to:intvector{
-                    374,
-                    -1067136001,
-                }
             }
             {
                 from:intvector{
@@ -1199,21 +1183,10 @@ supplementalData:table(nofallback){
         CW{
             {
                 from:intvector{
-                    398,
-                    -1834351104,
-                }
-                id{"XCG"}
-            }
-            {
-                from:intvector{
                     299,
                     -1821388800,
                 }
                 id{"ANG"}
-                to:intvector{
-                    400,
-                    1819481599,
-                }
             }
         }
         CX{
@@ -1397,7 +1370,6 @@ supplementalData:table(nofallback){
                     -619174912,
                 }
                 id{"ECV"}
-                tender{"false"}
                 to:intvector{
                     220,
                     -1725372417,
@@ -1498,7 +1470,6 @@ supplementalData:table(nofallback){
                     -942270464,
                 }
                 id{"ESA"}
-                tender{"false"}
                 to:intvector{
                     88,
                     734077951,
@@ -1510,7 +1481,6 @@ supplementalData:table(nofallback){
                     -1147389952,
                 }
                 id{"ESB"}
-                tender{"false"}
                 to:intvector{
                     183,
                     -1355582465,
@@ -1540,7 +1510,6 @@ supplementalData:table(nofallback){
                     528958464,
                 }
                 id{"XEU"}
-                tender{"false"}
                 to:intvector{
                     213,
                     320765951,
@@ -1956,21 +1925,10 @@ supplementalData:table(nofallback){
         HR{
             {
                 from:intvector{
-                    389,
-                    1785321856,
-                }
-                id{"EUR"}
-            }
-            {
-                from:intvector{
                     179,
                     1456854016,
                 }
                 id{"HRK"}
-                to:intvector{
-                    389,
-                    -1300045441,
-                }
             }
             {
                 from:intvector{
@@ -2556,7 +2514,6 @@ supplementalData:table(nofallback){
                     0,
                 }
                 id{"LUC"}
-                tender{"false"}
                 to:intvector{
                     148,
                     1026440191,
@@ -2568,7 +2525,6 @@ supplementalData:table(nofallback){
                     0,
                 }
                 id{"LUL"}
-                tender{"false"}
                 to:intvector{
                     148,
                     1026440191,
@@ -3025,7 +2981,6 @@ supplementalData:table(nofallback){
             }
             {
                 id{"MXV"}
-                tender{"false"}
             }
         }
         MY{
@@ -3787,21 +3742,10 @@ supplementalData:table(nofallback){
         SL{
             {
                 from:intvector{
-                    385,
-                    -1223776256,
-                }
-                id{"SLE"}
-            }
-            {
-                from:intvector{
                     -40,
                     1072291840,
                 }
                 id{"SLL"}
-                to:intvector{
-                    396,
-                    -1034816513,
-                }
             }
             {
                 from:intvector{
@@ -3960,21 +3904,10 @@ supplementalData:table(nofallback){
         SX{
             {
                 from:intvector{
-                    398,
-                    -1834351104,
-                }
-                id{"XCG"}
-            }
-            {
-                from:intvector{
                     299,
                     -1821388800,
                 }
                 id{"ANG"}
-                to:intvector{
-                    400,
-                    1819481599,
-                }
             }
         }
         SY{
@@ -4352,7 +4285,6 @@ supplementalData:table(nofallback){
             }
             {
                 id{"USN"}
-                tender{"false"}
             }
             {
                 id{"USS"}
@@ -4384,11 +4316,9 @@ supplementalData:table(nofallback){
             }
             {
                 id{"UYI"}
-                tender{"false"}
             }
             {
                 id{"UYW"}
-                tender{"false"}
             }
         }
         UZ{
@@ -4458,10 +4388,6 @@ supplementalData:table(nofallback){
                     282,
                     -605344769,
                 }
-            }
-            {
-                id{"VED"}
-                tender{"false"}
             }
         }
         VG{
@@ -4673,7 +4599,6 @@ supplementalData:table(nofallback){
                     459560960,
                 }
                 id{"ZAL"}
-                tender{"false"}
                 to:intvector{
                     185,
                     570250239,
@@ -4780,31 +4705,24 @@ supplementalData:table(nofallback){
         ZZ{
             {
                 id{"XAG"}
-                tender{"false"}
             }
             {
                 id{"XAU"}
-                tender{"false"}
             }
             {
                 id{"XBA"}
-                tender{"false"}
             }
             {
                 id{"XBB"}
-                tender{"false"}
             }
             {
                 id{"XBC"}
-                tender{"false"}
             }
             {
                 id{"XBD"}
-                tender{"false"}
             }
             {
                 id{"XDR"}
-                tender{"false"}
             }
             {
                 from:intvector{
@@ -4812,7 +4730,6 @@ supplementalData:table(nofallback){
                     416385024,
                 }
                 id{"XFO"}
-                tender{"false"}
                 to:intvector{
                     244,
                     1269579775,
@@ -4828,11 +4745,9 @@ supplementalData:table(nofallback){
             }
             {
                 id{"XPD"}
-                tender{"false"}
             }
             {
                 id{"XPT"}
-                tender{"false"}
             }
             {
                 id{"XRE"}
@@ -4844,19 +4759,15 @@ supplementalData:table(nofallback){
             }
             {
                 id{"XSU"}
-                tender{"false"}
             }
             {
                 id{"XTS"}
-                tender{"false"}
             }
             {
                 id{"XUA"}
-                tender{"false"}
             }
             {
                 id{"XXX"}
-                tender{"false"}
             }
         }
     }
@@ -5159,12 +5070,6 @@ supplementalData:table(nofallback){
             2,
             0,
             0,
-            0,
-        }
-        SLE:intvector{
-            2,
-            0,
-            2,
             0,
         }
         SLL:intvector{

@@ -1,9 +1,8 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 en{
     Countries{
-        001{"world"}
+        001{"World"}
         002{"Africa"}
         003{"North America"}
         005{"South America"}
@@ -85,7 +84,6 @@ en{
         CN{"China"}
         CO{"Colombia"}
         CP{"Clipperton Island"}
-        CQ{"Sark"}
         CR{"Costa Rica"}
         CU{"Cuba"}
         CV{"Cape Verde"}
@@ -268,7 +266,7 @@ en{
         TM{"Turkmenistan"}
         TN{"Tunisia"}
         TO{"Tonga"}
-        TR{"Türkiye"}
+        TR{"Turkey"}
         TT{"Trinidad & Tobago"}
         TV{"Tuvalu"}
         TW{"Taiwan"}
@@ -299,9 +297,6 @@ en{
         ZW{"Zimbabwe"}
         ZZ{"Unknown Region"}
     }
-    Countries%chagos{
-        IO{"Chagos Archipelago"}
-    }
     Countries%short{
         BA{"Bosnia"}
         GB{"UK"}
@@ -316,12 +311,10 @@ en{
         CD{"Congo (DRC)"}
         CG{"Congo (Republic)"}
         CI{"Ivory Coast"}
-        CV{"Cabo Verde"}
         CZ{"Czech Republic"}
         FK{"Falkland Islands (Islas Malvinas)"}
-        NZ{"Aotearoa New Zealand"}
         SZ{"Swaziland"}
         TL{"East Timor"}
-        TR{"Turkey"}
     }
+    Version{"2.1.48.65"}
 }

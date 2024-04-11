@@ -9,7 +9,6 @@
 
 #include "decNumber.h"
 #include "charstr.h"
-#include "bytesinkutil.h"
 
 U_NAMESPACE_BEGIN
 
@@ -22,7 +21,8 @@ U_NAMESPACE_BEGIN
 template class U_I18N_API MaybeStackHeaderAndArray<decNumber, char, DECNUM_INITIAL_CAPACITY>;
 #endif
 
-namespace number::impl {
+namespace number {
+namespace impl {
 
 /** A very thin C++ wrapper around decNumber.h */
 // Exported as U_I18N_API for tests
@@ -55,22 +55,6 @@ class U_I18N_API DecNum : public UMemory {
 
     bool isZero() const;
 
-    /** Is infinity or NaN */
-    bool isSpecial() const;
-
-    bool isInfinity() const;
-
-    bool isNaN() const;
-
-    void toString(ByteSink& output, UErrorCode& status) const;
-
-    inline CharString toCharString(UErrorCode& status) const {
-      CharString cstr;
-      CharStringByteSink sink(&cstr);
-      toString(sink, status);
-      return cstr;
-    }
-
     inline const decNumber* getRawDecNumber() const {
         return fData.getAlias();
     }
@@ -83,7 +67,8 @@ class U_I18N_API DecNum : public UMemory {
     void _setTo(const char* str, int32_t maxDigits, UErrorCode& status);
 };
 
-} // namespace number::impl
+} // namespace impl
+} // namespace number
 
 U_NAMESPACE_END
 

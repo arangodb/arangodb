@@ -1,10 +1,21 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ce{
+    Version{"2.1.47.82"}
+    durationUnits{
+        hm{"h:mm"}
+        hms{"h:mm:ss"}
+        ms{"m:ss"}
+    }
     units{
         duration{
+            century{
+                dnam{"c"}
+                one{"{0} c"}
+                other{"{0} c"}
+            }
             day{
+                dnam{"денош"}
                 one{"{0} де"}
                 other{"{0} де"}
                 per{"{0} дийнахь"}
@@ -78,6 +89,11 @@ ce{
                 one{"{0} дециметр"}
                 other{"{0} дециметр"}
             }
+            foot{
+                dnam{"футаш"}
+                one{"{0} фут"}
+                other{"{0} фут"}
+            }
             inch{
                 dnam{"дюймаш"}
                 one{"{0} дюйм"}
@@ -97,7 +113,23 @@ ce{
                 one{"{0} д."}
                 other{"{0} д."}
             }
+            hour{
+                dnam{"сахь"}
+                one{"{0} сахь."}
+                other{"{0} сахь."}
+            }
+            millisecond{
+                dnam{"мс"}
+                one{"{0} мс"}
+                other{"{0} мс"}
+            }
+            minute{
+                dnam{"мин"}
+                one{"{0} мин"}
+                other{"{0} мин"}
+            }
             month{
+                dnam{"бут"}
                 one{"{0} б."}
                 other{"{0} б."}
             }
@@ -107,19 +139,36 @@ ce{
                 other{"{0} с"}
             }
             week{
+                dnam{"кӀир"}
                 one{"{0} кӀ."}
                 other{"{0} кӀ."}
+            }
+            year{
+                dnam{"ш."}
+                one{"{0} ш."}
+                other{"{0} ш."}
             }
         }
         length{
             centimeter{
+                dnam{"см"}
                 one{"{0} см"}
                 other{"{0} cm"}
+            }
+            kilometer{
+                dnam{"км"}
+                one{"{0} км"}
+                other{"{0} км"}
             }
         }
     }
     unitsShort{
         duration{
+            century{
+                dnam{"c"}
+                one{"{0} c"}
+                other{"{0} c"}
+            }
             day{
                 dnam{"денош"}
                 one{"д."}

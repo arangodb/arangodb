@@ -53,7 +53,7 @@ DateInterval::clone() const {
 }
 
 
-bool
+UBool 
 DateInterval::operator==(const DateInterval& other) const { 
     return ( fromDate == other.fromDate && toDate == other.toDate );
 }

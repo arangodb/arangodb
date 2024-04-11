@@ -19,24 +19,21 @@ public:
     ResourceBundleTest();
     virtual ~ResourceBundleTest();
     
-    void runIndexedTest( int32_t index, UBool exec, const char* &name, char* par = nullptr ) override;
+    void runIndexedTest( int32_t index, UBool exec, const char* &name, char* par = NULL );
 
     /** 
      * Perform several extensive tests using the subtest routine testTag
      **/
-    void TestResourceBundles();
+    void TestResourceBundles(void);
     /** 
      * Test construction of ResourceBundle accessing a custom test resource-file
      **/
-    void TestConstruction();
+    void TestConstruction(void);
 
-    void TestExemplar();
+    void TestExemplar(void);
 
-    void TestGetSize();
-    void TestGetLocaleByType();
-    
-    void TestPersonUnits();
-    void TestZuluFields();
+    void TestGetSize(void);
+    void TestGetLocaleByType(void);
 
 private:
     /**

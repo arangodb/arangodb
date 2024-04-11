@@ -40,11 +40,11 @@ DataDrivenCalendarTest::~DataDrivenCalendarTest() {
 
 void DataDrivenCalendarTest::runIndexedTest(int32_t index, UBool exec,
         const char* &name, char* /*par */) {
-    if (driver != nullptr) {
+    if (driver != NULL) {
         if (exec) {
             //  logln("Begin ");
         }
-        const DataMap *info= nullptr;
+        const DataMap *info= NULL;
         UErrorCode status= U_ZERO_ERROR;
         TestData *testData = driver->createTestData(index, status);
         if (U_SUCCESS(status)) {
@@ -73,12 +73,12 @@ void DataDrivenCalendarTest::runIndexedTest(int32_t index, UBool exec,
 void DataDrivenCalendarTest::testOps(TestData *testData,
         const DataMap * /*settings*/) {
     UErrorCode status = U_ZERO_ERROR;
-    UBool useDate = false; // TODO
+    UBool useDate = FALSE; // TODO
     UnicodeString kMILLIS("MILLIS="); // TODO: static
     UDate fromDate = 0; // TODO
     UDate toDate = 0;
     
-    const DataMap *currentCase= nullptr;
+    const DataMap *currentCase= NULL;
     char toCalLoc[256] = "";
 
     // TODO: static strings?
@@ -98,12 +98,12 @@ void DataDrivenCalendarTest::testOps(TestData *testData,
     int n = 0;
     while (testData->nextCase(currentCase, status)) {
         ++n;
-        Calendar *toCalendar= nullptr;
-        Calendar *fromCalendar= nullptr;
+        Calendar *toCalendar= NULL;
+        Calendar *fromCalendar= NULL;
 
         // load parameters
         char theCase[200];
-        snprintf(theCase, sizeof(theCase), "[case %d]", n);
+        sprintf(theCase, "[case %d]", n);
         UnicodeString caseString(theCase, "");
         // build to calendar
         //             Headers { "locale","from","operation","params","to" }
@@ -116,7 +116,7 @@ void DataDrivenCalendarTest::testOps(TestData *testData,
                     + UnicodeString(" - "));
             continue;
         }
-        testSetting.extract(0, testSetting.length(), toCalLoc, (const char*)nullptr);
+        testSetting.extract(0, testSetting.length(), toCalLoc, (const char*)0);
         fromCalendar = Calendar::createInstance(toCalLoc, status);
         if (U_FAILURE(status)) {
             errln(caseString+": Unable to instantiate calendar for "
@@ -136,7 +136,7 @@ void DataDrivenCalendarTest::testOps(TestData *testData,
                 
         if(from.startsWith(kMILLIS)){
         	UnicodeString millis = UnicodeString(from, kMILLIS.length());
-        	useDate = true;
+        	useDate = TRUE;
         	fromDate = udbg_stod(millis);
         } else if(fromSet.parseFrom(testSetting, status)<0 || U_FAILURE(status)){
         	errln(caseString+": Failed to parse '"+param+"' parameter: "
@@ -187,7 +187,7 @@ void DataDrivenCalendarTest::testOps(TestData *testData,
         }
         if(to.startsWith(kMILLIS)){
         	UnicodeString millis = UnicodeString(to, kMILLIS.length());
-            useDate = true;
+            useDate = TRUE;
             toDate = udbg_stod(millis);
         } else if(toSet.parseFrom(testSetting, &fromSet, status)<0 || U_FAILURE(status)){
             errln(caseString+": Failed to parse '"+param+"' parameter: "
@@ -366,15 +366,15 @@ void DataDrivenCalendarTest::testConvert(int32_t n,
 void DataDrivenCalendarTest::testConvert(TestData *testData,
         const DataMap *settings, UBool forward) {
     UErrorCode status = U_ZERO_ERROR;
-    LocalPointer<Calendar> toCalendar;
-    const DataMap *currentCase= nullptr;
+    Calendar *toCalendar= NULL;
+    const DataMap *currentCase= NULL;
     char toCalLoc[256] = "";
     char fromCalLoc[256] = "";
     // build to calendar
     UnicodeString testSetting = settings->getString("ToCalendar", status);
     if (U_SUCCESS(status)) {
-        testSetting.extract(0, testSetting.length(), toCalLoc, (const char*)nullptr);
-        toCalendar.adoptInstead(Calendar::createInstance(toCalLoc, status));
+        testSetting.extract(0, testSetting.length(), toCalLoc, (const char*)0);
+        toCalendar = Calendar::createInstance(toCalLoc, status);
         if (U_FAILURE(status)) {
             dataerrln(UnicodeString("Unable to instantiate ToCalendar for ")+testSetting);
             return;
@@ -393,11 +393,11 @@ void DataDrivenCalendarTest::testConvert(TestData *testData,
     int n = 0;
     while (testData->nextCase(currentCase, status)) {
         ++n;
-        LocalPointer<Calendar> fromCalendar;
+        Calendar *fromCalendar= NULL;
         UnicodeString locale = currentCase->getString("locale", status);
         if (U_SUCCESS(status)) {
-            locale.extract(0, locale.length(), fromCalLoc, (const char*)nullptr); // default codepage.  Invariant codepage doesn't have '@'!
-            fromCalendar.adoptInstead(Calendar::createInstance(fromCalLoc, status));
+            locale.extract(0, locale.length(), fromCalLoc, (const char*)0); // default codepage.  Invariant codepage doesn't have '@'!
+            fromCalendar = Calendar::createInstance(fromCalLoc, status);
             if (U_FAILURE(status)) {
                 errln("Unable to instantiate fromCalendar for "+locale);
                 return;
@@ -435,22 +435,25 @@ void DataDrivenCalendarTest::testConvert(TestData *testData,
         if (forward) {
             logln((UnicodeString)"#"+n+" "+locale+"/"+from+" >>> "+toCalLoc+"/"
                     +to);
-            testConvert(n, fromSet, fromCalendar.getAlias(), toSet, toCalendar.getAlias(), forward);
+            testConvert(n, fromSet, fromCalendar, toSet, toCalendar, forward);
         } else {
             logln((UnicodeString)"#"+n+" "+locale+"/"+from+" <<< "+toCalLoc+"/"
                     +to);
-            testConvert(n, toSet, toCalendar.getAlias(), fromSet, fromCalendar.getAlias(), forward);
+            testConvert(n, toSet, toCalendar, fromSet, fromCalendar, forward);
         }
+
+        delete fromCalendar;
     }
+    delete toCalendar;
 }
 
 void DataDrivenCalendarTest::processTest(TestData *testData) {
-    //Calendar *cal= nullptr;
-    //const char16_t *arguments= nullptr;
+    //Calendar *cal= NULL;
+    //const UChar *arguments= NULL;
     //int32_t argLen = 0;
-    char testType[256] = "";
-    const DataMap *settings= nullptr;
-    //const char16_t *type= nullptr;
+    char testType[256];
+    const DataMap *settings= NULL;
+    //const UChar *type= NULL;
     UErrorCode status = U_ZERO_ERROR;
     UnicodeString testSetting;
     int n = 0;

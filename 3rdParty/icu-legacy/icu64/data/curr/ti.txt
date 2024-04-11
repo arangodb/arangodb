@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ti{
     Currencies{
         BRL{
@@ -8,20 +7,16 @@ ti{
             "የብራዚል ሪል",
         }
         CNY{
-            "CNY",
-            "ዩዋን ቻይና",
-        }
-        ERN{
-            "ERN",
-            "ናቕፋ",
+            "CN¥",
+            "የቻይና ዩአን ረንሚንቢ",
         }
         ETB{
             "Br",
-            "ብር",
+            "የኢትዮጵያ ብር",
         }
         EUR{
             "€",
-            "ዩሮ",
+            "አውሮ",
         }
         GBP{
             "£",
@@ -32,8 +27,8 @@ ti{
             "የሕንድ ሩፒ",
         }
         JPY{
-            "JPY",
-            "የን ጃፓን",
+            "JP¥",
+            "የጃፓን የን",
         }
         RUB{
             "RUB",
@@ -41,29 +36,12 @@ ti{
         }
         USD{
             "US$",
-            "ዶላር ኣመሪካ",
-        }
-        XAG{
-            "XAG",
-            "ብሩር",
-        }
-        XAU{
-            "XAU",
-            "ወርቂ",
-        }
-        XXX{
-            "¤",
-            "ዘይተፈልጠ ባጤራ",
-        }
-    }
-    CurrencyPlurals{
-        XXX{
-            one{"(ዘይተፈልጠ ባጤራ)"}
-            other{"(ዘይተፈልጠ ባጤራ)"}
+            "የአሜሪካን ዶላር",
         }
     }
     CurrencyUnitPatterns{
         one{"{0} {1}"}
         other{"{0} {1}"}
     }
+    Version{"2.1.49.82"}
 }

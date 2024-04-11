@@ -71,13 +71,13 @@ utrans_rep_caseContextIterator(void *context, int8_t dir)
             c=rep->char32At(csc->index);
             if(c<0) {
                 csc->limit=csc->index;
-                csc->b1=true;
+                csc->b1=TRUE;
             } else {
                 csc->index+=U16_LENGTH(c);
                 return c;
             }
         } else {
-            csc->b1=true;
+            csc->b1=TRUE;
         }
     }
     return U_SENTINEL;
@@ -91,7 +91,7 @@ UOBJECT_DEFINE_ABSTRACT_RTTI_IMPLEMENTATION(CaseMapTransliterator)
  * Constructs a transliterator.
  */
 CaseMapTransliterator::CaseMapTransliterator(const UnicodeString &id, UCaseMapFull *map) : 
-    Transliterator(id, nullptr),
+    Transliterator(id, 0),
     fMap(map)
 {
     // TODO test incremental mode with context-sensitive text (e.g. greek sigma)
@@ -125,7 +125,7 @@ CaseMapTransliterator::CaseMapTransliterator(const CaseMapTransliterator& o) :
 /**
  * Transliterator API.
  */
-/*CaseMapTransliterator* CaseMapTransliterator::clone() const {
+/*Transliterator* CaseMapTransliterator::clone(void) const {
     return new CaseMapTransliterator(*this);
 }*/
 
@@ -147,7 +147,7 @@ void CaseMapTransliterator::handleTransliterate(Replaceable& text,
     csc.limit = offsets.contextLimit;
 
     UnicodeString tmp;
-    const char16_t *s;
+    const UChar *s;
     UChar32 c;
     int32_t textPos, delta, result;
 
@@ -170,7 +170,7 @@ void CaseMapTransliterator::handleTransliterate(Replaceable& text,
             // see UCASE_MAX_STRING_LENGTH
             if(result<=UCASE_MAX_STRING_LENGTH) {
                 // string s[result]
-                tmp.setTo(false, s, result);
+                tmp.setTo(FALSE, s, result);
                 delta=result-U16_LENGTH(c);
             } else {
                 // single code point

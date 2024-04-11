@@ -56,17 +56,17 @@ initConvData(ConvData *data) {
 
 static void
 cleanupConvData(ConvData *data) {
-    if(data!=nullptr) {
-        if(data->cnvData!=nullptr) {
+    if(data!=NULL) {
+        if(data->cnvData!=NULL) {
             data->cnvData->close(data->cnvData);
-            data->cnvData=nullptr;
+            data->cnvData=NULL;
         }
-        if(data->extData!=nullptr) {
+        if(data->extData!=NULL) {
             data->extData->close(data->extData);
-            data->extData=nullptr;
+            data->extData=NULL;
         }
         ucm_close(data->ucm);
-        data->ucm=nullptr;
+        data->ucm=NULL;
     }
 }
 
@@ -78,10 +78,10 @@ U_CAPI const UConverterStaticData * ucnv_converterStaticData[UCNV_NUMBER_OF_SUPP
 /*
  * Global - verbosity
  */
-UBool VERBOSE = false;
-UBool QUIET = false;
-UBool SMALL = false;
-UBool IGNORE_SISO_CHECK = false;
+UBool VERBOSE = FALSE;
+UBool QUIET = FALSE;
+UBool SMALL = FALSE;
+UBool IGNORE_SISO_CHECK = FALSE;
 
 static void
 createConverter(ConvData *data, const char* converterName, UErrorCode *pErrorCode);
@@ -92,7 +92,7 @@ createConverter(ConvData *data, const char* converterName, UErrorCode *pErrorCod
 static void
 writeConverterData(ConvData *data, const char *cnvName, const char *cnvDir, UErrorCode *status);
 
-UBool haveCopyright=true;
+UBool haveCopyright=TRUE;
 
 static UDataInfo dataInfo={
     sizeof(UDataInfo),
@@ -100,7 +100,7 @@ static UDataInfo dataInfo={
 
     U_IS_BIG_ENDIAN,
     U_CHARSET_FAMILY,
-    sizeof(char16_t),
+    sizeof(UChar),
     0,
 
     {0x63, 0x6e, 0x76, 0x74},     /* dataFormat="cnvt" */
@@ -111,7 +111,7 @@ static UDataInfo dataInfo={
 static void
 writeConverterData(ConvData *data, const char *cnvName, const char *cnvDir, UErrorCode *status)
 {
-    UNewDataMemory *mem = nullptr;
+    UNewDataMemory *mem = NULL;
     uint32_t sz2;
     uint32_t size = 0;
     int32_t tableType;
@@ -122,14 +122,14 @@ writeConverterData(ConvData *data, const char *cnvName, const char *cnvDir, UErr
       }
 
     tableType=TABLE_NONE;
-    if(data->cnvData!=nullptr) {
+    if(data->cnvData!=NULL) {
         tableType|=TABLE_BASE;
     }
-    if(data->extData!=nullptr) {
+    if(data->extData!=NULL) {
         tableType|=TABLE_EXT;
     }
 
-    mem = udata_create(cnvDir, "cnv", cnvName, &dataInfo, haveCopyright ? U_COPYRIGHT_STRING : nullptr, status);
+    mem = udata_create(cnvDir, "cnv", cnvName, &dataInfo, haveCopyright ? U_COPYRIGHT_STRING : NULL, status);
 
     if(U_FAILURE(*status))
       {
@@ -191,8 +191,8 @@ static UOption options[]={
     UOPTION_VERSION,
     UOPTION_DESTDIR,
     UOPTION_VERBOSE,
-    { "small", nullptr, nullptr, nullptr, '\1', UOPT_NO_ARG, 0 },
-    { "ignore-siso-check", nullptr, nullptr, nullptr, '\1', UOPT_NO_ARG, 0 },
+    { "small", NULL, NULL, NULL, '\1', UOPT_NO_ARG, 0 },
+    { "ignore-siso-check", NULL, NULL, NULL, '\1', UOPT_NO_ARG, 0 },
     UOPTION_QUIET,
     UOPTION_SOURCEDIR,
 };
@@ -212,13 +212,6 @@ int main(int argc, char* argv[])
     /* preset then read command line options */
     options[OPT_DESTDIR].value=u_getDataDirectory();
     argc=u_parseArgs(argc, argv, UPRV_LENGTHOF(options), options);
-
-    if(options[OPT_VERSION].doesOccur) {
-        printf("makeconv version %u.%u, ICU tool to read .ucm codepage mapping files and write .cnv files\n",
-               dataInfo.formatVersion[0], dataInfo.formatVersion[1]);
-        printf("%s\n", U_COPYRIGHT_STRING);
-        exit(0);
-    }
 
     /* error handling, printing usage message */
     if(argc<0) {
@@ -251,6 +244,13 @@ int main(int argc, char* argv[])
         return argc<0 ? U_ILLEGAL_ARGUMENT_ERROR : U_ZERO_ERROR;
     }
 
+    if(options[OPT_VERSION].doesOccur) {
+        printf("makeconv version %u.%u, ICU tool to read .ucm codepage mapping files and write .cnv files\n",
+               dataInfo.formatVersion[0], dataInfo.formatVersion[1]);
+        printf("%s\n", U_COPYRIGHT_STRING);
+        exit(0);
+    }
+
     /* get the options values */
     haveCopyright = options[OPT_COPYRIGHT].doesOccur;
     const char *destdir = options[OPT_DESTDIR].value;
@@ -259,12 +259,12 @@ int main(int argc, char* argv[])
     SMALL = options[OPT_SMALL].doesOccur;
 
     if (options[OPT_IGNORE_SISO_CHECK].doesOccur) {
-        IGNORE_SISO_CHECK = true;
+        IGNORE_SISO_CHECK = TRUE;
     }
 
     icu::CharString outFileName;
     UErrorCode err = U_ZERO_ERROR;
-    if (destdir != nullptr && *destdir != 0) {
+    if (destdir != NULL && *destdir != 0) {
         outFileName.append(destdir, err).ensureEndsWithFileSeparator(err);
         if (U_FAILURE(err)) {
             return err;
@@ -292,7 +292,7 @@ int main(int argc, char* argv[])
         const char *arg = getLongPathname(*argv);
 
         const char* sourcedir = options[OPT_SOURCEDIR].value;
-        if (sourcedir != nullptr && *sourcedir != 0 && uprv_strcmp(sourcedir, ".") != 0) {
+        if (sourcedir != NULL && *sourcedir != 0 && uprv_strcmp(sourcedir, ".") != 0) {
             pathBuf.clear();
             pathBuf.appendPathPart(sourcedir, localError);
             pathBuf.appendPathPart(arg, localError);
@@ -358,10 +358,10 @@ int main(int argc, char* argv[])
             char *p;
             p = strrchr(cnvName, U_FILE_SEP_CHAR); /* Find last file separator */
 
-            if(p == nullptr)            /* OK, try alternate */
+            if(p == NULL)            /* OK, try alternate */
             {
                 p = strrchr(cnvName, U_FILE_ALT_SEP_CHAR);
-                if(p == nullptr)
+                if(p == NULL)
                 {
                     p=cnvName; /* If no separators, no problem */
                 }
@@ -426,7 +426,7 @@ getPlatformAndCCSIDFromName(const char *name, int8_t *pPlatform, int32_t *pCCSID
             ++name;
         }
         *pPlatform=UCNV_IBM;
-        *pCCSID=(int32_t)uprv_strtoul(name, nullptr, 10);
+        *pCCSID=(int32_t)uprv_strtoul(name, NULL, 10);
     } else {
         *pPlatform=UCNV_UNKNOWN;
         *pCCSID=0;
@@ -516,7 +516,7 @@ readHeader(ConvData *data,
      */
     if(data->ucm->baseName[0]==0) {
         prototype=ucnv_converterStaticData[staticData->conversionType];
-        if(prototype!=nullptr) {
+        if(prototype!=NULL) {
             if(staticData->name[0]==0) {
                 uprv_strcpy((char *)staticData->name, prototype->name);
             }
@@ -560,7 +560,7 @@ readHeader(ConvData *data,
     }
 }
 
-/* return true if a base table was read, false for an extension table */
+/* return TRUE if a base table was read, FALSE for an extension table */
 static UBool
 readFile(ConvData *data, const char* converterName,
          UErrorCode *pErrorCode) {
@@ -572,35 +572,35 @@ readFile(ConvData *data, const char* converterName,
     UBool dataIsBase;
 
     if(U_FAILURE(*pErrorCode)) {
-        return false;
+        return FALSE;
     }
 
     data->ucm=ucm_open();
 
     convFile=T_FileStream_open(converterName, "r");
-    if(convFile==nullptr) {
+    if(convFile==NULL) {
         *pErrorCode=U_FILE_ACCESS_ERROR;
-        return false;
+        return FALSE;
     }
 
     readHeader(data, convFile, pErrorCode);
     if(U_FAILURE(*pErrorCode)) {
-        return false;
+        return FALSE;
     }
 
     if(data->ucm->baseName[0]==0) {
-        dataIsBase=true;
+        dataIsBase=TRUE;
         baseStates=&data->ucm->states;
         ucm_processStates(baseStates, IGNORE_SISO_CHECK);
     } else {
-        dataIsBase=false;
-        baseStates=nullptr;
+        dataIsBase=FALSE;
+        baseStates=NULL;
     }
 
     /* read the base table */
     ucm_readTable(data->ucm, convFile, dataIsBase, baseStates, pErrorCode);
     if(U_FAILURE(*pErrorCode)) {
-        return false;
+        return FALSE;
     }
 
     /* read an extension table if there is one */
@@ -618,7 +618,7 @@ readFile(ConvData *data, const char* converterName,
 
         if(0==uprv_strcmp(line, "CHARMAP")) {
             /* read the extension table */
-            ucm_readTable(data->ucm, convFile, false, baseStates, pErrorCode);
+            ucm_readTable(data->ucm, convFile, FALSE, baseStates, pErrorCode);
         } else {
             fprintf(stderr, "unexpected text after the base mapping table\n");
         }
@@ -663,7 +663,7 @@ createConverter(ConvData *data, const char *converterName, UErrorCode *pErrorCod
          * and an optional extension table.
          */
         data->cnvData=MBCSOpen(data->ucm);
-        if(data->cnvData==nullptr) {
+        if(data->cnvData==NULL) {
             *pErrorCode=U_MEMORY_ALLOCATION_ERROR;
 
         } else if(!data->cnvData->isValid(data->cnvData,
@@ -680,7 +680,7 @@ createConverter(ConvData *data, const char *converterName, UErrorCode *pErrorCod
 
         } else if(
             data->ucm->ext->mappingsLength>0 &&
-            !ucm_checkBaseExt(states, data->ucm->base, data->ucm->ext, data->ucm->ext, false)
+            !ucm_checkBaseExt(states, data->ucm->base, data->ucm->ext, data->ucm->ext, FALSE)
         ) {
             *pErrorCode=U_INVALID_TABLE_FORMAT;
         } else if(data->ucm->base->flagsType&UCM_FLAGS_EXPLICIT) {
@@ -710,7 +710,7 @@ createConverter(ConvData *data, const char *converterName, UErrorCode *pErrorCod
                 if(data->ucm->ext->mappingsLength>0) {
                     /* prepare the extension table, if there is one */
                     data->extData=CnvExtOpen(data->ucm);
-                    if(data->extData==nullptr) {
+                    if(data->extData==NULL) {
                         *pErrorCode=U_MEMORY_ALLOCATION_ERROR;
                     } else if(
                         !data->extData->addTable(data->extData, data->ucm->ext, &data->staticData)
@@ -743,7 +743,7 @@ createConverter(ConvData *data, const char *converterName, UErrorCode *pErrorCod
         } else {
             /* prepare the extension table */
             data->extData=CnvExtOpen(data->ucm);
-            if(data->extData==nullptr) {
+            if(data->extData==NULL) {
                 *pErrorCode=U_MEMORY_ALLOCATION_ERROR;
             } else {
                 /* fill in gaps in extension file header fields */
@@ -784,10 +784,10 @@ createConverter(ConvData *data, const char *converterName, UErrorCode *pErrorCod
                 }
 
                 if(fallbackFlags&1) {
-                    staticData->hasFromUnicodeFallback=true;
+                    staticData->hasFromUnicodeFallback=TRUE;
                 }
                 if(fallbackFlags&2) {
-                    staticData->hasToUnicodeFallback=true;
+                    staticData->hasToUnicodeFallback=TRUE;
                 }
 
                 if(1!=ucm_countChars(baseStates, staticData->subChar, staticData->subCharLen)) {
@@ -800,7 +800,7 @@ createConverter(ConvData *data, const char *converterName, UErrorCode *pErrorCod
 
                 } else if(
                     !ucm_checkValidity(data->ucm->ext, baseStates) ||
-                    !ucm_checkBaseExt(baseStates, baseData.ucm->base, data->ucm->ext, data->ucm->ext, false)
+                    !ucm_checkBaseExt(baseStates, baseData.ucm->base, data->ucm->ext, data->ucm->ext, FALSE)
                 ) {
                     *pErrorCode=U_INVALID_TABLE_FORMAT;
                 } else {

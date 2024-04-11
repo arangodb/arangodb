@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 tg{
     Currencies{
         BRL{
@@ -44,6 +43,16 @@ tg{
             "Асъори номаълум",
         }
     }
+    Currencies%narrow{
+        BRL{"R$"}
+        CNY{"¥"}
+        EUR{"€"}
+        GBP{"£"}
+        INR{"₹"}
+        JPY{"¥"}
+        RUB{"₽"}
+        USD{"$"}
+    }
     CurrencyPlurals{
         BRL{
             other{"реали бразилиягӣ"}
@@ -66,6 +75,9 @@ tg{
         RUB{
             other{"рубли русӣ"}
         }
+        TJS{
+            other{"Сомонӣ"}
+        }
         USD{
             other{"доллари ИМА"}
         }
@@ -76,4 +88,5 @@ tg{
     CurrencyUnitPatterns{
         other{"{0} {1}"}
     }
+    Version{"2.1.49.82"}
 }

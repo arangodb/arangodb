@@ -8,18 +8,19 @@
 #define __UCPTRIE_H__
 
 #include "unicode/utypes.h"
+
+#ifndef U_HIDE_DRAFT_API
+
+#include "unicode/localpointer.h"
 #include "unicode/ucpmap.h"
 #include "unicode/utf8.h"
-
-#if U_SHOW_CPLUSPLUS_API
-#include "unicode/localpointer.h"
-#endif   // U_SHOW_CPLUSPLUS_API
 
 U_CDECL_BEGIN
 
 /**
  * \file
- * \brief C API: This file defines an immutable Unicode code point trie.
+ *
+ * This file defines an immutable Unicode code point trie.
  *
  * @see UCPTrie
  * @see UMutableCPTrie
@@ -42,7 +43,7 @@ typedef union UCPTrieData {
 /**
  * Immutable Unicode code point trie structure.
  * Fast, reasonably compact, map from Unicode code points (U+0000..U+10FFFF) to integer values.
- * For details see https://icu.unicode.org/design/struct/utrie
+ * For details see http://site.icu-project.org/design/struct/utrie
  *
  * Do not access UCPTrie fields directly; use public functions and macros.
  * Functions are easy to use: They support all trie types and value widths.
@@ -54,7 +55,7 @@ typedef union UCPTrieData {
  * The macros will return bogus values, or may crash, if used on the wrong type or value width.
  *
  * @see UMutableCPTrie
- * @stable ICU 63
+ * @draft ICU 63
  */
 struct UCPTrie {
 #ifndef U_IN_DOXYGEN
@@ -114,23 +115,23 @@ typedef struct UCPTrie UCPTrie;
  * @see umutablecptrie_buildImmutable
  * @see ucptrie_openFromBinary
  * @see ucptrie_getType
- * @stable ICU 63
+ * @draft ICU 63
  */
 enum UCPTrieType {
     /**
      * For ucptrie_openFromBinary() to accept any type.
      * ucptrie_getType() will return the actual type.
-     * @stable ICU 63
+     * @draft ICU 63
      */
     UCPTRIE_TYPE_ANY = -1,
     /**
      * Fast/simple/larger BMP data structure. Use functions and "fast" macros.
-     * @stable ICU 63
+     * @draft ICU 63
      */
     UCPTRIE_TYPE_FAST,
     /**
      * Small/slower BMP data structure. Use functions and "small" macros.
-     * @stable ICU 63
+     * @draft ICU 63
      */
     UCPTRIE_TYPE_SMALL
 };
@@ -144,30 +145,30 @@ typedef enum UCPTrieType UCPTrieType;
  * @see umutablecptrie_buildImmutable
  * @see ucptrie_openFromBinary
  * @see ucptrie_getValueWidth
- * @stable ICU 63
+ * @draft ICU 63
  */
 enum UCPTrieValueWidth {
     /**
      * For ucptrie_openFromBinary() to accept any data value width.
      * ucptrie_getValueWidth() will return the actual data value width.
-     * @stable ICU 63
+     * @draft ICU 63
      */
     UCPTRIE_VALUE_BITS_ANY = -1,
     /**
      * The trie stores 16 bits per data value.
      * It returns them as unsigned values 0..0xffff=65535.
-     * @stable ICU 63
+     * @draft ICU 63
      */
     UCPTRIE_VALUE_BITS_16,
     /**
      * The trie stores 32 bits per data value.
-     * @stable ICU 63
+     * @draft ICU 63
      */
     UCPTRIE_VALUE_BITS_32,
     /**
      * The trie stores 8 bits per data value.
      * It returns them as unsigned values 0..0xff=255.
-     * @stable ICU 63
+     * @draft ICU 63
      */
     UCPTRIE_VALUE_BITS_8
 };
@@ -199,7 +200,7 @@ typedef enum UCPTrieValueWidth UCPTrieValueWidth;
  * @see umutablecptrie_open
  * @see umutablecptrie_buildImmutable
  * @see ucptrie_toBinary
- * @stable ICU 63
+ * @draft ICU 63
  */
 U_CAPI UCPTrie * U_EXPORT2
 ucptrie_openFromBinary(UCPTrieType type, UCPTrieValueWidth valueWidth,
@@ -210,10 +211,29 @@ ucptrie_openFromBinary(UCPTrieType type, UCPTrieValueWidth valueWidth,
  * Closes a trie and releases associated memory.
  *
  * @param trie the trie
- * @stable ICU 63
+ * @draft ICU 63
  */
 U_CAPI void U_EXPORT2
 ucptrie_close(UCPTrie *trie);
+
+#if U_SHOW_CPLUSPLUS_API
+
+U_NAMESPACE_BEGIN
+
+/**
+ * \class LocalUCPTriePointer
+ * "Smart pointer" class, closes a UCPTrie via ucptrie_close().
+ * For most methods see the LocalPointerBase base class.
+ *
+ * @see LocalPointerBase
+ * @see LocalPointer
+ * @draft ICU 63
+ */
+U_DEFINE_LOCAL_OPEN_POINTER(LocalUCPTriePointer, UCPTrie, ucptrie_close);
+
+U_NAMESPACE_END
+
+#endif
 
 /**
  * Returns the trie type.
@@ -222,7 +242,7 @@ ucptrie_close(UCPTrie *trie);
  * @return the trie type
  * @see ucptrie_openFromBinary
  * @see UCPTRIE_TYPE_ANY
- * @stable ICU 63
+ * @draft ICU 63
  */
 U_CAPI UCPTrieType U_EXPORT2
 ucptrie_getType(const UCPTrie *trie);
@@ -234,7 +254,7 @@ ucptrie_getType(const UCPTrie *trie);
  * @return the number of bits in a trie data value
  * @see ucptrie_openFromBinary
  * @see UCPTRIE_VALUE_BITS_ANY
- * @stable ICU 63
+ * @draft ICU 63
  */
 U_CAPI UCPTrieValueWidth U_EXPORT2
 ucptrie_getValueWidth(const UCPTrie *trie);
@@ -251,7 +271,7 @@ ucptrie_getValueWidth(const UCPTrie *trie);
  * @param c the code point
  * @return the trie value,
  *         or the trie error value if the code point is not in the range 0..U+10FFFF
- * @stable ICU 63
+ * @draft ICU 63
  */
 U_CAPI uint32_t U_EXPORT2
 ucptrie_get(const UCPTrie *trie, UChar32 c);
@@ -290,7 +310,7 @@ ucptrie_get(const UCPTrie *trie, UChar32 c);
  *     may have been modified by filter(context, trie value)
  *     if that function pointer is not NULL
  * @return the range end code point, or -1 if start is not a valid code point
- * @stable ICU 63
+ * @draft ICU 63
  */
 U_CAPI UChar32 U_EXPORT2
 ucptrie_getRange(const UCPTrie *trie, UChar32 start,
@@ -310,7 +330,7 @@ ucptrie_getRange(const UCPTrie *trie, UChar32 start,
  * @return the number of bytes written or (if buffer overflow) needed for the trie
  *
  * @see ucptrie_openFromBinary()
- * @stable ICU 63
+ * @draft ICU 63
  */
 U_CAPI int32_t U_EXPORT2
 ucptrie_toBinary(const UCPTrie *trie, void *data, int32_t capacity, UErrorCode *pErrorCode);
@@ -321,7 +341,7 @@ ucptrie_toBinary(const UCPTrie *trie, void *data, int32_t capacity, UErrorCode *
  * Do not use this macro in any other way.
  *
  * @see UCPTRIE_VALUE_BITS_16
- * @stable ICU 63
+ * @draft ICU 63
  */
 #define UCPTRIE_16(trie, i) ((trie)->data.ptr16[i])
 
@@ -331,7 +351,7 @@ ucptrie_toBinary(const UCPTrie *trie, void *data, int32_t capacity, UErrorCode *
  * Do not use this macro in any other way.
  *
  * @see UCPTRIE_VALUE_BITS_32
- * @stable ICU 63
+ * @draft ICU 63
  */
 #define UCPTRIE_32(trie, i) ((trie)->data.ptr32[i])
 
@@ -341,7 +361,7 @@ ucptrie_toBinary(const UCPTrie *trie, void *data, int32_t capacity, UErrorCode *
  * Do not use this macro in any other way.
  *
  * @see UCPTRIE_VALUE_BITS_8
- * @stable ICU 63
+ * @draft ICU 63
  */
 #define UCPTRIE_8(trie, i) ((trie)->data.ptr8[i])
 
@@ -353,7 +373,7 @@ ucptrie_toBinary(const UCPTrie *trie, void *data, int32_t capacity, UErrorCode *
  * @param dataAccess UCPTRIE_16, UCPTRIE_32, or UCPTRIE_8 according to the trie’s value width
  * @param c (UChar32, in) the input code point
  * @return The code point's trie value.
- * @stable ICU 63
+ * @draft ICU 63
  */
 #define UCPTRIE_FAST_GET(trie, dataAccess, c) dataAccess(trie, _UCPTRIE_CP_INDEX(trie, 0xffff, c))
 
@@ -365,7 +385,7 @@ ucptrie_toBinary(const UCPTrie *trie, void *data, int32_t capacity, UErrorCode *
  * @param dataAccess UCPTRIE_16, UCPTRIE_32, or UCPTRIE_8 according to the trie’s value width
  * @param c (UChar32, in) the input code point
  * @return The code point's trie value.
- * @stable ICU 63
+ * @draft ICU 63
  */
 #define UCPTRIE_SMALL_GET(trie, dataAccess, c) \
     dataAccess(trie, _UCPTRIE_CP_INDEX(trie, UCPTRIE_SMALL_MAX, c))
@@ -381,9 +401,9 @@ ucptrie_toBinary(const UCPTrie *trie, void *data, int32_t capacity, UErrorCode *
  * @param limit (const UChar *, in) the limit pointer for the text, or NULL if NUL-terminated
  * @param c (UChar32, out) variable for the code point
  * @param result (out) variable for the trie lookup result
- * @stable ICU 63
+ * @draft ICU 63
  */
-#define UCPTRIE_FAST_U16_NEXT(trie, dataAccess, src, limit, c, result) UPRV_BLOCK_MACRO_BEGIN { \
+#define UCPTRIE_FAST_U16_NEXT(trie, dataAccess, src, limit, c, result) { \
     (c) = *(src)++; \
     int32_t __index; \
     if (!U16_IS_SURROGATE(c)) { \
@@ -399,7 +419,7 @@ ucptrie_toBinary(const UCPTrie *trie, void *data, int32_t capacity, UErrorCode *
         } \
     } \
     (result) = dataAccess(trie, __index); \
-} UPRV_BLOCK_MACRO_END
+}
 
 /**
  * UTF-16: Reads the previous code point (UChar32 c, out), pre-decrements src,
@@ -412,9 +432,9 @@ ucptrie_toBinary(const UCPTrie *trie, void *data, int32_t capacity, UErrorCode *
  * @param src (const UChar *, in/out) the source text pointer
  * @param c (UChar32, out) variable for the code point
  * @param result (out) variable for the trie lookup result
- * @stable ICU 63
+ * @draft ICU 63
  */
-#define UCPTRIE_FAST_U16_PREV(trie, dataAccess, start, src, c, result) UPRV_BLOCK_MACRO_BEGIN { \
+#define UCPTRIE_FAST_U16_PREV(trie, dataAccess, start, src, c, result) { \
     (c) = *--(src); \
     int32_t __index; \
     if (!U16_IS_SURROGATE(c)) { \
@@ -430,7 +450,7 @@ ucptrie_toBinary(const UCPTrie *trie, void *data, int32_t capacity, UErrorCode *
         } \
     } \
     (result) = dataAccess(trie, __index); \
-} UPRV_BLOCK_MACRO_END
+}
 
 /**
  * UTF-8: Post-increments src and gets a value from the trie.
@@ -446,9 +466,9 @@ ucptrie_toBinary(const UCPTrie *trie, void *data, int32_t capacity, UErrorCode *
  * @param src (const char *, in/out) the source text pointer
  * @param limit (const char *, in) the limit pointer for the text (must not be NULL)
  * @param result (out) variable for the trie lookup result
- * @stable ICU 63
+ * @draft ICU 63
  */
-#define UCPTRIE_FAST_U8_NEXT(trie, dataAccess, src, limit, result) UPRV_BLOCK_MACRO_BEGIN { \
+#define UCPTRIE_FAST_U8_NEXT(trie, dataAccess, src, limit, result) { \
     int32_t __lead = (uint8_t)*(src)++; \
     if (!U8_IS_SINGLE(__lead)) { \
         uint8_t __t1, __t2, __t3; \
@@ -476,7 +496,7 @@ ucptrie_toBinary(const UCPTrie *trie, void *data, int32_t capacity, UErrorCode *
         } \
     } \
     (result) = dataAccess(trie, __lead); \
-} UPRV_BLOCK_MACRO_END
+}
 
 /**
  * UTF-8: Pre-decrements src and gets a value from the trie.
@@ -492,9 +512,9 @@ ucptrie_toBinary(const UCPTrie *trie, void *data, int32_t capacity, UErrorCode *
  * @param start (const char *, in) the start pointer for the text
  * @param src (const char *, in/out) the source text pointer
  * @param result (out) variable for the trie lookup result
- * @stable ICU 63
+ * @draft ICU 63
  */
-#define UCPTRIE_FAST_U8_PREV(trie, dataAccess, start, src, result) UPRV_BLOCK_MACRO_BEGIN { \
+#define UCPTRIE_FAST_U8_PREV(trie, dataAccess, start, src, result) { \
     int32_t __index = (uint8_t)*--(src); \
     if (!U8_IS_SINGLE(__index)) { \
         __index = ucptrie_internalU8PrevIndex((trie), __index, (const uint8_t *)(start), \
@@ -503,7 +523,7 @@ ucptrie_toBinary(const UCPTrie *trie, void *data, int32_t capacity, UErrorCode *
         __index >>= 3; \
     } \
     (result) = dataAccess(trie, __index); \
-} UPRV_BLOCK_MACRO_END
+}
 
 /**
  * Returns a trie value for an ASCII code point, without range checking.
@@ -512,7 +532,7 @@ ucptrie_toBinary(const UCPTrie *trie, void *data, int32_t capacity, UErrorCode *
  * @param dataAccess UCPTRIE_16, UCPTRIE_32, or UCPTRIE_8 according to the trie’s value width
  * @param c (UChar32, in) the input code point; must be U+0000..U+007F
  * @return The ASCII code point's trie value.
- * @stable ICU 63
+ * @draft ICU 63
  */
 #define UCPTRIE_ASCII_GET(trie, dataAccess, c) dataAccess(trie, c)
 
@@ -525,7 +545,7 @@ ucptrie_toBinary(const UCPTrie *trie, void *data, int32_t capacity, UErrorCode *
  * @param dataAccess UCPTRIE_16, UCPTRIE_32, or UCPTRIE_8 according to the trie’s value width
  * @param c (UChar32, in) the input code point, must be U+0000..U+FFFF
  * @return The BMP code point's trie value.
- * @stable ICU 63
+ * @draft ICU 63
  */
 #define UCPTRIE_FAST_BMP_GET(trie, dataAccess, c) dataAccess(trie, _UCPTRIE_FAST_INDEX(trie, c))
 
@@ -537,7 +557,7 @@ ucptrie_toBinary(const UCPTrie *trie, void *data, int32_t capacity, UErrorCode *
  * @param dataAccess UCPTRIE_16, UCPTRIE_32, or UCPTRIE_8 according to the trie’s value width
  * @param c (UChar32, in) the input code point, must be U+10000..U+10FFFF
  * @return The supplementary code point's trie value.
- * @stable ICU 63
+ * @draft ICU 63
  */
 #define UCPTRIE_FAST_SUPP_GET(trie, dataAccess, c) dataAccess(trie, _UCPTRIE_SMALL_INDEX(trie, c))
 
@@ -581,11 +601,11 @@ enum {
 // Do not conditionalize with #ifndef U_HIDE_INTERNAL_API, needed for public API
 
 /** @internal */
-U_CAPI int32_t U_EXPORT2
+U_INTERNAL int32_t U_EXPORT2
 ucptrie_internalSmallIndex(const UCPTrie *trie, UChar32 c);
 
 /** @internal */
-U_CAPI int32_t U_EXPORT2
+U_INTERNAL int32_t U_EXPORT2
 ucptrie_internalSmallU8Index(const UCPTrie *trie, int32_t lt1, uint8_t t2, uint8_t t3);
 
 /**
@@ -593,7 +613,7 @@ ucptrie_internalSmallU8Index(const UCPTrie *trie, int32_t lt1, uint8_t t2, uint8
  * Do not call directly.
  * @internal
  */
-U_CAPI int32_t U_EXPORT2
+U_INTERNAL int32_t U_EXPORT2
 ucptrie_internalU8PrevIndex(const UCPTrie *trie, UChar32 c,
                             const uint8_t *start, const uint8_t *src);
 
@@ -622,24 +642,5 @@ ucptrie_internalU8PrevIndex(const UCPTrie *trie, UChar32 c,
 U_CDECL_END
 
 #endif  // U_IN_DOXYGEN
-
-#if U_SHOW_CPLUSPLUS_API
-
-U_NAMESPACE_BEGIN
-
-/**
- * \class LocalUCPTriePointer
- * "Smart pointer" class, closes a UCPTrie via ucptrie_close().
- * For most methods see the LocalPointerBase base class.
- *
- * @see LocalPointerBase
- * @see LocalPointer
- * @stable ICU 63
- */
-U_DEFINE_LOCAL_OPEN_POINTER(LocalUCPTriePointer, UCPTrie, ucptrie_close);
-
-U_NAMESPACE_END
-
-#endif  // U_SHOW_CPLUSPLUS_API
-
+#endif  // U_HIDE_DRAFT_API
 #endif

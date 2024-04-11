@@ -129,7 +129,7 @@ SED = @SED@
 # configure prevents user defined DEFS, and configure's DEFS is not needed
 # So we ignore the DEFS that comes from configure
 # U_ATTRIBUTE_DEPRECATED is defined to hide warnings about deprecated API warnings.
-DEFS = -DU_ALL_IMPLEMENTATION -DU_ATTRIBUTE_DEPRECATED=
+DEFS = -DU_ATTRIBUTE_DEPRECATED=
 # CFLAGS is for C only flags
 CFLAGS = @CFLAGS@
 # CXXFLAGS is for C++ only flags
@@ -239,10 +239,6 @@ LIBDIR=$(top_builddir)/lib
 
 # Location of the executables before "make install" is used
 BINDIR=$(top_builddir)/bin
-
-# Defined here so that it can be overridden by mh-mingw*.
-# For MinGW/MSYS2 we want the DLLs to go into the bin location.
-MINGW_MOVEDLLSTOBINDIR = NO
 
 # overridden by icucross.mk
 TOOLBINDIR=$(BINDIR)

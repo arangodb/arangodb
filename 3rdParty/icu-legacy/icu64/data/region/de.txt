@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 de{
     Countries{
         001{"Welt"}
@@ -64,7 +63,7 @@ de{
         BM{"Bermuda"}
         BN{"Brunei Darussalam"}
         BO{"Bolivien"}
-        BQ{"Karibische Niederlande"}
+        BQ{"Bonaire, Sint Eustatius und Saba"}
         BR{"Brasilien"}
         BS{"Bahamas"}
         BT{"Bhutan"}
@@ -254,7 +253,7 @@ de{
         SV{"El Salvador"}
         SX{"Sint Maarten"}
         SY{"Syrien"}
-        SZ{"Eswatini"}
+        SZ{"Swasiland"}
         TA{"Tristan da Cunha"}
         TC{"Turks- und Caicosinseln"}
         TD{"Tschad"}
@@ -288,8 +287,6 @@ de{
         VU{"Vanuatu"}
         WF{"Wallis und Futuna"}
         WS{"Samoa"}
-        XA{"Pseudo-Akzente"}
-        XB{"Pseudo-Bidi"}
         XK{"Kosovo"}
         YE{"Jemen"}
         YT{"Mayotte"}
@@ -298,11 +295,8 @@ de{
         ZW{"Simbabwe"}
         ZZ{"Unbekannte Region"}
     }
-    Countries%chagos{
-        IO{"Chagos-Archipel"}
-    }
     Countries%short{
-        GB{"UK"}
+        GB{"GB"}
         HK{"Hongkong"}
         MO{"Macau"}
         PS{"Palästina"}
@@ -315,8 +309,8 @@ de{
         CI{"Elfenbeinküste"}
         CZ{"Tschechische Republik"}
         FK{"Falklandinseln (Malwinen)"}
-        NZ{"Aotearoa (Neuseeland)"}
-        SZ{"Swasiland"}
+        SZ{"Eswatini"}
         TL{"Osttimor"}
     }
+    Version{"2.1.48.42"}
 }

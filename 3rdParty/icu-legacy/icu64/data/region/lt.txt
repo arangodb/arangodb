@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 lt{
     Countries{
         001{"pasaulis"}
@@ -255,7 +254,7 @@ lt{
         SX{"Sint Martenas"}
         SY{"Sirija"}
         SZ{"Svazilandas"}
-        TA{"Tristano da Kunjos"}
+        TA{"Tristanas da Kunja"}
         TC{"Terkso ir Kaikoso Salos"}
         TD{"Čadas"}
         TF{"Prancūzijos Pietų sritys"}
@@ -288,8 +287,8 @@ lt{
         VU{"Vanuatu"}
         WF{"Volisas ir Futūna"}
         WS{"Samoa"}
-        XA{"pseudo A"}
-        XB{"pseudo B"}
+        XA{"XA"}
+        XB{"XB"}
         XK{"Kosovas"}
         YE{"Jemenas"}
         YT{"Majotas"}
@@ -297,9 +296,6 @@ lt{
         ZM{"Zambija"}
         ZW{"Zimbabvė"}
         ZZ{"nežinoma sritis"}
-    }
-    Countries%chagos{
-        IO{"Čagoso salynas"}
     }
     Countries%short{
         GB{"JK"}
@@ -315,5 +311,7 @@ lt{
         CI{"Dramblio Kaulo Kranto Respublika"}
         CZ{"Čekijos Respublika"}
         FK{"Folklando (Malvinų) Salos"}
+        TL{"TL"}
     }
+    Version{"2.1.48.42"}
 }

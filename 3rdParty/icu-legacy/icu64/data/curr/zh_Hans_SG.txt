@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 zh_Hans_SG{
     Currencies{
         CNY{
@@ -23,11 +22,9 @@ zh_Hans_SG{
         NIO{
             other{"尼加拉瓜科多巴"}
         }
-        XAG{
-            other{"白银"}
-        }
     }
     CurrencyUnitPatterns{
         other{"{0} {1}"}
     }
+    Version{"2.1.47.71"}
 }

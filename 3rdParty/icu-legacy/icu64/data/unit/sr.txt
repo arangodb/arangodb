@@ -1,237 +1,87 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 sr{
+    Version{"2.1.49.82"}
     durationUnits{
-        hm{"h.mm"}
-        hms{"h.mm.ss"}
-        ms{"m.ss"}
+        hm{"h:mm"}
+        hms{"h:mm:ss"}
+        ms{"m:ss"}
     }
     units{
         acceleration{
             g-force{
-                case{
-                    accusative{
-                        few{"{0} ге сила"}
-                        one{"{0} ге силу"}
-                        other{"{0} ге сила"}
-                    }
-                    genitive{
-                        few{"{0} ге сила"}
-                        one{"{0} ге силе"}
-                        other{"{0} ге сила"}
-                    }
-                    instrumental{
-                        few{"{0} ге сила"}
-                        one{"{0} ге силом"}
-                        other{"{0} ге сила"}
-                    }
-                }
+                dnam{"ге сила"}
                 few{"{0} ге сила"}
-                gender{"feminine"}
                 one{"{0} ге сила"}
                 other{"{0} ге сила"}
             }
-            meter-per-square-second{
-                case{
-                    accusative{
-                        few{"{0} метра у секунди на квадрат"}
-                        one{"{0} метар у секунди на квадрат"}
-                        other{"{0} метара у секунди на квадрат"}
-                    }
-                    genitive{
-                        few{"{0} метра у секунди на квадрат"}
-                        one{"{0} метра у секунди на квадрат"}
-                        other{"{0} метара у секунди на квадрат"}
-                    }
-                    instrumental{
-                        few{"{0} метра у секунди на квадрат"}
-                        one{"{0} метром у секунди на квадрат"}
-                        other{"{0} метара у секунди на квадрат"}
-                    }
-                }
+            meter-per-second-squared{
                 dnam{"метри у секунди на квадрат"}
                 few{"{0} метра у секунди на квадрат"}
-                gender{"inanimate"}
                 one{"{0} метар у секунди на квадрат"}
                 other{"{0} метара у секунди на квадрат"}
             }
         }
         angle{
             arc-minute{
-                case{
-                    accusative{
-                        few{"{0} лучна минута"}
-                        one{"{0} лучни минут"}
-                        other{"{0} лучних минута"}
-                    }
-                    genitive{
-                        few{"{0} лучна минута"}
-                        one{"{0} лучног минута"}
-                        other{"{0} лучних минута"}
-                    }
-                    instrumental{
-                        few{"{0} лучна минута"}
-                        one{"{0} лучним минутом"}
-                        other{"{0} лучних минута"}
-                    }
-                }
                 dnam{"лучни минути"}
                 few{"{0} лучна минута"}
-                gender{"inanimate"}
                 one{"{0} лучни минут"}
                 other{"{0} лучних минута"}
             }
             arc-second{
-                case{
-                    accusative{
-                        few{"{0} лучне секунде"}
-                        one{"{0} лучну секунду"}
-                        other{"{0} лучних секунди"}
-                    }
-                    genitive{
-                        few{"{0} лучне секунде"}
-                        one{"{0} лучне секунде"}
-                        other{"{0} лучних секунди"}
-                    }
-                    instrumental{
-                        few{"{0} лучне секунде"}
-                        one{"{0} лучном секундом"}
-                        other{"{0} лучних секунди"}
-                    }
-                }
                 dnam{"лучне секунде"}
                 few{"{0} лучне секунде"}
-                gender{"feminine"}
                 one{"{0} лучна секунда"}
                 other{"{0} лучних секунди"}
             }
             degree{
-                case{
-                    accusative{
-                        few{"{0} степена"}
-                        one{"{0} степен"}
-                        other{"{0} степени"}
-                    }
-                    genitive{
-                        few{"{0} степена"}
-                        one{"{0} степена"}
-                        other{"{0} степени"}
-                    }
-                    instrumental{
-                        few{"{0} степена"}
-                        one{"{0} степеном"}
-                        other{"{0} степени"}
-                    }
-                }
+                dnam{"степени"}
                 few{"{0} степена"}
-                gender{"inanimate"}
                 one{"{0} степен"}
                 other{"{0} степени"}
             }
             radian{
-                case{
-                    accusative{
-                        few{"{0} радијана"}
-                        one{"{0} радијан"}
-                        other{"{0} радијана"}
-                    }
-                    genitive{
-                        few{"{0} радијана"}
-                        one{"{0} радијана"}
-                        other{"{0} радијана"}
-                    }
-                    instrumental{
-                        few{"{0} радијана"}
-                        one{"{0} радијаном"}
-                        other{"{0} радијана"}
-                    }
-                }
                 dnam{"радијани"}
                 few{"{0} радијана"}
-                gender{"inanimate"}
                 one{"{0} радијан"}
                 other{"{0} радијана"}
             }
             revolution{
-                case{
-                    accusative{
-                        few{"{0} обртаја"}
-                        one{"{0} обртај"}
-                        other{"{0} обртаја"}
-                    }
-                    genitive{
-                        few{"{0} обртаја"}
-                        one{"{0} обртаја"}
-                        other{"{0} обртаја"}
-                    }
-                    instrumental{
-                        few{"{0} обртаја"}
-                        one{"{0} обртајем"}
-                        other{"{0} обртаја"}
-                    }
-                }
                 dnam{"обртај"}
                 few{"{0} обртаја"}
-                gender{"inanimate"}
                 one{"{0} обртај"}
                 other{"{0} обртаја"}
             }
         }
         area{
             acre{
+                dnam{"акери"}
                 few{"{0} акера"}
                 one{"{0} акер"}
                 other{"{0} акера"}
             }
+            dunam{
+                dnam{"дунами"}
+                few{"{0} дунама"}
+                one{"{0} дунам"}
+                other{"{0} дунама"}
+            }
             hectare{
-                case{
-                    accusative{
-                        few{"{0} хектара"}
-                        one{"{0} хектар"}
-                        other{"{0} хектара"}
-                    }
-                    genitive{
-                        few{"{0} хектара"}
-                        one{"{0} хектара"}
-                        other{"{0} хектара"}
-                    }
-                    instrumental{
-                        few{"{0} хектара"}
-                        one{"{0} хектаром"}
-                        other{"{0} хектара"}
-                    }
-                }
+                dnam{"хектари"}
                 few{"{0} хектара"}
-                gender{"inanimate"}
                 one{"{0} хектар"}
                 other{"{0} хектара"}
             }
             square-centimeter{
-                case{
-                    accusative{
-                        few{"{0} квадратна центиметра"}
-                        one{"{0} квадратни центиметар"}
-                        other{"{0} квадратних центиметара"}
-                    }
-                    genitive{
-                        few{"{0} квадратна центиметра"}
-                        one{"{0} квадратног центиметра"}
-                        other{"{0} квадратних центиметара"}
-                    }
-                    instrumental{
-                        few{"{0} квадратна центиметра"}
-                        one{"{0} квадратним центиметром"}
-                        other{"{0} квадратних центиметара"}
-                    }
-                }
                 dnam{"квадратни центиметри"}
                 few{"{0} квадратна центиметра"}
-                gender{"inanimate"}
                 one{"{0} квадратни центиметар"}
                 other{"{0} квадратних центиметара"}
+                per{"{0}/cm²"}
             }
             square-foot{
+                dnam{"квадратне стопе"}
                 few{"{0} квадратне стопе"}
                 one{"{0} квадратна стопа"}
                 other{"{0} квадратних стопа"}
@@ -241,53 +91,21 @@ sr{
                 few{"{0} квадратна инча"}
                 one{"{0} квадратни инч"}
                 other{"{0} квадратних инча"}
+                per{"{0}/in²"}
             }
             square-kilometer{
-                case{
-                    accusative{
-                        few{"{0} квадратна километра"}
-                        one{"{0} квадратни километар"}
-                        other{"{0} квадратних километара"}
-                    }
-                    genitive{
-                        few{"{0} квадратна километра"}
-                        one{"{0} квадратна километра"}
-                        other{"{0} квадратних километара"}
-                    }
-                    instrumental{
-                        few{"{0} квадратна километра"}
-                        one{"{0} квадратним километром"}
-                        other{"{0} квадратних километара"}
-                    }
-                }
+                dnam{"квадратни километри"}
                 few{"{0} квадратна километра"}
-                gender{"inanimate"}
                 one{"{0} квадратни километар"}
                 other{"{0} квадратних километара"}
                 per{"{0} по квадратном километру"}
             }
             square-meter{
-                case{
-                    accusative{
-                        few{"{0} квадратна метра"}
-                        one{"{0} квадратни метар"}
-                        other{"{0} квадратних метара"}
-                    }
-                    genitive{
-                        few{"{0} квадратна метра"}
-                        one{"{0} квадратна метра"}
-                        other{"{0} квадратних метара"}
-                    }
-                    instrumental{
-                        few{"{0} квадратна метра"}
-                        one{"{0} квадратним метром"}
-                        other{"{0} квадратних метара"}
-                    }
-                }
+                dnam{"квадратни метри"}
                 few{"{0} квадратна метра"}
-                gender{"inanimate"}
                 one{"{0} квадратни метар"}
                 other{"{0} квадратних метара"}
+                per{"{0}/m²"}
             }
             square-mile{
                 dnam{"квадратне миље"}
@@ -304,387 +122,68 @@ sr{
             }
         }
         compound{
-            1024p1{"киби{0}"}
-            1024p2{"меби{0}"}
-            1024p3{"гиби{0}"}
-            1024p4{"теби{0}"}
-            1024p5{"пеби{0}"}
-            1024p6{"ексби{0}"}
-            1024p7{"зеби{0}"}
-            1024p8{"јобе{0}"}
-            10p-1{"деци{0}"}
-            10p-12{"пико{0}"}
-            10p-15{"фемто{0}"}
-            10p-18{"ато{0}"}
-            10p-2{"центи{0}"}
-            10p-21{"зепто{0}"}
-            10p-24{"јокто{0}"}
-            10p-27{"ронто{0}"}
-            10p-3{"мили{0}"}
-            10p-30{"квекто{0}"}
-            10p-6{"микро{0}"}
-            10p-9{"нано{0}"}
-            10p1{"дека{0}"}
-            10p12{"тера{0}"}
-            10p15{"пета{0}"}
-            10p18{"екса{0}"}
-            10p2{"хекто{0}"}
-            10p21{"зета{0}"}
-            10p24{"јота{0}"}
-            10p27{"рона{0}"}
-            10p3{"кило{0}"}
-            10p30{"квета{0}"}
-            10p6{"мега{0}"}
-            10p9{"гига{0}"}
-            power2{
-                few{
-                    _{
-                        _{"квадратна {0}"}
-                        accusative{"квадратна {0}"}
-                        genitive{"квадратна {0}"}
-                        instrumental{"квадратна {0}"}
-                    }
-                    feminine{
-                        _{"квадратна {0}"}
-                        accusative{"квадратна {0}"}
-                        genitive{"квадратна {0}"}
-                        instrumental{"квадратна {0}"}
-                    }
-                    inanimate{
-                        _{"квадратна {0}"}
-                        accusative{"квадратна {0}"}
-                        genitive{"квадратна {0}"}
-                        instrumental{"квадратна {0}"}
-                    }
-                }
-                one{
-                    _{
-                        _{"квадратни {0}"}
-                        accusative{"квадратни {0}"}
-                        genitive{"квадратни {0}"}
-                        instrumental{"квадратни {0}"}
-                    }
-                    feminine{
-                        _{"квадратни {0}"}
-                        accusative{"квадратни {0}"}
-                        genitive{"квадратни {0}"}
-                        instrumental{"квадратни {0}"}
-                    }
-                    inanimate{
-                        _{"квадратни {0}"}
-                        accusative{"квадратни {0}"}
-                        genitive{"квадратни {0}"}
-                        instrumental{"квадратни {0}"}
-                    }
-                }
-                other{
-                    _{
-                        _{"квадратних {0}"}
-                        accusative{"квадратних {0}"}
-                        genitive{"квадратних {0}"}
-                        instrumental{"квадратних {0}"}
-                    }
-                    feminine{
-                        _{"квадратних {0}"}
-                        accusative{"квадратних {0}"}
-                        genitive{"квадратних {0}"}
-                        instrumental{"квадратних {0}"}
-                    }
-                    inanimate{
-                        _{"квадратних {0}"}
-                        accusative{"квадратних {0}"}
-                        genitive{"квадратних {0}"}
-                        instrumental{"квадратних {0}"}
-                    }
-                }
-            }
-            power3{
-                few{
-                    _{
-                        _{"кубна {0}"}
-                        accusative{"кубна {0}"}
-                        genitive{"кубна {0}"}
-                        instrumental{"кубна {0}"}
-                    }
-                    feminine{
-                        _{"кубна {0}"}
-                        accusative{"кубна {0}"}
-                        genitive{"кубна {0}"}
-                        instrumental{"кубна {0}"}
-                    }
-                    inanimate{
-                        _{"кубна {0}"}
-                        accusative{"кубна {0}"}
-                        genitive{"кубна {0}"}
-                        instrumental{"кубна {0}"}
-                    }
-                }
-                one{
-                    _{
-                        _{"кубни {0}"}
-                        accusative{"кубни {0}"}
-                        genitive{"кубни {0}"}
-                        instrumental{"кубни {0}"}
-                    }
-                    feminine{
-                        _{"кубни {0}"}
-                        accusative{"кубни {0}"}
-                        genitive{"кубни {0}"}
-                        instrumental{"кубни {0}"}
-                    }
-                    inanimate{
-                        _{"кубни {0}"}
-                        accusative{"кубни {0}"}
-                        genitive{"кубни {0}"}
-                        instrumental{"кубни {0}"}
-                    }
-                }
-                other{
-                    _{
-                        _{"кубних {0}"}
-                        accusative{"кубних {0}"}
-                        genitive{"кубних {0}"}
-                        instrumental{"кубних {0}"}
-                    }
-                    feminine{
-                        _{"кубних {0}"}
-                        accusative{"кубних {0}"}
-                        genitive{"кубних {0}"}
-                        instrumental{"кубних {0}"}
-                    }
-                    inanimate{
-                        _{"кубних {0}"}
-                        accusative{"кубних {0}"}
-                        genitive{"кубних {0}"}
-                        instrumental{"кубних {0}"}
-                    }
-                }
-            }
-            times{"{0}-{1}"}
+            per{"{0}/{1}"}
         }
         concentr{
-            item{
-                case{
-                    accusative{
-                        few{"{0} ставке"}
-                        one{"{0} ставку"}
-                        other{"{0} ставки"}
-                    }
-                    genitive{
-                        few{"{0} ставке"}
-                        one{"{0} ставке"}
-                        other{"{0} ставки"}
-                    }
-                    instrumental{
-                        few{"{0} ставке"}
-                        one{"{0} ставком"}
-                        other{"{0} ставки"}
-                    }
-                }
-                dnam{"ставке"}
-                few{"{0} ставке"}
-                gender{"feminine"}
-                one{"{0} ставка"}
-                other{"{0} ставки"}
-            }
             karat{
-                case{
-                    accusative{
-                        few{"{0} карата"}
-                        one{"{0} карат"}
-                        other{"{0} карата"}
-                    }
-                    genitive{
-                        few{"{0} карата"}
-                        one{"{0} карата"}
-                        other{"{0} карата"}
-                    }
-                    instrumental{
-                        few{"{0} карата"}
-                        one{"{0} каратом"}
-                        other{"{0} карата"}
-                    }
-                }
                 dnam{"карати"}
                 few{"{0} карата"}
-                gender{"inanimate"}
                 one{"{0} карат"}
                 other{"{0} карата"}
             }
-            milligram-ofglucose-per-deciliter{
+            milligram-per-deciliter{
                 dnam{"милиграми по децилитру"}
                 few{"{0} милиграма по децилитру"}
                 one{"{0} милиграм по децилитру"}
                 other{"{0} милиграма по децилитру"}
             }
             millimole-per-liter{
-                case{
-                    accusative{
-                        few{"{0} милимола по литри"}
-                        one{"{0} милимол по литри"}
-                        other{"{0} милимола по литри"}
-                    }
-                    genitive{
-                        few{"{0} милимола по литри"}
-                        one{"{0} милимола по литри"}
-                        other{"{0} милимола по литри"}
-                    }
-                    instrumental{
-                        few{"{0} милимола по литри"}
-                        one{"{0} милимолом по литри"}
-                        other{"{0} милимола по литри"}
-                    }
-                }
                 dnam{"милимол по литри"}
                 few{"{0} милимола по литри"}
-                gender{"inanimate"}
                 one{"{0} милимол по литри"}
                 other{"{0} милимола по литри"}
             }
             mole{
-                case{
-                    accusative{
-                        few{"{0} мола"}
-                        one{"{0} мол"}
-                        other{"{0} мола"}
-                    }
-                    genitive{
-                        few{"{0} мола"}
-                        one{"{0} мола"}
-                        other{"{0} мола"}
-                    }
-                    instrumental{
-                        few{"{0} мола"}
-                        one{"{0} молом"}
-                        other{"{0} мола"}
-                    }
-                }
                 dnam{"моли"}
                 few{"{0} мола"}
-                gender{"inanimate"}
                 one{"{0} мол"}
                 other{"{0} мола"}
             }
+            part-per-million{
+                dnam{"честица на милион"}
+                few{"{0} честице на милион"}
+                one{"{0} честица на милион"}
+                other{"{0} честица на милион"}
+            }
             percent{
-                case{
-                    accusative{
-                        few{"{0} процената"}
-                        one{"{0} проценат"}
-                        other{"{0} процената"}
-                    }
-                    genitive{
-                        few{"{0} процената"}
-                        one{"{0} процента"}
-                        other{"{0} процената"}
-                    }
-                    instrumental{
-                        few{"{0} процената"}
-                        one{"{0} процентом"}
-                        other{"{0} процената"}
-                    }
-                }
+                dnam{"проценат"}
                 few{"{0} процената"}
-                gender{"inanimate"}
                 one{"{0} проценат"}
                 other{"{0} процената"}
             }
             permille{
-                case{
-                    accusative{
-                        few{"{0} промила"}
-                        one{"{0} промил"}
-                        other{"{0} промила"}
-                    }
-                    genitive{
-                        few{"{0} промила"}
-                        one{"{0} промила"}
-                        other{"{0} промила"}
-                    }
-                    instrumental{
-                        few{"{0} промила"}
-                        one{"{0} промилом"}
-                        other{"{0} промила"}
-                    }
-                }
+                dnam{"промил"}
                 few{"{0} промила"}
-                gender{"inanimate"}
                 one{"{0} промил"}
                 other{"{0} промила"}
             }
-            permillion{
-                case{
-                    accusative{
-                        few{"{0} честице на милион"}
-                        one{"{0} честицу на милион"}
-                        other{"{0} честица на милион"}
-                    }
-                    genitive{
-                        few{"{0} честице на милион"}
-                        one{"{0} честице на милион"}
-                        other{"{0} честица на милион"}
-                    }
-                    instrumental{
-                        few{"{0} честице на милион"}
-                        one{"{0} честицом на милион"}
-                        other{"{0} честица на милион"}
-                    }
-                }
-                dnam{"честица на милион"}
-                few{"{0} честице на милион"}
-                gender{"feminine"}
-                one{"{0} честица на милион"}
-                other{"{0} честица на милион"}
-            }
             permyriad{
-                gender{"inanimate"}
+                dnam{"‱"}
+                few{"{0}‱"}
+                one{"{0}‱"}
+                other{"{0}‱"}
             }
         }
         consumption{
-            liter-per-100-kilometer{
-                case{
-                    accusative{
-                        few{"{0} литра на 100 километара"}
-                        one{"{0} литар на 100 километара"}
-                        other{"{0} литара на 100 километара"}
-                    }
-                    genitive{
-                        few{"{0} литра на 100 километара"}
-                        one{"{0} литра на 100 километара"}
-                        other{"{0} литара на 100 километара"}
-                    }
-                    instrumental{
-                        few{"{0} литра на 100 километара"}
-                        one{"{0} литром на 100 километара"}
-                        other{"{0} литара на 100 километара"}
-                    }
-                }
-                dnam{"литри на 100 километара"}
+            liter-per-100kilometers{
+                dnam{"L/100km"}
                 few{"{0} литра на 100 километара"}
-                gender{"inanimate"}
                 one{"{0} литар на 100 километара"}
                 other{"{0} литара на 100 километара"}
             }
             liter-per-kilometer{
-                case{
-                    accusative{
-                        few{"{0} литра по километру"}
-                        one{"{0} литар по километру"}
-                        other{"{0} литара по километру"}
-                    }
-                    genitive{
-                        few{"{0} литра по километру"}
-                        one{"{0} литра по километру"}
-                        other{"{0} литара по километру"}
-                    }
-                    instrumental{
-                        few{"{0} литра по километру"}
-                        one{"{0} литром по километру"}
-                        other{"{0} литара по километру"}
-                    }
-                }
                 dnam{"литри по километру"}
                 few{"{0} литра по километру"}
-                gender{"inanimate"}
                 one{"{0} литар по километру"}
                 other{"{0} литара по километру"}
             }
@@ -703,587 +202,149 @@ sr{
         }
         coordinate{
             dnam{"главни правац"}
+            east{"{0}И"}
+            north{"{0}С"}
+            south{"{0}Ј"}
+            west{"{0}З"}
         }
         digital{
             bit{
-                case{
-                    accusative{
-                        few{"{0} бита"}
-                        one{"{0} бит"}
-                        other{"{0} битова"}
-                    }
-                    genitive{
-                        few{"{0} бита"}
-                        one{"{0} бита"}
-                        other{"{0} битова"}
-                    }
-                    instrumental{
-                        few{"{0} бита"}
-                        one{"{0} битом"}
-                        other{"{0} битова"}
-                    }
-                }
                 dnam{"битови"}
                 few{"{0} бита"}
-                gender{"inanimate"}
                 one{"{0} бит"}
                 other{"{0} битова"}
             }
             byte{
-                case{
-                    accusative{
-                        few{"{0} бајта"}
-                        one{"{0} бајт"}
-                        other{"{0} бајтова"}
-                    }
-                    genitive{
-                        few{"{0} бајта"}
-                        one{"{0} бајта"}
-                        other{"{0} бајтова"}
-                    }
-                    instrumental{
-                        few{"{0} бајта"}
-                        one{"{0} бајтом"}
-                        other{"{0} бајтова"}
-                    }
-                }
                 dnam{"бајтови"}
                 few{"{0} бајта"}
-                gender{"inanimate"}
                 one{"{0} бајт"}
                 other{"{0} бајтова"}
             }
             gigabit{
-                case{
-                    accusative{
-                        few{"{0} гигабита"}
-                        one{"{0} гигабит"}
-                        other{"{0} гигабитова"}
-                    }
-                    genitive{
-                        few{"{0} гигабита"}
-                        one{"{0} гигабита"}
-                        other{"{0} гигабитова"}
-                    }
-                    instrumental{
-                        few{"{0} гигабита"}
-                        one{"{0} гигабитом"}
-                        other{"{0} гигабитова"}
-                    }
-                }
                 dnam{"гигабитови"}
                 few{"{0} гигабита"}
-                gender{"inanimate"}
                 one{"{0} гигабит"}
-                other{"{0} гигабитова"}
+                other{"{0} гигабита"}
             }
             gigabyte{
-                case{
-                    accusative{
-                        few{"{0} гигабајта"}
-                        one{"{0} гигабајт"}
-                        other{"{0} гигабајтова"}
-                    }
-                    genitive{
-                        few{"{0} гигабајта"}
-                        one{"{0} гигабајта"}
-                        other{"{0} гигабајтова"}
-                    }
-                    instrumental{
-                        few{"{0} гигабајта"}
-                        one{"{0} гигабајтом"}
-                        other{"{0} гигабајтова"}
-                    }
-                }
                 dnam{"гигабајти"}
                 few{"{0} гигабајта"}
-                gender{"inanimate"}
                 one{"{0} гигабајт"}
-                other{"{0} гигабајтова"}
+                other{"{0} гигабајта"}
             }
             kilobit{
-                case{
-                    accusative{
-                        few{"{0} килобита"}
-                        one{"{0} килобит"}
-                        other{"{0} килобитова"}
-                    }
-                    genitive{
-                        few{"{0} килобита"}
-                        one{"{0} килобита"}
-                        other{"{0} килобитова"}
-                    }
-                    instrumental{
-                        few{"{0} килобита"}
-                        one{"{0} килобитом"}
-                        other{"{0} килобитова"}
-                    }
-                }
                 dnam{"килобитови"}
                 few{"{0} килобита"}
-                gender{"inanimate"}
                 one{"{0} килобит"}
-                other{"{0} килобитова"}
+                other{"{0} килобита"}
             }
             kilobyte{
-                case{
-                    accusative{
-                        few{"{0} килобајта"}
-                        one{"{0} килобајт"}
-                        other{"{0} килобајтова"}
-                    }
-                    genitive{
-                        few{"{0} килобајта"}
-                        one{"{0} килобајта"}
-                        other{"{0} килобајтова"}
-                    }
-                    instrumental{
-                        few{"{0} килобајта"}
-                        one{"{0} килобајтом"}
-                        other{"{0} килобајтова"}
-                    }
-                }
                 dnam{"килобајти"}
                 few{"{0} килобајта"}
-                gender{"inanimate"}
                 one{"{0} килобајт"}
-                other{"{0} килобајтова"}
+                other{"{0} килобајта"}
             }
             megabit{
-                case{
-                    accusative{
-                        few{"{0} мегабита"}
-                        one{"{0} мегабит"}
-                        other{"{0} мегабитова"}
-                    }
-                    genitive{
-                        few{"{0} мегабита"}
-                        one{"{0} мегабита"}
-                        other{"{0} мегабитова"}
-                    }
-                    instrumental{
-                        few{"{0} мегабита"}
-                        one{"{0} мегабитом"}
-                        other{"{0} мегабитова"}
-                    }
-                }
                 dnam{"мегабитови"}
                 few{"{0} мегабита"}
-                gender{"inanimate"}
                 one{"{0} мегабит"}
-                other{"{0} мегабитова"}
+                other{"{0} мегабита"}
             }
             megabyte{
-                case{
-                    accusative{
-                        few{"{0} мегабајта"}
-                        one{"{0} мегабајт"}
-                        other{"{0} мегабајтова"}
-                    }
-                    genitive{
-                        few{"{0} мегабајта"}
-                        one{"{0} мегабајта"}
-                        other{"{0} мегабајтова"}
-                    }
-                    instrumental{
-                        few{"{0} мегабајта"}
-                        one{"{0} мегабајтом"}
-                        other{"{0} мегабајтова"}
-                    }
-                }
                 dnam{"мегабајти"}
                 few{"{0} мегабајта"}
-                gender{"inanimate"}
                 one{"{0} мегабајт"}
-                other{"{0} мегабајтова"}
+                other{"{0} мегабајта"}
             }
             petabyte{
-                case{
-                    accusative{
-                        few{"{0} петабајта"}
-                        one{"{0} петабајт"}
-                        other{"{0} петабајтова"}
-                    }
-                    genitive{
-                        few{"{0} петабајта"}
-                        one{"{0} петабајта"}
-                        other{"{0} петабајтова"}
-                    }
-                    instrumental{
-                        few{"{0} петабајта"}
-                        one{"{0} петабајтом"}
-                        other{"{0} петабајтова"}
-                    }
-                }
                 dnam{"петабајти"}
                 few{"{0} петабајта"}
-                gender{"inanimate"}
                 one{"{0} петабајт"}
-                other{"{0} петабајтова"}
+                other{"{0} петабајта"}
             }
             terabit{
-                case{
-                    accusative{
-                        few{"{0} терабита"}
-                        one{"{0} терабит"}
-                        other{"{0} терабитова"}
-                    }
-                    genitive{
-                        few{"{0} терабита"}
-                        one{"{0} терабита"}
-                        other{"{0} терабитова"}
-                    }
-                    instrumental{
-                        few{"{0} терабита"}
-                        one{"{0} терабитом"}
-                        other{"{0} терабитова"}
-                    }
-                }
                 dnam{"терабитови"}
                 few{"{0} терабита"}
-                gender{"inanimate"}
                 one{"{0} терабит"}
-                other{"{0} терабитова"}
+                other{"{0} терабита"}
             }
             terabyte{
-                case{
-                    accusative{
-                        few{"{0} терабајта"}
-                        one{"{0} терабајт"}
-                        other{"{0} терабајтова"}
-                    }
-                    genitive{
-                        few{"{0} терабајта"}
-                        one{"{0} терабајта"}
-                        other{"{0} терабајтова"}
-                    }
-                    instrumental{
-                        few{"{0} терабајта"}
-                        one{"{0} терабајтом"}
-                        other{"{0} терабајтова"}
-                    }
-                }
                 dnam{"терабајти"}
                 few{"{0} терабајта"}
-                gender{"inanimate"}
                 one{"{0} терабајт"}
                 other{"{0} терабајта"}
             }
         }
         duration{
             century{
-                case{
-                    accusative{
-                        few{"{0} века"}
-                        one{"{0} век"}
-                        other{"{0} векова"}
-                    }
-                    genitive{
-                        few{"{0} века"}
-                        one{"{0} века"}
-                        other{"{0} векова"}
-                    }
-                    instrumental{
-                        few{"{0} века"}
-                        one{"{0} веком"}
-                        other{"{0} векова"}
-                    }
-                }
                 dnam{"векови"}
                 few{"{0} века"}
-                gender{"inanimate"}
                 one{"{0} век"}
                 other{"{0} векова"}
             }
             day{
-                case{
-                    accusative{
-                        few{"{0} дана"}
-                        one{"{0} дан"}
-                        other{"{0} дана"}
-                    }
-                    genitive{
-                        few{"{0} дана"}
-                        one{"{0} дана"}
-                        other{"{0} дана"}
-                    }
-                    instrumental{
-                        few{"{0} дана"}
-                        one{"{0} даном"}
-                        other{"{0} дана"}
-                    }
-                }
                 dnam{"дани"}
                 few{"{0} дана"}
-                gender{"inanimate"}
                 one{"{0} дан"}
                 other{"{0} дана"}
                 per{"{0}/дневно"}
             }
-            decade{
-                case{
-                    accusative{
-                        few{"{0} деценије"}
-                        one{"{0} деценију"}
-                        other{"{0} деценија"}
-                    }
-                    genitive{
-                        few{"{0} деценије"}
-                        one{"{0} деценије"}
-                        other{"{0} деценија"}
-                    }
-                    instrumental{
-                        few{"{0} деценије"}
-                        one{"{0} деценијом"}
-                        other{"{0} деценија"}
-                    }
-                }
-                dnam{"деценије"}
-                few{"{0} деценије"}
-                gender{"feminine"}
-                one{"{0} деценија"}
-                other{"{0} деценија"}
-            }
             hour{
-                case{
-                    accusative{
-                        few{"{0} сата"}
-                        one{"{0} сат"}
-                        other{"{0} сати"}
-                    }
-                    genitive{
-                        few{"{0} сата"}
-                        one{"{0} сата"}
-                        other{"{0} сати"}
-                    }
-                    instrumental{
-                        few{"{0} сата"}
-                        one{"{0} сатом"}
-                        other{"{0} сати"}
-                    }
-                }
+                dnam{"сати"}
                 few{"{0} сата"}
-                gender{"inanimate"}
                 one{"{0} сат"}
                 other{"{0} сати"}
                 per{"{0}/сат"}
             }
             microsecond{
-                case{
-                    accusative{
-                        few{"{0} микросекунде"}
-                        one{"{0} микросекунду"}
-                        other{"{0} микросекунди"}
-                    }
-                    genitive{
-                        few{"{0} микросекунде"}
-                        one{"{0} микросекунде"}
-                        other{"{0} микросекунди"}
-                    }
-                    instrumental{
-                        few{"{0} микросекунде"}
-                        one{"{0} микросекундом"}
-                        other{"{0} микросекунди"}
-                    }
-                }
                 dnam{"микросекунде"}
                 few{"{0} микросекунде"}
-                gender{"feminine"}
                 one{"{0} микросекунда"}
                 other{"{0} микросекунди"}
             }
             millisecond{
-                case{
-                    accusative{
-                        few{"{0} милисекунде"}
-                        one{"{0} милисекунда"}
-                        other{"{0} милисекунди"}
-                    }
-                    genitive{
-                        few{"{0} милисекунде"}
-                        one{"{0} милисекунде"}
-                        other{"{0} милисекунди"}
-                    }
-                    instrumental{
-                        few{"{0} милисекунде"}
-                        one{"{0} милисекундом"}
-                        other{"{0} милисекунди"}
-                    }
-                }
                 dnam{"милисекунде"}
                 few{"{0} милисекунде"}
-                gender{"feminine"}
                 one{"{0} милисекунда"}
                 other{"{0} милисекунди"}
             }
             minute{
-                case{
-                    accusative{
-                        few{"{0} минута"}
-                        one{"{0} минут"}
-                        other{"{0} минута"}
-                    }
-                    genitive{
-                        few{"{0} минута"}
-                        one{"{0} минута"}
-                        other{"{0} минута"}
-                    }
-                    instrumental{
-                        few{"{0} минута"}
-                        one{"{0} минутом"}
-                        other{"{0} минута"}
-                    }
-                }
                 dnam{"минути"}
                 few{"{0} минута"}
-                gender{"inanimate"}
                 one{"{0} минут"}
                 other{"{0} минута"}
                 per{"{0} у минуту"}
             }
             month{
-                case{
-                    accusative{
-                        few{"{0} месеца"}
-                        one{"{0} месец"}
-                        other{"{0} месеци"}
-                    }
-                    genitive{
-                        few{"{0} месеца"}
-                        one{"{0} месеца"}
-                        other{"{0} месеци"}
-                    }
-                    instrumental{
-                        few{"{0} месеца"}
-                        one{"{0} месецом"}
-                        other{"{0} месеци"}
-                    }
-                }
+                dnam{"месеци"}
                 few{"{0} месеца"}
-                gender{"inanimate"}
                 one{"{0} месец"}
                 other{"{0} месеци"}
                 per{"{0} месечно"}
             }
             nanosecond{
-                case{
-                    accusative{
-                        few{"{0} наносекунде"}
-                        one{"{0} наносекунде"}
-                        other{"{0} наносекунди"}
-                    }
-                    genitive{
-                        few{"{0} наносекунде"}
-                        one{"{0} наносекунде"}
-                        other{"{0} наносекунди"}
-                    }
-                    instrumental{
-                        few{"{0} наносекунде"}
-                        one{"{0} наносекундом"}
-                        other{"{0} наносекунди"}
-                    }
-                }
                 dnam{"наносекунде"}
                 few{"{0} наносекунде"}
-                gender{"feminine"}
                 one{"{0} наносекунда"}
                 other{"{0} наносекунди"}
             }
-            quarter{
-                case{
-                    accusative{
-                        few{"{0} квартала"}
-                        one{"{0} квартал"}
-                        other{"{0} квартала"}
-                    }
-                    genitive{
-                        few{"{0} квартала"}
-                        one{"{0} квартала"}
-                        other{"{0} квартала"}
-                    }
-                    instrumental{
-                        few{"{0} кварталима"}
-                        one{"{0} кварталом"}
-                        other{"{0} квартала"}
-                    }
-                }
-                dnam{"квартали"}
-                few{"{0} квартала"}
-                gender{"inanimate"}
-                one{"{0} квартал"}
-                other{"{0} квартала"}
-            }
             second{
-                case{
-                    accusative{
-                        few{"{0} секунде"}
-                        one{"{0} секунду"}
-                        other{"{0} секунди"}
-                    }
-                    genitive{
-                        few{"{0} секунде"}
-                        one{"{0} секунде"}
-                        other{"{0} секунди"}
-                    }
-                    instrumental{
-                        few{"{0} секунде"}
-                        one{"{0} секундом"}
-                        other{"{0} секунди"}
-                    }
-                }
                 dnam{"секунде"}
                 few{"{0} секунде"}
-                gender{"feminine"}
                 one{"{0} секунда"}
                 other{"{0} секунди"}
                 per{"{0}/у секунди"}
             }
             week{
-                case{
-                    accusative{
-                        few{"{0} недеље"}
-                        one{"{0} недељу"}
-                        other{"{0} недеља"}
-                    }
-                    genitive{
-                        few{"{0} недеље"}
-                        one{"{0} недеље"}
-                        other{"{0} недеља"}
-                    }
-                    instrumental{
-                        few{"{0} недеље"}
-                        one{"{0} недељом"}
-                        other{"{0} недеља"}
-                    }
-                }
                 dnam{"недеље"}
                 few{"{0} недеље"}
-                gender{"feminine"}
                 one{"{0} недеља"}
                 other{"{0} недеља"}
                 per{"{0} недељно"}
             }
             year{
-                case{
-                    accusative{
-                        few{"{0} године"}
-                        one{"{0} годину"}
-                        other{"{0} година"}
-                    }
-                    genitive{
-                        few{"{0} године"}
-                        one{"{0} године"}
-                        other{"{0} година"}
-                    }
-                    instrumental{
-                        few{"{0} године"}
-                        one{"{0} годином"}
-                        other{"{0} година"}
-                    }
-                }
                 dnam{"године"}
                 few{"{0} године"}
-                gender{"feminine"}
                 one{"{0} година"}
                 other{"{0} година"}
                 per{"{0} годишње"}
@@ -1291,98 +352,26 @@ sr{
         }
         electric{
             ampere{
-                case{
-                    accusative{
-                        few{"{0} ампера"}
-                        one{"{0} ампер"}
-                        other{"{0} ампера"}
-                    }
-                    genitive{
-                        few{"{0} ампера"}
-                        one{"{0} ампера"}
-                        other{"{0} ампера"}
-                    }
-                    instrumental{
-                        few{"{0} ампера"}
-                        one{"{0} ампером"}
-                        other{"{0} ампера"}
-                    }
-                }
                 dnam{"ампери"}
                 few{"{0} ампера"}
-                gender{"inanimate"}
                 one{"{0} ампер"}
                 other{"{0} ампера"}
             }
             milliampere{
-                case{
-                    accusative{
-                        few{"{0} милиампера"}
-                        one{"{0} милиампер"}
-                        other{"{0} милиампера"}
-                    }
-                    genitive{
-                        few{"{0} милиампера"}
-                        one{"{0} милиампера"}
-                        other{"{0} милиампера"}
-                    }
-                    instrumental{
-                        few{"{0} милиампера"}
-                        one{"{0} милиампером"}
-                        other{"{0} милиампера"}
-                    }
-                }
                 dnam{"милиампери"}
                 few{"{0} милиампера"}
-                gender{"inanimate"}
                 one{"{0} милиампер"}
                 other{"{0} милиампера"}
             }
             ohm{
-                case{
-                    accusative{
-                        few{"{0} ома"}
-                        one{"{0} ом"}
-                        other{"{0} ома"}
-                    }
-                    genitive{
-                        few{"{0} ома"}
-                        one{"{0} ома"}
-                        other{"{0} ома"}
-                    }
-                    instrumental{
-                        few{"{0} ома"}
-                        one{"{0} омом"}
-                        other{"{0} ома"}
-                    }
-                }
                 dnam{"оми"}
                 few{"{0} ома"}
-                gender{"inanimate"}
                 one{"{0} ом"}
                 other{"{0} ома"}
             }
             volt{
-                case{
-                    accusative{
-                        few{"{0} волта"}
-                        one{"{0} волт"}
-                        other{"{0} волти"}
-                    }
-                    genitive{
-                        few{"{0} волта"}
-                        one{"{0} волта"}
-                        other{"{0} волти"}
-                    }
-                    instrumental{
-                        few{"{0} волта"}
-                        one{"{0} волтом"}
-                        other{"{0} волти"}
-                    }
-                }
                 dnam{"волти"}
                 few{"{0} волта"}
-                gender{"inanimate"}
                 one{"{0} волт"}
                 other{"{0} волти"}
             }
@@ -1390,28 +379,13 @@ sr{
         energy{
             british-thermal-unit{
                 dnam{"Британска термална јединица"}
+                few{"{0} Btu"}
+                one{"{0} Btu"}
+                other{"{0} Btu"}
             }
             calorie{
-                case{
-                    accusative{
-                        few{"{0} калорије"}
-                        one{"{0} калорију"}
-                        other{"{0} калорија"}
-                    }
-                    genitive{
-                        few{"{0} калорије"}
-                        one{"{0} калорије"}
-                        other{"{0} калорија"}
-                    }
-                    instrumental{
-                        few{"{0} калорије"}
-                        one{"{0} калоријом"}
-                        other{"{0} калорија"}
-                    }
-                }
                 dnam{"калорије"}
                 few{"{0} калорије"}
-                gender{"feminine"}
                 one{"{0} калорија"}
                 other{"{0} калорија"}
             }
@@ -1428,26 +402,8 @@ sr{
                 other{"{0} калорија"}
             }
             joule{
-                case{
-                    accusative{
-                        few{"{0} џула"}
-                        one{"{0} џул"}
-                        other{"{0} џула"}
-                    }
-                    genitive{
-                        few{"{0} џула"}
-                        one{"{0} џула"}
-                        other{"{0} џула"}
-                    }
-                    instrumental{
-                        few{"{0} џула"}
-                        one{"{0} џулом"}
-                        other{"{0} џула"}
-                    }
-                }
                 dnam{"џули"}
                 few{"{0} џула"}
-                gender{"inanimate"}
                 one{"{0} џул"}
                 other{"{0} џула"}
             }
@@ -1458,82 +414,22 @@ sr{
                 other{"{0} килокалорија"}
             }
             kilojoule{
-                case{
-                    accusative{
-                        few{"{0} килоџула"}
-                        one{"{0} килоџул"}
-                        other{"{0} килоџула"}
-                    }
-                    genitive{
-                        few{"{0} килоџула"}
-                        one{"{0} килоџула"}
-                        other{"{0} килоџула"}
-                    }
-                    instrumental{
-                        few{"{0} килоџула"}
-                        one{"{0} килоџулом"}
-                        other{"{0} килоџула"}
-                    }
-                }
                 dnam{"килоџули"}
                 few{"{0} килоџула"}
-                gender{"inanimate"}
                 one{"{0} килоџул"}
                 other{"{0} килоџула"}
             }
             kilowatt-hour{
-                case{
-                    accusative{
-                        few{"{0} киловат-сата"}
-                        one{"{0} киловат-сат"}
-                        other{"{0} киловат-сати"}
-                    }
-                    genitive{
-                        few{"{0} киловат-сата"}
-                        one{"{0} киловат-сата"}
-                        other{"{0} киловат-сати"}
-                    }
-                    instrumental{
-                        few{"{0} киловат-сата"}
-                        one{"{0} киловат-сатом"}
-                        other{"{0} киловат-сати"}
-                    }
-                }
                 dnam{"киловат-сати"}
                 few{"{0} киловат-сата"}
-                gender{"inanimate"}
                 one{"{0} киловат-сат"}
                 other{"{0} киловат-сати"}
             }
-            therm-us{
-                dnam{"US therms"}
-            }
         }
         force{
-            kilowatt-hour-per-100-kilometer{
-                gender{"inanimate"}
-            }
             newton{
-                case{
-                    accusative{
-                        few{"{0} њутна"}
-                        one{"{0} њутн"}
-                        other{"{0} њутна"}
-                    }
-                    genitive{
-                        few{"{0} њутна"}
-                        one{"{0} њутна"}
-                        other{"{0} њутна"}
-                    }
-                    instrumental{
-                        few{"{0} њутна"}
-                        one{"{0} њутном"}
-                        other{"{0} њутна"}
-                    }
-                }
                 dnam{"њутни"}
                 few{"{0} њутна"}
-                gender{"inanimate"}
                 one{"{0} њутн"}
                 other{"{0} њутна"}
             }
@@ -1546,198 +442,28 @@ sr{
         }
         frequency{
             gigahertz{
-                case{
-                    accusative{
-                        few{"{0} гигахерца"}
-                        one{"{0} гигахерц"}
-                        other{"{0} гигахерца"}
-                    }
-                    genitive{
-                        few{"{0} гигахерца"}
-                        one{"{0} гигахерца"}
-                        other{"{0} гигахерца"}
-                    }
-                    instrumental{
-                        few{"{0} гигахерца"}
-                        one{"{0} гигахерцом"}
-                        other{"{0} гигахерца"}
-                    }
-                }
                 dnam{"гигахерци"}
                 few{"{0} гигахерца"}
-                gender{"inanimate"}
                 one{"{0} гигахерц"}
                 other{"{0} гигахерца"}
             }
             hertz{
-                case{
-                    accusative{
-                        few{"{0} херца"}
-                        one{"{0} херц"}
-                        other{"{0} херца"}
-                    }
-                    genitive{
-                        few{"{0} херца"}
-                        one{"{0} херца"}
-                        other{"{0} херца"}
-                    }
-                    instrumental{
-                        few{"{0} херца"}
-                        one{"{0} херцом"}
-                        other{"{0} херца"}
-                    }
-                }
                 dnam{"херци"}
                 few{"{0} херца"}
-                gender{"inanimate"}
                 one{"{0} херц"}
                 other{"{0} херца"}
             }
             kilohertz{
-                case{
-                    accusative{
-                        few{"{0} килохерца"}
-                        one{"{0} килохерц"}
-                        other{"{0} килохерца"}
-                    }
-                    genitive{
-                        few{"{0} килохерца"}
-                        one{"{0} килохерца"}
-                        other{"{0} килохерца"}
-                    }
-                    instrumental{
-                        few{"{0} килохерца"}
-                        one{"{0} килохерцом"}
-                        other{"{0} килохерца"}
-                    }
-                }
                 dnam{"килохерци"}
                 few{"{0} килохерца"}
-                gender{"inanimate"}
                 one{"{0} килохерц"}
                 other{"{0} килохерца"}
             }
             megahertz{
-                case{
-                    accusative{
-                        few{"{0} мегахерца"}
-                        one{"{0} мегахерц"}
-                        other{"{0} мегахерца"}
-                    }
-                    genitive{
-                        few{"{0} мегахерца"}
-                        one{"{0} мегахерца"}
-                        other{"{0} мегахерца"}
-                    }
-                    instrumental{
-                        few{"{0} мегахерца"}
-                        one{"{0} мегахерцом"}
-                        other{"{0} мегахерца"}
-                    }
-                }
                 dnam{"мегахерци"}
                 few{"{0} мегахерца"}
-                gender{"inanimate"}
                 one{"{0} мегахерц"}
                 other{"{0} мегахерца"}
-            }
-        }
-        graphics{
-            dot{
-                dnam{"тачке"}
-            }
-            dot-per-centimeter{
-                dnam{"тачке по центиметру"}
-                few{"{0} ppcm"}
-                one{"{0} тачка по центиметру"}
-                other{"{0} dpcm"}
-            }
-            dot-per-inch{
-                dnam{"тачке по инчу"}
-                few{"{0} ppi"}
-                one{"{0} тачка по инчу"}
-                other{"{0} dpi"}
-            }
-            em{
-                gender{"inanimate"}
-            }
-            megapixel{
-                case{
-                    accusative{
-                        few{"{0} мегапиксела"}
-                        one{"{0} мегапиксел"}
-                        other{"{0} мегапиксела"}
-                    }
-                    genitive{
-                        few{"{0} мегапиксела"}
-                        one{"{0} мегапиксела"}
-                        other{"{0} мегапиксела"}
-                    }
-                    instrumental{
-                        few{"{0} мегапиксела"}
-                        one{"{0} мегапикселом"}
-                        other{"{0} мегапиксела"}
-                    }
-                }
-                dnam{"мегапиксели"}
-                few{"{0} мегапиксела"}
-                gender{"inanimate"}
-                one{"{0} мегапиксел"}
-                other{"{0} мегапиксела"}
-            }
-            pixel{
-                case{
-                    accusative{
-                        few{"{0} пиксела"}
-                        one{"{0} пиксел"}
-                        other{"{0} пиксела"}
-                    }
-                    genitive{
-                        few{"{0} пиксела"}
-                        one{"{0} пиксела"}
-                        other{"{0} пиксела"}
-                    }
-                    instrumental{
-                        few{"{0} пиксела"}
-                        one{"{0} пикселом"}
-                        other{"{0} пиксела"}
-                    }
-                }
-                dnam{"пиксели"}
-                few{"{0} пиксела"}
-                gender{"inanimate"}
-                one{"{0} пиксел"}
-                other{"{0} пиксела"}
-            }
-            pixel-per-centimeter{
-                case{
-                    accusative{
-                        few{"{0} пиксела на центиметар"}
-                        one{"{0} пиксел на центиметар"}
-                        other{"{0} пиксела на центиметар"}
-                    }
-                    genitive{
-                        few{"{0} пиксела на центиметар"}
-                        one{"{0} пиксела на центиметар"}
-                        other{"{0} пиксела на центиметар"}
-                    }
-                    instrumental{
-                        few{"{0} пиксела на центиметар"}
-                        one{"{0} пикселом на центиметар"}
-                        other{"{0} пиксела на центиметар"}
-                    }
-                }
-                dnam{"пиксели по центиметру"}
-                few{"{0} пиксела на центиметар"}
-                gender{"inanimate"}
-                one{"{0} пиксел на центиметар"}
-                other{"{0} пиксела на центиметар"}
-            }
-            pixel-per-inch{
-                dnam{"пиксели по инчу"}
-                few{"{0} пиксела по инчу"}
-                one{"{0} пиксел по инчу"}
-                other{"{0} пиксела по инчу"}
             }
         }
         length{
@@ -1748,99 +474,38 @@ sr{
                 other{"{0} астрономских јединица"}
             }
             centimeter{
-                case{
-                    accusative{
-                        few{"{0} центиметра"}
-                        one{"{0} центиметар"}
-                        other{"{0} центиметара"}
-                    }
-                    genitive{
-                        few{"{0} центиметра"}
-                        one{"{0} центиметра"}
-                        other{"{0} центиметара"}
-                    }
-                    instrumental{
-                        few{"{0} центиметра"}
-                        one{"{0} центиметром"}
-                        other{"{0} центиметара"}
-                    }
-                }
                 dnam{"центиметри"}
-                few{"{0} центиметра"}
-                gender{"inanimate"}
+                few{"{0} центиментра"}
                 one{"{0} центиметар"}
                 other{"{0} центиметара"}
+                per{"{0}/cm"}
             }
             decimeter{
-                case{
-                    accusative{
-                        few{"{0} дециметра"}
-                        one{"{0} дециметар"}
-                        other{"{0} дециметара"}
-                    }
-                    genitive{
-                        few{"{0} дециметра"}
-                        one{"{0} дециметра"}
-                        other{"{0} дециметара"}
-                    }
-                    instrumental{
-                        few{"{0} дециметра"}
-                        one{"{0} дециметром"}
-                        other{"{0} дециметара"}
-                    }
-                }
                 dnam{"дециметри"}
                 few{"{0} дециметра"}
-                gender{"inanimate"}
                 one{"{0} дециметар"}
                 other{"{0} дециметара"}
-            }
-            earth-radius{
-                dnam{"полупречник Земље"}
-                few{"{0} полупречник Земље"}
-                one{"{0} полупречник Земље"}
-                other{"{0} полупречника Земље"}
-            }
-            fathom{
-                dnam{"хвати"}
-                few{"{0} хвата"}
-                one{"{0} хват"}
-                other{"{0} хвати"}
             }
             foot{
                 dnam{"стопе"}
                 few{"{0} стопе"}
                 one{"{0} стопа"}
                 other{"{0} стопа"}
+                per{"{0}/ft"}
             }
-            furlong{
-                few{"{0} фурлонга"}
-                one{"{0} фурлонг"}
-                other{"{0} фурлонга"}
+            inch{
+                dnam{"инчи"}
+                few{"{0} инча"}
+                one{"{0} инч"}
+                other{"{0} инча"}
+                per{"{0}/in"}
             }
             kilometer{
-                case{
-                    accusative{
-                        few{"{0} километра"}
-                        one{"{0} километар"}
-                        other{"{0} километара"}
-                    }
-                    genitive{
-                        few{"{0} километра"}
-                        one{"{0} километра"}
-                        other{"{0} километара"}
-                    }
-                    instrumental{
-                        few{"{0} километра"}
-                        one{"{0} километром"}
-                        other{"{0} километара"}
-                    }
-                }
                 dnam{"километри"}
                 few{"{0} километра"}
-                gender{"inanimate"}
                 one{"{0} километар"}
                 other{"{0} километара"}
+                per{"{0}/km"}
             }
             light-year{
                 dnam{"светлосне године"}
@@ -1849,127 +514,39 @@ sr{
                 other{"{0} светлосних година"}
             }
             meter{
-                case{
-                    accusative{
-                        few{"{0} метра"}
-                        one{"{0} метар"}
-                        other{"{0} метара"}
-                    }
-                    genitive{
-                        few{"{0} метра"}
-                        one{"{0} метра"}
-                        other{"{0} метара"}
-                    }
-                    instrumental{
-                        few{"{0} метра"}
-                        one{"{0} метром"}
-                        other{"{0} метара"}
-                    }
-                }
                 dnam{"метри"}
                 few{"{0} метра"}
-                gender{"inanimate"}
                 one{"{0} метар"}
                 other{"{0} метара"}
+                per{"{0}/m"}
             }
             micrometer{
-                case{
-                    accusative{
-                        few{"{0} микрометра"}
-                        one{"{0} микрометар"}
-                        other{"{0} микрометара"}
-                    }
-                    genitive{
-                        few{"{0} микрометра"}
-                        one{"{0} микрометра"}
-                        other{"{0} микрометара"}
-                    }
-                    instrumental{
-                        few{"{0} микрометра"}
-                        one{"{0} микрометром"}
-                        other{"{0} микрометара"}
-                    }
-                }
                 dnam{"микрометри"}
                 few{"{0} микрометра"}
-                gender{"inanimate"}
                 one{"{0} микрометар"}
                 other{"{0} микрометара"}
             }
             mile{
+                dnam{"миље"}
                 few{"{0} миље"}
                 one{"{0} миља"}
                 other{"{0} миља"}
             }
             mile-scandinavian{
-                case{
-                    accusative{
-                        few{"{0} скандинавске миље"}
-                        one{"{0} скандинавску миљу"}
-                        other{"{0} скандинавских миља"}
-                    }
-                    genitive{
-                        few{"{0} скандинавске миље"}
-                        one{"{0} скандинавске миље"}
-                        other{"{0} скандинавских миља"}
-                    }
-                    instrumental{
-                        few{"{0} скандинавске миље"}
-                        one{"{0} скандинавском миљом"}
-                        other{"{0} скандинавских миља"}
-                    }
-                }
                 dnam{"скандинавска миља"}
                 few{"{0} скандинавске миље"}
-                gender{"feminine"}
                 one{"{0} скандинавска миља"}
                 other{"{0} скандинавских миља"}
             }
             millimeter{
-                case{
-                    accusative{
-                        few{"{0} милиметра"}
-                        one{"{0} милиметар"}
-                        other{"{0} милиметара"}
-                    }
-                    genitive{
-                        few{"{0} милиметра"}
-                        one{"{0} милиметра"}
-                        other{"{0} милиметара"}
-                    }
-                    instrumental{
-                        few{"{0} милиметра"}
-                        one{"{0} милиметром"}
-                        other{"{0} милиметара"}
-                    }
-                }
                 dnam{"милиметри"}
                 few{"{0} милиметра"}
-                gender{"inanimate"}
                 one{"{0} милиметар"}
                 other{"{0} милиметара"}
             }
             nanometer{
-                case{
-                    accusative{
-                        few{"{0} нанометра"}
-                        one{"{0} нанометар"}
-                        other{"{0} нанометара"}
-                    }
-                    genitive{
-                        few{"{0} нанометра"}
-                        one{"{0} нанометра"}
-                        other{"{0} нанометара"}
-                    }
-                    instrumental{
-                        few{"{0} нанометра"}
-                        one{"{0} нанометром"}
-                        other{"{0} нанометара"}
-                    }
-                }
                 dnam{"нанометри"}
                 few{"{0} нанометра"}
-                gender{"inanimate"}
                 one{"{0} нанометар"}
                 other{"{0} нанометара"}
             }
@@ -1980,32 +557,22 @@ sr{
                 other{"{0} наутичких миља"}
             }
             parsec{
+                dnam{"парсеци"}
                 few{"{0} парсека"}
                 one{"{0} парсек"}
                 other{"{0} парсека"}
             }
             picometer{
-                case{
-                    accusative{
-                        few{"{0} пикометра"}
-                        one{"{0} пикометар"}
-                        other{"{0} пикометара"}
-                    }
-                    genitive{
-                        few{"{0} пикометра"}
-                        one{"{0} пикометра"}
-                        other{"{0} пикометара"}
-                    }
-                    instrumental{
-                        few{"{0} пикометра"}
-                        one{"{0} пикометром"}
-                        other{"{0} пикометара"}
-                    }
-                }
+                dnam{"пикометри"}
                 few{"{0} пикометра"}
-                gender{"inanimate"}
                 one{"{0} пикометар"}
                 other{"{0} пикометара"}
+            }
+            point{
+                dnam{"pt"}
+                few{"{0} pt"}
+                one{"{0} pt"}
+                other{"{0} pt"}
             }
             solar-radius{
                 dnam{"сунчеви полупречници"}
@@ -2014,106 +581,30 @@ sr{
                 other{"{0} сунчевих полупречника"}
             }
             yard{
+                dnam{"јарди"}
                 few{"{0} јарда"}
                 one{"{0} јард"}
                 other{"{0} јарди"}
             }
         }
         light{
-            candela{
-                case{
-                    accusative{
-                        few{"{0} канделе"}
-                        one{"{0} канделу"}
-                        other{"{0} кандела"}
-                    }
-                    genitive{
-                        few{"{0} канделе"}
-                        one{"{0} канделе"}
-                        other{"{0} кандела"}
-                    }
-                    instrumental{
-                        few{"{0} канделе"}
-                        one{"{0} канделом"}
-                        other{"{0} кандела"}
-                    }
-                }
-                dnam{"кандела"}
-                few{"{0} канделе"}
-                gender{"feminine"}
-                one{"{0} кандела"}
-                other{"{0} кандела"}
-            }
-            lumen{
-                case{
-                    accusative{
-                        few{"{0} лумена"}
-                        one{"{0} лумен"}
-                        other{"{0} лумена"}
-                    }
-                    genitive{
-                        few{"{0} лумена"}
-                        one{"{0} лумена"}
-                        other{"{0} лумена"}
-                    }
-                    instrumental{
-                        few{"{0} лумена"}
-                        one{"{0} луменом"}
-                        other{"{0} лумена"}
-                    }
-                }
-                dnam{"лумен"}
-                few{"{0} лумена"}
-                gender{"inanimate"}
-                one{"{0} лумен"}
-                other{"{0} лумена"}
-            }
             lux{
-                case{
-                    accusative{
-                        few{"{0} лукса"}
-                        one{"{0} лукс"}
-                        other{"{0} лукса"}
-                    }
-                    genitive{
-                        few{"{0} лукса"}
-                        one{"{0} лукса"}
-                        other{"{0} лукса"}
-                    }
-                    instrumental{
-                        few{"{0} лукса"}
-                        one{"{0} луксом"}
-                        other{"{0} лукса"}
-                    }
-                }
                 dnam{"лукс"}
                 few{"{0} лукса"}
-                gender{"inanimate"}
                 one{"{0} лукс"}
                 other{"{0} лукса"}
+            }
+            solar-luminosity{
+                dnam{"L☉"}
+                few{"{0} L☉"}
+                one{"{0} L☉"}
+                other{"{0} L☉"}
             }
         }
         mass{
             carat{
-                case{
-                    accusative{
-                        few{"{0} карата"}
-                        one{"{0} карат"}
-                        other{"{0} карата"}
-                    }
-                    genitive{
-                        few{"{0} карата"}
-                        one{"{0} карата"}
-                        other{"{0} карата"}
-                    }
-                    instrumental{
-                        few{"{0} карата"}
-                        one{"{0} каратом"}
-                        other{"{0} карата"}
-                    }
-                }
+                dnam{"карати"}
                 few{"{0} карата"}
-                gender{"inanimate"}
                 one{"{0} карат"}
                 other{"{0} карата"}
             }
@@ -2129,105 +620,35 @@ sr{
                 one{"{0} маса земље"}
                 other{"{0} маса земље"}
             }
-            grain{
-                few{"{0} грејна"}
-                one{"{0} грејн"}
-                other{"{0} грејна"}
-            }
             gram{
-                case{
-                    accusative{
-                        few{"{0} грама"}
-                        one{"{0} грам"}
-                        other{"{0} грама"}
-                    }
-                    genitive{
-                        few{"{0} грама"}
-                        one{"{0} грама"}
-                        other{"{0} грама"}
-                    }
-                    instrumental{
-                        few{"{0} грама"}
-                        one{"{0} грамом"}
-                        other{"{0} грама"}
-                    }
-                }
+                dnam{"грами"}
                 few{"{0} грама"}
-                gender{"inanimate"}
                 one{"{0} грам"}
                 other{"{0} грама"}
                 per{"{0} по граму"}
             }
             kilogram{
-                case{
-                    accusative{
-                        few{"{0} килограма"}
-                        one{"{0} килограм"}
-                        other{"{0} килограма"}
-                    }
-                    genitive{
-                        few{"{0} килограма"}
-                        one{"{0} килограма"}
-                        other{"{0} килограма"}
-                    }
-                    instrumental{
-                        few{"{0} килограма"}
-                        one{"{0} килограмом"}
-                        other{"{0} килограма"}
-                    }
-                }
                 dnam{"килограми"}
                 few{"{0} килограма"}
-                gender{"inanimate"}
                 one{"{0} килограм"}
                 other{"{0} килограма"}
                 per{"{0} по килограму"}
             }
+            metric-ton{
+                dnam{"метричке тоне"}
+                few{"{0} метричке тоне"}
+                one{"{0} метричка тона"}
+                other{"{0} метричких тона"}
+            }
             microgram{
-                case{
-                    accusative{
-                        few{"{0} микрограма"}
-                        one{"{0} микрограм"}
-                        other{"{0} микрограма"}
-                    }
-                    genitive{
-                        few{"{0} микрограма"}
-                        one{"{0} микрограма"}
-                        other{"{0} микрограма"}
-                    }
-                    instrumental{
-                        few{"{0} микрограма"}
-                        one{"{0} микрограмом"}
-                        other{"{0} микрограма"}
-                    }
-                }
                 dnam{"микрограми"}
                 few{"{0} микрограма"}
-                gender{"inanimate"}
                 one{"{0} микрограм"}
                 other{"{0} микрограма"}
             }
             milligram{
-                case{
-                    accusative{
-                        few{"{0} милиграма"}
-                        one{"{0} милиграм"}
-                        other{"{0} милиграма"}
-                    }
-                    genitive{
-                        few{"{0} милиграма"}
-                        one{"{0} милиграма"}
-                        other{"{0} милиграма"}
-                    }
-                    instrumental{
-                        few{"{0} милиграма"}
-                        one{"{0} милиграмом"}
-                        other{"{0} милиграма"}
-                    }
-                }
                 dnam{"милиграми"}
                 few{"{0} милиграма"}
-                gender{"inanimate"}
                 one{"{0} милиграм"}
                 other{"{0} милиграма"}
             }
@@ -2257,65 +678,17 @@ sr{
                 one{"{0} маса сунца"}
                 other{"{0} маса сунца"}
             }
-            stone{
-                dnam{"америчке тоне"}
-                few{"{0} америчке тоне"}
-                one{"{0} америчка тона"}
-                other{"{0} америчких тона"}
-            }
             ton{
                 dnam{"тоне"}
                 few{"{0} тоне"}
                 one{"{0} тона"}
                 other{"{0} тона"}
             }
-            tonne{
-                case{
-                    accusative{
-                        few{"{0} метричке тоне"}
-                        one{"{0} метричку тону"}
-                        other{"{0} метричких тона"}
-                    }
-                    genitive{
-                        few{"{0} метричке тоне"}
-                        one{"{0} метричке тоне"}
-                        other{"{0} метричких тона"}
-                    }
-                    instrumental{
-                        few{"{0} метричке тоне"}
-                        one{"{0} метричком тоном"}
-                        other{"{0} метричких тона"}
-                    }
-                }
-                dnam{"метричке тоне"}
-                few{"{0} метричке тоне"}
-                gender{"feminine"}
-                one{"{0} метричка тона"}
-                other{"{0} метричких тона"}
-            }
         }
         power{
             gigawatt{
-                case{
-                    accusative{
-                        few{"{0} гигавата"}
-                        one{"{0} гигават"}
-                        other{"{0} гигавати"}
-                    }
-                    genitive{
-                        few{"{0} гигавата"}
-                        one{"{0} гигавата"}
-                        other{"{0} гигавати"}
-                    }
-                    instrumental{
-                        few{"{0} гигавата"}
-                        one{"{0} гигаватом"}
-                        other{"{0} гигавати"}
-                    }
-                }
                 dnam{"гигавати"}
                 few{"{0} гигавата"}
-                gender{"inanimate"}
                 one{"{0} гигават"}
                 other{"{0} гигавати"}
             }
@@ -2326,284 +699,74 @@ sr{
                 other{"{0} коњских снага"}
             }
             kilowatt{
-                case{
-                    accusative{
-                        few{"{0} киловата"}
-                        one{"{0} киловат"}
-                        other{"{0} киловата"}
-                    }
-                    genitive{
-                        few{"{0} киловата"}
-                        one{"{0} киловата"}
-                        other{"{0} киловата"}
-                    }
-                    instrumental{
-                        few{"{0} киловата"}
-                        one{"{0} киловатом"}
-                        other{"{0} киловата"}
-                    }
-                }
                 dnam{"киловати"}
                 few{"{0} киловата"}
-                gender{"inanimate"}
                 one{"{0} киловат"}
                 other{"{0} киловати"}
             }
             megawatt{
-                case{
-                    accusative{
-                        few{"{0} мегавата"}
-                        one{"{0} мегават"}
-                        other{"{0} мегавати"}
-                    }
-                    genitive{
-                        few{"{0} мегавата"}
-                        one{"{0} мегавата"}
-                        other{"{0} мегавати"}
-                    }
-                    instrumental{
-                        few{"{0} мегавата"}
-                        one{"{0} мегаватом"}
-                        other{"{0} мегавати"}
-                    }
-                }
                 dnam{"мегавати"}
                 few{"{0} мегавата"}
-                gender{"inanimate"}
                 one{"{0} мегават"}
                 other{"{0} мегавати"}
             }
             milliwatt{
-                case{
-                    accusative{
-                        few{"{0} миливата"}
-                        one{"{0} миливат"}
-                        other{"{0} миливата"}
-                    }
-                    genitive{
-                        few{"{0} миливата"}
-                        one{"{0} миливата"}
-                        other{"{0} миливата"}
-                    }
-                    instrumental{
-                        few{"{0} миливата"}
-                        one{"{0} миливатом"}
-                        other{"{0} миливата"}
-                    }
-                }
                 dnam{"миливати"}
                 few{"{0} миливата"}
-                gender{"inanimate"}
                 one{"{0} миливат"}
                 other{"{0} миливати"}
             }
             watt{
-                case{
-                    accusative{
-                        few{"{0} вата"}
-                        one{"{0} ват"}
-                        other{"{0} вати"}
-                    }
-                    genitive{
-                        few{"{0} вата"}
-                        one{"{0} вата"}
-                        other{"{0} вати"}
-                    }
-                    instrumental{
-                        few{"{0} вата"}
-                        one{"{0} ватом"}
-                        other{"{0} вати"}
-                    }
-                }
                 dnam{"вати"}
                 few{"{0} вата"}
-                gender{"inanimate"}
                 one{"{0} ват"}
                 other{"{0} вати"}
             }
         }
         pressure{
             atmosphere{
-                case{
-                    accusative{
-                        few{"{0} атмосфере"}
-                        one{"{0} атмосферу"}
-                        other{"{0} атмосфера"}
-                    }
-                    genitive{
-                        few{"{0} атмосфере"}
-                        one{"{0} атмосфере"}
-                        other{"{0} атмосфера"}
-                    }
-                    instrumental{
-                        few{"{0} атмосфере"}
-                        one{"{0} атмосфером"}
-                        other{"{0} атмосфера"}
-                    }
-                }
                 dnam{"атмосфере"}
                 few{"{0} атмосфере"}
-                gender{"feminine"}
                 one{"{0} атмосфера"}
                 other{"{0} атмосфера"}
             }
-            bar{
-                case{
-                    accusative{
-                        few{"{0} бара"}
-                        one{"{0} бар"}
-                        other{"{0} бара"}
-                    }
-                    genitive{
-                        few{"{0} бара"}
-                        one{"{0} бара"}
-                        other{"{0} бара"}
-                    }
-                    instrumental{
-                        few{"{0} бара"}
-                        one{"{0} баром"}
-                        other{"{0} бара"}
-                    }
-                }
-                dnam{"бари"}
-                few{"{0} бара"}
-                gender{"inanimate"}
-                one{"{0} бар"}
-                other{"{0} бара"}
-            }
             hectopascal{
-                case{
-                    accusative{
-                        few{"{0} хектопаскала"}
-                        one{"{0} хектопаскал"}
-                        other{"{0} хектопаскала"}
-                    }
-                    genitive{
-                        few{"{0} хектопаскала"}
-                        one{"{0} хектопаскала"}
-                        other{"{0} хектопаскала"}
-                    }
-                    instrumental{
-                        few{"{0} хектопаскала"}
-                        one{"{0} хектопаскалом"}
-                        other{"{0} хектопаскала"}
-                    }
-                }
                 dnam{"хектопаскали"}
                 few{"{0} хектопаскала"}
-                gender{"inanimate"}
                 one{"{0} хектопаскал"}
                 other{"{0} хектопаскала"}
             }
-            inch-ofhg{
+            inch-hg{
                 dnam{"инчи живиног стуба"}
                 few{"{0} инча живиног стуба"}
                 one{"{0} инч живиног стуба"}
                 other{"{0} инча живиног стуба"}
             }
             kilopascal{
-                case{
-                    accusative{
-                        few{"{0} килопаскала"}
-                        one{"{0} килопаскал"}
-                        other{"{0} килопаскала"}
-                    }
-                    genitive{
-                        few{"{0} килопаскала"}
-                        one{"{0} килопаскала"}
-                        other{"{0} килопаскала"}
-                    }
-                    instrumental{
-                        few{"{0} килопаскала"}
-                        one{"{0} килопаскалом"}
-                        other{"{0} килопаскала"}
-                    }
-                }
                 dnam{"килопаскали"}
                 few{"{0} килопаскала"}
-                gender{"inanimate"}
                 one{"{0} килопаскал"}
                 other{"{0} килопаскала"}
             }
             megapascal{
-                case{
-                    accusative{
-                        few{"{0} мегапаскала"}
-                        one{"{0} мегапаскал"}
-                        other{"{0} мегапаскала"}
-                    }
-                    genitive{
-                        few{"{0} мегапаскала"}
-                        one{"{0} мегапаскала"}
-                        other{"{0} мегапаскала"}
-                    }
-                    instrumental{
-                        few{"{0} мегапаскала"}
-                        one{"{0} мегапаскалом"}
-                        other{"{0} мегапаскала"}
-                    }
-                }
                 dnam{"мегапаскали"}
                 few{"{0} мегапаскала"}
-                gender{"inanimate"}
                 one{"{0} мегапаскал"}
                 other{"{0} мегапаскала"}
             }
             millibar{
-                case{
-                    accusative{
-                        few{"{0} милибара"}
-                        one{"{0} милибар"}
-                        other{"{0} милибара"}
-                    }
-                    genitive{
-                        few{"{0} милибара"}
-                        one{"{0} милибара"}
-                        other{"{0} милибара"}
-                    }
-                    instrumental{
-                        few{"{0} милибара"}
-                        one{"{0} милибаром"}
-                        other{"{0} милибара"}
-                    }
-                }
                 dnam{"милибари"}
                 few{"{0} милибара"}
-                gender{"inanimate"}
                 one{"{0} милибар"}
                 other{"{0} милибара"}
             }
-            millimeter-ofhg{
+            millimeter-of-mercury{
                 dnam{"милиметри живиног стуба"}
                 few{"{0} милиметра живиног стуба"}
                 one{"{0} милиметар живиног стуба"}
                 other{"{0} милиметара живиног стуба"}
             }
-            pascal{
-                case{
-                    accusative{
-                        few{"{0} паскала"}
-                        one{"{0} паскал"}
-                        other{"{0} паскала"}
-                    }
-                    genitive{
-                        few{"{0} паскала"}
-                        one{"{0} паскала"}
-                        other{"{0} паскала"}
-                    }
-                    instrumental{
-                        few{"{0} паскала"}
-                        one{"{0} паскалом"}
-                        other{"{0} паскала"}
-                    }
-                }
-                dnam{"паскали"}
-                few{"{0} паскала"}
-                gender{"inanimate"}
-                one{"{0} паскал"}
-                other{"{0} паскала"}
-            }
-            pound-force-per-square-inch{
+            pound-per-square-inch{
                 dnam{"фунте по квадратном инчу"}
                 few{"{0} фунте по квадратном инчу"}
                 one{"{0} фунта по квадратном инчу"}
@@ -2611,33 +774,9 @@ sr{
             }
         }
         speed{
-            beaufort{
-                dnam{"Бофор"}
-                few{"Б {0}"}
-                one{"Бофор {0}"}
-                other{"Бофор {0}"}
-            }
             kilometer-per-hour{
-                case{
-                    accusative{
-                        few{"{0} километра на сат"}
-                        one{"{0} километар на сат"}
-                        other{"{0} километара на сат"}
-                    }
-                    genitive{
-                        few{"{0} километра на сат"}
-                        one{"{0} километра на сат"}
-                        other{"{0} километара на сат"}
-                    }
-                    instrumental{
-                        few{"{0} километра на сат"}
-                        one{"{0} километром на сат"}
-                        other{"{0} километара на сат"}
-                    }
-                }
                 dnam{"километри на сат"}
                 few{"{0} километра на сат"}
-                gender{"inanimate"}
                 one{"{0} километар на сат"}
                 other{"{0} километара на сат"}
             }
@@ -2648,29 +787,13 @@ sr{
                 other{"{0} чворова"}
             }
             meter-per-second{
-                case{
-                    accusative{
-                        few{"{0} метра у секунди"}
-                        one{"{0} метар у секунди"}
-                        other{"{0} метара у секунди"}
-                    }
-                    genitive{
-                        few{"{0} метра у секунди"}
-                        one{"{0} метра у секунди"}
-                        other{"{0} метара у секунди"}
-                    }
-                    instrumental{
-                        few{"{0} метра у секунди"}
-                        one{"{0} метром у секунди"}
-                        other{"{0} метара у секунди"}
-                    }
-                }
+                dnam{"метри у секунди"}
                 few{"{0} метра у секунди"}
-                gender{"inanimate"}
                 one{"{0} метар у секунди"}
                 other{"{0} метара у секунди"}
             }
             mile-per-hour{
+                dnam{"миље на сат"}
                 few{"{0} миље на сат"}
                 one{"{0} миља на сат"}
                 other{"{0} миља на сат"}
@@ -2678,92 +801,42 @@ sr{
         }
         temperature{
             celsius{
-                case{
-                    accusative{
-                        few{"{0} степена Целзијуса"}
-                        one{"{0} степен Целзијуса"}
-                        other{"{0} степени Целзијуса"}
-                    }
-                    genitive{
-                        few{"{0} степена Целзијуса"}
-                        one{"{0} степена Целзијуса"}
-                        other{"{0} степени Целзијуса"}
-                    }
-                    instrumental{
-                        few{"{0} степена Целзијуса"}
-                        one{"{0} степеном Целзијуса"}
-                        other{"{0} степени Целзијуса"}
-                    }
-                }
                 dnam{"степени Целзијуса"}
                 few{"{0} степена Целзијуса"}
-                gender{"inanimate"}
                 one{"{0} степен Целзијуса"}
                 other{"{0} степени Целзијуса"}
             }
             fahrenheit{
+                dnam{"степени Фаренхајта"}
                 few{"{0} степена Фаренхајта"}
                 one{"{0} степен Фаренхајта"}
                 other{"{0} степени Фаренхајта"}
             }
             generic{
-                gender{"inanimate"}
+                dnam{"°"}
+                few{"{0}°"}
+                one{"{0}°"}
+                other{"{0}°"}
             }
             kelvin{
-                case{
-                    accusative{
-                        few{"{0} келвина"}
-                        one{"{0} келвин"}
-                        other{"{0} келвина"}
-                    }
-                    genitive{
-                        few{"{0} келвина"}
-                        one{"{0} келвина"}
-                        other{"{0} келвина"}
-                    }
-                    instrumental{
-                        few{"{0} келвина"}
-                        one{"{0} келвином"}
-                        other{"{0} келвина"}
-                    }
-                }
                 dnam{"келвин"}
                 few{"{0} келвина"}
-                gender{"inanimate"}
                 one{"{0} келвин"}
                 other{"{0} келвина"}
             }
         }
         torque{
             newton-meter{
-                case{
-                    accusative{
-                        few{"{0} њутн-метра"}
-                        one{"{0} њутн-метар"}
-                        other{"{0} њутн-метара"}
-                    }
-                    genitive{
-                        few{"{0} њутн-метра"}
-                        one{"{0} њутн-метра"}
-                        other{"{0} њутн-метара"}
-                    }
-                    instrumental{
-                        few{"{0} њутн-метра"}
-                        one{"{0} њутн-метром"}
-                        other{"{0} њутн-метара"}
-                    }
-                }
                 dnam{"њутн-метри"}
                 few{"{0} њутн-метра"}
-                gender{"inanimate"}
                 one{"{0} њутн-метар"}
                 other{"{0} њутн-метара"}
             }
-            pound-force-foot{
-                dnam{"фунта-стопе"}
-                few{"{0} фунте силе стопе"}
-                one{"{0} фунта силе стопе"}
-                other{"{0} фунти силе стопе"}
+            pound-foot{
+                dnam{"фунта-фити"}
+                few{"{0} фунта-фита"}
+                one{"{0} фунта-фит"}
+                other{"{0} фунта-фита"}
             }
         }
         volume{
@@ -2779,59 +852,18 @@ sr{
                 one{"{0} барел"}
                 other{"{0} барела"}
             }
-            bushel{
-                dnam{"бушели"}
-                few{"{0} бушела"}
-                one{"{0} бушел"}
-                other{"{0} бушела"}
-            }
             centiliter{
-                case{
-                    accusative{
-                        few{"{0} центилитра"}
-                        one{"{0} центилитар"}
-                        other{"{0} центилитара"}
-                    }
-                    genitive{
-                        few{"{0} центилитра"}
-                        one{"{0} центилитра"}
-                        other{"{0} центилитара"}
-                    }
-                    instrumental{
-                        few{"{0} центилитра"}
-                        one{"{0} центилитром"}
-                        other{"{0} центилитара"}
-                    }
-                }
                 dnam{"центилитри"}
                 few{"{0} центилитра"}
-                gender{"inanimate"}
                 one{"{0} центилитар"}
                 other{"{0} центилитара"}
             }
             cubic-centimeter{
-                case{
-                    accusative{
-                        few{"{0} кубна центиметра"}
-                        one{"{0} кубни центиметар"}
-                        other{"{0} кубних центиметара"}
-                    }
-                    genitive{
-                        few{"{0} кубна центиметра"}
-                        one{"{0} кубног центиметра"}
-                        other{"{0} кубних центиметара"}
-                    }
-                    instrumental{
-                        few{"{0} кубна центиметра"}
-                        one{"{0} кубним центиметром"}
-                        other{"{0} кубних центиметара"}
-                    }
-                }
                 dnam{"кубни центиметри"}
                 few{"{0} кубна центиметра"}
-                gender{"inanimate"}
                 one{"{0} кубни центиметар"}
                 other{"{0} кубних центиметара"}
+                per{"{0}/cm³"}
             }
             cubic-foot{
                 dnam{"кубне стопе"}
@@ -2846,52 +878,17 @@ sr{
                 other{"{0} кубних инча"}
             }
             cubic-kilometer{
-                case{
-                    accusative{
-                        few{"{0} кубна километра"}
-                        one{"{0} кубни километар"}
-                        other{"{0} кубних километара"}
-                    }
-                    genitive{
-                        few{"{0} кубна километра"}
-                        one{"{0} кубног километра"}
-                        other{"{0} кубних километара"}
-                    }
-                    instrumental{
-                        few{"{0} кубна километра"}
-                        one{"{0} кубним километром"}
-                        other{"{0} кубних километара"}
-                    }
-                }
                 dnam{"кубни километри"}
                 few{"{0} кубна километра"}
-                gender{"inanimate"}
                 one{"{0} кубни километар"}
                 other{"{0} кубних километара"}
             }
             cubic-meter{
-                case{
-                    accusative{
-                        few{"{0} кубна метра"}
-                        one{"{0} кубни метар"}
-                        other{"{0} кубних метара"}
-                    }
-                    genitive{
-                        few{"{0} кубна метра"}
-                        one{"{0} кубног метра"}
-                        other{"{0} кубних метара"}
-                    }
-                    instrumental{
-                        few{"{0} кубна метра"}
-                        one{"{0} кубним метром"}
-                        other{"{0} кубних метара"}
-                    }
-                }
                 dnam{"кубни метри"}
                 few{"{0} кубна метра"}
-                gender{"inanimate"}
                 one{"{0} кубни метар"}
                 other{"{0} кубних метара"}
+                per{"{0}/m³"}
             }
             cubic-mile{
                 dnam{"кубне миље"}
@@ -2906,74 +903,22 @@ sr{
                 other{"{0} кубних јарди"}
             }
             cup{
+                dnam{"шоље"}
                 few{"{0} шоље"}
                 one{"{0} шоља"}
                 other{"{0} шоља"}
             }
             cup-metric{
-                case{
-                    accusative{
-                        few{"{0} метричке шоље"}
-                        one{"{0} метричку шољу"}
-                        other{"{0} метричких шоља"}
-                    }
-                    genitive{
-                        few{"{0} метричке шоље"}
-                        one{"{0} метричке шоље"}
-                        other{"{0} метричких шоља"}
-                    }
-                    instrumental{
-                        few{"{0} метричке шоље"}
-                        one{"{0} метричком шољом"}
-                        other{"{0} метричких шоља"}
-                    }
-                }
                 dnam{"метричка шоља"}
                 few{"{0} метричке шоље"}
-                gender{"feminine"}
                 one{"{0} метричка шоља"}
                 other{"{0} метричких шоља"}
             }
             deciliter{
-                case{
-                    accusative{
-                        few{"{0} децилитра"}
-                        one{"{0} децилитар"}
-                        other{"{0} децилитара"}
-                    }
-                    genitive{
-                        few{"{0} децилитра"}
-                        one{"{0} децилитра"}
-                        other{"{0} децилитара"}
-                    }
-                    instrumental{
-                        few{"{0} децилитра"}
-                        one{"{0} децилитром"}
-                        other{"{0} децилитара"}
-                    }
-                }
                 dnam{"децилитри"}
                 few{"{0} децилитра"}
-                gender{"inanimate"}
                 one{"{0} децилитар"}
                 other{"{0} децилитара"}
-            }
-            dessert-spoon{
-                dnam{"десертна кашичица"}
-                few{"{0} десертне кашичице"}
-                one{"{0} десертна кашичица"}
-                other{"{0} десертних кашичица"}
-            }
-            dessert-spoon-imperial{
-                dnam{"империјска десертна кашичица"}
-                few{"{0} империјске десертне кашичице"}
-                one{"{0} империјска десертна кашичица"}
-                other{"{0} империјских десертних кашичица"}
-            }
-            dram{
-                few{"{0} драма течности"}
-                one{"{0} драм течности"}
-                other{"{0} драма течности"}
             }
             fluid-ounce{
                 dnam{"унце течности"}
@@ -3002,98 +947,27 @@ sr{
                 per{"{0} по имп. галону"}
             }
             hectoliter{
-                case{
-                    accusative{
-                        few{"{0} хектолитра"}
-                        one{"{0} хектолитар"}
-                        other{"{0} хектолитара"}
-                    }
-                    genitive{
-                        few{"{0} хектолитра"}
-                        one{"{0} хектолитра"}
-                        other{"{0} хектолитара"}
-                    }
-                    instrumental{
-                        few{"{0} хектолитра"}
-                        one{"{0} хектолитром"}
-                        other{"{0} хектолитара"}
-                    }
-                }
                 dnam{"хектолитри"}
                 few{"{0} хектолитра"}
-                gender{"inanimate"}
                 one{"{0} хектолитар"}
                 other{"{0} хектолитара"}
             }
             liter{
-                case{
-                    accusative{
-                        few{"{0} литра"}
-                        one{"{0} литар"}
-                        other{"{0} литара"}
-                    }
-                    genitive{
-                        few{"{0} литра"}
-                        one{"{0} литра"}
-                        other{"{0} литара"}
-                    }
-                    instrumental{
-                        few{"{0} литра"}
-                        one{"{0} литром"}
-                        other{"{0} литара"}
-                    }
-                }
+                dnam{"литри"}
                 few{"{0} литра"}
-                gender{"inanimate"}
                 one{"{0} литар"}
                 other{"{0} литара"}
                 per{"{0} по литри"}
             }
             megaliter{
-                case{
-                    accusative{
-                        few{"{0} мегалитра"}
-                        one{"{0} мегалитар"}
-                        other{"{0} мегалитара"}
-                    }
-                    genitive{
-                        few{"{0} мегалитра"}
-                        one{"{0} мегалитра"}
-                        other{"{0} мегалитара"}
-                    }
-                    instrumental{
-                        few{"{0} мегалитра"}
-                        one{"{0} мегалитром"}
-                        other{"{0} мегалитара"}
-                    }
-                }
                 dnam{"мегалитри"}
                 few{"{0} мегалитра"}
-                gender{"inanimate"}
                 one{"{0} мегалитар"}
                 other{"{0} мегалитара"}
             }
             milliliter{
-                case{
-                    accusative{
-                        few{"{0} милилитра"}
-                        one{"{0} милилитар"}
-                        other{"{0} милилитара"}
-                    }
-                    genitive{
-                        few{"{0} милилитра"}
-                        one{"{0} милилитра"}
-                        other{"{0} милилитара"}
-                    }
-                    instrumental{
-                        few{"{0} милилитра"}
-                        one{"{0} милилитром"}
-                        other{"{0} милилитара"}
-                    }
-                }
                 dnam{"милилитри"}
                 few{"{0} милилитра"}
-                gender{"inanimate"}
                 one{"{0} милилитар"}
                 other{"{0} милилитара"}
             }
@@ -3104,26 +978,8 @@ sr{
                 other{"{0} пинти"}
             }
             pint-metric{
-                case{
-                    accusative{
-                        few{"{0} метричке пинте"}
-                        one{"{0} метричку пинту"}
-                        other{"{0} метричких пинти"}
-                    }
-                    genitive{
-                        few{"{0} метричке пинте"}
-                        one{"{0} метричке пинте"}
-                        other{"{0} метричких пинти"}
-                    }
-                    instrumental{
-                        few{"{0} метричке пинте"}
-                        one{"{0} метричком пинтом"}
-                        other{"{0} метричких пинти"}
-                    }
-                }
                 dnam{"метричке пинте"}
                 few{"{0} метричке пинте"}
-                gender{"feminine"}
                 one{"{0} метричка пинта"}
                 other{"{0} метричких пинти"}
             }
@@ -3132,12 +988,6 @@ sr{
                 few{"{0} кварта"}
                 one{"{0} кварат"}
                 other{"{0} кварата"}
-            }
-            quart-imperial{
-                dnam{"империјска четвртина"}
-                few{"{0} империјске четвртине"}
-                one{"{0} империјска четвртина"}
-                other{"{0} империјских четвртина"}
             }
             tablespoon{
                 dnam{"кашике"}
@@ -3154,24 +1004,82 @@ sr{
         }
     }
     unitsNarrow{
+        acceleration{
+            g-force{
+                few{"{0} G"}
+                one{"{0} G"}
+                other{"{0} G"}
+            }
+        }
+        angle{
+            arc-minute{
+                few{"{0}′"}
+                one{"{0}′"}
+                other{"{0}′"}
+            }
+            arc-second{
+                few{"{0}″"}
+                one{"{0}″"}
+                other{"{0}″"}
+            }
+        }
+        area{
+            acre{
+                few{"{0} ac"}
+                one{"{0} ac"}
+                other{"{0} ac"}
+            }
+            hectare{
+                few{"{0} ha"}
+                one{"{0} ha"}
+                other{"{0} ha"}
+            }
+            square-foot{
+                few{"{0} ft²"}
+                one{"{0} ft²"}
+                other{"{0} ft²"}
+            }
+            square-kilometer{
+                few{"{0} km²"}
+                one{"{0} km²"}
+                other{"{0} km²"}
+            }
+            square-meter{
+                few{"{0} m²"}
+                one{"{0} m²"}
+                other{"{0} m²"}
+            }
+            square-mile{
+                few{"{0} mi²"}
+                one{"{0} mi²"}
+                other{"{0} mi²"}
+            }
+        }
+        compound{
+            per{"{0}/{1}"}
+        }
         concentr{
             percent{
                 dnam{"%"}
+                few{"{0}%"}
+                one{"{0}%"}
+                other{"{0}%"}
             }
         }
         consumption{
-            liter-per-100-kilometer{
+            liter-per-100kilometers{
                 dnam{"L/100km"}
                 few{"{0} L/100km"}
                 one{"{0} L/100km"}
                 other{"{0} L/100km"}
             }
-            mile-per-gallon-imperial{
-                dnam{"mpg Imp"}
-                few{"{0} mpg Imp"}
-                one{"{0} mpg Imp"}
-                other{"{0} mpg Imp"}
-            }
+        }
+        coordinate{
+            dnam{"правац"}
+            east{"{0}И"}
+            north{"{0}С"}
+            south{"{0}Ј"}
+            west{"{0}З"}
         }
         duration{
             day{
@@ -3186,7 +1094,14 @@ sr{
                 one{"{0} ч"}
                 other{"{0} ч"}
             }
+            millisecond{
+                dnam{"ms"}
+                few{"{0} ms"}
+                one{"{0} ms"}
+                other{"{0} ms"}
+            }
             minute{
+                dnam{"мин"}
                 few{"{0} м"}
                 one{"{0} м"}
                 other{"{0} м"}
@@ -3196,11 +1111,6 @@ sr{
                 few{"{0} м"}
                 one{"{0} м"}
                 other{"{0} м"}
-            }
-            quarter{
-                few{"{0} к"}
-                one{"{0} к"}
-                other{"{0} к"}
             }
             second{
                 dnam{"с"}
@@ -3221,46 +1131,85 @@ sr{
                 other{"{0} г"}
             }
         }
-        energy{
-            electronvolt{
-                dnam{"eV"}
-            }
-        }
         length{
-            furlong{
-                dnam{"фурлонг"}
+            centimeter{
+                dnam{"cm"}
+                few{"{0} cm"}
+                one{"{0} cm"}
+                other{"{0} cm"}
+            }
+            foot{
+                dnam{"ft"}
+                few{"{0} ft"}
+                one{"{0} ft"}
+                other{"{0} ft"}
             }
             inch{
-                dnam{"in"}
-                few{"{0} in"}
-                one{"{0} in"}
-                other{"{0} in"}
+                few{"{0} инча"}
+                one{"{0} инч"}
+                other{"{0} инча"}
+            }
+            kilometer{
+                dnam{"km"}
+                few{"{0} km"}
+                one{"{0} km"}
+                other{"{0} km"}
             }
             light-year{
-                few{"{0} ly"}
-                one{"{0} ly"}
-                other{"{0} ly"}
+                few{"{0} сг"}
+                one{"{0} сг"}
+                other{"{0} сг"}
+            }
+            meter{
+                dnam{"m"}
+                few{"{0} m"}
+                one{"{0} m"}
+                other{"{0} m"}
             }
             mile{
                 few{"{0} миље"}
                 one{"{0} миља"}
                 other{"{0} миља"}
             }
+            millimeter{
+                dnam{"mm"}
+                few{"{0} mm"}
+                one{"{0} mm"}
+                other{"{0} mm"}
+            }
+            picometer{
+                few{"{0} pm"}
+                one{"{0} pm"}
+                other{"{0} pm"}
+            }
             yard{
-                dnam{"yd"}
-                few{"{0} yd"}
-                one{"{0} yd"}
-                other{"{0} yd"}
+                few{"{0} јрд"}
+                one{"{0} јрд"}
+                other{"{0} јрд"}
             }
         }
         mass{
             gram{
                 dnam{"g"}
+                few{"{0} g"}
+                one{"{0} g"}
+                other{"{0} g"}
+            }
+            kilogram{
+                dnam{"kg"}
+                few{"{0} kg"}
+                one{"{0} kg"}
+                other{"{0} kg"}
             }
             ounce{
                 few{"{0} унце"}
                 one{"{0} унца"}
                 other{"{0} унци"}
+            }
+            pound{
+                few{"{0} lb"}
+                one{"{0} lb"}
+                other{"{0} lb"}
             }
         }
         power{
@@ -3269,38 +1218,81 @@ sr{
                 one{"{0} кс"}
                 other{"{0} кс"}
             }
+            kilowatt{
+                few{"{0} kW"}
+                one{"{0} kW"}
+                other{"{0} kW"}
+            }
+            watt{
+                few{"{0} W"}
+                one{"{0} W"}
+                other{"{0} W"}
+            }
+        }
+        pressure{
+            hectopascal{
+                few{"{0} hPa"}
+                one{"{0} hPa"}
+                other{"{0} hPa"}
+            }
+            inch-hg{
+                few{"{0} inHg"}
+                one{"{0} inHg"}
+                other{"{0} inHg"}
+            }
+            millibar{
+                few{"{0} mbar"}
+                one{"{0} mbar"}
+                other{"{0} mbar"}
+            }
+        }
+        speed{
+            kilometer-per-hour{
+                dnam{"km/h"}
+                few{"{0} km/h"}
+                one{"{0} km/h"}
+                other{"{0} km/h"}
+            }
+            meter-per-second{
+                few{"{0} m/s"}
+                one{"{0} m/s"}
+                other{"{0} m/s"}
+            }
+            mile-per-hour{
+                few{"{0} mi/h"}
+                one{"{0} mi/h"}
+                other{"{0} mi/h"}
+            }
+        }
+        temperature{
+            celsius{
+                dnam{"°C"}
+                few{"{0}°C"}
+                one{"{0}°C"}
+                other{"{0}°C"}
+            }
+            fahrenheit{
+                few{"{0}°F"}
+                one{"{0}°F"}
+                other{"{0}°F"}
+            }
         }
         volume{
-            fluid-ounce-imperial{
-                dnam{"Imp fl oz"}
-                few{"{0} fl oz Imp"}
-                one{"{0} fl oz Imp"}
-                other{"{0} fl oz Imp"}
+            cubic-kilometer{
+                few{"{0} km³"}
+                one{"{0} km³"}
+                other{"{0} km³"}
             }
-            gallon-imperial{
-                dnam{"Imp gal"}
-                few{"{0}/gal Imp"}
-                one{"{0}/gal Imp"}
-                other{"{0}/gal Imp"}
-                per{"{0}/gal Imp"}
-            }
-            jigger{
-                few{"{0} џигера"}
-                one{"{0} џигера"}
-                other{"{0} џигера"}
+            cubic-mile{
+                few{"{0} mi³"}
+                one{"{0} mi³"}
+                other{"{0} mi³"}
             }
             liter{
                 dnam{"l"}
-            }
-            pinch{
-                few{"{0} pn"}
-                one{"{0} pn"}
-                other{"{0} pn"}
-            }
-            quart-imperial{
-                few{"{0} qt Imp"}
-                one{"{0} qt Imp"}
-                other{"{0} qt Imp"}
+                few{"{0} l"}
+                one{"{0} l"}
+                other{"{0} l"}
             }
         }
     }
@@ -3308,22 +1300,55 @@ sr{
         acceleration{
             g-force{
                 dnam{"ге сила"}
+                few{"{0} G"}
+                one{"{0} G"}
+                other{"{0} G"}
+            }
+            meter-per-second-squared{
+                dnam{"m/s²"}
+                few{"{0} m/s²"}
+                one{"{0} m/s²"}
+                other{"{0} m/s²"}
             }
         }
         angle{
             arc-minute{
                 dnam{"лучни мин"}
+                few{"{0}′"}
+                one{"{0}′"}
+                other{"{0}′"}
             }
             arc-second{
                 dnam{"лучне сек"}
+                few{"{0}″"}
+                one{"{0}″"}
+                other{"{0}″"}
             }
             degree{
                 dnam{"степени"}
+                few{"{0}°"}
+                one{"{0}°"}
+                other{"{0}°"}
+            }
+            radian{
+                dnam{"rad"}
+                few{"{0} rad"}
+                one{"{0} rad"}
+                other{"{0} rad"}
+            }
+            revolution{
+                dnam{"rev"}
+                few{"{0} rev"}
+                one{"{0} rev"}
+                other{"{0} rev"}
             }
         }
         area{
             acre{
                 dnam{"акери"}
+                few{"{0} ac"}
+                one{"{0} ac"}
+                other{"{0} ac"}
             }
             dunam{
                 dnam{"дунами"}
@@ -3333,43 +1358,135 @@ sr{
             }
             hectare{
                 dnam{"хектари"}
+                few{"{0} ha"}
+                one{"{0} ha"}
+                other{"{0} ha"}
+            }
+            square-centimeter{
+                dnam{"cm²"}
+                few{"{0} cm²"}
+                one{"{0} cm²"}
+                other{"{0} cm²"}
+                per{"{0}/cm²"}
             }
             square-foot{
                 dnam{"квадратне стопе"}
+                few{"{0} ft²"}
+                one{"{0} ft²"}
+                other{"{0} ft²"}
+            }
+            square-inch{
+                dnam{"in²"}
+                few{"{0} in²"}
+                one{"{0} in²"}
+                other{"{0} in²"}
+                per{"{0}/in²"}
             }
             square-kilometer{
                 dnam{"квадратни километри"}
+                few{"{0} km²"}
+                one{"{0} km²"}
+                other{"{0} km²"}
+                per{"{0}/km²"}
             }
             square-meter{
                 dnam{"квадратни метри"}
+                few{"{0} m²"}
+                one{"{0} m²"}
+                other{"{0} m²"}
+                per{"{0}/m²"}
+            }
+            square-mile{
+                dnam{"mi²"}
+                few{"{0} mi²"}
+                one{"{0} mi²"}
+                other{"{0} mi²"}
+                per{"{0}/mi²"}
+            }
+            square-yard{
+                dnam{"yd²"}
+                few{"{0} yd²"}
+                one{"{0} yd²"}
+                other{"{0} yd²"}
             }
         }
+        compound{
+            per{"{0}/{1}"}
+        }
         concentr{
-            item{
-                dnam{"ставка"}
-                few{"{0} ставке"}
-                one{"{0} ставка"}
-                other{"{0} ставки"}
+            karat{
+                dnam{"kt"}
+                few{"{0} kt"}
+                one{"{0} kt"}
+                other{"{0} kt"}
+            }
+            milligram-per-deciliter{
+                dnam{"mg/dL"}
+                few{"{0} mg/dL"}
+                one{"{0} mg/dL"}
+                other{"{0} mg/dL"}
+            }
+            millimole-per-liter{
+                dnam{"mmol/L"}
+                few{"{0} mmol/L"}
+                one{"{0} mmol/L"}
+                other{"{0} mmol/L"}
+            }
+            mole{
+                dnam{"mol"}
+                few{"{0} mol"}
+                one{"{0} mol"}
+                other{"{0} mol"}
+            }
+            part-per-million{
+                dnam{"ppm"}
+                few{"{0} ppm"}
+                one{"{0} ppm"}
+                other{"{0} ppm"}
             }
             percent{
                 dnam{"проценат"}
+                few{"{0}%"}
+                one{"{0}%"}
+                other{"{0}%"}
             }
             permille{
                 dnam{"промил"}
+                few{"{0}‰"}
+                one{"{0}‰"}
+                other{"{0}‰"}
+            }
+            permyriad{
+                dnam{"‱"}
+                few{"{0}‱"}
+                one{"{0}‱"}
+                other{"{0}‱"}
             }
         }
         consumption{
-            liter-per-100-kilometer{
+            liter-per-100kilometers{
                 dnam{"L/100 km"}
                 few{"{0} L/100 km"}
                 one{"{0} L/100 km"}
                 other{"{0} L/100 km"}
+            }
+            liter-per-kilometer{
+                dnam{"L/km"}
+                few{"{0} L/km"}
+                one{"{0} L/km"}
+                other{"{0} L/km"}
             }
             mile-per-gallon{
                 dnam{"mpg"}
                 few{"{0} mpg"}
                 one{"{0} mpg"}
                 other{"{0} mpg"}
+            }
+            mile-per-gallon-imperial{
+                dnam{"mpg Imp."}
+                few{"{0} mpg Imp."}
+                one{"{0} mpg Imp."}
+                other{"{0} mpg Imp."}
             }
         }
         coordinate{
@@ -3392,6 +1509,60 @@ sr{
                 one{"{0} B"}
                 other{"{0} B"}
             }
+            gigabit{
+                dnam{"Gb"}
+                few{"{0} Gb"}
+                one{"{0} Gb"}
+                other{"{0} Gb"}
+            }
+            gigabyte{
+                dnam{"GB"}
+                few{"{0} GB"}
+                one{"{0} GB"}
+                other{"{0} GB"}
+            }
+            kilobit{
+                dnam{"kb"}
+                few{"{0} kb"}
+                one{"{0} kb"}
+                other{"{0} kb"}
+            }
+            kilobyte{
+                dnam{"kB"}
+                few{"{0} kB"}
+                one{"{0} kB"}
+                other{"{0} kB"}
+            }
+            megabit{
+                dnam{"Mb"}
+                few{"{0} Mb"}
+                one{"{0} Mb"}
+                other{"{0} Mb"}
+            }
+            megabyte{
+                dnam{"MB"}
+                few{"{0} MB"}
+                one{"{0} MB"}
+                other{"{0} MB"}
+            }
+            petabyte{
+                dnam{"PB"}
+                few{"{0} PB"}
+                one{"{0} PB"}
+                other{"{0} PB"}
+            }
+            terabit{
+                dnam{"Tb"}
+                few{"{0} Tb"}
+                one{"{0} Tb"}
+                other{"{0} Tb"}
+            }
+            terabyte{
+                dnam{"TB"}
+                few{"{0} TB"}
+                one{"{0} TB"}
+                other{"{0} TB"}
+            }
         }
         duration{
             century{
@@ -3407,18 +1578,24 @@ sr{
                 other{"{0} дана"}
                 per{"{0}/д"}
             }
-            decade{
-                dnam{"дец."}
-                few{"{0} дец."}
-                one{"{0} дец."}
-                other{"{0} дец."}
-            }
             hour{
                 dnam{"сати"}
                 few{"{0} сата"}
                 one{"{0} сат"}
                 other{"{0} сати"}
                 per{"{0}/ч"}
+            }
+            microsecond{
+                dnam{"μs"}
+                few{"{0} μs"}
+                one{"{0} μs"}
+                other{"{0} μs"}
+            }
+            millisecond{
+                dnam{"ms"}
+                few{"{0} ms"}
+                one{"{0} ms"}
+                other{"{0} ms"}
             }
             minute{
                 dnam{"мин"}
@@ -3434,12 +1611,11 @@ sr{
                 other{"{0} мес."}
                 per{"{0}/м"}
             }
-            quarter{
-                dnam{"кв"}
-                few{"{0} кв"}
-                one{"{0} кв"}
-                other{"{0} кв"}
-                per{"{0}/к"}
+            nanosecond{
+                dnam{"ns"}
+                few{"{0} ns"}
+                one{"{0} ns"}
+                other{"{0} ns"}
             }
             second{
                 dnam{"сек"}
@@ -3466,17 +1642,47 @@ sr{
         electric{
             ampere{
                 dnam{"A"}
+                few{"{0} A"}
+                one{"{0} A"}
+                other{"{0} A"}
+            }
+            milliampere{
+                dnam{"mA"}
+                few{"{0} mA"}
+                one{"{0} mA"}
+                other{"{0} mA"}
             }
             ohm{
                 dnam{"Ω"}
+                few{"{0} Ω"}
+                one{"{0} Ω"}
+                other{"{0} Ω"}
             }
             volt{
                 dnam{"V"}
+                few{"{0} V"}
+                one{"{0} V"}
+                other{"{0} V"}
             }
         }
         energy{
+            british-thermal-unit{
+                dnam{"Btu"}
+                few{"{0} Btu"}
+                one{"{0} Btu"}
+                other{"{0} Btu"}
+            }
+            calorie{
+                dnam{"cal"}
+                few{"{0} cal"}
+                one{"{0} cal"}
+                other{"{0} cal"}
+            }
             electronvolt{
                 dnam{"електронволт"}
+                few{"{0} eV"}
+                one{"{0} eV"}
+                other{"{0} eV"}
             }
             foodcalorie{
                 dnam{"Cal"}
@@ -3486,36 +1692,67 @@ sr{
             }
             joule{
                 dnam{"J"}
+                few{"{0} J"}
+                one{"{0} J"}
+                other{"{0} J"}
             }
-            therm-us{
-                few{"{0} US therms"}
-                one{"{0} US therm"}
-                other{"{0} US therms"}
+            kilocalorie{
+                dnam{"kcal"}
+                few{"{0} kcal"}
+                one{"{0} kcal"}
+                other{"{0} kcal"}
+            }
+            kilojoule{
+                dnam{"kJ"}
+                few{"{0} kJ"}
+                one{"{0} kJ"}
+                other{"{0} kJ"}
+            }
+            kilowatt-hour{
+                dnam{"kWh"}
+                few{"{0} kWh"}
+                one{"{0} kWh"}
+                other{"{0} kWh"}
             }
         }
         force{
             newton{
                 dnam{"њутн"}
+                few{"{0} N"}
+                one{"{0} N"}
+                other{"{0} N"}
+            }
+            pound-force{
+                dnam{"lbf"}
+                few{"{0} lbf"}
+                one{"{0} lbf"}
+                other{"{0} lbf"}
             }
         }
-        graphics{
-            dot{
-                dnam{"тачка"}
-                few{"{0} тачке"}
-                one{"{0} тачка"}
-                other{"{0} тачака"}
+        frequency{
+            gigahertz{
+                dnam{"GHz"}
+                few{"{0} GHz"}
+                one{"{0} GHz"}
+                other{"{0} GHz"}
             }
-            dot-per-centimeter{
-                dnam{"dpcm"}
-                few{"{0} ppcm"}
-                one{"{0} ppcm"}
-                other{"{0} dpcm"}
+            hertz{
+                dnam{"Hz"}
+                few{"{0} Hz"}
+                one{"{0} Hz"}
+                other{"{0} Hz"}
             }
-            dot-per-inch{
-                dnam{"dpi"}
-                few{"{0} ppi"}
-                one{"{0} ppi"}
-                other{"{0} dpi"}
+            kilohertz{
+                dnam{"kHz"}
+                few{"{0} kHz"}
+                one{"{0} kHz"}
+                other{"{0} kHz"}
+            }
+            megahertz{
+                dnam{"MHz"}
+                few{"{0} MHz"}
+                one{"{0} MHz"}
+                other{"{0} MHz"}
             }
         }
         length{
@@ -3525,17 +1762,39 @@ sr{
                 one{"{0} ај"}
                 other{"{0} ај"}
             }
-            fathom{
-                dnam{"хв"}
+            centimeter{
+                dnam{"cm"}
+                few{"{0} cm"}
+                one{"{0} cm"}
+                other{"{0} cm"}
+                per{"{0}/cm"}
             }
-            furlong{
-                dnam{"фурлонзи"}
+            decimeter{
+                dnam{"dm"}
+                few{"{0} dm"}
+                one{"{0} dm"}
+                other{"{0} dm"}
+            }
+            foot{
+                dnam{"ft"}
+                few{"{0} ft"}
+                one{"{0} ft"}
+                other{"{0} ft"}
+                per{"{0}/ft"}
             }
             inch{
                 dnam{"инчи"}
                 few{"{0} инча"}
                 one{"{0} инч"}
                 other{"{0} инча"}
+                per{"{0}/in"}
+            }
+            kilometer{
+                dnam{"km"}
+                few{"{0} km"}
+                one{"{0} km"}
+                other{"{0} km"}
+                per{"{0}/km"}
             }
             light-year{
                 dnam{"светлосне год."}
@@ -3545,15 +1804,70 @@ sr{
             }
             meter{
                 dnam{"m"}
+                few{"{0} m"}
+                one{"{0} m"}
+                other{"{0} m"}
+                per{"{0}/m"}
+            }
+            micrometer{
+                dnam{"µm"}
+                few{"{0} µm"}
+                one{"{0} µm"}
+                other{"{0} µm"}
             }
             mile{
                 dnam{"миље"}
+                few{"{0} mi"}
+                one{"{0} mi"}
+                other{"{0} mi"}
+            }
+            mile-scandinavian{
+                dnam{"smi"}
+                few{"{0} smi"}
+                one{"{0} smi"}
+                other{"{0} smi"}
+            }
+            millimeter{
+                dnam{"mm"}
+                few{"{0} mm"}
+                one{"{0} mm"}
+                other{"{0} mm"}
+            }
+            nanometer{
+                dnam{"nm"}
+                few{"{0} nm"}
+                one{"{0} nm"}
+                other{"{0} nm"}
+            }
+            nautical-mile{
+                dnam{"nmi"}
+                few{"{0} nmi"}
+                one{"{0} nmi"}
+                other{"{0} nmi"}
             }
             parsec{
                 dnam{"парсеци"}
+                few{"{0} pc"}
+                one{"{0} pc"}
+                other{"{0} pc"}
             }
             picometer{
                 dnam{"пикометри"}
+                few{"{0} pm"}
+                one{"{0} pm"}
+                other{"{0} pm"}
+            }
+            point{
+                dnam{"pt"}
+                few{"{0} pt"}
+                one{"{0} pt"}
+                other{"{0} pt"}
+            }
+            solar-radius{
+                dnam{"R☉"}
+                few{"{0} R☉"}
+                one{"{0} R☉"}
+                other{"{0} R☉"}
             }
             yard{
                 dnam{"јарди"}
@@ -3562,74 +1876,350 @@ sr{
                 other{"{0} јрд"}
             }
         }
+        light{
+            lux{
+                dnam{"lx"}
+                few{"{0} lx"}
+                one{"{0} lx"}
+                other{"{0} lx"}
+            }
+            solar-luminosity{
+                dnam{"L☉"}
+                few{"{0} L☉"}
+                one{"{0} L☉"}
+                other{"{0} L☉"}
+            }
+        }
         mass{
             carat{
                 dnam{"карати"}
+                few{"{0} CD"}
+                one{"{0} CD"}
+                other{"{0} CD"}
             }
-            grain{
-                dnam{"грејн"}
+            dalton{
+                dnam{"Da"}
+                few{"{0} Da"}
+                one{"{0} Da"}
+                other{"{0} Da"}
+            }
+            earth-mass{
+                dnam{"M⊕"}
+                few{"{0} M⊕"}
+                one{"{0} M⊕"}
+                other{"{0} M⊕"}
             }
             gram{
                 dnam{"грами"}
+                few{"{0} g"}
+                one{"{0} g"}
+                other{"{0} g"}
+                per{"{0}/g"}
+            }
+            kilogram{
+                dnam{"kg"}
+                few{"{0} kg"}
+                one{"{0} kg"}
+                other{"{0} kg"}
+                per{"{0}/kg"}
+            }
+            metric-ton{
+                dnam{"t"}
+                few{"{0} t"}
+                one{"{0} t"}
+                other{"{0} t"}
+            }
+            microgram{
+                dnam{"µg"}
+                few{"{0} µg"}
+                one{"{0} µg"}
+                other{"{0} µg"}
+            }
+            milligram{
+                dnam{"mg"}
+                few{"{0} mg"}
+                one{"{0} mg"}
+                other{"{0} mg"}
+            }
+            ounce{
+                dnam{"oz"}
+                few{"{0} oz"}
+                one{"{0} oz"}
+                other{"{0} oz"}
+                per{"{0}/oz"}
+            }
+            ounce-troy{
+                dnam{"oz t"}
+                few{"{0} oz t"}
+                one{"{0} oz t"}
+                other{"{0} oz t"}
+            }
+            pound{
+                dnam{"lb"}
+                few{"{0} lb"}
+                one{"{0} lb"}
+                other{"{0} lb"}
+                per{"{0}/lb"}
+            }
+            solar-mass{
+                dnam{"M☉"}
+                few{"{0} M☉"}
+                one{"{0} M☉"}
+                other{"{0} M☉"}
+            }
+            ton{
+                dnam{"tn"}
+                few{"{0} tn"}
+                one{"{0} tn"}
+                other{"{0} tn"}
             }
         }
         power{
+            gigawatt{
+                dnam{"GW"}
+                few{"{0} GW"}
+                one{"{0} GW"}
+                other{"{0} GW"}
+            }
+            horsepower{
+                dnam{"hp"}
+                few{"{0} hp"}
+                one{"{0} hp"}
+                other{"{0} hp"}
+            }
+            kilowatt{
+                dnam{"kW"}
+                few{"{0} kW"}
+                one{"{0} kW"}
+                other{"{0} kW"}
+            }
+            megawatt{
+                dnam{"MW"}
+                few{"{0} MW"}
+                one{"{0} MW"}
+                other{"{0} MW"}
+            }
+            milliwatt{
+                dnam{"mW"}
+                few{"{0} mW"}
+                one{"{0} mW"}
+                other{"{0} mW"}
+            }
             watt{
                 dnam{"W"}
+                few{"{0} W"}
+                one{"{0} W"}
+                other{"{0} W"}
+            }
+        }
+        pressure{
+            atmosphere{
+                dnam{"atm"}
+                few{"{0} atm"}
+                one{"{0} atm"}
+                other{"{0} atm"}
+            }
+            hectopascal{
+                dnam{"hPa"}
+                few{"{0} hPa"}
+                one{"{0} hPa"}
+                other{"{0} hPa"}
+            }
+            inch-hg{
+                dnam{"inHg"}
+                few{"{0} inHg"}
+                one{"{0} inHg"}
+                other{"{0} inHg"}
+            }
+            kilopascal{
+                dnam{"kPa"}
+                few{"{0} kPa"}
+                one{"{0} kPa"}
+                other{"{0} kPa"}
+            }
+            megapascal{
+                dnam{"MPa"}
+                few{"{0} MPa"}
+                one{"{0} MPa"}
+                other{"{0} MPa"}
+            }
+            millibar{
+                dnam{"mbar"}
+                few{"{0} mbar"}
+                one{"{0} mbar"}
+                other{"{0} mbar"}
+            }
+            millimeter-of-mercury{
+                dnam{"mm Hg"}
+                few{"{0} mm Hg"}
+                one{"{0} mm Hg"}
+                other{"{0} mm Hg"}
+            }
+            pound-per-square-inch{
+                dnam{"psi"}
+                few{"{0} psi"}
+                one{"{0} psi"}
+                other{"{0} psi"}
             }
         }
         speed{
-            beaufort{
-                dnam{"Bf"}
-                few{"Б {0}"}
-                one{"Б {0}"}
-                other{"Б {0}"}
+            kilometer-per-hour{
+                dnam{"km/h"}
+                few{"{0} km/h"}
+                one{"{0} km/h"}
+                other{"{0} km/h"}
+            }
+            knot{
+                dnam{"kn"}
+                few{"{0} kn"}
+                one{"{0} kn"}
+                other{"{0} kn"}
             }
             meter-per-second{
                 dnam{"метри у секунди"}
+                few{"{0} m/s"}
+                one{"{0} m/s"}
+                other{"{0} m/s"}
             }
             mile-per-hour{
                 dnam{"миље на сат"}
+                few{"{0} mi/h"}
+                one{"{0} mi/h"}
+                other{"{0} mi/h"}
             }
         }
         temperature{
+            celsius{
+                dnam{"°C"}
+                few{"{0}°C"}
+                one{"{0}°C"}
+                other{"{0}°C"}
+            }
             fahrenheit{
                 dnam{"степени Фаренхајта"}
+                few{"{0}°F"}
+                one{"{0}°F"}
+                other{"{0}°F"}
+            }
+            generic{
+                dnam{"°"}
+                few{"{0}°"}
+                one{"{0}°"}
+                other{"{0}°"}
+            }
+            kelvin{
+                dnam{"K"}
+                few{"{0} K"}
+                one{"{0} K"}
+                other{"{0} K"}
+            }
+        }
+        torque{
+            newton-meter{
+                dnam{"N⋅m"}
+                few{"{0} N⋅m"}
+                one{"{0} N⋅m"}
+                other{"{0} N⋅m"}
+            }
+            pound-foot{
+                dnam{"lbf⋅ft"}
+                few{"{0} lbf⋅ft"}
+                one{"{0} lbf⋅ft"}
+                other{"{0} lbf⋅ft"}
             }
         }
         volume{
+            acre-foot{
+                dnam{"ac ft"}
+                few{"{0} ac ft"}
+                one{"{0} ac ft"}
+                other{"{0} ac ft"}
+            }
+            barrel{
+                dnam{"bbl"}
+                few{"{0} bbl"}
+                one{"{0} bbl"}
+                other{"{0} bbl"}
+            }
+            centiliter{
+                dnam{"cL"}
+                few{"{0} cL"}
+                one{"{0} cL"}
+                other{"{0} cL"}
+            }
+            cubic-centimeter{
+                dnam{"cm³"}
+                few{"{0} cm³"}
+                one{"{0} cm³"}
+                other{"{0} cm³"}
+                per{"{0}/cm³"}
+            }
+            cubic-foot{
+                dnam{"ft³"}
+                few{"{0} ft³"}
+                one{"{0} ft³"}
+                other{"{0} ft³"}
+            }
+            cubic-inch{
+                dnam{"in³"}
+                few{"{0} in³"}
+                one{"{0} in³"}
+                other{"{0} in³"}
+            }
+            cubic-kilometer{
+                dnam{"km³"}
+                few{"{0} km³"}
+                one{"{0} km³"}
+                other{"{0} km³"}
+            }
+            cubic-meter{
+                dnam{"m³"}
+                few{"{0} m³"}
+                one{"{0} m³"}
+                other{"{0} m³"}
+                per{"{0}/m³"}
+            }
+            cubic-mile{
+                dnam{"mi³"}
+                few{"{0} mi³"}
+                one{"{0} mi³"}
+                other{"{0} mi³"}
+            }
+            cubic-yard{
+                dnam{"yd³"}
+                few{"{0} yd³"}
+                one{"{0} yd³"}
+                other{"{0} yd³"}
+            }
             cup{
                 dnam{"шоље"}
                 few{"{0} ш."}
                 one{"{0} ш."}
                 other{"{0} ш."}
             }
-            dessert-spoon{
-                dnam{"дес. каш."}
-                few{"{0} дес. каш."}
-                one{"{0} дес. каш."}
-                other{"{0} дес. каш."}
+            cup-metric{
+                dnam{"mcup"}
+                few{"{0} mc"}
+                one{"{0} mc"}
+                other{"{0} mc"}
             }
-            dessert-spoon-imperial{
-                dnam{"имп. дес. каш."}
-                few{"{0} имп. дес. каш."}
-                one{"{0} имп. дес. каш."}
-                other{"{0} имп. дес. каш."}
-            }
-            dram{
-                dnam{"драм течности"}
-            }
-            drop{
-                dnam{"кап"}
-                few{"{0} капи"}
-                one{"{0} кап"}
-                other{"{0} капи"}
+            deciliter{
+                dnam{"dL"}
+                few{"{0} dL"}
+                one{"{0} dL"}
+                other{"{0} dL"}
             }
             fluid-ounce{
                 dnam{"fl oz"}
                 few{"{0} fl oz"}
                 one{"{0} fl oz"}
                 other{"{0} fl oz"}
+            }
+            fluid-ounce-imperial{
+                dnam{"Imp. fl oz"}
+                few{"{0} fl oz Imp."}
+                one{"{0} fl oz Imp."}
+                other{"{0} fl oz Imp."}
             }
             gallon{
                 dnam{"gal"}
@@ -3638,20 +2228,55 @@ sr{
                 other{"{0} gal"}
                 per{"{0}/gal"}
             }
-            jigger{
-                dnam{"џигер"}
-                few{"{0} џигера"}
-                one{"{0} џигер"}
-                other{"{0} џигера"}
+            gallon-imperial{
+                dnam{"Imp. gal"}
+                few{"{0} gal Imp."}
+                one{"{0} gal Imp."}
+                other{"{0} gal Imp."}
+                per{"{0}/gal Imp."}
+            }
+            hectoliter{
+                dnam{"hL"}
+                few{"{0} hL"}
+                one{"{0} hL"}
+                other{"{0} hL"}
             }
             liter{
                 dnam{"литри"}
+                few{"{0} l"}
+                one{"{0} l"}
+                other{"{0} l"}
+                per{"{0}/l"}
             }
-            pinch{
-                dnam{"прстохват"}
-                few{"{0} прстохвата"}
-                one{"{0} прстохват"}
-                other{"{0} прстохвата"}
+            megaliter{
+                dnam{"ML"}
+                few{"{0} ML"}
+                one{"{0} ML"}
+                other{"{0} ML"}
+            }
+            milliliter{
+                dnam{"mL"}
+                few{"{0} mL"}
+                one{"{0} mL"}
+                other{"{0} mL"}
+            }
+            pint{
+                dnam{"pt"}
+                few{"{0} pt"}
+                one{"{0} pt"}
+                other{"{0} pt"}
+            }
+            pint-metric{
+                dnam{"mpt"}
+                few{"{0} mpt"}
+                one{"{0} mpt"}
+                other{"{0} mpt"}
+            }
+            quart{
+                dnam{"qt"}
+                few{"{0} qt"}
+                one{"{0} qt"}
+                other{"{0} qt"}
             }
             tablespoon{
                 dnam{"каш."}

@@ -1,44 +1,22 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 sr_Latn_BA{
-    Keys{
-        collation{"redoslijed sortiranja"}
-        ms{"sistem mjernih jedinica"}
-    }
     Languages{
+        arn{"mapudungun"}
         be{"bjeloruski"}
         bm{"bamanankan"}
         bn{"bangla"}
-        crl{"sjeveroistočni kri"}
-        de{"njemački"}
-        de_CH{"švajcarski visoki njemački"}
-        frr{"sjevernofrizijski"}
-        gsw{"njemački (Švajcarska)"}
+        gsw{"švajcarski nemački"}
         ht{"haićanski kreolski"}
-        lrc{"sjeverni luri"}
-        nd{"sjeverni ndebele"}
-        nds{"niskonjemački"}
-        nso{"sjeverni soto"}
-        ojb{"sjeverozapadni odžibva"}
-        se{"sjeverni sami"}
-        ttm{"sjeverni tučon"}
+        lo{"laoški"}
+        moh{"mohok"}
+        nqo{"n’ko"}
+        shi{"južni šilha"}
+        si{"sinhalski"}
+        tzm{"centralnoatlaski tamašek"}
+        xh{"isikosa"}
+        zgh{"standardni marokanski tamašek"}
+        zu{"isizulu"}
     }
-    Types{
-        collation{
-            compat{"prethodni redoslijed sortiranja, zbog kompatibilnosti"}
-            dictionary{"redoslijed sortiranja u rječniku"}
-            ducet{"podrazumijevani Unicode redoslijed sortiranja"}
-            phonetic{"fonetski redoslijed sortiranja"}
-            search{"pretraga opšte namjene"}
-            standard{"standardni redoslijed sortiranja"}
-            unihan{"redoslijed sortiranja radikalnih poteza"}
-        }
-        numbers{
-            mymr{"mjanmarske cifre"}
-        }
-    }
-    characterLabelPattern{
-        facing-left{"{0} gleda ulijevo"}
-    }
+    Version{"2.1.48.77"}
 }

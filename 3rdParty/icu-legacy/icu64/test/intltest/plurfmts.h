@@ -22,7 +22,7 @@
  * Test basic functionality of various API functions
  **/
 class PluralFormatTest : public IntlTest {
-    void runIndexedTest( int32_t index, UBool exec, const char* &name, char* par = nullptr ) override;
+    void runIndexedTest( int32_t index, UBool exec, const char* &name, char* par = NULL );  
 
 private:
     /**

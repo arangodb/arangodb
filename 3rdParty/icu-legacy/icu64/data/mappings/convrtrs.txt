@@ -9,7 +9,7 @@
 
 # If this converter alias table looks very confusing, a much easier to
 # understand view can be found at this demo:
-# https://icu4c-demos.unicode.org/icu-bin/convexp
+# http://demo.icu-project.org/icu-bin/convexp
 
 # IMPORTANT NOTE
 #
@@ -118,7 +118,7 @@
 #
 # The general ordering is from specific and frequently used to more general
 # or rarely used at the bottom.
-{   UTR22           # Name format specified by https://www.unicode.org/reports/tr22/
+{   UTR22           # Name format specified by http://www.unicode.org/unicode/reports/tr22/
     # ICU             # Can also use ICU_FEATURE
     IBM             # The IBM CCSID number is specified by ibm-*
     WINDOWS         # The Microsoft code page identifier number is specified by windows-*. The rest are recognized IE names.
@@ -328,7 +328,7 @@ BOCU-1 { IANA* }
     ibm-1214 { IBM }  # BOCU-1 with IBM PUA
     ibm-1215 { IBM* } # BOCU-1
 
-# See https://www.unicode.org/reports/tr26 for this Compatibility Encoding Scheme for UTF-16
+# See http://www.unicode.org/unicode/reports/tr26 for this Compatibility Encoding Scheme for UTF-16
 # The Unicode Consortium does not encourage the use of CESU-8
 CESU-8 { IANA* } ibm-9400 { IBM* }
 
@@ -366,7 +366,7 @@ US-ASCII { MIME* IANA JAVA WINDOWS }
     ibm-367 { IBM* } IBM367 { IANA WINDOWS } # This is not truely ibm-367 because it's missing the fallbacks.
 
 # GB 18030 is partly algorithmic, using the MBCS converter
-gb18030-2022            ibm-1392 { IBM* } windows-54936 { WINDOWS* } GB18030 { MIME* IANA* }
+gb18030 { IANA* }       ibm-1392 { IBM* } windows-54936 { WINDOWS* } GB18030 { MIME* }
 
 # Table-based interchange codepages
 
@@ -657,7 +657,7 @@ java-euc_jp_linux-1.6_P { UTR22* }
 java-sjis_0213-1.6_P { UTR22* }
                         x-SJIS_0213 { JAVA* }
 
-# Here are various interpretations and extensions of Big5
+# Here are various interpretations and extentions of Big5
 ibm-1373_P100-2002 { UTR22* } # IBM's interpretation of Windows' Taiwan Big-5 without HKSCS extensions
                         ibm-1373 { IBM* }
                         windows-950 # Alternate mapping. Leave untagged. This is the IBM interpretation of a Windows codepage.
@@ -1091,7 +1091,7 @@ ibm-16684_P110-2003 { UTR22* }  ibm-16684 { IBM* } ibm-20780 { IBM } # DBCS Jis 
 ibm-4899_P100-1998 { UTR22* }   ibm-4899 { IBM* }                   # Old EBCDIC Hebrew. Update of ibm-803
 ibm-4971_P100-1999 { UTR22* }   ibm-4971 { IBM* }                   # EBCDIC Greek. Update of ibm-875 and superceded by ibm-9067
 ibm-9067_X100-2005 { UTR22* }   ibm-9067 { IBM* }                   # EBCDIC Greek. Update of ibm-875 and ibm-4971
-ibm-12712_P100-1998 { UTR22* }  ibm-12712 { IBM* } ebcdic-he        # EBCDIC Hebrew (new sheqel, control characters update). Update of ibm-424
+ibm-12712_P100-1998 { UTR22* }  ibm-12712 { IBM* } ebcdic-he        # EBCDIC Hebrew (new sheqel, control charaters update). Update of ibm-424
 ibm-16804_X110-1999 { UTR22* }  ibm-16804 { IBM* } ebcdic-ar        # EBCDIC Arabic. Update of ibm-420
 
 java-Cp1399A-1.6_P { UTR22* }   x-IBM1399A { JAVA* }

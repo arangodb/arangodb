@@ -1,12 +1,11 @@
 ﻿# © 2016 and later: Unicode, Inc. and others.
-# License & terms of use: http://www.unicode.org/copyright.html
-# Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+# License & terms of use: http://www.unicode.org/copyright.html#License
 #
 # File: cs_cs_FONIPA.txt
 # Generated from CLDR
 #
 
-# Transformation from Czech to Czech in IPA transcription (cs_FONIPA).
+# Tranformation from Czech to Czech in IPA transcription (cs_FONIPA).
 # The transcription is not fully phonemic since we mark allophonic variations
 # of /m/, /n/, /x/ and /ɦ/.
 #

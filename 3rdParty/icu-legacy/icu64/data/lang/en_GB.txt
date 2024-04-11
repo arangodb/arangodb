@@ -1,9 +1,12 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 en_GB{
     %%Parent{"en_001"}
     Languages{
-        ff{"Fulah"}
+        nds_NL{"West Low German"}
     }
+    Scripts{
+        Thai{"Thai"}
+    }
+    Version{"2.1.47.86"}
 }

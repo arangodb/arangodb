@@ -1,12 +1,13 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 fr_CA{
     Languages{
         ady{"adygué"}
         ang{"vieil anglais"}
-        asa{"asou"}
+        asa{"assou"}
+        az{"azerbaïdjanais"}
         bbj{"ghomala"}
+        bez{"bena"}
         bik{"bicol"}
         byn{"bilen"}
         byv{"medumba"}
@@ -14,16 +15,11 @@ fr_CA{
         chn{"chinook"}
         ckb{"kurde central"}
         cr{"cri"}
-        crg{"michif"}
-        crl{"cri du Nord-Est"}
-        crr{"algonquin de la Caroline"}
         den{"slave"}
         dgr{"tlicho"}
-        ebu{"embou"}
         esu{"yupik central"}
         ewo{"ewondo"}
         frc{"cajun"}
-        frp{"franco-provençal"}
         goh{"vieux haut-allemand"}
         gu{"gujarati"}
         ii{"yi de Sichuan"}
@@ -32,26 +28,27 @@ fr_CA{
         kl{"kalaallisut"}
         ks{"kashmiri"}
         ksb{"chambala"}
+        ksh{"kölsch"}
         liv{"live"}
         lu{"luba-katanga"}
+        luo{"luo"}
         lzh{"chinois classique"}
         mgh{"makhuwa-meetto"}
         mgo{"meta’"}
         mr{"marathe"}
         mwr{"marwari"}
         mwv{"mentawai"}
+        nds{"bas allemand"}
         nds_NL{"bas saxon"}
         njo{"ao naga"}
         nmg{"kwasio"}
         nwc{"newari classique"}
         nyn{"nkole"}
-        oka{"okanagan"}
         pau{"palauan"}
         pdc{"allemand de Pennsylvanie"}
         pdt{"bas allemand mennonite"}
         peo{"vieux perse"}
         pfl{"palatin"}
-        pis{"pidgin"}
         pro{"ancien occitan"}
         quc{"k’iche’"}
         rar{"rarotonga"}
@@ -61,26 +58,11 @@ fr_CA{
         sga{"vieil irlandais"}
         sly{"selayar"}
         smn{"sami d’Inari"}
-        stq{"frison de Saterland"}
-        sus{"sosso"}
         sw_CD{"swahili congolais"}
         tru{"turoyo"}
         tzm{"tamazight"}
     }
-    Languages%long{
-        zh_Hans{"chinois, mandarin simplifié"}
-        zh_Hant{"chinois, mandarin traditionnel"}
-    }
-    Languages%menu{
-        ckb{"kurde central"}
-        yue{"chinois, cantonais"}
-        zh{"chinois, mandarin"}
-    }
-    Languages%short{
-        en_US{"anglais (É.-U.)"}
-    }
     Languages%variant{
-        ckb{"sorani"}
         ug{"ouïghour"}
     }
     Scripts{
@@ -90,25 +72,22 @@ fr_CA{
         Hans{"idéogrammes han simplifiés"}
         Hant{"idéogrammes han traditionnels"}
         Hrkt{"syllabaires japonais"}
-        Olck{"ol chiki"}
-        Zsye{"émoji"}
+        Zsye{"zsye"}
     }
     Scripts%stand-alone{
         Hans{"caractères chinois simplifiés"}
         Hant{"caractères chinois traditionnels"}
     }
     Types{
+        calendar{
+            ethiopic-amete-alem{"Calendrier éthiopien de l’An de grâce"}
+            islamic-umalqura{"calendrier musulman (calculé, Umm al-Qura)"}
+        }
         collation{
-            big5han{"ordre de tri chinois traditionnel - Big5"}
-            dictionary{"ordre de tri du dictionnaire"}
+            dictionary{"Ordre de tri du dictionnaire"}
             eor{"ordre multilingue européen"}
-            gb2312han{"ordre de tri chinois simplifié - GB2312"}
-            phonebook{"ordre de tri de l’annuaire"}
-            pinyin{"ordre de tri pinyin"}
+            reformed{"Ordre de tri réformé"}
             searchjl{"Rechercher par consonne initiale en hangeul"}
-            stroke{"ordre de tri des traits"}
-            traditional{"ordre de tri traditionnel"}
-            zhuyin{"ordre de tri zhuyin"}
         }
         d0{
             fwidth{"pleine chasse"}
@@ -123,6 +102,7 @@ fr_CA{
             mong{"Chiffres mongols"}
         }
     }
+    Version{"2.1.47.86"}
     characterLabelPattern{
         category-list{"{0} : {1}"}
     }

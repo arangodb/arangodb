@@ -16,7 +16,6 @@
 #include "unicode/uchar.h"
 #include "putilimp.h"
 #include "number_decimalquantity.h"
-#include "string_segment.h"
 
 using namespace icu;
 using namespace icu::numparse;
@@ -74,7 +73,7 @@ DecimalMatcher::DecimalMatcher(const DecimalFormatSymbols& symbols, const Groupe
     UChar32 cpZero = symbols.getCodePointZero();
     if (cpZero == -1 || !u_isdigit(cpZero) || u_digit(cpZero, 10) != 0) {
         // Uncommon case: okay to allocate.
-        auto* digitStrings = new UnicodeString[10];
+        auto digitStrings = new UnicodeString[10];
         fLocalDigitStrings.adoptInstead(digitStrings);
         for (int32_t i = 0; i <= 9; i++) {
             digitStrings[i] = symbols.getConstDigitSymbol(i);
@@ -88,7 +87,7 @@ DecimalMatcher::DecimalMatcher(const DecimalFormatSymbols& symbols, const Groupe
     grouping2 = grouper.getSecondary();
 
     // Fraction grouping parsing is disabled for now but could be enabled later.
-    // See https://unicode-org.atlassian.net/browse/ICU-10794
+    // See http://bugs.icu-project.org/trac/ticket/10794
     // fractionGrouping = 0 != (parseFlags & PARSE_FLAG_FRACTION_GROUPING_ENABLED);
 }
 

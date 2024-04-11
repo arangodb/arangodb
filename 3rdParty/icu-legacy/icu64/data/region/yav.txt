@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 yav{
     Countries{
         AD{"Aŋtúla"}
@@ -93,6 +92,7 @@ yav{
         IE{"ililánd"}
         IL{"ísilayɛ́l"}
         IN{"ɛ́ɛnd"}
+        IO{"Kɔɔ́m kí ndián yi ngilís"}
         IQ{"ilák"}
         IR{"iláŋ"}
         IS{"isláand"}
@@ -127,6 +127,7 @@ yav{
         MD{"moltafí"}
         MG{"matakaskáal"}
         MH{"ílmalasáal"}
+        MK{"masetuán"}
         ML{"malí"}
         MM{"miaŋmáal"}
         MN{"mongolí"}
@@ -225,4 +226,5 @@ yav{
         ZM{"saambíi"}
         ZW{"simbapuwé"}
     }
+    Version{"2.1.47.82"}
 }

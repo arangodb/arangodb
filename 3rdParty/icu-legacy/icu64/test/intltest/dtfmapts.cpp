@@ -69,7 +69,7 @@ void IntlTestDateFormatAPI::runIndexedTest( int32_t index, UBool exec, const cha
 /**
  * Add better code coverage.
  */
-void IntlTestDateFormatAPI::TestCoverage()
+void IntlTestDateFormatAPI::TestCoverage(void)
 {
     const char *LOCALES[] = {
             "zh_CN@calendar=chinese",
@@ -81,7 +81,7 @@ void IntlTestDateFormatAPI::TestCoverage()
 
     for (int32_t i = 0; i < numOfLocales; i++) {
         DateFormat *df = DateFormat::createDateTimeInstance(DateFormat::kMedium, DateFormat::kMedium, Locale(LOCALES[i]));
-        if (df == nullptr){
+        if (df == NULL){
             dataerrln("Error creating DateFormat instances.");
             return;
         }
@@ -91,7 +91,7 @@ void IntlTestDateFormatAPI::TestCoverage()
 /**
  * Test that the equals method works correctly.
  */
-void IntlTestDateFormatAPI::TestEquals()
+void IntlTestDateFormatAPI::TestEquals(void)
 {
     UErrorCode status = U_ZERO_ERROR;
     // Create two objects at different system times
@@ -100,7 +100,7 @@ void IntlTestDateFormatAPI::TestEquals()
     while (Calendar::getNow() == start) ; // Wait for time to change
     DateFormat *b = DateFormat::createInstance();
 
-    if (a == nullptr || b == nullptr){
+    if (a == NULL || b == NULL){
         dataerrln("Error calling DateFormat::createInstance()");
         delete a;
         delete b;
@@ -111,7 +111,7 @@ void IntlTestDateFormatAPI::TestEquals()
         errln("FAIL: DateFormat objects created at different times are unequal.");
 
     SimpleDateFormat *sdtfmt = dynamic_cast<SimpleDateFormat *>(b);
-    if (sdtfmt != nullptr)
+    if (sdtfmt != NULL)
     {
         double ONE_YEAR = 365*24*60*60*1000.0;
         sdtfmt->set2DigitYearStart(start + 50*ONE_YEAR, status);
@@ -141,12 +141,12 @@ void IntlTestDateFormatAPI::testAPI(/* char* par */)
     DateFormat *it = DateFormat::createDateInstance(DateFormat::MEDIUM, Locale::getItalian());
     DateFormat *de = DateFormat::createDateTimeInstance(DateFormat::LONG, DateFormat::LONG, Locale::getGerman());
 
-    if (def == nullptr || fr == nullptr || it == nullptr || de == nullptr){
+    if (def == NULL || fr == NULL || it == NULL || de == NULL){
         dataerrln("Error creating DateFormat instances.");
     }
 
 // ======= Test equality
-if (fr != nullptr && def != nullptr)
+if (fr != NULL && def != NULL)
 {
     logln("Testing equality operator");
     
@@ -156,7 +156,7 @@ if (fr != nullptr && def != nullptr)
 }
 
 // ======= Test various format() methods
-if (fr != nullptr && it != nullptr && de != nullptr)
+if (fr != NULL && it != NULL && de != NULL)
 {
     logln("Testing various format() methods");
 
@@ -181,7 +181,7 @@ if (fr != nullptr && it != nullptr && de != nullptr)
 }
 
 // ======= Test parse()
-if (def != nullptr)
+if (def != NULL)
 {
     logln("Testing parse()");
 
@@ -208,7 +208,7 @@ if (def != nullptr)
 }
 
 // ======= Test getters and setters
-if (fr != nullptr && it != nullptr && de != nullptr)
+if (fr != NULL && it != NULL && de != NULL)
 {
     logln("Testing getters and setters");
 
@@ -235,7 +235,7 @@ if (fr != nullptr && it != nullptr && de != nullptr)
     }
 
     const NumberFormat *nf = def->getNumberFormat();
-    NumberFormat *newNf = nf->clone();
+    NumberFormat *newNf = (NumberFormat*) nf->clone();
     de->adoptNumberFormat(newNf);   
     it->setNumberFormat(*newNf);
     if( *(de->getNumberFormat()) != *(it->getNumberFormat())) {
@@ -277,7 +277,7 @@ if (fr != nullptr && it != nullptr && de != nullptr)
  * the DateFormat API test.
  */
 void
-IntlTestDateFormatAPI::TestNameHiding() {
+IntlTestDateFormatAPI::TestNameHiding(void) {
 
     // N.B.: This test passes if it COMPILES, since it's a test of
     // compile-time name hiding.

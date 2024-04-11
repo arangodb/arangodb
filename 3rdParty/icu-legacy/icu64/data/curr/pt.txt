@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 pt{
     Currencies{
         ADP{
@@ -265,7 +264,7 @@ pt{
         }
         CNH{
             "CNH",
-            "Yuan chinês (offshore)",
+            "Renminbi chinês (offshore)",
         }
         CNX{
             "CNX",
@@ -273,7 +272,7 @@ pt{
         }
         CNY{
             "CN¥",
-            "Yuan chinês",
+            "Renminbi chinês",
         }
         COP{
             "COP",
@@ -589,7 +588,7 @@ pt{
         }
         LKR{
             "LKR",
-            "Rupia cingalesa",
+            "Rupia do Sri Lanka",
         }
         LRD{
             "LRD",
@@ -597,7 +596,7 @@ pt{
         }
         LSL{
             "LSL",
-            "Loti lesotiano",
+            "Loti do Lesoto",
         }
         LTL{
             "LTL",
@@ -673,7 +672,7 @@ pt{
         }
         MMK{
             "MMK",
-            "Quiate mianmarense",
+            "Quiat de Myanmar",
         }
         MNT{
             "MNT",
@@ -681,7 +680,7 @@ pt{
         }
         MOP{
             "MOP",
-            "Pataca macaense",
+            "Pataca de Macau",
         }
         MRO{
             "MRO",
@@ -895,13 +894,9 @@ pt{
             "SKK",
             "Coroa eslovaca",
         }
-        SLE{
-            "SLE",
-            "Leone de Serra Leoa",
-        }
         SLL{
             "SLL",
-            "Leone de Serra Leoa (1964—2022)",
+            "Leone de Serra Leoa",
         }
         SOS{
             "SOS",
@@ -1116,7 +1111,7 @@ pt{
             "Franco UIC francês",
         }
         XOF{
-            "F CFA",
+            "CFA",
             "Franco CFA de BCEAO",
         }
         XPD{
@@ -1205,10 +1200,102 @@ pt{
         }
     }
     Currencies%narrow{
+        AOA{"Kz"}
+        ARS{"$"}
+        AUD{"$"}
+        BAM{"KM"}
+        BBD{"$"}
+        BDT{"৳"}
+        BMD{"$"}
+        BND{"$"}
+        BOB{"Bs"}
+        BRL{"R$"}
+        BSD{"$"}
+        BWP{"P"}
         BYN{"р."}
+        BZD{"$"}
+        CAD{"$"}
+        CLP{"$"}
+        CNY{"¥"}
+        COP{"$"}
+        CRC{"₡"}
+        CUC{"$"}
+        CUP{"$"}
+        CZK{"Kč"}
+        DKK{"kr"}
+        DOP{"$"}
+        EGP{"E£"}
+        EUR{"€"}
+        FJD{"$"}
+        FKP{"£"}
+        GBP{"£"}
+        GEL{"₾"}
+        GIP{"£"}
+        GNF{"FG"}
+        GTQ{"Q"}
+        GYD{"$"}
+        HNL{"L"}
+        HRK{"kn"}
+        HUF{"Ft"}
+        IDR{"Rp"}
+        ILS{"₪"}
+        ISK{"kr"}
+        JMD{"$"}
+        JPY{"¥"}
+        KHR{"៛"}
+        KMF{"CF"}
+        KPW{"₩"}
+        KRW{"₩"}
+        KYD{"$"}
+        KZT{"₸"}
+        LAK{"₭"}
+        LBP{"L£"}
+        LKR{"Rs"}
+        LRD{"$"}
+        MGA{"Ar"}
+        MMK{"K"}
+        MNT{"₮"}
+        MUR{"Rs"}
+        MXN{"$"}
+        MYR{"RM"}
+        NAD{"$"}
+        NGN{"₦"}
+        NIO{"C$"}
+        NOK{"kr"}
+        NPR{"Rs"}
+        NZD{"$"}
+        PHP{"₱"}
+        PKR{"Rs"}
+        PLN{"zł"}
+        PYG{"₲"}
         RON{"L"}
+        RUB{"₽"}
+        RWF{"RF"}
+        SBD{"$"}
+        SEK{"kr"}
+        SGD{"$"}
+        SHP{"£"}
+        SRD{"$"}
+        SSP{"£"}
+        STN{"Db"}
         SYP{"S£"}
+        THB{"฿"}
+        TOP{"T$"}
+        TRY{"₺"}
+        TTD{"$"}
         TWD{"NT$"}
+        UAH{"₴"}
+        USD{"$"}
+        UYU{"$"}
+        VEF{"Bs"}
+        VND{"₫"}
+        XCD{"$"}
+        ZAR{"R"}
+        ZMW{"ZK"}
+    }
+    Currencies%variant{
+        GEL{"₾"}
+        TRY{"TL"}
     }
     CurrencyPlurals{
         ADP{
@@ -1796,16 +1883,16 @@ pt{
             other{"Libras libanesas"}
         }
         LKR{
-            one{"Rupia cingalesa"}
-            other{"Rupias cingalesas"}
+            one{"Rupia do Sri Lanka"}
+            other{"Rupias do Sri Lanka"}
         }
         LRD{
             one{"Dólar liberiano"}
             other{"Dólares liberianos"}
         }
         LSL{
-            one{"Loti lesotiano"}
-            other{"Lotis lesotianos"}
+            one{"Loti do Lesoto"}
+            other{"Lotis do Lesoto"}
         }
         LTL{
             one{"Litas lituano"}
@@ -1851,6 +1938,10 @@ pt{
             one{"Franco monegasco"}
             other{"Francos monegascos"}
         }
+        MDC{
+            one{"Cupon moldávio"}
+            other{"Cupon moldávio"}
+        }
         MDL{
             one{"Leu moldávio"}
             other{"Leus moldávios"}
@@ -1876,16 +1967,16 @@ pt{
             other{"Francos de Mali"}
         }
         MMK{
-            one{"Quiate mianmarense"}
-            other{"Quiates mianmarenses"}
+            one{"Quiat de Myanmar"}
+            other{"Quiat de Myanmar"}
         }
         MNT{
             one{"Tugrik mongol"}
             other{"Tugriks mongóis"}
         }
         MOP{
-            one{"Pataca macaense"}
-            other{"Patacas macaenses"}
+            one{"Pataca de Macau"}
+            other{"Patacas de Macau"}
         }
         MRO{
             one{"Ouguiya mauritana (1973–2017)"}
@@ -2099,13 +2190,9 @@ pt{
             one{"Coroa eslovaca"}
             other{"Coroas eslovacas"}
         }
-        SLE{
+        SLL{
             one{"Leone de Serra Leoa"}
             other{"Leones de Serra Leoa"}
-        }
-        SLL{
-            one{"Leone de Serra Leoa (1964—2022)"}
-            other{"Leones de Serra Leoa (1964—2022)"}
         }
         SOS{
             one{"Xelim somali"}
@@ -2259,6 +2346,10 @@ pt{
             one{"Dong vietnamita"}
             other{"Dongs vietnamitas"}
         }
+        VNN{
+            one{"Dong vietnamita (1978–1985)"}
+            other{"Dong vietnamita (1978–1985)"}
+        }
         VUV{
             one{"Vatu de Vanuatu"}
             other{"Vatus de Vanuatu"}
@@ -2330,6 +2421,10 @@ pt{
         XPT{
             one{"Platina"}
             other{"Platinas"}
+        }
+        XRE{
+            one{"Fundos RINET"}
+            other{"Fundos RINET"}
         }
         XTS{
             one{"Código de moeda de teste"}
@@ -2404,4 +2499,5 @@ pt{
         one{"{0} {1}"}
         other{"{0} {1}"}
     }
+    Version{"2.1.48.42"}
 }

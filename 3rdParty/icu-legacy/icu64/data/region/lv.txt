@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 lv{
     Countries{
         001{"pasaule"}
@@ -144,7 +143,7 @@ lv{
         ID{"Indonēzija"}
         IE{"Īrija"}
         IL{"Izraēla"}
-        IM{"Menas sala"}
+        IM{"Mena"}
         IN{"Indija"}
         IO{"Indijas okeāna Britu teritorija"}
         IQ{"Irāka"}
@@ -188,7 +187,7 @@ lv{
         ML{"Mali"}
         MM{"Mjanma (Birma)"}
         MN{"Mongolija"}
-        MO{"ĶTR īpašais administratīvais reģions Makao"}
+        MO{"Ķīnas īpašās pārvaldes apgabals Makao"}
         MP{"Ziemeļu Marianas salas"}
         MQ{"Martinika"}
         MR{"Mauritānija"}
@@ -223,7 +222,7 @@ lv{
         PM{"Senpjēra un Mikelona"}
         PN{"Pitkērnas salas"}
         PR{"Puertoriko"}
-        PS{"Palestīnas teritorijas"}
+        PS{"Palestīna"}
         PT{"Portugāle"}
         PW{"Palau"}
         PY{"Paragvaja"}
@@ -254,8 +253,8 @@ lv{
         SV{"Salvadora"}
         SX{"Sintmārtena"}
         SY{"Sīrija"}
-        SZ{"Svatini"}
-        TA{"Tristana da Kuņjas salu teritorijas"}
+        SZ{"Svazilenda"}
+        TA{"Tristana da Kuņas salas"}
         TC{"Tērksas un Kaikosas salas"}
         TD{"Čada"}
         TF{"Francijas Dienvidjūru teritorija"}
@@ -289,7 +288,7 @@ lv{
         WF{"Volisa un Futunas salas"}
         WS{"Samoa"}
         XA{"pseidoakcenti"}
-        XB{"pseidodivvirzienu"}
+        XB{"pseido-Bidi"}
         XK{"Kosova"}
         YE{"Jemena"}
         YT{"Majota"}
@@ -298,10 +297,8 @@ lv{
         ZW{"Zimbabve"}
         ZZ{"nezināms reģions"}
     }
-    Countries%chagos{
-        IO{"Čagosu arhipelāgs"}
-    }
     Countries%short{
+        GB{"Apvienotā Karaliste"}
         HK{"Honkonga"}
         MO{"Makao"}
         PS{"Palestīna"}
@@ -314,6 +311,6 @@ lv{
         CI{"Ziloņkaula krasts"}
         CZ{"Čehijas Republika"}
         FK{"Folklenda (Malvinu) salas"}
-        SZ{"Svazilenda"}
     }
+    Version{"2.1.48.43"}
 }

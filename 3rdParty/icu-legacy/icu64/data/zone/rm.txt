@@ -1,13 +1,16 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 rm{
+    Version{"2.1.48.4"}
     zoneStrings{
         "Africa:Addis_Ababa"{
             ec{"Addis Abeba"}
         }
         "Africa:Algiers"{
             ec{"Algier"}
+        }
+        "Africa:Asmera"{
+            ec{"Asmara"}
         }
         "Africa:Dar_es_Salaam"{
             ec{"Daressalam"}
@@ -16,7 +19,7 @@ rm{
             ec{"Dschibuti"}
         }
         "Africa:El_Aaiun"{
-            ec{"El Aaiún"}
+            ec{"El Ayun"}
         }
         "Africa:Khartoum"{
             ec{"Khartum"}
@@ -60,11 +63,17 @@ rm{
         "America:Belize"{
             ec{"Belmopan"}
         }
+        "America:Cancun"{
+            ec{"Cancún"}
+        }
         "America:Cayman"{
             ec{"Inslas Cayman"}
         }
         "America:Cordoba"{
             ec{"Córdoba"}
+        }
+        "America:Costa_Rica"{
+            ec{"San José"}
         }
         "America:Cuiaba"{
             ec{"Cuiabá"}
@@ -120,6 +129,9 @@ rm{
         "America:Mazatlan"{
             ec{"Mazatlán"}
         }
+        "America:Merida"{
+            ec{"Mérida"}
+        }
         "America:Mexico_City"{
             ec{"Citad da Mexico"}
         }
@@ -137,6 +149,9 @@ rm{
         }
         "America:North_Dakota:New_Salem"{
             ec{"North Dakota (New Salem)"}
+        }
+        "America:Port_of_Spain"{
+            ec{"Port-of-Spain"}
         }
         "America:Sao_Paulo"{
             ec{"São Paulo"}
@@ -158,6 +173,9 @@ rm{
         }
         "America:Tortola"{
             ec{"Road Town"}
+        }
+        "Antarctica:DumontDUrville"{
+            ec{"Dumont d’Urville"}
         }
         "Antarctica:McMurdo"{
             ec{"Mac Murdo"}
@@ -198,6 +216,9 @@ rm{
         "Asia:Krasnoyarsk"{
             ec{"Krasnojarsk"}
         }
+        "Asia:Macau"{
+            ec{"Macao"}
+        }
         "Asia:Makassar"{
             ec{"Macassar"}
         }
@@ -211,7 +232,7 @@ rm{
             ec{"Riyad"}
         }
         "Asia:Saigon"{
-            ec{"Citad da Ho Chi Minh"}
+            ec{"Ho Chi Minh"}
         }
         "Asia:Sakhalin"{
             ec{"Sachalin"}
@@ -270,11 +291,8 @@ rm{
         "Atlantic:Stanley"{
             ec{"Port Stanley"}
         }
-        "Etc:UTC"{
-            ls{"Temp universal coordinà"}
-        }
         "Etc:Unknown"{
-            ec{"citad nunenconuschenta"}
+            ec{"zona betg enconuschenta"}
         }
         "Europe:Athens"{
             ec{"Athen"}
@@ -284,6 +302,9 @@ rm{
         }
         "Europe:Bucharest"{
             ec{"Bucarest"}
+        }
+        "Europe:Copenhagen"{
+            ec{"Copenhaghen"}
         }
         "Europe:Guernsey"{
             ec{"Saint Peter Port"}
@@ -299,7 +320,6 @@ rm{
         }
         "Europe:London"{
             ec{"Londra"}
-            ld{"temp da stad britannic"}
         }
         "Europe:Luxembourg"{
             ec{"Luxemburg"}
@@ -313,11 +333,23 @@ rm{
         "Europe:Tirane"{
             ec{"Tirana"}
         }
+        "Europe:Uzhgorod"{
+            ec{"Uschgorod"}
+        }
+        "Europe:Vatican"{
+            ec{"Citad dal Vatican"}
+        }
         "Europe:Warsaw"{
             ec{"Varsovia"}
         }
+        "Europe:Zaporozhye"{
+            ec{"Saporischja"}
+        }
         "Europe:Zurich"{
             ec{"Turitg"}
+        }
+        "Indian:Chagos"{
+            ec{"Diego Garcia"}
         }
         "Indian:Christmas"{
             ec{"Flying Fish Cove"}
@@ -327,6 +359,9 @@ rm{
         }
         "Indian:Comoro"{
             ec{"Comoras"}
+        }
+        "Indian:Kerguelen"{
+            ec{"Port-aux-Français"}
         }
         "Indian:Maldives"{
             ec{"Maldivas"}
@@ -385,51 +420,8 @@ rm{
         "Pacific:Wallis"{
             ec{"Matāʻutu"}
         }
-        "meta:America_Central"{
-            ld{"Temp da stad central"}
-            lg{"Temp central"}
-            ls{"Temp da standard central"}
-        }
-        "meta:America_Eastern"{
-            ld{"Temp da stad oriental"}
-            lg{"Temp oriental"}
-            ls{"Temp da standard oriental"}
-        }
-        "meta:America_Mountain"{
-            ld{"Temp da stad da muntogna"}
-            lg{"Temp da muntogna"}
-            ls{"Temp da standard da muntogna"}
-        }
-        "meta:America_Pacific"{
-            ld{"Temp da stad pacific"}
-            lg{"Temp pacific"}
-            ls{"Temp da standard pacific"}
-        }
-        "meta:Atlantic"{
-            ld{"Temp da stad atlantic"}
-            lg{"Temp atlantic"}
-            ls{"Temp da standard atlantic"}
-        }
-        "meta:Europe_Central"{
-            ld{"Temp da stad da l’Europa Centrala"}
-            lg{"Temp da l’Europa Centrala"}
-            ls{"Temp da standard da l’Europa Centrala"}
-        }
-        "meta:Europe_Eastern"{
-            ld{"Temp da stad da l’Europa Orientala"}
-            lg{"Temp da l’Europa Orientala"}
-            ls{"Temp da standard da l’Europa Orientala"}
-        }
-        "meta:Europe_Western"{
-            ld{"Temp da stad da l’Europa dal Vest"}
-            lg{"Temp da l’Europa dal Vest"}
-            ls{"Temp da standard da l’Europa dal Vest"}
-        }
-        "meta:GMT"{
-            ls{"Temp Greenwich"}
-        }
-        regionFormat{"temp: {0}"}
-        regionFormatDaylight{"temp da stad: {0}"}
-        regionFormatStandard{"temp normal: {0}"}
+        fallbackFormat{"{1} ({0})"}
+        gmtFormat{"GMT{0}"}
+        hourFormat{"+HH:mm;-HH:mm"}
     }
 }

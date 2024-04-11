@@ -4,9 +4,9 @@
  License & terms of use: http://www.unicode.org/copyright.html
  Copyright (c) 2010-2015 International Business Machines Corporation and others. All rights reserved.
 -->
-<!DOCTYPE ldml SYSTEM "../../dtd/cldr/common/dtd/ldml.dtd"
+<!DOCTYPE ldml SYSTEM "http://www.unicode.org/repos/cldr/trunk/common/dtd/ldml.dtd"
 [
-   <!ENTITY % icu SYSTEM "../../dtd/cldr/common/dtd/ldmlICU.dtd">
+   <!ENTITY % icu SYSTEM "http://www.unicode.org/repos/cldr/trunk/common/dtd/ldmlICU.dtd">
    %icu;
 ]
 >
@@ -36,12 +36,6 @@
                 <icu:dictionary type="Mymr" icu:dependency="burmesedict.dict"/>
                 <icu:dictionary type="Thai" icu:dependency="thaidict.dict"/>
             </icu:dictionaries>
-            <!--
-            <icu:lstm>
-                <icu:lstmdata type="Thai" icu:dependency="Thai_graphclust_model4_heavy.res"/>
-                <icu:lstmdata type="Mymr" icu:dependency="Burmese_graphclust_model5_heavy.res"/>
-            </icu:lstm>
-            -->
         </icu:breakIteratorData>
     </special>
 </ldml>

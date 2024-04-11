@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ug{
+    Version{"2.1.49.82"}
     zoneStrings{
         "Africa:Sao_Tome"{
             ec{"سان-تومې"}
@@ -411,6 +411,9 @@ ug{
             lg{"ئاۋمېن ۋاقتى"}
             ls{"ئاۋمېن ئۆلچەملىك ۋاقتى"}
         }
+        "meta:Macquarie"{
+            ls{"ماككۇۋارى ئاراللىرى ۋاقتى"}
+        }
         "meta:Magadan"{
             ld{"ماگادان يازلىق ۋاقتى"}
             lg{"ماگادان ۋاقتى"}
@@ -435,6 +438,11 @@ ug{
         }
         "meta:Mawson"{
             ls{"ماۋسون ۋاقتى"}
+        }
+        "meta:Mexico_Northwest"{
+            ld{"مېكسىكا غەربىي شىمالىي قىسىم يازلىق ۋاقتى"}
+            lg{"مېكسىكا غەربىي شىمالىي قىسىم ۋاقتى"}
+            ls{"مېكسىكا غەربىي شىمالىي قىسىم ئۆلچەملىك ۋاقتى"}
         }
         "meta:Mexico_Pacific"{
             ld{"مېكسىكا تىنچ ئوكيان يازلىق ۋاقتى"}
@@ -479,9 +487,7 @@ ug{
             ls{"نىيۇئې ۋاقتى"}
         }
         "meta:Norfolk"{
-            ld{"نورفولك ئاراللىرى يازلىق ۋاقتى"}
-            lg{"نورفولك ئاراللىرى ۋاقتى"}
-            ls{"نورفولك ئاراللىرى ئۆلچەملىك ۋاقتى"}
+            ls{"نورفولك ئاراللىرى ۋاقتى"}
         }
         "meta:Noronha"{
             ld{"فېرناندو-نورونخا يازلىق ۋاقتى"}
@@ -662,6 +668,9 @@ ug{
             lg{"يېكاتېرىنبۇرگ ۋاقتى"}
             ls{"يېكاتېرىنبۇرگ ئۆلچەملىك ۋاقتى"}
         }
+        fallbackFormat{"{1} ({0})"}
+        gmtFormat{"GMT{0}"}
+        hourFormat{"+HH:mm;-HH:mm"}
         regionFormat{"{0} ۋاقتى"}
         regionFormatDaylight{"{0} يازلىق ۋاقتى"}
         regionFormatStandard{"{0} ئۆلچەملىك ۋاقتى"}

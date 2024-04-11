@@ -20,56 +20,29 @@
 class IntlCalendarTest: public CalendarTimeZoneTest {
 public:
     // IntlTest override
-    void runIndexedTest( int32_t index, UBool exec, const char* &name, char* par ) override;
+    void runIndexedTest( int32_t index, UBool exec, const char* &name, char* par );
 public:
-    void TestTypes();
+    void TestTypes(void);
 
-    void TestGregorian();
+    void TestGregorian(void);
 
-    void TestBuddhist();
-    void TestBuddhistFormat();
-    void TestBug21043Indian();
-    void TestBug21044Hebrew();
-    void TestBug21045Islamic();
-    void TestBug21046IslamicUmalqura();
+    void TestBuddhist(void);
+    void TestBuddhistFormat(void);
 
-    void TestTaiwan();
+    void TestTaiwan(void);
 
-    void TestJapanese();
-    void TestJapaneseFormat();
-    void TestJapanese3860();
-    void TestForceGannenNumbering();
+    void TestJapanese(void);
+    void TestJapaneseFormat(void);
+    void TestJapanese3860(void);
+    void TestForceGannenNumbering(void);
     
-    void TestPersian();
-    void TestPersianFormat();
-
-    void TestConsistencyGregorian();
-    void TestConsistencyCoptic();
-    void TestConsistencyEthiopic();
-    void TestConsistencyROC();
-    void TestConsistencyChinese();
-    void TestConsistencyDangi();
-    void TestConsistencyBuddhist();
-    void TestConsistencyEthiopicAmeteAlem();
-    void TestConsistencyHebrew();
-    void TestConsistencyIndian();
-    void TestConsistencyIslamic();
-    void TestConsistencyIslamicCivil();
-    void TestConsistencyIslamicRGSA();
-    void TestConsistencyIslamicTBLA();
-    void TestConsistencyIslamicUmalqura();
-    void TestConsistencyPersian();
-    void TestConsistencyJapanese();
-    void TestIslamicUmalquraCalendarSlow();
-    void TestJapaneseLargeEra();
+    void TestPersian(void);
+    void TestPersianFormat(void);
 
  protected:
     // Test a Gregorian-Like calendar
     void quasiGregorianTest(Calendar& cal, const Locale& gregoLocale, const int32_t *data);
     void simpleTest(const Locale& loc, const UnicodeString& expect, UDate expectDate, UErrorCode& status);
-    void checkConsistency(const char* locale);
-
-    int32_t daysToCheckInConsistency;
  
 public: // package
     // internal routine for checking date

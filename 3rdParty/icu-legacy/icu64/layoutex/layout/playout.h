@@ -69,7 +69,7 @@ typedef void pl_visualRun;
  * @param fontRuns a pointer to a <code>pl_fontRuns</code> object representing the font runs.
  *
  * @param levelRuns is a pointer to a <code>pl_valueRuns</code> object representing the directional levels.
- *        If this pointer in <code>NULL</code> the levels will be determined by running the Unicode
+ *        If this pointer in <code>NULL</code> the levels will be determined by running the Unicde
  *        Bidi algorithm.
  *
  * @param scriptRuns is a pointer to a <code>pl_valueRuns</code> object representing script runs.
@@ -77,12 +77,12 @@ typedef void pl_visualRun;
  *        Unicode code points.
  *
  * @param localeRuns is a pointer to a <code>pl_localeRuns</code> object representing locale runs.
- *        The <code>Locale</code> objects are used to determine the language of the text. If this
+ *        The <code>Locale</code> objects are used to determind the language of the text. If this
  *        pointer is <code>NULL</code> the default locale will be used for all of the text. 
  *
  * @param paragraphLevel is the directionality of the paragraph, as in the UBiDi object.
  *
- * @param vertical is <code>true</code> if the paragraph should be set vertically.
+ * @param vertical is <code>TRUE</code> if the paragraph should be set vertically.
  *
  * @param status will be set to any error code encountered during construction.
  *
@@ -95,7 +95,7 @@ typedef void pl_visualRun;
  *
  * @internal
  */
-U_CAPI pl_paragraph * U_EXPORT2
+U_INTERNAL pl_paragraph * U_EXPORT2
 pl_create(const LEUnicode chars[],
           le_int32 count,
           const pl_fontRuns *fontRuns,
@@ -115,7 +115,7 @@ pl_create(const LEUnicode chars[],
  *
  * @internal
  */
-U_CAPI void U_EXPORT2
+U_INTERNAL void U_EXPORT2
 pl_close(pl_paragraph *paragraph);
 
 /**
@@ -126,12 +126,12 @@ pl_close(pl_paragraph *paragraph);
  *
  * @param count is the number of characters in the paragraph.
  *
- * @return <code>true</code> if any of the text requires complex processing.
+ * @return <code>TRUE</code> if any of the text requires complex processing.
  *
  * @internal
  */
 
-U_CAPI le_bool U_EXPORT2
+U_INTERNAL le_bool U_EXPORT2
 pl_isComplex(const LEUnicode chars[],
           le_int32 count);
 
@@ -146,7 +146,7 @@ pl_isComplex(const LEUnicode chars[],
  *
  * @internal
  */
-U_CAPI UBiDiLevel U_EXPORT2
+U_INTERNAL UBiDiLevel U_EXPORT2
 pl_getParagraphLevel(pl_paragraph *paragraph);
 
 /**
@@ -160,10 +160,15 @@ pl_getParagraphLevel(pl_paragraph *paragraph);
  *
  * @internal
  */
-U_CAPI UBiDiDirection U_EXPORT2
+U_INTERNAL UBiDiDirection U_EXPORT2
 pl_getTextDirection(pl_paragraph *paragraph);
 
 /**
+ * Get the max ascent value for all the fonts
+ * in the paragraph.
+ *
+ * @param paragraph the <code>pl_paragraph</code>
+ *
  * Return the max ascent value for all the fonts
  * in the paragraph.
  *
@@ -173,7 +178,7 @@ pl_getTextDirection(pl_paragraph *paragraph);
  *
  * @internal
  */
-U_CAPI le_int32 U_EXPORT2
+U_INTERNAL le_int32 U_EXPORT2
 pl_getAscent(const pl_paragraph *paragraph);
 
 /**
@@ -186,7 +191,7 @@ pl_getAscent(const pl_paragraph *paragraph);
  *
  * @internal
  */
-U_CAPI le_int32 U_EXPORT2
+U_INTERNAL le_int32 U_EXPORT2
 pl_getDescent(const pl_paragraph *paragraph);
 
 /**
@@ -199,7 +204,7 @@ pl_getDescent(const pl_paragraph *paragraph);
  *
  * @internal
  */
-U_CAPI le_int32 U_EXPORT2
+U_INTERNAL le_int32 U_EXPORT2
 pl_getLeading(const pl_paragraph *paragraph);
 
 /**
@@ -209,7 +214,7 @@ pl_getLeading(const pl_paragraph *paragraph);
  *
  * @internal
  */
-U_CAPI void U_EXPORT2
+U_INTERNAL void U_EXPORT2
 pl_reflow(pl_paragraph *paragraph);
 
 /**
@@ -230,7 +235,7 @@ pl_reflow(pl_paragraph *paragraph);
  *
  * @internal
  */
-U_CAPI pl_line * U_EXPORT2
+U_INTERNAL pl_line * U_EXPORT2
 pl_nextLine(pl_paragraph *paragraph, float width);
 
 /**
@@ -242,7 +247,7 @@ pl_nextLine(pl_paragraph *paragraph, float width);
  *
  * @internal
  */
-U_CAPI void U_EXPORT2
+U_INTERNAL void U_EXPORT2
 pl_closeLine(pl_line *line);
 
 /**
@@ -254,7 +259,7 @@ pl_closeLine(pl_line *line);
  *
  * @internal
  */
-U_CAPI le_int32 U_EXPORT2
+U_INTERNAL le_int32 U_EXPORT2
 pl_countLineRuns(const pl_line *line);
 
 /**
@@ -267,7 +272,7 @@ pl_countLineRuns(const pl_line *line);
  *
  * @internal
  */
-U_CAPI le_int32 U_EXPORT2
+U_INTERNAL le_int32 U_EXPORT2
 pl_getLineAscent(const pl_line *line);
 
 /**
@@ -280,7 +285,7 @@ pl_getLineAscent(const pl_line *line);
  *
  * @internal
  */
-U_CAPI le_int32 U_EXPORT2
+U_INTERNAL le_int32 U_EXPORT2
 pl_getLineDescent(const pl_line *line);
 
 /**
@@ -293,7 +298,7 @@ pl_getLineDescent(const pl_line *line);
  *
  * @internal
  */
-U_CAPI le_int32 U_EXPORT2
+U_INTERNAL le_int32 U_EXPORT2
 pl_getLineLeading(const pl_line *line);
 
 /**
@@ -307,7 +312,7 @@ pl_getLineLeading(const pl_line *line);
  *
  * @internal
  */
-U_CAPI le_int32 U_EXPORT2
+U_INTERNAL le_int32 U_EXPORT2
 pl_getLineWidth(const pl_line *line);
 
 /**
@@ -326,7 +331,7 @@ pl_getLineWidth(const pl_line *line);
  *
  * @internal
  */
-U_CAPI const pl_visualRun * U_EXPORT2
+U_INTERNAL const pl_visualRun * U_EXPORT2
 pl_getLineVisualRun(const pl_line *line, le_int32 runIndex);
 
 /**
@@ -343,7 +348,7 @@ pl_getLineVisualRun(const pl_line *line, le_int32 runIndex);
  *
  * @internal
  */
-U_CAPI const le_font * U_EXPORT2
+U_INTERNAL const le_font * U_EXPORT2
 pl_getVisualRunFont(const pl_visualRun *run);
 
 /**
@@ -356,7 +361,7 @@ pl_getVisualRunFont(const pl_visualRun *run);
  *
  * @internal
  */
-U_CAPI UBiDiDirection U_EXPORT2
+U_INTERNAL UBiDiDirection U_EXPORT2
 pl_getVisualRunDirection(const pl_visualRun *run);
 
 /**
@@ -368,7 +373,7 @@ pl_getVisualRunDirection(const pl_visualRun *run);
  *
  * @internal
  */
-U_CAPI le_int32 U_EXPORT2
+U_INTERNAL le_int32 U_EXPORT2
 pl_getVisualRunGlyphCount(const pl_visualRun *run);
 
 /**
@@ -383,7 +388,7 @@ pl_getVisualRunGlyphCount(const pl_visualRun *run);
  *
  * @internal
  */
-U_CAPI const LEGlyphID * U_EXPORT2
+U_INTERNAL const LEGlyphID * U_EXPORT2
 pl_getVisualRunGlyphs(const pl_visualRun *run);
 
 /**
@@ -401,7 +406,7 @@ pl_getVisualRunGlyphs(const pl_visualRun *run);
  *
  * @internal
  */
-U_CAPI const float * U_EXPORT2
+U_INTERNAL const float * U_EXPORT2
 pl_getVisualRunPositions(const pl_visualRun *run);
 
 /**
@@ -416,7 +421,7 @@ pl_getVisualRunPositions(const pl_visualRun *run);
  *
  * @internal
  */
-U_CAPI const le_int32 * U_EXPORT2
+U_INTERNAL const le_int32 * U_EXPORT2
 pl_getVisualRunGlyphToCharMap(const pl_visualRun *run);
 
 /**
@@ -429,7 +434,7 @@ pl_getVisualRunGlyphToCharMap(const pl_visualRun *run);
  *
  * @internal
  */
-U_CAPI le_int32 U_EXPORT2
+U_INTERNAL le_int32 U_EXPORT2
 pl_getVisualRunAscent(const pl_visualRun *run);
 
 /**
@@ -442,7 +447,7 @@ pl_getVisualRunAscent(const pl_visualRun *run);
  *
  * @internal
  */
-U_CAPI le_int32 U_EXPORT2
+U_INTERNAL le_int32 U_EXPORT2
 pl_getVisualRunDescent(const pl_visualRun *run);
 
 /**
@@ -455,7 +460,7 @@ pl_getVisualRunDescent(const pl_visualRun *run);
  *
  * @internal
  */
-U_CAPI le_int32 U_EXPORT2
+U_INTERNAL le_int32 U_EXPORT2
 pl_getVisualRunLeading(const pl_visualRun *run);
 
 #endif  /* U_HIDE_INTERNAL_API */

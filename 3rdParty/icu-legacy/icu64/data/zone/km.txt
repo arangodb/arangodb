@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 km{
+    Version{"2.1.49.82"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"អាប៊ីដ្យាន"}
@@ -258,9 +258,6 @@ km{
         "America:Chihuahua"{
             ec{"ជីហួហួ"}
         }
-        "America:Ciudad_Juarez"{
-            ec{"ស៊ីអ៊ូដាដ ហ៊ូអារ៉េស"}
-        }
         "America:Coral_Harbour"{
             ec{"អាទីកូកាន"}
         }
@@ -465,6 +462,9 @@ km{
         "America:New_York"{
             ec{"ញូវយ៉ក"}
         }
+        "America:Nipigon"{
+            ec{"នីពីកុន"}
+        }
         "America:Nome"{
             ec{"ណូម"}
         }
@@ -485,6 +485,9 @@ km{
         }
         "America:Panama"{
             ec{"ប៉ាណាម៉ា"}
+        }
+        "America:Pangnirtung"{
+            ec{"ប៉ាងនីទុង"}
         }
         "America:Paramaribo"{
             ec{"ប៉ារ៉ាម៉ារីបូ"}
@@ -507,6 +510,9 @@ km{
         "America:Punta_Arenas"{
             ec{"ពុនតា អារ៉េណា"}
         }
+        "America:Rainy_River"{
+            ec{"រ៉េនីរីវើ"}
+        }
         "America:Rankin_Inlet"{
             ec{"រ៉ាន់ឃីន​អ៊ីនឡិត"}
         }
@@ -521,6 +527,9 @@ km{
         }
         "America:Rio_Branco"{
             ec{"រីយ៉ូប្រានកូ"}
+        }
+        "America:Santa_Isabel"{
+            ec{"សាន់តាអ៊ីសាប៊ែល"}
         }
         "America:Santarem"{
             ec{"សាន់តារឹម"}
@@ -567,6 +576,9 @@ km{
         "America:Thule"{
             ec{"ធុឡេ"}
         }
+        "America:Thunder_Bay"{
+            ec{"សាន់ដឺ​បេ"}
+        }
         "America:Tijuana"{
             ec{"ទីយ្យូអាណា"}
         }
@@ -587,6 +599,9 @@ km{
         }
         "America:Yakutat"{
             ec{"យ៉ាគូតាត"}
+        }
+        "America:Yellowknife"{
+            ec{"យេឡូណៃ"}
         }
         "Antarctica:Casey"{
             ec{"កាសី"}
@@ -795,9 +810,6 @@ km{
         "Asia:Qatar"{
             ec{"កាតា"}
         }
-        "Asia:Qostanay"{
-            ec{"កូស្ដេណេ"}
-        }
         "Asia:Qyzylorda"{
             ec{"គីហ្ស៊ីឡូដា"}
         }
@@ -912,6 +924,9 @@ km{
         "Australia:Broken_Hill"{
             ec{"ប្រូកខិនហីល"}
         }
+        "Australia:Currie"{
+            ec{"ខូរៀ"}
+        }
         "Australia:Darwin"{
             ec{"ដាវីន"}
         }
@@ -992,7 +1007,7 @@ km{
             ec{"ហ្គេនស៊ី"}
         }
         "Europe:Helsinki"{
-            ec{"ហែលស៊ិនគី"}
+            ec{"ហែលស៊ិងគី"}
         }
         "Europe:Isle_of_Man"{
             ec{"អែលអុហ្វម៉ែន"}
@@ -1056,7 +1071,7 @@ km{
             ec{"ប្រាក"}
         }
         "Europe:Riga"{
-            ec{"រីហ្កា"}
+            ec{"រីហ្គា"}
         }
         "Europe:Rome"{
             ec{"រ៉ូម"}
@@ -1094,6 +1109,9 @@ km{
         "Europe:Ulyanovsk"{
             ec{"អុលយ៉ាណូវស្កិ៍"}
         }
+        "Europe:Uzhgorod"{
+            ec{"អ៊ុយហ្គោរ៉ូដ"}
+        }
         "Europe:Vaduz"{
             ec{"វ៉ាឌូស"}
         }
@@ -1114,6 +1132,9 @@ km{
         }
         "Europe:Zagreb"{
             ec{"សាគ្រែប"}
+        }
+        "Europe:Zaporozhye"{
+            ec{"ហ្សាប៉ូរ៉ូហ្ស៊ីយ៉េ"}
         }
         "Europe:Zurich"{
             ec{"ហ៊្សូរីច"}
@@ -1196,8 +1217,8 @@ km{
         "Pacific:Honolulu"{
             ec{"ហូណូលូលូ"}
         }
-        "Pacific:Kanton"{
-            ec{"កាន់តុន"}
+        "Pacific:Johnston"{
+            ec{"ចនស្តុន"}
         }
         "Pacific:Kiritimati"{
             ec{"គិរីទីម៉ាទិ"}
@@ -1311,9 +1332,9 @@ km{
             ls{"ម៉ោងស្តង់ដារ​នៅតំបន់ភ្នំនៃទ្វីប​អាមេរិក​​​ខាង​ជើង"}
         }
         "meta:America_Pacific"{
-            ld{"ម៉ោងពេលថ្ងៃនៅប៉ាស៊ីហ្វិកអាមេរិក"}
-            lg{"ម៉ោងនៅប៉ាស៊ីហ្វិកអាមេរិក"}
-            ls{"ម៉ោងស្ដង់ដារនៅប៉ាស៊ីហ្វិកអាមេរិក"}
+            ld{"ម៉ោង​​ពេលថ្ងៃនៅទ្វីប​អាមរិក​ខាង​ជើងភាគខាងលិច"}
+            lg{"ម៉ោង​​នៅទ្វីប​អាមរិក​ខាង​ជើងភាគខាងលិច"}
+            ls{"ម៉ោងស្តង់ដារ​​​នៅទ្វីប​អាមរិក​ខាង​ជើងភាគខាងលិច"}
         }
         "meta:Apia"{
             ld{"ម៉ោង​ពេល​ថ្ងៃ​នៅ​អាប្យា"}
@@ -1610,6 +1631,9 @@ km{
             lg{"ម៉ោង​នៅ​ឡតហៅ"}
             ls{"ម៉ោង​ស្តង់ដារ​នៅ​ឡត​ហៅ"}
         }
+        "meta:Macquarie"{
+            ls{"ម៉ោង​នៅ​កោះ​ម៉ាកគែរី"}
+        }
         "meta:Magadan"{
             ld{"ម៉ោង​នៅ​ម៉ាហ្កាដាន​នារដូវ​ក្ដៅ"}
             lg{"ម៉ោង​នៅ​ម៉ាហ្កាដាន"}
@@ -1634,6 +1658,11 @@ km{
         }
         "meta:Mawson"{
             ls{"ម៉ោង​នៅ​ម៉ៅ​សាន់"}
+        }
+        "meta:Mexico_Northwest"{
+            ld{"ម៉ោង​ពេល​ថ្ងៃ​នៅ​ម៉ិកស៊ិកភាគពាយព្យ"}
+            lg{"ម៉ោង​នៅ​ម៉ិកស៊ិកភាគពាយព្យ"}
+            ls{"ម៉ោង​ស្តង់ដារនៅ​ម៉ិកស៊ិកភាគពាយព្យ"}
         }
         "meta:Mexico_Pacific"{
             ld{"ម៉ោង​ពេល​ថ្ងៃ​នៅ​ប៉ាស៊ីហ្វិក​ម៉ិកស៊ិក"}
@@ -1678,9 +1707,7 @@ km{
             ls{"ម៉ោងនៅ​នីវ៉េ"}
         }
         "meta:Norfolk"{
-            ld{"ម៉ោងនៅ​ណ័រហ្វក់នា​រដូវ​ក្ដៅ"}
-            lg{"ម៉ោង​នៅ​កោះ​ណ័រហ្វក់"}
-            ls{"ម៉ោង​ស្ដង់ដារ​នៅ​ណ័រហ្វក់"}
+            ls{"ម៉ោង​នៅ​កោះ​ន័រហ្វក់"}
         }
         "meta:Noronha"{
             ld{"ម៉ោង​នៅហ្វ៊ែណាន់ដូ​ដឺណូរ៉ូញ៉ានារដូវក្តៅ"}
@@ -1851,11 +1878,10 @@ km{
             lg{"ម៉ោង​នៅ​អ៊ិខាធឺរីនប៊័ក"}
             ls{"ម៉ោង​ស្តង់ដារ​នៅ​អ៊ិខាធឺរីនប៊័ក"}
         }
-        "meta:Yukon"{
-            ls{"ម៉ោងនៅយូខន់"}
-        }
+        fallbackFormat{"{1} ({0})"}
         gmtFormat{"ម៉ោង​សកល {0}"}
         gmtZeroFormat{"ម៉ោង​សកល"}
+        hourFormat{"+HH:mm;-HH:mm"}
         regionFormat{"ម៉ោង​នៅ​ {0}"}
         regionFormatDaylight{"ម៉ោង​ពេល​ថ្ងៃ​នៅ​ {0}"}
         regionFormatStandard{"ម៉ោង​ស្តង់ដារ​នៅ ​{0}"}

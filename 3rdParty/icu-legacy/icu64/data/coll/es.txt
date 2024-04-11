@@ -1,18 +1,18 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 es{
+    Version{"2.1.19.14"}
     collations{
         search{
             Sequence{
                 "[import und-u-co-search]"
                 "&N<ñ<<<Ñ"
             }
-            Version{"45"}
+            Version{"35.1"}
         }
         standard{
             Sequence{"&N<ñ<<<Ñ"}
-            Version{"45"}
+            Version{"35.1"}
         }
         traditional{
             Sequence{
@@ -20,7 +20,7 @@ es{
                 "&C<ch<<<Ch<<<CH"
                 "&l<ll<<<Ll<<<LL"
             }
-            Version{"45"}
+            Version{"35.1"}
         }
     }
 }

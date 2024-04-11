@@ -75,11 +75,6 @@
     void TestSafeClone(void);
 
     /**
-     * Test ucol_clone ()
-     **/
-    void TestClone(void);
-
-    /**
      * Test ucol_cloneBinary(), ucol_openBinary()
      **/
     void TestCloneBinary(void);
@@ -141,11 +136,6 @@
      * test strcoll with null arg
      */
     static void TestStrcollNull(void);
- 
-    /**
-     * Simple test for ICU-21460.  The issue affects all components, but was originally reported against collation.
-     */
-    static void TestLocaleIDWithUnderscoreAndExtension(void);
 
 #endif /* #if !UCONFIG_NO_COLLATION */
 

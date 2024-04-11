@@ -1,17 +1,24 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 sbp{
     AuxExemplarCharacters{"[q r x z]"}
     ExemplarCharacters{"[a b c d e f g h i j k l m n o p s t u v w y]"}
     ExemplarCharactersIndex{"[A B C D E F G H I J K L M N O P S T U V W Y]"}
+    ExemplarCharactersNumbers{"[\\- , . % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
     NumberElements{
         latn{
             patterns{
                 currencyFormat{"#,##0.00¤"}
+                decimalFormat{"#,##0.###"}
+                percentFormat{"#,##0%"}
+            }
+            symbols{
+                decimal{"."}
+                group{","}
             }
         }
     }
+    Version{"2.1.47.82"}
     calendar{
         generic{
             DateTimePatterns{
@@ -31,11 +38,17 @@ sbp{
             }
             availableFormats{
                 Ed{"E d"}
+                Hm{"HH:mm"}
+                Hms{"HH:mm:ss"}
+                M{"L"}
                 MEd{"E, M/d"}
+                MMM{"LLL"}
                 MMMEd{"E, MMM d"}
+                MMMd{"MMM d"}
                 Md{"M/d"}
-                hm{"h:mm a"}
-                hms{"h:mm:ss a"}
+                d{"d"}
+                hm{"h:mm a"}
+                hms{"h:mm:ss a"}
                 ms{"m:ss"}
                 y{"y"}
                 yM{"M/y"}
@@ -49,6 +62,10 @@ sbp{
             }
         }
         gregorian{
+            AmPmMarkers{
+                "Lwamilawu",
+                "Pashamihe",
+            }
             AmPmMarkersAbbr{
                 "Lwamilawu",
                 "Pashamihe",
@@ -70,12 +87,19 @@ sbp{
             }
             availableFormats{
                 Ed{"E d"}
+                Hm{"HH:mm"}
+                Hms{"HH:mm:ss"}
+                M{"L"}
                 MEd{"E, M/d"}
+                MMM{"LLL"}
                 MMMEd{"E, MMM d"}
+                MMMd{"MMM d"}
                 Md{"M/d"}
-                hm{"h:mm a"}
-                hms{"h:mm:ss a"}
+                d{"d"}
+                hm{"h:mm a"}
+                hms{"h:mm:ss a"}
                 ms{"m:ss"}
+                y{"y"}
                 yM{"M/y"}
                 yMEd{"E, M/d/y"}
                 yMMM{"MMM y"}
@@ -177,6 +201,12 @@ sbp{
                 }
             }
         }
+    }
+    delimiters{
+        alternateQuotationEnd{"’"}
+        alternateQuotationStart{"‘"}
+        quotationEnd{"”"}
+        quotationStart{"“"}
     }
     fields{
         day{

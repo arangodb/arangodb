@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 fr_CM{
+    Version{"2.1.47.70"}
     calendar{
         gregorian{
             AmPmMarkers{
@@ -9,6 +9,10 @@ fr_CM{
                 "soir",
             }
             AmPmMarkersAbbr{
+                "mat.",
+                "soir",
+            }
+            AmPmMarkersNarrow{
                 "mat.",
                 "soir",
             }
@@ -23,6 +27,14 @@ fr_CM{
             }
             dayPeriod{
                 stand-alone{
+                    abbreviated{
+                        am{"mat."}
+                        pm{"soir"}
+                    }
+                    narrow{
+                        am{"mat."}
+                        pm{"soir"}
+                    }
                     wide{
                         am{"matin"}
                         pm{"soir"}
@@ -31,22 +43,22 @@ fr_CM{
             }
             intervalFormats{
                 h{
-                    a{"h – h"}
-                    h{"h – h"}
+                    a{"h – h"}
+                    h{"h – h"}
                 }
                 hm{
-                    a{"h:mm – h:mm"}
-                    h{"h:mm – h:mm"}
-                    m{"h:mm – h:mm"}
+                    a{"h:mm – h:mm"}
+                    h{"h:mm – h:mm"}
+                    m{"h:mm – h:mm"}
                 }
                 hmv{
-                    a{"h:mm – h:mm v"}
-                    h{"h:mm – h:mm v"}
-                    m{"h:mm – h:mm v"}
+                    a{"h:mm – h:mm v"}
+                    h{"h:mm – h:mm v"}
+                    m{"h:mm – h:mm v"}
                 }
                 hv{
-                    a{"h – h v"}
-                    h{"h – h v"}
+                    a{"h – h v"}
+                    h{"h – h v"}
                 }
             }
         }

@@ -32,22 +32,22 @@
  */
 class TransliteratorErrorTest : public IntlTest {
 public:
-    void runIndexedTest(int32_t index, UBool exec, const char* &name, char* par=nullptr) override;
+    void runIndexedTest(int32_t index, UBool exec, const char* &name, char* par=NULL);
 
     /*Tests the returned error codes on all the APIs according to the API documentation. */
-    void TestTransliteratorErrors();
+    void TestTransliteratorErrors(void);
     
-    void TestUnicodeSetErrors();
+    void TestUnicodeSetErrors(void);
 
-    //void TestUniToHexErrors();
+    //void TestUniToHexErrors(void);
 
-    void TestRBTErrors();
+    void TestRBTErrors(void);
 
-    //void TestHexToUniErrors();
+    //void TestHexToUniErrors(void);
 
     // JitterBug 4452, for coverage.  The reason to put this method here is 
     //  this class is comparable smaller than other Transliterator*Test classes
-    void TestCoverage();
+    void TestCoverage(void);
 
 };
 

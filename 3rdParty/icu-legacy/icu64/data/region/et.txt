@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 et{
     Countries{
         001{"maailm"}
@@ -64,7 +63,7 @@ et{
         BM{"Bermuda"}
         BN{"Brunei"}
         BO{"Boliivia"}
-        BQ{"Kariibi Madalmaad"}
+        BQ{"Hollandi Kariibi mere saared"}
         BR{"Brasiilia"}
         BS{"Bahama"}
         BT{"Bhutan"}
@@ -78,14 +77,13 @@ et{
         CF{"Kesk-Aafrika Vabariik"}
         CG{"Kongo Vabariik"}
         CH{"Šveits"}
-        CI{"Elevandiluurannik"}
+        CI{"Côte d’Ivoire"}
         CK{"Cooki saared"}
         CL{"Tšiili"}
         CM{"Kamerun"}
         CN{"Hiina"}
         CO{"Colombia"}
         CP{"Clippertoni saar"}
-        CQ{"Sark"}
         CR{"Costa Rica"}
         CU{"Kuuba"}
         CV{"Roheneemesaared"}
@@ -117,7 +115,7 @@ et{
         FO{"Fääri saared"}
         FR{"Prantsusmaa"}
         GA{"Gabon"}
-        GB{"Ühendkuningriik"}
+        GB{"Suurbritannia"}
         GD{"Grenada"}
         GE{"Gruusia"}
         GF{"Prantsuse Guajaana"}
@@ -276,7 +274,7 @@ et{
         UA{"Ukraina"}
         UG{"Uganda"}
         UM{"Ühendriikide hajasaared"}
-        UN{"Ühinenud Rahvaste Organisatsioon"}
+        UN{"Ühendatud Rahvaste Organisatsioon"}
         US{"Ameerika Ühendriigid"}
         UY{"Uruguay"}
         UZ{"Usbekistan"}
@@ -297,10 +295,7 @@ et{
         ZA{"Lõuna-Aafrika Vabariik"}
         ZM{"Sambia"}
         ZW{"Zimbabwe"}
-        ZZ{"tundmatu piirkond"}
-    }
-    Countries%chagos{
-        IO{"Chagose saared"}
+        ZZ{"Tundmatu piirkond"}
     }
     Countries%short{
         GB{"ÜK"}
@@ -313,11 +308,11 @@ et{
     Countries%variant{
         CD{"Kongo-Kinshasa"}
         CG{"Kongo-Brazzaville"}
-        CI{"Côte d’Ivoire"}
-        CZ{"Tšehhi Vabariik"}
-        FK{"Falklandi saared (Malviini saared)"}
-        NZ{"Aotearoa Uus-Meremaa"}
+        CI{"Elevandiluurannik"}
+        CZ{"Tšehhia"}
+        FK{"Malviini saared"}
         SZ{"eSwatini"}
         TL{"Timor-Leste"}
     }
+    Version{"2.1.48.42"}
 }

@@ -1,7 +1,7 @@
 /*  
 *************************************************************************
 *   © 2016 and later: Unicode, Inc. and others.
-*   License & terms of use: http://www.unicode.org/copyright.html
+*   License & terms of use: http://www.unicode.org/copyright.html#License
 *************************************************************************
 *************************************************************************
 *   Copyright (C) 2007, International Business Machines
@@ -21,17 +21,8 @@
 *   for supplementary code points.
 */
 
-#include "cmemory.h"
-#include "unicode/uniset.h"
-#include "unicode/uobject.h"
-#include "unicode/usetiter.h"
 #include "unicode/utypes.h"
 #include "unicont.h"
-#include "utrie.h"
-
-using icu::UObject;
-using icu::UnicodeSet;
-using icu::UnicodeSetIterator;
 
 #define UTRIE_GET8_LATIN1(trie) ((const uint8_t *)(trie)->data32+UTRIE_DATA_BLOCK_LENGTH)
 
@@ -44,16 +35,16 @@ using icu::UnicodeSetIterator;
 class TrieSet : public UObject, public UnicodeContainable {
 public:
     TrieSet(const UnicodeSet &set, UErrorCode &errorCode)
-            : trieData(nullptr), latin1(nullptr), restSet(set.clone()) {
+            : trieData(NULL), latin1(NULL), restSet(set.clone()) {
         if(U_FAILURE(errorCode)) {
             return;
         }
-        if(restSet==nullptr) {
+        if(restSet==NULL) {
             errorCode=U_MEMORY_ALLOCATION_ERROR;
             return;
         }
 
-        UNewTrie *newTrie=utrie_open(nullptr, nullptr, 0x11000, 0, 0, true);
+        UNewTrie *newTrie=utrie_open(NULL, NULL, 0x11000, 0, 0, TRUE);
         UChar32 start, end;
 
         UnicodeSetIterator iter(set);
@@ -67,26 +58,26 @@ public:
             if(end>0xffff) {
                 end=0xffff;
             }
-            if(!utrie_setRange32(newTrie, start, end+1, true, true)) {
+            if(!utrie_setRange32(newTrie, start, end+1, TRUE, TRUE)) {
                 errorCode=U_INTERNAL_PROGRAM_ERROR;
                 return;
             }
         }
 
         // Preflight the trie length.
-        int32_t length=utrie_serialize(newTrie, nullptr, 0, nullptr, 8, &errorCode);
+        int32_t length=utrie_serialize(newTrie, NULL, 0, NULL, 8, &errorCode);
         if(errorCode!=U_BUFFER_OVERFLOW_ERROR) {
             return;
         }
 
         trieData=(uint32_t *)uprv_malloc(length);
-        if(trieData==nullptr) {
+        if(trieData==NULL) {
             errorCode=U_MEMORY_ALLOCATION_ERROR;
             return;
         }
 
         errorCode=U_ZERO_ERROR;
-        utrie_serialize(newTrie, trieData, length, nullptr, 8, &errorCode);
+        utrie_serialize(newTrie, trieData, length, NULL, 8, &errorCode);
         utrie_unserialize(&trie, trieData, length, &errorCode);  // TODO: Implement for 8-bit UTrie!
 
         if(U_SUCCESS(errorCode)) {
@@ -98,7 +89,7 @@ public:
             latin1=UTRIE_GET8_LATIN1(&trie);
         }
 
-        restSet->remove(0, 0xffff);
+        restSet.remove(0, 0xffff);
     }
 
     ~TrieSet() {

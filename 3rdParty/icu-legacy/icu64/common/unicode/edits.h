@@ -8,9 +8,6 @@
 #define __EDITS_H__
 
 #include "unicode/utypes.h"
-
-#if U_SHOW_CPLUSPLUS_API
-
 #include "unicode/uobject.h"
 
 /**
@@ -77,7 +74,7 @@ class UnicodeString;
  *
  * @stable ICU 59
  */
-class U_COMMON_API Edits final : public UMemory {
+class U_COMMON_API Edits U_FINAL : public UMemory {
 public:
     /**
      * Constructs an empty object.
@@ -103,7 +100,7 @@ public:
      * @param src source edits
      * @stable ICU 60
      */
-    Edits(Edits &&src) noexcept :
+    Edits(Edits &&src) U_NOEXCEPT :
             array(stackArray), capacity(STACK_CAPACITY), length(src.length),
             delta(src.delta), numChanges(src.numChanges),
             errorCode_(src.errorCode_) {
@@ -132,13 +129,13 @@ public:
      * @return *this
      * @stable ICU 60
      */
-    Edits &operator=(Edits &&src) noexcept;
+    Edits &operator=(Edits &&src) U_NOEXCEPT;
 
     /**
      * Resets the data but may not release memory.
      * @stable ICU 59
      */
-    void reset() noexcept;
+    void reset() U_NOEXCEPT;
 
     /**
      * Adds a no-change edit: a record for an unchanged segment of text.
@@ -159,10 +156,10 @@ public:
      * @param outErrorCode Set to an error code if it does not contain one already
      *                  and an error occurred while recording edits.
      *                  Otherwise unchanged.
-     * @return true if U_FAILURE(outErrorCode)
+     * @return TRUE if U_FAILURE(outErrorCode)
      * @stable ICU 59
      */
-    UBool copyErrorTo(UErrorCode &outErrorCode) const;
+    UBool copyErrorTo(UErrorCode &outErrorCode);
 
     /**
      * How much longer is the new text compared with the old text?
@@ -171,7 +168,7 @@ public:
      */
     int32_t lengthDelta() const { return delta; }
     /**
-     * @return true if there are any change edits
+     * @return TRUE if there are any change edits
      * @stable ICU 59
      */
     UBool hasChanges() const { return numChanges != 0; }
@@ -200,15 +197,15 @@ public:
      * @see getFineIterator
      * @stable ICU 59
      */
-    struct U_COMMON_API Iterator final : public UMemory {
+    struct U_COMMON_API Iterator U_FINAL : public UMemory {
         /**
          * Default constructor, empty iterator.
          * @stable ICU 60
          */
         Iterator() :
                 array(nullptr), index(0), length(0),
-                remaining(0), onlyChanges_(false), coarse(false),
-                dir(0), changed(false), oldLength_(0), newLength_(0),
+                remaining(0), onlyChanges_(FALSE), coarse(FALSE),
+                dir(0), changed(FALSE), oldLength_(0), newLength_(0),
                 srcIndex(0), replIndex(0), destIndex(0) {}
         /**
          * Copy constructor.
@@ -226,7 +223,7 @@ public:
          * @param errorCode ICU error code. Its input value must pass the U_SUCCESS() test,
          *                  or else the function returns immediately. Check for U_FAILURE()
          *                  on output or use with function chaining. (See User Guide for details.)
-         * @return true if there is another edit
+         * @return TRUE if there is another edit
          * @stable ICU 59
          */
         UBool next(UErrorCode &errorCode) { return next(onlyChanges_, errorCode); }
@@ -247,11 +244,11 @@ public:
          * @param errorCode ICU error code. Its input value must pass the U_SUCCESS() test,
          *                  or else the function returns immediately. Check for U_FAILURE()
          *                  on output or use with function chaining. (See User Guide for details.)
-         * @return true if the edit for the source index was found
+         * @return TRUE if the edit for the source index was found
          * @stable ICU 59
          */
         UBool findSourceIndex(int32_t i, UErrorCode &errorCode) {
-            return findIndex(i, true, errorCode) == 0;
+            return findIndex(i, TRUE, errorCode) == 0;
         }
 
         /**
@@ -270,11 +267,11 @@ public:
          * @param errorCode ICU error code. Its input value must pass the U_SUCCESS() test,
          *                  or else the function returns immediately. Check for U_FAILURE()
          *                  on output or use with function chaining. (See User Guide for details.)
-         * @return true if the edit for the destination index was found
+         * @return TRUE if the edit for the destination index was found
          * @stable ICU 60
          */
         UBool findDestinationIndex(int32_t i, UErrorCode &errorCode) {
-            return findIndex(i, false, errorCode) == 0;
+            return findIndex(i, FALSE, errorCode) == 0;
         }
 
         /**
@@ -328,8 +325,8 @@ public:
         /**
          * Returns whether the edit currently represented by the iterator is a change edit.
          *
-         * @return true if this edit replaces oldLength() units with newLength() different ones.
-         *         false if oldLength units remain unchanged.
+         * @return TRUE if this edit replaces oldLength() units with newLength() different ones.
+         *         FALSE if oldLength units remain unchanged.
          * @stable ICU 59
          */
         UBool hasChange() const { return changed; }
@@ -347,8 +344,8 @@ public:
          * {@link #destinationIndex}, or in the replacement string, which starts at
          * {@link #replacementIndex}.
          *
-         * @return the number of units in the modified string, if hasChange() is true.
-         *         Same as oldLength if hasChange() is false.
+         * @return the number of units in the modified string, if hasChange() is TRUE.
+         *         Same as oldLength if hasChange() is FALSE.
          * @stable ICU 59
          */
         int32_t newLength() const { return newLength_; }
@@ -436,7 +433,7 @@ public:
      * @stable ICU 59
      */
     Iterator getCoarseChangesIterator() const {
-        return Iterator(array, length, true, true);
+        return Iterator(array, length, TRUE, TRUE);
     }
 
     /**
@@ -448,7 +445,7 @@ public:
      * @stable ICU 59
      */
     Iterator getCoarseIterator() const {
-        return Iterator(array, length, false, true);
+        return Iterator(array, length, FALSE, TRUE);
     }
 
     /**
@@ -460,7 +457,7 @@ public:
      * @stable ICU 59
      */
     Iterator getFineChangesIterator() const {
-        return Iterator(array, length, true, false);
+        return Iterator(array, length, TRUE, FALSE);
     }
 
     /**
@@ -471,7 +468,7 @@ public:
      * @stable ICU 59
      */
     Iterator getFineIterator() const {
-        return Iterator(array, length, false, false);
+        return Iterator(array, length, FALSE, FALSE);
     }
 
     /**
@@ -504,9 +501,9 @@ public:
     Edits &mergeAndAppend(const Edits &ab, const Edits &bc, UErrorCode &errorCode);
 
 private:
-    void releaseArray() noexcept;
+    void releaseArray() U_NOEXCEPT;
     Edits &copyArray(const Edits &other);
-    Edits &moveArray(Edits &src) noexcept;
+    Edits &moveArray(Edits &src) U_NOEXCEPT;
 
     void setLastUnit(int32_t last) { array[length - 1] = (uint16_t)last; }
     int32_t lastUnit() const { return length > 0 ? array[length - 1] : 0xffff; }
@@ -525,7 +522,5 @@ private:
 };
 
 U_NAMESPACE_END
-
-#endif /* U_SHOW_CPLUSPLUS_API */
 
 #endif  // __EDITS_H__

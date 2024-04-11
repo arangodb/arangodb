@@ -11,7 +11,7 @@ set ICU_ARCH=%1
 set ICU_DBRL=%2
 
 if "%1" == "" (
-echo Usage: %0 "x86 or x64 or ARM or ARM64"  "Debug or Release"
+echo Usage: %0 "x86 or x64"  "Debug or Release"
 exit /b 1
 )
 
@@ -25,13 +25,9 @@ set ICU_OPATH=%PATH%
 set ICU_ICUDIR="%~dp0"\..\..
 
 if "%ICU_ARCH%" == "x64" (
-    set ICU_BINDIR=%~dp0\..\..\bin64
-) else if "%ICU_ARCH%" == "ARM64" (
-    set ICU_BINDIR=%~dp0\..\..\binARM64
-) else if "%ICU_ARCH%" == "ARM" (
-    set ICU_BINDIR=%~dp0\..\..\binARM
+set ICU_BINDIR=%~dp0\..\..\bin64
 ) else (
-    set ICU_BINDIR=%~dp0\..\..\bin
+set ICU_BINDIR=%~dp0\..\..\bin
 )
 
 set PATH=%ICU_BINDIR%;%PATH%

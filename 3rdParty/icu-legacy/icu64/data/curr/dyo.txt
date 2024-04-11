@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 dyo{
     Currencies{
         AOA{
@@ -120,8 +119,9 @@ dyo{
             "seefa BEAC",
         }
         XOF{
-            "F CFA",
+            "CFA",
             "seefa yati BCEAO",
         }
     }
+    Version{"2.1.47.82"}
 }

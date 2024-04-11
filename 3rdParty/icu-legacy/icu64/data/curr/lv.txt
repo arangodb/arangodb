@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 lv{
     Currencies{
         AED{
@@ -615,13 +614,9 @@ lv{
             "SKK",
             "Slovakijas krona",
         }
-        SLE{
-            "SLE",
-            "Sjerraleones leone",
-        }
         SLL{
             "SLL",
-            "Sjerraleones leone (1964—2022)",
+            "Sjerraleones leone",
         }
         SOS{
             "SOS",
@@ -796,7 +791,7 @@ lv{
             "Francijas UIC franks",
         }
         XOF{
-            "F CFA",
+            "CFA",
             "Rietumāfrikas CFA franks",
         }
         XPD{
@@ -845,9 +840,104 @@ lv{
         }
     }
     Currencies%narrow{
+        AOA{"Kz"}
+        ARS{"$"}
+        AUD{"$"}
+        BAM{"KM"}
+        BBD{"$"}
+        BDT{"৳"}
+        BMD{"$"}
+        BND{"$"}
+        BOB{"Bs"}
+        BRL{"R$"}
+        BSD{"$"}
+        BWP{"P"}
         BYN{"р."}
-        GHS{"GHS"}
+        BZD{"$"}
+        CAD{"$"}
+        CLP{"$"}
+        CNY{"¥"}
+        COP{"$"}
+        CRC{"₡"}
+        CUC{"$"}
+        CUP{"$"}
+        CZK{"Kč"}
+        DKK{"kr"}
+        DOP{"$"}
+        EGP{"E£"}
+        EUR{"€"}
+        FJD{"$"}
+        FKP{"£"}
+        GBP{"£"}
+        GEL{"₾"}
+        GIP{"£"}
+        GNF{"FG"}
+        GTQ{"Q"}
+        GYD{"$"}
+        HKD{"$"}
+        HNL{"L"}
+        HRK{"kn"}
+        HUF{"Ft"}
+        IDR{"Rp"}
+        ILS{"₪"}
+        INR{"₹"}
+        ISK{"kr"}
+        JMD{"$"}
+        JPY{"¥"}
+        KHR{"៛"}
+        KMF{"CF"}
+        KPW{"₩"}
+        KRW{"₩"}
+        KYD{"$"}
+        KZT{"₸"}
+        LAK{"₭"}
+        LBP{"L£"}
+        LKR{"Rs"}
+        LRD{"$"}
+        MGA{"Ar"}
+        MMK{"K"}
+        MNT{"₮"}
+        MUR{"Rs"}
+        MXN{"$"}
+        MYR{"RM"}
+        NAD{"$"}
+        NGN{"₦"}
+        NIO{"C$"}
+        NOK{"kr"}
+        NPR{"Rs"}
+        NZD{"$"}
+        PHP{"₱"}
+        PKR{"Rs"}
+        PLN{"zł"}
+        PYG{"₲"}
+        RON{"lei"}
+        RUB{"₽"}
+        RWF{"RF"}
+        SBD{"$"}
+        SEK{"kr"}
+        SGD{"$"}
+        SHP{"£"}
+        SRD{"$"}
+        SSP{"£"}
+        STN{"Db"}
+        SYP{"£"}
+        THB{"฿"}
+        TOP{"T$"}
+        TRY{"₺"}
+        TTD{"$"}
         TWD{"NT$"}
+        UAH{"₴"}
+        USD{"$"}
+        UYU{"$"}
+        VEF{"Bs"}
+        VND{"₫"}
+        XCD{"$"}
+        ZAR{"R"}
+        ZMW{"ZK"}
+    }
+    Currencies%variant{
+        GEL{"₾"}
+        TRY{"TL"}
     }
     CurrencyPlurals{
         AED{
@@ -879,6 +969,11 @@ lv{
             one{"Angolas kvanza"}
             other{"Angolas kvanzas"}
             zero{"Angolas kvanzas"}
+        }
+        ARS{
+            one{"Argentīnas peso"}
+            other{"Argentīnas peso"}
+            zero{"Argentīnas peso"}
         }
         AUD{
             one{"Austrālijas dolārs"}
@@ -945,6 +1040,11 @@ lv{
             other{"Brunejas dolāri"}
             zero{"Brunejas dolāri"}
         }
+        BOB{
+            one{"Bolīvijas boliviano"}
+            other{"Bolīvijas boliviano"}
+            zero{"Bolīvijas boliviano"}
+        }
         BRL{
             one{"Brazīlijas reāls"}
             other{"Brazīlijas reāli"}
@@ -995,6 +1095,11 @@ lv{
             other{"Šveices franki"}
             zero{"Šveices franki"}
         }
+        CLP{
+            one{"Čīles peso"}
+            other{"Čīles peso"}
+            zero{"Čīles peso"}
+        }
         CNH{
             one{"Ķīnas juaņa (ofšors)"}
             other{"Ķīnas juaņas (ofšors)"}
@@ -1005,6 +1110,11 @@ lv{
             other{"Ķīnas juaņi"}
             zero{"Ķīnas juaņi"}
         }
+        COP{
+            one{"Kolumbijas peso"}
+            other{"Kolumbijas peso"}
+            zero{"Kolumbijas peso"}
+        }
         CRC{
             one{"Kostarikas kolons"}
             other{"Kostarikas koloni"}
@@ -1014,6 +1124,16 @@ lv{
             one{"Kubas konvertējamais peso"}
             other{"Kubas konvertējamie peso"}
             zero{"Kubas konvertējamie peso"}
+        }
+        CUP{
+            one{"Kubas peso"}
+            other{"Kubas peso"}
+            zero{"Kubas peso"}
+        }
+        CVE{
+            one{"Kaboverdes eskudo"}
+            other{"Kaboverdes eskudo"}
+            zero{"Kaboverdes eskudo"}
         }
         CZK{
             one{"Čehijas krona"}
@@ -1029,6 +1149,11 @@ lv{
             one{"Dānijas krona"}
             other{"Dānijas kronas"}
             zero{"Dānijas kronas"}
+        }
+        DOP{
+            one{"Dominikānas peso"}
+            other{"Dominikānas peso"}
+            zero{"Dominikānas peso"}
         }
         DZD{
             one{"Alžīrijas dinārs"}
@@ -1050,6 +1175,11 @@ lv{
             other{"Etiopijas biri"}
             zero{"Etiopijas biri"}
         }
+        EUR{
+            one{"eiro"}
+            other{"eiro"}
+            zero{"eiro"}
+        }
         FJD{
             one{"Fidži dolārs"}
             other{"Fidži dolāri"}
@@ -1065,10 +1195,25 @@ lv{
             other{"Lielbritānijas mārciņas"}
             zero{"Lielbritānijas mārciņas"}
         }
+        GEL{
+            one{"Gruzijas lari"}
+            other{"Gruzijas lari"}
+            zero{"Gruzijas lari"}
+        }
+        GHS{
+            one{"Ganas sedi"}
+            other{"Ganas sedi"}
+            zero{"Ganas sedi"}
+        }
         GIP{
             one{"Gibraltāra mārciņa"}
             other{"Gibraltāra mārciņas"}
             zero{"Gibraltāra mārciņas"}
+        }
+        GMD{
+            one{"Gambijas dalasi"}
+            other{"Gambijas dalasi"}
+            zero{"Gambijas dalasi"}
         }
         GNF{
             one{"Gvinejas franks"}
@@ -1245,6 +1390,11 @@ lv{
             other{"Moldovas lejas"}
             zero{"Moldovas lejas"}
         }
+        MGA{
+            one{"Madagaskaras ariari"}
+            other{"Madagaskaras ariari"}
+            zero{"Madagaskaras ariari"}
+        }
         MKD{
             one{"Maķedonijas denārs"}
             other{"Maķedonijas denāri"}
@@ -1289,6 +1439,11 @@ lv{
             one{"Malāvijas kvača"}
             other{"Malāvijas kvačas"}
             zero{"Malāvijas kvačas"}
+        }
+        MXN{
+            one{"Meksikas peso"}
+            other{"Meksikas peso"}
+            zero{"Meksikas peso"}
         }
         MYR{
             one{"Malaizijas ringits"}
@@ -1340,6 +1495,11 @@ lv{
             other{"Omānas riāli"}
             zero{"Omānas riāli"}
         }
+        PAB{
+            one{"Panamas balboa"}
+            other{"Panamas balboa"}
+            zero{"Panamas balboa"}
+        }
         PEN{
             one{"Peru sols"}
             other{"Peru soli"}
@@ -1350,6 +1510,11 @@ lv{
             other{"Papua-Jaungvinejas kinas"}
             zero{"Papua-Jaungvinejas kinas"}
         }
+        PHP{
+            one{"Filipīnu peso"}
+            other{"Filipīnu peso"}
+            zero{"Filipīnu peso"}
+        }
         PKR{
             one{"Pakistānas rūpija"}
             other{"Pakistānas rūpijas"}
@@ -1359,6 +1524,11 @@ lv{
             one{"Polijas zlots"}
             other{"Polijas zloti"}
             zero{"Polijas zloti"}
+        }
+        PYG{
+            one{"Paragvajas guarani"}
+            other{"Paragvajas guarani"}
+            zero{"Paragvajas guarani"}
         }
         QAR{
             one{"Kataras riāls"}
@@ -1425,15 +1595,10 @@ lv{
             other{"Sv.Helēnas salas mārciņas"}
             zero{"Sv.Helēnas salas mārciņas"}
         }
-        SLE{
+        SLL{
             one{"Sjerraleones leone"}
             other{"Sjerraleones leones"}
             zero{"Sjerraleones leones"}
-        }
-        SLL{
-            one{"Sjerraleones leone (1964—2022)"}
-            other{"Sjerraleones leones (1964—2022)"}
-            zero{"Sjerraleones leones (1964—2022)"}
         }
         SOS{
             one{"Somālijas šiliņš"}
@@ -1464,6 +1629,11 @@ lv{
             one{"Sīrijas mārciņa"}
             other{"Sīrijas mārciņas"}
             zero{"Sīrijas mārciņas"}
+        }
+        SZL{
+            one{"Svazilendas lilangeni"}
+            other{"Svazilendas lilangeni"}
+            zero{"Svazilendas lilangeni"}
         }
         THB{
             one{"Taizemes bāts"}
@@ -1535,6 +1705,11 @@ lv{
             other{"ASV dolāri"}
             zero{"ASV dolāri"}
         }
+        UYU{
+            one{"Urugvajas peso"}
+            other{"Urugvajas peso"}
+            zero{"Urugvajas peso"}
+        }
         UZS{
             one{"Uzbekistānas sums"}
             other{"Uzbekistānas sumi"}
@@ -1554,6 +1729,16 @@ lv{
             one{"Venecuēlas bolivārs"}
             other{"Venecuēlas bolivāri"}
             zero{"Venecuēlas bolivāri"}
+        }
+        VND{
+            one{"Vjetnamas dongi"}
+            other{"Vjetnamas dongi"}
+            zero{"Vjetnamas dongi"}
+        }
+        VUV{
+            one{"Vanuatu vatu"}
+            other{"Vanuatu vatu"}
+            zero{"Vanuatu vatu"}
         }
         WST{
             one{"Samoa tala"}
@@ -1636,4 +1821,5 @@ lv{
         other{"{0} {1}"}
         zero{"{0} {1}"}
     }
+    Version{"2.1.48.43"}
 }

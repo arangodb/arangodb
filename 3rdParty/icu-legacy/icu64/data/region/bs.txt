@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 bs{
     Countries{
         001{"Svijet"}
@@ -84,10 +83,10 @@ bs{
         CM{"Kamerun"}
         CN{"Kina"}
         CO{"Kolumbija"}
-        CP{"Ostrvo Clipperton"}
+        CP{"Ostrvo Kliperton"}
         CR{"Kostarika"}
         CU{"Kuba"}
-        CV{"Zelenortska Ostrva"}
+        CV{"Kape Verde"}
         CW{"Kurasao"}
         CX{"Božićno ostrvo"}
         CY{"Kipar"}
@@ -116,11 +115,11 @@ bs{
         FO{"Farska ostrva"}
         FR{"Francuska"}
         GA{"Gabon"}
-        GB{"Ujedinjeno Kraljevstvo"}
+        GB{"Velika Britanija"}
         GD{"Grenada"}
         GE{"Gruzija"}
         GF{"Francuska Gvajana"}
-        GG{"Guernsey"}
+        GG{"Gernzi"}
         GH{"Gana"}
         GI{"Gibraltar"}
         GL{"Grenland"}
@@ -135,7 +134,7 @@ bs{
         GW{"Gvineja-Bisao"}
         GY{"Gvajana"}
         HK{"Hong Kong (SAR Kina)"}
-        HM{"Ostrvo Heard i arhipelag McDonald"}
+        HM{"Herd i arhipelag MekDonald"}
         HN{"Honduras"}
         HR{"Hrvatska"}
         HT{"Haiti"}
@@ -146,6 +145,7 @@ bs{
         IL{"Izrael"}
         IM{"Ostrvo Man"}
         IN{"Indija"}
+        IO{"Britanska Teritorija u Indijskom Okeanu"}
         IQ{"Irak"}
         IR{"Iran"}
         IS{"Island"}
@@ -185,7 +185,7 @@ bs{
         MH{"Maršalova ostrva"}
         MK{"Sjeverna Makedonija"}
         ML{"Mali"}
-        MM{"Mijanmar"}
+        MM{"Mjanmar"}
         MN{"Mongolija"}
         MO{"Makao (SAR Kina)"}
         MP{"Sjeverna Marijanska ostrva"}
@@ -205,7 +205,7 @@ bs{
         NF{"Ostrvo Norfolk"}
         NG{"Nigerija"}
         NI{"Nikaragva"}
-        NL{"Nizozemska"}
+        NL{"Holandija"}
         NO{"Norveška"}
         NP{"Nepal"}
         NR{"Nauru"}
@@ -241,7 +241,7 @@ bs{
         SG{"Singapur"}
         SH{"Sveta Helena"}
         SI{"Slovenija"}
-        SJ{"Svalbard i Jan Mayen"}
+        SJ{"Svalbard i Jan Majen"}
         SK{"Slovačka"}
         SL{"Sijera Leone"}
         SM{"San Marino"}
@@ -253,7 +253,7 @@ bs{
         SV{"Salvador"}
         SX{"Sint Marten"}
         SY{"Sirija"}
-        SZ{"Esvatini"}
+        SZ{"Svazilend"}
         TA{"Tristan da Cunha"}
         TC{"Ostrva Turks i Kaikos"}
         TD{"Čad"}
@@ -275,7 +275,7 @@ bs{
         UG{"Uganda"}
         UM{"Američka Vanjska Ostrva"}
         UN{"Ujedinjene Nacije"}
-        US{"Sjedinjene Države"}
+        US{"Sjedinjene Američke Države"}
         UY{"Urugvaj"}
         UZ{"Uzbekistan"}
         VA{"Vatikan"}
@@ -287,8 +287,6 @@ bs{
         VU{"Vanuatu"}
         WF{"Ostrva Valis i Futuna"}
         WS{"Samoa"}
-        XA{"Pseudo naglasci"}
-        XB{"Pseudo bidi"}
         XK{"Kosovo"}
         YE{"Jemen"}
         YT{"Majote"}
@@ -296,9 +294,6 @@ bs{
         ZM{"Zambija"}
         ZW{"Zimbabve"}
         ZZ{"Nepoznata oblast"}
-    }
-    Countries%chagos{
-        IO{"arhipelag Chagos"}
     }
     Countries%short{
         GB{"UK"}
@@ -311,9 +306,11 @@ bs{
     Countries%variant{
         CD{"DR Kongo"}
         CG{"Republika Kongo"}
+        CI{"Obala Bjelokosti"}
         CZ{"Češka Republika"}
         FK{"Folklandska (Malvinska) ostrva"}
-        NZ{"Novi Zeland Aotearoa"}
-        SZ{"Svazilend"}
+        SZ{"Svazi"}
+        TL{"TL"}
     }
+    Version{"2.1.49.82"}
 }

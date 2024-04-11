@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ja{
     RBNFRules{
         OrdinalRules{
@@ -79,4 +78,5 @@ ja{
             "0: \u7B2C=%spellout-numbering=;",
         }
     }
+    Version{"2.1.48.72"}
 }

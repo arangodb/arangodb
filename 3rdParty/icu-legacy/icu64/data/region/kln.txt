@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 kln{
     Countries{
         AD{"Emetab Andorra"}
@@ -93,6 +92,7 @@ kln{
         IE{"Emetab Ireland"}
         IL{"Emetab Israel"}
         IN{"Emetab India"}
+        IO{"Kebebertab araraitab indian Ocean nebo Uingeresa"}
         IQ{"Emetab Iraq"}
         IR{"Emetab Iran"}
         IS{"Emetab Iceland"}
@@ -127,6 +127,7 @@ kln{
         MD{"Emetab Moldova"}
         MG{"Emetab Madagascar"}
         MH{"Ikwembeiyotab Marshall"}
+        MK{"Emetab Macedonia"}
         ML{"Emetab Mali"}
         MM{"Emetab Myanmar"}
         MN{"Emetab Mongolia"}
@@ -226,4 +227,5 @@ kln{
         ZM{"Emetab Zambia"}
         ZW{"Emetab Zimbabwe"}
     }
+    Version{"2.1.47.82"}
 }

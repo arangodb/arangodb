@@ -14,11 +14,10 @@
 *    Madhu Katragadda     7/21/1999      Testing error callback routines
 ********************************************************************************
 */
-#include <ctype.h>
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include "cmemory.h"
 #include "cstring.h"
 #include "unicode/uloc.h"
@@ -77,7 +76,7 @@ static void printUSeqErr(const UChar* a, int len)
 
 static void setNuConvTestName(const char *codepage, const char *direction)
 {
-    snprintf(gNuConvTestName, sizeof(gNuConvTestName), "[testing %s %s Unicode, InputBufSiz=%d, OutputBufSiz=%d]",
+    sprintf(gNuConvTestName, "[testing %s %s Unicode, InputBufSiz=%d, OutputBufSiz=%d]",
             codepage,
             direction,
             (int)gInBufferSize,
@@ -104,7 +103,7 @@ void addTestConvertErrorCallBack(TestNode** root)
     addTest(root, &TestCallBackFailure,  "tsconv/nccbtst/TestCallBackFailure");
 }
 
-static void TestSkipCallBack(void)
+static void TestSkipCallBack()
 {
     TestSkip(NEW_MAX_BUFFER, NEW_MAX_BUFFER);
     TestSkip(1,NEW_MAX_BUFFER);
@@ -112,7 +111,7 @@ static void TestSkipCallBack(void)
     TestSkip(NEW_MAX_BUFFER, 1);
 }
 
-static void TestStopCallBack(void)
+static void TestStopCallBack()
 {
     TestStop(NEW_MAX_BUFFER, NEW_MAX_BUFFER);
     TestStop(1,NEW_MAX_BUFFER);
@@ -120,7 +119,7 @@ static void TestStopCallBack(void)
     TestStop(NEW_MAX_BUFFER, 1);
 }
 
-static void TestSubCallBack(void)
+static void TestSubCallBack()
 {
     TestSub(NEW_MAX_BUFFER, NEW_MAX_BUFFER);
     TestSub(1,NEW_MAX_BUFFER);
@@ -135,7 +134,7 @@ static void TestSubCallBack(void)
 #endif
 }
 
-static void TestSubWithValueCallBack(void)
+static void TestSubWithValueCallBack()
 {
     TestSubWithValue(NEW_MAX_BUFFER, NEW_MAX_BUFFER);
     TestSubWithValue(1,NEW_MAX_BUFFER);
@@ -144,7 +143,7 @@ static void TestSubWithValueCallBack(void)
 }
 
 #if !UCONFIG_NO_LEGACY_CONVERSION
-static void TestLegalAndOtherCallBack(void)
+static void TestLegalAndOtherCallBack()
 {
     TestLegalAndOthers(NEW_MAX_BUFFER, NEW_MAX_BUFFER);
     TestLegalAndOthers(1,NEW_MAX_BUFFER);
@@ -152,7 +151,7 @@ static void TestLegalAndOtherCallBack(void)
     TestLegalAndOthers(NEW_MAX_BUFFER, 1);
 }
 
-static void TestSingleByteCallBack(void)
+static void TestSingleByteCallBack()
 {
     TestSingleByte(NEW_MAX_BUFFER, NEW_MAX_BUFFER);
     TestSingleByte(1,NEW_MAX_BUFFER);
@@ -915,7 +914,7 @@ static void TestSkip(int32_t inputsize, int32_t outputsize)
         if(!testConvertToUnicode(sampleText1, UPRV_LENGTHOF(sampleText1),
                  expected1, UPRV_LENGTHOF(expected1),"utf8",
                 UCNV_TO_U_CALLBACK_SKIP, offsets1, NULL, 0 ))
-            log_err("utf8->u with skip did not match.\n");
+            log_err("utf8->u with skip did not match.\n");;
     }
 
     log_verbose("Testing toUnicode for SCSU with UCNV_TO_U_CALLBACK_SKIP \n");
@@ -1331,7 +1330,7 @@ static void TestStop(int32_t inputsize, int32_t outputsize)
         if(!testConvertToUnicode(sampleText1, UPRV_LENGTHOF(sampleText1),
                  expected1, UPRV_LENGTHOF(expected1),"utf8",
                 UCNV_TO_U_CALLBACK_STOP, offsets1, NULL, 0 ))
-            log_err("utf8->u with stop did not match.\n");
+            log_err("utf8->u with stop did not match.\n");;
     }
     log_verbose("Testing toUnicode for SCSU with UCNV_TO_U_CALLBACK_STOP \n");
     {
@@ -1342,7 +1341,7 @@ static void TestStop(int32_t inputsize, int32_t outputsize)
         if(!testConvertToUnicode(sampleText1, UPRV_LENGTHOF(sampleText1),
                  expected1, UPRV_LENGTHOF(expected1),"SCSU",
                 UCNV_TO_U_CALLBACK_STOP, offsets1, NULL, 0 ))
-            log_err("scsu->u with stop did not match.\n");
+            log_err("scsu->u with stop did not match.\n");;
     }
 
 }
@@ -1621,7 +1620,7 @@ static void TestSub(int32_t inputsize, int32_t outputsize)
         if(!testConvertToUnicode(sampleText1, UPRV_LENGTHOF(sampleText1),
                  expected1, UPRV_LENGTHOF(expected1),"utf8",
                 UCNV_TO_U_CALLBACK_SUBSTITUTE, offsets1, NULL, 0 ))
-            log_err("utf8->u with substitute did not match.\n");
+            log_err("utf8->u with substitute did not match.\n");;
     }
     log_verbose("Testing toUnicode for SCSU with UCNV_TO_U_CALLBACK_SUBSTITUTE \n");
     {
@@ -1632,7 +1631,7 @@ static void TestSub(int32_t inputsize, int32_t outputsize)
         if(!testConvertToUnicode(sampleText1, UPRV_LENGTHOF(sampleText1),
                  expected1, UPRV_LENGTHOF(expected1),"SCSU",
                 UCNV_TO_U_CALLBACK_SUBSTITUTE, offsets1, NULL, 0 ))
-            log_err("scsu->u with stop did not match.\n");
+            log_err("scsu->u with stop did not match.\n");;
     }
 
 #if !UCONFIG_NO_LEGACY_CONVERSION
@@ -2638,7 +2637,7 @@ UBool testConvertFromUnicode(const UChar *source, int sourceLen,  const uint8_t 
     char *realBufferEnd;
     const UChar *realSourceEnd;
     const UChar *sourceLimit;
-    UBool checkOffsets = true;
+    UBool checkOffsets = TRUE;
     UBool doFlush;
     char junk[9999];
     char offset_str[9999];
@@ -2660,7 +2659,7 @@ UBool testConvertFromUnicode(const UChar *source, int sourceLen,  const uint8_t 
     if(U_FAILURE(status))
     {
         log_data_err("Couldn't open converter %s\n",codepage);
-        return true;
+        return TRUE;
     }
 
     log_verbose("Converter opened..\n");
@@ -2690,10 +2689,10 @@ UBool testConvertFromUnicode(const UChar *source, int sourceLen,  const uint8_t 
     realSourceEnd = source + sourceLen;
 
     if ( gOutBufferSize != realBufferSize )
-      checkOffsets = false;
+      checkOffsets = FALSE;
 
     if( gInBufferSize != NEW_MAX_BUFFER )
-      checkOffsets = false;
+      checkOffsets = FALSE;
 
     do
     {
@@ -2705,9 +2704,9 @@ UBool testConvertFromUnicode(const UChar *source, int sourceLen,  const uint8_t 
         if(targ == realBufferEnd)
         {
             log_err("Error, overflowed the real buffer while about to call fromUnicode! targ=%08lx %s", targ, gNuConvTestName);
-            return false;
+            return FALSE;
         }
-        log_verbose("calling fromUnicode @ SOURCE:%08lx to %08lx  TARGET: %08lx to %08lx, flush=%s\n", src,sourceLimit, targ,end, doFlush?"true":"false");
+        log_verbose("calling fromUnicode @ SOURCE:%08lx to %08lx  TARGET: %08lx to %08lx, flush=%s\n", src,sourceLimit, targ,end, doFlush?"TRUE":"FALSE");
 
 
         status = U_ZERO_ERROR;
@@ -2743,7 +2742,7 @@ UBool testConvertFromUnicode(const UChar *source, int sourceLen,  const uint8_t 
        (callback != UCNV_FROM_U_CALLBACK_STOP || (status != U_INVALID_CHAR_FOUND && status != U_ILLEGAL_CHAR_FOUND)))
     {
         log_err("Problem in fromUnicode, errcode %s %s\n", myErrorName(status), gNuConvTestName);
-        return false;
+        return FALSE;
     }
 
     log_verbose("\nConversion done [%d uchars in -> %d chars out]. \nResult :",
@@ -2755,8 +2754,8 @@ UBool testConvertFromUnicode(const UChar *source, int sourceLen,  const uint8_t 
         offset_str[0] = 0;
         for(p = junkout;p<targ;p++)
         {
-            snprintf(junk + strlen(junk), sizeof(junk)-strlen(junk), "0x%02x, ", (0xFF) & (unsigned int)*p);
-            snprintf(offset_str + strlen(offset_str), sizeof(offset_str) - strlen(offset_str), "0x%02x, ", (0xFF) & (unsigned int)junokout[p-junkout]);
+            sprintf(junk + strlen(junk), "0x%02x, ", (0xFF) & (unsigned int)*p);
+            sprintf(offset_str + strlen(offset_str), "0x%02x, ", (0xFF) & (unsigned int)junokout[p-junkout]);
         }
 
         log_verbose(junk);
@@ -2777,7 +2776,7 @@ UBool testConvertFromUnicode(const UChar *source, int sourceLen,  const uint8_t 
         log_verbose("Expected %d chars out, got %d %s\n", expectLen, targ-junkout, gNuConvTestName);
         printSeqErr((const uint8_t *)junkout, (int32_t)(targ-junkout));
         printSeqErr(expect, expectLen);
-        return false;
+        return FALSE;
     }
 
     if (checkOffsets && (expectOffsets != 0) )
@@ -2795,14 +2794,14 @@ UBool testConvertFromUnicode(const UChar *source, int sourceLen,  const uint8_t 
             for(i=0; i<(targ-junkout); i++)
                 log_err("%d,", expectOffsets[i]);
             log_err("\n");
-            return false;
+            return FALSE;
         }
     }
 
     if(!memcmp(junkout, expect, expectLen))
     {
         log_verbose("String matches! %s\n", gNuConvTestName);
-        return true;
+        return TRUE;
     }
     else
     {
@@ -2813,7 +2812,7 @@ UBool testConvertFromUnicode(const UChar *source, int sourceLen,  const uint8_t 
         printSeqErr((const uint8_t *)junkout, expectLen);
         log_err("Expected: ");
         printSeqErr(expect, expectLen);
-        return false;
+        return FALSE;
     }
 }
 
@@ -2832,7 +2831,7 @@ UBool testConvertToUnicode( const uint8_t *source, int sourcelen, const UChar *e
     UChar *end;
     int32_t *offs;
     int i;
-    UBool   checkOffsets = true;
+    UBool   checkOffsets = TRUE;
     char junk[9999];
     char offset_str[9999];
     UChar *p;
@@ -2857,7 +2856,7 @@ UBool testConvertToUnicode( const uint8_t *source, int sourcelen, const UChar *e
     if(U_FAILURE(status))
     {
         log_data_err("Couldn't open converter %s\n",gNuConvTestName);
-        return true;
+        return TRUE;
     }
 
     log_verbose("Converter opened..\n");
@@ -2887,10 +2886,10 @@ UBool testConvertToUnicode( const uint8_t *source, int sourcelen, const UChar *e
 
 
     if ( gOutBufferSize != realBufferSize )
-        checkOffsets = false;
+        checkOffsets = FALSE;
 
     if( gInBufferSize != NEW_MAX_BUFFER )
-        checkOffsets = false;
+        checkOffsets = FALSE;
 
     do
     {
@@ -2900,7 +2899,7 @@ UBool testConvertToUnicode( const uint8_t *source, int sourcelen, const UChar *e
         if(targ == realBufferEnd)
         {
             log_err("Error, the end would overflow the real output buffer while about to call toUnicode! tarjey=%08lx %s",targ,gNuConvTestName);
-            return false;
+            return FALSE;
         }
         log_verbose("calling toUnicode @ %08lx to %08lx\n", targ,end);
 
@@ -2938,7 +2937,7 @@ UBool testConvertToUnicode( const uint8_t *source, int sourcelen, const UChar *e
        (callback != UCNV_TO_U_CALLBACK_STOP || (status != U_INVALID_CHAR_FOUND && status != U_ILLEGAL_CHAR_FOUND && status != U_TRUNCATED_CHAR_FOUND)))
     {
         log_err("Problem doing toUnicode, errcode %s %s\n", myErrorName(status), gNuConvTestName);
-        return false;
+        return FALSE;
     }
 
     log_verbose("\nConversion done. %d bytes -> %d chars.\nResult :",
@@ -2951,8 +2950,8 @@ UBool testConvertToUnicode( const uint8_t *source, int sourcelen, const UChar *e
 
         for(p = junkout;p<targ;p++)
         {
-            snprintf(junk + strlen(junk), sizeof(junk)-strlen(junk), "0x%04x, ", (0xFFFF) & (unsigned int)*p);
-            snprintf(offset_str + strlen(offset_str), sizeof(offset_str)-strlen(offset_str), "0x%04x, ", (0xFFFF) & (unsigned int)junokout[p-junkout]);
+            sprintf(junk + strlen(junk), "0x%04x, ", (0xFFFF) & (unsigned int)*p);
+            sprintf(offset_str + strlen(offset_str), "0x%04x, ", (0xFFFF) & (unsigned int)junokout[p-junkout]);
         }
 
         log_verbose(junk);
@@ -2995,7 +2994,7 @@ UBool testConvertToUnicode( const uint8_t *source, int sourcelen, const UChar *e
     if(!memcmp(junkout, expect, expectlen*2))
     {
         log_verbose("Matches!\n");
-        return true;
+        return TRUE;
     }
     else
     {
@@ -3006,7 +3005,7 @@ UBool testConvertToUnicode( const uint8_t *source, int sourcelen, const UChar *e
         log_err("Expected: ");
         printUSeqErr(expect, expectlen);
         log_err("\n");
-        return false;
+        return FALSE;
     }
 }
 
@@ -3029,7 +3028,7 @@ UBool testConvertFromUnicodeWithContext(const UChar *source, int sourceLen,  con
     char *realBufferEnd;
     const UChar *realSourceEnd;
     const UChar *sourceLimit;
-    UBool checkOffsets = true;
+    UBool checkOffsets = TRUE;
     UBool doFlush;
     char junk[9999];
     char offset_str[9999];
@@ -3051,7 +3050,7 @@ UBool testConvertFromUnicodeWithContext(const UChar *source, int sourceLen,  con
     if(U_FAILURE(status))
     {
         log_data_err("Couldn't open converter %s\n",codepage);
-        return true; /* Because the err has already been logged. */
+        return TRUE; /* Because the err has already been logged. */
     }
 
     log_verbose("Converter opened..\n");
@@ -3081,10 +3080,10 @@ UBool testConvertFromUnicodeWithContext(const UChar *source, int sourceLen,  con
     realSourceEnd = source + sourceLen;
 
     if ( gOutBufferSize != realBufferSize )
-      checkOffsets = false;
+      checkOffsets = FALSE;
 
     if( gInBufferSize != NEW_MAX_BUFFER )
-      checkOffsets = false;
+      checkOffsets = FALSE;
 
     do
     {
@@ -3096,9 +3095,9 @@ UBool testConvertFromUnicodeWithContext(const UChar *source, int sourceLen,  con
         if(targ == realBufferEnd)
         {
             log_err("Error, overflowed the real buffer while about to call fromUnicode! targ=%08lx %s", targ, gNuConvTestName);
-            return false;
+            return FALSE;
         }
-        log_verbose("calling fromUnicode @ SOURCE:%08lx to %08lx  TARGET: %08lx to %08lx, flush=%s\n", src,sourceLimit, targ,end, doFlush?"true":"false");
+        log_verbose("calling fromUnicode @ SOURCE:%08lx to %08lx  TARGET: %08lx to %08lx, flush=%s\n", src,sourceLimit, targ,end, doFlush?"TRUE":"FALSE");
 
 
         status = U_ZERO_ERROR;
@@ -3117,7 +3116,7 @@ UBool testConvertFromUnicodeWithContext(const UChar *source, int sourceLen,  con
     if(U_FAILURE(status) && status != expectedError)
     {
         log_err("Problem in fromUnicode, errcode %s %s\n", myErrorName(status), gNuConvTestName);
-        return false;
+        return FALSE;
     }
 
     log_verbose("\nConversion done [%d uchars in -> %d chars out]. \nResult :",
@@ -3129,8 +3128,8 @@ UBool testConvertFromUnicodeWithContext(const UChar *source, int sourceLen,  con
         offset_str[0] = 0;
         for(p = junkout;p<targ;p++)
         {
-            snprintf(junk + strlen(junk), sizeof(junk)-strlen(junk), "0x%02x, ", (0xFF) & (unsigned int)*p);
-            snprintf(offset_str + strlen(offset_str), sizeof(offset_str)-strlen(offset_str), "0x%02x, ", (0xFF) & (unsigned int)junokout[p-junkout]);
+            sprintf(junk + strlen(junk), "0x%02x, ", (0xFF) & (unsigned int)*p);
+            sprintf(offset_str + strlen(offset_str), "0x%02x, ", (0xFF) & (unsigned int)junokout[p-junkout]);
         }
 
         log_verbose(junk);
@@ -3151,7 +3150,7 @@ UBool testConvertFromUnicodeWithContext(const UChar *source, int sourceLen,  con
         log_verbose("Expected %d chars out, got %d %s\n", expectLen, targ-junkout, gNuConvTestName);
         printSeqErr((const uint8_t *)junkout, (int32_t)(targ-junkout));
         printSeqErr(expect, expectLen);
-        return false;
+        return FALSE;
     }
 
     if (checkOffsets && (expectOffsets != 0) )
@@ -3169,14 +3168,14 @@ UBool testConvertFromUnicodeWithContext(const UChar *source, int sourceLen,  con
             for(i=0; i<(targ-junkout); i++)
                 log_err("%d,", expectOffsets[i]);
             log_err("\n");
-            return false;
+            return FALSE;
         }
     }
 
     if(!memcmp(junkout, expect, expectLen))
     {
         log_verbose("String matches! %s\n", gNuConvTestName);
-        return true;
+        return TRUE;
     }
     else
     {
@@ -3187,7 +3186,7 @@ UBool testConvertFromUnicodeWithContext(const UChar *source, int sourceLen,  con
         printSeqErr((const uint8_t *)junkout, expectLen);
         log_err("Expected: ");
         printSeqErr(expect, expectLen);
-        return false;
+        return FALSE;
     }
 }
 UBool testConvertToUnicodeWithContext( const uint8_t *source, int sourcelen, const UChar *expect, int expectlen, 
@@ -3205,7 +3204,7 @@ UBool testConvertToUnicodeWithContext( const uint8_t *source, int sourcelen, con
     UChar *end;
     int32_t *offs;
     int i;
-    UBool   checkOffsets = true;
+    UBool   checkOffsets = TRUE;
     char junk[9999];
     char offset_str[9999];
     UChar *p;
@@ -3230,7 +3229,7 @@ UBool testConvertToUnicodeWithContext( const uint8_t *source, int sourcelen, con
     if(U_FAILURE(status))
     {
         log_data_err("Couldn't open converter %s\n",gNuConvTestName);
-        return true;
+        return TRUE;
     }
 
     log_verbose("Converter opened..\n");
@@ -3260,10 +3259,10 @@ UBool testConvertToUnicodeWithContext( const uint8_t *source, int sourcelen, con
 
 
     if ( gOutBufferSize != realBufferSize )
-        checkOffsets = false;
+        checkOffsets = FALSE;
 
     if( gInBufferSize != NEW_MAX_BUFFER )
-        checkOffsets = false;
+        checkOffsets = FALSE;
 
     do
     {
@@ -3273,7 +3272,7 @@ UBool testConvertToUnicodeWithContext( const uint8_t *source, int sourcelen, con
         if(targ == realBufferEnd)
         {
             log_err("Error, the end would overflow the real output buffer while about to call toUnicode! tarjey=%08lx %s",targ,gNuConvTestName);
-            return false;
+            return FALSE;
         }
         log_verbose("calling toUnicode @ %08lx to %08lx\n", targ,end);
 
@@ -3295,7 +3294,7 @@ UBool testConvertToUnicodeWithContext( const uint8_t *source, int sourcelen, con
     if(U_FAILURE(status) && status!=expectedError)
     {
         log_err("Problem doing toUnicode, errcode %s %s\n", myErrorName(status), gNuConvTestName);
-        return false;
+        return FALSE;
     }
 
     log_verbose("\nConversion done. %d bytes -> %d chars.\nResult :",
@@ -3308,8 +3307,8 @@ UBool testConvertToUnicodeWithContext( const uint8_t *source, int sourcelen, con
 
         for(p = junkout;p<targ;p++)
         {
-            snprintf(junk + strlen(junk), sizeof(junk)-strlen(junk), "0x%04x, ", (0xFFFF) & (unsigned int)*p);
-            snprintf(offset_str + strlen(offset_str), sizeof(offset_str)-strlen(offset_str), "0x%04x, ", (0xFFFF) & (unsigned int)junokout[p-junkout]);
+            sprintf(junk + strlen(junk), "0x%04x, ", (0xFFFF) & (unsigned int)*p);
+            sprintf(offset_str + strlen(offset_str), "0x%04x, ", (0xFFFF) & (unsigned int)junokout[p-junkout]);
         }
 
         log_verbose(junk);
@@ -3352,7 +3351,7 @@ UBool testConvertToUnicodeWithContext( const uint8_t *source, int sourcelen, con
     if(!memcmp(junkout, expect, expectlen*2))
     {
         log_verbose("Matches!\n");
-        return true;
+        return TRUE;
     }
     else
     {
@@ -3363,7 +3362,7 @@ UBool testConvertToUnicodeWithContext( const uint8_t *source, int sourcelen, con
         log_err("Expected: ");
         printUSeqErr(expect, expectlen);
         log_err("\n");
-        return false;
+        return FALSE;
     }
 }
 

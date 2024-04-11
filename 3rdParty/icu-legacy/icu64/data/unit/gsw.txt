@@ -1,7 +1,12 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 gsw{
+    Version{"2.1.47.82"}
+    durationUnits{
+        hm{"h:mm"}
+        hms{"h:mm:ss"}
+        ms{"m:ss"}
+    }
     units{
         duration{
             day{
@@ -31,6 +36,94 @@ gsw{
             year{
                 one{"{0} Jahr"}
                 other{"{0} Jahr"}
+            }
+        }
+    }
+    unitsNarrow{
+        area{
+            acre{
+                one{"{0} ac"}
+                other{"{0} ac"}
+            }
+            square-foot{
+                one{"{0} ft²"}
+                other{"{0} ft²"}
+            }
+            square-mile{
+                one{"{0} mi²"}
+                other{"{0} mi²"}
+            }
+        }
+        length{
+            mile{
+                one{"{0} mi"}
+                other{"{0} mi"}
+            }
+            yard{
+                one{"{0} yd"}
+                other{"{0} yd"}
+            }
+        }
+        pressure{
+            inch-hg{
+                one{"{0} inHg"}
+                other{"{0} inHg"}
+            }
+        }
+        speed{
+            mile-per-hour{
+                one{"{0} mi/h"}
+                other{"{0} mi/h"}
+            }
+        }
+        volume{
+            cubic-mile{
+                one{"{0} mi³"}
+                other{"{0} mi³"}
+            }
+        }
+    }
+    unitsShort{
+        area{
+            acre{
+                one{"{0} ac"}
+                other{"{0} ac"}
+            }
+            square-foot{
+                one{"{0} ft²"}
+                other{"{0} ft²"}
+            }
+            square-mile{
+                one{"{0} mi²"}
+                other{"{0} mi²"}
+            }
+        }
+        length{
+            mile{
+                one{"{0} mi"}
+                other{"{0} mi"}
+            }
+            yard{
+                one{"{0} yd"}
+                other{"{0} yd"}
+            }
+        }
+        pressure{
+            inch-hg{
+                one{"{0} inHg"}
+                other{"{0} inHg"}
+            }
+        }
+        speed{
+            mile-per-hour{
+                one{"{0} mi/h"}
+                other{"{0} mi/h"}
+            }
+        }
+        volume{
+            cubic-mile{
+                one{"{0} mi³"}
+                other{"{0} mi³"}
             }
         }
     }

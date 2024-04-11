@@ -1,14 +1,13 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 pa_Arab{
     %%Parent{"root"}
     AuxExemplarCharacters{"[\u200E\u200F أ ٻ ة ٺ ټ ٽ]"}
     ExemplarCharacters{
-        "[ُ ء آ ؤ ئ ا ب پ ت ث ٹ ج چ ح خ د ذ ڈ ر ز ڑ ژ س ش ص ض ط ظ ع غ ف ق ک گ ل م ن ں"
-        " ه ھ ہ و ی ے]"
+        "[\u064F ء آ ؤ ئ ا ب پ ت ث ٹ ج چ ح خ د ذ ڈ ر ز ڑ ژ س ش ص ض ط ظ ع غ ف ق ک گ ل "
+        "م ن ں ه ھ ہ و ی ے]"
     }
-    ExemplarCharactersNumbers{"[\u200E \\- ‑ , . % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
+    ExemplarCharactersNumbers{"[\u200E \\- , . % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
     NumberElements{
         arabext{
             symbols{
@@ -24,6 +23,7 @@ pa_Arab{
         }
         native{"arabext"}
     }
+    Version{"2.1.47.82"}
     calendar{
         generic{
             DateTimePatterns{
@@ -41,19 +41,10 @@ pa_Arab{
                 "{1} {0}",
                 "{1} {0}",
             }
-            DateTimeSkeletons{
-                "ahmmsszzzz",
-                "ahmmssz",
-                "ahmmss",
-                "ahmm",
-                "GyMMMMEEEEdd",
-                "GyMMMMd",
-                "GyMMMd",
-                "GGGGGyMMdd",
-            }
             availableFormats{
                 HHmmss{"HH:mm:ss"}
                 Md{"d/M"}
+                ms{"mm:ss"}
                 yMMM{"MMM y"}
                 yQQQ{"QQQ y"}
             }
@@ -73,16 +64,6 @@ pa_Arab{
                 "{1} {0}",
                 "{1} {0}",
                 "{1} {0}",
-            }
-            DateTimeSkeletons{
-                "ahmmsszzzz",
-                "ahmmssz",
-                "ahmmss",
-                "ahmm",
-                "yMMMMEEEEdd",
-                "yMMMMd",
-                "yMMMd",
-                "yMMdd",
             }
             availableFormats{
                 HHmmss{"HH:mm:ss"}
@@ -106,6 +87,10 @@ pa_Arab{
             }
             eras{
                 abbreviated{
+                    "ايساپورو",
+                    "سں",
+                }
+                wide{
                     "ايساپورو",
                     "سں",
                 }

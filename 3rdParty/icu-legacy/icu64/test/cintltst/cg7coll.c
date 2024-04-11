@@ -135,7 +135,7 @@ void addRuleBasedCollTest(TestNode** root)
     
 }
 
-static void TestG7Locales(void)
+static void TestG7Locales()
 {
     UCollator *myCollation;
     UErrorCode status = U_ZERO_ERROR;
@@ -195,7 +195,7 @@ static void TestG7Locales(void)
     }
 }
 
-static void TestDemo1(void)
+static void TestDemo1()
 {
     UCollator *myCollation;
     int32_t j, n;
@@ -226,7 +226,7 @@ static void TestDemo1(void)
     ucol_close(myCollation); 
 }
 
-static void TestDemo2(void)
+static void TestDemo2()
 {
     UCollator *myCollation;
     int32_t j, n;
@@ -255,7 +255,7 @@ static void TestDemo2(void)
     ucol_close(myCollation); 
 }
 
-static void TestDemo3(void)
+static void TestDemo3()
 {
     UCollator *myCollation;
     int32_t j, n;
@@ -285,7 +285,7 @@ static void TestDemo3(void)
     ucol_close(myCollation); 
 }
 
-static void TestDemo4(void)
+static void TestDemo4()
 {
     UCollator *myCollation;
     int32_t j, n;

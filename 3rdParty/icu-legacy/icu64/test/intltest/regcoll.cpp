@@ -24,10 +24,10 @@ CollationRegressionTest::CollationRegressionTest()
 {
     UErrorCode status = U_ZERO_ERROR;
 
-    en_us = dynamic_cast<RuleBasedCollator*>(Collator::createInstance(Locale::getUS(), status));
+    en_us = (RuleBasedCollator *)Collator::createInstance(Locale::getUS(), status);
     if(U_FAILURE(status)) {
       delete en_us;
-      en_us = nullptr;
+      en_us = 0;
       errcheckln(status, "Collator creation failed with %s", u_errorName(status));
       return;
     }
@@ -51,7 +51,7 @@ void CollationRegressionTest::Test4048446(/* char* par */)
     CollationElementIterator *i2 = en_us->createCollationElementIterator(test1);
     UErrorCode status = U_ZERO_ERROR;
 
-    if (i1 == nullptr|| i2 == nullptr)
+    if (i1 == NULL|| i2 == NULL)
     {
         errln("Could not create CollationElementIterator's");
         delete i1;
@@ -90,14 +90,14 @@ void CollationRegressionTest::Test4051866(/* char* par */)
 
     rules += "&n < o ";
     rules += "& oe ,o";
-    rules += (char16_t)0x3080;
+    rules += (UChar)0x3080;
     rules += "& oe ,";
-    rules += (char16_t)0x1530;
+    rules += (UChar)0x1530;
     rules += " ,O";
     rules += "& OE ,O";
-    rules += (char16_t)0x3080;
+    rules += (UChar)0x3080;
     rules += "& OE ,";
-    rules += (char16_t)0x1520;
+    rules += (UChar)0x1520;
     rules += "< p ,P";
 
     // Build a collator containing expanding characters
@@ -140,9 +140,9 @@ void CollationRegressionTest::Test4053636(/* char* par */)
 //
 void CollationRegressionTest::Test4054238(/* char* par */)
 {
-    const char16_t chars3[] = {0x61, 0x00FC, 0x62, 0x65, 0x63, 0x6b, 0x20, 0x47, 0x72, 0x00F6, 0x00DF, 0x65, 0x20, 0x4c, 0x00FC, 0x62, 0x63, 0x6b, 0};
+    const UChar chars3[] = {0x61, 0x00FC, 0x62, 0x65, 0x63, 0x6b, 0x20, 0x47, 0x72, 0x00F6, 0x00DF, 0x65, 0x20, 0x4c, 0x00FC, 0x62, 0x63, 0x6b, 0};
     const UnicodeString test3(chars3);
-    RuleBasedCollator *c = en_us->clone();
+    RuleBasedCollator *c = (RuleBasedCollator *) en_us->clone();
 
     // NOTE: The Java code uses en_us to create the CollationElementIterators
     // but I'm pretty sure that's wrong, so I've changed this to use c.
@@ -174,7 +174,7 @@ void CollationRegressionTest::Test4054734(/* char* par */)
         };
     */
 
-    static const char16_t decomp[][CollationRegressionTest::MAX_TOKEN_LEN] =
+    static const UChar decomp[][CollationRegressionTest::MAX_TOKEN_LEN] =
     {
         {0x0001, 0},      {0x3c, 0}, {0x0002, 0},
         {0x0001, 0},      {0x3d, 0}, {0x0001, 0},
@@ -184,7 +184,7 @@ void CollationRegressionTest::Test4054734(/* char* par */)
 
 
     UErrorCode status = U_ZERO_ERROR;
-    RuleBasedCollator *c = en_us->clone();
+    RuleBasedCollator *c = (RuleBasedCollator *) en_us->clone();
 
     c->setStrength(Collator::IDENTICAL);
 
@@ -201,12 +201,12 @@ void CollationRegressionTest::Test4054734(/* char* par */)
 void CollationRegressionTest::Test4054736(/* char* par */)
 {
     UErrorCode status = U_ZERO_ERROR;
-    RuleBasedCollator *c = en_us->clone();
+    RuleBasedCollator *c = (RuleBasedCollator *) en_us->clone();
 
     c->setStrength(Collator::SECONDARY);
     c->setAttribute(UCOL_NORMALIZATION_MODE, UCOL_ON, status);
 
-    static const char16_t tests[][CollationRegressionTest::MAX_TOKEN_LEN] =
+    static const UChar tests[][CollationRegressionTest::MAX_TOKEN_LEN] =
     {
         {0xFB4F, 0}, {0x3d, 0}, {0x05D0, 0x05DC}  // Alef-Lamed vs. Alef, Lamed
     };
@@ -236,11 +236,11 @@ void CollationRegressionTest::Test4058613(/* char* par */)
         return;
     }
 
-    Collator *c = nullptr;
+    Collator *c = NULL;
 
     c = Collator::createInstance("en_US", status);
 
-    if (c == nullptr || U_FAILURE(status))
+    if (c == NULL || U_FAILURE(status))
     {
         errln("Could not create a Korean collator");
         Locale::setDefault(oldDefault, status);
@@ -269,12 +269,12 @@ void CollationRegressionTest::Test4059820(/* char* par */)
 {
     UErrorCode status = U_ZERO_ERROR;
 
-    RuleBasedCollator *c = nullptr;
+    RuleBasedCollator *c = NULL;
     UnicodeString rules = "&9 < a < b , c/a < d < z";
 
     c = new RuleBasedCollator(rules, status);
 
-    if (c == nullptr || U_FAILURE(status))
+    if (c == NULL || U_FAILURE(status))
     {
         errln("Failure building a collator.");
         delete c;
@@ -300,16 +300,16 @@ void CollationRegressionTest::Test4060154(/* char* par */)
 
     rules += "&f < g, G < h, H < i, I < j, J";
     rules +=  " & H < ";
-    rules += (char16_t)0x0131;
+    rules += (UChar)0x0131;
     rules += ", ";
-    rules += (char16_t)0x0130;
+    rules += (UChar)0x0130;
     rules += ", i, I";
 
-    RuleBasedCollator *c = nullptr;
+    RuleBasedCollator *c = NULL;
 
     c = new RuleBasedCollator(rules, status);
 
-    if (c == nullptr || U_FAILURE(status))
+    if (c == NULL || U_FAILURE(status))
     {
         errln("failure building collator.");
         delete c;
@@ -329,7 +329,7 @@ void CollationRegressionTest::Test4060154(/* char* par */)
     };
 */
 
-    static const char16_t tertiary[][CollationRegressionTest::MAX_TOKEN_LEN] =
+    static const UChar tertiary[][CollationRegressionTest::MAX_TOKEN_LEN] =
     {
         {0x41, 0},    {0x3c, 0}, {0x42, 0},
         {0x48, 0},    {0x3c, 0}, {0x0131, 0},
@@ -348,7 +348,7 @@ void CollationRegressionTest::Test4060154(/* char* par */)
         "\u0131",   "=",    "\u0130",
     };
 */
-    static const char16_t secondary[][CollationRegressionTest::MAX_TOKEN_LEN] =
+    static const UChar secondary[][CollationRegressionTest::MAX_TOKEN_LEN] =
     {
         {0x48, 0},    {0x3c, 0}, {0x49, 0},
         {0x0131, 0}, {0x3d, 0}, {0x0130, 0}
@@ -368,11 +368,11 @@ void CollationRegressionTest::Test4062418(/* char* par */)
 {
     UErrorCode status = U_ZERO_ERROR;
 
-    RuleBasedCollator *c = nullptr;
+    RuleBasedCollator *c = NULL;
 
-    c = dynamic_cast<RuleBasedCollator*>(Collator::createInstance(Locale::getCanadaFrench(), status));
+    c = (RuleBasedCollator *) Collator::createInstance(Locale::getCanadaFrench(), status);
 
-    if (c == nullptr || U_FAILURE(status))
+    if (c == NULL || U_FAILURE(status))
     {
         errln("Failed to create collator for Locale::getCanadaFrench()");
         delete c;
@@ -386,7 +386,7 @@ void CollationRegressionTest::Test4062418(/* char* par */)
             "p\u00eache",    "<",    "p\u00e9ch\u00e9",    // Comparing accents from end, p\u00e9ch\u00e9 is greater
     };
 */
-    static const char16_t tests[][CollationRegressionTest::MAX_TOKEN_LEN] =
+    static const UChar tests[][CollationRegressionTest::MAX_TOKEN_LEN] =
     {
         {0x70, 0x00EA, 0x63, 0x68, 0x65, 0}, {0x3c, 0}, {0x70, 0x00E9, 0x63, 0x68, 0x00E9, 0}
     };
@@ -416,8 +416,8 @@ void CollationRegressionTest::Test4065540(/* char* par */)
 //
 void CollationRegressionTest::Test4066189(/* char* par */)
 {
-    static const char16_t chars1[] = {0x1EB1, 0};
-    static const char16_t chars2[] = {0x61, 0x0306, 0x0300, 0};
+    static const UChar chars1[] = {0x1EB1, 0};
+    static const UChar chars2[] = {0x61, 0x0306, 0x0300, 0};
     const UnicodeString test1(chars1);
     const UnicodeString test2(chars2);
     UErrorCode status = U_ZERO_ERROR;
@@ -425,11 +425,11 @@ void CollationRegressionTest::Test4066189(/* char* par */)
     // NOTE: The java code used en_us to create the
     // CollationElementIterator's. I'm pretty sure that
     // was wrong, so I've change the code to use c1 and c2
-    RuleBasedCollator *c1 = en_us->clone();
+    RuleBasedCollator *c1 = (RuleBasedCollator *) en_us->clone();
     c1->setAttribute(UCOL_NORMALIZATION_MODE, UCOL_ON, status);
     CollationElementIterator *i1 = c1->createCollationElementIterator(test1);
 
-    RuleBasedCollator *c2 = en_us->clone();
+    RuleBasedCollator *c2 = (RuleBasedCollator *) en_us->clone();
     c2->setAttribute(UCOL_NORMALIZATION_MODE, UCOL_OFF, status);
     CollationElementIterator *i2 = c2->createCollationElementIterator(test2);
 
@@ -448,11 +448,11 @@ void CollationRegressionTest::Test4066189(/* char* par */)
 void CollationRegressionTest::Test4066696(/* char* par */)
 {
     UErrorCode status = U_ZERO_ERROR;
-    RuleBasedCollator *c = nullptr;
+    RuleBasedCollator *c = NULL;
 
-    c = dynamic_cast<RuleBasedCollator*>(Collator::createInstance(Locale::getCanadaFrench(), status));
+    c = (RuleBasedCollator *)Collator::createInstance(Locale::getCanadaFrench(), status);
 
-    if (c == nullptr || U_FAILURE(status))
+    if (c == NULL || U_FAILURE(status))
     {
         errln("Failure creating collator for Locale::getCanadaFrench()");
         delete c;
@@ -474,7 +474,7 @@ void CollationRegressionTest::Test4066696(/* char* par */)
 
 */
 
-    static const char16_t tests[][CollationRegressionTest::MAX_TOKEN_LEN] =
+    static const UChar tests[][CollationRegressionTest::MAX_TOKEN_LEN] =
     {
         {0x00E0, 0}, {0x3e, 0}, {0x01FA, 0}
     };
@@ -492,10 +492,10 @@ void CollationRegressionTest::Test4076676(/* char* par */)
 {
     // These combining characters are all in the same class, so they should not
     // be reordered, and they should compare as unequal.
-    static const char16_t s1[] = {0x41, 0x0301, 0x0302, 0x0300, 0};
-    static const char16_t s2[] = {0x41, 0x0302, 0x0300, 0x0301, 0};
+    static const UChar s1[] = {0x41, 0x0301, 0x0302, 0x0300, 0};
+    static const UChar s2[] = {0x41, 0x0302, 0x0300, 0x0301, 0};
 
-    RuleBasedCollator *c = en_us->clone();
+    RuleBasedCollator *c = (RuleBasedCollator *) en_us->clone();
     c->setStrength(Collator::TERTIARY);
 
     if (c->compare(s1,s2) == 0)
@@ -508,18 +508,18 @@ void CollationRegressionTest::Test4076676(/* char* par */)
 
 // @bug 4079231
 //
-// RuleBasedCollator::operator==(nullptr) throws NullPointerException
+// RuleBasedCollator::operator==(NULL) throws NullPointerException
 //
 void CollationRegressionTest::Test4079231(/* char* par */)
 {
     // I don't think there's any way to write this test
     // in C++. The following is equivalent to the Java,
-    // but doesn't compile 'cause nullptr can't be converted
+    // but doesn't compile 'cause NULL can't be converted
     // to Collator&
     //
-    // if (en_us->operator==(nullptr))
+    // if (en_us->operator==(NULL))
     // {
-    //     errln("en_us->operator==(nullptr) returned true");
+    //     errln("en_us->operator==(NULL) returned TRUE");
     // }
 
  /*
@@ -543,7 +543,7 @@ void CollationRegressionTest::Test4078588(/* char *par */)
     UErrorCode status = U_ZERO_ERROR;
     RuleBasedCollator *rbc = new RuleBasedCollator("&9 < a < bb", status);
 
-    if (rbc == nullptr || U_FAILURE(status))
+    if (rbc == NULL || U_FAILURE(status))
     {
         errln("Failed to create RuleBasedCollator.");
         delete rbc;
@@ -569,11 +569,11 @@ void CollationRegressionTest::Test4081866(/* char* par */)
 {
     // These combining characters are all in different classes,
     // so they should be reordered and the strings should compare as equal.
-    static const char16_t s1[] = {0x41, 0x0300, 0x0316, 0x0327, 0x0315, 0};
-    static const char16_t s2[] = {0x41, 0x0327, 0x0316, 0x0315, 0x0300, 0};
+    static const UChar s1[] = {0x41, 0x0300, 0x0316, 0x0327, 0x0315, 0};
+    static const UChar s2[] = {0x41, 0x0327, 0x0316, 0x0315, 0x0300, 0};
 
     UErrorCode status = U_ZERO_ERROR;
-    RuleBasedCollator *c = en_us->clone();
+    RuleBasedCollator *c = (RuleBasedCollator *) en_us->clone();
     c->setStrength(Collator::TERTIARY);
 
     // Now that the default collators are set to NO_DECOMPOSITION
@@ -597,11 +597,11 @@ void CollationRegressionTest::Test4087241(/* char* par */)
 {
     UErrorCode status = U_ZERO_ERROR;
     Locale da_DK("da", "DK");
-    RuleBasedCollator *c = nullptr;
+    RuleBasedCollator *c = NULL;
 
-    c = dynamic_cast<RuleBasedCollator*>(Collator::createInstance(da_DK, status));
+    c = (RuleBasedCollator *) Collator::createInstance(da_DK, status);
 
-    if (c == nullptr || U_FAILURE(status))
+    if (c == NULL || U_FAILURE(status))
     {
         errln("Failed to create collator for da_DK locale");
         delete c;
@@ -610,7 +610,7 @@ void CollationRegressionTest::Test4087241(/* char* par */)
 
     c->setStrength(Collator::SECONDARY);
 
-    static const char16_t tests[][CollationRegressionTest::MAX_TOKEN_LEN] =
+    static const UChar tests[][CollationRegressionTest::MAX_TOKEN_LEN] =
     {
         {0x7a, 0},          {0x3c, 0}, {0x00E6, 0},            // z        < ae
         {0x61, 0x0308, 0},  {0x3c, 0}, {0x61, 0x030A, 0},      // a-umlaut < a-ring
@@ -628,10 +628,10 @@ void CollationRegressionTest::Test4087241(/* char* par */)
 //
 void CollationRegressionTest::Test4087243(/* char* par */)
 {
-    RuleBasedCollator *c = en_us->clone();
+    RuleBasedCollator *c = (RuleBasedCollator *) en_us->clone();
     c->setStrength(Collator::TERTIARY);
 
-    static const char16_t tests[][CollationRegressionTest::MAX_TOKEN_LEN] =
+    static const UChar tests[][CollationRegressionTest::MAX_TOKEN_LEN] =
     {
         {0x31, 0x32, 0x33, 0}, {0x3d, 0}, {0x31, 0x32, 0x33, 0x0001, 0}    // 1 2 3  =  1 2 3 ctrl-A
     };
@@ -650,11 +650,11 @@ void CollationRegressionTest::Test4092260(/* char* par */)
 {
     UErrorCode status = U_ZERO_ERROR;
     Locale el("el", "");
-    Collator *c = nullptr;
+    Collator *c = NULL;
 
     c = Collator::createInstance(el, status);
 
-    if (c == nullptr || U_FAILURE(status))
+    if (c == NULL || U_FAILURE(status))
     {
         errln("Failed to create collator for el locale.");
         delete c;
@@ -664,7 +664,7 @@ void CollationRegressionTest::Test4092260(/* char* par */)
     // These now have tertiary differences in UCA
     c->setAttribute(UCOL_STRENGTH, UCOL_SECONDARY, status);
 
-    static const char16_t tests[][CollationRegressionTest::MAX_TOKEN_LEN] =
+    static const UChar tests[][CollationRegressionTest::MAX_TOKEN_LEN] =
     {
         {0x00B5, 0}, {0x3d, 0}, {0x03BC, 0}
     };
@@ -682,7 +682,7 @@ void CollationRegressionTest::Test4095316(/* char* par */)
     Locale el_GR("el", "GR");
     Collator *c = Collator::createInstance(el_GR, status);
 
-    if (c == nullptr || U_FAILURE(status))
+    if (c == NULL || U_FAILURE(status))
     {
         errln("Failed to create collator for el_GR locale");
         delete c;
@@ -692,7 +692,7 @@ void CollationRegressionTest::Test4095316(/* char* par */)
     //c->setStrength(Collator::TERTIARY);
     c->setAttribute(UCOL_STRENGTH, UCOL_SECONDARY, status);
 
-    static const char16_t tests[][CollationRegressionTest::MAX_TOKEN_LEN] =
+    static const UChar tests[][CollationRegressionTest::MAX_TOKEN_LEN] =
     {
         {0x03D4, 0}, {0x3d, 0}, {0x03AB, 0}
     };
@@ -707,13 +707,13 @@ void CollationRegressionTest::Test4095316(/* char* par */)
 void CollationRegressionTest::Test4101940(/* char* par */)
 {
     UErrorCode status = U_ZERO_ERROR;
-    RuleBasedCollator *c = nullptr;
+    RuleBasedCollator *c = NULL;
     UnicodeString rules = "&9 < a < b";
     UnicodeString nothing = "";
 
     c = new RuleBasedCollator(rules, status);
 
-    if (c == nullptr || U_FAILURE(status))
+    if (c == NULL || U_FAILURE(status))
     {
         errln("Failed to create RuleBasedCollator");
         delete c;
@@ -738,10 +738,10 @@ void CollationRegressionTest::Test4101940(/* char* par */)
 //
 void CollationRegressionTest::Test4103436(/* char* par */)
 {
-    RuleBasedCollator *c = en_us->clone();
+    RuleBasedCollator *c = (RuleBasedCollator *) en_us->clone();
     c->setStrength(Collator::TERTIARY);
 
-    static const char16_t tests[][CollationRegressionTest::MAX_TOKEN_LEN] =
+    static const UChar tests[][CollationRegressionTest::MAX_TOKEN_LEN] =
     {
         {0x66, 0x69, 0x6c, 0x65, 0}, {0x3c, 0}, {0x66, 0x69, 0x6c, 0x65, 0x20, 0x61, 0x63, 0x63, 0x65, 0x73, 0x73, 0},
         {0x66, 0x69, 0x6c, 0x65, 0}, {0x3c, 0}, {0x66, 0x69, 0x6c, 0x65, 0x61, 0x63, 0x63, 0x65, 0x73, 0x73, 0}
@@ -759,7 +759,7 @@ void CollationRegressionTest::Test4103436(/* char* par */)
 void CollationRegressionTest::Test4114076(/* char* par */)
 {
     UErrorCode status = U_ZERO_ERROR;
-    RuleBasedCollator *c = en_us->clone();
+    RuleBasedCollator *c = (RuleBasedCollator *) en_us->clone();
     c->setStrength(Collator::TERTIARY);
 
     //
@@ -767,7 +767,7 @@ void CollationRegressionTest::Test4114076(/* char* par */)
     // into Jamo, but Jamo characters should not be decomposed into
     // conjoining Jamo
     //
-    static const char16_t test1[][CollationRegressionTest::MAX_TOKEN_LEN] =
+    static const UChar test1[][CollationRegressionTest::MAX_TOKEN_LEN] =
     {
         {0xd4db, 0}, {0x3d, 0}, {0x1111, 0x1171, 0x11b6, 0}
     };
@@ -784,7 +784,7 @@ void CollationRegressionTest::Test4114076(/* char* par */)
 //obsolete-    // With Full decomposition, it should go all the way down to
 //obsolete-    // conjoining Jamo characters.
 //obsolete-    //
-//obsolete-    static const char16_t test2[][CollationRegressionTest::MAX_TOKEN_LEN] =
+//obsolete-    static const UChar test2[][CollationRegressionTest::MAX_TOKEN_LEN] =
 //obsolete-    {
 //obsolete-        {0xd4db, 0}, {0x3d, 0}, {0x1111, 0x116e, 0x1175, 0x11af, 0x11c2, 0}
 //obsolete-    };
@@ -803,18 +803,18 @@ void CollationRegressionTest::Test4114076(/* char* par */)
 void CollationRegressionTest::Test4124632(/* char* par */)
 {
     UErrorCode status = U_ZERO_ERROR;
-    Collator *coll = nullptr;
+    Collator *coll = NULL;
 
     coll = Collator::createInstance(Locale::getJapan(), status);
 
-    if (coll == nullptr || U_FAILURE(status))
+    if (coll == NULL || U_FAILURE(status))
     {
         errln("Failed to create collator for Locale::JAPAN");
         delete coll;
         return;
     }
 
-    static const char16_t test[] = {0x41, 0x0308, 0x62, 0x63, 0};
+    static const UChar test[] = {0x41, 0x0308, 0x62, 0x63, 0};
     CollationKey key;
 
     coll->getCollationKey(test, key, status);
@@ -835,19 +835,19 @@ void CollationRegressionTest::Test4132736(/* char* par */)
 {
     UErrorCode status = U_ZERO_ERROR;
 
-    Collator *c = nullptr;
+    Collator *c = NULL;
 
     c = Collator::createInstance(Locale::getCanadaFrench(), status);
     c->setStrength(Collator::TERTIARY);
 
-    if (c == nullptr || U_FAILURE(status))
+    if (c == NULL || U_FAILURE(status))
     {
         errln("Failed to create a collator for Locale::getCanadaFrench()");
         delete c;
         return;
     }
 
-    static const char16_t test1[][CollationRegressionTest::MAX_TOKEN_LEN] =
+    static const UChar test1[][CollationRegressionTest::MAX_TOKEN_LEN] =
     {
         {0x65, 0x0300, 0x65, 0x0301, 0}, {0x3c, 0}, {0x65, 0x0301, 0x65, 0x0300, 0},
         {0x65, 0x0300, 0x0301, 0},       {0x3c, 0}, {0x65, 0x0301, 0x0300, 0}
@@ -864,7 +864,7 @@ void CollationRegressionTest::Test4132736(/* char* par */)
 //
 void CollationRegressionTest::Test4133509(/* char* par */)
 {
-    static const char16_t test1[][CollationRegressionTest::MAX_TOKEN_LEN] =
+    static const UChar test1[][CollationRegressionTest::MAX_TOKEN_LEN] =
     {
         {0x45, 0x78, 0x63, 0x65, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0}, {0x3c, 0}, {0x45, 0x78, 0x63, 0x65, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x49, 0x6e, 0x49, 0x6e, 0x69, 0x74, 0x69, 0x61, 0x6c, 0x69, 0x7a, 0x65, 0x72, 0x45, 0x72, 0x72, 0x6f, 0x72, 0},
         {0x47, 0x72, 0x61, 0x70, 0x68, 0x69, 0x63, 0x73, 0},      {0x3c, 0}, {0x47, 0x72, 0x61, 0x70, 0x68, 0x69, 0x63, 0x73, 0x45, 0x6e, 0x76, 0x69, 0x72, 0x6f, 0x6e, 0x6d, 0x65, 0x6e, 0x74, 0},
@@ -884,10 +884,10 @@ void CollationRegressionTest::Test4114077(/* char* par */)
     // as we do with it on....
 
     UErrorCode status = U_ZERO_ERROR;
-    RuleBasedCollator *c = en_us->clone();
+    RuleBasedCollator *c = (RuleBasedCollator *) en_us->clone();
     c->setStrength(Collator::TERTIARY);
 
-    static const char16_t test1[][CollationRegressionTest::MAX_TOKEN_LEN] =
+    static const UChar test1[][CollationRegressionTest::MAX_TOKEN_LEN] =
     {
         {0x00C0, 0},                     {0x3d, 0}, {0x41, 0x0300, 0},            // Should be equivalent
         {0x70, 0x00ea, 0x63, 0x68, 0x65, 0}, {0x3e, 0}, {0x70, 0x00e9, 0x63, 0x68, 0x00e9, 0},
@@ -900,7 +900,7 @@ void CollationRegressionTest::Test4114077(/* char* par */)
     c->setAttribute(UCOL_NORMALIZATION_MODE, UCOL_OFF, status);
     compareArray(*c, test1, UPRV_LENGTHOF(test1));
 
-    static const char16_t test2[][CollationRegressionTest::MAX_TOKEN_LEN] =
+    static const UChar test2[][CollationRegressionTest::MAX_TOKEN_LEN] =
     {
         {0x41, 0x0300, 0x0316, 0}, {0x3d, 0}, {0x41, 0x0316, 0x0300, 0}      // Reordering --> equal
     };
@@ -928,12 +928,12 @@ void CollationRegressionTest::Test4141640(/* char* par */)
 
     for (i = 0; i < localeCount; i += 1)
     {
-        Collator *c = nullptr;
+        Collator *c = NULL;
 
         status = U_ZERO_ERROR;
         c = Collator::createInstance(locales[i], status);
 
-        if (c == nullptr || U_FAILURE(status))
+        if (c == NULL || U_FAILURE(status))
         {
             UnicodeString msg, localeName;
 
@@ -961,11 +961,11 @@ void CollationRegressionTest::Test4139572(/* char* par */)
     // create spanish locale and collator
     UErrorCode status = U_ZERO_ERROR;
     Locale l("es", "es");
-    Collator *col = nullptr;
+    Collator *col = NULL;
 
     col = Collator::createInstance(l, status);
 
-    if (col == nullptr || U_FAILURE(status))
+    if (col == NULL || U_FAILURE(status))
     {
         errln("Failed to create a collator for es_es locale.");
         delete col;
@@ -983,6 +983,96 @@ void CollationRegressionTest::Test4139572(/* char* par */)
     }
 
     delete col;
+}
+/* HSYS : RuleBasedCollator::compare() performance enhancements
+          compare() does not create CollationElementIterator() anymore.*/
+
+class My4146160Collator : public RuleBasedCollator
+{
+public:
+    My4146160Collator(RuleBasedCollator &rbc, UErrorCode &status);
+    ~My4146160Collator();
+
+    CollationElementIterator *createCollationElementIterator(const UnicodeString &text) const;
+
+    CollationElementIterator *createCollationElementIterator(const CharacterIterator &text) const;
+
+    static int32_t count;
+};
+
+int32_t My4146160Collator::count = 0;
+
+My4146160Collator::My4146160Collator(RuleBasedCollator &rbc, UErrorCode &status)
+  : RuleBasedCollator(rbc.getRules(), status)
+{
+}
+
+My4146160Collator::~My4146160Collator()
+{
+}
+
+CollationElementIterator *My4146160Collator::createCollationElementIterator(const UnicodeString &text) const
+{
+    count += 1;
+    return RuleBasedCollator::createCollationElementIterator(text);
+}
+
+CollationElementIterator *My4146160Collator::createCollationElementIterator(const CharacterIterator &text) const
+{
+    count += 1;
+    return RuleBasedCollator::createCollationElementIterator(text);
+}
+
+// @bug 4146160
+//
+// RuleBasedCollator doesn't use createCollationElementIterator internally
+//
+void CollationRegressionTest::Test4146160(/* char* par */)
+{
+#if 0
+    //
+    // Use a custom collator class whose createCollationElementIterator
+    // methods increment a count....
+    //
+    UErrorCode status = U_ZERO_ERROR;
+    CollationKey key;
+
+    My4146160Collator::count = 0;
+    My4146160Collator *mc = NULL;
+
+    mc = new My4146160Collator(*en_us, status);
+
+    if (mc == NULL || U_FAILURE(status))
+    {
+        errln("Failed to create a My4146160Collator.");
+        delete mc;
+        return;
+    }
+
+    mc->getCollationKey("1", key, status);
+
+    if (key.isBogus() || U_FAILURE(status))
+    {
+        errln("Failure to get a CollationKey from a My4146160Collator.");
+        delete mc;
+        return;
+    }
+
+    if (My4146160Collator::count < 1)
+    {
+        errln("My4146160Collator::createCollationElementIterator not called for getCollationKey");
+    }
+
+    My4146160Collator::count = 0;
+    mc->compare("1", "2");
+
+    if (My4146160Collator::count < 1)
+    {
+        errln("My4146160Collator::createtCollationElementIterator not called for compare");
+    }
+
+    delete mc;
+#endif
 }
 
 void CollationRegressionTest::Test4179216() {
@@ -1086,7 +1176,7 @@ void CollationRegressionTest::Test4179216() {
 // Ticket 7189
 //
 // nextSortKeyPart incorrect for EO_S1 collation
-static int32_t calcKeyIncremental(UCollator *coll, const char16_t* text, int32_t len, uint8_t *keyBuf, int32_t /*keyBufLen*/, UErrorCode& status) {
+static int32_t calcKeyIncremental(UCollator *coll, const UChar* text, int32_t len, uint8_t *keyBuf, int32_t /*keyBufLen*/, UErrorCode& status) {
     UCharIterator uiter;
     uint32_t state[2] = { 0, 0 };
     int32_t keyLen;
@@ -1094,7 +1184,7 @@ static int32_t calcKeyIncremental(UCollator *coll, const char16_t* text, int32_t
 
     uiter_setString(&uiter, text, len);
     keyLen = 0;
-    while (true) {
+    while (TRUE) {
         int32_t keyPartLen = ucol_nextSortKeyPart(coll, &uiter, state, &keyBuf[keyLen], count, &status);
         if (U_FAILURE(status)) {
             return -1;
@@ -1112,7 +1202,7 @@ void CollationRegressionTest::TestT7189() {
     UCollator *coll;
     uint32_t i;
 
-    static const char16_t text1[][CollationRegressionTest::MAX_TOKEN_LEN] = {
+    static const UChar text1[][CollationRegressionTest::MAX_TOKEN_LEN] = {
     // "Achter De Hoven"
         { 0x41, 0x63, 0x68, 0x74, 0x65, 0x72, 0x20, 0x44, 0x65, 0x20, 0x48, 0x6F, 0x76, 0x65, 0x6E, 0x00 },
         // "ABC"
@@ -1121,7 +1211,7 @@ void CollationRegressionTest::TestT7189() {
         { 0x48, 0x45, 0x4C, 0x4C, 0x4F, 0x20, 0x77, 0x6F, 0x72, 0x6C, 0x64, 0x21, 0x00 }
     };
 
-    static const char16_t text2[][CollationRegressionTest::MAX_TOKEN_LEN] = {
+    static const UChar text2[][CollationRegressionTest::MAX_TOKEN_LEN] = {
     // "Achter de Hoven"
         { 0x41, 0x63, 0x68, 0x74, 0x65, 0x72, 0x20, 0x64, 0x65, 0x20, 0x48, 0x6F, 0x76, 0x65, 0x6E, 0x00 },
         // "abc"
@@ -1131,7 +1221,7 @@ void CollationRegressionTest::TestT7189() {
     };
 
     // Open the collator
-    coll = ucol_openFromShortString("EO_S1", false, nullptr, &status);
+    coll = ucol_openFromShortString("EO_S1", FALSE, NULL, &status);
     if (U_FAILURE(status)) {
         errln("Failed to create a collator for short string EO_S1");
         return;
@@ -1163,7 +1253,7 @@ void CollationRegressionTest::TestT7189() {
 }
 
 void CollationRegressionTest::TestCaseFirstCompression() {
-    RuleBasedCollator *col = en_us->clone();
+    RuleBasedCollator *col = (RuleBasedCollator *) en_us->clone();
     UErrorCode status = U_ZERO_ERROR;
 
     // default
@@ -1191,18 +1281,18 @@ void CollationRegressionTest::TestCaseFirstCompression() {
 void CollationRegressionTest::caseFirstCompressionSub(Collator *col, UnicodeString opt) {
     const int32_t maxLength = 50;
 
-    char16_t str1[maxLength];
-    char16_t str2[maxLength];
+    UChar str1[maxLength];
+    UChar str2[maxLength];
 
     CollationKey key1, key2;
 
     for (int32_t len = 1; len <= maxLength; len++) {
         int32_t i = 0;
         for (; i < len - 1; i++) {
-            str1[i] = str2[i] = (char16_t)0x61; // 'a'
+            str1[i] = str2[i] = (UChar)0x61; // 'a'
         }
-        str1[i] = (char16_t)0x41; // 'A'
-        str2[i] = (char16_t)0x61; // 'a'
+        str1[i] = (UChar)0x41; // 'A'
+        str2[i] = (UChar)0x61; // 'a'
 
         UErrorCode status = U_ZERO_ERROR;
         col->getCollationKey(str1, len, key1, status);
@@ -1226,7 +1316,7 @@ void CollationRegressionTest::TestTrailingComment() {
     // Check that the rule parser handles a comment without terminating end-of-line.
     IcuTestErrorCode errorCode(*this, "TestTrailingComment");
     RuleBasedCollator coll(UNICODE_STRING_SIMPLE("&c<b#comment1\n<a#comment2"), errorCode);
-    UnicodeString a((char16_t)0x61), b((char16_t)0x62), c((char16_t)0x63);
+    UnicodeString a((UChar)0x61), b((UChar)0x62), c((UChar)0x63);
     assertTrue("c<b", coll.compare(c, b) < 0);
     assertTrue("b<a", coll.compare(b, a) < 0);
 }
@@ -1249,59 +1339,8 @@ void CollationRegressionTest::TestBeforeWithTooStrongAfter() {
     }
 }
 
-void CollationRegressionTest::TestICU22555InfinityLoop() {
-    char16_t data[] = {
-        0x0020, 0x0026, 0x4000, 0x002c, 0x6601, 0x0106, 0xff7f, 0xff99,
-        0x003b, 0x1141, 0x106a, 0x1006, 0x0001, 0x0080, 0x1141, 0x106a,
-        0x0026, 0x00ff, 0xff6f, 0xff99, 0x013b, 0x1141, 0x1067, 0x1026,
-        0x0601, 0x0080, 0x5f03, 0x17e3, 0x0000, 0x3e00, 0x3e3e, 0x0055,
-        0x8080, 0x0000, 0x01e4, 0x0000, 0x0300, 0x003d, 0x4cff, 0x8053,
-        0x7a65, 0x0000, 0x6400, 0x5f00, 0x0150, 0x9090, 0x9090, 0x2f5f,
-        0x0053, 0xffe4, 0x002c, 0x0300, 0x1f3d, 0x55f7, 0x8053, 0x1750,
-        0x3d00, 0xff00, 0x00ff, 0xff6f, 0x0099, 0x03fa, 0x0303, 0x0303,
-        0x0303, 0x0303, 0x0303, 0x0303, 0x0303, 0x0303, 0x0303, 0x0303,
-        0x0303, 0x0303, 0x0303, 0x0303, 0x0303, 0x0303, 0x0303, 0x0303,
-    };
-    icu::UnicodeString rule(false, data, sizeof(data)/sizeof(char16_t));
-    UErrorCode status = U_ZERO_ERROR;
-    icu::LocalPointer<icu::RuleBasedCollator> col1(
-        new icu::RuleBasedCollator(rule, status));
-}
-
-void CollationRegressionTest::TestICU22517() {
-    IcuTestErrorCode errorCode(*this, "TestICU22517");
-    char16_t data[] = u"&a=b쫊쫊쫊쫊쫊쫊쫊쫊";
-    icu::UnicodeString rule(true, data, -1);
-    int length = quick ? rule.length()-2 : rule.length();
-    for (int i = 4; i <= length; i++) {
-      UErrorCode status = U_ZERO_ERROR;
-      icu::LocalPointer<icu::RuleBasedCollator> col1(
-          new icu::RuleBasedCollator(rule.tempSubString(0, i), status));
-    }
-}
-
-void CollationRegressionTest::TestICU22277() {
-    IcuTestErrorCode errorCode(*this, "TestICU22277");
-    UErrorCode status = U_ZERO_ERROR;
-
-    Collator* c = Collator::createInstance("JA-u-Co-priVatE-KANa", status);
-    if(c != nullptr || U_SUCCESS(status)) {
-      errcheckln(status, "Collator should have failed with MemorySanitizer: use-of-uninitialized-value error - %s",
-                 u_errorName(status));
-      delete c;
-      return;
-    }
-    c = Collator::createInstance("hE-U-cO-pRIVate-UNihan", status);
-    if(c != nullptr || U_SUCCESS(status)) {
-      errcheckln(status, "Collator should have failed with MemorySanitizer: use-of-uninitialized-value error - %s",
-                 u_errorName(status));
-      delete c;
-      return;
-    }
-}
-
 void CollationRegressionTest::compareArray(Collator &c,
-                                           const char16_t tests[][CollationRegressionTest::MAX_TOKEN_LEN],
+                                           const UChar tests[][CollationRegressionTest::MAX_TOKEN_LEN],
                                            int32_t testCount)
 {
     int32_t i;
@@ -1397,7 +1436,7 @@ void CollationRegressionTest::runIndexedTest(int32_t index, UBool exec, const ch
         logln("Collation Regression Tests: ");
     }
 
-    if(en_us == nullptr) {
+    if(en_us == NULL) {
         dataerrln("Class collator not instantiated");
         name = "";
         return;
@@ -1433,14 +1472,12 @@ void CollationRegressionTest::runIndexedTest(int32_t index, UBool exec, const ch
     TESTCASE_AUTO(Test4133509);
     TESTCASE_AUTO(Test4139572);
     TESTCASE_AUTO(Test4141640);
+    TESTCASE_AUTO(Test4146160);
     TESTCASE_AUTO(Test4179216);
     TESTCASE_AUTO(TestT7189);
     TESTCASE_AUTO(TestCaseFirstCompression);
     TESTCASE_AUTO(TestTrailingComment);
     TESTCASE_AUTO(TestBeforeWithTooStrongAfter);
-    TESTCASE_AUTO(TestICU22277);
-    TESTCASE_AUTO(TestICU22517);
-    TESTCASE_AUTO(TestICU22555InfinityLoop);
     TESTCASE_AUTO_END;
 }
 

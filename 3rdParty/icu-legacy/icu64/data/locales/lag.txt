@@ -1,9 +1,9 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 lag{
-    ExemplarCharacters{"[aá b c d eé f g h ií ɨ j k l m n oó p q r s t uú ʉ v w x y z]"}
+    ExemplarCharacters{"[a á b c d e é f g h i í ɨ j k l m n o ó p q r s t u ú ʉ v w x y z]"}
     ExemplarCharactersIndex{"[A B C D E F G H I Ɨ J K L M N O P Q R S T U Ʉ V W X Y Z]"}
+    Version{"2.1.47.82"}
     calendar{
         generic{
             DateTimePatterns{
@@ -22,11 +22,19 @@ lag{
                 "{1} {0}",
             }
             availableFormats{
+                Hm{"HH:mm"}
+                Hms{"HH:mm:ss"}
+                M{"L"}
                 MEd{"E, M/d"}
+                MMM{"LLL"}
                 MMMEd{"E, MMM d"}
                 MMMMEd{"E, MMMM d"}
+                MMMMd{"MMMM d"}
+                MMMd{"MMM d"}
                 Md{"M/d"}
-                hm{"h:mm a"}
+                d{"d"}
+                hm{"h:mm a"}
+                ms{"mm:ss"}
                 y{"y"}
                 yM{"M/y"}
                 yMEd{"E, M/d/y"}
@@ -38,6 +46,10 @@ lag{
             }
         }
         gregorian{
+            AmPmMarkers{
+                "TOO",
+                "MUU",
+            }
             AmPmMarkersAbbr{
                 "TOO",
                 "MUU",
@@ -58,11 +70,20 @@ lag{
                 "{1} {0}",
             }
             availableFormats{
+                Hm{"HH:mm"}
+                Hms{"HH:mm:ss"}
+                M{"L"}
                 MEd{"E, M/d"}
+                MMM{"LLL"}
                 MMMEd{"E, MMM d"}
                 MMMMEd{"E, MMMM d"}
+                MMMMd{"MMMM d"}
+                MMMd{"MMM d"}
                 Md{"M/d"}
-                hm{"h:mm a"}
+                d{"d"}
+                hm{"h:mm a"}
+                ms{"mm:ss"}
+                y{"y"}
                 yM{"M/y"}
                 yMEd{"E, M/d/y"}
                 yMMM{"MMM y"}
@@ -181,7 +202,9 @@ lag{
         }
     }
     delimiters{
+        alternateQuotationEnd{"’"}
         alternateQuotationStart{"’"}
+        quotationEnd{"”"}
         quotationStart{"”"}
     }
     fields{

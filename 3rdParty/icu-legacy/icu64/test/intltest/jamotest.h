@@ -31,13 +31,13 @@ public:
     virtual ~JamoTest();
 private:
     void runIndexedTest(int32_t index, UBool exec, const char* &name,
-                        char* par=nullptr) override;
+                        char* par=NULL);
 
-    void TestJamo();
+    void TestJamo(void);
     
-    void TestRealText();
+    void TestRealText(void);
 
-    void TestPiecemeal();
+    void TestPiecemeal(void);
 
     //======================================================================
     // Support methods
@@ -46,7 +46,7 @@ private:
     // Override TransliteratorTest
     virtual void expectAux(const UnicodeString& tag,
                            const UnicodeString& summary, UBool pass,
-                           const UnicodeString& expectedResult) override;
+                           const UnicodeString& expectedResult);
 
     // Methods to convert Jamo to/from readable short names,
     // e.g. (Gi) <> U+1100

@@ -1,16 +1,22 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 se{
+    Version{"2.1.48.4"}
     zoneStrings{
         "America:Curacao"{
             ec{"Curaçao"}
+        }
+        "America:Merida"{
+            ec{"Mérida"}
         }
         "America:Sao_Paulo"{
             ec{"São Paulo"}
         }
         "America:St_Barthelemy"{
             ec{"Saint Barthélemy"}
+        }
+        "Antarctica:DumontDUrville"{
+            ec{"Dumont d’Urville"}
         }
         "Etc:Unknown"{
             ec{"dovdameahttun áigeavádat"}

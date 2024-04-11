@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 el{
     Countries{
         001{"Κόσμος"}
@@ -206,7 +205,7 @@ el{
         NF{"Νήσος Νόρφολκ"}
         NG{"Νιγηρία"}
         NI{"Νικαράγουα"}
-        NL{"Κάτω Χώρες"}
+        NL{"Ολλανδία"}
         NO{"Νορβηγία"}
         NP{"Νεπάλ"}
         NR{"Ναουρού"}
@@ -254,7 +253,7 @@ el{
         SV{"Ελ Σαλβαδόρ"}
         SX{"Άγιος Μαρτίνος (Ολλανδικό τμήμα)"}
         SY{"Συρία"}
-        SZ{"Εσουατίνι"}
+        SZ{"Σουαζιλάνδη"}
         TA{"Τριστάν ντα Κούνια"}
         TC{"Νήσοι Τερκς και Κάικος"}
         TD{"Τσαντ"}
@@ -298,9 +297,6 @@ el{
         ZW{"Ζιμπάμπουε"}
         ZZ{"Άγνωστη περιοχή"}
     }
-    Countries%chagos{
-        IO{"Αρχιπέλαγος Τσάγκος"}
-    }
     Countries%short{
         GB{"ΗΒ"}
         HK{"Χονγκ Κονγκ"}
@@ -314,8 +310,7 @@ el{
         CG{"Κονγκό (Δημοκρατία)"}
         CZ{"Τσεχική Δημοκρατία"}
         FK{"Νήσοι Φόκλαντ (Νήσοι Μαλβίνας)"}
-        NZ{"Αοτεαρόα Νέα Ζηλανδία"}
-        SZ{"Σουαζιλάνδη"}
         TL{"Ανατολικό Τιμόρ"}
     }
+    Version{"2.1.49.82"}
 }

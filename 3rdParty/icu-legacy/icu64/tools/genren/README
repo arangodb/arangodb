@@ -20,14 +20,6 @@ This is prerequisite for the icu layoutex (Paragraph Layout) project, which is s
     cd icu4c/source
     svn export https://github.com/behdad/icu-le-hb/trunk/src layout
 
-(As an alternative to the above handling of layout engine header files, you can do the following:
-1. In the Makefile in this directory, temporarily delete $(LEX) from the list of objects for LIBS
-   before running make install-header
-2. After running make install-header, restore the deleted $(LEX) in the Makefile
-3. Then when comparing the old urename.h to the newly generated one, copy all of the lines beginning
-   "#define pl_" from the old version to the new one.
- - Peter E)
-
 - Regenerate urename.h
 
     cd icu4c/source/tools/genren

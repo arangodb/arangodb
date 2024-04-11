@@ -102,7 +102,7 @@ void IntlTestNumberFormatAPI::testAPI(/* char* par */)
     }
 
 // ======= Test equality
-if (per_fr != nullptr && cur_fr != nullptr)
+if (per_fr != NULL && cur_fr != NULL)
 {
     logln("Testing equality operator");
     
@@ -112,7 +112,7 @@ if (per_fr != nullptr && cur_fr != nullptr)
 }
 
 // ======= Test various format() methods
-if (cur_fr != nullptr)
+if (cur_fr != NULL)
 {
     logln("Testing various format() methods");
 
@@ -152,7 +152,7 @@ if (cur_fr != nullptr)
 }
 
 // ======= Test parse()
-if (fr != nullptr)
+if (fr != NULL)
 {
     logln("Testing parse()");
 
@@ -184,7 +184,7 @@ if (fr != nullptr)
 }
 
 // ======= Test getters and setters
-if (fr != nullptr && def != nullptr)
+if (fr != NULL && def != NULL)
 {
     logln("Testing getters and setters");
 
@@ -260,7 +260,7 @@ class NFTestFactory : public SimpleNumberFormatFactory {
 
 public:
     NFTestFactory() 
-        : SimpleNumberFormatFactory(SRC_LOC, true)
+        : SimpleNumberFormatFactory(SRC_LOC, TRUE)
     {
         UErrorCode status = U_ZERO_ERROR;
         currencyStyle = NumberFormat::createInstance(SWAP_LOC, status);
@@ -271,15 +271,15 @@ public:
         delete currencyStyle;
     }
     
-    virtual NumberFormat* createFormat(const Locale& /* loc */, UNumberFormatStyle formatType) override
+    virtual NumberFormat* createFormat(const Locale& /* loc */, UNumberFormatStyle formatType)
     {
         if (formatType == UNUM_CURRENCY) {
-            return currencyStyle->clone();
+            return (NumberFormat*)currencyStyle->clone();
         }
-        return nullptr;
+        return NULL;
     }
 
-   virtual inline UClassID getDynamicClassID() const override
+   virtual inline UClassID getDynamicClassID() const
    {
        return (UClassID)&gID;
    }
@@ -310,10 +310,10 @@ IntlTestNumberFormatAPI::testRegistration()
     LocalPointer<NumberFormat> f3a(NumberFormat::createCurrencyInstance(SRC_LOC, status));
     LocalPointer<NumberFormat> f4(NumberFormat::createInstance(SRC_LOC, status));
 
-    LocalPointer<StringEnumeration> locs(NumberFormat::getAvailableLocales());
+    StringEnumeration* locs = NumberFormat::getAvailableLocales();
 
-    LocalUNumberFormatPointer uf3(unum_open(UNUM_CURRENCY, nullptr, 0, SRC_LOC.getName(), nullptr, &status));
-    LocalUNumberFormatPointer uf4(unum_open(UNUM_DEFAULT, nullptr, 0, SRC_LOC.getName(), nullptr, &status));
+    LocalUNumberFormatPointer uf3(unum_open(UNUM_CURRENCY, NULL, 0, SRC_LOC.getName(), NULL, &status));
+    LocalUNumberFormatPointer uf4(unum_open(UNUM_DEFAULT, NULL, 0, SRC_LOC.getName(), NULL, &status));
 
     const UnicodeString* res;
     for (res = locs->snext(status); res; res = locs->snext(status)) {
@@ -322,17 +322,17 @@ IntlTestNumberFormatAPI::testRegistration()
 
     NumberFormat::unregister(key, status); // restore for other tests
     LocalPointer<NumberFormat> f5(NumberFormat::createCurrencyInstance(SRC_LOC, status));
-    LocalUNumberFormatPointer uf5(unum_open(UNUM_CURRENCY, nullptr, 0, SRC_LOC.getName(), nullptr, &status));
+    LocalUNumberFormatPointer uf5(unum_open(UNUM_CURRENCY, NULL, 0, SRC_LOC.getName(), NULL, &status));
 
     if (U_FAILURE(status)) {
-        dataerrln("Error creating instances.");
+        dataerrln("Error creating instnaces.");
         return;
     } else {
         float n = 1234.567f;
         UnicodeString res0, res1, res2, res3, res4, res5;
-        char16_t ures3[50];
-        char16_t ures4[50];
-        char16_t ures5[50];
+        UChar ures3[50];
+        UChar ures4[50];
+        UChar ures5[50];
 
         f0->format(n, res0);
         f1->format(n, res1);
@@ -341,9 +341,9 @@ IntlTestNumberFormatAPI::testRegistration()
         f4->format(n, res4);
         f5->format(n, res5);
 
-        unum_formatDouble(uf3.getAlias(), n, ures3, 50, nullptr, &status);
-        unum_formatDouble(uf4.getAlias(), n, ures4, 50, nullptr, &status);
-        unum_formatDouble(uf5.getAlias(), n, ures5, 50, nullptr, &status);
+        unum_formatDouble(uf3.getAlias(), n, ures3, 50, NULL, &status);
+        unum_formatDouble(uf4.getAlias(), n, ures4, 50, NULL, &status);
+        unum_formatDouble(uf5.getAlias(), n, ures5, 50, NULL, &status);
 
         logln((UnicodeString)"f0 swap int: " + res0);
         logln((UnicodeString)"f1 src int: " + res1);
@@ -391,6 +391,8 @@ IntlTestNumberFormatAPI::testRegistration()
     for (res = locs->snext(status); res; res = locs->snext(status)) {
         logln(*res);
     }
+
+    delete locs;
 #endif
 }
 

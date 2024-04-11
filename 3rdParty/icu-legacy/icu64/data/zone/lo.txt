@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 lo{
+    Version{"2.1.48.17"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"ອາບິດແຈນ"}
@@ -258,9 +258,6 @@ lo{
         "America:Chihuahua"{
             ec{"ຊິວາວາ"}
         }
-        "America:Ciudad_Juarez"{
-            ec{"ຊີອູດັດ ຄົວເຣຊ"}
-        }
         "America:Coral_Harbour"{
             ec{"ອາທິໂຄຄານ"}
         }
@@ -400,7 +397,7 @@ lo{
             ec{"ລີມາ"}
         }
         "America:Los_Angeles"{
-            ec{"ລອສແອນເຈລີສ"}
+            ec{"ລອສ ແອນເຈລີສ"}
         }
         "America:Louisville"{
             ec{"ຫລຸຍວິວ"}
@@ -465,6 +462,9 @@ lo{
         "America:New_York"{
             ec{"ນິວຢອກ"}
         }
+        "America:Nipigon"{
+            ec{"ນີປີກອນ"}
+        }
         "America:Nome"{
             ec{"ນອມ"}
         }
@@ -485,6 +485,9 @@ lo{
         }
         "America:Panama"{
             ec{"ພານາມາ"}
+        }
+        "America:Pangnirtung"{
+            ec{"ແພງເນີດທັງ"}
         }
         "America:Paramaribo"{
             ec{"ພາຣາມາຣິໂບ"}
@@ -507,6 +510,9 @@ lo{
         "America:Punta_Arenas"{
             ec{"ພຸນທາ ອະຣີນາສ໌"}
         }
+        "America:Rainy_River"{
+            ec{"ເຣນນີ ຣິເວີ"}
+        }
         "America:Rankin_Inlet"{
             ec{"ແຣນກິນ ອິນເລັດ"}
         }
@@ -521,6 +527,9 @@ lo{
         }
         "America:Rio_Branco"{
             ec{"ຣິໂອ ບຣັນໂກ"}
+        }
+        "America:Santa_Isabel"{
+            ec{"ຊານຕາ ອິດຊາເບວ"}
         }
         "America:Santarem"{
             ec{"ຊັນຕາເຣມ"}
@@ -559,13 +568,16 @@ lo{
             ec{"ເຊນ ວິນເຊນ"}
         }
         "America:Swift_Current"{
-            ec{"ສະວິຟ ເຄີເຣນ"}
+            ec{"ສະວິວ ເຄີເຣນ"}
         }
         "America:Tegucigalpa"{
             ec{"ເຕກູຊີການປາ"}
         }
         "America:Thule"{
             ec{"ທູເລ"}
+        }
+        "America:Thunder_Bay"{
+            ec{"ທັນເດີເບ"}
         }
         "America:Tijuana"{
             ec{"ທີຈົວນາ"}
@@ -587,6 +599,9 @@ lo{
         }
         "America:Yakutat"{
             ec{"ຢາຄູຕັດ"}
+        }
+        "America:Yellowknife"{
+            ec{"ເຢໂລໄນຟ໌"}
         }
         "Antarctica:Casey"{
             ec{"ເຄຊີ"}
@@ -673,7 +688,7 @@ lo{
             ec{"ບຣູໄນ"}
         }
         "Asia:Calcutta"{
-            ec{"ໂກລກາຕາ"}
+            ec{"ໂຄກາຕາ"}
         }
         "Asia:Chita"{
             ec{"ຊີຕ່າ"}
@@ -795,9 +810,6 @@ lo{
         "Asia:Qatar"{
             ec{"ກາຕາຣ໌"}
         }
-        "Asia:Qostanay"{
-            ec{"ຄອສຕາເນ"}
-        }
         "Asia:Qyzylorda"{
             ec{"ໄຄຊີລໍດາ"}
         }
@@ -911,6 +923,9 @@ lo{
         }
         "Australia:Broken_Hill"{
             ec{"ໂບຣກເຄນ ຮິວ"}
+        }
+        "Australia:Currie"{
+            ec{"ກູຣີ"}
         }
         "Australia:Darwin"{
             ec{"ດາວິນ"}
@@ -1094,6 +1109,9 @@ lo{
         "Europe:Ulyanovsk"{
             ec{"ອູລີອານອບສຄ໌"}
         }
+        "Europe:Uzhgorod"{
+            ec{"ອັສຊ໌ກໍໂຣດ"}
+        }
         "Europe:Vaduz"{
             ec{"ວາດາຊ"}
         }
@@ -1114,6 +1132,9 @@ lo{
         }
         "Europe:Zagreb"{
             ec{"ຊາເກຣບ"}
+        }
+        "Europe:Zaporozhye"{
+            ec{"ຊາໂປໂຣຊີ"}
         }
         "Europe:Zurich"{
             ec{"ຊູຣິກ"}
@@ -1140,7 +1161,7 @@ lo{
             ec{"ມາເຮ"}
         }
         "Indian:Maldives"{
-            ec{"ມັລດີຟ"}
+            ec{"ມັລດີບ"}
         }
         "Indian:Mauritius"{
             ec{"ເມົາຣິທຽສ"}
@@ -1196,8 +1217,8 @@ lo{
         "Pacific:Honolulu"{
             ec{"ໂຮໂນລູລູ"}
         }
-        "Pacific:Kanton"{
-            ec{"ແຄນຕອນ"}
+        "Pacific:Johnston"{
+            ec{"ຈອນສະໂຕນ"}
         }
         "Pacific:Kiritimati"{
             ec{"ຄີຣິທີມາຕີ"}
@@ -1291,9 +1312,9 @@ lo{
             ls{"ເວ​ລາ​ມາດ​ຕະ​ຖານ​ອາ​ຟຣິ​ກາ​ຕາ​ເວັນ​ຕົກ"}
         }
         "meta:Alaska"{
-            ld{"ເວລາກາງເວັນອະລັສກາ"}
-            lg{"ເວລາອະລັສກາ"}
-            ls{"ເວລາມາດຕະຖານອະລັສກາ"}
+            ld{"ເວລາກາງເວັນອະແລສກາ"}
+            lg{"ເວລາອະແລສກາ"}
+            ls{"ເວລາມາດຕະຖານອະແລສກາ"}
         }
         "meta:Almaty"{
             ld{"ເວລາລະດູຮ້ອນອໍມາຕີ"}
@@ -1644,6 +1665,9 @@ lo{
             lg{"ເວລາມາເກົາ"}
             ls{"ເວລາມາດຕະຖານມາເກົາ"}
         }
+        "meta:Macquarie"{
+            ls{"ເວ​ລາ​ເກາະ​ແມັກ​ຄົວ​ຣີ"}
+        }
         "meta:Magadan"{
             ld{"ເວລາລະດູຮ້ອນເມັກກາເດນ"}
             lg{"ເວລາເມັກກາເດນ"}
@@ -1653,7 +1677,7 @@ lo{
             ls{"ເວ​ລາ​ມາ​ເລ​ເຊຍ"}
         }
         "meta:Maldives"{
-            ls{"ເວລາມັລດີຟ"}
+            ls{"ເວລາມັນດີຟ"}
         }
         "meta:Marquesas"{
             ls{"ເວລາມາເຄີຊັສ"}
@@ -1668,6 +1692,11 @@ lo{
         }
         "meta:Mawson"{
             ls{"ເວລາມໍສັນ"}
+        }
+        "meta:Mexico_Northwest"{
+            ld{"ເວລາກາງເວັນເມັກຊິກັນນອດເວສ"}
+            lg{"​ເວ​ລາ​ນອດ​ເວ​ສ​ເມັກ​ຊິ​ໂກ"}
+            ls{"​ເວ​ລາ​ມາດ​ຕະ​ຖານນອດ​ເວ​ສ​ເມັກ​ຊິ​ໂກ"}
         }
         "meta:Mexico_Pacific"{
             ld{"ເວລາກາງເວັນແປຊິຟິກເມັກຊິກັນ"}
@@ -1712,9 +1741,7 @@ lo{
             ls{"ເວລານິອູເອ"}
         }
         "meta:Norfolk"{
-            ld{"ເວ​ລາ​ລະ​ດູ​ຮ້ອນເກາະ​ນໍ​ຟອ​ລ໌ກ"}
-            lg{"ເວ​ລາ​ເກາະ​ນໍ​ຟອ​ລ໌ກ"}
-            ls{"ເວ​ລາ​ມາດ​ຕະ​ຖານເກາະ​ນໍ​ຟອ​ລ໌ກ"}
+            ls{"ເວ​ລາ​ເກາະ​ນໍ​ຟອ​ລ໌ກ"}
         }
         "meta:Noronha"{
             ld{"ເວລາລະດູຮ້ອນເຟນັນໂດເດໂນຮອນຮາ"}
@@ -1893,9 +1920,10 @@ lo{
             lg{"ເວລາເຢກາເຕລິນເບີກ"}
             ls{"ເວລາມາດຕະຖານເຢກາເຕລິນເບີກ"}
         }
-        "meta:Yukon"{
-            ls{"ເວລາຢູຄອນ"}
-        }
+        fallbackFormat{"{1} ({0})"}
+        gmtFormat{"GMT{0}"}
+        gmtZeroFormat{"GMT"}
+        hourFormat{"+HH:mm;-HH:mm"}
         regionFormat{"ເວລາ {0}"}
         regionFormatDaylight{"ເວລາກາງເວັນ {0}"}
         regionFormatStandard{"ເວລາມາດຕະຖານ {0}"}

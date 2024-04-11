@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 be{
+    Version{"2.1.19.14"}
     collations{
         standard{
             Sequence{
@@ -9,7 +9,7 @@ be{
                 "&Е<ё<<<Ё"
                 "&у<ў<<<Ў"
             }
-            Version{"45"}
+            Version{"35.1"}
         }
     }
 }

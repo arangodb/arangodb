@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 sw_CD{
     AuxExemplarCharacters{"[q x]"}
     ExemplarCharacters{"[a b c d e f g h i j k l m n o p r s t u v w y z]"}
@@ -12,6 +11,7 @@ sw_CD{
             }
         }
     }
+    Version{"2.1.47.71"}
     calendar{
         generic{
             availableFormats{

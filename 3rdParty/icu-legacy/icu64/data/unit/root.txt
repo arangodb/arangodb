@@ -1,8 +1,10 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
+/**
+ * ICU <specials> source: <path>/common/main/root.xml
+ */
 root{
-    Version{"45"}
+    Version{"2.1.49.82"}
     durationUnits{
         hm{"h:mm"}
         hms{"h:mm:ss"}
@@ -16,7 +18,7 @@ root{
                 dnam{"g-force"}
                 other{"{0} G"}
             }
-            meter-per-square-second{
+            meter-per-second-squared{
                 dnam{"m/s²"}
                 other{"{0} m/s²"}
             }
@@ -91,65 +93,14 @@ root{
             }
         }
         compound{
-            1024p1{"Ki{0}"}
-            1024p2{"Mi{0}"}
-            1024p3{"Gi{0}"}
-            1024p4{"Ti{0}"}
-            1024p5{"Pi{0}"}
-            1024p6{"Ei{0}"}
-            1024p7{"Zi{0}"}
-            1024p8{"Yi{0}"}
-            10p-1{"d{0}"}
-            10p-12{"p{0}"}
-            10p-15{"f{0}"}
-            10p-18{"a{0}"}
-            10p-2{"c{0}"}
-            10p-21{"z{0}"}
-            10p-24{"y{0}"}
-            10p-27{"r{0}"}
-            10p-3{"m{0}"}
-            10p-30{"q{0}"}
-            10p-6{"μ{0}"}
-            10p-9{"n{0}"}
-            10p1{"da{0}"}
-            10p12{"T{0}"}
-            10p15{"P{0}"}
-            10p18{"E{0}"}
-            10p2{"h{0}"}
-            10p21{"Z{0}"}
-            10p24{"Y{0}"}
-            10p27{"R{0}"}
-            10p3{"k{0}"}
-            10p30{"Q{0}"}
-            10p6{"M{0}"}
-            10p9{"G{0}"}
             per{"{0}/{1}"}
-            power2{
-                other{
-                    _{
-                        _{"{0}²"}
-                    }
-                }
-            }
-            power3{
-                other{
-                    _{
-                        _{"{0}³"}
-                    }
-                }
-            }
-            times{"{0}⋅{1}"}
         }
         concentr{
-            item{
-                dnam{"item"}
-                other{"{0} item"}
-            }
             karat{
                 dnam{"kt"}
                 other{"{0} kt"}
             }
-            milligram-ofglucose-per-deciliter{
+            milligram-per-deciliter{
                 dnam{"mg/dL"}
                 other{"{0} mg/dL"}
             }
@@ -161,6 +112,10 @@ root{
                 dnam{"mol"}
                 other{"{0} mol"}
             }
+            part-per-million{
+                dnam{"ppm"}
+                other{"{0} ppm"}
+            }
             percent{
                 dnam{"%"}
                 other{"{0}%"}
@@ -169,17 +124,13 @@ root{
                 dnam{"‰"}
                 other{"{0}‰"}
             }
-            permillion{
-                dnam{"ppm"}
-                other{"{0} ppm"}
-            }
             permyriad{
                 dnam{"‱"}
                 other{"{0}‱"}
             }
         }
         consumption{
-            liter-per-100-kilometer{
+            liter-per-100kilometers{
                 dnam{"L/100km"}
                 other{"{0} L/100km"}
             }
@@ -260,10 +211,6 @@ root{
                 per{"{0}/d"}
             }
             day-person:alias{"/LOCALE/unitsShort/duration/day"}
-            decade{
-                dnam{"dec"}
-                other{"{0} dec"}
-            }
             hour{
                 dnam{"hr"}
                 other{"{0} h"}
@@ -291,11 +238,6 @@ root{
             nanosecond{
                 dnam{"ns"}
                 other{"{0} ns"}
-            }
-            quarter{
-                dnam{"qtr"}
-                other{"{0} q"}
-                per{"{0}/q"}
             }
             second{
                 dnam{"sec"}
@@ -346,7 +288,10 @@ root{
                 dnam{"eV"}
                 other{"{0} eV"}
             }
-            foodcalorie:alias{"/LOCALE/unitsShort/energy/kilocalorie"}
+            foodcalorie{
+                dnam{"Cal"}
+                other{"{0} Cal"}
+            }
             joule{
                 dnam{"joule"}
                 other{"{0} J"}
@@ -363,16 +308,8 @@ root{
                 dnam{"kWh"}
                 other{"{0} kWh"}
             }
-            therm-us{
-                dnam{"US therm"}
-                other{"{0} US therm"}
-            }
         }
         force{
-            kilowatt-hour-per-100-kilometer{
-                dnam{"kWh/100km"}
-                other{"{0} kWh/100km"}
-            }
             newton{
                 dnam{"N"}
                 other{"{0} N"}
@@ -400,31 +337,6 @@ root{
                 other{"{0} MHz"}
             }
         }
-        graphics{
-            dot-per-centimeter:alias{"/LOCALE/unitsShort/graphics/pixel-per-centimeter"}
-            dot-per-inch:alias{"/LOCALE/unitsShort/graphics/pixel-per-inch"}
-            dot:alias{"/LOCALE/unitsShort/graphics/pixel"}
-            em{
-                dnam{"em"}
-                other{"{0} em"}
-            }
-            megapixel{
-                dnam{"MP"}
-                other{"{0} MP"}
-            }
-            pixel{
-                dnam{"px"}
-                other{"{0} px"}
-            }
-            pixel-per-centimeter{
-                dnam{"ppcm"}
-                other{"{0} ppcm"}
-            }
-            pixel-per-inch{
-                dnam{"ppi"}
-                other{"{0} ppi"}
-            }
-        }
         length{
             astronomical-unit{
                 dnam{"au"}
@@ -438,10 +350,6 @@ root{
             decimeter{
                 dnam{"dm"}
                 other{"{0} dm"}
-            }
-            earth-radius{
-                dnam{"R⊕"}
-                other{"{0} R⊕"}
             }
             fathom{
                 dnam{"fm"}
@@ -476,8 +384,8 @@ root{
                 per{"{0}/m"}
             }
             micrometer{
-                dnam{"μm"}
-                other{"{0} μm"}
+                dnam{"µm"}
+                other{"{0} µm"}
             }
             mile{
                 dnam{"mi"}
@@ -521,14 +429,6 @@ root{
             }
         }
         light{
-            candela{
-                dnam{"cd"}
-                other{"{0} cd"}
-            }
-            lumen{
-                dnam{"lm"}
-                other{"{0} lm"}
-            }
             lux{
                 dnam{"lx"}
                 other{"{0} lx"}
@@ -551,10 +451,6 @@ root{
                 dnam{"M⊕"}
                 other{"{0} M⊕"}
             }
-            grain{
-                dnam{"grain"}
-                other{"{0} grain"}
-            }
             gram{
                 dnam{"gram"}
                 other{"{0} g"}
@@ -565,9 +461,13 @@ root{
                 other{"{0} kg"}
                 per{"{0}/kg"}
             }
+            metric-ton{
+                dnam{"t"}
+                other{"{0} t"}
+            }
             microgram{
-                dnam{"μg"}
-                other{"{0} μg"}
+                dnam{"µg"}
+                other{"{0} µg"}
             }
             milligram{
                 dnam{"mg"}
@@ -598,10 +498,6 @@ root{
             ton{
                 dnam{"tn"}
                 other{"{0} tn"}
-            }
-            tonne{
-                dnam{"t"}
-                other{"{0} t"}
             }
         }
         power{
@@ -635,15 +531,11 @@ root{
                 dnam{"atm"}
                 other{"{0} atm"}
             }
-            bar{
-                dnam{"bar"}
-                other{"{0} bar"}
-            }
             hectopascal{
                 dnam{"hPa"}
                 other{"{0} hPa"}
             }
-            inch-ofhg{
+            inch-hg{
                 dnam{"inHg"}
                 other{"{0} inHg"}
             }
@@ -659,24 +551,16 @@ root{
                 dnam{"mbar"}
                 other{"{0} mbar"}
             }
-            millimeter-ofhg{
+            millimeter-of-mercury{
                 dnam{"mm Hg"}
                 other{"{0} mm Hg"}
             }
-            pascal{
-                dnam{"Pa"}
-                other{"{0} Pa"}
-            }
-            pound-force-per-square-inch{
+            pound-per-square-inch{
                 dnam{"psi"}
                 other{"{0} psi"}
             }
         }
         speed{
-            beaufort{
-                dnam{"Bft"}
-                other{"B {0}"}
-            }
             kilometer-per-hour{
                 dnam{"km/h"}
                 other{"{0} km/h"}
@@ -717,7 +601,7 @@ root{
                 dnam{"N⋅m"}
                 other{"{0} N⋅m"}
             }
-            pound-force-foot{
+            pound-foot{
                 dnam{"lbf⋅ft"}
                 other{"{0} lbf⋅ft"}
             }
@@ -781,22 +665,6 @@ root{
                 dnam{"dL"}
                 other{"{0} dL"}
             }
-            dessert-spoon{
-                dnam{"dstspn"}
-                other{"{0} dstspn"}
-            }
-            dessert-spoon-imperial{
-                dnam{"dstspn Imp"}
-                other{"{0} dstspn Imp"}
-            }
-            dram{
-                dnam{"dram fluid"}
-                other{"{0} dram fl"}
-            }
-            drop{
-                dnam{"drop"}
-                other{"{0} drop"}
-            }
             fluid-ounce{
                 dnam{"US fl oz"}
                 other{"{0} fl oz US"}
@@ -819,10 +687,6 @@ root{
                 dnam{"hL"}
                 other{"{0} hL"}
             }
-            jigger{
-                dnam{"jigger"}
-                other{"{0} jigger"}
-            }
             liter{
                 dnam{"liter"}
                 other{"{0} l"}
@@ -836,10 +700,6 @@ root{
                 dnam{"mL"}
                 other{"{0} mL"}
             }
-            pinch{
-                dnam{"pinch"}
-                other{"{0} pinch"}
-            }
             pint{
                 dnam{"pt"}
                 other{"{0} pt"}
@@ -851,10 +711,6 @@ root{
             quart{
                 dnam{"qt"}
                 other{"{0} qt"}
-            }
-            quart-imperial{
-                dnam{"qt Imp"}
-                other{"{0} qt Imp."}
             }
             tablespoon{
                 dnam{"tbsp"}

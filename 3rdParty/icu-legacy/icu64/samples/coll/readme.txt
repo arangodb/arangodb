@@ -1,5 +1,5 @@
 Copyright (C) 2016 and later: Unicode, Inc. and others.
-License & terms of use: http://www.unicode.org/copyright.html
+License & terms of use: http://www.unicode.org/copyright.html#License
 
 Copyright (c) 2002-2005, International Business Machines Corporation and others. All Rights Reserved.
 coll: a sample program which compares 2 strings with a user-defined collator.

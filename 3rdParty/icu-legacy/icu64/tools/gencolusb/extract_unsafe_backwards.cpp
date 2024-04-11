@@ -14,10 +14,6 @@
 #include "collationroot.h"
 #include "collationtailoring.h"
 
-using icu::CollationCacheEntry;
-using icu::CollationRoot;
-using icu::UnicodeSet;
-
 /**
  * Define the type of generator to use. Choose one.
  */
@@ -47,7 +43,7 @@ int main(int argc, const char *argv[]) {
     
     UErrorCode preflightCode = U_ZERO_ERROR;
     // preflight
-    int32_t serializedCount = unsafeBackwardSet->serialize(nullptr,0,preflightCode);
+    int32_t serializedCount = unsafeBackwardSet->serialize(NULL,0,preflightCode);
     if(U_FAILURE(preflightCode) && preflightCode != U_BUFFER_OVERFLOW_ERROR) {
       fprintf(stderr, "Err: %s preflighting unicode set\n", u_errorName(preflightCode));
       return 1;
@@ -69,7 +65,7 @@ int main(int argc, const char *argv[]) {
     UnicodeString pattern;
     UnicodeSet set(*unsafeBackwardSet);
     set.compact();
-    set.toPattern(pattern, false);
+    set.toPattern(pattern, FALSE);
 
     if(U_SUCCESS(errorCode)) {
       // This fails (bug# ?) - which is why this method was abandoned.
@@ -80,7 +76,7 @@ int main(int argc, const char *argv[]) {
     }
 
 
-    const char16_t *buf = pattern.getBuffer();
+    const UChar *buf = pattern.getBuffer();
     int32_t needed = pattern.length();
 
     // print
@@ -91,7 +87,7 @@ int main(int argc, const char *argv[]) {
       fprintf(stderr,"===\n%s\n===\n", buf2);
     }
 
-    const UnicodeString unsafeBackwardPattern(false, buf, needed);
+    const UnicodeString unsafeBackwardPattern(FALSE, buf, needed);
   if(U_SUCCESS(errorCode)) {
     //UnicodeSet us(unsafeBackwardPattern, errorCode);
     //    fprintf(stderr, "\n%s:%d: err creating set %s\n", __FILE__, __LINE__, u_errorName(errorCode));
@@ -122,7 +118,7 @@ int main(int argc, const char *argv[]) {
 #if PATTERN
   printf("#define COLLUNSAFE_PATTERN 1\n");
   printf("static const int32_t collunsafe_len = %d;\n", needed);
-  printf("static const char16_t collunsafe_pattern[collunsafe_len] = {\n");
+  printf("static const UChar collunsafe_pattern[collunsafe_len] = {\n");
   for(int i=0;i<needed;i++) {
     if( (i>0) && (i%8 == 0) ) {
       printf(" // %d\n", i);

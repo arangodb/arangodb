@@ -1,7 +1,7 @@
 /*
 ***********************************************************************
 * © 2016 and later: Unicode, Inc. and others.
-* License & terms of use: http://www.unicode.org/copyright.html
+* License & terms of use: http://www.unicode.org/copyright.html#License
 ***********************************************************************
 ***********************************************************************
 * Copyright (c) 2010,International Business Machines
@@ -32,9 +32,9 @@ UPerfFunction* DateTimeRoundTripPerfTest::runIndexedTest(int32_t index, UBool ex
         TESTCASE(3,RoundTripLocale21);    // 21 locales w/ reverse order
         default: 
             name = ""; 
-            return nullptr;
+            return NULL;
     }
-    return nullptr;
+    return NULL;
 
 }
 
@@ -69,7 +69,7 @@ int main(int argc, const char* argv[]){
         return status;
     }
 
-    if(test.run()==false){
+    if(test.run()==FALSE){
 		cout << "run failed!" << endl;
         fprintf(stderr,"FAILED: Tests could not be run please check the arguments.\n");
         return -1;

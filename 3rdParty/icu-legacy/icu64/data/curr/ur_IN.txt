@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ur_IN{
     Currencies{
         CRC{
@@ -18,6 +17,10 @@ ur_IN{
         CVE{
             "CVE",
             "کیپ ورڈی اسکیوڈو",
+        }
+        ERN{
+            "ERN",
+            "اریٹیریائی ناکفا",
         }
         GBP{
             "£",
@@ -37,9 +40,42 @@ ur_IN{
         }
     }
     CurrencyPlurals{
+        CRC{
+            one{"کوسٹا ریکا کولون"}
+            other{"کوسٹا ریکا کولون"}
+        }
+        CUC{
+            one{"قابل منتقلی کیوبائی پیسو"}
+            other{"قابل منتقلی کیوبائی پیسو"}
+        }
+        CUP{
+            one{"کیوبائی پیسو"}
+            other{"کیوبائی پیسو"}
+        }
+        CVE{
+            one{"کیپ ورڈی اسکیوڈو"}
+            other{"کیپ ورڈی اسکیوڈو"}
+        }
+        ERN{
+            one{"اریٹیریائی ناکفا"}
+            other{"اریٹیریائی ناکفا"}
+        }
+        GBP{
+            one{"برطانوی پاونڈ سٹرلنگ"}
+            other{"برطانوی پاونڈ سٹرلنگ"}
+        }
+        GHS{
+            one{"گھانی سیڈی"}
+            other{"گھانی سیڈی"}
+        }
         PKR{
             one{"پاکستانی روپیہ"}
             other{"پاکستانی روپے"}
         }
+        WST{
+            one{"ساموآئی ٹالا"}
+            other{"ساموآئی ٹالا"}
+        }
     }
+    Version{"2.1.47.71"}
 }

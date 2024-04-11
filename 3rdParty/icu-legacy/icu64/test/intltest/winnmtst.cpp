@@ -57,19 +57,19 @@
 
 #define LOOP_COUNT 1000
 
-static UBool initialized = false;
+static UBool initialized = FALSE;
 
 /**
  * Return a random int64_t where U_INT64_MIN <= ran <= U_INT64_MAX.
  */
-static uint64_t randomInt64()
+static uint64_t randomInt64(void)
 {
     int64_t ran = 0;
     int32_t i;
 
     if (!initialized) {
-        srand((unsigned)time(nullptr));
-        initialized = true;
+        srand((unsigned)time(NULL));
+        initialized = TRUE;
     }
 
     /* Assume rand has at least 12 bits of precision */
@@ -83,13 +83,13 @@ static uint64_t randomInt64()
 /**
  * Return a random double where U_DOUBLE_MIN <= ran <= U_DOUBLE_MAX.
  */
-static double randomDouble()
+static double randomDouble(void)
 {
     double ran = 0;
 
     if (!initialized) {
-        srand((unsigned)time(nullptr));
-        initialized = true;
+        srand((unsigned)time(NULL));
+        initialized = TRUE;
     }
 #if 0
     int32_t i;
@@ -116,14 +116,14 @@ static double randomDouble()
 /**
  * Return a random int32_t where U_INT32_MIN <= ran <= U_INT32_MAX.
  */
-static uint32_t randomInt32()
+static uint32_t randomInt32(void)
 {
     int32_t ran = 0;
     int32_t i;
 
     if (!initialized) {
-        srand((unsigned)time(nullptr));
-        initialized = true;
+        srand((unsigned)time(NULL));
+        initialized = TRUE;
     }
 
     /* Assume rand has at least 12 bits of precision */
@@ -143,7 +143,7 @@ static UnicodeString &getWindowsFormat(int32_t lcid, UBool currency, UnicodeStri
 
     nBuffer[0] = 0x0000;
 
-    /* Due to the arguments causing a result to be <= 23 characters (+2 for nullptr and minus),
+    /* Due to the arguments causing a result to be <= 23 characters (+2 for NULL and minus),
     we don't need to reallocate the buffer. */
     va_start(args, fmt);
     result = _vsnwprintf(nBuffer, STACK_BUFFER_SIZE, fmt, args);
@@ -159,7 +159,7 @@ static UnicodeString &getWindowsFormat(int32_t lcid, UBool currency, UnicodeStri
         newLength = _vscwprintf(fmt, args);
         va_end(args);
 
-        nBuffer = NEW_ARRAY(char16_t, newLength + 1);
+        nBuffer = NEW_ARRAY(UChar, newLength + 1);
 
         va_start(args, fmt);
         result = _vsnwprintf(nBuffer, newLength + 1, fmt, args);
@@ -189,36 +189,36 @@ static UnicodeString &getWindowsFormat(int32_t lcid, UBool currency, UnicodeStri
     buffer[0] = 0x0000;
 
     if (currency) {
-        result = GetCurrencyFormatW(lcid, 0, nBuffer, nullptr, buffer, STACK_BUFFER_SIZE);
+        result = GetCurrencyFormatW(lcid, 0, nBuffer, NULL, buffer, STACK_BUFFER_SIZE);
 
         if (result == 0) {
             DWORD lastError = GetLastError();
 
             if (lastError == ERROR_INSUFFICIENT_BUFFER) {
-                int newLength = GetCurrencyFormatW(lcid, 0, nBuffer, nullptr, nullptr, 0);
+                int newLength = GetCurrencyFormatW(lcid, 0, nBuffer, NULL, NULL, 0);
 
                 buffer = NEW_ARRAY(wchar_t, newLength);
                 buffer[0] = 0x0000;
-                GetCurrencyFormatW(lcid, 0, nBuffer, nullptr, buffer, newLength);
+                GetCurrencyFormatW(lcid, 0, nBuffer, NULL, buffer, newLength);
             }
         }
     } else {
-        result = GetNumberFormatW(lcid, 0, nBuffer, nullptr, buffer, STACK_BUFFER_SIZE);
+        result = GetNumberFormatW(lcid, 0, nBuffer, NULL, buffer, STACK_BUFFER_SIZE);
 
         if (result == 0) {
             DWORD lastError = GetLastError();
 
             if (lastError == ERROR_INSUFFICIENT_BUFFER) {
-                int newLength = GetNumberFormatW(lcid, 0, nBuffer, nullptr, nullptr, 0);
+                int newLength = GetNumberFormatW(lcid, 0, nBuffer, NULL, NULL, 0);
 
                 buffer = NEW_ARRAY(wchar_t, newLength);
                 buffer[0] = 0x0000;
-                GetNumberFormatW(lcid, 0, nBuffer, nullptr, buffer, newLength);
+                GetNumberFormatW(lcid, 0, nBuffer, NULL, buffer, newLength);
             }
         }
     }
 
-    appendTo.append((const char16_t *)buffer, (int32_t) wcslen(buffer));
+    appendTo.append((const UChar *)buffer, (int32_t) wcslen(buffer));
 
     if (buffer != stackBuffer) {
         DELETE_ARRAY(buffer);
@@ -281,8 +281,8 @@ void Win32NumberTest::testLocales(NumberFormatTest *log)
         UErrorCode status = U_ZERO_ERROR;
         char localeID[128];
 
-        // nullptr localeID means ICU didn't recognize the lcid
-        if (lcidRecords[i].localeID == nullptr) {
+        // NULL localeID means ICU didn't recognize the lcid
+        if (lcidRecords[i].localeID == NULL) {
             continue;
         }
 
@@ -303,7 +303,7 @@ void Win32NumberTest::testLocales(NumberFormatTest *log)
 
         strcpy(localeID, lcidRecords[i].localeID);
 
-        if (strchr(localeID, '@')) {
+        if (strchr(localeID, '@') > 0) {
             strcat(localeID, ";");
         } else {
             strcat(localeID, "@");
@@ -315,16 +315,16 @@ void Win32NumberTest::testLocales(NumberFormatTest *log)
         NumberFormat *wnf = NumberFormat::createInstance(ulocale, status);
         NumberFormat *wcf = NumberFormat::createCurrencyInstance(ulocale, status);
 
-        testLocale(lcidRecords[i].localeID, lcidRecords[i].lcid, wnf, false, log);
-        testLocale(lcidRecords[i].localeID, lcidRecords[i].lcid, wcf, true,  log);
+        testLocale(lcidRecords[i].localeID, lcidRecords[i].lcid, wnf, FALSE, log);
+        testLocale(lcidRecords[i].localeID, lcidRecords[i].lcid, wcf, TRUE,  log);
 
 #if 0
-        char *old_locale = strdup(setlocale(LC_ALL, nullptr));
+        char *old_locale = strdup(setlocale(LC_ALL, NULL));
         
         setlocale(LC_ALL, "German");
 
-        testLocale(lcidRecords[i].localeID, lcidRecords[i].lcid, wnf, false, log);
-        testLocale(lcidRecords[i].localeID, lcidRecords[i].lcid, wcf, true,  log);
+        testLocale(lcidRecords[i].localeID, lcidRecords[i].lcid, wnf, FALSE, log);
+        testLocale(lcidRecords[i].localeID, lcidRecords[i].lcid, wcf, TRUE,  log);
 
         setlocale(LC_ALL, old_locale);
 

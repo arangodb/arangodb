@@ -1,13 +1,10 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
+/**
+ * ICU <specials> source: <path>/xml/rbnf/uk.xml
+ */
 uk{
     RBNFRules{
-        OrdinalRules{
-            "%digits-ordinal:",
-            "-x: \u2212>>;",
-            "0: =#,##0=;",
-        }
         SpelloutRules{
             "%%lenient-parse:",
             "&[last primary ignorable ] << ' ' << ',' << '-' << '\u00AD';",
@@ -124,4 +121,5 @@ uk{
             "1000000000000000000: =#,##0=;",
         }
     }
+    Version{"2.1.30.62"}
 }

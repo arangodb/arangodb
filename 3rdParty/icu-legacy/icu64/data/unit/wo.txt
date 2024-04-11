@@ -1,33 +1,10 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 wo{
-    units{
-        acceleration{
-            g-force{
-                other{"{0} g-force"}
-            }
-        }
-        speed{
-            beaufort{
-                other{"Bft {0}"}
-            }
-        }
-    }
-    unitsNarrow{
-        digital{
-            byte{
-                dnam{"B"}
-                other{"{0}B"}
-            }
-        }
-    }
-    unitsShort{
-        volume{
-            fluid-ounce{
-                dnam{"fl oz"}
-                other{"{0} fl oz"}
-            }
-        }
+    Version{"2.1.49.82"}
+    durationUnits{
+        hm{"h:mm"}
+        hms{"h:mm:ss"}
+        ms{"m:ss"}
     }
 }

@@ -30,7 +30,7 @@ public:
     StringTest() {}
     virtual ~StringTest();
 
-    void runIndexedTest(int32_t index, UBool exec, const char *&name, char *par=nullptr) override;
+    void runIndexedTest(int32_t index, UBool exec, const char *&name, char *par=NULL);
 
 private:
     void TestEndian();
@@ -39,23 +39,15 @@ private:
     void Test_U_STRING();
     void Test_UNICODE_STRING();
     void Test_UNICODE_STRING_SIMPLE();
-    void TestUpperOrdinal();
-    void TestLowerOrdinal();
     void Test_UTF8_COUNT_TRAIL_BYTES();
     void TestStringPiece();
-    void TestStringPieceFind();
     void TestStringPieceComparisons();
-    void TestStringPieceOther();
-    void TestStringPieceStringView();
-    void TestStringPieceU8();
     void TestByteSink();
     void TestCheckedArrayByteSink();
     void TestStringByteSink();
-    void TestStringByteSinkAppendU8();
     void TestSTLCompatibility();
     void TestCharString();
     void TestCStr();
-    void TestCharStrAppendNumber();
     void Testctou();
 };
 

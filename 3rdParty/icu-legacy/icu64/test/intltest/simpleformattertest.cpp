@@ -36,8 +36,7 @@ public:
     void TestFormatReplaceOptimizationNoOffsets();
     void TestFormatReplaceNoOptimizationNoOffsets();
     void TestQuotingLikeMessageFormat();
-    void runIndexedTest(int32_t index, UBool exec, const char*& name, char* par = nullptr) override;
-
+    void runIndexedTest(int32_t index, UBool exec, const char *&name, char *par=0);
 private:
     void verifyOffsets(
             const int32_t *expected,
@@ -79,12 +78,12 @@ void SimpleFormatterTest::TestNoArguments() {
     assertEquals(
             "formatAndAppend",
             "This doesn't have templates {0}", 
-            fmt.formatAndAppend(nullptr, 0, appendTo, offsets, 1, status));
+            fmt.formatAndAppend(NULL, 0, appendTo, offsets, 1, status));
     assertEquals("formatAndAppend offsets[0]", -1, offsets[0]);
     assertEquals(
             "formatAndReplace",
             "This doesn't have templates {0}", 
-            fmt.formatAndReplace(nullptr, 0, appendTo, nullptr, 0, status));
+            fmt.formatAndReplace(NULL, 0, appendTo, NULL, 0, status));
     assertSuccess("Status", status);
 }
 
@@ -139,12 +138,12 @@ void SimpleFormatterTest::TestBigArgument() {
     assertEquals("{20} count", 21, fmt.getArgumentLimit());
     UnicodeString b("b");
     UnicodeString *values[] = {
-        nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
-        nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr,
+        NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+        NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
         &b
     };
     UnicodeString result;
-    assertEquals("{20}=b", "abc", fmt.formatAndAppend(values, 21, result, nullptr, 0, status));
+    assertEquals("{20}=b", "abc", fmt.formatAndAppend(values, 21, result, NULL, 0, status));
     assertSuccess("Status", status);
 }
 
@@ -204,7 +203,7 @@ void SimpleFormatterTest::TestManyArguments() {
                     params,
                     UPRV_LENGTHOF(params),
                     appendTo,
-                    nullptr,
+                    NULL,
                     0,
                     status));
 
@@ -218,7 +217,7 @@ void SimpleFormatterTest::TestManyArguments() {
                     params,
                     UPRV_LENGTHOF(params),
                     appendTo,
-                    nullptr,
+                    NULL,
                     0,
                     status));
     r.applyPattern("{0} meter", status);
@@ -260,14 +259,14 @@ void SimpleFormatterTest::TestTooFewArgumentValues() {
 
     status = U_ZERO_ERROR;
     fmt.formatAndAppend(
-            params, UPRV_LENGTHOF(params), appendTo, nullptr, 0, status);
+            params, UPRV_LENGTHOF(params), appendTo, NULL, 0, status);
     if (status != U_ILLEGAL_ARGUMENT_ERROR) {
         errln("Expected U_ILLEGAL_ARGUMENT_ERROR");
     }
 
     status = U_ZERO_ERROR;
     fmt.formatAndReplace(
-            params, UPRV_LENGTHOF(params), appendTo, nullptr, 0, status);
+            params, UPRV_LENGTHOF(params), appendTo, NULL, 0, status);
     if (status != U_ILLEGAL_ARGUMENT_ERROR) {
         errln("Expected U_ILLEGAL_ARGUMENT_ERROR");
     }
@@ -280,25 +279,25 @@ void SimpleFormatterTest::TestBadArguments() {
 
     // These succeed
     fmt.formatAndAppend(
-            nullptr, 0, appendTo, nullptr, 0, status);
+            NULL, 0, appendTo, NULL, 0, status);
     fmt.formatAndReplace(
-            nullptr, 0, appendTo, nullptr, 0, status);
+            NULL, 0, appendTo, NULL, 0, status);
     assertSuccess("", status);
     status = U_ZERO_ERROR;
 
     // fails
     fmt.formatAndAppend(
-            nullptr, 1, appendTo, nullptr, 0, status);
+            NULL, 1, appendTo, NULL, 0, status);
     if (status != U_ILLEGAL_ARGUMENT_ERROR) {
-        errln("Expected U_ILLEGAL_ARGUMENT_ERROR: formatAndAppend() values=nullptr but length=1");
+        errln("Expected U_ILLEGAL_ARGUMENT_ERROR: formatAndAppend() values=NULL but length=1");
     }
     status = U_ZERO_ERROR;
    
     // fails
     fmt.formatAndAppend(
-            nullptr, 0, appendTo, nullptr, 1, status);
+            NULL, 0, appendTo, NULL, 1, status);
     if (status != U_ILLEGAL_ARGUMENT_ERROR) {
-        errln("Expected U_ILLEGAL_ARGUMENT_ERROR: formatAndAppend() offsets=nullptr but length=1");
+        errln("Expected U_ILLEGAL_ARGUMENT_ERROR: formatAndAppend() offsets=NULL but length=1");
     }
     status = U_ZERO_ERROR;
 
@@ -306,7 +305,7 @@ void SimpleFormatterTest::TestBadArguments() {
     SimpleFormatter fmt2("Arguments {0} and {1}", status);
     UnicodeString frog("frog");
     const UnicodeString *params[] = { &appendTo, &frog };
-    fmt2.formatAndAppend(params, 2, appendTo, nullptr, 0, status);
+    fmt2.formatAndAppend(params, 2, appendTo, NULL, 0, status);
     if (status != U_ILLEGAL_ARGUMENT_ERROR) {
         errln("Expected U_ILLEGAL_ARGUMENT_ERROR: formatAndAppend() value=appendTo");
     }
@@ -315,17 +314,17 @@ void SimpleFormatterTest::TestBadArguments() {
    
     // fails
     fmt.formatAndReplace(
-            nullptr, 1, appendTo, nullptr, 0, status);
+            NULL, 1, appendTo, NULL, 0, status);
     if (status != U_ILLEGAL_ARGUMENT_ERROR) {
-        errln("Expected U_ILLEGAL_ARGUMENT_ERROR: formatAndReplace() values=nullptr but length=1");
+        errln("Expected U_ILLEGAL_ARGUMENT_ERROR: formatAndReplace() values=NULL but length=1");
     }
     status = U_ZERO_ERROR;
    
     // fails
     fmt.formatAndReplace(
-            nullptr, 0, appendTo, nullptr, 1, status);
+            NULL, 0, appendTo, NULL, 1, status);
     if (status != U_ILLEGAL_ARGUMENT_ERROR) {
-        errln("Expected U_ILLEGAL_ARGUMENT_ERROR: formatAndReplace() offsets=nullptr but length=1");
+        errln("Expected U_ILLEGAL_ARGUMENT_ERROR: formatAndReplace() offsets=NULL but length=1");
     }
 }
 
@@ -486,7 +485,7 @@ void SimpleFormatterTest::TestFormatReplaceOptimizationNoOffsets() {
                     params,
                     UPRV_LENGTHOF(params),
                     result,
-                    nullptr,
+                    NULL,
                     0,
                     status));
     assertSuccess("Status", status);
@@ -505,7 +504,7 @@ void SimpleFormatterTest::TestFormatReplaceNoOptimizationNoOffsets() {
                     params,
                     UPRV_LENGTHOF(params),
                     result,
-                    nullptr,
+                    NULL,
                     0,
                     status));
     assertSuccess("Status", status);

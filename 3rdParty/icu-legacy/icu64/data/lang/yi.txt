@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 yi{
     Keys{
         numbers{"נומערן"}
@@ -127,6 +126,7 @@ yi{
         sk{"סלאוואַקיש"}
         sl{"סלאוועניש"}
         sli{"אונטער שלעזיש"}
+        sly{"sly"}
         sm{"סאַמאאַניש"}
         sn{"שאנאַ"}
         so{"סאמאַליש"}
@@ -171,6 +171,7 @@ yi{
             gregorian{"גרעגארישער קאַלענדאַר"}
         }
     }
+    Version{"2.1.47.82"}
     codePatterns{
         language{"שפראַך: {0}"}
         script{"שריפֿט: {0}"}

@@ -1,6 +1,5 @@
 ﻿# © 2016 and later: Unicode, Inc. and others.
-# License & terms of use: http://www.unicode.org/copyright.html
-# Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+# License & terms of use: http://www.unicode.org/copyright.html#License
 #
 # File: InterIndic_Latin.txt
 # Generated from CLDR
@@ -99,7 +98,7 @@ $om=\uE050; # OM
 $lm = \uE055;#  Telugu Length Mark
 $ailm=\uE056;#  AI Length Mark
 $aulm=\uE057;#  AU Length Mark
-#urdu compatibility forms
+#urdu compatibity forms
 $uka=\uE058;
 $ukha=\uE059;
 $ugha=\uE05A;
@@ -405,7 +404,7 @@ $wco} $x → o\u0306\u0314;
 $wse} $x → e\u0314;
 $wso} $x → o\u0314;
 $om} $x → ''om\u0314;
-# independent vowels when preceded by vowels
+# independent vowels when preceeded by vowels
 $vowels{$waa  → ''a\u0304;
 $vowels{$wai  → ''ai;
 $vowels{$wau  → ''au;
@@ -469,7 +468,7 @@ $dgs→ʔ;
 $kta→t\u0331;
 $danda→'.';
 $doubleDanda→'.';
-\uE070→'.';       # ABBREVIATION SIGN
+\uE070→;       # ABBREVIATION SIGN
 # LETTER RA WITH MIDDLE DIAGONAL
 \uE071}$x→ra;
 \uE071$virama→r;
@@ -493,7 +492,4 @@ $doubleDanda→'.';
 \uE07F→;       # URA
 \uE080→;       # EK ONKAR
 \uE004→;       # DEVANAGARI VOWEL SIGN SHORT A
-$virama→; # remove remaining viramas
-$nukta→\u0323 ;  # combining dot below
-\uE084→æ;       # DEVANAGARI VOWEL SIGN SHORT A
 

@@ -82,8 +82,8 @@ void PluralFormatTest::pluralFormatBasicTest(/*char *par*/)
     
     for (int32_t i=0; i< 8; ++i) {
         if (U_SUCCESS(status[i])) {
-            numberFormatTest(plFmt[i], numFmt, 1, 12, nullptr, nullptr, false, &message);
-            numberFormatTest(plFmt[i], numFmt, 100, 112, nullptr, nullptr, false, &message);
+            numberFormatTest(plFmt[i], numFmt, 1, 12, NULL, NULL, FALSE, &message);
+            numberFormatTest(plFmt[i], numFmt, 100, 112, NULL, NULL, FALSE, &message);
         }
         else {
             dataerrln("ERROR: PluralFormat constructor failed!");
@@ -98,7 +98,7 @@ void PluralFormatTest::pluralFormatBasicTest(/*char *par*/)
     plFmt[1]= new PluralFormat(locale, status[1]);
     if ( U_SUCCESS(status[0]) && U_SUCCESS(status[1]) ) {
         *plFmt[1] = *plFmt[0];
-        if (plFmt[1]!=nullptr) {
+        if (plFmt[1]!=NULL) {
             if ( *plFmt[1] != *plFmt[0] ) {
                 errln("ERROR:  clone plural format test failed!");
             }
@@ -113,7 +113,7 @@ void PluralFormatTest::pluralFormatBasicTest(/*char *par*/)
     plFmt[0]= new PluralFormat(locale, status[0]);
     if ( U_SUCCESS(status[0]) ) {
         *plFmt[1] = *plFmt[0];
-        if (plFmt[1]!=nullptr) {
+        if (plFmt[1]!=NULL) {
             if ( *plFmt[1] != *plFmt[0] ) {
                 errln("ERROR:  assignment operator test failed!");
             }
@@ -124,9 +124,9 @@ void PluralFormatTest::pluralFormatBasicTest(/*char *par*/)
     }
 
     if ( U_SUCCESS(status[1]) ) {
-        plFmt[2] = plFmt[1]->clone();
+        plFmt[2] = (PluralFormat*) plFmt[1]->clone();
 
-        if (plFmt[1]!=nullptr) {
+        if (plFmt[1]!=NULL) {
             if ( *plFmt[1] != *plFmt[2] ) {
                 errln("ERROR:  clone function test failed!");
             }
@@ -194,9 +194,9 @@ void PluralFormatTest::pluralFormatUnitTest(/*char *par*/)
 
     UErrorCode status = U_ZERO_ERROR;
     UnicodeString oddAndEvenRule = UNICODE_STRING_SIMPLE("odd: n mod 2 is 1");
-    LocalPointer<PluralRules>plRules(PluralRules::createRules(oddAndEvenRule, status));
+    PluralRules*  plRules = PluralRules::createRules(oddAndEvenRule, status);
     if (U_FAILURE(status)) {
-        dataerrln("ERROR:  create PluralRules instance failed in unit tests.- exiting");
+        dataerrln("ERROR:  create PluralRules instance failed in unit tests.- exitting");
         return;
     }
     
@@ -207,7 +207,7 @@ void PluralFormatTest::pluralFormatUnitTest(/*char *par*/)
         
         PluralFormat plFmt=PluralFormat(*plRules, status);
         if (U_FAILURE(status)) {
-            dataerrln("ERROR:  PluralFormat constructor failed in unit tests.- exiting");
+            dataerrln("ERROR:  PluralFormat constructor failed in unit tests.- exitting");
             return;
         }
         plFmt.applyPattern(checkSyntaxtData[i], status);
@@ -221,9 +221,9 @@ void PluralFormatTest::pluralFormatUnitTest(/*char *par*/)
     // ======= Test applying various pattern
     logln("Testing various patterns");
     status = U_ZERO_ERROR;
-    UBool overwrite[PLURAL_PATTERN_DATA] = {false, false, true, true};
+    UBool overwrite[PLURAL_PATTERN_DATA] = {FALSE, FALSE, TRUE, TRUE};
     
-    LocalPointer<NumberFormat> numFmt(NumberFormat::createInstance(status));
+    NumberFormat *numFmt = NumberFormat::createInstance(status);
     UnicodeString message=UnicodeString("ERROR: PluralFormat tests various pattern ...");
     if (U_FAILURE(status)) {
         dataerrln("ERROR: Could not create NumberFormat instance with default locale ");
@@ -232,7 +232,7 @@ void PluralFormatTest::pluralFormatUnitTest(/*char *par*/)
         status = U_ZERO_ERROR;
         PluralFormat plFmt=PluralFormat(*plRules, status);
         if (U_FAILURE(status)) {
-            dataerrln("ERROR:  PluralFormat constructor failed in unit tests.- exiting");
+            dataerrln("ERROR:  PluralFormat constructor failed in unit tests.- exitting");
             return;
         }
         plFmt.applyPattern(patternTestData[i], status);
@@ -240,33 +240,37 @@ void PluralFormatTest::pluralFormatUnitTest(/*char *par*/)
             errln("ERROR:  PluralFormat failed to apply pattern- "+patternTestData[i]);
             continue;
         }
-        numberFormatTest(&plFmt, numFmt.getAlias(), 1, 10, dynamic_cast<UnicodeString *>(&patternOddTestResult[i]), 
-                         dynamic_cast<UnicodeString *>(&patternEvenTestResult[i]), overwrite[i], &message);
+        numberFormatTest(&plFmt, numFmt, 1, 10, (UnicodeString *)&patternOddTestResult[i], 
+                         (UnicodeString *)&patternEvenTestResult[i], overwrite[i], &message);
     }
+    delete plRules;
+    delete numFmt;
     
     // ======= Test set locale
     status = U_ZERO_ERROR;
-    plRules.adoptInstead(PluralRules::createRules(UNICODE_STRING_SIMPLE("odd: n mod 2 is 1"), status));  
+    plRules = PluralRules::createRules(UNICODE_STRING_SIMPLE("odd: n mod 2 is 1"), status);  
     PluralFormat pluralFmt = PluralFormat(*plRules, status);
     if (U_FAILURE(status)) {
-        dataerrln("ERROR: Could not create PluralFormat instance in setLocale() test - exiting. ");
+        dataerrln("ERROR: Could not create PluralFormat instance in setLocale() test - exitting. ");
+        delete plRules;
         return;
     }
     pluralFmt.applyPattern(UNICODE_STRING_SIMPLE("odd{odd} other{even}"), status);
     pluralFmt.setLocale(Locale::getEnglish(), status);
     if (U_FAILURE(status)) {
         dataerrln("ERROR: Could not setLocale() with English locale ");
+        delete plRules;
         return;
     }
     message = UNICODE_STRING_SIMPLE("Error set locale: pattern is not reset!");
     
     // Check that pattern gets deleted.
     logln("\n Test setLocale() ..\n");
-    numFmt.adoptInstead(NumberFormat::createInstance(Locale::getEnglish(), status));
+    numFmt = NumberFormat::createInstance(Locale::getEnglish(), status);
     if (U_FAILURE(status)) {
         dataerrln("ERROR: Could not create NumberFormat instance with English locale ");
     }
-    numberFormatTest(&pluralFmt, numFmt.getAlias(), 5, 5, nullptr, nullptr, false, &message);
+    numberFormatTest(&pluralFmt, numFmt, 5, 5, NULL, NULL, FALSE, &message);
     pluralFmt.applyPattern(UNICODE_STRING_SIMPLE("odd__{odd} other{even}"), status);
     if (pluralFmt.format((int32_t)1, status) != UNICODE_STRING_SIMPLE("even")) {
         errln("SetLocale should reset rules but did not.");
@@ -298,6 +302,9 @@ void PluralFormatTest::pluralFormatUnitTest(/*char *par*/)
     if (pluralFmt != dupPFmt) {
         errln("Failed in PluralFormat copy constructor or == operator");
     }
+    
+    delete plRules;
+    delete numFmt;
 }
 
 
@@ -385,7 +392,7 @@ PluralFormatTest::pluralFormatLocaleTest(/*char *par*/)
         pluralResults[100+i] = PFT_FEW; // note override after loop
     }
     pluralResults[1]= PFT_ONE;
-    pluralResults[100]= PFT_OTHER;
+    pluralResults[101]= PFT_OTHER;
     helperTestResults(singularZeroSomeLocales, 1, testPattern, pluralResults);
     
     // ======== Test Special 12/19.
@@ -535,7 +542,7 @@ PluralFormatTest::pluralFormatLocaleTest(/*char *par*/)
 }
 
 void
-PluralFormatTest::pluralFormatExtendedTest() {
+PluralFormatTest::pluralFormatExtendedTest(void) {
   const char *targets[] = {
     "There are no widgets.",
     "There is one widget.",
@@ -558,7 +565,7 @@ PluralFormatTest::pluralFormatExtendedTest() {
   UErrorCode status = U_ZERO_ERROR;
   UnicodeString fmtString(fmt, -1, US_INV);
   PluralFormat pf(Locale::getEnglish(), fmtString, status);
-  MessageFormat mf(UNICODE_STRING_SIMPLE("{0,plural,").append(fmtString).append((char16_t)0x7d /* '}' */),
+  MessageFormat mf(UNICODE_STRING_SIMPLE("{0,plural,").append(fmtString).append((UChar)0x7d /* '}' */),
                    Locale::getEnglish(), status);
   Formattable args;
   FieldPosition ignore;
@@ -599,7 +606,7 @@ PluralFormatTest::pluralFormatExtendedTest() {
 }
 
 void
-PluralFormatTest::pluralFormatExtendedParseTest() {
+PluralFormatTest::pluralFormatExtendedParseTest(void) {
   const char *failures[] = {
     "offset:1..0 =0 {Foo}",
     "offset:1.0 {Foo}",
@@ -620,7 +627,7 @@ PluralFormatTest::pluralFormatExtendedParseTest() {
 }
 
 void
-PluralFormatTest::ordinalFormatTest() {
+PluralFormatTest::ordinalFormatTest(void) {
     IcuTestErrorCode errorCode(*this, "ordinalFormatTest");
     UnicodeString pattern("one{#st file}two{#nd file}few{#rd file}other{#th file}");
     PluralFormat pf(Locale::getEnglish(), UPLURAL_TYPE_ORDINAL, pattern, errorCode);
@@ -666,15 +673,15 @@ PluralFormatTest::TestDecimals() {
     IcuTestErrorCode errorCode(*this, "TestDecimals");
     // Simple number replacement.
     PluralFormat pf(Locale::getEnglish(), "one{one meter}other{# meters}", errorCode);
-    assertEquals("simple format(1)", "one meter", pf.format((int32_t)1, errorCode), true);
-    assertEquals("simple format(1.5)", "1.5 meters", pf.format(1.5, errorCode), true);
+    assertEquals("simple format(1)", "one meter", pf.format((int32_t)1, errorCode), TRUE);
+    assertEquals("simple format(1.5)", "1.5 meters", pf.format(1.5, errorCode), TRUE);
     PluralFormat pf2(Locale::getEnglish(),
             "offset:1 one{another meter}other{another # meters}", errorCode);
     DecimalFormat df("0.0", new DecimalFormatSymbols(Locale::getEnglish(), errorCode), errorCode);
     pf2.setNumberFormat(&df, errorCode);
-    assertEquals("offset-decimals format(1)", "another 0.0 meters", pf2.format((int32_t)1, errorCode), true);
-    assertEquals("offset-decimals format(2)", "another 1.0 meters", pf2.format((int32_t)2, errorCode), true);
-    assertEquals("offset-decimals format(2.5)", "another 1.5 meters", pf2.format(2.5, errorCode), true);
+    assertEquals("offset-decimals format(1)", "another 0.0 meters", pf2.format((int32_t)1, errorCode), TRUE);
+    assertEquals("offset-decimals format(2)", "another 1.0 meters", pf2.format((int32_t)2, errorCode), TRUE);
+    assertEquals("offset-decimals format(2.5)", "another 1.5 meters", pf2.format(2.5, errorCode), TRUE);
     errorCode.reset();
 }
 
@@ -689,8 +696,8 @@ PluralFormatTest::numberFormatTest(PluralFormat* plFmt,
                                    UnicodeString *message) {
     UErrorCode status = U_ZERO_ERROR;
     
-    if ( (plFmt==nullptr) || (numFmt==nullptr) ) {
-        dataerrln("ERROR: Could not create PluralFormat or NumberFormat - exiting");
+    if ( (plFmt==NULL) || (numFmt==NULL) ) {
+        dataerrln("ERROR: Could not create PluralFormat or NumberFormat - exitting");
         return;
     }
     UnicodeString plResult, numResult ;
@@ -699,7 +706,7 @@ PluralFormatTest::numberFormatTest(PluralFormat* plFmt,
         numResult.remove();
         numResult = numFmt->format(i, numResult);
         plResult = plFmt->format(i, status);
-        if ((numOddAppendStr!= nullptr)&&(numEvenAppendStr!=nullptr)) {
+        if ((numOddAppendStr!= NULL)&&(numEvenAppendStr!=NULL)) {
             if (overwrite) {
                 if (i&1) {
                     numResult = *numOddAppendStr;
@@ -721,7 +728,7 @@ PluralFormatTest::numberFormatTest(PluralFormat* plFmt,
             assertSuccess(*message + " in numberFormatTest", status);
         }
         if (numResult!=plResult) {
-            if ( message == nullptr ) {
+            if ( message == NULL ) {
                 errln("ERROR: Unexpected plural format - got:"+plResult+ UnicodeString("  expecting:")+numResult);
             }
             else {
@@ -729,6 +736,7 @@ PluralFormatTest::numberFormatTest(PluralFormat* plFmt,
             }
         }
     }
+    return;
 }
 
 

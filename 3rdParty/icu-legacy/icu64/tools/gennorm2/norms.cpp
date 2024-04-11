@@ -42,7 +42,7 @@ void BuilderReorderingBuffer::append(UChar32 c, uint8_t cc) {
     }
     fArray[i]=(c<<8)|cc;
     ++fLength;
-    fDidReorder=true;
+    fDidReorder=TRUE;
 }
 
 void BuilderReorderingBuffer::toString(UnicodeString &dest) const {
@@ -146,11 +146,11 @@ UBool Norms::combinesWithCCBetween(const Norm &norm, uint8_t lowCC, int32_t high
         for(int32_t i=0; i<length; ++i) {
             uint8_t trailCC=getCC(pairs[i].trail);
             if(lowCC<trailCC && trailCC<highCC) {
-                return true;
+                return TRUE;
             }
         }
     }
-    return false;
+    return FALSE;
 }
 
 void Norms::enumRanges(Enumerator &e) {
@@ -197,7 +197,7 @@ void CompositionBuilder::rangeHandler(UChar32 start, UChar32 end, Norm &norm) {
         exit(U_INVALID_FORMAT_ERROR);
     }
     // Flag for trailing character.
-    norms.createNorm(trail)->combinesBack=true;
+    norms.createNorm(trail)->combinesBack=TRUE;
     // Insert (trail, composite) pair into compositions list for the lead character.
     IcuToolErrorCode errorCode("gennorm2/addComposition()");
     Norm *leadNorm=norms.createNorm(lead);
@@ -231,7 +231,7 @@ void Decomposer::rangeHandler(UChar32 start, UChar32 end, Norm &norm) {
     if(!norm.hasMapping()) { return; }
     const UnicodeString &m=*norm.mapping;
     UnicodeString *decomposed=nullptr;
-    const char16_t *s=toUCharPtr(m.getBuffer());
+    const UChar *s=toUCharPtr(m.getBuffer());
     int32_t length=m.length();
     int32_t prev, i=0;
     UChar32 c;
@@ -286,7 +286,7 @@ void Decomposer::rangeHandler(UChar32 start, UChar32 end, Norm &norm) {
             }
             decomposed->append(*cNorm.mapping);
         } else if(Hangul::isHangul(c)) {
-            char16_t buffer[3];
+            UChar buffer[3];
             int32_t hangulLength=Hangul::decompose(c, buffer);
             if(norm.mappingType==Norm::ROUND_TRIP && prev!=0) {
                 fprintf(stderr,
@@ -315,7 +315,7 @@ void Decomposer::rangeHandler(UChar32 start, UChar32 end, Norm &norm) {
         norm.mapping=decomposed;
         // Not  norm.setMappingCP();  because the original mapping
         // is most likely to be encodable as a delta.
-        didDecompose|=true;
+        didDecompose|=TRUE;
     }
 }
 

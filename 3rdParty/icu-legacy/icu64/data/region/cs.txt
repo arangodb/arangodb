@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 cs{
     Countries{
         001{"svět"}
@@ -254,7 +253,7 @@ cs{
         SV{"Salvador"}
         SX{"Svatý Martin (Nizozemsko)"}
         SY{"Sýrie"}
-        SZ{"Eswatini"}
+        SZ{"Svazijsko"}
         TA{"Tristan da Cunha"}
         TC{"Turks a Caicos"}
         TD{"Čad"}
@@ -298,9 +297,6 @@ cs{
         ZW{"Zimbabwe"}
         ZZ{"neznámá oblast"}
     }
-    Countries%chagos{
-        IO{"Čagoské ostrovy"}
-    }
     Countries%short{
         GB{"GB"}
         HK{"Hongkong"}
@@ -315,8 +311,6 @@ cs{
         CI{"Côte d’Ivoire"}
         CZ{"Česká republika"}
         FK{"Falklandské ostrovy (Malvíny)"}
-        NZ{"Aotearoa – Nový Zéland"}
-        SZ{"Svazijsko"}
-        TL{"Timor-Leste"}
     }
+    Version{"2.1.48.44"}
 }

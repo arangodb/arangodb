@@ -442,7 +442,7 @@ TestCaseFolding(void) {
 
     /* test simple case folding */
     p=simple;
-    for(i=0; i<(int32_t)sizeof(simple)/12; p+=3, ++i) {
+    for(i=0; i<sizeof(simple)/12; p+=3, ++i) {
         if(u_foldCase(p[0], U_FOLD_CASE_DEFAULT)!=p[1]) {
             log_err("error: u_foldCase(0x%04lx, default)=0x%04lx instead of 0x%04lx\n",
                     p[0], u_foldCase(p[0], U_FOLD_CASE_DEFAULT), p[1]);
@@ -916,7 +916,6 @@ TestUCaseMapToTitle(void) {
     ucasemap_setOptions(csm, U_TITLECASE_NO_BREAK_ADJUSTMENT, &errorCode);
     if(U_FAILURE(errorCode)) {
         log_err_status(errorCode, "error: ucasemap_setOptions(U_TITLECASE_NO_BREAK_ADJUSTMENT) failed - %s\n", u_errorName(errorCode));
-        ucasemap_close(csm);
         return;
     }
 
@@ -952,7 +951,6 @@ TestUCaseMapToTitle(void) {
     ucasemap_setOptions(csm, U_TITLECASE_NO_LOWERCASE, &errorCode);
     if(U_FAILURE(errorCode)) {
         log_err("error: ucasemap_setOptions(U_TITLECASE_NO_LOWERCASE) failed - %s\n", u_errorName(errorCode));
-        ucasemap_close(csm);
         return;
     }
 

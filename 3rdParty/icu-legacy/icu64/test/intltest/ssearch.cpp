@@ -28,29 +28,19 @@
 #include "ssearch.h"
 #include "xmlparser.h"
 
-#include <stdio.h>  // for snprintf
+#include <stdio.h>  // for sprintf
 
 char testId[100];
 
-#define TEST_ASSERT(x) UPRV_BLOCK_MACRO_BEGIN { \
-    if (!(x)) { \
-        errln("Failure in file %s, line %d, test ID = \"%s\"", __FILE__, __LINE__, testId); \
-    } \
-} UPRV_BLOCK_MACRO_END
+#define TEST_ASSERT(x) {if (!(x)) { \
+    errln("Failure in file %s, line %d, test ID = \"%s\"", __FILE__, __LINE__, testId);}}
 
-#define TEST_ASSERT_M(x, m) UPRV_BLOCK_MACRO_BEGIN { \
-    if (!(x)) { \
-        dataerrln("Failure in file %s, line %d.   \"%s\"", __FILE__, __LINE__, m); \
-        return; \
-    } \
-} UPRV_BLOCK_MACRO_END
+#define TEST_ASSERT_M(x, m) {if (!(x)) { \
+    dataerrln("Failure in file %s, line %d.   \"%s\"", __FILE__, __LINE__, m);return;}}
 
-#define TEST_ASSERT_SUCCESS(errcode) UPRV_BLOCK_MACRO_BEGIN { \
-    if (U_FAILURE(errcode)) { \
-        dataerrln("Failure in file %s, line %d, test ID \"%s\", status = \"%s\"", \
-                  __FILE__, __LINE__, testId, u_errorName(errcode)); \
-    } \
-} UPRV_BLOCK_MACRO_END
+#define TEST_ASSERT_SUCCESS(errcode) {if (U_FAILURE(errcode)) { \
+    dataerrln("Failure in file %s, line %d, test ID \"%s\", status = \"%s\"", \
+          __FILE__, __LINE__, testId, u_errorName(errcode));}}
 
 #define NEW_ARRAY(type, count) (type *) uprv_malloc((count) * sizeof(type))
 #define DELETE_ARRAY(array) uprv_free((void *) (array))
@@ -112,7 +102,7 @@ const char *SSearchTest::getPath(char buffer[2048], const char *filename) {
 
     if (U_FAILURE(status) || strlen(testDataDirectory) + strlen(filename) + 1 >= PATH_BUFFER_SIZE) {
         errln("ERROR: getPath() failed - %s", u_errorName(status));
-        return nullptr;
+        return NULL;
     }
 
     strcpy(buffer, testDataDirectory);
@@ -128,7 +118,7 @@ void SSearchTest::searchTest()
     char path[PATH_BUFFER_SIZE];
     const char *testFilePath = getPath(path, "ssearch.xml");
 
-    if (testFilePath == nullptr) {
+    if (testFilePath == NULL) {
         return; /* Couldn't get path: error message already output. */
     }
 
@@ -141,7 +131,7 @@ void SSearchTest::searchTest()
     }
 
     const UnicodeString *debugTestCase = root->getAttribute("debug");
-    if (debugTestCase != nullptr) {
+    if (debugTestCase != NULL) {
 //       setenv("USEARCH_DEBUG", "1", 1);
     }
 
@@ -149,7 +139,7 @@ void SSearchTest::searchTest()
     const UXMLElement *testCase;
     int32_t tc = 0;
 
-    while((testCase = root->nextChildElement(tc)) != nullptr) {
+    while((testCase = root->nextChildElement(tc)) != NULL) {
 
         if (testCase->getTagName().compare("test-case") != 0) {
             errln("ssearch, unrecognized XML Element in test file");
@@ -157,12 +147,12 @@ void SSearchTest::searchTest()
         }
         const UnicodeString *id       = testCase->getAttribute("id");
         *testId = 0;
-        if (id != nullptr) {
+        if (id != NULL) {
             id->extract(0, id->length(), testId,  sizeof(testId), US_INV);
         }
 
         // If debugging test case has been specified and this is not it, skip to next.
-        if (id!=nullptr && debugTestCase!=nullptr && *id != *debugTestCase) {
+        if (id!=NULL && debugTestCase!=NULL && *id != *debugTestCase) {
             continue;
         }
         //
@@ -171,7 +161,7 @@ void SSearchTest::searchTest()
         //
         const UnicodeString *strength = testCase->getAttribute("strength");
         UColAttributeValue collatorStrength = UCOL_PRIMARY;
-        if      (strength==nullptr)          { collatorStrength = UCOL_TERTIARY;}
+        if      (strength==NULL)          { collatorStrength = UCOL_TERTIARY;}
         else if (*strength=="PRIMARY")    { collatorStrength = UCOL_PRIMARY;}
         else if (*strength=="SECONDARY")  { collatorStrength = UCOL_SECONDARY;}
         else if (*strength=="TERTIARY")   { collatorStrength = UCOL_TERTIARY;}
@@ -183,7 +173,7 @@ void SSearchTest::searchTest()
             //  This assert is a little deceiving in that strength can be
             //   any of the allowed values, not just TERTIARY, but it will
             //   do the job of getting the error output.
-            TEST_ASSERT(*strength=="TERTIARY");
+            TEST_ASSERT(*strength=="TERTIARY")
         }
 
         //
@@ -191,8 +181,8 @@ void SSearchTest::searchTest()
         //
         UColAttributeValue normalize = UCOL_OFF;
         const UnicodeString *norm = testCase->getAttribute("norm");
-        TEST_ASSERT (norm==nullptr || *norm=="ON" || *norm=="OFF");
-        if (norm!=nullptr && *norm=="ON") {
+        TEST_ASSERT (norm==NULL || *norm=="ON" || *norm=="OFF");
+        if (norm!=NULL && *norm=="ON") {
             normalize = UCOL_ON;
         }
 
@@ -201,18 +191,18 @@ void SSearchTest::searchTest()
         //
         UColAttributeValue alternateHandling = UCOL_NON_IGNORABLE;
         const UnicodeString *alt = testCase->getAttribute("alternate_handling");
-        TEST_ASSERT (alt == nullptr || *alt == "SHIFTED" || *alt == "NON_IGNORABLE");
-        if (alt != nullptr && *alt == "SHIFTED") {
+        TEST_ASSERT (alt == NULL || *alt == "SHIFTED" || *alt == "NON_IGNORABLE");
+        if (alt != NULL && *alt == "SHIFTED") {
             alternateHandling = UCOL_SHIFTED;
         }
 
         const UnicodeString defLocale("en");
         char  clocale[100];
         const UnicodeString *locale   = testCase->getAttribute("locale");
-        if (locale == nullptr || locale->length()==0) {
+        if (locale == NULL || locale->length()==0) {
             locale = &defLocale;
-        }
-        locale->extract(0, locale->length(), clocale, sizeof(clocale), nullptr);
+        };
+        locale->extract(0, locale->length(), clocale, sizeof(clocale), NULL);
 
 
         UnicodeString  text;
@@ -224,27 +214,27 @@ void SSearchTest::searchTest()
         int32_t                nodeCount = 0;
 
         n = testCase->getChildElement("pattern");
-        TEST_ASSERT(n != nullptr);
-        if (n==nullptr) {
+        TEST_ASSERT(n != NULL);
+        if (n==NULL) {
             continue;
         }
-        text = n->getText(false);
+        text = n->getText(FALSE);
         text = text.unescape();
         pattern.append(text);
         nodeCount++;
 
         n = testCase->getChildElement("pre");
-        if (n!=nullptr) {
-            text = n->getText(false);
+        if (n!=NULL) {
+            text = n->getText(FALSE);
             text = text.unescape();
             target.append(text);
             nodeCount++;
         }
 
         n = testCase->getChildElement("m");
-        if (n!=nullptr) {
+        if (n!=NULL) {
             expectedMatchStart = target.length();
-            text = n->getText(false);
+            text = n->getText(FALSE);
             text = text.unescape();
             target.append(text);
             expectedMatchLimit = target.length();
@@ -252,8 +242,8 @@ void SSearchTest::searchTest()
         }
 
         n = testCase->getChildElement("post");
-        if (n!=nullptr) {
-            text = n->getText(false);
+        if (n!=NULL) {
+            text = n->getText(FALSE);
             text = text.unescape();
             target.append(text);
             nodeCount++;
@@ -273,7 +263,7 @@ void SSearchTest::searchTest()
         LocalUStringSearchPointer uss(usearch_openFromCollator(pattern.getBuffer(), pattern.length(),
                                                                target.getBuffer(), target.length(),
                                                                collator.getAlias(),
-                                                               nullptr,     // the break iterator
+                                                               NULL,     // the break iterator
                                                                &status));
 
         TEST_ASSERT_SUCCESS(status);
@@ -293,7 +283,7 @@ void SSearchTest::searchTest()
         if ((foundMatch && expectedMatchStart<0) ||
             (foundStart != expectedMatchStart)   ||
             (foundLimit != expectedMatchLimit)) {
-                TEST_ASSERT(false);   //  output generic error position
+                TEST_ASSERT(FALSE);   //  ouput generic error position
                 infoln("Found, expected match start = %d, %d \n"
                        "Found, expected match limit = %d, %d",
                 foundStart, expectedMatchStart, foundLimit, expectedMatchLimit);
@@ -311,7 +301,7 @@ void SSearchTest::searchTest()
         uss.adoptInstead(usearch_openFromCollator(pattern.getBuffer(), pattern.length(),
             target.getBuffer(), target.length(),
             collator.getAlias(),
-            nullptr,
+            NULL,
             &status));
 
         //
@@ -322,7 +312,7 @@ void SSearchTest::searchTest()
         if ((foundMatch && expectedMatchStart<0) ||
             (foundStart != expectedMatchStart)   ||
             (foundLimit != expectedMatchLimit)) {
-                TEST_ASSERT(false);   //  output generic error position
+                TEST_ASSERT(FALSE);   //  ouput generic error position
                 infoln("Found, expected backwards match start = %d, %d \n"
                        "Found, expected backwards match limit = %d, %d",
                 foundStart, expectedMatchStart, foundLimit, expectedMatchLimit);
@@ -345,13 +335,13 @@ public:
     OrderList(UCollator *coll, const UnicodeString &string, int32_t stringOffset = 0);
     ~OrderList();
 
-    int32_t size() const;
+    int32_t size(void) const;
     void add(int32_t order, int32_t low, int32_t high);
     const Order *get(int32_t index) const;
     int32_t getLowOffset(int32_t index) const;
     int32_t getHighOffset(int32_t index) const;
     int32_t getOrder(int32_t index) const;
-    void reverse();
+    void reverse(void);
     UBool compare(const OrderList &other) const;
     UBool matchesAt(int32_t offset, const OrderList &other) const;
 
@@ -362,13 +352,13 @@ private:
 };
 
 OrderList::OrderList()
-  : list(nullptr),  listMax(16), listSize(0)
+  : list(NULL),  listMax(16), listSize(0)
 {
     list = new Order[listMax];
 }
 
 OrderList::OrderList(UCollator *coll, const UnicodeString &string, int32_t stringOffset)
-    : list(nullptr), listMax(16), listSize(0)
+    : list(NULL), listMax(16), listSize(0)
 {
     UErrorCode status = U_ZERO_ERROR;
     UCollationElements *elems = ucol_openElements(coll, string.getBuffer(), string.length(), &status);
@@ -435,7 +425,7 @@ void OrderList::add(int32_t order, int32_t low, int32_t high)
 const Order *OrderList::get(int32_t index) const
 {
     if (index >= listSize) {
-        return nullptr;
+        return NULL;
     }
 
     return &list[index];
@@ -445,7 +435,7 @@ int32_t OrderList::getLowOffset(int32_t index) const
 {
     const Order *order = get(index);
 
-    if (order != nullptr) {
+    if (order != NULL) {
         return order->lowOffset;
     }
 
@@ -456,7 +446,7 @@ int32_t OrderList::getHighOffset(int32_t index) const
 {
     const Order *order = get(index);
 
-    if (order != nullptr) {
+    if (order != NULL) {
         return order->highOffset;
     }
 
@@ -467,7 +457,7 @@ int32_t OrderList::getOrder(int32_t index) const
 {
     const Order *order = get(index);
 
-    if (order != nullptr) {
+    if (order != NULL) {
         return order->order;
     }
 
@@ -492,18 +482,18 @@ void OrderList::reverse()
 UBool OrderList::compare(const OrderList &other) const
 {
     if (listSize != other.listSize) {
-        return false;
+        return FALSE;
     }
 
     for(int32_t i = 0; i < listSize; i += 1) {
         if (list[i].order  != other.list[i].order ||
             list[i].lowOffset != other.list[i].lowOffset ||
             list[i].highOffset != other.list[i].highOffset) {
-                return false;
+                return FALSE;
         }
     }
 
-    return true;
+    return TRUE;
 }
 
 UBool OrderList::matchesAt(int32_t offset, const OrderList &other) const
@@ -512,19 +502,19 @@ UBool OrderList::matchesAt(int32_t offset, const OrderList &other) const
     int32_t otherSize = other.size() - 1;
 
     if (listSize - 1 - offset < otherSize) {
-        return false;
+        return FALSE;
     }
 
     for (int32_t i = offset, j = 0; j < otherSize; i += 1, j += 1) {
         if (getOrder(i) != other.getOrder(j)) {
-            return false;
+            return FALSE;
         }
     }
 
-    return true;
+    return TRUE;
 }
 
-static char *printOffsets(char *buffer, size_t n, OrderList &list)
+static char *printOffsets(char *buffer, OrderList &list)
 {
     int32_t size = list.size();
     char *s = buffer;
@@ -533,16 +523,16 @@ static char *printOffsets(char *buffer, size_t n, OrderList &list)
         const Order *order = list.get(i);
 
         if (i != 0) {
-            s += snprintf(s, n, ", ");
+            s += sprintf(s, ", ");
         }
 
-        s += snprintf(s, n, "(%d, %d)", order->lowOffset, order->highOffset);
+        s += sprintf(s, "(%d, %d)", order->lowOffset, order->highOffset);
     }
 
     return buffer;
 }
 
-static char *printOrders(char *buffer, size_t n, OrderList &list)
+static char *printOrders(char *buffer, OrderList &list)
 {
     int32_t size = list.size();
     char *s = buffer;
@@ -551,10 +541,10 @@ static char *printOrders(char *buffer, size_t n, OrderList &list)
         const Order *order = list.get(i);
 
         if (i != 0) {
-            s += snprintf(s, n, ", ");
+            s += sprintf(s, ", ");
         }
 
-        s += snprintf(s, n, "%8.8X", order->order);
+        s += sprintf(s, "%8.8X", order->order);
     }
 
     return buffer;
@@ -626,7 +616,7 @@ void SSearchTest::offsetTest()
 
     int32_t testCount = UPRV_LENGTHOF(test);
     UErrorCode status = U_ZERO_ERROR;
-    RuleBasedCollator *col = dynamic_cast<RuleBasedCollator*>(Collator::createInstance(Locale::getEnglish(), status));
+    RuleBasedCollator *col = (RuleBasedCollator *) Collator::createInstance(Locale::getEnglish(), status);
     if (U_FAILURE(status)) {
         errcheckln(status, "Failed to create collator in offsetTest! - %s", u_errorName(status));
         return;
@@ -667,26 +657,26 @@ void SSearchTest::offsetTest()
             }
 
             backwardList.add(order, low, high);
-        } while (true);
+        } while (TRUE);
 
         backwardList.reverse();
 
         if (forwardList.compare(backwardList)) {
             logln("Works with \"%s\"", test[i]);
-            logln("Forward offsets:  [%s]", printOffsets(buffer, sizeof(buffer), forwardList));
-//          logln("Backward offsets: [%s]", printOffsets(buffer, sizeof(buffer), backwardList));
+            logln("Forward offsets:  [%s]", printOffsets(buffer, forwardList));
+//          logln("Backward offsets: [%s]", printOffsets(buffer, backwardList));
 
-            logln("Forward CEs:  [%s]", printOrders(buffer, sizeof(buffer), forwardList));
-//          logln("Backward CEs: [%s]", printOrders(buffer, sizeof(buffer), backwardList));
+            logln("Forward CEs:  [%s]", printOrders(buffer, forwardList));
+//          logln("Backward CEs: [%s]", printOrders(buffer, backwardList));
 
             logln();
         } else {
             errln("Fails with \"%s\"", test[i]);
-            infoln("Forward offsets:  [%s]", printOffsets(buffer, sizeof(buffer), forwardList));
-            infoln("Backward offsets: [%s]", printOffsets(buffer, sizeof(buffer), backwardList));
+            infoln("Forward offsets:  [%s]", printOffsets(buffer, forwardList));
+            infoln("Backward offsets: [%s]", printOffsets(buffer, backwardList));
 
-            infoln("Forward CEs:  [%s]", printOrders(buffer, sizeof(buffer), forwardList));
-            infoln("Backward CEs: [%s]", printOrders(buffer, sizeof(buffer), backwardList));
+            infoln("Forward CEs:  [%s]", printOrders(buffer, forwardList));
+            infoln("Backward CEs: [%s]", printOrders(buffer, backwardList));
 
             infoln();
         }
@@ -711,9 +701,9 @@ static UnicodeString &escape(const UnicodeString &string, UnicodeString &buffer)
             char cbuffer[12];
 
             if (ch <= 0xFFFFL) {
-                snprintf(cbuffer, sizeof(cbuffer), "\\u%4.4X", ch);
+                sprintf(cbuffer, "\\u%4.4X", ch);
             } else {
-                snprintf(cbuffer, sizeof(cbuffer), "\\U%8.8X", ch);
+                sprintf(cbuffer, "\\U%8.8X", ch);
             }
 
             buffer.append(cbuffer);
@@ -731,7 +721,7 @@ static UnicodeString &escape(const UnicodeString &string, UnicodeString &buffer)
 void SSearchTest::sharpSTest()
 {
     UErrorCode status = U_ZERO_ERROR;
-    UCollator *coll = nullptr;
+    UCollator *coll = NULL;
     UnicodeString lp  = "fuss";
     UnicodeString sp = "fu\\u00DF";
     UnicodeString targets[]  = {"fu\\u00DF", "fu\\u00DFball", "1fu\\u00DFball", "12fu\\u00DFball", "123fu\\u00DFball", "1234fu\\u00DFball",
@@ -739,7 +729,7 @@ void SSearchTest::sharpSTest()
                                 "fuss", "ffuss", "fufuss", "fusfuss", "1fuss", "12fuss", "123fuss", "1234fuss", "fu\\u00DF", "1fu\\u00DF", "12fu\\u00DF", "123fu\\u00DF", "1234fu\\u00DF"};
     int32_t start = -1, end = -1;
 
-    coll = ucol_openFromShortString("LEN_S1", false, nullptr, &status);
+    coll = ucol_openFromShortString("LEN_S1", FALSE, NULL, &status);
     TEST_ASSERT_SUCCESS(status);
 
     UnicodeString lpUnescaped = lp.unescape();
@@ -748,13 +738,13 @@ void SSearchTest::sharpSTest()
     LocalUStringSearchPointer ussLong(usearch_openFromCollator(lpUnescaped.getBuffer(), lpUnescaped.length(),
                                                            lpUnescaped.getBuffer(), lpUnescaped.length(),   // actual test data will be set later
                                                            coll,
-                                                           nullptr,     // the break iterator
+                                                           NULL,     // the break iterator
                                                            &status));
 
     LocalUStringSearchPointer ussShort(usearch_openFromCollator(spUnescaped.getBuffer(), spUnescaped.length(),
                                                            spUnescaped.getBuffer(), spUnescaped.length(),   // actual test data will be set later
                                                            coll,
-                                                           nullptr,     // the break iterator
+                                                           NULL,     // the break iterator
                                                            &status));
     TEST_ASSERT_SUCCESS(status);
 
@@ -788,19 +778,19 @@ void SSearchTest::sharpSTest()
 void SSearchTest::goodSuffixTest()
 {
     UErrorCode status = U_ZERO_ERROR;
-    UCollator *coll = nullptr;
+    UCollator *coll = NULL;
     UnicodeString pat = /*"gcagagag"*/ "fxeld";
     UnicodeString target = /*"gcatcgcagagagtatacagtacg"*/ "cloveldfxeld";
     int32_t start = -1, end = -1;
     UBool bFound;
 
-    coll = ucol_open(nullptr, &status);
+    coll = ucol_open(NULL, &status);
     TEST_ASSERT_SUCCESS(status);
 
     LocalUStringSearchPointer ss(usearch_openFromCollator(pat.getBuffer(), pat.length(),
                                                           target.getBuffer(), target.length(),
                                                           coll,
-                                                          nullptr,     // the break iterator
+                                                          NULL,     // the break iterator
                                                           &status));
     TEST_ASSERT_SUCCESS(status);
 
@@ -934,7 +924,7 @@ const char *cPattern = "maketh houndes ete hem";
     LocalUStringSearchPointer uss(usearch_openFromCollator(uPattern.getBuffer(), uPattern.length(),
                                                            target.getBuffer(), target.length(),
                                                            collator.getAlias(),
-                                                           nullptr,     // the break iterator
+                                                           NULL,     // the break iterator
                                                            &status));
     TEST_ASSERT_SUCCESS(status);
 
@@ -944,7 +934,7 @@ const char *cPattern = "maketh houndes ete hem";
 
     // Find the match position usgin strstr
     const char *pm = strstr(longishText, cPattern);
-    TEST_ASSERT_M(pm!=nullptr, "No pattern match with strstr");
+    TEST_ASSERT_M(pm!=NULL, "No pattern match with strstr");
     int32_t  refMatchPos = (int32_t)(pm - longishText);
     int32_t  icuMatchPos;
     int32_t  icuMatchEnd;
@@ -1017,7 +1007,7 @@ public:
     SetMonkey(const USet *theSet);
     ~SetMonkey();
 
-    virtual void append(UnicodeString &test, UnicodeString &alternate) override;
+    virtual void append(UnicodeString &test, UnicodeString &alternate);
 
 private:
     const USet *set;
@@ -1051,7 +1041,7 @@ public:
     StringSetMonkey(const USet *theSet, UCollator *theCollator, CollData *theCollData);
     ~StringSetMonkey();
 
-    void append(UnicodeString &testCase, UnicodeString &alternate) override;
+    void append(UnicodeString &testCase, UnicodeString &alternate);
 
 private:
     UnicodeString &generateAlternative(const UnicodeString &testCase, UnicodeString &alternate);
@@ -1077,7 +1067,7 @@ void StringSetMonkey::append(UnicodeString &testCase, UnicodeString &alternate)
     int32_t itemCount = uset_getItemCount(set), len = 0;
     int32_t index = m_rand() % itemCount;
     UChar32 rangeStart = 0, rangeEnd = 0;
-    char16_t buffer[16];
+    UChar buffer[16];
     UErrorCode err = U_ZERO_ERROR;
 
     len = uset_getItem(set, index, &rangeStart, &rangeEnd, buffer, 16, &err);
@@ -1117,7 +1107,7 @@ UnicodeString &StringSetMonkey::generateAlternative(const UnicodeString &testCas
         int32_t ce = ceList.get(offset);
         const StringList *strings = collData->getStringList(ce);
 
-        if (strings == nullptr) {
+        if (strings == NULL) {
             return alternate.append(testCase);
         }
 
@@ -1125,9 +1115,9 @@ UnicodeString &StringSetMonkey::generateAlternative(const UnicodeString &testCas
         int32_t tries = 0;
 
         // find random string that generates the same CEList
-        const CEList *ceList2 = nullptr;
-        const UnicodeString *string = nullptr;
-              UBool matches = false;
+        const CEList *ceList2 = NULL;
+        const UnicodeString *string = NULL;
+              UBool matches = FALSE;
 
         do {
             int32_t s = m_rand() % stringCount;
@@ -1198,7 +1188,7 @@ static UBool simpleSearch(UCollator *coll, const UnicodeString &target, int32_t 
         // Searching for an empty pattern always fails
         matchStart = matchEnd = -1;
         ubrk_close(charBreakIterator);
-        return false;
+        return FALSE;
     }
 
     matchStart = matchEnd = -1;
@@ -1267,12 +1257,12 @@ static UBool simpleSearch(UCollator *coll, const UnicodeString &target, int32_t 
             matchEnd   = mend;
 
             ubrk_close(charBreakIterator);
-            return true;
+            return TRUE;
         }
     }
 
     ubrk_close(charBreakIterator);
-    return false;
+    return FALSE;
 }
 
 #if !UCONFIG_NO_REGULAR_EXPRESSIONS
@@ -1294,7 +1284,7 @@ static int32_t  getIntParam(UnicodeString name, UnicodeString &params, int32_t d
         }
 
         params.extract(m.start(1, status), paramLength, valString, sizeof(valString));
-        val = uprv_strtol(valString,  nullptr, 10);
+        val = uprv_strtol(valString,  NULL, 10);
 
         // Delete this parameter from the params string.
         m.reset();
@@ -1322,7 +1312,7 @@ int32_t SSearchTest::monkeyTestCase(UCollator *coll, const UnicodeString &testCa
     LocalUStringSearchPointer uss(usearch_openFromCollator(pattern.getBuffer(), pattern.length(),
                                                            testCase.getBuffer(), testCase.length(),
                                                            coll,
-                                                           nullptr,     // the break iterator
+                                                           NULL,     // the break iterator
                                                            &status));
 
     // **** TODO: find *all* matches, not just first one ****
@@ -1365,8 +1355,8 @@ void SSearchTest::monkeyTest(char *params)
 {
     // ook!
     UErrorCode status = U_ZERO_ERROR;
-  //UCollator *coll = ucol_open(nullptr, &status);
-    UCollator *coll = ucol_openFromShortString("S1", false, nullptr, &status);
+  //UCollator *coll = ucol_open(NULL, &status);
+    UCollator *coll = ucol_openFromShortString("S1", FALSE, NULL, &status);
 
     if (U_FAILURE(status)) {
         errcheckln(status, "Failed to create collator in MonkeyTest! - %s", u_errorName(status));
@@ -1378,7 +1368,7 @@ void SSearchTest::monkeyTest(char *params)
     USet *expansions   = uset_openEmpty();
     USet *contractions = uset_openEmpty();
 
-    ucol_getContractionsAndExpansions(coll, contractions, expansions, false, &status);
+    ucol_getContractionsAndExpansions(coll, contractions, expansions, FALSE, &status);
 
     U_STRING_DECL(letter_pattern, "[[:letter:]-[:ideographic:]-[:hangul:]]", 39);
     U_STRING_INIT(letter_pattern, "[[:letter:]-[:ideographic:]-[:hangul:]]", 39);
@@ -1412,7 +1402,7 @@ void SSearchTest::monkeyTest(char *params)
     int32_t firstStrength = 0;
     int32_t lastStrength  = strengthCount - 1; //*/ 0;
 
-    if (params != nullptr) {
+    if (params != NULL) {
 #if !UCONFIG_NO_REGULAR_EXPRESSIONS
         UnicodeString p(params);
 
@@ -1438,7 +1428,7 @@ void SSearchTest::monkeyTest(char *params)
             // Each option is stripped out of the option string as it is processed.
             // All options have been checked.  The option string should have been completely emptied..
             char buf[100];
-            p.extract(buf, sizeof(buf), nullptr, status);
+            p.extract(buf, sizeof(buf), NULL, status);
             buf[sizeof(buf)-1] = 0;
             errln("Unrecognized or extra parameter:  %s\n", buf);
             return;

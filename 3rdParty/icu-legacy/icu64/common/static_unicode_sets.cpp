@@ -31,7 +31,7 @@ alignas(UnicodeSet)
 char gEmptyUnicodeSet[sizeof(UnicodeSet)];
 
 // Whether the gEmptyUnicodeSet is initialized and ready to use.
-UBool gEmptyUnicodeSetInitialized = false;
+UBool gEmptyUnicodeSetInitialized = FALSE;
 
 inline UnicodeSet* getImpl(Key key) {
     UnicodeSet* candidate = gUnicodeSets[key];
@@ -72,7 +72,7 @@ void saveSet(Key key, const UnicodeString& unicodeSetPattern, UErrorCode& status
 
 class ParseDataSink : public ResourceSink {
   public:
-    void put(const char* key, ResourceValue& value, UBool /*noFallback*/, UErrorCode& status) override {
+    void put(const char* key, ResourceValue& value, UBool /*noFallback*/, UErrorCode& status) U_OVERRIDE {
         ResourceTable contextsTable = value.getTable(status);
         if (U_FAILURE(status)) { return; }
         for (int i = 0; contextsTable.getKeyAndValue(i, key, value); i++) {
@@ -118,7 +118,7 @@ class ParseDataSink : public ResourceSink {
                         } else {
                             // Unknown class of parse lenients
                             // TODO(ICU-20428): Make ICU automatically accept new classes?
-                            U_ASSERT(false);
+                            U_ASSERT(FALSE);
                         }
                         if (U_FAILURE(status)) { return; }
                     }
@@ -129,19 +129,19 @@ class ParseDataSink : public ResourceSink {
 };
 
 
-icu::UInitOnce gNumberParseUniSetsInitOnce {};
+icu::UInitOnce gNumberParseUniSetsInitOnce = U_INITONCE_INITIALIZER;
 
 UBool U_CALLCONV cleanupNumberParseUniSets() {
     if (gEmptyUnicodeSetInitialized) {
         reinterpret_cast<UnicodeSet*>(gEmptyUnicodeSet)->~UnicodeSet();
-        gEmptyUnicodeSetInitialized = false;
+        gEmptyUnicodeSetInitialized = FALSE;
     }
     for (int32_t i = 0; i < UNISETS_KEY_COUNT; i++) {
         delete gUnicodeSets[i];
         gUnicodeSets[i] = nullptr;
     }
     gNumberParseUniSetsInitOnce.reset();
-    return true;
+    return TRUE;
 }
 
 void U_CALLCONV initNumberParseUniSets(UErrorCode& status) {
@@ -150,7 +150,7 @@ void U_CALLCONV initNumberParseUniSets(UErrorCode& status) {
     // Initialize the empty instance for well-defined fallback behavior
     new(gEmptyUnicodeSet) UnicodeSet();
     reinterpret_cast<UnicodeSet*>(gEmptyUnicodeSet)->freeze();
-    gEmptyUnicodeSetInitialized = true;
+    gEmptyUnicodeSetInitialized = TRUE;
 
     // These sets were decided after discussion with icu-design@. See tickets #13084 and #13309.
     // Zs+TAB is "horizontal whitespace" according to UTS #18 (blank property).

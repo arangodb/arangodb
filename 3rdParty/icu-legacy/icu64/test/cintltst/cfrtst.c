@@ -143,7 +143,7 @@ void addFrenchCollTest(TestNode** root)
 }
 
 
-static void TestTertiary(void)
+static void TestTertiary( )
 {
 
     int32_t i;
@@ -168,7 +168,7 @@ static void TestTertiary(void)
     ucol_close(myCollation);
 }
 
-static void TestSecondary(void)
+static void TestSecondary()
 {
     int32_t i,j, testAcuteSize;
     UCollationResult expected=UCOL_EQUAL;
@@ -199,7 +199,7 @@ static void TestSecondary(void)
     ucol_close(myCollation);
 }
 
-static void TestExtra(void)
+static void TestExtra()
 {
     int32_t i, j;
     UErrorCode status = U_ZERO_ERROR;
@@ -220,7 +220,7 @@ static void TestExtra(void)
     ucol_close(myCollation);
 }
 
-static void TestGetSortKey(void) {
+static void TestGetSortKey() {
     /* This is meant to test a buffer reallocation crash while using
     French secondary sorting with a large buffer.
     The fact that Japanese characters are used is irrelevant. */

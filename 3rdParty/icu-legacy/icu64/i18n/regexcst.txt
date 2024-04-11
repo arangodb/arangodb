@@ -44,7 +44,7 @@
 #       |                     character from the input only if 'n' appears here.
 #       |
 #       |--- Character or named character classes to test for.  If the current character being scanned
-#            matches, perform the actions and go to the state specified on this line.
+#            matches, peform the actions and go to the state specified on this line.
 #            The input character is tested sequentally, in the order written.  The characters and
 #            character classes tested for do not need to be mutually exclusive.  The first match wins.
 #
@@ -389,7 +389,7 @@ set-after-op:
 #      Have scanned [[set]&
 #      Could be a '&' intersection operator, if a set follows.
 #      Could be the start of a '&&' operator.
-#      Otherwise is a literal.
+#      Otherewise is a literal.
 set-set-amp:
     '['                  n  set-open      ^set-after-set           doSetBeginIntersection1
     '&'                  n  set-after-op                           doSetIntersection2
@@ -410,7 +410,7 @@ set-lit-amp:
 #      Have scanned [set]-
 #      Could be a '-' difference operator, if a [set] follows.
 #      Could be the start of a '--' operator.
-#      Otherwise is a literal.
+#      Otherewise is a literal.
 set-set-dash:
     '['                  n  set-open      ^set-after-set           doSetBeginDifference1
     '-'                  n  set-after-op                           doSetDifference2

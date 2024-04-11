@@ -1,11 +1,10 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 tzm{
     AuxExemplarCharacters{"[o p v]"}
-    ExemplarCharacters{"[a b c dḍ e ɛ f g {gʷ} ɣ hḥ i j k {kʷ} l m n q rṛ sṣ tṭ u w x y z]"}
-    ExemplarCharactersIndex{"[A B C DḌ E Ɛ F G Ɣ HḤ I J K L M N Q RṚ SṢ TṬ U W X Y Z]"}
-    ExemplarCharactersNumbers{"[  \\- ‑ , % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
+    ExemplarCharacters{"[a b c d ḍ e ɛ f g {gʷ} ɣ h ḥ i j k {kʷ} l m n q r ṛ s ṣ t ṭ u w x y z]"}
+    ExemplarCharactersIndex{"[A B C D Ḍ E Ɛ F G Ɣ H Ḥ I J K L M N Q R Ṛ S Ṣ T Ṭ U W X Y Z]"}
+    ExemplarCharactersNumbers{"[  \\- , % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
     NumberElements{
         latn{
             patterns{
@@ -17,6 +16,7 @@ tzm{
             }
         }
     }
+    Version{"2.1.47.82"}
     calendar{
         generic{
             DateTimePatterns{
@@ -35,11 +35,19 @@ tzm{
                 "{1} {0}",
             }
             availableFormats{
+                Hm{"HH:mm"}
+                Hms{"HH:mm:ss"}
+                M{"L"}
                 MEd{"E, M/d"}
+                MMM{"LLL"}
                 MMMEd{"E, MMM d"}
                 MMMMEd{"E, MMMM d"}
+                MMMMd{"MMMM d"}
+                MMMd{"MMM d"}
                 Md{"M/d"}
-                hm{"h:mm a"}
+                d{"d"}
+                hm{"h:mm a"}
+                ms{"mm:ss"}
                 y{"y"}
                 yM{"M/y"}
                 yMEd{"E, M/d/y"}
@@ -56,8 +64,8 @@ tzm{
                 "Ḍeffir aza",
             }
             AmPmMarkersAbbr{
-                "Zdat azal",
-                "Ḍeffir aza",
+                "Zdat azal",
+                "Ḍeffir aza",
             }
             DateTimePatterns{
                 "HH:mm:ss zzzz",
@@ -75,11 +83,20 @@ tzm{
                 "{1} {0}",
             }
             availableFormats{
+                Hm{"HH:mm"}
+                Hms{"HH:mm:ss"}
+                M{"L"}
                 MEd{"E, M/d"}
+                MMM{"LLL"}
                 MMMEd{"E, MMM d"}
                 MMMMEd{"E, MMMM d"}
+                MMMMd{"MMMM d"}
+                MMMd{"MMM d"}
                 Md{"M/d"}
-                hm{"h:mm a"}
+                d{"d"}
+                hm{"h:mm a"}
+                ms{"mm:ss"}
+                y{"y"}
                 yM{"M/y"}
                 yMEd{"E, M/d/y"}
                 yMMM{"MMM y"}
@@ -196,6 +213,12 @@ tzm{
                 }
             }
         }
+    }
+    delimiters{
+        alternateQuotationEnd{"’"}
+        alternateQuotationStart{"‘"}
+        quotationEnd{"”"}
+        quotationStart{"“"}
     }
     fields{
         day{

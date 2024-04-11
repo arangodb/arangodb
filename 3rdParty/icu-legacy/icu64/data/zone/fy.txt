@@ -1,10 +1,13 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 fy{
+    Version{"2.1.47.82"}
     zoneStrings{
         "Africa:Addis_Ababa"{
             ec{"Addis Abeba"}
+        }
+        "Africa:Asmera"{
+            ec{"Asmara"}
         }
         "Africa:Cairo"{
             ec{"Caïro"}
@@ -27,11 +30,17 @@ fy{
         "America:Asuncion"{
             ec{"Asunción"}
         }
+        "America:Bahia_Banderas"{
+            ec{"Bahía de Banderas"}
+        }
         "America:Belem"{
             ec{"Belém"}
         }
         "America:Bogota"{
             ec{"Bogotá"}
+        }
+        "America:Coral_Harbour"{
+            ec{"Atikokan"}
         }
         "America:Cordoba"{
             ec{"Córdoba"}
@@ -45,6 +54,33 @@ fy{
         "America:El_Salvador"{
             ec{"Salvador"}
         }
+        "America:Godthab"{
+            ec{"Nuuk"}
+        }
+        "America:Indiana:Knox"{
+            ec{"Knox, Indiana"}
+        }
+        "America:Indiana:Marengo"{
+            ec{"Marengo, Indiana"}
+        }
+        "America:Indiana:Petersburg"{
+            ec{"Petersburg, Indiana"}
+        }
+        "America:Indiana:Tell_City"{
+            ec{"Tell City, Indiana"}
+        }
+        "America:Indiana:Vevay"{
+            ec{"Vevay, Indiana"}
+        }
+        "America:Indiana:Vincennes"{
+            ec{"Vincennes, Indiana"}
+        }
+        "America:Indiana:Winamac"{
+            ec{"Winamac, Indiana"}
+        }
+        "America:Kentucky:Monticello"{
+            ec{"Monticello, Kentucky"}
+        }
         "America:Lower_Princes"{
             ec{"Beneden Prinsen Kwartier"}
         }
@@ -53,6 +89,9 @@ fy{
         }
         "America:Mazatlan"{
             ec{"Mazatlán"}
+        }
+        "America:Merida"{
+            ec{"Mérida"}
         }
         "America:Mexico_City"{
             ec{"Mexico-stad"}
@@ -72,8 +111,29 @@ fy{
         "America:Sao_Paulo"{
             ec{"São Paulo"}
         }
+        "America:Scoresbysund"{
+            ec{"Ittoqqortoormiit"}
+        }
         "America:St_Barthelemy"{
             ec{"Saint-Barthélemy"}
+        }
+        "America:St_Johns"{
+            ec{"St. John’s"}
+        }
+        "America:St_Kitts"{
+            ec{"St. Kitts"}
+        }
+        "America:St_Lucia"{
+            ec{"St. Lucia"}
+        }
+        "America:St_Thomas"{
+            ec{"St. Thomas"}
+        }
+        "America:St_Vincent"{
+            ec{"St. Vincent"}
+        }
+        "Antarctica:DumontDUrville"{
+            ec{"Dumont d’Urville"}
         }
         "Asia:Almaty"{
             ec{"Alma-Ata"}
@@ -116,6 +176,9 @@ fy{
         }
         "Asia:Kamchatka"{
             ec{"Kamtsjatka"}
+        }
+        "Asia:Katmandu"{
+            ec{"Kathmandu"}
         }
         "Asia:Krasnoyarsk"{
             ec{"Krasnojarsk"}
@@ -229,6 +292,9 @@ fy{
         "Europe:Tirane"{
             ec{"Tirana"}
         }
+        "Europe:Uzhgorod"{
+            ec{"Oezjhorod"}
+        }
         "Europe:Vatican"{
             ec{"Fatikaanstêd"}
         }
@@ -240,6 +306,9 @@ fy{
         }
         "Europe:Warsaw"{
             ec{"Warschau"}
+        }
+        "Europe:Zaporozhye"{
+            ec{"Zaporizja"}
         }
         "Europe:Zurich"{
             ec{"Zürich"}
@@ -279,6 +348,12 @@ fy{
         }
         "Pacific:Noumea"{
             ec{"Nouméa"}
+        }
+        "Pacific:Ponape"{
+            ec{"Pohnpei"}
+        }
+        "Pacific:Truk"{
+            ec{"Chuuk"}
         }
         "meta:Acre"{
             ld{"Acre-simmertiid"}
@@ -664,6 +739,9 @@ fy{
             lg{"Macause tiid"}
             ls{"Macause standerttiid"}
         }
+        "meta:Macquarie"{
+            ls{"Macquarie-eilânske tiid"}
+        }
         "meta:Magadan"{
             ld{"Magadan-simmertiid"}
             lg{"Magadan-tiid"}
@@ -727,9 +805,7 @@ fy{
             ls{"Niuese tiid"}
         }
         "meta:Norfolk"{
-            ld{"Norfolkeilânske simmertiid"}
-            lg{"Norfolkeilânske tiid"}
-            ls{"Norfolkeilânske standerttiid"}
+            ls{"Norfolkeilânske tiid"}
         }
         "meta:Noronha"{
             ld{"Fernando de Noronha-simmertiid"}
@@ -910,6 +986,10 @@ fy{
             lg{"Jekaterinenburg-tiid"}
             ls{"Jekaterinenburg-standerttiid"}
         }
+        fallbackFormat{"{1} ({0})"}
+        gmtFormat{"GMT{0}"}
+        gmtZeroFormat{"GMT"}
+        hourFormat{"+HH:mm;-HH:mm"}
         regionFormat{"{0}-tiid"}
         regionFormatDaylight{"Zomertiid {0}"}
         regionFormatStandard{"Standaardtiid {0}"}

@@ -30,7 +30,7 @@ class ExtraData : public Norms::Enumerator {
 public:
     ExtraData(Norms &n, UBool fast);
 
-    void rangeHandler(UChar32 start, UChar32 end, Norm &norm) override;
+    void rangeHandler(UChar32 start, UChar32 end, Norm &norm) U_OVERRIDE;
 
     UnicodeString maybeYesCompositions;
     UnicodeString yesYesCompositions;

@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 zh_Hant_HK{
     Countries{
         013{"中美洲"}
@@ -51,7 +50,6 @@ zh_Hant_HK{
         LC{"聖盧西亞"}
         LI{"列支敦士登"}
         LR{"利比里亞"}
-        LS{"萊索托"}
         ME{"黑山"}
         ML{"馬里"}
         MR{"毛里塔尼亞"}
@@ -65,7 +63,7 @@ zh_Hant_HK{
         NG{"尼日利亞"}
         NR{"瑙魯"}
         PF{"法屬波利尼西亞"}
-        PG{"巴布亞新畿內亞"}
+        PG{"巴布亞新幾內亞"}
         PN{"皮特凱恩島"}
         PS{"巴勒斯坦領土"}
         QA{"卡塔爾"}
@@ -76,7 +74,6 @@ zh_Hant_HK{
         SI{"斯洛文尼亞"}
         SJ{"斯瓦爾巴特群島及揚馬延島"}
         SL{"塞拉利昂"}
-        SM{"聖馬力諾"}
         SO{"索馬里"}
         SR{"蘇里南"}
         ST{"聖多美和普林西比"}
@@ -84,6 +81,7 @@ zh_Hant_HK{
         TC{"特克斯和凱科斯群島"}
         TD{"乍得"}
         TF{"法屬南部領地"}
+        TG{"多哥共和國"}
         TO{"湯加"}
         TT{"千里達和多巴哥"}
         TV{"圖瓦盧"}
@@ -100,4 +98,5 @@ zh_Hant_HK{
     Countries%variant{
         CI{"象牙海岸"}
     }
+    Version{"2.1.47.86"}
 }

@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 es{
     Countries{
         001{"Mundo"}
@@ -49,7 +48,7 @@ es{
         AT{"Austria"}
         AU{"Australia"}
         AW{"Aruba"}
-        AX{"Islas Aland"}
+        AX{"Islas Åland"}
         AZ{"Azerbaiyán"}
         BA{"Bosnia y Herzegovina"}
         BB{"Barbados"}
@@ -108,7 +107,7 @@ es{
         ES{"España"}
         ET{"Etiopía"}
         EU{"Unión Europea"}
-        EZ{"zona del euro"}
+        EZ{"zona euro"}
         FI{"Finlandia"}
         FJ{"Fiyi"}
         FK{"Islas Malvinas"}
@@ -120,7 +119,7 @@ es{
         GD{"Granada"}
         GE{"Georgia"}
         GF{"Guayana Francesa"}
-        GG{"Guernesey"}
+        GG{"Guernsey"}
         GH{"Ghana"}
         GI{"Gibraltar"}
         GL{"Groenlandia"}
@@ -288,8 +287,6 @@ es{
         VU{"Vanuatu"}
         WF{"Wallis y Futuna"}
         WS{"Samoa"}
-        XA{"Pseudoacentos"}
-        XB{"Pseudobidi"}
         XK{"Kosovo"}
         YE{"Yemen"}
         YT{"Mayotte"}
@@ -297,9 +294,6 @@ es{
         ZM{"Zambia"}
         ZW{"Zimbabue"}
         ZZ{"Región desconocida"}
-    }
-    Countries%chagos{
-        IO{"Archipiélago de Chagos"}
     }
     Countries%short{
         GB{"RU"}
@@ -314,8 +308,8 @@ es{
         CI{"Costa de Marfil"}
         CZ{"República Checa"}
         FK{"Islas Malvinas (Islas Falkland)"}
-        NZ{"Aotearoa (Nueva Zelanda)"}
         SZ{"Suazilandia"}
         TL{"Timor Oriental"}
     }
+    Version{"2.1.49.82"}
 }

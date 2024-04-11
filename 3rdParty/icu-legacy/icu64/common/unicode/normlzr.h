@@ -13,8 +13,6 @@
 
 #include "unicode/utypes.h"
 
-#if U_SHOW_CPLUSPLUS_API
-
 /**
  * \file 
  * \brief C++ API: Unicode Normalization
@@ -185,7 +183,6 @@ public:
   Normalizer(const CharacterIterator& iter, UNormalizationMode mode);
 #endif  /* U_HIDE_DEPRECATED_API */
 
-#ifndef U_FORCE_HIDE_DEPRECATED_API
   /**
    * Copy constructor.
    * @param copy The object to be copied.
@@ -198,7 +195,7 @@ public:
    * @deprecated ICU 56 Use Normalizer2 instead.
    */
   virtual ~Normalizer();
-#endif  // U_FORCE_HIDE_DEPRECATED_API
+
 
   //-------------------------------------------------------------------------
   // Static utility methods
@@ -234,7 +231,7 @@ public:
    *
    * @param source    the string to be composed.
    * @param compat    Perform compatibility decomposition before composition.
-   *                  If this argument is <code>false</code>, only canonical
+   *                  If this argument is <code>FALSE</code>, only canonical
    *                  decomposition will be performed.
    * @param options   the optional features to be enabled (0 for no options)
    * @param result    The composed string (on output).
@@ -256,7 +253,7 @@ public:
    *
    * @param source    the string to be decomposed.
    * @param compat    Perform compatibility decomposition.
-   *                  If this argument is <code>false</code>, only canonical
+   *                  If this argument is <code>FALSE</code>, only canonical
    *                  decomposition will be performed.
    * @param options   the optional features to be enabled (0 for no options)
    * @param result    The decomposed string (on output).
@@ -315,7 +312,7 @@ public:
    * never a "maybe".
    * For NFD, NFKD, and FCD, both functions work exactly the same.
    * For NFC and NFKC where quickCheck may return "maybe", this function will
-   * perform further tests to arrive at a true/false result.
+   * perform further tests to arrive at a TRUE/FALSE result.
    *
    * @param src        String that is to be tested if it is in a normalization format.
    * @param mode       Which normalization form to test for.
@@ -466,7 +463,7 @@ public:
    * @return the current normalized code point
    * @deprecated ICU 56 Use Normalizer2 instead.
    */
-  UChar32 current();
+  UChar32              current(void);
 
   /**
    * Return the first character in the normalized text.
@@ -476,7 +473,7 @@ public:
    * @return the first normalized code point
    * @deprecated ICU 56 Use Normalizer2 instead.
    */
-  UChar32 first();
+  UChar32              first(void);
 
   /**
    * Return the last character in the normalized text.
@@ -486,7 +483,7 @@ public:
    * @return the last normalized code point
    * @deprecated ICU 56 Use Normalizer2 instead.
    */
-  UChar32 last();
+  UChar32              last(void);
 
   /**
    * Return the next character in the normalized text.
@@ -502,7 +499,7 @@ public:
    * @return the next normalized code point
    * @deprecated ICU 56 Use Normalizer2 instead.
    */
-  UChar32 next();
+  UChar32              next(void);
 
   /**
    * Return the previous character in the normalized text and decrement.
@@ -518,7 +515,7 @@ public:
    * @return the previous normalized code point
    * @deprecated ICU 56 Use Normalizer2 instead.
    */
-  UChar32 previous();
+  UChar32              previous(void);
 
   /**
    * Set the iteration position in the input text that is being normalized,
@@ -536,7 +533,7 @@ public:
    * This is equivalent to setIndexOnly(startIndex)).
    * @deprecated ICU 56 Use Normalizer2 instead.
    */
-  void reset();
+  void                reset(void);
 
   /**
    * Retrieve the current iteration position in the input text that is
@@ -552,7 +549,7 @@ public:
    * @return the current index in the input text
    * @deprecated ICU 56 Use Normalizer2 instead.
    */
-  int32_t getIndex() const;
+  int32_t            getIndex(void) const;
 
   /**
    * Retrieve the index of the start of the input text. This is the begin index
@@ -562,7 +559,7 @@ public:
    * @return the smallest index in the input text where the Normalizer operates
    * @deprecated ICU 56 Use Normalizer2 instead.
    */
-  int32_t startIndex() const;
+  int32_t            startIndex(void) const;
 
   /**
    * Retrieve the index of the end of the input text. This is the end index
@@ -574,27 +571,27 @@ public:
    * @return the first index in the input text where the Normalizer does not operate
    * @deprecated ICU 56 Use Normalizer2 instead.
    */
-  int32_t endIndex() const;
+  int32_t            endIndex(void) const;
 
   /**
-   * Returns true when both iterators refer to the same character in the same
+   * Returns TRUE when both iterators refer to the same character in the same
    * input text.
    *
    * @param that a Normalizer object to compare this one to
    * @return comparison result
    * @deprecated ICU 56 Use Normalizer2 instead.
    */
-  bool         operator==(const Normalizer& that) const;
+  UBool        operator==(const Normalizer& that) const;
 
   /**
-   * Returns false when both iterators refer to the same character in the same
+   * Returns FALSE when both iterators refer to the same character in the same
    * input text.
    *
    * @param that a Normalizer object to compare this one to
    * @return comparison result
    * @deprecated ICU 56 Use Normalizer2 instead.
    */
-  inline bool         operator!=(const Normalizer& that) const;
+  inline UBool        operator!=(const Normalizer& that) const;
 
   /**
    * Returns a pointer to a new Normalizer that is a clone of this one.
@@ -602,7 +599,7 @@ public:
    * @return a pointer to a new Normalizer
    * @deprecated ICU 56 Use Normalizer2 instead.
    */
-  Normalizer*        clone() const;
+  Normalizer*        clone(void) const;
 
   /**
    * Generates a hash code for this iterator.
@@ -610,7 +607,7 @@ public:
    * @return the hash code
    * @deprecated ICU 56 Use Normalizer2 instead.
    */
-  int32_t hashCode() const;
+  int32_t                hashCode(void) const;
 
   //-------------------------------------------------------------------------
   // Property access methods
@@ -643,7 +640,7 @@ public:
    * @see #setMode
    * @deprecated ICU 56 Use Normalizer2 instead.
    */
-  UNormalizationMode getUMode() const;
+  UNormalizationMode getUMode(void) const;
 
   /**
    * Set options that affect this <code>Normalizer</code>'s operation.
@@ -655,8 +652,8 @@ public:
    * It is possible to specify multiple options that are all turned on or off.
    *
    * @param   option  the option(s) whose value is/are to be set.
-   * @param   value   the new setting for the option.  Use <code>true</code> to
-   *                  turn the option(s) on and <code>false</code> to turn it/them off.
+   * @param   value   the new setting for the option.  Use <code>TRUE</code> to
+   *                  turn the option(s) on and <code>FALSE</code> to turn it/them off.
    *
    * @see #getOption
    * @deprecated ICU 56 Use Normalizer2 instead.
@@ -666,11 +663,11 @@ public:
 
   /**
    * Determine whether an option is turned on or off.
-   * If multiple options are specified, then the result is true if any
+   * If multiple options are specified, then the result is TRUE if any
    * of them are set.
    * <p>
    * @param option the option(s) that are to be checked
-   * @return true if any of the option(s) are set
+   * @return TRUE if any of the option(s) are set
    * @see #setOption
    * @deprecated ICU 56 Use Normalizer2 instead.
    */
@@ -726,22 +723,20 @@ public:
   static UClassID U_EXPORT2 getStaticClassID();
 #endif  /* U_HIDE_DEPRECATED_API */
 
-#ifndef U_FORCE_HIDE_DEPRECATED_API
   /**
    * ICU "poor man's RTTI", returns a UClassID for the actual class.
    * @return a UClassID for the actual class.
    * @deprecated ICU 56 Use Normalizer2 instead.
    */
-  virtual UClassID getDynamicClassID() const override;
-#endif  // U_FORCE_HIDE_DEPRECATED_API
+  virtual UClassID getDynamicClassID() const;
 
 private:
   //-------------------------------------------------------------------------
   // Private functions
   //-------------------------------------------------------------------------
 
-  Normalizer() = delete; // default constructor not implemented
-  Normalizer &operator=(const Normalizer &that) = delete; // assignment operator not implemented
+  Normalizer(); // default constructor not implemented
+  Normalizer &operator=(const Normalizer &that); // assignment operator not implemented
 
   // Private utility methods for iteration
   // For documentation, see the source code
@@ -749,13 +744,13 @@ private:
   UBool previousNormalize();
 
   void    init();
-  void clearBuffer();
+  void    clearBuffer(void);
 
   //-------------------------------------------------------------------------
   // Private data
   //-------------------------------------------------------------------------
 
-  FilteredNormalizer2*fFilteredNorm2;  // owned if not nullptr
+  FilteredNormalizer2*fFilteredNorm2;  // owned if not NULL
   const Normalizer2  *fNorm2;  // not owned; may be equal to fFilteredNorm2
   UNormalizationMode  fUMode;  // deprecated
   int32_t             fOptions;
@@ -777,7 +772,7 @@ private:
 //-------------------------------------------------------------------------
 
 #ifndef U_HIDE_DEPRECATED_API
-inline bool
+inline UBool
 Normalizer::operator!= (const Normalizer& other) const
 { return ! operator==(other); }
 
@@ -812,5 +807,3 @@ U_NAMESPACE_END
 #endif /* #if !UCONFIG_NO_NORMALIZATION */
 
 #endif // NORMLZR_H
-
-#endif /* U_SHOW_CPLUSPLUS_API */

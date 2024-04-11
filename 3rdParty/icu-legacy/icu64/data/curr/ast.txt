@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ast{
     Currencies{
         ADP{
@@ -895,8 +894,8 @@ ast{
             "SKK",
             "Corona eslovaca",
         }
-        SLE{
-            "SLE",
+        SLL{
+            "SLL",
             "leone sierralleonés",
         }
         SOS{
@@ -1112,7 +1111,7 @@ ast{
             "Francu UIC francés",
         }
         XOF{
-            "F CFA",
+            "CFA",
             "francu CFA BCEAO",
         }
         XPD{
@@ -1209,16 +1208,107 @@ ast{
         }
     }
     Currencies%narrow{
+        AOA{"Kz"}
+        ARS{"$"}
+        AUD{"$"}
+        BAM{"KM"}
+        BBD{"$"}
+        BDT{"৳"}
+        BMD{"$"}
+        BND{"$"}
+        BOB{"Bs"}
+        BRL{"R$"}
+        BSD{"$"}
+        BWP{"P"}
+        BYN{"BYN"}
+        BZD{"$"}
+        CAD{"$"}
+        CLP{"$"}
+        CNY{"¥"}
+        COP{"$"}
+        CRC{"₡"}
+        CUC{"$"}
+        CUP{"$"}
+        CZK{"Kč"}
         DKK{"DKK"}
+        DOP{"$"}
+        EGP{"E£"}
+        ESP{"₧"}
+        EUR{"€"}
+        FJD{"$"}
+        FKP{"£"}
+        GBP{"£"}
+        GEL{"₾"}
+        GIP{"£"}
+        GNF{"FG"}
+        GTQ{"Q"}
+        GYD{"$"}
+        HKD{"$"}
+        HNL{"L"}
         HRK{"HRK"}
+        HUF{"Ft"}
+        IDR{"Rp"}
+        ILS{"₪"}
+        INR{"₹"}
         ISK{"ISK"}
+        JMD{"$"}
+        JPY{"¥"}
+        KHR{"៛"}
+        KMF{"CF"}
+        KPW{"₩"}
+        KRW{"₩"}
+        KYD{"$"}
+        KZT{"₸"}
+        LAK{"₭"}
+        LBP{"L£"}
+        LKR{"Rs"}
+        LRD{"$"}
+        LTL{"Lt"}
+        LVL{"Ls"}
+        MGA{"Ar"}
+        MMK{"K"}
+        MNT{"₮"}
+        MUR{"Rs"}
+        MXN{"$"}
+        MYR{"RM"}
+        NAD{"$"}
+        NGN{"₦"}
+        NIO{"C$"}
         NOK{"NOK"}
+        NPR{"Rs"}
+        NZD{"$"}
+        PHP{"₱"}
+        PKR{"Rs"}
         PLN{"PLN"}
+        PYG{"₲"}
+        RUB{"₽"}
+        RUR{"RUR"}
+        RWF{"RF"}
+        SBD{"$"}
         SEK{"SEK"}
+        SGD{"$"}
+        SHP{"£"}
+        SRD{"$"}
+        SSP{"£"}
+        STN{"Db"}
+        SYP{"£"}
+        THB{"฿"}
+        TOP{"T$"}
+        TRY{"₺"}
+        TTD{"$"}
         TWD{"NT$"}
+        UAH{"₴"}
+        USD{"$"}
+        UYU{"$"}
+        VEF{"Bs"}
+        VND{"₫"}
+        XCD{"$"}
+        ZAR{"R"}
+        ZMW{"ZK"}
     }
     Currencies%variant{
         RUB{"₽"}
+        TRY{"TL"}
     }
     CurrencyPlurals{
         ADP{
@@ -2113,7 +2203,7 @@ ast{
             one{"corona eslovaca"}
             other{"corones eslovaques"}
         }
-        SLE{
+        SLL{
             one{"leone sierralleonés"}
             other{"leones sierralleoneses"}
         }
@@ -2430,4 +2520,5 @@ ast{
         one{"{0} {1}"}
         other{"{0} {1}"}
     }
+    Version{"2.1.47.82"}
 }

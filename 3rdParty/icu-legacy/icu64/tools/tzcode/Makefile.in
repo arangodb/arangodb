@@ -19,20 +19,22 @@ TZCODE = $(firstword $(wildcard ./tzcode*.tar.gz) $(wildcard $(srcdir)/tzcode*.t
 endif
 
 
-PRIMARY_DATA = africa antarctica asia australasia europe northamerica southamerica
-SUPPLEMENTAL_DATA = etcetera factory backward
-#DEPRECATED_DATA = pacificnew systemv solar87 solar88 solar89
-#TDATA =	$(PRIMARY_DATA) $(SUPPLEMENTAL_DATA) $(DEPRECATED_DATA)
-TDATA =	$(PRIMARY_DATA) $(SUPPLEMENTAL_DATA)
+PRIMARY_YDATA=	africa antarctica asia australasia \
+		europe northamerica southamerica
+YDATA=		$(PRIMARY_YDATA) pacificnew etcetera factory backward
+NDATA=		systemv
+SDATA=		solar87 solar88 solar89
+#TDATA=		$(YDATA) $(NDATA) $(SDATA)
+TDATA=		$(YDATA) $(NDATA)
+YEARISTYPE=     ./yearistype
 
 TZDIR=zoneinfo
 
-# https://man7.org/linux/man-pages/man2/symlink.2.html
-CFLAGS+=-D_POSIX_C_SOURCE=200112L
+CFLAGS+=-D_POSIX_C_SOURCE
 CPPFLAGS+= -DTZDIR=\"$(TZDIR)\" 
 
 # more data
-XDATA=zone.tab leapseconds iso3166.tab
+XDATA=zone.tab yearistype.sh leapseconds iso3166.tab
 ICUDATA=ZoneMetaData.java icu_zone.txt tz2icu zoneinfo64.txt zoneinfo.txt
 
 VANGUARD_DIR= ./vanguard
@@ -100,9 +102,9 @@ tzorig:	$(TZCODE) $(TZDATA)
 	cat $(TZORIG)/factory.orig $(srcdir)/icuzones > $(TZORIG)/factory
 	-mv $(TZORIG)/zishrink.awk $(TZORIG)/zishrink.awk.orig
 	sed -e '/if (line ~ \/^R SystemV \/) return/s/^/#/' $(TZORIG)/zishrink.awk.orig > $(TZORIG)/zishrink.awk
-#	-mv $(TZORIG)/Makefile $(TZORIG)/Makefile.orig
-#	sed -e "s/^BACKWARD=.*/BACKWARD= backward pacificnew/" $(TZORIG)/Makefile.orig > $(TZORIG)/Makefile
-	$(MAKE) -C $@ $(TZORIG_OPTS) tzdir.h zdump zones
+	-mv $(TZORIG)/Makefile $(TZORIG)/Makefile.orig
+	sed -e "s/^BACKWARD=.*/BACKWARD= backward pacificnew/" $(TZORIG)/Makefile.orig > $(TZORIG)/Makefile
+	$(MAKE) -C $@ $(TZORIG_OPTS) zdump zones
 
 $(ZDUMPOUT): tzorig
 	( cd $(TZORIG) ; ./zdump$(EXEEXT) $(ZDUMP_OPTS) )
@@ -127,7 +129,7 @@ $(ICUZDUMPOUT): $(ICUZDUMPEXEC)
 #
 
 
-$(ZICTARG):		$(OBJECTS) $(TDATA) $(srcdir)/tz2icu.h
+$(ZICTARG):		$(OBJECTS) $(TDATA) yearistype $(srcdir)/tz2icu.h
 		$(CC) $(CFLAGS) $(TZORIG_EXTRA_CFLAGS) $(LFLAGS) -I$(srcdir) $(OBJECTS) $(LDLIBS) -o $@
 
 $(TZ2ICUTARG):	$(srcdir)/tz2icu.cpp $(srcdir)/tz2icu.h
@@ -148,8 +150,12 @@ tdatamarker: $(TZDATA)
 	done
 	touch $@
 
+yearistype:	yearistype.sh
+		cp yearistype.sh yearistype
+		chmod +x yearistype
+
 posix_only:	$(ZICEXEC) $(TDATA) $(srcdir)/icuzones
-		$(ZICEXEC) -d $(TZDIR) -L /dev/null $(TDATA) $(srcdir)/icuzones
+		$(ZICEXEC) -y $(YEARISTYPE) -d $(TZDIR) -L /dev/null $(TDATA) $(srcdir)/icuzones
 
 
 icu_data:	$(TZ2ICUEXEC) posix_only
@@ -157,7 +163,7 @@ icu_data:	$(TZ2ICUEXEC) posix_only
 		$(TZ2ICUEXEC) $(TZDIR) zone.tab `echo $(TZDATA) | sed -e "s/.*\/tzdata//;s/\.tar\.gz$$//"` --old
 
 clean:
-		-rm -f core *.o *.out zdump${EXEEXT} $(ZICTARG) date $(TZ2ICUTARG)
+		-rm -f core *.o *.out zdump${EXEEXT} $(ZICTARG) yearistype date $(TZ2ICUTARG)
 		@echo ICU specific cleanup:
 		-rm -f $(ICUDATA)
 		-rm -rf $(TZDIR)

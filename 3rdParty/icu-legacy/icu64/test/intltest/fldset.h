@@ -48,7 +48,7 @@ class FieldsSet {
     public:
     
       /**
-       * Compare two sets. In typical test usage, 'this' is the result of 
+       * Compare two sets. In typical test usage, 'this' is the resul of 
        * a tested operation, and 'other' is the predefined expected value.
        * 
        * @param other the set to compare against.
@@ -66,7 +66,7 @@ class FieldsSet {
        * @return the number of valid parsed fields on success, or a negative number on failure.
        */
       int32_t parseFrom(const U_NAMESPACE_QUALIFIER UnicodeString& str, UErrorCode& status) {
-          return parseFrom(str,nullptr,status);
+          return parseFrom(str,NULL,status);
       }
 
       /**
@@ -255,7 +255,7 @@ protected:
     void handleParseValue(const FieldsSet* inheritFrom,
                           int32_t field,
                           const U_NAMESPACE_QUALIFIER UnicodeString& substr,
-                          UErrorCode& status) override;
+                          UErrorCode& status);
 };
 
 /**
@@ -282,11 +282,11 @@ class DateTimeStyleSet : public FieldsSet {
         void handleParseValue(const FieldsSet* inheritFrom,
                               int32_t field,
                               const U_NAMESPACE_QUALIFIER UnicodeString& substr,
-                              UErrorCode& status) override;
+                              UErrorCode& status);
         int32_t handleParseName(const FieldsSet* inheritFrom,
                                 const U_NAMESPACE_QUALIFIER UnicodeString& name,
                                 const U_NAMESPACE_QUALIFIER UnicodeString& substr,
-                                UErrorCode& status) override;
+                                UErrorCode& status);
 };
 
 

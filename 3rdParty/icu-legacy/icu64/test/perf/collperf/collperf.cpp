@@ -1,6 +1,6 @@
 /***********************************************************************
 * © 2016 and later: Unicode, Inc. and others.
-* License & terms of use: http://www.unicode.org/copyright.html
+* License & terms of use: http://www.unicode.org/copyright.html#License
 *
 ***********************************************************************
 ***********************************************************************
@@ -40,11 +40,11 @@ struct CompactArrays{\
     UNIT    * data; /*the real space to hold strings*/ \
     \
     ~CompactArrays(){free(index);free(data);} \
-    CompactArrays():data(nullptr), index(nullptr), count(0){ \
+    CompactArrays():data(NULL), index(NULL), count(0){ \
     index = (int32_t *) realloc(index, sizeof(int32_t)); \
     index[0] = 0; \
     } \
-    void append_one(int32_t theLen){ /*include terminal NUL*/ \
+    void append_one(int32_t theLen){ /*include terminal NULL*/ \
     count++; \
     index = (int32_t *) realloc(index, sizeof(int32_t) * (count + 1)); \
     index[count] = index[count - 1] + theLen; \
@@ -52,15 +52,15 @@ struct CompactArrays{\
     } \
     UNIT * last(){return data + index[count - 1];} \
     UNIT * dataOf(int32_t i){return data + index[i];} \
-    int32_t lengthOf(int i){return index[i+1] - index[i] - 1; }	/*exclude terminating NUL*/  \
+    int32_t lengthOf(int i){return index[i+1] - index[i] - 1; }	/*exclude terminating NULL*/  \
 };
 
-//typedef CompactArrays<char16_t> CA_uchar;
+//typedef CompactArrays<UChar> CA_uchar;
 //typedef CompactArrays<char> CA_char;
 //typedef CompactArrays<uint8_t> CA_uint8;
 //typedef CompactArrays<WCHAR> CA_win_wchar;
 
-COMPATCT_ARRAY(CA_uchar, char16_t)
+COMPATCT_ARRAY(CA_uchar, UChar)
 COMPATCT_ARRAY(CA_char, char)
 COMPATCT_ARRAY(CA_uint8, uint8_t)
 COMPATCT_ARRAY(CA_win_wchar, WCHAR)
@@ -70,7 +70,7 @@ struct DataIndex {
     static DWORD        win_langid;     // for qsort callback function
     static UCollator *  col;            // for qsort callback function
     uint8_t *   icu_key;
-    char16_t *     icu_data;
+    UChar *     icu_data;
     int32_t     icu_data_len;
     char*       posix_key;
     char*       posix_data;
@@ -147,8 +147,8 @@ public:
     CmdIter(UErrorCode & status, UCollator * col, int32_t count, CA_uchar *data, Func fn, int32_t,int32_t)
         :count(count), data(data), fn(fn){
             exec_count = 0;
-            char16_t dummytext[] = {0, 0};
-            iter = ucol_openElements(col, nullptr, 0, &status);
+            UChar dummytext[] = {0, 0};
+            iter = ucol_openElements(col, NULL, 0, &status);
             ucol_setText(iter, dummytext, 1, &status);
         }
         ~CmdIter(){
@@ -188,7 +188,7 @@ public:
 class CmdIterAll : public UPerfFunction {
     typedef	void (CmdIterAll::* Func)(UErrorCode* status);
     int32_t     count;
-    char16_t *     data;
+    UChar *     data;
     Func        fn;
     UCollationElements *iter;
     int32_t     exec_count;
@@ -199,7 +199,7 @@ public:
     ~CmdIterAll(){
         ucol_closeElements(iter);
     }
-    CmdIterAll(UErrorCode & status, UCollator * col, int32_t count,  char16_t * data, CALL call,int32_t,int32_t)
+    CmdIterAll(UErrorCode & status, UCollator * col, int32_t count,  UChar * data, CALL call,int32_t,int32_t)
         :count(count),data(data)
     {
         exec_count = 0;
@@ -226,7 +226,7 @@ public:
         int count5 = 5;
         int strindex = 0;
         ucol_setOffset(iter, strindex, status);
-        while (true) {
+        while (TRUE) {
             if (ucol_next(iter, status) == UCOL_NULLORDER) {
                 break;
             }
@@ -248,7 +248,7 @@ public:
         int count5 = 5;
         int strindex = 5;
         ucol_setOffset(iter, strindex, status);
-        while (true) {
+        while (TRUE) {
             if (ucol_previous(iter, status) == UCOL_NULLORDER) {
                 break;
             }
@@ -425,7 +425,7 @@ public:
             int guess;
             int last_guess = -1;
             int r;
-            while (true) {
+            while (TRUE) {
                 guess = (high + low)/2;
                 if (last_guess == guess) break; // nothing to search
 
@@ -495,7 +495,7 @@ public:
     UCollator *     col;
     DWORD           win_langid;
 
-    char16_t * icu_data_all;
+    UChar * icu_data_all;
     int32_t icu_data_all_len;
 
     int32_t         count;
@@ -539,25 +539,25 @@ public:
     }
 
     CollPerfTest(int32_t argc, const char* argv[], UErrorCode& status):UPerfTest(argc, argv, status){
-        col = nullptr;
-        icu_data_all = nullptr;
-        icu_data = nullptr;
-        icu_key = nullptr;
-        posix_data = nullptr;
-        posix_key = nullptr;
-        win_data =nullptr;
-        win_key = nullptr;
+        col = NULL;
+        icu_data_all = NULL;
+        icu_data = NULL;
+        icu_key = NULL;
+        posix_data = NULL;
+        posix_key = NULL;
+        win_data =NULL;
+        win_key = NULL;
 
-        rnd_index = nullptr;
-        ord_win_data= nullptr;
-        ord_win_key= nullptr;
-        ord_posix_data= nullptr;
-        ord_posix_key= nullptr;
-        ord_icu_data= nullptr;
-        ord_icu_key= nullptr;
-        ord_win_wcscmp = nullptr;
-        ord_icu_strcmp = nullptr;
-        ord_icu_cmpcpo = nullptr;
+        rnd_index = NULL;
+        ord_win_data= NULL;
+        ord_win_key= NULL;
+        ord_posix_data= NULL;
+        ord_posix_key= NULL;
+        ord_icu_data= NULL;
+        ord_icu_key= NULL;
+        ord_win_wcscmp = NULL;
+        ord_icu_strcmp = NULL;
+        ord_icu_cmpcpo = NULL;
 
         if (U_FAILURE(status)){
             return;
@@ -588,7 +588,7 @@ public:
             return;
         }
 
-        if (locale == nullptr){
+        if (locale == NULL){
             locale = "en_US";   // set default locale
         }
 
@@ -673,18 +673,18 @@ public:
     UPerfFunction * t = new classname(status,arg1, arg2, arg3, arg4, arg5, arg6);\
     if (U_FAILURE(status)) {\
     delete t;\
-    return nullptr;\
+    return NULL;\
     } else {\
     return t;\
     }\
     } else {\
-    return nullptr;\
+    return NULL;\
     }\
     }\
     temp++\
 
 
-    virtual UPerfFunction* runIndexedTest( /*[in]*/int32_t index, /*[in]*/UBool exec, /*[out]*/const char* &name, /*[in]*/ char* par = nullptr ){
+    virtual UPerfFunction* runIndexedTest( /*[in]*/int32_t index, /*[in]*/UBool exec, /*[out]*/const char* &name, /*[in]*/ char* par = NULL ){
         int temp = 0;
 
 #define TEST_KEYGEN(testname, func)\
@@ -741,7 +741,7 @@ public:
         TEST_BIN(TestWin_BinarySearch_wcscmp, win_wcscmp);
 
         name="";
-        return nullptr;
+        return NULL;
     }
 
 
@@ -753,11 +753,11 @@ public:
         icu_data = new CA_uchar();
 
         // Following code is borrowed from UPerfTest::getLines();
-        const char16_t*    line=nullptr;
+        const UChar*    line=NULL;
         int32_t         len =0;
         for (;;) {
             line = ucbuf_readline(ucharBuf,&len,&status);
-            if(line == nullptr || U_FAILURE(status)){break;}
+            if(line == NULL || U_FAILURE(status)){break;}
 
             // Refer to the source code of ucbuf_readline()
             // 1. 'len' includs the line terminal symbols
@@ -768,8 +768,8 @@ public:
                 continue; //skip empty line
             } else {
                 icu_data->append_one(len);
-                memcpy(icu_data->last(), line, len * sizeof(char16_t));
-                icu_data->last()[len -1] = 0;
+                memcpy(icu_data->last(), line, len * sizeof(UChar));
+                icu_data->last()[len -1] = NULL;
             }
         }
         if(U_FAILURE(status)) return;
@@ -780,11 +780,11 @@ public:
 
         count = icu_data->count;
 
-        icu_data_all_len =  icu_data->index[count]; // includes all NULs
-        icu_data_all_len -= count;  // excludes all NULs
-        icu_data_all_len += 1;      // the terminal NUL
-        icu_data_all = new char16_t[icu_data_all_len];
-        icu_data_all[icu_data_all_len - 1] = 0; //the terminal NUL
+        icu_data_all_len =  icu_data->index[count]; // includes all NULLs
+        icu_data_all_len -= count;  // excludes all NULLs
+        icu_data_all_len += 1;      // the terminal NULL
+        icu_data_all = new UChar[icu_data_all_len];
+        icu_data_all[icu_data_all_len - 1] = 0; //the terminal NULL
 
         icu_key  = new CA_uint8;
         win_data = new CA_win_wchar;
@@ -796,38 +796,38 @@ public:
         DataIndex::col        = col;
 
 
-        char16_t * p = icu_data_all;
+        UChar * p = icu_data_all;
         int32_t s;
         int32_t t;
         for (int i=0; i < count; i++) {
             // ICU all data
-            s = sizeof(char16_t) * icu_data->lengthOf(i);
+            s = sizeof(UChar) * icu_data->lengthOf(i);
             memcpy(p, icu_data->dataOf(i), s);
             p += icu_data->lengthOf(i);
 
             // ICU data
 
             // ICU key
-            s = ucol_getSortKey(col, icu_data->dataOf(i), -1,nullptr, 0);
+            s = ucol_getSortKey(col, icu_data->dataOf(i), -1,NULL, 0);
             icu_key->append_one(s);
             t = ucol_getSortKey(col, icu_data->dataOf(i), -1,icu_key->last(), s);
             if (t != s) {status = U_INVALID_FORMAT_ERROR;return;}
 
             // POSIX data
-            s = ucnv_fromUChars(conv,nullptr, 0, icu_data->dataOf(i), icu_data->lengthOf(i), &status);
+            s = ucnv_fromUChars(conv,NULL, 0, icu_data->dataOf(i), icu_data->lengthOf(i), &status);
             if (status == U_BUFFER_OVERFLOW_ERROR || status == U_ZERO_ERROR){
                 status = U_ZERO_ERROR;
             } else {
                 return;
             }
-            posix_data->append_one(s + 1); // plus terminal NUL
+            posix_data->append_one(s + 1); // plus terminal NULL
             t = ucnv_fromUChars(conv,posix_data->last(), s, icu_data->dataOf(i), icu_data->lengthOf(i), &status);
             if (U_FAILURE(status)) return;
             if ( t != s){status = U_INVALID_FORMAT_ERROR;return;}
             posix_data->last()[s] = 0;
 
             // POSIX key
-            s = strxfrm(nullptr, posix_data->dataOf(i), 0);
+            s = strxfrm(NULL, posix_data->dataOf(i), 0);
             if (s == INT_MAX){status = U_INVALID_FORMAT_ERROR;return;}
             posix_key->append_one(s);
             t = strxfrm(posix_key->last(), posix_data->dataOf(i), s);
@@ -835,12 +835,12 @@ public:
 
 #if U_PLATFORM_HAS_WIN32_API
             // Win data
-            s = icu_data->lengthOf(i) + 1; // plus terminal NUL
+            s = icu_data->lengthOf(i) + 1; // plus terminal NULL
             win_data->append_one(s);
             memcpy(win_data->last(), icu_data->dataOf(i), sizeof(WCHAR) * s);
 
             // Win key
-            s = LCMapStringW(win_langid, LCMAP_SORTKEY, win_data->dataOf(i), win_data->lengthOf(i), nullptr,0);
+            s = LCMapStringW(win_langid, LCMAP_SORTKEY, win_data->dataOf(i), win_data->lengthOf(i), NULL,0);
             if (s == 0) {status = U_INVALID_FORMAT_ERROR;return;}
             win_key->append_one(s);
             t = LCMapStringW(win_langid, LCMAP_SORTKEY, win_data->dataOf(i), win_data->lengthOf(i), (WCHAR *)(win_key->last()),s);
@@ -898,7 +898,7 @@ int main(int argc, const char *argv[])
         return status;
     }
 
-    if (test.run() == false){
+    if (test.run() == FALSE){
         fprintf(stderr, "FAILED: Tests could not be run please check the "
             "arguments.\n");
         return -1;

@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ps{
+    Version{"2.1.49.82"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"ابيجان"}
@@ -10,31 +10,25 @@ ps{
             ec{"اکرا"}
         }
         "Africa:Addis_Ababa"{
-            ec{"اديس ابابا"}
+            ec{"اضافی ابابا"}
         }
         "Africa:Algiers"{
-            ec{"الجييرز"}
+            ec{"الګیرز"}
         }
         "Africa:Asmera"{
-            ec{"اسماره"}
+            ec{"اساماره"}
         }
         "Africa:Bamako"{
             ec{"بامیکو"}
         }
         "Africa:Bangui"{
-            ec{"بانګوي"}
+            ec{"بنوګي"}
         }
         "Africa:Banjul"{
             ec{"بانجول"}
         }
         "Africa:Bissau"{
-            ec{"بساؤ"}
-        }
-        "Africa:Blantyre"{
-            ec{"بلنټاير"}
-        }
-        "Africa:Brazzaville"{
-            ec{"برازاويل"}
+            ec{"بسو"}
         }
         "Africa:Bujumbura"{
             ec{"بجوګورا"}
@@ -44,9 +38,6 @@ ps{
         }
         "Africa:Casablanca"{
             ec{"کاسابلانکا"}
-        }
-        "Africa:Ceuta"{
-            ec{"سيوټا"}
         }
         "Africa:Conakry"{
             ec{"کونکري"}
@@ -61,7 +52,7 @@ ps{
             ec{"جبوتي"}
         }
         "Africa:Douala"{
-            ec{"دوالا"}
+            ec{"ډالاله"}
         }
         "Africa:El_Aaiun"{
             ec{"الیون"}
@@ -76,7 +67,7 @@ ps{
             ec{"هرارې"}
         }
         "Africa:Johannesburg"{
-            ec{"جوهانسبرګ"}
+            ec{"جوهانبرګ"}
         }
         "Africa:Juba"{
             ec{"جوبا"}
@@ -109,7 +100,7 @@ ps{
             ec{"لبوباشي"}
         }
         "Africa:Lusaka"{
-            ec{"لوساکا"}
+            ec{"لسیکا"}
         }
         "Africa:Malabo"{
             ec{"مالابو"}
@@ -118,10 +109,7 @@ ps{
             ec{"ماپوټو"}
         }
         "Africa:Maseru"{
-            ec{"مسيرو"}
-        }
-        "Africa:Mbabane"{
-            ec{"مبابانې"}
+            ec{"مسرو"}
         }
         "Africa:Mogadishu"{
             ec{"موگديشو"}
@@ -142,7 +130,7 @@ ps{
             ec{"نوکوچټ"}
         }
         "Africa:Ouagadougou"{
-            ec{"اوګوډوګو"}
+            ec{"اوواګاګواګو"}
         }
         "Africa:Porto-Novo"{
             ec{"پورټو - نوو"}
@@ -175,10 +163,10 @@ ps{
             ec{"ارګینیا"}
         }
         "America:Argentina:La_Rioja"{
-            ec{"لاريوجا"}
+            ec{"لا ریوج"}
         }
         "America:Argentina:Rio_Gallegos"{
-            ec{"ريو ګيليګوس"}
+            ec{"ریو ګیلیلیګوس"}
         }
         "America:Argentina:Salta"{
             ec{"سالټا"}
@@ -238,7 +226,7 @@ ps{
             ec{"کمپو ګرډی"}
         }
         "America:Cancun"{
-            ec{"کينکن"}
+            ec{"کینن"}
         }
         "America:Caracas"{
             ec{"کاراکاس"}
@@ -258,14 +246,11 @@ ps{
         "America:Chihuahua"{
             ec{"چھواھوا"}
         }
-        "America:Ciudad_Juarez"{
-            ec{"سیوداد جیوریز"}
-        }
         "America:Coral_Harbour"{
             ec{"اتیکوکن"}
         }
         "America:Cordoba"{
-            ec{"کورډوبا"}
+            ec{"کوډوبا"}
         }
         "America:Costa_Rica"{
             ec{"کوستاریکا"}
@@ -277,10 +262,10 @@ ps{
             ec{"کویابا"}
         }
         "America:Curacao"{
-            ec{"کوراکاؤ"}
+            ec{"کیکاو"}
         }
         "America:Danmarkshavn"{
-            ec{"ډنمارکشان"}
+            ec{"ډنمارک هاربر"}
         }
         "America:Dawson"{
             ec{"داوسن"}
@@ -315,9 +300,6 @@ ps{
         "America:Glace_Bay"{
             ec{"ګیسس بيی"}
         }
-        "America:Godthab"{
-            ec{"نووک"}
-        }
         "America:Goose_Bay"{
             ec{"گوز بي"}
         }
@@ -334,7 +316,7 @@ ps{
             ec{"ګواتمالا"}
         }
         "America:Guayaquil"{
-            ec{"ګوياکل"}
+            ec{"ګویاګل"}
         }
         "America:Guyana"{
             ec{"ګیانا"}
@@ -343,34 +325,34 @@ ps{
             ec{"هیلفکس"}
         }
         "America:Havana"{
-            ec{"هوانا"}
+            ec{"هایانا"}
         }
         "America:Hermosillo"{
             ec{"هرموسیلو"}
         }
         "America:Indiana:Knox"{
-            ec{"نوکس انډيانا"}
+            ec{"نکس، اندیانا"}
         }
         "America:Indiana:Marengo"{
-            ec{"مورينګو انډيانا"}
+            ec{"مارینګ، انډیانا"}
         }
         "America:Indiana:Petersburg"{
-            ec{"پيټسبرګ، انډيانا"}
+            ec{"پیتربورګ، انډيانا"}
         }
         "America:Indiana:Tell_City"{
-            ec{"ټل سټي، انډيانا"}
+            ec{"ښار، انډیا ته ووایی"}
         }
         "America:Indiana:Vevay"{
-            ec{"ویوی، انډيانا"}
+            ec{"ویوی، انډیډا"}
         }
         "America:Indiana:Vincennes"{
-            ec{"وينسينس، انډيانا"}
+            ec{"وینینسین، انډا"}
         }
         "America:Indiana:Winamac"{
-            ec{"وينامک انډيانا"}
+            ec{"ویناماسک، انډی"}
         }
         "America:Indianapolis"{
-            ec{"انډيانا پوليس"}
+            ec{"انډولپولیس"}
         }
         "America:Inuvik"{
             ec{"انوک"}
@@ -382,13 +364,13 @@ ps{
             ec{"جمایکه"}
         }
         "America:Jujuy"{
-            ec{"جوجوي"}
+            ec{"جوجو"}
         }
         "America:Juneau"{
             ec{"جونو"}
         }
         "America:Kentucky:Monticello"{
-            ec{"مونټيسيلو، کونټکی"}
+            ec{"مونټیکیلو، کینیسي"}
         }
         "America:Kralendijk"{
             ec{"کلینډیزج"}
@@ -406,25 +388,22 @@ ps{
             ec{"لوئس ویل"}
         }
         "America:Lower_Princes"{
-            ec{"لوور پرنس کوارټر"}
+            ec{"د کمتر شهزاده درې میاشتنۍ"}
         }
         "America:Maceio"{
-            ec{"ماسيو"}
+            ec{"مایسیو"}
         }
         "America:Managua"{
             ec{"منګوا"}
         }
         "America:Manaus"{
-            ec{"مناوس"}
+            ec{"منوس"}
         }
         "America:Marigot"{
-            ec{"ميريګاټ"}
+            ec{"مارګټ"}
         }
         "America:Martinique"{
             ec{"مارټینیک"}
-        }
-        "America:Matamoros"{
-            ec{"ميټاموروس"}
         }
         "America:Mazatlan"{
             ec{"مزاتلان"}
@@ -436,7 +415,7 @@ ps{
             ec{"مینومین"}
         }
         "America:Merida"{
-            ec{"ميريډا"}
+            ec{"مرده"}
         }
         "America:Metlakatla"{
             ec{"میتلاکاټلا"}
@@ -445,10 +424,10 @@ ps{
             ec{"مکسيکو ښار"}
         }
         "America:Miquelon"{
-            ec{"ميکويلان"}
+            ec{"ميکلين"}
         }
         "America:Moncton"{
-            ec{"مونکټون"}
+            ec{"مونټون"}
         }
         "America:Monterrey"{
             ec{"منټرري"}
@@ -465,6 +444,9 @@ ps{
         "America:New_York"{
             ec{"نیویارک"}
         }
+        "America:Nipigon"{
+            ec{"نیپګون"}
+        }
         "America:Nome"{
             ec{"نوم"}
         }
@@ -472,10 +454,10 @@ ps{
             ec{"نورونها"}
         }
         "America:North_Dakota:Beulah"{
-            ec{"بيولا، شمالي ډاکوټا"}
+            ec{"بيلاه، شمالي داکوتا"}
         }
         "America:North_Dakota:Center"{
-            ec{"مرکز، شمالي ډاکوټا"}
+            ec{"مرکز، د شمالي ټاپو"}
         }
         "America:North_Dakota:New_Salem"{
             ec{"نوی سلیم، شمالي داکوتا"}
@@ -485,6 +467,9 @@ ps{
         }
         "America:Panama"{
             ec{"پاناما"}
+        }
+        "America:Pangnirtung"{
+            ec{"پيننټيرګ"}
         }
         "America:Paramaribo"{
             ec{"پاراماربو"}
@@ -507,8 +492,11 @@ ps{
         "America:Punta_Arenas"{
             ec{"پنټا آریناس"}
         }
+        "America:Rainy_River"{
+            ec{"د باران باران"}
+        }
         "America:Rankin_Inlet"{
-            ec{"رينکن انلټ"}
+            ec{"رانکين لط"}
         }
         "America:Recife"{
             ec{"ریسیفي"}
@@ -517,7 +505,7 @@ ps{
             ec{"ریګینا"}
         }
         "America:Resolute"{
-            ec{"ريسالوټ"}
+            ec{"غوڅ"}
         }
         "America:Rio_Branco"{
             ec{"ریو برانکو"}
@@ -534,9 +522,6 @@ ps{
         "America:Sao_Paulo"{
             ec{"ساو پاولو"}
         }
-        "America:Scoresbysund"{
-            ec{"اټوکوټورمیټ"}
-        }
         "America:Sitka"{
             ec{"سیټکا"}
         }
@@ -544,7 +529,7 @@ ps{
             ec{"سینټ بارټیلیم"}
         }
         "America:St_Johns"{
-            ec{"سینټ جانز"}
+            ec{"د سینټ جان"}
         }
         "America:St_Kitts"{
             ec{"سینټ کټس"}
@@ -553,13 +538,13 @@ ps{
             ec{"سینټ لوسیا"}
         }
         "America:St_Thomas"{
-            ec{"سينټ تهامس"}
+            ec{"سایټ توماس"}
         }
         "America:St_Vincent"{
             ec{"سېنټ ویسنټ"}
         }
         "America:Swift_Current"{
-            ec{"سويفټ کرنټ"}
+            ec{"اوسنی بدلون"}
         }
         "America:Tegucigalpa"{
             ec{"ټګسیګالپا"}
@@ -567,8 +552,11 @@ ps{
         "America:Thule"{
             ec{"تول"}
         }
+        "America:Thunder_Bay"{
+            ec{"د تندر خلیج"}
+        }
         "America:Tijuana"{
-            ec{"تجوانا"}
+            ec{"تجهان"}
         }
         "America:Toronto"{
             ec{"ټورنټو"}
@@ -580,49 +568,49 @@ ps{
             ec{"وینکوور"}
         }
         "America:Whitehorse"{
-            ec{"وايټ هارس"}
+            ec{"سپین آس"}
         }
         "America:Winnipeg"{
             ec{"وینپیګ"}
         }
         "America:Yakutat"{
-            ec{"ياکوټټ"}
+            ec{"یاکتټ"}
+        }
+        "America:Yellowknife"{
+            ec{"زرونیف"}
         }
         "Antarctica:Casey"{
             ec{"کیسي"}
         }
         "Antarctica:Davis"{
-            ec{"ډيوس"}
+            ec{"دیویس"}
         }
         "Antarctica:DumontDUrville"{
-            ec{"ډومونټ ډي ارول"}
+            ec{"ډومونټ ډي اوورول"}
         }
         "Antarctica:Macquarie"{
-            ec{"مکواري"}
+            ec{"مکاکري"}
         }
         "Antarctica:Mawson"{
-            ec{"ماوسن"}
-        }
-        "Antarctica:McMurdo"{
-            ec{"مکمرډو"}
+            ec{"مسونسن"}
         }
         "Antarctica:Palmer"{
-            ec{"پالمر"}
+            ec{"پالر"}
         }
         "Antarctica:Rothera"{
-            ec{"رودرا"}
+            ec{"رورها"}
         }
         "Antarctica:Syowa"{
             ec{"سیوا"}
         }
         "Antarctica:Troll"{
-            ec{"ټرول"}
+            ec{"ټول"}
         }
         "Antarctica:Vostok"{
             ec{"واستوک"}
         }
         "Arctic:Longyearbyen"{
-            ec{"لانګيربين"}
+            ec{"لاندینبیبین"}
         }
         "Asia:Aden"{
             ec{"اډن"}
@@ -637,7 +625,7 @@ ps{
             ec{"اناډير"}
         }
         "Asia:Aqtau"{
-            ec{"اکټاو"}
+            ec{"اکاټو"}
         }
         "Asia:Aqtobe"{
             ec{"اکتوب"}
@@ -658,7 +646,7 @@ ps{
             ec{"باکو"}
         }
         "Asia:Bangkok"{
-            ec{"بنکاک"}
+            ec{"بانکاک"}
         }
         "Asia:Barnaul"{
             ec{"برنول"}
@@ -678,9 +666,6 @@ ps{
         "Asia:Chita"{
             ec{"چيتا"}
         }
-        "Asia:Choibalsan"{
-            ec{"چويبلسان"}
-        }
         "Asia:Colombo"{
             ec{"کولمبو"}
         }
@@ -691,16 +676,13 @@ ps{
             ec{"ډهاکه"}
         }
         "Asia:Dili"{
-            ec{"دلي"}
+            ec{"ديلي"}
         }
         "Asia:Dubai"{
             ec{"دوبی"}
         }
         "Asia:Dushanbe"{
             ec{"دوشنبي"}
-        }
-        "Asia:Famagusta"{
-            ec{"فاماګستا"}
         }
         "Asia:Gaza"{
             ec{"غزه"}
@@ -711,20 +693,17 @@ ps{
         "Asia:Hong_Kong"{
             ec{"هانګ کانګ"}
         }
-        "Asia:Hovd"{
-            ec{"هاوډ"}
-        }
         "Asia:Irkutsk"{
-            ec{"ارکوټسک"}
+            ec{"ایرکوټس"}
         }
         "Asia:Jakarta"{
-            ec{"جکارتا"}
+            ec{"جاکارټا"}
         }
         "Asia:Jayapura"{
-            ec{"جاياپورا"}
+            ec{"جاپورا"}
         }
         "Asia:Jerusalem"{
-            ec{"يروشلم"}
+            ec{"یهودان"}
         }
         "Asia:Kabul"{
             ec{"کابل"}
@@ -739,19 +718,19 @@ ps{
             ec{"کټمنډو"}
         }
         "Asia:Khandyga"{
-            ec{"خنديګا"}
+            ec{"خندګي"}
         }
         "Asia:Krasnoyarsk"{
-            ec{"کريسنويارسک"}
+            ec{"کریسایویارسک"}
         }
         "Asia:Kuala_Lumpur"{
             ec{"کولالمپور"}
         }
         "Asia:Kuching"{
-            ec{"کوچنګ"}
+            ec{"کوچيګ"}
         }
         "Asia:Kuwait"{
-            ec{"کوېت"}
+            ec{"کویټ"}
         }
         "Asia:Macau"{
             ec{"مکاو"}
@@ -766,7 +745,7 @@ ps{
             ec{"منیلا"}
         }
         "Asia:Muscat"{
-            ec{"مسقط"}
+            ec{"مسکټ"}
         }
         "Asia:Nicosia"{
             ec{"نیکوسیا"}
@@ -775,31 +754,28 @@ ps{
             ec{"نووکوزنیټک"}
         }
         "Asia:Novosibirsk"{
-            ec{"نووسيبرسک"}
+            ec{"نووسوسبیرک"}
         }
         "Asia:Omsk"{
-            ec{"اومسک"}
+            ec{"اوک"}
         }
         "Asia:Oral"{
             ec{"اورل"}
         }
         "Asia:Phnom_Penh"{
-            ec{"پنوم پن"}
+            ec{"دوم قلم"}
         }
         "Asia:Pontianak"{
             ec{"پونټینیک"}
         }
         "Asia:Pyongyang"{
-            ec{"پيانګ يانګ"}
+            ec{"پیونگګنګ"}
         }
         "Asia:Qatar"{
             ec{"قطر"}
         }
-        "Asia:Qostanay"{
-            ec{"کوستانې"}
-        }
         "Asia:Qyzylorda"{
-            ec{"قيزي لورډا"}
+            ec{"قزیلیلرا"}
         }
         "Asia:Rangoon"{
             ec{"یانګون"}
@@ -808,10 +784,10 @@ ps{
             ec{"رياض"}
         }
         "Asia:Saigon"{
-            ec{"هو چي من ښار"}
+            ec{"هو چي مينه"}
         }
         "Asia:Sakhalin"{
-            ec{"سخالين"}
+            ec{"سخنین"}
         }
         "Asia:Samarkand"{
             ec{"سمرقند"}
@@ -826,13 +802,13 @@ ps{
             ec{"سینګاپور"}
         }
         "Asia:Srednekolymsk"{
-            ec{"سريډنيکوليمسک"}
+            ec{"سنینیکولوژیک"}
         }
         "Asia:Taipei"{
-            ec{"تايپي"}
+            ec{"تاپي"}
         }
         "Asia:Tashkent"{
-            ec{"تاشقند"}
+            ec{"تاشکند"}
         }
         "Asia:Tbilisi"{
             ec{"تبلیسي"}
@@ -850,52 +826,46 @@ ps{
             ec{"توماس"}
         }
         "Asia:Ulaanbaatar"{
-            ec{"اولان باټر"}
-        }
-        "Asia:Urumqi"{
-            ec{"اورومقي"}
+            ec{"اللانبیر"}
         }
         "Asia:Ust-Nera"{
-            ec{"اوستنيرا"}
+            ec{"اوسترا"}
         }
         "Asia:Vientiane"{
-            ec{"وينټين"}
+            ec{"وینټینیا"}
         }
         "Asia:Vladivostok"{
             ec{"ولادیوستاک"}
         }
         "Asia:Yakutsk"{
-            ec{"ياکوټسک"}
+            ec{"یااکټس"}
         }
         "Asia:Yekaterinburg"{
-            ec{"يکاټيرنبرګ"}
+            ec{"یاراتینینګ برګ"}
         }
         "Asia:Yerevan"{
-            ec{"يريوان"}
-        }
-        "Atlantic:Azores"{
-            ec{"ايزورس"}
+            ec{"ییران"}
         }
         "Atlantic:Bermuda"{
             ec{"برمودا"}
         }
         "Atlantic:Canary"{
-            ec{"کناري"}
+            ec{"کیري"}
         }
         "Atlantic:Cape_Verde"{
-            ec{"کيپ ورډ"}
+            ec{"کېپ وردا"}
         }
         "Atlantic:Faeroe"{
             ec{"فارو"}
         }
         "Atlantic:Madeira"{
-            ec{"مديرا"}
+            ec{"مایررا"}
         }
         "Atlantic:Reykjavik"{
-            ec{"ريکجاويک"}
+            ec{"ريکسجيک"}
         }
         "Atlantic:South_Georgia"{
-            ec{"سويلي جورجيا"}
+            ec{"سویل جورجیا"}
         }
         "Atlantic:St_Helena"{
             ec{"سینټ هیلینا"}
@@ -910,13 +880,16 @@ ps{
             ec{"بریسبن"}
         }
         "Australia:Broken_Hill"{
-            ec{"بروکن هل"}
+            ec{"مات شوی هیل"}
+        }
+        "Australia:Currie"{
+            ec{"کرري"}
         }
         "Australia:Darwin"{
             ec{"ډارون"}
         }
         "Australia:Eucla"{
-            ec{"ايوکلا"}
+            ec{"ایولیکا"}
         }
         "Australia:Hobart"{
             ec{"هوبارټ"}
@@ -925,19 +898,19 @@ ps{
             ec{"لینډامین"}
         }
         "Australia:Lord_Howe"{
-            ec{"لارډ هوي"}
+            ec{"رب هیله"}
         }
         "Australia:Melbourne"{
             ec{"میلبورن"}
         }
         "Australia:Perth"{
-            ec{"پرت"}
+            ec{"پورت"}
         }
         "Australia:Sydney"{
             ec{"سډني"}
         }
         "Etc:UTC"{
-            ls{"همغږى نړیوال وخت"}
+            ls{"همغږۍ نړیواله موده"}
         }
         "Etc:Unknown"{
             ec{"نامعلوم ښار"}
@@ -949,19 +922,19 @@ ps{
             ec{"اندورا"}
         }
         "Europe:Astrakhan"{
-            ec{"استرا خان"}
+            ec{"آسترخان"}
         }
         "Europe:Athens"{
-            ec{"ايتنز"}
+            ec{"ایترین"}
         }
         "Europe:Belgrade"{
             ec{"بلغاد"}
         }
         "Europe:Berlin"{
-            ec{"برلن"}
+            ec{"برلین"}
         }
         "Europe:Bratislava"{
-            ec{"براټسلاوا"}
+            ec{"براتسکوا"}
         }
         "Europe:Brussels"{
             ec{"بروسلز"}
@@ -970,20 +943,19 @@ ps{
             ec{"بخارست"}
         }
         "Europe:Budapest"{
-            ec{"بداپسټ"}
+            ec{"بوډاپیس"}
         }
         "Europe:Busingen"{
-            ec{"بوسينجن"}
+            ec{"بسینګین"}
         }
         "Europe:Chisinau"{
             ec{"چیسینو"}
         }
         "Europe:Copenhagen"{
-            ec{"کوپن هيګن"}
+            ec{"کوپینګنګ"}
         }
         "Europe:Dublin"{
-            ec{"ډبلن"}
-            ld{"آيرش معياري وخت"}
+            ec{"ډوبلین"}
         }
         "Europe:Gibraltar"{
             ec{"جبل الطارق"}
@@ -998,16 +970,16 @@ ps{
             ec{"د آئل آف مین"}
         }
         "Europe:Istanbul"{
-            ec{"استنبول"}
+            ec{"استانبول"}
         }
         "Europe:Jersey"{
             ec{"جرسی"}
         }
         "Europe:Kaliningrad"{
-            ec{"کيلنينګراډ"}
+            ec{"کیليینګراډر"}
         }
         "Europe:Kiev"{
-            ec{"کیف"}
+            ec{"کیو"}
         }
         "Europe:Kirov"{
             ec{"کیروف"}
@@ -1016,11 +988,11 @@ ps{
             ec{"لیسبون"}
         }
         "Europe:Ljubljana"{
-            ec{"لوبجانا"}
+            ec{"لوججانا"}
         }
         "Europe:London"{
             ec{"لندن"}
-            ld{"بريتانوي د اوړي وخت"}
+            ld{"د انګلستان سمر وخت"}
         }
         "Europe:Luxembourg"{
             ec{"لوګزامبورګ"}
@@ -1029,10 +1001,10 @@ ps{
             ec{"میډریډ"}
         }
         "Europe:Malta"{
-            ec{"مالټا"}
+            ec{"مالتا"}
         }
         "Europe:Mariehamn"{
-            ec{"ميريهام"}
+            ec{"ماریاهمین"}
         }
         "Europe:Minsk"{
             ec{"منسک"}
@@ -1050,13 +1022,13 @@ ps{
             ec{"پاریس"}
         }
         "Europe:Podgorica"{
-            ec{"پوډګوريکا"}
+            ec{"پوډورګویکا"}
         }
         "Europe:Prague"{
             ec{"پراګ"}
         }
         "Europe:Riga"{
-            ec{"ريګا"}
+            ec{"ریګ"}
         }
         "Europe:Rome"{
             ec{"روم"}
@@ -1068,7 +1040,7 @@ ps{
             ec{"سان مارینو"}
         }
         "Europe:Sarajevo"{
-            ec{"سيراجيوا"}
+            ec{"سرجیو"}
         }
         "Europe:Saratov"{
             ec{"سراتف"}
@@ -1088,14 +1060,14 @@ ps{
         "Europe:Tallinn"{
             ec{"تالين"}
         }
-        "Europe:Tirane"{
-            ec{"تيران"}
-        }
         "Europe:Ulyanovsk"{
-            ec{"اليانوسک"}
+            ec{"ایلیانوفس"}
+        }
+        "Europe:Uzhgorod"{
+            ec{"یوژورډ"}
         }
         "Europe:Vaduz"{
-            ec{"واډوز"}
+            ec{"وادز"}
         }
         "Europe:Vatican"{
             ec{"ویټیکان"}
@@ -1104,10 +1076,10 @@ ps{
             ec{"ویانا"}
         }
         "Europe:Vilnius"{
-            ec{"ويلنيوس"}
+            ec{"ویلیونس"}
         }
         "Europe:Volgograd"{
-            ec{"والګوګراډ"}
+            ec{"والګراډر"}
         }
         "Europe:Warsaw"{
             ec{"وارسا"}
@@ -1115,41 +1087,41 @@ ps{
         "Europe:Zagreb"{
             ec{"زګرب"}
         }
+        "Europe:Zaporozhye"{
+            ec{"زاپوروژی"}
+        }
         "Europe:Zurich"{
             ec{"زریچ"}
         }
         "Indian:Antananarivo"{
-            ec{"انتانناريوو"}
+            ec{"انتوننارو"}
         }
         "Indian:Chagos"{
-            ec{"چاګوس"}
+            ec{"چارګوس"}
         }
         "Indian:Christmas"{
-            ec{"کريسمس"}
+            ec{"کریمیس"}
         }
         "Indian:Cocos"{
-            ec{"کوکوز"}
+            ec{"کوکوس"}
         }
         "Indian:Comoro"{
-            ec{"کومورو"}
-        }
-        "Indian:Kerguelen"{
-            ec{"کرګولين"}
+            ec{"کومو"}
         }
         "Indian:Mahe"{
-            ec{"ماهي"}
+            ec{"مای"}
         }
         "Indian:Maldives"{
             ec{"مالديپ"}
         }
         "Indian:Mauritius"{
-            ec{"ماريشيس"}
+            ec{"ماوريشوس"}
         }
         "Indian:Mayotte"{
             ec{"میټوت"}
         }
         "Indian:Reunion"{
-            ec{"ري يونين"}
+            ec{"ریونیو"}
         }
         "Pacific:Apia"{
             ec{"اپیا"}
@@ -1157,38 +1129,32 @@ ps{
         "Pacific:Auckland"{
             ec{"اکلند"}
         }
-        "Pacific:Bougainville"{
-            ec{"بوګن ویل"}
-        }
         "Pacific:Chatham"{
-            ec{"چاتام"}
+            ec{"چامام"}
         }
         "Pacific:Easter"{
             ec{"ایسټر"}
         }
         "Pacific:Efate"{
-            ec{"عفات"}
-        }
-        "Pacific:Enderbury"{
-            ec{"انډربري"}
+            ec{"ایات"}
         }
         "Pacific:Fakaofo"{
             ec{"فوکافو"}
         }
         "Pacific:Fiji"{
-            ec{"فجي"}
+            ec{"في جي"}
         }
         "Pacific:Funafuti"{
-            ec{"فونافوتي"}
+            ec{"فرهفتی"}
         }
         "Pacific:Galapagos"{
             ec{"ګالپګوس"}
         }
         "Pacific:Gambier"{
-            ec{"ګيمبير"}
+            ec{"ګيمبي"}
         }
         "Pacific:Guadalcanal"{
-            ec{"ګواډلکينال"}
+            ec{"ګالالکنال"}
         }
         "Pacific:Guam"{
             ec{"ګوام"}
@@ -1196,23 +1162,23 @@ ps{
         "Pacific:Honolulu"{
             ec{"هینولولو"}
         }
-        "Pacific:Kiritimati"{
-            ec{"کيريټماټي"}
+        "Pacific:Johnston"{
+            ec{"جانستون"}
         }
         "Pacific:Kosrae"{
-            ec{"کوسراي"}
+            ec{"کوسیرا"}
         }
         "Pacific:Kwajalein"{
-            ec{"کواجلين"}
+            ec{"کجیجینین"}
         }
         "Pacific:Majuro"{
             ec{"مجورو"}
         }
         "Pacific:Marquesas"{
-            ec{"مارکيساس"}
+            ec{"مارکسونه"}
         }
         "Pacific:Midway"{
-            ec{"ميډوی"}
+            ec{"میډیا"}
         }
         "Pacific:Nauru"{
             ec{"نایرو"}
@@ -1224,40 +1190,37 @@ ps{
             ec{"نورفک"}
         }
         "Pacific:Noumea"{
-            ec{"نوميا"}
+            ec{"نواما"}
         }
         "Pacific:Pago_Pago"{
-            ec{"پيګو پيګو"}
+            ec{"پیگو پیگو"}
         }
         "Pacific:Palau"{
-            ec{"پلاو"}
-        }
-        "Pacific:Pitcairn"{
-            ec{"پيټيکيرن"}
+            ec{"پلو"}
         }
         "Pacific:Ponape"{
             ec{"پونپي"}
         }
         "Pacific:Port_Moresby"{
-            ec{"پورټ مورسبی"}
+            ec{"پور موورسبی"}
         }
         "Pacific:Rarotonga"{
-            ec{"راروټونګا"}
+            ec{"راروتاګون"}
         }
         "Pacific:Saipan"{
             ec{"سيپان"}
         }
         "Pacific:Tahiti"{
-            ec{"ټهيټي"}
+            ec{"ټیټیټي"}
         }
         "Pacific:Tarawa"{
-            ec{"تاراوا"}
+            ec{"ترارو"}
         }
         "Pacific:Tongatapu"{
             ec{"ټونګاتاپو"}
         }
         "Pacific:Truk"{
-            ec{"چوک"}
+            ec{"چکوک"}
         }
         "Pacific:Wake"{
             ec{"ویک"}
@@ -1283,9 +1246,14 @@ ps{
             ls{"لویدیځ افریقایي معیاري وخت"}
         }
         "meta:Alaska"{
-            ld{"الاسکا د ورځې روښانه وخت"}
+            ld{"د الاسکا د ورځې روښانه کول"}
             lg{"الاسکا وخت"}
             ls{"الاسکا معياري وخت"}
+        }
+        "meta:Almaty"{
+            ld{"∅∅∅"}
+            lg{"الماتا په وخت"}
+            ls{"∅∅∅"}
         }
         "meta:Amazon"{
             ld{"ایمیزون اوړي وخت"}
@@ -1293,7 +1261,7 @@ ps{
             ls{"ایمیزون معیاری وخت"}
         }
         "meta:America_Central"{
-            ld{"مرکزي د ورځې روښانه وخت"}
+            ld{"مرکزي رڼا ورځې وخت"}
             lg{"مرکزي وخت"}
             ls{"مرکزي معياري وخت"}
         }
@@ -1313,12 +1281,12 @@ ps{
             ls{"د پیسفک معياري وخت"}
         }
         "meta:Apia"{
-            ld{"اپيا د ورځې روښانه وخت"}
-            lg{"اپیا وخت"}
-            ls{"اپیا معياري وخت"}
+            ld{"د اپیا د ورځې وخت"}
+            lg{"د اپیا وخت"}
+            ls{"د اپیا معياري وخت"}
         }
         "meta:Arabian"{
-            ld{"عربي د ورځې روښانه وخت"}
+            ld{"د عربي ورځپاڼې وخت"}
             lg{"عربي وخت"}
             ls{"عربي معیاري وخت"}
         }
@@ -1328,57 +1296,52 @@ ps{
             ls{"ارجنټاین معیاری وخت"}
         }
         "meta:Argentina_Western"{
-            ld{"لوېديځ ارجنټاين اوړي وخت"}
-            lg{"لوېديځ ارجنټاين وخت"}
-            ls{"لوېديځ ارجنټاين معياري وخت"}
+            ld{"غربي ارجنټاین اوړي وخت"}
+            lg{"غربي ارجنټاین وخت"}
+            ls{"غربي ارجنټاین معیاری وخت"}
         }
         "meta:Armenia"{
-            ld{"ارمنستان اوړي وخت"}
+            ld{"ارمنستان سمر وخت"}
             lg{"ارمنستان وخت"}
             ls{"ارمنستان معياري وخت"}
         }
         "meta:Atlantic"{
             ld{"اتلانتیک د رڼا ورځې وخت"}
-            lg{"اتلانتیک وخت"}
+            lg{"اتلانتیک د وخت"}
             ls{"اتلانتیک معياري وخت"}
         }
         "meta:Australia_Central"{
-            ld{"آسترالوي مرکزي د ورځې روښانه وخت"}
-            lg{"مرکزي آستراليا وخت"}
-            ls{"آسترالوي مرکزي معياري وخت"}
+            ld{"د آسټرالیا مرکزي مرکزی ورځ"}
+            lg{"د مرکزي آسټر وخت"}
+            ls{"د اسټرالیا مرکزي مرکزي معیار"}
         }
         "meta:Australia_CentralWestern"{
-            ld{"آسترالوي مرکزي لوېديځ د ورځې روښانه وخت"}
-            lg{"آسترالوي مرکزي لوېديځ وخت"}
-            ls{"آسترالوي مرکزي لوېديځ معياري وخت"}
+            ld{"د آسټرالیا مرکزي مرکزی لویدیځ د وخت وخت"}
+            lg{"د آسټرالیا مرکزی لویدیځ وخت"}
+            ls{"د آسټرالیا مرکزي لویدیځ معیاري وخت"}
         }
         "meta:Australia_Eastern"{
-            ld{"آسترالوي ختيځ د ورځې روښانه وخت"}
-            lg{"ختيځ آستراليا وخت"}
-            ls{"آسترالوي ختيځ معياري وخت"}
+            ld{"د اسټرالیا ختیځ ختیځ ورځی وخت"}
+            lg{"د ختیځ آسټر وخت"}
+            ls{"د آسټرالیا ختیځ معیاري وخت"}
         }
         "meta:Australia_Western"{
-            ld{"آسترالوي لوېديځ د ورځې روښانه وخت"}
-            lg{"لوېديځ آستراليا وخت"}
-            ls{"آسترالوي لوېديځ معياري وخت"}
+            ld{"د اسټرالیا لویدیځ د ورځې وخت"}
+            lg{"د لویدیځ آسټرالیا وخت"}
+            ls{"د اسټرالیا لویدیز معیار"}
         }
         "meta:Azerbaijan"{
-            ld{"اذرباییجان اوړي وخت"}
+            ld{"د اذرباییجان سمر وخت"}
             lg{"د آذربايجان وخت"}
             ls{"آذربايجان معياري وخت"}
         }
-        "meta:Azores"{
-            ld{"ايزورس اوړي وخت"}
-            lg{"ايزورس وخت"}
-            ls{"ايزورس معياري وخت"}
-        }
         "meta:Bangladesh"{
-            ld{"بنګله ديش اوړي وخت"}
+            ld{"د بنگله دیش د سمر وخت"}
             lg{"بنگله دېش وخت"}
-            ls{"بنګلادیش معیاري وخت"}
+            ls{"د بنګلادیش معیاري وخت"}
         }
         "meta:Bhutan"{
-            ls{"بهوټان وخت"}
+            ls{"د بوتان وخت"}
         }
         "meta:Bolivia"{
             ls{"بولیویا وخت"}
@@ -1389,7 +1352,7 @@ ps{
             ls{"برسلیا معیاری وخت"}
         }
         "meta:Brunei"{
-            ls{"برونايي دارالسلام وخت"}
+            ls{"د بروني درسلام وخت"}
         }
         "meta:Cape_Verde"{
             ld{"کیپ وردډ سمر وخت"}
@@ -1400,9 +1363,9 @@ ps{
             ls{"چمارو معياري وخت"}
         }
         "meta:Chatham"{
-            ld{"چاتام د ورځې روښانه وخت"}
-            lg{"چاتام وخت"}
-            ls{"چاتام معياري وخت"}
+            ld{"د چتام ورځی وخت"}
+            lg{"چامام وخت"}
+            ls{"د چمتم معياري وخت"}
         }
         "meta:Chile"{
             ld{"چلی اوړي وخت"}
@@ -1420,10 +1383,10 @@ ps{
             ls{"چوئیبیلسن معیاری وخت"}
         }
         "meta:Christmas"{
-            ls{"کريسمس ټاپو وخت"}
+            ls{"د کریسټ ټاپو وخت"}
         }
         "meta:Cocos"{
-            ls{"کوکوز ټاپوګانو وخت"}
+            ls{"د کوکوز ټاپوز وخت"}
         }
         "meta:Colombia"{
             ld{"کولمبیا اوړي وخت"}
@@ -1431,23 +1394,23 @@ ps{
             ls{"کولمبیا معیاری وخت"}
         }
         "meta:Cook"{
-            ld{"کوک ټاپوګانو نيم اوړي وخت"}
-            lg{"کوک ټاپوګانو وخت"}
-            ls{"کوک ټاپوګانو معياري وخت"}
+            ld{"د کوک ټاپو نیمه سمر وخت"}
+            lg{"د کوک ټاپوز وخت"}
+            ls{"د کوک ټاپوز معياري وخت"}
         }
         "meta:Cuba"{
             ld{"کیوبا د رڼا ورځې وخت"}
-            lg{"کيوبا وخت"}
+            lg{"کیوبا د وخت"}
             ls{"کیوبا معياري وخت"}
         }
         "meta:Davis"{
-            ls{"ډيوس وخت"}
+            ls{"دیوس وخت"}
         }
         "meta:DumontDUrville"{
-            ls{"ډومونټ ډي ارول"}
+            ls{"ډومونټ-ډیریلوی وخت"}
         }
         "meta:East_Timor"{
-            ls{"ختيځ تيمور وخت"}
+            ls{"ختیځ ختیځ تیمور وخت"}
         }
         "meta:Easter"{
             ld{"ايستر ټاپو اوړي وخت"}
@@ -1458,32 +1421,27 @@ ps{
             ls{"د اکوادور وخت"}
         }
         "meta:Europe_Central"{
-            ld{"مرکزي اروپايياوړي وخت"}
-            lg{"مرکزي اروپايي وخت"}
+            ld{"وسطي اروپايي د اوړي وخت"}
+            lg{"منځنۍ اروپا وخت"}
             ls{"د مرکزي اروپا معیاري وخت"}
         }
-        "meta:Europe_Eastern"{
-            ld{"ختيځ اروپايي اوړي وخت"}
-            lg{"ختيځ اروپايي وخت"}
-            ls{"ختيځ اروپايي معياري وخت"}
-        }
         "meta:Europe_Further_Eastern"{
-            ls{"لرې ختيځ اروپايي وخت"}
+            ls{"نور ختیځ ختیځ اروپا وخت"}
         }
         "meta:Europe_Western"{
-            ld{"لوېديځ اروپايي اوړي وخت"}
-            lg{"لوېديځ اروپايي وخت"}
-            ls{"لوېديځ اروپايي معياري وخت"}
+            ld{"د لودیځې اورپا د اوړي وخت"}
+            lg{"لوېديزې اروپا وخت"}
+            ls{"د لودیځې اروپا معیاري وخت"}
         }
         "meta:Falkland"{
             ld{"د فوکلنډ ټاپو اوړي وخت"}
-            lg{"فوکلنډ ټاپو وخت"}
+            lg{"د فوکلنډ ټاپو وخت"}
             ls{"د فوکلنډ ټاپو معیاری وخت"}
         }
         "meta:Fiji"{
-            ld{"فجي د اوړي وخت"}
+            ld{"د فجی سمر وخت"}
             lg{"فجی وخت"}
-            ls{"فجی معياري وخت"}
+            ls{"د فجی معياري وخت"}
         }
         "meta:French_Guiana"{
             ls{"د فرانسوي ګانا وخت"}
@@ -1492,13 +1450,13 @@ ps{
             ls{"د فرانسې سویل او انټارټيک وخت"}
         }
         "meta:GMT"{
-            ls{"ګرينويچ معياري وخت"}
+            ls{"گرينويچ وخت"}
         }
         "meta:Galapagos"{
             ls{"ګالپګوس وخت"}
         }
         "meta:Gambier"{
-            ls{"ګيمبير وخت"}
+            ls{"د ګیمبریر وخت"}
         }
         "meta:Georgia"{
             ld{"د جورجيا د اوړي وخت"}
@@ -1506,7 +1464,7 @@ ps{
             ls{"جورجیا معیاري وخت"}
         }
         "meta:Gilbert_Islands"{
-            ls{"جلبرټ ټاپوګانو وخت"}
+            ls{"د ګیلبرټ جزیره وخت"}
         }
         "meta:Greenland_Eastern"{
             ld{"د ختیځ ګرینلینډ اوړي وخت"}
@@ -1519,7 +1477,7 @@ ps{
             ls{"لویدیځ ګرینلینډ معياري وخت"}
         }
         "meta:Gulf"{
-            ls{"خلیج معياري وخت"}
+            ls{"د خلیج معياري وخت"}
         }
         "meta:Guyana"{
             ls{"د ګوانانا وخت"}
@@ -1530,9 +1488,9 @@ ps{
             ls{"هوایی الیوتین معیاری وخت"}
         }
         "meta:Hong_Kong"{
-            ld{"هانګ کانګ اوړي وخت"}
-            lg{"هانګ کانګ وخت"}
-            ls{"هانګ کانګ معياري وخت"}
+            ld{"د هانګ کانګ اوړي وخت"}
+            lg{"د هانګ کانګ د وخت"}
+            ls{"د هانګ کانګ معياري وخت"}
         }
         "meta:Hovd"{
             ld{"هاوډ اوړي وخت"}
@@ -1540,97 +1498,105 @@ ps{
             ls{"هاوډ معیاری وخت"}
         }
         "meta:India"{
-            ls{"هند معیاري وخت"}
+            ls{"د هند معیاري وخت"}
         }
         "meta:Indian_Ocean"{
             ls{"د هند سمندر وخت"}
         }
         "meta:Indochina"{
-            ls{"انډوچاینه وخت"}
+            ls{"د اندوچینا وخت"}
         }
         "meta:Indonesia_Central"{
-            ls{"مرکزي ادونيزيا وخت"}
+            ls{"د اندونیزیا مرکزي وخت"}
         }
         "meta:Indonesia_Eastern"{
-            ls{"اندونیزیا وخت"}
+            ls{"د اندونیزیا وخت"}
         }
         "meta:Indonesia_Western"{
-            ls{"لویدیځ اندونیزیا وخت"}
+            ls{"د لویدیځ اندونیزیا وخت"}
         }
         "meta:Iran"{
-            ld{"ايران د ورځې روښانه وخت"}
-            lg{"ایران وخت"}
-            ls{"ایران معياري وخت"}
+            ld{"د ایران د ورځې وخت"}
+            lg{"د ایران وخت"}
+            ls{"د ایران معياري وخت"}
         }
         "meta:Irkutsk"{
-            ld{"ارکوټسک اوړي وخت"}
-            lg{"ارکوټسک وخت"}
-            ls{"ارکوټسک معياري وخت"}
+            ld{"د ایککوټس سمر وخت"}
+            lg{"د ارکوټس وخت"}
+            ls{"د ارکوټس معياري وخت"}
         }
         "meta:Israel"{
-            ld{"اسراييل د ورځې روښانه وخت"}
-            lg{"اسراییل وخت"}
-            ls{"اسراییل معياري وخت"}
+            ld{"د اسراییلو د ورځې وخت"}
+            lg{"د اسراییل وخت"}
+            ls{"د اسراییل معياري وخت"}
         }
         "meta:Japan"{
-            ld{"جاپان د ورځې روښانه وخت"}
-            lg{"جاپان وخت"}
-            ls{"جاپان معياري وخت"}
+            ld{"جاپان د رڼا ورځې وخت"}
+            lg{"جاپان د وخت"}
+            ls{"د جاپان معياري وخت"}
         }
         "meta:Kazakhstan_Eastern"{
-            ls{"ختيځ قازقستان وخت"}
+            ls{"ختیځ د قزاقستان د وخت"}
         }
         "meta:Kazakhstan_Western"{
             ls{"لویدیځ قزاقستان وخت"}
         }
         "meta:Korea"{
-            ld{"کوريايي د ورځې روښانه وخت"}
-            lg{"کوريايي وخت"}
-            ls{"کوريايي معياري وخت"}
+            ld{"د کوریا د ورځې د ورځې وخت"}
+            lg{"کوريا وخت"}
+            ls{"کوريا معياري وخت"}
         }
         "meta:Kosrae"{
-            ls{"کوسراي وخت"}
+            ls{"کوسیرا وخت"}
         }
         "meta:Krasnoyarsk"{
-            ld{"کريسنويارسک اوړي وخت"}
-            lg{"کريسنويارسک وخت"}
-            ls{"کريسنويارسک معياري وخت"}
+            ld{"کریسایویارسک سمر وخت"}
+            lg{"کریسایویسسک وخت"}
+            ls{"کریسایویارسک معیاري وخت"}
         }
         "meta:Kyrgystan"{
             ls{"کرغیزستان وخت"}
         }
         "meta:Line_Islands"{
-            ls{"لاين ټاپوګانو وخت"}
+            ls{"د کرښې ټاټوبي وخت"}
         }
         "meta:Lord_Howe"{
-            ld{"لارډ هوي د ورځې روښانه وخت"}
-            lg{"لارډ هوي وخت"}
-            ls{"لارډ هوي معياري وخت"}
+            ld{"رب هاو د ورځې د رڼا وخت"}
+            lg{"رب های وخت"}
+            ls{"رب های معیاري وخت"}
+        }
+        "meta:Macquarie"{
+            ls{"د مکاکري ټاپو وخت"}
         }
         "meta:Magadan"{
-            ld{"ميګډان اوړي وخت"}
-            lg{"ميګډان وخت"}
-            ls{"ميګډان معياري وخت"}
+            ld{"د مګمان سمر وخ"}
+            lg{"د مګدان وخت"}
+            ls{"میګډان معياري وخت"}
         }
         "meta:Malaysia"{
             ls{"ملائیشیا وخت"}
         }
         "meta:Maldives"{
-            ls{"مالديپ وخت"}
+            ls{"مالديف وخت"}
         }
         "meta:Marquesas"{
             ls{"مارکسس وخت"}
         }
         "meta:Marshall_Islands"{
-            ls{"مارشل ټاپوګانو وخت"}
+            ls{"مارشیل ټاپو وخت"}
         }
         "meta:Mauritius"{
-            ld{"ماريشيس د اوړي وخت"}
-            lg{"ماريشيس وخت"}
+            ld{"ماریسیس سمر وخت"}
+            lg{"ماریسیس وخت"}
             ls{"ماریشیس معياري وخت"}
         }
         "meta:Mawson"{
-            ls{"ماوسن وخت"}
+            ls{"دسونسن وخت"}
+        }
+        "meta:Mexico_Northwest"{
+            ld{"د شمال لویدیځ مکسیکو رڼا ورځې وخت"}
+            lg{"د شمال لویدیځ مکسیکو وخت"}
+            ls{"د شمال لویدیځ مکسیکو معیاري وخت"}
         }
         "meta:Mexico_Pacific"{
             ld{"مکسیکن پیسفک رڼا ورځې وخت"}
@@ -1638,9 +1604,9 @@ ps{
             ls{"مکسیکن پیسفک معیاری وخت"}
         }
         "meta:Mongolia"{
-            ld{"اولان باټر اوړي وخت"}
-            lg{"اولان باټر وخت"}
-            ls{"اولان باټر معیاري وخت"}
+            ld{"دلان بیتر سمر وخت"}
+            lg{"دلانانباټ وخت"}
+            ls{"اولان بټر معیاري وخت"}
         }
         "meta:Moscow"{
             ld{"ماسکو سمر وخت"}
@@ -1648,7 +1614,7 @@ ps{
             ls{"ماسکو معياري وخت"}
         }
         "meta:Myanmar"{
-            ls{"میانمار وخت"}
+            ls{"د میانمار وخت"}
         }
         "meta:Nauru"{
             ls{"ناورو وخت"}
@@ -1657,27 +1623,25 @@ ps{
             ls{"نیپال وخت"}
         }
         "meta:New_Caledonia"{
-            ld{"نيو کايډونيا اوړي وخت"}
-            lg{"نیو کالیډونیا وخت"}
-            ls{"نيو کالیډونیا معياري وخت"}
+            ld{"د نیو کالیډونیا سمر وخت"}
+            lg{"د نیو کالیډونیا وخت"}
+            ls{"نوی کالیډونیا معياري وخت"}
         }
         "meta:New_Zealand"{
-            ld{"نيوزي لېنډ د ورځې روښانه وخت"}
-            lg{"نيوزي لېنډ وخت"}
-            ls{"نيوزي لېنډ معياري وخت"}
+            ld{"د نیوزی لینڈ د ورځې د رڼا وخت"}
+            lg{"د نیوزی لینڈ وخت"}
+            ls{"د نیوزی لینڈ معیاري وخت"}
         }
         "meta:Newfoundland"{
-            ld{"نيو فاونډلېنډ د ورځې روښانه وخت"}
-            lg{"نيو فاونډلېنډ وخت"}
+            ld{"د نوي فیلډلینډ رڼا ورځې وخت"}
+            lg{"د نوي فیلډلینډ وخت"}
             ls{"د نوي فیلډلینډ معیاری وخت"}
         }
         "meta:Niue"{
             ls{"نییو وخت"}
         }
         "meta:Norfolk"{
-            ld{"د نورفکاس ټاپو اوړي وخت"}
-            lg{"نورفوک ټاپو وخت"}
-            ls{"د نورفکاس ټاپو معياري وخت"}
+            ls{"د نورفکاس ټاپو وخت"}
         }
         "meta:Noronha"{
             ld{"فرنانڈو دي نورونھا اوړي وخت"}
@@ -1685,19 +1649,19 @@ ps{
             ls{"فرنانڈو دي نورونها معیاری وخت"}
         }
         "meta:Novosibirsk"{
-            ld{"نووسيبرسک اوړي وخت"}
-            lg{"نووسيبرسک وخت"}
-            ls{"نووسيبرسک معياري وخت"}
+            ld{"نووسوسبیرک سمر وخت"}
+            lg{"د نووسوسبیرک وخت"}
+            ls{"د نووسوسبیرک معياري وخت"}
         }
         "meta:Omsk"{
-            ld{"اومسک اوړي وخت"}
-            lg{"اومسک وخت"}
-            ls{"اومسک معياري وخت"}
+            ld{"اوسمک سمر وخت"}
+            lg{"اوزک وخت"}
+            ls{"د اوزک معياري وخت"}
         }
         "meta:Pakistan"{
-            ld{"پاکستان اوړي وخت"}
-            lg{"پاکستان وخت"}
-            ls{"پاکستان معیاري وخت"}
+            ld{"د پاکستان سمر وخت"}
+            lg{"د پاکستان وخت"}
+            ls{"د پاکستان معیاري وخت"}
         }
         "meta:Palau"{
             ls{"پالاو وخت"}
@@ -1707,7 +1671,7 @@ ps{
         }
         "meta:Paraguay"{
             ld{"پاراګوای اوړي وخت"}
-            lg{"پيراګوای وخت"}
+            lg{"پاراګوای د وخت"}
             ls{"پیراګوای معياري وخت"}
         }
         "meta:Peru"{
@@ -1716,9 +1680,9 @@ ps{
             ls{"پیرو معياري وخت"}
         }
         "meta:Philippines"{
-            ld{"فلپاين اوړي وخت"}
-            lg{"فلپاين وخت"}
-            ls{"فلپاين معياري وخت"}
+            ld{"د فلپین سمر وخت"}
+            lg{"د فلپین وخت"}
+            ls{"فلپین معياري وخت"}
         }
         "meta:Phoenix_Islands"{
             ls{"د فینکس ټاپو وخت"}
@@ -1732,35 +1696,35 @@ ps{
             ls{"پیټ کارین وخت"}
         }
         "meta:Ponape"{
-            ls{"پونيپ وخت"}
+            ls{"پونپپ وخت"}
         }
         "meta:Pyongyang"{
-            ls{"پيانګ يانګ وخت"}
+            ls{"پیونگګنګ وخت"}
         }
         "meta:Reunion"{
-            ls{"ري يونين وخت"}
+            ls{"د غبرګون وخت"}
         }
         "meta:Rothera"{
-            ls{"رودرا وخت"}
+            ls{"د رورېټا وخت"}
         }
         "meta:Sakhalin"{
-            ld{"سخلين اوړي وخت"}
-            lg{"سخلين وخت"}
+            ld{"د سخلین سمر وخت"}
+            lg{"د سخنین وخت"}
             ls{"سخلین معياري وخت"}
         }
         "meta:Samoa"{
-            ld{"سموا د ورځې روښانه وخت"}
+            ld{"د سموا د ورځې روښانه کول"}
             lg{"سموا وخت"}
-            ls{"سموا معياري وخت"}
+            ls{"سموډ معياري وخت"}
         }
         "meta:Seychelles"{
             ls{"سیچیلس وخت"}
         }
         "meta:Singapore"{
-            ls{"سنګاپور معیاري وخت"}
+            ls{"د سنګاپور معیاري وخت"}
         }
         "meta:Solomon"{
-            ls{"سلیمان ټاپوګانو وخت"}
+            ls{"د سلیمان ټاپوګانو وخت"}
         }
         "meta:South_Georgia"{
             ls{"د سویل جورجیا وخت"}
@@ -1772,26 +1736,26 @@ ps{
             ls{"سیوا وخت"}
         }
         "meta:Tahiti"{
-            ls{"ټهيټي وخت"}
+            ls{"ټیټيټي وخت"}
         }
         "meta:Taipei"{
-            ld{"تايپي د ورځې روښانه وخت"}
-            lg{"تايپي وخت"}
-            ls{"تايپي معياري وخت"}
+            ld{"د تاپي د رڼا ورځۍ وخت"}
+            lg{"تاپي وخت"}
+            ls{"تاپي معياري وخت"}
         }
         "meta:Tajikistan"{
-            ls{"تاجکستان وخت"}
+            ls{"تاجکستان د وخت"}
         }
         "meta:Tokelau"{
             ls{"توکیلاو وخت"}
         }
         "meta:Tonga"{
-            ld{"ټونګا اوړي وخت"}
+            ld{"د ټونګ سمر وخت"}
             lg{"ټونګا وخت"}
             ls{"د ټونګ معياري وخت"}
         }
         "meta:Truk"{
-            ls{"چوک وخت"}
+            ls{"د چوکو وخت"}
         }
         "meta:Turkmenistan"{
             ld{"ترکمنستان اوړي وخت"}
@@ -1799,7 +1763,7 @@ ps{
             ls{"ترکمنستان معياري وخت"}
         }
         "meta:Tuvalu"{
-            ls{"تووالو وخت"}
+            ls{"د تووالو وخت"}
         }
         "meta:Uruguay"{
             ld{"یوروګوای اوړي وخت"}
@@ -1808,35 +1772,35 @@ ps{
         }
         "meta:Uzbekistan"{
             ld{"ازبکستان اوړي وخت"}
-            lg{"ازبکستان وخت"}
+            lg{"د ازبکستان وخت"}
             ls{"ازبکستان معياري وخت"}
         }
         "meta:Vanuatu"{
-            ld{"ونواتو اوړي وخت"}
+            ld{"وانوات سمر وخت"}
             lg{"د وناتو وخت"}
-            ls{"ونواتو معياري وخت"}
+            ls{"د وناتو معياري وخت"}
         }
         "meta:Venezuela"{
             ls{"وینزویلا وخت"}
         }
         "meta:Vladivostok"{
-            ld{"ولاديوستاک اوړي وخت"}
+            ld{"ولادیوستک سمر وخت"}
             lg{"ولادیوستاک وخت"}
-            ls{"ولاديوستاک معياري وخت"}
+            ls{"ولادیوستکو معياري وخت"}
         }
         "meta:Volgograd"{
-            ld{"والګوګراد اوړي وخت"}
-            lg{"والګوګراد وخت"}
-            ls{"والګوګراد معياري وخت"}
+            ld{"د والګوګراد د اوړي وخت"}
+            lg{"د والګوګراد وخت"}
+            ls{"د والګوګراد معياري وخت"}
         }
         "meta:Vostok"{
-            ls{"واستوک وخت"}
+            ls{"د واستوک وخت"}
         }
         "meta:Wake"{
-            ls{"ويک تاپو وخت"}
+            ls{"دک ټاپو وخت"}
         }
         "meta:Wallis"{
-            ls{"والس او فوتونا وخت"}
+            ls{"والیس او فوتونا وخت"}
         }
         "meta:Yakutsk"{
             ld{"ياکوټسک د اوړي وخت"}
@@ -1845,12 +1809,13 @@ ps{
         }
         "meta:Yekaterinburg"{
             ld{"د ياکټرنبرګ د اوړي وخت"}
-            lg{"یکاټیرینبرګ وخت"}
+            lg{"د ياکيټرنبرګ وخت"}
             ls{"د ياکيټرنبرګ معياري وخت"}
         }
-        "meta:Yukon"{
-            ls{"د یوکون وخت"}
-        }
+        fallbackFormat{"{1} ({0})"}
+        gmtFormat{"GMT{0}"}
+        gmtZeroFormat{"GMT"}
+        hourFormat{"+HH:mm;-HH:mm"}
         regionFormat{"د {0} په وخت"}
         regionFormatDaylight{"{0} رڼا ورځ وخت"}
         regionFormatStandard{"{0} معیاری وخت"}

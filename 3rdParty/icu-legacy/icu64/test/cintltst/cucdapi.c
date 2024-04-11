@@ -5,7 +5,6 @@
  * Corporation and others. All Rights Reserved.
  ********************************************************************/
 
-#include <stdbool.h>
 #include <string.h>
 #include "unicode/utypes.h"
 #include "unicode/uscript.h"
@@ -46,7 +45,7 @@ static void assertEqualScripts(const char *msg,
     }
 }
 
-void TestUScriptCodeAPI(void){
+void TestUScriptCodeAPI(){
     int i =0;
     int numErrors =0;
     {
@@ -73,9 +72,7 @@ void TestUScriptCodeAPI(void){
         "asfdasd", "5464", "12235",
         /* test the last index */
         "zyyy", "YI",
-         /* test other cases that are ambiguous (script alias vs language tag) */
-         "han", "mro", "nko", "old-hungarian", "new-tai-lue",
-       NULL  
+        NULL  
         };
         UScriptCode expected[] ={
             /* locales should return */
@@ -97,10 +94,7 @@ void TestUScriptCodeAPI(void){
             USCRIPT_TAGBANWA, USCRIPT_ARABIC,
             /* bogus names should return invalid code */
             USCRIPT_INVALID_CODE, USCRIPT_INVALID_CODE, USCRIPT_INVALID_CODE,
-            /* test the last index */
             USCRIPT_COMMON, USCRIPT_YI,
-            /* test other cases that are ambiguous (script alias vs language tag) */
-            USCRIPT_HAN, USCRIPT_MRO, USCRIPT_NKO, USCRIPT_OLD_HUNGARIAN, USCRIPT_NEW_TAI_LUE,
         };
 
         UErrorCode err = U_ZERO_ERROR;
@@ -322,7 +316,7 @@ void TestUScriptCodeAPI(void){
         };
         UScriptCode code = USCRIPT_INVALID_CODE;
         UErrorCode status = U_ZERO_ERROR;
-        UBool passed = true;
+        UBool passed = TRUE;
 
         for(i=0; i<UPRV_LENGTHOF(codepoints); ++i){
             code = uscript_getScript(codepoints[i],&status);
@@ -331,7 +325,7 @@ void TestUScriptCodeAPI(void){
                     code != (UScriptCode)u_getIntPropertyValue(codepoints[i], UCHAR_SCRIPT)
                 ) {
                     log_err("uscript_getScript for codepoint \\U%08X failed\n",codepoints[i]);
-                    passed = false;
+                    passed = FALSE;
                 }
             }else{
                 log_err("uscript_getScript for codepoint \\U%08X failed. Error: %s\n", 
@@ -340,7 +334,7 @@ void TestUScriptCodeAPI(void){
             }
         }
         
-        if(passed==false){
+        if(passed==FALSE){
            log_err("uscript_getScript failed.\n");
         }      
     }
@@ -425,14 +419,6 @@ void TestUScriptCodeAPI(void){
             "Hanifi_Rohingya", "Sogdian", "Old_Sogdian",
             // new in ICU 64
             "Elymaic", "Nyiakeng_Puachue_Hmong", "Nandinagari", "Wancho",
-            // new in ICU 66
-            "Chorasmian", "Dives_Akuru", "Khitan_Small_Script", "Yezidi",
-            // new in ICU 70
-            "Cypro_Minoan", "Old_Uyghur", "Tangsa", "Toto", "Vithkuqi",
-            // new in ICU 72
-            "Kawi", "Nag_Mundari",
-            // new in ICU 75
-            "Aran",
         };
         static const char* expectedShort[] = {
             "Bali", "Batk", "Blis", "Brah", "Cham", "Cirt", "Cyrs", "Egyd", "Egyh", "Egyp",
@@ -467,14 +453,6 @@ void TestUScriptCodeAPI(void){
             "Dogr", "Gong", "Maka", "Medf", "Rohg", "Sogd", "Sogo",
             // new in ICU 64
             "Elym", "Hmnp", "Nand", "Wcho",
-            // new in ICU 66
-            "Chrs", "Diak", "Kits", "Yezi",
-            // new in ICU 70
-            "Cpmn", "Ougr", "Tnsa", "Toto", "Vith",
-            // new in ICU 72
-            "Kawi", "Nagm",
-            // new in ICU 75
-            "Aran",
         };
         int32_t j = 0;
         if(UPRV_LENGTHOF(expectedLong)!=(USCRIPT_CODE_LIMIT-USCRIPT_BALINESE)) {
@@ -522,7 +500,7 @@ void TestUScriptCodeAPI(void){
     }
 }
 
-void TestHasScript(void) {
+void TestHasScript() {
     if(!(
         !uscript_hasScript(0x063f, USCRIPT_COMMON) &&
         uscript_hasScript(0x063f, USCRIPT_ARABIC) &&  /* main Script value */
@@ -570,19 +548,19 @@ void TestHasScript(void) {
 }
 
 static UBool scriptsContain(UScriptCode scripts[], int32_t length, UScriptCode script) {
-    UBool contain=false;
+    UBool contain=FALSE;
     int32_t prev=-1, i;
     for(i=0; i<length; ++i) {
         int32_t s=scripts[i];
         if(s<=prev) {
             log_err("uscript_getScriptExtensions() not in sorted order: %d %d\n", (int)prev, (int)s);
         }
-        if(s==script) { contain=true; }
+        if(s==script) { contain=TRUE; }
     }
     return contain;
 }
 
-void TestGetScriptExtensions(void) {
+void TestGetScriptExtensions() {
     UScriptCode scripts[20];
     int32_t length;
     UErrorCode errorCode;
@@ -670,7 +648,7 @@ void TestGetScriptExtensions(void) {
     }
 }
 
-void TestScriptMetadataAPI(void) {
+void TestScriptMetadataAPI() {
     /* API & code coverage. More testing in intltest/ucdtest.cpp. */
     UErrorCode errorCode=U_ZERO_ERROR;
     UChar sample[8];
@@ -733,7 +711,7 @@ void TestScriptMetadataAPI(void) {
     }
 }
 
-void TestBinaryValues(void) {
+void TestBinaryValues() {
     /*
      * Unicode 5.1 explicitly defines binary property value aliases.
      * Verify that they are all recognized.
@@ -742,13 +720,13 @@ void TestBinaryValues(void) {
     static const char *const trueValues[]={ "Y", "Yes", "T", "True" };
     int32_t i;
     for(i=0; i<UPRV_LENGTHOF(falseValues); ++i) {
-        if(false!=u_getPropertyValueEnum(UCHAR_ALPHABETIC, falseValues[i])) {
-            log_data_err("u_getPropertyValueEnum(UCHAR_ALPHABETIC, \"%s\")!=false (Are you missing data?)\n", falseValues[i]);
+        if(FALSE!=u_getPropertyValueEnum(UCHAR_ALPHABETIC, falseValues[i])) {
+            log_data_err("u_getPropertyValueEnum(UCHAR_ALPHABETIC, \"%s\")!=FALSE (Are you missing data?)\n", falseValues[i]);
         }
     }
     for(i=0; i<UPRV_LENGTHOF(trueValues); ++i) {
-        if(true!=u_getPropertyValueEnum(UCHAR_ALPHABETIC, trueValues[i])) {
-            log_data_err("u_getPropertyValueEnum(UCHAR_ALPHABETIC, \"%s\")!=true (Are you missing data?)\n", trueValues[i]);
+        if(TRUE!=u_getPropertyValueEnum(UCHAR_ALPHABETIC, trueValues[i])) {
+            log_data_err("u_getPropertyValueEnum(UCHAR_ALPHABETIC, \"%s\")!=TRUE (Are you missing data?)\n", trueValues[i]);
         }
     }
 }

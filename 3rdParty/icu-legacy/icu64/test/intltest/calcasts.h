@@ -23,7 +23,7 @@
 
 class CalendarCaseTest: public CalendarTest {
  public:
-  virtual void runIndexedTest( int32_t index, UBool exec, const char* &name, char* par ) override;
+  virtual void runIndexedTest( int32_t index, UBool exec, const char* &name, char* par );
 
   /* Test case struct */
   struct TestCase {
@@ -50,7 +50,7 @@ class CalendarCaseTest: public CalendarTest {
    * @param field which field
    * @param value expected value
    * @param status err status 
-   * @return boolean indicating success (true) or failure (false) of the test.
+   * @return boolean indicating success (TRUE) or failure (FALSE) of the test.
    */
   UBool checkField(Calendar *cal, UCalendarDateFields field, int32_t value, UErrorCode &status);
 

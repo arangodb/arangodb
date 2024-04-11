@@ -34,13 +34,9 @@ BUILDDIR := $(BUILDDIR:test\\intltest/../../=)
 # Simplify the path for Windows 98
 BUILDDIR := $(BUILDDIR:TEST\\INTLTEST/../../=)
 
-CPPFLAGS += -I$(srcdir) -I$(top_srcdir)/common -I$(top_srcdir)/i18n -I$(top_srcdir)/io -I$(top_srcdir)/tools/toolutil -I$(top_srcdir)/tools/ctestfw
-CPPFLAGS += -DUNISTR_FROM_CHAR_EXPLICIT= -DUNISTR_FROM_STRING_EXPLICIT=
-ifdef QNX_TARGET
-DEFS += -D'U_TOPSRCDIR="/var/icu_tests"' -D'U_TOPBUILDDIR="/var/icu_tests/"'
-else
+CPPFLAGS += -I$(srcdir) -I$(top_srcdir)/common -I$(top_srcdir)/i18n -I$(top_srcdir)/tools/toolutil -I$(top_srcdir)/tools/ctestfw
+CPPFLAGS += -DUNISTR_FROM_CHAR_EXPLICIT= -DUNISTR_FROM_STRING_EXPLICIT= -DUCHAR_TYPE=char16_t
 DEFS += -D'U_TOPSRCDIR="$(top_srcdir)/"' -D'U_TOPBUILDDIR="$(BUILDDIR)"'
-endif
 LIBS = $(LIBCTESTFW) $(LIBICUI18N) $(LIBICUUC) $(LIBICUTOOLUTIL) $(DEFAULT_LIBS) $(LIB_M) $(LIB_THREAD)
 
 OBJECTS = aliastst.o allcoll.o apicoll.o astrotst.o callimts.o calregts.o caltest.o \
@@ -48,16 +44,14 @@ caltztst.o canittst.o citrtest.o colldata.o convtest.o currcoll.o collationtest.
 fldset.o dadrfmt.o dadrcal.o dcfmapts.o decoll.o dtfmapts.o dtfmrgts.o dtfmtrtts.o dtfmttst.o	\
 dtptngts.o encoll.o escoll.o ficoll.o frcoll.o g7coll.o intltest.o	\
 itercoll.o itformat.o itmajor.o itutil.o jacoll.o lcukocol.o	\
-loctest.o localebuildertest.o localematchertest.o \
-messageformat2test.o messageformat2test_builtin.o messageformat2test_custom.o messageformat2test_features.o messageformat2test_fromjson.o messageformat2test_icu.o \
-miscdtfm.o mnkytst.o msfmrgts.o nmfmapts.o nmfmtrt.o		\
+loctest.o localebuildertest.o miscdtfm.o mnkytst.o msfmrgts.o nmfmapts.o nmfmtrt.o		\
 numfmtst.o numrgts.o  plurults.o plurfmts.o pptest.o regcoll.o restest.o restsnew.o \
 sdtfmtts.o svccoll.o tchcfmt.o	selfmts.o \
 tfsmalls.o tmsgfmt.o trcoll.o tscoll.o tsdate.o tsdcfmsy.o tsdtfmsy.o	\
 tsmthred.o tsnmfmt.o tsputil.o tstnrapi.o tstnorm.o tzbdtest.o		\
 tzregts.o tztest.o ucdtest.o usettest.o ustrtest.o strcase.o transtst.o strtest.o thcoll.o \
 bytestrietest.o ucharstrietest.o \
-itrbbi.o lstmbetst.o rbbiapts.o rbbitst.o rbbimonkeytest.o ittrans.o transapi.o cpdtrtst.o \
+itrbbi.o rbbiapts.o rbbitst.o rbbimonkeytest.o ittrans.o transapi.o cpdtrtst.o \
 testutil.o transrt.o trnserr.o normconf.o sfwdchit.o \
 jamotest.o srchtest.o reptest.o regextst.o \
 itrbnf.o itrbnfrt.o itrbnfp.o ucaconf.o icusvtst.o \
@@ -70,12 +64,10 @@ scientificnumberformattertest.o datadrivennumberformattestsuite.o \
 numberformattesttuple.o pluralmaptest.o \
 numbertest_affixutils.o numbertest_api.o numbertest_decimalquantity.o \
 numbertest_modifiers.o numbertest_patternmodifier.o numbertest_patternstring.o \
-string_segment_test.o \
+numbertest_stringbuilder.o numbertest_stringsegment.o \
 numbertest_parse.o numbertest_doubleconversion.o numbertest_skeletons.o \
 static_unisets_test.o numfmtdatadriventest.o numbertest_range.o erarulestest.o \
-formattedvaluetest.o formatted_string_builder_test.o numbertest_permutation.o \
-units_data_test.o units_router_test.o units_test.o displayoptions_test.o \
-numbertest_simple.o uchar_type_build_test.o
+formattedvaluetest.o
 
 DEPS = $(OBJECTS:.o=.d)
 

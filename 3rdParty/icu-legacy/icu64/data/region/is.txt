@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 is{
     Countries{
         001{"Heimurinn"}
@@ -15,7 +14,7 @@ is{
         017{"Mið-Afríka"}
         018{"Suðurhluti Afríku"}
         019{"Ameríka"}
-        021{"Ameríka norðan Mexíkó"}
+        021{"Ameríka norðan Mexikó"}
         029{"Karíbahafið"}
         030{"Austur-Asía"}
         034{"Suður-Asía"}
@@ -181,7 +180,7 @@ is{
         MC{"Mónakó"}
         MD{"Moldóva"}
         ME{"Svartfjallaland"}
-        MF{"Saint-Martin"}
+        MF{"St. Martin"}
         MG{"Madagaskar"}
         MH{"Marshalleyjar"}
         MK{"Norður-Makedónía"}
@@ -252,7 +251,7 @@ is{
         SS{"Suður-Súdan"}
         ST{"Saó Tóme og Prinsípe"}
         SV{"El Salvador"}
-        SX{"Sint Maarten"}
+        SX{"Sankti Martin"}
         SY{"Sýrland"}
         SZ{"Svasíland"}
         TA{"Tristan da Cunha"}
@@ -261,7 +260,7 @@ is{
         TF{"Frönsku suðlægu landsvæðin"}
         TG{"Tógó"}
         TH{"Taíland"}
-        TJ{"Tadsíkistan"}
+        TJ{"Tadsjikistan"}
         TK{"Tókelá"}
         TL{"Tímor-Leste"}
         TM{"Túrkmenistan"}
@@ -288,8 +287,6 @@ is{
         VU{"Vanúatú"}
         WF{"Wallis- og Fútúnaeyjar"}
         WS{"Samóa"}
-        XA{"gervihreimur"}
-        XB{"gervistaður"}
         XK{"Kósóvó"}
         YE{"Jemen"}
         YT{"Mayotte"}
@@ -298,10 +295,8 @@ is{
         ZW{"Simbabve"}
         ZZ{"Óþekkt svæði"}
     }
-    Countries%chagos{
-        IO{"Chagos-eyjaklasinn"}
-    }
     Countries%short{
+        GB{"Bretland"}
         HK{"Hong Kong"}
         MO{"Makaó"}
         PS{"Palestína"}
@@ -312,7 +307,7 @@ is{
         CD{"Kongó (Lýðstjórnarlýðveldið)"}
         CG{"Kongó (Lýðveldið)"}
         FK{"Falklandseyjar (Malvinas)"}
-        NZ{"Aotearoa, Nýja-Sjáland"}
         TL{"Austur-Tímor"}
     }
+    Version{"2.1.49.82"}
 }

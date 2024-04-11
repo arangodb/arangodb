@@ -25,7 +25,6 @@
 #if !UCONFIG_NO_REGULAR_EXPRESSIONS
 
 #include "regeximp.h"
-#include "regexcst.h"
 
 U_NAMESPACE_BEGIN
 
@@ -40,16 +39,17 @@ public:
     RegexStaticSets(UErrorCode *status);         
     ~RegexStaticSets();
     static void    initGlobals(UErrorCode *status);
+    static UBool   cleanup();
 
-    UnicodeSet    fPropSets[URX_LAST_SET] {};      // The sets for common regex items, e.g. \s
-    Regex8BitSet  fPropSets8[URX_LAST_SET] {};     // Fast bitmap sets for latin-1 range for above.
+    UnicodeSet    *fPropSets[URX_LAST_SET];     // The sets for common regex items, e.g. \s
+    Regex8BitSet   fPropSets8[URX_LAST_SET];    // Fast bitmap sets for latin-1 range for above.
 
-    UnicodeSet    fRuleSets[kRuleSet_count] {};    // Sets used while parsing regexp patterns.
-    UnicodeSet    fUnescapeCharSet {};             // Set of chars handled by unescape when
-                                                   //   encountered with a \ in a pattern.
-    UnicodeSet    *fRuleDigitsAlias {};
-    UText         *fEmptyText {};                  // An empty string, to be used when a matcher
-                                                   //   is created with no input.
+    UnicodeSet    fRuleSets[10];               // Sets used while parsing regexp patterns.
+    UnicodeSet    fUnescapeCharSet;            // Set of chars handled by unescape when
+                                               //   encountered with a \ in a pattern.
+    UnicodeSet    *fRuleDigitsAlias;
+    UText         *fEmptyText;                 // An empty string, to be used when a matcher
+                                               //   is created with no input.
 
 };
 

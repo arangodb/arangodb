@@ -79,41 +79,21 @@ void DecimalFormatTest::runIndexedTest( int32_t index, UBool exec, const char* &
 //   Error Checking / Reporting macros used in all of the tests.
 //
 //---------------------------------------------------------------------------
-#define DF_CHECK_STATUS UPRV_BLOCK_MACRO_BEGIN { \
-    if (U_FAILURE(status)) { \
-        dataerrln("DecimalFormatTest failure at line %d.  status=%s", \
-                  __LINE__, u_errorName(status)); \
-        return 0; \
-    } \
-} UPRV_BLOCK_MACRO_END
+#define DF_CHECK_STATUS {if (U_FAILURE(status)) \
+    {dataerrln("DecimalFormatTest failure at line %d.  status=%s", \
+    __LINE__, u_errorName(status)); return 0;}}
 
-#define DF_ASSERT(expr) UPRV_BLOCK_MACRO_BEGIN { \
-    if ((expr)==false) { \
-        errln("DecimalFormatTest failure at line %d.\n", __LINE__); \
-    } \
-} UPRV_BLOCK_MACRO_END
+#define DF_ASSERT(expr) {if ((expr)==FALSE) {errln("DecimalFormatTest failure at line %d.\n", __LINE__);};}
 
-#define DF_ASSERT_FAIL(expr, errcode) UPRV_BLOCK_MACRO_BEGIN { \
-    UErrorCode status=U_ZERO_ERROR; \
-    (expr); \
-    if (status!=errcode) { \
-        dataerrln("DecimalFormatTest failure at line %d.  Expected status=%s, got %s", \
-                  __LINE__, u_errorName(errcode), u_errorName(status)); \
-    } \
-} UPRV_BLOCK_MACRO_END
+#define DF_ASSERT_FAIL(expr, errcode) {UErrorCode status=U_ZERO_ERROR; (expr);\
+if (status!=errcode) {dataerrln("DecimalFormatTest failure at line %d.  Expected status=%s, got %s", \
+    __LINE__, u_errorName(errcode), u_errorName(status));};}
 
-#define DF_CHECK_STATUS_L(line) UPRV_BLOCK_MACRO_BEGIN { \
-    if (U_FAILURE(status)) { \
-        errln("DecimalFormatTest failure at line %d, from %d.  status=%d\n",__LINE__, (line), status); \
-    } \
-} UPRV_BLOCK_MACRO_END
+#define DF_CHECK_STATUS_L(line) {if (U_FAILURE(status)) {errln( \
+    "DecimalFormatTest failure at line %d, from %d.  status=%d\n",__LINE__, (line), status); }}
 
-#define DF_ASSERT_L(expr, line) UPRV_BLOCK_MACRO_BEGIN { \
-    if ((expr)==false) { \
-        errln("DecimalFormatTest failure at line %d, from %d.", __LINE__, (line)); \
-        return; \
-    } \
-} UPRV_BLOCK_MACRO_END
+#define DF_ASSERT_L(expr, line) {if ((expr)==FALSE) { \
+    errln("DecimalFormatTest failure at line %d, from %d.", __LINE__, (line)); return;}}
 
 
 
@@ -126,7 +106,7 @@ void DecimalFormatTest::runIndexedTest( int32_t index, UBool exec, const char* &
 class InvariantStringPiece: public StringPiece {
   public:
     InvariantStringPiece(const UnicodeString &s);
-    ~InvariantStringPiece() {}
+    ~InvariantStringPiece() {};
   private:
     MaybeStackArray<char, 20>  buf;
 };
@@ -150,7 +130,7 @@ InvariantStringPiece::InvariantStringPiece(const UnicodeString &s) {
 class UnicodeStringPiece: public StringPiece {
   public:
     UnicodeStringPiece(const UnicodeString &s);
-    ~UnicodeStringPiece() {}
+    ~UnicodeStringPiece() {};
   private:
     MaybeStackArray<char, 20>  buf;
 };
@@ -213,12 +193,12 @@ void DecimalFormatTest::DataDrivenTests() {
     //  Open and read the test data file.
     //
     srcPath=getPath(tdd, "dcfmtest.txt");
-    if(srcPath==nullptr) {
+    if(srcPath==NULL) {
         return; /* something went wrong, error already output */
     }
 
     int32_t    len;
-    char16_t *testData = ReadAndConvertFile(srcPath, len, "utf-8", status);
+    UChar *testData = ReadAndConvertFile(srcPath, len, status);
     if (U_FAILURE(status)) {
         return; /* something went wrong, error already output */
     }
@@ -226,7 +206,7 @@ void DecimalFormatTest::DataDrivenTests() {
     //
     //  Put the test data into a UnicodeString
     //
-    UnicodeString testString(false, testData, len);
+    UnicodeString testString(FALSE, testData, len);
 
     RegexMatcher    parseLineMat(UnicodeString(
             "(?i)\\s*parse\\s+"
@@ -239,7 +219,7 @@ void DecimalFormatTest::DataDrivenTests() {
     RegexMatcher    formatLineMat(UnicodeString(
             "(?i)\\s*format\\s+"
             "(\\S+)\\s+"                 // Capture group 1: pattern
-            "([a-z]+)\\s+"  // Capture group 2: Rounding Mode
+            "(ceiling|floor|down|up|halfeven|halfdown|halfup|default|unnecessary)\\s+"  // Capture group 2: Rounding Mode
             "\"([^\"]*)\"\\s+"           // Capture group 3: input
             "\"([^\"]*)\""               // Capture group 4: expected output
             "\\s*(?:#.*)?"),             // Trailing comment
@@ -371,7 +351,7 @@ void DecimalFormatTest::execParseTest(int32_t lineNum,
       case 'i': expectType = Formattable::kLong;   break;
       case 'l': expectType = Formattable::kInt64;  break;
       default:
-          errln("file dcfmtest.tx, line %d: unrecognized expected type \"%s\"",
+          errln("file dcfmtest.tx, line %d: unrecongized expected type \"%s\"",
               lineNum, InvariantStringPiece(expectedType).data());
           return;
     }
@@ -393,6 +373,8 @@ void DecimalFormatTest::execParseTest(int32_t lineNum,
         errln("file dcfmtest.txt, line %d: expected \"%s\", got \"%s\"",
             lineNum, expectedResults.data(), decimalResult.data());
     }
+    
+    return;
 }
 
 
@@ -433,12 +415,6 @@ void DecimalFormatTest::execFormatTest(int32_t lineNum,
         // don't set any value.
     } else if (round=="unnecessary") {
         fmtr.setRoundingMode(DecimalFormat::kRoundUnnecessary);
-    } else if (round=="halfodd") {
-        fmtr.setRoundingMode(DecimalFormat::kRoundHalfOdd);
-    } else if (round=="halfceiling") {
-        fmtr.setRoundingMode(DecimalFormat::kRoundHalfCeiling);
-    } else if (round=="halffloor") {
-        fmtr.setRoundingMode(DecimalFormat::kRoundHalfFloor);
     } else {
         fmtr.setRoundingMode(DecimalFormat::kRoundFloor);
         errln("file dcfmtest.txt, line %d: Bad rounding mode \"%s\"",
@@ -455,12 +431,12 @@ void DecimalFormatTest::execFormatTest(int32_t lineNum,
             typeStr = "Formattable";
             Formattable fmtbl;
             fmtbl.setDecimalNumber(spInput, status);
-            fmtr.format(fmtbl, result, nullptr, status);
+            fmtr.format(fmtbl, result, NULL, status);
         }
         break;
     case kStringPiece:
         typeStr = "StringPiece";
-        fmtr.format(spInput, result, nullptr, status);
+        fmtr.format(spInput, result, NULL, status);
         break;
     }
 
@@ -484,6 +460,95 @@ void DecimalFormatTest::execFormatTest(int32_t lineNum,
     }
 }
 
+
+//-------------------------------------------------------------------------------
+//      
+//  Read a text data file, convert it from UTF-8 to UChars, and return the data
+//    in one big UChar * buffer, which the caller must delete.
+//
+//    (Lightly modified version of a similar function in regextst.cpp)
+//
+//--------------------------------------------------------------------------------
+UChar *DecimalFormatTest::ReadAndConvertFile(const char *fileName, int32_t &ulen,
+                                     UErrorCode &status) {
+    UChar       *retPtr  = NULL;
+    char        *fileBuf = NULL;
+    const char  *fileBufNoBOM = NULL;
+    FILE        *f       = NULL;
+
+    ulen = 0;
+    if (U_FAILURE(status)) {
+        return retPtr;
+    }
+
+    //
+    //  Open the file.
+    //
+    f = fopen(fileName, "rb");
+    if (f == 0) {
+        dataerrln("Error opening test data file %s\n", fileName);
+        status = U_FILE_ACCESS_ERROR;
+        return NULL;
+    }
+    //
+    //  Read it in
+    //
+    int32_t            fileSize;
+    int32_t            amtRead;
+    int32_t            amtReadNoBOM;
+
+    fseek( f, 0, SEEK_END);
+    fileSize = ftell(f);
+    fileBuf = new char[fileSize];
+    fseek(f, 0, SEEK_SET);
+    amtRead = static_cast<int32_t>(fread(fileBuf, 1, fileSize, f));
+    if (amtRead != fileSize || fileSize <= 0) {
+        errln("Error reading test data file.");
+        goto cleanUpAndReturn;
+    }
+
+    //
+    // Look for a UTF-8 BOM on the data just read.
+    //    The test data file is UTF-8.
+    //    The BOM needs to be there in the source file to keep the Windows & 
+    //    EBCDIC machines happy, so force an error if it goes missing.  
+    //    Many Linux editors will silently strip it.
+    //
+    fileBufNoBOM = fileBuf + 3;
+    amtReadNoBOM = amtRead - 3;
+    if (fileSize<3 || uprv_strncmp(fileBuf, "\xEF\xBB\xBF", 3) != 0) {
+        // TODO:  restore this check.
+        errln("Test data file %s is missing its BOM", fileName);
+        fileBufNoBOM = fileBuf;
+        amtReadNoBOM = amtRead;
+    }
+
+    //
+    // Find the length of the input in UTF-16 UChars
+    //  (by preflighting the conversion)
+    //
+    u_strFromUTF8(NULL, 0, &ulen, fileBufNoBOM, amtReadNoBOM, &status);
+
+    //
+    // Convert file contents from UTF-8 to UTF-16
+    //
+    if (status == U_BUFFER_OVERFLOW_ERROR) {
+        // Buffer Overflow is expected from the preflight operation.
+        status = U_ZERO_ERROR;
+        retPtr = new UChar[ulen+1];
+        u_strFromUTF8(retPtr, ulen+1, NULL, fileBufNoBOM, amtReadNoBOM, &status);
+    }
+
+cleanUpAndReturn:
+    fclose(f);
+    delete[] fileBuf;
+    if (U_FAILURE(status)) {
+        errln("ICU Error \"%s\"\n", u_errorName(status));
+        delete retPtr;
+        retPtr = NULL;
+    };
+    return retPtr;
+}
 
 #endif  /* !UCONFIG_NO_REGULAR_EXPRESSIONS  */
 

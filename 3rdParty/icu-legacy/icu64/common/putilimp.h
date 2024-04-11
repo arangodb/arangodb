@@ -179,6 +179,76 @@ typedef size_t uintptr_t;
 /** @} */
 
 /*===========================================================================*/
+/** @{ GCC built in functions for atomic memory operations                   */
+/*===========================================================================*/
+
+/**
+ * \def U_HAVE_GCC_ATOMICS
+ * @internal
+ */
+#ifdef U_HAVE_GCC_ATOMICS
+    /* Use the predefined value. */
+#elif U_PLATFORM == U_PF_MINGW
+    #define U_HAVE_GCC_ATOMICS 0
+#elif U_GCC_MAJOR_MINOR >= 404 || defined(__clang__)
+    /* TODO: Intel icc and IBM xlc on AIX also support gcc atomics.  (Intel originated them.)
+     *       Add them for these compilers.
+     * Note: Clang sets __GNUC__ defines for version 4.2, so misses the 4.4 test here.
+     */
+#   define U_HAVE_GCC_ATOMICS 1
+#else
+#   define U_HAVE_GCC_ATOMICS 0
+#endif
+
+/** @} */
+
+/**
+ * \def U_HAVE_STD_ATOMICS
+ * Defines whether to use the C++11 std::atomic functions.
+ * If false, ICU will fall back to compiler or platform specific alternatives.
+ * Note: support for these fall back options for atomics will be removed in a future version
+ *       of ICU, and the use of C++ 11 atomics will be required.
+ * @internal
+ */
+#ifdef U_HAVE_STD_ATOMICS
+    /* Use the predefined value. */
+#else
+#    define U_HAVE_STD_ATOMICS 1
+#endif
+
+/**
+ *  \def U_HAVE_CLANG_ATOMICS
+ *  Defines whether Clang c11 style built-in atomics are available.
+ *  These are used in preference to gcc atomics when both are available.
+ */
+#ifdef U_HAVE_CLANG_ATOMICS
+    /* Use the predefined value. */
+#elif __has_builtin(__c11_atomic_load) && \
+    __has_builtin(__c11_atomic_store) && \
+    __has_builtin(__c11_atomic_fetch_add) && \
+    __has_builtin(__c11_atomic_fetch_sub)
+#    define U_HAVE_CLANG_ATOMICS 1
+#else
+#    define U_HAVE_CLANG_ATOMICS 0
+#endif
+
+
+/**
+ * \def U_HAVE_STD_MUTEX
+ * Defines whether to use the C++11 std::mutex functions.
+ * If false, ICU will fall back to compiler or platform specific alternatives.
+ * std::mutex is preferred, and used by default unless this setting is overridden.
+ * Note: support for other options for mutexes will be removed in a future version
+ *       of ICU, and the use of std::mutex will be required.
+ * @internal
+ */
+#ifdef U_HAVE_STD_MUTEX
+    /* Use the predefined value. */
+#else
+#    define U_HAVE_STD_MUTEX 1
+#endif
+
+/*===========================================================================*/
 /** @{ Programs used by ICU code                                             */
 /*===========================================================================*/
 
@@ -210,93 +280,93 @@ typedef size_t uintptr_t;
  * Floating point utility to determine if a double is Not a Number (NaN).
  * @internal
  */
-U_CAPI UBool   U_EXPORT2 uprv_isNaN(double d);
+U_INTERNAL UBool   U_EXPORT2 uprv_isNaN(double d);
 /**
  * Floating point utility to determine if a double has an infinite value.
  * @internal
  */
-U_CAPI UBool   U_EXPORT2 uprv_isInfinite(double d);
+U_INTERNAL UBool   U_EXPORT2 uprv_isInfinite(double d);
 /**
  * Floating point utility to determine if a double has a positive infinite value.
  * @internal
  */
-U_CAPI UBool   U_EXPORT2 uprv_isPositiveInfinity(double d);
+U_INTERNAL UBool   U_EXPORT2 uprv_isPositiveInfinity(double d);
 /**
  * Floating point utility to determine if a double has a negative infinite value.
  * @internal
  */
-U_CAPI UBool   U_EXPORT2 uprv_isNegativeInfinity(double d);
+U_INTERNAL UBool   U_EXPORT2 uprv_isNegativeInfinity(double d);
 /**
  * Floating point utility that returns a Not a Number (NaN) value.
  * @internal
  */
-U_CAPI double  U_EXPORT2 uprv_getNaN(void);
+U_INTERNAL double  U_EXPORT2 uprv_getNaN(void);
 /**
  * Floating point utility that returns an infinite value.
  * @internal
  */
-U_CAPI double  U_EXPORT2 uprv_getInfinity(void);
+U_INTERNAL double  U_EXPORT2 uprv_getInfinity(void);
 
 /**
  * Floating point utility to truncate a double.
  * @internal
  */
-U_CAPI double  U_EXPORT2 uprv_trunc(double d);
+U_INTERNAL double  U_EXPORT2 uprv_trunc(double d);
 /**
  * Floating point utility to calculate the floor of a double.
  * @internal
  */
-U_CAPI double  U_EXPORT2 uprv_floor(double d);
+U_INTERNAL double  U_EXPORT2 uprv_floor(double d);
 /**
  * Floating point utility to calculate the ceiling of a double.
  * @internal
  */
-U_CAPI double  U_EXPORT2 uprv_ceil(double d);
+U_INTERNAL double  U_EXPORT2 uprv_ceil(double d);
 /**
  * Floating point utility to calculate the absolute value of a double.
  * @internal
  */
-U_CAPI double  U_EXPORT2 uprv_fabs(double d);
+U_INTERNAL double  U_EXPORT2 uprv_fabs(double d);
 /**
  * Floating point utility to calculate the fractional and integer parts of a double.
  * @internal
  */
-U_CAPI double  U_EXPORT2 uprv_modf(double d, double* pinteger);
+U_INTERNAL double  U_EXPORT2 uprv_modf(double d, double* pinteger);
 /**
  * Floating point utility to calculate the remainder of a double divided by another double.
  * @internal
  */
-U_CAPI double  U_EXPORT2 uprv_fmod(double d, double y);
+U_INTERNAL double  U_EXPORT2 uprv_fmod(double d, double y);
 /**
  * Floating point utility to calculate d to the power of exponent (d^exponent).
  * @internal
  */
-U_CAPI double  U_EXPORT2 uprv_pow(double d, double exponent);
+U_INTERNAL double  U_EXPORT2 uprv_pow(double d, double exponent);
 /**
  * Floating point utility to calculate 10 to the power of exponent (10^exponent).
  * @internal
  */
-U_CAPI double  U_EXPORT2 uprv_pow10(int32_t exponent);
+U_INTERNAL double  U_EXPORT2 uprv_pow10(int32_t exponent);
 /**
  * Floating point utility to calculate the maximum value of two doubles.
  * @internal
  */
-U_CAPI double  U_EXPORT2 uprv_fmax(double d, double y);
+U_INTERNAL double  U_EXPORT2 uprv_fmax(double d, double y);
 /**
  * Floating point utility to calculate the minimum value of two doubles.
  * @internal
  */
-U_CAPI double  U_EXPORT2 uprv_fmin(double d, double y);
+U_INTERNAL double  U_EXPORT2 uprv_fmin(double d, double y);
 /**
  * Private utility to calculate the maximum value of two integers.
  * @internal
  */
-U_CAPI int32_t U_EXPORT2 uprv_max(int32_t d, int32_t y);
+U_INTERNAL int32_t U_EXPORT2 uprv_max(int32_t d, int32_t y);
 /**
  * Private utility to calculate the minimum value of two integers.
  * @internal
  */
-U_CAPI int32_t U_EXPORT2 uprv_min(int32_t d, int32_t y);
+U_INTERNAL int32_t U_EXPORT2 uprv_min(int32_t d, int32_t y);
 
 #if U_IS_BIG_ENDIAN
 #   define uprv_isNegative(number) (*((signed char *)&(number))<0)
@@ -309,13 +379,13 @@ U_CAPI int32_t U_EXPORT2 uprv_min(int32_t d, int32_t y);
  * type of arbitrary bit length.
  * @internal
  */
-U_CAPI double  U_EXPORT2 uprv_maxMantissa(void);
+U_INTERNAL double  U_EXPORT2 uprv_maxMantissa(void);
 
 /**
  * Floating point utility to calculate the logarithm of a double.
  * @internal
  */
-U_CAPI double  U_EXPORT2 uprv_log(double d);
+U_INTERNAL double  U_EXPORT2 uprv_log(double d);
 
 /**
  * Does common notion of rounding e.g. uprv_floor(x + 0.5);
@@ -323,7 +393,7 @@ U_CAPI double  U_EXPORT2 uprv_log(double d);
  * @return the rounded double
  * @internal
  */
-U_CAPI double  U_EXPORT2 uprv_round(double x);
+U_INTERNAL double  U_EXPORT2 uprv_round(double x);
 
 /**
  * Adds the signed integers a and b, storing the result in res.
@@ -336,7 +406,7 @@ U_CAPI double  U_EXPORT2 uprv_round(double x);
  * @return true if overflow occurred; false if no overflow occurred.
  * @internal
  */
-U_CAPI UBool U_EXPORT2 uprv_add32_overflow(int32_t a, int32_t b, int32_t* res);
+U_INTERNAL UBool U_EXPORT2 uprv_add32_overflow(int32_t a, int32_t b, int32_t* res);
 
 /**
  * Multiplies the signed integers a and b, storing the result in res.
@@ -349,7 +419,7 @@ U_CAPI UBool U_EXPORT2 uprv_add32_overflow(int32_t a, int32_t b, int32_t* res);
  * @return true if overflow occurred; false if no overflow occurred.
  * @internal
  */
-U_CAPI UBool U_EXPORT2 uprv_mul32_overflow(int32_t a, int32_t b, int32_t* res);
+U_INTERNAL UBool U_EXPORT2 uprv_mul32_overflow(int32_t a, int32_t b, int32_t* res);
 
 #if 0
 /**
@@ -359,7 +429,7 @@ U_CAPI UBool U_EXPORT2 uprv_mul32_overflow(int32_t a, int32_t b, int32_t* res);
  * @return the number of digits after the decimal point in a double number x.
  * @internal
  */
-/*U_CAPI int32_t  U_EXPORT2 uprv_digitsAfterDecimal(double x);*/
+/*U_INTERNAL int32_t  U_EXPORT2 uprv_digitsAfterDecimal(double x);*/
 #endif
 
 #if !U_CHARSET_IS_UTF8
@@ -368,22 +438,22 @@ U_CAPI UBool U_EXPORT2 uprv_mul32_overflow(int32_t a, int32_t b, int32_t* res);
  * Return the default codepage for this platform and locale.
  * This function can call setlocale() on Unix platforms. Please read the
  * platform documentation on setlocale() before calling this function.
- * @return the default codepage for this platform
+ * @return the default codepage for this platform 
  * @internal
  */
-U_CAPI const char*  U_EXPORT2 uprv_getDefaultCodepage(void);
+U_INTERNAL const char*  U_EXPORT2 uprv_getDefaultCodepage(void);
 #endif
 
 /**
  * Please use uloc_getDefault() instead.
  * Return the default locale ID string by querying the system, or
- *     zero if one cannot be found.
+ *     zero if one cannot be found. 
  * This function can call setlocale() on Unix platforms. Please read the
  * platform documentation on setlocale() before calling this function.
  * @return the default locale ID string
  * @internal
  */
-U_CAPI const char*  U_EXPORT2 uprv_getDefaultLocaleID(void);
+U_INTERNAL const char*  U_EXPORT2 uprv_getDefaultLocaleID(void);
 
 /**
  * Time zone utilities
@@ -417,7 +487,7 @@ U_CAPI const char*  U_EXPORT2 uprv_getDefaultLocaleID(void);
  * Date/Time application.
  * @internal
  */
-U_CAPI void     U_EXPORT2 uprv_tzset(void);
+U_INTERNAL void     U_EXPORT2 uprv_tzset(void);
 
 /**
  * Difference in seconds between coordinated universal
@@ -425,7 +495,7 @@ U_CAPI void     U_EXPORT2 uprv_tzset(void);
  * @return the difference in seconds between coordinated universal time and local time.
  * @internal
  */
-U_CAPI int32_t  U_EXPORT2 uprv_timezone(void);
+U_INTERNAL int32_t  U_EXPORT2 uprv_timezone(void);
 
 /**
  *   tzname(0)  Three-letter time-zone name derived from TZ environment
@@ -435,13 +505,13 @@ U_CAPI int32_t  U_EXPORT2 uprv_timezone(void);
  *              tzname(1) is an empty string.
  * @internal
  */
-U_CAPI const char* U_EXPORT2 uprv_tzname(int n);
+U_INTERNAL const char* U_EXPORT2 uprv_tzname(int n);
 
 /**
  * Reset the global tzname cache.
  * @internal
  */
-U_CAPI void uprv_tzname_clear_cache(void);
+U_INTERNAL void uprv_tzname_clear_cache();
 
 /**
  * Get UTC (GMT) time measured in milliseconds since 0:00 on 1/1/1970.
@@ -449,7 +519,7 @@ U_CAPI void uprv_tzname_clear_cache(void);
  * @return the UTC time measured in milliseconds
  * @internal
  */
-U_CAPI UDate U_EXPORT2 uprv_getUTCtime(void);
+U_INTERNAL UDate U_EXPORT2 uprv_getUTCtime(void);
 
 /**
  * Get UTC (GMT) time measured in milliseconds since 0:00 on 1/1/1970.
@@ -458,15 +528,15 @@ U_CAPI UDate U_EXPORT2 uprv_getUTCtime(void);
  * @return the UTC time measured in milliseconds
  * @internal
  */
-U_CAPI UDate U_EXPORT2 uprv_getRawUTCtime(void);
+U_INTERNAL UDate U_EXPORT2 uprv_getRawUTCtime(void);
 
 /**
  * Determine whether a pathname is absolute or not, as defined by the platform.
  * @param path Pathname to test
- * @return true if the path is absolute
+ * @return TRUE if the path is absolute
  * @internal (ICU 3.0)
  */
-U_CAPI UBool U_EXPORT2 uprv_pathIsAbsolute(const char *path);
+U_INTERNAL UBool U_EXPORT2 uprv_pathIsAbsolute(const char *path);
 
 /**
  * Use U_MAX_PTR instead of this function.
@@ -474,7 +544,7 @@ U_CAPI UBool U_EXPORT2 uprv_pathIsAbsolute(const char *path);
  * @return the largest possible pointer greater than the base
  * @internal (ICU 3.8)
  */
-U_CAPI void * U_EXPORT2 uprv_maximumPtr(void *base);
+U_INTERNAL void * U_EXPORT2 uprv_maximumPtr(void *base);
 
 /**
  * Maximum value of a (void*) - use to indicate the limit of an 'infinite' buffer.
@@ -527,7 +597,7 @@ U_CAPI void * U_EXPORT2 uprv_maximumPtr(void *base);
  * on the destination pointer and capacity cannot overflow.
  *
  * The pinned capacity must fulfill the following conditions (for positive capacities):
- *   - dest + capacity is a valid pointer according to the machine architecture (AS/400, 64-bit, etc.)
+ *   - dest + capacity is a valid pointer according to the machine arcitecture (AS/400, 64-bit, etc.)
  *   - (dest + capacity) >= dest
  *   - The size (in bytes) of T[capacity] does not exceed 0x7fffffff
  *
@@ -572,26 +642,26 @@ typedef void (UVoidFunction)(void);
  * Load a library
  * @internal (ICU 4.4)
  */
-U_CAPI void * U_EXPORT2 uprv_dl_open(const char *libName, UErrorCode *status);
+U_INTERNAL void * U_EXPORT2 uprv_dl_open(const char *libName, UErrorCode *status);
 
 /**
  * Close a library
  * @internal (ICU 4.4)
  */
-U_CAPI void U_EXPORT2 uprv_dl_close( void *lib, UErrorCode *status);
+U_INTERNAL void U_EXPORT2 uprv_dl_close( void *lib, UErrorCode *status);
 
 /**
  * Extract a symbol from a library (function)
  * @internal (ICU 4.8)
  */
-U_CAPI UVoidFunction* U_EXPORT2 uprv_dlsym_func( void *lib, const char *symbolName, UErrorCode *status);
+U_INTERNAL UVoidFunction* U_EXPORT2 uprv_dlsym_func( void *lib, const char *symbolName, UErrorCode *status);
 
 /**
  * Extract a symbol from a library (function)
  * Not implemented, no clients.
  * @internal
  */
-/* U_CAPI void * U_EXPORT2 uprv_dlsym_data( void *lib, const char *symbolName, UErrorCode *status); */
+/* U_INTERNAL void * U_EXPORT2 uprv_dlsym_data( void *lib, const char *symbolName, UErrorCode *status); */
 
 #endif
 

@@ -164,7 +164,7 @@ class PersianCalendar : public Calendar {
   // TODO: copy c'tor, etc
 
   // clone
-  virtual PersianCalendar* clone() const override;
+  virtual Calendar* clone() const;
 
  private:
   /**
@@ -176,7 +176,7 @@ class PersianCalendar : public Calendar {
    * Return the day # on which the given year starts.  Days are counted
    * from the Hijri epoch, origin 0.
    */
-  int32_t yearStart(int32_t year, UErrorCode& status);
+  int32_t yearStart(int32_t year);
 
   /**
    * Return the day # on which the given month starts.  Days are counted
@@ -185,7 +185,7 @@ class PersianCalendar : public Calendar {
    * @param year  The hijri shamsi year
    * @param year  The hijri shamsi month, 0-based
    */
-  int32_t monthStart(int32_t year, int32_t month, UErrorCode& status) const;
+  int32_t monthStart(int32_t year, int32_t month) const;
     
   //----------------------------------------------------------------------
   // Calendar framework
@@ -194,7 +194,7 @@ class PersianCalendar : public Calendar {
   /**
    * @internal
    */
-  virtual int32_t handleGetLimit(UCalendarDateFields field, ELimitType limitType) const override;
+  virtual int32_t handleGetLimit(UCalendarDateFields field, ELimitType limitType) const;
   
   /**
    * Return the length (in days) of the given month.
@@ -203,13 +203,13 @@ class PersianCalendar : public Calendar {
    * @param year  The hijri shamsi month, 0-based
    * @internal
    */
-  virtual int32_t handleGetMonthLength(int32_t extendedYear, int32_t month, UErrorCode& status) const override;
+  virtual int32_t handleGetMonthLength(int32_t extendedYear, int32_t month) const;
   
   /**
    * Return the number of days in the given Persian year
    * @internal
    */
-  virtual int32_t handleGetYearLength(int32_t extendedYear) const override;
+  virtual int32_t handleGetYearLength(int32_t extendedYear) const;
     
   //-------------------------------------------------------------------------
   // Functions for converting from field values to milliseconds....
@@ -219,7 +219,7 @@ class PersianCalendar : public Calendar {
   /**
    * @internal
    */
-  virtual int64_t handleComputeMonthStart(int32_t eyear, int32_t month, UBool useMonth, UErrorCode& status) const override;
+  virtual int32_t handleComputeMonthStart(int32_t eyear, int32_t month, UBool useMonth) const;
 
   //-------------------------------------------------------------------------
   // Functions for converting from milliseconds to field values
@@ -228,7 +228,7 @@ class PersianCalendar : public Calendar {
   /**
    * @internal
    */
-  virtual int32_t handleGetExtendedYear(UErrorCode& status) override;
+  virtual int32_t handleGetExtendedYear();
 
   /**
    * Override Calendar to compute several fields specific to the Persian
@@ -246,7 +246,7 @@ class PersianCalendar : public Calendar {
    * calendar equivalents for the given Julian day.
    * @internal
    */
-  virtual void handleComputeFields(int32_t julianDay, UErrorCode &status) override;
+  virtual void handleComputeFields(int32_t julianDay, UErrorCode &status);
 
   // UObject stuff
  public: 
@@ -255,7 +255,7 @@ class PersianCalendar : public Calendar {
    *           same class ID. Objects of other classes have different class IDs.
    * @internal
    */
-  virtual UClassID getDynamicClassID() const override;
+  virtual UClassID getDynamicClassID(void) const;
 
   /**
    * Return the class ID for this class. This is useful only for comparing to a return
@@ -268,7 +268,7 @@ class PersianCalendar : public Calendar {
    * @return   The class ID for all objects of this class.
    * @internal
    */
-  U_I18N_API static UClassID U_EXPORT2 getStaticClassID();
+  U_I18N_API static UClassID U_EXPORT2 getStaticClassID(void);
 
   /**
    * return the calendar type, "persian".
@@ -276,27 +276,42 @@ class PersianCalendar : public Calendar {
    * @return calendar type
    * @internal
    */
-  virtual const char * getType() const override;
-
-  /**
-   * @return      The related Gregorian year; will be obtained by modifying the value
-   *              obtained by get from UCAL_EXTENDED_YEAR field
-   * @internal
-   */
-  virtual int32_t getRelatedYear(UErrorCode &status) const override;
-
-  /**
-   * @param year  The related Gregorian year to set; will be modified as necessary then
-   *              set in UCAL_EXTENDED_YEAR field
-   * @internal
-   */
-  virtual void setRelatedYear(int32_t year) override;
+  virtual const char * getType() const;
 
  private:
   PersianCalendar(); // default constructor not implemented
 
  protected:
-  DECLARE_OVERRIDE_SYSTEM_DEFAULT_CENTURY
+
+  /**
+   * (Overrides Calendar) Return true if the current date for this Calendar is in
+   * Daylight Savings Time. Recognizes DST_OFFSET, if it is set.
+   *
+   * @param status Fill-in parameter which receives the status of this operation.
+   * @return   True if the current date for this Calendar is in Daylight Savings Time,
+   *           false, otherwise.
+   * @internal
+   */
+  virtual UBool inDaylightTime(UErrorCode& status) const;
+
+  /**
+   * Returns TRUE because the Persian Calendar does have a default century
+   * @internal
+   */
+  virtual UBool haveDefaultCentury() const;
+
+  /**
+   * Returns the date of the start of the default century
+   * @return start of century - in milliseconds since epoch, 1970
+   * @internal
+   */
+  virtual UDate defaultCenturyStart() const;
+
+  /**
+   * Returns the year in which the default century begins
+   * @internal
+   */
+  virtual int32_t defaultCenturyStartYear() const;
 };
 
 U_NAMESPACE_END

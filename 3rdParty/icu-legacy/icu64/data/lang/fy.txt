@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 fy{
     Keys{
         calendar{"Kalender"}
@@ -397,6 +396,7 @@ fy{
         ro_MD{"Moldavysk"}
         rof{"Rombo"}
         rom{"Romani"}
+        root{"Root"}
         ru{"Russysk"}
         rup{"Aromaniaansk"}
         rw{"Kinyarwanda"}
@@ -715,6 +715,8 @@ fy{
             gregorian{"Gregoriaanske kalinder"}
             hebrew{"Hebreeuwse kalinder"}
             indian{"Indiase natjonale kalinder"}
+            islamic{"Islamityske kalinder"}
+            islamic-civil{"Islamityske kalinder (cyclysk)"}
             japanese{"Japanske kalinder"}
             persian{"Perzyske kalinder"}
             roc{"Kalinder fan de Sineeske Republyk"}
@@ -884,9 +886,15 @@ fy{
         VALLADER{"Vallader"}
         WADEGILE{"Wade-Giles-romanisering"}
     }
+    Version{"2.1.47.82"}
     codePatterns{
         language{"Taal: {0}"}
         script{"Skrift: {0}"}
         territory{"Regio: {0}"}
+    }
+    localeDisplayPattern{
+        keyTypePattern{"{0}: {1}"}
+        pattern{"{0} ({1})"}
+        separator{"{0}, {1}"}
     }
 }

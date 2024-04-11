@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 lrc{
     Languages{
         ab{"آذأربایئجانی"}
@@ -238,6 +237,7 @@ lrc{
     Languages%short{
         az{"آذأری"}
         en_GB{"ئینگیلیسی بئریتانیا گأپ"}
+        en_US{"ئینگیلیسی ئمریکایی"}
     }
     Scripts{
         Arab{"عأرأڤی"}
@@ -295,5 +295,16 @@ lrc{
             arab{"أدأدیا عأرأڤی"}
             latn{"عأدأدیا لاتین"}
         }
+    }
+    Version{"2.1.47.82"}
+    codePatterns{
+        language{"{0}"}
+        script{"{0}"}
+        territory{"{0}"}
+    }
+    localeDisplayPattern{
+        keyTypePattern{"{0}: {1}"}
+        pattern{"{0} ({1})"}
+        separator{"{0}, {1}"}
     }
 }

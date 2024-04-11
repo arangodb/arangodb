@@ -21,8 +21,6 @@
 
 #if !UCONFIG_NO_IDNA
 
-#include <stdbool.h>
-
 #include "unicode/ustring.h"
 #include "unicode/putil.h"
 #include "cintltst.h"
@@ -51,7 +49,6 @@ static void U_CALLCONV
 strprepProfileLineFn(void *context,
               char *fields[][2], int32_t fieldCount,
               UErrorCode *pErrorCode) {
-    (void)fieldCount; // suppress compiler warnings about unused variable
     uint32_t mapping[40];
     char *end, *map;
     uint32_t code;
@@ -130,19 +127,19 @@ getValues(uint32_t result, int32_t* value, UBool* isIndex){
         type = USPREP_MAP;
         /* ascertain if the value is index or delta */
         if(result & 0x02){
-            *isIndex = true;
+            *isIndex = TRUE;
             *value = result  >> 2;
 
         }else{
-            *isIndex = false;
+            *isIndex = FALSE;
             *value = (int16_t)result;
             *value =  (*value >> 2);
 
         }
         if((result>>2) == _SPREP_MAX_INDEX_VALUE){
             type = USPREP_DELETE;
-            *isIndex = false;
-            *value = 0;
+            isIndex =FALSE;
+            value = 0;
         }
     }
     return type;
@@ -153,7 +150,7 @@ compareMapping(UStringPrepProfile* data, uint32_t codepoint, uint32_t* mapping,i
                UStringPrepType type){
     uint32_t result = 0;
     int32_t length=0;
-    UBool isIndex = false;
+    UBool isIndex = FALSE;
     UStringPrepType retType;
     int32_t value=0, idx=0, delta=0;
     int32_t* indexes = data->indexes;
@@ -235,7 +232,7 @@ compareFlagsForRange(UStringPrepProfile* data,
 
     uint32_t result =0 ;
     UStringPrepType retType;
-    UBool isIndex=false;
+    UBool isIndex=FALSE;
     int32_t value=0;
     UTrie trie = data->sprepTrie;
 /*
@@ -276,7 +273,7 @@ compareFlagsForRange(UStringPrepProfile* data,
 
 void
 doStringPrepTest(const char* binFileName, const char* txtFileName, int32_t options, UErrorCode* errorCode){
-    (void)options; // suppress compiler warnings about unused variable
+
     const char *testdatapath = loadTestData(errorCode);
     const char *srcdatapath = NULL;
     const char *relativepath = NULL;
@@ -306,7 +303,7 @@ doStringPrepTest(const char* binFileName, const char* txtFileName, int32_t optio
     strcat(filename,relativepath);
     strcat(filename,txtFileName);
 
-    parseMappings(filename,profile, true,errorCode);
+    parseMappings(filename,profile, TRUE,errorCode);
 
     free(filename);
 }

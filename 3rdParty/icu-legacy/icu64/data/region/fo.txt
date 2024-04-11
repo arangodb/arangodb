@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 fo{
     Countries{
         001{"heimur"}
@@ -184,7 +183,7 @@ fo{
         MF{"St-Martin"}
         MG{"Madagaskar"}
         MH{"Marshalloyggjar"}
-        MK{"Norður Makedónia"}
+        MK{"Makedónia"}
         ML{"Mali"}
         MM{"Myanmar (Burma)"}
         MN{"Mongolia"}
@@ -254,7 +253,7 @@ fo{
         SV{"El Salvador"}
         SX{"Sint Maarten"}
         SY{"Sýria"}
-        SZ{"Esvatini"}
+        SZ{"Svasiland"}
         TA{"Tristan da Cunha"}
         TC{"Turks- og Caicosoyggjar"}
         TD{"Kjad"}
@@ -288,8 +287,6 @@ fo{
         VU{"Vanuatu"}
         WF{"Wallis- og Futunaoyggjar"}
         WS{"Samoa"}
-        XA{"óekta tónalag"}
-        XB{"óektaður BIDI tekstur"}
         XK{"Kosovo"}
         YE{"Jemen"}
         YT{"Mayotte"}
@@ -297,9 +294,6 @@ fo{
         ZM{"Sambia"}
         ZW{"Simbabvi"}
         ZZ{"ókent øki"}
-    }
-    Countries%chagos{
-        IO{"Khagosoyggjar"}
     }
     Countries%short{
         GB{"UK"}
@@ -310,7 +304,7 @@ fo{
     }
     Countries%variant{
         FK{"Falklandsoyggjar (Islas Malvinas)"}
-        NZ{"Aotearoa Nýsæland"}
-        SZ{"Svasiland"}
+        MK{"Makedónia (FJM)"}
     }
+    Version{"2.1.48.9"}
 }

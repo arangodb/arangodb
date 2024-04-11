@@ -64,7 +64,7 @@ void TransliteratorErrorTest::TestTransliteratorErrors() {
     UTransPosition pos;
 
     Transliterator* t= Transliterator::createInstance(trans, UTRANS_FORWARD, parseError, status);
-    if (t == nullptr || U_FAILURE(status)) {
+    if(t==0 || U_FAILURE(status)){
         dataerrln("FAIL: construction of Latin-Greek - %s", u_errorName(status));
         return;
     }
@@ -136,7 +136,7 @@ void TransliteratorErrorTest::TestTransliteratorErrors() {
             errln("FAIL: The input string was modified though the offsets were out of bounds.");
     }
     Transliterator* t1= Transliterator::createInstance(bogusID, UTRANS_FORWARD, parseError, status);
-    if (t1 != nullptr || U_SUCCESS(status)) {
+    if(t1!=0 || U_SUCCESS(status)){
         delete t1;
         errln("FAIL: construction of bogus ID \"LATINGREEK-GREEKLATIN\"");
     }
@@ -153,7 +153,7 @@ void TransliteratorErrorTest::TestTransliteratorErrors() {
     }
     status = U_ZERO_ERROR;
     Transliterator* t4 = Transliterator::createFromRules(newID, bogusRules, UTRANS_FORWARD, parseError, status);
-    if (t4 != nullptr || U_SUCCESS(status)) {
+    if (t4 != NULL || U_SUCCESS(status)) {
         errln("FAIL: The rules is malformed but error was not reported.");
         if (parseError.offset != -1) {
             errln("FAIL: The parse error offset isn't set correctly when fails.");
@@ -189,14 +189,14 @@ void TransliteratorErrorTest::TestUnicodeSetErrors() {
 
 //void TransliteratorErrorTest::TestUniToHexErrors() {
 //    UErrorCode status = U_ZERO_ERROR;
-//    Transliterator *t = new UnicodeToHexTransliterator("", true, nullptr, status);
+//    Transliterator *t = new UnicodeToHexTransliterator("", TRUE, NULL, status);
 //    if (U_SUCCESS(status)) {
 //        errln("FAIL: Created a UnicodeToHexTransliterator with an empty pattern.");
 //    }
 //    delete t;
 //
 //    status = U_ZERO_ERROR;
-//    t = new UnicodeToHexTransliterator("\\x", true, nullptr, status);
+//    t = new UnicodeToHexTransliterator("\\x", TRUE, NULL, status);
 //    if (U_SUCCESS(status)) {
 //        errln("FAIL: Created a UnicodeToHexTransliterator with a bad pattern.");
 //    }
@@ -241,13 +241,13 @@ void TransliteratorErrorTest::TestRBTErrors() {
 
 //void TransliteratorErrorTest::TestHexToUniErrors() {
 //    UErrorCode status = U_ZERO_ERROR;
-//    Transliterator *t = new HexToUnicodeTransliterator("", nullptr, status);
+//    Transliterator *t = new HexToUnicodeTransliterator("", NULL, status);
 //    if (U_FAILURE(status)) {
 //        errln("FAIL: Could not create a HexToUnicodeTransliterator with an empty pattern.");
 //    }
 //    delete t;
 //    status = U_ZERO_ERROR;
-//    t = new HexToUnicodeTransliterator("\\x", nullptr, status);
+//    t = new HexToUnicodeTransliterator("\\x", NULL, status);
 //    if (U_SUCCESS(status)) {
 //        errln("FAIL: Created a HexToUnicodeTransliterator with a bad pattern.");
 //    }
@@ -263,12 +263,12 @@ void TransliteratorErrorTest::TestRBTErrors() {
 
 class StubTransliterator: public Transliterator{
 public:
-    StubTransliterator(): Transliterator(UNICODE_STRING_SIMPLE("Any-Null"), nullptr) {}
-    virtual void handleTransliterate(Replaceable& ,UTransPosition& offsets,UBool) const override {
+    StubTransliterator(): Transliterator(UNICODE_STRING_SIMPLE("Any-Null"), 0) {}
+    virtual void handleTransliterate(Replaceable& ,UTransPosition& offsets,UBool) const {
         offsets.start = offsets.limit;
     }
 
-    virtual UClassID getDynamicClassID() const override {
+    virtual UClassID getDynamicClassID() const{
         static char classID = 0;
         return (UClassID)&classID; 
     }
@@ -277,8 +277,8 @@ public:
 void TransliteratorErrorTest::TestCoverage() {
     StubTransliterator stub;
 
-    if (stub.clone() != nullptr){
-        errln("FAIL: default Transliterator::clone() should return nullptr");
+    if (stub.clone() != NULL){
+        errln("FAIL: default Transliterator::clone() should return NULL");
     }
 }
 

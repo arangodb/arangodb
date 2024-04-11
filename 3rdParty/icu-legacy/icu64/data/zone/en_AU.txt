@@ -1,11 +1,21 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 en_AU{
     %%Parent{"en_001"}
+    Version{"2.1.48.43"}
     zoneStrings{
+        "America:St_Barthelemy"{
+            ec{"St Barthélemy"}
+        }
+        "Asia:Rangoon"{
+            ec{"Rangoon"}
+        }
         "meta:Africa_Eastern"{
             ls{"Eastern Africa Time"}
+        }
+        "meta:Amazon"{
+            ld{"Amazon Summer Time"}
+            ls{"Amazon Standard Time"}
         }
         "meta:Arabian"{
             ld{"Arabia Daylight Time"}
@@ -43,7 +53,6 @@ en_AU{
         }
         "meta:China"{
             ld{"China Summer Time"}
-            lg{"China Time"}
             ls{"China Standard Time"}
         }
         "meta:Cook"{
@@ -51,8 +60,17 @@ en_AU{
             lg{"Cook Island Time"}
             ls{"Cook Island Standard Time"}
         }
-        "meta:Gulf"{
-            ss{"Gulf ST"}
+        "meta:Europe_Eastern"{
+            ld{"Eastern European Summer Time"}
+            ls{"Eastern European Standard Time"}
+        }
+        "meta:Iran"{
+            lg{"Iran Time"}
+            ls{"Iran Standard Time"}
+        }
+        "meta:Israel"{
+            lg{"Israel Time"}
+            ls{"Israel Standard Time"}
         }
         "meta:Japan"{
             ld{"Japan Summer Time"}

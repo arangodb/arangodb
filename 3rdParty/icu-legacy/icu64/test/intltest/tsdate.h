@@ -21,7 +21,7 @@
  *  Performs some tests in many variations on DateFormat
  **/
 class IntlTestDateFormat: public IntlTest {
-    void runIndexedTest( int32_t index, UBool exec, const char* &name, char* par = nullptr ) override;
+    void runIndexedTest( int32_t index, UBool exec, const char* &name, char* par = NULL );
     
 private:
 
@@ -49,23 +49,25 @@ private:
     /**
      *  return a random number
      **/
-    double randDouble();
+    double randDouble(void);
     /**
      * generate description for verbose test output
      **/
-    void describeTest();
+    void describeTest(void);
 
     DateFormat *fFormat;
     UnicodeString fTestName;
     int32_t fLimit; // How many iterations it should take to reach convergence
 
-    // Values in milliseconds (== Date)
-    static constexpr int32_t ONESECOND = 1000;
-    static constexpr int32_t ONEMINUTE = 60 * ONESECOND;
-    static constexpr int32_t ONEHOUR = 60 * ONEMINUTE;
-    static constexpr int32_t ONEDAY = 24 * ONEHOUR;
-
-    static constexpr double ONEYEAR = 365.25 * ONEDAY; // Approximate
+    enum
+    {
+        // Values in milliseconds (== Date)
+        ONESECOND = 1000,
+        ONEMINUTE = 60 * ONESECOND,
+        ONEHOUR = 60 * ONEMINUTE,
+        ONEDAY = 24 * ONEHOUR
+    };
+    static const double ONEYEAR;
     enum EMode
     {
         GENERIC,

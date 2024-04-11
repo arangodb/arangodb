@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ksh{
     Countries{
         001{"de Ääd"}
@@ -144,6 +143,7 @@ ksh{
         IL{"Ißraäl"}
         IM{"de Ensel Män"}
         IN{"Indije"}
+        IO{"Brettesche Besezunge em indesche Oozejahn"}
         IQ{"Irak"}
         IR{"Persije"}
         IS{"Ißland"}
@@ -181,6 +181,7 @@ ksh{
         MF{"de Zint-Määtes-Ensel"}
         MG{"Maddajaska"}
         MH{"de Machschall-Enselle"}
+        MK{"Mazedoonije"}
         ML{"Maali"}
         MM{"Birma"}
         MN{"Mongjolei"}
@@ -292,6 +293,9 @@ ksh{
         ZZ{"- Jähjend onbikannt -"}
     }
     Countries%short{
+        GB{"Jruußbrettannije"}
+        HK{"Hongkong"}
+        MO{"Makau"}
         US{"USA"}
     }
     Countries%variant{
@@ -299,5 +303,7 @@ ksh{
         CG{"de Republik Konggo"}
         CI{"de Älfebeijnköß"}
         FK{"de malleviinesche Enselle"}
+        MK{"de vörmaals ens jugoßlaawesch jewääse Republik Mazedoonije"}
     }
+    Version{"2.1.47.82"}
 }

@@ -21,13 +21,13 @@
 // #define CCP
 
 TextFile::TextFile(const char* _name, const char* _encoding, UErrorCode& ec) :
-    file(nullptr),
-    name(nullptr), encoding(nullptr),
-    buffer(nullptr),
+    file(0),
+    name(0), encoding(0),
+    buffer(0),
     capacity(0),
     lineNo(0)
 {
-    if (U_FAILURE(ec) || _name == nullptr || _encoding == nullptr) {
+    if (U_FAILURE(ec) || _name == 0 || _encoding == 0) {
         if (U_SUCCESS(ec)) {
             ec = U_ILLEGAL_ARGUMENT_ERROR; 
         }
@@ -60,15 +60,15 @@ TextFile::TextFile(const char* _name, const char* _encoding, UErrorCode& ec) :
     uprv_strcat(buffer, name);
 
     file = T_FileStream_open(buffer, "rb");
-    if (file == nullptr) {
+    if (file == 0) {
         ec = U_ILLEGAL_ARGUMENT_ERROR; 
         return;        
     }
 }
 
 TextFile::~TextFile() {
-    if (file != nullptr) T_FileStream_close(file);
-    if (buffer != nullptr) uprv_free(buffer);
+    if (file != 0) T_FileStream_close(file);
+    if (buffer != 0) uprv_free(buffer);
 #ifdef CCP
     uprv_free(name);
     uprv_free(encoding);
@@ -77,7 +77,7 @@ TextFile::~TextFile() {
 
 UBool TextFile::readLine(UnicodeString& line, UErrorCode& ec) {
     if (T_FileStream_eof(file)) {
-        return false;
+        return FALSE;
     }
     // Note: 'buffer' may change after ensureCapacity() is called,
     // so don't use 
@@ -97,9 +97,9 @@ UBool TextFile::readLine(UnicodeString& line, UErrorCode& ec) {
             }
             break;
         }
-        if (!setBuffer(n++, c, ec)) return false;
+        if (!setBuffer(n++, c, ec)) return FALSE;
     }
-    if (!setBuffer(n++, 0, ec)) return false;
+    if (!setBuffer(n++, 0, ec)) return FALSE;
     UnicodeString str(buffer, encoding);
     // Remove BOM in first line, if present
     if (lineNo == 0 && str[0] == 0xFEFF) {
@@ -107,50 +107,50 @@ UBool TextFile::readLine(UnicodeString& line, UErrorCode& ec) {
     }
     ++lineNo;
     line = str.unescape();
-    return true;
+    return TRUE;
 }
 
 UBool TextFile::readLineSkippingComments(UnicodeString& line, UErrorCode& ec,
                                          UBool trim) {
     for (;;) {
-        if (!readLine(line, ec)) return false;
+        if (!readLine(line, ec)) return FALSE;
         // Skip over white space
         int32_t pos = 0;
-        ICU_Utility::skipWhitespace(line, pos, true);
+        ICU_Utility::skipWhitespace(line, pos, TRUE);
         // Ignore blank lines and comment lines
         if (pos == line.length() || line.charAt(pos) == 0x23/*'#'*/) {
             continue;
         }
         // Process line
         if (trim) line.remove(0, pos);
-        return true;
+        return TRUE;
     }
 }
 
 /**
- * Set buffer[index] to c, growing buffer if necessary. Return true if
+ * Set buffer[index] to c, growing buffer if necessary. Return TRUE if
  * successful.
  */
 UBool TextFile::setBuffer(int32_t index, char c, UErrorCode& ec) {
     if (capacity <= index) {
         if (!ensureCapacity(index+1)) {
             ec = U_MEMORY_ALLOCATION_ERROR;
-            return false;
+            return FALSE;
         }
     }
     buffer[index] = c;
-    return true;
+    return TRUE;
 }
 
 /**
  * Make sure that 'buffer' has at least 'mincapacity' bytes.
- * Return true upon success. Upon return, 'buffer' may change
+ * Return TRUE upon success. Upon return, 'buffer' may change
  * value. In any case, previous contents are preserved.
  */
  #define LOWEST_MIN_CAPACITY 64
 UBool TextFile::ensureCapacity(int32_t mincapacity) {
     if (capacity >= mincapacity) {
-        return true;
+        return TRUE;
     }
 
     // Grow by factor of 2 to prevent frequent allocation
@@ -168,15 +168,15 @@ UBool TextFile::ensureCapacity(int32_t mincapacity) {
     // Simple realloc() no good; contents not preserved
     // Note: 'buffer' may be 0
     char* newbuffer = (char*) uprv_malloc(mincapacity);
-    if (newbuffer == nullptr) {
-        return false;
+    if (newbuffer == 0) {
+        return FALSE;
     }
-    if (buffer != nullptr) {
+    if (buffer != 0) {
         uprv_strncpy(newbuffer, buffer, capacity);
         uprv_free(buffer);
     }
     buffer = newbuffer;
     capacity = mincapacity;
-    return true;
+    return TRUE;
 }
 

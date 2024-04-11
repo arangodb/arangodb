@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 mua{
     Countries{
         AD{"andorra"}
@@ -93,6 +92,7 @@ mua{
         IE{"Sǝr Ireland"}
         IL{"Sǝr Israel"}
         IN{"Sǝr Indǝ"}
+        IO{"anglofoŋ ma Indiya"}
         IQ{"Irak"}
         IR{"Iraŋ"}
         IS{"Sǝr Island"}
@@ -127,6 +127,7 @@ mua{
         MD{"Moldoviya"}
         MG{"Madagaskar"}
         MH{"Sǝr Marshall ma laŋne"}
+        MK{"Macedoniya"}
         ML{"Sǝr Mali"}
         MM{"Sǝr Myanmar"}
         MN{"Mongoliya"}
@@ -226,4 +227,5 @@ mua{
         ZM{"Zambiya"}
         ZW{"Zimbabwe"}
     }
+    Version{"2.1.47.82"}
 }

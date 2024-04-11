@@ -49,21 +49,15 @@ static UOption options[]={
 };
 
 static UErrorCode initStatus = U_ZERO_ERROR;
-static UBool icuInitted = false;
+static UBool icuInitted = FALSE;
 
 static void do_init() {
     if(!icuInitted) {
       u_init(&initStatus);
-      icuInitted = true;
+      icuInitted = TRUE;
     }
 }
 
-static void do_cleanup() {
-  if (icuInitted) {
-    u_cleanup();
-    icuInitted = false;
-  }
-}
 
 void cmd_millis()
 {
@@ -168,26 +162,26 @@ void cmd_listplugins() {
     printf(    " >>>   Error          | Explanation \n");
     printf(    "-----------------------------------\n");
         
-    for(i=0;(plug=uplug_getPlugInternal(i))!=nullptr;i++) {
+    for(i=0;(plug=uplug_getPlugInternal(i))!=NULL;i++) {
         UErrorCode libStatus = U_ZERO_ERROR;
         const char *name = uplug_getPlugName(plug);
         const char *sym = uplug_getSymbolName(plug);
         const char *lib = uplug_getLibraryName(plug, &libStatus);
         const char *config = uplug_getConfiguration(plug);
         UErrorCode loadStatus = uplug_getPlugLoadStatus(plug);
-        const char *message = nullptr;
+        const char *message = NULL;
         
         printf("\n#%d  %-6s %s \n",
             i+1,
             udbg_enumName(UDBG_UPlugLevel,(int32_t)uplug_getPlugLevel(plug)),
-            name!=nullptr?(*name?name:"this plugin did not call uplug_setPlugName()"):"(null)"
+            name!=NULL?(*name?name:"this plugin did not call uplug_setPlugName()"):"(null)"
         );
         printf("    plugin| %10s:%-10s\n",
-            (U_SUCCESS(libStatus)?(lib!=nullptr?lib:"(null)"):u_errorName(libStatus)),
-            sym!=nullptr?sym:"(null)"
+            (U_SUCCESS(libStatus)?(lib!=NULL?lib:"(null)"):u_errorName(libStatus)),
+            sym!=NULL?sym:"(null)"
         );
         
-        if(config!=nullptr&&*config) {
+        if(config!=NULL&&*config) {
             printf("    config| %s\n", config);
         }
         
@@ -205,7 +199,7 @@ void cmd_listplugins() {
                 break;
                 
             case U_ZERO_ERROR: 
-                message = nullptr; /* no message */
+                message = NULL; /* no message */
                 break;
             default:
                 if(U_FAILURE(loadStatus)) {
@@ -215,7 +209,7 @@ void cmd_listplugins() {
                 }            
         }
         
-        if(message!=nullptr) {
+        if(message!=NULL) {
             printf("\\\\\\ status| %s\n"
                    "/// %s\n", u_errorName(loadStatus), message);
         }
@@ -232,7 +226,7 @@ void cmd_listplugins() {
 extern int
 main(int argc, char* argv[]) {
     UErrorCode errorCode = U_ZERO_ERROR;
-    UBool didSomething = false;
+    UBool didSomething = FALSE;
     
     /* preset then read command line options */
     argc=u_parseArgs(argc, argv, UPRV_LENGTHOF(options), options);
@@ -253,7 +247,7 @@ main(int argc, char* argv[]) {
 #if UCONFIG_ENABLE_PLUGINS
               " -L         or  --list-plugins     - List and diagnose issues with ICU Plugins\n"
 #endif
-              " -K         or  --cleanup          - Call u_cleanup() before exiting (will attempt to unload plugins)\n"
+              " -K         or  --cleanup          - Call u_cleanup() before exitting (will attempt to unload plugins)\n"
               "\n"
               "If no arguments are given, the tool will print ICU version and configuration information.\n"
               );
@@ -267,21 +261,21 @@ main(int argc, char* argv[]) {
 
     if(options[5].doesOccur) {
       cmd_millis();
-      didSomething=true;
+      didSomething=TRUE;
     } 
     if(options[4].doesOccur) {
       cmd_listplugins();
-      didSomething = true;
+      didSomething = TRUE;
     }
 
     if(options[3].doesOccur) {
-      cmd_version(false, errorCode);
-      didSomething = true;
+      cmd_version(FALSE, errorCode);
+      didSomething = TRUE;
     }
 
     if(options[7].doesOccur) {  /* 2nd part of version: cleanup */
       FILE *out = fopen(options[7].value, "w");
-      if(out==nullptr) {
+      if(out==NULL) {
         fprintf(stderr,"ERR: can't write to XML file %s\n", options[7].value);
         return 1;
       }
@@ -289,19 +283,17 @@ main(int argc, char* argv[]) {
       fprintf(out, "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n");
       udbg_writeIcuInfo(out);
       fclose(out);
-      didSomething = true;
+      didSomething = TRUE;
     }
 
     if(options[6].doesOccur) {  /* 2nd part of version: cleanup */
       cmd_cleanup();
-      didSomething = true;
+      didSomething = TRUE;
     }
 
     if(!didSomething) {
-      cmd_version(false, errorCode);  /* at least print the version # */
+      cmd_version(FALSE, errorCode);  /* at least print the version # */
     }
-
-    do_cleanup();
 
     return U_FAILURE(errorCode);
 }

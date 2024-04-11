@@ -11,25 +11,15 @@
 #include "number_formatimpl.h"
 #include "umutex.h"
 #include "number_asformat.h"
+#include "number_skeletons.h"
 #include "number_utils.h"
 #include "number_utypes.h"
-#include "number_mapper.h"
 #include "util.h"
 #include "fphdlimp.h"
 
 using namespace icu;
 using namespace icu::number;
 using namespace icu::number::impl;
-
-#if (U_PF_WINDOWS <= U_PLATFORM && U_PLATFORM <= U_PF_CYGWIN) && defined(_MSC_VER)
-// Ignore MSVC warning 4661. This is generated for NumberFormatterSettings<>::toSkeleton() as this method
-// is defined elsewhere (in number_skeletons.cpp). The compiler is warning that the explicit template instantiation
-// inside this single translation unit (CPP file) is incomplete, and thus it isn't sure if the template class is
-// fully defined. However, since each translation unit explicitly instantiates all the necessary template classes,
-// they will all be passed to the linker, and the linker will still find and export all the class members.
-#pragma warning(push)
-#pragma warning(disable: 4661)
-#endif
 
 template<typename Derived>
 Derived NumberFormatterSettings<Derived>::notation(const Notation& notation) const& {
@@ -275,62 +265,6 @@ Derived NumberFormatterSettings<Derived>::scale(const Scale& scale)&& {
 }
 
 template<typename Derived>
-Derived NumberFormatterSettings<Derived>::usage(const StringPiece usage) const& {
-    Derived copy(*this);
-    copy.fMacros.usage.set(usage);
-    return copy;
-}
-
-template<typename Derived>
-Derived NumberFormatterSettings<Derived>::usage(const StringPiece usage)&& {
-    Derived move(std::move(*this));
-    move.fMacros.usage.set(usage);
-    return move;
-}
-
-template <typename Derived>
-Derived NumberFormatterSettings<Derived>::displayOptions(const DisplayOptions &displayOptions) const & {
-    Derived copy(*this);
-    // `displayCase` does not recognise the `undefined`
-    if (displayOptions.getGrammaticalCase() == UDISPOPT_GRAMMATICAL_CASE_UNDEFINED) {
-        copy.fMacros.unitDisplayCase.set(nullptr);
-        return copy;
-    }
-
-    copy.fMacros.unitDisplayCase.set(
-        udispopt_getGrammaticalCaseIdentifier(displayOptions.getGrammaticalCase()));
-    return copy;
-}
-
-template <typename Derived>
-Derived NumberFormatterSettings<Derived>::displayOptions(const DisplayOptions &displayOptions) && {
-    Derived move(std::move(*this));
-    // `displayCase` does not recognise the `undefined`
-    if (displayOptions.getGrammaticalCase() == UDISPOPT_GRAMMATICAL_CASE_UNDEFINED) {
-        move.fMacros.unitDisplayCase.set(nullptr);
-        return move;
-    }
-
-    move.fMacros.unitDisplayCase.set(
-        udispopt_getGrammaticalCaseIdentifier(displayOptions.getGrammaticalCase()));
-    return move;
-}
-
-template<typename Derived>
-Derived NumberFormatterSettings<Derived>::unitDisplayCase(const StringPiece unitDisplayCase) const& {
-    Derived copy(*this);
-    copy.fMacros.unitDisplayCase.set(unitDisplayCase);
-    return copy;
-}
-
-template<typename Derived>
-Derived NumberFormatterSettings<Derived>::unitDisplayCase(const StringPiece unitDisplayCase)&& {
-    Derived move(std::move(*this));
-    move.fMacros.unitDisplayCase.set(unitDisplayCase);
-    return move;
-}
-
-template<typename Derived>
 Derived NumberFormatterSettings<Derived>::padding(const Padder& padder) const& {
     Derived copy(*this);
     copy.fMacros.padder = padder;
@@ -386,7 +320,16 @@ Derived NumberFormatterSettings<Derived>::macros(impl::MacroProps&& macros)&& {
     return move;
 }
 
-// Note: toSkeleton defined in number_skeletons.cpp
+template<typename Derived>
+UnicodeString NumberFormatterSettings<Derived>::toSkeleton(UErrorCode& status) const {
+    if (U_FAILURE(status)) {
+        return ICU_Utility::makeBogusString();
+    }
+    if (fMacros.copyErrorTo(status)) {
+        return ICU_Utility::makeBogusString();
+    }
+    return skeleton::generate(fMacros, status);
+}
 
 template<typename Derived>
 LocalPointer<Derived> NumberFormatterSettings<Derived>::clone() const & {
@@ -415,7 +358,15 @@ LocalizedNumberFormatter NumberFormatter::withLocale(const Locale& locale) {
     return with().locale(locale);
 }
 
-// Note: forSkeleton defined in number_skeletons.cpp
+UnlocalizedNumberFormatter
+NumberFormatter::forSkeleton(const UnicodeString& skeleton, UErrorCode& status) {
+    return skeleton::create(skeleton, nullptr, status);
+}
+
+UnlocalizedNumberFormatter
+NumberFormatter::forSkeleton(const UnicodeString& skeleton, UParseError& perror, UErrorCode& status) {
+    return skeleton::create(skeleton, &perror, status);
+}
 
 
 template<typename T> using NFS = NumberFormatterSettings<T>;
@@ -430,19 +381,11 @@ UnlocalizedNumberFormatter::UnlocalizedNumberFormatter(const NFS<UNF>& other)
     // No additional fields to assign
 }
 
-UnlocalizedNumberFormatter::UnlocalizedNumberFormatter(const impl::MacroProps &macros) {
-    fMacros = macros;
-}
-
-UnlocalizedNumberFormatter::UnlocalizedNumberFormatter(impl::MacroProps &&macros) {
-    fMacros = macros;
-}
-
 // Make default copy constructor call the NumberFormatterSettings copy constructor.
-UnlocalizedNumberFormatter::UnlocalizedNumberFormatter(UNF&& src) noexcept
+UnlocalizedNumberFormatter::UnlocalizedNumberFormatter(UNF&& src) U_NOEXCEPT
         : UNF(static_cast<NFS<UNF>&&>(src)) {}
 
-UnlocalizedNumberFormatter::UnlocalizedNumberFormatter(NFS<UNF>&& src) noexcept
+UnlocalizedNumberFormatter::UnlocalizedNumberFormatter(NFS<UNF>&& src) U_NOEXCEPT
         : NFS<UNF>(std::move(src)) {
     // No additional fields to assign
 }
@@ -453,7 +396,7 @@ UnlocalizedNumberFormatter& UnlocalizedNumberFormatter::operator=(const UNF& oth
     return *this;
 }
 
-UnlocalizedNumberFormatter& UnlocalizedNumberFormatter::operator=(UNF&& src) noexcept {
+UnlocalizedNumberFormatter& UnlocalizedNumberFormatter::operator=(UNF&& src) U_NOEXCEPT {
     NFS<UNF>::operator=(static_cast<NFS<UNF>&&>(src));
     // No additional fields to assign
     return *this;
@@ -465,35 +408,46 @@ LocalizedNumberFormatter::LocalizedNumberFormatter(const LNF& other)
 
 LocalizedNumberFormatter::LocalizedNumberFormatter(const NFS<LNF>& other)
         : NFS<LNF>(other) {
-    UErrorCode localStatus = U_ZERO_ERROR; // Can't bubble up the error
-    lnfCopyHelper(static_cast<const LNF&>(other), localStatus);
+    // No additional fields to assign (let call count and compiled formatter reset to defaults)
 }
 
-LocalizedNumberFormatter::LocalizedNumberFormatter(LocalizedNumberFormatter&& src) noexcept
+LocalizedNumberFormatter::LocalizedNumberFormatter(LocalizedNumberFormatter&& src) U_NOEXCEPT
         : LNF(static_cast<NFS<LNF>&&>(src)) {}
 
-LocalizedNumberFormatter::LocalizedNumberFormatter(NFS<LNF>&& src) noexcept
+LocalizedNumberFormatter::LocalizedNumberFormatter(NFS<LNF>&& src) U_NOEXCEPT
         : NFS<LNF>(std::move(src)) {
-    lnfMoveHelper(std::move(static_cast<LNF&&>(src)));
+    // For the move operators, copy over the compiled formatter.
+    // Note: if the formatter is not compiled, call count information is lost.
+    if (static_cast<LNF&&>(src).fCompiled != nullptr) {
+        lnfMoveHelper(static_cast<LNF&&>(src));
+    }
 }
 
 LocalizedNumberFormatter& LocalizedNumberFormatter::operator=(const LNF& other) {
-    if (this == &other) { return *this; }  // self-assignment: no-op
     NFS<LNF>::operator=(static_cast<const NFS<LNF>&>(other));
-    UErrorCode localStatus = U_ZERO_ERROR; // Can't bubble up the error
-    lnfCopyHelper(other, localStatus);
+    // Reset to default values.
+    clear();
     return *this;
 }
 
-LocalizedNumberFormatter& LocalizedNumberFormatter::operator=(LNF&& src) noexcept {
+LocalizedNumberFormatter& LocalizedNumberFormatter::operator=(LNF&& src) U_NOEXCEPT {
     NFS<LNF>::operator=(static_cast<NFS<LNF>&&>(src));
-    lnfMoveHelper(std::move(src));
+    // For the move operators, copy over the compiled formatter.
+    // Note: if the formatter is not compiled, call count information is lost.
+    if (static_cast<LNF&&>(src).fCompiled != nullptr) {
+        // Formatter is compiled
+        lnfMoveHelper(static_cast<LNF&&>(src));
+    } else {
+        clear();
+    }
     return *this;
 }
 
-void LocalizedNumberFormatter::resetCompiled() {
+void LocalizedNumberFormatter::clear() {
+    // Reset to default values.
     auto* callCount = reinterpret_cast<u_atomic_int32_t*>(fUnsafeCallCount);
     umtx_storeRelease(*callCount, 0);
+    delete fCompiled;
     fCompiled = nullptr;
 }
 
@@ -501,56 +455,19 @@ void LocalizedNumberFormatter::lnfMoveHelper(LNF&& src) {
     // Copy over the compiled formatter and set call count to INT32_MIN as in computeCompiled().
     // Don't copy the call count directly because doing so requires a loadAcquire/storeRelease.
     // The bits themselves appear to be platform-dependent, so copying them might not be safe.
+    auto* callCount = reinterpret_cast<u_atomic_int32_t*>(fUnsafeCallCount);
+    umtx_storeRelease(*callCount, INT32_MIN);
     delete fCompiled;
-    if (src.fCompiled != nullptr) {
-        auto* callCount = reinterpret_cast<u_atomic_int32_t*>(fUnsafeCallCount);
-        umtx_storeRelease(*callCount, INT32_MIN);
-        fCompiled = src.fCompiled;
-        // Reset the source object to leave it in a safe state.
-        src.resetCompiled();
-    } else {
-        resetCompiled();
-    }
-
-    // Unconditionally move the warehouse
-    delete fWarehouse;
-    fWarehouse = src.fWarehouse;
-    src.fWarehouse = nullptr;
-}
-
-void LocalizedNumberFormatter::lnfCopyHelper(const LNF&, UErrorCode& status) {
-    // When copying, always reset the compiled formatter.
-    delete fCompiled;
-    resetCompiled();
-
-    // If MacroProps has a reference to AffixPatternProvider, we need to copy it.
-    // If MacroProps has a reference to PluralRules, copy that one, too.
-    delete fWarehouse;
-    if (fMacros.affixProvider || fMacros.rules) {
-        LocalPointer<DecimalFormatWarehouse> warehouse(new DecimalFormatWarehouse(), status);
-        if (U_FAILURE(status)) {
-            fWarehouse = nullptr;
-            return;
-        }
-        if (fMacros.affixProvider) {
-            warehouse->affixProvider.setTo(fMacros.affixProvider, status);
-            fMacros.affixProvider = &warehouse->affixProvider.get();
-        }
-        if (fMacros.rules) {
-            warehouse->rules.adoptInsteadAndCheckErrorCode(
-                new PluralRules(*fMacros.rules), status);
-            fMacros.rules = warehouse->rules.getAlias();
-        }
-        fWarehouse = warehouse.orphan();
-    } else {
-        fWarehouse = nullptr;
-    }
+    fCompiled = src.fCompiled;
+    // Reset the source object to leave it in a safe state.
+    auto* srcCallCount = reinterpret_cast<u_atomic_int32_t*>(src.fUnsafeCallCount);
+    umtx_storeRelease(*srcCallCount, 0);
+    src.fCompiled = nullptr;
 }
 
 
 LocalizedNumberFormatter::~LocalizedNumberFormatter() {
     delete fCompiled;
-    delete fWarehouse;
 }
 
 LocalizedNumberFormatter::LocalizedNumberFormatter(const MacroProps& macros, const Locale& locale) {
@@ -571,9 +488,126 @@ LocalizedNumberFormatter UnlocalizedNumberFormatter::locale(const Locale& locale
     return LocalizedNumberFormatter(std::move(fMacros), locale);
 }
 
+SymbolsWrapper::SymbolsWrapper(const SymbolsWrapper& other) {
+    doCopyFrom(other);
+}
+
+SymbolsWrapper::SymbolsWrapper(SymbolsWrapper&& src) U_NOEXCEPT {
+    doMoveFrom(std::move(src));
+}
+
+SymbolsWrapper& SymbolsWrapper::operator=(const SymbolsWrapper& other) {
+    if (this == &other) {
+        return *this;
+    }
+    doCleanup();
+    doCopyFrom(other);
+    return *this;
+}
+
+SymbolsWrapper& SymbolsWrapper::operator=(SymbolsWrapper&& src) U_NOEXCEPT {
+    if (this == &src) {
+        return *this;
+    }
+    doCleanup();
+    doMoveFrom(std::move(src));
+    return *this;
+}
+
+SymbolsWrapper::~SymbolsWrapper() {
+    doCleanup();
+}
+
+void SymbolsWrapper::setTo(const DecimalFormatSymbols& dfs) {
+    doCleanup();
+    fType = SYMPTR_DFS;
+    fPtr.dfs = new DecimalFormatSymbols(dfs);
+}
+
+void SymbolsWrapper::setTo(const NumberingSystem* ns) {
+    doCleanup();
+    fType = SYMPTR_NS;
+    fPtr.ns = ns;
+}
+
+void SymbolsWrapper::doCopyFrom(const SymbolsWrapper& other) {
+    fType = other.fType;
+    switch (fType) {
+        case SYMPTR_NONE:
+            // No action necessary
+            break;
+        case SYMPTR_DFS:
+            // Memory allocation failures are exposed in copyErrorTo()
+            if (other.fPtr.dfs != nullptr) {
+                fPtr.dfs = new DecimalFormatSymbols(*other.fPtr.dfs);
+            } else {
+                fPtr.dfs = nullptr;
+            }
+            break;
+        case SYMPTR_NS:
+            // Memory allocation failures are exposed in copyErrorTo()
+            if (other.fPtr.ns != nullptr) {
+                fPtr.ns = new NumberingSystem(*other.fPtr.ns);
+            } else {
+                fPtr.ns = nullptr;
+            }
+            break;
+    }
+}
+
+void SymbolsWrapper::doMoveFrom(SymbolsWrapper&& src) {
+    fType = src.fType;
+    switch (fType) {
+        case SYMPTR_NONE:
+            // No action necessary
+            break;
+        case SYMPTR_DFS:
+            fPtr.dfs = src.fPtr.dfs;
+            src.fPtr.dfs = nullptr;
+            break;
+        case SYMPTR_NS:
+            fPtr.ns = src.fPtr.ns;
+            src.fPtr.ns = nullptr;
+            break;
+    }
+}
+
+void SymbolsWrapper::doCleanup() {
+    switch (fType) {
+        case SYMPTR_NONE:
+            // No action necessary
+            break;
+        case SYMPTR_DFS:
+            delete fPtr.dfs;
+            break;
+        case SYMPTR_NS:
+            delete fPtr.ns;
+            break;
+    }
+}
+
+bool SymbolsWrapper::isDecimalFormatSymbols() const {
+    return fType == SYMPTR_DFS;
+}
+
+bool SymbolsWrapper::isNumberingSystem() const {
+    return fType == SYMPTR_NS;
+}
+
+const DecimalFormatSymbols* SymbolsWrapper::getDecimalFormatSymbols() const {
+    U_ASSERT(fType == SYMPTR_DFS);
+    return fPtr.dfs;
+}
+
+const NumberingSystem* SymbolsWrapper::getNumberingSystem() const {
+    U_ASSERT(fType == SYMPTR_NS);
+    return fPtr.ns;
+}
+
+
 FormattedNumber LocalizedNumberFormatter::formatInt(int64_t value, UErrorCode& status) const {
     if (U_FAILURE(status)) { return FormattedNumber(U_ILLEGAL_ARGUMENT_ERROR); }
-    auto* results = new UFormattedNumberData();
+    auto results = new UFormattedNumberData();
     if (results == nullptr) {
         status = U_MEMORY_ALLOCATION_ERROR;
         return FormattedNumber(status);
@@ -592,7 +626,7 @@ FormattedNumber LocalizedNumberFormatter::formatInt(int64_t value, UErrorCode& s
 
 FormattedNumber LocalizedNumberFormatter::formatDouble(double value, UErrorCode& status) const {
     if (U_FAILURE(status)) { return FormattedNumber(U_ILLEGAL_ARGUMENT_ERROR); }
-    auto* results = new UFormattedNumberData();
+    auto results = new UFormattedNumberData();
     if (results == nullptr) {
         status = U_MEMORY_ALLOCATION_ERROR;
         return FormattedNumber(status);
@@ -611,7 +645,7 @@ FormattedNumber LocalizedNumberFormatter::formatDouble(double value, UErrorCode&
 
 FormattedNumber LocalizedNumberFormatter::formatDecimal(StringPiece value, UErrorCode& status) const {
     if (U_FAILURE(status)) { return FormattedNumber(U_ILLEGAL_ARGUMENT_ERROR); }
-    auto* results = new UFormattedNumberData();
+    auto results = new UFormattedNumberData();
     if (results == nullptr) {
         status = U_MEMORY_ALLOCATION_ERROR;
         return FormattedNumber(status);
@@ -631,7 +665,7 @@ FormattedNumber LocalizedNumberFormatter::formatDecimal(StringPiece value, UErro
 FormattedNumber
 LocalizedNumberFormatter::formatDecimalQuantity(const DecimalQuantity& dq, UErrorCode& status) const {
     if (U_FAILURE(status)) { return FormattedNumber(U_ILLEGAL_ARGUMENT_ERROR); }
-    auto* results = new UFormattedNumberData();
+    auto results = new UFormattedNumberData();
     if (results == nullptr) {
         status = U_MEMORY_ALLOCATION_ERROR;
         return FormattedNumber(status);
@@ -650,9 +684,9 @@ LocalizedNumberFormatter::formatDecimalQuantity(const DecimalQuantity& dq, UErro
 
 void LocalizedNumberFormatter::formatImpl(impl::UFormattedNumberData* results, UErrorCode& status) const {
     if (computeCompiled(status)) {
-        fCompiled->format(results, status);
+        fCompiled->format(results->quantity, results->getStringRef(), status);
     } else {
-        NumberFormatterImpl::formatStatic(fMacros, results, status);
+        NumberFormatterImpl::formatStatic(fMacros, results->quantity, results->getStringRef(), status);
     }
     if (U_FAILURE(status)) {
         return;
@@ -662,8 +696,8 @@ void LocalizedNumberFormatter::formatImpl(impl::UFormattedNumberData* results, U
 
 void LocalizedNumberFormatter::getAffixImpl(bool isPrefix, bool isNegative, UnicodeString& result,
                                             UErrorCode& status) const {
-    FormattedStringBuilder string;
-    auto signum = static_cast<Signum>(isNegative ? SIGNUM_NEG : SIGNUM_POS);
+    NumberStringBuilder string;
+    auto signum = static_cast<int8_t>(isNegative ? -1 : 1);
     // Always return affixes for plural form OTHER.
     static const StandardPlural::Form plural = StandardPlural::OTHER;
     int32_t prefixLength;
@@ -732,27 +766,14 @@ int32_t LocalizedNumberFormatter::getCallCount() const {
     return umtx_loadAcquire(*callCount);
 }
 
-// Note: toFormat defined in number_asformat.cpp
-
-UnlocalizedNumberFormatter LocalizedNumberFormatter::withoutLocale() const & {
-    MacroProps macros(fMacros);
-    macros.locale = Locale();
-    return UnlocalizedNumberFormatter(macros);
+Format* LocalizedNumberFormatter::toFormat(UErrorCode& status) const {
+    if (U_FAILURE(status)) {
+        return nullptr;
+    }
+    LocalPointer<LocalizedNumberFormatterAsFormat> retval(
+            new LocalizedNumberFormatterAsFormat(*this, fMacros.locale), status);
+    return retval.orphan();
 }
 
-UnlocalizedNumberFormatter LocalizedNumberFormatter::withoutLocale() && {
-    MacroProps macros(std::move(fMacros));
-    macros.locale = Locale();
-    return UnlocalizedNumberFormatter(std::move(macros));
-}
-
-const DecimalFormatSymbols* LocalizedNumberFormatter::getDecimalFormatSymbols() const {
-    return fMacros.symbols.getDecimalFormatSymbols();
-}
-
-#if (U_PF_WINDOWS <= U_PLATFORM && U_PLATFORM <= U_PF_CYGWIN) && defined(_MSC_VER)
-// Warning 4661.
-#pragma warning(pop)
-#endif
 
 #endif /* #if !UCONFIG_NO_FORMATTING */

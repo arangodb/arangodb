@@ -16,7 +16,6 @@
 *   01/11/02    Ram        Creation.
 *******************************************************************************
 */
-#include <stdbool.h>
 #include "rle.h"
 /**
  * The ESCAPE character is used during run-length encoding.  It signals
@@ -92,13 +91,14 @@ encodeRunByte(uint16_t* buffer,uint16_t* bufLimit, uint8_t value, int32_t length
     return buffer;
 }
 
-#define APPEND( buffer, bufLimit, value, status) UPRV_BLOCK_MACRO_BEGIN { \
+#define APPEND( buffer, bufLimit, value, num, status){  \
     if(buffer<bufLimit){                    \
         *buffer++=(value);                  \
     }else{                                  \
         *status = U_BUFFER_OVERFLOW_ERROR;  \
     }                                       \
-} UPRV_BLOCK_MACRO_END
+    num++;                                  \
+}
 
 /**
  * Encode a run, possibly a degenerate run (of < 4 values).
@@ -106,28 +106,29 @@ encodeRunByte(uint16_t* buffer,uint16_t* bufLimit, uint8_t value, int32_t length
  */
 static uint16_t*
 encodeRunShort(uint16_t* buffer,uint16_t* bufLimit, uint16_t value, int32_t length,UErrorCode* status) {
+    int32_t num=0;
     if (length < 4) {
         int j=0;
         for (; j<length; ++j) {
             if (value == (int32_t) ESCAPE){
-                APPEND(buffer,bufLimit,ESCAPE, status);
+                APPEND(buffer,bufLimit,ESCAPE, num, status);
 
             }
-            APPEND(buffer,bufLimit,value,status);
+            APPEND(buffer,bufLimit,value,num, status);
         }
     }
     else {
         if (length == (int32_t) ESCAPE) {
             if (value == (int32_t) ESCAPE){
-                APPEND(buffer,bufLimit,ESCAPE,status);
+                APPEND(buffer,bufLimit,ESCAPE,num,status);
 
             }
-            APPEND(buffer,bufLimit,value,status);
+            APPEND(buffer,bufLimit,value,num,status);
             --length;
         }
-        APPEND(buffer,bufLimit,ESCAPE,status);
-        APPEND(buffer,bufLimit,(uint16_t) length,status);
-        APPEND(buffer,bufLimit,(uint16_t)value, status); /* Don't need to escape this value */
+        APPEND(buffer,bufLimit,ESCAPE,num,status);
+        APPEND(buffer,bufLimit,(uint16_t) length, num,status);
+        APPEND(buffer,bufLimit,(uint16_t)value, num, status); /* Don't need to escape this value */
     }
     return buffer;
 }
@@ -296,7 +297,7 @@ int32_t
 rleStringToByteArray(uint16_t* src, int32_t srcLen, uint8_t* target, int32_t tgtLen, UErrorCode* status) {
 
     int32_t length = 0;
-    UBool nextChar = true;
+    UBool nextChar = TRUE;
     uint16_t c = 0;
     int32_t node = 0;
     int32_t runLength = 0;
@@ -333,11 +334,11 @@ rleStringToByteArray(uint16_t* src, int32_t srcLen, uint8_t* target, int32_t tgt
         if (nextChar) {
             c = src[i++];
             b = (uint8_t) (c >> 8);
-            nextChar = false;
+            nextChar = FALSE;
         }
         else {
             b = (uint8_t) (c & 0xFF);
-            nextChar = true;
+            nextChar = TRUE;
         }
 
        /* This part of the loop is a tiny state machine which handles

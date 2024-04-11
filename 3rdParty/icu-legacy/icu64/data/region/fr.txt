@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 fr{
     Countries{
         001{"Monde"}
@@ -62,7 +61,7 @@ fr{
         BJ{"Bénin"}
         BL{"Saint-Barthélemy"}
         BM{"Bermudes"}
-        BN{"Brunei"}
+        BN{"Brunéi Darussalam"}
         BO{"Bolivie"}
         BQ{"Pays-Bas caribéens"}
         BR{"Brésil"}
@@ -112,7 +111,7 @@ fr{
         FI{"Finlande"}
         FJ{"Fidji"}
         FK{"Îles Malouines"}
-        FM{"Micronésie"}
+        FM{"États fédérés de Micronésie"}
         FO{"Îles Féroé"}
         FR{"France"}
         GA{"Gabon"}
@@ -129,13 +128,13 @@ fr{
         GP{"Guadeloupe"}
         GQ{"Guinée équatoriale"}
         GR{"Grèce"}
-        GS{"Géorgie du Sud-et-les Îles Sandwich du Sud"}
+        GS{"Géorgie du Sud et îles Sandwich du Sud"}
         GT{"Guatemala"}
         GU{"Guam"}
         GW{"Guinée-Bissau"}
         GY{"Guyana"}
         HK{"R.A.S. chinoise de Hong Kong"}
-        HM{"Îles Heard-et-MacDonald"}
+        HM{"Îles Heard et McDonald"}
         HN{"Honduras"}
         HR{"Croatie"}
         HT{"Haïti"}
@@ -156,7 +155,7 @@ fr{
         JO{"Jordanie"}
         JP{"Japon"}
         KE{"Kenya"}
-        KG{"Kirghizstan"}
+        KG{"Kirghizistan"}
         KH{"Cambodge"}
         KI{"Kiribati"}
         KM{"Comores"}
@@ -171,7 +170,7 @@ fr{
         LC{"Sainte-Lucie"}
         LI{"Liechtenstein"}
         LK{"Sri Lanka"}
-        LR{"Liberia"}
+        LR{"Libéria"}
         LS{"Lesotho"}
         LT{"Lituanie"}
         LU{"Luxembourg"}
@@ -204,7 +203,7 @@ fr{
         NC{"Nouvelle-Calédonie"}
         NE{"Niger"}
         NF{"Île Norfolk"}
-        NG{"Nigeria"}
+        NG{"Nigéria"}
         NI{"Nicaragua"}
         NL{"Pays-Bas"}
         NO{"Norvège"}
@@ -280,11 +279,11 @@ fr{
         UY{"Uruguay"}
         UZ{"Ouzbékistan"}
         VA{"État de la Cité du Vatican"}
-        VC{"Saint-Vincent-et-les Grenadines"}
+        VC{"Saint-Vincent-et-les-Grenadines"}
         VE{"Venezuela"}
         VG{"Îles Vierges britanniques"}
         VI{"Îles Vierges des États-Unis"}
-        VN{"Viêt Nam"}
+        VN{"Vietnam"}
         VU{"Vanuatu"}
         WF{"Wallis-et-Futuna"}
         WS{"Samoa"}
@@ -298,26 +297,22 @@ fr{
         ZW{"Zimbabwe"}
         ZZ{"région indéterminée"}
     }
-    Countries%chagos{
-        IO{"Archipel des Chagos"}
-    }
     Countries%short{
         GB{"R.-U."}
         HK{"Hong Kong"}
         MO{"Macao"}
         PS{"Palestine"}
-        UN{"ONU"}
+        UN{"NU"}
         US{"É.-U."}
     }
     Countries%variant{
         CD{"Congo (RDC)"}
         CG{"République du Congo"}
-        CI{"République de Côte d’Ivoire"}
+        CI{"​​République de Côte d’Ivoire"}
         CZ{"République tchèque"}
-        FK{"Îles Malouines (Îles Falkland)"}
-        NZ{"Aotearoa (Nouvelle-Zélande)"}
+        FK{"Îles Falkland"}
         SZ{"Swaziland"}
         TL{"Timor-Oriental"}
-        TR{"Türkiye"}
     }
+    Version{"2.1.49.82"}
 }

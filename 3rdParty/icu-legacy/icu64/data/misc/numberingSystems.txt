@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 numberingSystems:table(nofallback){
     numberingSystems{
         adlm{
@@ -71,11 +70,6 @@ numberingSystems:table(nofallback){
         deva{
             algorithmic:int{0}
             desc{"०१२३४५६७८९"}
-            radix:int{10}
-        }
-        diak{
-            algorithmic:int{0}
-            desc{"𑥐𑥑𑥒𑥓𑥔𑥕𑥖𑥗𑥘𑥙"}
             radix:int{10}
         }
         ethi{
@@ -193,11 +187,6 @@ numberingSystems:table(nofallback){
             desc{"꤀꤁꤂꤃꤄꤅꤆꤇꤈꤉"}
             radix:int{10}
         }
-        kawi{
-            algorithmic:int{0}
-            desc{"𑽐𑽑𑽒𑽓𑽔𑽕𑽖𑽗𑽘𑽙"}
-            radix:int{10}
-        }
         khmr{
             algorithmic:int{0}
             desc{"០១២៣៤៥៦៧៨៩"}
@@ -303,11 +292,6 @@ numberingSystems:table(nofallback){
             desc{"꧰꧱꧲꧳꧴꧵꧶꧷꧸꧹"}
             radix:int{10}
         }
-        nagm{
-            algorithmic:int{0}
-            desc{"𞓰𞓱𞓲𞓳𞓴𞓵𞓶𞓷𞓸𞓹"}
-            radix:int{10}
-        }
         newa{
             algorithmic:int{0}
             desc{"𑑐𑑑𑑒𑑓𑑔𑑕𑑖𑑗𑑘𑑙"}
@@ -351,11 +335,6 @@ numberingSystems:table(nofallback){
         saur{
             algorithmic:int{0}
             desc{"꣐꣑꣒꣓꣔꣕꣖꣗꣘꣙"}
-            radix:int{10}
-        }
-        segment{
-            algorithmic:int{0}
-            desc{"🯰🯱🯲🯳🯴🯵🯶🯷🯸🯹"}
             radix:int{10}
         }
         shrd{
@@ -421,11 +400,6 @@ numberingSystems:table(nofallback){
         tirh{
             algorithmic:int{0}
             desc{"𑓐𑓑𑓒𑓓𑓔𑓕𑓖𑓗𑓘𑓙"}
-            radix:int{10}
-        }
-        tnsa{
-            algorithmic:int{0}
-            desc{"𖫀𖫁𖫂𖫃𖫄𖫅𖫆𖫇𖫈𖫉"}
             radix:int{10}
         }
         vaii{

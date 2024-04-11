@@ -45,19 +45,19 @@ public:
      * Transliterator API.
      * @internal Use transliterator factory methods instead since this class will be removed in that release.
      */
-    virtual NullTransliterator* clone() const override;
+    virtual Transliterator* clone(void) const;
 
     /**
      * Implements {@link Transliterator#handleTransliterate}.
      * @internal Use transliterator factory methods instead since this class will be removed in that release.
      */
     virtual void handleTransliterate(Replaceable& text, UTransPosition& offset,
-                                     UBool isIncremental) const override;
+                                     UBool isIncremental) const;
 
     /**
      * ICU "poor man's RTTI", returns a UClassID for the actual class.
      */
-    virtual UClassID getDynamicClassID() const override;
+    virtual UClassID getDynamicClassID() const;
 
     /**
      * ICU "poor man's RTTI", returns a UClassID for this class.

@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 wae{
     Languages{
         ab{"Abčasiš"}
@@ -194,6 +193,7 @@ wae{
             latn{"Arabiši Zálä"}
         }
     }
+    Version{"2.1.47.82"}
     codePatterns{
         language{"Sprač: {0}"}
         script{"Alfabét: {0}"}

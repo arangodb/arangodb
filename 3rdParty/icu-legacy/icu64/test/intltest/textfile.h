@@ -35,7 +35,7 @@ class TextFile {
      * Read a line terminated by ^J or ^M or ^M^J, and convert it from
      * this file's encoding to Unicode. The EOL character(s) are not
      * included in 'line'.
-     * @return true if a line was read, or false if the EOF
+     * @return TRUE if a line was read, or FALSE if the EOF
      * was reached or an error occurred
      */
     UBool readLine(UnicodeString& line, UErrorCode& ec);
@@ -43,12 +43,12 @@ class TextFile {
     /**
      * Read a line, ignoring blank lines and lines that start with
      * '#'.  Trim leading white space.
-     * @param trim if true then remove leading Pattern_White_Space
-     * @return true if a line was read, or false if the EOF
+     * @param trim if TRUE then remove leading Pattern_White_Space
+     * @return TRUE if a line was read, or FALSE if the EOF
      * was reached or an error occurred
      */
     UBool readLineSkippingComments(UnicodeString& line, UErrorCode& ec,
-                                   UBool trim = false);
+                                   UBool trim = FALSE);
 
     /**
      * Return the line number of the last line returned by readLine().

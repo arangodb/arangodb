@@ -15,21 +15,14 @@
 #include "unicode/resbund.h"
 #include "restest.h"
 
-#include "uresimp.h"
-#include "ureslocs.h"
-
 #include <stdlib.h>
 #include <time.h>
 #include <string.h>
 #include <limits.h>
 
-#include <map>
-#include <set>
-#include <string>
-
 //***************************************************************************************
 
-static const char16_t kErrorUChars[] = { 0x45, 0x52, 0x52, 0x4f, 0x52, 0 };
+static const UChar kErrorUChars[] = { 0x45, 0x52, 0x52, 0x4f, 0x52, 0 };
 static const int32_t kErrorLength = 5;
 
 //***************************************************************************************
@@ -44,35 +37,11 @@ enum E_Where
 
 //***************************************************************************************
 
-#define CONFIRM_EQ(actual, expected, myAction) UPRV_BLOCK_MACRO_BEGIN { \
-    if ((expected)==(actual)) { \
-        record_pass(myAction); \
-    } else { \
-        record_fail(myAction + (UnicodeString)" returned " + (actual) + (UnicodeString)" instead of " + (expected) + "\n"); \
-    } \
-} UPRV_BLOCK_MACRO_END
-#define CONFIRM_GE(actual, expected, myAction) UPRV_BLOCK_MACRO_BEGIN { \
-    if ((actual)>=(expected)) { \
-        record_pass(myAction); \
-    } else { \
-        record_fail(myAction + (UnicodeString)" returned " + (actual) + (UnicodeString)" instead of x >= " + (expected) + "\n"); \
-    } \
-} UPRV_BLOCK_MACRO_END
-#define CONFIRM_NE(actual, expected, myAction) UPRV_BLOCK_MACRO_BEGIN { \
-    if ((expected)!=(actual)) { \
-        record_pass(myAction); \
-    } else { \
-        record_fail(myAction + (UnicodeString)" returned " + (actual) + (UnicodeString)" instead of x != " + (expected) + "\n"); \
-    } \
-} UPRV_BLOCK_MACRO_END
+#define CONFIRM_EQ(actual, expected, myAction) if ((expected)==(actual)) { record_pass(myAction); } else { record_fail(myAction + (UnicodeString)" returned " + (actual) + (UnicodeString)" instead of " + (expected) + "\n");}
+#define CONFIRM_GE(actual, expected, myAction) if ((actual)>=(expected)) { record_pass(myAction); } else { record_fail(myAction + (UnicodeString)" returned " + (actual) + (UnicodeString)" instead of x >= " + (expected) + "\n");}
+#define CONFIRM_NE(actual, expected, myAction) if ((expected)!=(actual)) { record_pass(myAction); } else { record_fail(myAction + (UnicodeString)" returned " + (actual) + (UnicodeString)" instead of x != " + (expected) + "\n");}
 
-#define CONFIRM_UErrorCode(actual, expected, myAction) UPRV_BLOCK_MACRO_BEGIN { \
-    if ((expected)==(actual)) { \
-        record_pass(myAction); \
-    } else { \
-        record_fail(myAction + (UnicodeString)" returned " + u_errorName(actual) + " instead of " + u_errorName(expected) + "\n"); \
-    } \
-} UPRV_BLOCK_MACRO_END
+#define CONFIRM_UErrorCode(actual, expected, myAction) if ((expected)==(actual)) { record_pass(myAction); } else { record_fail(myAction + (UnicodeString)" returned " + u_errorName(actual) + " instead of " + u_errorName(expected) + "\n"); }
 
 //***************************************************************************************
 
@@ -133,12 +102,12 @@ param[] =
     // "IN" means inherits
     // "NE" or "ne" means "does not exist"
 
-    { "root",       nullptr,   U_ZERO_ERROR,             e_Root,      { true, false, false }, { true, false, false } },
-    { "te",         nullptr,   U_ZERO_ERROR,             e_te,        { false, true, false }, { true, true, false } },
-    { "te_IN",      nullptr,   U_ZERO_ERROR,             e_te_IN,     { false, false, true }, { true, true, true } },
-    { "te_NE",      nullptr,   U_USING_FALLBACK_WARNING, e_te,        { false, true, false }, { true, true, false } },
-    { "te_IN_NE",   nullptr,   U_USING_FALLBACK_WARNING, e_te_IN,     { false, false, true }, { true, true, true } },
-    { "ne",         nullptr,   U_USING_DEFAULT_WARNING,  e_Root,      { true, false, false }, { true, false, false } }
+    { "root",       NULL,   U_ZERO_ERROR,             e_Root,      { TRUE, FALSE, FALSE }, { TRUE, FALSE, FALSE } },
+    { "te",         NULL,   U_ZERO_ERROR,             e_te,        { FALSE, TRUE, FALSE }, { TRUE, TRUE, FALSE } },
+    { "te_IN",      NULL,   U_ZERO_ERROR,             e_te_IN,     { FALSE, FALSE, TRUE }, { TRUE, TRUE, TRUE } },
+    { "te_NE",      NULL,   U_USING_FALLBACK_WARNING, e_te,        { FALSE, TRUE, FALSE }, { TRUE, TRUE, FALSE } },
+    { "te_IN_NE",   NULL,   U_USING_FALLBACK_WARNING, e_te_IN,     { FALSE, FALSE, TRUE }, { TRUE, TRUE, TRUE } },
+    { "ne",         NULL,   U_USING_DEFAULT_WARNING,  e_Root,      { TRUE, FALSE, FALSE }, { TRUE, FALSE, FALSE } }
 };
 
 static const int32_t bundles_count = UPRV_LENGTHOF(param);
@@ -152,11 +121,11 @@ static const int32_t bundles_count = UPRV_LENGTHOF(param);
 uint32_t
 randul()
 {
-    static UBool initialized = false;
+    static UBool initialized = FALSE;
     if (!initialized)
     {
-        srand((unsigned)time(nullptr));
-        initialized = true;
+        srand((unsigned)time(NULL));
+        initialized = TRUE;
     }
     // Assume rand has at least 12 bits of precision
     uint32_t l = 0;
@@ -191,7 +160,7 @@ ResourceBundleTest::ResourceBundleTest()
 : pass(0),
   fail(0)
 {
-    if (param[5].locale == nullptr) {
+    if (param[5].locale == NULL) {
         param[0].locale = new Locale("root");
         param[1].locale = new Locale("te");
         param[2].locale = new Locale("te", "IN");
@@ -207,7 +176,7 @@ ResourceBundleTest::~ResourceBundleTest()
         int idx;
         for (idx = 0; idx < UPRV_LENGTHOF(param); idx++) {
             delete param[idx].locale;
-            param[idx].locale = nullptr;
+            param[idx].locale = NULL;
         }
     }
 }
@@ -226,8 +195,6 @@ void ResourceBundleTest::runIndexedTest( int32_t index, UBool exec, const char* 
 #endif
 
     case 4: name = "TestExemplar"; if (exec) TestExemplar(); break;
-    case 5: name = "TestPersonUnits"; if (exec) TestPersonUnits(); break;
-    case 6: name = "TestZuluFields"; if (exec) TestZuluFields(); break;
         default: name = ""; break; //needed to end loop
     }
 }
@@ -252,14 +219,14 @@ ResourceBundleTest::TestResourceBundles()
         Locale::setDefault(Locale("en_US"), status);
     }
 
-    testTag("only_in_Root", true, false, false);
-    testTag("only_in_te", false, true, false);
-    testTag("only_in_te_IN", false, false, true);
-    testTag("in_Root_te", true, true, false);
-    testTag("in_Root_te_te_IN", true, true, true);
-    testTag("in_Root_te_IN", true, false, true);
-    testTag("in_te_te_IN", false, true, true);
-    testTag("nonexistent", false, false, false);
+    testTag("only_in_Root", TRUE, FALSE, FALSE);
+    testTag("only_in_te", FALSE, TRUE, FALSE);
+    testTag("only_in_te_IN", FALSE, FALSE, TRUE);
+    testTag("in_Root_te", TRUE, TRUE, FALSE);
+    testTag("in_Root_te_te_IN", TRUE, TRUE, TRUE);
+    testTag("in_Root_te_IN", TRUE, FALSE, TRUE);
+    testTag("in_te_te_IN", FALSE, TRUE, TRUE);
+    testTag("nonexistent", FALSE, FALSE, FALSE);
     logln("Passed: %d\nFailed: %d", pass, fail);
 
     /* Restore the default locale for the other tests. */
@@ -313,7 +280,7 @@ ResourceBundleTest::TestConstruction()
     char *versionID1 = new char[1+strlen(version1)]; // + 1 for zero byte
     char *versionID2 = new char[1+ strlen(version2)]; // + 1 for zero byte
 
-    strcpy(versionID1, "45.0");  // hardcoded, please change if the default.txt file or ResourceBundle::kVersionSeparater is changed.
+    strcpy(versionID1, "44.0");  // hardcoded, please change if the default.txt file or ResourceBundle::kVersionSeparater is changed.
 
     strcpy(versionID2, "55.0");  // hardcoded, please change if the te_IN.txt file or ResourceBundle::kVersionSeparater is changed.
 
@@ -360,7 +327,7 @@ ResourceBundleTest::testTag(const char* frag,
     if(U_FAILURE(status))
     {
         dataerrln("Could not load testdata.dat %s " + UnicodeString(u_errorName(status)));
-        return false;
+        return FALSE;
     }
 
     for (i=0; i<bundles_count; ++i)
@@ -428,7 +395,7 @@ ResourceBundleTest::testTag(const char* frag,
         UnicodeString string(theBundle.getStringEx(tag, status));
 
         if(U_FAILURE(status)) {
-            string.setTo(true, kErrorUChars, kErrorLength);
+            string.setTo(TRUE, kErrorUChars, kErrorLength);
         }
 
         CONFIRM_UErrorCode(status, expected_resource_status, action);
@@ -529,10 +496,10 @@ ResourceBundleTest::TestExemplar(){
     UErrorCode status = U_ZERO_ERROR;
     for(;locIndex<locCount;locIndex++){
         const char* locale = uloc_getAvailable(locIndex);
-        UResourceBundle *resb =ures_open(nullptr,locale,&status);
+        UResourceBundle *resb =ures_open(NULL,locale,&status);
         if(U_SUCCESS(status) && status!=U_USING_FALLBACK_WARNING && status!=U_USING_DEFAULT_WARNING){
             int32_t len=0;
-            const char16_t* strSet = ures_getStringByKey(resb,"ExemplarCharacters",&len,&status);
+            const UChar* strSet = ures_getStringByKey(resb,"ExemplarCharacters",&len,&status);
             UnicodeSet set(strSet,status);
             if(U_FAILURE(status)){
                 errln("Could not construct UnicodeSet from pattern for ExemplarCharacters in locale : %s. Error: %s",locale,u_errorName(status));
@@ -547,7 +514,7 @@ ResourceBundleTest::TestExemplar(){
 }
 
 void 
-ResourceBundleTest::TestGetSize() 
+ResourceBundleTest::TestGetSize(void) 
 {
     const struct {
         const char* key;
@@ -604,7 +571,7 @@ ResourceBundleTest::TestGetSize()
 }
 
 void 
-ResourceBundleTest::TestGetLocaleByType() 
+ResourceBundleTest::TestGetLocaleByType(void) 
 {
     const struct {
         const char *requestedLocale;
@@ -662,160 +629,5 @@ ResourceBundleTest::TestGetLocaleByType()
         if(strcmp(locale.getName(), test[i].actualLocale) != 0) {
             err("Expected actual locale to be %s. Got %s\n", test[i].requestedLocale, locale.getName());
         }
-    }
-}
-
-void
-ResourceBundleTest::TestPersonUnits() {
-    // Test for ICU-21877: ICUResourceBundle.getAllChildrenWithFallback() doesn't return all of the children of the resource
-    // that's passed into it.  If you have to follow an alias to get some of the children, we get the resources in the
-    // bundle we're aliasing to, and its children, but things that the bundle we're aliasing to inherits from its parent
-    // don't show up.
-    // This example is from the en_CA resource in the "unit" tree: The four test cases below show what we get when we call
-    // getStringWithFallback():
-    // - units/duration/day-person/other doesn't exist in either en_CA or en, so we fall back on root.
-    // - root/units aliases over to LOCALE/unitsShort.
-    // - unitsShort/duration/day-person/other also doesn't exist in either en_CA or en, so we fall back to root again.
-    // - root/unitsShort/duration/day-person aliases over to LOCALE/unitsShort/duration/day.
-    // - unitsShort/duration/day/other also doesn't exist in en_CA, so we fallback to en.
-    // - en/unitsShort/duration/day/other DOES exist and has "{0} days", so we return that.
-    // It's the same basic story for week-person, month-person, and year-person, except that:
-    // - unitsShort/duration/day doesn't exist at all in en_CA
-    // - unitsShort/duration/week DOES exist in en_CA, but only contains "per", so we inherit "other" from en
-    // - unitsShort/duration/month/other DOES exist in en_CA (it overrides "{0} mths" with "{0} mos")
-    // - unitsShort/duration/year DOES exist in en_CA, but only contains "per", so we inherit "other" from en
-    UErrorCode err = U_ZERO_ERROR;
-    LocalUResourceBundlePointer en_ca(ures_open(U_ICUDATA_UNIT, "en_CA", &err));
-    
-    if (!assertSuccess("Failed to load en_CA resource in units tree", err)) {
-        return;
-    }
-    assertEquals("Wrong result for units/duration/day-person/other", u"{0} days", ures_getStringByKeyWithFallback(en_ca.getAlias(), "units/duration/day-person/other", nullptr, &err));
-    assertEquals("Wrong result for units/duration/week-person/other", u"{0} wks", ures_getStringByKeyWithFallback(en_ca.getAlias(), "units/duration/week-person/other", nullptr, &err));
-    assertEquals("Wrong result for units/duration/month-person/other", u"{0} mos", ures_getStringByKeyWithFallback(en_ca.getAlias(), "units/duration/month-person/other", nullptr, &err));
-    assertEquals("Wrong result for units/duration/year-person/other", u"{0} yrs", ures_getStringByKeyWithFallback(en_ca.getAlias(), "units/duration/year-person/other", nullptr, &err));
-
-    // getAllChildrenWithFallback() wasn't bringing all of those things back, however.  When en_CA/units/year-person
-    // aliased over to en_CA/unitsShort/year, the sink would only be called on en_CA/unitsShort/year, which means it'd
-    // only see en_CA/unitsShort/year/per, because "per" was the only thing contained in en_CA/unitsShort/year.  But
-    // en_CA/unitsShort/year should be inheriting "dnam", "one", and "other" from en/unitsShort/year.
-    // getAllChildrenWithFallback() had to be modified to walk the parent chain and call the sink again with
-    // en/unitsShort/year and root/unitsShort/year.
-    struct TestPersonUnitsSink : public ResourceSink {
-        typedef std::set<std::string> FoundKeysType;
-        typedef std::map<std::string, FoundKeysType > FoundResourcesType;
-        FoundResourcesType foundResources;
-        IntlTest& owningTestCase;
-        
-        TestPersonUnitsSink(IntlTest& owningTestCase) : owningTestCase(owningTestCase) {}
-        
-        virtual void put(const char *key, ResourceValue &value, UBool /*noFallback*/,
-                         UErrorCode &errorCode) override {
-            if (value.getType() != URES_TABLE) {
-                owningTestCase.errln("%s is not a table!", key);
-                return;
-            }
-            
-            FoundKeysType& foundKeys(foundResources[key]);
-            
-            ResourceTable childTable = value.getTable(errorCode);
-            if (owningTestCase.assertSuccess("value.getTable() didn't work", errorCode)) {
-                const char* childKey;
-                for (int32_t i = 0; i < childTable.getSize(); i++) {
-                    childTable.getKeyAndValue(i, childKey, value);
-                    foundKeys.insert(childKey);
-                }
-            }
-        }
-    };
-    
-    TestPersonUnitsSink sink(*this);
-    ures_getAllChildrenWithFallback(en_ca.getAlias(), "units/duration", sink, err);
-    
-    if (assertSuccess("ures_getAllChildrenWithFallback() failed", err)) {
-        for (auto foundResourcesEntry : sink.foundResources) {
-            std::string foundResourcesKey = foundResourcesEntry.first;
-            if (foundResourcesKey.rfind("-person") == std::string::npos) {
-                continue;
-            }
-            
-            TestPersonUnitsSink::FoundKeysType foundKeys = foundResourcesEntry.second;
-            if (foundKeys.find("dnam") == foundKeys.end()) {
-                errln("%s doesn't contain 'dnam'!", foundResourcesKey.c_str());
-            }
-            if (foundKeys.find("one") == foundKeys.end()) {
-                errln("%s doesn't contain 'one'!", foundResourcesKey.c_str());
-            }
-            if (foundKeys.find("other") == foundKeys.end()) {
-                errln("%s doesn't contain 'other'!", foundResourcesKey.c_str());
-            }
-            if (foundKeys.find("per") == foundKeys.end()) {
-                errln("%s doesn't contain 'per'!", foundResourcesKey.c_str());
-            }
-        }
-    }
-}
-
-void
-ResourceBundleTest::TestZuluFields() {
-    // Test for ICU-21877: Similar to the above test, except that here we're bringing back the wrong values.
-    // In some resources under the "locales" tree, some resources under "fields" would either have no display
-    // names or bring back the _wrong_ display names.  The underlying cause was the same as in TestPersonUnits()
-    // above, except that there were two levels of indirection: At the root level, *-narrow aliased to *-short,
-    // which in turn aliased to *.  If (say) day-narrow and day-short both didn't have "dn" resources, you could
-    // iterate over fields/day-short and find the "dn" resource that should have been inherited over from
-    // fields/day, but if you iterated over fields/day-narrow, you WOULDN'T get back the "dn" resource from
-    // fields/day (or, with my original fix for ICU-21877, you'd get back the wrong value).  This test verifies
-    // that the double indirection works correctly.
-    UErrorCode err = U_ZERO_ERROR;
-    LocalUResourceBundlePointer zu(ures_open(nullptr, "zu", &err));
-    
-    if (!assertSuccess("Failed to load zu resource in locales tree", err)) {
-        return;
-    }
-    assertEquals("Wrong getStringWithFallback() result for fields/day/dn", u"Usuku", ures_getStringByKeyWithFallback(zu.getAlias(), "fields/day/dn", nullptr, &err));
-    assertEquals("Wrong getStringWithFallback() result for fields/day-short/dn", u"Usuku", ures_getStringByKeyWithFallback(zu.getAlias(), "fields/day-short/dn", nullptr, &err));
-    assertEquals("Wrong getStringWithFallback() result for fields/day-narrow/dn", u"Usuku", ures_getStringByKeyWithFallback(zu.getAlias(), "fields/day-narrow/dn", nullptr, &err));
-
-    assertEquals("Wrong getStringWithFallback() result for fields/month/dn", u"Inyanga", ures_getStringByKeyWithFallback(zu.getAlias(), "fields/month/dn", nullptr, &err));
-    assertEquals("Wrong getStringWithFallback() result for fields/month-short/dn", u"Inyanga", ures_getStringByKeyWithFallback(zu.getAlias(), "fields/month-short/dn", nullptr, &err));
-    assertEquals("Wrong getStringWithFallback() result for fields/month-narrow/dn", u"Inyanga", ures_getStringByKeyWithFallback(zu.getAlias(), "fields/month-narrow/dn", nullptr, &err));
-
-    struct TestZuluFieldsSink : public ResourceSink {
-        typedef std::map<std::string, const UChar* > FoundResourcesType;
-        FoundResourcesType foundResources;
-        IntlTest& owningTestCase;
-        
-        TestZuluFieldsSink(IntlTest& owningTestCase) : owningTestCase(owningTestCase) {}
-        
-        virtual void put(const char *key, ResourceValue &value, UBool /*noFallback*/,
-                         UErrorCode &errorCode) override {
-            if (value.getType() != URES_TABLE) {
-                owningTestCase.errln("%s is not a table!", key);
-                return;
-            }
-            
-            ResourceTable childTable = value.getTable(errorCode);
-            if (owningTestCase.assertSuccess("value.getTable() didn't work", errorCode)) {
-                if (childTable.findValue("dn", value)) {
-                    int32_t dummyLength;
-                    if (foundResources.find(key) == foundResources.end()) {
-                        foundResources.insert(std::make_pair(key, value.getString(dummyLength, errorCode)));
-                    }
-                }
-            }
-        }
-    };
-
-    TestZuluFieldsSink sink(*this);
-    ures_getAllChildrenWithFallback(zu.getAlias(), "fields", sink, err);
-    
-    if (assertSuccess("ures_getAllChildrenWithFallback() failed", err)) {
-        assertEquals("Wrong getAllChildrenWithFallback() result for fields/day/dn", u"Usuku", sink.foundResources["day"]);
-        assertEquals("Wrong getAllChildrenWithFallback() result for fields/day-short/dn", u"Usuku", sink.foundResources["day-short"]);
-        assertEquals("Wrong getAllChildrenWithFallback() result for fields/day-narrow/dn", u"Usuku", sink.foundResources["day-narrow"]);
-        assertEquals("Wrong getAllChildrenWithFallback() result for fields/month/dn", u"Inyanga", sink.foundResources["month"]);
-        assertEquals("Wrong getAllChildrenWithFallback() result for fields/month-short/dn", u"Inyanga", sink.foundResources["month-short"]);
-        assertEquals("Wrong getAllChildrenWithFallback() result for fields/month-narrow/dn", u"Inyanga", sink.foundResources["month-narrow"]);
     }
 }

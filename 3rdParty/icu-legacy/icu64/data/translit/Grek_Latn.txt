@@ -1,6 +1,5 @@
 ﻿# © 2016 and later: Unicode, Inc. and others.
-# License & terms of use: http://www.unicode.org/copyright.html
-# Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+# License & terms of use: http://www.unicode.org/copyright.html#License
 #
 # File: Grek_Latn.txt
 # Generated from CLDR
@@ -9,7 +8,7 @@
 # Rules are predicated on running NFD first, and NFC afterwards
 # :: [\u0000-\u007F \u0370-Ͽ [:Greek:] [:nonspacing mark:]] ;
 # MINIMAL FILTER GENERATED FOR: Greek-Latin
-:: [΄´;µ·ÄËÏÖÜäëïöüÿ-āĒ-ēĪ-īŌ-ōŪ-ūŸǕ-ǜǞ-ǣǬ-ǭȪ-ȭȰ-ȳ\u0304\u0308\u0313-\u0314\u0342-\u0345ͺ;Ά-ΊΌΎ-ΡΣ-ώϐ-ϗϛϝϟϡϣϥϧϩϫϭϯ-ϵϷ-\u07FBЁЇёїӒ-ӓӚ-ӟӢ-ӧӪ-ӱӴ-ӵӸ-ӹḔ-ḗḠ-ḡḦ-ḧḮ-ḯḸ-ḹṎ-ṓṜ-ṝṺ-ṻẄ-ẅẌ-ẍẗἀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼι῁-ῄῆ-ῌ῏-ΐῖ-Ί῟-Ῥῲ-ῴῶ-ῼΩϹ] ;
+:: [;µ·ÄËÏÖÜäëïöüÿ-āĒ-ēĪ-īŌ-ōŪ-ūŸǕ-ǜǞ-ǣǬ-ǭȪ-ȭȰ-ȳ\u0304\u0308\u0313-\u0314\u0342-\u0345ͺ;Ά-ΊΌΎ-ΡΣ-ώϐ-ϗϛϝϟϡϣϥϧϩϫϭϯ-ϵϷ-\u07FBЁЇёїӒ-ӓӚ-ӟӢ-ӧӪ-ӱӴ-ӵӸ-ӹḔ-ḗḠ-ḡḦ-ḧḮ-ḯḸ-ḹṎ-ṓṜ-ṝṺ-ṻẄ-ẅẌ-ẍẗἀ-ἕἘ-Ἕἠ-ὅὈ-Ὅὐ-ὗὙὛὝὟ-ώᾀ-ᾴᾶ-ᾼι῁-ῄῆ-ῌ῏-ΐῖ-Ί῟-Ῥῲ-ῴῶ-ῼΩϹ] ;
 :: NFD (NFC) ;
 # TEST CASES
 # Ὀλίγοι ἔμφονες πολλῶν ἀφρόνων φοβερώτεροι — Πλάτωνος
@@ -56,7 +55,6 @@ $under = \u0331;
 \? ↔ \? $under ;
 \; ↔ \? ;
 · ↔ \: ;
-΄ ↔ ´;
 # CIRCUMFLEX: convert greek circumflex to normal one. Could use tilde or inverted breve
 \u0342 ↔ \u0302 ;
 # IOTA: convert iota subscript to iota

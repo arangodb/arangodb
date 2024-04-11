@@ -1,14 +1,13 @@
 ﻿# © 2016 and later: Unicode, Inc. and others.
-# License & terms of use: http://www.unicode.org/copyright.html
-# Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+# License & terms of use: http://www.unicode.org/copyright.html#License
 #
 # File: Hira_Kana.txt
 # Generated from CLDR
 #
 
 # note: a global filter is more efficient, but MUST include all source chars
-:: [[\u0000-\u007E 、。 \u3099-゜ ァ-ー ｡-ﾟー[:Hiragana:] [:Katakana:] [:nonspacing mark:]]-[\u309B \u309C]];
-:: NFKC (NFC);
+:: [\u0000-\u007E 、。 \u3099-゜ ァ-ー ｡-ﾟー[:Hiragana:] [:Katakana:] [:nonspacing mark:]] ;
+:: NFKC ();
 # Hiragana-Katakana
 # This is largely a one-to-one mapping, but it has a
 # few kinks:
@@ -149,38 +148,38 @@
 # transformed to Hiragana.
 # {The following mechanically generated from the
 # Unicode 3.0 data:}
-$xa = [
-ぁ あ か が さ ざ
-た だ な は ば ぱ
-ま ゃ や ら ゎ わ
+$xa = [ \
+ぁ あ か が さ ざ \
+た だ な は ば ぱ \
+ま ゃ や ら ゎ わ \
 ];
-$xi = [
-ぃ い き ぎ し じ
-ち ぢ に ひ び ぴ
-み り ゐ
+$xi = [ \
+ぃ い き ぎ し じ \
+ち ぢ に ひ び ぴ \
+み り ゐ \
 ];
-$xu = [
-ぅ う く ぐ す ず
-っ つ づ ぬ ふ ぶ
-ぷ む ゅ ゆ る ゔ
+$xu = [ \
+ぅ う く ぐ す ず \
+っ つ づ ぬ ふ ぶ \
+ぷ む ゅ ゆ る ゔ \
 ];
-$xe = [
-ぇ え け げ せ ぜ
-て で ね へ べ ぺ
-め れ ゑ
+$xe = [ \
+ぇ え け げ せ ぜ \
+て で ね へ べ ぺ \
+め れ ゑ \
 ];
-$xo = [
-ぉ お こ ご そ ぞ
-と ど の ほ ぼ ぽ
-も ょ よ ろ を
+$xo = [ \
+ぉ お こ ご そ ぞ \
+と ど の ほ ぼ ぽ \
+も ょ よ ろ を \
 ];
 あ ← $xa {ー};
 い ← $xi {ー};
 う ← $xu {ー};
 え ← $xe {ー};
 お ← $xo {ー};
-:: NFC (NFKC) ;
+:: (NFKC) ;
 # note: a global filter is more efficient, but MUST include all source chars!!
-:: ([[\u0000-\u007E 、。 \u3099-゜ ァ-ー ｡-ﾟー[:Hiragana:] [:Katakana:] [:nonspacing mark:]]-[\u309B \u309C]]);
+:: ([\u0000-\u007E 、。 \u3099-゜ ァ-ー ｡-ﾟー[:Hiragana:] [:Katakana:] [:nonspacing mark:]]);
 # eof
 

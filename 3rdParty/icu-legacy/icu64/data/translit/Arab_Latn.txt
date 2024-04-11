@@ -1,6 +1,5 @@
 ﻿# © 2016 and later: Unicode, Inc. and others.
-# License & terms of use: http://www.unicode.org/copyright.html
-# Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+# License & terms of use: http://www.unicode.org/copyright.html#License
 #
 # File: Arab_Latn.txt
 # Generated from CLDR
@@ -55,9 +54,6 @@ $notAbove = [[:^ccc=0:] & [:^ccc=230:]];
 ٧ ↔ 7 ; # ARABIC-INDIC DIGIT SEVEN
 ٨ ↔ 8 ; # ARABIC-INDIC DIGIT EIGHT
 ٩ ↔ 9 ; # ARABIC-INDIC DIGIT NINE
-؉ ↔ ‰ ;	# U+0609	ARABIC-INDIC PER MILLE SIGN
-؊ ↔ ‱ ;	 # U+060A	ARABIC-INDIC PER TEN THOUSAND SIGN
-‎۔‎ ↔ '.' ; 	# U+06D4	ARABIC FULL STOP
 # letters
 # long vowels
 \u064Eا↔ a\u0304 ; # ARABIC FATHA, ARABIC LETTER ALEF
@@ -128,51 +124,6 @@ $notAbove = [[:^ccc=0:] & [:^ccc=230:]];
 # ڥ ↔ v $disambig ; # ARABIC LETTER FEH WITH THREE DOTS BELOW
 # ڢ ↔ f $disambig ; # ARABIC LETTER FEH WITH DOT MOVED BELOW
 گ ↔ g ; # ARABIC LETTER GAF
-# fallbacks TODO roundtrip where possible, using diacritics to distinguish
-#https://en.wikipedia.org/wiki/Sindhi_transliteration
-‎ٺ‎→ṭh;
-‎ٿ‎→th;
-‎ٽ‎→ṭ;
-‎ڙ‎→ṛ;
-‎ڦ‎→ph;
-‎ڻ‎→ṇ;
-‎ڱ‎→ṅ;
-‎ڃ‎→ñ;
-‎ڪ‎→k;
-‎ڄ‎→j\u0308;
-‎ۃ‎→ẖ;
-‎ڳ‎→g\u0324;
-‎ڍ‎→ḍh;
-‎ڌ‎→dh;
-‎ڏ‎→d\u0324;
-‎ڊ‎→ḍ;
-‎ڇ‎→ch;
-‎ڀ‎→bh;
-‎ٻ‎→ḇ;
-‎۽‎→'&';
-‎۾‎→'mn';
-#https://en.wiktionary.org/wiki/Wiktionary:Urdu_transliteration
-‎ھ‎ → ʱ ;
-‎ں‎ → ◌\u0303 ;
-‎ے‎ → ai ;
-‎ڈ‎ → ḍ ;
-‎ڑ‎ → ṛ ;
-‎ٹ‎ → ṭ ;
-#https://www.eki.ee/wgrs/rom2_ps.htm
-#https://en.wikipedia.org/wiki/Pashto_alphabet
-‎ټ‎ → ṯ ;
-‎ځ‎ → dz ;
-‎څ‎ → ts ;
-‎ډ‎ → ḏ ;
-‎ړ‎ → ṟ ;
-‎ږ‎ → z\u035Fh ;
-‎ګ‎ → g ;
-‎ڼ‎ → ṉ ;
-‎ۍ‎ → ạy ;
-‎ې‎ → e ;
-#https://www.eki.ee/wgrs/rom1_ug.pdf
-‎ہ‎ → ḥ ;
-‎ە‎ → ĥ ;
 # fallbacks
 | s ← c } [eiy];
 | k ← c ;

@@ -262,7 +262,7 @@ void addEnglishCollTest(TestNode** root)
 
 }
 
-static void TestTertiary(void)
+static void TestTertiary( )
 {
     int32_t testMoreSize;
     UCollationResult expected=UCOL_EQUAL;
@@ -305,7 +305,7 @@ static void TestTertiary(void)
     ucol_close(myCollation);
 }
 
-static void TestPrimary(void)
+static void TestPrimary()
 {
     
     int32_t i;
@@ -324,7 +324,7 @@ static void TestPrimary(void)
     ucol_close(myCollation);
 }
 
-static void TestSecondary(void)
+static void TestSecondary()
 {
     UCollationResult expected=UCOL_EQUAL;
     int32_t i,j, testAcuteSize;

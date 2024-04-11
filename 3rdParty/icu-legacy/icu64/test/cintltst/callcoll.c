@@ -31,9 +31,8 @@
  * equlivalent to word 'one'. 
  */
 
-#include <stdbool.h>
-#include <stdlib.h>
 #include <string.h>
+#include <stdlib.h>
 
 #include "unicode/utypes.h"
 
@@ -151,7 +150,7 @@ void uprv_appendByteToHexString(char *dst, uint8_t val) {
 static char* U_EXPORT2 sortKeyToString(const UCollator *coll, const uint8_t *sortkey, char *buffer, uint32_t *len) {
     int32_t strength = UCOL_PRIMARY;
     uint32_t res_size = 0;
-    UBool doneCase = false;
+    UBool doneCase = FALSE;
     UErrorCode errorCode = U_ZERO_ERROR;
 
     char *current = buffer;
@@ -167,9 +166,9 @@ static char* U_EXPORT2 sortKeyToString(const UCollator *coll, const uint8_t *sor
             uprv_appendByteToHexString(current, *currentSk++);
             uprv_strcat(current, " ");
         }
-        if(ucol_getAttribute(coll, UCOL_CASE_LEVEL, &errorCode) == UCOL_ON && strength == UCOL_SECONDARY && doneCase == false) {
-            doneCase = true;
-        } else if(ucol_getAttribute(coll, UCOL_CASE_LEVEL, &errorCode) == UCOL_OFF || doneCase == true || strength != UCOL_SECONDARY) {
+        if(ucol_getAttribute(coll, UCOL_CASE_LEVEL, &errorCode) == UCOL_ON && strength == UCOL_SECONDARY && doneCase == FALSE) {
+            doneCase = TRUE;
+        } else if(ucol_getAttribute(coll, UCOL_CASE_LEVEL, &errorCode) == UCOL_OFF || doneCase == TRUE || strength != UCOL_SECONDARY) {
             strength ++;
         }
         if (*currentSk) {
@@ -220,17 +219,17 @@ UBool hasCollationElements(const char *locName) {
 
   UErrorCode status = U_ZERO_ERROR;
 
-  UResourceBundle *loc = ures_open(U_ICUDATA_NAME U_TREE_SEPARATOR_STRING "coll", locName, &status);
+  UResourceBundle *loc = ures_open(U_ICUDATA_NAME U_TREE_SEPARATOR_STRING "coll", locName, &status);;
 
   if(U_SUCCESS(status)) {
     status = U_ZERO_ERROR;
     loc = ures_getByKey(loc, "collations", loc, &status);
     ures_close(loc);
     if(status == U_ZERO_ERROR) { /* do the test - there are real elements */
-      return true;
+      return TRUE;
     }
   }
-  return false;
+  return FALSE;
 }
 
 static UCollationResult compareUsingPartials(UCollator *coll, const UChar source[], int32_t sLen, const UChar target[], int32_t tLen, int32_t pieceSize, UErrorCode *status) {
@@ -739,7 +738,7 @@ void genericRulesStarter(const char *rules, const char * const s[], uint32_t siz
   genericRulesStarterWithResult(rules, s, size, UCOL_LESS);
 }
 
-static void TestTertiary(void)
+static void TestTertiary()
 {
     int32_t len,i;
     UCollator *myCollation;
@@ -764,7 +763,7 @@ static void TestTertiary(void)
     myCollation = 0;
 }
 
-static void TestPrimary(void)
+static void TestPrimary( )
 {
     int32_t len,i;
     UCollator *myCollation;
@@ -790,7 +789,7 @@ static void TestPrimary(void)
     myCollation = 0;
 }
 
-static void TestSecondary(void)
+static void TestSecondary()
 {
     int32_t i;
     int32_t len;
@@ -815,7 +814,7 @@ static void TestSecondary(void)
     myCollation = 0;
 }
 
-static void TestIdentical(void)
+static void TestIdentical()
 {
     int32_t i;
     int32_t len;
@@ -839,7 +838,7 @@ static void TestIdentical(void)
     myCollation = 0;
 }
 
-static void TestExtra(void)
+static void TestExtra()
 {
     int32_t i, j;
     int32_t len;
@@ -1173,7 +1172,7 @@ static void TestSurrogates(void)
  *
  */
 static void 
-TestInvalidRules(void){
+TestInvalidRules(){
 #define MAX_ERROR_STATES 2
 
     static const char* rulesArr[MAX_ERROR_STATES] = {
@@ -1219,7 +1218,7 @@ TestInvalidRules(void){
 }
 
 static void
-TestJitterbug1098(void){
+TestJitterbug1098(){
     UChar rule[1000];
     UCollator* c1 = NULL;
     UErrorCode status = U_ZERO_ERROR;
@@ -1303,15 +1302,15 @@ find(UEnumeration* list, const char* str, UErrorCode* status){
     const char* value = NULL;
     int32_t length=0;
     if(U_FAILURE(*status)){
-        return false;
+        return FALSE;
     }
     uenum_reset(list, status);
     while( (value= uenum_next(list, &length, status))!=NULL){
         if(strcmp(value, str)==0){
-            return true;
+            return TRUE;
         }
     }
-    return false;
+    return FALSE;
 }*/
 
 static void TestJ5298(void)

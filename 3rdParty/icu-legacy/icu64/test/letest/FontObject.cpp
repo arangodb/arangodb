@@ -9,21 +9,19 @@
 
 #include <stdio.h>
 
-#include "layout/LETypes.h"
+#include "LETypes.h"
 #include "FontObject.h"
-#include "layout/LESwaps.h"
-
-using icu::LESwaps;
+#include "LESwaps.h"
 
 FontObject::FontObject(char *fileName)
-  : directory(nullptr), numTables(0), searchRange(0),entrySelector(0),
-    cmapTable(nullptr), cmSegCount(0), cmSearchRange(0), cmEntrySelector(0),
-    cmEndCodes(nullptr), cmStartCodes(nullptr), cmIdDelta(nullptr), cmIdRangeOffset(nullptr),
-    headTable(nullptr), hmtxTable(nullptr), numGlyphs(0), numOfLongHorMetrics(0), file(nullptr)
+  : directory(NULL), numTables(0), searchRange(0),entrySelector(0),
+    cmapTable(NULL), cmSegCount(0), cmSearchRange(0), cmEntrySelector(0),
+    cmEndCodes(NULL), cmStartCodes(NULL), cmIdDelta(0), cmIdRangeOffset(0),
+    headTable(NULL), hmtxTable(NULL), numGlyphs(0), numOfLongHorMetrics(0), file(NULL)
 {
     file = fopen(fileName, "rb");
 
-    if (file == nullptr) {
+    if (file == NULL) {
         printf("?? Couldn't open %s", fileName);
         return;
     }
@@ -82,16 +80,16 @@ DirectoryEntry *FontObject::findTable(LETag tag)
         return &directory->tableDirectory[table];
     }
 
-    return nullptr;
+    return NULL;
 }
 
 void *FontObject::readTable(LETag tag, le_uint32 *length)
 {
     DirectoryEntry *entry = findTable(tag);
 
-    if (entry == nullptr) {
+    if (entry == NULL) {
         *length = 0;
-        return nullptr;
+        return NULL;
     }
 
     *length = SWAPL(entry->length);
@@ -108,13 +106,13 @@ CMAPEncodingSubtable *FontObject::findCMAP(le_uint16 platformID, le_uint16 platf
 {
     LETag cmapTag = 0x636D6170; // 'cmap'
 
-    if (cmapTable == nullptr) {
+    if (cmapTable == NULL) {
         le_uint32 length;
 
         cmapTable = (CMAPTable *) readTable(cmapTag, &length);
     }
 
-    if (cmapTable != nullptr) {
+    if (cmapTable != NULL) {
         le_uint16 i;
         le_uint16 nSubtables = SWAPW(cmapTable->numberSubtables);
 
@@ -129,14 +127,14 @@ CMAPEncodingSubtable *FontObject::findCMAP(le_uint16 platformID, le_uint16 platf
         }
     }
 
-    return nullptr;
+    return NULL;
 }
 
 void FontObject::initUnicodeCMAP()
 {
     CMAPEncodingSubtable *encodingSubtable = findCMAP(3, 1);
 
-    if (encodingSubtable == nullptr ||
+    if (encodingSubtable == 0 ||
         SWAPW(encodingSubtable->format) != 4) {
         printf("Can't find unicode 'cmap'");
         return;
@@ -198,7 +196,7 @@ LEGlyphID FontObject::unicodeToGlyph(LEUnicode32 unicode32)
 
 le_uint16 FontObject::getUnitsPerEM()
 {
-    if (headTable == nullptr) {
+    if (headTable == NULL) {
         LETag headTag = 0x68656164; // 'head'
         le_uint32 length;
 
@@ -210,7 +208,7 @@ le_uint16 FontObject::getUnitsPerEM()
 
 le_uint16 FontObject::getGlyphAdvance(LEGlyphID glyph)
 {
-    if (hmtxTable == nullptr) {
+    if (hmtxTable == NULL) {
         LETag maxpTag = 0x6D617870; // 'maxp'
         LETag hheaTag = 0x68686561; // 'hhea'
         LETag hmtxTag = 0x686D7478; // 'hmtx'

@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 dz{
     Countries{
         001{"འཛམ་གླིང༌"}
@@ -144,6 +143,7 @@ dz{
         IL{"ཨིས་ར་ཡེལ"}
         IM{"ཨ་ཡུལ་ ཨོཕ་ མཱན"}
         IN{"རྒྱ་གར"}
+        IO{"བྲི་ཊིཤ་རྒྱ་གར་གྱི་རྒྱ་མཚོ་ས་ཁོངས"}
         IQ{"ཨི་རཱཀ"}
         IR{"ཨི་རཱན"}
         IS{"ཨཱའིས་ལེནཌ"}
@@ -181,6 +181,7 @@ dz{
         MF{"སེནཊ་ མཱར་ཊིན"}
         MG{"མ་དཱ་གེས་ཀར"}
         MH{"མར་ཤེལ་གླིང་ཚོམ"}
+        MK{"མ་སེ་ཌོ་ནི་ཡ"}
         ML{"མཱ་ལི"}
         MM{"མི་ཡཱན་མར་ (བྷར་མ)"}
         MN{"སོག་པོ་ཡུལ"}
@@ -299,6 +300,8 @@ dz{
         CG{"རི་པབ་ལིཀ་ ཨོཕ་ ཀོང་གྷོ"}
         CI{"ཨི་ཝོ་རི་ཀོསཊ"}
         FK{"ཕལྐ་ལནྜ་གླིང་ཚོམ (ཨིས་ལཱས་མལ་བི་ཎཱས)"}
+        MK{"མ་སེ་ཌོ་ནི་ཡ་ (ཡུ་གོ་སླཱ་བི་ཡ)"}
         TL{"ཤར་ཕྱོགས་ཏི་་མོར"}
     }
+    Version{"2.1.47.82"}
 }

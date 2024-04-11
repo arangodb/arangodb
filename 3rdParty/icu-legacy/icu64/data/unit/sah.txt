@@ -1,10 +1,16 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 sah{
+    Version{"2.1.47.82"}
+    durationUnits{
+        hm{"h:mm"}
+        hms{"h:mm:ss"}
+        ms{"m:ss"}
+    }
     units{
         angle{
             degree{
+                dnam{"кыраадыс"}
                 other{"{0} кыраадыс"}
             }
         }
@@ -16,6 +22,7 @@ sah{
         }
         concentr{
             karat{
+                dnam{"караат"}
                 other{"{0} караат"}
             }
         }
@@ -66,7 +73,12 @@ sah{
                 dnam{"үйэлэр"}
                 other{"{0} үйэ"}
             }
+            day{
+                dnam{"күн"}
+                other{"{0} күн"}
+            }
             hour{
+                dnam{"чаас"}
                 other{"{0} чаас"}
                 per{"чааска {0}"}
             }
@@ -78,10 +90,13 @@ sah{
                 other{"{0} миллисөкүүндэ"}
             }
             minute{
+                dnam{"мүнүүтэ"}
                 other{"{0} мүнүүтэ"}
                 per{"мүнүүтэҕэ {0}"}
             }
             month{
+                dnam{"ый"}
+                other{"{0} ый"}
                 per{"ыйга {0}"}
             }
             nanosecond{
@@ -89,14 +104,17 @@ sah{
                 other{"{0} наносөкүүндэ"}
             }
             second{
+                dnam{"сөкүүндэ"}
                 other{"{0} сөкүүндэ"}
                 per{"сөкүүндэҕэ {0}"}
             }
             week{
+                dnam{"нэдиэлэ"}
                 other{"{0} нэдиэлэ"}
                 per{"нэдиэлэҕэ {0}"}
             }
             year{
+                dnam{"сыл"}
                 other{"{0} сыл"}
                 per{"сылга {0}"}
             }
@@ -119,6 +137,10 @@ sah{
                 dnam{"калорий"}
                 other{"{0} калорий"}
             }
+            foodcalorie{
+                dnam{"Калорий"}
+                other{"{0} Калорий"}
+            }
             joule{
                 dnam{"джоуль"}
                 other{"{0} джоуль"}
@@ -140,22 +162,27 @@ sah{
         }
         length{
             meter{
+                dnam{"миэтэрэ"}
                 other{"{0} миэтэрэ"}
             }
             mile{
+                dnam{"миилэ"}
                 other{"{0} миилэ"}
             }
         }
         light{
             lux{
+                dnam{"люкс"}
                 other{"{0} люкс"}
             }
         }
         mass{
             carat{
+                dnam{"караат"}
                 other{"{0} караат"}
             }
             gram{
+                dnam{"кыраам"}
                 other{"{0} кыраам"}
             }
             kilogram{
@@ -177,6 +204,10 @@ sah{
                 dnam{"Фаренгейт кыраадыһа"}
                 other{"{0} Фаренгейт кыраадыһа"}
             }
+            generic{
+                dnam{"°"}
+                other{"{0}°"}
+            }
             kelvin{
                 dnam{"кельвин кыраадыһа"}
                 other{"{0} кельвин"}
@@ -184,6 +215,7 @@ sah{
         }
         volume{
             liter{
+                dnam{"лиитирэ"}
                 other{"{0} лиитирэ"}
             }
         }
@@ -193,20 +225,64 @@ sah{
             day{
                 other{"{0} к."}
             }
+            hour{
+                other{"{0} ч"}
+            }
+            millisecond{
+                dnam{"мс"}
+                other{"{0} мс"}
+            }
+            minute{
+                other{"{0} мүн"}
+            }
+            month{
+                dnam{"ый"}
+                other{"{0} ый"}
+            }
             second{
                 other{"{0} с"}
             }
             week{
                 other{"{0} н."}
             }
+            year{
+                other{"{0} с."}
+            }
+        }
+        length{
+            centimeter{
+                dnam{"см"}
+            }
+            kilometer{
+                dnam{"км"}
+                other{"{0} км"}
+            }
+            meter{
+                dnam{"миэтэрэ"}
+            }
+            millimeter{
+                dnam{"мм"}
+            }
+        }
+        mass{
+            gram{
+                dnam{"кыраам"}
+                other{"{0} г"}
+            }
+            kilogram{
+                dnam{"кг"}
+                other{"{0} кг"}
+            }
         }
         temperature{
             celsius{
                 dnam{"°C"}
+                other{"{0}°C"}
             }
         }
         volume{
             liter{
+                dnam{"лиитирэ"}
                 other{"{0}л"}
             }
         }
@@ -215,6 +291,7 @@ sah{
         angle{
             degree{
                 dnam{"кыраадыс"}
+                other{"{0}°"}
             }
         }
         area{
@@ -243,6 +320,10 @@ sah{
                 dnam{"байт"}
                 other{"{0} байт"}
             }
+            gigabit{
+                dnam{"Gb"}
+                other{"{0} Gb"}
+            }
             kilobit{
                 dnam{"кб"}
                 other{"{0} кб"}
@@ -259,8 +340,13 @@ sah{
                 dnam{"МБ"}
                 other{"{0} МБ"}
             }
+            terabit{
+                dnam{"Tb"}
+                other{"{0} Tb"}
+            }
             terabyte{
                 dnam{"ТБаайт"}
+                other{"{0} TB"}
             }
         }
         duration{
@@ -329,6 +415,10 @@ sah{
                 dnam{"кал"}
                 other{"{0} кал"}
             }
+            foodcalorie{
+                dnam{"Кал"}
+                other{"{0} Кал"}
+            }
             joule{
                 dnam{"дж"}
                 other{"{0} дж"}
@@ -394,18 +484,31 @@ sah{
                 other{"{0} кг"}
                 per{"{0}/кг"}
             }
+            metric-ton{
+                dnam{"т"}
+                other{"{0} т"}
+            }
             milligram{
                 dnam{"мг"}
                 other{"{0} мг"}
-            }
-            tonne{
-                dnam{"т"}
-                other{"{0} т"}
             }
         }
         temperature{
             celsius{
                 dnam{"кыр. С"}
+                other{"{0}°C"}
+            }
+            fahrenheit{
+                dnam{"°F"}
+                other{"{0}°F"}
+            }
+            generic{
+                dnam{"°"}
+                other{"{0}°"}
+            }
+            kelvin{
+                dnam{"K"}
+                other{"{0} K"}
             }
         }
         volume{

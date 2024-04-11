@@ -21,10 +21,10 @@
 //       options:   -v         verbose
 //                  -? or -h   help
 //
-//   The input rule file are plain text files containing confusable character
+//   The input rule filew is are plain text files containing confusable character
 //    definitions in the input format defined by Unicode UAX39 for the files
 //    confusables.txt.  This source (.txt) format
-//    is also accepted by ICU spoof detectors. The
+//    is also accepted direaccepted by ICU spoof detedtors.  The
 //    files must be encoded in utf-8 format, with or without a BOM.
 //
 //   The script used to compile confusablesWholeScript.txt into the CFU file
@@ -55,9 +55,9 @@ static UOption options[]={
     UOPTION_HELP_H,             /* 0 */
     UOPTION_HELP_QUESTION_MARK, /* 1 */
     UOPTION_VERBOSE,            /* 2 */
-    { "rules", nullptr, nullptr, nullptr, 'r', UOPT_REQUIRES_ARG, 0 },   /* 3 */
-    { "wsrules", nullptr, nullptr, nullptr, 'w', UOPT_REQUIRES_ARG, 0},  /* 4 */  // deprecated
-    { "out",   nullptr, nullptr, nullptr, 'o', UOPT_REQUIRES_ARG, 0 },   /* 5 */
+    { "rules", NULL, NULL, NULL, 'r', UOPT_REQUIRES_ARG, 0 },   /* 3 */
+    { "wsrules", NULL, NULL, NULL, 'w', UOPT_REQUIRES_ARG, 0},  /* 4 */  // deprecated
+    { "out",   NULL, NULL, NULL, 'o', UOPT_REQUIRES_ARG, 0 },   /* 5 */
     UOPTION_ICUDATADIR,         /* 6 */
     UOPTION_DESTDIR,            /* 7 */
     UOPTION_COPYRIGHT,          /* 8 */
@@ -137,8 +137,8 @@ int  main(int argc, char **argv) {
     UErrorCode  status = U_ZERO_ERROR;
     const char *confFileName;
     const char *outFileName;
-    const char *outDir = nullptr;
-    const char *copyright = nullptr;
+    const char *outDir = NULL;
+    const char *copyright = NULL;
 
     //
     // Pick up and check the command line arguments,
@@ -179,9 +179,9 @@ int  main(int argc, char **argv) {
         copyright = U_COPYRIGHT_STRING;
     }
 
-    UBool quiet = false;
+    UBool quiet = FALSE;
     if (options[9].doesOccur) {
-      quiet = true;
+      quiet = TRUE;
     }
 
 #if UCONFIG_NO_REGULAR_EXPRESSIONS || UCONFIG_NO_NORMALIZATION || UCONFIG_NO_FILE_IO
@@ -193,11 +193,11 @@ int  main(int argc, char **argv) {
     char msg[1024];
 
     /* write message with just the name */
-    snprintf(msg, sizeof(msg), "gencfu writes dummy %s because of UCONFIG_NO_REGULAR_EXPRESSIONS and/or UCONFIG_NO_NORMALIZATION and/or UCONFIG_NO_FILE_IO, see uconfig.h", outFileName);
+    sprintf(msg, "gencfu writes dummy %s because of UCONFIG_NO_REGULAR_EXPRESSIONS and/or UCONFIG_NO_NORMALIZATION and/or UCONFIG_NO_FILE_IO, see uconfig.h", outFileName);
     fprintf(stderr, "%s\n", msg);
 
     /* write the dummy data file */
-    pData = udata_create(outDir, nullptr, outFileName, &dummyDataInfo, nullptr, &status);
+    pData = udata_create(outDir, NULL, outFileName, &dummyDataInfo, NULL, &status);
     udata_writeBlock(pData, msg, strlen(msg));
     udata_finish(pData, &status);
     return (int)status;
@@ -216,7 +216,7 @@ int  main(int argc, char **argv) {
 
     int32_t      confusablesLen = 0;
     const char  *confusables = readFile(confFileName, &confusablesLen);
-    if (confusables == nullptr) {
+    if (confusables == NULL) {
         printf("gencfu: error reading file  \"%s\"\n", confFileName);
         exit(-1);
     }
@@ -230,13 +230,13 @@ int  main(int argc, char **argv) {
     parseError.offset = 0;
     int32_t errType;
     USpoofChecker *sc = uspoof_openFromSource(confusables, confusablesLen,
-                                              nullptr, 0,
+                                              NULL, 0,
                                               &errType, &parseError, &status);
     if (U_FAILURE(status)) {
         fprintf(stderr, "gencfu: uspoof_openFromSource error \"%s\"  at file %s, line %d, column %d\n",
                 u_errorName(status), confFileName, (int)parseError.line, (int)parseError.offset);
         exit(status);
-    }
+    };
 
 
     //
@@ -244,7 +244,7 @@ int  main(int argc, char **argv) {
     //
     uint32_t        outDataSize;
     uint8_t        *outData;
-    outDataSize = uspoof_serialize(sc, nullptr, 0, &status);
+    outDataSize = uspoof_serialize(sc, NULL, 0, &status);
     if (status != U_BUFFER_OVERFLOW_ERROR) {
         fprintf(stderr, "gencfu: uspoof_serialize() returned %s\n", u_errorName(status));
         exit(status);
@@ -264,7 +264,7 @@ int  main(int argc, char **argv) {
     //
     size_t bytesWritten;
     UNewDataMemory *pData;
-    pData = udata_create(outDir, nullptr, outFileName, &(dh.info), copyright, &status);
+    pData = udata_create(outDir, NULL, outFileName, &(dh.info), copyright, &status);
     if(U_FAILURE(status)) {
         fprintf(stderr, "gencfu: Could not open output file \"%s\", \"%s\"\n", 
                          outFileName, u_errorName(status));
@@ -307,23 +307,23 @@ int  main(int argc, char **argv) {
     FILE        *file;
 
     file = fopen(fileName, "rb");
-    if (file == nullptr) {
-        return nullptr;
+    if( file == 0 ) {
+        return NULL;
     }
     fseek(file, 0, SEEK_END);
     fileSize = ftell(file);
     fseek(file, 0, SEEK_SET);
     result = new char[fileSize+10];
-    if (result==nullptr) {
+    if (result==NULL) {
         fclose(file);
-        return nullptr;
+        return NULL;
     }
 
     long t = static_cast<long>(fread(result, 1, fileSize, file));
     if (t != fileSize)  {
         delete [] result;
         fclose(file);
-        return nullptr;
+        return NULL;
     }
     result[fileSize]=0;
     *len = static_cast<int32_t>(fileSize);

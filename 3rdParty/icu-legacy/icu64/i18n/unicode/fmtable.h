@@ -19,8 +19,6 @@
 
 #include "unicode/utypes.h"
 
-#if U_SHOW_CPLUSPLUS_API
-
 /**
  * \file
  * \brief C++ API: Formattable is a thin wrapper for primitive types used for formatting and parsing
@@ -35,9 +33,10 @@
 U_NAMESPACE_BEGIN
 
 class CharString;
-
-namespace number::impl {
+namespace number {
+namespace impl {
 class DecimalQuantity;
+}
 }
 
 /**
@@ -178,18 +177,18 @@ public:
     /**
      * Equality comparison.
      * @param other    the object to be compared with.
-     * @return        true if other are equal to this, false otherwise.
+     * @return        TRUE if other are equal to this, FALSE otherwise.
      * @stable ICU 2.0
      */
-    bool           operator==(const Formattable &other) const;
+    UBool          operator==(const Formattable &other) const;
 
     /**
      * Equality operator.
      * @param other    the object to be compared with.
-     * @return        true if other are unequal to this, false otherwise.
+     * @return        TRUE if other are unequal to this, FALSE otherwise.
      * @stable ICU 2.0
      */
-    bool           operator!=(const Formattable& other) const
+    UBool          operator!=(const Formattable& other) const
       { return !operator==(other); }
 
     /**
@@ -201,7 +200,7 @@ public:
     /**
      * Clone this object.
      * Clones can be used concurrently in multiple threads.
-     * If an error occurs, then nullptr is returned.
+     * If an error occurs, then NULL is returned.
      * The caller must delete the clone.
      *
      * @return a clone of this object
@@ -273,12 +272,12 @@ public:
      * @return    the data type of this Formattable object.
      * @stable ICU 2.0
      */
-    Type getType() const;
+    Type            getType(void) const;
 
     /**
-     * Returns true if the data type of this Formattable object
+     * Returns TRUE if the data type of this Formattable object
      * is kDouble, kLong, or kInt64
-     * @return true if this is a pure numeric object
+     * @return TRUE if this is a pure numeric object
      * @stable ICU 3.0
      */
     UBool           isNumeric() const;
@@ -289,11 +288,11 @@ public:
      * @return    the double value of this object.
      * @stable ICU 2.0
      */
-    double getDouble() const { return fValue.fDouble; }
+    double          getDouble(void) const { return fValue.fDouble; }
 
     /**
      * Gets the double value of this object. If this object is of type
-     * long, int64 or Decimal Number then a conversion is performed, with
+     * long, int64 or Decimal Number then a conversion is peformed, with
      * possible loss of precision.  If the type is kObject and the
      * object is a Measure, then the result of
      * getNumber().getDouble(status) is returned.  If this object is
@@ -311,7 +310,7 @@ public:
      * @return    the long value of this object.
      * @stable ICU 2.0
      */
-    int32_t getLong() const { return (int32_t)fValue.fInt64; }
+    int32_t         getLong(void) const { return (int32_t)fValue.fInt64; }
 
     /**
      * Gets the long value of this object. If the magnitude is too
@@ -319,7 +318,7 @@ public:
      * as appropriate, is returned and the status is set to
      * U_INVALID_FORMAT_ERROR.  If this object is of type kInt64 and
      * it fits within a long, then no precision is lost.  If it is of
-     * type kDouble, then a conversion is performed, with
+     * type kDouble, then a conversion is peformed, with
      * truncation of any fractional part.  If the type is kObject and
      * the object is a Measure, then the result of
      * getNumber().getLong(status) is returned.  If this object is
@@ -337,7 +336,7 @@ public:
      * @return    the int64 value of this object.
      * @stable ICU 2.8
      */
-    int64_t getInt64() const { return fValue.fInt64; }
+    int64_t         getInt64(void) const { return fValue.fInt64; }
 
     /**
      * Gets the int64 value of this object. If this object is of a numeric
@@ -345,7 +344,7 @@ public:
      * the maximum or minimum int64 value, as appropriate, is returned
      * and the status is set to U_INVALID_FORMAT_ERROR.  If the
      * magnitude fits in an int64, then a casting conversion is
-     * performed, with truncation of any fractional part.  If the type
+     * peformed, with truncation of any fractional part.  If the type
      * is kObject and the object is a Measure, then the result of
      * getNumber().getDouble(status) is returned.  If this object is
      * neither a numeric type nor a Measure, then 0 is returned and
@@ -402,7 +401,7 @@ public:
      * @return   a const reference to the string value of this object.
      * @stable ICU 2.0
      */
-    inline const UnicodeString& getString() const;
+    inline const UnicodeString& getString(void) const;
 
     /**
      * Gets a const reference to the string value of this object.  If
@@ -420,7 +419,7 @@ public:
      * @return   a reference to the string value of this object.
      * @stable ICU 2.0
      */
-    inline UnicodeString& getString();
+    inline UnicodeString& getString(void);
 
     /**
      * Gets a reference to the string value of this object. If the
@@ -445,7 +444,7 @@ public:
     /**
      * Gets the array value and count of this object. If the type is
      * not an array, status is set to U_INVALID_FORMAT_ERROR, count is
-     * set to 0, and the result is nullptr.
+     * set to 0, and the result is NULL.
      * @param count    fill-in with the count of this object.
      * @param status the error code.
      * @return         the array value of this object.
@@ -465,20 +464,20 @@ public:
 
     /**
      * Returns a pointer to the UObject contained within this
-     * formattable, or nullptr if this object does not contain a UObject.
-     * @return a UObject pointer, or nullptr
+     * formattable, or NULL if this object does not contain a UObject.
+     * @return a UObject pointer, or NULL
      * @stable ICU 3.0
      */
     const UObject*  getObject() const;
 
     /**
      * Returns a numeric string representation of the number contained within this
-     * formattable, or nullptr if this object does not contain numeric type.
+     * formattable, or NULL if this object does not contain numeric type.
      * For values obtained by parsing, the returned decimal number retains
      * the full precision and range of the original input, unconstrained by
      * the limits of a double floating point or a 64 bit int.
      *
-     * This function is not thread safe, and therefore is not declared const,
+     * This function is not thread safe, and therfore is not declared const,
      * even though it is logically const.
      *
      * Possible errors include U_MEMORY_ALLOCATION_ERROR, and
@@ -586,7 +585,7 @@ public:
      *
      * @stable ICU 2.2
      */
-    virtual UClassID getDynamicClassID() const override;
+    virtual UClassID getDynamicClassID() const;
 
     /**
      * ICU "poor man's RTTI", returns a UClassID for this class.
@@ -679,7 +678,7 @@ private:
      * Cleans up the memory for unwanted values.  For example, the adopted
      * string or array objects.
      */
-    void dispose();
+    void            dispose(void);
 
     /**
      * Common initialization, for use by constructors.
@@ -718,11 +717,11 @@ inline UDate Formattable::getDate(UErrorCode& status) const {
     return fValue.fDate;
 }
 
-inline const UnicodeString& Formattable::getString() const {
+inline const UnicodeString& Formattable::getString(void) const {
     return *fValue.fString;
 }
 
-inline UnicodeString& Formattable::getString() {
+inline UnicodeString& Formattable::getString(void) {
     return *fValue.fString;
 }
 
@@ -751,8 +750,6 @@ inline const Formattable* Formattable::fromUFormattable(const UFormattable *fmt)
 U_NAMESPACE_END
 
 #endif /* #if !UCONFIG_NO_FORMATTING */
-
-#endif /* U_SHOW_CPLUSPLUS_API */
 
 #endif //_FMTABLE
 //eof

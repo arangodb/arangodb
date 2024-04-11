@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 kea{
     Countries{
         001{"Mundu"}
@@ -23,7 +22,7 @@ kea{
         039{"Europa di Sul"}
         053{"Australázia"}
         054{"Melanézia"}
-        057{"Rejion di Mikronézia"}
+        057{"Rejiãu di Mikronézia"}
         061{"Polinézia"}
         142{"Ázia"}
         143{"Ázia Sentral"}
@@ -32,9 +31,8 @@ kea{
         151{"Europa Oriental"}
         154{"Europa di Norti"}
         155{"Europa Osidental"}
-        202{"Áfrika Subisariana"}
         419{"Merka Latinu"}
-        AC{"Ilha di Asenson"}
+        AC{"Ilha di Asensãu"}
         AD{"Andora"}
         AE{"Emiradus Árabi Unidu"}
         AF{"Afeganistãu"}
@@ -50,7 +48,7 @@ kea{
         AU{"Austrália"}
         AW{"Aruba"}
         AX{"Ilhas Åland"}
-        AZ{"Azerbaidjan"}
+        AZ{"Azerbaijãu"}
         BA{"Bósnia i Erzegovina"}
         BB{"Barbadus"}
         BD{"Bangladexi"}
@@ -60,15 +58,15 @@ kea{
         BH{"Barain"}
         BI{"Burundi"}
         BJ{"Benin"}
-        BL{"San Bartolomeu"}
+        BL{"Sãu Bartolomeu"}
         BM{"Bermudas"}
         BN{"Brunei"}
         BO{"Bolívia"}
         BQ{"Karaibas Olandezas"}
         BR{"Brazil"}
         BS{"Baamas"}
-        BT{"Butan"}
-        BV{"Ilha Buvê"}
+        BT{"Butãu"}
+        BV{"Ilha Buve"}
         BW{"Botsuana"}
         BY{"Belarus"}
         BZ{"Belizi"}
@@ -81,9 +79,9 @@ kea{
         CI{"Kosta di Marfin"}
         CK{"Ilhas Kuk"}
         CL{"Xili"}
-        CM{"Kamarons"}
+        CM{"Kamarõis"}
         CN{"Xina"}
-        CO{"Kolómbia"}
+        CO{"Kolômbia"}
         CP{"Ilha Kliperton"}
         CR{"Kosta Rika"}
         CU{"Kuba"}
@@ -107,15 +105,14 @@ kea{
         ER{"Iritreia"}
         ES{"Spanha"}
         ET{"Etiópia"}
-        EU{"Union Europeia"}
-        EZ{"Eurozona"}
+        EU{"Uniãu Europeia"}
         FI{"Finlándia"}
         FJ{"Fidji"}
         FK{"Ilhas Malvinas"}
         FM{"Mikronézia"}
         FO{"Ilhas Faroe"}
         FR{"Fransa"}
-        GA{"Gabon"}
+        GA{"Gabãu"}
         GB{"Reinu Unidu"}
         GD{"Granada"}
         GE{"Jiórjia"}
@@ -134,7 +131,7 @@ kea{
         GU{"Guam"}
         GW{"Gine-Bisau"}
         GY{"Giana"}
-        HK{"Hong Kong, Rejion Administrativu Spesial di Xina"}
+        HK{"Rejiãu Administrativu Spesial di Hong Kong"}
         HM{"Ilhas Heard i McDonald"}
         HN{"Onduras"}
         HR{"Kroásia"}
@@ -146,6 +143,7 @@ kea{
         IL{"Israel"}
         IM{"Ilha di Man"}
         IN{"Índia"}
+        IO{"Ilhas Británikas di Índiku"}
         IQ{"Iraki"}
         IR{"Irãu"}
         IS{"Islándia"}
@@ -153,18 +151,18 @@ kea{
         JE{"Jersi"}
         JM{"Jamaika"}
         JO{"Jordánia"}
-        JP{"Japon"}
+        JP{"Japãu"}
         KE{"Kénia"}
-        KG{"Kirgistan"}
+        KG{"Kirgistãu"}
         KH{"Kambodja"}
         KI{"Kiribati"}
         KM{"Kamoris"}
-        KN{"San Kristovan i Nevis"}
+        KN{"Sãu Kristovãu i Nevis"}
         KP{"Koreia di Norti"}
         KR{"Koreia di Sul"}
         KW{"Kueiti"}
-        KY{"Ilhas Kaimon"}
-        KZ{"Kazakistan"}
+        KY{"Ilhas Kaimãu"}
+        KZ{"Kazakistãu"}
         LA{"Laus"}
         LB{"Líbanu"}
         LC{"Santa Lúsia"}
@@ -180,14 +178,14 @@ kea{
         MC{"Mónaku"}
         MD{"Moldávia"}
         ME{"Montenegru"}
-        MF{"San Martinhu (Fransa)"}
+        MF{"Sãu Martinhu di Fransa"}
         MG{"Madagaskar"}
         MH{"Ilhas Marxal"}
-        MK{"Masidónia di Norti"}
+        MK{"Masidónia"}
         ML{"Mali"}
         MM{"Mianmar (Birmánia)"}
         MN{"Mongólia"}
-        MO{"Makau, Rejion Administrativu Spesial di Xina"}
+        MO{"Rejiãu Administrativu Spesial di Makau"}
         MP{"Ilhas Marianas di Norti"}
         MQ{"Martinika"}
         MR{"Mauritánia"}
@@ -217,18 +215,18 @@ kea{
         PF{"Polinézia Franseza"}
         PG{"Papua-Nova Gine"}
         PH{"Filipinas"}
-        PK{"Pakistan"}
+        PK{"Pakistãu"}
         PL{"Pulónia"}
         PM{"San Piere i Mikelon"}
-        PN{"Ilhas Pitkairn"}
+        PN{"Pirkairn"}
         PR{"Portu Riku"}
-        PS{"Tiritóriu palistinianu"}
+        PS{"Palistina"}
         PT{"Purtugal"}
         PW{"Palau"}
         PY{"Paraguai"}
         QA{"Katar"}
         QO{"Ilhas di Oseania"}
-        RE{"Runion"}
+        RE{"Runiãu"}
         RO{"Ruménia"}
         RS{"Sérvia"}
         RU{"Rúsia"}
@@ -236,7 +234,7 @@ kea{
         SA{"Arábia Saudita"}
         SB{"Ilhas Salumãu"}
         SC{"Seixelis"}
-        SD{"Sudon"}
+        SD{"Sudãu"}
         SE{"Suésia"}
         SG{"Singapura"}
         SH{"Santa Ilena"}
@@ -248,22 +246,22 @@ kea{
         SN{"Senegal"}
         SO{"Sumália"}
         SR{"Surinami"}
-        SS{"Sudon di Sul"}
-        ST{"San Tume i Prínsipi"}
+        SS{"Sudãu di Sul"}
+        ST{"Sãu Tume i Prínsipi"}
         SV{"El Salvador"}
-        SX{"San Martinhu (Olanda)"}
+        SX{"Sãu Martinhu di Olanda"}
         SY{"Síria"}
-        SZ{"Eswatini"}
+        SZ{"Suazilándia"}
         TA{"Tristan da Kunha"}
         TC{"Ilhas Turkas i Kaikus"}
         TD{"Txadi"}
         TF{"Terras Franses di Sul"}
         TG{"Togu"}
         TH{"Tailándia"}
-        TJ{"Tadjikistan"}
+        TJ{"Tadjikistãu"}
         TK{"Tokelau"}
         TL{"Timor Lesti"}
-        TM{"Turkumenistan"}
+        TM{"Turkumenistãu"}
         TN{"Tunízia"}
         TO{"Tonga"}
         TR{"Turkia"}
@@ -274,12 +272,11 @@ kea{
         UA{"Ukránia"}
         UG{"Uganda"}
         UM{"Ilhas Minoris Distantis de Stadus Unidus"}
-        UN{"Nasons Unidas"}
         US{"Stadus Unidos di Merka"}
         UY{"Uruguai"}
-        UZ{"Uzbekistan"}
+        UZ{"Uzbekistãu"}
         VA{"Vatikanu"}
-        VC{"San Bisenti i Granadinas"}
+        VC{"Sãu Bisenti i Granadinas"}
         VE{"Vinizuela"}
         VG{"Ilhas Virjens Británikas"}
         VI{"Ilhas Virjens Merkanas"}
@@ -287,21 +284,18 @@ kea{
         VU{"Vanuatu"}
         WF{"Ualis i Futuna"}
         WS{"Samoa"}
-        XA{"Pseudo-sotakis"}
-        XB{"Pseudo-bidiresional"}
         XK{"Kozovu"}
         YE{"Iémen"}
         YT{"Maiote"}
         ZA{"Áfrika di Sul"}
         ZM{"Zámbia"}
         ZW{"Zimbábui"}
-        ZZ{"Rejion Diskonxedu"}
+        ZZ{"Rejiãu Diskonxedu"}
     }
     Countries%short{
         GB{"R.U."}
         HK{"Hong Kong"}
         MO{"Makau"}
-        PS{"Palistina"}
         US{"S.U."}
     }
     Countries%variant{
@@ -310,7 +304,7 @@ kea{
         CI{"Kosta di Marfin (Côte d’Ivoire)"}
         CZ{"Repúblika Txeka"}
         FK{"Ilhas Falkland (Ilhas Malvinas)"}
-        SZ{"Suazilándia"}
-        TL{"Timor-Leste"}
+        MK{"Masidónia (FYROM)"}
     }
+    Version{"2.1.48.9"}
 }

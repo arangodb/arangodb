@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 tt{
     Countries{
         AD{"Андорра"}
@@ -41,7 +40,6 @@ tt{
         BZ{"Белиз"}
         CA{"Канада"}
         CC{"Кокос (Килинг) утраулары"}
-        CD{"Конго (КДР)"}
         CF{"Үзәк Африка Республикасы"}
         CH{"Швейцария"}
         CI{"Кот-д’Ивуар"}
@@ -76,7 +74,7 @@ tt{
         FO{"Фарер утраулары"}
         FR{"Франция"}
         GA{"Габон"}
-        GB{"Берләшкән Корольлек"}
+        GB{"Бөекбритания"}
         GD{"Гренада"}
         GE{"Грузия"}
         GF{"Француз Гвианасы"}
@@ -105,6 +103,7 @@ tt{
         IL{"Израиль"}
         IM{"Мэн утравы"}
         IN{"Индия"}
+        IO{"Британиянең Һинд Океанындагы Территориясе"}
         IQ{"Гыйрак"}
         IR{"Иран"}
         IS{"Исландия"}
@@ -250,4 +249,8 @@ tt{
         HK{"Гонконг"}
         MO{"Макао"}
     }
+    Countries%variant{
+        CD{"Конго (КДР)"}
+    }
+    Version{"2.1.49.82"}
 }

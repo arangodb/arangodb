@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ug{
     Keys{
         calendar{"يىلنامە"}
@@ -383,6 +382,7 @@ ug{
         ro{"رومىنچە"}
         rof{"رومبوچە"}
         rom{"سىگانچە"}
+        root{"غول تىل"}
         ru{"رۇسچە"}
         rup{"ئارومانچە"}
         rw{"كېنىيەرىۋانداچە"}
@@ -516,6 +516,10 @@ ug{
         zun{"زۇنىچە"}
         zxx{"تىل مەزمۇنى يوق"}
         zza{"زازاچە"}
+    }
+    Languages%short{
+        en_GB{"ئەنگلىيە ئىنگلىزچە"}
+        en_US{"ئامېرىكا ئىنگلىزچە"}
     }
     Scripts{
         Afak{"ئافاكا"}
@@ -676,6 +680,10 @@ ug{
         Zyyy{"ئورتاق"}
         Zzzz{"يوچۇن يېزىق"}
     }
+    Scripts%stand-alone{
+        Hans{"ئاددىي خەنچە"}
+        Hant{"مۇرەككەپ خەنچە"}
+    }
     Types{
         calendar{
             buddhist{"بۇددا يىلنامەسى"}
@@ -687,6 +695,11 @@ ug{
             gregorian{"مىلادىيە يىلنامەسى"}
             hebrew{"يەھۇدى يىلنامەسى"}
             indian{"ھىندىستان دۆلەت يىلنامەسى"}
+            islamic{"ئىسلام ھىجرىيە يىلنامەسى"}
+            islamic-civil{"ئىسلام ھىجرىيە يىلنامەسى (مەدىنە)"}
+            islamic-rgsa{"ئىسلام ھىجرىيە يىلنامەسى (سەئۇدى ئەرەبىستان ئاي)"}
+            islamic-tbla{"ئىسلام ھىجرىيە يىلنامەسى (ئاسترونومىيە دەۋرى)"}
+            islamic-umalqura{"ئىسلام ھىجرىيە يىلنامەسى (ئۇم ئەلقۇرا)"}
             iso8601{"ISO-8601 يىلنامەسى"}
             japanese{"ياپونىيە يىلنامەسى"}
             persian{"پارىس يىلنامەسى"}
@@ -817,12 +830,15 @@ ug{
         VALENCIA{"ۋالېنسىيە"}
         WADEGILE{"ۋېي ئائىلىسى پىنيىن لاتىنلاشتۇرۇش"}
     }
+    Version{"2.1.49.82"}
     codePatterns{
         language{"تىل: {0}"}
         script{"يېزىق: {0}"}
         territory{"رايون: {0}"}
     }
     localeDisplayPattern{
+        keyTypePattern{"{0}: {1}"}
+        pattern{"{0} ({1})"}
         separator{"{0}، {1}"}
     }
 }

@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ro{
     Countries{
         001{"Lume"}
@@ -134,7 +133,7 @@ ro{
         GU{"Guam"}
         GW{"Guineea-Bissau"}
         GY{"Guyana"}
-        HK{"R.A.S. Hong Kong, China"}
+        HK{"R.A.S. Hong Kong a Chinei"}
         HM{"Insula Heard și Insulele McDonald"}
         HN{"Honduras"}
         HR{"Croația"}
@@ -250,11 +249,11 @@ ro{
         SO{"Somalia"}
         SR{"Suriname"}
         SS{"Sudanul de Sud"}
-        ST{"São Tomé și Príncipe"}
+        ST{"Sao Tome și Principe"}
         SV{"El Salvador"}
         SX{"Sint-Maarten"}
         SY{"Siria"}
-        SZ{"Eswatini"}
+        SZ{"eSwatini"}
         TA{"Tristan da Cunha"}
         TC{"Insulele Turks și Caicos"}
         TD{"Ciad"}
@@ -298,10 +297,8 @@ ro{
         ZW{"Zimbabwe"}
         ZZ{"Regiune necunoscută"}
     }
-    Countries%chagos{
-        IO{"Arhipelagul Chagos"}
-    }
     Countries%short{
+        GB{"Regatul Unit"}
         HK{"Hong Kong"}
         MO{"Macao"}
         PS{"Palestina"}
@@ -314,9 +311,8 @@ ro{
         CI{"Coasta de Fildeș"}
         CZ{"Republica Cehă"}
         FK{"Insulele Falkland (Insulele Malvine)"}
-        NZ{"Aotearoa Noua Zeelandă"}
         SZ{"Swaziland"}
         TL{"Timorul de Est"}
-        TR{"Türkiye"}
     }
+    Version{"2.1.49.82"}
 }

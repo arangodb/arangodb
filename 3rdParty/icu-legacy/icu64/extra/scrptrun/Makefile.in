@@ -12,6 +12,9 @@ top_builddir = ../..
 
 include $(top_builddir)/icudefs.mk
 
+## Platform-specific setup
+include @platform_make_fragment@
+
 ## Build directory information
 subdir = extra/scrptrun
 
@@ -19,7 +22,7 @@ subdir = extra/scrptrun
 CLEANFILES = *~ $(DEPS)
 
 ## Target information
-TARGET = srtest$(EXEEXT)
+TARGET = srtest
 
 DEFS = @DEFS@
 CPPFLAGS = @CPPFLAGS@ -I$(top_srcdir)/common -I$(top_srcdir) 
@@ -30,10 +33,9 @@ ifeq ($(ENABLE_RPATH),YES)
 RPATHLDFLAGS = $(LD_RPATH)$(LD_RPATH_PRE)$(libdir)
 endif
 LDFLAGS = @LDFLAGS@ $(RPATHLDFLAGS)
-LIBS = $(LIBICUUC) $(LIB_M)
+LIBS = $(LIBICUUC) @LIBS@ @LIB_M@
 
-SOURCES = $(shell cat $(srcdir)/sources.txt)
-OBJECTS = $(SOURCES:.cpp=.o)
+OBJECTS = scrptrun.o srtest.o
 
 DEPS = $(OBJECTS:.o=.d)
 
@@ -72,7 +74,7 @@ Makefile: $(srcdir)/Makefile.in  $(top_builddir)/config.status
 	 && CONFIG_FILES=$(subdir)/$@ CONFIG_HEADERS= $(SHELL) ./config.status
 
 $(TARGET) : $(OBJECTS)
-	$(LINK.cc) $(OUTOPT)$@ $^ $(LIBS)
+	$(LINK.cc) -o $@ $^ $(LIBS)
 	$(POST_BUILD_STEP)
 
 invoke:

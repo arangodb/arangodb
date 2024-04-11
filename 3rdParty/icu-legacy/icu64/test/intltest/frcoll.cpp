@@ -27,7 +27,7 @@
 #include "sfwdchit.h"
 
 CollationFrenchTest::CollationFrenchTest()
-: myCollation(nullptr)
+: myCollation(0)
 {
     UErrorCode status = U_ZERO_ERROR;
     myCollation = Collator::createInstance(Locale::getCanadaFrench(), status);
@@ -35,7 +35,7 @@ CollationFrenchTest::CollationFrenchTest()
         errcheckln(status, __FILE__ "failed to create! err " + UnicodeString(u_errorName(status)));
         /* if it wasn't already: */
         delete myCollation;
-        myCollation = nullptr;
+        myCollation = NULL;
     }
 }
 
@@ -44,7 +44,7 @@ CollationFrenchTest::~CollationFrenchTest()
     delete myCollation;
 }
 
-const char16_t CollationFrenchTest::testSourceCases[][CollationFrenchTest::MAX_TOKEN_LEN] =
+const UChar CollationFrenchTest::testSourceCases[][CollationFrenchTest::MAX_TOKEN_LEN] =
 {
     {0x0061/*'a'*/, 0x0062/*'b'*/, 0x0063/*'c'*/, 0x0000},
     {0x0043/*'C'*/, 0x004f/*'O'*/, 0x0054/*'T'*/, 0x0045/*'E'*/, 0x0000},
@@ -60,7 +60,7 @@ const char16_t CollationFrenchTest::testSourceCases[][CollationFrenchTest::MAX_T
     {0x0101, 0x0000}
 };
 
-const char16_t CollationFrenchTest::testTargetCases[][CollationFrenchTest::MAX_TOKEN_LEN] =
+const UChar CollationFrenchTest::testTargetCases[][CollationFrenchTest::MAX_TOKEN_LEN] =
 {
     {0x0041/*'A'*/, 0x0042/*'B'*/, 0x0043/*'C'*/, 0x0000},
     {0x0063/*'c'*/, 0x00f4, 0x0074/*'t'*/, 0x0065/*'e'*/, 0x0000},
@@ -94,7 +94,7 @@ const Collator::EComparisonResult CollationFrenchTest::results[] =
 
 // 0x0300 is grave, 0x0301 is acute
 // the order of elements in this array must be different than the order in CollationEnglishTest
-const char16_t CollationFrenchTest::testAcute[][CollationFrenchTest::MAX_TOKEN_LEN] =
+const UChar CollationFrenchTest::testAcute[][CollationFrenchTest::MAX_TOKEN_LEN] =
 {
 /*00*/    {0x0065/*'e'*/, 0x0065/*'e'*/,  0x0000},
 /*01*/    {0x0065/*'e'*/, 0x0301, 0x0065/*'e'*/,  0x0000},
@@ -123,7 +123,7 @@ const char16_t CollationFrenchTest::testAcute[][CollationFrenchTest::MAX_TOKEN_L
 /*18*/    {0x0065/*'e'*/, 0x0301, 0x0300, 0x0065/*'e'*/, 0x0301, 0x0300, 0x0000}
 };
 
-const char16_t CollationFrenchTest::testBugs[][CollationFrenchTest::MAX_TOKEN_LEN] =
+const UChar CollationFrenchTest::testBugs[][CollationFrenchTest::MAX_TOKEN_LEN] =
 {
     {0x0061/*'a'*/, 0x000},
     {0x0041/*'A'*/, 0x000},

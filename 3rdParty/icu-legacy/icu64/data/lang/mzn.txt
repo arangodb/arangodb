@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 mzn{
     Languages{
         ab{"آبخازی"}
@@ -263,11 +262,18 @@ mzn{
         Kana{"کاتاکانا"}
     }
     Scripts%stand-alone{
+        Hans{"ساده‌بَیی هان"}
         Hant{"استاندارد ِسنتی هانت"}
     }
+    Version{"2.1.47.82"}
     codePatterns{
         language{"زوون: {0}"}
         script{"اسکریپت: {0}"}
         territory{"منطقه: {0}"}
+    }
+    localeDisplayPattern{
+        keyTypePattern{"{0}: {1}"}
+        pattern{"{0} ({1})"}
+        separator{"{0}, {1}"}
     }
 }

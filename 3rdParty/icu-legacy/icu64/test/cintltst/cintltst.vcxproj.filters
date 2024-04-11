@@ -105,6 +105,9 @@
     <ClCompile Include="encoll.c">
       <Filter>collation</Filter>
     </ClCompile>
+    <ClCompile Include="usrchdat.c">
+      <Filter>collation</Filter>
+    </ClCompile>
     <ClCompile Include="usrchtst.c">
       <Filter>collation</Filter>
     </ClCompile>
@@ -222,19 +225,10 @@
     <ClInclude Include="uformattedvaluetst.c">
       <Filter>formatting</Filter>
     </ClInclude>
-    <ClInclude Include="unumberrangeformattertst.c">
-      <Filter>formatting</Filter>
-    </ClInclude>
     <ClCompile Include="cldrtest.c">
       <Filter>locales &amp; resources</Filter>
     </ClCompile>
     <ClCompile Include="cloctst.c">
-      <Filter>locales &amp; resources</Filter>
-    </ClCompile>
-    <ClCompile Include="ulocaletst.c">
-      <Filter>locales &amp; resources</Filter>
-    </ClCompile>
-    <ClCompile Include="ulocbuildertst.c">
       <Filter>locales &amp; resources</Filter>
     </ClCompile>
     <ClCompile Include="cposxtst.c">
@@ -366,9 +360,6 @@
       <Filter>collation</Filter>
     </ClInclude>
     <ClInclude Include="encoll.h">
-      <Filter>collation</Filter>
-    </ClInclude>
-    <ClInclude Include="usrchdat.inc">
       <Filter>collation</Filter>
     </ClInclude>
     <ClInclude Include="ccapitst.h">

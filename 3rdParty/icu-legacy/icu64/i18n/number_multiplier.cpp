@@ -46,7 +46,6 @@ Scale::Scale(const Scale& other)
 }
 
 Scale& Scale::operator=(const Scale& other) {
-    if (this == &other) { return *this; }  // self-assignment: no-op
     fMagnitude = other.fMagnitude;
     if (other.fArbitrary != nullptr) {
         UErrorCode localStatus = U_ZERO_ERROR;
@@ -58,15 +57,17 @@ Scale& Scale::operator=(const Scale& other) {
     return *this;
 }
 
-Scale::Scale(Scale&& src) noexcept
+Scale::Scale(Scale&& src) U_NOEXCEPT
         : fMagnitude(src.fMagnitude), fArbitrary(src.fArbitrary), fError(src.fError) {
     // Take ownership away from src if necessary
     src.fArbitrary = nullptr;
 }
 
-Scale& Scale::operator=(Scale&& src) noexcept {
+Scale& Scale::operator=(Scale&& src) U_NOEXCEPT {
     fMagnitude = src.fMagnitude;
-    delete fArbitrary;
+    if (fArbitrary != nullptr) {
+        delete fArbitrary;
+    }
     fArbitrary = src.fArbitrary;
     fError = src.fError;
     // Take ownership away from src if necessary

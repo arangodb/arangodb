@@ -24,11 +24,11 @@
   *  each setting. Each call to nextSettings resets the cases iterator.
   *  Individual test cases have to have the same number of fields as the
   *  number of entries in headers. Default headers can be specified in 
-  *  the TestDataModule info section. The default headers will be overridden
+  *  the TestDataModule info section. The default headers will be overriden
   *  by per-test headers. 
   *  Example:                                             
-  *  DataMap *settings = nullptr;
-  *  DataMap *cases = nullptr;
+  *  DataMap *settings = NULL;                            
+  *  DataMap *cases = NULL;                               
   *  while(nextSettings(settings, status)) {              
   *    // set settings for the subtest                    
   *    while(nextCase(cases, status) {                    
@@ -59,26 +59,26 @@ public:
   /** Get a pointer to an object owned DataMap that contains more information on this
    *  TestData object.
    *  Usual fields is "Description".                                   
-   *  @param info pass in a const DataMap pointer. If no info, it will be set to nullptr
+   *  @param info pass in a const DataMap pointer. If no info, it will be set to NULL
    */
   virtual UBool getInfo(const DataMap *& info, UErrorCode &status) const = 0;
 
   /** Gets the next set of settings for the test. Resets the cases iterator. 
    *  DataMap is owned by the object and should not be deleted. 
-   *  @param settings a DataMap pointer provided by the user. Will be nullptr if
+   *  @param settings a DataMap pointer provided by the user. Will be NULL if 
    *                  no more settings are available.
    *  @param status for reporting unexpected errors.
-   *  @return A boolean, true if there are settings, false if there is no more 
+   *  @return A boolean, TRUE if there are settings, FALSE if there is no more 
    *          settings. 
    */
   virtual UBool nextSettings(const DataMap *& settings, UErrorCode &status) = 0;
 
   /** Gets the next test case. 
    *  DataMap is owned by the object and should not be deleted. 
-   *  @param data a DataMap pointer provided by the user. Will be nullptr if 
+   *  @param data a DataMap pointer provided by the user. Will be NULL if 
    *                  no more cases are available.
    *  @param status for reporting unexpected errors.
-   *  @return A boolean, true if there are cases, false if there is no more 
+   *  @return A boolean, TRUE if there are cases, FALSE if there is no more 
    *          cases. 
    */
   virtual UBool nextCase(const DataMap *& data, UErrorCode &status) = 0;
@@ -103,10 +103,10 @@ private:
 public:
   virtual ~RBTestData();
 
-  virtual UBool getInfo(const DataMap *& info, UErrorCode &status) const override;
+  virtual UBool getInfo(const DataMap *& info, UErrorCode &status) const;
 
-  virtual UBool nextSettings(const DataMap *& settings, UErrorCode &status) override;
-  virtual UBool nextCase(const DataMap *& nextCase, UErrorCode &status) override;
+  virtual UBool nextSettings(const DataMap *& settings, UErrorCode &status);
+  virtual UBool nextCase(const DataMap *& nextCase, UErrorCode &status);
 };
 
 #endif

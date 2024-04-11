@@ -21,7 +21,7 @@
 U_NAMESPACE_BEGIN
 
 CharsetMatch::CharsetMatch()
-  : textIn(nullptr), confidence(0), fCharsetName(nullptr), fLang(nullptr)
+  : textIn(NULL), confidence(0), fCharsetName(NULL), fLang(NULL)
 {
     // nothing else to do.
 }
@@ -33,11 +33,11 @@ void CharsetMatch::set(InputText *input, const CharsetRecognizer *cr, int32_t co
     confidence = conf; 
     fCharsetName = csName;
     fLang = lang;
-    if (cr != nullptr) {
-        if (fCharsetName == nullptr) {
+    if (cr != NULL) {
+        if (fCharsetName == NULL) {
             fCharsetName = cr->getName();
         }
-        if (fLang == nullptr) {
+        if (fLang == NULL) {
             fLang = cr->getLanguage();
         }
     }
@@ -58,7 +58,7 @@ int32_t CharsetMatch::getConfidence()const
     return confidence;
 }
 
-int32_t CharsetMatch::getUChars(char16_t *buf, int32_t cap, UErrorCode *status) const
+int32_t CharsetMatch::getUChars(UChar *buf, int32_t cap, UErrorCode *status) const
 {
     UConverter *conv = ucnv_open(getName(), status);
     int32_t result = ucnv_toUChars(conv, buf, cap, (const char *) textIn->fRawInput, textIn->fRawLength, status);

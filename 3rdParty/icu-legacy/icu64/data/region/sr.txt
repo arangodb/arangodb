@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 sr{
     Countries{
         001{"свет"}
@@ -32,7 +31,7 @@ sr{
         151{"Источна Европа"}
         154{"Северна Европа"}
         155{"Западна Европа"}
-        202{"Подсахарска Африка"}
+        202{"Африка јужно од Сахаре"}
         419{"Латинска Америка"}
         AC{"Острво Асенсион"}
         AD{"Андора"}
@@ -107,7 +106,7 @@ sr{
         ER{"Еритреја"}
         ES{"Шпанија"}
         ET{"Етиопија"}
-        EU{"Европска унија"}
+        EU{"Европска Унија"}
         EZ{"Еврозона"}
         FI{"Финска"}
         FJ{"Фиџи"}
@@ -288,8 +287,8 @@ sr{
         VU{"Вануату"}
         WF{"Валис и Футуна"}
         WS{"Самоа"}
-        XA{"Псеудоакценти"}
-        XB{"Псеудобиди"}
+        XA{"XA"}
+        XB{"XB"}
         XK{"Косово"}
         YE{"Јемен"}
         YT{"Мајот"}
@@ -297,9 +296,6 @@ sr{
         ZM{"Замбија"}
         ZW{"Зимбабве"}
         ZZ{"Непознат регион"}
-    }
-    Countries%chagos{
-        IO{"архипелаг Чагос"}
     }
     Countries%short{
         GB{"УК"}
@@ -317,4 +313,5 @@ sr{
         FK{"Фокландска (Малвинска) острва"}
         TL{"Источни Тимор"}
     }
+    Version{"2.1.49.82"}
 }

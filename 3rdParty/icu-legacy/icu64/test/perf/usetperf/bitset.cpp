@@ -1,7 +1,7 @@
 /*
 ***********************************************************************
 * © 2016 and later: Unicode, Inc. and others.
-* License & terms of use: http://www.unicode.org/copyright.html
+* License & terms of use: http://www.unicode.org/copyright.html#License
 ***********************************************************************
 ***********************************************************************
 * Copyright (c) 2002-2005, International Business Machines
@@ -35,7 +35,7 @@ UBool BitSet::get(int32_t bitIndex) const {
     uint32_t longIndex = bitIndex >> 5;
     int32_t bitInLong = bitIndex & 0x1F;
     return (longIndex < len) ? (((data[longIndex] >> bitInLong) & 1) != 0)
-        : false;
+        : FALSE;
 }
 
 void BitSet::set(int32_t bitIndex) {

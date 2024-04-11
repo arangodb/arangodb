@@ -1,7 +1,7 @@
 /*
 ***********************************************************************
 * © 2016 and later: Unicode, Inc. and others.
-* License & terms of use: http://www.unicode.org/copyright.html
+* License & terms of use: http://www.unicode.org/copyright.html#License
 ***********************************************************************
 ***********************************************************************
 * Copyright (c) 2002-2014,International Business Machines
@@ -21,7 +21,7 @@ using namespace std;
 DateFormatPerfTest::DateFormatPerfTest(int32_t argc, const char* argv[], UErrorCode& status)
 : UPerfTest(argc,argv,status) {
 
-    if (locale == nullptr){
+    if (locale == NULL){
         locale = "en_US";   // set default locale
     }
 }
@@ -64,9 +64,9 @@ UPerfFunction* DateFormatPerfTest::runIndexedTest(int32_t index, UBool exec,cons
 
         default: 
             name = ""; 
-            return nullptr;
+            return NULL;
     }
-    return nullptr;
+    return NULL;
 }
 
 
@@ -283,7 +283,7 @@ int main(int argc, const char* argv[]){
     }
 	//cout << "Done initializing!\n" << endl;
     
-    if(test.run()==false){
+    if(test.run()==FALSE){
 		cout << "run failed!" << endl;
         fprintf(stderr,"FAILED: Tests could not be run please check the arguments.\n");
         return -1;

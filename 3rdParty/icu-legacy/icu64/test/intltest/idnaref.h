@@ -44,13 +44,13 @@
  * @param options           A bit set of options:
  *  
  *  - idnaref_UNASSIGNED        Unassigned values can be converted to ASCII for query operations
- *                          If true unassigned values are treated as normal Unicode code points.
- *                          If false the operation fails with U_UNASSIGNED_CODE_POINT_FOUND error code.
+ *                          If TRUE unassigned values are treated as normal Unicode code points.
+ *                          If FALSE the operation fails with U_UNASSIGNED_CODE_POINT_FOUND error code.
  *  - idnaref_USE_STD3_RULES    Use STD3 ASCII rules for host name syntax restrictions
- *                          If true and the input does not satisfy STD3 rules, the operation 
+ *                          If TRUE and the input does not statisfy STD3 rules, the operation 
  *                          will fail with U_IDNA_STD3_ASCII_RULES_ERROR
  *
- * @param parseError        Pointer to UParseError struct to receive information on position 
+ * @param parseError        Pointer to UParseError struct to recieve information on position 
  *                          of error if an error is encountered. Can be NULL.
  * @param status            ICU in/out error code parameter.
  *                          U_INVALID_CHAR_FOUND if src contains
@@ -82,13 +82,13 @@ idnaref_toASCII(const UChar* src, int32_t srcLength,
  * @param options           A bit set of options:
  *  
  *  - idnaref_UNASSIGNED        Unassigned values can be converted to ASCII for query operations
- *                          If true unassigned values are treated as normal Unicode code points.
- *                          If false the operation fails with U_UNASSIGNED_CODE_POINT_FOUND error code.
+ *                          If TRUE unassigned values are treated as normal Unicode code points.
+ *                          If FALSE the operation fails with U_UNASSIGNED_CODE_POINT_FOUND error code.
  *  - idnaref_USE_STD3_RULES    Use STD3 ASCII rules for host name syntax restrictions
- *                          If true and the input does not satisfy STD3 rules, the operation 
+ *                          If TRUE and the input does not statisfy STD3 rules, the operation 
  *                          will fail with U_IDNA_STD3_ASCII_RULES_ERROR
  *
- * @param parseError        Pointer to UParseError struct to receive information on position 
+ * @param parseError        Pointer to UParseError struct to recieve information on position 
  *                          of error if an error is encountered. Can be NULL.
  * @param status            ICU in/out error code parameter.
  *                          U_INVALID_CHAR_FOUND if src contains
@@ -125,13 +125,13 @@ idnaref_toUnicode(const UChar* src, int32_t srcLength,
  * @param options           A bit set of options:
  *  
  *  - idnaref_UNASSIGNED        Unassigned values can be converted to ASCII for query operations
- *                          If true unassigned values are treated as normal Unicode code points.
- *                          If false the operation fails with U_UNASSIGNED_CODE_POINT_FOUND error code.
+ *                          If TRUE unassigned values are treated as normal Unicode code points.
+ *                          If FALSE the operation fails with U_UNASSIGNED_CODE_POINT_FOUND error code.
  *  - idnaref_USE_STD3_RULES    Use STD3 ASCII rules for host name syntax restrictions
- *                          If true and the input does not satisfy STD3 rules, the operation 
+ *                          If TRUE and the input does not statisfy STD3 rules, the operation 
  *                          will fail with U_IDNA_STD3_ASCII_RULES_ERROR
  * 
- * @param parseError        Pointer to UParseError struct to receive information on position 
+ * @param parseError        Pointer to UParseError struct to recieve information on position 
  *                          of error if an error is encountered. Can be NULL.
  * @param status            ICU in/out error code parameter.
  *                          U_INVALID_CHAR_FOUND if src contains
@@ -164,13 +164,13 @@ idnaref_IDNToASCII(  const UChar* src, int32_t srcLength,
  * @param options           A bit set of options:
  *  
  *  - idnaref_UNASSIGNED        Unassigned values can be converted to ASCII for query operations
- *                          If true unassigned values are treated as normal Unicode code points.
- *                          If false the operation fails with U_UNASSIGNED_CODE_POINT_FOUND error code.
+ *                          If TRUE unassigned values are treated as normal Unicode code points.
+ *                          If FALSE the operation fails with U_UNASSIGNED_CODE_POINT_FOUND error code.
  *  - idnaref_USE_STD3_RULES    Use STD3 ASCII rules for host name syntax restrictions
- *                          If true and the input does not satisfy STD3 rules, the operation 
+ *                          If TRUE and the input does not statisfy STD3 rules, the operation 
  *                          will fail with U_IDNA_STD3_ASCII_RULES_ERROR
  *
- * @param parseError        Pointer to UParseError struct to receive information on position 
+ * @param parseError        Pointer to UParseError struct to recieve information on position 
  *                          of error if an error is encountered. Can be NULL.
  * @param status            ICU in/out error code parameter.
  *                          U_INVALID_CHAR_FOUND if src contains
@@ -204,10 +204,10 @@ idnaref_IDNToUnicode(  const UChar* src, int32_t srcLength,
  * @param options           A bit set of options:
  *  
  *  - idnaref_UNASSIGNED        Unassigned values can be converted to ASCII for query operations
- *                          If true unassigned values are treated as normal Unicode code points.
- *                          If false the operation fails with U_UNASSIGNED_CODE_POINT_FOUND error code.
+ *                          If TRUE unassigned values are treated as normal Unicode code points.
+ *                          If FALSE the operation fails with U_UNASSIGNED_CODE_POINT_FOUND error code.
  *  - idnaref_USE_STD3_RULES    Use STD3 ASCII rules for host name syntax restrictions
- *                          If true and the input does not satisfy STD3 rules, the operation 
+ *                          If TRUE and the input does not statisfy STD3 rules, the operation 
  *                          will fail with U_IDNA_STD3_ASCII_RULES_ERROR
  *
  * @param status            ICU error code in/out parameter.

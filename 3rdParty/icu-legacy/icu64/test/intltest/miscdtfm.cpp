@@ -46,10 +46,10 @@ DateFormatMiscTests::failure(UErrorCode status, const char* msg)
 {
     if(U_FAILURE(status)) {
         errcheckln(status, UnicodeString("FAIL: ") + msg + " failed, error " + u_errorName(status));
-        return true;
+        return TRUE;
     }
 
-    return false;
+    return FALSE;
 }
 
 /*
@@ -96,25 +96,25 @@ DateFormatMiscTests::test4097450()
     };
     
 /*    UBool dresult [] = {
-        true, 
-        false, 
-        false,  
-        true,
-        true, 
-        false, 
-        false,  
-        true,
-        false,
-        false,
-        true, 
-        false,
-        false, 
-        false
+        TRUE, 
+        FALSE, 
+        FALSE,  
+        TRUE,
+        TRUE, 
+        FALSE, 
+        FALSE,  
+        TRUE,
+        FALSE,
+        FALSE,
+        TRUE, 
+        FALSE,
+        FALSE, 
+        FALSE
     };*/
 
     UErrorCode status = U_ZERO_ERROR;
-    LocalPointer<SimpleDateFormat> formatter;
-    SimpleDateFormat resultFormatter((UnicodeString)u"yyyy", status);
+    SimpleDateFormat *formatter;
+    SimpleDateFormat *resultFormatter = new SimpleDateFormat((UnicodeString)"yyyy", status);
     if (U_FAILURE(status)) {
         dataerrln("Fail new SimpleDateFormat: %s", u_errorName(status));
         return;
@@ -125,21 +125,24 @@ DateFormatMiscTests::test4097450()
     for (int i = 0; i < 14/*dstring.length*/; i++)
     {
         log(dformat[i] + "\t" + dstring[i] + "\t");
-        formatter.adoptInstead(new SimpleDateFormat(dformat[i], status));
+        formatter = new SimpleDateFormat(dformat[i], status);
         if(failure(status, "new SimpleDateFormat")) return;
         //try {
         UnicodeString str;
         FieldPosition pos(FieldPosition::DONT_CARE);
-        logln(resultFormatter.format(formatter->parse(dstring[i], status), str, pos));
-        failure(status, "resultFormatter.format");
+        logln(resultFormatter->format(formatter->parse(dstring[i], status), str, pos));
+        failure(status, "resultFormatter->format");
             //if ( !dresult[i] ) System.out.print("   <-- error!");
         /*}
         catch (ParseException exception) {
             //if ( dresult[i] ) System.out.print("   <-- error!");
             System.out.print("exception --> " + exception);
         }*/
+        delete formatter;
         logln();
     }
+
+    delete resultFormatter;
 }
 
 /*
@@ -290,7 +293,7 @@ void
 DateFormatMiscTests::test4117335()
 {
     //UnicodeString bc = "\u7d00\u5143\u524d";
-    char16_t bcC [] = {
+    UChar bcC [] = {
         0x7D00,
         0x5143,
         0x524D
@@ -298,21 +301,21 @@ DateFormatMiscTests::test4117335()
     UnicodeString bc(bcC, 3, 3);
 
     //UnicodeString ad = "\u897f\u66a6";
-    char16_t adC [] = {
+    UChar adC [] = {
         0x897F,
         0x66A6
     };
     UnicodeString ad(adC, 2, 2);
     
     //UnicodeString jstLong = "\u65e5\u672c\u6a19\u6e96\u6642";
-    char16_t jstLongC [] = {
+    UChar jstLongC [] = {
         0x65e5,
         0x672c,
         0x6a19,
         0x6e96,
         0x6642
     };
-    char16_t jdtLongC [] = {0x65E5, 0x672C, 0x590F, 0x6642, 0x9593};
+    UChar jdtLongC [] = {0x65E5, 0x672C, 0x590F, 0x6642, 0x9593};
 
     UnicodeString jstLong(jstLongC, 5, 5);
 

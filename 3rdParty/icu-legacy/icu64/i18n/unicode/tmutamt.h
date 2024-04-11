@@ -16,14 +16,10 @@
  * \brief C++ API: time unit amount object.
  */
 
-#include "unicode/utypes.h"
-
-#if U_SHOW_CPLUSPLUS_API
-
-#if !UCONFIG_NO_FORMATTING
-
 #include "unicode/measure.h"
 #include "unicode/tmunit.h"
+
+#if !UCONFIG_NO_FORMATTING
 
 U_NAMESPACE_BEGIN
 
@@ -39,7 +35,7 @@ public:
     /**
      * Construct TimeUnitAmount object with the given number and the
      * given time unit. 
-     * @param number        a numeric object; number.isNumeric() must be true
+     * @param number        a numeric object; number.isNumeric() must be TRUE
      * @param timeUnitField the time unit field of a time unit
      * @param status        the input-output error code. 
      *                      If the number is not numeric or the timeUnitField
@@ -87,7 +83,7 @@ public:
      * @return a polymorphic clone of this object. The result will have the same               class as returned by getDynamicClassID().
      * @stable ICU 4.2
      */
-    virtual TimeUnitAmount* clone() const override;
+    virtual UObject* clone() const;
 
     
     /**
@@ -103,7 +99,7 @@ public:
      * @return       true if this object is equal to the given object.
      * @stable ICU 4.2
      */
-    virtual bool operator==(const UObject& other) const;
+    virtual UBool operator==(const UObject& other) const;
 
 
     /** 
@@ -112,7 +108,7 @@ public:
      * @return       true if this object is not equal to the given object.
      * @stable ICU 4.2
      */
-    bool operator!=(const UObject& other) const;
+    UBool operator!=(const UObject& other) const;
 
 
     /**
@@ -126,7 +122,8 @@ public:
      * @return          The class ID for all objects of this class.
      * @stable ICU 4.2
      */
-    static UClassID U_EXPORT2 getStaticClassID();
+    static UClassID U_EXPORT2 getStaticClassID(void);
+
 
     /**
      * Returns a unique class ID POLYMORPHICALLY. Pure virtual override. This
@@ -139,7 +136,8 @@ public:
      *                  other classes have different class IDs.
      * @stable ICU 4.2
      */
-    virtual UClassID getDynamicClassID() const override;
+    virtual UClassID getDynamicClassID(void) const;
+
 
     /**
      * Get the time unit.
@@ -158,7 +156,7 @@ public:
 
 
 
-inline bool
+inline UBool 
 TimeUnitAmount::operator!=(const UObject& other) const {
     return !operator==(other);
 }
@@ -166,8 +164,6 @@ TimeUnitAmount::operator!=(const UObject& other) const {
 U_NAMESPACE_END
 
 #endif /* #if !UCONFIG_NO_FORMATTING */
-
-#endif /* U_SHOW_CPLUSPLUS_API */
 
 #endif // __TMUTAMT_H__
 //eof

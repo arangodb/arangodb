@@ -8,9 +8,6 @@
 #include "unicode/utypes.h"
 
 #if !UCONFIG_NO_FORMATTING
-
-#include <stdbool.h>
-
 #include "unicode/unum.h"
 #include "unicode/ucurr.h"
 #include "unicode/ustring.h"
@@ -37,82 +34,55 @@ static void expectInList(const char *isoCurrency, uint32_t currencyType, UBool i
 
     if ((foundCurrency != NULL) != isExpected) {
        log_err("Error: could not find %s as expected. isExpected = %s type=0x%X\n",
-           isoCurrency, isExpected ? "true" : "false", currencyType);
+           isoCurrency, isExpected ? "TRUE" : "FALSE", currencyType);
     }
     uenum_close(en);
 }
 
 static void TestEnumList(void) {
-    expectInList("ADP", UCURR_ALL, true); /* First in list */
-    expectInList("ZWD", UCURR_ALL, true); /* Last in list */
+    expectInList("ADP", UCURR_ALL, TRUE); /* First in list */
+    expectInList("ZWD", UCURR_ALL, TRUE); /* Last in list */
 
-    expectInList("USD", UCURR_ALL, true);
-    expectInList("USD", UCURR_COMMON, true);
-    expectInList("USD", UCURR_UNCOMMON, false);
-    expectInList("USD", UCURR_DEPRECATED, false);
-    expectInList("USD", UCURR_NON_DEPRECATED, true);
-    expectInList("USD", UCURR_COMMON|UCURR_DEPRECATED, false);
-    expectInList("USD", UCURR_COMMON|UCURR_NON_DEPRECATED, true);
-    expectInList("USD", UCURR_UNCOMMON|UCURR_DEPRECATED, false);
-    expectInList("USD", UCURR_UNCOMMON|UCURR_NON_DEPRECATED, false);
+    expectInList("USD", UCURR_ALL, TRUE);
+    expectInList("USD", UCURR_COMMON, TRUE);
+    expectInList("USD", UCURR_UNCOMMON, FALSE);
+    expectInList("USD", UCURR_DEPRECATED, FALSE);
+    expectInList("USD", UCURR_NON_DEPRECATED, TRUE);
+    expectInList("USD", UCURR_COMMON|UCURR_DEPRECATED, FALSE);
+    expectInList("USD", UCURR_COMMON|UCURR_NON_DEPRECATED, TRUE);
+    expectInList("USD", UCURR_UNCOMMON|UCURR_DEPRECATED, FALSE);
+    expectInList("USD", UCURR_UNCOMMON|UCURR_NON_DEPRECATED, FALSE);
 
-    expectInList("USN", UCURR_ALL, true);
-    expectInList("USN", UCURR_COMMON, false);
-    expectInList("USN", UCURR_UNCOMMON, true);
-    expectInList("USN", UCURR_DEPRECATED, false);
-    expectInList("USN", UCURR_NON_DEPRECATED, true);
-    expectInList("USN", UCURR_COMMON|UCURR_DEPRECATED, false);
-    expectInList("USN", UCURR_COMMON|UCURR_NON_DEPRECATED, false);
-    expectInList("USN", UCURR_UNCOMMON|UCURR_DEPRECATED, false);
-    expectInList("USN", UCURR_UNCOMMON|UCURR_NON_DEPRECATED, true);
+    expectInList("USN", UCURR_ALL, TRUE);
+    expectInList("USN", UCURR_COMMON, FALSE);
+    expectInList("USN", UCURR_UNCOMMON, TRUE);
+    expectInList("USN", UCURR_DEPRECATED, FALSE);
+    expectInList("USN", UCURR_NON_DEPRECATED, TRUE);
+    expectInList("USN", UCURR_COMMON|UCURR_DEPRECATED, FALSE);
+    expectInList("USN", UCURR_COMMON|UCURR_NON_DEPRECATED, FALSE);
+    expectInList("USN", UCURR_UNCOMMON|UCURR_DEPRECATED, FALSE);
+    expectInList("USN", UCURR_UNCOMMON|UCURR_NON_DEPRECATED, TRUE);
 
-    expectInList("DEM", UCURR_ALL, true);
-    expectInList("DEM", UCURR_COMMON, true);
-    expectInList("DEM", UCURR_UNCOMMON, false);
-    expectInList("DEM", UCURR_DEPRECATED, true);
-    expectInList("DEM", UCURR_NON_DEPRECATED, false);
-    expectInList("DEM", UCURR_COMMON|UCURR_DEPRECATED, true);
-    expectInList("DEM", UCURR_COMMON|UCURR_NON_DEPRECATED, false);
-    expectInList("DEM", UCURR_UNCOMMON|UCURR_DEPRECATED, false);
-    expectInList("DEM", UCURR_UNCOMMON|UCURR_NON_DEPRECATED, false);
+    expectInList("DEM", UCURR_ALL, TRUE);
+    expectInList("DEM", UCURR_COMMON, TRUE);
+    expectInList("DEM", UCURR_UNCOMMON, FALSE);
+    expectInList("DEM", UCURR_DEPRECATED, TRUE);
+    expectInList("DEM", UCURR_NON_DEPRECATED, FALSE);
+    expectInList("DEM", UCURR_COMMON|UCURR_DEPRECATED, TRUE);
+    expectInList("DEM", UCURR_COMMON|UCURR_NON_DEPRECATED, FALSE);
+    expectInList("DEM", UCURR_UNCOMMON|UCURR_DEPRECATED, FALSE);
+    expectInList("DEM", UCURR_UNCOMMON|UCURR_NON_DEPRECATED, FALSE);
 
-    expectInList("XEU", UCURR_ALL, true);
-    expectInList("XEU", UCURR_COMMON, false);
-    expectInList("XEU", UCURR_UNCOMMON, true);
-    expectInList("XEU", UCURR_DEPRECATED, true);
-    expectInList("XEU", UCURR_NON_DEPRECATED, false);
-    expectInList("XEU", UCURR_COMMON|UCURR_DEPRECATED, false);
-    expectInList("XEU", UCURR_COMMON|UCURR_NON_DEPRECATED, false);
-    expectInList("XEU", UCURR_UNCOMMON|UCURR_DEPRECATED, true);
-    expectInList("XEU", UCURR_UNCOMMON|UCURR_NON_DEPRECATED, false);
+    expectInList("XEU", UCURR_ALL, TRUE);
+    expectInList("XEU", UCURR_COMMON, FALSE);
+    expectInList("XEU", UCURR_UNCOMMON, TRUE);
+    expectInList("XEU", UCURR_DEPRECATED, TRUE);
+    expectInList("XEU", UCURR_NON_DEPRECATED, FALSE);
+    expectInList("XEU", UCURR_COMMON|UCURR_DEPRECATED, FALSE);
+    expectInList("XEU", UCURR_COMMON|UCURR_NON_DEPRECATED, FALSE);
+    expectInList("XEU", UCURR_UNCOMMON|UCURR_DEPRECATED, TRUE);
+    expectInList("XEU", UCURR_UNCOMMON|UCURR_NON_DEPRECATED, FALSE);
 
-    // ICU-21622
-    expectInList("UYW", UCURR_ALL, true);
-    expectInList("UYW", UCURR_COMMON, false);
-    expectInList("UYW", UCURR_UNCOMMON, true);
-    expectInList("UYW", UCURR_DEPRECATED, false);
-    expectInList("UYW", UCURR_NON_DEPRECATED, true);
-
-    // ICU-21685
-    expectInList("VES", UCURR_ALL, true);
-    expectInList("VES", UCURR_COMMON, true);
-    expectInList("VES", UCURR_UNCOMMON, false);
-    expectInList("VES", UCURR_DEPRECATED, false);
-    expectInList("VES", UCURR_NON_DEPRECATED, true);
-
-    // CLDR 41/42 and ICU-21989
-    expectInList("SLE", UCURR_ALL, true);
-    expectInList("SLE", UCURR_COMMON, true);
-    expectInList("SLE", UCURR_UNCOMMON, false);
-    expectInList("SLE", UCURR_DEPRECATED, false);
-    expectInList("SLE", UCURR_NON_DEPRECATED, true);
-    expectInList("VED", UCURR_ALL, true);
-    expectInList("VED", UCURR_COMMON, false);
-    expectInList("VED", UCURR_UNCOMMON, true);
-    expectInList("VED", UCURR_DEPRECATED, false);
-    expectInList("VED", UCURR_NON_DEPRECATED, true);
-
-    expectInList("EQE", UCURR_ALL, false);
 }
 
 static void TestEnumListReset(void) {
@@ -152,7 +122,7 @@ static int32_t checkItemCount(uint32_t currencyType) {
     originalCount = uenum_count(en, &status);
     for (count=0;;count++) {
         const char *str = uenum_next(en, &len, &status);
-        if (str == NULL || len != expectedLen || (int32_t)strlen(str) != expectedLen) {
+        if (str == NULL || len != expectedLen || strlen(str) != expectedLen) {
             break;
         }
     }

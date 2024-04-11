@@ -1,20 +1,22 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ksh{
-    AuxExemplarCharacters{"[áàăâãā ç éèĕêē ğ íìĭîïī ĳ ı ł ñ óòŏôøō úùŭûū ÿ]"}
-    ExemplarCharacters{"[aåä æ b c d eëė f g h i j k l m n oö œ p q r s ß t uůü v w x y z]"}
+    AuxExemplarCharacters{"[á à ă â ã ā ç é è ĕ ê ē ğ í ì ĭ î ï ī ĳ ı ł ñ ó ò ŏ ô ø ō ú ù ŭ û ū ÿ]"}
+    ExemplarCharacters{"[a å ä æ b c d e ë ė f g h i j k l m n o ö œ p q r s ß t u ů ü v w x y z]"}
     ExemplarCharactersIndex{"[A B C D E F G H I J K L M N O P Q R S T U V W X Y Z]"}
     ExemplarCharactersNumbers{"[  , % ‰ + − 0 1 2 3 4 5 6 7 8 9]"}
     ExemplarCharactersPunctuation{
-        "[_ ‐ – — ⸗ , ; \\: ! ? . … '‘‚ \u0022“„ ( ) \\[ \\] \\{ \\} § @ * / \\& # % "
-        "† ‡ ° < = > ~]"
+        "[_ ‐ – — ⸗ , ; \\: ! ? . … ' ‘ ‚ \u0022 “ „ ( ) \\[ \\] \\{ \\} § @ * / \\& "
+        "# % † ‡ ° < = > ~]"
     }
     NumberElements{
+        default{"latn"}
         latn{
             patterns{
                 currencyFormat{"#,##0.00 ¤"}
+                decimalFormat{"#,##0.###"}
                 percentFormat{"#,##0 %"}
+                scientificFormat{"#E0"}
             }
             patternsLong{
                 decimalFormat{
@@ -85,50 +87,62 @@ ksh{
                     1000{
                         one{"0 tsd"}
                         other{"0 tsd"}
+                        zero{"0 tsd"}
                     }
                     10000{
                         one{"00 tsd"}
                         other{"00 tsd"}
+                        zero{"00 tsd"}
                     }
                     100000{
                         one{"000 tsd"}
                         other{"000 tsd"}
+                        zero{"000 tsd"}
                     }
                     1000000{
                         one{"0 Mio"}
                         other{"0 Mio"}
+                        zero{"0 Mio"}
                     }
                     10000000{
                         one{"00 Mio"}
                         other{"00 Mio"}
+                        zero{"00 Mio"}
                     }
                     100000000{
                         one{"000 Mio"}
                         other{"000 Mio"}
+                        zero{"000 Mio"}
                     }
                     1000000000{
                         one{"0 Mrd"}
                         other{"0 Mrd"}
+                        zero{"0 Mrd"}
                     }
                     10000000000{
                         one{"00 Mrd"}
                         other{"00 Mrd"}
+                        zero{"00 Mrd"}
                     }
                     100000000000{
                         one{"000 Mrd"}
                         other{"000 Mrd"}
+                        zero{"000 Mrd"}
                     }
                     1000000000000{
                         one{"0 Bio"}
                         other{"0 Bio"}
+                        zero{"0 Bio"}
                     }
                     10000000000000{
                         one{"00 Bio"}
                         other{"00 Bio"}
+                        zero{"00 Bio"}
                     }
                     100000000000000{
                         one{"000 Bio"}
                         other{"000 Bio"}
+                        zero{"000 Bio"}
                     }
                 }
             }
@@ -136,10 +150,18 @@ ksh{
                 decimal{","}
                 exponential{"×10^"}
                 group{" "}
+                infinity{"∞"}
+                list{";"}
                 minusSign{"−"}
+                nan{"NaN"}
+                perMille{"‰"}
+                percentSign{"%"}
+                plusSign{"+"}
             }
         }
+        native{"latn"}
     }
+    Version{"2.1.47.82"}
     calendar{
         buddhist{
             DateTimePatterns{
@@ -174,26 +196,20 @@ ksh{
                 "{1} {0}",
                 "{1} {0}",
             }
-            DateTimeSkeletons{
-                "HHmmsszzzz",
-                "HHmmssz",
-                "HHmmss",
-                "HHmm",
-                "GyMMMMEEEEd",
-                "GyMMMMd",
-                "GyMMMd",
-                "GGGGGyMd",
-            }
             availableFormats{
                 Ed{"E 'dä' d."}
                 Hm{"H:mm"}
                 Hms{"H:mm:ss"}
+                M{"L"}
                 MEd{"E d. M."}
+                MMM{"LLL"}
                 MMMEd{"E d. MMM"}
                 MMMMd{"d. MMMM"}
                 MMMd{"d. MMM"}
-                hm{"h:mm a"}
-                hms{"h:mm:ss a"}
+                d{"d"}
+                hm{"h:mm a"}
+                hms{"h:mm:ss a"}
+                ms{"mm:ss"}
                 y{"y"}
                 yM{"Y-MM"}
                 yMEd{"E y-MM-dd"}
@@ -209,34 +225,40 @@ ksh{
                 M{
                     M{"M–M"}
                 }
+                MMM{
+                    M{"LLL–LLL"}
+                }
                 Md{
-                    d{"dd. – dd. MM."}
+                    d{"dd. – dd. MM."}
+                }
+                d{
+                    d{"d–d"}
                 }
                 hm{
-                    a{"h:mm a – h:mm a"}
-                    h{"h:mm–h:mm a"}
-                    m{"h:mm–h:mm a"}
+                    a{"h:mm a – h:mm a"}
+                    h{"h:mm–h:mm a"}
+                    m{"h:mm–h:mm a"}
                 }
                 y{
                     y{"y–y"}
                 }
                 yMEd{
-                    M{"E y-MM-dd – E y-MM-dd"}
-                    d{"E y-MM-dd – E y-MM-dd"}
-                    y{"E y-MM-dd – E y-MM-dd"}
+                    M{"E y-MM-dd – E y-MM-dd"}
+                    d{"E y-MM-dd – E y-MM-dd"}
+                    y{"E y-MM-dd – E y-MM-dd"}
                 }
                 yMMM{
                     M{"MMM–MMM y"}
-                    y{"MMM. y – MMM. y"}
+                    y{"MMM. y – MMM. y"}
                 }
                 yMMMEd{
-                    M{"E y-MM-dd – E y-MM-dd"}
-                    d{"E y-MM-dd – E y-MM-dd"}
-                    y{"E y-MM-dd – E y-MM-dd"}
+                    M{"E y-MM-dd – E y-MM-dd"}
+                    d{"E y-MM-dd – E y-MM-dd"}
+                    y{"E y-MM-dd – E y-MM-dd"}
                 }
                 yMMMM{
                     M{"MMMM–MMMM y"}
-                    y{"MMMM y – MMMM y"}
+                    y{"MMMM y – MMMM y"}
                 }
             }
         }
@@ -264,32 +286,28 @@ ksh{
                 "{1} {0}",
                 "{1} {0}",
             }
-            DateTimeSkeletons{
-                "HHmmsszzzz",
-                "HHmmssz",
-                "HHmmss",
-                "HHmm",
-                "yMMMMEEEEd",
-                "yMMMMd",
-                "yMMMd",
-                "yMd",
-            }
             availableFormats{
                 Ed{"E 'dä' d."}
                 Hm{"H:mm"}
                 Hms{"H:mm:ss"}
+                M{"L"}
                 MEd{"E d. M."}
+                MMM{"LLL"}
                 MMMEd{"E d. MMM"}
                 MMMMd{"d. MMMM"}
                 MMMd{"d. MMM"}
-                hm{"h:mm a"}
-                hms{"h:mm:ss a"}
+                d{"d"}
+                hm{"h:mm a"}
+                hms{"h:mm:ss a"}
+                ms{"mm:ss"}
+                y{"y"}
                 yM{"Y-MM"}
                 yMEd{"E y-MM-dd"}
                 yMMM{"MMM y"}
                 yMMMEd{"E d. MMM. y"}
                 yMMMM{"MMMM y"}
                 yMMMd{"d. MMM. y"}
+                yMd{"y-MM-dd"}
                 yQQQ{"QQQy"}
                 yQQQQ{"QQQQ y"}
             }
@@ -333,6 +351,15 @@ ksh{
                         "F",
                         "S",
                     }
+                    short{
+                        "Su",
+                        "Mo",
+                        "Di",
+                        "Me",
+                        "Du",
+                        "Fr",
+                        "Sa",
+                    }
                 }
             }
             dayPeriod{
@@ -373,34 +400,43 @@ ksh{
                 M{
                     M{"M–M"}
                 }
+                MMM{
+                    M{"LLL–LLL"}
+                }
                 Md{
-                    d{"dd. – dd. MM."}
+                    d{"dd. – dd. MM."}
+                }
+                d{
+                    d{"d–d"}
                 }
                 hm{
-                    a{"h:mm a – h:mm a"}
-                    h{"h:mm–h:mm a"}
-                    m{"h:mm–h:mm a"}
+                    a{"h:mm a – h:mm a"}
+                    h{"h:mm–h:mm a"}
+                    m{"h:mm–h:mm a"}
+                }
+                y{
+                    y{"y–y"}
                 }
                 yMEd{
-                    M{"E y-MM-dd – E y-MM-dd"}
-                    d{"E y-MM-dd – E y-MM-dd"}
-                    y{"E y-MM-dd – E y-MM-dd"}
+                    M{"E y-MM-dd – E y-MM-dd"}
+                    d{"E y-MM-dd – E y-MM-dd"}
+                    y{"E y-MM-dd – E y-MM-dd"}
                 }
                 yMMM{
                     M{"MMM–MMM y"}
-                    y{"MMM. y – MMM. y"}
+                    y{"MMM. y – MMM. y"}
                 }
                 yMMMEd{
-                    M{"E y-MM-dd – E y-MM-dd"}
-                    d{"E y-MM-dd – E y-MM-dd"}
-                    y{"E y-MM-dd – E y-MM-dd"}
+                    M{"E y-MM-dd – E y-MM-dd"}
+                    d{"E y-MM-dd – E y-MM-dd"}
+                    y{"E y-MM-dd – E y-MM-dd"}
                 }
                 yMMMM{
                     M{"MMMM–MMMM y"}
-                    y{"MMMM y – MMMM y"}
+                    y{"MMMM y – MMMM y"}
                 }
                 yMMMd{
-                    M{"y MMM d – MMM d"}
+                    M{"y MMM d – MMM d"}
                     d{"d.–d. MMMM y"}
                 }
             }
@@ -494,6 +530,12 @@ ksh{
                         "3Q",
                         "4Q",
                     }
+                    wide{
+                        "1. Quattahl",
+                        "2. Quattahl",
+                        "3. Quattahl",
+                        "4. Quattahl",
+                    }
                 }
             }
         }
@@ -514,6 +556,9 @@ ksh{
                 "1"{"morje"}
                 "2"{"övvermorje"}
             }
+        }
+        day-narrow{
+            dn{"D."}
         }
         day-short{
             dn{"D."}
@@ -567,8 +612,14 @@ ksh{
         month-narrow{
             dn{"M."}
         }
+        month-short{
+            dn{"Mohnd"}
+        }
         quarter{
             dn{"Quattahl"}
+        }
+        quarter-narrow{
+            dn{"Q."}
         }
         quarter-short{
             dn{"Q."}
@@ -625,6 +676,9 @@ ksh{
                 "1"{"nächste Woche"}
             }
         }
+        week-narrow{
+            dn{"W."}
+        }
         week-short{
             dn{"W."}
         }
@@ -651,6 +705,9 @@ ksh{
                 }
             }
         }
+        year-narrow{
+            dn{"J."}
+        }
         year-short{
             dn{"J."}
         }
@@ -662,6 +719,14 @@ ksh{
         standard{
             2{"{0} un {1}"}
             end{"{0} un {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+        unit{
+            2{"{0}, {1}"}
+            end{"{0}, {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
         }
         unit-narrow{
             2{"{0} {1}"}
@@ -672,6 +737,8 @@ ksh{
         unit-short{
             2{"{0}, {1}"}
             end{"{0}, {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
         }
     }
     measurementSystemNames{

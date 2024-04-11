@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 yue_Hans{
     %%Parent{"root"}
     Keys{
@@ -45,7 +44,6 @@ yue_Hans{
         am{"阿姆哈拉文"}
         an{"阿拉贡文"}
         ang{"古英文"}
-        ann{"奥博洛文"}
         anp{"昂加文"}
         ar{"阿拉伯文"}
         ar_001{"现代标准阿拉伯文"}
@@ -54,7 +52,6 @@ yue_Hans{
         aro{"阿拉奥纳文"}
         arp{"阿拉帕霍文"}
         arq{"阿尔及利亚阿拉伯文"}
-        ars{"纳吉迪阿拉伯文"}
         arw{"阿拉瓦克文"}
         ary{"摩洛哥阿拉伯文"}
         arz{"埃及阿拉伯文"}
@@ -62,7 +59,6 @@ yue_Hans{
         asa{"阿苏文"}
         ase{"美国手语"}
         ast{"阿斯图里亚文"}
-        atj{"阿提卡米克文"}
         av{"阿瓦尔文"}
         avk{"科塔瓦文"}
         awa{"阿瓦文"}
@@ -84,7 +80,6 @@ yue_Hans{
         bfd{"富特文"}
         bfq{"巴达加文"}
         bg{"保加利亚文"}
-        bgc{"哈里亚纳文"}
         bgn{"西俾路支文"}
         bho{"博杰普尔文"}
         bi{"比斯拉马文"}
@@ -129,22 +124,14 @@ yue_Hans{
         chr{"柴罗基文"}
         chy{"沙伊安文"}
         ckb{"索拉尼库尔德文"}
-        clc{"奇尔科延文"}
         co{"科西嘉文"}
         cop{"科普特文"}
         cps{"卡皮兹文"}
         cr{"克里文"}
-        crg{"米奇夫文"}
         crh{"克里米亚半岛的土耳其文；克里米亚半岛的塔塔尔文"}
-        crj{"东南克里文"}
-        crk{"平原克里文"}
-        crl{"东北克里文"}
-        crm{"驼鹿克里文"}
-        crr{"卡罗来纳州阿尔冈昆语"}
         crs{"法语克里奥尔混合语"}
         cs{"捷克文"}
         csb{"卡舒布文"}
-        csw{"沼泽克里文"}
         cu{"宗教斯拉夫文"}
         cv{"楚瓦什文"}
         cy{"威尔斯文"}
@@ -187,7 +174,6 @@ yue_Hans{
         ewo{"依汪都文"}
         ext{"埃斯特雷马杜拉文"}
         fa{"波斯文"}
-        fa_AF{"达里文"}
         fan{"芳族文"}
         fat{"芳蒂文"}
         ff{"富拉文"}
@@ -238,7 +224,6 @@ yue_Hans{
         hai{"海达文"}
         hak{"客家话"}
         haw{"夏威夷文"}
-        hax{"南海达文"}
         he{"希伯来文"}
         hi{"北印度文"}
         hif{"斐济印地文"}
@@ -252,7 +237,6 @@ yue_Hans{
         ht{"海地文"}
         hu{"匈牙利文"}
         hup{"胡帕文"}
-        hur{"哈尔科梅勒姆文"}
         hy{"亚美尼亚文"}
         hz{"赫雷罗文"}
         ia{"国际文"}
@@ -263,12 +247,11 @@ yue_Hans{
         ig{"伊布文"}
         ii{"四川彝文"}
         ik{"依奴皮维克文"}
-        ikt{"加拿大西部因纽特文"}
         ilo{"伊洛阔文"}
         inh{"印古什文"}
         io{"伊多文"}
         is{"冰岛文"}
-        it{"意大利文"}
+        it{"义大利文"}
         iu{"因纽特文"}
         izh{"英格里亚文"}
         ja{"日文"}
@@ -330,7 +313,6 @@ yue_Hans{
         kut{"库特奈文"}
         kv{"科米文"}
         kw{"康瓦耳文"}
-        kwk{"夸夸瓦拉文"}
         ky{"吉尔吉斯文"}
         la{"拉丁文"}
         lad{"拉迪诺文"}
@@ -343,17 +325,14 @@ yue_Hans{
         lg{"干达文"}
         li{"林堡文"}
         lij{"利古里亚文"}
-        lil{"利卢埃特文"}
         liv{"利伏尼亚文"}
         lkt{"拉科塔文"}
         lmo{"伦巴底文"}
         ln{"林加拉文"}
         lo{"寮文"}
         lol{"芒戈文"}
-        lou{"路易斯安那克里奥尔文"}
         loz{"洛齐文"}
         lrc{"北卢尔文"}
-        lsm{"萨米亚文"}
         lt{"立陶宛文"}
         ltg{"拉特加莱文"}
         lu{"鲁巴加丹加文"}
@@ -392,7 +371,6 @@ yue_Hans{
         mn{"蒙古文"}
         mnc{"满族文"}
         mni{"曼尼普里文"}
-        moe{"因努埃蒙文"}
         moh{"莫霍克文"}
         mos{"莫西文"}
         mr{"马拉地文"}
@@ -445,11 +423,6 @@ yue_Hans{
         nzi{"尼兹马文"}
         oc{"奥克西坦文"}
         oj{"奥杰布瓦文"}
-        ojb{"西北奥吉布瓦文"}
-        ojc{"中奥吉布瓦文"}
-        ojs{"王子克里文"}
-        ojw{"西奥吉布瓦文"}
-        oka{"奥卡纳根文"}
         om{"奥罗莫文"}
         or{"欧利亚文"}
         os{"奥塞提文"}
@@ -469,12 +442,10 @@ yue_Hans{
         pfl{"普法尔茨德文"}
         phn{"腓尼基文"}
         pi{"巴利文"}
-        pis{"皮京文"}
         pl{"波兰文"}
         pms{"皮埃蒙特文"}
         pnt{"旁狄希腊文"}
         pon{"波那贝文"}
-        pqm{"马里塞-帕萨马夸迪文"}
         prg{"普鲁士文"}
         pro{"古普罗旺斯文"}
         ps{"普什图文"}
@@ -486,7 +457,6 @@ yue_Hans{
         rap{"复活岛文"}
         rar{"拉罗通加文"}
         rgn{"罗马格诺里文"}
-        rhg{"罗兴亚文"}
         rif{"里菲亚诺文"}
         rm{"罗曼斯文"}
         rn{"隆迪文"}
@@ -494,6 +464,7 @@ yue_Hans{
         ro_MD{"摩尔多瓦文"}
         rof{"兰博文"}
         rom{"吉普赛文"}
+        root{"根语言"}
         rtm{"罗图马岛文"}
         ru{"俄文"}
         rue{"卢森尼亚文"}
@@ -534,7 +505,6 @@ yue_Hans{
         sid{"希达摩文"}
         sk{"斯洛伐克文"}
         sl{"斯洛维尼亚文"}
-        slh{"南卢绍锡德文"}
         sli{"下西利西亚文"}
         sly{"塞拉亚文"}
         sm{"萨摩亚文"}
@@ -554,7 +524,6 @@ yue_Hans{
         ssy{"萨霍文"}
         st{"塞索托文"}
         stq{"沙特菲士兰文"}
-        str{"海峡萨利希文"}
         su{"巽他文"}
         suk{"苏库马文"}
         sus{"苏苏文"}
@@ -567,7 +536,6 @@ yue_Hans{
         syr{"叙利亚文"}
         szl{"西利西亚文"}
         ta{"坦米尔文"}
-        tce{"南塔穹文"}
         tcy{"图卢文"}
         te{"泰卢固文"}
         tem{"提姆文"}
@@ -575,9 +543,7 @@ yue_Hans{
         ter{"泰雷诺文"}
         tet{"泰顿文"}
         tg{"塔吉克文"}
-        tgx{"塔吉什文"}
         th{"泰文"}
-        tht{"塔尔坦文"}
         ti{"提格利尼亚文"}
         tig{"蒂格雷文"}
         tiv{"提夫文"}
@@ -592,7 +558,6 @@ yue_Hans{
         tn{"突尼西亚文"}
         to{"东加文"}
         tog{"东加文（尼亚萨）"}
-        tok{"托基波纳文"}
         tpi{"托比辛文"}
         tr{"土耳其文"}
         tru{"图罗尤文"}
@@ -601,7 +566,6 @@ yue_Hans{
         tsd{"特萨克尼恩文"}
         tsi{"钦西安文"}
         tt{"鞑靼文"}
-        ttm{"北塔奇讷文"}
         ttt{"穆斯林塔特文"}
         tum{"图姆布卡文"}
         tvl{"吐瓦鲁文"}
@@ -663,20 +627,13 @@ yue_Hans{
         zxx{"无语言内容"}
         zza{"扎扎文"}
     }
-    Languages%long{
-        zh_Hans{"简体中文 (普通话)"}
-        zh_Hant{"繁体中文 (普通话)"}
-    }
-    Languages%menu{
-        yue{"中文 (粤语)"}
-        zh{"中文 (普通话)"}
+    Languages%short{
+        az{"亚塞拜然文"}
     }
     Scripts{
-        Adlm{"阿德拉姆文"}
         Afak{"阿法卡文字"}
         Aghb{"高加索阿尔巴尼亚文"}
         Arab{"阿拉伯文"}
-        Aran{"纳斯塔利克文"}
         Armi{"皇室亚美尼亚文"}
         Armn{"亚美尼亚文"}
         Avst{"阿维斯陀文"}
@@ -789,7 +746,6 @@ yue_Hans{
         Plrd{"柏格理拼音符"}
         Prti{"帕提亚文（碑铭体）"}
         Rjng{"拉让文"}
-        Rohg{"哈尼菲文"}
         Roro{"朗格朗格象形文"}
         Runr{"古北欧文字"}
         Samr{"撒马利亚文"}
@@ -860,6 +816,8 @@ yue_Hans{
             indian{"印度国历"}
             islamic{"伊斯兰历"}
             islamic-civil{"伊斯兰民用历"}
+            islamic-rgsa{"伊斯兰新月历"}
+            islamic-tbla{"伊斯兰天文历"}
             islamic-umalqura{"乌姆库拉历"}
             iso8601{"国际标准 ISO 8601"}
             japanese{"日本历"}
@@ -911,6 +869,7 @@ yue_Hans{
             phonebook{"电话簿排序"}
             phonetic{"发音排序"}
             pinyin{"拼音排序"}
+            reformed{"改良排序"}
             search{"一般用途搜寻"}
             searchjl{"韩文子音排序"}
             standard{"标准排序"}
@@ -1067,13 +1026,13 @@ yue_Hans{
         VALLADER{"瑞士瓦勒德方言"}
         WADEGILE{"威妥玛式拼音"}
     }
+    Version{"2.1.49.82"}
     characterLabelPattern{
         all{"{0} — 全部"}
+        category-list{"{0}: {1}"}
         compatibility{"{0} — 相容性"}
         enclosed{"{0} — 包围"}
         extended{"{0} — 扩充"}
-        facing-left{"{0} 向左"}
-        facing-right{"{0} 向右"}
         historic{"{0} - 古代"}
         miscellaneous{"{0} — 其他"}
         other{"{0} — 其他"}
@@ -1081,8 +1040,6 @@ yue_Hans{
         strokes{
             other{"{0}斜线"}
         }
-        subscript{"下标 {0}"}
-        superscript{"上标 {0}"}
     }
     codePatterns{
         language{"语言：{0}"}
@@ -1091,6 +1048,7 @@ yue_Hans{
     }
     localeDisplayPattern{
         keyTypePattern{"{0}：{1}"}
+        pattern{"{0} ({1})"}
         separator{"{0}，{1}"}
     }
 }

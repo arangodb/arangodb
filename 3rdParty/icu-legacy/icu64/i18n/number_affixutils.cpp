@@ -64,7 +64,7 @@ int32_t AffixUtils::estimateLength(const UnicodeString &patternString, UErrorCod
                 }
                 break;
             default:
-                UPRV_UNREACHABLE_EXIT;
+                UPRV_UNREACHABLE;
         }
 
         offset += U16_LENGTH(cp);
@@ -131,34 +131,32 @@ UnicodeString AffixUtils::escape(const UnicodeString &input) {
 Field AffixUtils::getFieldForType(AffixPatternType type) {
     switch (type) {
         case TYPE_MINUS_SIGN:
-            return {UFIELD_CATEGORY_NUMBER, UNUM_SIGN_FIELD};
+            return UNUM_SIGN_FIELD;
         case TYPE_PLUS_SIGN:
-            return {UFIELD_CATEGORY_NUMBER, UNUM_SIGN_FIELD};
-        case TYPE_APPROXIMATELY_SIGN:
-            return {UFIELD_CATEGORY_NUMBER, UNUM_APPROXIMATELY_SIGN_FIELD};
+            return UNUM_SIGN_FIELD;
         case TYPE_PERCENT:
-            return {UFIELD_CATEGORY_NUMBER, UNUM_PERCENT_FIELD};
+            return UNUM_PERCENT_FIELD;
         case TYPE_PERMILLE:
-            return {UFIELD_CATEGORY_NUMBER, UNUM_PERMILL_FIELD};
+            return UNUM_PERMILL_FIELD;
         case TYPE_CURRENCY_SINGLE:
-            return {UFIELD_CATEGORY_NUMBER, UNUM_CURRENCY_FIELD};
+            return UNUM_CURRENCY_FIELD;
         case TYPE_CURRENCY_DOUBLE:
-            return {UFIELD_CATEGORY_NUMBER, UNUM_CURRENCY_FIELD};
+            return UNUM_CURRENCY_FIELD;
         case TYPE_CURRENCY_TRIPLE:
-            return {UFIELD_CATEGORY_NUMBER, UNUM_CURRENCY_FIELD};
+            return UNUM_CURRENCY_FIELD;
         case TYPE_CURRENCY_QUAD:
-            return {UFIELD_CATEGORY_NUMBER, UNUM_CURRENCY_FIELD};
+            return UNUM_CURRENCY_FIELD;
         case TYPE_CURRENCY_QUINT:
-            return {UFIELD_CATEGORY_NUMBER, UNUM_CURRENCY_FIELD};
+            return UNUM_CURRENCY_FIELD;
         case TYPE_CURRENCY_OVERFLOW:
-            return {UFIELD_CATEGORY_NUMBER, UNUM_CURRENCY_FIELD};
+            return UNUM_CURRENCY_FIELD;
         default:
-            UPRV_UNREACHABLE_EXIT;
+            UPRV_UNREACHABLE;
     }
 }
 
 int32_t
-AffixUtils::unescape(const UnicodeString &affixPattern, FormattedStringBuilder &output, int32_t position,
+AffixUtils::unescape(const UnicodeString &affixPattern, NumberStringBuilder &output, int32_t position,
                      const SymbolProvider &provider, Field field, UErrorCode &status) {
     int32_t length = 0;
     AffixTag tag;
@@ -167,11 +165,7 @@ AffixUtils::unescape(const UnicodeString &affixPattern, FormattedStringBuilder &
         if (U_FAILURE(status)) { return length; }
         if (tag.type == TYPE_CURRENCY_OVERFLOW) {
             // Don't go to the provider for this special case
-            length += output.insertCodePoint(
-                position + length,
-                0xFFFD,
-                {UFIELD_CATEGORY_NUMBER, UNUM_CURRENCY_FIELD},
-                status);
+            length += output.insertCodePoint(position + length, 0xFFFD, UNUM_CURRENCY_FIELD, status);
         } else if (tag.type < 0) {
             length += output.insert(
                     position + length, provider.getSymbol(tag.type), getFieldForType(tag.type), status);
@@ -224,7 +218,7 @@ bool AffixUtils::hasCurrencySymbols(const UnicodeString &affixPattern, UErrorCod
     while (hasNext(tag, affixPattern)) {
         tag = nextToken(tag, affixPattern, status);
         if (U_FAILURE(status)) { return false; }
-        if (tag.type < 0 && getFieldForType(tag.type) == Field(UFIELD_CATEGORY_NUMBER, UNUM_CURRENCY_FIELD)) {
+        if (tag.type < 0 && getFieldForType(tag.type) == UNUM_CURRENCY_FIELD) {
             return true;
         }
     }
@@ -236,7 +230,7 @@ UnicodeString AffixUtils::replaceType(const UnicodeString &affixPattern, AffixPa
     UnicodeString output(affixPattern); // copy
     if (affixPattern.length() == 0) {
         return output;
-    }
+    };
     AffixTag tag;
     while (hasNext(tag, affixPattern)) {
         tag = nextToken(tag, affixPattern, status);
@@ -252,7 +246,7 @@ bool AffixUtils::containsOnlySymbolsAndIgnorables(const UnicodeString& affixPatt
                                                   const UnicodeSet& ignorables, UErrorCode& status) {
     if (affixPattern.length() == 0) {
         return true;
-    }
+    };
     AffixTag tag;
     while (hasNext(tag, affixPattern)) {
         tag = nextToken(tag, affixPattern, status);
@@ -268,7 +262,7 @@ void AffixUtils::iterateWithConsumer(const UnicodeString& affixPattern, TokenCon
                                      UErrorCode& status) {
     if (affixPattern.length() == 0) {
         return;
-    }
+    };
     AffixTag tag;
     while (hasNext(tag, affixPattern)) {
         tag = nextToken(tag, affixPattern, status);
@@ -297,8 +291,6 @@ AffixTag AffixUtils::nextToken(AffixTag tag, const UnicodeString &patternString,
                         return makeTag(offset + count, TYPE_MINUS_SIGN, STATE_BASE, 0);
                     case u'+':
                         return makeTag(offset + count, TYPE_PLUS_SIGN, STATE_BASE, 0);
-                    case u'~':
-                        return makeTag(offset + count, TYPE_APPROXIMATELY_SIGN, STATE_BASE, 0);
                     case u'%':
                         return makeTag(offset + count, TYPE_PERCENT, STATE_BASE, 0);
                     case u'‰':
@@ -389,7 +381,7 @@ AffixTag AffixUtils::nextToken(AffixTag tag, const UnicodeString &patternString,
                     return makeTag(offset, TYPE_CURRENCY_OVERFLOW, STATE_BASE, 0);
                 }
             default:
-                UPRV_UNREACHABLE_EXIT;
+                UPRV_UNREACHABLE;
         }
     }
     // End of string
@@ -418,7 +410,7 @@ AffixTag AffixUtils::nextToken(AffixTag tag, const UnicodeString &patternString,
         case STATE_OVERFLOW_CURR:
             return makeTag(offset, TYPE_CURRENCY_OVERFLOW, STATE_BASE, 0);
         default:
-            UPRV_UNREACHABLE_EXIT;
+            UPRV_UNREACHABLE;
     }
 }
 

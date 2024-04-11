@@ -1,7 +1,7 @@
 /*
  ***********************************************************************
  * © 2016 and later: Unicode, Inc. and others.
- * License & terms of use: http://www.unicode.org/copyright.html
+ * License & terms of use: http://www.unicode.org/copyright.html#License
  ***********************************************************************
  ***********************************************************************
  * Copyright (c) 2011-2012,International Business Machines
@@ -165,7 +165,7 @@ U_CAPI double uprv_getMeanTime(double *times, uint32_t *timeCount, double *margi
   }
   meanTime /= n;
 
-  /* calculate standard deviation */
+  /* caculate standard deviation */
   double sd = 0;
   for(int i=0;i<n;i++) {
 #if U_DEBUG
@@ -190,12 +190,12 @@ U_CAPI double uprv_getMeanTime(double *times, uint32_t *timeCount, double *margi
   return meanTime;
 }
 
-UBool calcSieveTime = false;
+UBool calcSieveTime = FALSE;
 double meanSieveTime = 0.0;
 double meanSieveME = 0.0;
 
 U_CAPI double uprv_getSieveTime(double *marginOfError) {
-  if(!calcSieveTime) {
+  if(calcSieveTime==FALSE) {
 #define SAMPLES 50
     uint32_t samples = SAMPLES;
     double times[SAMPLES];
@@ -208,9 +208,9 @@ U_CAPI double uprv_getSieveTime(double *marginOfError) {
     }
     
     meanSieveTime = uprv_getMeanTime(times, &samples,&meanSieveME);
-    calcSieveTime=true;
+    calcSieveTime=TRUE;
   }
-  if(marginOfError!=nullptr) {
+  if(marginOfError!=NULL) {
     *marginOfError = meanSieveME;
   }
   return meanSieveTime;

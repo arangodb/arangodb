@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 wae{
     Countries{
         001{"Wäld"}
@@ -142,6 +141,7 @@ wae{
         IL{"Israel"}
         IM{"Isle of Man"}
         IN{"Indie"}
+        IO{"Britišes Territorium em indiše Ozean"}
         IQ{"Irak"}
         IR{"Iran"}
         IS{"Island"}
@@ -179,6 +179,7 @@ wae{
         MF{"St. Martin"}
         MG{"Madagaskar"}
         MH{"Maršalinslä"}
+        MK{"Mazedonie"}
         ML{"Mali"}
         MM{"Burma"}
         MN{"Mongolei"}
@@ -295,6 +296,8 @@ wae{
         CG{"Kongo (Rebublik)"}
         CI{"Côte d’Ivoire"}
         FK{"Falklandinslä (Malwine)"}
+        MK{"Mazedonie (EJR)"}
         TL{"Wešttimor"}
     }
+    Version{"2.1.47.82"}
 }

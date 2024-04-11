@@ -32,14 +32,14 @@ struct ConversionCase {
     /* setup */
     int32_t caseNr;
     const char *charset, *cbopt, *name;
-    char16_t subString[16];
+    UChar subString[16];
     char subchar[8];
     int8_t setSub;
 
     /* input and expected output */
     const uint8_t *bytes;
     int32_t bytesLength;
-    const char16_t *unicode;
+    const UChar *unicode;
     int32_t unicodeLength;
     const int32_t *offsets;
 
@@ -52,12 +52,12 @@ struct ConversionCase {
     UBool fallbacks;
     UErrorCode outErrorCode;
     const uint8_t *invalidChars;
-    const char16_t *invalidUChars;
+    const UChar *invalidUChars;
     int32_t invalidLength;
 
     /* actual output */
     uint8_t resultBytes[200];
-    char16_t resultUnicode[200];
+    UChar resultUnicode[200];
     int32_t resultOffsets[200];
     int32_t resultLength;
 
@@ -68,8 +68,8 @@ class ConversionTest : public IntlTest {
 public:
     ConversionTest();
     virtual ~ConversionTest();
-
-    void runIndexedTest(int32_t index, UBool exec, const char *&name, char *par = nullptr) override;
+    
+    void runIndexedTest(int32_t index, UBool exec, const char *&name, char *par=0);
 
     void TestToUnicode();
     void TestFromUnicode();
@@ -77,7 +77,6 @@ public:
     void TestGetUnicodeSet2();
     void TestDefaultIgnorableCallback();
     void TestUTF8ToUTF8Overflow();
-    void TestUTF8ToUTF8Streaming();
 
 private:
     UBool
@@ -88,7 +87,7 @@ private:
 
     UBool
     checkToUnicode(ConversionCase &cc, UConverter *cnv, const char *name,
-                   const char16_t *result, int32_t resultLength,
+                   const UChar *result, int32_t resultLength,
                    const int32_t *resultOffsets,
                    UErrorCode resultErrorCode);
 

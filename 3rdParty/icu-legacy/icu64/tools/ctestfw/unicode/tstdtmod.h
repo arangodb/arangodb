@@ -64,7 +64,7 @@ public:
    *  Usual fields are "Description", "LongDescription", "Settings". Also, if containing a   
    *  field "Headers" these will be used as the default headers, so that you don't have to   
    *  to specify per test headers.                                                           
-   *  @param info pass in a const DataMap pointer. If no info, it will be set to nullptr
+   *  @param info pass in a const DataMap pointer. If no info, it will be set to NULL
    */
   virtual UBool getInfo(const DataMap *& info, UErrorCode &status) const = 0;
 
@@ -92,10 +92,10 @@ public:
   RBTestDataModule(const char* name, TestLog& log, UErrorCode& status);
 
 public:
-  virtual UBool getInfo(const DataMap *& info, UErrorCode &status) const override;
+  virtual UBool getInfo(const DataMap *& info, UErrorCode &status) const;
 
-  virtual TestData* createTestData(int32_t index, UErrorCode &status) const override;
-  virtual TestData* createTestData(const char* name, UErrorCode &status) const override;
+  virtual TestData* createTestData(int32_t index, UErrorCode &status) const;
+  virtual TestData* createTestData(const char* name, UErrorCode &status) const;
 
 private:
   UResourceBundle *getTestBundle(const char* bundleName, UErrorCode &status);

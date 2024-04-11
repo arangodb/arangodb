@@ -78,18 +78,10 @@ U_CFUNC char *aescstrdup(const UChar* unichars, int32_t length);
 U_CFUNC void *ctst_malloc(size_t size);
 
 /**
- * Return the path to cintltst's data ( icu/source/data/testdata ) directory.
- * The path may be in the out/ directory.
+ * Return the path to cintltst's data ( icu/source/data/testdata ) directory. 
  * Return value is allocated by ctst_malloc and should not be deleted.
  */
 U_CFUNC const char* loadTestData(UErrorCode* err);
-
-/*
- * Returns the path to the icu/source/test/testdata directory.
- * The path is always the source directory.
- * Return value is static and should not be deleted.
- */
-U_CFUNC const char* loadSourceTestData(UErrorCode* err);
 
 /**
  * function used to specify the error
@@ -117,18 +109,18 @@ U_CFUNC void ctest_resetTimeZone(void);
 U_CFUNC UBool ctest_resetICU(void);
 
 /**
- * Assert that the given UErrorCode succeeds, and return true if it does.
+ * Assert that the given UErrorCode succeeds, and return TRUE if it does.
  */
 U_CFUNC UBool assertSuccess(const char* msg, UErrorCode* ec);
 
 /**
- * Assert that the given UErrorCode succeeds, and return true if it does.
- * Give data error if UErrorCode fails and possibleDataError is true.
+ * Assert that the given UErrorCode succeeds, and return TRUE if it does.
+ * Give data error if UErrorCode fails and possibleDataError is TRUE.
  */
 U_CFUNC UBool assertSuccessCheck(const char* msg, UErrorCode* ec, UBool possibleDataError);
 
 /**
- * Assert that the UBool is true, and return true if it does.
+ * Assert that the UBool is TRUE, and return TRUE if it does.
  *
  * NOTE: Use 'int condition' rather than 'UBool condition' so the
  * compiler doesn't complain about integral conversion of expressions
@@ -138,33 +130,22 @@ U_CFUNC UBool assertTrue(const char* msg, int condition);
 
 /**
  * Assert that the actualString equals the expectedString, and return
- * true if it does.
+ * TRUE if it does.
  */
 U_CFUNC UBool assertEquals(const char* msg, const char* expectedString,
                            const char* actualString);
 
 /**
  * Assert that the actualString equals the expectedString, and return
- * true if it does.
+ * TRUE if it does.
  */
 U_CFUNC UBool assertUEquals(const char* msg, const UChar* expectedString,
                             const UChar* actualString);
 
 /**
- * Assert that two 64-bit integers are equal, returning true if they are.
+ * Assert that two 64-bit integers are equal, returning TRUE if they do.
  */
 U_CFUNC UBool assertIntEquals(const char* msg, int64_t expected, int64_t actual);
-
-/**
- * Assert that the addresses of the two pointers are the same, returning
- * true if they are equal.
- */
-U_CFUNC UBool assertPtrEquals(const char* msg, const void* expected, const void* actual);
-
-/**
- * Assert that two doubles are equal, returning true if they are.
- */
-U_CFUNC UBool assertDoubleEquals(const char *msg, double expected, double actual);
 
 /*
  * note - isICUVersionBefore and isICUVersionAtLeast have been removed.

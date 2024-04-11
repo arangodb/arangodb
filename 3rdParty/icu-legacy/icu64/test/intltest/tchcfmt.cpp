@@ -32,7 +32,7 @@ void TestChoiceFormat::runIndexedTest(int32_t index, UBool exec,
     }
 }
 
-static UBool chkstatus( UErrorCode &status, const char* msg = nullptr )
+static UBool chkstatus( UErrorCode &status, const char* msg = NULL )
 {
     UBool ok = U_SUCCESS(status);
     if (!ok) it_errln( msg );
@@ -40,7 +40,7 @@ static UBool chkstatus( UErrorCode &status, const char* msg = nullptr )
 }
 
 void
-TestChoiceFormat::TestSimpleExample()
+TestChoiceFormat::TestSimpleExample( void )
 {
     double limits[] = {1,2,3,4,5,6,7};
     UnicodeString monthNames[] = {"Sun","Mon","Tue","Wed","Thur","Fri","Sat"};
@@ -86,15 +86,15 @@ TestChoiceFormat::TestSimpleExample()
     int32_t count=0;
     const double *gotLimits=form->getLimits(count);
 #if 1  // ICU 4.8 deprecates and disables the ChoiceFormat getters.
-    if(count != 0 || gotLimits != nullptr) {
+    if(count != 0 || gotLimits != NULL) {
         errln("getLimits() returns something, should be disabled");
     }
     const UnicodeString *gotFormats=form->getFormats(count);
-    if(count != 0 || gotFormats != nullptr) {
+    if(count != 0 || gotFormats != NULL) {
         errln("getFormats() returns something, should be disabled");
     }
     const UBool *gotClosures=form->getClosures(count);
-    if(count != 0 || gotClosures != nullptr) {
+    if(count != 0 || gotClosures != NULL) {
         errln("getClosures() returns something, should be disabled");
     }
 #else
@@ -123,7 +123,7 @@ TestChoiceFormat::TestSimpleExample()
 }
 
 void
-TestChoiceFormat::TestComplexExample()
+TestChoiceFormat::TestComplexExample( void )
 {
     UErrorCode status = U_ZERO_ERROR;
     const double filelimits[] = {-1, 0,1,2};
@@ -148,7 +148,7 @@ TestChoiceFormat::TestComplexExample()
         return;
     }
 
-    //const Format* testFormats[] = { fileform, nullptr, filenumform };
+    //const Format* testFormats[] = { fileform, NULL, filenumform };
     //pattform->setFormats( testFormats, 3 );
 
     MessageFormat* pattform = new MessageFormat("There {0} on {1}", status );
@@ -311,7 +311,7 @@ TestChoiceFormat::TestComplexExample()
             it_errln("***  operator!=");
         }
 
-        ChoiceFormat* form_A3 = form_A->clone();
+        ChoiceFormat* form_A3 = (ChoiceFormat*) form_A->clone();
         if (!form_A3) {
             it_errln("***  ChoiceFormat->clone is nil.");
         }else{
@@ -339,7 +339,7 @@ TestChoiceFormat::TestComplexExample()
 
     const char* testPattern = "0#none|1#one|2#many";
     ChoiceFormat form_pat( testPattern, status );
-    if (!chkstatus( status, "***  ChoiceFormat constructor( newPattern, status)" )) {
+    if (!chkstatus( status, "***  ChoiceFormat contructor( newPattern, status)" )) {
         delete fileform;
         delete filenumform;
         delete pattform;
@@ -348,9 +348,9 @@ TestChoiceFormat::TestComplexExample()
 
     form_pat.toPattern( res1 );
     if (res1 == "0#none|1#one|2#many") {
-        it_logln("ChoiceFormat constructor( newPattern, status) tested");
+        it_logln("ChoiceFormat contructor( newPattern, status) tested");
     }else{
-        it_errln("***  ChoiceFormat constructor( newPattern, status) or toPattern result!");
+        it_errln("***  ChoiceFormat contructor( newPattern, status) or toPattern result!");
     }
 
     double d_a2[] = { 3.0, 4.0 };
@@ -456,12 +456,12 @@ TestChoiceFormat::TestComplexExample()
 /**
  * Test new closure API
  */
-void TestChoiceFormat::TestClosures() {
+void TestChoiceFormat::TestClosures(void) {
     // Construct open, half-open, half-open (the other way), and closed
     // intervals.  Do this both using arrays and using a pattern.
 
     // 'fmt1' is created using arrays
-    UBool T = true, F = false;
+    UBool T = TRUE, F = FALSE;
     // 0:   ,1)
     // 1: [1,2]
     // 2: (2,3]
@@ -603,10 +603,10 @@ void TestChoiceFormat::_testPattern(const char* pattern,
 /**
  * Test applyPattern
  */
-void TestChoiceFormat::TestPatterns() {
+void TestChoiceFormat::TestPatterns(void) {
     // Try a pattern that isolates a single value.  Create
     // three ranges: [-Inf,1.0) [1.0,1.0] (1.0,+Inf]
-    _testPattern("0.0#a|1.0#b|1.0<c", true,
+    _testPattern("0.0#a|1.0#b|1.0<c", TRUE,
                  1.0 - 1e-9, "a",
                  1.0, "b",
                  1.0 + 1e-9, "c");
@@ -614,21 +614,21 @@ void TestChoiceFormat::TestPatterns() {
 #if 0  // ICU 4.8 only checks the pattern syntax, not whether the ranges make sense.
     // Try an invalid pattern that isolates a single value.
     // [-Inf,1.0) [1.0,1.0) [1.0,+Inf]
-    _testPattern("0.0#a|1.0#b|1.0#c", false,
+    _testPattern("0.0#a|1.0#b|1.0#c", FALSE,
                  0, 0, 0, 0, 0, 0);
 
     // Another
     // [-Inf,1.0] (1.0,1.0) [1.0,+Inf]
-    _testPattern("0.0#a|1.0<b|1.0#c", false,
+    _testPattern("0.0#a|1.0<b|1.0#c", FALSE,
                  0, 0, 0, 0, 0, 0);
     // Another
     // [-Inf,1.0] (1.0,1.0] (1.0,+Inf]
-    _testPattern("0.0#a|1.0<b|1.0<c", false,
+    _testPattern("0.0#a|1.0<b|1.0<c", FALSE,
                  0, 0, 0, 0, 0, 0);
 
     // Try a grossly invalid pattern.
     // [-Inf,2.0) [2.0,1.0) [1.0,+Inf]
-    _testPattern("0.0#a|2.0#b|1.0#c", false,
+    _testPattern("0.0#a|2.0#b|1.0#c", FALSE,
                  0, 0, 0, 0, 0, 0);
 #endif
 }

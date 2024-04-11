@@ -1,6 +1,6 @@
 /*************************************************************************
  * © 2016 and later: Unicode, Inc. and others.
- * License & terms of use: http://www.unicode.org/copyright.html
+ * License & terms of use: http://www.unicode.org/copyright.html#License
  *
  *************************************************************************
  *************************************************************************
@@ -47,25 +47,25 @@ const char gHelpString[] =
  *    These global variables are set according to the options specified
  *    on the command line by the user.
  */
-char const *opt_locale      = "en_US";
-char *opt_rules        = nullptr;
-UBool  opt_help        = false;
-UBool  opt_norm        = false;
-UBool  opt_french      = false;
-UBool  opt_shifted     = false;
-UBool  opt_lower       = false;
-UBool  opt_upper       = false;
-UBool  opt_case        = false;
-UBool  opt_overlap     = false;
-UBool  opt_canonical   = false;
+char * opt_locale      = "en_US";
+char * opt_rules       = 0;
+UBool  opt_help        = FALSE;
+UBool  opt_norm        = FALSE;
+UBool  opt_french      = FALSE;
+UBool  opt_shifted     = FALSE;
+UBool  opt_lower       = FALSE;
+UBool  opt_upper       = FALSE;
+UBool  opt_case        = FALSE;
+UBool  opt_overlap     = FALSE;
+UBool  opt_canonical   = FALSE;
 int    opt_level       = 0;
-char const *opt_source      = "International Components for Unicode";
-char const *opt_pattern     = "Unicode";
-UCollator *collator    = nullptr;
-UStringSearch *search  = nullptr;
-char16_t rules[100];
-char16_t source[100];
-char16_t pattern[100];
+char * opt_source      = "International Components for Unicode";
+char * opt_pattern     = "Unicode";
+UCollator * collator   = 0;
+UStringSearch * search = 0;
+UChar rules[100];
+UChar source[100];
+UChar pattern[100];
 
 /** 
  * Definitions for the command line options
@@ -92,7 +92,7 @@ OptSpec opts[] = {
 	{"-canonical",   OptSpec::FLAG,   &opt_canonical},
     {"-help",        OptSpec::FLAG,   &opt_help},
     {"-?",           OptSpec::FLAG,   &opt_help},
-    {nullptr,        OptSpec::FLAG,   nullptr}
+    {0, OptSpec::FLAG, 0}
 };
 
 /**  
@@ -103,18 +103,18 @@ UBool processOptions(int argc, const char **argv, OptSpec opts[])
     for (int argNum = 1; argNum < argc; argNum ++) {
         const char *pArgName = argv[argNum];
         OptSpec *pOpt;
-        for (pOpt = opts; pOpt->name != nullptr; pOpt++) {
+        for (pOpt = opts;  pOpt->name != 0; pOpt ++) {
             if (strcmp(pOpt->name, pArgName) == 0) {
                 switch (pOpt->type) {
                 case OptSpec::FLAG:
-                    *(UBool *)(pOpt->pVar) = true;
+                    *(UBool *)(pOpt->pVar) = TRUE;
                     break;
                 case OptSpec::STRING:
                     argNum ++;
                     if (argNum >= argc) {
                         fprintf(stderr, "value expected for \"%s\" option.\n", 
 							    pOpt->name);
-                        return false;
+                        return FALSE;
                     }
                     *(const char **)(pOpt->pVar) = argv[argNum];
                     break;
@@ -123,7 +123,7 @@ UBool processOptions(int argc, const char **argv, OptSpec opts[])
                     if (argNum >= argc) {
                         fprintf(stderr, "value expected for \"%s\" option.\n", 
 							    pOpt->name);
-                        return false;
+                        return FALSE;
                     }
                     char *endp;
                     int i = strtol(argv[argNum], &endp, 0);
@@ -131,20 +131,20 @@ UBool processOptions(int argc, const char **argv, OptSpec opts[])
                         fprintf(stderr, 
 							    "integer value expected for \"%s\" option.\n", 
 								pOpt->name);
-                        return false;
+                        return FALSE;
                     }
                     *(int *)(pOpt->pVar) = i;
                 }
                 break;
             }
         }
-        if (pOpt->name == nullptr)
+        if (pOpt->name == 0)
         {
             fprintf(stderr, "Unrecognized option \"%s\"\n", pArgName);
-            return false;
+            return FALSE;
         }
     }
-	return true;
+	return TRUE;
 }
 
 /**
@@ -155,17 +155,17 @@ UBool processCollator()
 	// Set up an ICU collator
     UErrorCode status = U_ZERO_ERROR;
 
-    if (opt_rules != nullptr) {
+    if (opt_rules != 0) {
 		u_unescape(opt_rules, rules, 100);
         collator = ucol_openRules(rules, -1, UCOL_OFF, UCOL_TERTIARY, 
-			                  nullptr, &status);
+			                  NULL, &status);
     }
     else {
         collator = ucol_open(opt_locale, &status);
     }
 	if (U_FAILURE(status)) {
         fprintf(stderr, "Collator creation failed.: %d\n", status);
-        return false;
+        return FALSE;
     }
     if (status == U_USING_DEFAULT_WARNING) {
         fprintf(stderr, "Warning, U_USING_DEFAULT_WARNING for %s\n", 
@@ -218,14 +218,14 @@ UBool processCollator()
             break;
         default:
             fprintf(stderr, "-level param must be between 1 and 5\n");
-            return false;
+            return FALSE;
         }
     }
     if (U_FAILURE(status)) {
         fprintf(stderr, "Collator attribute setting failed.: %d\n", status);
-        return false;
+        return FALSE;
     }
-	return true;
+	return TRUE;
 }
 
 /**
@@ -236,23 +236,23 @@ UBool processStringSearch()
 	u_unescape(opt_source, source, 100);
 	u_unescape(opt_pattern, pattern, 100);
 	UErrorCode status = U_ZERO_ERROR;
-	search = usearch_openFromCollator(pattern, -1, source, -1, collator, nullptr, 
+	search = usearch_openFromCollator(pattern, -1, source, -1, collator, NULL, 
 		                              &status);
 	if (U_FAILURE(status)) {
-		return false;
+		return FALSE;
 	}
-	if (static_cast<bool>(opt_overlap)) {
+	if (opt_overlap == TRUE) {
 		usearch_setAttribute(search, USEARCH_OVERLAP, USEARCH_ON, &status);
 	}
-	if (static_cast<bool>(opt_canonical)) {
+	if (opt_canonical == TRUE) {
 		usearch_setAttribute(search, USEARCH_CANONICAL_MATCH, USEARCH_ON, 
 			                 &status);
 	}
 	if (U_FAILURE(status)) {
 		fprintf(stderr, "Error setting search attributes\n");
-		return false;
+		return FALSE;
 	}
-	return true;
+	return TRUE;
 }
 
 UBool findPattern()
@@ -269,10 +269,10 @@ UBool findPattern()
 	}
 	if (U_FAILURE(status)) {
 		fprintf(stderr, "Error in searching for pattern %d\n", status);
-		return false;
+		return FALSE;
 	}
 	fprintf(stdout, "End of search\n");
-	return true;
+	return TRUE;
 }
 
 /** 
@@ -281,17 +281,17 @@ UBool findPattern()
  */
 int main(int argc, const char** argv) 
 {
-    if (!static_cast<bool>(processOptions(argc, argv, opts)) || static_cast<bool>(opt_help)) {
+    if (processOptions(argc, argv, opts) != TRUE || opt_help) {
         printf(gHelpString);
         return -1;
     }
 
-    if (!static_cast<bool>(processCollator())) {
+    if (processCollator() != TRUE) {
 		fprintf(stderr, "Error creating collator\n");
 		return -1;
 	}
 
-	if (!static_cast<bool>(processStringSearch())) {
+	if (processStringSearch() != TRUE) {
 		fprintf(stderr, "Error creating string search\n");
 		return -1;
 	}

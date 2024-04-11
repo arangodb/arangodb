@@ -1,7 +1,7 @@
 /*  
 **************************************************************************
 *    © 2016 and later: Unicode, Inc. and others.
-*    License & terms of use: http://www.unicode.org/copyright.html
+*    License & terms of use: http://www.unicode.org/copyright.html#License
 **************************************************************************
 **************************************************************************
 *   Copyright (C) 2014, International Business Machines
@@ -50,7 +50,7 @@ class UnicodeSetPerformanceTest : public UPerfTest {
 public:
     UnicodeSetPerformanceTest(int32_t argc, const char *argv[], UErrorCode &status)
             : UPerfTest(argc, argv, options, UPRV_LENGTHOF(options), unisetperf_usage, status),
-              utf8(nullptr), utf8Length(0), countInputCodePoints(0), spanCount(0) {
+              utf8(NULL), utf8Length(0), countInputCodePoints(0), spanCount(0) {
         if (U_SUCCESS(status)) {
             UnicodeString pattern=UnicodeString(options[SET_PATTERN].value, -1, US_INV).unescape();
             set.applyPattern(pattern, status);
@@ -67,12 +67,12 @@ public:
                 countSpans();
 
                 // Preflight the UTF-8 length and allocate utf8.
-                u_strToUTF8(nullptr, 0, &utf8Length, buffer, bufferLen, &status);
+                u_strToUTF8(NULL, 0, &utf8Length, buffer, bufferLen, &status);
                 if(status==U_BUFFER_OVERFLOW_ERROR) {
                     utf8=(char *)malloc(utf8Length);
-                    if(utf8!=nullptr) {
+                    if(utf8!=NULL) {
                         status=U_ZERO_ERROR;
-                        u_strToUTF8(utf8, utf8Length, nullptr, buffer, bufferLen, &status);
+                        u_strToUTF8(utf8, utf8Length, NULL, buffer, bufferLen, &status);
                     } else {
                         status=U_MEMORY_ALLOCATION_ERROR;
                     }
@@ -80,7 +80,7 @@ public:
 
                 if(verbose) {
                     printf("code points:%ld  len16:%ld  len8:%ld  spans:%ld  "
-                           "cp/span:%.3g  char16_t/span:%.3g  B/span:%.3g  B/cp:%.3g\n",
+                           "cp/span:%.3g  UChar/span:%.3g  B/span:%.3g  B/cp:%.3g\n",
                            (long)countInputCodePoints, (long)bufferLen, (long)utf8Length, (long)spanCount,
                            (double)countInputCodePoints/spanCount, (double)bufferLen/spanCount, (double)utf8Length/spanCount,
                            (double)utf8Length/countInputCodePoints);
@@ -89,24 +89,24 @@ public:
         }
     }
 
-    virtual UPerfFunction* runIndexedTest(int32_t index, UBool exec, const char* &name, char* par = nullptr);
+    virtual UPerfFunction* runIndexedTest(int32_t index, UBool exec, const char* &name, char* par = NULL);
 
     // Count spans of characters that are in the set,
     // and spans of characters that are not in the set.
     // If the very first character is in the set, then one additional
     // not-span is counted.
     void countSpans() {
-        const char16_t *s=getBuffer();
+        const UChar *s=getBuffer();
         int32_t length=getBufferLen();
         int32_t i=0;
-        UBool tf=false;
+        UBool tf=FALSE;
         while(i<length) {
             i=span(s, length, i, tf);
             tf=(UBool)(!tf);
             ++spanCount;
         }
     }
-    int32_t span(const char16_t *s, int32_t length, int32_t start, UBool tf) const {
+    int32_t span(const UChar *s, int32_t length, int32_t start, UBool tf) const {
         UChar32 c;
         int32_t prev;
         while((prev=start)<length) {
@@ -118,7 +118,7 @@ public:
         return prev;
     }
 
-    const char16_t *getBuffer() const { return buffer; }
+    const UChar *getBuffer() const { return buffer; }
     int32_t getBufferLen() const { return bufferLen; }
 
     char *utf8;
@@ -177,11 +177,11 @@ public:
     }
     virtual void call(UErrorCode* pErrorCode) {
         const UnicodeSet &set=testcase.set;
-        const char16_t *s=testcase.getBuffer();
+        const UChar *s=testcase.getBuffer();
         int32_t length=testcase.getBufferLen();
         int32_t count=0;
         int32_t i=0;
-        UBool tf=false;
+        UBool tf=FALSE;
         while(i<length) {
             i+=span(set, s+i, length-i, tf);
             tf=(UBool)(!tf);
@@ -192,7 +192,7 @@ public:
                     (long)count, (long)testcase.spanCount);
         }
     }
-    static int32_t span(const UnicodeSet &set, const char16_t *s, int32_t length, UBool tf) {
+    static int32_t span(const UnicodeSet &set, const UChar *s, int32_t length, UBool tf) {
         UChar32 c;
         int32_t start=0, prev;
         while((prev=start)<length) {
@@ -210,19 +210,19 @@ protected:
     SpanUTF16(const UnicodeSetPerformanceTest &testcase) : Command(testcase) {
         // Verify that the frozen set is equal to the unfrozen one.
         UnicodeSet set;
-        char16_t utf16[2];
+        UChar utf16[2];
         UChar32 c, c2;
 
         for(c=0; c<=0xffff; ++c) {
-            utf16[0]=(char16_t)c;
+            utf16[0]=(UChar)c;
             if(testcase.set.span(utf16, 1, USET_SPAN_CONTAINED)>0) {
                 set.add(c);
             }
         }
         for(c=0xd800; c<=0xdbff; ++c) {
-            utf16[0]=(char16_t)c;
+            utf16[0]=(UChar)c;
             for(c2=0xdc00; c2<=0xdfff; ++c2) {
-                utf16[1]=(char16_t)c2;
+                utf16[1]=(UChar)c2;
                 if(testcase.set.span(utf16, 2, USET_SPAN_CONTAINED)>0) {
                     set.add(U16_GET_SUPPLEMENTARY(c, c2));
                 }
@@ -239,11 +239,11 @@ public:
     }
     virtual void call(UErrorCode* pErrorCode) {
         const UnicodeSet &set=testcase.set;
-        const char16_t *s=testcase.getBuffer();
+        const UChar *s=testcase.getBuffer();
         int32_t length=testcase.getBufferLen();
         int32_t count=0;
         int32_t i=0;
-        UBool tf=false;
+        UBool tf=FALSE;
         while(i<length) {
             i+=set.span(s+i, length-i, (USetSpanCondition)tf);
             tf=(UBool)(!tf);
@@ -261,19 +261,19 @@ protected:
     SpanBackUTF16(const UnicodeSetPerformanceTest &testcase) : Command(testcase) {
         // Verify that the frozen set is equal to the unfrozen one.
         UnicodeSet set;
-        char16_t utf16[2];
+        UChar utf16[2];
         UChar32 c, c2;
 
         for(c=0; c<=0xffff; ++c) {
-            utf16[0]=(char16_t)c;
+            utf16[0]=(UChar)c;
             if(testcase.set.spanBack(utf16, 1, USET_SPAN_CONTAINED)==0) {
                 set.add(c);
             }
         }
         for(c=0xd800; c<=0xdbff; ++c) {
-            utf16[0]=(char16_t)c;
+            utf16[0]=(UChar)c;
             for(c2=0xdc00; c2<=0xdfff; ++c2) {
-                utf16[1]=(char16_t)c2;
+                utf16[1]=(UChar)c2;
                 if(testcase.set.spanBack(utf16, 2, USET_SPAN_CONTAINED)==0) {
                     set.add(U16_GET_SUPPLEMENTARY(c, c2));
                 }
@@ -290,7 +290,7 @@ public:
     }
     virtual void call(UErrorCode* pErrorCode) {
         const UnicodeSet &set=testcase.set;
-        const char16_t *s=testcase.getBuffer();
+        const UChar *s=testcase.getBuffer();
         int32_t length=testcase.getBufferLen();
         int32_t count=0;
         /*
@@ -344,7 +344,7 @@ public:
         int32_t length=testcase.utf8Length;
         int32_t count=0;
         int32_t i=0;
-        UBool tf=false;
+        UBool tf=FALSE;
         while(i<length) {
             i+=set.spanUTF8(s+i, length-i, (USetSpanCondition)tf);
             tf=(UBool)(!tf);
@@ -416,7 +416,7 @@ UPerfFunction* UnicodeSetPerformanceTest::runIndexedTest(int32_t index, UBool ex
         case 4: name = "SpanBackUTF8"; if (exec) return SpanBackUTF8::get(*this); break;
         default: name = ""; break;
     }
-    return nullptr;
+    return NULL;
 }
 
 int main(int argc, const char *argv[])
@@ -434,7 +434,7 @@ int main(int argc, const char *argv[])
         return status;
     }
         
-    if (test.run() == false){
+    if (test.run() == FALSE){
         fprintf(stderr, "FAILED: Tests could not be run, please check the "
 			            "arguments.\n");
         return 1;

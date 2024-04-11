@@ -20,6 +20,6 @@ Global
 		{DA322426-C37C-4909-A99D-16B05E7FA498}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
-		HideSolutionNode = false
+		HideSolutionNode = FALSE
 	EndGlobalSection
 EndGlobal

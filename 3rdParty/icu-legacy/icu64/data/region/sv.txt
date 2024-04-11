@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 sv{
     Countries{
         001{"världen"}
@@ -15,7 +14,7 @@ sv{
         017{"Centralafrika"}
         018{"södra Afrika"}
         019{"Nord- och Sydamerika"}
-        021{"Norra Amerika"}
+        021{"norra Amerika"}
         029{"Karibien"}
         030{"Östasien"}
         034{"Sydasien"}
@@ -70,7 +69,7 @@ sv{
         BT{"Bhutan"}
         BV{"Bouvetön"}
         BW{"Botswana"}
-        BY{"Belarus"}
+        BY{"Vitryssland"}
         BZ{"Belize"}
         CA{"Kanada"}
         CC{"Kokosöarna"}
@@ -108,7 +107,7 @@ sv{
         ES{"Spanien"}
         ET{"Etiopien"}
         EU{"Europeiska unionen"}
-        EZ{"euroområdet"}
+        EZ{"eurozonen"}
         FI{"Finland"}
         FJ{"Fiji"}
         FK{"Falklandsöarna"}
@@ -134,7 +133,7 @@ sv{
         GU{"Guam"}
         GW{"Guinea-Bissau"}
         GY{"Guyana"}
-        HK{"Hongkong SAR"}
+        HK{"Hongkong"}
         HM{"Heardön och McDonaldöarna"}
         HN{"Honduras"}
         HR{"Kroatien"}
@@ -188,7 +187,7 @@ sv{
         ML{"Mali"}
         MM{"Myanmar (Burma)"}
         MN{"Mongoliet"}
-        MO{"Macao SAR"}
+        MO{"Macao"}
         MP{"Nordmarianerna"}
         MQ{"Martinique"}
         MR{"Mauretanien"}
@@ -254,7 +253,7 @@ sv{
         SV{"El Salvador"}
         SX{"Sint Maarten"}
         SY{"Syrien"}
-        SZ{"Eswatini"}
+        SZ{"Swaziland"}
         TA{"Tristan da Cunha"}
         TC{"Turks- och Caicosöarna"}
         TD{"Tchad"}
@@ -262,7 +261,7 @@ sv{
         TG{"Togo"}
         TH{"Thailand"}
         TJ{"Tadzjikistan"}
-        TK{"Tokelauöarna"}
+        TK{"Tokelau"}
         TL{"Östtimor"}
         TM{"Turkmenistan"}
         TN{"Tunisien"}
@@ -298,20 +297,19 @@ sv{
         ZW{"Zimbabwe"}
         ZZ{"okänd region"}
     }
-    Countries%chagos{
-        IO{"Chagosöarna"}
-    }
     Countries%short{
+        GB{"Storbritannien"}
         HK{"Hongkong"}
         MO{"Macao"}
         PS{"Palestina"}
         UN{"FN"}
+        US{"USA"}
     }
     Countries%variant{
         CD{"Demokratiska republiken Kongo"}
         CG{"Republiken Kongo"}
         CI{"Côte d’Ivoire"}
-        NZ{"Aotearoa Nya Zeeland"}
         TL{"Timor-Leste"}
     }
+    Version{"2.1.48.90"}
 }

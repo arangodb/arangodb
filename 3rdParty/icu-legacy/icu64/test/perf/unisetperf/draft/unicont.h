@@ -1,7 +1,7 @@
 /*  
 *************************************************************************
 *   © 2016 and later: Unicode, Inc. and others.
-*   License & terms of use: http://www.unicode.org/copyright.html
+*   License & terms of use: http://www.unicode.org/copyright.html#License
 *************************************************************************
 *************************************************************************
 *   Copyright (C) 2007, International Business Machines
@@ -26,13 +26,13 @@ public:
 
     virtual UBool contains(UChar32 c) const = 0;
 
-    virtual int32_t span(const char16_t *s, int32_t length);
+    virtual int32_t span(const UChar *s, int32_t length);
 
-    virtual int32_t spanNot(const char16_t *s, int32_t length);
+    virtual int32_t spanNot(const UChar *s, int32_t length);
 
-    virtual int32_t spanUTF8(const char16_t *s, int32_t length);
+    virtual int32_t spanUTF8(const UChar *s, int32_t length);
 
-    virtual int32_t spanNotUTF8(const char16_t *s, int32_t length);
+    virtual int32_t spanNotUTF8(const UChar *s, int32_t length);
 
-    virtual UClassID getDynamicClassID() const;
+    virtual UClassID getDynamicClassID(void) const;
 };

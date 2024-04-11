@@ -29,7 +29,7 @@
 
 U_NAMESPACE_BEGIN
 
-static const char16_t gNumberPatternSeparator = 0x3B; // ;
+static const UChar gNumberPatternSeparator = 0x3B; // ;
 
 U_CDECL_BEGIN
 
@@ -50,11 +50,11 @@ U_CDECL_END
 
 UOBJECT_DEFINE_RTTI_IMPLEMENTATION(CurrencyPluralInfo)
 
-static const char16_t gDefaultCurrencyPluralPattern[] = {'0', '.', '#', '#', ' ', 0xA4, 0xA4, 0xA4, 0};
-static const char16_t gTripleCurrencySign[] = {0xA4, 0xA4, 0xA4, 0};
-static const char16_t gPluralCountOther[] = {0x6F, 0x74, 0x68, 0x65, 0x72, 0};
-static const char16_t gPart0[] = {0x7B, 0x30, 0x7D, 0};
-static const char16_t gPart1[] = {0x7B, 0x31, 0x7D, 0};
+static const UChar gDefaultCurrencyPluralPattern[] = {'0', '.', '#', '#', ' ', 0xA4, 0xA4, 0xA4, 0};
+static const UChar gTripleCurrencySign[] = {0xA4, 0xA4, 0xA4, 0};
+static const UChar gPluralCountOther[] = {0x6F, 0x74, 0x68, 0x65, 0x72, 0};
+static const UChar gPart0[] = {0x7B, 0x30, 0x7D, 0};
+static const UChar gPart1[] = {0x7B, 0x31, 0x7D, 0};
 
 static const char gNumberElementsTag[]="NumberElements";
 static const char gLatnTag[]="latn";
@@ -145,7 +145,7 @@ CurrencyPluralInfo::~CurrencyPluralInfo() {
     fLocale = nullptr;
 }
 
-bool
+UBool
 CurrencyPluralInfo::operator==(const CurrencyPluralInfo& info) const {
 #ifdef CURRENCY_PLURAL_INFO_DEBUG
     if (*fPluralRules == *info.fPluralRules) {
@@ -190,7 +190,7 @@ CurrencyPluralInfo::getCurrencyPluralPattern(const UnicodeString&  pluralCount,
         // fall back to "other"
         if (pluralCount.compare(gPluralCountOther, 5)) {
             currencyPluralPattern = 
-                (UnicodeString*)fPluralCountToCurrencyUnitPattern->get(UnicodeString(true, gPluralCountOther, 5));
+                (UnicodeString*)fPluralCountToCurrencyUnitPattern->get(UnicodeString(TRUE, gPluralCountOther, 5));
         }
         if (currencyPluralPattern == nullptr) {
             // no currencyUnitPatterns defined, 
@@ -289,7 +289,7 @@ CurrencyPluralInfo::setupCurrencyPluralPattern(const Locale& loc, UErrorCode& st
     ures_getByKeyWithFallback(numElements.getAlias(), ns->getName(), rb.getAlias(), &ec);
     ures_getByKeyWithFallback(rb.getAlias(), gPatternsTag, rb.getAlias(), &ec);
     int32_t ptnLen;
-    const char16_t* numberStylePattern = ures_getStringByKeyWithFallback(rb.getAlias(), gDecimalFormatTag, &ptnLen, &ec);
+    const UChar* numberStylePattern = ures_getStringByKeyWithFallback(rb.getAlias(), gDecimalFormatTag, &ptnLen, &ec);
     // Fall back to "latn" if num sys specific pattern isn't there.
     if ( ec == U_MISSING_RESOURCE_ERROR && (uprv_strcmp(ns->getName(), gLatnTag) != 0)) {
         ec = U_ZERO_ERROR;
@@ -298,7 +298,7 @@ CurrencyPluralInfo::setupCurrencyPluralPattern(const Locale& loc, UErrorCode& st
         numberStylePattern = ures_getStringByKeyWithFallback(rb.getAlias(), gDecimalFormatTag, &ptnLen, &ec);
     }
     int32_t numberStylePatternLen = ptnLen;
-    const char16_t* negNumberStylePattern = nullptr;
+    const UChar* negNumberStylePattern = nullptr;
     int32_t negNumberStylePatternLen = 0;
     // TODO: Java
     // parse to check whether there is ";" separator in the numberStylePattern
@@ -335,7 +335,7 @@ CurrencyPluralInfo::setupCurrencyPluralPattern(const Locale& loc, UErrorCode& st
         while (((pluralCount = keywords->next(nullptr, ec)) != nullptr) && U_SUCCESS(ec)) {
             int32_t ptnLength;
             UErrorCode err = U_ZERO_ERROR;
-            const char16_t* patternChars = ures_getStringByKeyWithFallback(currencyRes.getAlias(), pluralCount, &ptnLength, &err);
+            const UChar* patternChars = ures_getStringByKeyWithFallback(currencyRes.getAlias(), pluralCount, &ptnLength, &err);
             if (err == U_MEMORY_ALLOCATION_ERROR || patternChars == nullptr) {
                 ec = err;
                 break;
@@ -351,15 +351,15 @@ CurrencyPluralInfo::setupCurrencyPluralPattern(const Locale& loc, UErrorCode& st
                 pattern->extract(0, pattern->length(), result_1, "UTF-8");
                 std::cout << "pluralCount: " << pluralCount << "; pattern: " << result_1 << "\n";
 #endif
-                pattern->findAndReplace(UnicodeString(true, gPart0, 3), 
+                pattern->findAndReplace(UnicodeString(TRUE, gPart0, 3), 
                     UnicodeString(numberStylePattern, numberStylePatternLen));
-                pattern->findAndReplace(UnicodeString(true, gPart1, 3), UnicodeString(true, gTripleCurrencySign, 3));
+                pattern->findAndReplace(UnicodeString(TRUE, gPart1, 3), UnicodeString(TRUE, gTripleCurrencySign, 3));
 
                 if (hasSeparator) {
                     UnicodeString negPattern(patternChars, ptnLength);
-                    negPattern.findAndReplace(UnicodeString(true, gPart0, 3), 
+                    negPattern.findAndReplace(UnicodeString(TRUE, gPart0, 3), 
                         UnicodeString(negNumberStylePattern, negNumberStylePatternLen));
-                    negPattern.findAndReplace(UnicodeString(true, gPart1, 3), UnicodeString(true, gTripleCurrencySign, 3));
+                    negPattern.findAndReplace(UnicodeString(TRUE, gPart1, 3), UnicodeString(TRUE, gTripleCurrencySign, 3));
                     pattern->append(gNumberPatternSeparator);
                     pattern->append(negPattern);
                 }
@@ -400,7 +400,7 @@ CurrencyPluralInfo::initHash(UErrorCode& status) {
     if (U_FAILURE(status)) {
         return nullptr;
     }
-    LocalPointer<Hashtable> hTable(new Hashtable(true, status), status);
+    LocalPointer<Hashtable> hTable(new Hashtable(TRUE, status), status);
     if (U_FAILURE(status)) {
         return nullptr;
     }

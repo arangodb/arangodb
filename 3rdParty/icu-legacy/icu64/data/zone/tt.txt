@@ -1,16 +1,13 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 tt{
+    Version{"2.1.49.82"}
     zoneStrings{
         "Etc:UTC"{
             ls{"Бөтендөнья килештерелгән вакыты"}
         }
         "Etc:Unknown"{
             ec{"билгесез шәһәр"}
-        }
-        "meta:Acre"{
-            lg{"Акр вакыты"}
         }
         "meta:America_Central"{
             ld{"Төньяк Америка җәйге үзәк вакыты"}
@@ -31,9 +28,6 @@ tt{
             ld{"Төньяк Америка җәйге Тын океан вакыты"}
             lg{"Төньяк Америка Тын океан вакыты"}
             ls{"Төньяк Америка гадәти Тын океан вакыты"}
-        }
-        "meta:Anadyr"{
-            lg{"Анадырь вакыты"}
         }
         "meta:Atlantic"{
             ld{"Төньяк Америка җәйге атлантик вакыты"}
@@ -58,12 +52,10 @@ tt{
         "meta:GMT"{
             ls{"Гринвич уртача вакыты"}
         }
-        "meta:Kamchatka"{
-            lg{"Петропавловск-Камчатский вакыты"}
-        }
-        "meta:Samara"{
-            lg{"Самара вакыты"}
-        }
+        fallbackFormat{"{1} ({0})"}
+        gmtFormat{"GMT{0}"}
+        gmtZeroFormat{"GMT"}
+        hourFormat{"+HH:mm;-HH:mm"}
         regionFormat{"{0} вакыты"}
         regionFormatDaylight{"{0} җәйге вакыты"}
         regionFormatStandard{"{0} гадәти вакыты"}

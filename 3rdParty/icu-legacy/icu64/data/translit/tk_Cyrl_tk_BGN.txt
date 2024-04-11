@@ -1,6 +1,5 @@
 ﻿# © 2016 and later: Unicode, Inc. and others.
-# License & terms of use: http://www.unicode.org/copyright.html
-# Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+# License & terms of use: http://www.unicode.org/copyright.html#License
 #
 # File: tk_Cyrl_tk_BGN.txt
 # Generated from CLDR
@@ -51,7 +50,7 @@ $lower = [$lowerConsonants $lowerVowels] ;
 # Use this $wordBoundary until bug 2034 is fixed in ICU:
 # http://bugs.icu-project.org/cgi-bin/icu-bugs/transliterate?id=2034;expression=boundary;user=guest
 #
-$wordBoundary =  [^[:L:][:M:][:N:] ] ;
+$wordBoundary =  [^[:L:][:M:][:N:]] ;
 #
 #
 ########################################################################
@@ -84,11 +83,11 @@ $wordBoundary =  [^[:L:][:M:][:N:] ] ;
 #
 ########################################################################
 #
-Е}[[$upperVowels - [Ә] ] [ЙЪЬ] ] → YE ; # CYRILLIC CAPITAL LETTER IE
-Е}[[$lowerVowels - [ә] ] [йъь] ] → Ye ; # CYRILLIC CAPITAL LETTER IE
+Е}[[$upperVowels - [Ә]] [ЙЪЬ]] → YE ; # CYRILLIC CAPITAL LETTER IE
+Е}[[$lowerVowels - [ә]] [йъь]] → Ye ; # CYRILLIC CAPITAL LETTER IE
 $wordBoundary{Е → Ye ; # CYRILLIC CAPITAL LETTER IE
 Е →  E ; # CYRILLIC CAPITAL LETTER IE
-е}[[$upperVowels - [Ә] ] [$lowerVowels - [ә] ] [ЙйЪъЬь] ] → ye ; # CYRILLIC SMALL LETTER IE
+е}[[$upperVowels - [Ә]] [$lowerVowels - [ә]] [ЙйЪъЬь]] → ye ; # CYRILLIC SMALL LETTER IE
 $wordBoundary{е → ye ; # CYRILLIC SMALL LETTER IE
 е →  e ; # CYRILLIC SMALL LETTER IE
 #

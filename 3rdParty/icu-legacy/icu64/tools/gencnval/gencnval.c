@@ -32,21 +32,19 @@
 #include "cstring.h"
 #include "uinvchar.h"
 #include "filestrm.h"
-#include "toolutil.h"
 #include "unicode/uclean.h"
 #include "unewdata.h"
 #include "uoptions.h"
 
-#include <ctype.h>
-#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <ctype.h>
 
 /* TODO: Need to check alias name length is less than UCNV_MAX_CONVERTER_NAME_LENGTH */
 
 /* STRING_STORE_SIZE + TAG_STORE_SIZE <= ((2^16 - 1) * 2)
  That is the maximum size for the string stores combined
- because the strings are indexed at 16-bit boundaries by a
+ because the strings are index at 16-bit boundries by a
  16-bit index, and there is only one section for the 
  strings.
  */
@@ -137,9 +135,9 @@ static uint16_t aliasLists[MAX_LIST_SIZE];
 static uint16_t aliasListsSize = 0;
 
 /* Were the standard tags declared before the aliases. */
-static UBool standardTagsUsed = false;
-static UBool verbose = false;
-static UBool quiet = false;
+static UBool standardTagsUsed = FALSE;
+static UBool verbose = FALSE;
+static UBool quiet = FALSE;
 static int lineNum = 1;
 
 static UConverterAliasOptions tableOptions = {
@@ -258,11 +256,11 @@ main(int argc, char* argv[]) {
     }
 
     if(options[VERBOSE].doesOccur) {
-        verbose = true;
+        verbose = TRUE;
     }
 
     if(options[QUIET].doesOccur) {
-        quiet = true;
+        quiet = TRUE;
     }
 
     if (argc >= 2) {
@@ -335,7 +333,7 @@ parseFile(FileStream *in) {
     char lastLine[MAX_LINE_SIZE];
     int32_t lineSize = 0;
     int32_t lastLineSize = 0;
-    UBool validParse = true;
+    UBool validParse = TRUE;
 
     lineNum = 0;
 
@@ -346,7 +344,7 @@ parseFile(FileStream *in) {
 
     /* read the list of aliases */
     while (validParse) {
-        validParse = false;
+        validParse = FALSE;
 
         /* Read non-empty lines that don't start with a space character. */
         while (T_FileStream_readLine(in, lastLine, MAX_LINE_SIZE) != NULL) {
@@ -355,7 +353,7 @@ parseFile(FileStream *in) {
                 uprv_strcpy(line + lineSize, lastLine);
                 lineSize += lastLineSize;
             } else if (lineSize > 0) {
-                validParse = true;
+                validParse = TRUE;
                 break;
             }
             lineNum++;
@@ -371,7 +369,7 @@ parseFile(FileStream *in) {
                     exit(U_PARSE_ERROR);
                 }
                 addOfficialTaggedStandards(line, lineSize);
-                standardTagsUsed = true;
+                standardTagsUsed = TRUE;
             } else {
                 if (standardTagsUsed) {
                     parseLine(line);
@@ -478,16 +476,16 @@ parseLine(const char *line) {
         if (start == 0) {
             /* add the converter as its own alias to the alias table */
             alias = converter;
-            addAlias(alias, ALL_TAG_NUM, cnv, true);
+            addAlias(alias, ALL_TAG_NUM, cnv, TRUE);
         }
         else {
             alias=allocString(&stringBlock, line+start, length);
-            addAlias(alias, ALL_TAG_NUM, cnv, false);
+            addAlias(alias, ALL_TAG_NUM, cnv, FALSE);
         }
         addToKnownAliases(alias);
 
         /* add the alias/converter pair to the alias table */
-        /* addAlias(alias, 0, cnv, false);*/
+        /* addAlias(alias, 0, cnv, FALSE);*/
 
         /* skip whitespace */
         while (line[pos] && isspace((int)line[pos])) {
@@ -531,7 +529,7 @@ static uint16_t
 getTagNumber(const char *tag, uint16_t tagLen) {
     char *atag;
     uint16_t t;
-    UBool preferredName = ((tagLen > 0) ? (tag[tagLen - 1] == '*') : (false));
+    UBool preferredName = ((tagLen > 0) ? (tag[tagLen - 1] == '*') : (FALSE));
 
     if (tagCount >= MAX_TAG_COUNT) {
         fprintf(stderr, "%s:%d: too many tags\n", path, lineNum);
@@ -584,7 +582,6 @@ addTaggedAlias(uint16_t tag, const char *alias, uint16_t converter) {
 
 static void
 addOfficialTaggedStandards(char *line, int32_t lineLen) {
-    (void) lineLen; // suppress compiler warnings about unused variable
     char *atag;
     char *endTagExp;
     char *tag;
@@ -666,7 +663,7 @@ addToKnownAliases(const char *alias) {
 static uint16_t
 addAlias(const char *alias, uint16_t standard, uint16_t converter, UBool defaultName) {
     uint32_t idx, idx2;
-    UBool startEmptyWithoutDefault = false;
+    UBool startEmptyWithoutDefault = FALSE;
     AliasList *aliasList;
 
     if(standard>=MAX_TAG_COUNT) {
@@ -759,7 +756,7 @@ addAlias(const char *alias, uint16_t standard, uint16_t converter, UBool default
 
     if (aliasList->aliasCount <= 0) {
         aliasList->aliasCount++;
-        startEmptyWithoutDefault = true;
+        startEmptyWithoutDefault = TRUE;
     }
     aliasList->aliases = (uint16_t *)uprv_realloc(aliasList->aliases, (aliasList->aliasCount + 1) * sizeof(aliasList->aliases[0]));
     if (startEmptyWithoutDefault) {
@@ -844,6 +841,7 @@ resolveAliasToConverter(uint16_t alias, uint16_t *tagNum, uint16_t *converterNum
     fprintf(stderr, "%s: warning: alias %s not found\n",
         path,
         GET_ALIAS_STR(alias));
+    return;
 }
 
 /* The knownAliases should be sorted before calling this function */

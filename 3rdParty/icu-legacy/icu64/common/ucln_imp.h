@@ -78,7 +78,7 @@
  * Use the ANSI C 'atexit' function. Note that this mechanism does not
  * guarantee the order of cleanup relative to other users of ICU!
  */
-static UBool gAutoCleanRegistered = false;
+static UBool gAutoCleanRegistered = FALSE;
 
 static void ucln_atexit_handler()
 {
@@ -88,7 +88,7 @@ static void ucln_atexit_handler()
 static void ucln_registerAutomaticCleanup()
 {
     if(!gAutoCleanRegistered) {
-        gAutoCleanRegistered = true;
+        gAutoCleanRegistered = TRUE;
         atexit(&ucln_atexit_handler);
     }
 }
@@ -135,7 +135,7 @@ U_CAPI void U_EXPORT2 UCLN_FINI ()
  */
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 {
-    BOOL status = true;
+    BOOL status = TRUE;
 
     switch(fdwReason) {
         case DLL_PROCESS_ATTACH:

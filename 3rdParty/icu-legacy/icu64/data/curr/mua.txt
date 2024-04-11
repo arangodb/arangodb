@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 mua{
     Currencies{
         AED{
@@ -175,13 +174,9 @@ mua{
             "SHP",
             "Solai Helena",
         }
-        SLE{
-            "SLE",
-            "solai Sierra leonǝ",
-        }
         SLL{
             "SLL",
-            "solai Sierra leonǝ (1964—2022)",
+            "solai Sierra leonǝ",
         }
         SOS{
             "SOS",
@@ -220,7 +215,7 @@ mua{
             "solai BEAC",
         }
         XOF{
-            "F CFA",
+            "CFA",
             "solai BCEAO",
         }
         ZAR{
@@ -240,4 +235,5 @@ mua{
             "Solai Zimbabwe",
         }
     }
+    Version{"2.1.47.82"}
 }

@@ -1,14 +1,14 @@
 /*
  *
  * © 2016 and later: Unicode, Inc. and others.
- * License & terms of use: http://www.unicode.org/copyright.html
+ * License & terms of use: http://www.unicode.org/copyright.html#License
  *
  * (C) Copyright IBM Corp. 1998-2013 - All Rights Reserved
  *
  */
 
-#include "layout/LETypes.h"
-#include "layout/loengine.h"
+#include "LETypes.h"
+#include "loengine.h"
 #include "PortableFontInstance.h"
 #include "SimpleFontInstance.h"
 

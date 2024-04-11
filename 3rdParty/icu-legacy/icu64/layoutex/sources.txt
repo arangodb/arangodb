@@ -1,5 +1,0 @@
-LXUtilities.cpp
-ParagraphLayout.cpp
-RunArrays.cpp
-playout.cpp
-plruns.cpp

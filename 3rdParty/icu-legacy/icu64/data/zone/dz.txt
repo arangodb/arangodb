@@ -1,7 +1,7 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 dz{
+    Version{"2.1.47.82"}
     zoneStrings{
         "Africa:Cairo"{
             ec{"ཀཱའི་རོ"}
@@ -81,8 +81,17 @@ dz{
         "America:Moncton"{
             ec{"མཱོངཀ་ཊོན"}
         }
+        "America:Nipigon"{
+            ec{"ནི་པི་གཱོན"}
+        }
         "America:Panama"{
             ec{"པ་ན་མ"}
+        }
+        "America:Pangnirtung"{
+            ec{"པེང་ནིར་ཏུང"}
+        }
+        "America:Rainy_River"{
+            ec{"རཱེ་ནི་རི་ཝར"}
         }
         "America:Rankin_Inlet"{
             ec{"རེན་ཀིན་ ཨིན་ལེཊ"}
@@ -107,6 +116,9 @@ dz{
         }
         "America:Tegucigalpa"{
             ec{"ཊེ་གུ་སི་གཱལ་པ"}
+        }
+        "America:Thunder_Bay"{
+            ec{"ཐན་ཌར་ བའེ"}
         }
         "America:Tijuana"{
             ec{"ཏིའུ་ཝ་ན"}
@@ -527,6 +539,7 @@ dz{
         fallbackFormat{"{1}། ({0}་)"}
         gmtFormat{"ཇི་ཨེམ་ཏི་{0}"}
         gmtZeroFormat{"ཇི་ཨེམ་ཊི་"}
+        hourFormat{"+HH:mm;-HH:mm"}
         regionFormat{"{0}་ཆུ་ཚོད།"}
     }
 }

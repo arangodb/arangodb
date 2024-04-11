@@ -27,7 +27,7 @@ UVector64::UVector64(UErrorCode &status) :
     count(0),
     capacity(0),
     maxCapacity(0),
-    elements(nullptr)
+    elements(NULL)
 {
     _init(DEFAULT_CAPACITY, status);
 }
@@ -36,7 +36,7 @@ UVector64::UVector64(int32_t initialCapacity, UErrorCode &status) :
     count(0),
     capacity(0),
     maxCapacity(0),
-    elements(nullptr)
+    elements(0)
 {
     _init(initialCapacity, status);
 }
@@ -55,7 +55,7 @@ void UVector64::_init(int32_t initialCapacity, UErrorCode &status) {
         initialCapacity = uprv_min(DEFAULT_CAPACITY, maxCapacity);
     }
     elements = (int64_t *)uprv_malloc(sizeof(int64_t)*initialCapacity);
-    if (elements == nullptr) {
+    if (elements == 0) {
         status = U_MEMORY_ALLOCATION_ERROR;
     } else {
         capacity = initialCapacity;
@@ -64,7 +64,7 @@ void UVector64::_init(int32_t initialCapacity, UErrorCode &status) {
 
 UVector64::~UVector64() {
     uprv_free(elements);
-    elements = nullptr;
+    elements = 0;
 }
 
 /**
@@ -80,15 +80,15 @@ void UVector64::assign(const UVector64& other, UErrorCode &ec) {
 }
 
 
-bool UVector64::operator==(const UVector64& other) {
+UBool UVector64::operator==(const UVector64& other) {
     int32_t i;
-    if (count != other.count) return false;
+    if (count != other.count) return FALSE;
     for (i=0; i<count; ++i) {
         if (elements[i] != other.elements[i]) {
-            return false;
+            return FALSE;
         }
     }
-    return true;
+    return TRUE;
 }
 
 
@@ -111,28 +111,28 @@ void UVector64::insertElementAt(int64_t elem, int32_t index, UErrorCode &status)
     /* else index out of range */
 }
 
-void UVector64::removeAllElements() {
+void UVector64::removeAllElements(void) {
     count = 0;
 }
 
 UBool UVector64::expandCapacity(int32_t minimumCapacity, UErrorCode &status) {
     if (U_FAILURE(status)) {
-        return false;
+        return FALSE;
     }
     if (minimumCapacity < 0) {
         status = U_ILLEGAL_ARGUMENT_ERROR;
-        return false;
+        return FALSE;
     }
     if (capacity >= minimumCapacity) {
-        return true;
+        return TRUE;
     }
     if (maxCapacity>0 && minimumCapacity>maxCapacity) {
         status = U_BUFFER_OVERFLOW_ERROR;
-        return false;
+        return FALSE;
     }
     if (capacity > (INT32_MAX - 1) / 2) {  // integer overflow check
         status = U_ILLEGAL_ARGUMENT_ERROR;
-        return false;
+        return FALSE;
     }
     int32_t newCap = capacity * 2;
     if (newCap < minimumCapacity) {
@@ -144,17 +144,17 @@ UBool UVector64::expandCapacity(int32_t minimumCapacity, UErrorCode &status) {
     if (newCap > (int32_t)(INT32_MAX / sizeof(int64_t))) {  // integer overflow check
         // We keep the original memory contents on bad minimumCapacity/maxCapacity.
         status = U_ILLEGAL_ARGUMENT_ERROR;
-        return false;
+        return FALSE;
     }
     int64_t* newElems = (int64_t *)uprv_realloc(elements, sizeof(int64_t)*newCap);
-    if (newElems == nullptr) {
+    if (newElems == NULL) {
         // We keep the original contents on the memory failure on realloc.
         status = U_MEMORY_ALLOCATION_ERROR;
-        return false;
+        return FALSE;
     }
     elements = newElems;
     capacity = newCap;
-    return true;
+    return TRUE;
 }
 
 void UVector64::setMaxCapacity(int32_t limit) {
@@ -175,7 +175,7 @@ void UVector64::setMaxCapacity(int32_t limit) {
     // New maximum capacity is smaller than the current size.
     // Realloc the storage to the new, smaller size.
     int64_t* newElems = (int64_t *)uprv_realloc(elements, sizeof(int64_t)*maxCapacity);
-    if (newElems == nullptr) {
+    if (newElems == NULL) {
         // Realloc to smaller failed.
         //   Just keep what we had.  No need to call it a failure.
         return;
@@ -191,7 +191,7 @@ void UVector64::setMaxCapacity(int32_t limit) {
  * Change the size of this vector as follows: If newSize is smaller,
  * then truncate the array, possibly deleting held elements for i >=
  * newSize.  If newSize is larger, grow the array, filling in new
- * slots with nullptr.
+ * slots with NULL.
  */
 void UVector64::setSize(int32_t newSize) {
     int32_t i;

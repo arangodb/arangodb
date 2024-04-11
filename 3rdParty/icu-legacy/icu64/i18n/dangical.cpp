@@ -15,7 +15,6 @@
 
 #if !UCONFIG_NO_FORMATTING
 
-#include "astro.h" // CalendarCache
 #include "gregoimp.h" // Math
 #include "uassert.h"
 #include "ucln_in.h"
@@ -24,13 +23,8 @@
 #include "unicode/tzrule.h"
 
 // --- The cache --
-// Lazy Creation & Access synchronized by class CalendarCache with a mutex.
-static icu::CalendarCache *gWinterSolsticeCache = nullptr;
-static icu::CalendarCache *gNewYearCache = nullptr;
-
-// gAstronomerTimeZone
-static icu::TimeZone *gAstronomerTimeZone = nullptr;
-static icu::UInitOnce gAstronomerTimeZoneInitOnce {};
+static icu::TimeZone *gDangiCalendarZoneAstroCalc = NULL;
+static icu::UInitOnce gDangiCalendarInitOnce = U_INITONCE_INITIALIZER;
 
 /**
  * The start year of the Korean traditional calendar (Dan-gi) is the inaugural
@@ -39,22 +33,13 @@ static icu::UInitOnce gAstronomerTimeZoneInitOnce {};
 static const int32_t DANGI_EPOCH_YEAR = -2332; // Gregorian year
 
 U_CDECL_BEGIN
-static UBool calendar_dangi_cleanup() {
-    if (gWinterSolsticeCache) {
-        delete gWinterSolsticeCache;
-        gWinterSolsticeCache = nullptr;
+static UBool calendar_dangi_cleanup(void) {
+    if (gDangiCalendarZoneAstroCalc) {
+        delete gDangiCalendarZoneAstroCalc;
+        gDangiCalendarZoneAstroCalc = NULL;
     }
-    if (gNewYearCache) {
-        delete gNewYearCache;
-        gNewYearCache = nullptr;
-    }
-
-    if (gAstronomerTimeZone) {
-        delete gAstronomerTimeZone;
-        gAstronomerTimeZone = nullptr;
-    }
-    gAstronomerTimeZoneInitOnce.reset();
-    return true;
+    gDangiCalendarInitOnce.reset();
+    return TRUE;
 }
 U_CDECL_END
 
@@ -66,10 +51,8 @@ U_NAMESPACE_BEGIN
 // Constructors...
 //-------------------------------------------------------------------------
 
-const TimeZone* getAstronomerTimeZone(UErrorCode &status);
-
 DangiCalendar::DangiCalendar(const Locale& aLocale, UErrorCode& success)
-:   ChineseCalendar(aLocale, success)
+:   ChineseCalendar(aLocale, DANGI_EPOCH_YEAR, getDangiCalZoneAstroCalc(), success)
 {
 }
 
@@ -82,7 +65,7 @@ DangiCalendar::~DangiCalendar()
 {
 }
 
-DangiCalendar*
+Calendar*
 DangiCalendar::clone() const
 {
     return new DangiCalendar(*this);
@@ -120,71 +103,35 @@ const char *DangiCalendar::getType() const {
  * 1898-1911: GMT+8 
  * 1912-    : GMT+9 
  */
-static void U_CALLCONV initAstronomerTimeZone(UErrorCode &status) {
-    U_ASSERT(gAstronomerTimeZone == nullptr);
+static void U_CALLCONV initDangiCalZoneAstroCalc(void) {
+    U_ASSERT(gDangiCalendarZoneAstroCalc == NULL);
     const UDate millis1897[] = { (UDate)((1897 - 1970) * 365 * kOneDay) }; // some days of error is not a problem here
     const UDate millis1898[] = { (UDate)((1898 - 1970) * 365 * kOneDay) }; // some days of error is not a problem here
     const UDate millis1912[] = { (UDate)((1912 - 1970) * 365 * kOneDay) }; // this doesn't create an issue for 1911/12/20
-    LocalPointer<InitialTimeZoneRule> initialTimeZone(new InitialTimeZoneRule(
-        UnicodeString(u"GMT+8"), 8*kOneHour, 0), status);
-
-    LocalPointer<TimeZoneRule> rule1897(new TimeArrayTimeZoneRule(
-        UnicodeString(u"Korean 1897"), 7*kOneHour, 0, millis1897, 1, DateTimeRule::STANDARD_TIME), status);
-
-    LocalPointer<TimeZoneRule> rule1898to1911(new TimeArrayTimeZoneRule(
-        UnicodeString(u"Korean 1898-1911"), 8*kOneHour, 0, millis1898, 1, DateTimeRule::STANDARD_TIME), status);
-
-    LocalPointer<TimeZoneRule> ruleFrom1912(new TimeArrayTimeZoneRule(
-        UnicodeString(u"Korean 1912-"), 9*kOneHour, 0, millis1912, 1, DateTimeRule::STANDARD_TIME), status);
-
-    LocalPointer<RuleBasedTimeZone> zone(new RuleBasedTimeZone(
-        UnicodeString(u"KOREA_ZONE"), initialTimeZone.orphan()), status); // adopts initialTimeZone
-
-    if (U_FAILURE(status)) {
-        return;
-    }
-    zone->addTransitionRule(rule1897.orphan(), status); // adopts rule1897
-    zone->addTransitionRule(rule1898to1911.orphan(), status);
-    zone->addTransitionRule(ruleFrom1912.orphan(), status);
-    zone->complete(status);
+    InitialTimeZoneRule* initialTimeZone = new InitialTimeZoneRule(UNICODE_STRING_SIMPLE("GMT+8"), 8*kOneHour, 0);
+    TimeZoneRule* rule1897 = new TimeArrayTimeZoneRule(UNICODE_STRING_SIMPLE("Korean 1897"), 7*kOneHour, 0, millis1897, 1, DateTimeRule::STANDARD_TIME);
+    TimeZoneRule* rule1898to1911 = new TimeArrayTimeZoneRule(UNICODE_STRING_SIMPLE("Korean 1898-1911"), 8*kOneHour, 0, millis1898, 1, DateTimeRule::STANDARD_TIME);
+    TimeZoneRule* ruleFrom1912 = new TimeArrayTimeZoneRule(UNICODE_STRING_SIMPLE("Korean 1912-"), 9*kOneHour, 0, millis1912, 1, DateTimeRule::STANDARD_TIME);
+    UErrorCode status = U_ZERO_ERROR;
+    RuleBasedTimeZone* dangiCalZoneAstroCalc = new RuleBasedTimeZone(UNICODE_STRING_SIMPLE("KOREA_ZONE"), initialTimeZone); // adopts initialTimeZone
+    dangiCalZoneAstroCalc->addTransitionRule(rule1897, status); // adopts rule1897
+    dangiCalZoneAstroCalc->addTransitionRule(rule1898to1911, status);
+    dangiCalZoneAstroCalc->addTransitionRule(ruleFrom1912, status);
+    dangiCalZoneAstroCalc->complete(status);
     if (U_SUCCESS(status)) {
-        gAstronomerTimeZone = zone.orphan();
+        gDangiCalendarZoneAstroCalc = dangiCalZoneAstroCalc;
+    } else {
+        delete dangiCalZoneAstroCalc;
+        gDangiCalendarZoneAstroCalc = NULL;
     }
     ucln_i18n_registerCleanup(UCLN_I18N_DANGI_CALENDAR, calendar_dangi_cleanup);
 }
 
-const TimeZone* getAstronomerTimeZone(UErrorCode &status) {
-    umtx_initOnce(gAstronomerTimeZoneInitOnce, &initAstronomerTimeZone, status);
-    return gAstronomerTimeZone;
+const TimeZone* DangiCalendar::getDangiCalZoneAstroCalc(void) const {
+    umtx_initOnce(gDangiCalendarInitOnce, &initDangiCalZoneAstroCalc);
+    return gDangiCalendarZoneAstroCalc;
 }
 
-constexpr uint32_t kDangiRelatedYearDiff = -2333;
-
-int32_t DangiCalendar::getRelatedYear(UErrorCode &status) const
-{
-    int32_t year = get(UCAL_EXTENDED_YEAR, status);
-    if (U_FAILURE(status)) {
-        return 0;
-    }
-    if (uprv_add32_overflow(year, kDangiRelatedYearDiff, &year)) {
-        status = U_ILLEGAL_ARGUMENT_ERROR;
-        return 0;
-    }
-    return year;
-}
-
-void DangiCalendar::setRelatedYear(int32_t year)
-{
-    // set extended year
-    set(UCAL_EXTENDED_YEAR, year - kDangiRelatedYearDiff);
-}
-
-ChineseCalendar::Setting DangiCalendar::getSetting(UErrorCode& status) const {
-  return { DANGI_EPOCH_YEAR,
-    getAstronomerTimeZone(status),
-    &gWinterSolsticeCache, &gNewYearCache
-  };
-}
 
 UOBJECT_DEFINE_RTTI_IMPLEMENTATION(DangiCalendar)
 

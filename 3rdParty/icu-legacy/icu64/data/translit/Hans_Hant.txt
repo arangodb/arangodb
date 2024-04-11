@@ -1,6 +1,5 @@
 ﻿# © 2016 and later: Unicode, Inc. and others.
-# License & terms of use: http://www.unicode.org/copyright.html
-# Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+# License & terms of use: http://www.unicode.org/copyright.html#License
 #
 # File: Hans_Hant.txt
 # Generated from CLDR
@@ -894,28 +893,8 @@ $SCDigit { 出 } 戏 → 齣;
 #
 骂↔罵;
 骂←駡;
-# exceptions to converting 脏→髒
-五脏→五臟;
-六脏→六臟;
-内脏→內臟;
-心脏→心臟;
-牝脏→牝臟;
-肝脏→肝臟;
-肺脏→肺臟;
-肾脏→腎臟;
-胃脏→胃臟;
-胰脏→胰臟;
-脏器→臟器;
-脏毒→臟毒;
-脏气→臟氣;
-脏症→臟症;
-脏腑→臟腑;
-脏象→臟象;
-脏躁→臟躁;
-脾脏→脾臟;
-# standard conversions for 脏
-脏↔髒;
-脏←臟;
+脏↔臟;
+脏←髒;
 鳄↔鰐;
 鳄←鱷;
 凫↔鳧;
@@ -4167,4 +4146,7 @@ $SCDigit { 出 } 戏 → 齣;
 龚↔龔;
 龛↔龕;
 龟↔龜;
+# map some punctuation too
+“↔「;
+”↔」;
 

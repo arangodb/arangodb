@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 uz_Cyrl{
     %%Parent{"root"}
     Countries{
@@ -145,6 +144,7 @@ uz_Cyrl{
         IL{"Исроил"}
         IM{"Мэн ороли"}
         IN{"Ҳиндистон"}
+        IO{"Британиянинг Ҳинд океанидаги ҳудуди"}
         IQ{"Ироқ"}
         IR{"Эрон"}
         IS{"Исландия"}
@@ -294,6 +294,7 @@ uz_Cyrl{
         ZZ{"Номаълум минтақа"}
     }
     Countries%short{
+        GB{"Буюк Британия"}
         HK{"Гонконг"}
         MO{"Макао"}
         PS{"Фаластин"}
@@ -307,4 +308,5 @@ uz_Cyrl{
         FK{"Фолкленд (Малвин) ороллари"}
         TL{"Шарқий Тимор"}
     }
+    Version{"2.1.49.82"}
 }

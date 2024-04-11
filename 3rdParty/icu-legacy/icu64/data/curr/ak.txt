@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ak{
     Currencies{
         AED{
@@ -175,13 +174,9 @@ ak{
             "SHP",
             "St Helena Pɔn",
         }
-        SLE{
-            "SLE",
-            "Leone",
-        }
         SLL{
             "SLL",
-            "Leone (1964—2022)",
+            "Leone",
         }
         SOS{
             "SOS",
@@ -236,4 +231,5 @@ ak{
             "Zimbabwe Dɔla",
         }
     }
+    Version{"2.1.47.82"}
 }

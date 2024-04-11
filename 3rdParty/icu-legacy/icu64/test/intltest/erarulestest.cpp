@@ -8,7 +8,6 @@
 #include "unicode/calendar.h"
 #include "unicode/localpointer.h"
 #include "unicode/unistr.h"
-#include "unicode/timezone.h"
 #include "erarules.h"
 #include "erarulestest.h"
 
@@ -44,20 +43,20 @@ void EraRulesTest::testAPIs() {
         "persian",
         "roc",
         //"unknown",
-        nullptr
+        NULL
     };
 
-    for (int32_t i = 0; calTypes[i] != nullptr; i++) {
+    for (int32_t i = 0; calTypes[i] != NULL; i++) {
         UErrorCode status = U_ZERO_ERROR;
         const char *calId = calTypes[i];
 
-        LocalPointer<EraRules> rules1(EraRules::createInstance(calId, false, status));
+        LocalPointer<EraRules> rules1(EraRules::createInstance(calId, FALSE, status));
         if (U_FAILURE(status)) {
             errln(UnicodeString("Era rules for ") + calId + " is not available.");
             continue;
         }
 
-        LocalPointer<EraRules> rules2(EraRules::createInstance(calId, true, status));
+        LocalPointer<EraRules> rules2(EraRules::createInstance(calId, TRUE, status));
         if (U_FAILURE(status)) {
             errln(UnicodeString("Era rules for ") + calId + " (including tentative eras) is not available.");
             continue;
@@ -74,7 +73,7 @@ void EraRulesTest::testAPIs() {
                     + calId);
         }
 
-        LocalPointer<Calendar> cal(Calendar::createInstance(*TimeZone::getGMT(), "en", status));
+        LocalPointer<Calendar> cal(Calendar::createInstance("en", status));
         if (U_FAILURE(status)) {
             errln("Failed to create a Calendar instance.");
             continue;
@@ -107,7 +106,7 @@ void EraRulesTest::testJapanese() {
     const int32_t HEISEI = 235; // ICU4C does not define constants for eras
 
     UErrorCode status = U_ZERO_ERROR;
-    LocalPointer<EraRules> rules(EraRules::createInstance("japanese", true, status));
+    LocalPointer<EraRules> rules(EraRules::createInstance("japanese", TRUE, status));
     if (U_FAILURE(status)) {
         errln("Failed to get era rules for Japanese calendar.");
         return;

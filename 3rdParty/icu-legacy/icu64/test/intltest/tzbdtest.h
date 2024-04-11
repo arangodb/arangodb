@@ -23,7 +23,7 @@
  */
 class TimeZoneBoundaryTest: public CalendarTimeZoneTest {
     // IntlTest override
-    void runIndexedTest( int32_t index, UBool exec, const char* &name, char* par ) override;
+    void runIndexedTest( int32_t index, UBool exec, const char* &name, char* par );
 public: // package
 
     TimeZoneBoundaryTest();
@@ -59,7 +59,7 @@ public: // package
      * Test the behavior of SimpleTimeZone at the transition into and out of DST.
      * Use a binary search to find boundaries.
      */
-    virtual void TestBoundaries();
+    virtual void TestBoundaries(void);
  
     /**
      * internal subroutine used by TestNewRules
@@ -69,7 +69,7 @@ public: // package
     /**
      * Test the handling of the "new" rules; that is, rules other than nth Day of week.
      */
-    virtual void TestNewRules();
+    virtual void TestNewRules(void);
  
     /**
      * Find boundaries by stepping.
@@ -80,7 +80,7 @@ public: // package
      * Test the behavior of SimpleTimeZone at the transition into and out of DST.
      * Use a stepwise march to find boundaries.
      */ 
-    virtual void TestStepwise();
+    virtual void TestStepwise(void);
     void verifyMapping(Calendar& cal, int year, int month, int dom, int hour,
                     double epochHours) ;
 private:

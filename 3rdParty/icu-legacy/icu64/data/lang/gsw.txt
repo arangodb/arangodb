@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 gsw{
     Keys{
         calendar{"Kaländer"}
@@ -336,6 +335,7 @@ gsw{
         ro{"Rumänisch"}
         ro_MD{"Moldawisch"}
         rom{"Zigüünerschpraach"}
+        root{"Root"}
         ru{"Russisch"}
         rup{"Aromunisch"}
         rw{"Ruandisch"}
@@ -449,6 +449,7 @@ gsw{
     }
     Scripts{
         Arab{"Arabisch"}
+        Armi{"Armi"}
         Armn{"Armenisch"}
         Avst{"Aveschtisch"}
         Bali{"Balinesisch"}
@@ -462,6 +463,7 @@ gsw{
         Buhd{"Buhid"}
         Cans{"UCAS"}
         Cari{"Karisch"}
+        Cham{"Cham"}
         Cher{"Cherokee"}
         Cirt{"Cirth"}
         Copt{"Koptisch"}
@@ -576,6 +578,8 @@ gsw{
             gregorian{"Gregoriaanisch Kaländer"}
             hebrew{"Hebrääisch Kaländer"}
             indian{"Indisch Nationaalkaländer"}
+            islamic{"Islaamisch Kaländer"}
+            islamic-civil{"Bürgerlich islaamisch Kaländer"}
             japanese{"Japaanisch Kaländer"}
             roc{"Kaländer vor Republik Chiina"}
         }
@@ -615,9 +619,14 @@ gsw{
         SOLBA{"Solbica-Mundart"}
         TARASK{"Taraskievica-Rächtschriibig"}
     }
+    Version{"2.1.47.82"}
     codePatterns{
         language{"Schpraach: {0}"}
         script{"Schrift: {0}"}
         territory{"Regioon: {0}"}
+    }
+    localeDisplayPattern{
+        pattern{"{0} ({1})"}
+        separator{"{0}, {1}"}
     }
 }

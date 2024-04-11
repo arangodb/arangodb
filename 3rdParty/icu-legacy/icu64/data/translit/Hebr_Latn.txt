@@ -1,6 +1,5 @@
 ﻿# © 2016 and later: Unicode, Inc. and others.
-# License & terms of use: http://www.unicode.org/copyright.html
-# Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+# License & terms of use: http://www.unicode.org/copyright.html#License
 #
 # File: Hebr_Latn.txt
 # Generated from CLDR
@@ -25,11 +24,8 @@
 #
 # For more information, see:
 #   http://icu.sourceforge.net/userguide/Transform.html
-:: [[־׳״][:Hebrew:] [:^ccc=0:] [\u05B0-\u05B9\u05BB-\u05BC\u05C1-\u05C2ℵ-ℸ\u0304\u05BF] - [\u05BD]] ;
+:: [[:Hebrew:] [:^ccc=0:] [\u05B0-\u05B9\u05BB-\u05BC\u05C1-\u05C2ℵ-ℸ\u0304\u05BF] - [\u05BD]] ;
 :: nfkd (nfc) ;
-׳ ↔ '′';
-״ ↔ '″';
-־ ↔ '-';
 $letterAfter = [:M:]* [:L:] ;
 # move longer items here to avoid masking
 ח ↔ h\u0331 ;
@@ -94,5 +90,5 @@ $above = [^[:ccc=0:][:ccc=230:]]*;
 כס ← x ;
 :: (lower);
 :: nfc (nfd) ;
-:: ([[-′″][:Latin:] [:^ccc=0:] [ʻ-ʼ\u0300-\u0302\u0307\u030C\u0327\u0331\u0340-\u0341    \u0304 ]]);
+:: ([[:Latin:] [:^ccc=0:] [ʻ-ʼ\u0300-\u0302\u0307\u030C\u0327\u0331\u0340-\u0341    \u0304 ]]);
 

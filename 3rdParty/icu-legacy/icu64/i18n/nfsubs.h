@@ -74,7 +74,7 @@ public:
      * @param rhs    the object to be compared with.
      * @return       true if the given Format objects are semantically equal.
      */
-    virtual bool operator==(const NFSubstitution& rhs) const;
+    virtual UBool operator==(const NFSubstitution& rhs) const;
 
     /**
      * Return true if the given Format objects are semantically unequal.
@@ -82,7 +82,7 @@ public:
      * @param rhs    the object to be compared with.
      * @return       true if the given Format objects are semantically unequal.
      */
-    bool operator!=(const NFSubstitution& rhs) const { return !operator==(rhs); }
+    UBool operator!=(const NFSubstitution& rhs) const { return !operator==(rhs); }
     
     /**
      * Sets the substitution's divisor.  Used by NFRule.setBaseValue().
@@ -234,7 +234,7 @@ public:
      * substitutions of this type.  Used by toString().
      * @return This substitution's token character.
      */
-    virtual char16_t tokenChar() const = 0;
+    virtual UChar tokenChar() const = 0;
     
     /**
      * Returns true if this is a modulus substitution.  (We didn't do this
@@ -245,12 +245,12 @@ public:
     virtual UBool isModulusSubstitution() const;
     
 private:
-    NFSubstitution(const NFSubstitution &other) = delete; // forbid copying of this class
-    NFSubstitution &operator=(const NFSubstitution &other) = delete; // forbid copying of this class
+    NFSubstitution(const NFSubstitution &other); // forbid copying of this class
+    NFSubstitution &operator=(const NFSubstitution &other); // forbid copying of this class
 
 public:
-    static UClassID getStaticClassID();
-    virtual UClassID getDynamicClassID() const override;
+    static UClassID getStaticClassID(void);
+    virtual UClassID getDynamicClassID(void) const;
 };
 
 U_NAMESPACE_END

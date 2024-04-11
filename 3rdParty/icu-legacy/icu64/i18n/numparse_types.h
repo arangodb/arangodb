@@ -9,12 +9,12 @@
 
 #include "unicode/uobject.h"
 #include "number_decimalquantity.h"
-#include "string_segment.h"
 
-U_NAMESPACE_BEGIN
-namespace numparse::impl {
+U_NAMESPACE_BEGIN namespace numparse {
+namespace impl {
 
 // Forward-declarations
+class StringSegment;
 class ParsedNumber;
 
 typedef int32_t result_flags_t;
@@ -50,7 +50,6 @@ enum ParseFlags {
     // PARSE_FLAG_FORCE_BIG_DECIMAL = 0x1000, // not used in ICU4C
     PARSE_FLAG_NO_FOREIGN_CURRENCY = 0x2000,
     PARSE_FLAG_ALLOW_INFINITE_RECURSION = 0x4000,
-    PARSE_FLAG_STRICT_IGNORABLES = 0x8000,
 };
 
 
@@ -63,15 +62,14 @@ class CompactUnicodeString {
         fBuffer[0] = 0;
     }
 
-    CompactUnicodeString(const UnicodeString& text, UErrorCode& status)
-            : fBuffer(text.length() + 1, status) {
-        if (U_FAILURE(status)) { return; }
-        uprv_memcpy(fBuffer.getAlias(), text.getBuffer(), sizeof(char16_t) * text.length());
+    CompactUnicodeString(const UnicodeString& text)
+            : fBuffer(text.length() + 1) {
+        uprv_memcpy(fBuffer.getAlias(), text.getBuffer(), sizeof(UChar) * text.length());
         fBuffer[text.length()] = 0;
     }
 
     inline UnicodeString toAliasedUnicodeString() const {
-        return UnicodeString(true, fBuffer.getAlias(), -1);
+        return UnicodeString(TRUE, fBuffer.getAlias(), -1);
     }
 
     bool operator==(const CompactUnicodeString& other) const {
@@ -80,7 +78,7 @@ class CompactUnicodeString {
     }
 
   private:
-    MaybeStackArray<char16_t, stackCapacity> fBuffer;
+    MaybeStackArray<UChar, stackCapacity> fBuffer;
 };
 
 
@@ -124,7 +122,7 @@ class U_I18N_API ParsedNumber {
     /**
      * The currency that got consumed.
      */
-    char16_t currencyCode[4];
+    UChar currencyCode[4];
 
     ParsedNumber();
 
@@ -168,6 +166,115 @@ class U_I18N_API ParsedNumber {
     void populateFormattable(Formattable& output, parse_flags_t parseFlags) const;
 
     bool isBetterThan(const ParsedNumber& other);
+};
+
+
+/**
+ * A mutable class allowing for a String with a variable offset and length. The charAt, length, and
+ * subSequence methods all operate relative to the fixed offset into the String.
+ *
+ * @author sffc
+ */
+// Exported as U_I18N_API for tests
+class U_I18N_API StringSegment : public UMemory {
+  public:
+    StringSegment(const UnicodeString& str, bool ignoreCase);
+
+    int32_t getOffset() const;
+
+    void setOffset(int32_t start);
+
+    /**
+     * Equivalent to <code>setOffset(getOffset()+delta)</code>.
+     *
+     * <p>
+     * This method is usually called by a Matcher to register that a char was consumed. If the char is
+     * strong (it usually is, except for things like whitespace), follow this with a call to
+     * {@link ParsedNumber#setCharsConsumed}. For more information on strong chars, see that method.
+     */
+    void adjustOffset(int32_t delta);
+
+    /**
+     * Adjusts the offset by the width of the current code point, either 1 or 2 chars.
+     */
+    void adjustOffsetByCodePoint();
+
+    void setLength(int32_t length);
+
+    void resetLength();
+
+    int32_t length() const;
+
+    char16_t charAt(int32_t index) const;
+
+    UChar32 codePointAt(int32_t index) const;
+
+    UnicodeString toUnicodeString() const;
+
+    const UnicodeString toTempUnicodeString() const;
+
+    /**
+     * Returns the first code point in the string segment, or -1 if the string starts with an invalid
+     * code point.
+     *
+     * <p>
+     * <strong>Important:</strong> Most of the time, you should use {@link #matches}, which handles case
+     * folding logic, instead of this method.
+     */
+    UChar32 getCodePoint() const;
+
+    /**
+     * Returns true if the first code point of this StringSegment equals the given code point.
+     *
+     * <p>
+     * This method will perform case folding if case folding is enabled for the parser.
+     */
+    bool startsWith(UChar32 otherCp) const;
+
+    /**
+     * Returns true if the first code point of this StringSegment is in the given UnicodeSet.
+     */
+    bool startsWith(const UnicodeSet& uniset) const;
+
+    /**
+     * Returns true if there is at least one code point of overlap between this StringSegment and the
+     * given UnicodeString.
+     */
+    bool startsWith(const UnicodeString& other) const;
+
+    /**
+     * Returns the length of the prefix shared by this StringSegment and the given CharSequence. For
+     * example, if this string segment is "aab", and the char sequence is "aac", this method returns 2,
+     * since the first 2 characters are the same.
+     *
+     * <p>
+     * This method only returns offsets along code point boundaries.
+     *
+     * <p>
+     * This method will perform case folding if case folding was enabled in the constructor.
+     *
+     * <p>
+     * IMPORTANT: The given UnicodeString must not be empty! It is the caller's responsibility to check.
+     */
+    int32_t getCommonPrefixLength(const UnicodeString& other);
+
+    /**
+     * Like {@link #getCommonPrefixLength}, but never performs case folding, even if case folding is
+     * enabled for the parser.
+     */
+    int32_t getCaseSensitivePrefixLength(const UnicodeString& other);
+
+    bool operator==(const UnicodeString& other) const;
+
+  private:
+    const UnicodeString& fStr;
+    int32_t fStart;
+    int32_t fEnd;
+    bool fFoldCase;
+
+    int32_t getPrefixLengthInternal(const UnicodeString& other, bool foldCase);
+
+    static bool codePointsEqual(UChar32 cp1, UChar32 cp2, bool foldCase);
 };
 
 
@@ -262,7 +369,9 @@ class U_I18N_API MutableMatcherCollection {
     virtual void addMatcher(NumberParseMatcher& matcher) = 0;
 };
 
-} // namespace numparse::impl
+
+} // namespace impl
+} // namespace numparse
 U_NAMESPACE_END
 
 #endif //__NUMPARSE_TYPES_H__

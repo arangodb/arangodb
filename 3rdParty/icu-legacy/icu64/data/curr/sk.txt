@@ -1,6 +1,5 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 sk{
     Currencies{
         ADP{
@@ -689,7 +688,7 @@ sk{
         }
         MRU{
             "MRU",
-            "mauritánska ouguiya",
+            "mauritánska ukija",
         }
         MTL{
             "MTL",
@@ -899,13 +898,9 @@ sk{
             "SKK",
             "slovenská koruna",
         }
-        SLE{
-            "SLE",
-            "sierraleonský leone",
-        }
         SLL{
             "SLL",
-            "sierraleonský leone (1964—2022)",
+            "sierraleonský leone",
         }
         SOS{
             "SOS",
@@ -945,7 +940,7 @@ sk{
         }
         SZL{
             "SZL",
-            "svazijský lilangeni",
+            "svazijské lilangeni",
         }
         THB{
             "THB",
@@ -1120,7 +1115,7 @@ sk{
             "francúzsky UIC frank",
         }
         XOF{
-            "F CFA",
+            "CFA",
             "západoafrický frank",
         }
         XPD{
@@ -1217,12 +1212,103 @@ sk{
         }
     }
     Currencies%narrow{
+        AOA{"Kz"}
+        ARS{"$"}
+        AUD{"$"}
+        BAM{"KM"}
+        BBD{"$"}
+        BDT{"৳"}
+        BMD{"$"}
+        BND{"$"}
+        BOB{"Bs"}
+        BRL{"R$"}
+        BSD{"$"}
+        BWP{"P"}
         BYN{"р."}
-        RUR{"р."}
+        BZD{"$"}
+        CAD{"$"}
+        CLP{"$"}
+        CNY{"¥"}
+        COP{"$"}
+        CRC{"₡"}
+        CUC{"$"}
+        CUP{"$"}
+        CZK{"Kč"}
+        DKK{"kr"}
+        DOP{"$"}
+        EGP{"E£"}
+        FJD{"$"}
+        FKP{"£"}
+        GBP{"£"}
+        GEL{"₾"}
+        GIP{"£"}
+        GNF{"FG"}
+        GTQ{"Q"}
+        GYD{"$"}
+        HKD{"$"}
+        HNL{"L"}
+        HRK{"kn"}
+        HUF{"Ft"}
+        IDR{"Rp"}
+        ILS{"₪"}
+        INR{"₹"}
+        ISK{"kr"}
+        JMD{"$"}
+        JPY{"¥"}
+        KHR{"៛"}
+        KMF{"CF"}
+        KPW{"₩"}
+        KRW{"₩"}
+        KYD{"$"}
+        KZT{"₸"}
+        LAK{"₭"}
+        LBP{"L£"}
+        LKR{"Rs"}
+        LRD{"$"}
+        MGA{"Ar"}
+        MMK{"K"}
+        MNT{"₮"}
+        MUR{"Rs"}
+        MXN{"$"}
+        MYR{"RM"}
+        NAD{"$"}
+        NGN{"₦"}
+        NIO{"C$"}
+        NOK{"kr"}
+        NPR{"Rs"}
+        NZD{"$"}
+        PHP{"₱"}
+        PKR{"Rs"}
+        PLN{"zł"}
+        PYG{"₲"}
+        RON{"lei"}
+        RUB{"₽"}
+        RWF{"RF"}
+        SBD{"$"}
+        SEK{"kr"}
+        SGD{"$"}
+        SHP{"£"}
+        SRD{"$"}
+        SSP{"£"}
+        SYP{"£"}
+        THB{"฿"}
+        TOP{"T$"}
+        TRY{"₺"}
+        TTD{"$"}
         TWD{"NT$"}
+        UAH{"₴"}
+        USD{"$"}
+        UYU{"$"}
+        VEF{"Bs"}
+        VND{"₫"}
+        XCD{"$"}
+        ZAR{"R"}
+        ZMW{"ZK"}
     }
     Currencies%variant{
+        GEL{"₾"}
         RUB{"₽"}
+        TRY{"TL"}
     }
     CurrencyPlurals{
         ADP{
@@ -2252,10 +2338,10 @@ sk{
             other{"mauritánskych ukijí (1973–2017)"}
         }
         MRU{
-            few{"mauritánske ouguiye"}
-            many{"mauritánskej ouguiye"}
-            one{"mauritánska ouguiya"}
-            other{"mauritánskych ouguiyí"}
+            few{"mauritánske ukije"}
+            many{"mauritánskej ukije"}
+            one{"mauritánska ukija"}
+            other{"mauritánskych ukijí"}
         }
         MTL{
             few{"maltské líry"}
@@ -2569,17 +2655,11 @@ sk{
             one{"slovenská koruna"}
             other{"slovenských korún"}
         }
-        SLE{
+        SLL{
             few{"sierraleonské leone"}
             many{"sierraleonského leone"}
             one{"sierraleonský leone"}
             other{"sierraleonských leone"}
-        }
-        SLL{
-            few{"sierraleonské leone (1964—2022)"}
-            many{"sierraleonského leone (1964—2022)"}
-            one{"sierraleonský leone (1964—2022)"}
-            other{"sierraleonských leone (1964—2022)"}
         }
         SOS{
             few{"somálske šilingy"}
@@ -2638,7 +2718,7 @@ sk{
         SZL{
             few{"svazijské lilangeni"}
             many{"svazijského lilangeni"}
-            one{"svazijský lilangeni"}
+            one{"svazijské lilangeni"}
             other{"svazijských lilangeni"}
         }
         THB{
@@ -2875,6 +2955,12 @@ sk{
             one{"východokaribský dolár"}
             other{"východokaribských dolárov"}
         }
+        XDR{
+            few{"SDR"}
+            many{"SDR"}
+            one{"SDR"}
+            other{"SDR"}
+        }
         XEU{
             few{"európske menové jednotky"}
             many{"európskej menovej jednotky"}
@@ -2922,6 +3008,12 @@ sk{
             many{"jednotky fondov RINET"}
             one{"jednotka fondov RINET"}
             other{"jednotiek fondov RINET"}
+        }
+        XSU{
+            few{"sucre"}
+            many{"sucre"}
+            one{"sucre"}
+            other{"sucre"}
         }
         XTS{
             few{"jednotky testovacej meny"}
@@ -3038,4 +3130,5 @@ sk{
         one{"{0} {1}"}
         other{"{0} {1}"}
     }
+    Version{"2.1.48.42"}
 }

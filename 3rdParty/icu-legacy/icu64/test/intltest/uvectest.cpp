@@ -57,20 +57,18 @@ void UVectorTest::runIndexedTest( int32_t index, UBool exec, const char* &name, 
 //   Error Checking / Reporting macros used in all of the tests.
 //
 //---------------------------------------------------------------------------
-#define TEST_CHECK_STATUS(status) UPRV_BLOCK_MACRO_BEGIN {\
+#define TEST_CHECK_STATUS(status) \
     if (U_FAILURE(status)) {\
         errln("UVectorTest failure at line %d.  status=%s\n", __LINE__, u_errorName(status));\
         return;\
-    }\
-} UPRV_BLOCK_MACRO_END
+    }
 
-#define TEST_ASSERT(expr) UPRV_BLOCK_MACRO_BEGIN {\
-    if ((expr)==false) {\
+#define TEST_ASSERT(expr) \
+    if ((expr)==FALSE) {\
         errln("UVectorTest failure at line %d.\n", __LINE__);\
-    }\
-} UPRV_BLOCK_MACRO_END
+    }
 
-static int32_t U_CALLCONV
+static int8_t U_CALLCONV
 UVectorTest_compareInt32(UElement key1, UElement key2) {
     if (key1.integer > key2.integer) {
         return 1;
@@ -124,21 +122,6 @@ void UVectorTest::UVector_API() {
     TEST_ASSERT(a->contains((int32_t)15));
     TEST_ASSERT(!a->contains((int32_t)5));
     delete a;
-
-    status = U_ZERO_ERROR;
-    UVector vec(status);
-    vec.setDeleter(uprv_deleteUObject);
-    vec.adoptElement(new UnicodeString(), status);
-    vec.adoptElement(new UnicodeString(), status);
-    assertSuccess(WHERE, status);
-    assertEquals(WHERE, 2, vec.size());
-
-    // With an incoming error, adoptElement will not add to the vector,
-    // and will delete the object. Failure here will show as a memory leak.
-    status = U_ILLEGAL_ARGUMENT_ERROR;
-    vec.adoptElement(new UnicodeString(), status);
-    assertEquals(WHERE, U_ILLEGAL_ARGUMENT_ERROR, status);
-    assertEquals(WHERE, 2, vec.size());
 }
 
 void UVectorTest::UStack_API() {
@@ -155,12 +138,12 @@ void UVectorTest::UStack_API() {
     delete a;
 
     status = U_ZERO_ERROR;
-    a = new UStack(nullptr, nullptr, 2000, status);
+    a = new UStack(NULL, NULL, 2000, status);
     TEST_CHECK_STATUS(status);
     delete a;
 
     status = U_ZERO_ERROR;
-    a = new UStack(nullptr, UVectorTest_compareCstrings, status);
+    a = new UStack(NULL, UVectorTest_compareCstrings, status);
     TEST_ASSERT(a->empty());
     a->push((void*)"abc", status);
     TEST_ASSERT(!a->empty());
@@ -181,7 +164,7 @@ void UVectorTest::UStack_API() {
 
 U_CDECL_BEGIN
 static UBool U_CALLCONV neverTRUE(const UElement /*key1*/, const UElement /*key2*/) {
-    return false;
+    return FALSE;
 }
 
 U_CDECL_END
@@ -190,18 +173,18 @@ void UVectorTest::Hashtable_API() {
     UErrorCode status = U_ZERO_ERROR;
     Hashtable *a = new Hashtable(status);
     TEST_ASSERT((a->puti("a", 1, status) == 0));
-    TEST_ASSERT((a->find("a") != nullptr));
-    TEST_ASSERT((a->find("b") == nullptr));
+    TEST_ASSERT((a->find("a") != NULL));
+    TEST_ASSERT((a->find("b") == NULL));
     TEST_ASSERT((a->puti("b", 2, status) == 0));
-    TEST_ASSERT((a->find("b") != nullptr));
+    TEST_ASSERT((a->find("b") != NULL));
     TEST_ASSERT((a->removei("a") == 1));
-    TEST_ASSERT((a->find("a") == nullptr));
+    TEST_ASSERT((a->find("a") == NULL));
 
     /* verify that setValueComparator works */
     Hashtable b(status);
     TEST_ASSERT((!a->equals(b)));
     TEST_ASSERT((b.puti("b", 2, status) == 0));
-    TEST_ASSERT((!a->equals(b))); // Without a value comparator, this will be false by default.
+    TEST_ASSERT((!a->equals(b))); // Without a value comparator, this will be FALSE by default.
     b.setValueComparator(uhash_compareLong);
     TEST_ASSERT((!a->equals(b)));
     a->setValueComparator(uhash_compareLong);
@@ -210,9 +193,9 @@ void UVectorTest::Hashtable_API() {
 
     /* verify that setKeyComparator works */
     TEST_ASSERT((a->puti("a", 1, status) == 0));
-    TEST_ASSERT((a->find("a") != nullptr));
+    TEST_ASSERT((a->find("a") != NULL));
     a->setKeyComparator(neverTRUE);
-    TEST_ASSERT((a->find("a") == nullptr));
+    TEST_ASSERT((a->find("a") == NULL));
 
     delete a;
 }

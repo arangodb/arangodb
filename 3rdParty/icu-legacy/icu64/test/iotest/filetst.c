@@ -15,32 +15,21 @@
  */
 
 #include "cmemory.h"
-#include "cstring.h"
 #include "iotest.h"
 #include "unicode/ustdio.h"
 #include "unicode/ustring.h"
 #include "unicode/uloc.h"
 
-#include <stdbool.h>
-#include <stdlib.h>
 #include <string.h>
+#include <stdlib.h>
 
 const char *STANDARD_TEST_FILE = "iotest-c.txt";
 
 const char *STANDARD_TEST_LOCALE = "en_US_POSIX";
 
-const char *MEDIUMNAME_TEST_FILE =
-"iotest_medium_filename_4567_30_234567_40_234567_50_234567_60_234567_70_234567_80_234567_90_23456_100"
-"_23456_110_23456_120.txt"; // 124 chars
-
-const char *LONGNAME_TEST_FILE =
-"iotest_long_filename_234567_30_234567_40_234567_50_234567_60_234567_70_234567_80_234567_90_23456_100"
-"_23456_110_23456_120_23456_130_23456_140_23456_150_23456_160_23456_170_23456_180_23456_190_23456_200"
-"_23456_210_23456_220_23456_230_23456_240_23456_250_23456_260.txt"; // 264 chars, may  be too long on some filesystems
-
 
 #if !UCONFIG_NO_FORMATTING
-static void TestFileFromICU(UFILE *myFile, const char* description) {
+static void TestFileFromICU(UFILE *myFile) {
     int32_t n[1];
     float myFloat = -1234.0;
     int32_t newValuePtr[1];
@@ -59,11 +48,7 @@ static void TestFileFromICU(UFILE *myFile, const char* description) {
     memset(testBuf, '*', UPRV_LENGTHOF(testBuf));
 
     if (myFile == NULL) {
-        if (uprv_strstr(description, "ULONGNAME")) {
-            log_info("Can't %s test file, OK.\n", description);
-        } else {
-            log_err("Can't %s test file.\n", description);
-        }
+        log_err("Can't write test file.\n");
         return;
     }
 
@@ -329,24 +314,10 @@ static void TestFileFromICU(UFILE *myFile, const char* description) {
     u_fclose(myFile);
 }
 
-enum { kUFilenameBufLen = 296 };
 static void TestFile(void) {
-    
-    UChar ufilename[kUFilenameBufLen + 1]; // +1 for guaranteed 0 termination
-    ufilename[kUFilenameBufLen] = 0; // ensure 0 termination
- 
-    log_verbose("Testing u_fopen with STANDARD_TEST_FILE\n");
-    TestFileFromICU(u_fopen(STANDARD_TEST_FILE, "w", STANDARD_TEST_LOCALE, NULL), "u_fopen STANDARD");
 
-    u_uastrncpy(ufilename, MEDIUMNAME_TEST_FILE, kUFilenameBufLen); 
-    log_verbose("Testing u_fopen_u with UMEDIUMNAME_TEST_FILE\n");
-    TestFileFromICU(u_fopen_u(ufilename, "w", STANDARD_TEST_LOCALE, NULL), "u_fopen_u UMEDIUMNAME");
-
-    // The following u_fopen_u will fail to open a file on many filesystems (name too long)
-    // but we want to make sure that at least we do not crash in u_fopen_u name conversion.
-    u_uastrncpy(ufilename, LONGNAME_TEST_FILE, kUFilenameBufLen); 
-    log_verbose("Testing u_fopen_u with ULONGNAME_TEST_FILE\n");
-    TestFileFromICU(u_fopen_u(ufilename, "w", STANDARD_TEST_LOCALE, NULL), "u_fopen_u ULONGNAME");
+    log_verbose("Testing u_fopen\n");
+    TestFileFromICU(u_fopen(STANDARD_TEST_FILE, "w", STANDARD_TEST_LOCALE, NULL));
 }
 
 static void TestFinit(void) {
@@ -354,7 +325,7 @@ static void TestFinit(void) {
 
     log_verbose("Testing u_finit\n");
     standardFile = fopen(STANDARD_TEST_FILE, "w");
-    TestFileFromICU(u_finit(standardFile, STANDARD_TEST_LOCALE, NULL), "u_finit STANDARD");
+    TestFileFromICU(u_finit(standardFile, STANDARD_TEST_LOCALE, NULL));
     fclose(standardFile);
 }
 
@@ -363,7 +334,7 @@ static void TestFadopt(void) {
 
     log_verbose("Testing u_fadopt\n");
     standardFile = fopen(STANDARD_TEST_FILE, "w");
-    TestFileFromICU(u_fadopt(standardFile, STANDARD_TEST_LOCALE, NULL), "u_fadopt STANDARD");
+    TestFileFromICU(u_fadopt(standardFile, STANDARD_TEST_LOCALE, NULL));
 }
 #endif
 
@@ -875,7 +846,7 @@ static void TestCodepage(void) {
     myFile = u_fopen(STANDARD_TEST_FILE, "w", NULL, "absurd converter that can't be opened");
 
     if (myFile) {
-        log_err("Received a UFILE * with an invalid codepage parameter\n");
+        log_err("Recieved a UFILE * with an invalid codepage parameter\n");
         u_fclose(myFile);
     }
 
@@ -917,7 +888,7 @@ static void TestCodepage(void) {
     }
     retVal = u_file_read(testBuf, u_strlen(strBadConversion), myFile);
     if (u_strncmp(strBadConversion, testBuf, u_strlen(strBadConversion)) != 0) {
-        log_err("The test data wasn't substituted as expected\n");
+        log_err("The test data wasn't subsituted as expected\n");
     }
     u_fclose(myFile);
 
@@ -1149,7 +1120,7 @@ static void TestFilePrintCompatibility(void) {
 }
 #endif
 
-#define TestFPrintFormat(uFormat, uValue, cFormat, cValue) UPRV_BLOCK_MACRO_BEGIN { \
+#define TestFPrintFormat(uFormat, uValue, cFormat, cValue) \
     myFile = u_fopen(STANDARD_TEST_FILE, "w", STANDARD_TEST_LOCALE, NULL);\
     if (myFile == NULL) {\
         log_err("Can't write test file for %s.\n", uFormat);\
@@ -1175,7 +1146,6 @@ static void TestFilePrintCompatibility(void) {
     if (buffer[uNumPrinted+1] != '*') {\
         log_err("%" uFormat " too much stored\n");\
     }\
-} UPRV_BLOCK_MACRO_END
 
 #if !UCONFIG_NO_FORMATTING
 static void TestFprintfFormat(void) {
@@ -1370,39 +1340,39 @@ static void TestFScanset(void) {
     static const UChar abcUChars[] = {0x61,0x62,0x63,0x63,0x64,0x65,0x66,0x67,0};
     static const char abcChars[] = "abccdefg";
 
-    TestFScanSetFormat("%[bc]S", abcUChars, abcChars, true);
-    TestFScanSetFormat("%[cb]S", abcUChars, abcChars, true);
+    TestFScanSetFormat("%[bc]S", abcUChars, abcChars, TRUE);
+    TestFScanSetFormat("%[cb]S", abcUChars, abcChars, TRUE);
 
-    TestFScanSetFormat("%[ab]S", abcUChars, abcChars, true);
-    TestFScanSetFormat("%[ba]S", abcUChars, abcChars, true);
+    TestFScanSetFormat("%[ab]S", abcUChars, abcChars, TRUE);
+    TestFScanSetFormat("%[ba]S", abcUChars, abcChars, TRUE);
 
-    TestFScanSetFormat("%[ab]", abcUChars, abcChars, true);
-    TestFScanSetFormat("%[ba]", abcUChars, abcChars, true);
+    TestFScanSetFormat("%[ab]", abcUChars, abcChars, TRUE);
+    TestFScanSetFormat("%[ba]", abcUChars, abcChars, TRUE);
 
-    TestFScanSetFormat("%[abcdefgh]", abcUChars, abcChars, true);
-    TestFScanSetFormat("%[;hgfedcba]", abcUChars, abcChars, true);
+    TestFScanSetFormat("%[abcdefgh]", abcUChars, abcChars, TRUE);
+    TestFScanSetFormat("%[;hgfedcba]", abcUChars, abcChars, TRUE);
 
-    TestFScanSetFormat("%[^a]", abcUChars, abcChars, true);
-    TestFScanSetFormat("%[^e]", abcUChars, abcChars, true);
-    TestFScanSetFormat("%[^ed]", abcUChars, abcChars, true);
-    TestFScanSetFormat("%[^dc]", abcUChars, abcChars, true);
-    TestFScanSetFormat("%[^e]  ", abcUChars, abcChars, true);
+    TestFScanSetFormat("%[^a]", abcUChars, abcChars, TRUE);
+    TestFScanSetFormat("%[^e]", abcUChars, abcChars, TRUE);
+    TestFScanSetFormat("%[^ed]", abcUChars, abcChars, TRUE);
+    TestFScanSetFormat("%[^dc]", abcUChars, abcChars, TRUE);
+    TestFScanSetFormat("%[^e]  ", abcUChars, abcChars, TRUE);
 
-    TestFScanSetFormat("%1[ab]  ", abcUChars, abcChars, true);
-    TestFScanSetFormat("%2[^f]", abcUChars, abcChars, true);
+    TestFScanSetFormat("%1[ab]  ", abcUChars, abcChars, TRUE);
+    TestFScanSetFormat("%2[^f]", abcUChars, abcChars, TRUE);
 
-    TestFScanSetFormat("%[qrst]", abcUChars, abcChars, true);
+    TestFScanSetFormat("%[qrst]", abcUChars, abcChars, TRUE);
 
     /* Extra long string for testing */
     TestFScanSetFormat("                                                                                                                         %[qrst]",
-        abcUChars, abcChars, true);
+        abcUChars, abcChars, TRUE);
 
-    TestFScanSetFormat("%[a-]", abcUChars, abcChars, true);
+    TestFScanSetFormat("%[a-]", abcUChars, abcChars, TRUE);
 
     /* Bad format */
-    TestFScanSetFormat("%[f-a]", abcUChars, abcChars, false);
-    TestFScanSetFormat("%[c-a]", abcUChars, abcChars, false);
-    TestFScanSetFormat("%[a", abcUChars, abcChars, false);
+    TestFScanSetFormat("%[f-a]", abcUChars, abcChars, FALSE);
+    TestFScanSetFormat("%[c-a]", abcUChars, abcChars, FALSE);
+    TestFScanSetFormat("%[a", abcUChars, abcChars, FALSE);
     /* The following is not deterministic on Windows */
 /*    TestFScanSetFormat("%[a-", abcUChars, abcChars);*/
 
@@ -1411,7 +1381,6 @@ static void TestFScanset(void) {
 #endif
 #if !UCONFIG_NO_FORMATTING
 static void TestBadFScanfFormat(const char *format, const UChar *uValue, const char *cValue) {
-    (void)cValue; // suppress compiler warnings about unused variable
     UFILE *myFile;
     UChar uBuffer[256];
     int32_t uNumScanned;

@@ -420,7 +420,7 @@ typedef struct UConverterMBCSTable {
     NULL, \
     0, \
     0, 0, \
-    false, \
+    FALSE, \
     0, \
      \
     /* roundtrips */ \

@@ -37,7 +37,7 @@ U_NAMESPACE_BEGIN
 #define REGEX_DUMP_DEBUG
 #define REGEX_RUN_DEBUG
 
-//  End of #defines intended to be directly set.
+//  End of #defines inteded to be directly set.
 
 #include <stdio.h>
 #endif
@@ -123,7 +123,7 @@ enum {
                                //     saved input position, FAIL rather than taking
                                //     the JMP
      URX_LA_START      = 37,   // Starting a LookAround expression.
-                               //   Save InputPos, SP and active region in static data.
+                               //   Save InputPos and SP in static data.
                                //   Operand:  Static data offset for the save
      URX_LA_END        = 38,   // Ending a Lookaround expression.
                                //   Restore InputPos and Stack to saved values.
@@ -140,7 +140,7 @@ enum {
      URX_DOLLAR_M      = 42,   // $ in multi-line mode.
      URX_CARET_M       = 43,   // ^ in multi-line mode.
      URX_LB_START      = 44,   // LookBehind Start.
-                               //   Parameter is data location
+                               //   Paramater is data location
      URX_LB_CONT       = 45,   // LookBehind Continue.
                                //   Param 0:  the data location
                                //   Param 1:  The minimum length of the look-behind match
@@ -343,7 +343,7 @@ inline void  Regex8BitSet::add(UChar32 c) {
 }
 
 inline void Regex8BitSet::init(const UnicodeSet *s) {
-    if (s != nullptr) {
+    if (s != NULL) {
         for (int32_t i=0; i<=255; i++) {
             if (s->contains(i)) {
                 this->add(i);
@@ -371,39 +371,39 @@ class CaseFoldingUTextIterator: public UMemory {
 
         UBool   inExpansion();    // True if last char returned from next() and the
                                   //  next to be returned both originated from a string
-                                  //  folding of the same code point from the original UText.
+                                  //  folding of the same code point from the orignal UText.
       private:
         UText             &fUText;
-        const  char16_t   *fFoldChars;
+        const  UChar      *fFoldChars;
         int32_t            fFoldLength;
         int32_t            fFoldIndex;
 
 };
 
 
-// Case folded char16_t * string iterator.
-//  Wraps a char16_t  *, provides a case-folded enumeration over its contents.
+// Case folded UChar * string iterator.
+//  Wraps a UChar  *, provides a case-folded enumeration over its contents.
 //  Used in implementing case insensitive matching constructs.
 //  Implementation in rematch.cpp
 
 class CaseFoldingUCharIterator: public UMemory {
       public:
-        CaseFoldingUCharIterator(const char16_t *chars, int64_t start, int64_t limit);
+        CaseFoldingUCharIterator(const UChar *chars, int64_t start, int64_t limit);
         ~CaseFoldingUCharIterator();
 
         UChar32 next();           // Next case folded character
 
         UBool   inExpansion();    // True if last char returned from next() and the
                                   //  next to be returned both originated from a string
-                                  //  folding of the same code point from the original UText.
+                                  //  folding of the same code point from the orignal UText.
 
         int64_t  getIndex();      // Return the current input buffer index.
 
       private:
-        const  char16_t   *fChars;
+        const  UChar      *fChars;
         int64_t            fIndex;
         int64_t            fLimit;
-        const  char16_t   *fFoldChars;
+        const  UChar      *fFoldChars;
         int32_t            fFoldLength;
         int32_t            fFoldIndex;
 

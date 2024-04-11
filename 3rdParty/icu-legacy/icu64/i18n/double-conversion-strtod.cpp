@@ -34,27 +34,26 @@
 #include "unicode/utypes.h"
 #if !UCONFIG_NO_FORMATTING
 
-#include <climits>
-#include <cstdarg>
+#include <stdarg.h>
+#include <limits.h>
 
 // ICU PATCH: Customize header file paths for ICU.
+// The file fixed-dtoa.h is not needed.
 
+#include "double-conversion-strtod.h"
 #include "double-conversion-bignum.h"
 #include "double-conversion-cached-powers.h"
 #include "double-conversion-ieee.h"
-#include "double-conversion-strtod.h"
 
 // ICU PATCH: Wrap in ICU namespace
 U_NAMESPACE_BEGIN
 
 namespace double_conversion {
 
-#if defined(DOUBLE_CONVERSION_CORRECT_DOUBLE_OPERATIONS)
 // 2^53 = 9007199254740992.
 // Any integer with at most 15 decimal digits will hence fit into a double
 // (which has a 53bit significand) without loss of precision.
 static const int kMaxExactDoubleIntegerDecimalDigits = 15;
-#endif // #if defined(DOUBLE_CONVERSION_CORRECT_DOUBLE_OPERATIONS)
 // 2^64 = 18446744073709551616 > 10^19
 static const int kMaxUint64DecimalDigits = 19;
 
@@ -68,10 +67,9 @@ static const int kMaxDecimalPower = 309;
 static const int kMinDecimalPower = -324;
 
 // 2^64 = 18446744073709551616
-static const uint64_t kMaxUint64 = DOUBLE_CONVERSION_UINT64_2PART_C(0xFFFFFFFF, FFFFFFFF);
+static const uint64_t kMaxUint64 = UINT64_2PART_C(0xFFFFFFFF, FFFFFFFF);
 
 
-#if defined(DOUBLE_CONVERSION_CORRECT_DOUBLE_OPERATIONS)
 static const double exact_powers_of_ten[] = {
   1.0,  // 10^0
   10.0,
@@ -98,8 +96,7 @@ static const double exact_powers_of_ten[] = {
   // 10^22 = 0x21e19e0c9bab2400000 = 0x878678326eac9 * 2^22
   10000000000000000000000.0
 };
-static const int kExactPowersOfTenSize = DOUBLE_CONVERSION_ARRAY_SIZE(exact_powers_of_ten);
-#endif // #if defined(DOUBLE_CONVERSION_CORRECT_DOUBLE_OPERATIONS)
+static const int kExactPowersOfTenSize = ARRAY_SIZE(exact_powers_of_ten);
 
 // Maximum number of significant digits in the decimal representation.
 // In fact the value is 772 (see conversions.cc), but to give us some margin
@@ -115,6 +112,17 @@ static Vector<const char> TrimLeadingZeros(Vector<const char> buffer) {
   return Vector<const char>(buffer.start(), 0);
 }
 
+
+static Vector<const char> TrimTrailingZeros(Vector<const char> buffer) {
+  for (int i = buffer.length() - 1; i >= 0; --i) {
+    if (buffer[i] != '0') {
+      return buffer.SubVector(0, i + 1);
+    }
+  }
+  return Vector<const char>(buffer.start(), 0);
+}
+
+
 static void CutToMaxSignificantDigits(Vector<const char> buffer,
                                        int exponent,
                                        char* significant_buffer,
@@ -124,7 +132,7 @@ static void CutToMaxSignificantDigits(Vector<const char> buffer,
   }
   // The input buffer has been trimmed. Therefore the last digit must be
   // different from '0'.
-  DOUBLE_CONVERSION_ASSERT(buffer[buffer.length() - 1] != '0');
+  ASSERT(buffer[buffer.length() - 1] != '0');
   // Set the last digit to be non-zero. This is sufficient to guarantee
   // correct rounding.
   significant_buffer[kMaxSignificantDecimalDigits - 1] = '1';
@@ -145,7 +153,7 @@ static void TrimAndCut(Vector<const char> buffer, int exponent,
   exponent += left_trimmed.length() - right_trimmed.length();
   if (right_trimmed.length() > kMaxSignificantDecimalDigits) {
     (void) space_size;  // Mark variable as used.
-    DOUBLE_CONVERSION_ASSERT(space_size >= kMaxSignificantDecimalDigits);
+    ASSERT(space_size >= kMaxSignificantDecimalDigits);
     CutToMaxSignificantDigits(right_trimmed, exponent,
                               buffer_copy_space, updated_exponent);
     *trimmed = Vector<const char>(buffer_copy_space,
@@ -168,7 +176,7 @@ static uint64_t ReadUint64(Vector<const char> buffer,
   int i = 0;
   while (i < buffer.length() && result <= (kMaxUint64 / 10 - 1)) {
     int digit = buffer[i++] - '0';
-    DOUBLE_CONVERSION_ASSERT(0 <= digit && digit <= 9);
+    ASSERT(0 <= digit && digit <= 9);
     result = 10 * result + digit;
   }
   *number_of_read_digits = i;
@@ -205,16 +213,14 @@ static bool DoubleStrtod(Vector<const char> trimmed,
                          int exponent,
                          double* result) {
 #if !defined(DOUBLE_CONVERSION_CORRECT_DOUBLE_OPERATIONS)
-  // Avoid "unused parameter" warnings
-  (void) trimmed;
-  (void) exponent;
-  (void) result;
   // On x86 the floating-point stack can be 64 or 80 bits wide. If it is
   // 80 bits wide (as is the case on Linux) then double-rounding occurs and the
   // result is not accurate.
   // We know that Windows32 uses 64 bits and is therefore accurate.
+  // Note that the ARM simulator is compiled for 32bits. It therefore exhibits
+  // the same problem.
   return false;
-#else
+#endif
   if (trimmed.length() <= kMaxExactDoubleIntegerDecimalDigits) {
     int read_digits;
     // The trimmed input fits into a double.
@@ -226,14 +232,14 @@ static bool DoubleStrtod(Vector<const char> trimmed,
     if (exponent < 0 && -exponent < kExactPowersOfTenSize) {
       // 10^-exponent fits into a double.
       *result = static_cast<double>(ReadUint64(trimmed, &read_digits));
-      DOUBLE_CONVERSION_ASSERT(read_digits == trimmed.length());
+      ASSERT(read_digits == trimmed.length());
       *result /= exact_powers_of_ten[-exponent];
       return true;
     }
     if (0 <= exponent && exponent < kExactPowersOfTenSize) {
       // 10^exponent fits into a double.
       *result = static_cast<double>(ReadUint64(trimmed, &read_digits));
-      DOUBLE_CONVERSION_ASSERT(read_digits == trimmed.length());
+      ASSERT(read_digits == trimmed.length());
       *result *= exact_powers_of_ten[exponent];
       return true;
     }
@@ -245,35 +251,34 @@ static bool DoubleStrtod(Vector<const char> trimmed,
       // 10^remaining_digits. As a result the remaining exponent now fits
       // into a double too.
       *result = static_cast<double>(ReadUint64(trimmed, &read_digits));
-      DOUBLE_CONVERSION_ASSERT(read_digits == trimmed.length());
+      ASSERT(read_digits == trimmed.length());
       *result *= exact_powers_of_ten[remaining_digits];
       *result *= exact_powers_of_ten[exponent - remaining_digits];
       return true;
     }
   }
   return false;
-#endif
 }
 
 
 // Returns 10^exponent as an exact DiyFp.
 // The given exponent must be in the range [1; kDecimalExponentDistance[.
 static DiyFp AdjustmentPowerOfTen(int exponent) {
-  DOUBLE_CONVERSION_ASSERT(0 < exponent);
-  DOUBLE_CONVERSION_ASSERT(exponent < PowersOfTenCache::kDecimalExponentDistance);
+  ASSERT(0 < exponent);
+  ASSERT(exponent < PowersOfTenCache::kDecimalExponentDistance);
   // Simply hardcode the remaining powers for the given decimal exponent
   // distance.
-  DOUBLE_CONVERSION_ASSERT(PowersOfTenCache::kDecimalExponentDistance == 8);
+  ASSERT(PowersOfTenCache::kDecimalExponentDistance == 8);
   switch (exponent) {
-    case 1: return DiyFp(DOUBLE_CONVERSION_UINT64_2PART_C(0xa0000000, 00000000), -60);
-    case 2: return DiyFp(DOUBLE_CONVERSION_UINT64_2PART_C(0xc8000000, 00000000), -57);
-    case 3: return DiyFp(DOUBLE_CONVERSION_UINT64_2PART_C(0xfa000000, 00000000), -54);
-    case 4: return DiyFp(DOUBLE_CONVERSION_UINT64_2PART_C(0x9c400000, 00000000), -50);
-    case 5: return DiyFp(DOUBLE_CONVERSION_UINT64_2PART_C(0xc3500000, 00000000), -47);
-    case 6: return DiyFp(DOUBLE_CONVERSION_UINT64_2PART_C(0xf4240000, 00000000), -44);
-    case 7: return DiyFp(DOUBLE_CONVERSION_UINT64_2PART_C(0x98968000, 00000000), -40);
+    case 1: return DiyFp(UINT64_2PART_C(0xa0000000, 00000000), -60);
+    case 2: return DiyFp(UINT64_2PART_C(0xc8000000, 00000000), -57);
+    case 3: return DiyFp(UINT64_2PART_C(0xfa000000, 00000000), -54);
+    case 4: return DiyFp(UINT64_2PART_C(0x9c400000, 00000000), -50);
+    case 5: return DiyFp(UINT64_2PART_C(0xc3500000, 00000000), -47);
+    case 6: return DiyFp(UINT64_2PART_C(0xf4240000, 00000000), -44);
+    case 7: return DiyFp(UINT64_2PART_C(0x98968000, 00000000), -40);
     default:
-      DOUBLE_CONVERSION_UNREACHABLE();
+      UNREACHABLE();
   }
 }
 
@@ -302,7 +307,7 @@ static bool DiyFpStrtod(Vector<const char> buffer,
   input.Normalize();
   error <<= old_e - input.e();
 
-  DOUBLE_CONVERSION_ASSERT(exponent <= PowersOfTenCache::kMaxDecimalExponent);
+  ASSERT(exponent <= PowersOfTenCache::kMaxDecimalExponent);
   if (exponent < PowersOfTenCache::kMinDecimalExponent) {
     *result = 0.0;
     return true;
@@ -320,7 +325,7 @@ static bool DiyFpStrtod(Vector<const char> buffer,
     if (kMaxUint64DecimalDigits - buffer.length() >= adjustment_exponent) {
       // The product of input with the adjustment power fits into a 64 bit
       // integer.
-      DOUBLE_CONVERSION_ASSERT(DiyFp::kSignificandSize == 64);
+      ASSERT(DiyFp::kSignificandSize == 64);
     } else {
       // The adjustment power is exact. There is hence only an error of 0.5.
       error += kDenominator / 2;
@@ -362,8 +367,8 @@ static bool DiyFpStrtod(Vector<const char> buffer,
     precision_digits_count -= shift_amount;
   }
   // We use uint64_ts now. This only works if the DiyFp uses uint64_ts too.
-  DOUBLE_CONVERSION_ASSERT(DiyFp::kSignificandSize == 64);
-  DOUBLE_CONVERSION_ASSERT(precision_digits_count < 64);
+  ASSERT(DiyFp::kSignificandSize == 64);
+  ASSERT(precision_digits_count < 64);
   uint64_t one64 = 1;
   uint64_t precision_bits_mask = (one64 << precision_digits_count) - 1;
   uint64_t precision_bits = input.f() & precision_bits_mask;
@@ -402,14 +407,14 @@ static bool DiyFpStrtod(Vector<const char> buffer,
 static int CompareBufferWithDiyFp(Vector<const char> buffer,
                                   int exponent,
                                   DiyFp diy_fp) {
-  DOUBLE_CONVERSION_ASSERT(buffer.length() + exponent <= kMaxDecimalPower + 1);
-  DOUBLE_CONVERSION_ASSERT(buffer.length() + exponent > kMinDecimalPower);
-  DOUBLE_CONVERSION_ASSERT(buffer.length() <= kMaxSignificantDecimalDigits);
+  ASSERT(buffer.length() + exponent <= kMaxDecimalPower + 1);
+  ASSERT(buffer.length() + exponent > kMinDecimalPower);
+  ASSERT(buffer.length() <= kMaxSignificantDecimalDigits);
   // Make sure that the Bignum will be able to hold all our numbers.
   // Our Bignum implementation has a separate field for exponents. Shifts will
   // consume at most one bigit (< 64 bits).
   // ln(10) == 3.3219...
-  DOUBLE_CONVERSION_ASSERT(((kMaxDecimalPower + 1) * 333 / 100) < Bignum::kMaxSignificantBits);
+  ASSERT(((kMaxDecimalPower + 1) * 333 / 100) < Bignum::kMaxSignificantBits);
   Bignum buffer_bignum;
   Bignum diy_fp_bignum;
   buffer_bignum.AssignDecimalString(buffer);
@@ -455,38 +460,18 @@ static bool ComputeGuess(Vector<const char> trimmed, int exponent,
   return false;
 }
 
-#if U_DEBUG // needed for ICU only in debug mode
-static bool IsDigit(const char d) {
-  return ('0' <= d) && (d <= '9');
-}
+double Strtod(Vector<const char> buffer, int exponent) {
+  char copy_buffer[kMaxSignificantDecimalDigits];
+  Vector<const char> trimmed;
+  int updated_exponent;
+  TrimAndCut(buffer, exponent, copy_buffer, kMaxSignificantDecimalDigits,
+             &trimmed, &updated_exponent);
+  exponent = updated_exponent;
 
-static bool IsNonZeroDigit(const char d) {
-  return ('1' <= d) && (d <= '9');
-}
-
-#ifdef __has_cpp_attribute
-#if __has_cpp_attribute(maybe_unused)
-[[maybe_unused]]
-#endif
-#endif
-static bool AssertTrimmedDigits(const Vector<const char>& buffer) {
-  for(int i = 0; i < buffer.length(); ++i) {
-    if(!IsDigit(buffer[i])) {
-      return false;
-    }
-  }
-  return (buffer.length() == 0) || (IsNonZeroDigit(buffer[0]) && IsNonZeroDigit(buffer[buffer.length()-1]));
-}
-#endif // needed for ICU only in debug mode
-
-double StrtodTrimmed(Vector<const char> trimmed, int exponent) {
-  DOUBLE_CONVERSION_ASSERT(trimmed.length() <= kMaxSignificantDecimalDigits);
-  DOUBLE_CONVERSION_ASSERT(AssertTrimmedDigits(trimmed));
   double guess;
-  const bool is_correct = ComputeGuess(trimmed, exponent, &guess);
-  if (is_correct) {
-    return guess;
-  }
+  bool is_correct = ComputeGuess(trimmed, exponent, &guess);
+  if (is_correct) return guess;
+
   DiyFp upper_boundary = Double(guess).UpperBoundary();
   int comparison = CompareBufferWithDiyFp(trimmed, exponent, upper_boundary);
   if (comparison < 0) {
@@ -501,39 +486,6 @@ double StrtodTrimmed(Vector<const char> trimmed, int exponent) {
   }
 }
 
-double Strtod(Vector<const char> buffer, int exponent) {
-  char copy_buffer[kMaxSignificantDecimalDigits];
-  Vector<const char> trimmed;
-  int updated_exponent;
-  TrimAndCut(buffer, exponent, copy_buffer, kMaxSignificantDecimalDigits,
-             &trimmed, &updated_exponent);
-  return StrtodTrimmed(trimmed, updated_exponent);
-}
-
-static float SanitizedDoubletof(double d) {
-  DOUBLE_CONVERSION_ASSERT(d >= 0.0);
-  // ASAN has a sanitize check that disallows casting doubles to floats if
-  // they are too big.
-  // https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html#available-checks
-  // The behavior should be covered by IEEE 754, but some projects use this
-  // flag, so work around it.
-  float max_finite = 3.4028234663852885981170418348451692544e+38;
-  // The half-way point between the max-finite and infinity value.
-  // Since infinity has an even significand everything equal or greater than
-  // this value should become infinity.
-  double half_max_finite_infinity =
-      3.40282356779733661637539395458142568448e+38;
-  if (d >= max_finite) {
-    if (d >= half_max_finite_infinity) {
-      return Single::Infinity();
-    } else {
-      return max_finite;
-    }
-  } else {
-    return static_cast<float>(d);
-  }
-}
-
 float Strtof(Vector<const char> buffer, int exponent) {
   char copy_buffer[kMaxSignificantDecimalDigits];
   Vector<const char> trimmed;
@@ -541,17 +493,11 @@ float Strtof(Vector<const char> buffer, int exponent) {
   TrimAndCut(buffer, exponent, copy_buffer, kMaxSignificantDecimalDigits,
              &trimmed, &updated_exponent);
   exponent = updated_exponent;
-  return StrtofTrimmed(trimmed, exponent);
-}
-
-float StrtofTrimmed(Vector<const char> trimmed, int exponent) {
-  DOUBLE_CONVERSION_ASSERT(trimmed.length() <= kMaxSignificantDecimalDigits);
-  DOUBLE_CONVERSION_ASSERT(AssertTrimmedDigits(trimmed));
 
   double double_guess;
   bool is_correct = ComputeGuess(trimmed, exponent, &double_guess);
 
-  float float_guess = SanitizedDoubletof(double_guess);
+  float float_guess = static_cast<float>(double_guess);
   if (float_guess == double_guess) {
     // This shortcut triggers for integer values.
     return float_guess;
@@ -566,7 +512,7 @@ float StrtofTrimmed(Vector<const char> trimmed, int exponent) {
   //    low-precision (3 digits):
   //       when read from input: 123
   //       when rounded from high precision: 124.
-  // To do this we simply look at the neighbors of the correct result and see
+  // To do this we simply look at the neigbors of the correct result and see
   // if they would round to the same float. If the guess is not correct we have
   // to look at four values (since two different doubles could be the correct
   // double).
@@ -574,18 +520,18 @@ float StrtofTrimmed(Vector<const char> trimmed, int exponent) {
   double double_next = Double(double_guess).NextDouble();
   double double_previous = Double(double_guess).PreviousDouble();
 
-  float f1 = SanitizedDoubletof(double_previous);
+  float f1 = static_cast<float>(double_previous);
   float f2 = float_guess;
-  float f3 = SanitizedDoubletof(double_next);
+  float f3 = static_cast<float>(double_next);
   float f4;
   if (is_correct) {
     f4 = f3;
   } else {
     double double_next2 = Double(double_next).NextDouble();
-    f4 = SanitizedDoubletof(double_next2);
+    f4 = static_cast<float>(double_next2);
   }
   (void) f2;  // Mark variable as used.
-  DOUBLE_CONVERSION_ASSERT(f1 <= f2 && f2 <= f3 && f3 <= f4);
+  ASSERT(f1 <= f2 && f2 <= f3 && f3 <= f4);
 
   // If the guess doesn't lie near a single-precision boundary we can simply
   // return its float-value.
@@ -593,11 +539,11 @@ float StrtofTrimmed(Vector<const char> trimmed, int exponent) {
     return float_guess;
   }
 
-  DOUBLE_CONVERSION_ASSERT((f1 != f2 && f2 == f3 && f3 == f4) ||
+  ASSERT((f1 != f2 && f2 == f3 && f3 == f4) ||
          (f1 == f2 && f2 != f3 && f3 == f4) ||
          (f1 == f2 && f2 == f3 && f3 != f4));
 
-  // guess and next are the two possible candidates (in the same way that
+  // guess and next are the two possible canditates (in the same way that
   // double_guess was the lower candidate for a double-precision guess).
   float guess = f1;
   float next = f4;

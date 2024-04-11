@@ -1,12 +1,16 @@
 ﻿// © 2016 and later: Unicode, Inc. and others.
-// License & terms of use: http://www.unicode.org/copyright.html
-// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+// License & terms of use: http://www.unicode.org/copyright.html#License
 ar_MA{
     AuxExemplarCharacters{"[\u200C\u200D\u200E\u200F پ چ ژ ڜ ڢ ڤ ڥ ٯ ڧ ڨ ک ڭ گ ݣ ی]"}
-    ExemplarCharactersNumbers{"[\u200E \\- ‑ , . % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
+    ExemplarCharactersNumbers{"[\u200E \\- , . % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
     NumberElements{
+        arab{
+            symbols{
+                decimal{"٫"}
+                group{"٬"}
+            }
+        }
         default{"latn"}
-        default_latn{"latn"}
         latn{
             symbols{
                 decimal{","}
@@ -14,6 +18,7 @@ ar_MA{
             }
         }
     }
+    Version{"2.1.47.86"}
     calendar{
         gregorian{
             DateTimePatterns{
@@ -25,24 +30,42 @@ ar_MA{
                 "d MMMM y",
                 "dd‏/MM‏/y",
                 "d‏/M‏/y",
-                "{1}، {0}",
-                "{1}، {0}",
-                "{1}، {0}",
-                "{1}، {0}",
-                "{1}، {0}",
-            }
-            DateTimeSkeletons{
-                "HHmmsszzzz",
-                "HHmmssz",
-                "HHmmss",
-                "HHmm",
-                "yMMMMEEEEd",
-                "yMMMMd",
-                "yMMdd",
-                "yMd",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
             }
             monthNames{
                 format{
+                    abbreviated{
+                        "يناير",
+                        "فبراير",
+                        "مارس",
+                        "أبريل",
+                        "ماي",
+                        "يونيو",
+                        "يوليوز",
+                        "غشت",
+                        "شتنبر",
+                        "أكتوبر",
+                        "نونبر",
+                        "دجنبر",
+                    }
+                    narrow{
+                        "ي",
+                        "ف",
+                        "م",
+                        "أ",
+                        "م",
+                        "ن",
+                        "ل",
+                        "غ",
+                        "ش",
+                        "ك",
+                        "ب",
+                        "د",
+                    }
                     wide{
                         "يناير",
                         "فبراير",
@@ -59,6 +82,20 @@ ar_MA{
                     }
                 }
                 stand-alone{
+                    abbreviated{
+                        "يناير",
+                        "فبراير",
+                        "مارس",
+                        "أبريل",
+                        "ماي",
+                        "يونيو",
+                        "يوليوز",
+                        "غشت",
+                        "شتنبر",
+                        "أكتوبر",
+                        "نونبر",
+                        "دجنبر",
+                    }
                     narrow{
                         "ي",
                         "ف",
@@ -72,6 +109,20 @@ ar_MA{
                         "ك",
                         "ب",
                         "د",
+                    }
+                    wide{
+                        "يناير",
+                        "فبراير",
+                        "مارس",
+                        "أبريل",
+                        "ماي",
+                        "يونيو",
+                        "يوليوز",
+                        "غشت",
+                        "شتنبر",
+                        "أكتوبر",
+                        "نونبر",
+                        "دجنبر",
                     }
                 }
             }

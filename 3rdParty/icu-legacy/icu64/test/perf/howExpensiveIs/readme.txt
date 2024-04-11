@@ -1,6 +1,6 @@
 # -*- mode: org -*-
 # Copyright (C) 2016 and later: Unicode, Inc. and others.
-# License & terms of use: http://www.unicode.org/copyright.html
+# License & terms of use: http://www.unicode.org/copyright.html#License
 #
 # Copyright (C) 2012 International Business Machines Corporation and Others. All Rights Reserved. 
 
@@ -68,7 +68,7 @@ How Expensive Is It?
  </icuSystemParams>
 </tests>
 ** Appendix II: Analysis.csv
-https://unicode-org.atlassian.net/browse/ICU-8653,"""Control"", linux i7 
+http://bugs.icu-project.org/trac/ticket/8653,"""Control"", linux i7 
 Intel(R) Core(TM) i7-2720QM CPU @ 2.20GHz",MacBook 2.4ghz (Core2D),MacBook 2GhzCore2,AIX Power,MB 2.4 Variance,MB 2 variance,AIX Variance
 SieveTest (=1.0),1,1,1,1,0.00%,0.00%,0.00%
 NullTest (=0.0),0,0,0,0.08,#DIV/0!,#DIV/0!,#DIV/0!
