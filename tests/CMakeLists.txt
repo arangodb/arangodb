@@ -341,6 +341,8 @@ if (USE_ENTERPRISE)
   target_link_libraries(arangodbtests arango_rclone)
 endif ()
 
+add_dependencies(arangodbtests iculegacy_build)
+
 if (USE_JEMALLOC)
   target_link_libraries(arangodbtests ${JEMALLOC_LIB})
   if (USE_JEMALLOC_PROF AND USE_LIBUNWIND)

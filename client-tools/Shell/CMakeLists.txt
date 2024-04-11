@@ -65,6 +65,8 @@ if (USE_V8)
     add_dependencies(${BIN_ARANGOSH} v8_build)
   endif ()
 
+  add_dependencies(${BIN_ARANGOSH} iculegacy_build)
+
   if (USE_JEMALLOC)
     add_dependencies(${BIN_ARANGOSH} jemalloc_build)
   endif ()

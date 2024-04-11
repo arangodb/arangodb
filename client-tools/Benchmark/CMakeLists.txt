@@ -28,6 +28,8 @@ if (NOT USE_PRECOMPILED_V8)
   add_dependencies(${BIN_ARANGOBENCH} v8_build) # v8_build includes ICU build
 endif ()
 
+add_dependencies(${BIN_ARANGOBENCH} iculegacy_build)
+
 if (USE_JEMALLOC)
   add_dependencies(${BIN_ARANGOBENCH} jemalloc_build)
 endif ()

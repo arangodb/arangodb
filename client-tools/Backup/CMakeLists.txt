@@ -30,6 +30,8 @@ if (USE_ENTERPRISE)
     add_dependencies(${BIN_ARANGOBACKUP} v8_build) # v8_build includes ICU build
   endif ()
 
+  add_dependencies(${BIN_ARANGOBACKUP} iculegacy_build)
+
   if (USE_JEMALLOC)
     add_dependencies(${BIN_ARANGOBACKUP} jemalloc_build)
   endif ()

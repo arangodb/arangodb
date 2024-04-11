@@ -26,6 +26,8 @@ if (NOT USE_PRECOMPILED_V8)
   add_dependencies(${BIN_ARANGOVPACK} v8_build)
 endif ()
 
+add_dependencies(${BIN_ARANGOVPACK} iculegacy_build)
+
 if (USE_JEMALLOC)
   add_dependencies(${BIN_ARANGOVPACK} jemalloc_build)
 endif ()

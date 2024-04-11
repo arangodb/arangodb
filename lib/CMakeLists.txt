@@ -229,7 +229,7 @@ target_link_libraries(arango
          linenoise-ng
          date_interface
          ${SYSTEM_LIBRARIES}
-         ${ICU_LIBS}
+         ${ICU64_LIBS}
          absl::crc32c
          absl::flat_hash_set
          absl::flat_hash_map
@@ -253,7 +253,7 @@ target_include_directories(arango PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 target_include_directories(arango PUBLIC ${BUILD_DIR})
 
 target_include_directories(arango SYSTEM PUBLIC ${OPENSSL_INCLUDE_DIR})
-target_include_directories(arango SYSTEM PUBLIC ${ICU_INCLUDE_DIR})
+target_include_directories(arango SYSTEM PUBLIC ${ICU64_INCLUDE_DIR})
 target_include_directories(arango SYSTEM PUBLIC ${Lz4_INCLUDE_DIR})
 
 target_link_libraries(arango PUBLIC rocksdb_interface)
