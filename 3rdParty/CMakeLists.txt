@@ -101,8 +101,8 @@ target_include_directories(v8_interface SYSTEM INTERFACE ${V8_INCLUDE_DIR})
 
 set(ICU_DT "${ICU_DT}" PARENT_SCOPE)
 set(ICU_DT_DEST "${ICU_DT_DEST}" PARENT_SCOPE)
-set(ICU_LIBRARY_DIR "${ICU_LIBRARY_DIR}" PARENT_SCOPE)
-set(ICU_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/${V8_SUB_DIR}/third_party/icu/")
+#set(ICU_LIBRARY_DIR "${ICU_LIBRARY_DIR}" PARENT_SCOPE)
+#set(ICU_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/${V8_SUB_DIR}/third_party/icu/")
 
 set(V8_INTERNAL_INCLUDE_DIR ${V8_INTERNAL_INCLUDE_DIR} PARENT_SCOPE)
 
@@ -156,6 +156,12 @@ add_subdirectory(velocypack)
 ## IResearch
 ################################################################################
 
+## Make IResearch use ICU V 64.2 for index backwards compatibility
+set(ICU_FOUND TRUE)
+set(ICU_INCLUDE_DIR ${ICU64_INCLUDE_DIR})
+set(ICU_LIBRARY_DIR ${ICU64_LIBRARY_DIR})
+set(ICU_STATIC_LIBS ${ICU64_LIBS})
+
 add_library(boost-static IMPORTED STATIC)
 set_target_properties(boost-static PROPERTIES
   INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/boost/${BOOST_VERSION}"
@@ -165,7 +171,7 @@ set_target_properties(boost-static PROPERTIES
 # explicitly set since suppressing Boost search
 set(Boost_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/boost/${BOOST_VERSION}")
 
-set(ICU_FOUND TRUE) # ICU built from source in 3rdParty directory
+#set(ICU_FOUND TRUE) # ICU built from source in 3rdParty directory
 
 if(NOT PERL_FOUND)
   set(PERL_FOUND TRUE) # suppress error for Perl not-found
@@ -177,7 +183,6 @@ if(NOT PERL_FOUND)
 endif()
 
 set(USE_IPO ${IPO_ENABLED})
-set(ICU_STATIC_LIBS ${ICU_LIBS})
 set(LZ4_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/lz4")
 set(LZ4_INCLUDE_DIR "${LZ4_ROOT}/lib")
 set(SNOWBALL_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/snowball")
