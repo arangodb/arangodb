@@ -113,6 +113,7 @@ server_permissions,server_secrets priority=1000 parallelity=5 size=small -- --du
 
 # Dump Tests
 dump size=medium -- --dumpAgencyOnError true
+dump size=medium enterprise cluster name=dump_singleshard_cluster -- --forceOneShard true --cluster true --dumpAgencyOnError true
 dump_authentication size=medium -- --dumpAgencyOnError true
 dump_jwt size=medium -- --dumpAgencyOnError true
 dump_multiple size=medium -- --dumpAgencyOnError true
