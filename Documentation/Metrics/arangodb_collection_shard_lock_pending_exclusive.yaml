@@ -1,7 +1,7 @@
 name: arangodb_collection_shard_lock_pending_exclusive
 introducedIn: "3.12.1"
 help: |
-  Number of pending exclusive collection lock requests.
+  Number of pending exclusive collection shard lock requests.
 unit: number
 type: gauge
 category: Transactions

@@ -1,7 +1,7 @@
 name: arangodb_collection_shard_lock_locked_exclusive
 introducedIn: "3.12.1"
 help: |
-  Number of exclusively locked collections.
+  Number of exclusively locked collection shards.
 unit: number
 type: gauge
 category: Transactions

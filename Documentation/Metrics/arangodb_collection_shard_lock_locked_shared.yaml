@@ -1,7 +1,7 @@
 name: arangodb_collection_shard_lock_locked_shared
 introducedIn: "3.12.1"
 help: |
-  Number of shared locked collections.
+  Number of shared locked collection shards.
 unit: number
 type: gauge
 category: Transactions
