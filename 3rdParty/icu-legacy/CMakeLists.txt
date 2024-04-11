@@ -27,6 +27,7 @@ set(ICU64_LIBS
     "${CMAKE_CURRENT_BINARY_DIR}/lib/libicuuc64.a"
     "${CMAKE_CURRENT_BINARY_DIR}/lib/libicudata64.a"
 )
+    
 ExternalProject_Add(
   iculegacy_build
   SOURCE_DIR
@@ -49,7 +50,7 @@ ExternalProject_Add(
       --disable-dyload
       --disable-shared
   BUILD_COMMAND
-      $(MAKE) -j 16
+      $(MAKE)
   INSTALL_COMMAND
     $(MAKE) install
       && ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/lib
@@ -58,6 +59,5 @@ ExternalProject_Add(
       && ${CMAKE_COMMAND} -E copy ${ICU64_BINARY_DIR}/lib/libicudata64.a ${CMAKE_CURRENT_BINARY_DIR}/lib
 )
 
-set(ICU64_HOME "${CMAKE_CURRENT_BINARY_DIR}" PARENT_SCOPE)
 set(ICU64_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/include" PARENT_SCOPE)
 set(ICU64_LIBS "${ICU64_LIBS}" PARENT_SCOPE)

@@ -10,8 +10,8 @@ endif()
 # and the ICU namespace with _64_64
 add_definitions("-DU_HAVE_LIB_SUFFIX=1")
 add_definitions("-DU_LIB_SUFFIX_C_NAME=_64")
-
-include_directories(SYSTEM PRIVATE ${ICU64_INCLUDE_DIR})
+# also make sure that the correct ICU directory appears early in the list of include files
+include_directories(BEFORE SYSTEM ${ICU64_INCLUDE_DIR})
 
 # ----------------------------------------
 # Fuerte tests
