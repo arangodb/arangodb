@@ -120,6 +120,7 @@ target_link_libraries(arango_lightweight
   PRIVATE date_interface
           fmt
           arango_assertions
+          arango_coroutines
           arango_static_strings
           arango_futures
           boost_boost
@@ -178,7 +179,6 @@ add_library(arango STATIC
   Basics/tri-zip.cpp
   Containers/MerkleTree.cpp
   Containers/MerkleTreeHelpers.cpp
-  Coroutines/EagerCoro.cpp Coroutines/EagerCoro.h
   Endpoint/Endpoint.cpp
   Endpoint/EndpointIp.cpp
   Endpoint/EndpointIpV4.cpp
@@ -222,6 +222,7 @@ target_link_libraries(arango
          arango_build_id
          boost_system
          boost_boost
+         arango_coroutines
          arango_futures
          arango_static_strings
          arango_crashhandler
@@ -289,6 +290,7 @@ if (USE_ENTERPRISE)
 endif()
 
 add_subdirectory(Actor)
+add_subdirectory(Coroutines)
 add_subdirectory(Futures)
 add_subdirectory(Geo)
 if (USE_V8)

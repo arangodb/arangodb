@@ -46,8 +46,7 @@ class LogThread final : public Thread {
   };
 
  public:
-  explicit LogThread(application_features::ApplicationServer& server,
-                     std::string const& name, uint32_t maxQueuedLogMessages);
+  explicit LogThread(std::string const& name, uint32_t maxQueuedLogMessages);
   ~LogThread();
 
  public:

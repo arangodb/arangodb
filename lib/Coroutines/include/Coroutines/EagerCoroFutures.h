@@ -20,8 +20,12 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "EagerCoro.h"
+#pragma once
 
 namespace arangodb {
-namespace runtime {}  // namespace runtime
+namespace runtime {
+
+class EagerCoroFutures {};
+
+}  // namespace runtime
 }  // namespace arangodb

@@ -21,26 +21,14 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <chrono>
 #include <thread>
 
 #include "gtest/gtest.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "ApplicationFeatures/ShellColorsFeature.h"
-#include "Basics/ArangoGlobalContext.h"
 #include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
-#include "Random/RandomGenerator.h"
-#include "VocBase/Identifiers/ServerId.h"
-#include "RestServer/arangod.h"
-#include "Rest/Version.h"
-#include "Basics/VelocyPackHelper.h"
 
 char const* ARGV0 = "";
-
-void arangodb::rest::Version::initialize() {}
-void arangodb::basics::VelocyPackHelper::initialize() {}
 
 int main(int argc, char* argv[]) {
   ::testing::InitGoogleTest(&argc, argv);
@@ -49,50 +37,16 @@ int main(int argc, char* argv[]) {
   // GTEST_FLAG_SET(death_test_style, "threadsafe");
   (void)(::testing::GTEST_FLAG(death_test_style) = "threadsafe");
 
-  int subargc = 0;
-  char** subargv = (char**)malloc(sizeof(char*) * argc);
-  bool logLineNumbers = false;
-  arangodb::RandomGenerator::initialize(
-      arangodb::RandomGenerator::RandomType::MERSENNE);
-  // global setup...
-  for (int i = 0; i < argc; i++) {
-    if (strcmp(argv[i], "--log.line-number") == 0) {
-      if (i < argc) {
-        i++;
-        if (i < argc) {
-          if (strcmp(argv[i], "true") == 0) {
-            logLineNumbers = true;
-          }
-          i++;
-        }
-      }
-    } else {
-      subargv[subargc] = argv[i];
-      subargc++;
-    }
-  }
-
-  ARGV0 = subargv[0];
-
-  arangodb::ArangodServer server(nullptr, nullptr);
-
-  arangodb::Logger::setShowLineNumber(logLineNumbers);
-  arangodb::Logger::initialize(server, false, 10000);
+  arangodb::Logger::initialize(false, 10000);
   arangodb::LogAppender::addAppender(arangodb::Logger::defaultLogGroup(), "-");
-
-  arangodb::ArangoGlobalContext ctx(1, const_cast<char**>(&ARGV0), ".");
-  ctx.exit(0);  // set "good" exit code by default
-
   // Run tests in subthread such that it has a larger stack size in libmusl,
   // the stack size for subthreads has been reconfigured in the
   // ArangoGlobalContext above in the libmusl case:
   int result;
-  std::thread{[&](int argc, char* argv[]) { result = RUN_ALL_TESTS(); },
-              subargc, subargv}
+  std::thread{[&](int argc, char* argv[]) { result = RUN_ALL_TESTS(); }, argc,
+              argv}
       .join();
 
   arangodb::Logger::shutdown();
-  // global clean-up...
-  free(subargv);
   return (result < 0xff ? result : 0xff);
 }

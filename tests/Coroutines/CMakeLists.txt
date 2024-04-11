@@ -1,4 +1,3 @@
-
 add_executable(arangodbtests_coroutines
   main-coroutines.cpp
   EagerCoroTest.cpp
@@ -9,6 +8,8 @@ add_test(NAME arangodbtests-coroutines
 
 
 target_link_libraries(arangodbtests_coroutines
-  arango
+  arango_coroutines
+  arango_lightweight
+  arango_crashhandler_light
   gtest
 )
