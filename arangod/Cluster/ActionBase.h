@@ -262,12 +262,16 @@ class ShardDefinition {
   ShardDefinition& operator=(ShardDefinition const&) = delete;
 
   ShardDefinition(std::string const& database, std::string const& shard);
+  ShardDefinition(std::string const& database, std::string const& shard,
+                  std::string const& clones);
 
   virtual ~ShardDefinition() = default;
 
   std::string const& getDatabase() const noexcept { return _database; }
 
   ShardID const& getShard() const noexcept { return _shard; }
+
+  std::vector<std::string> getShardsAsStrings() const;
 
   bool isValid() const noexcept {
     return !_database.empty() && _shard.isValid();
@@ -276,6 +280,7 @@ class ShardDefinition {
  private:
   std::string const _database;
   ShardID const _shard;
+  std::vector<ShardID> const _clones;
 };
 
 }  // namespace maintenance

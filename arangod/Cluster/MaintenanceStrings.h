@@ -61,6 +61,7 @@ constexpr char const* SELECTIVITY_ESTIMATE = "selectivityEstimate";
 constexpr char const* SERVERS = "servers";
 constexpr char const* SERVER_ID = "serverId";
 constexpr char const* SHARD = "shard";
+constexpr char const* CLONES = "clones";
 constexpr char const* SHARDS = "shards";
 constexpr char const* SHARD_VERSION = "shardVersion";
 constexpr char const* SYNCHRONIZE_SHARD = "SynchronizeShard";

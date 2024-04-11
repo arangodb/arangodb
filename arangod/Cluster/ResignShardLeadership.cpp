@@ -57,7 +57,7 @@ std::string const ResignShardLeadership::LeaderNotYetKnownString =
 ResignShardLeadership::ResignShardLeadership(MaintenanceFeature& feature,
                                              ActionDescription const& desc)
     : ActionBase(feature, desc),
-      ShardDefinition(desc.get(DATABASE), desc.get(SHARD)) {
+      ShardDefinition(desc.get(DATABASE), desc.get(SHARD), desc.get(CLONES)) {
   std::stringstream error;
 
   _labels.emplace(FAST_TRACK);
@@ -110,13 +110,15 @@ bool ResignShardLeadership::first() {
 
     // Get exclusive lock on collection
     auto origin = transaction::OperationOriginInternal{"resigning leadership"};
-    transaction::StandaloneContext ctx(*vocbase, origin);
-    SingleCollectionTransaction trx{
-        std::shared_ptr<transaction::Context>(
-            std::shared_ptr<transaction::Context>(), &ctx),
-        *col, AccessMode::Type::EXCLUSIVE};
+    auto ctx =
+        std::make_shared<transaction::StandaloneContext>(*vocbase, origin);
 
-    Result res = trx.begin();
+    auto shards = getShardsAsStrings();
+    auto methods = std::make_shared<transaction::Methods>(
+        ctx, std::vector<std::string>{}, std::vector<std::string>{}, shards,
+        transaction::Options{});
+
+    Result res = methods->begin();
 
     if (!res.ok()) {
       THROW_ARANGO_EXCEPTION(res);
@@ -129,7 +131,7 @@ bool ResignShardLeadership::first() {
     // leader, until we have negotiated a deal with it. Then the actual
     // name of the leader will be set.
     col->followers()->setTheLeader(LeaderNotYetKnownString);  // resign
-    res = trx.abort();                                        // unlock
+    res = methods->abort();                                   // unlock
     if (res.fail()) {
       LOG_TOPIC("10c35", ERR, Logger::MAINTENANCE)
           << "Failed to abort transaction during resign leadership: " << res;

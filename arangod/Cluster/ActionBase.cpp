@@ -186,6 +186,33 @@ ShardDefinition::ShardDefinition(std::string const& database,
   TRI_ASSERT(!shard.empty());
 }
 
+namespace {
+std::vector<ShardID> splitShards(std::string const& shards) {
+  if (shards.empty()) {
+    return {};
+  }
+  std::vector<ShardID> result;
+  auto vec = basics::StringUtils::split(shards, ',');
+  result.reserve(vec.size());
+  std::transform(vec.begin(), vec.end(), std::back_inserter(result),
+                 [](auto const& id) { return ShardID{id}; });
+  return result;
+}
+}  // namespace
+
+ShardDefinition::ShardDefinition(std::string const& database,
+                                 std::string const& shard,
+                                 std::string const& clones)
+    : _database(database), _shard(shard), _clones(splitShards(clones)) {}
+
+std::vector<std::string> ShardDefinition::getShardsAsStrings() const {
+  std::vector<std::string> result;
+  result.reserve(_clones.size() + 1);
+  result.emplace_back(_shard);
+  std::copy(_clones.begin(), _clones.end(), std::back_inserter(result));
+  return result;
+}
+
 Result arangodb::actionError(ErrorCode errorCode,
                              std::string const& errorMessage) {
   LOG_TOPIC("c889d", ERR, Logger::MAINTENANCE) << errorMessage;

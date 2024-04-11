@@ -577,7 +577,8 @@ static void handleLocalShard(
     description = std::make_shared<ActionDescription>(
         std::map<std::string, std::string>{{NAME, RESIGN_SHARD_LEADERSHIP},
                                            {DATABASE, dbname},
-                                           {SHARD, shname}},
+                                           {SHARD, shname},
+                                           {CLONES, ""}},
         RESIGN_PRIORITY, true);
     makeDirty.insert(dbname);
     callNotify = true;
