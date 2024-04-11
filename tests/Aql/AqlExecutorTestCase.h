@@ -29,8 +29,8 @@
 #include "ExecutorTestHelper.h"
 
 #include "Aql/AqlItemBlockManager.h"
-#include "Aql/ExecutionNode/ExecutionNode.h"
-#include "Aql/ExecutionNode/MutexNode.h"
+#include "Aql/ExecutionNode.h"
+#include "Aql/MutexNode.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 

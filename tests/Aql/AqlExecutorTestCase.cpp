@@ -23,7 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AqlExecutorTestCase.h"
-#include "Aql/ExecutionNode/DistributeConsumerNode.h"
+#include "Aql/DistributeConsumerNode.h"
 
 using namespace arangodb::tests::aql;
 

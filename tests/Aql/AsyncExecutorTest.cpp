@@ -23,12 +23,12 @@
 #include <gtest/gtest.h>
 
 #include "Aql/ExecutionState.h"
-#include "Aql/Executor/AqlExecutorTestCase.h"
-#include "Aql/Executor/EmptyExecutorInfos.h"
-#include "Aql/Executor/IdExecutor.h"
-#include "Aql/Executor/MutexExecutor.h"
-#include "Aql/ExecutionNode/DistributeConsumerNode.h"
-#include "Aql/Executor/ParallelUnsortedGatherExecutor.h"
+#include "Aql/AqlExecutorTestCase.h"
+#include "Aql/EmptyExecutorInfos.h"
+#include "Aql/IdExecutor.h"
+#include "Aql/MutexExecutor.h"
+#include "Aql/DistributeConsumerNode.h"
+#include "Aql/ParallelUnsortedGatherExecutor.h"
 #include "Aql/MultiDependencySingleRowFetcher.cpp"
 #include "Mocks/FakeScheduler.h"
 
@@ -330,7 +330,8 @@ TEST_F(AsyncExecutorTest, AsyncNode_does_not_return_stored_WAITING) {
                                      RegIdFlatSet{}, RegIdFlatSetStack{{0}});
   GlobalResourceMonitor globalMonitor;
   arangodb::ResourceMonitor monitor(globalMonitor);
-  arangodb::aql::AqlItemBlockManager blockManager(monitor);
+  arangodb::aql::AqlItemBlockManager blockManager(
+      monitor, SerializationFormat::SHADOWROWS);
 
   // set up the query nodes:
   //
