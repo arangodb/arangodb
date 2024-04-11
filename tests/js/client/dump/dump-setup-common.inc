@@ -752,7 +752,7 @@ function createSmartGraph3_11_compat() {
   assertCollectionsAreNew([edges, vertices, orphans]);
 
   sgm._create(smartGraphName, [sgm._relation(edges, vertices, vertices)],
-    [orphans], {numberOfShards: 5, smartGraphAttribute: "value"});
+              [orphans], {numberOfShards: getNoShards(5), smartGraphAttribute: "value"});
     /* This code fakes previous behaviour */
   const leader = db._collection(vertices).properties().distributeShardsLike || vertices;
   const cid = db._collection(leader)._id;
