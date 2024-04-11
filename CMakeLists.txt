@@ -1096,6 +1096,7 @@ add_custom_target(exitcodefiles ALL DEPENDS ${EXIT_CODE_FILES_GEN})
 list(INSERT SYSTEM_LIBRARIES 0
   ${BT_LIBS}
   ${ZLIB_LIBS}
+  ${ICU_LIBS}
   ${ICU64_LIBS}
   ${OPENSSL_LIBRARIES}
   ${BASE_LIBS}
