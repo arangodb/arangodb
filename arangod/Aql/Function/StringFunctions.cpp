@@ -66,13 +66,13 @@ void registerICUWarning(ExpressionContext* expressionContext,
                         std::string_view functionName, UErrorCode status) {
   std::string msg = absl::StrCat("in function '", functionName, "()': ");
   msg.append(basics::Exception::FillExceptionString(TRI_ERROR_ARANGO_ICU_ERROR,
-                                                    u_errorName(status)));
+                                                    u_errorName_64_64(status)));
   expressionContext->registerWarning(TRI_ERROR_ARANGO_ICU_ERROR, msg);
 }
 
 void ltrimInternal(int32_t& startOffset, int32_t& endOffset,
-                   icu::UnicodeString& unicodeStr, uint32_t numWhitespaces,
-                   UChar32* spaceChars) {
+                   icu_64_64::UnicodeString& unicodeStr,
+                   uint32_t numWhitespaces, UChar32* spaceChars) {
   for (; startOffset < endOffset;
        startOffset = unicodeStr.moveIndex32(startOffset, 1)) {
     bool found = false;
@@ -91,8 +91,8 @@ void ltrimInternal(int32_t& startOffset, int32_t& endOffset,
 }
 
 void rtrimInternal(int32_t& startOffset, int32_t& endOffset,
-                   icu::UnicodeString& unicodeStr, uint32_t numWhitespaces,
-                   UChar32* spaceChars) {
+                   icu_64_64::UnicodeString& unicodeStr,
+                   uint32_t numWhitespaces, UChar32* spaceChars) {
   if (unicodeStr.length() == 0) {
     return;
   }
@@ -219,13 +219,14 @@ AqlValue functions::FindFirst(ExpressionContext* expressionContext,
   transaction::StringLeaser buf1(trx);
   velocypack::StringSink adapter(buf1.get());
   appendAsString(vopts, adapter, value);
-  icu::UnicodeString uBuf(buf1->data(), static_cast<int32_t>(buf1->length()));
+  icu_64_64::UnicodeString uBuf(buf1->data(),
+                                static_cast<int32_t>(buf1->length()));
 
   transaction::StringLeaser buf2(trx);
   velocypack::StringSink adapter2(buf2.get());
   appendAsString(vopts, adapter2, searchValue);
-  icu::UnicodeString uSearchBuf(buf2->data(),
-                                static_cast<int32_t>(buf2->length()));
+  icu_64_64::UnicodeString uSearchBuf(buf2->data(),
+                                      static_cast<int32_t>(buf2->length()));
   auto searchLen = uSearchBuf.length();
 
   int64_t startOffset = 0;
@@ -262,7 +263,7 @@ AqlValue functions::FindFirst(ExpressionContext* expressionContext,
   auto& server = trx->vocbase().server();
   auto locale = server.getFeature<LanguageFeature>().getLocale();
   UErrorCode status = U_ZERO_ERROR;
-  icu::StringSearch search(uSearchBuf, uBuf, locale, nullptr, status);
+  icu_64_64::StringSearch search(uSearchBuf, uBuf, locale, nullptr, status);
 
   for (int pos = search.first(status); U_SUCCESS(status) && pos != USEARCH_DONE;
        pos = search.next(status)) {
@@ -294,13 +295,14 @@ AqlValue functions::FindLast(ExpressionContext* expressionContext,
   transaction::StringLeaser buf1(trx);
   velocypack::StringSink adapter(buf1.get());
   appendAsString(vopts, adapter, value);
-  icu::UnicodeString uBuf(buf1->data(), static_cast<int32_t>(buf1->length()));
+  icu_64_64::UnicodeString uBuf(buf1->data(),
+                                static_cast<int32_t>(buf1->length()));
 
   transaction::StringLeaser buf2(trx);
   velocypack::StringSink adapter2(buf2.get());
   appendAsString(vopts, adapter2, searchValue);
-  icu::UnicodeString uSearchBuf(buf2->data(),
-                                static_cast<int32_t>(buf2->length()));
+  icu_64_64::UnicodeString uSearchBuf(buf2->data(),
+                                      static_cast<int32_t>(buf2->length()));
   auto searchLen = uSearchBuf.length();
 
   int64_t startOffset = 0;
@@ -339,7 +341,7 @@ AqlValue functions::FindLast(ExpressionContext* expressionContext,
   auto& server = trx->vocbase().server();
   auto locale = server.getFeature<LanguageFeature>().getLocale();
   UErrorCode status = U_ZERO_ERROR;
-  icu::StringSearch search(uSearchBuf, uBuf, locale, nullptr, status);
+  icu_64_64::StringSearch search(uSearchBuf, uBuf, locale, nullptr, status);
 
   int foundPos = -1;
   for (int pos = search.first(status); U_SUCCESS(status) && pos != USEARCH_DONE;
@@ -483,8 +485,8 @@ AqlValue functions::Lower(ExpressionContext* ctx, AstNode const&,
 
   appendAsString(vopts, adapter, value);
 
-  icu::UnicodeString unicodeStr(buffer->data(),
-                                static_cast<int32_t>(buffer->length()));
+  icu_64_64::UnicodeString unicodeStr(buffer->data(),
+                                      static_cast<int32_t>(buffer->length()));
   unicodeStr.toLower(nullptr);
   unicodeStr.toUTF8String(utf8);
 
@@ -505,8 +507,8 @@ AqlValue functions::Upper(ExpressionContext* ctx, AstNode const&,
 
   appendAsString(vopts, adapter, value);
 
-  icu::UnicodeString unicodeStr(buffer->data(),
-                                static_cast<int32_t>(buffer->length()));
+  icu_64_64::UnicodeString unicodeStr(buffer->data(),
+                                      static_cast<int32_t>(buffer->length()));
   unicodeStr.toUpper(nullptr);
   unicodeStr.toUTF8String(utf8);
 
@@ -527,8 +529,8 @@ AqlValue functions::Substring(ExpressionContext* ctx, AstNode const&,
   velocypack::StringSink adapter(buffer.get());
 
   appendAsString(vopts, adapter, value);
-  icu::UnicodeString unicodeStr(buffer->data(),
-                                static_cast<int32_t>(buffer->length()));
+  icu_64_64::UnicodeString unicodeStr(buffer->data(),
+                                      static_cast<int32_t>(buffer->length()));
 
   int32_t offset = static_cast<int32_t>(
       aql::functions::extractFunctionParameterValue(parameters, 1).toInt64());
@@ -651,8 +653,8 @@ AqlValue functions::Substitute(ExpressionContext* expressionContext,
       aql::functions::extractFunctionParameterValue(parameters, 1);
   int64_t limit = -1;
   AqlValueMaterializer materializer(&vopts);
-  std::vector<icu::UnicodeString> matchPatterns;
-  std::vector<icu::UnicodeString> replacePatterns;
+  std::vector<icu_64_64::UnicodeString> matchPatterns;
+  std::vector<icu_64_64::UnicodeString> replacePatterns;
   bool replaceWasPlainString = false;
 
   if (search.isObject()) {
@@ -673,15 +675,15 @@ AqlValue functions::Substitute(ExpressionContext* expressionContext,
       velocypack::ValueLength length;
       char const* str = it.key.getString(length);
       matchPatterns.push_back(
-          icu::UnicodeString(str, static_cast<int32_t>(length)));
+          icu_64_64::UnicodeString(str, static_cast<int32_t>(length)));
       if (it.value.isNull()) {
         // null replacement value => replace with an empty string
-        replacePatterns.push_back(icu::UnicodeString("", int32_t(0)));
+        replacePatterns.push_back(icu_64_64::UnicodeString("", int32_t(0)));
       } else if (it.value.isString()) {
         // string case
         str = it.value.getStringUnchecked(length);
         replacePatterns.push_back(
-            icu::UnicodeString(str, static_cast<int32_t>(length)));
+            icu_64_64::UnicodeString(str, static_cast<int32_t>(length)));
       } else {
         // non strings
         registerInvalidArgumentWarning(expressionContext, AFN);
@@ -706,7 +708,7 @@ AqlValue functions::Substitute(ExpressionContext* expressionContext,
           velocypack::ValueLength length;
           char const* str = it.getStringUnchecked(length);
           matchPatterns.push_back(
-              icu::UnicodeString(str, static_cast<int32_t>(length)));
+              icu_64_64::UnicodeString(str, static_cast<int32_t>(length)));
         } else {
           registerInvalidArgumentWarning(expressionContext, AFN);
           return AqlValue(AqlValueHintNull());
@@ -721,7 +723,7 @@ AqlValue functions::Substitute(ExpressionContext* expressionContext,
 
       char const* str = slice.getStringUnchecked(length);
       matchPatterns.push_back(
-          icu::UnicodeString(str, static_cast<int32_t>(length)));
+          icu_64_64::UnicodeString(str, static_cast<int32_t>(length)));
     }
     if (parameters.size() > 2) {
       AqlValue const& replace =
@@ -732,12 +734,12 @@ AqlValue functions::Substitute(ExpressionContext* expressionContext,
         for (VPackSlice it : VPackArrayIterator(rslice)) {
           if (it.isNull()) {
             // null replacement value => replace with an empty string
-            replacePatterns.push_back(icu::UnicodeString("", int32_t(0)));
+            replacePatterns.push_back(icu_64_64::UnicodeString("", int32_t(0)));
           } else if (it.isString()) {
             velocypack::ValueLength length;
             char const* str = it.getStringUnchecked(length);
             replacePatterns.push_back(
-                icu::UnicodeString(str, static_cast<int32_t>(length)));
+                icu_64_64::UnicodeString(str, static_cast<int32_t>(length)));
           } else {
             registerInvalidArgumentWarning(expressionContext, AFN);
             return AqlValue(AqlValueHintNull());
@@ -750,7 +752,7 @@ AqlValue functions::Substitute(ExpressionContext* expressionContext,
         velocypack::ValueLength length;
         char const* str = rslice.getString(length);
         replacePatterns.push_back(
-            icu::UnicodeString(str, static_cast<int32_t>(length)));
+            icu_64_64::UnicodeString(str, static_cast<int32_t>(length)));
       } else {
         registerInvalidArgumentWarning(expressionContext, AFN);
         return AqlValue(AqlValueHintNull());
@@ -770,18 +772,18 @@ AqlValue functions::Substitute(ExpressionContext* expressionContext,
   velocypack::StringSink adapter(buffer.get());
 
   appendAsString(vopts, adapter, value);
-  icu::UnicodeString unicodeStr(buffer->data(),
-                                static_cast<int32_t>(buffer->length()));
+  icu_64_64::UnicodeString unicodeStr(buffer->data(),
+                                      static_cast<int32_t>(buffer->length()));
 
   auto& server = trx->vocbase().server();
   auto locale = server.getFeature<LanguageFeature>().getLocale();
   // we can't copy the search instances, thus use pointers:
-  std::vector<std::unique_ptr<icu::StringSearch>> searchVec;
+  std::vector<std::unique_ptr<icu_64_64::StringSearch>> searchVec;
   searchVec.reserve(matchPatterns.size());
   UErrorCode status = U_ZERO_ERROR;
   for (auto const& searchStr : matchPatterns) {
     // create a vector of string searches
-    searchVec.push_back(std::make_unique<icu::StringSearch>(
+    searchVec.push_back(std::make_unique<icu_64_64::StringSearch>(
         searchStr, unicodeStr, locale, nullptr, status));
     if (U_FAILURE(status)) {
       registerICUWarning(expressionContext, AFN, status);
@@ -807,7 +809,7 @@ AqlValue functions::Substitute(ExpressionContext* expressionContext,
     srchResultPtrs.push_back(std::make_pair(pos, len));
   }
 
-  icu::UnicodeString result;
+  icu_64_64::UnicodeString result;
   int32_t lastStart = 0;
   int64_t count = 0;
   while (true) {
@@ -924,9 +926,9 @@ AqlValue functions::Left(ExpressionContext* ctx, AstNode const&,
 
   appendAsString(vopts, adapter, value);
 
-  icu::UnicodeString unicodeStr(buffer->data(),
-                                static_cast<int32_t>(buffer->length()));
-  icu::UnicodeString left =
+  icu_64_64::UnicodeString unicodeStr(buffer->data(),
+                                      static_cast<int32_t>(buffer->length()));
+  icu_64_64::UnicodeString left =
       unicodeStr.tempSubString(0, unicodeStr.moveIndex32(0, length));
 
   left.toUTF8String(utf8);
@@ -948,10 +950,11 @@ AqlValue functions::Right(ExpressionContext* ctx, AstNode const&,
 
   appendAsString(vopts, adapter, value);
 
-  icu::UnicodeString unicodeStr(buffer->data(),
-                                static_cast<int32_t>(buffer->length()));
-  icu::UnicodeString right = unicodeStr.tempSubString(unicodeStr.moveIndex32(
-      unicodeStr.length(), -static_cast<int32_t>(length)));
+  icu_64_64::UnicodeString unicodeStr(buffer->data(),
+                                      static_cast<int32_t>(buffer->length()));
+  icu_64_64::UnicodeString right =
+      unicodeStr.tempSubString(unicodeStr.moveIndex32(
+          unicodeStr.length(), -static_cast<int32_t>(length)));
 
   right.toUTF8String(utf8);
   return AqlValue(utf8);
@@ -970,11 +973,11 @@ AqlValue functions::Trim(ExpressionContext* expressionContext, AstNode const&,
   transaction::StringLeaser buffer(trx);
   velocypack::StringSink adapter(buffer.get());
   appendAsString(vopts, adapter, value);
-  icu::UnicodeString unicodeStr(buffer->data(),
-                                static_cast<int32_t>(buffer->length()));
+  icu_64_64::UnicodeString unicodeStr(buffer->data(),
+                                      static_cast<int32_t>(buffer->length()));
 
   int64_t howToTrim = 0;
-  icu::UnicodeString whitespace("\r\n\t ");
+  icu_64_64::UnicodeString whitespace("\r\n\t ");
 
   if (parameters.size() == 2) {
     AqlValue const& optional =
@@ -989,8 +992,8 @@ AqlValue functions::Trim(ExpressionContext* expressionContext, AstNode const&,
     } else if (optional.isString()) {
       buffer->clear();
       appendAsString(vopts, adapter, optional);
-      whitespace = icu::UnicodeString(buffer->data(),
-                                      static_cast<int32_t>(buffer->length()));
+      whitespace = icu_64_64::UnicodeString(
+          buffer->data(), static_cast<int32_t>(buffer->length()));
     }
   }
 
@@ -1016,7 +1019,7 @@ AqlValue functions::Trim(ExpressionContext* expressionContext, AstNode const&,
                   spaceChars.get());
   }
 
-  icu::UnicodeString result =
+  icu_64_64::UnicodeString result =
       unicodeStr.tempSubString(startOffset, endOffset - startOffset);
   std::string utf8;
   result.toUTF8String(utf8);
@@ -1036,17 +1039,17 @@ AqlValue functions::LTrim(ExpressionContext* expressionContext, AstNode const&,
   transaction::StringLeaser buffer(trx);
   velocypack::StringSink adapter(buffer.get());
   appendAsString(vopts, adapter, value);
-  icu::UnicodeString unicodeStr(buffer->data(),
-                                static_cast<int32_t>(buffer->length()));
-  icu::UnicodeString whitespace("\r\n\t ");
+  icu_64_64::UnicodeString unicodeStr(buffer->data(),
+                                      static_cast<int32_t>(buffer->length()));
+  icu_64_64::UnicodeString whitespace("\r\n\t ");
 
   if (parameters.size() == 2) {
     AqlValue const& pWhitespace =
         aql::functions::extractFunctionParameterValue(parameters, 1);
     buffer->clear();
     appendAsString(vopts, adapter, pWhitespace);
-    whitespace = icu::UnicodeString(buffer->data(),
-                                    static_cast<int32_t>(buffer->length()));
+    whitespace = icu_64_64::UnicodeString(
+        buffer->data(), static_cast<int32_t>(buffer->length()));
   }
 
   uint32_t numWhitespaces = whitespace.countChar32();
@@ -1064,7 +1067,7 @@ AqlValue functions::LTrim(ExpressionContext* expressionContext, AstNode const&,
   ltrimInternal(startOffset, endOffset, unicodeStr, numWhitespaces,
                 spaceChars.get());
 
-  icu::UnicodeString result =
+  icu_64_64::UnicodeString result =
       unicodeStr.tempSubString(startOffset, endOffset - startOffset);
   std::string utf8;
   result.toUTF8String(utf8);
@@ -1084,17 +1087,17 @@ AqlValue functions::RTrim(ExpressionContext* expressionContext, AstNode const&,
   transaction::StringLeaser buffer(trx);
   velocypack::StringSink adapter(buffer.get());
   appendAsString(vopts, adapter, value);
-  icu::UnicodeString unicodeStr(buffer->data(),
-                                static_cast<int32_t>(buffer->length()));
-  icu::UnicodeString whitespace("\r\n\t ");
+  icu_64_64::UnicodeString unicodeStr(buffer->data(),
+                                      static_cast<int32_t>(buffer->length()));
+  icu_64_64::UnicodeString whitespace("\r\n\t ");
 
   if (parameters.size() == 2) {
     AqlValue const& pWhitespace =
         aql::functions::extractFunctionParameterValue(parameters, 1);
     buffer->clear();
     appendAsString(vopts, adapter, pWhitespace);
-    whitespace = icu::UnicodeString(buffer->data(),
-                                    static_cast<int32_t>(buffer->length()));
+    whitespace = icu_64_64::UnicodeString(
+        buffer->data(), static_cast<int32_t>(buffer->length()));
   }
 
   uint32_t numWhitespaces = whitespace.countChar32();
@@ -1112,7 +1115,7 @@ AqlValue functions::RTrim(ExpressionContext* expressionContext, AstNode const&,
   rtrimInternal(startOffset, endOffset, unicodeStr, numWhitespaces,
                 spaceChars.get());
 
-  icu::UnicodeString result =
+  icu_64_64::UnicodeString result =
       unicodeStr.tempSubString(startOffset, endOffset - startOffset);
   std::string utf8;
   result.toUTF8String(utf8);
@@ -1247,7 +1250,7 @@ AqlValue functions::Like(ExpressionContext* expressionContext, AstNode const&,
   appendAsString(vopts, adapter, regex);
 
   // the matcher is owned by the context!
-  icu::RegexMatcher* matcher =
+  icu_64_64::RegexMatcher* matcher =
       expressionContext->buildLikeMatcher(*buffer, caseInsensitive);
 
   if (matcher == nullptr) {
@@ -1330,12 +1333,12 @@ AqlValue functions::Split(ExpressionContext* expressionContext, AstNode const&,
   transaction::StringLeaser buffer(trx);
   velocypack::StringSink adapter(buffer.get());
   functions::stringify(vopts, adapter, aqlValueToSplit.slice());
-  icu::UnicodeString valueToSplit(buffer->data(),
-                                  static_cast<int32_t>(buffer->length()));
+  icu_64_64::UnicodeString valueToSplit(buffer->data(),
+                                        static_cast<int32_t>(buffer->length()));
   bool isEmptyExpression = false;
 
   // the matcher is owned by the context!
-  icu::RegexMatcher* matcher = expressionContext->buildSplitMatcher(
+  icu_64_64::RegexMatcher* matcher = expressionContext->buildSplitMatcher(
       aqlSeparatorExpression, &trx->vpackOptions(), isEmptyExpression);
 
   if (matcher == nullptr) {
@@ -1356,7 +1359,7 @@ AqlValue functions::Split(ExpressionContext* expressionContext, AstNode const&,
 
   std::string utf8;
   static const uint16_t nrResults = 16;
-  icu::UnicodeString uResults[nrResults];
+  icu_64_64::UnicodeString uResults[nrResults];
   int64_t totalCount = 0;
   while (true) {
     UErrorCode errorCode = U_ZERO_ERROR;

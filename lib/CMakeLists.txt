@@ -1,6 +1,31 @@
 # -*- mode: CMAKE; -*-
 
+################################################################################
+## global definitions
+################################################################################
+
 add_compile_warnings_flags()
+
+if (USE_GOOGLE_TESTS)
+  add_definitions("-DTEST_VIRTUAL=virtual")
+else()
+  add_definitions("-DTEST_VIRTUAL=")
+endif()
+
+# used by 3rdParty/date, but must be set here because we include some headers
+# of the date library from here
+add_definitions("-DHAS_REMOTE_API=0")
+
+# pass informational string with compiler optimization flags in as a define
+# the value of the define is picked up by some code that prints out build info.
+add_definitions("-DARCHITECTURE_OPTIMIZATIONS=\"${ARCHITECTURE_OPTIMIZATIONS}\"")
+
+# add necessary defines for ICU. this will suffix all included ICU functions
+# and the ICU namespace with _64_64
+add_definitions("-DU_HAVE_LIB_SUFFIX=1")
+add_definitions("-DU_LIB_SUFFIX_C_NAME=_64")
+# also make sure that the correct ICU directory appears early in the list of include files
+include_directories(BEFORE SYSTEM PRIVATE ${ICU64_INCLUDE_DIR})
 
 ################################################################################
 ## LIB_ARANGO
@@ -20,16 +45,6 @@ set(LIB_ARANGO_LINENOISE
 set(LIB_ARANGO_DATE
   ${PROJECT_SOURCE_DIR}/3rdParty/date/src/tz.cpp
 )
-add_definitions("-DHAS_REMOTE_API=0")
-
-add_definitions("-DARCHITECTURE_OPTIMIZATIONS=\"${ARCHITECTURE_OPTIMIZATIONS}\"")
-
-if (USE_GOOGLE_TESTS)
-  add_definitions("-DTEST_VIRTUAL=virtual")
-else()
-  add_definitions("-DTEST_VIRTUAL=")
-endif()
-
 add_library(arango_static_strings STATIC
   Basics/StaticStrings.cpp
 )
@@ -253,7 +268,6 @@ target_include_directories(arango PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 target_include_directories(arango PUBLIC ${BUILD_DIR})
 
 target_include_directories(arango SYSTEM PUBLIC ${OPENSSL_INCLUDE_DIR})
-target_include_directories(arango SYSTEM PUBLIC ${ICU64_INCLUDE_DIR})
 target_include_directories(arango SYSTEM PUBLIC ${Lz4_INCLUDE_DIR})
 
 target_link_libraries(arango PUBLIC rocksdb_interface)

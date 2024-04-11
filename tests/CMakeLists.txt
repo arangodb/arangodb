@@ -6,6 +6,13 @@ else()
   add_definitions("-DTEST_VIRTUAL=")
 endif()
 
+# add necessary defines for ICU. this will suffix all included ICU functions
+# and the ICU namespace with _64_64
+add_definitions("-DU_HAVE_LIB_SUFFIX=1")
+add_definitions("-DU_LIB_SUFFIX_C_NAME=_64")
+
+include_directories(SYSTEM PRIVATE ${ICU64_INCLUDE_DIR})
+
 # ----------------------------------------
 # Fuerte tests
 # ----------------------------------------

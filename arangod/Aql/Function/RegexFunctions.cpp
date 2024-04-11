@@ -54,7 +54,7 @@ void registerICUWarning(ExpressionContext* expressionContext,
                         std::string_view functionName, UErrorCode status) {
   std::string msg = absl::StrCat("in function '", functionName, "()': ");
   msg.append(basics::Exception::FillExceptionString(TRI_ERROR_ARANGO_ICU_ERROR,
-                                                    u_errorName(status)));
+                                                    u_errorName_64_64(status)));
   expressionContext->registerWarning(TRI_ERROR_ARANGO_ICU_ERROR, msg);
 }
 
@@ -91,7 +91,7 @@ AqlValue functions::RegexMatches(ExpressionContext* expressionContext,
   bool isEmptyExpression = (buffer->length() == 0);
 
   // the matcher is owned by the context!
-  icu::RegexMatcher* matcher =
+  icu_64_64::RegexMatcher* matcher =
       expressionContext->buildRegexMatcher(*buffer, caseInsensitive);
 
   if (matcher == nullptr) {
@@ -103,8 +103,8 @@ AqlValue functions::RegexMatches(ExpressionContext* expressionContext,
   AqlValue const& value =
       aql::functions::extractFunctionParameterValue(parameters, 0);
   appendAsString(vopts, adapter, value);
-  icu::UnicodeString valueToMatch(buffer->data(),
-                                  static_cast<uint32_t>(buffer->length()));
+  icu_64_64::UnicodeString valueToMatch(
+      buffer->data(), static_cast<uint32_t>(buffer->length()));
 
   transaction::BuilderLeaser result(trx);
   result->openArray();
@@ -126,7 +126,7 @@ AqlValue functions::RegexMatches(ExpressionContext* expressionContext,
   }
 
   for (int i = 0; i <= matcher->groupCount(); i++) {
-    icu::UnicodeString match = matcher->group(i, status);
+    icu_64_64::UnicodeString match = matcher->group(i, status);
     if (U_FAILURE(status)) {
       registerICUWarning(expressionContext, AFN, status);
       return AqlValue(AqlValueHintNull());
@@ -192,7 +192,7 @@ AqlValue functions::RegexSplit(ExpressionContext* expressionContext,
   bool isEmptyExpression = (buffer->length() == 0);
 
   // the matcher is owned by the context!
-  icu::RegexMatcher* matcher =
+  icu_64_64::RegexMatcher* matcher =
       expressionContext->buildRegexMatcher(*buffer, caseInsensitive);
 
   if (matcher == nullptr) {
@@ -204,8 +204,8 @@ AqlValue functions::RegexSplit(ExpressionContext* expressionContext,
   AqlValue const& value =
       aql::functions::extractFunctionParameterValue(parameters, 0);
   appendAsString(vopts, adapter, value);
-  icu::UnicodeString valueToSplit(buffer->data(),
-                                  static_cast<int32_t>(buffer->length()));
+  icu_64_64::UnicodeString valueToSplit(buffer->data(),
+                                        static_cast<int32_t>(buffer->length()));
 
   transaction::BuilderLeaser result(trx);
   result->openArray();
@@ -219,7 +219,7 @@ AqlValue functions::RegexSplit(ExpressionContext* expressionContext,
 
   std::string utf8;
   static const uint16_t nrResults = 16;
-  icu::UnicodeString uResults[nrResults];
+  icu_64_64::UnicodeString uResults[nrResults];
   int64_t totalCount = 0;
   while (true) {
     UErrorCode errorCode = U_ZERO_ERROR;
@@ -295,7 +295,7 @@ AqlValue functions::RegexTest(ExpressionContext* expressionContext,
   appendAsString(vopts, adapter, regex);
 
   // the matcher is owned by the context!
-  icu::RegexMatcher* matcher =
+  icu_64_64::RegexMatcher* matcher =
       expressionContext->buildRegexMatcher(*buffer, caseInsensitive);
 
   if (matcher == nullptr) {
@@ -341,7 +341,7 @@ AqlValue functions::RegexReplace(ExpressionContext* expressionContext,
   appendAsString(vopts, adapter, regex);
 
   // the matcher is owned by the context!
-  icu::RegexMatcher* matcher =
+  icu_64_64::RegexMatcher* matcher =
       expressionContext->buildRegexMatcher(*buffer, caseInsensitive);
 
   if (matcher == nullptr) {

@@ -49,13 +49,13 @@ namespace {
 void checkCollatorSettings(std::string_view language, bool isDefaultLanguage) {
   // Create collator with expected language
   UErrorCode status = U_ZERO_ERROR;
-  icu::Collator* expectedColl = nullptr;
+  icu_64_64::Collator* expectedColl = nullptr;
   if (language == "") {
     // get default collator for empty language
-    expectedColl = icu::Collator::createInstance(status);
+    expectedColl = icu_64_64::Collator::createInstance(status);
   } else {
-    icu::Locale locale(language.data());
-    expectedColl = icu::Collator::createInstance(locale, status);
+    icu_64_64::Locale locale(language.data());
+    expectedColl = icu_64_64::Collator::createInstance(locale, status);
   }
 
   if (isDefaultLanguage) {
@@ -166,7 +166,7 @@ class ArangoLanguageFeatureTest
         arangodb::basics::Utf8Helper::DefaultUtf8Helper.getCollator();
     delete collator;
     arangodb::basics::Utf8Helper::DefaultUtf8Helper.setCollator(nullptr);
-    u_cleanup();
+    u_cleanup_64_64();
   }
 
   // Per-test-suite tear-down.

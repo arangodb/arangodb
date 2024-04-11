@@ -128,8 +128,7 @@ endif()
 
 target_include_directories(arango_rocksdb PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"
-  "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}"
-  "${ICU64_INCLUDE_DIR}")
+  "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
 
 add_subdirectory(Listeners)
 add_subdirectory(Methods)
