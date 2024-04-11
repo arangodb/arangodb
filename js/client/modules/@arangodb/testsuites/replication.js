@@ -44,6 +44,7 @@ const optionsDocumentation = [
 const _ = require('lodash');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const ct = require('@arangodb/testutils/client-tools');
 
 const testPaths = {
   'shell_replication': [tu.pathForTesting('common/replication')],
@@ -120,7 +121,7 @@ class replicationRunner extends tu.runInArangoshRunner {
     let state = true;
     this.addArgs['flatCommands'] = [this.instanceManager.arangods[1].endpoint];
     if (this.startReplication) {
-      let res = pu.run.arangoshCmd(this.options, this.instanceManager,
+      let res = ct.run.arangoshCmd(this.options, this.instanceManager,
                                    {}, [
         '--javascript.execute-string',
         `
