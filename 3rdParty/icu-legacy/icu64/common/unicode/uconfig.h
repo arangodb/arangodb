@@ -17,6 +17,10 @@
 #ifndef __UCONFIG_H__
 #define __UCONFIG_H__
 
+/* Make everything use suffixed names: */
+
+#define U_HAVE_LIB_SUFFIX 1
+#define U_LIB_SUFFIX_C_NAME _64
 
 /*!
  * \file
