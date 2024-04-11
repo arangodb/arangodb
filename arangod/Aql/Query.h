@@ -103,7 +103,36 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
       QueryOptions options = {},
       Scheduler* scheduler = SchedulerFeature::SCHEDULER);
 
-  constexpr static uint64_t DontCache = 0;
+  constexpr static uint64_t kDontCache = 0;
+
+  struct QuerySerializationOptions {
+    bool includeUser = true;
+    bool includeQueryString = true;
+    bool includeBindParameters = false;
+    bool includeDataSources = false;
+    bool includeResultCode = false;
+    size_t queryStringMaxLength = 2048;
+  };
+  /// @brief create a velocypack representation of the query for statistical
+  /// or informational purposes, consisting of some descriptive attributes,
+  /// such as:
+  /// - id
+  /// - database
+  /// - user
+  /// - query string
+  /// - bind vars
+  /// - data sources
+  /// - start time
+  /// - run time
+  /// - peak memory usage
+  /// - state (failed / killed / completed)
+  /// - stream
+  /// - exit code
+  void toVelocyPack(velocypack::Builder& builder, bool isCurrent,
+                    QuerySerializationOptions const& options) const;
+
+  /// @brief log a query to the slow query log
+  void logSlow(QuerySerializationOptions const& options) const;
 
   /// @brief return the user that started the query
   std::string const& user() const final;
@@ -370,7 +399,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   size_t _planMemoryUsage;
 
   /// @brief hash for this query. will be calculated only once when needed
-  mutable uint64_t _queryHash = DontCache;
+  mutable uint64_t _queryHash = kDontCache;
 
   enum class ShutdownState : uint8_t { None = 0, InProgress = 2, Done = 4 };
 

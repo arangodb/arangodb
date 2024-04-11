@@ -50,7 +50,9 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/conversions.h"
 #include "Basics/fasthash.h"
+#include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
 #include "Graph/Graph.h"
 #include "Logger/LogMacros.h"
@@ -120,7 +122,7 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
       _endTime(0.0),
       _resultMemoryUsage(0),
       _planMemoryUsage(0),
-      _queryHash(DontCache),
+      _queryHash(kDontCache),
       _shutdownState(ShutdownState::None),
       _executionPhase(ExecutionPhase::INITIALIZE),
       _resultCode(std::nullopt),
@@ -1489,7 +1491,7 @@ void Query::stringifyDataSources(std::string& out,
 /// @brief calculate a hash value for the query and bind parameters
 uint64_t Query::calculateHash() const {
   if (_queryString.empty()) {
-    return DontCache;
+    return kDontCache;
   }
 
   // hash the query string first
@@ -1545,7 +1547,6 @@ bool Query::canUseQueryCache() const {
 }
 
 ErrorCode Query::resultCode() const noexcept {
-  // never return negative value from here
   return _resultCode.value_or(TRI_ERROR_NO_ERROR);
 }
 
@@ -2003,7 +2004,11 @@ void Query::debugKillQuery() {
   if (queryList->enabled()) {
     auto const& current = queryList->listCurrent();
     for (auto const& it : current) {
-      if (it.id == _queryId) {
+      auto slice = it.slice();
+      TRI_ASSERT(slice.isObject());
+      TRI_ASSERT(slice.hasKey("id"));
+      if (auto id = slice.get("id");
+          id.isString() && id.stringView() == std::to_string(_queryId)) {
         isInList = true;
         break;
       }
@@ -2120,4 +2125,118 @@ void Query::prepareFromVelocyPack(
   _queryProfile->registerInQueryList();
 
   enterState(QueryExecutionState::ValueType::EXECUTION);
+}
+
+void Query::toVelocyPack(velocypack::Builder& builder, bool isCurrent,
+                         QuerySerializationOptions const& options) const {
+  // query state
+  auto currentState = [&]() {
+    if (killed()) {
+      return QueryExecutionState::ValueType::KILLED;
+    }
+    return (isCurrent ? state() : QueryExecutionState::ValueType::FINISHED);
+  }();
+
+  double elapsed = (isCurrent ? elapsedSince(startTime()) : executionTime());
+
+  double now = TRI_microtime();
+  // we calculate the query start timestamp as the current time minus
+  // the elapsed time since query start. this is not 100% accurrate, but
+  // best effort, and saves us from bookkeeping the start timestamp of the
+  // query inside the Query object.
+  TRI_ASSERT(now >= elapsed);
+
+  auto timeString =
+      TRI_StringTimeStamp(/*started*/ now - elapsed, Logger::getUseLocalTime());
+
+  builder.openObject();
+
+  // query id (note: this is always returned as a string)
+  builder.add("id", VPackValue(std::to_string(id())));
+
+  // database name
+  builder.add("database", VPackValue(vocbase().name()));
+
+  // user
+  if (options.includeUser) {
+    builder.add("user", VPackValue(user()));
+  }
+  // query string
+  builder.add("query",
+              VPackValue(extractQueryString(options.queryStringMaxLength,
+                                            options.includeQueryString)));
+
+  // bind parameters
+  if (options.includeBindParameters) {
+    if (auto b = bindParameters(); b != nullptr && !b->slice().isNone()) {
+      builder.add("bindVars", b->slice());
+    } else {
+      builder.add("bindVars", velocypack::Slice::emptyObjectSlice());
+    }
+  } else {
+    builder.add("bindVars", velocypack::Slice::emptyObjectSlice());
+  }
+
+  // data sources
+  if (options.includeDataSources) {
+    builder.add("dataSources", VPackValue(VPackValueType::Array));
+    for (auto const& ds : collectionNames()) {
+      builder.add(VPackValue(ds));
+    }
+    builder.close();
+  }
+
+  // start time
+  builder.add("started", VPackValue(timeString));
+
+  // run time
+  builder.add("runTime", VPackValue(elapsed));
+
+  // peak memory usage
+  builder.add("peakMemoryUsage", VPackValue(resourceMonitor().peak()));
+
+  // state
+  builder.add("state", VPackValue(QueryExecutionState::toString(currentState)));
+
+  // streaming yes/no?
+  builder.add("stream", VPackValue(queryOptions().stream));
+
+  // exit code
+  if (options.includeResultCode && _resultCode.has_value()) {
+    // exit code can only be determined if query is fully finished
+    builder.add("exitCode", VPackValue(*_resultCode));
+  }
+
+  builder.close();
+}
+
+void Query::logSlow(QuerySerializationOptions const& options) const {
+  auto buildBindParameters = [&]() {
+    std::string bindParameters;
+    if (options.includeBindParameters) {
+      // also log bind variables
+      stringifyBindParameters(bindParameters,
+                              ", bind vars: ", options.queryStringMaxLength);
+    }
+    return bindParameters;
+  };
+
+  auto buildDataSources = [&]() {
+    std::string dataSources;
+    if (options.includeDataSources) {
+      stringifyDataSources(dataSources, ", data sources: ");
+    }
+    return dataSources;
+  };
+
+  LOG_TOPIC("8bcee", WARN, Logger::QUERIES)
+      << "slow " << (queryOptions().stream ? "streaming " : "") << "query: '"
+      << extractQueryString(options.queryStringMaxLength,
+                            options.includeQueryString)
+      << "'" << buildBindParameters() << buildDataSources()
+      << ", database: " << vocbase().name() << ", user: " << user()
+      << ", id: " << id() << ", token: QRY" << id()
+      << ", peak memory usage: " << resourceMonitor().peak()
+      << ", exit code: " << resultCode()
+      << ", took: " << Logger::FIXED(executionTime()) << " s";
 }
