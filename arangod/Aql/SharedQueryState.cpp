@@ -50,6 +50,9 @@ SharedQueryState::SharedQueryState(ArangodServer& server, Scheduler* scheduler)
       _numTasks(0),
       _valid(true) {}
 
+SharedQueryState::SharedQueryState(SharedQueryState const& other)
+    : SharedQueryState(other._server, other._scheduler) {}
+
 void SharedQueryState::invalidate() {
   {
     std::lock_guard<std::mutex> guard(_mutex);

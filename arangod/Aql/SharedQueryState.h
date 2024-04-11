@@ -39,7 +39,7 @@ namespace aql {
 class SharedQueryState final
     : public std::enable_shared_from_this<SharedQueryState> {
  public:
-  SharedQueryState(SharedQueryState const&) = delete;
+  SharedQueryState(SharedQueryState const&);
   SharedQueryState& operator=(SharedQueryState const&) = delete;
 
   SharedQueryState(ArangodServer& server);

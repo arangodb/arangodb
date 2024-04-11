@@ -250,9 +250,7 @@ ExecutionEngine::ExecutionEngine(EngineId eId, QueryContext& query,
     : _engineId(eId),
       _query(query),
       _itemBlockManager(itemBlockMgr),
-      _sharedState((sqs != nullptr) ? std::move(sqs)
-                                    : std::make_shared<SharedQueryState>(
-                                          query.vocbase().server())),
+      _sharedState(std::move(sqs)),
       _blocks(),
       _root(nullptr),
       _resultRegister(RegisterId::maxRegisterId),
@@ -768,7 +766,12 @@ void ExecutionEngine::instantiateFromPlan(Query& query, ExecutionPlan& plan,
     // we have to ensure that each ExecutionEngine has its own SharedQueryState,
     // because different snippets (engines) can operate concurrently and each
     // needs to have its own wakeupCallback
-    auto retEngine = std::make_unique<ExecutionEngine>(eId, query, mgr);
+    auto sharedState =
+        query.sharedState()
+            ? std::make_shared<SharedQueryState>(*query.sharedState())
+            : std::make_shared<SharedQueryState>(query.vocbase().server());
+    auto retEngine = std::make_unique<ExecutionEngine>(eId, query, mgr,
+                                                       std::move(sharedState));
 
 #ifdef USE_ENTERPRISE
     for (auto const& pair : aliases) {
