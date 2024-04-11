@@ -72,7 +72,7 @@ function verifySstSuite() {
     },
 
     testVerify: function () {
-      // This will a hot backup on the server.
+      // This will create a hot backup on the server.
       // note: the hotbackup copies away the .sst files to a backup
       // directory. we need this separate directory in order to run
       // --rocksdb.verify-sst on it. we cannot run the verification
