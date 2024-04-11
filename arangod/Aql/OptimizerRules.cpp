@@ -1934,7 +1934,8 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
     auto collectNode = ExecutionNode::castTo<CollectNode*>(n);
 
     if (collectNode->isFixedMethod()) {
-      // already specialized this node
+      // already determined the COLLECT variant of this node.
+      // it doesn't need to set again.
       continue;
     }
 
@@ -1992,7 +1993,7 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
       }
 
       // are we allowed to generate additional plans?
-      if (!opt->runOnlyRequiredRules(1)) {
+      if (!opt->runOnlyRequiredRules()) {
         // create an additional plan with the adjusted COLLECT node
         std::unique_ptr<ExecutionPlan> newPlan(plan->clone());
 
@@ -3609,7 +3610,7 @@ void arangodb::aql::interchangeAdjacentEnumerationsRule(
     do {
       // check if we already have enough plans (plus the one plan that we will
       // add at the end of this function)
-      if (opt->runOnlyRequiredRules(1)) {
+      if (opt->runOnlyRequiredRules()) {
         // have enough plans. stop permutations
         break;
       }

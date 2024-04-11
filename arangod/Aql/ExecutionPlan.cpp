@@ -998,12 +998,10 @@ CollectNode* ExecutionPlan::createAnonymousCollect(
   options.fixMethod(CollectOptions::CollectMethod::kDistinct);
 
   auto en = createNode<CollectNode>(
-      this, nextId(), options, std::move(groupVariables),
+      this, nextId(), std::move(options), std::move(groupVariables),
       std::move(aggregateVariables), nullptr, nullptr,
       std::vector<std::pair<Variable const*, std::string>>{},
       _ast->variables()->variables(false));
-
-  en->aggregationMethod(CollectOptions::CollectMethod::kDistinct);
 
   return en;
 }

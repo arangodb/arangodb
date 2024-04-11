@@ -8,8 +8,10 @@ devel
     traversal or an enumeration over an array now prefer the hashed collect
     variant.
   - if the hashed collect variant is explicitly requested via the `OPTIONS`
-    clause in the COLLECT statement, it is always applied, even if the maximum
-    number of query execution plans is already reached.
+    clause of the COLLECT statement (i.e. COLLECT ... OPTIONS {method: "hash"})
+    then the hashed variant is now always used, even if the maximum number of 
+    query execution plans is already reached. Previously only the sorted
+    variant would be used despite the explicit `OPTIONS` hint.
 
 * Fix an issue that can cause AQL related RestHandlers to wind up in a WAITING
   state and never get woken up. This implies that the associated query snippet
