@@ -32,6 +32,7 @@
 #include "Aql/SharedQueryState.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
+#include "Assertions/ProdAssert.h"
 #include "Basics/ScopeGuard.h"
 
 #include <algorithm>
@@ -85,31 +86,42 @@ ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(
   if (_internalState == AsyncState::InProgress) {
     ++_numWakeupsQueued;
     return {ExecutionState::WAITING, SkipResult{}, SharedAqlItemBlockPtr()};
-  } else if (_internalState == AsyncState::GotResult) {
+    // if the result we got was "WAITING", we do not want to return it, but just
+    // make the next call to the upstream
+  } else if (_internalState == AsyncState::GotResult &&
+             _returnState != ExecutionState::WAITING) {
     if (_returnState != ExecutionState::DONE) {
       // we may not return WAITING if upstream returned DONE
       _internalState = AsyncState::Empty;
     }
     return {_returnState, std::move(_returnSkip), std::move(_returnBlock)};
   } else if (_internalState == AsyncState::GotException) {
-    TRI_ASSERT(_returnException != nullptr);
+    ADB_PROD_ASSERT(_returnException != nullptr);
     std::rethrow_exception(_returnException);
     TRI_ASSERT(false);
     return {ExecutionState::DONE, SkipResult(), SharedAqlItemBlockPtr()};
   }
-  TRI_ASSERT(_internalState == AsyncState::Empty);
+  TRI_ASSERT(_internalState == AsyncState::Empty ||
+             (_internalState == AsyncState::GotResult &&
+              _returnState == ExecutionState::WAITING));
 
   _internalState = AsyncState::InProgress;
+
   bool queued =
-      _sharedState->asyncExecuteAndWakeup([this, stack](bool isAsync) {
+      _sharedState->asyncExecuteAndWakeup([this, stack](bool isAsync) -> bool {
         std::unique_lock<std::mutex> guard(_mutex, std::defer_lock);
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+        if (_beforeAsyncExecuteCallback) {
+          _beforeAsyncExecuteCallback();
+        }
+#endif
         try {
           auto [state, skip, block] = _dependencies[0]->execute(stack);
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
           if (_postAsyncExecuteCallback) {
-            _postAsyncExecuteCallback();
+            _postAsyncExecuteCallback(state);
           }
 #endif
 
@@ -191,6 +203,11 @@ ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(
           }
 #endif
         }
+        // we only want to trigger a wakeup if we got an actual result, or an
+        // exception
+        bool const triggerWakeup = (_returnState != ExecutionState::WAITING) ||
+                                   (_internalState == AsyncState::GotException);
+        return triggerWakeup;
       });
 
   if (!queued) {
@@ -226,7 +243,11 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 void ExecutionBlockImpl<AsyncExecutor>::setPostAsyncExecuteCallback(
-    std::function<void()> cb) {
+    std::function<void(ExecutionState)> cb) {
   _postAsyncExecuteCallback = std::move(cb);
+}
+void ExecutionBlockImpl<AsyncExecutor>::setBeforeAsyncExecuteCallback(
+    std::function<void()> cb) {
+  _beforeAsyncExecuteCallback = std::move(cb);
 }
 #endif

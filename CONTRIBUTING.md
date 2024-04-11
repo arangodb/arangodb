@@ -62,7 +62,27 @@ yet.
 
 ## Source Code
 
-### Git
+### Get the source code
+
+Download the latest source code with Git, including submodules:
+
+    git clone --recurse-submodules --jobs 8 https://github.com/arangodb/arangodb
+
+This automatically clones the **devel** branch.
+
+If you only plan to compile a specific version of ArangoDB locally and do not
+want to commit changes, you can speed up cloning substantially by using the
+`--depth` and `--shallow-submodules` parameters and specifying a branch, tag,
+or commit hash using the `--branch` parameter for the clone command as follows:
+
+    git clone --depth 1 --recurse-submodules --shallow-submodules --jobs 8 --branch v3.12.0 https://github.com/arangodb/arangodb
+
+On Windows, Git's automatic conversion to CRLF line endings needs to be disabled.
+Otherwise, [compiling](#building-the-binaries) in the Linux build container fails.
+You can use `git clone --config core.autocrlf=input ...` so that it only affects
+this working copy.
+
+### Git Setup
 
 Setting up git for automatically merging certain automatically generated files
 in the ArangoDB source tree:
@@ -224,65 +244,105 @@ but do not include `Documentation/Metrics/allMetrics.yaml` in your PR
 
 ## Building
 
-Note: Make sure that your source path does not contain spaces otherwise the build process will likely fail.
+Note: Make sure that your source path does not contain spaces. Otherwise, the
+build process will likely fail.
 
 ### Building the binaries
 
-ArangoDB uses a build system called [Oskar](https://github.com/arangodb/oskar).
-Please refer to the documentation of Oskar for details.
+To compile ArangoDB 3.12 or later, you can use a Docker build container that
+is based on Ubuntu and includes the necessary toolchain. You need Git on the
+host system to [get the source code](#get-the-source-code) and mount it into the
+container, however.
 
-Optimizations and limit of architecture (list of possible CPU instructions) are set using this `cmake` option
-in addition to the other options:
+Check the [`.circleci/base_config.yml`](.circleci/base_config.yml) file for the
+default `build-docker-image` value to ensure it's the matching image tag for the
+version you want to build.
 
-```
--DTARGET_ARCHITECTURE
-```
+You can start the build container as follows in a Bash-like terminal:
 
-Oskar uses predefined architecture which is defined in `./VERSIONS` file or `sandybridge` if it's not defined.
+    cd arangodb
+    docker run -it -v $(pwd):/root/project -p 3000:3000 arangodb/ubuntubuildarangodb-devel:3
 
-Note: if you use more modern architecture for optimizations or any additional implementation with extended
-set of CPU instructions please notice that result could be different to the default one.
+In PowerShell, use `${pwd}` instead of `$(pwd)`.
 
-For building the ArangoDB starter checkout the
-[ArangoDB Starter](https://github.com/arangodb-helper/arangodb).
+The port mapping is for accessing the web interface in case you want to run a
+development server for working on the frontend.
+
+In the fish shell of the container, run the following commands for a release-like
+build using the officially supported version of the Clang compiler
+(also see the [`VERSIONS`](VERSIONS)):
+
+    cd /root/project
+    cmake --preset community -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_LIBRARY_PATH=$OPENSSL_ROOT_DIR/lib -DOPENSSL_ROOT_DIR=/opt
+    cmake --build --preset community --parallel (nproc)
+
+For a debug build, you can use the `community-developer` preset instead.
+
+The default target CPU architecture is `sandybridge` for the x86-64 platform and
+`graviton1` for 64-bit ARM chips. You can specify a different architecture to
+enable more optimizations or to limit the compiler to the available instructions
+for a particular architecture:
+
+    cmake --preset community -DTARGET_ARCHITECTURE=native ...
+
+On ARM, disable the `USE_LIBUNWIND` option:
+
+    cmake --preset community -DUSE_LIBUNWIND=Off ...
+
+To build specific targets instead of all, you can specify them like shown below:
+
+    cmake --build --preset community --target arangod arangosh arangodump arangorestore arangoimport arangoexport arangobench arangovpack frontend
+
+You can find the output files at `build-presets/<preset-name>/`,
+with the compiled executables in the `bin/` subfolder.
+
+To collect all files for packaging, you can run the following command (with
+`<preset-name>` substituted, e.g. with `community`):
+
+    cmake --install ./build-presets/<preset-name> --prefix install/usr
+
+It copies the needed files to a folder called `install`.
+It may fail if you only built a subset of the targets.
+The folder is organized following the Linux directory structure, with the
+server executable at `usr/sbin/arangod`, the tools in `usr/bin/`, the
+configuration files in `usr/etc/arangodb3/`, and so on.
+
+For building the ArangoDB Starter (`arangodb` executable), see the
+[ArangoDB Starter repository](https://github.com/arangodb-helper/arangodb).
 
 ### Building the Web Interface
 
-To build web interface, also known as the Web UI, frontend, or _Aardvark_, [Node.js](https://nodejs.org/)
-and [Yarn](https://yarnpkg.com/) need to be installed. You can then use CMake in the
-build directory:
+The web interface is also known as the Web UI, frontend, or _Aardvark_.
+Building ArangoDB also builds the frontend unless `-DUSE_FRONTEND=Off` was
+specified when configuring CMake or if the `frontend` target was left out for
+the build.
 
-    cmake --build . --target frontend
+To build the web interface via CMake, you can run the following commands:
 
-Note that as of 3.12 the frontend target is part of the default target. To avoid building the frontend and
-skip the CMake checks for yarn and node you can disable this using `-DUSE_FRONTEND=Off`.
+    cmake --preset community
+    cmake --build --preset community --target frontend
 
-For Oskar you may use the following:
+To remove all installed Node.js modules and start a clean installation, run:
 
-    shellInAlpineContainer
+    cmake --build --preset community --target frontend_clean
 
-    apk add --no-cache nodejs yarn && cd /work/ArangoDB/build && cmake --build . --target frontend
-
-To remove all available node modules and start a clean installation run:
-
-    cmake --build . --target frontend_clean
-
-The frontend can also be built using these commands:
+You can also build the frontend manually without CMake.
+[Node.js](https://nodejs.org/) and [Yarn](https://yarnpkg.com/) need to be
+installed.
 
     cd <SourceRoot>/js/apps/system/_admin/aardvark/APP/react
     yarn install
     yarn build
 
-For development purposes, go to `js/apps/system/_admin/aardvark/APP/react` and
-run:
+To run a development server, go to `js/apps/system/_admin/aardvark/APP/react`
+and run the following command:
 
     yarn start
 
-This will deploy a development server (Port: 3000) and automatically start your
-favorite browser and open the web interface.
-
-All changes to any source will automatically re-build and reload your browser.
-Enjoy :)
+It should start your browser and open the web interface at `http://localhost:3000`.
+Changes to any frontend source files trigger an automatic re-build and reload
+the browser tab. If you use the build container, make sure to start it with a
+port mapping for the development server.
 
 #### Cross Origin Policy (CORS) error
 
@@ -305,12 +365,12 @@ cmd + c
 Then restart `arangodb` server with the command below:
 
 ```bash
-./build/bin/arangod ../Arango --http.trusted-origin '*'
+./build-presets/<preset-name>/bin/arangod ../Arango --http.trusted-origin '*'
 ```
 
 Note:
 
-a: `./build/bin/arangod`: represents the location of `arangodb` binaries in your machine.
+a: `./build-presets/<preset-name>/bin/arangod`: represents the location of `arangodb` binaries in your machine.
 
 b: `../Arango`: is the database directory where the data will be stored.
 
@@ -318,7 +378,7 @@ c: `--http.trusted-origin '*'` the prefix that allows cross-origin requests.
 
 #### NPM Dependencies
 
-To add new NPM dependencies switch into the `js/node` folder and install them
+To add new NPM dependencies, switch into the `js/node` folder and install them
 with npm using the following options:
 
 `npm install [<@scope>/]<name> --global-style --save --save-exact`
@@ -739,15 +799,9 @@ There are several major places where unittests live:
 | `tests/` (remaining)                                         | Google Test unittests                                                                                                              |
 | implementation specific files                                |
 | `scripts/unittest`                                           | Entry wrapper script for `UnitTests/unittest.js`                                                                                   |
-| `js/client/modules/@arangodb/testutils/testing.js`           | invoked via `unittest.js` handles module structure for `testsuites`.                                                               |
-| `js/client/modules/@arangodb/testutils/test-utils.js`        | infrastructure for tests like filtering, bucketing, iterating                                                                      |
-| `js/client/modules/@arangodb/testutils/process-utils.js`     | manage arango instances, start/stop/monitor SUT-processes                                                                          |
-| `js/client/modules/@arangodb/testutils/result-processing.js` | work with the result structures to produce reports, hit lists etc.                                                                 |
-| `js/client/modules/@arangodb/testutils/crash-utils.js`       | if something goes wrong, this contains the crash analysis tools                                                                   |
-| `js/client/modules/@arangodb/testutils/clusterstats.js`      | can be launched separately to monitor the cluster instances and their resource usage                                               |
-| `js/client/modules/@arangodb/testsuites/`                    | modules with testframework that control one set of tests each                                                                      |
-| `js/common/modules[/jsunity]/jsunity.js`                     | jsunity testing framework; invoked via jsunity.js next to the module                                                               |
-| `js/common/modules/@arangodb/mocha-runner.js`                | wrapper for running mocha tests in arangodb                                                                                        |
+
+                                          |
+see [js/client/modules/@arangodb/README.md] about implementation details of the framework.
 
 ### Filename conventions
 

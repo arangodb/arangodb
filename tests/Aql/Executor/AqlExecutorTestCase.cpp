@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AqlExecutorTestCase.h"
+#include "Aql/ExecutionNode/DistributeConsumerNode.h"
 
 using namespace arangodb::tests::aql;
 
@@ -63,6 +64,27 @@ auto AqlExecutorTestCase<enableQueryTrace>::generateScatterNodeDummy()
   auto dummy = std::make_unique<ScatterNode>(
       const_cast<arangodb::aql::ExecutionPlan*>(fakedQuery->plan()),
       ExecutionNodeId{_execNodes.size()}, ScatterNode::ScatterType::SERVER);
+  auto res = dummy.get();
+  _execNodes.emplace_back(std::move(dummy));
+  return res;
+}
+
+template<bool enableQueryTrace>
+auto AqlExecutorTestCase<enableQueryTrace>::generateMutexNodeDummy()
+    -> MutexNode* {
+  auto dummy = std::make_unique<MutexNode>(
+      const_cast<arangodb::aql::ExecutionPlan*>(fakedQuery->plan()),
+      ExecutionNodeId{_execNodes.size()});
+  auto res = dummy.get();
+  _execNodes.emplace_back(std::move(dummy));
+  return res;
+}
+template<bool enableQueryTrace>
+auto AqlExecutorTestCase<enableQueryTrace>::generateDistributeConsumerNode(
+    std::string distributeId) -> DistributeConsumerNode* {
+  auto dummy = std::make_unique<DistributeConsumerNode>(
+      const_cast<arangodb::aql::ExecutionPlan*>(fakedQuery->plan()),
+      ExecutionNodeId{_execNodes.size()}, std::move(distributeId));
   auto res = dummy.get();
   _execNodes.emplace_back(std::move(dummy));
   return res;
