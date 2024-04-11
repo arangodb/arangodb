@@ -334,12 +334,14 @@ TEST_F(AsyncExecutorTest, AsyncNode_does_not_return_stored_WAITING) {
       monitor, SerializationFormat::SHADOWROWS);
 
   // set up the query nodes:
+  // (the slashes at the end of the line are necessary to prevent a gcc
+  // multiline comment warning)
   //
-  //           ASYNC1 - CONSUMER1
-  //          /                  \
-  //    GATHER                    MUTEX - WaitingBlock
-  //          \                  /
-  //           ASYNC2 - CONSUMER2
+  //           ASYNC1 - CONSUMER1                           /
+  //          /                  \                          /
+  //    GATHER                    MUTEX - WaitingBlock      /
+  //          \                  /                          /
+  //           ASYNC2 - CONSUMER2                           /
 
   auto gather =
       std::make_unique<ExecutionBlockImpl<ParallelUnsortedGatherExecutor>>(
