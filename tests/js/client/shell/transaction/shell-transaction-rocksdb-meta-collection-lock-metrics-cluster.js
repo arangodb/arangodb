@@ -60,7 +60,6 @@ function TransactionRocksDBMetaCollectionLockMetricsSuite() {
       db._createDatabase(database);
       db._useDatabase(database);
       db._create(collection, {numberOfShards: 1, replicationFactor: 1});
-      waitForShardsInSync(collection);
     },
 
     tearDownAll: function () {

@@ -331,6 +331,8 @@ struct InstrumentedMutexLockGuardTraits<
 
   void unlock_shared(LockGuard&& guard) { guard.unlock(); }
 
-  bool owns_lock(LockGuard& guard) { return guard.isLocked(); }
+  bool owns_lock(LockGuard const& guard) const noexcept {
+    return guard.isLocked();
+  }
 };
 }  // namespace arangodb

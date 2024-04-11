@@ -80,6 +80,7 @@ TEST_F(InstrumentedMutexTest, shared_mutex_test) {
 
   ASSERT_EQ(lockExclusive.load(), 0);
   ASSERT_EQ(pendingExclusive.load(), 0);
+  ASSERT_EQ(lockShared.load(), 0);
 
   auto guard = m.lock_exclusive();
   ASSERT_TRUE(guard.owns_lock());
@@ -87,6 +88,7 @@ TEST_F(InstrumentedMutexTest, shared_mutex_test) {
 
   ASSERT_EQ(lockExclusive.load(), 1);
   ASSERT_EQ(pendingExclusive.load(), 0);
+  ASSERT_EQ(lockShared.load(), 0);
 
   auto guard2 = m.try_lock_exclusive();
   ASSERT_FALSE(guard2.owns_lock());
@@ -100,6 +102,7 @@ TEST_F(InstrumentedMutexTest, shared_mutex_test) {
   ASSERT_FALSE(guard.owns_lock());
   ASSERT_EQ(lockExclusive.load(), 0);
   ASSERT_EQ(pendingExclusive.load(), 0);
+  ASSERT_EQ(lockShared.load(), 0);
 
   auto guard3 = m.try_lock_shared();
   ASSERT_TRUE(guard3.owns_lock());

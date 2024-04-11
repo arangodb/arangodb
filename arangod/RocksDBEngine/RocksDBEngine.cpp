@@ -2058,6 +2058,16 @@ Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
   bool const prefixSameAsStart = true;
   bool const useRangeDelete = rcoll->meta().numberDocuments() >= 32 * 1024;
 
+  {
+    // acquire the exclusive lock once. the collection is already marked as
+    // deleted so there should be no pending shared locks. We just want to make
+    // sure that all active shared locks are gone.
+    auto [guard, error] = rcoll->lockExclusive().get();
+    if (error != TRI_ERROR_NO_ERROR) {
+      return error;
+    }
+  }
+
   rocksdb::DB* db = _db->GetRootDB();
 
   // If we get here the collection is safe to drop.

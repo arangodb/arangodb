@@ -11,11 +11,11 @@ target_link_libraries(arango_metrics_base PRIVATE
   arango_lightweight)
 
 add_library(arango_metrics STATIC
+  InstrumentedMutex.cpp
   MetricsFeature.cpp
   ClusterMetricsFeature.cpp
   ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestMetricsHandler.cpp
-  ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestUsageMetricsHandler.cpp
-        InstrumentedMutex.cpp)
+  ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestUsageMetricsHandler.cpp)
 
 target_link_libraries(arango_metrics
   arango_metrics_base

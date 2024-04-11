@@ -68,7 +68,7 @@ struct InstrumentedMutexTraits {
 
   template<typename F, typename Duration>
   auto try_lock_shared_for(Mutex& m, Duration d, F&& fn) requires requires {
-    m.try_lock_for(d);
+    m.try_lock_shared_for(d);
   }
   {
     if (m.try_lock_shared_for(d)) {

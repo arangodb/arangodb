@@ -264,8 +264,10 @@ RocksDBReplicationContext::bindCollectionIncremental(TRI_vocbase_t& vocbase,
 
     // only DBServers require a corrected document count
     const double to = ServerState::instance()->isDBServer() ? 10.0 : 1.0;
+    ErrorCode res{TRI_ERROR_NO_ERROR};
+    RocksDBMetaCollection::ExclusiveLock guard;
     if (!_patchCount.empty() && _patchCount == cname) {
-      auto [guard, res] = co_await rcoll->lockExclusive(to);
+      std::tie(guard, res) = co_await rcoll->lockExclusive(to);
       if (res == TRI_ERROR_NO_ERROR) {
         documentCountAdjustmentTicket =
             rcoll->meta().documentCountAdjustmentTicket();

@@ -34,6 +34,7 @@
 
 #include <rocksdb/types.h>
 #include <unordered_map>
+#include <variant>
 
 namespace arangodb {
 namespace futures {
