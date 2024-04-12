@@ -119,8 +119,13 @@ bool ResignShardLeadership::first() {
     // for now but we will not accept any replication operation from any
     // leader, until we have negotiated a deal with it. Then the actual
     // name of the leader will be set.
+    std::vector<std::shared_ptr<LogicalCollection>> logicalCollections;
+    logicalCollections.reserve(shards.size());
+
+    // first get all collections
     for (auto const& s : shards) {
       auto col = vocbase->lookupCollection(s);
+      logicalCollections.emplace_back(col);
       if (col == nullptr) {
         std::stringstream error;
         error << "Failed to lookup local collection " << collection
@@ -130,7 +135,10 @@ bool ResignShardLeadership::first() {
         result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
         return false;
       }
+    }
 
+    // now let the shard resign
+    for (auto const& col : logicalCollections) {
       col->followers()->setTheLeader(LeaderNotYetKnownString);  // resign
     }
 
@@ -140,8 +148,8 @@ bool ResignShardLeadership::first() {
           << "Failed to abort transaction during resign leadership: " << res;
     }
 
-    for (auto const& s : shards) {
-      auto col = vocbase->lookupCollection(s);
+    // abort all running transactions
+    for (auto const& col : logicalCollections) {
       transaction::cluster::abortLeaderTransactionsOnShard(col->id());
     }
   } catch (std::exception const& e) {

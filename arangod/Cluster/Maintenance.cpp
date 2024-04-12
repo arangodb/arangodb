@@ -666,6 +666,7 @@ VPackBuilder getShardMap(VPackSlice const& collections) {
 std::set<ShardID> extractShardsFromCollection(VPackSlice collection) {
   auto shards = collection.get(SHARDS);
   if (!shards.isObject()) {
+    TRI_ASSERT(false) << collection.toJson();
     return {};
   }
 
@@ -673,6 +674,8 @@ std::set<ShardID> extractShardsFromCollection(VPackSlice collection) {
   for (auto shard : VPackObjectIterator(collection.get(SHARDS))) {
     result.insert(ShardID::shardIdFromString(shard.key.stringView()).get());
   }
+
+  TRI_ASSERT(!result.empty()) << collection.toJson();
   return result;
 }
 
@@ -704,12 +707,13 @@ getDistributeShardsLike(VPackSlice const& collections) {
     // check is we have collected information about this prototype already
     auto it = prototypeShards.find(prototype);
     if (it == prototypeShards.end()) {
-      auto protoCol = collections.get(prototype);
-      TRI_ASSERT(protoCol.isObject()) << prototype << " " << protoCol.toJson();
+      auto prototypeCollection = collections.get(prototype);
+      TRI_ASSERT(prototypeCollection.isObject())
+          << prototype << " " << prototypeCollection.toJson();
 
       bool inserted;
       std::tie(it, inserted) = prototypeShards.emplace(
-          prototype, extractShardsFromCollection(protoCol));
+          prototype, extractShardsFromCollection(prototypeCollection));
       TRI_ASSERT(inserted);
     }
 
@@ -719,6 +723,9 @@ getDistributeShardsLike(VPackSlice const& collections) {
 
     auto iterA = it->second.begin();
     auto iterB = cloneShards.begin();
+
+    TRI_ASSERT(cloneShards.size() == it->second.size())
+        << "clone = " << cloneShards << " prototype = " << it->second;
 
     while (iterA != it->second.end()) {
       TRI_ASSERT(iterB != cloneShards.end());
