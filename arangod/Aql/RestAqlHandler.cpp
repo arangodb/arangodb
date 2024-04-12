@@ -140,8 +140,8 @@ futures::Future<futures::Unit> RestAqlHandler::setupClusterQuery() {
   // this is an optional attribute that 3.8 coordinators will send, but
   // older versions won't send.
   // if set, it is the query id that will be used for this particular query
-  VPackSlice queryIdSlice = querySlice.get("clusterQueryId");
-  if (queryIdSlice.isNumber()) {
+  if (auto queryIdSlice = querySlice.get("clusterQueryId");
+      queryIdSlice.isNumber()) {
     clusterQueryId = queryIdSlice.getNumber<QueryId>();
     TRI_ASSERT(clusterQueryId > 0);
   }
@@ -365,7 +365,13 @@ futures::Future<futures::Unit> RestAqlHandler::setupClusterQuery() {
         "Query aborted since coordinator rebooted or failed.");
   }
 
-  _queryRegistry->insertQuery(std::move(q), ttl, std::move(rGuard));
+  // query string
+  std::string_view qs;
+  if (auto qss = querySlice.get("qs"); qss.isString()) {
+    qs = qss.stringView();
+  }
+
+  _queryRegistry->insertQuery(std::move(q), ttl, qs, std::move(rGuard));
 
   generateResult(rest::ResponseCode::OK, std::move(buffer));
 }
@@ -839,6 +845,8 @@ RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
 }
 
 RequestLane RestAqlHandler::lane() const {
+  TRI_ASSERT(!ServerState::instance()->isSingleServer());
+
   if (ServerState::instance()->isCoordinator()) {
     // continuation requests on coordinators will get medium priority,
     // so that they don't block query parts elsewhere
@@ -860,11 +868,15 @@ RequestLane RestAqlHandler::lane() const {
                     "invalid request lane priority");
       return RequestLane::CLUSTER_AQL_SHUTDOWN;
     }
+
+    if (suffixes.size() == 1 && suffixes[0] == "setup") {
+      return RequestLane::INTERNAL_LOW;
+    }
   }
 
-  // everything else will run with low priority
+  // everything else will run with med priority
   static_assert(
-      PriorityRequestLane(RequestLane::CLUSTER_AQL) == RequestPriority::LOW,
+      PriorityRequestLane(RequestLane::CLUSTER_AQL) == RequestPriority::MED,
       "invalid request lane priority");
   return RequestLane::CLUSTER_AQL;
 }

@@ -25,6 +25,7 @@
 
 #include "Agency/AgencyComm.h"
 #include "Agency/AgencyCommon.h"
+#include "Agency/AgencyPaths.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "Futures/Future.h"
@@ -61,6 +62,11 @@ class AgencyCallbackRegistry {
            std::enable_if_t<std::is_invocable_r_v<bool, F, velocypack::Slice>,
                             int> = 0>
   auto waitFor(std::string path, F&& fn) -> futures::Future<consensus::index_t>;
+  template<typename F,
+           std::enable_if_t<std::is_invocable_r_v<bool, F, velocypack::Slice>,
+                            int> = 0>
+  auto waitFor(cluster::paths::Path const& path, F&& fn)
+      -> futures::Future<consensus::index_t>;
 
   /// observes the given path and invokes the callback. The callback is expected
   /// to return a value that satisfies the std::optional api. If the returned
@@ -70,6 +76,11 @@ class AgencyCallbackRegistry {
                std::invoke_result_t<F, velocypack::Slice, consensus::index_t>,
            typename V = typename R::value_type>
   auto waitFor(std::string path, F&& fn) -> futures::Future<V>;
+  template<typename F,
+           typename R =
+               std::invoke_result_t<F, velocypack::Slice, consensus::index_t>,
+           typename V = typename R::value_type>
+  auto waitFor(cluster::paths::Path const& path, F&& fn) -> futures::Future<V>;
 
  private:
   std::string getEndpointUrl(uint64_t id) const;
@@ -106,6 +117,15 @@ auto AgencyCallbackRegistry::waitFor(std::string path, F&& fn)
       });
 }
 
+template<
+    typename F,
+    std::enable_if_t<std::is_invocable_r_v<bool, F, velocypack::Slice>, int>>
+auto AgencyCallbackRegistry::waitFor(cluster::paths::Path const& path, F&& fn)
+    -> futures::Future<consensus::index_t> {
+  return waitFor(path.str(cluster::paths::SkipComponents{1}),
+                 std::forward<F>(fn));
+}
+
 template<typename F, typename R, typename V>
 auto AgencyCallbackRegistry::waitFor(std::string path, F&& fn)
     -> futures::Future<V> {
@@ -139,4 +159,12 @@ auto AgencyCallbackRegistry::waitFor(std::string path, F&& fn)
     return std::move(result.get());
   });
 }
+
+template<typename F, typename R, typename V>
+auto AgencyCallbackRegistry::waitFor(cluster::paths::Path const& path, F&& fn)
+    -> futures::Future<V> {
+  return waitFor(path.str(cluster::paths::SkipComponents{1}),
+                 std::forward<F>(fn));
+}
+
 }  // namespace arangodb

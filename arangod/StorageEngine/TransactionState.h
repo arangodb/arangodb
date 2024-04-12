@@ -297,32 +297,24 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   void setExclusiveAccessType();
 
   /// @brief whether or not a transaction is read-only
-  [[nodiscard]] bool isReadOnlyTransaction() const noexcept {
-    return _type == AccessMode::Type::READ;
-  }
+  [[nodiscard]] bool isReadOnlyTransaction() const noexcept;
 
   /// @brief whether or not a transaction is a follower transaction
-  [[nodiscard]] bool isFollowerTransaction() const noexcept {
-    return hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
-  }
+  [[nodiscard]] bool isFollowerTransaction() const noexcept;
 
   /// @brief servers already contacted
   [[nodiscard]] containers::FlatHashSet<ServerID> const& knownServers()
-      const noexcept {
-    return _knownServers;
-  }
+      const noexcept;
 
-  [[nodiscard]] bool knowsServer(std::string_view uuid) const noexcept {
-    return _knownServers.contains(uuid);
-  }
+  [[nodiscard]] bool knowsServer(std::string_view uuid) const noexcept;
 
   /// @brief add a server to the known set
-  void addKnownServer(std::string_view uuid) { _knownServers.emplace(uuid); }
+  void addKnownServer(std::string_view uuid);
 
   /// @brief remove a server from the known set
-  void removeKnownServer(std::string_view uuid) { _knownServers.erase(uuid); }
+  void removeKnownServer(std::string_view uuid);
 
-  void clearKnownServers() { _knownServers.clear(); }
+  void clearKnownServers();
 
   void chooseReplicas(containers::FlatHashSet<ShardID> const& shards);
 
