@@ -41,6 +41,7 @@ const optionsDocumentation = [
 ];
 
 const tu = require('@arangodb/testutils/test-utils');
+const trs = require('@arangodb/testutils/testrunners');
 const _ = require('lodash');
 
 const testPaths = {
