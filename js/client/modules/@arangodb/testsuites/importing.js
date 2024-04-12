@@ -35,6 +35,7 @@ const optionsDocumentation = [
 
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const trs = require('@arangodb/testutils/testrunners');
 const ct = require('@arangodb/testutils/client-tools');
 const im = require('@arangodb/testutils/instance-manager');
 const yaml = require('js-yaml');
@@ -436,7 +437,7 @@ const impTodos = [{
   create: undefined
 }];
 
-class importRunner extends tu.runInArangoshRunner {
+class importRunner extends trs.runInArangoshRunner {
   constructor(options, testname, ...optionalArgs) {
     super(options, testname, ...optionalArgs);
     this.info = "runImport";

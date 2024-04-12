@@ -32,6 +32,7 @@ const yaml = require('js-yaml');
 
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const trs = require('@arangodb/testutils/testrunners');
 
 const toArgv = require('internal').toArgv;
 const executeScript = require('internal').executeScript;
@@ -54,7 +55,7 @@ const testPaths = {
   'restart': [tu.pathForTesting('client/restart')]
 };
 
-class broadcastInstance extends tu.runLocalInArangoshRunner {
+class broadcastInstance extends trs.runLocalInArangoshRunner {
   constructor(options, testname, ...optionalArgs) {
     super(options, testname, ...optionalArgs);
     this.info = "localArangosh";

@@ -76,7 +76,7 @@ var _resilience = function(path, enableAliveMonitor) {
     }
     let testCases = tu.scanTestPaths(testPaths[path], localOptions);
     testCases = tu.splitBuckets(options, testCases);
-    let rc = new tu.runInArangoshRunner(localOptions, suiteName, {
+    let rc = new trs.runInArangoshRunner(localOptions, suiteName, {
       'javascript.allow-external-process-control': 'true',
       'javascript.allow-port-testing': 'true',
       'javascript.allow-admin-execute': 'true',
@@ -109,7 +109,7 @@ function clientResilience (options) {
 
   let testCases = tu.scanTestPaths(testPaths.client_resilience, localOptions);
   testCases = tu.splitBuckets(options, testCases);
-  let rc = new tu.runInArangoshRunner(localOptions, 'client_resilience', {
+  let rc = new trs.runInArangoshRunner(localOptions, 'client_resilience', {
     'javascript.allow-external-process-control': 'true',
     'javascript.allow-port-testing': 'true',
     'javascript.allow-admin-execute': 'true',

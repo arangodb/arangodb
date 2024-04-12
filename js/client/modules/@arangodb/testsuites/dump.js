@@ -49,6 +49,7 @@ const optionsDocumentation = [
 const pu = require('@arangodb/testutils/process-utils');
 const ct = require('@arangodb/testutils/client-tools');
 const tu = require('@arangodb/testutils/test-utils');
+const trs = require('@arangodb/testutils/testrunners');
 const im = require('@arangodb/testutils/instance-manager');
 const fs = require('fs');
 const _ = require('lodash');
@@ -90,7 +91,7 @@ const testPaths = {
   'hot_backup': [tu.pathForTesting('client/dump')]
 };
 
-class DumpRestoreHelper extends tu.runInArangoshRunner {
+class DumpRestoreHelper extends trs.runInArangoshRunner {
   constructor(firstRunOptions, secondRunOptions, serverOptions, clientAuth, dumpOptions, restoreOptions, which, afterServerStart, rtaArgs) {
     super(firstRunOptions, which, serverOptions, false);
     this.serverOptions = serverOptions;

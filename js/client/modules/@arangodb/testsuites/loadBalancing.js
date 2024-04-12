@@ -35,6 +35,7 @@ const optionsDocumentation = [
 
 const _ = require('lodash');
 const tu = require('@arangodb/testutils/test-utils');
+const trs = require('@arangodb/testutils/testrunners');
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 const CYAN = require('internal').COLORS.COLOR_CYAN;
@@ -74,7 +75,7 @@ function loadBalancingClient (options) {
     opts.coordinators = 2;
   }
 
-  let rc = new tu.runInArangoshRunner(opts, 'load_balancing', {
+  let rc = new trs.runInArangoshRunner(opts, 'load_balancing', {
     'server.authentication': 'false'
   }).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
@@ -108,7 +109,7 @@ function loadBalancingAuthClient (options) {
   opts.username = 'root';
   opts.password = '';
 
-  let rc = new tu.runInArangoshRunner(opts, 'load_balancing', _.clone(tu.testServerAuthInfo)).run(testCases);
+  let rc = new trs.runInArangoshRunner(opts, 'load_balancing', _.clone(tu.testServerAuthInfo)).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
 }

@@ -33,6 +33,7 @@ const optionsDocumentation = [];
 
 const _ = require('lodash');
 const tu = require('@arangodb/testutils/test-utils');
+const trs = require('@arangodb/testutils/testrunners');
 
 const testPaths = {
   'chaos': [ tu.pathForTesting('client/chaos') ],
@@ -77,7 +78,7 @@ function chaos (options) {
  
   testCases = tu.splitBuckets(options, testCases);
   
-  class chaosRunner extends tu.runLocalInArangoshRunner {
+  class chaosRunner extends trs.runLocalInArangoshRunner {
     preRun(test) {
       global.currentTestConfig = undefined;
       const configs = testCasesWithConfigs[test];
@@ -103,7 +104,7 @@ function chaos (options) {
 
 function deadlock (options) {
   let testCases = tu.scanTestPaths(testPaths.deadlock, options).filter((c) => c.includes("test-deadlock"));
-  return new tu.runLocalInArangoshRunner(options, 'deadlock', {}).run(testCases);
+  return new trs.runLocalInArangoshRunner(options, 'deadlock', {}).run(testCases);
 }
 
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {

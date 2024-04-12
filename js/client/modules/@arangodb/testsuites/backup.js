@@ -38,6 +38,7 @@ const _ = require('lodash');
 const pu = require('@arangodb/testutils/process-utils');
 const ct = require('@arangodb/testutils/client-tools');
 const tu = require('@arangodb/testutils/test-utils');
+const trs = require('@arangodb/testutils/testrunners');
 const im = require('@arangodb/testutils/instance-manager');
 
 const CYAN = require('internal').COLORS.COLOR_CYAN;
@@ -76,7 +77,7 @@ var dumpPath;
 
 
 
-class backupTestRunner extends tu.runInArangoshRunner {
+class backupTestRunner extends trs.runInArangoshRunner {
   constructor(options, testname, useAuth, user, restoreDir, checkUsers=true) {
     super(options, testname, {}, checkUsers, false);
     this.user = user;

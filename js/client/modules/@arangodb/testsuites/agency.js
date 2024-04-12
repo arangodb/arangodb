@@ -33,6 +33,7 @@ const optionsDocumentation = [
 ];
 
 const tu = require('@arangodb/testutils/test-utils');
+const trs = require('@arangodb/testutils/testrunners');
 
 const testPaths = {
   'agency': [tu.pathForTesting('client/agency')]
@@ -50,7 +51,7 @@ function agency (options) {
 
   options.agency = true;
   options.cluster = false;
-  let results = new tu.runInArangoshRunner(options,  'agency', {}, false, false).run(testCases);
+  let results = new trs.runInArangoshRunner(options,  'agency', {}, false, false).run(testCases);
 
   options.agency = saveAgency;
   options.cluster = saveCluster;

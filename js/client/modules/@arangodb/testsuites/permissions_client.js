@@ -32,6 +32,7 @@ const yaml = require('js-yaml');
 
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const trs = require('@arangodb/testutils/testrunners');
 
 const toArgv = require('internal').toArgv;
 const executeScript = require('internal').executeScript;
@@ -56,7 +57,7 @@ const optionsDocumentation = [
 const testPaths = {
   'permissions': [tu.pathForTesting('client/permissions')]
 };
-class permissionsRunner extends tu.runInArangoshRunner {
+class permissionsRunner extends trs.runInArangoshRunner {
   constructor(options, testname, ...optionalArgs) {
     super(options, testname, ...optionalArgs);
     this.info = "runImport";

@@ -321,8 +321,6 @@ exports.testClientJwtAuthInfo = testClientJwtAuthInfo;
 
 exports.makePathUnix = makePathUnix;
 exports.makePathGeneric = makePathGeneric;
-exports.readTestResult = readTestResult;
-exports.writeTestResult = writeTestResult;
 exports.filterTestcaseByOptions = filterTestcaseByOptions;
 exports.splitBuckets = splitBuckets;
 exports.doOnePathInner = doOnePathInner;

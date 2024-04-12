@@ -39,6 +39,7 @@ const fs = require('fs');
 const internal = require('internal');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const trs = require('@arangodb/testutils/testrunners');
 const inst = require('@arangodb/testutils/instance');
 const im = require('@arangodb/testutils/instance-manager');
 const crashUtils = require('@arangodb/testutils/crash-utils');
@@ -57,7 +58,7 @@ const testPaths = {
   'endpoints': [tu.pathForTesting('client/endpoint-spec.js')]
 };
 
-class endpointRunner extends tu.runInArangoshRunner {
+class endpointRunner extends trs.runInArangoshRunner {
   constructor(options, testname, ...optionalArgs) {
     super(options, testname, ...optionalArgs);
     

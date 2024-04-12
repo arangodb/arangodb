@@ -33,6 +33,7 @@ const optionsDocumentation = [];
 
 const _ = require('lodash');
 const tu = require('@arangodb/testutils/test-utils');
+const trs = require('@arangodb/testutils/testrunners');
 
 const testPaths = {
   'communication': [ tu.pathForTesting('client/communication') ],
@@ -42,7 +43,7 @@ function communication (options) {
   let testCases = tu.scanTestPaths(testPaths.communication, options);
   testCases = tu.splitBuckets(options, testCases);
 
-  return new tu.runLocalInArangoshRunner(options, 'communication', {}).run(testCases);
+  return new trs.runLocalInArangoshRunner(options, 'communication', {}).run(testCases);
 }
 
 function communicationSsl (options) {
@@ -54,7 +55,7 @@ function communicationSsl (options) {
   let testCases = tu.scanTestPaths(testPaths.communication, options);
   testCases = tu.splitBuckets(options, testCases);
 
-  return new tu.runLocalInArangoshRunner(opts, 'communication-ssl', {}).run(testCases);
+  return new trs.runLocalInArangoshRunner(opts, 'communication-ssl', {}).run(testCases);
 }
 
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {

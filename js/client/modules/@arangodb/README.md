@@ -26,6 +26,7 @@ All the code structure and the test infrastructure works in a way
 | `testutils/instance-manager.js`                              | manage a full installation, be it cluster or single server consisting of one or several `instance.js`es.    |
 | `testutils/instance.js`                                      | manage one arangod process - to be used via the `instance-manager.js`                                       |
 | `testutils/testrunner.js`                                    | base class to manage the lifecycle of one testsuite.                                                        |
+| `testutils/testrunners.js`                                   | various derived classes of the lifecycle managager of `testrunne.js`.                                       |
 | `testutils/clusterstats.js`                                  | can be launched separately to monitor the cluster instances and their resource usage                        |
 | `testsuites/`                                                | modules with testframework that control one set of tests each utilizing the `testrunner.js`.                |
 | `testsuites/dump.js`                                         | complex infrastructure managing several instance lifecycles during serveral dump/restore/hotbackup attempts |
