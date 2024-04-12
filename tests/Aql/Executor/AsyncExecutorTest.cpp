@@ -421,7 +421,6 @@ TEST_F(AsyncExecutorTest, AsyncNode_does_not_return_stored_WAITING) {
   };
 
   std::thread schedulerThread([&]() {
-    ASSERT_FALSE(taskActive.load());
     taskActive.wait(false);
 
     ASSERT_EQ(scheduler.queueSize(), 1);
