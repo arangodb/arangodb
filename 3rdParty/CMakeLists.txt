@@ -161,6 +161,10 @@ set(ICU_FOUND TRUE)
 set(ICU_INCLUDE_DIR ${ICU64_INCLUDE_DIR})
 set(ICU_LIBRARY_DIR ${ICU64_LIBRARY_DIR})
 set(ICU_STATIC_LIBS ${ICU64_LIBS})
+# add necessary defines for ICU. this will suffix all included ICU functions
+# and the ICU namespace with _64_64
+add_definitions("-DU_HAVE_LIB_SUFFIX=1")
+add_definitions("-DU_LIB_SUFFIX_C_NAME=_64")
 
 add_library(boost-static IMPORTED STATIC)
 set_target_properties(boost-static PROPERTIES
