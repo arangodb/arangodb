@@ -541,9 +541,9 @@ class testRunner {
 
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief hook to replace with your way to invoke one test; existing overloads:
-  //   - tu.runOnArangodRunner - spawn the test on the arangod / coordinator via .js
-  //   - tu.runInArangoshRunner - spawn an arangosh to launch the test in
-  //   - tu.runLocalInArangoshRunner - eval the test into the current arangosh
+  //   - trs.runOnArangodRunner - spawn the test on the arangod / coordinator via .js
+  //   - trs.runInArangoshRunner - spawn an arangosh to launch the test in
+  //   - trs.runLocalInArangoshRunner - eval the test into the current arangosh
   // //////////////////////////////////////////////////////////////////////////////
   runOneTest(testCase) {
     throw new Error("must overload the runOneTest function!");
