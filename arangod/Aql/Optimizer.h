@@ -137,7 +137,7 @@ class Optimizer {
     return std::move(res.first);
   }
 
-  bool runOnlyRequiredRules(size_t extraPlans) const;
+  bool runOnlyRequiredRules() const noexcept;
 
   /// @brief numberOfPlans, returns the current number of plans in the system
   /// this should be called from rules, it will consider those that the
