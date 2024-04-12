@@ -171,8 +171,6 @@ set_target_properties(boost-static PROPERTIES
 # explicitly set since suppressing Boost search
 set(Boost_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/boost/${BOOST_VERSION}")
 
-#set(ICU_FOUND TRUE) # ICU built from source in 3rdParty directory
-
 if(NOT PERL_FOUND)
   set(PERL_FOUND TRUE) # suppress error for Perl not-found
 

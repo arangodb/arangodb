@@ -58,18 +58,18 @@
 using namespace arangodb::basics;
 using namespace icu_64_64;
 
-Utf8Helper Utf8Helper::DefaultUtf8Helper(nullptr);
+Utf8Helper Utf8Helper::DefaultUtf8Helper;
 
-Utf8Helper::Utf8Helper(std::string const& lang, void* icuDataPtr)
-    : _coll(nullptr) {
-  setCollatorLanguage(lang, LanguageType::DEFAULT, icuDataPtr);
+Utf8Helper::Utf8Helper(std::string const& lang) {
+  setCollatorLanguage(lang, LanguageType::DEFAULT);
 }
 
-Utf8Helper::Utf8Helper(void* icuDataPtr) : Utf8Helper("", icuDataPtr) {}
+Utf8Helper::Utf8Helper() : Utf8Helper("") {}
 
 Utf8Helper::~Utf8Helper() {
   if (_coll) {
-    delete _coll;
+    // reset() must happen before u_cleanup() is called
+    _coll.reset();
     if (this == &DefaultUtf8Helper) {
       u_cleanup_64_64();
     }
@@ -112,21 +112,8 @@ int Utf8Helper::compareUtf16(uint16_t const* left, size_t leftLength,
 }
 
 bool Utf8Helper::setCollatorLanguage(std::string_view lang,
-                                     LanguageType langType,
-                                     void* icuDataPointer) {
-  if (icuDataPointer == nullptr) {
-    return false;
-  }
-
+                                     LanguageType langType) {
   UErrorCode status = U_ZERO_ERROR;
-  udata_setCommonData_64_64(reinterpret_cast<void*>(icuDataPointer), &status);
-  if (U_FAILURE(status)) {
-    LOG_TOPIC("2d56a", ERR, arangodb::Logger::FIXME)
-        << "error while udata_setCommonData(...): "
-        << u_errorName_64_64(status);
-    return false;
-  }
-  status = U_ZERO_ERROR;
 
   if (_coll) {
     ULocDataLocaleType type = ULOC_ACTUAL_LOCALE;
@@ -142,19 +129,19 @@ bool Utf8Helper::setCollatorLanguage(std::string_view lang,
     }
   }
 
-  icu_64_64::Collator* coll;
+  std::unique_ptr<icu_64_64::Collator> coll;
   if (lang == "") {
     // get default locale for empty language
-    coll = icu_64_64::Collator::createInstance(status);
+    coll.reset(icu_64_64::Collator::createInstance(status));
   } else {
     icu_64_64::Locale canonicalLocale =
         icu_64_64::Locale::createCanonical(std::string(lang).c_str());
     if (LanguageType::DEFAULT == langType) {
       icu_64_64::Locale defaultLocale{canonicalLocale.getLanguage(),
                                       canonicalLocale.getCountry()};
-      coll = icu_64_64::Collator::createInstance(defaultLocale, status);
+      coll.reset(icu_64_64::Collator::createInstance(defaultLocale, status));
     } else {
-      coll = icu_64_64::Collator::createInstance(canonicalLocale, status);
+      coll.reset(icu_64_64::Collator::createInstance(canonicalLocale, status));
     }
   }
 
@@ -162,9 +149,6 @@ bool Utf8Helper::setCollatorLanguage(std::string_view lang,
     LOG_TOPIC("d0e00", ERR, arangodb::Logger::FIXME)
         << "error in Collator::createInstance('" << lang
         << "'): " << u_errorName_64_64(status);
-    if (coll) {
-      delete coll;
-    }
     return false;
   }
 
@@ -180,16 +164,11 @@ bool Utf8Helper::setCollatorLanguage(std::string_view lang,
       LOG_TOPIC("f0757", ERR, arangodb::Logger::FIXME)
           << "error in Collator::setAttribute(...): "
           << u_errorName_64_64(status);
-      delete coll;
       return false;
     }
   }
 
-  if (_coll) {
-    delete _coll;
-  }
-
-  _coll = coll;
+  _coll = std::move(coll);
   return true;
 }
 
@@ -211,9 +190,11 @@ std::string Utf8Helper::getCollatorLanguage() {
 }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-icu_64_64::Collator* Utf8Helper::getCollator() const { return _coll; }
+icu_64_64::Collator* Utf8Helper::getCollator() const { return _coll.get(); }
 
-void Utf8Helper::setCollator(icu_64_64::Collator* coll) { _coll = coll; }
+void Utf8Helper::setCollator(std::unique_ptr<icu_64_64::Collator> coll) {
+  _coll = std::move(coll);
+}
 #endif
 
 std::string Utf8Helper::getCollatorCountry() {

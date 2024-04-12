@@ -46,20 +46,18 @@ class Utf8Helper {
  public:
   static Utf8Helper DefaultUtf8Helper;
 
- public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief constructor
   /// @param lang   Lowercase two-letter or three-letter ISO-639 code.
   ///     This parameter can instead be an ICU style C locale (e.g. "en_US")
   //////////////////////////////////////////////////////////////////////////////
 
-  Utf8Helper(std::string const& lang, void* icuDataPtr);
+  explicit Utf8Helper(std::string const& lang);
 
-  explicit Utf8Helper(void* icuDataPtr);
+  Utf8Helper();
 
   ~Utf8Helper();
 
- public:
   //////////////////////////////////////////////////////////////////////////////
   ///  public functions
   //////////////////////////////////////////////////////////////////////////////
@@ -93,8 +91,8 @@ class Utf8Helper {
   /// collation
   //////////////////////////////////////////////////////////////////////////////
 
-  bool setCollatorLanguage(std::string_view lang, LanguageType langType,
-                           void* icuDataPointer);
+  bool setCollatorLanguage(std::string_view lang, LanguageType langType /*,
+                           void* icuDataPointer*/);
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   //////////////////////////////////////////////////////////////////////////////
@@ -107,7 +105,7 @@ class Utf8Helper {
   /// @brief set collator
   //////////////////////////////////////////////////////////////////////////////
 
-  void setCollator(icu_64_64::Collator* coll);
+  void setCollator(std::unique_ptr<icu_64_64::Collator> coll);
 #endif
 
   //////////////////////////////////////////////////////////////////////////////
@@ -192,7 +190,7 @@ class Utf8Helper {
   }
 
  private:
-  icu_64_64::Collator* _coll;
+  std::unique_ptr<icu_64_64::Collator> _coll;
 };
 
 }  // namespace arangodb::basics
