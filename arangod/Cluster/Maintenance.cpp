@@ -666,7 +666,6 @@ VPackBuilder getShardMap(VPackSlice const& collections) {
 std::set<ShardID> extractShardsFromCollection(VPackSlice collection) {
   auto shards = collection.get(SHARDS);
   if (!shards.isObject()) {
-    TRI_ASSERT(false) << collection.toJson();
     return {};
   }
 
@@ -675,21 +674,19 @@ std::set<ShardID> extractShardsFromCollection(VPackSlice collection) {
     result.insert(ShardID::shardIdFromString(shard.key.stringView()).get());
   }
 
-  TRI_ASSERT(!result.empty()) << collection.toJson();
   return result;
 }
 
 std::tuple<DistributeShardsLikeMapping, ClonePrototypeMapping>
 getDistributeShardsLike(VPackSlice collections) {
+  if (!collections.isObject()) {
+    return {};
+  }
   DistributeShardsLikeMapping mapping;
   ClonePrototypeMapping reverseMapping;
 
   // maps a collection to the sorted set of shards
   std::unordered_map<std::string_view, std::set<ShardID>> prototypeShards;
-
-  if (!collections.isObject()) {
-    return {};
-  }
 
   for (auto collection : VPackObjectIterator(collections)) {
     TRI_ASSERT(collection.value.isObject());
@@ -704,6 +701,13 @@ getDistributeShardsLike(VPackSlice collections) {
     if (prototype.empty()) {
       continue;
     }
+
+    auto cloneShards = extractShardsFromCollection(collection.value);
+    if (cloneShards.empty()) {
+      // this is a smart graph collection
+      continue;
+    }
+
     // check if we have collected information about this prototype already
     auto it = prototypeShards.find(prototype);
     if (it == prototypeShards.end()) {
@@ -719,7 +723,6 @@ getDistributeShardsLike(VPackSlice collections) {
 
     // now zip both shard sets in sorted order and map the prototype shards
     // to the clone shards
-    auto cloneShards = extractShardsFromCollection(collection.value);
 
     auto iterA = it->second.begin();
     auto iterB = cloneShards.begin();
