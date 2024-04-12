@@ -1328,7 +1328,7 @@ function createSatelliteCollections() {
  *        Creates a SatelliteGraph
  */
 function createSatelliteGraphs() {
-  if (!isEnterprise) {
+  if (!isEnterprise || (db._properties().sharding === "single")) {
     return;
   }
 
