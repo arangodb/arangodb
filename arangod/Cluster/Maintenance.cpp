@@ -680,7 +680,7 @@ std::set<ShardID> extractShardsFromCollection(VPackSlice collection) {
 }
 
 std::tuple<DistributeShardsLikeMapping, ClonePrototypeMapping>
-getDistributeShardsLike(VPackSlice const& collections) {
+getDistributeShardsLike(VPackSlice collections) {
   DistributeShardsLikeMapping mapping;
   ClonePrototypeMapping reverseMapping;
 
@@ -704,7 +704,7 @@ getDistributeShardsLike(VPackSlice const& collections) {
     if (prototype.empty()) {
       continue;
     }
-    // check is we have collected information about this prototype already
+    // check if we have collected information about this prototype already
     auto it = prototypeShards.find(prototype);
     if (it == prototypeShards.end()) {
       auto prototypeCollection = collections.get(prototype);
