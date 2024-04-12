@@ -47,6 +47,8 @@ ExternalProject_Add(
       --with-library-suffix=64
       --with-data-packaging=static
       --enable-static
+      --disable-samples 
+      --disable-tests
       --disable-dyload
       --disable-shared
   BUILD_COMMAND
