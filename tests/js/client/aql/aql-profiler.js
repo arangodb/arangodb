@@ -705,7 +705,7 @@ function ahuacatlProfilerTestSuite () {
     testSortedCollectBlock1 : function () {
       const query = 'FOR i IN 1..@rows ' +
         'SORT i ' +
-        'COLLECT x = i ' +
+        'COLLECT x = i OPTIONS {method: "sorted"} ' +
         'RETURN x';
       const genNodeList = (rows, batches) => {
 
