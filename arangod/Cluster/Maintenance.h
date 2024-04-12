@@ -88,6 +88,12 @@ using ShardIdToLogIdMap =
 using ShardIdToLogIdMapByDatabase =
     std::unordered_map<DatabaseID, ShardIdToLogIdMap>;
 
+// maps the prototype shard to the clones
+using DistributeShardsLikeMapping =
+    std::unordered_map<ShardID, std::unordered_set<ShardID>>;
+// maps clone shards to their prototype shard
+using ClonePrototypeMapping = std::unordered_map<ShardID, ShardID>;
+
 /**
  * @brief          Diff Plan Replicated Logs and Local Replicated Logs for phase
  * 1 of Maintenance run

@@ -512,7 +512,9 @@ static void handleLocalShard(
     MaintenanceFeature::ShardActionMap const& shardActionMap,
     replication::Version replicationVersion,
     std::optional<ReplicatedLogStatusMap> const& localLogs,
-    std::optional<ShardIdToLogIdMap> const& shardsToLogs) {
+    std::optional<ShardIdToLogIdMap> const& shardsToLogs,
+    DistributeShardsLikeMapping const& distributeShardsLike,
+    ClonePrototypeMapping const& clonePrototypeMapping) {
   // First check if the shard is locked:
   auto iter = shardActionMap.find(shname);
   if (iter != shardActionMap.end()) {
@@ -574,15 +576,27 @@ static void handleLocalShard(
 
   if (replicationVersion != replication::Version::TWO &&
       (activeResign || adjustResignState)) {
-    description = std::make_shared<ActionDescription>(
-        std::map<std::string, std::string>{{NAME, RESIGN_SHARD_LEADERSHIP},
-                                           {DATABASE, dbname},
-                                           {SHARD, shname},
-                                           {CLONES, ""}},
-        RESIGN_PRIORITY, true);
-    makeDirty.insert(dbname);
-    callNotify = true;
-    actions.emplace_back(description);
+    // only handle prototypes
+    if (clonePrototypeMapping.find(shname) == clonePrototypeMapping.end()) {
+      auto clones = [&] {
+        auto myClones = distributeShardsLike.find(shname);
+        if (myClones != distributeShardsLike.end()) {
+          return basics::StringUtils::join(myClones->second);
+        }
+
+        return std::string{};
+      }();
+
+      description = std::make_shared<ActionDescription>(
+          std::map<std::string, std::string>{{NAME, RESIGN_SHARD_LEADERSHIP},
+                                             {DATABASE, dbname},
+                                             {SHARD, shname},
+                                             {CLONES, clones}},
+          RESIGN_PRIORITY, true);
+      makeDirty.insert(dbname);
+      callNotify = true;
+      actions.emplace_back(description);
+    }
   }
 
   // We only drop indexes, when collection is not being dropped already
@@ -647,6 +661,77 @@ VPackBuilder getShardMap(VPackSlice const& collections) {
     }
   }
   return shardMap;
+}
+
+std::set<ShardID> extractShardsFromCollection(VPackSlice collection) {
+  auto shards = collection.get(SHARDS);
+  if (!shards.isObject()) {
+    return {};
+  }
+
+  std::set<ShardID> result;
+  for (auto shard : VPackObjectIterator(collection.get(SHARDS))) {
+    result.insert(ShardID::shardIdFromString(shard.key.stringView()).get());
+  }
+  return result;
+}
+
+std::tuple<DistributeShardsLikeMapping, ClonePrototypeMapping>
+getDistributeShardsLike(VPackSlice const& collections) {
+  DistributeShardsLikeMapping mapping;
+  ClonePrototypeMapping reverseMapping;
+
+  // maps a collection to the sorted set of shards
+  std::unordered_map<std::string_view, std::set<ShardID>> prototypeShards;
+
+  if (!collections.isObject()) {
+    return {};
+  }
+
+  for (auto collection : VPackObjectIterator(collections)) {
+    TRI_ASSERT(collection.value.isObject());
+
+    auto prototype = [&] {
+      if (auto s = collection.value.get("distributeShardsLike"); s.isString()) {
+        return s.stringView();
+      }
+      return std::string_view{};
+    }();
+
+    if (prototype.empty()) {
+      continue;
+    }
+    // check is we have collected information about this prototype already
+    auto it = prototypeShards.find(prototype);
+    if (it == prototypeShards.end()) {
+      auto protoCol = collections.get(prototype);
+      TRI_ASSERT(protoCol.isObject()) << prototype << " " << protoCol.toJson();
+
+      bool inserted;
+      std::tie(it, inserted) = prototypeShards.emplace(
+          prototype, extractShardsFromCollection(protoCol));
+      TRI_ASSERT(inserted);
+    }
+
+    // now zip both shard sets in sorted order and map the prototype shards
+    // to the clone shards
+    auto cloneShards = extractShardsFromCollection(collection.value);
+
+    auto iterA = it->second.begin();
+    auto iterB = cloneShards.begin();
+
+    while (iterA != it->second.end()) {
+      TRI_ASSERT(iterB != cloneShards.end());
+      mapping[*iterA].insert(*iterB);
+      reverseMapping.emplace(*iterB, *iterA);
+      ++iterA;
+      ++iterB;
+    }
+    // prototype and clone have the same number of shards
+    TRI_ASSERT(iterB == cloneShards.end());
+  }
+
+  return std::make_pair(std::move(mapping), std::move(reverseMapping));
 }
 
 void arangodb::maintenance::diffReplicatedLogs(
@@ -1055,8 +1140,10 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
           continue;
         }
 
+        auto const shardMap = getShardMap(plan);  // plan shards -> servers
+        auto const [distributeShardsLikeMap, clonePrototypeMap] =
+            getDistributeShardsLike(plan);
         for (auto const& lcol : VPackObjectIterator(ldbslice)) {
-          auto const shardMap = getShardMap(plan);  // plan shards -> servers
           auto maybeShardID = ShardID::shardIdFromString(lcol.key.stringView());
           if (ADB_UNLIKELY(maybeShardID.fail())) {
             TRI_ASSERT(false)
@@ -1067,7 +1154,8 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
           handleLocalShard(ldbname, maybeShardID.get(), lcol.value,
                            shardMap.slice(), commonShrds, indis, serverId,
                            actions, makeDirty, callNotify, shardActionMap, rv,
-                           localLogs, shardsToLogs);
+                           localLogs, shardsToLogs, distributeShardsLikeMap,
+                           clonePrototypeMap);
         }
       }
     }

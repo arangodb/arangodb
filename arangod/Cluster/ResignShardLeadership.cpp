@@ -97,18 +97,7 @@ bool ResignShardLeadership::first() {
     DatabaseGuard guard(df, database);
     auto vocbase = &guard.database();
 
-    auto col = vocbase->lookupCollection(collection);
-    if (col == nullptr) {
-      std::stringstream error;
-      error << "Failed to lookup local collection " << collection
-            << " in database " << database;
-      LOG_TOPIC("e06ca", ERR, Logger::MAINTENANCE)
-          << "ResignLeadership: " << error.str();
-      result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
-      return false;
-    }
-
-    // Get exclusive lock on collection
+    // Get exclusive lock on all shards
     auto origin = transaction::OperationOriginInternal{"resigning leadership"};
     auto ctx =
         std::make_shared<transaction::StandaloneContext>(*vocbase, origin);
@@ -130,15 +119,31 @@ bool ResignShardLeadership::first() {
     // for now but we will not accept any replication operation from any
     // leader, until we have negotiated a deal with it. Then the actual
     // name of the leader will be set.
-    col->followers()->setTheLeader(LeaderNotYetKnownString);  // resign
-    res = methods->abort();                                   // unlock
+    for (auto const& s : shards) {
+      auto col = vocbase->lookupCollection(s);
+      if (col == nullptr) {
+        std::stringstream error;
+        error << "Failed to lookup local collection " << collection
+              << " in database " << database;
+        LOG_TOPIC("e06ca", ERR, Logger::MAINTENANCE)
+            << "ResignLeadership: " << error.str();
+        result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, error.str());
+        return false;
+      }
+
+      col->followers()->setTheLeader(LeaderNotYetKnownString);  // resign
+    }
+
+    res = methods->abort();  // unlock
     if (res.fail()) {
       LOG_TOPIC("10c35", ERR, Logger::MAINTENANCE)
           << "Failed to abort transaction during resign leadership: " << res;
     }
 
-    transaction::cluster::abortLeaderTransactionsOnShard(col->id());
-
+    for (auto const& s : shards) {
+      auto col = vocbase->lookupCollection(s);
+      transaction::cluster::abortLeaderTransactionsOnShard(col->id());
+    }
   } catch (std::exception const& e) {
     std::stringstream error;
     error << "exception thrown when resigning:" << e.what();
