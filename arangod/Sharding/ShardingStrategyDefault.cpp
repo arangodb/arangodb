@@ -28,6 +28,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/hashes.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Sharding/ShardingInfo.h"
 #include "VocBase/LogicalCollection.h"

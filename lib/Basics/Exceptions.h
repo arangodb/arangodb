@@ -72,27 +72,18 @@ class Exception : public virtual std::exception {
  public:
   // primary constructor
   Exception(ErrorCode code, std::string&& errorMessage,
-            SourceLocation location) noexcept;
+            SourceLocation location = SourceLocation::current()) noexcept;
 
   // convenience constructors
-  Exception(ErrorCode code, SourceLocation location);
-  Exception(Result const&, SourceLocation location);
-  Exception(Result&&, SourceLocation location) noexcept;
+  Exception(ErrorCode code,
+            SourceLocation location = SourceLocation::current());
+  Exception(Result const&, SourceLocation location = SourceLocation::current());
+  Exception(Result&&,
+            SourceLocation location = SourceLocation::current()) noexcept;
   Exception(ErrorCode code, std::string_view errorMessage,
-            SourceLocation location);
-  Exception(ErrorCode code, char const* errorMessage, SourceLocation location);
-
-  // I think we should get rid of the following (char*,int) versions as opposed
-  // to the SourceLocation ones, to keep it a little clearer.
-  Exception(ErrorCode code, char const* file, int line);
-  Exception(Result const&, char const* file, int line);
-  Exception(Result&&, char const* file, int line) noexcept;
-  Exception(ErrorCode code, std::string_view errorMessage, char const* file,
-            int line);
-  Exception(ErrorCode code, std::string&& errorMessage, char const* file,
-            int line) noexcept;
-  Exception(ErrorCode code, char const* errorMessage, char const* file,
-            int line);
+            SourceLocation location = SourceLocation::current());
+  Exception(ErrorCode code, char const* errorMessage,
+            SourceLocation location = SourceLocation::current());
 
   ~Exception() override = default;
   Exception(Exception const&) = default;

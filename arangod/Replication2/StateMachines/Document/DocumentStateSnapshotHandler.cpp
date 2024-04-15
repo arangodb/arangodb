@@ -63,7 +63,7 @@ auto DocumentStateSnapshotHandler::create(
     auto& guardRef = emplacement.first->second;
     guardRef.cbGuard = _rebootTracker.callMeOnChange(
         PeerState{params.serverId, params.rebootId},
-        [id, params, weak = weak_from_this()]() {
+        [id, weak = weak_from_this()]() {
           if (auto self = weak.lock(); self != nullptr) {
             self->abort(id);
           }

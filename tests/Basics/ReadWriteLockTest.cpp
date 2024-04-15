@@ -707,3 +707,115 @@ TEST(ReadWriteLockTest, readerOverflow) {
   ASSERT_FALSE(lock.tryLockWrite())
       << "tryLockWrite succeeded even though we have active readers";
 }
+
+TEST(ReadWriteLockTest, stringifyLockState) {
+  auto waitUntil = [](ReadWriteLock& lock, std::string_view expected) {
+    int iterations = 0;
+    std::string state;
+    while (++iterations < 500) {
+      state = lock.stringifyLockState();
+      if (state.find(expected) != std::string::npos) {
+        break;
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+    return state;
+  };
+
+  {
+    ReadWriteLock lock;
+    auto state = lock.stringifyLockState();
+    ASSERT_EQ(state, "0 active reader(s), 0 queued writer(s)");
+  }
+
+  {
+    ReadWriteLock lock;
+    lock.lockRead();
+    auto state = lock.stringifyLockState();
+    ASSERT_EQ(state, "1 active reader(s), 0 queued writer(s)");
+
+    lock.lockRead();
+    state = lock.stringifyLockState();
+    ASSERT_EQ(state, "2 active reader(s), 0 queued writer(s)");
+
+    lock.lockRead();
+    state = lock.stringifyLockState();
+    ASSERT_EQ(state, "3 active reader(s), 0 queued writer(s)");
+
+    lock.unlockRead();
+
+    state = lock.stringifyLockState();
+    ASSERT_EQ(state, "2 active reader(s), 0 queued writer(s)");
+  }
+
+  {
+    ReadWriteLock lock;
+    lock.lockWrite();
+    auto state = lock.stringifyLockState();
+    ASSERT_EQ(state, "0 active reader(s), 0 queued writer(s), write-locked");
+  }
+
+  {
+    ReadWriteLock lock;
+    lock.lockWrite();
+    auto state = lock.stringifyLockState();
+    ASSERT_EQ(state, "0 active reader(s), 0 queued writer(s), write-locked");
+  }
+
+  {
+    SCOPED_TRACE("reader blocks writer");
+
+    ReadWriteLock lock;
+    lock.lockRead();
+
+    std::jthread background{[&lock]() {
+      // this will block until we release the read-lock
+      lock.lockWrite();
+    }};
+
+    auto state = waitUntil(lock, "1 queued writer(s)");
+    ASSERT_EQ(state, "1 active reader(s), 1 queued writer(s)");
+    lock.unlockRead();
+
+    state = waitUntil(lock, "write-locked");
+    ASSERT_EQ(state, "0 active reader(s), 0 queued writer(s), write-locked");
+  }
+
+  {
+    SCOPED_TRACE("writer blocks reader");
+
+    ReadWriteLock lock;
+    lock.lockWrite();
+
+    std::jthread background{[&lock]() {
+      // this will block until we release the write-lock
+      lock.lockRead();
+    }};
+
+    auto state = lock.stringifyLockState();
+    ASSERT_EQ(state, "0 active reader(s), 0 queued writer(s), write-locked");
+    lock.unlockWrite();
+
+    state = waitUntil(lock, "1 active reader(s)");
+    ASSERT_EQ(state, "1 active reader(s), 0 queued writer(s)");
+  }
+
+  {
+    SCOPED_TRACE("writer blocks writer");
+
+    ReadWriteLock lock;
+    lock.lockWrite();
+
+    std::jthread background{[&lock]() {
+      // this will block until we release the write-lock
+      lock.lockWrite();
+    }};
+
+    auto state = waitUntil(lock, "1 queued writer(s)");
+    ASSERT_EQ(state, "0 active reader(s), 1 queued writer(s), write-locked");
+    lock.unlockWrite();
+
+    state = waitUntil(lock, "0 queued writer(s)");
+    ASSERT_EQ(state, "0 active reader(s), 0 queued writer(s), write-locked");
+  }
+}

@@ -136,23 +136,13 @@ class RebootTrackerTest
     : public ::testing::Test,
       public LogSuppressor<Logger::CLUSTER, LogLevel::WARN> {
  protected:
-// MSVC new/malloc only guarantees 8 byte alignment, but SupervisedScheduler
-// needs 64. Disable warning:
-#if (_MSC_VER >= 1)
-#pragma warning(push)
-#pragma warning(disable : 4316)  // Object allocated on the heap may not be
-                                 // aligned for this type
-#endif
   RebootTrackerTest()
       : mockApplicationServer(),
         scheduler(std::make_unique<SupervisedScheduler>(
             mockApplicationServer.server(), 2, 64, 128, 1024 * 1024, 4096, 4096,
-            128, 0.0, 42,
+            128, 0.0,
             mockApplicationServer.server()
                 .template getFeature<arangodb::metrics::MetricsFeature>())) {}
-#if (_MSC_VER >= 1)
-#pragma warning(pop)
-#endif
 
   MockRestServer mockApplicationServer;
   std::unique_ptr<SupervisedScheduler> scheduler;

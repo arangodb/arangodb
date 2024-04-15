@@ -25,12 +25,14 @@
 
 #include "Sharding/ShardingStrategy.h"
 
-#include <velocypack/Slice.h>
-
+#include <atomic>
 #include <span>
 #include <mutex>
 
 namespace arangodb {
+namespace velocypack {
+class Slice;
+}
 class ShardingInfo;
 
 /// @brief a sharding implementation that will always fail when asking
