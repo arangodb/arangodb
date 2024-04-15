@@ -28,8 +28,6 @@
 const functionsDocumentation = {
   'recovery_server': 'run recovery server tests'
 };
-const optionsDocumentation = [
-];
 
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
@@ -319,6 +317,5 @@ function recovery_server (options) {
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['recovery_server'] = recovery_server;
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };

@@ -31,8 +31,6 @@ const functionsDocumentation = {
   'BackupAuthSysTests':     'complete backup tests with    authentication, with    system collections',
   'BackupAuthNoSysTests':   'complete backup tests with    authentication, without system collections'
 };
-const optionsDocumentation = [
-];
 const fs = require('fs');
 const _ = require('lodash');
 const pu = require('@arangodb/testutils/process-utils');
@@ -293,6 +291,5 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   testFns['BackupAuthSysTests'] = BackupAuthSysTests;
   testFns['BackupAuthNoSysTests'] = BackupAuthNoSysTests;
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };

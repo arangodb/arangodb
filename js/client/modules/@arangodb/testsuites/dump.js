@@ -42,10 +42,6 @@ const functionsDocumentation = {
   'hot_backup': 'hotbackup tests'
 };
 
-const optionsDocumentation = [
-  '   - `skipEncrypted` : if set to true the encryption tests are skipped'
-];
-
 const pu = require('@arangodb/testutils/process-utils');
 const ct = require('@arangodb/testutils/client-tools');
 const tu = require('@arangodb/testutils/test-utils');
@@ -1264,6 +1260,5 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   testFns['dump_non_parallel'] = dumpNonParallel;
   testFns['hot_backup'] = hotBackup;
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };

@@ -28,8 +28,6 @@
 const functionsDocumentation = {
   'agency-restart': 'run recovery tests'
 };
-const optionsDocumentation = [
-];
 
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
@@ -204,6 +202,5 @@ function agencyRestart (options) {
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['agency-restart'] = agencyRestart;
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };

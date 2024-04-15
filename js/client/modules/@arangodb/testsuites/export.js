@@ -28,7 +28,6 @@
 const functionsDocumentation = {
   'export': 'export formats tests'
 };
-const optionsDocumentation = [];
 
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
@@ -709,6 +708,5 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['export'] = exportTest;
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };

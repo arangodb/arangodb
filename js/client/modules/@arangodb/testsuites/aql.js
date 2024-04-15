@@ -205,29 +205,19 @@ function shellServerOnly (options) {
 function shellClientAql (options) {
   let testCases;
   let name = 'shell_client_aql';
-
-  if (!options.skipAql) {
-    testCases = tu.scanTestPaths(testPaths.shell_client_aql, options);
-    if (options.skipRanges) {
-      testCases = _.filter(testCases,
-                           function (p) { return p.indexOf('ranges-combined') === -1; });
-      name = 'shell_client_aql_skipranges';
-    }
-
-    testCases = tu.splitBuckets(options, testCases);
-
-    let opts = ensureServers(options, 3);
-    let rc = new trs.runLocalInArangoshRunner(opts, name, {}).run(testCases);
-    options.cleanup = options.cleanup && opts.cleanup;
-    return rc;
+  testCases = tu.scanTestPaths(testPaths.shell_client_aql, options);
+  if (options.skipRanges) {
+    testCases = _.filter(testCases,
+                         function (p) { return p.indexOf('ranges-combined') === -1; });
+    name = 'shell_client_aql_skipranges';
   }
 
-  return {
-    shell_client_aql: {
-      status: true,
-      skipped: true
-    }
-  };
+  testCases = tu.splitBuckets(options, testCases);
+
+  let opts = ensureServers(options, 3);
+  let rc = new trs.runLocalInArangoshRunner(opts, name, {}).run(testCases);
+  options.cleanup = options.cleanup && opts.cleanup;
+  return rc;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -307,6 +297,6 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   opts['skipAql'] = false;
   opts['skipRanges'] = true;
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
+  tu.CopyIntoList(optionsDoc, optionsDocumentation);
 };

@@ -29,9 +29,6 @@ const functionsDocumentation = {
   'authentication': 'authentication tests',
   'authentication_parameters': 'authentication parameters tests'
 };
-const optionsDocumentation = [
-  '   - `skipAuthentication : testing authentication and authentication_paramaters will be skipped.'
-];
 
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
@@ -59,16 +56,6 @@ const testPaths = {
 // //////////////////////////////////////////////////////////////////////////////
 
 function authenticationClient (options) {
-  if (options.skipAuthentication === true) {
-    print('skipping Authentication tests!');
-    return {
-      authentication: {
-        status: true,
-        skipped: true
-      }
-    };
-  }
-
   print(CYAN + 'Client Authentication tests...' + RESET);
   let testCases = tu.scanTestPaths(testPaths.authentication, options);
 
@@ -125,16 +112,6 @@ function checkBodyForJsonToParse (request) {
 }
 
 function authenticationParameters (options) {
-  if (options.skipAuthentication === true) {
-    print(CYAN + 'skipping Authentication with parameters tests!' + RESET);
-    return {
-      authentication_parameters: {
-        status: true,
-        skipped: true
-      }
-    };
-  }
-
   if (options.cluster) {
     print('skipping Authentication with parameters tests on cluster!');
     return {
@@ -247,8 +224,5 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   testFns['authentication'] = authenticationClient;
   testFns['authentication_parameters'] = authenticationParameters;
 
-  opts['skipAuthentication'] = false;
-
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };

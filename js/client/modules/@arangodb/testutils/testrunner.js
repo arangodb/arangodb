@@ -801,3 +801,19 @@ class testRunner {
 
 exports.testRunner = testRunner;
 exports.setDidSplitBuckets = function (val) { didSplitBuckets = val; };
+exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
+  tu.CopyIntoObject(optionsDefaults, {
+    'loopEternal': false,
+    'loopSleepSec': 1,
+    'loopSleepWhen': 1,
+    'sleepBeforeShutdown' : 0,
+  });
+  tu.CopyIntoList(optionsDocumentation, [
+    ' Test loop control:',
+    '   - `loopEternal`: to loop one test over and over.',
+    '   - `loopSleepWhen`: sleep every nth iteration',
+    '   - `loopSleepSec`: sleep seconds between iterations',
+    '   - `sleepBeforeShutdown`: let the system rest before terminating it',
+    ''
+  ]);
+};

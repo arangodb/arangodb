@@ -27,6 +27,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require('internal');
+const tu = require('@arangodb/testutils/test-utils');
 const pu = require('@arangodb/testutils/process-utils');
 const fs = require('fs');
 
@@ -506,3 +507,16 @@ exports.run = {
   rtaMakedata: rtaMakedata
 };
 
+exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
+  tu.CopyIntoObject(optionsDefaults, {
+    'rtasource': fs.makeAbsolute(fs.join('.', '3rdParty', 'rta-makedata')),
+    'rtaNegFilter': '',
+  });
+
+  tu.CopyIntoList(optionsDocumentation, [
+    ' Client tools options:',
+    '   - `rtasource`: source directory of rta-makedata if not 3rdparty.',
+    '   - `rtaNegFilter`: inverse logic to --test.',
+    ''
+  ]);
+};

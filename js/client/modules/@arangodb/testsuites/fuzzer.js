@@ -65,7 +65,5 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['shell_fuzzer'] = shellFuzzer;
 
-  for (var attrname in functionsDocumentation) {
-    fnDocs[attrname] = functionsDocumentation[attrname];
-  }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };

@@ -63,6 +63,29 @@ function diffArray (arr1, arr2) {
   });
 }
 
+
+function CopyIntoObject(objectTarget, objectSource) {
+  for (var attrname in objectSource) {
+    if (objectTarget.hasOwnProperty(attrname)) {
+      throw new Error(`'${attrname}' already present with value '${objectTarget[attrname]}' trying to set '${objectSource[attrname]}'`);
+    }
+    objectTarget[attrname] = objectSource[attrname];
+  }
+}
+function CopyIntoList(listTarget, listSource) {
+  for (var i=0; i < listSource.length; i++) {
+    let val = listSource[i].split('`');
+    if (val.length === 3) {
+      listTarget.forEach( line => {
+        if (line.search('`' + val[1] + '`') !== -1) {
+          throw new Error(`This attribute '${val[1]}' is already documented: '${line}' vs. new: '${listSource[i]}'`)
+        }
+      });
+    }
+    listTarget.push(listSource[i]);
+  }
+}
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief build a unix path
 // //////////////////////////////////////////////////////////////////////////////
@@ -327,3 +350,41 @@ exports.doOnePathInner = doOnePathInner;
 exports.scanTestPaths = scanTestPaths;
 exports.diffArray = diffArray;
 exports.pathForTesting = pathForTesting;
+exports.CopyIntoObject = CopyIntoObject;
+exports.CopyIntoList = CopyIntoList;
+exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
+  CopyIntoObject(optionsDefaults, {
+    'skipMemoryIntense': false,
+    'skipNightly': true,
+    'skipNondeterministic': false,
+    'skipGrey': false,
+    'skipN': false,
+    'onlyGrey': false,
+    'onlyNightly': false,
+    'skipTimeCritical': false,
+    'arangosearch':true,
+    'test': undefined,
+    'testCase': undefined,
+    'testBuckets': undefined,
+  });
+
+  CopyIntoList(optionsDocumentation, [
+    ' Testcase filtering:',
+    '   - `skipMemoryIntense`: tests using lots of resources will be skipped.',
+    '   - `skipNightly`: omit the nightly tests',
+    '   - `skipRanges`: if set to true the ranges tests are skipped',
+    '   - `skipTimeCritical`: if set to true, time critical tests will be skipped.',
+    '   - `skipNondeterministic`: if set, nondeterministic tests are skipped.',
+    '   - `skipGrey`: if set, grey tests are skipped.',
+    '   - `skipN`: skip the first N tests of the suite',
+    '   - `onlyGrey`: if set, only grey tests are executed.',
+    '   - `arangosearch`: if set to true enable the ArangoSearch-related tests',
+    '   - `test`: path to single test to execute for "single" test target, ',
+    '             or pattern to filter for other suites',
+    '   - `testCase`: filter a jsunity testsuite for one special test case',
+    '   - `onlyNightly`: execute only the nightly tests',
+    '   - `testBuckets`: split tests in to buckets and execute on, for example',
+    '       10/2 will split into 10 buckets and execute the third bucket.',
+    ''
+  ]);
+};

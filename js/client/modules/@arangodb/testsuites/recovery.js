@@ -29,8 +29,6 @@ const functionsDocumentation = {
   'recovery': 'run recovery tests',
   'recovery_cluster': 'run recovery cluster tests'
 };
-const optionsDocumentation = [
-];
 
 const fs = require('fs');
 const internal = require('internal');
@@ -388,6 +386,5 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['recovery'] = recovery;
   testFns['recovery_cluster'] = recovery_cluster;
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };

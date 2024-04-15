@@ -79,11 +79,5 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns.replication2_client = replication2Client;
   testFns.replication2_server = replication2Server;
-  for (const [key, value] of Object.entries(functionsDocumentation)) {
-    fnDocs[key] = value;
-  }
-
-  for (let i = 0; i < optionsDocumentation.length; i++) {
-    optionsDoc.push(optionsDocumentation[i]);
-  }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };
