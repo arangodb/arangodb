@@ -348,9 +348,10 @@ function OrderTestSuite () {
 
     tearDown: function() {
       db._drop(cn);
+      db._dropView(cn + "View");
     },
 
-    testStringComparisonOrder: function() {
+    testStringComparisonOrderCollection: function() {
       let c = db._create(cn);
       
       const fn = fs.join('.', 'tests', 'js', 'common', 'test-data', 'sorting', 'data.json');
@@ -360,6 +361,37 @@ function OrderTestSuite () {
       c.ensureIndex({ type: "persistent", fields: ["value1", "value2"] });
 
       let actual = db._query(`FOR doc IN ${c.name()} SORT doc.value1, doc.value2 RETURN {value1: doc.value1, value2: doc.value2}`).toArray();
+
+      assertEqual(expected.length, actual.length);
+      for (let i = 0; i < expected.length; ++i) {
+        try {
+          assertEqual(expected[i], actual[i], {i, expected: expected[i], actual: actual[i]});
+        } catch (err) {
+          let s = 'expected: ';
+          for (let j = 0; j < expected[i].value1.length; ++j) {
+            s += expected[i].value1.charCodeAt(j) + ' ';
+          }
+          s += ' actual: ';
+          for (let j = 0; j < actual[i].value1.length; ++j) {
+            s += actual[i].value1.charCodeAt(j) + ' ';
+          }
+          require("console").error(s);
+          throw err;
+        }
+      }
+    },
+
+    testStringComparisonOrderView: function() {
+      let c = db._create(cn);
+      
+      const fn = fs.join('.', 'tests', 'js', 'common', 'test-data', 'sorting', 'data.json');
+      let expected = JSON.parse(fs.readFileSync(fn).toString());
+      c.insert(expected);
+      
+      let v = db._createView(cn + "View", "arangosearch", {primarySort: [{field: "value1", direction: "asc"}, {field: "value2", direction: "asc"}]});
+      v.properties({links: {[cn]: {includeAllFields: true}}});
+
+      let actual = db._query(`FOR doc IN ${v.name()} OPTIONS {waitForSync: true} SORT doc.value1, doc.value2 RETURN {value1: doc.value1, value2: doc.value2}`).toArray();
 
       assertEqual(expected.length, actual.length);
       for (let i = 0; i < expected.length; ++i) {
