@@ -162,6 +162,7 @@ set(ICU_STATIC_LIBS ${ICU64_LIBS})
 add_definitions("-DU_HAVE_LIB_SUFFIX=1")
 add_definitions("-DU_LIB_SUFFIX_C_NAME=_64")
 add_definitions("-DIRESEARCH_ICU_NAMESPACE=icu_64_64")
+set(IRESEARCH_EXTERNAL_DEPENDENCIES "iculegacy_build")
 
 add_library(boost-static IMPORTED STATIC)
 set_target_properties(boost-static PROPERTIES
@@ -221,6 +222,7 @@ endforeach()
 add_subdirectory("${IRESEARCH_ROOT}" "${IRESEARCH_BUILD_DIR}")
 
 target_compile_definitions(iresearch-static PRIVATE -DDISABLE_EXECINFO)
+add_dependencies(iresearch-static iculegacy_build)
 
 ################################################################################
 ## ROCKSDB
