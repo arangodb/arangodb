@@ -78,7 +78,7 @@ function CopyIntoList(listTarget, listSource) {
     if (val.length === 3) {
       listTarget.forEach( line => {
         if (line.search('`' + val[1] + '`') !== -1) {
-          throw new Error(`This attribute '${val[1]}' is already documented: '${line}' vs. new: '${listSource[i]}'`)
+          throw new Error(`This attribute '${val[1]}' is already documented: '${line}' vs. new: '${listSource[i]}'`);
         }
       });
     }
