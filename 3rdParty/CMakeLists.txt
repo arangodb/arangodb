@@ -222,7 +222,6 @@ endforeach()
 add_subdirectory("${IRESEARCH_ROOT}" "${IRESEARCH_BUILD_DIR}")
 
 target_compile_definitions(iresearch-static PRIVATE -DDISABLE_EXECINFO)
-add_dependencies(iresearch-static iculegacy_build)
 
 ################################################################################
 ## ROCKSDB
