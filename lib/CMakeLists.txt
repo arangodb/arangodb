@@ -1,10 +1,28 @@
 # -*- mode: CMAKE; -*-
 
+add_compile_warnings_flags()
+
 ################################################################################
-## global definitions
+## LIB_ARANGO
 ################################################################################
 
-add_compile_warnings_flags()
+set(LIB_ARANGO_POSIX
+  Endpoint/EndpointUnixDomain.cpp
+  Endpoint/EndpointSrv.cpp
+)
+
+set(LIB_ARANGO_LINENOISE
+  Utilities/LinenoiseShell.cpp
+  Utilities/LineEditor.cpp
+  Utilities/ShellBase.cpp
+)
+
+set(LIB_ARANGO_DATE
+  ${PROJECT_SOURCE_DIR}/3rdParty/date/src/tz.cpp
+)
+add_definitions("-DHAS_REMOTE_API=0")
+
+add_definitions("-DARCHITECTURE_OPTIMIZATIONS=\"${ARCHITECTURE_OPTIMIZATIONS}\"")
 
 # add necessary defines for ICU. this will suffix all included ICU functions
 # and the ICU namespace with _64_64
@@ -168,8 +186,6 @@ add_library(arango STATIC
   Endpoint/EndpointIpV4.cpp
   Endpoint/EndpointIpV6.cpp
   Endpoint/EndpointList.cpp
-  Endpoint/EndpointSrv.cpp
-  Endpoint/EndpointUnixDomain.cpp
   Maskings/AttributeMasking.cpp
   Maskings/Collection.cpp
   Maskings/MaskingFunction.cpp
@@ -196,11 +212,8 @@ add_library(arango STATIC
   Ssl/SslFeature.cpp
   Ssl/SslInterface.cpp
   Ssl/ssl-helper.cpp
-  Utilities/LinenoiseShell.cpp
-  Utilities/LineEditor.cpp
   Utilities/NameValidator.cpp
   Utilities/ScriptLoader.cpp
-  Utilities/ShellBase.cpp
   Zip/ioapi.cpp
   Zip/unzip.cpp
   Zip/zip.cpp
