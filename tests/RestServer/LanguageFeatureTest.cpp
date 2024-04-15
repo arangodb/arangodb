@@ -136,9 +136,8 @@ std::string_view getNonSysLang() {
   const std::string_view currSysLang =
       std::string_view(setlocale(LC_ALL, NULL)).substr(0, 2);
 
-  auto sg = arangodb::scopeGuard([&]() noexcept {
-    setlocale(LC_ALL, before.c_str());
-  });
+  auto sg = arangodb::scopeGuard(
+      [&]() noexcept { setlocale(LC_ALL, before.c_str()); });
 
   if (currSysLang == "de") {
     return kRussian;
