@@ -698,15 +698,6 @@ class instance {
       throw x;
     }
 
-    if (crashUtils.isEnabledWindowsMonitor(this.options, this, this.pid, pu.ARANGOD_BIN)) {
-      if (!crashUtils.runProcdump(this.options, this, this.coreDirectory, this.pid)) {
-        print(Date() + 'Killing ' + pu.ARANGOD_BIN + ' - ' + JSON.stringify(this.args));
-        let res = killExternal(this.pid);
-        this.pid = res.pid;
-        this.exitStatus = res;
-        throw new Error("launching procdump failed, aborting.");
-      }
-    }
     sleep(0.5);
     if (this.isAgent()) {
       this.agencyConfig.agentsLaunched += 1;
@@ -849,35 +840,7 @@ class instance {
       pu.killRemainingProcesses({status: false});
       process.exit();
     }
-    const ret = running && crashUtils.checkMonitorAlive(pu.ARANGOD_BIN, this, this.options, res);
-
-    if (!ret) {
-      if (!this.hasOwnProperty('message')) {
-        this.message = '';
-      }
-      let msg = ` ArangoD of role [${this.name}] with PID ${this.pid} is gone by: ${JSON.stringify(res)}`;
-      print(Date() + msg + ':');
-      this.message += (this.message.length === 0) ? '\n' : '' + msg + ' ';
-      if (!this.hasOwnProperty('exitStatus') || (this.exitStatus === null)) {
-        this.exitStatus = res;
-      }
-      print(this.getStructure());
-
-      if (res.hasOwnProperty('signal') &&
-          ((res.signal === 11) ||
-           (res.signal === 6))) {
-        msg = 'health Check Signal(' + res.signal + ') ';
-        this.analyzeServerCrash(msg);
-        this.serverCrashedLocal = true;
-        this.message += msg;
-        msg = " checkArangoAlive: Marking crashy";
-        pu.serverCrashed = true;
-        this.message += msg;
-        print(Date() + msg + ' - ' + JSON.stringify(this.getStructure()));
-        this.pid = null;
-      }
-    }
-    return ret;
+    return true;
   }
 
   connect() {
@@ -1067,9 +1030,6 @@ class instance {
     }
     while (timeout > 0) {
       this.exitStatus = statusExternal(this.pid, false);
-      if (!crashUtils.checkMonitorAlive(pu.ARANGOD_BIN, this, this.options, this.exitStatus)) {
-        print(Date() + ' Server "' + this.name + '" shutdown: detected irregular death by monitor: pid', this.pid);
-      }
       if (this.exitStatus.status === 'TERMINATED') {
         return true;
       }
@@ -1102,13 +1062,6 @@ class instance {
     }
     if (this.exitStatus.status === 'RUNNING') {
       this.exitStatus = statusExternal(this.pid, false);
-      if (!crashUtils.checkMonitorAlive(pu.ARANGOD_BIN, this, this.options, this.exitStatus)) {
-        if (this.isAgent()) {
-          counters.nonAgenciesCount--;
-        }
-        print(Date() + ' Server "' + this.name + '" shutdown: detected irregular death by monitor: pid', this.pid);
-        return false;
-      }
     }
     if (this.exitStatus.status === 'RUNNING') {
       let localTimeout = timeout;
