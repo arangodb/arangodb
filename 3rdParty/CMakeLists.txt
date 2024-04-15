@@ -165,6 +165,7 @@ set(ICU_STATIC_LIBS ${ICU64_LIBS})
 # and the ICU namespace with _64_64
 add_definitions("-DU_HAVE_LIB_SUFFIX=1")
 add_definitions("-DU_LIB_SUFFIX_C_NAME=_64")
+add_definitions("-DIRESEARCH_ICU_NAMESPACE=icu_64_64")
 
 add_library(boost-static IMPORTED STATIC)
 set_target_properties(boost-static PROPERTIES
