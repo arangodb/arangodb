@@ -101,8 +101,6 @@ target_include_directories(v8_interface SYSTEM INTERFACE ${V8_INCLUDE_DIR})
 
 set(ICU_DT "${ICU_DT}" PARENT_SCOPE)
 set(ICU_DT_DEST "${ICU_DT_DEST}" PARENT_SCOPE)
-#set(ICU_LIBRARY_DIR "${ICU_LIBRARY_DIR}" PARENT_SCOPE)
-#set(ICU_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/${V8_SUB_DIR}/third_party/icu/")
 
 set(V8_INTERNAL_INCLUDE_DIR ${V8_INTERNAL_INCLUDE_DIR} PARENT_SCOPE)
 
@@ -113,8 +111,6 @@ set(V8_INTERNAL_INCLUDE_DIR ${V8_INTERNAL_INCLUDE_DIR} PARENT_SCOPE)
 add_subdirectory(icu-legacy)
 set(ICU64_LIBS "${ICU64_LIBS}" PARENT_SCOPE)
 set(ICU64_INCLUDE_DIR "${ICU64_INCLUDE_DIR}" PARENT_SCOPE)
-
-# Potentially hand on some variables to PARENT_SCOPE
 
 ################################################################################
 ## Google Abseil
