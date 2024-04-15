@@ -320,11 +320,11 @@ uint32_t computeThreadsCount(uint32_t threads, uint32_t threadsLimit,
                threads ? threads : uint32_t(NumberOfCores::getValue()) / div));
 }
 
-bool upgradeArangoSearchLinkCollectionName(
-    TRI_vocbase_t& vocbase, velocypack::Slice const& /*upgradeParams*/) {
+Result upgradeArangoSearchLinkCollectionName(
+    TRI_vocbase_t& vocbase, velocypack::Slice /*upgradeParams*/) {
   using application_features::ApplicationServer;
   if (!ServerState::instance()->isDBServer()) {
-    return true;  // not applicable for other ServerState roles
+    return {};  // not applicable for other ServerState roles
   }
   auto& selector = vocbase.server().getFeature<EngineSelectorFeature>();
   auto& clusterInfo =
@@ -415,16 +415,16 @@ bool upgradeArangoSearchLinkCollectionName(
           << "'!";
     }
   }
-  return true;
+  return {};
 }
 
-bool upgradeSingleServerArangoSearchView0_1(
-    TRI_vocbase_t& vocbase, velocypack::Slice const& /*upgradeParams*/) {
+Result upgradeSingleServerArangoSearchView0_1(
+    TRI_vocbase_t& vocbase, velocypack::Slice /*upgradeParams*/) {
   using application_features::ApplicationServer;
 
   if (!ServerState::instance()->isSingleServer() &&
       !ServerState::instance()->isDBServer()) {
-    return true;  // not applicable for other ServerState roles
+    return {};  // not applicable for other ServerState roles
   }
 
   for (auto& view : vocbase.views()) {
@@ -445,18 +445,19 @@ bool upgradeSingleServerArangoSearchView0_1(
           << "failure to generate persisted definition while upgrading "
              "IResearchView from version 0 to version 1";
 
-      return false;  // definition generation failure
+      return res;  // definition generation failure
     }
 
     auto versionSlice =
         builder.slice().get(arangodb::iresearch::StaticStrings::VersionField);
 
     if (!versionSlice.isNumber<uint32_t>()) {
-      LOG_TOPIC("eae1c", WARN, arangodb::iresearch::TOPIC)
-          << "failure to find 'version' field while upgrading IResearchView "
-             "from version 0 to version 1";
+      auto msg =
+          "failure to find 'version' field while upgrading IResearchView "
+          "from version 0 to version 1";
+      LOG_TOPIC("eae1c", WARN, arangodb::iresearch::TOPIC) << msg;
 
-      return false;  // required field is missing
+      return {TRI_ERROR_INTERNAL, std::move(msg)};  // required field is missing
     }
 
     auto const version = versionSlice.getNumber<uint32_t>();
@@ -477,16 +478,17 @@ bool upgradeSingleServerArangoSearchView0_1(
           << "failure to generate persisted definition while upgrading "
              "IResearchView from version 0 to version 1";
 
-      return false;  // definition generation failure
+      return res;  // definition generation failure
     }
 
     auto& server = vocbase.server();
     if (!server.hasFeature<DatabasePathFeature>()) {
-      LOG_TOPIC("67c7e", WARN, arangodb::iresearch::TOPIC)
-          << "failure to find feature 'DatabasePath' while upgrading "
-             "IResearchView from version 0 to version 1";
-
-      return false;  // required feature is missing
+      auto msg =
+          "failure to find feature 'DatabasePath' while upgrading "
+          "IResearchView from version 0 to version 1";
+      LOG_TOPIC("67c7e", WARN, arangodb::iresearch::TOPIC) << msg;
+      return {TRI_ERROR_INTERNAL,
+              std::move(msg)};  // required feature is missing
     }
     auto& dbPathFeature = server.getFeature<DatabasePathFeature>();
 
@@ -501,10 +503,11 @@ bool upgradeSingleServerArangoSearchView0_1(
 
     if (!res.ok()) {
       LOG_TOPIC("cb9d1", WARN, arangodb::iresearch::TOPIC)
-          << "failure to drop view while upgrading IResearchView from version "
+          << "failure to drop view while upgrading IResearchView from "
+             "version "
              "0 to version 1";
 
-      return false;  // view drom failure
+      return res;  // view drom failure
     }
 
     // .........................................................................
@@ -521,7 +524,7 @@ bool upgradeSingleServerArangoSearchView0_1(
             << "failure to drop view from vocbase while upgrading "
                "IResearchView from version 0 to version 1";
 
-        return false;  // view drom failure
+        return res;  // view drom failure
       }
     }
 
@@ -532,12 +535,13 @@ bool upgradeSingleServerArangoSearchView0_1(
       // remove any stale data-store
       if (!irs::file_utils::exists_directory(exists, dataPath.c_str()) ||
           (exists && !irs::file_utils::remove(dataPath.c_str()))) {
-        LOG_TOPIC("9ab42", WARN, arangodb::iresearch::TOPIC)
-            << "failure to remove old data-store path while upgrading "
-               "IResearchView from version 0 to version 1, view definition: "
-            << builder.slice().toString();
-
-        return false;  // data-store removal failure
+        auto msg = absl::StrCat(
+            "failure to remove old data-store path while upgrading "
+            "IResearchView from version 0 to version 1, view definition: ",
+            builder.slice().toString());
+        LOG_TOPIC("9ab42", WARN, arangodb::iresearch::TOPIC) << msg;
+        return {TRI_ERROR_INTERNAL,
+                std::move(msg)};  // data-store removal failure
       }
     }
 
@@ -556,11 +560,11 @@ bool upgradeSingleServerArangoSearchView0_1(
           << res.errorNumber() << " " << res.errorMessage()
           << ", view definition: " << builder.slice().toString();
 
-      return false;  // data-store removal failure
+      return res;  // data-store removal failure
     }
   }
 
-  return true;
+  return {};
 }
 
 void registerFilters(aql::AqlFunctionFeature& functions) {
@@ -638,8 +642,8 @@ void registerScorers(aql::AqlFunctionFeature& functions) {
   irs::scorers::visit(
       [&functions, &args](std::string_view name,
                           irs::type_info const& args_format) -> bool {
-        // ArangoDB, for API consistency, only supports scorers configurable via
-        // jSON
+        // ArangoDB, for API consistency, only supports scorers configurable
+        // via jSON
         if (irs::type<irs::text_format::json>::id() != args_format.id()) {
           return true;
         }
@@ -760,7 +764,8 @@ Result transactionDataSourceRegistrationCallback(LogicalDataSource& dataSource,
   auto* view = basics::downCast<LogicalView>(&dataSource);
   if (!view) {
     LOG_TOPIC("f42f8", WARN, arangodb::iresearch::TOPIC)
-        << "failure to get LogicalView while processing a TransactionState by "
+        << "failure to get LogicalView while processing a TransactionState "
+           "by "
            "IResearchFeature for name '"
         << dataSource.name() << "'";
 
