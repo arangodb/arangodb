@@ -38,7 +38,6 @@ const functionsDocumentation = {
   'shell_client_traffic': 'traffic metrics tests',
 };
 const optionsDocumentation = [
-  '   - `skipAql`: if set to true the AQL tests are skipped',
   '   - `skipGraph`: if set to true the graph tests are skipped'
 ];
 
