@@ -1003,13 +1003,6 @@ class instanceManager {
         }
         if ((arangod.exitStatus !== null) && (arangod.exitStatus.status === 'RUNNING')) {
           arangod.exitStatus = statusExternal(arangod.pid, false);
-          if (!crashUtils.checkMonitorAlive(pu.ARANGOD_BIN, arangod, this.options, arangod.exitStatus)) {
-            if (!arangod.isAgent()) {
-              nonAgenciesCount--;
-            }
-            print(Date() + ' Server "' + arangod.name + '" shutdown: detected irregular death by monitor: pid', arangod.pid);
-            return false;
-          }
         }
         if ((arangod.exitStatus !== null) && (arangod.exitStatus.status === 'RUNNING')) {
           let localTimeout = timeout;
@@ -1042,7 +1035,6 @@ class instanceManager {
             arangod.serverCrashedLocal = true;
             shutdownSuccess = false;
           }
-          crashUtils.stopProcdump(this.options, arangod);
         } else {
           if (!arangod.isAgent()) {
             nonAgenciesCount--;
@@ -1050,7 +1042,6 @@ class instanceManager {
           if (!this.options.noStartStopLogs) {
             print(Date() + ' Server "' + arangod.name + '" shutdown: Success: pid', arangod.pid);
           }
-          crashUtils.stopProcdump(this.options, arangod);
           return false;
         }
       });
