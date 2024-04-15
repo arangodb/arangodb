@@ -1,0 +1,8 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+zh_Hant{
+    Version{"2.1.19.14"}
+    collations{
+        default{"stroke"}
+    }
+}

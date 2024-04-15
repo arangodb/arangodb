@@ -1,0 +1,176 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+sr_Latn_BA{
+    Version{"2.1.48.77"}
+    calendar{
+        generic{
+            intervalFormats{
+                MMMEd{
+                    M{"E, d. MMM – E, d. MMM"}
+                    d{"E, d. MMM – E, d. MMM"}
+                }
+                yMd{
+                    M{"d.M.y. – d.M.y. GGGGG"}
+                }
+            }
+        }
+        gregorian{
+            AmPmMarkers{
+                "prije podne",
+                "po podne",
+            }
+            AmPmMarkersAbbr{
+                "prije podne",
+                "po podne",
+            }
+            availableFormats{
+                MMMMW{
+                    few{"W. 'sjedmica' 'u' MMMM"}
+                    one{"W. 'sjedmica' 'u' MMMM"}
+                    other{"W. 'sjedmica' 'u' MMMM"}
+                }
+                yw{
+                    few{"w. 'sjedmica' 'u' Y."}
+                    one{"w. 'sjedmica' 'u' Y."}
+                    other{"w. 'sjedmica' 'u' Y."}
+                }
+            }
+            dayNames{
+                format{
+                    abbreviated{
+                        "ned",
+                        "pon",
+                        "ut",
+                        "sr",
+                        "čet",
+                        "pet",
+                        "sub",
+                    }
+                    wide{
+                        "nedjelja",
+                        "ponedeljak",
+                        "utorak",
+                        "srijeda",
+                        "četvrtak",
+                        "petak",
+                        "subota",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "ned",
+                        "pon",
+                        "ut",
+                        "sr",
+                        "čet",
+                        "pet",
+                        "sub",
+                    }
+                    wide{
+                        "nedjelja",
+                        "ponedeljak",
+                        "utorak",
+                        "srijeda",
+                        "četvrtak",
+                        "petak",
+                        "subota",
+                    }
+                }
+            }
+            dayPeriod{
+                format{
+                    abbreviated{
+                        afternoon1{"po pod."}
+                        evening1{"veče"}
+                        midnight{"ponoć"}
+                        morning1{"jutro"}
+                        night1{"noću"}
+                        noon{"podne"}
+                    }
+                    narrow{
+                        afternoon1{"po pod."}
+                        evening1{"veče"}
+                        midnight{"ponoć"}
+                        morning1{"jutro"}
+                        night1{"noć"}
+                        noon{"podne"}
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        am{"prije podne"}
+                        pm{"po podne"}
+                    }
+                    narrow{
+                        am{"a"}
+                        pm{"p"}
+                    }
+                    wide{
+                        am{"prije podne"}
+                        pm{"po podne"}
+                    }
+                }
+            }
+            eras{
+                wide{
+                    "prije nove ere",
+                    "nove ere",
+                }
+                wide%variant{
+                    "BCE",
+                    "nove ere",
+                }
+            }
+            intervalFormats{
+                MEd{
+                    M{"E, MM-dd – E, MM-dd"}
+                    d{"E, MM-dd – E, MM-dd"}
+                }
+                Md{
+                    M{"MM-dd – MM-dd"}
+                    d{"MM-dd – MM-dd"}
+                }
+                yM{
+                    M{"y-MM – y-MM"}
+                    y{"y-MM – y-MM"}
+                }
+                yMEd{
+                    M{"E, y-MM-dd – E, y-MM-dd"}
+                    d{"E, y-MM-dd – E, y-MM-dd"}
+                    y{"E, y-MM-dd – E, y-MM-dd"}
+                }
+                yMd{
+                    M{"y-MM-dd – y-MM-dd"}
+                    d{"y-MM-dd – y-MM-dd"}
+                    y{"y-MM-dd – y-MM-dd"}
+                }
+            }
+            monthNames{
+                stand-alone{
+                    abbreviated{
+                        "jan",
+                        "feb",
+                        "mart",
+                        "apr",
+                        "maj",
+                        "jun",
+                        "jul",
+                        "avg",
+                        "sept",
+                        "okt",
+                        "nov",
+                        "dec",
+                    }
+                }
+            }
+        }
+    }
+    fields{
+        week{
+            relative{
+                "-1"{"prethodne nedelje"}
+                "1"{"naredne nedelje"}
+            }
+        }
+    }
+}
