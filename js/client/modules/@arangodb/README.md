@@ -21,6 +21,7 @@ All the code structure and the test infrastructure works in a way
 | `testutils/result-processing.js`                             | contains code to run various analyses on results and/or generate result representations for the user/ci     |
 | `testutils/test-utils.js`                                    | infrastructure for tests like filtering, bucketing, iterating, RPC or eval launch                           |
 | `testutils/process-utils.js`                                 | start/stop/monitor all of the SUT-sub-processes                                                             |
+| `testutils/portmanager.js`                                   | finds free tcp ports for arangods to launch.                                                                |
 | `testutils/crash-utils.js`                                   | if something goes wrong, this contains the crash analysis tools                                             |
 | `testutils/client-tools.js`                                  | code to manage the arangodb client-tools for their respective tests                                         |
 | `testutils/instance-manager.js`                              | manage a full installation, be it cluster or single server consisting of one or several `instance.js`es.    |
