@@ -1,6 +1,9 @@
 devel
 -----
 
+* Bundle ICU library version 64 with the build, so that persistent indexes and
+  views relying on the old sort order can still be used.
+
 * Make AQL query optimizer create less query execution plan permutations when
   a query contains multiple occurrences of COLLECT statements under certain
   conditions:
