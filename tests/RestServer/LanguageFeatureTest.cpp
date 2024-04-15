@@ -131,13 +131,13 @@ constexpr std::string_view kGerman = "de";
 constexpr std::string_view kRussian = "ru";
 
 std::string_view getNonSysLang() {
-  auto before = std::string_view(setlocale(LC_ALL, NULL)).substr(0, 2);
+  auto before = std::string(setlocale(LC_ALL, NULL));
   setlocale(LC_ALL, "");
   const std::string_view currSysLang =
       std::string_view(setlocale(LC_ALL, NULL)).substr(0, 2);
 
   auto sg = arangodb::scopeGuard([&]() noexcept {
-    setlocale(LC_ALL, before.data());
+    setlocale(LC_ALL, before.c_str());
   });
 
   if (currSysLang == "de") {
