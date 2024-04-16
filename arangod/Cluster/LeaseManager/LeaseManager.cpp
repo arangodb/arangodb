@@ -31,19 +31,31 @@
 using namespace arangodb::cluster;
 
 LeaseManager::LeaseFromRemoteGuard::~LeaseFromRemoteGuard() {
-  _manager.returnLeaseFromRemote(_peerState, _id);
+  if (_manager != nullptr) {
+    _manager->returnLeaseFromRemote(_peerState, _id);
+    _manager.reset();
+  }
 }
 
 auto LeaseManager::LeaseFromRemoteGuard::cancel() const noexcept -> void {
-  _manager.cancelLeaseFromRemote(_peerState, _id);
+  TRI_ASSERT(_manager != nullptr) << "Called Cancel after move";
+  if (_manager != nullptr) {
+    _manager->cancelLeaseFromRemote(_peerState, _id);
+  }
 }
 
 LeaseManager::LeaseToRemoteGuard::~LeaseToRemoteGuard() {
-  _manager.returnLeaseToRemote(_peerState, _id);
+  if (_manager != nullptr) {
+    _manager->returnLeaseToRemote(_peerState, _id);
+    _manager.reset();
+  }
 }
 
 auto LeaseManager::LeaseToRemoteGuard::cancel() const noexcept -> void {
-  _manager.cancelLeaseToRemote(_peerState, _id);
+  TRI_ASSERT(_manager != nullptr) << "Called Cancel after move";
+  if (_manager != nullptr) {
+    _manager->cancelLeaseToRemote(_peerState, _id);
+  }
 }
 
 LeaseManager::LeaseManager(
@@ -83,14 +95,14 @@ auto LeaseManager::requireLeaseInternal(PeerState const& requestFrom, std::uniqu
     }
   });
 
-  return LeaseFromRemoteGuard{requestFrom, std::move(id), *this};
+  return LeaseFromRemoteGuard{requestFrom, std::move(id), this};
 }
 
 auto LeaseManager::handoutLeaseInternal(PeerState const& requestedBy,
                                         LeaseId leaseId,
                                         std::unique_ptr<LeaseEntry> leaseEntry)
-    -> LeaseToRemoteGuard {
-  _leasedToRemotePeers.doUnderLock([&](auto& guarded) {
+    -> ResultT<LeaseToRemoteGuard> {
+  auto registeredLease = _leasedToRemotePeers.doUnderLock([&](auto& guarded) -> Result {
     auto& list = guarded.list;
     if (auto it = list.find(requestedBy); it == list.end()) {
       auto trackerGuard = _rebootTracker.callMeOnChange(
@@ -107,13 +119,38 @@ auto LeaseManager::handoutLeaseInternal(PeerState const& requestedBy,
           LeaseListOfPeer{._serverAbortCallback{std::move(trackerGuard)},
                           ._mapping{}});
       TRI_ASSERT(it2.second) << "Failed to register new peer state";
-      it2.first->second._mapping.emplace(leaseId, std::move(leaseEntry));
+      TRI_ASSERT(it2.first->second._mapping.empty())
+          << "We just added the list for this Peer, it is required to be empty";
+      auto insertedElement =
+          it2.first->second._mapping.emplace(leaseId, std::move(leaseEntry));
+      TRI_ASSERT(insertedElement.second)
+          << "We just added the list for this Peer, it is required to be empty";
+      if (!insertedElement.second) {
+        // Lease with this ID already exists.
+        return {TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
+                fmt::format("Lease with ID {} already exists.", leaseId.id())};
+      }
     } else {
-      it->second._mapping.emplace(leaseId, std::move(leaseEntry));
+      auto exists = it->second._mapping.contains(leaseId);
+      if (!exists) {
+        auto insertedElement =
+            it->second._mapping.try_emplace(leaseId, std::move(leaseEntry));
+        TRI_ASSERT(insertedElement.second) << "Failed to add an entry in a map.";
+      } else {
+        // Abort this lease entry, pretend it never existed.
+        leaseEntry->abort();
+        // Lease with this ID already exists.
+        return {TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER,
+                fmt::format("Lease with ID {} already exists.", leaseId.id())};
+      }
     }
+    return TRI_ERROR_NO_ERROR;
   });
-
-  return LeaseToRemoteGuard{requestedBy, std::move(leaseId), *this};
+  if (registeredLease.fail()) {
+    return registeredLease;
+  }
+  auto guard = LeaseToRemoteGuard{requestedBy, std::move(leaseId), this};
+  return ResultT<LeaseToRemoteGuard>{std::move(guard)};
 }
 
 auto LeaseManager::leasesToVPack() const -> arangodb::velocypack::Builder {

@@ -23,6 +23,7 @@
 #pragma once
 
 #include "Basics/Guarded.h"
+#include "Basics/ResultT.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/LeaseManager/LeaseEntry.h"
 #include "Cluster/LeaseManager/LeaseId.h"
@@ -32,9 +33,11 @@
 #include <vector>
 
 namespace arangodb {
+
 namespace velocypack {
 class Builder;
 }
+
 struct PeerState;
 namespace cluster {
 class LeaseId;
@@ -51,10 +54,18 @@ struct LeaseManager {
   // Specialization to allow for API checks which type of Lease we have.
   // With this guard we have required a lease from a remote peer.
   struct LeaseFromRemoteGuard {
-    LeaseFromRemoteGuard(PeerState peer, LeaseId id, LeaseManager& mgr)
+    LeaseFromRemoteGuard(PeerState peer, LeaseId id, LeaseManager* mgr)
         : _peerState(std::move(peer)), _id{id}, _manager(mgr) {}
    public:
     ~LeaseFromRemoteGuard();
+
+    // This Guard is only allowed to be moved, so we move out the unique
+    // ptr to the LeaseManager, so we can not cancel the lease twice.
+    LeaseFromRemoteGuard(LeaseFromRemoteGuard&&) = default;
+    LeaseFromRemoteGuard& operator=(LeaseFromRemoteGuard&&) = default;
+
+    LeaseFromRemoteGuard(LeaseFromRemoteGuard const&) = delete;
+    LeaseFromRemoteGuard& operator=(LeaseFromRemoteGuard const&) = delete;
 
     auto id() const noexcept -> LeaseId { return _id; }
 
@@ -63,16 +74,31 @@ struct LeaseManager {
    private:
     PeerState _peerState;
     LeaseId _id;
-    LeaseManager& _manager;
+
+    struct NoopDeleter {
+      template<typename T>
+      void operator()(T*){
+
+      };
+    };
+    std::unique_ptr<LeaseManager, NoopDeleter> _manager;
   };
 
   // Specialization to allow for API checks which type of Lease we have.
   // With this guard we have leased a resource to a remote peer.
   struct LeaseToRemoteGuard {
-    LeaseToRemoteGuard(PeerState peer, LeaseId id, LeaseManager& mgr)
+    LeaseToRemoteGuard(PeerState peer, LeaseId id, LeaseManager* mgr)
         : _peerState(std::move(peer)), _id{id}, _manager(mgr) {}
    public:
     ~LeaseToRemoteGuard();
+
+    // This Guard is only allowed to be moved, so we move out the unique
+    // ptr to the LeaseManager, so we can not cancel the lease twice.
+    LeaseToRemoteGuard(LeaseToRemoteGuard&&) = default;
+    LeaseToRemoteGuard& operator=(LeaseToRemoteGuard&&) = default;
+
+    LeaseToRemoteGuard(LeaseToRemoteGuard const&) = delete;
+    LeaseToRemoteGuard& operator=(LeaseToRemoteGuard const&) = delete;
 
     auto id() const noexcept -> LeaseId { return _id; }
 
@@ -81,7 +107,15 @@ struct LeaseManager {
    private:
     PeerState _peerState;
     LeaseId _id;
-    LeaseManager& _manager;
+
+    struct NoopDeleter {
+      template<typename T>
+      void operator()(T*){
+
+      };
+    };
+
+    std::unique_ptr<LeaseManager, NoopDeleter> _manager;
   };
 
   struct LeaseListOfPeer {
@@ -103,7 +137,7 @@ struct LeaseManager {
 
   template<typename F>
   [[nodiscard]] auto handoutLease(PeerState const& requestedBy, LeaseId leaseId,
-                                  F&& onLeaseLost) -> LeaseToRemoteGuard {
+                                  F&& onLeaseLost) -> ResultT<LeaseToRemoteGuard> {
     static_assert(std::is_nothrow_invocable_r_v<void, F>,
                   "The abort method of a leaser must be noexcept");
     return handoutLeaseInternal(
@@ -137,7 +171,7 @@ struct LeaseManager {
 
   [[nodiscard]] auto handoutLeaseInternal(
       PeerState const& requestedBy, LeaseId leaseId,
-      std::unique_ptr<LeaseEntry> abortMethod) -> LeaseToRemoteGuard;
+      std::unique_ptr<LeaseEntry> abortMethod) -> ResultT<LeaseToRemoteGuard>;
 
   auto sendAbortRequestsForAbandonedLeases() noexcept -> void;
 

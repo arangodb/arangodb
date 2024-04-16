@@ -239,20 +239,108 @@ TEST_F(LeaseManagerTest, test_every_lease_has_a_unique_id) {
                                     guardTwo.id());
 }
 
-TEST_F(LeaseManagerTest, test_cannot_handout_same_lease_id_twice_for_same_peer) {
+TEST_F(LeaseManagerTest, test_a_lease_from_remote_can_be_moved_around) {
   auto leaseManager = buildManager();
   auto leaseIsFor = getPeerState(serverA);
-  bool wasCalled = false;
-  auto ignoreMe = [&wasCalled]() noexcept -> void {
-    wasCalled = true;
+  uint64_t wasCalled = 0;
+  auto countingCallback = [&]() noexcept -> void {
+    wasCalled++;
   };
-  auto leaseId = LeaseId{42};
-  auto guardOne = leaseManager.handoutLease(leaseIsFor, leaseId, ignoreMe);
-  EXPECT_EQ(guardOne.id(), leaseId) << "LeaseId should be the same.";
-  EXPECT_THROW(
-      std::ignore = leaseManager.handoutLease(leaseIsFor, leaseId, ignoreMe),
-      ::arangodb::basics::Exception);
-  EXPECT_FALSE(wasCalled) << "One of the abort callbacks triggered, should not happen.";
+  auto networkMock = getNetworkMock(leaseManager);
+  // We are not allowed to abort remote leases here.
+  EXPECT_CALL(*networkMock, abortIds(testing::_, testing::_)).Times(0);
+  struct MyStructure {
+    LeaseManager::LeaseFromRemoteGuard lease;
+  };
+  {
+    auto guardOne = leaseManager.requireLease(leaseIsFor, countingCallback);
+    auto storedId = guardOne.id();
+    auto myStructure = MyStructure{.lease = std::move(guardOne)};
+    waitForSchedulerEmpty();
+    EXPECT_EQ(wasCalled, 0) << "Callback was called while moving around.";
+    // We now go out of scope with myStruct. Can call abort now.
+    EXPECT_CALL(*networkMock, abortIds(serverA, std::vector<LeaseId>{storedId})).Times(1);
+  }
+}
+
+TEST_F(LeaseManagerTest, test_handout_lease_is_not_directly_destroyed) {
+  auto leaseManager = buildManager();
+  auto leaseIsFor = getPeerState(serverA);
+  uint8_t wasCalled = 0;
+  auto ignoreMe = [&wasCalled]() noexcept -> void {
+    wasCalled++;
+  };
+  auto networkMock = getNetworkMock(leaseManager);
+  // We are not allowed to abort remote leases here.
+  EXPECT_CALL(*networkMock, abortIds(testing::_, testing::_)).Times(0);
+  {
+    auto leaseId = LeaseId{42};
+    auto guardOne = leaseManager.handoutLease(leaseIsFor, leaseId, ignoreMe);
+    ASSERT_TRUE(guardOne.ok()) << "Failed to handout a lease with given ID";
+    EXPECT_EQ(guardOne->id(), leaseId) << "LeaseId should be the same.";
+    waitForSchedulerEmpty();
+    EXPECT_EQ(wasCalled, 0)
+        << "The guard is still inside the result. Callback is not allowed to be called";
+
+    // We now go out of scope. Can call abort now.
+    EXPECT_CALL(*networkMock, abortIds(serverA, std::vector<LeaseId>{leaseId})).Times(1);
+  }
+  EXPECT_EQ(wasCalled, 0)
+      << "We have now locally lost the lease, should not call abort";
+}
+
+TEST_F(LeaseManagerTest, test_cannot_handout_same_lease_id_twice_for_same_peer) {
+  auto leaseManager = buildManager();
+  auto networkMock = getNetworkMock(leaseManager);
+  auto leaseIsFor = getPeerState(serverA);
+  uint8_t wasCalled = 0;
+  auto ignoreMe = [&wasCalled]() noexcept -> void {
+    wasCalled++;
+  };
+  // We are not allowed to abort remote leases here.
+  EXPECT_CALL(*networkMock, abortIds(testing::_, testing::_)).Times(0);
+  {
+    auto leaseId = LeaseId{42};
+    auto guardOne = leaseManager.handoutLease(leaseIsFor, leaseId, ignoreMe);
+    ASSERT_TRUE(guardOne.ok()) << "Failed to handout a lease with given ID";
+    EXPECT_EQ(guardOne->id(), leaseId) << "LeaseId should be the same.";
+    auto guardTwo = leaseManager.handoutLease(leaseIsFor, leaseId, ignoreMe);
+    EXPECT_FALSE(guardTwo.ok())
+        << "Should not be able to handout the same lease ID twice.";
+    EXPECT_EQ(wasCalled, 0)
+        << "One of the abort callbacks triggered, should not happen.";
+
+    // We now go out of scope. Can call abort now.
+    EXPECT_CALL(*networkMock, abortIds(serverA, std::vector<LeaseId>{leaseId})).Times(1);
+  }
+  EXPECT_EQ(wasCalled, 0)
+      << "One of the abort callbacks triggered, should not happen, one fails "
+         "to be created, the other goes out of scope";
+}
+
+TEST_F(LeaseManagerTest, test_a_lease_to_remote_can_be_moved_around) {
+  auto leaseManager = buildManager();
+  auto leaseIsFor = getPeerState(serverA);
+  uint64_t wasCalled = 0;
+  auto countingCallback = [&]() noexcept -> void {
+    wasCalled++;
+  };
+  auto networkMock = getNetworkMock(leaseManager);
+  // We are not allowed to abort remote leases here.
+  EXPECT_CALL(*networkMock, abortIds(testing::_, testing::_)).Times(0);
+  struct MyStructure {
+    LeaseManager::LeaseToRemoteGuard lease;
+  };
+  {
+    auto storedId = LeaseId{1337};
+    auto guardOne = leaseManager.handoutLease(leaseIsFor, storedId, countingCallback);
+    ASSERT_TRUE(guardOne.ok());
+    auto myStructure = MyStructure{.lease = std::move(guardOne.get())};
+    waitForSchedulerEmpty();
+    EXPECT_EQ(wasCalled, 0) << "Callback was called while moving around.";
+    // We now go out of scope with myStruct. Can call abort now.
+    EXPECT_CALL(*networkMock, abortIds(serverA, std::vector<LeaseId>{storedId})).Times(1);
+  }
 }
 
 TEST_F(LeaseManagerTest, test_can_handout_same_lease_id_twice_for_different_peers) {
@@ -306,10 +394,12 @@ TEST_F(LeaseManagerTest, test_lease_to_remote_is_removed_from_list_on_guard_dest
     // otherwise the destructor callback might be lost.
     auto callback = [&]() noexcept { rebootCallbackCalled = true; };
     auto lease = leaseManager.handoutLease(leaseIsTo, storedId, callback);
+    ASSERT_TRUE(lease.ok()) << "Failed to handout a lease with given ID: " << lease.errorMessage();
+
 
     auto leaseReport = leaseManager.leasesToVPack();
     assertLeasedToListContainsLease(leaseReport.slice(), leaseIsTo,
-                                      lease.id());
+                                      lease->id());
     // Prepare to be called to abort this ID.
     EXPECT_CALL(*networkMock, abortIds(serverA, std::vector<LeaseId>{storedId})).Times(1);
   }
@@ -364,11 +454,12 @@ TEST_F(LeaseManagerTest, test_lease_to_remote_can_cancel_abort_callback) {
     // otherwise the destructor callback might be lost.
     auto callback = [&]() noexcept { rebootCallbackCalled = true; };
     auto lease = leaseManager.handoutLease(leaseIsFor, storedId, callback);
-    storedId = lease.id();
+    ASSERT_TRUE(lease.ok()) << "Failed to handout a lease with given ID: " << lease.errorMessage();
+    storedId = lease->id();
     auto leaseReport = leaseManager.leasesToVPack();
     assertLeasedToListContainsLease(leaseReport.slice(), leaseIsFor,
-                                    lease.id());
-    lease.cancel();
+                                    lease->id());
+    lease->cancel();
   }
   {
     auto leaseReport = leaseManager.leasesToVPack();
@@ -412,15 +503,16 @@ TEST_F(LeaseManagerTest, test_lease_to_remote_is_aborted_on_peer_reboot) {
     LeaseId storedId{42};
     // We need to hold the lease until the end of the scope.
     // otherwise the destructor callback might be lost.
-    [[maybe_unused]] auto lease =
+    auto lease =
         leaseManager.handoutLease(leaseIsFor, storedId, callback);
+    ASSERT_TRUE(lease.ok()) << "Failed to handout a lease with given ID: " << lease.errorMessage();
     rebootServer(serverA);
     // After a reboot of the other server, the onLeaseAbort callback should be
     // triggered
     EXPECT_TRUE(rebootCallbackCalled);
     auto leaseReport = leaseManager.leasesToVPack();
     assertLeasedToListDoesNotContainLease(leaseReport.slice(), leaseIsFor,
-                                            lease.id());
+                                            lease->id());
   }
 }
 
@@ -466,14 +558,15 @@ TEST_F(LeaseManagerTest,
     LeaseId id{42};
     // We need to hold the lease until the end of the scope.
     // otherwise the destructor callback might be lost.
-    [[maybe_unused]] auto lease =
+    auto lease =
         leaseManager.handoutLease(leaseIsFor, id, callback);
-    lease.cancel();
+    ASSERT_TRUE(lease.ok()) << "Failed to handout a lease with given ID: " << lease.errorMessage();
+    lease->cancel();
     {
       // Cancel does not take the Lease out of the list!
       auto leaseReport = leaseManager.leasesToVPack();
       assertLeasedToListContainsLease(leaseReport.slice(), leaseIsFor,
-                                      lease.id());
+                                      lease->id());
     }
     rebootServer(serverA);
     // NOTE: Lease is still in Scope, but the callback should not be called.
@@ -481,7 +574,7 @@ TEST_F(LeaseManagerTest,
       // Rebooting the server does remove the lease from the list.
       auto leaseReport = leaseManager.leasesToVPack();
       assertLeasedToListDoesNotContainLease(leaseReport.slice(), leaseIsFor,
-                                            lease.id());
+                                            lease->id());
     }
     EXPECT_FALSE(rebootCallbackCalled)
         << "Called callback on canceled lease if server rebooted";
@@ -534,7 +627,7 @@ TEST_F(LeaseManagerTest, test_handout_lease_for_rebooted_server) {
     ASSERT_LT(leaseIsFor.rebootId, state.find(serverA)->second.rebootId)
         << "Test setup incorrect, server was not rebooted.";
 
-    EXPECT_THROW(std::ignore = leaseManager.handoutLease(leaseIsFor, id, callback), arangodb::basics::Exception);
+    auto lease = leaseManager.handoutLease(leaseIsFor, id, callback);
 
     // Requiring a least for an outdated peerState should actually trigger the
     // RebootTracker to intervene.
@@ -636,6 +729,7 @@ TEST_F(LeaseManagerTest, test_handout_lease_for_server_with_newer_reboot_id) {
 
     LeaseId id{42};
     auto lease = leaseManager.handoutLease(leaseIsFor, id, callback);
+    ASSERT_TRUE(lease.ok()) << "Failed to handout a lease with given ID: " << lease.errorMessage();
 
     // Give RebootTracker time to intervene.
     waitForSchedulerEmpty();
@@ -646,7 +740,7 @@ TEST_F(LeaseManagerTest, test_handout_lease_for_server_with_newer_reboot_id) {
       // Lease should be in the Report:
       auto leaseReport = leaseManager.leasesToVPack();
       assertLeasedToListContainsLease(leaseReport.slice(), leaseIsFor,
-                                      lease.id());
+                                      lease->id());
     }
 
     // Now move RebootTracker to new state, it now sees sme id as the leaser.
@@ -661,7 +755,7 @@ TEST_F(LeaseManagerTest, test_handout_lease_for_server_with_newer_reboot_id) {
       // Lease should be in the Report:
       auto leaseReport = leaseManager.leasesToVPack();
       assertLeasedToListContainsLease(leaseReport.slice(), leaseIsFor,
-                                      lease.id());
+                                      lease->id());
     }
 
     // Reboot once more. Now we should be behind the RebootTracker. Causing the
@@ -679,7 +773,7 @@ TEST_F(LeaseManagerTest, test_handout_lease_for_server_with_newer_reboot_id) {
       // getting the lease. So Server should be dropped here.
       auto leaseReport = leaseManager.leasesToVPack();
       assertLeasedToListDoesNotContainLease(leaseReport.slice(), leaseIsFor,
-                                            lease.id());
+                                            lease->id());
     }
   }
 }
