@@ -52,9 +52,8 @@ ExternalProject_Add(
       --disable-dyload
       --disable-shared
   BUILD_COMMAND
-      $(MAKE)
-  INSTALL_COMMAND
-    $(MAKE) install
+    $(MAKE)
+      && $(MAKE) install
       && ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/lib
       && ${CMAKE_COMMAND} -E copy ${ICU64_BINARY_DIR}/lib/libicui18n64.a ${CMAKE_CURRENT_BINARY_DIR}/lib
       && ${CMAKE_COMMAND} -E copy ${ICU64_BINARY_DIR}/lib/libicuuc64.a ${CMAKE_CURRENT_BINARY_DIR}/lib
