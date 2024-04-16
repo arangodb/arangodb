@@ -211,8 +211,8 @@ void Query::destroy() {
 
   if (_queryOptions.profile >= ProfileLevel::TraceOne) {
     LOG_TOPIC("36a75", INFO, Logger::QUERIES)
-        << elapsedSince(_startTime)
-        << " Query::~Query queryString: " << " this: " << (uintptr_t)this;
+        << elapsedSince(_startTime) << " Query::~Query queryString: "
+        << " this: " << (uintptr_t)this;
   }
 
   // log to audit log
