@@ -116,7 +116,6 @@ class exportRunner extends tu.runInArangoshRunner {
       return this.shutdown(results);
     }
     let queryFile = fs.join(tmpPath, 'query-string');
-    print(queryFile)
     fs.makeDirectoryRecursive(tmpPath);
     fs.writeFileSync(queryFile, 'FOR doc IN UnitTestsExport RETURN doc');
 
@@ -157,7 +156,7 @@ class exportRunner extends tu.runInArangoshRunner {
         } finally {
           if (fs.exists(tstFile)) { fs.remove(tstFile);}
         }
-      }
+      };
       let testParseJSONZipFile = function() {
          let tstFile = fs.join(tmpPath, 'UnitTestsExport.json.gz');
         try {
@@ -166,7 +165,7 @@ class exportRunner extends tu.runInArangoshRunner {
         } finally {
           if (fs.exists(tstFile)) { fs.remove(tstFile);}
         }
-      }
+      };
       let testParseJSONlFile = function() {
         let tstFile = fs.join(tmpPath, 'UnitTestsExport.jsonl');
         try {
@@ -176,7 +175,7 @@ class exportRunner extends tu.runInArangoshRunner {
         } finally {
           if (fs.exists(tstFile)) { fs.remove(tstFile);}
         }
-      }
+      };
       let _testParseJSONlZipFile = function(fn) {
         let tstFile = fs.join(tmpPath, fn);
         try {
@@ -186,10 +185,10 @@ class exportRunner extends tu.runInArangoshRunner {
         } finally {
           if (fs.exists(tstFile)) { fs.remove(tstFile);}
         }
-      }
-      let testParseJSONlZipFile = function() { _testParseJSONlZipFile('UnitTestsExport.jsonl.gz'); }
-      let testParseQueryJSONlZipFile = function() {_testParseJSONlZipFile('query.jsonl.gz')}
-      let testParseQueryJSONlFile = function() {_testParseJSONlZipFile('query.jsonl')}
+      };
+      let testParseJSONlZipFile = function() { _testParseJSONlZipFile('UnitTestsExport.jsonl.gz'); };
+      let testParseQueryJSONlZipFile = function() {_testParseJSONlZipFile('query.jsonl.gz')};
+      let testParseQueryJSONlFile = function() {_testParseJSONlZipFile('query.jsonl')};
       let testParseXGGMLFile = function() {
         let tstFile = fs.join(tmpPath, 'UnitTestsExport.xgmml');
         try {
@@ -198,7 +197,7 @@ class exportRunner extends tu.runInArangoshRunner {
         } finally {
           if (fs.exists(tstFile)) { fs.remove(tstFile);}
         }
-      }
+      };
       let testParseXGGMLZipFile = function() {
         let tstFile = fs.join(tmpPath, 'UnitTestsExport.xgmml.gz');
         try {
@@ -207,7 +206,7 @@ class exportRunner extends tu.runInArangoshRunner {
         } finally {
           if (fs.exists(tstFile)) { fs.remove(tstFile);}
         }
-      }
+      };
       let testReadCSVFile = function() {
         let tstFile = fs.join(tmpPath, 'query.csv');
         try {
@@ -215,7 +214,7 @@ class exportRunner extends tu.runInArangoshRunner {
         } finally {
           if (fs.exists(tstFile)) { fs.remove(tstFile);}
         }
-      }
+      };
       let exportTestCases = [
         {
           "name": "exportJson" + idx,
