@@ -25,17 +25,13 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryExecutionState.h"
+#include "Aql/QueryInfoLoggerFeature.h"
 #include "Aql/QueryProfile.h"
-//#include "Aql/Timing.h"
 #include "Basics/ErrorCode.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
-//#include "Basics/ResourceUsage.h"
 #include "Basics/Result.h"
-//#include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
-//#include "Basics/conversions.h"
-//#include "Basics/system-functions.h"
 #include "Containers/SmallVector.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -223,17 +219,40 @@ void QueryList::remove(Query& query) {
 
   _queryRegistryFeature.trackQueryEnd(elapsed);
 
-  if (!trackSlowQueries()) {
+  if (query.queryOptions().skipAudit) {
+    // internal queries that are excluded from audit logging will not be
+    // logged here as slow queries etc
     return;
   }
 
-  bool isStreaming = query.queryOptions().stream;
+  std::shared_ptr<velocypack::String> querySlice;
+  auto buildQuerySlice = [&query, &querySlice, this]() {
+    if (querySlice == nullptr) {
+      Query::QuerySerializationOptions options{
+          .includeUser = true,
+          .includeQueryString = trackQueryString(),
+          .includeBindParameters = trackBindVars(),
+          .includeDataSources = trackDataSources(),
+          // always true because the query is already finalized
+          .includeResultCode = true,
+          .queryStringMaxLength = maxQueryStringLength(),
+      };
+
+      velocypack::Builder builder;
+      query.toVelocyPack(builder, /*isCurrent*/ false, options);
+
+      querySlice = std::make_shared<velocypack::String>(builder.slice());
+    }
+    return querySlice;
+  };
+
   double threshold =
-      isStreaming ? _slowStreamingQueryThreshold.load(std::memory_order_relaxed)
-                  : _slowQueryThreshold.load(std::memory_order_relaxed);
+      query.queryOptions().stream
+          ? _slowStreamingQueryThreshold.load(std::memory_order_relaxed)
+          : _slowQueryThreshold.load(std::memory_order_relaxed);
 
   // check if we need to push the query into the list of slow queries
-  if (elapsed >= threshold && threshold >= 0.0) {
+  if (trackSlowQueries() && elapsed >= threshold && threshold >= 0.0) {
     // yes.
     try {
       TRI_IF_FAILURE("QueryList::remove") {
@@ -254,14 +273,11 @@ void QueryList::remove(Query& query) {
 
       query.logSlow(options);
 
-      velocypack::Builder builder;
-      query.toVelocyPack(builder, /*isCurrent*/ false, options);
-
       {
         // acquire the query list lock again
         WRITE_LOCKER(writeLocker, _lock);
 
-        _slow.emplace_back(builder.slice());
+        _slow.emplace_back(buildQuerySlice());
 
         if (_slow.size() > _maxSlowQueries) {
           // list is full. free first element
@@ -271,6 +287,12 @@ void QueryList::remove(Query& query) {
          // holding on to the lock
     } catch (...) {
     }
+  }
+
+  // TODO: throw a dice here or make logging configurable
+  if (true) {
+    query.vocbase().server().getFeature<QueryInfoLoggerFeature>().log(
+        buildQuerySlice());
   }
 }
 
@@ -324,13 +346,14 @@ uint64_t QueryList::kill(std::function<bool(Query&)> const& filter,
 }
 
 /// @brief get the list of currently running queries
-std::vector<velocypack::String> QueryList::listCurrent() const {
+std::vector<std::shared_ptr<velocypack::String>> QueryList::listCurrent()
+    const {
   // We must not call the std::shared_ptr<Query> dtor under the `_lock`,
   // because this can result in a deadlock since the Query dtor tries to
   // remove itself from this list which acquires the write `_lock`
   constexpr size_t n = 16;
   containers::SmallVector<std::shared_ptr<Query>, n> queries;
-  std::vector<velocypack::String> result;
+  std::vector<std::shared_ptr<velocypack::String>> result;
   // reserve room for some queries outside of the lock already,
   // so we reduce the possibility of having to reserve more room later
   queries.reserve(n);
@@ -370,7 +393,8 @@ std::vector<velocypack::String> QueryList::listCurrent() const {
       TRI_ASSERT(builder.slice().isObject());
 
       // copy Builder's contents into result
-      result.emplace_back(builder.slice());
+      result.emplace_back(
+          std::make_shared<velocypack::String>(builder.slice()));
     }
   }
 
@@ -378,8 +402,8 @@ std::vector<velocypack::String> QueryList::listCurrent() const {
 }
 
 /// @brief get the list of slow queries
-std::vector<velocypack::String> QueryList::listSlow() const {
-  std::vector<velocypack::String> result;
+std::vector<std::shared_ptr<velocypack::String>> QueryList::listSlow() const {
+  std::vector<std::shared_ptr<velocypack::String>> result;
 
   READ_LOCKER(readLocker, _lock);
   // reserve the actually needed space

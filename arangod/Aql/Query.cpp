@@ -2004,7 +2004,7 @@ void Query::debugKillQuery() {
   if (queryList->enabled()) {
     auto const& current = queryList->listCurrent();
     for (auto const& it : current) {
-      auto slice = it.slice();
+      auto slice = it->slice();
       TRI_ASSERT(slice.isObject());
       TRI_ASSERT(slice.hasKey("id"));
       if (auto id = slice.get("id");

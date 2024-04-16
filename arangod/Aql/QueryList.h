@@ -30,6 +30,7 @@
 
 #include <atomic>
 #include <list>
+#include <memory>
 #include <unordered_map>
 
 namespace arangodb {
@@ -123,12 +124,12 @@ class QueryList {
   /// @brief return the list of running queries.
   /// each entry is a velocypack::String containing a velocypack::Object with
   /// the query information.
-  std::vector<velocypack::String> listCurrent() const;
+  std::vector<std::shared_ptr<velocypack::String>> listCurrent() const;
 
   /// @brief return the list of currently running queries.
   /// each entry is a velocypack::String containing a velocypack::Object with
   /// the query information.
-  std::vector<velocypack::String> listSlow() const;
+  std::vector<std::shared_ptr<velocypack::String>> listSlow() const;
 
   /// @brief clear the list of slow queries
   void clearSlow();
@@ -151,8 +152,10 @@ class QueryList {
   /// @brief list of current queries, protected by _lock
   std::unordered_map<TRI_voc_tick_t, std::weak_ptr<Query>> _current;
 
-  /// @brief list of slow queries, protected by _lock
-  std::list<velocypack::String> _slow;
+  /// @brief list of slow queries, protected by _lock.
+  /// these are self-contained velocypack slices that manage memory
+  /// on their own
+  std::list<std::shared_ptr<velocypack::String>> _slow;
 
   /// @brief whether or not queries are tracked
   std::atomic<bool> _enabled;

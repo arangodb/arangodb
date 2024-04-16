@@ -147,6 +147,7 @@ namespace aql {
 
 class AqlFunctionFeature;
 class OptimizerRulesFeature;
+class QueryInfoLoggerFeature;
 
 }  // namespace aql
 namespace iresearch {
@@ -275,6 +276,7 @@ using ArangodFeaturesList = TypeList<
     ViewTypesFeature,
     aql::AqlFunctionFeature,
     aql::OptimizerRulesFeature,
+    aql::QueryInfoLoggerFeature,
     RocksDBIndexCacheRefillFeature,
     RocksDBOptionFeature,
     RocksDBRecoveryManager,
