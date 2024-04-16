@@ -187,8 +187,8 @@ class exportRunner extends tu.runInArangoshRunner {
         }
       };
       let testParseJSONlZipFile = function() { _testParseJSONlZipFile('UnitTestsExport.jsonl.gz'); };
-      let testParseQueryJSONlZipFile = function() {_testParseJSONlZipFile('query.jsonl.gz')};
-      let testParseQueryJSONlFile = function() {_testParseJSONlZipFile('query.jsonl')};
+      let testParseQueryJSONlZipFile = function() {_testParseJSONlZipFile('query.jsonl.gz'); };
+      let testParseQueryJSONlFile = function() {_testParseJSONlZipFile('query.jsonl'); };
       let testParseXGGMLFile = function() {
         let tstFile = fs.join(tmpPath, 'UnitTestsExport.xgmml');
         try {
@@ -378,7 +378,7 @@ class exportRunner extends tu.runInArangoshRunner {
         let tStart = time();
         try{
           results[testCase.name] = pu.executeAndWait(pu.ARANGOEXPORT_BIN, toArgv(args), this.options, false, tmpPath, this.options.coreCheck, timeout);
-          results[testCase.name].duration = time() - tStart
+          results[testCase.name].duration = time() - tStart;
           if (testCase.hasOwnProperty('validate')) {
             results[testCase.name].failed = results[testCase.name].status ? 0 : 1;
           } else {
