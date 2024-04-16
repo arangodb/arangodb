@@ -211,8 +211,8 @@ void Query::destroy() {
 
   if (_queryOptions.profile >= ProfileLevel::TraceOne) {
     LOG_TOPIC("36a75", INFO, Logger::QUERIES)
-        << elapsedSince(_startTime) << " Query::~Query queryString: "
-        << " this: " << (uintptr_t)this;
+        << elapsedSince(_startTime)
+        << " Query::~Query queryString: " << " this: " << (uintptr_t)this;
   }
 
   // log to audit log
@@ -937,17 +937,20 @@ ExecutionState Query::finalize(VPackBuilder& extras) {
   _warnings.toVelocyPack(extras);
 
   if (!_snippets.empty()) {
-    _execStats.requests += _numRequests.load(std::memory_order_relaxed);
-    _execStats.setPeakMemoryUsage(_resourceMonitor.peak());
-    _execStats.setExecutionTime(executionTime());
-    _execStats.setIntermediateCommits(_trx->state()->numIntermediateCommits());
-    for (auto& engine : _snippets) {
-      engine->collectExecutionStats(_execStats);
-    }
+    executionStatsGuard().doUnderLock([&](auto& executionStats) {
+      executionStats.requests += _numRequests.load(std::memory_order_relaxed);
+      executionStats.setPeakMemoryUsage(_resourceMonitor.peak());
+      executionStats.setExecutionTime(executionTime());
+      executionStats.setIntermediateCommits(
+          _trx->state()->numIntermediateCommits());
+      for (auto& engine : _snippets) {
+        engine->collectExecutionStats(executionStats);
+      }
 
-    // execution statistics
-    extras.add(VPackValue("stats"));
-    _execStats.toVelocyPack(extras, _queryOptions.fullCount);
+      // execution statistics
+      extras.add(VPackValue("stats"));
+      executionStats.toVelocyPack(extras, _queryOptions.fullCount);
+    });
 
     if (_planSliceCopy) {
       extras.add("plan", VPackSlice(_planSliceCopy->data()));
@@ -1607,8 +1610,6 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
 
   std::vector<futures::Future<Result>> futures;
   futures.reserve(serverQueryIds.size());
-  auto ss = query.sharedState();
-  TRI_ASSERT(ss != nullptr);
 
   for (auto const& [server, queryId, rebootId] : serverQueryIds) {
     TRI_ASSERT(!server.starts_with("server:"));
@@ -1617,7 +1618,7 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
         network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Delete,
                              "/_api/aql/finish/" + std::to_string(queryId),
                              body, options)
-            .thenValue([ss, &query](network::Response&& res) mutable -> Result {
+            .thenValue([&query](network::Response&& res) mutable -> Result {
               // simon: checked until 3.5, shutdown result is always ignored
               if (res.fail()) {
                 return Result{network::fuerteToArangoErrorCode(res)};
@@ -1628,13 +1629,14 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
 
               VPackSlice val = res.slice().get("stats");
               if (val.isObject()) {
-                ss->executeLocked([&] {
-                  query.executionStats().add(ExecutionStats(val));
-                  if (auto s = val.get("intermediateCommits");
-                      s.isNumber<uint64_t>()) {
-                    query.addIntermediateCommits(s.getNumber<uint64_t>());
-                  }
-                });
+                query.executionStatsGuard().doUnderLock(
+                    [&](auto& executionStats) {
+                      executionStats.add(ExecutionStats(val));
+                      if (auto s = val.get("intermediateCommits");
+                          s.isNumber<uint64_t>()) {
+                        query.addIntermediateCommits(s.getNumber<uint64_t>());
+                      }
+                    });
               }
               // read "warnings" attribute if present and add it to our
               // query

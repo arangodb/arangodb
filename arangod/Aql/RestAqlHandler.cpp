@@ -540,8 +540,8 @@ void RestAqlHandler::shutdownExecute(bool isFinalized) noexcept {
     }
   } catch (arangodb::basics::Exception const& ex) {
     LOG_TOPIC("f73b8", INFO, Logger::FIXME)
-        << "Ignoring exception during rest handler shutdown: "
-        << "[" << ex.code() << "] " << ex.message();
+        << "Ignoring exception during rest handler shutdown: " << "["
+        << ex.code() << "] " << ex.message();
   } catch (std::exception const& ex) {
     LOG_TOPIC("b7335", INFO, Logger::FIXME)
         << "Ignoring exception during rest handler shutdown: " << ex.what();
@@ -836,8 +836,13 @@ RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
                   VPackBuilder answerBuilder(buffer);
                   answerBuilder.openObject(/*unindexed*/ true);
                   answerBuilder.add(VPackValue("stats"));
-                  q->executionStats().toVelocyPack(answerBuilder,
-                                                   q->queryOptions().fullCount);
+
+                  q->executionStatsGuard().doUnderLock(
+                      [&](auto& executionStats) {
+                        executionStats.toVelocyPack(
+                            answerBuilder, q->queryOptions().fullCount);
+                      });
+
                   q->warnings().toVelocyPack(answerBuilder);
                   answerBuilder.add(StaticStrings::Error,
                                     VPackValue(res.fail()));
