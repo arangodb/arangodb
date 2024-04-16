@@ -357,26 +357,15 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
           Variable* inVar =
               Variable::varFromVPack(plan->getAst(), it, "inVariable", true);
 
-          std::string type = it.get("type").copyString();
           aggregateVariables.emplace_back(
-              AggregateVarInfo{outVar, inVar, std::move(type)});
+              AggregateVarInfo{outVar, inVar, it.get("type").copyString()});
         }
       }
 
-      bool isDistinctCommand = slice.get("isDistinctCommand").getBoolean();
-
-      auto node = new CollectNode(
-          plan, slice, expressionVariable, outVariable, keepVariables,
-          plan->getAst()->variables()->variables(false), groupVariables,
-          aggregateVariables, isDistinctCommand);
-
-      // specialize the node if required
-      bool specialized = slice.get("specialized").getBoolean();
-      if (specialized) {
-        node->specialized();
-      }
-
-      return node;
+      return new CollectNode(plan, slice, expressionVariable, outVariable,
+                             keepVariables,
+                             plan->getAst()->variables()->variables(false),
+                             groupVariables, aggregateVariables);
     }
     case INSERT:
       return new InsertNode(plan, slice);
@@ -607,9 +596,9 @@ ExecutionNode::ExecutionNode(ExecutionPlan& plan, ExecutionNode const& other)
 }
 
 /// @brief exports this ExecutionNode with all its dependencies to VelocyPack.
-/// This function implicitly creates an array and serializes all nodes top-down,
-/// i.e., the upmost dependency will be the first, and this node will be the
-/// last in the array.
+/// This function implicitly creates an array and serializes all nodes
+/// top-down, i.e., the upmost dependency will be the first, and this node
+/// will be the last in the array.
 void ExecutionNode::allToVelocyPack(velocypack::Builder& builder,
                                     unsigned flags) const {
   struct NodeSerializer

@@ -1,6 +1,18 @@
 devel
 -----
 
+* Make AQL query optimizer create less query execution plan permutations when
+  a query contains multiple occurrences of COLLECT statements under certain
+  conditions:
+  - COLLECT statements that are contained in a single loop that is driven by a
+    traversal or an enumeration over an array now prefer the hashed collect
+    variant.
+  - if the hashed collect variant is explicitly requested via the `OPTIONS`
+    clause of the COLLECT statement (i.e. COLLECT ... OPTIONS {method: "hash"})
+    then the hashed variant is now always used, even if the maximum number of 
+    query execution plans is already reached. Previously only the sorted
+    variant would be used despite the explicit `OPTIONS` hint.
+
 * Fix an issue that can cause AQL related RestHandlers to wind up in a WAITING
   state and never get woken up. This implies that the associated query snippet
   and transaction cannot be released. If the query contains modification
