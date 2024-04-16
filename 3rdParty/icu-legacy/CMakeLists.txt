@@ -58,12 +58,20 @@ ExternalProject_Add(
   BUILD_COMMAND
     $(MAKE)
   INSTALL_COMMAND
-    $(MAKE) includedir=${CMAKE_CURRENT_BINARY_DIR}/include install
-      && ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/lib
+    ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/lib
       && ${CMAKE_COMMAND} -E copy ${ICU64_BINARY_DIR}/lib/libicui18n64.a ${CMAKE_CURRENT_BINARY_DIR}/lib
       && ${CMAKE_COMMAND} -E copy ${ICU64_BINARY_DIR}/lib/libicuuc64.a ${CMAKE_CURRENT_BINARY_DIR}/lib
       && ${CMAKE_COMMAND} -E copy ${ICU64_BINARY_DIR}/lib/libicudata64.a ${CMAKE_CURRENT_BINARY_DIR}/lib
 )
+
+# copy ICU public header files into build directory
+file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include/unicode)
+
+file(GLOB ICU_COMMON_HEADER_FILES "${ICU64_SOURCE_DIR}/common/unicode/*.h")
+file(COPY ${ICU_COMMON_HEADER_FILES} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/include/unicode)
+
+file(GLOB ICU_I18N_HEADER_FILES "${ICU64_SOURCE_DIR}/common/i18n/*.h")
+file(COPY ${ICU_I18N_HEADER_FILES} DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/include/unicode)
 
 set(ICU64_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/include" PARENT_SCOPE)
 set(ICU64_LIBRARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/lib" PARENT_SCOPE)
