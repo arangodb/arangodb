@@ -840,7 +840,34 @@ class instance {
       pu.killRemainingProcesses({status: false});
       process.exit();
     }
-    return true;
+
+    if (!running) {
+      if (!this.hasOwnProperty('message')) {
+        this.message = '';
+      }
+      let msg = ` ArangoD of role [${this.name}] with PID ${this.pid} is gone by: ${JSON.stringify(res)}`;
+      print(Date() + msg + ':');
+      this.message += (this.message.length === 0) ? '\n' : '' + msg + ' ';
+      if (!this.hasOwnProperty('exitStatus') || (this.exitStatus === null)) {
+        this.exitStatus = res;
+      }
+      print(this.getStructure());
+
+      if (res.hasOwnProperty('signal') &&
+          ((res.signal === 11) ||
+           (res.signal === 6))) {
+        msg = 'health Check Signal(' + res.signal + ') ';
+        this.analyzeServerCrash(msg);
+        this.serverCrashedLocal = true;
+        this.message += msg;
+        msg = " checkArangoAlive: Marking crashy";
+        pu.serverCrashed = true;
+        this.message += msg;
+        print(Date() + msg + ' - ' + JSON.stringify(this.getStructure()));
+        this.pid = null;
+      }
+    }
+    return running;
   }
 
   connect() {
