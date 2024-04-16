@@ -44,6 +44,7 @@ ExternalProject_Add(
       CXXFLAGS=${CMAKE_CXX_FLAGS}
       CPPFLAGS=${CMAKE_CPPFLAGS}
       --prefix=${CMAKE_CURRENT_BINARY_DIR}
+      --includedir=${CMAKE_CURRENT_BINARY_DIR}/include
       --with-library-suffix=64
       --with-data-packaging=static
       --enable-static
