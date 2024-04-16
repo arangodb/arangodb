@@ -540,8 +540,8 @@ void RestAqlHandler::shutdownExecute(bool isFinalized) noexcept {
     }
   } catch (arangodb::basics::Exception const& ex) {
     LOG_TOPIC("f73b8", INFO, Logger::FIXME)
-        << "Ignoring exception during rest handler shutdown: " << "["
-        << ex.code() << "] " << ex.message();
+        << "Ignoring exception during rest handler shutdown: "
+        << "[" << ex.code() << "] " << ex.message();
   } catch (std::exception const& ex) {
     LOG_TOPIC("b7335", INFO, Logger::FIXME)
         << "Ignoring exception during rest handler shutdown: " << ex.what();
