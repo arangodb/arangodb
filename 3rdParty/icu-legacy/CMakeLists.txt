@@ -27,7 +27,11 @@ set(ICU64_LIBS
     "${CMAKE_CURRENT_BINARY_DIR}/lib/libicuuc64.a"
     "${CMAKE_CURRENT_BINARY_DIR}/lib/libicudata64.a"
 )
-    
+
+# suppress tons of warnings caused by non-overridden methods in ICU source
+set(ICU_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-suggest-override")
+string(REGEX REPLACE "-Wsuggest-override" "" ICU_CXX_FLAGS ${ICU_CXX_FLAGS})
+
 ExternalProject_Add(
   iculegacy_build
   SOURCE_DIR
@@ -41,10 +45,9 @@ ExternalProject_Add(
       CC=${CMAKE_C_COMPILER}
       CXX=${CMAKE_CXX_COMPILER}
       CFLAGS=${CMAKE_C_FLAGS}
-      CXXFLAGS=${CMAKE_CXX_FLAGS}
+      CXXFLAGS=${ICU_CXX_FLAGS}
       CPPFLAGS=${CMAKE_CPPFLAGS}
       --prefix=${CMAKE_CURRENT_BINARY_DIR}
-      --includedir=${CMAKE_CURRENT_BINARY_DIR}/include
       --with-library-suffix=64
       --with-data-packaging=static
       --enable-static
@@ -54,7 +57,8 @@ ExternalProject_Add(
       --disable-shared
   BUILD_COMMAND
     $(MAKE)
-      && $(MAKE) install
+  INSTALL_COMMAND
+    $(MAKE) includedir=${CMAKE_CURRENT_BINARY_DIR}/include install
       && ${CMAKE_COMMAND} -E make_directory ${CMAKE_CURRENT_BINARY_DIR}/lib
       && ${CMAKE_COMMAND} -E copy ${ICU64_BINARY_DIR}/lib/libicui18n64.a ${CMAKE_CURRENT_BINARY_DIR}/lib
       && ${CMAKE_COMMAND} -E copy ${ICU64_BINARY_DIR}/lib/libicuuc64.a ${CMAKE_CURRENT_BINARY_DIR}/lib
