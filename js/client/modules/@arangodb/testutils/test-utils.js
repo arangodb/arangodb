@@ -290,7 +290,7 @@ function splitBuckets (options, cases) {
 function doOnePathInner (path) {
   return _.filter(fs.list(makePathUnix(path)),
                   function (p) {
-                    return (p.substr(-3) === '.js') || (p.substr(-3) === '.rb');;
+                    return (p.substr(-3) === '.js');
                   })
     .map(function (x) {
       return fs.join(makePathUnix(path), x);
