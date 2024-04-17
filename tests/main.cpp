@@ -123,6 +123,9 @@ int main(int argc, char* argv[]) {
   arangodb::ShellColorsFeature sc(server);
 
   arangodb::Logger::setShowLineNumber(logLineNumbers);
+  arangodb::Logger::setShowThreadIdentifier(true);
+  arangodb::Logger::setTimeFormat(
+      arangodb::LogTimeFormats::TimeFormat::UTCDateStringMicros);
   arangodb::Logger::initialize(server, false, 10000);
   arangodb::LogAppender::addAppender(arangodb::Logger::defaultLogGroup(), "-");
 

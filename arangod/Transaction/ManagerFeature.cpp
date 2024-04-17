@@ -120,12 +120,11 @@ timeout to the configured idle timeout.)");
 }
 
 void ManagerFeature::prepare() {
-  TRI_ASSERT(MANAGER.get() == nullptr);
   TRI_ASSERT(server().getFeature<EngineSelectorFeature>().selected());
-  MANAGER = server()
-                .getFeature<EngineSelectorFeature>()
-                .engine()
-                .createTransactionManager(*this);
+  auto& engine = server().getFeature<EngineSelectorFeature>().engine();
+  // in some unittests we may create multiple managers
+  TRI_ASSERT(MANAGER.get() == nullptr || engine.typeName() == "Mock");
+  MANAGER = engine.createTransactionManager(*this);
 }
 
 void ManagerFeature::start() {
