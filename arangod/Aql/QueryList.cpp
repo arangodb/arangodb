@@ -290,7 +290,7 @@ void QueryList::remove(Query& query) {
   }
 
   // TODO: throw a dice here or make logging configurable
-  if (true) {
+  if (false) {
     query.vocbase().server().getFeature<QueryInfoLoggerFeature>().log(
         buildQuerySlice());
   }

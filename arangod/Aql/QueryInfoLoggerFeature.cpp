@@ -24,6 +24,7 @@
 #include "QueryInfoLoggerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/Thread.h"
@@ -294,6 +295,7 @@ QueryInfoLoggerFeature::QueryInfoLoggerFeature(Server& server)
   setOptional(true);
   startsAfter<DatabaseFeaturePhase>();
   startsAfter<RocksDBEngine>();
+  startsAfter<CommunicationFeaturePhase>();
 }
 
 QueryInfoLoggerFeature::~QueryInfoLoggerFeature() { stopThread(); }
