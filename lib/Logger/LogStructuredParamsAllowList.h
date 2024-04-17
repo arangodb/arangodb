@@ -33,7 +33,8 @@ namespace structuredParams {
 static constexpr char DatabaseName[] = "database";
 static constexpr char UrlName[] = "url";
 static constexpr char UserName[] = "username";
+static constexpr char QueryId[] = "queryid";
 constexpr auto allowList = frozen::make_unordered_set<frozen::string>(
-    {DatabaseName, UserName, UrlName});
+    {DatabaseName, UserName, UrlName, QueryId});
 }  // namespace structuredParams
 }  // namespace arangodb

@@ -25,6 +25,7 @@
 
 #include "Aql/types.h"
 #include "Basics/Common.h"
+#include "Logger/LogContext.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 struct TRI_vocbase_t;
@@ -45,6 +46,7 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   RequestLane lane() const override final;
   RestStatus execute() override;
   RestStatus continueExecute() override;
+  void prepareExecute(bool isContinue) override;
   void shutdownExecute(bool isFinalized) noexcept override;
 
   class Route {
@@ -137,6 +139,10 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   QueryRegistry* _queryRegistry;
 
   aql::ExecutionEngine* _engine;
+
+  bool _contextIsPushed = false;
+  std::shared_ptr<LogContext::Values> _logContextScopeValues;
+  LogContext::EntryPtr _logContextEntry;
 };
 }  // namespace aql
 }  // namespace arangodb

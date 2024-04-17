@@ -82,6 +82,9 @@ LoggerFeature::LoggerFeature(application_features::ApplicationServer& server,
 
   // if stdout is a tty, then the default for _foregroundTty becomes true
   _foregroundTty = (isatty(STDOUT_FILENO) == 1);
+
+  _structuredLogParams.emplace_back("queryid");
+  _structuredLogParams.emplace_back("url");
 }
 
 LoggerFeature::~LoggerFeature() { Logger::shutdown(); }
@@ -166,6 +169,7 @@ available:
 
 - `database`: The name of the database.
 - `username`: The name of the user.
+- `queryid`: The ID of the AQL query.
 - `url`: The endpoint path.
 - `pregelID`: The ID of the Pregel job.
 
