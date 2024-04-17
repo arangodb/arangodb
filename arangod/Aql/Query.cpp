@@ -1610,6 +1610,8 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
 
   std::vector<futures::Future<Result>> futures;
   futures.reserve(serverQueryIds.size());
+  auto ss = query.sharedState();
+  TRI_ASSERT(ss != nullptr);
 
   for (auto const& [server, queryId, rebootId] : serverQueryIds) {
     TRI_ASSERT(!server.starts_with("server:"));
@@ -1618,7 +1620,7 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
         network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Delete,
                              "/_api/aql/finish/" + std::to_string(queryId),
                              body, options)
-            .thenValue([&query](network::Response&& res) mutable -> Result {
+            .thenValue(ss, [&query](network::Response&& res) mutable -> Result {
               // simon: checked until 3.5, shutdown result is always ignored
               if (res.fail()) {
                 return Result{network::fuerteToArangoErrorCode(res)};
@@ -1629,14 +1631,16 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
 
               VPackSlice val = res.slice().get("stats");
               if (val.isObject()) {
-                query.executionStatsGuard().doUnderLock(
-                    [&](auto& executionStats) {
-                      executionStats.add(ExecutionStats(val));
-                      if (auto s = val.get("intermediateCommits");
-                          s.isNumber<uint64_t>()) {
-                        query.addIntermediateCommits(s.getNumber<uint64_t>());
-                      }
-                    });
+                ss->executeLocked([&] {
+                  query.executionStatsGuard().doUnderLock(
+                      [&](auto& executionStats) {
+                        executionStats.add(ExecutionStats(val));
+                        if (auto s = val.get("intermediateCommits");
+                            s.isNumber<uint64_t>()) {
+                          query.addIntermediateCommits(s.getNumber<uint64_t>());
+                        }
+                      });
+                });
               }
               // read "warnings" attribute if present and add it to our
               // query
