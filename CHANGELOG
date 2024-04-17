@@ -1,6 +1,17 @@
 v3.11.9 (XXXX-XX-XX)
 --------------------
 
+* Fix an issue that can cause AQL related RestHandlers to wind up in a WAITING
+  state and never get woken up. This implies that the associated query snippet
+  and transaction cannot be released. If the query contains modification
+  operations, this also implies that the associated collection write lock is not
+  released and can therefore prevent other threads from acquiring the exclusive
+  lock (which is required by e.g., the replication).
+
+* Fix an issue that can cause some background load in parallel traversals while
+  waiting for data from upstream.
+  For full details see https://github.com/arangodb/arangodb/pull/20768.
+
 * BTS-1856: Fix a data-race inside the Query class during accesses on a private
   property (`execStats`).
 
