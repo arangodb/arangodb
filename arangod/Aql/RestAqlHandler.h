@@ -140,7 +140,6 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
 
   aql::ExecutionEngine* _engine;
 
-  bool _contextIsPushed = false;
   std::shared_ptr<LogContext::Values> _logContextQueryIdValue;
   LogContext::EntryPtr _logContextQueryIdEntry;
 };
