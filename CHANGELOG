@@ -4,6 +4,11 @@ v3.11.9 (XXXX-XX-XX)
 * BTS-1856: Fix a data-race inside the Query class during accesses on a private
   property (`execStats`).
 
+* Updated ArangoDB Starter to v0.18.5-preview-1.
+
+* Fixed SEARCH-485 (ES-2010): Search files disappeared during creation of
+  HotBackup.
+
 * BTS-1840: active failover: connection/tcp leak in active failover mode in case
   no leader change happened for a long time.
 
