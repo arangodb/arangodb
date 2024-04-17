@@ -1,0 +1,11 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+en_AE{
+    Currencies{
+        AED{
+            "AED",
+            "United Arab Emirates Dirham",
+        }
+    }
+    Version{"2.1.48.67"}
+}

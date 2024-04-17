@@ -83,15 +83,15 @@ class ComputedValuesExpressionContext final : public aql::ExpressionContext {
 
   void setName(std::string_view name) noexcept { _name = name; }
 
-  icu::RegexMatcher* buildRegexMatcher(std::string_view expr,
-                                       bool caseInsensitive) override;
+  icu_64_64::RegexMatcher* buildRegexMatcher(std::string_view expr,
+                                             bool caseInsensitive) override;
 
-  icu::RegexMatcher* buildLikeMatcher(std::string_view expr,
-                                      bool caseInsensitive) override;
+  icu_64_64::RegexMatcher* buildLikeMatcher(std::string_view expr,
+                                            bool caseInsensitive) override;
 
-  icu::RegexMatcher* buildSplitMatcher(aql::AqlValue splitExpression,
-                                       velocypack::Options const* opts,
-                                       bool& isEmptyExpression) override;
+  icu_64_64::RegexMatcher* buildSplitMatcher(aql::AqlValue splitExpression,
+                                             velocypack::Options const* opts,
+                                             bool& isEmptyExpression) override;
 
   ValidatorBase* buildValidator(velocypack::Slice params) override;
 

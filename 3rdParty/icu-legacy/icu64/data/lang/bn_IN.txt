@@ -1,0 +1,8 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+bn_IN{
+    Languages{
+        ksh{"কোলোনিয়ান"}
+    }
+    Version{"2.1.47.69"}
+}
