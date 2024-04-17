@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated ArangoDB Starter to v0.19.1-preview-3.
+
 * Fixed SEARCH-485 (ES-2010): Search files disappeared during creation of
   HotBackup.
 
