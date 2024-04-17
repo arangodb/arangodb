@@ -6246,6 +6246,8 @@ ClusterInfo::getResponsibleServerReplication1(std::string_view shardID) {
     }
   }
 
+  uint64_t detachCounter = 0;
+
   while (true) {
     {
       READ_LOCKER(readLocker, _currentProt.lock);
@@ -6276,6 +6278,22 @@ ClusterInfo::getResponsibleServerReplication1(std::string_view shardID) {
         << "getResponsibleServerReplication1: found resigned leader, "
         << "waiting for half a second...";
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+    if (++detachCounter == 2) {
+      uint64_t currentNumberDetached = 0;
+      uint64_t maximumNumberDetached = 0;
+      Result r = arangodb::SchedulerFeature::SCHEDULER->detachThread(
+          &currentNumberDetached, &maximumNumberDetached);
+      LOG_DEVEL_IF(r.ok()) << "DETACHED THREAD (" << currentNumberDetached << ")";
+      if (r.is(TRI_ERROR_TOO_MANY_DETACHED_THREADS)) {
+        LOG_TOPIC("dd232", WARN, Logger::THREADS)
+            << "Could not detach scheduler thread (currently detached threads: "
+            << currentNumberDetached
+            << ", maximal number of detached threads: " << maximumNumberDetached
+            << "), will continue to wait for resigned leader in scheduler "
+               "thread, this can potentially lead to blockages!";
+      }
+    }
   }
 
   return std::make_shared<std::vector<ServerID>>();
@@ -6409,6 +6427,7 @@ void ClusterInfo::getResponsibleServersReplication1(
     }
   }
 
+  uint64_t detachCounter = 0;
   while (true) {
     TRI_ASSERT(result.empty());
     {
@@ -6455,6 +6474,22 @@ void ClusterInfo::getResponsibleServersReplication1(
         << "getResponsibleServersReplication1: found resigned leader,"
         << "waiting for half a second...";
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+    if (++detachCounter == 2) {
+      uint64_t currentNumberDetached = 0;
+      uint64_t maximumNumberDetached = 0;
+      Result r = arangodb::SchedulerFeature::SCHEDULER->detachThread(
+          &currentNumberDetached, &maximumNumberDetached);
+      LOG_DEVEL_IF(r.ok()) << "DETACHED THREAD";
+      if (r.is(TRI_ERROR_TOO_MANY_DETACHED_THREADS)) {
+        LOG_TOPIC("dd232", WARN, Logger::THREADS)
+            << "Could not detach scheduler thread (currently detached threads: "
+            << currentNumberDetached
+            << ", maximal number of detached threads: " << maximumNumberDetached
+            << "), will continue to wait for resigned leader in scheduler "
+               "thread, this can potentially lead to blockages!";
+      }
+    }
   }
 }
 
