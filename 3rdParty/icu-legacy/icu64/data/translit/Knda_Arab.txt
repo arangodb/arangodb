@@ -1,0 +1,13 @@
+﻿# © 2016 and later: Unicode, Inc. and others.
+# License & terms of use: http://www.unicode.org/copyright.html#License
+#
+# File: Knda_Arab.txt
+# Generated from CLDR
+#
+
+::[ಂ-ಃಅ-ಌಎ-ಐಒ-ನಪ-ಳವ-ಹ\u0CBCಽಾ-ೄ\u0CC6-ೈೊ-\u0CCDೕ-ೖೞೠ-ೡ೦-೯];
+::NFD;
+::Kannada-InterIndic;
+::InterIndic-Arabic;
+::NFC;
+

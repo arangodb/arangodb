@@ -115,17 +115,17 @@ std::string ComputedValuesExpressionContext::buildLogMessage(
   return error;
 }
 
-icu::RegexMatcher* ComputedValuesExpressionContext::buildRegexMatcher(
+icu_64_64::RegexMatcher* ComputedValuesExpressionContext::buildRegexMatcher(
     std::string_view expr, bool caseInsensitive) {
   return _aqlFunctionsInternalCache.buildRegexMatcher(expr, caseInsensitive);
 }
 
-icu::RegexMatcher* ComputedValuesExpressionContext::buildLikeMatcher(
+icu_64_64::RegexMatcher* ComputedValuesExpressionContext::buildLikeMatcher(
     std::string_view expr, bool caseInsensitive) {
   return _aqlFunctionsInternalCache.buildLikeMatcher(expr, caseInsensitive);
 }
 
-icu::RegexMatcher* ComputedValuesExpressionContext::buildSplitMatcher(
+icu_64_64::RegexMatcher* ComputedValuesExpressionContext::buildSplitMatcher(
     aql::AqlValue splitExpression, velocypack::Options const* opts,
     bool& isEmptyExpression) {
   return _aqlFunctionsInternalCache.buildSplitMatcher(splitExpression, opts,

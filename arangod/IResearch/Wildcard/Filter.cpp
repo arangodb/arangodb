@@ -34,7 +34,7 @@ namespace arangodb::iresearch::wildcard {
 
 class Iterator : public irs::doc_iterator {
  public:
-  Iterator(icu::RegexMatcher* matcher, doc_iterator::ptr&& approx,
+  Iterator(icu_64_64::RegexMatcher* matcher, doc_iterator::ptr&& approx,
            doc_iterator::ptr&& columnIt)
       : _approx{std::move(approx)}, _columnIt{std::move(columnIt)} {
     TRI_ASSERT(_approx);
@@ -93,9 +93,9 @@ class Iterator : public irs::doc_iterator {
       auto size = irs::vread<uint32_t>(terms_begin);
       ++terms_begin;  // skip begin marker
 
-      auto term = icu::UnicodeString::fromUTF8(
-          icu::StringPiece{reinterpret_cast<char const*>(terms_begin),
-                           static_cast<int32_t>(size)});
+      auto term = icu_64_64::UnicodeString::fromUTF8(
+          icu_64_64::StringPiece{reinterpret_cast<char const*>(terms_begin),
+                                 static_cast<int32_t>(size)});
 
       _matcher->reset(term);
 
@@ -110,7 +110,7 @@ class Iterator : public irs::doc_iterator {
   }
 
   // TODO(MBkkt) we want to use re2 instead of icu, because it works with utf-8
-  icu::RegexMatcher* _matcher;
+  icu_64_64::RegexMatcher* _matcher;
   doc_iterator::ptr _approx;
   doc_iterator::ptr _columnIt;
   irs::document const* _doc{};
@@ -119,7 +119,7 @@ class Iterator : public irs::doc_iterator {
 
 class Query : public irs::filter::prepared {
  public:
-  Query(icu::RegexMatcher* matcher, std::string_view field,
+  Query(icu_64_64::RegexMatcher* matcher, std::string_view field,
         prepared::ptr&& approx)
       : _matcher{matcher}, _field{field}, _approx{std::move(approx)} {
     TRI_ASSERT(_approx);
@@ -157,7 +157,7 @@ class Query : public irs::filter::prepared {
   irs::score_t boost() const noexcept final { return irs::kNoBoost; }
 
  private:
-  icu::RegexMatcher* _matcher{};
+  icu_64_64::RegexMatcher* _matcher{};
   std::string _field;
   prepared::ptr _approx;
 };
