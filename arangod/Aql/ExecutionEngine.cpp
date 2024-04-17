@@ -630,7 +630,9 @@ struct DistributedQueryInstanciator final
     }
 
     TRI_ASSERT(snippets[0]->engineId() == 0);
-    _query.executionStats().setAliases(std::move(nodeAliases));
+    _query.executionStatsGuard().doUnderLock([&](auto& executionStats) {
+      executionStats.setAliases(std::move(nodeAliases));
+    });
 
     return res;
   }
