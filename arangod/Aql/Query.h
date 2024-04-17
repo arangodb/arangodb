@@ -31,6 +31,7 @@
 #include "Aql/QueryContext.h"
 #include "Aql/QueryExecutionState.h"
 #include "Aql/QueryResult.h"
+#include "Basics/Guarded.h"
 #ifdef USE_V8
 #include "Aql/QueryResultV8.h"
 #endif
