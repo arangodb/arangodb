@@ -836,8 +836,13 @@ RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
                   VPackBuilder answerBuilder(buffer);
                   answerBuilder.openObject(/*unindexed*/ true);
                   answerBuilder.add(VPackValue("stats"));
-                  q->executionStats().toVelocyPack(answerBuilder,
-                                                   q->queryOptions().fullCount);
+
+                  q->executionStatsGuard().doUnderLock(
+                      [&](auto& executionStats) {
+                        executionStats.toVelocyPack(
+                            answerBuilder, q->queryOptions().fullCount);
+                      });
+
                   q->warnings().toVelocyPack(answerBuilder);
                   answerBuilder.add(StaticStrings::Error,
                                     VPackValue(res.fail()));
