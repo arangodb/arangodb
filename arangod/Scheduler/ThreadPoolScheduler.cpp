@@ -95,19 +95,19 @@ ThreadPoolScheduler::ThreadPoolScheduler(
   _threadPools.reserve(4);
 
   poolMetrics.queueLength = metrics->_metricsQueueLengths[0];
-  _threadPools.emplace_back(std::make_unique<ThreadPool>(
+  _threadPools.emplace_back(std::make_unique<SimpleThreadPool>(
       "SchedMaintenance", std::max(std::ceil(maxThreads * 0.1), 2.)));
 
   poolMetrics.queueLength = metrics->_metricsQueueLengths[1];
-  _threadPools.emplace_back(std::make_unique<ThreadPool>(
+  _threadPools.emplace_back(std::make_unique<SimpleThreadPool>(
       "SchedHigh", std::max(std::ceil(maxThreads * 0.4), 8.)));
 
   poolMetrics.queueLength = metrics->_metricsQueueLengths[2];
-  _threadPools.emplace_back(std::make_unique<ThreadPool>(
+  _threadPools.emplace_back(std::make_unique<SimpleThreadPool>(
       "SchedMedium", std::max(std::ceil(maxThreads * 0.4), 8.)));
 
   poolMetrics.queueLength = metrics->_metricsQueueLengths[3];
-  _threadPools.emplace_back(std::make_unique<ThreadPool>(
+  _threadPools.emplace_back(std::make_unique<SimpleThreadPool>(
       "SchedLow", std::max(std::ceil(maxThreads * 0.6), 16.)));
 }
 

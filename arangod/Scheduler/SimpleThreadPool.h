@@ -38,12 +38,12 @@ struct ThreadPoolMetrics {
   metrics::Counter* jobsDequeued = nullptr;
 };
 
-struct ThreadPool {
+struct SimpleThreadPool {
   using WorkItem = Scheduler::WorkItemBase;
 
-  ThreadPool(const char* name, std::size_t threadCount,
-             ThreadPoolMetrics metrics = {});
-  ~ThreadPool();
+  SimpleThreadPool(const char* name, std::size_t threadCount,
+                   ThreadPoolMetrics metrics = {});
+  ~SimpleThreadPool();
   void push(std::unique_ptr<WorkItem>&& task) noexcept;
 
   template<std::invocable F>

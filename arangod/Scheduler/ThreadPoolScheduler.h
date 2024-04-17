@@ -53,7 +53,7 @@ struct ThreadPoolScheduler final : Scheduler {
   std::shared_ptr<SchedulerMetrics> _metrics;
   std::atomic<bool> _stopping;
   std::atomic<uint64_t> _lastLowPriorityDequeueTime;
-  std::vector<std::unique_ptr<ThreadPool>> _threadPools;
+  std::vector<std::unique_ptr<SimpleThreadPool>> _threadPools;
 };
 
 }  // namespace arangodb

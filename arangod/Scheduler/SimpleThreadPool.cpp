@@ -39,8 +39,8 @@ void incCounter(metrics::Counter* cnt, uint64_t delta = 1) {
 }
 }  // namespace
 
-ThreadPool::ThreadPool(const char* name, std::size_t threadCount,
-                       ThreadPoolMetrics metrics)
+SimpleThreadPool::SimpleThreadPool(const char* name, std::size_t threadCount,
+                                   ThreadPoolMetrics metrics)
     : numThreads(threadCount), _metrics(metrics), _threads(threadCount) {
   std::generate_n(std::back_inserter(_threads), threadCount, [&]() {
     auto thread = std::jthread([this]() noexcept {
@@ -65,7 +65,7 @@ ThreadPool::ThreadPool(const char* name, std::size_t threadCount,
   });
 }
 
-ThreadPool::~ThreadPool() {
+SimpleThreadPool::~SimpleThreadPool() {
   {
     std::unique_lock guard(_mutex);
     _stop.request_stop();
@@ -73,7 +73,7 @@ ThreadPool::~ThreadPool() {
   _cv.notify_all();
 }
 
-void ThreadPool::push(std::unique_ptr<WorkItem>&& task) noexcept {
+void SimpleThreadPool::push(std::unique_ptr<WorkItem>&& task) noexcept {
   {
     std::unique_lock guard(_mutex);
     _tasks.emplace_back(std::move(task));
@@ -83,7 +83,7 @@ void ThreadPool::push(std::unique_ptr<WorkItem>&& task) noexcept {
   incCounter(_metrics.jobsQueued);
 }
 
-auto ThreadPool::pop(std::stop_token stoken) noexcept
+auto SimpleThreadPool::pop(std::stop_token stoken) noexcept
     -> std::unique_ptr<WorkItem> {
   std::unique_lock guard(_mutex);
   bool more = _cv.wait(guard, stoken, [&] { return !_tasks.empty(); });
