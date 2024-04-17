@@ -1738,7 +1738,7 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
                 ss->executeLocked([&] {
                   query.executionStatsGuard().doUnderLock(
                       [&](auto& executionStats) {
-                        query.executionStats().add(ExecutionStats(val));
+                        executionStats.add(ExecutionStats(val));
                         if (auto s = val.get("intermediateCommits");
                             s.isNumber<uint64_t>()) {
                           query.addIntermediateCommits(s.getNumber<uint64_t>());
