@@ -4,6 +4,9 @@ devel
 * BTS-1856: Fix a data-race inside the Query class during accesses on a private
   property (`execStats`).
 
+* Fixed SEARCH-485 (ES-2010): Search files disappeared during creation of
+  HotBackup.
+
 * Bundle ICU library version 64 with the build, so that persistent indexes and
   views relying on the old sort order can still be used without problems.
   The prevent issues with RocksDB going into read-only mode after an upgrade
