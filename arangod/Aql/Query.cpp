@@ -1620,55 +1620,52 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
         network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Delete,
                              "/_api/aql/finish/" + std::to_string(queryId),
                              body, options)
-            .thenValue(ss,
-                       [&query](network::Response&& res) mutable -> Result {
-                         // simon: checked until 3.5, shutdown result is always
-                         // ignored
-                         if (res.fail()) {
-                           return Result{network::fuerteToArangoErrorCode(res)};
-                         } else if (!res.slice().isObject()) {
-                           return Result(
-                               TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
-                               "shutdown response of DBServer is malformed");
-                         }
+            .thenValue([ss, &query](network::Response&& res) mutable -> Result {
+              // simon: checked until 3.5, shutdown result is always
+              // ignored
+              if (res.fail()) {
+                return Result{network::fuerteToArangoErrorCode(res)};
+              } else if (!res.slice().isObject()) {
+                return Result(TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
+                              "shutdown response of DBServer is malformed");
+              }
 
-                         VPackSlice val = res.slice().get("stats");
-                         if (val.isObject()) {
-                           ss->executeLocked([&] {
-                             query.executionStatsGuard().doUnderLock(
-                                 [&](auto& executionStats) {
-                                   executionStats.add(ExecutionStats(val));
-                                   if (auto s = val.get("intermediateCommits");
-                                       s.isNumber<uint64_t>()) {
-                                     query.addIntermediateCommits(
-                                         s.getNumber<uint64_t>());
-                                   }
-                                 });
-                           });
-                         }
-                         // read "warnings" attribute if present and add it to
-                         // our query
-                         val = res.slice().get("warnings");
-                         if (val.isArray()) {
-                           for (VPackSlice it : VPackArrayIterator(val)) {
-                             if (it.isObject()) {
-                               VPackSlice code = it.get("code");
-                               VPackSlice message = it.get("message");
-                               if (code.isNumber() && message.isString()) {
-                                 query.warnings().registerWarning(
-                                     ErrorCode{code.getNumericValue<int>()},
-                                     message.copyString());
-                               }
-                             }
-                           }
-                         }
+              VPackSlice val = res.slice().get("stats");
+              if (val.isObject()) {
+                ss->executeLocked([&] {
+                  query.executionStatsGuard().doUnderLock(
+                      [&](auto& executionStats) {
+                        executionStats.add(ExecutionStats(val));
+                        if (auto s = val.get("intermediateCommits");
+                            s.isNumber<uint64_t>()) {
+                          query.addIntermediateCommits(s.getNumber<uint64_t>());
+                        }
+                      });
+                });
+              }
+              // read "warnings" attribute if present and add it to
+              // our query
+              val = res.slice().get("warnings");
+              if (val.isArray()) {
+                for (VPackSlice it : VPackArrayIterator(val)) {
+                  if (it.isObject()) {
+                    VPackSlice code = it.get("code");
+                    VPackSlice message = it.get("message");
+                    if (code.isNumber() && message.isString()) {
+                      query.warnings().registerWarning(
+                          ErrorCode{code.getNumericValue<int>()},
+                          message.copyString());
+                    }
+                  }
+                }
+              }
 
-                         val = res.slice().get("code");
-                         if (val.isNumber()) {
-                           return Result{ErrorCode{val.getNumericValue<int>()}};
-                         }
-                         return Result();
-                       })
+              val = res.slice().get("code");
+              if (val.isNumber()) {
+                return Result{ErrorCode{val.getNumericValue<int>()}};
+              }
+              return Result();
+            })
             .thenError<std::exception>([](std::exception ptr) {
               return Result(TRI_ERROR_INTERNAL,
                             "unhandled query shutdown exception");
