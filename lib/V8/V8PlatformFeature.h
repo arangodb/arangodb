@@ -23,7 +23,10 @@
 
 #pragma once
 
-#include <stddef.h>
+#include "ApplicationFeatures/ApplicationFeature.h"
+#include "Basics/operating-system.h"
+
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <mutex>
@@ -34,11 +37,8 @@
 #include <v8-platform.h>
 #include <v8.h>
 
-#include "Basics/operating-system.h"
-
-#include "ApplicationFeatures/ApplicationFeature.h"
-
 namespace arangodb {
+
 namespace application_features {
 class ApplicationServer;
 }
@@ -49,6 +49,22 @@ class ProgramOptions;
 class V8PlatformFeature final
     : public application_features::ApplicationFeature {
  public:
+  template<typename Server>
+  explicit V8PlatformFeature(Server& server)
+      : ApplicationFeature{server, *this}, _binaryPath(server.getBinaryPath()) {
+    setOptional(true);
+  }
+
+  static constexpr std::string_view name() noexcept { return "V8Platform"; }
+
+  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
+  void start() override final;
+  void unprepare() override final;
+
+  v8::Isolate* createIsolate();
+  void disposeIsolate(v8::Isolate*);
+
   struct IsolateData {
     bool _outOfMemory = false;
     size_t _heapSizeAtStart = 0;
@@ -73,28 +89,17 @@ class V8PlatformFeature final
   static constexpr uint32_t V8_INFO = 0;
   static constexpr uint32_t V8_DATA_SLOT = 1;
 
-  static constexpr std::string_view name() noexcept { return "V8Platform"; }
-
-  template<typename Server>
-  explicit V8PlatformFeature(Server& server)
-      : ApplicationFeature{server, *this} {
-    setOptional(true);
-  }
-
-  void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void start() override final;
-  void unprepare() override final;
-
  private:
+  // "icudtl.dat", needs to be 0-terminated
+  static std::string const fn;
+
+  std::string determineICUDataPath();
+
+  char const* _binaryPath;
+
   std::vector<std::string> _v8Options;
   uint64_t _v8MaxHeap = TRI_V8_MAXHEAP;
 
- public:
-  v8::Isolate* createIsolate();
-  void disposeIsolate(v8::Isolate*);
-
- private:
   std::unique_ptr<v8::Platform> _platform;
   std::unique_ptr<v8::ArrayBuffer::Allocator> _allocator;
   std::string _v8CombinedOptions;

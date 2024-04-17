@@ -6,6 +6,13 @@ add_compile_warnings_flags()
 
 add_subdirectory(Fuerte)
 
+# add necessary defines for ICU. this will suffix all included ICU functions
+# and the ICU namespace with _64_64
+add_definitions("-DU_HAVE_LIB_SUFFIX=1")
+add_definitions("-DU_LIB_SUFFIX_C_NAME=_64")
+# also make sure that the correct ICU directory appears early in the list of include files
+include_directories(BEFORE SYSTEM ${ICU64_INCLUDE_DIR})
+
 # ----------------------------------------
 # Error tests
 # ----------------------------------------
@@ -333,6 +340,8 @@ endif ()
 if (USE_ENTERPRISE)
   target_link_libraries(arangodbtests arango_rclone)
 endif ()
+
+add_dependencies(arangodbtests iculegacy_build)
 
 if (USE_JEMALLOC)
   target_link_libraries(arangodbtests ${JEMALLOC_LIB})

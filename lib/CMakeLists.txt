@@ -24,6 +24,13 @@ add_definitions("-DHAS_REMOTE_API=0")
 
 add_definitions("-DARCHITECTURE_OPTIMIZATIONS=\"${ARCHITECTURE_OPTIMIZATIONS}\"")
 
+# add necessary defines for ICU. this will suffix all included ICU functions
+# and the ICU namespace with _64_64
+add_definitions("-DU_HAVE_LIB_SUFFIX=1")
+add_definitions("-DU_LIB_SUFFIX_C_NAME=_64")
+# also make sure that the correct ICU directory appears early in the list of include files
+include_directories(BEFORE SYSTEM ${ICU64_INCLUDE_DIR})
+
 add_library(arango_static_strings STATIC
   Basics/StaticStrings.cpp
 )
@@ -105,6 +112,7 @@ target_include_directories(arango_lightweight PUBLIC
 # dependent stuff is built
 add_dependencies(arango_lightweight errorfiles)
 add_dependencies(arango_lightweight exitcodefiles)
+add_dependencies(arango_lightweight iculegacy_build)
 
 target_link_libraries(arango_lightweight
   PUBLIC velocypack
@@ -224,7 +232,7 @@ target_link_libraries(arango
          linenoise-ng
          date_interface
          ${SYSTEM_LIBRARIES}
-         ${ICU_LIBS}
+         ${ICU64_LIBS}
          absl::crc32c
          absl::flat_hash_set
          absl::flat_hash_map
@@ -248,7 +256,6 @@ target_include_directories(arango PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 target_include_directories(arango PUBLIC ${BUILD_DIR})
 
 target_include_directories(arango SYSTEM PUBLIC ${OPENSSL_INCLUDE_DIR})
-target_include_directories(arango SYSTEM PUBLIC ${ICU_INCLUDE_DIR})
 target_include_directories(arango SYSTEM PUBLIC ${Lz4_INCLUDE_DIR})
 
 target_link_libraries(arango PUBLIC rocksdb_interface)
@@ -258,6 +265,7 @@ if (USE_V8)
 endif()
 
 add_dependencies(arango v8_build)
+add_dependencies(arango iculegacy_build)
 
 add_dependencies(arango snappy)
 target_link_libraries(arango PUBLIC snappy)
