@@ -33,6 +33,7 @@
 #include "Logger/LogMacros.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
+#include "Random/RandomGenerator.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
@@ -291,7 +292,12 @@ class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
 };
 
 QueryInfoLoggerFeature::QueryInfoLoggerFeature(Server& server)
-    : ArangodFeature{server, *this}, _maxBufferedQueries(1024) {
+    : ArangodFeature{server, *this},
+      _maxBufferedQueries(4096),
+      _logEnabled(false),
+      _logSystemDatabaseQueries(false),
+      _logSlowQueries(true),
+      _logProbability(0.001) {
   setOptional(true);
   startsAfter<DatabaseFeaturePhase>();
   startsAfter<RocksDBEngine>();
@@ -303,12 +309,54 @@ QueryInfoLoggerFeature::~QueryInfoLoggerFeature() { stopThread(); }
 void QueryInfoLoggerFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   options
-      ->addOption("--query.logger-max-buffered-queries",
-                  "The maximum number of buffered queries to log.",
+      ->addOption("--query.collection-logger-max-buffered-queries",
+                  "The maximum number of queries to buffer for query "
+                  "collection logging.",
                   new options::UInt64Parameter(&_maxBufferedQueries),
                   options::makeDefaultFlags(options::Flags::DefaultNoComponents,
                                             options::Flags::OnCoordinator,
                                             options::Flags::OnSingle))
+      .setIntroducedIn(31300);
+
+  options
+      ->addOption(
+          "--query.collection-logger-enabled",
+          "Whether or not to enable logging of queries to a system collection.",
+          new options::BooleanParameter(&_logEnabled),
+          options::makeDefaultFlags(options::Flags::DefaultNoComponents,
+                                    options::Flags::OnCoordinator,
+                                    options::Flags::OnSingle))
+      .setIntroducedIn(31300);
+
+  options
+      ->addOption("--query.collection-logger-include-system-database",
+                  "Whether or not to include system database queries in query "
+                  "collection logging.",
+                  new options::BooleanParameter(&_logSystemDatabaseQueries),
+                  options::makeDefaultFlags(options::Flags::DefaultNoComponents,
+                                            options::Flags::OnCoordinator,
+                                            options::Flags::OnSingle))
+      .setIntroducedIn(31300);
+
+  options
+      ->addOption("--query.collection-logger-all-slow-queries",
+                  "Whether or not to include all slow queries in query "
+                  "collection logging.",
+                  new options::BooleanParameter(&_logSlowQueries),
+                  options::makeDefaultFlags(options::Flags::DefaultNoComponents,
+                                            options::Flags::OnCoordinator,
+                                            options::Flags::OnSingle))
+      .setIntroducedIn(31300);
+
+  options
+      ->addOption(
+          "--query.collection-logger-probability",
+          "The probability with which queries are included in query collection "
+          "logging.",
+          new options::DoubleParameter(&_logProbability, 1.0, 0.0, 100.0),
+          options::makeDefaultFlags(options::Flags::DefaultNoComponents,
+                                    options::Flags::OnCoordinator,
+                                    options::Flags::OnSingle))
       .setIntroducedIn(31300);
 }
 
@@ -332,6 +380,26 @@ void QueryInfoLoggerFeature::start() {
 }
 
 void QueryInfoLoggerFeature::stop() { stopThread(); }
+
+bool QueryInfoLoggerFeature::shouldLog(bool isSystem,
+                                       bool isSlowQuery) const noexcept {
+  if (!_logEnabled) {
+    return false;
+  }
+  if (isSystem && !_logSystemDatabaseQueries) {
+    // don't log any queries in _system database
+    return false;
+  }
+  if (isSlowQuery && _logSlowQueries) {
+    // log all slow queries
+    return true;
+  }
+  return (_logProbability >= 100.0 ||
+          (_logProbability > 0.0 &&
+           static_cast<double>(RandomGenerator::interval(uint32_t(100'000))) /
+                   1000.0 <=
+               _logProbability));
+}
 
 void QueryInfoLoggerFeature::log(
     std::shared_ptr<velocypack::String> const& query) {

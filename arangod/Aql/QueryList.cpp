@@ -225,6 +225,8 @@ void QueryList::remove(Query& query) {
     return;
   }
 
+  // building the query slice is expensive. only do it if we actually need
+  // to log the query.
   std::shared_ptr<velocypack::String> querySlice;
   auto buildQuerySlice = [&query, &querySlice, this]() {
     if (querySlice == nullptr) {
@@ -252,7 +254,9 @@ void QueryList::remove(Query& query) {
           : _slowQueryThreshold.load(std::memory_order_relaxed);
 
   // check if we need to push the query into the list of slow queries
-  if (trackSlowQueries() && elapsed >= threshold && threshold >= 0.0) {
+  bool isSlowQuery =
+      (trackSlowQueries() && elapsed >= threshold && threshold >= 0.0);
+  if (isSlowQuery) {
     // yes.
     try {
       TRI_IF_FAILURE("QueryList::remove") {
@@ -289,10 +293,14 @@ void QueryList::remove(Query& query) {
     }
   }
 
-  // TODO: throw a dice here or make logging configurable
-  if (false) {
-    query.vocbase().server().getFeature<QueryInfoLoggerFeature>().log(
-        buildQuerySlice());
+  if (query.vocbase().server().hasFeature<QueryInfoLoggerFeature>()) {
+    auto& qilf = query.vocbase().server().getFeature<QueryInfoLoggerFeature>();
+
+    // building the query slice is expensive. only do it if we actually need
+    // to log the query.
+    if (qilf.shouldLog(query.vocbase().isSystem(), isSlowQuery)) {
+      qilf.log(buildQuerySlice());
+    }
   }
 }
 

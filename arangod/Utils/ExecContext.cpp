@@ -154,8 +154,9 @@ auth::Level ExecContext::collectionAuthLevel(std::string const& dbname,
     // TODO: move this block above, such that it takes effect
     //       when authentication is disabled
     if (dbname == StaticStrings::SystemDatabase &&
-        coll == StaticStrings::UsersCollection) {
-      // _users (only present in _system database)
+        (coll == StaticStrings::UsersCollection ||
+         coll == StaticStrings::QueriesCollection)) {
+      // _users or _queries (only present in _system database)
       return auth::Level::NONE;
     } else if (coll == StaticStrings::QueuesCollection) {
       // _queues

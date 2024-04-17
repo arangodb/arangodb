@@ -2202,9 +2202,9 @@ void Query::toVelocyPack(velocypack::Builder& builder, bool isCurrent,
   builder.add("stream", VPackValue(queryOptions().stream));
 
   // exit code
-  if (options.includeResultCode && _resultCode.has_value()) {
+  if (options.includeResultCode) {
     // exit code can only be determined if query is fully finished
-    builder.add("exitCode", VPackValue(*_resultCode));
+    builder.add("exitCode", VPackValue(resultCode()));
   }
 
   builder.close();

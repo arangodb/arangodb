@@ -47,6 +47,8 @@ class QueryInfoLoggerFeature final : public ArangodFeature {
   void start() override;
   void stop() override;
 
+  bool shouldLog(bool isSystem, bool isSlowQuery) const noexcept;
+
   void log(std::shared_ptr<velocypack::String> const& query);
 
  private:
@@ -56,6 +58,19 @@ class QueryInfoLoggerFeature final : public ArangodFeature {
 
   // maximum number of queries to store before they can be logged
   size_t _maxBufferedQueries;
+
+  // if false, no logging will happen at all. if true, consider all other config
+  // options.
+  bool _logEnabled;
+
+  // if true, log queries in system database, otherwise only non-system.
+  bool _logSystemDatabaseQueries;
+
+  // if true, log all slow queries (while honoring _logSystemDatabaseQueries).
+  bool _logSlowQueries;
+
+  // probability with which queries are logged. scaled between 0.0 and 100.0.
+  double _logProbability;
 };
 
 }  // namespace arangodb::aql
