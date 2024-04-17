@@ -12,6 +12,9 @@ v3.11.9 (XXXX-XX-XX)
   waiting for data from upstream.
   For full details see https://github.com/arangodb/arangodb/pull/20768
 
+* Fixed SEARCH-485 (ES-2010): Search files disappeared during creation of
+  HotBackup.
+
 * BTS-1840: active failover: connection/tcp leak in active failover mode in case
   no leader change happened for a long time.
 

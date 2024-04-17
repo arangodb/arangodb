@@ -47,6 +47,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "Transaction/Context.h"
 
 #include <velocypack/Iterator.h>
@@ -359,7 +360,15 @@ void RestAqlHandler::setupClusterQuery() {
         "Query aborted since coordinator rebooted or failed.");
   }
 
-  _queryRegistry->insertQuery(std::move(q), ttl, std::move(rGuard));
+  // query string
+  std::string_view qs;
+  if (_server.getFeature<QueryRegistryFeature>().enableDebugApis()) {
+    if (auto qss = querySlice.get("qs"); qss.isString()) {
+      qs = qss.stringView();
+    }
+  }
+
+  _queryRegistry->insertQuery(std::move(q), ttl, qs, std::move(rGuard));
 
   generateResult(rest::ResponseCode::OK, std::move(buffer));
 }
