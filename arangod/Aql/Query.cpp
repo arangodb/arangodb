@@ -1736,11 +1736,14 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
 
               if (VPackSlice val = res.slice().get("stats"); val.isObject()) {
                 ss->executeLocked([&] {
-                  query.executionStats().add(ExecutionStats(val));
-                  if (auto s = val.get("intermediateCommits");
-                      s.isNumber<uint64_t>()) {
-                    query.addIntermediateCommits(s.getNumber<uint64_t>());
-                  }
+                  query.executionStatsGuard().doUnderLock(
+                      [&](auto& executionStats) {
+                        query.executionStats().add(ExecutionStats(val));
+                        if (auto s = val.get("intermediateCommits");
+                            s.isNumber<uint64_t>()) {
+                          query.addIntermediateCommits(s.getNumber<uint64_t>());
+                        }
+                      });
                 });
               }
               // read "warnings" attribute if present and add it to our
