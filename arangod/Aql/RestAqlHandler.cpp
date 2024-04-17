@@ -151,12 +151,13 @@ void RestAqlHandler::setupClusterQuery() {
     TRI_ASSERT(clusterQueryId > 0);
   }
 
-  _logContextScopeValues = LogContext::makeValue()
-                               .with<structuredParams::QueryId>(clusterQueryId)
-                               .share();
-
-  _logContextEntry = LogContext::Current::pushValues(_logContextScopeValues);
-  _contextIsPushed = true;
+  TRI_ASSERT(_logContextQueryIdValue == nullptr);
+  _logContextQueryIdValue = LogContext::makeValue()
+                                .with<structuredParams::QueryId>(clusterQueryId)
+                                .share();
+  TRI_ASSERT(_logContextQueryIdEntry == nullptr);
+  _logContextQueryIdEntry =
+      LogContext::Current::pushValues(_logContextQueryIdValue);
 
   VPackSlice lockInfoSlice = querySlice.get("lockInfo");
 
@@ -391,13 +392,13 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation,
     return RestStatus::DONE;
   }
 
-  if (_logContextScopeValues == nullptr) {
-    _logContextScopeValues = LogContext::makeValue()
-                                 .with<structuredParams::QueryId>(idString)
-                                 .share();
-
-    _logContextEntry = LogContext::Current::pushValues(_logContextScopeValues);
-    _contextIsPushed = true;
+  if (_logContextQueryIdValue == nullptr) {
+    _logContextQueryIdValue = LogContext::makeValue()
+                                  .with<structuredParams::QueryId>(idString)
+                                  .share();
+    TRI_ASSERT(_logContextQueryIdEntry == nullptr);
+    _logContextQueryIdEntry =
+        LogContext::Current::pushValues(_logContextQueryIdValue);
   }
 
   if (!_engine) {  // the PUT verb
@@ -455,9 +456,10 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation,
 
 void RestAqlHandler::prepareExecute(bool isContinue) {
   RestVocbaseBaseHandler::prepareExecute(isContinue);
-  if (_logContextScopeValues != nullptr) {
-    _logContextEntry = LogContext::Current::pushValues(_logContextScopeValues);
-    _contextIsPushed = true;
+  if (_logContextQueryIdValue != nullptr) {
+    TRI_ASSERT(_logContextQueryIdEntry == nullptr);
+    _logContextQueryIdEntry =
+        LogContext::Current::pushValues(_logContextQueryIdValue);
   }
 }
 
@@ -575,10 +577,7 @@ void RestAqlHandler::shutdownExecute(bool isFinalized) noexcept {
         << "Ignoring unknown exception during rest handler shutdown.";
   }
 
-  if (_contextIsPushed) {
-    LogContext::Current::popEntry(_logContextEntry);
-    _contextIsPushed = false;
-  }
+  LogContext::Current::popEntry(_logContextQueryIdEntry);
   RestVocbaseBaseHandler::shutdownExecute(isFinalized);
 }
 

@@ -141,8 +141,8 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   aql::ExecutionEngine* _engine;
 
   bool _contextIsPushed = false;
-  std::shared_ptr<LogContext::Values> _logContextScopeValues;
-  LogContext::EntryPtr _logContextEntry;
+  std::shared_ptr<LogContext::Values> _logContextQueryIdValue;
+  LogContext::EntryPtr _logContextQueryIdEntry;
 };
 }  // namespace aql
 }  // namespace arangodb
