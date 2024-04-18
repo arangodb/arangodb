@@ -30,7 +30,8 @@ template<class Inspector>
 
 auto inspect(Inspector& f, AbortLeaseInformation& x) {
   return f.object(x).fields(f.field("server", x.server),
-                            f.field("leaseIds", x.leaseIds));
+                            f.field("leasedFrom", x.leasedFrom),
+                            f.field("leasedTo", x.leasedTo));
 }
 
 }

@@ -236,6 +236,9 @@ auto LeaseManager::cancelLeaseFromRemote(PeerState const& peerState, LeaseId con
       // So we do not really care if it is removed from this list here or not.
       if (auto it2 = it->second._mapping.find(leaseId); it2 != it->second._mapping.end()) {
         it2->second->abort();
+        // Now delete the lease from the list.
+        // To avoid calling remote about abortion.
+        it->second._mapping.erase(it2);
       }
     }
     // else nothing to do, lease already gone.
@@ -285,6 +288,9 @@ auto LeaseManager::cancelLeaseToRemote(PeerState const& peerState, LeaseId const
       // So we do not really care if it is removed from this list here or not.
       if (auto it2 = it->second._mapping.find(leaseId); it2 != it->second._mapping.end()) {
         it2->second->abort();
+        // Now delete the lease from the list.
+        // To avoid calling remote about abortion.
+        it->second._mapping.erase(it2);
       }
     }
     // else nothing to do, lease already gone.
@@ -323,5 +329,30 @@ auto LeaseManager::sendAbortRequestsForAbandonedLeases() noexcept -> void {
 
 auto LeaseManager::abortLeasesForServer(AbortLeaseInformation info) noexcept
     -> void {
-  // TODO: Implement me
+  _leasedToRemotePeers.doUnderLock([&](auto& list) {
+    auto it = list.list.find(info.server);
+    if (it != list.list.end()) {
+      for (auto const& id : info.leasedTo) {
+        // Try to erase the ID from the list.
+        // Do not put the ID on the abort list, the remote server just told us to remove it.
+        it->second._mapping.erase(id);
+        // TODO: Tombstone?
+      }
+    } else {
+      // TODO: Tombstones!
+    }
+  });
+  _leasedFromRemotePeers.doUnderLock([&](auto& list) {
+    auto it = list.list.find(info.server);
+    if (it != list.list.end()) {
+      for (auto const& id : info.leasedFrom) {
+        // Try to erase the ID from the list.
+        // Do not put the ID on the abort list, the remote server just told us to remove it.
+        it->second._mapping.erase(id);
+        // TODO: Tombstone?
+      }
+    } else {
+      // TODO: Tombstones!
+    }
+  });
 }

@@ -30,12 +30,9 @@
 namespace arangodb::cluster {
 
 struct AbortLeaseInformation {
-  ServerID server;
-  std::vector<LeaseId> leaseIds;
-
-  bool operator==(const AbortLeaseInformation& other) const {
-    return server == other.server && leaseIds == other.leaseIds;
-  }
+  PeerState server;
+  std::vector<LeaseId> leasedFrom;
+  std::vector<LeaseId> leasedTo;
 };
 
 }
