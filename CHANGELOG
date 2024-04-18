@@ -1,6 +1,8 @@
 v3.11.9 (XXXX-XX-XX)
 --------------------
 
+* Detach threads in getResponsibleServers if they wait for more than 1s.
+
 * Fix an issue that can cause AQL related RestHandlers to wind up in a WAITING
   state and never get woken up. This implies that the associated query snippet
   and transaction cannot be released. If the query contains modification
@@ -19,8 +21,6 @@ v3.11.9 (XXXX-XX-XX)
 
 * Fixed SEARCH-485 (ES-2010): Search files disappeared during creation of
   HotBackup.
-
-* Detach threads in getResponsibleServers if they wait for more than 1s.
 
 * BTS-1840: active failover: connection/tcp leak in active failover mode in case
   no leader change happened for a long time.
