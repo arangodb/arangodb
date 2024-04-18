@@ -27,6 +27,7 @@
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/LeaseManager/LeaseEntry.h"
 #include "Cluster/LeaseManager/LeaseId.h"
+#include "Cluster/LeaseManager/LeaseManagerNetworkHandler.h"
 #include "Cluster/CallbackGuard.h"
 
 #include <unordered_map>
@@ -40,12 +41,10 @@ class Builder;
 
 struct PeerState;
 namespace cluster {
-class LeaseId;
+struct AbortLeaseInformation;
 class RebootTracker;
-struct ILeaseManagerNetworkHandler;
 
 struct LeaseManager {
-
   // Note: The Following two share the same properties.
   // But the significant functions dtor and cancel are different
   // There was no point on creating a base class for this, and pay for virtual
@@ -163,6 +162,8 @@ struct LeaseManager {
     return _networkHandler.get();
   }
 #endif
+
+  auto abortLeasesForServer(AbortLeaseInformation) noexcept -> void;
 
  private:
 

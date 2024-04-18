@@ -31,12 +31,17 @@
 
 #include <fuerte/requests.h>
 
+#include "Cluster/LeaseManager/LeaseManager.h"
 #include "Network/ConnectionPool.h"
 #include "Metrics/Fwd.h"
 #include "RestServer/arangod.h"
 #include "Scheduler/Scheduler.h"
 
 namespace arangodb {
+namespace cluster {
+struct LeaseManager;
+}
+
 namespace network {
 struct RequestOptions;
 
@@ -70,6 +75,8 @@ class NetworkFeature final : public ArangodFeature {
 
   /// @brief global connection pool
   network::ConnectionPool* pool() const noexcept;
+
+  cluster::LeaseManager& leaseManager();
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   void setPoolTesting(network::ConnectionPool* pool);
@@ -117,6 +124,7 @@ class NetworkFeature final : public ArangodFeature {
 
   std::unique_ptr<network::ConnectionPool> _pool;
   std::atomic<network::ConnectionPool*> _poolPtr;
+  std::unique_ptr<cluster::LeaseManager> _leaseManager;
 
   // protects _workItem and _retryRequests
   std::mutex _workItemMutex;

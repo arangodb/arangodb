@@ -31,6 +31,7 @@ add_library(arangoserver STATIC
   Cluster/FollowerInfo.cpp
   Cluster/HeartbeatThread.cpp
   Cluster/LeaseManager/LeaseManager.cpp
+  Cluster/LeaseManager/LeaseManagerNetworkHandler.cpp
   Cluster/LeaseManager/LeaseManagerRestHandler.cpp
   Cluster/Maintenance.cpp
   Cluster/MaintenanceFeature.cpp

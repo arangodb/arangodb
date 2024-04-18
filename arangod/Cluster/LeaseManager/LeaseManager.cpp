@@ -22,6 +22,7 @@
 
 #include "LeaseManager.h"
 
+#include "Cluster/LeaseManager/AbortLeaseInformation.h"
 #include "Cluster/LeaseManager/LeaseManagerNetworkHandler.h"
 #include "Cluster/RebootTracker.h"
 #include "Inspection/VPack.h"
@@ -298,8 +299,12 @@ auto LeaseManager::sendAbortRequestsForAbandonedLeases() noexcept -> void {
   _leasesToAbort.doUnderLock(
       [&](auto& guarded) { std::swap(guarded.abortList, abortList); });
   for (auto const& [serverId, leaseIds] : abortList) {
-    futures.emplace_back(_networkHandler->abortIds(serverId, leaseIds).thenValue([&](Result res) {
-      if (!res.ok()) {
+    // NOTE: We intentionally copy the leaseIds list here, as we probably need to
+    // add it again locally it in case of an error.
+    futures.emplace_back(
+        _networkHandler->abortIds(serverId, leaseIds)
+            .thenValue([&](Result res) {
+              if (!res.ok()) {
         // TODO: Abort if server is permanently gone!
         // TODO: Log?
         // We failed to send the abort request, we should try again later.
@@ -314,4 +319,9 @@ auto LeaseManager::sendAbortRequestsForAbandonedLeases() noexcept -> void {
   }
   // Wait on futures outside the lock, as the futures themselves will lock the guarded structure.
   futures::collectAll(futures.begin(), futures.end()).get();
+}
+
+auto LeaseManager::abortLeasesForServer(AbortLeaseInformation info) noexcept
+    -> void {
+  // TODO: Implement me
 }

@@ -20,24 +20,22 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "LeaseManagerNetworkHandler.h"
+#pragma once
 
-#include "Futures/Future.h"
-#include "Cluster/LeaseManager/AbortLeaseInformation.h"
-#include "Cluster/LeaseManager/AbortLeaseInformationInspector.h"
+#include "Cluster/ClusterTypes.h"
+#include "Cluster/LeaseManager/LeaseId.h"
 
-using namespace arangodb::cluster;
+#include <vector>
 
-LeaseManagerNetworkHandler::LeaseManagerNetworkHandler(
-    network::ConnectionPool* pool)
-    : _pool{pool} {}
+namespace arangodb::cluster {
 
-auto LeaseManagerNetworkHandler::abortIds(ServerID const& server, std::vector<LeaseId> const& ids)
-    const noexcept -> arangodb::futures::Future<arangodb::Result> {
+struct AbortLeaseInformation {
+  ServerID server;
+  std::vector<LeaseId> leaseIds;
 
-  auto promise = futures::Promise<Result>{};
-  auto future = promise.getFuture();
-  // TODO: Implement me!
-  promise.setValue(Result{});
-  return future;
+  bool operator==(const AbortLeaseInformation& other) const {
+    return server == other.server && leaseIds == other.leaseIds;
+  }
+};
+
 }

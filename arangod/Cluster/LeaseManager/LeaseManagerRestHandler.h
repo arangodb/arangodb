@@ -32,5 +32,10 @@ struct LeaseManagerRestHandler : public RestBaseHandler {
   char const* name() const override final { return "RestLeaseManagerHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
   RestStatus execute() override;
+
+
+ private:
+  RestStatus executeGet();
+  RestStatus executeDelete();
 };
 }  // namespace arangodb::cluster

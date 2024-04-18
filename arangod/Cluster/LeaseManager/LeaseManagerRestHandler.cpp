@@ -22,6 +22,10 @@
 
 #include "LeaseManagerRestHandler.h"
 
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Network/NetworkFeature.h"
+#include "Cluster/LeaseManager/LeaseManager.h"
+
 using namespace arangodb;
 using namespace arangodb::cluster;
 
@@ -31,5 +35,31 @@ LeaseManagerRestHandler::LeaseManagerRestHandler(ArangodServer& server,
     : RestBaseHandler(server, request, response) {}
 
 RestStatus LeaseManagerRestHandler::execute() {
-  std::abort();
+  switch (request()->requestType()) {
+    case RequestType::GET:
+      return executeGet();
+    case RequestType::DELETE_REQ:
+      return executeDelete();
+    default:
+      generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
+      return RestStatus::DONE;
+  }
+
+}
+
+RestStatus LeaseManagerRestHandler::executeGet() {
+  auto& networkFeature = server().getFeature<NetworkFeature>();
+  auto& leaseManager = networkFeature.leaseManager();
+  auto builder = leaseManager.leasesToVPack();
+  generateOk(rest::ResponseCode::OK, builder.slice());
+  return RestStatus::DONE;
+}
+
+RestStatus LeaseManagerRestHandler::executeDelete() {
+  auto& networkFeature = server().getFeature<NetworkFeature>();
+  auto& leaseManager = networkFeature.leaseManager();
+
+  auto builder = leaseManager.leasesToVPack();
+  generateOk(rest::ResponseCode::OK, builder.slice());
+  return RestStatus::DONE;
 }

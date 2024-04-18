@@ -25,6 +25,7 @@
 
 #include "Basics/voc-errors.h"
 #include "Cluster/AgencyCache.h"
+#include "Cluster/LeaseManager/AbortLeaseInformation.h"
 #include "Cluster/LeaseManager/LeaseManager.h"
 #include "Cluster/LeaseManager/LeaseManagerNetworkHandler.h"
 #include "Cluster/ClusterFeature.h"
@@ -316,6 +317,49 @@ TEST_F(LeaseManagerTest, test_cannot_handout_same_lease_id_twice_for_same_peer) 
   EXPECT_EQ(wasCalled, 0)
       << "One of the abort callbacks triggered, should not happen, one fails "
          "to be created, the other goes out of scope";
+}
+TEST_F(LeaseManagerTest, test_can_handout_different_lease_id_for_same_peer) {
+  auto leaseManager = buildManager();
+  auto networkMock = getNetworkMock(leaseManager);
+  auto leaseIsFor = getPeerState(serverA);
+  uint8_t wasCalled = 0;
+  auto ignoreMe = [&wasCalled]() noexcept -> void {
+    wasCalled++;
+  };
+  // We are not allowed to abort remote leases here.
+  EXPECT_CALL(*networkMock, abortIds(testing::_, testing::_)).Times(0);
+  {
+    auto leaseId = LeaseId{42};
+    auto guardOne = leaseManager.handoutLease(leaseIsFor, leaseId, ignoreMe);
+    ASSERT_TRUE(guardOne.ok()) << "Failed to handout a lease with given ID";
+    EXPECT_EQ(guardOne->id(), leaseId) << "LeaseId should be the same.";
+    auto leaseIdTwo = LeaseId{1337};
+    auto guardTwo = leaseManager.handoutLease(leaseIsFor, leaseIdTwo, ignoreMe);
+    ASSERT_TRUE(guardTwo.ok()) << "Failed to handout a second lease with a different ID";
+    EXPECT_EQ(guardTwo->id(), leaseIdTwo) << "LeaseId should be the same.";
+
+    EXPECT_EQ(wasCalled, 0)
+        << "One of the abort callbacks triggered, should not happen.";
+
+#if 0
+    // TODO: As soon as we move the "abort" to a background thread, it should be
+    // called only once. We now go out of scope. Can call abort now. NOTE: The
+    // ordering on the Vector is not guaranteed. If this ever fails it is safe
+    // to replace the EXPECT_CALL with a shouldOnce. That matches all possible
+    // orders of the vector
+    EXPECT_CALL(*networkMock,
+                abortIds(serverA, std::vector<LeaseId>{leaseId, leaseIdTwo}))
+        .Times(1);
+#else
+    EXPECT_CALL(*networkMock, abortIds(serverA, std::vector<LeaseId>{leaseId}))
+        .Times(1);
+    EXPECT_CALL(*networkMock,
+                abortIds(serverA, std::vector<LeaseId>{leaseIdTwo}))
+        .Times(1);
+#endif
+  }
+  EXPECT_EQ(wasCalled, 0)
+      << "One of the abort callbacks triggered, should not happen";
 }
 
 TEST_F(LeaseManagerTest, test_a_lease_to_remote_can_be_moved_around) {
@@ -777,6 +821,218 @@ TEST_F(LeaseManagerTest, test_handout_lease_for_server_with_newer_reboot_id) {
     }
   }
 }
+
+TEST_F(LeaseManagerTest, test_abort_given_leases_for_server_on_demand) {
+  // This is the "abort" call used by the RestHandler
+
+  /// 8 Leases, 4 for each handout and requested.
+  /// 2 for Server A
+  /// 1 for Server A, not to be erased
+  /// 1 for Server B, not to be erased
+
+  bool leaseOneForAToBeAborted = false;
+  bool leaseTwoForAToBeAborted = false;
+  bool leaseForAToBeKept = false;
+  bool leaseBToBeKept = false;
+  bool handoutLeaseOneForAToBeAborted = false;
+  bool handoutLeaseTwoForAToBeAborted = false;
+  bool handoutLeaseForAToBeKept = false;
+  bool handoutLeaseBToBeKept = false;
+
+  auto leaseManager = buildManager();
+  auto networkMock = getNetworkMock(leaseManager);
+  // The remote server tells us to Abort its leases.
+  // We should not call it back.
+  EXPECT_CALL(*networkMock, abortIds(testing::_, testing::_)).Times(0);
+  {
+    auto leaseIsForA = getPeerState(serverA);
+    auto leaseIsForANewer = getPeerState(serverA);
+
+    leaseIsForANewer.rebootId = RebootId{leaseIsForANewer.rebootId.value() + 1};
+    // This situation sounds strange, but it can happen in the following way:
+    // 1. Server A started a Lease for RebootID 1
+    // 2. Server A get's into a Split-Brain situation, and gets injected a new
+    // RebootID.
+    // 3. Server A started a Lease for its new RebootID 2
+    // 4. The Server under test has not yet updated the Local RebootTracker ->
+    // RebootID2 is allowed, next to RebootID1
+    // 5. Now Server A discovers the Reboot Locally and Schedules Abort For
+    // Lease 1. and at the same time gets an early issue on Lease 2. so sends
+    // them both in the same Batch.
+    ASSERT_LT(leaseIsForA.rebootId, leaseIsForANewer.rebootId)
+        << "Test setup incorrect. We simulate here that the server has "
+           "rebooted. "
+           "Wants to abort a lease of it's new rebootID.";
+    auto leaseIsForB = getPeerState(serverB);
+
+    LeaseId idAOne{42};
+    LeaseId idATwo{43};
+    LeaseId idAThree{44};
+    LeaseId idBOne{42};
+    EXPECT_EQ(idAOne, idBOne) << "Test setup incorrect, on purpose picked the "
+                                 "same LeaseID for two servers";
+    auto handoutLeaseAOne =
+        leaseManager.handoutLease(leaseIsForA, idAOne, [&]() noexcept {
+          EXPECT_FALSE(handoutLeaseOneForAToBeAborted)
+              << "Aborted the same Lease twice";
+          handoutLeaseOneForAToBeAborted = true;
+        });
+    auto handoutLeaseATwo =
+        leaseManager.handoutLease(leaseIsForANewer, idATwo, [&]() noexcept {
+          EXPECT_FALSE(handoutLeaseTwoForAToBeAborted)
+              << "Aborted the same Lease twice";
+          handoutLeaseTwoForAToBeAborted = true;
+        });
+    auto handoutLeaseAThree =
+        leaseManager.handoutLease(leaseIsForA, idAThree, [&]() noexcept {
+          EXPECT_FALSE(true) << "Called a callback that was not to be aborted";
+          handoutLeaseForAToBeKept = true;
+        });
+    auto handoutLeaseBOne =
+        leaseManager.handoutLease(leaseIsForB, idBOne, [&]() noexcept {
+          EXPECT_FALSE(true) << "Called a callback that was not to be aborted";
+          handoutLeaseBToBeKept = true;
+        });
+
+    auto leaseAOne = leaseManager.requireLease(leaseIsForA, [&]() noexcept {
+      EXPECT_FALSE(leaseOneForAToBeAborted) << "Aborted the same Lease twice";
+      leaseOneForAToBeAborted = true;
+    });
+    auto leaseATwo =
+        leaseManager.requireLease(leaseIsForANewer, [&]() noexcept {
+          EXPECT_FALSE(leaseTwoForAToBeAborted)
+              << "Aborted the same Lease twice";
+          leaseTwoForAToBeAborted = true;
+        });
+    auto leaseAThree = leaseManager.requireLease(leaseIsForA, [&]() noexcept {
+      EXPECT_FALSE(true) << "Called a callback that was not to be aborted";
+      leaseForAToBeKept = true;
+    });
+    auto leaseBOne = leaseManager.requireLease(leaseIsForB, [&]() noexcept {
+      EXPECT_FALSE(true) << "Called a callback that was not to be aborted";
+      leaseBToBeKept = true;
+    });
+
+    // Give RebootTracker time to intervene.
+    waitForSchedulerEmpty();
+
+    EXPECT_FALSE(leaseOneForAToBeAborted)
+        << "Lease aborted before we triggered the abort call.";
+    EXPECT_FALSE(leaseTwoForAToBeAborted)
+        << "Lease aborted before we triggered the abort call.";
+    EXPECT_FALSE(leaseForAToBeKept)
+        << "Lease aborted before we triggered the abort call.";
+    EXPECT_FALSE(leaseBToBeKept)
+        << "Lease aborted before we triggered the abort call.";
+    EXPECT_FALSE(handoutLeaseOneForAToBeAborted)
+        << "Lease aborted before we triggered the abort call.";
+    EXPECT_FALSE(handoutLeaseTwoForAToBeAborted)
+        << "Lease aborted before we triggered the abort call.";
+    EXPECT_FALSE(handoutLeaseForAToBeKept)
+        << "Lease aborted before we triggered the abort call.";
+    EXPECT_FALSE(handoutLeaseBToBeKept)
+        << "Lease aborted before we triggered the abort call.";
+
+    {
+      // Leases should all be in the Report:
+      auto leaseReport = leaseManager.leasesToVPack();
+      LOG_DEVEL << leaseReport.toJson();
+
+      assertLeasedFromListContainsLease(leaseReport.slice(), leaseIsForA,
+                                        leaseAOne.id());
+      assertLeasedFromListContainsLease(leaseReport.slice(), leaseIsForANewer,
+                                        leaseATwo.id());
+      assertLeasedFromListContainsLease(leaseReport.slice(), leaseIsForA,
+                                        leaseAThree.id());
+      assertLeasedFromListContainsLease(leaseReport.slice(), leaseIsForB,
+                                        leaseBOne.id());
+
+      assertLeasedToListContainsLease(leaseReport.slice(), leaseIsForA, idAOne);
+      assertLeasedToListContainsLease(leaseReport.slice(), leaseIsForANewer,
+                                      idATwo);
+      assertLeasedToListContainsLease(leaseReport.slice(), leaseIsForA,
+                                      idAThree);
+      assertLeasedToListContainsLease(leaseReport.slice(), leaseIsForB, idBOne);
+    }
+
+    // Now the Actual test...
+    // Abort some LeaseIDs for ServerA
+    leaseManager.abortLeasesForServer(
+        {.server = serverA,
+         .leaseIds = {idAOne, idATwo, leaseAOne.id(), leaseATwo.id()}});
+
+    // TODO: Should Network be called?
+
+    // Give RebootTracker time to work on the leases.
+    waitForSchedulerEmpty();
+
+    EXPECT_TRUE(leaseOneForAToBeAborted)
+        << "Lease not aborted after the abort call.";
+    EXPECT_TRUE(leaseTwoForAToBeAborted)
+        << "Lease not aborted after the abort call.";
+    EXPECT_TRUE(handoutLeaseOneForAToBeAborted)
+        << "Lease not aborted after the abort call.";
+    EXPECT_TRUE(handoutLeaseTwoForAToBeAborted)
+        << "Lease not aborted after the abort call.";
+
+    EXPECT_FALSE(leaseForAToBeKept) << "Lease falsely aborted by abort call.";
+    EXPECT_FALSE(leaseBToBeKept) << "Lease falsely aborted by abort call.";
+    EXPECT_FALSE(handoutLeaseForAToBeKept)
+        << "Lease falsely aborted by abort call.";
+    EXPECT_FALSE(handoutLeaseBToBeKept)
+        << "Lease falsely aborted by abort call.";
+
+    {
+      // Leases should all be in the Report:
+      auto leaseReport = leaseManager.leasesToVPack();
+      assertLeasedFromListDoesNotContainLease(leaseReport.slice(), leaseIsForA,
+                                              leaseAOne.id());
+      assertLeasedFromListDoesNotContainLease(leaseReport.slice(),
+                                              leaseIsForANewer, leaseATwo.id());
+      assertLeasedFromListContainsLease(leaseReport.slice(), leaseIsForA,
+                                        leaseAThree.id());
+      assertLeasedFromListContainsLease(leaseReport.slice(), leaseIsForB,
+                                        leaseBOne.id());
+
+      assertLeasedToListDoesNotContainLease(leaseReport.slice(), leaseIsForA,
+                                            idAOne);
+      assertLeasedToListDoesNotContainLease(leaseReport.slice(),
+                                            leaseIsForANewer, idATwo);
+      assertLeasedToListContainsLease(leaseReport.slice(), leaseIsForA,
+                                      idAThree);
+      assertLeasedToListContainsLease(leaseReport.slice(), leaseIsForB, idBOne);
+    }
+
+    // Cancel all leases that survived the abort call.
+    leaseAThree.cancel();
+    leaseBOne.cancel();
+    handoutLeaseAThree->cancel();
+    handoutLeaseBOne->cancel();
+
+    // Closing the Scope now, once for the Network Mock to validate
+    // that nothing is to be cleaned up
+    // and once to make sure we do not twice abort anything.
+  }
+
+  waitForSchedulerEmpty();
+
+  EXPECT_TRUE(leaseOneForAToBeAborted)
+      << "Lease not aborted after the abort call.";
+  EXPECT_TRUE(leaseTwoForAToBeAborted)
+      << "Lease not aborted after the abort call.";
+  EXPECT_TRUE(handoutLeaseOneForAToBeAborted)
+      << "Lease not aborted after the abort call.";
+  EXPECT_TRUE(handoutLeaseTwoForAToBeAborted)
+      << "Lease not aborted after the abort call.";
+
+  EXPECT_FALSE(leaseForAToBeKept) << "Lease falsely aborted by abort call.";
+  EXPECT_FALSE(leaseBToBeKept) << "Lease falsely aborted by abort call.";
+  EXPECT_FALSE(handoutLeaseForAToBeKept)
+      << "Lease falsely aborted by abort call.";
+  EXPECT_FALSE(handoutLeaseBToBeKept)
+      << "Lease falsely aborted by abort call.";
+}
+
 
 // TODO Add tests with Multiple Servers.
 
