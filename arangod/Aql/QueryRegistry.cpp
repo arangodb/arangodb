@@ -530,6 +530,7 @@ void QueryRegistry::toVelocyPack(velocypack::Builder& builder) const {
       auto const* query = it.second->_query.get();
       if (query != nullptr) {
         builder.add("id", VPackValue(query->id()));
+        builder.add("trxId", VPackValue(query->trxId().id()));
         builder.add("database", VPackValue(query->vocbase().name()));
         builder.add("collections", VPackValue(VPackValueType::Array));
         query->collections().visit(

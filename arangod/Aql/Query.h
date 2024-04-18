@@ -192,6 +192,8 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
     return _bindParameters.builder();
   }
 
+  TransactionId trxId() const noexcept;
+
   /// @brief return the query's shared state
   std::shared_ptr<SharedQueryState> sharedState() const;
 

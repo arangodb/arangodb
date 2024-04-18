@@ -3370,6 +3370,8 @@ Future<Result> Methods::replicateOperations(
     // change it in the loop!
     network::Headers headers;
     ClusterTrxMethods::addTransactionHeader(*this, f, headers);
+    headers.emplace("x-arango-replication-trx-id",
+                    "TRX" + std::to_string(this->tid().id()) + "TRX");
     futures.emplace_back(network::sendRequestRetry(
         pool, "server:" + f, requestType, url, *(replicationData.buffer()),
         reqOpts, std::move(headers)));

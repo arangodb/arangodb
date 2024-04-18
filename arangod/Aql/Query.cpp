@@ -1860,6 +1860,13 @@ void Query::injectVertexCollectionIntoGraphNodes(ExecutionPlan& plan) {
   }
 }
 
+TransactionId Query::trxId() const noexcept {
+  if (_trx == nullptr) {
+    return TransactionId{0};
+  }
+  return _trx->tid();
+}
+
 void Query::debugKillQuery() {
 #ifndef ARANGODB_ENABLE_FAILURE_TESTS
   TRI_ASSERT(false);
