@@ -6285,7 +6285,7 @@ ClusterInfo::getResponsibleServerReplication1(std::string_view shardID) {
       Result r = arangodb::SchedulerFeature::SCHEDULER->detachThread(
           &currentNumberDetached, &maximumNumberDetached);
       if (r.is(TRI_ERROR_TOO_MANY_DETACHED_THREADS)) {
-        LOG_TOPIC("dd232", WARN, Logger::THREADS)
+        LOG_TOPIC("dd235", WARN, Logger::THREADS)
             << "Could not detach scheduler thread (currently detached threads: "
             << currentNumberDetached
             << ", maximal number of detached threads: " << maximumNumberDetached
@@ -6480,7 +6480,7 @@ void ClusterInfo::getResponsibleServersReplication1(
       Result r = arangodb::SchedulerFeature::SCHEDULER->detachThread(
           &currentNumberDetached, &maximumNumberDetached);
       if (r.is(TRI_ERROR_TOO_MANY_DETACHED_THREADS)) {
-        LOG_TOPIC("dd232", WARN, Logger::THREADS)
+        LOG_TOPIC("dd238", WARN, Logger::THREADS)
             << "Could not detach scheduler thread (currently detached threads: "
             << currentNumberDetached
             << ", maximal number of detached threads: " << maximumNumberDetached
