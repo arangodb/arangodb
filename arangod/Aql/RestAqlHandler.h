@@ -29,8 +29,13 @@
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 #include <memory>
+#include <string>
 
 struct TRI_vocbase_t;
+
+namespace arangodb::velocypack {
+class Slice;
+}
 
 namespace arangodb::aql {
 class Query;
@@ -41,6 +46,7 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
  public:
   RestAqlHandler(ArangodServer&, GeneralRequest*, GeneralResponse*,
                  QueryRegistry*);
+  ~RestAqlHandler();
 
   char const* name() const override final { return "RestAqlHandler"; }
   RequestLane lane() const override final;
@@ -137,7 +143,7 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   // our query registry
   QueryRegistry* _queryRegistry;
 
-  aql::ExecutionEngine* _engine;
+  ExecutionEngine* _engine;
 
   std::shared_ptr<LogContext::Values> _logContextQueryIdValue;
   LogContext::EntryPtr _logContextQueryIdEntry;

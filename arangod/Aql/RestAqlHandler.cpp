@@ -68,6 +68,12 @@ RestAqlHandler::RestAqlHandler(ArangodServer& server, GeneralRequest* request,
   TRI_ASSERT(_queryRegistry != nullptr);
 }
 
+RestAqlHandler::~RestAqlHandler() {
+  if (_logContextQueryIdEntry) {
+    LogContext::Current::popEntry(_logContextQueryIdEntry);
+  }
+}
+
 // POST method for /_api/aql/setup (internal)
 // Only available on DBServers in the Cluster.
 // This route sets-up all the query engines required
@@ -587,12 +593,11 @@ void RestAqlHandler::shutdownExecute(bool isFinalized) noexcept {
   } catch (std::exception const& ex) {
     LOG_TOPIC("b7335", INFO, Logger::FIXME)
         << "Ignoring exception during rest handler shutdown: " << ex.what();
-  } catch (...) {
-    LOG_TOPIC("c4db4", INFO, Logger::FIXME)
-        << "Ignoring unknown exception during rest handler shutdown.";
   }
 
-  LogContext::Current::popEntry(_logContextQueryIdEntry);
+  if (_logContextQueryIdEntry) {
+    LogContext::Current::popEntry(_logContextQueryIdEntry);
+  }
   RestVocbaseBaseHandler::shutdownExecute(isFinalized);
 }
 
