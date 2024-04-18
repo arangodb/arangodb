@@ -44,7 +44,56 @@
 #include "Metrics/MetricsFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 
+#include <absl/strings/str_cat.h>
+
 namespace {
+
+std::string requestInfo(arangodb::fuerte::Request const& req) {
+  std::ostringstream hexer;
+  hexer << (void*)&req;
+
+  std::string result =
+      absl::StrCat("url: ", to_string(req.header.restVerb), " ",
+                   req.header.path, " request id: REQ", req.id(),
+                   ", request ptr: ", hexer.str(), ", headers: [");
+  bool first = true;
+  for (auto const& it : req.header.meta()) {
+    if (first) {
+      first = false;
+    } else {
+      result.push_back(',');
+    }
+    result += absl::StrCat(it.first, "=", it.second);
+  }
+  result.push_back(']');
+  if (req.header.restVerb != arangodb::fuerte::RestVerb::Get &&
+      req.isContentTypeVPack()) {
+    result += absl::StrCat(", body: ", req.slice().toJson());
+  }
+  return result;
+}
+
+std::string responseInfo(arangodb::fuerte::Response const& res) {
+  std::string result =
+      absl::StrCat("status code: ", res.statusCode(), "=",
+                   arangodb::fuerte::status_code_to_string(res.statusCode()),
+                   ", headers: [");
+  bool first = true;
+  for (auto const& it : res.header.meta()) {
+    if (first) {
+      first = false;
+    } else {
+      result.push_back(',');
+    }
+    result += absl::StrCat(it.first, "=", it.second);
+  }
+  result.push_back(']');
+  if (res.statusCode() >= 400 && res.isContentTypeVPack()) {
+    result += absl::StrCat(", body: ", res.slice().toJson());
+  }
+  return result;
+}
+
 void queueGarbageCollection(std::mutex& mutex,
                             arangodb::Scheduler::WorkHandle& workItem,
                             std::function<void(bool)>& gcfunc,
@@ -378,15 +427,13 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
         << "' came from pool: " << isFromPool << " leasing took "
         << std::chrono::duration_cast<std::chrono::duration<double>>(dur)
                .count()
-        << " seconds, url: " << to_string(req->header.restVerb) << " "
-        << req->header.path << ", request ptr: " << (void*)req.get();
+        << " seconds, " << requestInfo(*req);
   } else {
     LOG_TOPIC("52417", TRACE, Logger::COMMUNICATION)
         << "have leased connection to '" << endpoint
-        << "' came from pool: " << isFromPool
-        << ", url: " << to_string(req->header.restVerb) << " "
-        << req->header.path << ", request ptr: " << (void*)req.get();
+        << "' came from pool: " << isFromPool << ", " << requestInfo(*req);
   }
+
   conn->sendRequest(
       std::move(req),
       [this, &pool, isFromPool, cb = std::move(cb),
@@ -456,6 +503,7 @@ void NetworkFeature::prepareRequest(network::ConnectionPool const& pool,
   _requestsInFlight += 1;
   if (req) {
     req->timestamp(std::chrono::steady_clock::now());
+    req->ensureId();
   }
 }
 
@@ -464,6 +512,12 @@ void NetworkFeature::finishRequest(network::ConnectionPool const& pool,
                                    std::unique_ptr<fuerte::Request> const& req,
                                    std::unique_ptr<fuerte::Response>& res) {
   _requestsInFlight -= 1;
+
+  LOG_TOPIC("52418", TRACE, Logger::COMMUNICATION)
+      << "have received responsed for request "
+      << (req == nullptr ? "nullptr" : requestInfo(*req))
+      << ", response: " << (res == nullptr ? "nullptr" : responseInfo(*res))
+      << ", err: " << (int)err << "=" << to_string(err);
   if (err == fuerte::Error::RequestTimeout) {
     _requestTimeouts.count();
   } else if (req && res) {

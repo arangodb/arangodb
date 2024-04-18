@@ -249,6 +249,9 @@ class Request final : public Message {
     return _timeSent;
   }
 
+  uint64_t id() const noexcept { return _id; }
+  void ensureId() noexcept;
+
  private:
   velocypack::Buffer<uint8_t> _payload;
   std::chrono::milliseconds _timeout;
@@ -256,6 +259,7 @@ class Request final : public Message {
   std::chrono::steady_clock::time_point _timeQueued;
   std::chrono::steady_clock::time_point _timeAsyncWrite;
   std::chrono::steady_clock::time_point _timeSent;
+  uint64_t _id = 0;
 };
 
 // Response contains the message resulting from a request to a server.

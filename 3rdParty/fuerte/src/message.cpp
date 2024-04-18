@@ -25,11 +25,14 @@
 #include <fuerte/message.h>
 #include <velocypack/Validator.h>
 
+#include <atomic>
 #include <sstream>
 
 #include "debugging.h"
 
 namespace {
+std::atomic<uint64_t> globalId{1};
+
 static std::string const emptyString;
 
 inline int hex2int(char ch, int errorCode) {
@@ -170,6 +173,12 @@ bool Message::isContentTypeText() const {
 ///////////////////////////////////////////////
 
 constexpr std::chrono::milliseconds Request::defaultTimeout;
+  
+void Request::ensureId() noexcept {
+  if (_id == 0) {
+    _id = ::globalId.fetch_add(1, std::memory_order_relaxed);
+  }
+}
 
 ContentType Request::acceptType() const { return header.acceptType(); }
 
