@@ -120,6 +120,11 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   QueryString const& queryString() const { return _queryString; }
 
+  /// @brief the query's transaction id. returns 0 if no transaction
+  /// has been assigned to the query yet. use this only for informational
+  /// purposes
+  TransactionId transactionId() const noexcept;
+
   /// @brief return the start time of the query (steady clock value)
   double startTime() const noexcept;
 
