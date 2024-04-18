@@ -59,6 +59,30 @@ auto LeaseManager::LeaseToRemoteGuard::cancel() const noexcept -> void {
   }
 }
 
+void LeaseManager::OpenHandouts::registerTombstone(PeerState const& server, LeaseId id, LeaseManager& mgr) {
+  if (auto tombIt = graveyard.find(server); tombIt == graveyard.end()) {
+    // Server not yet in Graveyard, add it.
+    // Note: If the server already rebooted callMeOnChange will be triggered directly.
+    auto undertaker = mgr._rebootTracker.callMeOnChange(
+        server,
+        [&, server = server]() {
+          // The server has rebooted make sure we erase all it's entries
+          // This needs to call abort methods of all leases.
+          mgr._leasedToRemotePeers.doUnderLock(
+              [&](auto& guarded) { guarded.graveyard.erase(server); });
+        },
+        "Let the undertaker clear the graveyard.");
+    auto tombIt2 = graveyard.emplace(
+        server,
+        GraveyardOfPeer{._serverAbortCallback{std::move(undertaker)},
+                        ._list{id}});
+    TRI_ASSERT(tombIt2.second) << "Failed to register new peer state";
+  } else {
+    // Just add the ID to the graveyard.
+    tombIt->second._list.emplace(id);
+  }
+}
+
 LeaseManager::LeaseManager(
     RebootTracker& rebootTracker,
     std::unique_ptr<ILeaseManagerNetworkHandler> networkHandler)
@@ -104,6 +128,27 @@ auto LeaseManager::handoutLeaseInternal(PeerState const& requestedBy,
                                         std::unique_ptr<LeaseEntry> leaseEntry)
     -> ResultT<LeaseToRemoteGuard> {
   auto registeredLease = _leasedToRemotePeers.doUnderLock([&](auto& guarded) -> Result {
+    auto& graveyard = guarded.graveyard;
+    if (!graveyard.empty()) {
+      // NOTE: In most cases the graveyard will be empty, as we only
+      // protect against a very small timeframe.
+      // If it is not empty, we need to check if the server is in there.
+      if (auto tombIt = graveyard.find(requestedBy);
+          tombIt != graveyard.end()) {
+        if (tombIt->second._list.contains(leaseId)) {
+          // The server is in the graveyard, we need to abort the lease.
+          // We do not need to add it to the graveyard again, as the server is
+          // already in there. We do not need to add it to the abort list, as the
+          // server is already in the graveyard.
+
+          // Abort this lease entry, pretend it never existed.
+          leaseEntry->abort();
+          return {TRI_ERROR_TRANSACTION_ABORTED,
+                  fmt::format("LeaseId {} for server {} is already aborted.",
+                              leaseId.id(), requestedBy.serverId)};
+        }
+      }
+    }
     auto& list = guarded.list;
     if (auto it = list.find(requestedBy); it == list.end()) {
       auto trackerGuard = _rebootTracker.callMeOnChange(
@@ -329,17 +374,25 @@ auto LeaseManager::sendAbortRequestsForAbandonedLeases() noexcept -> void {
 
 auto LeaseManager::abortLeasesForServer(AbortLeaseInformation info) noexcept
     -> void {
-  _leasedToRemotePeers.doUnderLock([&](auto& list) {
+  _leasedToRemotePeers.doUnderLock([&](auto& list) -> void {
     auto it = list.list.find(info.server);
     if (it != list.list.end()) {
       for (auto const& id : info.leasedTo) {
         // Try to erase the ID from the list.
         // Do not put the ID on the abort list, the remote server just told us to remove it.
-        it->second._mapping.erase(id);
-        // TODO: Tombstone?
+        if (auto numErased = it->second._mapping.erase(id); numErased == 0) {
+          // Rare case: Element Aborted that does not yet exist.
+          // Add a Tombstone for it
+          list.registerTombstone(info.server, id, *this);
+        }
       }
     } else {
-      // TODO: Tombstones!
+      for (auto const& id : info.leasedTo) {
+        // Rare case: The server has not yet registered anything
+        // Or was already removed by the RebootTracker.
+        // And then we handle the Abort call.
+        list.registerTombstone(info.server, id, *this);
+      }
     }
   });
   _leasedFromRemotePeers.doUnderLock([&](auto& list) {
@@ -349,10 +402,9 @@ auto LeaseManager::abortLeasesForServer(AbortLeaseInformation info) noexcept
         // Try to erase the ID from the list.
         // Do not put the ID on the abort list, the remote server just told us to remove it.
         it->second._mapping.erase(id);
-        // TODO: Tombstone?
+        // NOTE: We do not need tombstone handling here.
+        // This server is generating the IDs, so it cannot abort them before.
       }
-    } else {
-      // TODO: Tombstones!
     }
   });
 }

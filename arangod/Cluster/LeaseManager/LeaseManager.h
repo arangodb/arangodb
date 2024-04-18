@@ -31,6 +31,7 @@
 #include "Cluster/CallbackGuard.h"
 
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace arangodb {
@@ -122,6 +123,11 @@ struct LeaseManager {
     std::unordered_map<LeaseId, std::unique_ptr<LeaseEntry>> _mapping;
   };
 
+  struct GraveyardOfPeer {
+    CallbackGuard _serverAbortCallback;
+    std::unordered_set<LeaseId> _list;
+  };
+
   LeaseManager(RebootTracker& rebootTracker, std::unique_ptr<ILeaseManagerNetworkHandler> networkHandler);
 
   template<typename F>
@@ -196,7 +202,18 @@ struct LeaseManager {
     std::unordered_map<PeerState, LeaseListOfPeer> list;
   };
   Guarded<OpenLeases> _leasedFromRemotePeers;
-  Guarded<OpenLeases> _leasedToRemotePeers;
+
+  struct OpenHandouts {
+    std::unordered_map<PeerState, LeaseListOfPeer> list;
+
+    // We keep a list of all LeaseIds for a server that were aborted before they exist.
+    // Most likely this will stay empty most of the time, but it is important to
+    // protect against the race.
+    std::unordered_map<PeerState, GraveyardOfPeer> graveyard;
+
+    void registerTombstone(PeerState const& server, LeaseId id, LeaseManager& mgr);
+  };
+  Guarded<OpenHandouts> _leasedToRemotePeers;
 
   // NOTE: We do not use the RebootID here.
   // We guarantee that the LeaseId is unique to our Local ServerID/RebootID combination
