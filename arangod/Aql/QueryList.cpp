@@ -221,7 +221,8 @@ void QueryList::remove(Query& query) {
 
   if (query.queryOptions().skipAudit) {
     // internal queries that are excluded from audit logging will not be
-    // logged here as slow queries etc
+    // logged here as slow queries, and will not be inserted into the
+    // _queries system collection
     return;
   }
 

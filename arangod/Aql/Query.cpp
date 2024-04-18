@@ -184,7 +184,7 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
 
   // set memory limit for query
   _resourceMonitor.memoryLimit(_queryOptions.memoryLimit);
-  _warnings.updateOptions(_queryOptions);
+  _warnings.updateFromOptions(_queryOptions);
 
   // store name of user that started the query
   _user = ExecContext::current().user();
@@ -370,8 +370,7 @@ void Query::prepareQuery() {
         builder.add(VPackValue("variables"));
         _ast->variables()->toVelocyPack(builder);
 
-        builder.add("isModificationQuery",
-                    VPackValue(_ast->containsModificationNode()));
+        builder.add("isModificationQuery", VPackValue(isModificationQuery()));
       };
 
       unsigned flags = ExecutionPlan::buildSerializationFlags(
@@ -967,6 +966,16 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
 ExecutionState Query::finalize(VPackBuilder& extras) {
   ensureExecutionTime();
 
+  if (!_snippets.empty()) {
+    _execStats.requests += _numRequests.load(std::memory_order_relaxed);
+    _execStats.setPeakMemoryUsage(_resourceMonitor.peak());
+    _execStats.setExecutionTime(executionTime());
+    _execStats.setIntermediateCommits(_trx->state()->numIntermediateCommits());
+    for (auto& engine : _snippets) {
+      engine->collectExecutionStats(_execStats);
+    }
+  }
+
   if (_queryProfile != nullptr &&
       _shutdownState.load(std::memory_order_relaxed) == ShutdownState::None) {
     // the following call removes the query from the list of currently
@@ -984,14 +993,6 @@ ExecutionState Query::finalize(VPackBuilder& extras) {
   _warnings.toVelocyPack(extras);
 
   if (!_snippets.empty()) {
-    _execStats.requests += _numRequests.load(std::memory_order_relaxed);
-    _execStats.setPeakMemoryUsage(_resourceMonitor.peak());
-    _execStats.setExecutionTime(executionTime());
-    _execStats.setIntermediateCommits(_trx->state()->numIntermediateCommits());
-    for (auto& engine : _snippets) {
-      engine->collectExecutionStats(_execStats);
-    }
-
     // execution statistics
     extras.add(VPackValue("stats"));
     _execStats.toVelocyPack(extras, _queryOptions.fullCount);
@@ -2200,6 +2201,26 @@ void Query::toVelocyPack(velocypack::Builder& builder, bool isCurrent,
 
   // streaming yes/no?
   builder.add("stream", VPackValue(queryOptions().stream));
+
+  // modification query yes/no?
+  builder.add("modificationQuery", VPackValue(isModificationQuery()));
+
+  // TODO: move to guarded once available
+  builder.add("writesExecuted", VPackValue(_execStats.writesExecuted));
+  builder.add("writesIgnored", VPackValue(_execStats.writesIgnored));
+  builder.add("documentLookups", VPackValue(_execStats.documentLookups));
+  builder.add("scannedFull", VPackValue(_execStats.scannedFull));
+  builder.add("scannedIndex", VPackValue(_execStats.scannedIndex));
+  builder.add("cacheHits", VPackValue(_execStats.cacheHits));
+  builder.add("cacheMisses", VPackValue(_execStats.cacheMisses));
+  builder.add("filtered", VPackValue(_execStats.filtered));
+  builder.add("requests", VPackValue(_execStats.requests));
+  builder.add("intermediateCommits",
+              VPackValue(_execStats.intermediateCommits));
+  builder.add("count", VPackValue(_execStats.count));
+
+  // number of warnings
+  builder.add("warnings", VPackValue(warnings().count()));
 
   // exit code
   if (options.includeResultCode) {

@@ -23,7 +23,8 @@
 
 #pragma once
 
-#include <Basics/ErrorCode.h>
+#include "Basics/ErrorCode.h"
+
 #include <mutex>
 #include <string>
 #include <string_view>
@@ -57,7 +58,9 @@ class QueryWarnings final {
 
   bool empty() const;
 
-  void updateOptions(QueryOptions const&);
+  size_t count() const;
+
+  void updateFromOptions(QueryOptions const& opts);
 
   std::vector<std::pair<ErrorCode, std::string>> all() const;
 
