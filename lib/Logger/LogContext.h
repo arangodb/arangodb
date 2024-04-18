@@ -57,6 +57,19 @@ class RestHandler;
 /// transfer the context. The easiest way to achieve that is by using the
 /// `withLogContext` helper function.
 ///
+/// In some cases we cannot use a local ScopedValue, e.g., in the RestHandler
+/// we want to add some values during execution of the handler, but the handler
+/// can get paused and recontinue later. In such a case we want to create the
+/// value once and add/remove it from the context as needed. This can be done
+/// by creating the ScopedValue and then calling `share()` on it to create a
+/// shared_ptr which can be stored in a member. This shared_ptr can then be
+/// passed to `LogContext::Current::pushValues()` to add the values to the
+/// context. This returns a `LogContext::EntryPtr` which must also be stored,
+/// because it is required later when calling `LogContext::Current::popEntry()`
+/// to remove the values from the context.
+/// Note: it is important that entries are popped in the inverse order in
+/// which they were added.
+///
 /// Internally the values are managed in an immutable linked list using ref
 /// counts. I.e., values that have been added to some LogContext are never
 /// copied, even if that LogContext is captured in some futures.
@@ -452,6 +465,10 @@ struct LogContext::EntryPtr {
  public:
   constexpr EntryPtr() : _entry(nullptr) {}
   explicit EntryPtr(Entry* e) noexcept : _entry(e) {}
+
+  operator bool() const noexcept { return _entry != nullptr; }
+  bool operator!=(std::nullptr_t) const noexcept { return _entry != nullptr; }
+  bool operator==(std::nullptr_t) const noexcept { return _entry == nullptr; }
 
   EntryPtr(EntryPtr&& other) noexcept : _entry(other._entry) {
     other._entry = nullptr;

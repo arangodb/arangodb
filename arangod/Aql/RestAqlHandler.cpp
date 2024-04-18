@@ -47,6 +47,7 @@
 #include "GeneralServer/RestHandler.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
+#include "Logger/LogStructuredParamsAllowList.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/GeneralRequest.h"
 #include "Transaction/Context.h"
@@ -145,6 +146,14 @@ futures::Future<futures::Unit> RestAqlHandler::setupClusterQuery() {
     clusterQueryId = queryIdSlice.getNumber<QueryId>();
     TRI_ASSERT(clusterQueryId > 0);
   }
+
+  TRI_ASSERT(_logContextQueryIdValue == nullptr);
+  _logContextQueryIdValue = LogContext::makeValue()
+                                .with<structuredParams::QueryId>(clusterQueryId)
+                                .share();
+  TRI_ASSERT(_logContextQueryIdEntry == nullptr);
+  _logContextQueryIdEntry =
+      LogContext::Current::pushValues(_logContextQueryIdValue);
 
   VPackSlice lockInfoSlice = querySlice.get("lockInfo");
 
@@ -386,6 +395,15 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation,
     return RestStatus::DONE;
   }
 
+  if (_logContextQueryIdValue == nullptr) {
+    _logContextQueryIdValue = LogContext::makeValue()
+                                  .with<structuredParams::QueryId>(idString)
+                                  .share();
+    TRI_ASSERT(_logContextQueryIdEntry == nullptr);
+    _logContextQueryIdEntry =
+        LogContext::Current::pushValues(_logContextQueryIdValue);
+  }
+
   if (!_engine) {  // the PUT verb
     TRI_ASSERT(this->state() == RestHandler::HandlerState::EXECUTE ||
                this->state() == RestHandler::HandlerState::CONTINUED);
@@ -437,6 +455,15 @@ RestStatus RestAqlHandler::useQuery(std::string const& operation,
   }
 
   return RestStatus::DONE;
+}
+
+void RestAqlHandler::prepareExecute(bool isContinue) {
+  RestVocbaseBaseHandler::prepareExecute(isContinue);
+  if (_logContextQueryIdValue != nullptr) {
+    TRI_ASSERT(_logContextQueryIdEntry == nullptr);
+    _logContextQueryIdEntry =
+        LogContext::Current::pushValues(_logContextQueryIdValue);
+  }
 }
 
 // executes the handler
@@ -564,6 +591,8 @@ void RestAqlHandler::shutdownExecute(bool isFinalized) noexcept {
     LOG_TOPIC("c4db4", INFO, Logger::FIXME)
         << "Ignoring unknown exception during rest handler shutdown.";
   }
+
+  LogContext::Current::popEntry(_logContextQueryIdEntry);
   RestVocbaseBaseHandler::shutdownExecute(isFinalized);
 }
 
@@ -748,6 +777,7 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
     // shardId is set IFF the root node is scatter or distribute
     TRI_ASSERT(shardId.empty() != (rootNodeType == ExecutionNode::SCATTER ||
                                    rootNodeType == ExecutionNode::DISTRIBUTE));
+
     if (shardId.empty()) {
       std::tie(state, skipped, items) =
           _engine->execute(executeCall.callStack());
