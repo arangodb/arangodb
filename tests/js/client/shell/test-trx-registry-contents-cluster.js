@@ -29,7 +29,7 @@ const jsunity = require('jsunity');
 const arangodb = require('@arangodb');
 const db = arangodb.db;
 
-const start = (new Date).toISOString();
+const start = (new Date()).toISOString();
 
 function RegistrySuite() { 
   const cn = "UnitTests";

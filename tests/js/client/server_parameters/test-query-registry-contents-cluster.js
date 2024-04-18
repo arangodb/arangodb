@@ -45,7 +45,7 @@ const jwt = crypto.jwtEncode(jwtSecret, {
   "iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600
 }, 'HS256');
 
-const start = (new Date).toISOString();
+const start = (new Date()).toISOString();
 
 function RegistrySuite() { 
   const cn = "UnitTests";
