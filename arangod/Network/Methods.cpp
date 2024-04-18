@@ -300,7 +300,9 @@ void actuallySendRequest(std::shared_ptr<Pack>&& p, ConnectionPool* pool,
 FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
                       std::string path, velocypack::Buffer<uint8_t> payload,
                       RequestOptions const& options, Headers headers) {
-  LOG_TOPIC("2713a", DEBUG, Logger::COMMUNICATION)
+  LOG_TOPIC_IF(
+      "2713a", DEBUG, Logger::COMMUNICATION,
+      pool != nullptr && strcmp(pool->config().name, "ClusterComm") == 0)
       << "request to '" << dest << "' '" << fuerte::to_string(type) << " "
       << path << "'";
 

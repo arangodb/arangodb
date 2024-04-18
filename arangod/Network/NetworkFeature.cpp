@@ -54,7 +54,7 @@ std::string requestInfo(arangodb::fuerte::Request const& req) {
 
   std::string result =
       absl::StrCat("url: ", to_string(req.header.restVerb), " ",
-                   req.header.path, " request id: REQ", req.id(),
+                   req.header.path, " request id: REQ", req.id(), "REQ",
                    ", request ptr: ", hexer.str(), ", headers: [");
   bool first = true;
   for (auto const& it : req.header.meta()) {
@@ -422,14 +422,16 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
   auto conn = pool.leaseConnection(endpoint, isFromPool);
   auto dur = std::chrono::steady_clock::now() - now;
   if (dur > std::chrono::seconds(1)) {
-    LOG_TOPIC("52418", WARN, Logger::COMMUNICATION)
+    LOG_TOPIC_IF("52418", WARN, Logger::COMMUNICATION,
+                 strcmp(pool.config().name, "ClusterComm") == 0)
         << "have leased connection to '" << endpoint
         << "' came from pool: " << isFromPool << " leasing took "
         << std::chrono::duration_cast<std::chrono::duration<double>>(dur)
                .count()
         << " seconds, " << requestInfo(*req);
   } else {
-    LOG_TOPIC("52417", TRACE, Logger::COMMUNICATION)
+    LOG_TOPIC_IF("52417", TRACE, Logger::COMMUNICATION,
+                 strcmp(pool.config().name, "ClusterComm") == 0)
         << "have leased connection to '" << endpoint
         << "' came from pool: " << isFromPool << ", " << requestInfo(*req);
   }
@@ -513,11 +515,13 @@ void NetworkFeature::finishRequest(network::ConnectionPool const& pool,
                                    std::unique_ptr<fuerte::Response>& res) {
   _requestsInFlight -= 1;
 
-  LOG_TOPIC("52418", TRACE, Logger::COMMUNICATION)
+  LOG_TOPIC_IF("52418", TRACE, Logger::COMMUNICATION,
+               strcmp(pool.config().name, "ClusterComm") == 0)
       << "have received responsed for request "
       << (req == nullptr ? "nullptr" : requestInfo(*req))
       << ", response: " << (res == nullptr ? "nullptr" : responseInfo(*res))
       << ", err: " << (int)err << "=" << to_string(err);
+
   if (err == fuerte::Error::RequestTimeout) {
     _requestTimeouts.count();
   } else if (req && res) {

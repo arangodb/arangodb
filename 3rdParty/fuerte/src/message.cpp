@@ -177,6 +177,7 @@ constexpr std::chrono::milliseconds Request::defaultTimeout;
 void Request::ensureId() noexcept {
   if (_id == 0) {
     _id = ::globalId.fetch_add(1, std::memory_order_relaxed);
+    header.addMeta("x-arango-request-id", "REQ" + std::to_string(_id) + "REQ");
   }
 }
 
