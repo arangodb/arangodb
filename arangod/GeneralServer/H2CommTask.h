@@ -57,7 +57,7 @@ template<SocketType T>
 class H2CommTask final : public GeneralCommTask<T> {
  public:
   H2CommTask(GeneralServer& server, ConnectionInfo,
-             std::unique_ptr<AsioSocket<T>> so);
+             std::shared_ptr<AsioSocket<T>> so);
   ~H2CommTask() noexcept;
 
   void start() override;
