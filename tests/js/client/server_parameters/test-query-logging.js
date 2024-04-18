@@ -154,7 +154,7 @@ function QueryLoggerSuite() {
       const query = `${uniqid()} INSERT {} INTO ${cn}`;
       const n = 100;
       for (let i = 0; i < n; ++i) {
-        db._query(query).toArray();
+        db._query(query, null, {optimizer: {rules: ["-all"] } }).toArray();
       }
 
       checkForQuery(n, {
@@ -163,7 +163,8 @@ function QueryLoggerSuite() {
         user: "root", 
         state: "finished",
         modificationQuery: true, 
-        stream: false, 
+        stream: false,
+        /*
         writesExecuted: 1, 
         writesIgnored: 0, 
         documentLookups: 0, 
@@ -174,6 +175,7 @@ function QueryLoggerSuite() {
         filtered: 0, 
         intermediateCommits: 0, 
         count: 0, 
+        */
         warnings: 0, 
         exitCode: 0
       });
@@ -181,7 +183,7 @@ function QueryLoggerSuite() {
     
     testInsertManyQuery: function () {
       const query = `FOR i IN 1..2000 ${uniqid()} INSERT {} INTO ${cn}`;
-      db._query(query).toArray();
+      db._query(query, null, {optimizer: {rules: ["-all"] } }).toArray();
 
       checkForQuery(1, {
         query, 
@@ -190,6 +192,7 @@ function QueryLoggerSuite() {
         state: "finished",
         modificationQuery: true, 
         stream: false, 
+        /*
         writesExecuted: 2000, 
         writesIgnored: 0, 
         documentLookups: 0, 
@@ -200,6 +203,7 @@ function QueryLoggerSuite() {
         filtered: 0, 
         intermediateCommits: 0, 
         count: 0, 
+        */
         warnings: 0, 
         exitCode: 0
       });
@@ -207,7 +211,7 @@ function QueryLoggerSuite() {
     
     testInsertManyQueryIntermediateCommit: function () {
       const query = `FOR i IN 1..2000 ${uniqid()} INSERT {} INTO ${cn}`;
-      db._query(query, null, {intermediateCommitCount: 500}).toArray();
+      db._query(query, null, {intermediateCommitCount: 500, optimizer: {rules: ["-all"] }}).toArray();
 
       checkForQuery(1, {
         query, 
@@ -216,6 +220,7 @@ function QueryLoggerSuite() {
         state: "finished",
         modificationQuery: true, 
         stream: false, 
+        /*
         writesExecuted: 2000, 
         writesIgnored: 0, 
         documentLookups: 0, 
@@ -226,6 +231,7 @@ function QueryLoggerSuite() {
         filtered: 0, 
         intermediateCommits: 2, 
         count: 0, 
+        */
         warnings: 0, 
         exitCode: 0
       });
@@ -245,6 +251,7 @@ function QueryLoggerSuite() {
         state: "finished",
         modificationQuery: false, 
         stream: false, 
+        /*
         writesExecuted: 0, 
         writesIgnored: 0, 
         documentLookups: 0, 
@@ -255,6 +262,7 @@ function QueryLoggerSuite() {
         filtered: 0, 
         intermediateCommits: 0, 
         count: 0, 
+        */
         warnings: 0, 
         exitCode: 0
       });
@@ -280,6 +288,7 @@ function QueryLoggerSuite() {
         state: "finished",
         modificationQuery: false, 
         stream: false, 
+        /*
         writesExecuted: 0, 
         writesIgnored: 0, 
         documentLookups: 0, 
@@ -290,6 +299,7 @@ function QueryLoggerSuite() {
         filtered: 0, 
         intermediateCommits: 0, 
         count: 25000, 
+        */
         warnings: 0, 
         exitCode: 0
       });
@@ -315,6 +325,7 @@ function QueryLoggerSuite() {
         state: "finished",
         modificationQuery: false, 
         stream: false, 
+        /*
         writesExecuted: 0, 
         writesIgnored: 0, 
         documentLookups: 0, 
@@ -325,6 +336,7 @@ function QueryLoggerSuite() {
         filtered: 0, 
         intermediateCommits: 0, 
         count: 25000, 
+        */
         warnings: 0, 
         exitCode: 0
       });
@@ -350,6 +362,7 @@ function QueryLoggerSuite() {
         state: "finished",
         modificationQuery: false, 
         stream: false, 
+        /*
         writesExecuted: 0, 
         writesIgnored: 0, 
         documentLookups: 0, 
@@ -360,6 +373,7 @@ function QueryLoggerSuite() {
         filtered: 12500, 
         intermediateCommits: 0, 
         count: 12500, 
+        */
         warnings: 0, 
         exitCode: 0
       });
@@ -386,6 +400,7 @@ function QueryLoggerSuite() {
         state: "finished",
         modificationQuery: false, 
         stream: false, 
+        /*
         writesExecuted: 0, 
         writesIgnored: 0, 
         documentLookups: 12500, 
@@ -396,6 +411,7 @@ function QueryLoggerSuite() {
         filtered: 5000, 
         intermediateCommits: 0, 
         count: 7500, 
+        */
         warnings: 0, 
         exitCode: 0
       });
@@ -412,6 +428,7 @@ function QueryLoggerSuite() {
         state: "finished",
         modificationQuery: false, 
         stream: false, 
+        /*
         writesExecuted: 0, 
         writesIgnored: 0, 
         documentLookups: 0, 
@@ -422,6 +439,7 @@ function QueryLoggerSuite() {
         filtered: 0, 
         intermediateCommits: 0, 
         count: 3, 
+        */
         warnings: 3, 
         exitCode: 0
       });
@@ -443,6 +461,7 @@ function QueryLoggerSuite() {
         state: "finished",
         modificationQuery: false, 
         stream: false, 
+        /*
         writesExecuted: 0, 
         writesIgnored: 0, 
         documentLookups: 0, 
@@ -453,6 +472,7 @@ function QueryLoggerSuite() {
         filtered: 0, 
         intermediateCommits: 0, 
         count: 0, 
+        */
         warnings: 0, 
         exitCode: errors.ERROR_QUERY_USER_ASSERT.code,
       });
@@ -469,6 +489,7 @@ function QueryLoggerSuite() {
         state: "finished",
         modificationQuery: false, 
         stream: false, 
+        /*
         writesExecuted: 0, 
         writesIgnored: 0, 
         documentLookups: 0, 
@@ -479,6 +500,7 @@ function QueryLoggerSuite() {
         filtered: 0, 
         intermediateCommits: 0, 
         count: 10000, 
+        */
         warnings: 0, 
         exitCode: 0
       });
@@ -495,6 +517,7 @@ function QueryLoggerSuite() {
         state: "finished",
         modificationQuery: false, 
         stream: true, 
+        /*
         writesExecuted: 0, 
         writesIgnored: 0, 
         documentLookups: 0, 
@@ -505,6 +528,7 @@ function QueryLoggerSuite() {
         filtered: 0, 
         intermediateCommits: 0, 
         count: 10000, 
+        */
         warnings: 0, 
         exitCode: 0
       });

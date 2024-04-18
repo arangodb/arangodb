@@ -966,16 +966,6 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
 ExecutionState Query::finalize(VPackBuilder& extras) {
   ensureExecutionTime();
 
-  if (!_snippets.empty()) {
-    _execStats.requests += _numRequests.load(std::memory_order_relaxed);
-    _execStats.setPeakMemoryUsage(_resourceMonitor.peak());
-    _execStats.setExecutionTime(executionTime());
-    _execStats.setIntermediateCommits(_trx->state()->numIntermediateCommits());
-    for (auto& engine : _snippets) {
-      engine->collectExecutionStats(_execStats);
-    }
-  }
-
   if (_queryProfile != nullptr &&
       _shutdownState.load(std::memory_order_relaxed) == ShutdownState::None) {
     // the following call removes the query from the list of currently
@@ -993,6 +983,13 @@ ExecutionState Query::finalize(VPackBuilder& extras) {
   _warnings.toVelocyPack(extras);
 
   if (!_snippets.empty()) {
+    _execStats.requests += _numRequests.load(std::memory_order_relaxed);
+    _execStats.setPeakMemoryUsage(_resourceMonitor.peak());
+    _execStats.setExecutionTime(executionTime());
+    _execStats.setIntermediateCommits(_trx->state()->numIntermediateCommits());
+    for (auto& engine : _snippets) {
+      engine->collectExecutionStats(_execStats);
+    }
     // execution statistics
     extras.add(VPackValue("stats"));
     _execStats.toVelocyPack(extras, _queryOptions.fullCount);
@@ -2205,7 +2202,9 @@ void Query::toVelocyPack(velocypack::Builder& builder, bool isCurrent,
   // modification query yes/no?
   builder.add("modificationQuery", VPackValue(isModificationQuery()));
 
-  // TODO: move to guarded once available
+#if 0
+  // TODO: currently does not work in cluster, as stats are only updated
+  // once the query is removed from the query list.
   builder.add("writesExecuted", VPackValue(_execStats.writesExecuted));
   builder.add("writesIgnored", VPackValue(_execStats.writesIgnored));
   builder.add("documentLookups", VPackValue(_execStats.documentLookups));
@@ -2218,6 +2217,7 @@ void Query::toVelocyPack(velocypack::Builder& builder, bool isCurrent,
   builder.add("intermediateCommits",
               VPackValue(_execStats.intermediateCommits));
   builder.add("count", VPackValue(_execStats.count));
+#endif
 
   // number of warnings
   builder.add("warnings", VPackValue(warnings().count()));
