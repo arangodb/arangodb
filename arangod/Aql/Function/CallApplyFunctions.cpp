@@ -70,8 +70,8 @@ AqlValue callApplyBackend(
 
   aql::functions::appendAsString(trx.vpackOptions(), adapter, invokeFN);
 
-  icu::UnicodeString unicodeStr(buffer->data(),
-                                static_cast<int32_t>(buffer->length()));
+  icu_64_64::UnicodeString unicodeStr(buffer->data(),
+                                      static_cast<int32_t>(buffer->length()));
   unicodeStr.toUpper();
   unicodeStr.toUTF8String(ucInvokeFN);
 

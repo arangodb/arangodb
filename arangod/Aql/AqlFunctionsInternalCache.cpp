@@ -42,21 +42,21 @@ void AqlFunctionsInternalCache::clear() noexcept {
   _validatorCache.clear();
 }
 
-icu::RegexMatcher* AqlFunctionsInternalCache::buildRegexMatcher(
+icu_64_64::RegexMatcher* AqlFunctionsInternalCache::buildRegexMatcher(
     std::string_view expr, bool caseInsensitive) {
   buildRegexPattern(_temp, expr, caseInsensitive);
 
   return fromCache(_temp, _regexCache);
 }
 
-icu::RegexMatcher* AqlFunctionsInternalCache::buildLikeMatcher(
+icu_64_64::RegexMatcher* AqlFunctionsInternalCache::buildLikeMatcher(
     std::string_view expr, bool caseInsensitive) {
   buildLikePattern(_temp, expr, caseInsensitive);
 
   return fromCache(_temp, _likeCache);
 }
 
-icu::RegexMatcher* AqlFunctionsInternalCache::buildSplitMatcher(
+icu_64_64::RegexMatcher* AqlFunctionsInternalCache::buildSplitMatcher(
     AqlValue const& splitExpression, arangodb::velocypack::Options const* opts,
     bool& isEmptyExpression) {
   std::string rx;
@@ -108,15 +108,15 @@ arangodb::ValidatorBase* AqlFunctionsInternalCache::buildValidator(
 
 /// @brief get matcher from cache, or insert a new matcher for the specified
 /// pattern
-icu::RegexMatcher* AqlFunctionsInternalCache::fromCache(
+icu_64_64::RegexMatcher* AqlFunctionsInternalCache::fromCache(
     std::string const& pattern,
-    std::unordered_map<std::string, std::unique_ptr<icu::RegexMatcher>>&
+    std::unordered_map<std::string, std::unique_ptr<icu_64_64::RegexMatcher>>&
         cache) {
   // insert into cache, no matter if pattern is valid or not
   auto matcherIter =
       cache
           .try_emplace(pattern, arangodb::lazyConstruct([&] {
-                         return std::unique_ptr<icu::RegexMatcher>(
+                         return std::unique_ptr<icu_64_64::RegexMatcher>(
                              arangodb::basics::Utf8Helper::DefaultUtf8Helper
                                  .buildMatcher(pattern));
                        }))

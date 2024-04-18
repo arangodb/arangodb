@@ -3,6 +3,36 @@ devel
 
 * FE-441: Fix collection unstable default sort in multi-shard collections UI
 
+* Updated ArangoDB Starter to v0.19.1-preview-3.
+
+* Fixed SEARCH-485 (ES-2010): Search files disappeared during creation of
+  HotBackup.
+
+* Bundle ICU library version 64 with the build, so that persistent indexes and
+  views relying on the old sort order can still be used without problems.
+  The prevent issues with RocksDB going into read-only mode after an upgrade
+  from 3.11, if it encounters persistent index values in an unexpected sort
+  order. RocksDB's error message in this case was "Corruption: Compaction sees 
+  out-of-order keys".
+  The out-of-order keys were caused by a changed sort order for some Unicode 
+  characters. The newer ICU 73 version that ArangoDB 3.12 bundles includes the
+  most recent changes to the Unicode standard that have been accepted until
+  recently.
+  This leads to problems, because old versions of ArangoDB were using ICU
+  version 64, which was based on an older version of the Unicode standard, and
+  ArangoDB versions from 3.12 onwards were using ICU 73, which implements a
+  very recent version of the Unicode standard.
+  For example, in the Unicode standard implemented by ICU 64, the ASCII 
+  apostrophe character \u0027 compares lower than the Unicode apostrophe 
+  character \u2019. In ICU 73 both characters compare equal.
+  The sort order for existing on-disk indexes however must not change, because
+  RocksDB relies on the index files being sorted according to a non-changing
+  sort order.
+  ArangoDB from 3.12.0.2 onwards will thus bundle ICU versions 64 and 73, so
+  that indexes in RocksDB and Arangosearch views will continue to use ICU 
+  version 64 as they did in previous versions. The V8 engine relies on newer
+  versions of ICU and thus will use ICU version 73.
+
 * Make AQL query optimizer create less query execution plan permutations when
   a query contains multiple occurrences of COLLECT statements under certain
   conditions:
