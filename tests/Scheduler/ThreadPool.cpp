@@ -27,6 +27,7 @@
 #include <ratio>
 #include <thread>
 #include "GeneralServer/RequestLane.h"
+#include "Scheduler/LockfreeThreadPool.h"
 #include "Scheduler/SimpleThreadPool.h"
 #include "Scheduler/SupervisedScheduler.h"
 #include "Mocks/Servers.h"
@@ -108,12 +109,9 @@ struct SupervisedSchedulerPool {
 };
 
 template<class T>
-struct PoolBuilder;
-
-template<>
-struct PoolBuilder<SimpleThreadPool> {
-  SimpleThreadPool makePool(const char* name, unsigned numThreads) {
-    return SimpleThreadPool{name, numThreads};
+struct PoolBuilder {
+  T makePool(const char* name, unsigned numThreads) {
+    return T{name, numThreads};
   }
 };
 
@@ -129,7 +127,8 @@ struct PoolBuilder<SupervisedSchedulerPool> {
 template<typename Pool>
 class ThreadPoolPerfTest : public testing::Test {};
 
-using PoolTypes = ::testing::Types<SimpleThreadPool, SupervisedSchedulerPool>;
+using PoolTypes = ::testing::Types<SimpleThreadPool, LockfreeThreadPool,
+                                   SupervisedSchedulerPool>;
 TYPED_TEST_SUITE(ThreadPoolPerfTest, PoolTypes);
 
 namespace {
