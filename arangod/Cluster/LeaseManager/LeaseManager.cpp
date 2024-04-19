@@ -261,11 +261,13 @@ auto LeaseManager::returnLeaseFromRemote(PeerState const& peerState, LeaseId con
       if (auto toAbortServer = guard.abortList.find(peerState.serverId);
           toAbortServer != guard.abortList.end()) {
         // Flag this leaseId to be erased in next run.
-        toAbortServer->second.emplace_back(leaseId);
+        toAbortServer->second.leasedFrom.emplace_back(leaseId);
       } else {
         // Have nothing to erase for this server, schedule it.
-        guard.abortList.emplace(peerState.serverId,
-                                std::vector<LeaseId>{leaseId});
+        guard.abortList.emplace(
+            peerState.serverId,
+            LeasesToAbort::LeasePair{std::vector<LeaseId>{leaseId},
+                                     std::vector<LeaseId>{}});
       }
     });
   }
@@ -313,11 +315,13 @@ auto LeaseManager::returnLeaseToRemote(PeerState const& peerState, LeaseId const
       if (auto toAbortServer = guard.abortList.find(peerState.serverId);
           toAbortServer != guard.abortList.end()) {
         // Flag this leaseId to be erased in next run.
-        toAbortServer->second.emplace_back(leaseId);
+        toAbortServer->second.leasedTo.emplace_back(leaseId);
       } else {
         // Have nothing to erase for this server, schedule it.
-        guard.abortList.emplace(peerState.serverId,
-                                std::vector<LeaseId>{leaseId});
+        guard.abortList.emplace(
+            peerState.serverId,
+            LeasesToAbort::LeasePair{std::vector<LeaseId>{},
+                                     std::vector<LeaseId>{leaseId}});
       }
     });
   }
@@ -344,16 +348,16 @@ auto LeaseManager::cancelLeaseToRemote(PeerState const& peerState, LeaseId const
 
 auto LeaseManager::sendAbortRequestsForAbandonedLeases() noexcept -> void {
   std::vector<futures::Future<futures::Unit>> futures;
-  std::unordered_map<ServerID, std::vector<LeaseId>> abortList{};
+  std::unordered_map<ServerID, LeasesToAbort::LeasePair> abortList{};
   // Steal the list from the guarded structure.
   // Now other can register again while we abort the open items.
   _leasesToAbort.doUnderLock(
       [&](auto& guarded) { std::swap(guarded.abortList, abortList); });
-  for (auto const& [serverId, leaseIds] : abortList) {
+  for (auto const& [serverId, leasePair] : abortList) {
     // NOTE: We intentionally copy the leaseIds list here, as we probably need to
     // add it again locally it in case of an error.
     futures.emplace_back(
-        _networkHandler->abortIds(serverId, leaseIds)
+        _networkHandler->abortIds(serverId, leasePair.leasedFrom, leasePair.leasedTo)
             .thenValue([&](Result res) {
               if (!res.ok()) {
         // TODO: Abort if server is permanently gone!
@@ -361,8 +365,13 @@ auto LeaseManager::sendAbortRequestsForAbandonedLeases() noexcept -> void {
         // We failed to send the abort request, we should try again later.
         // So let us push the leases back into the list.
         _leasesToAbort.doUnderLock([&](auto& guarded) {
-          auto& insertList = guarded.abortList[serverId];
-          insertList.insert(insertList.end(), leaseIds.begin(), leaseIds.end());
+          auto& insertPair = guarded.abortList[serverId];
+          insertPair.leasedFrom.insert(insertPair.leasedFrom.end(),
+                                       leasePair.leasedFrom.begin(),
+                                       leasePair.leasedFrom.end());
+          insertPair.leasedFrom.insert(insertPair.leasedTo.end(),
+                                       leasePair.leasedTo.begin(),
+                               ha        leasePair.leasedTo.end());
         });
       }
       // else: We successfully aborted the open IDs. Forget about them now.

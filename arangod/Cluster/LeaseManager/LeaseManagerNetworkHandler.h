@@ -42,15 +42,17 @@ struct ILeaseManagerNetworkHandler {
   virtual ~ILeaseManagerNetworkHandler() = default;
 
   virtual auto abortIds(ServerID const& server,
-                        std::vector<LeaseId> const& ids) const noexcept
+                        std::vector<LeaseId> const& leasedFrom,
+                        std::vector<LeaseId> const& leasedTo) const noexcept
       -> futures::Future<Result> = 0;
 };
 
 struct LeaseManagerNetworkHandler : ILeaseManagerNetworkHandler {
   explicit LeaseManagerNetworkHandler(network::ConnectionPool* pool);
 
-  auto abortIds(ServerID const& server, std::vector<LeaseId> const& ids)
-      const noexcept -> futures::Future<Result> override;
+  auto abortIds(ServerID const& server, std::vector<LeaseId> const& leasedFrom,
+                std::vector<LeaseId> const& leasedTo) const noexcept
+      -> futures::Future<Result> override;
 
  private:
   network::ConnectionPool* _pool;

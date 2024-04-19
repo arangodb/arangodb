@@ -46,7 +46,8 @@ using namespace arangodb::tests::mocks;
 
 struct MockLeaseManagerNetworkHandler : public ILeaseManagerNetworkHandler {
   MOCK_METHOD(futures::Future<Result>, abortIds,
-              (ServerID const& server, std::vector<LeaseId> const& ids),
+              (ServerID const& server, std::vector<LeaseId> const& leasedFrom,
+               std::vector<LeaseId> const& leasedTo),
               (const, noexcept, override));
 };
 
@@ -250,7 +251,7 @@ TEST_F(LeaseManagerTest, test_a_lease_from_remote_can_be_moved_around) {
   };
   auto networkMock = getNetworkMock(leaseManager);
   // We are not allowed to abort remote leases here.
-  EXPECT_CALL(*networkMock, abortIds(testing::_, testing::_)).Times(0);
+  EXPECT_CALL(*networkMock, abortIds(testing::_, testing::_, testing::_)).Times(0);
   struct MyStructure {
     LeaseManager::LeaseFromRemoteGuard lease;
   };
@@ -261,7 +262,7 @@ TEST_F(LeaseManagerTest, test_a_lease_from_remote_can_be_moved_around) {
     waitForSchedulerEmpty();
     EXPECT_EQ(wasCalled, 0) << "Callback was called while moving around.";
     // We now go out of scope with myStruct. Can call abort now.
-    EXPECT_CALL(*networkMock, abortIds(serverA, std::vector<LeaseId>{storedId})).Times(1);
+    EXPECT_CALL(*networkMock, abortIds(serverA, std::vector<LeaseId>{storedId}, std::vector<LeaseId>{})).Times(1);
   }
 }
 
@@ -274,7 +275,7 @@ TEST_F(LeaseManagerTest, test_handout_lease_is_not_directly_destroyed) {
   };
   auto networkMock = getNetworkMock(leaseManager);
   // We are not allowed to abort remote leases here.
-  EXPECT_CALL(*networkMock, abortIds(testing::_, testing::_)).Times(0);
+  EXPECT_CALL(*networkMock, abortIds(testing::_, testing::_, testing::_)).Times(0);
   {
     auto leaseId = LeaseId{42};
     auto guardOne = leaseManager.handoutLease(leaseIsFor, leaseId, ignoreMe);
@@ -285,7 +286,7 @@ TEST_F(LeaseManagerTest, test_handout_lease_is_not_directly_destroyed) {
         << "The guard is still inside the result. Callback is not allowed to be called";
 
     // We now go out of scope. Can call abort now.
-    EXPECT_CALL(*networkMock, abortIds(serverA, std::vector<LeaseId>{leaseId})).Times(1);
+    EXPECT_CALL(*networkMock, abortIds(serverA, std::vector<LeaseId>{}, std::vector<LeaseId>{leaseId})).Times(1);
   }
   EXPECT_EQ(wasCalled, 0)
       << "We have now locally lost the lease, should not call abort";
@@ -300,7 +301,7 @@ TEST_F(LeaseManagerTest, test_cannot_handout_same_lease_id_twice_for_same_peer) 
     wasCalled++;
   };
   // We are not allowed to abort remote leases here.
-  EXPECT_CALL(*networkMock, abortIds(testing::_, testing::_)).Times(0);
+  EXPECT_CALL(*networkMock, abortIds(testing::_, testing::_, testing::_)).Times(0);
   {
     auto leaseId = LeaseId{42};
     auto guardOne = leaseManager.handoutLease(leaseIsFor, leaseId, ignoreMe);
@@ -313,7 +314,7 @@ TEST_F(LeaseManagerTest, test_cannot_handout_same_lease_id_twice_for_same_peer) 
         << "One of the abort callbacks triggered, should not happen.";
 
     // We now go out of scope. Can call abort now.
-    EXPECT_CALL(*networkMock, abortIds(serverA, std::vector<LeaseId>{leaseId})).Times(1);
+    EXPECT_CALL(*networkMock, abortIds(serverA, std::vector<LeaseId>{}, std::vector<LeaseId>{leaseId})).Times(1);
   }
   EXPECT_EQ(wasCalled, 0)
       << "One of the abort callbacks triggered, should not happen, one fails "
@@ -328,7 +329,7 @@ TEST_F(LeaseManagerTest, test_can_handout_different_lease_id_for_same_peer) {
     wasCalled++;
   };
   // We are not allowed to abort remote leases here.
-  EXPECT_CALL(*networkMock, abortIds(testing::_, testing::_)).Times(0);
+  EXPECT_CALL(*networkMock, abortIds(testing::_, testing::_, testing::_)).Times(0);
   {
     auto leaseId = LeaseId{42};
     auto guardOne = leaseManager.handoutLease(leaseIsFor, leaseId, ignoreMe);
@@ -352,10 +353,10 @@ TEST_F(LeaseManagerTest, test_can_handout_different_lease_id_for_same_peer) {
                 abortIds(serverA, std::vector<LeaseId>{leaseId, leaseIdTwo}))
         .Times(1);
 #else
-    EXPECT_CALL(*networkMock, abortIds(serverA, std::vector<LeaseId>{leaseId}))
+    EXPECT_CALL(*networkMock, abortIds(serverA, std::vector<LeaseId>{}, std::vector<LeaseId>{leaseId}))
         .Times(1);
     EXPECT_CALL(*networkMock,
-                abortIds(serverA, std::vector<LeaseId>{leaseIdTwo}))
+                abortIds(serverA, std::vector<LeaseId>{}, std::vector<LeaseId>{leaseIdTwo}))
         .Times(1);
 #endif
   }
@@ -372,7 +373,7 @@ TEST_F(LeaseManagerTest, test_a_lease_to_remote_can_be_moved_around) {
   };
   auto networkMock = getNetworkMock(leaseManager);
   // We are not allowed to abort remote leases here.
-  EXPECT_CALL(*networkMock, abortIds(testing::_, testing::_)).Times(0);
+  EXPECT_CALL(*networkMock, abortIds(testing::_, testing::_, testing::_)).Times(0);
   struct MyStructure {
     LeaseManager::LeaseToRemoteGuard lease;
   };
@@ -384,7 +385,7 @@ TEST_F(LeaseManagerTest, test_a_lease_to_remote_can_be_moved_around) {
     waitForSchedulerEmpty();
     EXPECT_EQ(wasCalled, 0) << "Callback was called while moving around.";
     // We now go out of scope with myStruct. Can call abort now.
-    EXPECT_CALL(*networkMock, abortIds(serverA, std::vector<LeaseId>{storedId})).Times(1);
+    EXPECT_CALL(*networkMock, abortIds(serverA, std::vector<LeaseId>{}, std::vector<LeaseId>{storedId})).Times(1);
   }
 }
 
@@ -414,7 +415,7 @@ TEST_F(LeaseManagerTest, test_lease_is_removed_from_list_on_guard_destruction) {
     assertLeasedFromListContainsLease(leaseReport.slice(), leaseIsFor,
                                       lease.id());
     // Prepare to be called to abort this ID.
-    EXPECT_CALL(*networkMock, abortIds(serverA, std::vector<LeaseId>{storedId})).Times(1);
+    EXPECT_CALL(*networkMock, abortIds(serverA, std::vector<LeaseId>{storedId}, std::vector<LeaseId>{})).Times(1);
   }
   {
     auto leaseReport = leaseManager.leasesToVPack();
@@ -446,7 +447,7 @@ TEST_F(LeaseManagerTest, test_lease_to_remote_is_removed_from_list_on_guard_dest
     assertLeasedToListContainsLease(leaseReport.slice(), leaseIsTo,
                                       lease->id());
     // Prepare to be called to abort this ID.
-    EXPECT_CALL(*networkMock, abortIds(serverA, std::vector<LeaseId>{storedId})).Times(1);
+    EXPECT_CALL(*networkMock, abortIds(serverA, std::vector<LeaseId>{}, std::vector<LeaseId>{storedId})).Times(1);
   }
   {
     auto leaseReport = leaseManager.leasesToVPack();
@@ -844,7 +845,7 @@ TEST_F(LeaseManagerTest, test_abort_given_leases_for_server_on_demand) {
   auto networkMock = getNetworkMock(leaseManager);
   // The remote server tells us to Abort its leases.
   // We should not call it back.
-  EXPECT_CALL(*networkMock, abortIds(testing::_, testing::_)).Times(0);
+  EXPECT_CALL(*networkMock, abortIds(testing::_, testing::_, testing::_)).Times(0);
   {
     auto leaseIsForA = getPeerState(serverA);
     auto leaseIsForB = getPeerState(serverB);
@@ -1023,7 +1024,7 @@ TEST_F(LeaseManagerTest, test_abort_with_same_id_for_lease_from_and_handout) {
   auto networkMock = getNetworkMock(leaseManager);
   // The remote server tells us to Abort its leases.
   // We should not call it back.
-  EXPECT_CALL(*networkMock, abortIds(testing::_, testing::_)).Times(0);
+  EXPECT_CALL(*networkMock, abortIds(testing::_, testing::_, testing::_)).Times(0);
 
   for (bool abortHandedOut : {false, true}) {
     bool leaseHandedOut = false;
@@ -1087,7 +1088,7 @@ TEST_F(LeaseManagerTest, test_abort_before_register_race) {
   auto networkMock = getNetworkMock(leaseManager);
   // The remote server tells us to Abort its leases.
   // We should not call it back.
-  EXPECT_CALL(*networkMock, abortIds(testing::_, testing::_)).Times(0);
+  EXPECT_CALL(*networkMock, abortIds(testing::_, testing::_, testing::_)).Times(0);
   auto leaseIsForA = getPeerState(serverA);
   bool leaseHandoutCallbackCalled = false;
 

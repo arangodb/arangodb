@@ -25,6 +25,8 @@
 #include "Futures/Future.h"
 #include "Cluster/LeaseManager/AbortLeaseInformation.h"
 #include "Cluster/LeaseManager/AbortLeaseInformationInspector.h"
+#include "Network/Methods.h"
+#include "Cluster/ServerState.h"
 
 using namespace arangodb::cluster;
 
@@ -32,12 +34,31 @@ LeaseManagerNetworkHandler::LeaseManagerNetworkHandler(
     network::ConnectionPool* pool)
     : _pool{pool} {}
 
-auto LeaseManagerNetworkHandler::abortIds(ServerID const& server, std::vector<LeaseId> const& ids)
-    const noexcept -> arangodb::futures::Future<arangodb::Result> {
+auto LeaseManagerNetworkHandler::abortIds(
+    ServerID const& server, std::vector<LeaseId> const& leasedFrom,
+    std::vector<LeaseId> const& leasedTo) const noexcept
+    -> futures::Future<Result> {
+  static auto path = "/_admin/leases";
+  VPackBufferUInt8 buffer;
+  auto info = AbortLeaseInformation{
+      .server = {.serverId = ServerState::instance()->getId(),
+                 .rebootId = ServerState::instance()->getRebootId()},
+      .leasedFrom = leasedFrom,
+      .leasedTo = leasedTo};
+  {
+    VPackBuilder builder(buffer);
+    arangodb::velocypack::serialize(builder, info);
+  }
+  network::RequestOptions opts;
+  auto f = network::sendRequest(_pool, "server:" + server,
+                                arangodb::fuerte::RestVerb::Delete, path,
+                                std::move(buffer), opts);
 
-  auto promise = futures::Promise<Result>{};
-  auto future = promise.getFuture();
-  // TODO: Implement me!
-  promise.setValue(Result{});
-  return future;
+  return std::move(f).thenValue([](network::Response result) -> Result {
+    if (result.fail() || !fuerte::statusIsSuccess(result.statusCode())) {
+      return result.combinedResult();
+    }
+    TRI_ASSERT(result.slice().get("error").isFalse());
+    return Result{};
+  });
 }

@@ -153,16 +153,6 @@ struct LeaseManager {
   auto leasesToVPack() const -> arangodb::velocypack::Builder;
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  // Read only method to make testing easier.
-  auto getLeasesToAbort() const
-      -> std::unordered_map<ServerID, std::vector<LeaseId>> {
-    std::unordered_map<ServerID, std::vector<LeaseId>> res;
-    _leasesToAbort.doUnderLock([&res](auto const& list) {
-      res = list.abortList;
-    });
-    return res;
-  }
-
   // Get Access to the NetworkHandler for Mocking
   auto getNetworkHandler() const -> ILeaseManagerNetworkHandler* {
     return _networkHandler.get();
@@ -221,7 +211,12 @@ struct LeaseManager {
   // has rebooted or not. This is also important if the Server was just disconnected and
   // got injected a new RebootID.
   struct LeasesToAbort {
-    std::unordered_map<ServerID, std::vector<LeaseId>> abortList;
+    struct LeasePair {
+      std::vector<LeaseId> leasedFrom;
+      std::vector<LeaseId> leasedTo;
+    };
+
+    std::unordered_map<ServerID, LeasePair> abortList;
   };
   Guarded<LeasesToAbort> _leasesToAbort;
 };

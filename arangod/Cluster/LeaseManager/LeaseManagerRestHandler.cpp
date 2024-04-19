@@ -24,7 +24,10 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Network/NetworkFeature.h"
+#include "Cluster/LeaseManager/AbortLeaseInformation.h"
+#include "Cluster/LeaseManager/AbortLeaseInformationInspector.h"
 #include "Cluster/LeaseManager/LeaseManager.h"
+#include "Inspection/VPack.h"
 
 using namespace arangodb;
 using namespace arangodb::cluster;
@@ -38,8 +41,18 @@ RestStatus LeaseManagerRestHandler::execute() {
   switch (request()->requestType()) {
     case RequestType::GET:
       return executeGet();
-    case RequestType::DELETE_REQ:
-      return executeDelete();
+    case RequestType::DELETE_REQ: {
+      bool parseSuccess = false;
+      VPackSlice const body = this->parseVPackBody(parseSuccess);
+      if (!parseSuccess) {
+        // error message generated in parseVPackBody
+        generateError(Result(TRI_ERROR_BAD_PARAMETER,
+                             "Failed to Parse Body, invalid JSON."));
+        return RestStatus::DONE;
+      }
+      auto info = velocypack::deserialize<AbortLeaseInformation>(body);
+      return executeDelete(std::move(info));
+    }
     default:
       generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
       return RestStatus::DONE;
@@ -55,11 +68,11 @@ RestStatus LeaseManagerRestHandler::executeGet() {
   return RestStatus::DONE;
 }
 
-RestStatus LeaseManagerRestHandler::executeDelete() {
+RestStatus LeaseManagerRestHandler::executeDelete(AbortLeaseInformation info) {
   auto& networkFeature = server().getFeature<NetworkFeature>();
   auto& leaseManager = networkFeature.leaseManager();
-
-  auto builder = leaseManager.leasesToVPack();
-  generateOk(rest::ResponseCode::OK, builder.slice());
+  leaseManager.abortLeasesForServer(std::move(info));
+  // This API can only return 200, leases are guaranteed to be aborted.
+  generateOk(rest::ResponseCode::OK, VPackSlice::noneSlice());
   return RestStatus::DONE;
 }

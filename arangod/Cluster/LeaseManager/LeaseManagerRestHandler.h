@@ -25,6 +25,9 @@
 #include "RestHandler/RestBaseHandler.h"
 
 namespace arangodb::cluster {
+
+struct AbortLeaseInformation;
+
 struct LeaseManagerRestHandler : public RestBaseHandler {
   explicit LeaseManagerRestHandler(ArangodServer&, GeneralRequest*,
                                    GeneralResponse*);
@@ -36,6 +39,6 @@ struct LeaseManagerRestHandler : public RestBaseHandler {
 
  private:
   RestStatus executeGet();
-  RestStatus executeDelete();
+  RestStatus executeDelete(AbortLeaseInformation info);
 };
 }  // namespace arangodb::cluster
