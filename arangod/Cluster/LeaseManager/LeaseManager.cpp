@@ -371,7 +371,7 @@ auto LeaseManager::sendAbortRequestsForAbandonedLeases() noexcept -> void {
                                        leasePair.leasedFrom.end());
           insertPair.leasedFrom.insert(insertPair.leasedTo.end(),
                                        leasePair.leasedTo.begin(),
-                               ha        leasePair.leasedTo.end());
+                                       leasePair.leasedTo.end());
         });
       }
       // else: We successfully aborted the open IDs. Forget about them now.
