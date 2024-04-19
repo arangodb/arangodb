@@ -127,8 +127,9 @@ struct PoolBuilder<SupervisedSchedulerPool> {
 template<typename Pool>
 class ThreadPoolPerfTest : public testing::Test {};
 
-using PoolTypes = ::testing::Types<SimpleThreadPool, LockfreeThreadPool,
-                                   SupervisedSchedulerPool>;
+using PoolTypes =
+    ::testing::Types<SimpleThreadPool, LockfreeThreadPool,
+                     WorkStealingThreadPool, SupervisedSchedulerPool>;
 TYPED_TEST_SUITE(ThreadPoolPerfTest, PoolTypes);
 
 namespace {
@@ -225,7 +226,7 @@ struct PingPong {
 
   void operator()() noexcept {
     if (!stop.load()) {
-      ping = (ping + 1) & 1;
+      ping = 1 - ping;
       pools[ping]->push(PingPong(pools[0], pools[1], ping, stop, counter));
       counter.fetch_add(1);
     }
@@ -245,8 +246,8 @@ void pingPongTest(unsigned numThreads) {
   std::uint64_t durationMs = 0;
   {
     PoolBuilder<Pool> poolBuilder;
-    auto pool1 = poolBuilder.makePool("pool1", 8);
-    auto pool2 = poolBuilder.makePool("pool2", 8);
+    auto pool1 = poolBuilder.makePool("pool1", numThreads);
+    auto pool2 = poolBuilder.makePool("pool2", numThreads);
 
     auto start = std::chrono::steady_clock::now();
     pool1.push(PingPong<Pool>(&pool1, &pool2, 0, stopSignal, counter));
