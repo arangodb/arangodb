@@ -93,6 +93,8 @@ class QueryRegistryFeature final : public ArangodFeature {
   }
   uint64_t maxParallelism() const noexcept { return _maxParallelism; }
 
+  bool enableDebugApis() const noexcept { return _enableDebugApis; }
+
  private:
   bool _trackingEnabled;
   bool _trackSlowQueries;
@@ -109,6 +111,7 @@ class QueryRegistryFeature final : public ArangodFeature {
 #endif
   bool _allowCollectionsInExpressions;
   bool _logFailedQueries;
+  bool _enableDebugApis;
   size_t _maxQueryStringLength;
   size_t _maxCollectionsPerQuery;
   uint64_t _peakMemoryUsageThreshold;

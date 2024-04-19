@@ -72,6 +72,7 @@ rta_makedata single suffix=afo -- --activeFailover true
 
 arangobench priority=1000 size=small cluster -- --dumpAgencyOnError true
 chaos cluster !mac !coverage !full -- --dumpAgencyOnError true parallelity=8
+deadlock cluster !mac !windows !coverage -- --dumpAgencyOnError true
 restart !mac priority=1000 size=small cluster -- --dumpAgencyOnError true --forceJson true
 
 load_balancing priority=500 size=small cluster -- --dumpAgencyOnError true
@@ -100,8 +101,8 @@ shell_client priority=500 cluster buckets=5 -- --dumpAgencyOnError true
 shell_client_transaction priority=500 cluster parallelity=5 size=small buckets=5 -- --dumpAgencyOnError true
 shell_server priority=500 size=medium+ cluster buckets=6 -- --dumpAgencyOnError true
 
-rta_makedata cluster
-
+rta_makedata cluster 
+rta_makedata enterprise cluster name=rta_makedata_force_oneshard --  --forceOneShard true
 # Common Tests
 
 importing,export name=import_export parallelity=5 size=small cluster -- --dumpAgencyOnError true

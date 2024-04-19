@@ -43,7 +43,7 @@ class RestTransactionHandler : public arangodb::RestVocbaseBaseHandler {
   char const* name() const override final { return "RestTransactionHandler"; }
 
   RequestLane lane() const override final;
-
+  
   RestStatus execute() override;
   void cancel() override final;
 

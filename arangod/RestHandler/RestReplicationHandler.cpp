@@ -1367,13 +1367,10 @@ Result RestReplicationHandler::processRestoreCollection(
       toMerge.add(StaticStrings::UsesRevisionsAsDocumentIds, VPackValue(true));
     }
 
+    LogicalCollection::addShardingStrategy(toMerge, parameters);
+
     // Always ignore `shadowCollections` they were accidentially dumped in
     // arangodb versions earlier than 3.3.6
-#ifdef USE_ENTERPRISE
-    LogicalCollection::addEnterpriseShardingStrategy(toMerge, parameters);
-#endif
-
-    // Remove ShadowCollections entry
     toMerge.add(StaticStrings::ShadowCollections,
                 arangodb::velocypack::Slice::nullSlice());
     toMerge.close();  // TopLevel
@@ -2867,6 +2864,10 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
   Result res =
       createBlockingTransaction(id, *col, ttl, lockType, rebootId, serverId);
   if (!res.ok()) {
+    LOG_TOPIC("5f00f", DEBUG, Logger::REPLICATION)
+        << "Lock " << id << " for shard " << _vocbase.name() << "/"
+        << col->name() << " of type: " << (doSoftLock ? "soft" : "hard")
+        << " could not be created because of: " << res.errorMessage();
     generateError(res);
     return;
   }
@@ -2880,7 +2881,8 @@ void RestReplicationHandler::handleCommandHoldReadLockCollection() {
     if (!res.ok()) {
       // this is potentially bad!
       LOG_TOPIC("957fa", WARN, Logger::REPLICATION)
-          << "Lock " << id
+          << "Lock " << id << " for shard " << _vocbase.name() << "/"
+          << col->name() << " of type: " << (doSoftLock ? "soft" : "hard")
           << " could not be canceled because of: " << res.errorMessage();
     }
     // indicate that we are not the leader
@@ -3686,9 +3688,17 @@ Result RestReplicationHandler::createBlockingTransaction(
     return res;
   }
 
-  ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
-
   std::string vn = _vocbase.name();
+
+  // we successfully created the transaction.
+  // make sure if it is aborted if something goes wrong.
+  auto transactionAborter = scopeGuard([mgr, id, vn]() noexcept {
+    try {
+      mgr->abortManagedTrx(id, vn);
+    } catch (...) {
+    }
+  });
+
   try {
     if (!serverId.empty()) {
       std::string comment = std::string("SynchronizeShard from ") + serverId +
@@ -3708,6 +3718,7 @@ Result RestReplicationHandler::createBlockingTransaction(
         }
       };
 
+      ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
       auto rGuard =
           std::make_unique<RebootCookie>(ci.rebootTracker().callMeOnChange(
               {serverId, rebootId}, std::move(f), std::move(comment)));
@@ -3732,14 +3743,13 @@ Result RestReplicationHandler::createBlockingTransaction(
   }
 
   if (isTombstoned(id)) {
-    try {
-      return mgr->abortManagedTrx(id, vn);
-    } catch (...) {
-      // Maybe thrown in shutdown.
-    }
     // DO NOT LOCK in this case, pointless
     return {TRI_ERROR_TRANSACTION_INTERNAL, "transaction already cancelled"};
   }
+
+  // when we get here, we let the transaction remain active until it
+  // times out or a cancel request is sent.
+  transactionAborter.cancel();
 
   return isLockHeld(id);
 }

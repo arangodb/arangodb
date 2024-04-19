@@ -4,6 +4,65 @@ v3.11.9 (XXXX-XX-XX)
 * Prioritize requests for commiting or aborting streaming transactions
   on leaders and followers, because they can unblock other operations.
 
+
+* Prioritize requests for commiting or aborting streaming transactions on
+  leaders and followers, because they can unblock other operations. Also
+  prioritize requests in already started streaming transactions and AQL queries
+  over new requests because it is assumed that already started streaming
+  transactions and AQL queries can block other operations from starting, so
+  these should be completed first.
+
+  The following request priorities have changed:
+  - cluster-internal requests for continuing already started AQL queries have
+    changed their priority from low to medium. This excludes requests that
+    setup AQL queries on DB servers, which still run with low priority.
+  - requests that include the transaction id header are now elevated to run
+    with medium priority if they originally ran with low priority. This
+    excludes requests that begin new transactions or AQL queries.
+  - requests to commit or abort an already running streaming transaction will
+    be elevated from low to medium priority.
+  - requests to HTTP GET `/_api/collection/<collection>/shards` and GET
+    `/_api/collection/<collection>/reponsibleShard` are now running with high
+    priority instead of low. Such requests are only used for inspection and
+    have no dependencies.
+  - requests to push further an existing query cursor via the `/_api/cursor`
+    are now running with medium priority instead of low priority. Requests
+    to start new queries still run with low priority.
+  - follower requests that acquire the lock on the leader while the follower
+    tries to get in sync are now running with low instead of medium priority.
+
+* Updated ArangoDB Starter to v0.18.5-preview-2.
+
+* Fix an issue that can cause AQL related RestHandlers to wind up in a WAITING
+  state and never get woken up. This implies that the associated query snippet
+  and transaction cannot be released. If the query contains modification
+  operations, this also implies that the associated collection write lock is not
+  released and can therefore prevent other threads from acquiring the exclusive
+  lock (which is required by e.g., the replication).
+
+* Fix an issue that can cause some background load in parallel traversals while
+  waiting for data from upstream.
+  For full details see https://github.com/arangodb/arangodb/pull/20768.
+
+* BTS-1856: Fix a data-race inside the Query class during accesses on a private
+  property (`execStats`).
+
+* Fixed SEARCH-485 (ES-2010): Search files disappeared during creation of
+  HotBackup.
+
+* BTS-1840: active failover: connection/tcp leak in active failover mode in case
+  no leader change happened for a long time.
+
+* Fix potential deadlocks in "fast lock round" when starting transactions in
+  cluster. The "fast lock round" is used to send out transaction begin requests
+  to multiple leaders concurrently, without caring about the order in which
+  requests are send out. This can potentially lead to deadlock with other
+  out-of-order requests. Thus the intention of the "fast lock round" is to use
+  a very low timeout for these requests, so that deadlocks would be detected and
+  rolled back quickly. However, there was a code path that triggered the "fast
+  lock round" with long request timeouts, which could lead to long wait times
+  until deadlocks were detected and rolled back.
+
 * Fixed BTS-1489: Race condition in AsioSocket shutdown when using SSL.
 
 * Rebuilt included rclone v1.62.2 with go1.21.8.
