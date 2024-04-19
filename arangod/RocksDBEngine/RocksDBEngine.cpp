@@ -862,13 +862,16 @@ void RocksDBEngine::prepare() {
 void RocksDBEngine::verifySstFiles(rocksdb::Options const& options) const {
   TRI_ASSERT(!_path.empty());
 
+  LOG_TOPIC("e210d", INFO, arangodb::Logger::STARTUP)
+      << "verifying RocksDB .sst files in path '" << _path << "'";
+
   rocksdb::SstFileReader sstReader(options);
   for (auto const& fileName : TRI_FullTreeDirectory(_path.c_str())) {
     if (!fileName.ends_with(".sst")) {
       continue;
     }
     std::string filename = basics::FileUtils::buildFilename(_path, fileName);
-    rocksdb::Status res = sstReader.Open(fileName);
+    rocksdb::Status res = sstReader.Open(filename);
     if (res.ok()) {
       res = sstReader.VerifyChecksum();
     }
@@ -880,6 +883,12 @@ void RocksDBEngine::verifySstFiles(rocksdb::Options const& options) const {
       FATAL_ERROR_EXIT_CODE(TRI_EXIT_SST_FILE_CHECK);
     }
   }
+
+  LOG_TOPIC("02224", INFO, arangodb::Logger::STARTUP)
+      << "verification of RocksDB .sst files in path '" << _path
+      << "' completed successfully";
+  Logger::flush();
+
   exit(EXIT_SUCCESS);
 }
 

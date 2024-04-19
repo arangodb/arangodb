@@ -278,8 +278,8 @@ class InvertedIndexExpressionContext final : public aql::ExpressionContext {
       transaction::Methods& trx, aql::AqlFunctionsInternalCache& cache) noexcept
       : _trx{trx}, _cache{cache} {}
 
-  icu::RegexMatcher* buildLikeMatcher(std::string_view expr,
-                                      bool caseInsensitive) final {
+  icu_64_64::RegexMatcher* buildLikeMatcher(std::string_view expr,
+                                            bool caseInsensitive) final {
     return _cache.buildLikeMatcher(expr, caseInsensitive);
   }
 
@@ -298,14 +298,14 @@ class InvertedIndexExpressionContext final : public aql::ExpressionContext {
     TRI_ASSERT(false);
   }
 
-  icu::RegexMatcher* buildRegexMatcher(std::string_view expr,
-                                       bool caseInsensitive) final {
+  icu_64_64::RegexMatcher* buildRegexMatcher(std::string_view expr,
+                                             bool caseInsensitive) final {
     TRI_ASSERT(false);
     return nullptr;
   }
-  icu::RegexMatcher* buildSplitMatcher(aql::AqlValue splitExpression,
-                                       velocypack::Options const* opts,
-                                       bool& isEmptyExpression) final {
+  icu_64_64::RegexMatcher* buildSplitMatcher(aql::AqlValue splitExpression,
+                                             velocypack::Options const* opts,
+                                             bool& isEmptyExpression) final {
     TRI_ASSERT(false);
     return nullptr;
   }

@@ -5554,15 +5554,16 @@ void TRI_normalize_V8_Obj(v8::FunctionCallbackInfo<v8::Value> const& args,
   size_t str_len = str.length();
   if (str_len > 0) {
     UErrorCode errorCode = U_ZERO_ERROR;
-    icu::Normalizer2 const* normalizer = icu::Normalizer2::getInstance(
-        nullptr, "nfc", UNORM2_COMPOSE, errorCode);
+    icu_64_64::Normalizer2 const* normalizer =
+        icu_64_64::Normalizer2::getInstance(nullptr, "nfc", UNORM2_COMPOSE,
+                                            errorCode);
 
     if (U_FAILURE(errorCode)) {
       TRI_V8_RETURN(TRI_V8_PAIR_STRING(isolate, (char*)*str, (int)str_len));
     }
 
-    icu::UnicodeString result = normalizer->normalize(
-        icu::UnicodeString((UChar*)*str, (int32_t)str_len), errorCode);
+    icu_64_64::UnicodeString result = normalizer->normalize(
+        icu_64_64::UnicodeString((UChar*)*str, (int32_t)str_len), errorCode);
 
     if (U_FAILURE(errorCode)) {
       TRI_V8_RETURN(TRI_V8_STRING_UTF16(isolate, *str, (int)str_len));
