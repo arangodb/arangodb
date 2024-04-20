@@ -323,7 +323,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
         }
       });
 
-  NetworkFeature const& nf =
+  NetworkFeature& nf =
       _query.vocbase().server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
   if (pool == nullptr) {
@@ -377,6 +377,10 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   auto& clusterInfo =
       _query.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
 
+  // TODO: This can throw. Is this a problem here?
+  auto& leaseManager = nf.leaseManager();
+
+  auto rebootIds = clusterInfo.rebootIds();
   /// cluster global query id, under which the query will be registered
   /// on DB servers from 3.8 onwards.
   QueryId clusterQueryId = clusterInfo.uniqid();
@@ -393,6 +397,16 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   }
 
   for (ServerID const& server : dbServers) {
+    auto const& alive = rebootIds.find(server);
+    if (alive == rebootIds.end()) {
+      return {TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE, fmt::format("The required server {} is not known to this coordinator", server)};
+    }
+
+    PeerState peerState{.serverId = server, .rebootId = alive->second.rebootId};
+    _query.addLeaseFromRemoteGuard(
+        leaseManager.requireLease(peerState, []() noexcept {
+          // TODO: Implement me.
+        }));
     // Build Lookup Infos
     VPackBuilder infoBuilder;
     auto didCreateEngine = buildEngineInfo(clusterQueryId, infoBuilder, server,

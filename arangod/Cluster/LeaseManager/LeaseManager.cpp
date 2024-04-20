@@ -31,6 +31,13 @@
 
 using namespace arangodb::cluster;
 
+
+LeaseManager::LeaseFromRemoteGuard::LeaseFromRemoteGuard(PeerState peer,
+                                                         LeaseId id,
+                                                         LeaseManager* mgr)
+    : _peerState(std::move(peer)), _id{id}, _manager(mgr) {
+}
+
 LeaseManager::LeaseFromRemoteGuard::~LeaseFromRemoteGuard() {
   if (_manager != nullptr) {
     _manager->returnLeaseFromRemote(_peerState, _id);
@@ -44,6 +51,7 @@ auto LeaseManager::LeaseFromRemoteGuard::cancel() const noexcept -> void {
     _manager->cancelLeaseFromRemote(_peerState, _id);
   }
 }
+
 
 LeaseManager::LeaseToRemoteGuard::~LeaseToRemoteGuard() {
   if (_manager != nullptr) {
@@ -103,11 +111,11 @@ auto LeaseManager::requireLeaseInternal(PeerState const& requestFrom, std::uniqu
   _leasedFromRemotePeers.doUnderLock([&](auto& guarded) {
     auto& list = guarded.list;
     if (auto it = list.find(requestFrom); it == list.end()) {
-      auto trackerGuard = _rebootTracker.callMeOnChange(requestFrom, [&]() {
+      auto trackerGuard = _rebootTracker.callMeOnChange(requestFrom, [&, peer = requestFrom]() {
             // The server has rebooted make sure we erase all it's entries
             // This needs to call abort methods of all leases.
             _leasedFromRemotePeers.doUnderLock(
-                [&](auto& guarded) { guarded.list.erase(requestFrom); });
+                [&](auto& guarded) { guarded.list.erase(peer); });
           }, "Abort leases of the LeaseManager.");
       auto it2 = list.emplace(
           requestFrom,
@@ -153,11 +161,11 @@ auto LeaseManager::handoutLeaseInternal(PeerState const& requestedBy,
     if (auto it = list.find(requestedBy); it == list.end()) {
       auto trackerGuard = _rebootTracker.callMeOnChange(
           requestedBy,
-          [&]() {
+          [&, peer = requestedBy]() {
             // The server has rebooted make sure we erase all it's entries
             // This needs to call abort methods of all leases.
             _leasedToRemotePeers.doUnderLock(
-                [&](auto& guarded) { guarded.list.erase(requestedBy); });
+                [&](auto& guarded) { guarded.list.erase(peer); });
           },
           "Abort leases of the LeaseManager.");
       auto it2 = list.emplace(

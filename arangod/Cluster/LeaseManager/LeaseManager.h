@@ -54,8 +54,8 @@ struct LeaseManager {
   // Specialization to allow for API checks which type of Lease we have.
   // With this guard we have required a lease from a remote peer.
   struct LeaseFromRemoteGuard {
-    LeaseFromRemoteGuard(PeerState peer, LeaseId id, LeaseManager* mgr)
-        : _peerState(std::move(peer)), _id{id}, _manager(mgr) {}
+    LeaseFromRemoteGuard(PeerState peer, LeaseId id, LeaseManager* mgr);
+
    public:
     ~LeaseFromRemoteGuard();
 
