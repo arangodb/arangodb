@@ -20,16 +20,18 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <gtest/gtest.h>
+#include <array>
 #include <atomic>
 #include <chrono>
-#include <concepts>
+#include <iostream>
 #include <memory>
-#include <ratio>
 #include <thread>
 #include "GeneralServer/RequestLane.h"
 #include "Scheduler/LockfreeThreadPool.h"
 #include "Scheduler/SimpleThreadPool.h"
 #include "Scheduler/SupervisedScheduler.h"
+#include "Scheduler/WorkStealingThreadPool.h"
+#include "Logger/Logger.h"
 #include "Mocks/Servers.h"
 #include "Metrics/MetricsFeature.h"
 
@@ -125,7 +127,12 @@ struct PoolBuilder<SupervisedSchedulerPool> {
 };
 
 template<typename Pool>
-class ThreadPoolPerfTest : public testing::Test {};
+class ThreadPoolPerfTest : public testing::Test {
+  void SetUp() override {
+    arangodb::Logger::CLUSTER.setLogLevel(LogLevel::ERR);
+    arangodb::Logger::THREADS.setLogLevel(LogLevel::ERR);
+  }
+};
 
 using PoolTypes =
     ::testing::Types<SimpleThreadPool, LockfreeThreadPool,
@@ -193,28 +200,20 @@ void spawnWorkTest(unsigned numThreads) {
     std::this_thread::sleep_for(std::chrono::milliseconds{100});
   }
   auto numOps = counter.load();
-  std::cout << "Throughput: " << numOps / durationMs << " ops/ms\n";
+  std::cout << std::setw(2) << numThreads << " threads: " << std::setw(5)
+            << numOps / durationMs << " ops/ms\n";
 }
 
-TYPED_TEST(ThreadPoolPerfTest, spawn_work_1_thread) {
+TYPED_TEST(ThreadPoolPerfTest, spawn_work) {
   if constexpr (std::same_as<TypeParam, SupervisedSchedulerPool>) {
     // the SupervisedScheduler needs at least 4 threads, otherwise it will
     // assert
     std::cout << "Skipping test for SupervisedSchedulerPool\n";
-    return;
+  } else {
+    spawnWorkTest<TypeParam>(1);
   }
-  spawnWorkTest<TypeParam>(1);
-}
-
-TYPED_TEST(ThreadPoolPerfTest, spawn_work_5_threads) {
   spawnWorkTest<TypeParam>(5);
-}
-
-TYPED_TEST(ThreadPoolPerfTest, spawn_work_11_threads) {
   spawnWorkTest<TypeParam>(11);
-}
-
-TYPED_TEST(ThreadPoolPerfTest, spawn_work_19_threads) {
   spawnWorkTest<TypeParam>(19);
 }
 
@@ -239,7 +238,7 @@ struct PingPong {
 };
 
 template<typename Pool>
-void pingPongTest(unsigned numThreads) {
+void pingPongTest(unsigned numThreads, unsigned numBalls) {
   std::atomic<bool> stopSignal = false;
   std::atomic<std::uint64_t> counter = 0;
 
@@ -250,9 +249,11 @@ void pingPongTest(unsigned numThreads) {
     auto pool2 = poolBuilder.makePool("pool2", numThreads);
 
     auto start = std::chrono::steady_clock::now();
-    pool1.push(PingPong<Pool>(&pool1, &pool2, 0, stopSignal, counter));
+    for (unsigned i = 0; i < numBalls; ++i) {
+      pool1.push(PingPong<Pool>(&pool1, &pool2, 0, stopSignal, counter));
+    }
 
-    std::this_thread::sleep_for(std::chrono::seconds{5});
+    std::this_thread::sleep_for(std::chrono::seconds{2});
     stopSignal.store(true);
 
     durationMs = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -264,23 +265,28 @@ void pingPongTest(unsigned numThreads) {
     std::this_thread::sleep_for(std::chrono::milliseconds{100});
   }
   auto numOps = counter.load();
-  std::cout << "Throughput: " << numOps / durationMs << " ops/ms\n";
+  std::cout << std::setw(10) << numOps / durationMs;
 }
 
-TYPED_TEST(ThreadPoolPerfTest, ping_pong_1_thread) {
-  if constexpr (std::same_as<TypeParam, SupervisedSchedulerPool>) {
-    // the SupervisedScheduler needs at least 4 threads, otherwise it will
-    // assert
-    std::cout << "Skipping test for SupervisedSchedulerPool\n";
-    return;
+TYPED_TEST(ThreadPoolPerfTest, ping_pong) {
+  std::array<unsigned, 3> threads = {1, 5, 13};
+  std::array<unsigned, 4> balls = {1, 4, 8, 16};
+
+  std::cout << "              ";
+  for (auto b : balls) {
+    std::cout << std::setw(2) << b << " balls  ";
   }
-  pingPongTest<TypeParam>(1);
-}
-
-TYPED_TEST(ThreadPoolPerfTest, ping_pong_5_threads) {
-  pingPongTest<TypeParam>(5);
-}
-
-TYPED_TEST(ThreadPoolPerfTest, ping_pong_13_threads) {
-  pingPongTest<TypeParam>(13);
+  std::cout << "\n";
+  for (auto t : threads) {
+    if constexpr (std::same_as<TypeParam, SupervisedSchedulerPool>) {
+      // the SupervisedScheduler needs at least 4 threads, otherwise it will
+      // assert
+      continue;
+    }
+    std::cout << std::setw(2) << t << " threads: ";
+    for (auto b : balls) {
+      pingPongTest<TypeParam>(t, b);
+    }
+    std::cout << " ops/ms" << std::endl;
+  }
 }
