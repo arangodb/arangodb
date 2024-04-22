@@ -30,10 +30,14 @@ const arangodb = require('@arangodb');
 const db = arangodb.db;
 const crypto = require('@arangodb/crypto');
 const request = require("@arangodb/request");
+const users = require("@arangodb/users");
 const internal = require('internal');
 const errors = internal.errors;
 
 const jwtSecret = 'haxxmann';
+const cn = "UnitTests";
+// fetch everything at once
+const batchSize = 10 * 1000;
 
 if (getOptions === true) {
   return {
@@ -49,14 +53,80 @@ const jwt = crypto.jwtEncode(jwtSecret, {
   "server_id": "ABCD",
   "iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600
 }, 'HS256');
+  
+const baseUrl = function () {
+  return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:') + '/_db/' + db._name();
+};
+
+function QueryPermissionsSuite() { 
+  return {
+    setUpAll: function () {
+      db._create(cn);
+      // run at least one AQL query so that the _queries collection
+      // will be created
+      db._query(`FOR i IN 1..100 INSERT {} INTO ${cn}`);
+    },
+    
+    tearDownAll: function () {
+      db._drop(cn);
+    },
+
+    tearDown: function () {
+      try {
+        users.remove("test_user");
+      } catch (err) {
+      }
+    },
+
+    testNoAccessWithoutDatabasePermissions: function () {
+      users.save("test_user", "testi");
+      users.grantDatabase("test_user", "_system", "none");
+
+      let result = request.post({
+        url: baseUrl() + "/_api/cursor",
+        body: {query:"FOR doc IN _queries RETURN doc", batchSize, options: {batchSize}},
+        json: true,
+        auth: {username: "test_user", password: "testi"},
+      });
+      assertEqual(401, result.statusCode);
+      let body = JSON.parse(result.body);
+      assertTrue(body.error, body);
+    },
+    
+    testAccessWithDatabaseReadOnlyPermissions: function () {
+      users.save("test_user", "testi");
+      users.grantDatabase("test_user", "_system", "ro");
+      
+      let result = request.post({
+        url: baseUrl() + "/_api/cursor",
+        body: {query:"FOR doc IN _queries RETURN doc", batchSize, options: {batchSize}},
+        json: true,
+        auth: {username: "test_user", password: "testi"},
+      });
+      assertEqual(201, result.statusCode);
+      let body = JSON.parse(result.body);
+      assertFalse(body.error, body);
+    },
+    
+    testAccessWithDatabaseReadWritePermissions: function () {
+      users.save("test_user", "testi");
+      users.grantDatabase("test_user", "_system", "rw");
+
+      let result = request.post({
+          url: baseUrl() + "/_api/cursor",
+          body: {query:"FOR doc IN _queries RETURN doc", batchSize, options: {batchSize}},
+          json: true,
+          auth: {username: "test_user", password: "testi"},
+        });
+      assertEqual(201, result.statusCode);
+      let body = JSON.parse(result.body);
+      assertFalse(body.error, body);
+    },
+
+  };
+}
 
 function QueryLoggerSuite() { 
-  const cn = "UnitTests";
-  
-  const baseUrl = function () {
-    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:') + '/_db/' + db._name();
-  };
-
   let qid = 0;
 
   const uniqid = () => {
@@ -101,9 +171,6 @@ function QueryLoggerSuite() {
   };
 
   const getQueries = () => {
-    // fetch everything at once
-    const batchSize = 10 * 1000;
-
     let result = request.post({
       url: baseUrl() + "/_api/cursor",
       body: {query:"FOR doc IN _queries RETURN doc", batchSize, options: {batchSize}},
@@ -537,5 +604,6 @@ function QueryLoggerSuite() {
   };
 }
 
+jsunity.run(QueryPermissionsSuite);
 jsunity.run(QueryLoggerSuite);
 return jsunity.done();
