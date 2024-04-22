@@ -46,6 +46,7 @@
 
 #include <atomic>
 #include <memory>
+#include <mutex>
 #include <optional>
 #include <vector>
 
@@ -223,6 +224,8 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// @brief return the final query result status code (0 = no error,
   /// > 0 = error, one of TRI_ERROR_...)
   ErrorCode resultCode() const noexcept;
+
+  void setResultCode(ErrorCode code) noexcept;
 
   /// @brief return the bind parameters as passed by the user
   std::shared_ptr<velocypack::Builder> bindParameters() const {
@@ -410,6 +413,8 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// repeatability.
   ExecutionPhase _executionPhase;
 
+  /// @brief mutex protecting _resultCode
+  mutable std::mutex _resultCodeMutex;
   /// @brief return the final query result status code (0 = no error,
   /// > 0 = error, one of TRI_ERROR_...)
   std::optional<ErrorCode> _resultCode;

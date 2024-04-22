@@ -48,7 +48,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/ScopeGuard.h"
-#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
 #include "Basics/fasthash.h"
@@ -82,6 +81,7 @@
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Sink.h>
@@ -416,13 +416,13 @@ void Query::prepareQuery() {
 
     enterState(QueryExecutionState::ValueType::EXECUTION);
   } catch (Exception const& ex) {
-    _resultCode = ex.code();
+    setResultCode(ex.code());
     throw;
   } catch (std::bad_alloc const&) {
-    _resultCode = TRI_ERROR_OUT_OF_MEMORY;
+    setResultCode(TRI_ERROR_OUT_OF_MEMORY);
     throw;
   } catch (...) {
-    _resultCode = TRI_ERROR_INTERNAL;
+    setResultCode(TRI_ERROR_INTERNAL);
     throw;
   }
 }
@@ -696,27 +696,21 @@ ExecutionState Query::execute(QueryResult& queryResult) {
     TRI_ASSERT(false);
   } catch (Exception const& ex) {
     queryResult.reset(Result(
-        ex.code(), "AQL: " + ex.message() +
-                       QueryExecutionState::toStringWithPrefix(_execState)));
+        ex.code(),
+        absl::StrCat("AQL: ", ex.message(),
+                     QueryExecutionState::toStringWithPrefix(_execState))));
     cleanupPlanAndEngine(ex.code(), /*sync*/ true);
   } catch (std::bad_alloc const&) {
-    queryResult.reset(
-        Result(TRI_ERROR_OUT_OF_MEMORY,
-               StringUtils::concatT(
-                   TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
-                   QueryExecutionState::toStringWithPrefix(_execState))));
+    queryResult.reset(Result(
+        TRI_ERROR_OUT_OF_MEMORY,
+        absl::StrCat(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
+                     QueryExecutionState::toStringWithPrefix(_execState))));
     cleanupPlanAndEngine(TRI_ERROR_OUT_OF_MEMORY, /*sync*/ true);
   } catch (std::exception const& ex) {
     queryResult.reset(Result(
         TRI_ERROR_INTERNAL,
-        ex.what() + QueryExecutionState::toStringWithPrefix(_execState)));
-    cleanupPlanAndEngine(TRI_ERROR_INTERNAL, /*sync*/ true);
-  } catch (...) {
-    queryResult.reset(
-        Result(TRI_ERROR_INTERNAL,
-               StringUtils::concatT(
-                   TRI_errno_string(TRI_ERROR_INTERNAL),
-                   QueryExecutionState::toStringWithPrefix(_execState))));
+        absl::StrCat(ex.what(),
+                     QueryExecutionState::toStringWithPrefix(_execState))));
     cleanupPlanAndEngine(TRI_ERROR_INTERNAL, /*sync*/ true);
   }
 
@@ -934,27 +928,21 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
     // fallthrough to returning queryResult below...
   } catch (Exception const& ex) {
     queryResult.reset(Result(
-        ex.code(), "AQL: " + ex.message() +
-                       QueryExecutionState::toStringWithPrefix(_execState)));
+        ex.code(),
+        absl::StrCat("AQL: ", ex.message(),
+                     QueryExecutionState::toStringWithPrefix(_execState))));
     cleanupPlanAndEngine(ex.code(), /*sync*/ true);
   } catch (std::bad_alloc const&) {
-    queryResult.reset(
-        Result(TRI_ERROR_OUT_OF_MEMORY,
-               StringUtils::concatT(
-                   TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
-                   QueryExecutionState::toStringWithPrefix(_execState))));
+    queryResult.reset(Result(
+        TRI_ERROR_OUT_OF_MEMORY,
+        absl::StrCat(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
+                     QueryExecutionState::toStringWithPrefix(_execState))));
     cleanupPlanAndEngine(TRI_ERROR_OUT_OF_MEMORY, /*sync*/ true);
   } catch (std::exception const& ex) {
     queryResult.reset(Result(
         TRI_ERROR_INTERNAL,
-        ex.what() + QueryExecutionState::toStringWithPrefix(_execState)));
-    cleanupPlanAndEngine(TRI_ERROR_INTERNAL, /*sync*/ true);
-  } catch (...) {
-    queryResult.reset(
-        Result(TRI_ERROR_INTERNAL,
-               StringUtils::concatT(
-                   TRI_errno_string(TRI_ERROR_INTERNAL),
-                   QueryExecutionState::toStringWithPrefix(_execState))));
+        absl::StrCat(ex.what(),
+                     QueryExecutionState::toStringWithPrefix(_execState))));
     cleanupPlanAndEngine(TRI_ERROR_INTERNAL, /*sync*/ true);
   }
 
@@ -1030,9 +1018,6 @@ QueryResult Query::parse() {
     result.reset(Result(TRI_ERROR_OUT_OF_MEMORY));
   } catch (std::exception const& ex) {
     result.reset(Result(TRI_ERROR_INTERNAL, ex.what()));
-  } catch (...) {
-    result.reset(Result(TRI_ERROR_INTERNAL,
-                        "an unknown error occurred while parsing the query"));
   }
 
   TRI_ASSERT(result.fail());
@@ -1172,23 +1157,18 @@ QueryResult Query::explain() {
   } catch (Exception const& ex) {
     result.reset(Result(
         ex.code(),
-        ex.message() + QueryExecutionState::toStringWithPrefix(_execState)));
+        absl::StrCat(ex.message(),
+                     QueryExecutionState::toStringWithPrefix(_execState))));
   } catch (std::bad_alloc const&) {
-    result.reset(
-        Result(TRI_ERROR_OUT_OF_MEMORY,
-               StringUtils::concatT(
-                   TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
-                   QueryExecutionState::toStringWithPrefix(_execState))));
+    result.reset(Result(
+        TRI_ERROR_OUT_OF_MEMORY,
+        absl::StrCat(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
+                     QueryExecutionState::toStringWithPrefix(_execState))));
   } catch (std::exception const& ex) {
     result.reset(Result(
         TRI_ERROR_INTERNAL,
-        ex.what() + QueryExecutionState::toStringWithPrefix(_execState)));
-  } catch (...) {
-    result.reset(
-        Result(TRI_ERROR_INTERNAL,
-               StringUtils::concatT(
-                   TRI_errno_string(TRI_ERROR_INTERNAL),
-                   QueryExecutionState::toStringWithPrefix(_execState))));
+        absl::StrCat(ex.what(),
+                     QueryExecutionState::toStringWithPrefix(_execState))));
   }
 
   // will be returned in success or failure case
@@ -1457,10 +1437,9 @@ void Query::stringifyBindParameters(std::string& out, std::string_view prefix,
       // truncate value with "..."
       TRI_ASSERT(initialLength + maxLength >= 3);
       out.resize(initialLength + maxLength - 3);
-      out.append("... (", 5);
-      basics::StringUtils::itoa(
-          sink.unconstrainedLength() - initialLength - maxLength, out);
-      out.append(")", 1);
+      absl::StrAppend(&out, "... (",
+                      sink.unconstrainedLength() - initialLength - maxLength,
+                      ")");
     }
   }
 }
@@ -1545,7 +1524,15 @@ bool Query::canUseQueryCache() const {
 }
 
 ErrorCode Query::resultCode() const noexcept {
+  std::lock_guard<std::mutex> guard{_resultCodeMutex};
   return _resultCode.value_or(TRI_ERROR_NO_ERROR);
+}
+
+void Query::setResultCode(ErrorCode code) noexcept {
+  std::lock_guard<std::mutex> guard{_resultCodeMutex};
+  if (!_resultCode.has_value()) {
+    _resultCode = code;
+  }
 }
 
 /// @brief enter a new state
@@ -1567,10 +1554,7 @@ void Query::enterState(QueryExecutionState::ValueType state) {
 ExecutionState Query::cleanupPlanAndEngine(ErrorCode errorCode, bool sync) {
   ensureExecutionTime();
 
-  if (!_resultCode.has_value()) {  // TODO possible data race here
-    // result code not yet set.
-    _resultCode = errorCode;
-  }
+  setResultCode(errorCode);
 
   if (sync && _sharedState) {
     _sharedState->resetWakeupHandler();
@@ -1909,21 +1893,20 @@ ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
           << " Failed to cleanup leftovers of a query due to communication "
              "errors. "
           << " The DBServers will eventually clean up the state. The "
-             "following "
-             "locks still exist: "
-          << " write: " << writeLocked
+             "following locks still exist: write: "
+          << writeLocked
           << ": you may not drop these collections until the locks time out."
           << " exclusive: " << exclusiveLocked
           << ": you may not be able to write into these collections until "
-             "the "
-             "locks time out.";
+             "the locks time out.";
 
       for (auto const& [server, queryId, rebootId] : _serverQueryIds) {
-        auto msg = "Failed to send unlock request DELETE /_api/aql/finish/" +
-                   std::to_string(queryId) + " to server:" + server +
-                   " in database " + vocbase().name();
-        _warnings.registerWarning(TRI_ERROR_CLUSTER_AQL_COMMUNICATION, msg);
+        auto msg = absl::StrCat(
+            "Failed to send unlock request DELETE /_api/aql/finish/", queryId,
+            " to server:", server, " in database ", vocbase().name());
         LOG_TOPIC("7c10f", WARN, Logger::QUERIES) << msg;
+        _warnings.registerWarning(TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
+                                  std::move(msg));
       }
     }
     return ExecutionState::DONE;
@@ -2203,8 +2186,8 @@ void Query::toVelocyPack(velocypack::Builder& builder, bool isCurrent,
   builder.add("modificationQuery", VPackValue(isModificationQuery()));
 
 #if 0
-  // TODO: currently does not work in cluster, as stats are only updated
-  // once the query is removed from the query list.
+  // TODO: currently does not work in cluster, as stats in cluster are only 
+  // updated after the query is removed from the query list.
   builder.add("writesExecuted", VPackValue(_execStats.writesExecuted));
   builder.add("writesIgnored", VPackValue(_execStats.writesIgnored));
   builder.add("documentLookups", VPackValue(_execStats.documentLookups));
