@@ -1,9 +1,9 @@
 v3.11.9 (XXXX-XX-XX)
 --------------------
 
-* Detach threads in getResponsibleServers if they wait for more than 1s.
+* Updated ArangoDB Starter to v0.18.5.
 
-* Updated ArangoDB Starter to v0.18.5-preview-2.
+* Detach threads in getResponsibleServers if they wait for more than 1s.
 
 * Fix an issue that can cause AQL related RestHandlers to wind up in a WAITING
   state and never get woken up. This implies that the associated query snippet
