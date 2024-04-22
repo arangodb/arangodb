@@ -2127,9 +2127,6 @@ void Query::toVelocyPack(velocypack::Builder& builder, bool isCurrent,
   // query inside the Query object.
   TRI_ASSERT(now >= elapsed);
 
-  auto timeString =
-      TRI_StringTimeStamp(/*started*/ now - elapsed, Logger::getUseLocalTime());
-
   builder.openObject();
 
   // query id (note: this is always returned as a string)
@@ -2168,6 +2165,8 @@ void Query::toVelocyPack(velocypack::Builder& builder, bool isCurrent,
   }
 
   // start time
+  auto timeString =
+      TRI_StringTimeStamp(/*started*/ now - elapsed, Logger::getUseLocalTime());
   builder.add("started", VPackValue(timeString));
 
   // run time

@@ -25,16 +25,24 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
+#include "Aql/Query.h"
+#include "Aql/QueryOptions.h"
+#include "Aql/QueryString.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/Thread.h"
 #include "Basics/application-exit.h"
+#include "Basics/conversions.h"
+#include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
+#include "Transaction/Methods.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/ExecContext.h"
@@ -97,12 +105,48 @@ class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
       kCheckNothing,
     };
 
+    std::chrono::time_point<std::chrono::steady_clock> lastCleanup{};
     PrepareState prepareState = PrepareState::kCheckCollection;
+
+    constexpr auto checkInterval = std::chrono::minutes(5);
 
     while (true) {
       decltype(_queries) queries;
 
       try {
+        // schedule a cleanup task
+        if (auto now = std::chrono::steady_clock::now();
+            now > lastCleanup + checkInterval && !_workItem) {
+          lastCleanup = now;
+
+          Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+
+          if (scheduler != nullptr) {
+            auto workItem = SchedulerFeature::SCHEDULER->queueDelayed(
+                "queries-gc", RequestLane::CLIENT_SLOW,
+                std::chrono::seconds(10), [this](bool canceled) {
+                  if (!canceled) {
+                    if (Result res = cleanupCollection();
+                        res.fail() &&
+                        res.isNot(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) &&
+                        res.isNot(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) &&
+                        res.isNot(TRI_ERROR_ARANGO_READ_ONLY)) {
+                      LOG_TOPIC("7a99c", WARN, Logger::QUERIES)
+                          << "unable to perform garbage collection "
+                             "of logged queries: "
+                          << res.errorMessage();
+                    }
+                  }
+
+                  std::lock_guard<std::mutex> guard(_workItemMutex);
+                  _workItem.reset();
+                });
+
+            std::lock_guard<std::mutex> guard(_workItemMutex);
+            _workItem = std::move(workItem);
+          }
+        }
+
         std::unique_lock guard{_mutex};
 
         if (_queries.empty()) {
@@ -110,8 +154,9 @@ class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
             // exit thread loop
             break;
           }
+
           // only sleep if we have no queries left to process
-          _condition.wait_for(guard, std::chrono::seconds{10});
+          _condition.wait_for(guard, checkInterval);
         } else {
           std::swap(queries, _queries);
 
@@ -153,18 +198,74 @@ class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
             << "caught exception in QueryInfoLoggerThread: " << ex.what();
       }
     }
+
+    std::lock_guard<std::mutex> guard(_workItemMutex);
+    _workItem.reset();
   }
 
  private:
-  Result ensureCollection() {
+  SystemDatabaseFeature::ptr getSystemDatabase() {
+    return server().hasFeature<SystemDatabaseFeature>()
+               ? server().getFeature<SystemDatabaseFeature>().use()
+               : nullptr;
+  }
+
+  Result cleanupCollection() {
+    // give ourselves full permissions to access the collection
     ExecContextSuperuserScope scope;
 
-    std::string const& name = StaticStrings::QueriesCollection;
+    auto vocbase = getSystemDatabase();
 
-    SystemDatabaseFeature::ptr vocbase =
-        server().hasFeature<SystemDatabaseFeature>()
-            ? server().getFeature<SystemDatabaseFeature>().use()
-            : nullptr;
+    if (vocbase == nullptr) {
+      return {TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
+              "unable to find _system database"};
+    }
+
+    constexpr std::string_view removeQuery =
+        "/*queries cleanup*/ FOR doc IN @@collection FILTER doc.started < "
+        "@minDate REMOVE doc IN @@collection";
+
+    // TODO: make retention period dynamic
+    std::string minDate =
+        TRI_StringTimeStamp(TRI_microtime() - 86400, /*useLocalTime*/ false);
+
+    auto bindVars = std::make_shared<VPackBuilder>();
+    bindVars->openObject();
+    bindVars->add("@collection", VPackValue(StaticStrings::QueriesCollection));
+    bindVars->add("minDate", VPackValue(minDate));
+    bindVars->close();
+
+    LOG_TOPIC("87971", TRACE, Logger::QUERIES)
+        << "running queries collection cleanup query with bind parameters "
+        << bindVars->slice().toJson();
+
+    aql::QueryOptions options;
+    // don't let query runtime restrictions affect the removal query
+    options.maxRuntime = 0.0;
+    // no need to make the remove query appear in the audit log
+    options.skipAudit = true;
+
+    auto origin = transaction::OperationOriginInternal{"queries cleanup"};
+    auto query = aql::Query::create(
+        transaction::StandaloneContext::create(*vocbase, origin),
+        aql::QueryString(removeQuery), std::move(bindVars), options);
+    query->collections().add(StaticStrings::QueriesCollection,
+                             AccessMode::Type::WRITE,
+                             aql::Collection::Hint::Collection);
+    aql::QueryResult queryResult = query->executeSync();
+
+    LOG_TOPIC_IF("05da1", TRACE, Logger::QUERIES, queryResult.fail())
+        << "queries collection cleanup query failed with: "
+        << queryResult.result.errorMessage();
+
+    return queryResult.result;
+  }
+
+  Result ensureCollection() {
+    // give ourselves full permissions to create the collection
+    ExecContextSuperuserScope scope;
+
+    auto vocbase = getSystemDatabase();
 
     if (vocbase == nullptr) {
       return {TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
@@ -172,11 +273,13 @@ class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
     }
 
     std::shared_ptr<LogicalCollection> collection;
-    if (Result res = methods::Collections::lookup(*vocbase, name, collection);
+    if (Result res = methods::Collections::lookup(
+            *vocbase, StaticStrings::QueriesCollection, collection);
         res.fail()) {
       OperationOptions options{};
       res = methods::Collections::createSystem(
-          *vocbase, options, name, /*isNewDatabase*/ false, collection);
+          *vocbase, options, StaticStrings::QueriesCollection,
+          /*isNewDatabase*/ false, collection);
 
       if (res.fail()) {
         return {res.errorNumber(),
@@ -189,14 +292,10 @@ class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
   }
 
   Result ensureIndex() {
+    // give ourselves full permissions to create the index
     ExecContextSuperuserScope scope;
 
-    std::string const& name = StaticStrings::QueriesCollection;
-
-    SystemDatabaseFeature::ptr vocbase =
-        server().hasFeature<SystemDatabaseFeature>()
-            ? server().getFeature<SystemDatabaseFeature>().use()
-            : nullptr;
+    auto vocbase = getSystemDatabase();
 
     if (vocbase == nullptr) {
       return {TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
@@ -205,7 +304,8 @@ class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
 
     std::shared_ptr<LogicalCollection> collection;
 
-    if (Result res = methods::Collections::lookup(*vocbase, name, collection);
+    if (Result res = methods::Collections::lookup(
+            *vocbase, StaticStrings::QueriesCollection, collection);
         res.fail()) {
       // collection not found
       return {res.errorNumber(),
@@ -218,7 +318,7 @@ class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
     velocypack::Builder body;
     {
       VPackObjectBuilder b(&body);
-      body.add(StaticStrings::IndexType, VPackValue("ttl"));
+      body.add(StaticStrings::IndexType, VPackValue("persistent"));
       body.add(StaticStrings::IndexSparse, VPackValue(false));
       body.add(StaticStrings::IndexUnique, VPackValue(false));
       body.add(StaticStrings::IndexEstimates, VPackValue(false));
@@ -226,8 +326,6 @@ class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
       body.add(StaticStrings::IndexFields, VPackValue(VPackValueType::Array));
       body.add(VPackValue("started"));
       body.close();  // "fields"
-
-      body.add(StaticStrings::IndexExpireAfter, VPackValue(86400));
     }
 
     velocypack::Builder out;
@@ -241,12 +339,10 @@ class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
       std::vector<std::shared_ptr<velocypack::String>> const& queries) {
     TRI_ASSERT(!queries.empty());
 
+    // give ourselves full permissions to write into the system collection
     ExecContextSuperuserScope scope;
 
-    SystemDatabaseFeature::ptr vocbase =
-        server().hasFeature<SystemDatabaseFeature>()
-            ? server().getFeature<SystemDatabaseFeature>().use()
-            : nullptr;
+    auto vocbase = getSystemDatabase();
 
     if (vocbase == nullptr) {
       return {TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
@@ -289,6 +385,9 @@ class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
   std::condition_variable _condition;
 
   std::vector<std::shared_ptr<velocypack::String>> _queries;
+
+  std::mutex _workItemMutex;
+  Scheduler::WorkHandle _workItem;
 };
 
 QueryInfoLoggerFeature::QueryInfoLoggerFeature(Server& server)
