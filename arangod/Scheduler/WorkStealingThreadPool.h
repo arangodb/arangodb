@@ -35,7 +35,9 @@
 namespace arangodb {
 
 struct WorkStealingThreadPool {
-  using WorkItem = Scheduler::WorkItemBase;
+  struct WorkItem : Scheduler::WorkItemBase {
+    WorkItem* next = nullptr;
+  };
 
   WorkStealingThreadPool(const char* name, std::size_t threadCount);
   ~WorkStealingThreadPool();
@@ -65,13 +67,15 @@ struct WorkStealingThreadPool {
   const std::size_t numThreads;
 
  private:
-  struct Thread;
+  struct ThreadState;
 
   using Clock = std::chrono::steady_clock;
 
   std::atomic<std::size_t> pushIdx = 0;
 
-  std::vector<std::unique_ptr<Thread>> _threads;
+  std::atomic<ThreadState*> hint = nullptr;
+  std::vector<std::jthread> _threads;
+  std::vector<std::unique_ptr<ThreadState>> _threadStates;
   std::latch _latch;
 };
 
