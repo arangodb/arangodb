@@ -31,7 +31,9 @@ v3.11.9 (XXXX-XX-XX)
   - follower requests that acquire the lock on the leader while the follower
     tries to get in sync are now running with low instead of medium priority.
 
-* Updated ArangoDB Starter to v0.18.5-preview-2.
+* Updated ArangoDB Starter to v0.18.5.
+
+* Detach threads in getResponsibleServers if they wait for more than 1s.
 
 * Fix an issue that can cause AQL related RestHandlers to wind up in a WAITING
   state and never get woken up. This implies that the associated query snippet
