@@ -83,14 +83,20 @@ class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
   }
 
   void log(std::shared_ptr<velocypack::String> query) {
+    bool doNotify = false;
     {
       std::lock_guard guard{_mutex};
 
       if (_queries.size() < _maxBufferedQueries) {
         _queries.emplace_back(std::move(query));
+        doNotify = true;
       }
     }
-    _condition.notify_one();
+
+    if (doNotify) {
+      // notify only in case we have added the query
+      _condition.notify_one();
+    }
   }
 
  protected:
@@ -98,17 +104,19 @@ class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
     enum class PrepareState {
       // must check if _queries system collection exists
       kCheckCollection,
-      // collection is present - must check if TTL index on _queries system
-      // collection exists
+      // _queries collection is present - must check if persistent index
+      // on _queries collection exists
       kCheckIndex,
-      // collection and index are present - no checks necessary
+      // _queries collection and index are present - no checks necessary
       kCheckNothing,
     };
 
     std::chrono::time_point<std::chrono::steady_clock> lastCleanup{};
     PrepareState prepareState = PrepareState::kCheckCollection;
 
-    constexpr auto checkInterval = std::chrono::minutes(5);
+    // interval in which garbage collection for "old" query entries
+    // runs.
+    constexpr auto gcCheckInterval = std::chrono::minutes(3);
 
     while (true) {
       decltype(_queries) queries;
@@ -116,34 +124,12 @@ class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
       try {
         // schedule a cleanup task
         if (auto now = std::chrono::steady_clock::now();
-            now > lastCleanup + checkInterval && !_workItem) {
-          lastCleanup = now;
+            now > lastCleanup + gcCheckInterval) {
+          std::unique_lock<std::mutex> guard(_workItemMutex);
+          if (!_workItem) {
+            lastCleanup = now;
 
-          Scheduler* scheduler = SchedulerFeature::SCHEDULER;
-
-          if (scheduler != nullptr) {
-            auto workItem = SchedulerFeature::SCHEDULER->queueDelayed(
-                "queries-gc", RequestLane::CLIENT_SLOW,
-                std::chrono::seconds(10), [this](bool canceled) {
-                  if (!canceled) {
-                    if (Result res = cleanupCollection();
-                        res.fail() &&
-                        res.isNot(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) &&
-                        res.isNot(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) &&
-                        res.isNot(TRI_ERROR_ARANGO_READ_ONLY)) {
-                      LOG_TOPIC("7a99c", WARN, Logger::QUERIES)
-                          << "unable to perform garbage collection "
-                             "of logged queries: "
-                          << res.errorMessage();
-                    }
-                  }
-
-                  std::lock_guard<std::mutex> guard(_workItemMutex);
-                  _workItem.reset();
-                });
-
-            std::lock_guard<std::mutex> guard(_workItemMutex);
-            _workItem = std::move(workItem);
+            queueGarbageCollection(guard);
           }
         }
 
@@ -156,7 +142,7 @@ class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
           }
 
           // only sleep if we have no queries left to process
-          _condition.wait_for(guard, checkInterval);
+          _condition.wait_for(guard, gcCheckInterval);
         } else {
           std::swap(queries, _queries);
 
@@ -204,12 +190,48 @@ class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
   }
 
  private:
+  // queue garbage collection for "old" queries in _queries collection.
+  // must be called with the _workItemMutex held
+  void queueGarbageCollection(std::unique_lock<std::mutex>& guard) {
+    TRI_ASSERT(guard.owns_lock());
+
+    Scheduler* scheduler = SchedulerFeature::SCHEDULER;
+
+    if (scheduler == nullptr) {
+      return;
+    }
+
+    auto workItem = scheduler->queueDelayed(
+        "queries-gc", RequestLane::CLIENT_SLOW, std::chrono::seconds(10),
+        [this](bool canceled) {
+          if (!canceled) {
+            if (Result res = cleanupCollection();
+                res.fail() && res.isNot(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) &&
+                res.isNot(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) &&
+                res.isNot(TRI_ERROR_ARANGO_READ_ONLY)) {
+              LOG_TOPIC("7a99c", WARN, Logger::QUERIES)
+                  << "unable to perform garbage collection "
+                     "of logged queries: "
+                  << res.errorMessage();
+            }
+          }
+
+          std::lock_guard<std::mutex> guard(_workItemMutex);
+          _workItem.reset();
+        });
+
+    _workItem = std::move(workItem);
+  }
+
+  // return pointer to _system database, if it exists.
   SystemDatabaseFeature::ptr getSystemDatabase() {
     return server().hasFeature<SystemDatabaseFeature>()
                ? server().getFeature<SystemDatabaseFeature>().use()
                : nullptr;
   }
 
+  // run a cleanup query on the _queries collection, in order to purge
+  // old entries.
   Result cleanupCollection() {
     // give ourselves full permissions to access the collection
     ExecContextSuperuserScope scope;
@@ -261,6 +283,8 @@ class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
     return queryResult.result;
   }
 
+  // ensure that the _queries collection is created inside the _system
+  // database.
   Result ensureCollection() {
     // give ourselves full permissions to create the collection
     ExecContextSuperuserScope scope;
@@ -291,6 +315,8 @@ class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
     return {};
   }
 
+  // create an index on the _queries collection, so that we can
+  // easily find expired entries later
   Result ensureIndex() {
     // give ourselves full permissions to create the index
     ExecContextSuperuserScope scope;
@@ -324,7 +350,9 @@ class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
       body.add(StaticStrings::IndexEstimates, VPackValue(false));
 
       body.add(StaticStrings::IndexFields, VPackValue(VPackValueType::Array));
+      // the actual indexed field
       body.add(VPackValue("started"));
+
       body.close();  // "fields"
     }
 
@@ -335,6 +363,7 @@ class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
     return res;
   }
 
+  // insert a batch of queries into the _queries system collection
   Result insertQueries(
       std::vector<std::shared_ptr<velocypack::String>> const& queries) {
     TRI_ASSERT(!queries.empty());
@@ -378,15 +407,23 @@ class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
     return trx.finish(result.result);
   }
 
+  // maximum number of queries that can be buffered in memory before
+  // being inserted into the _queries system collection.
   size_t const _maxBufferedQueries;
 
-  // mutex and condition variable that protect _queries
+  // mutex and condition variable that protect _queries.
   std::mutex _mutex;
   std::condition_variable _condition;
 
+  // query slices, buffered in memory. the slices are owned by the
+  // vector. protected by _mutex
   std::vector<std::shared_ptr<velocypack::String>> _queries;
 
+  // mutex that protects _workItem.
   std::mutex _workItemMutex;
+  // scheduler work item for a garbage collection task that is
+  // periodically scheduled for the _queries collection.
+  // the work item is protected by _workItemMutex.
   Scheduler::WorkHandle _workItem;
 };
 
@@ -398,6 +435,7 @@ QueryInfoLoggerFeature::QueryInfoLoggerFeature(Server& server)
       _logSlowQueries(true),
       _logProbability(0.001) {
   setOptional(true);
+  // we need to be able to run AQL queries here ourselves.
   startsAfter<DatabaseFeaturePhase>();
   startsAfter<RocksDBEngine>();
   startsAfter<CommunicationFeaturePhase>();
@@ -480,6 +518,7 @@ void QueryInfoLoggerFeature::start() {
 
 void QueryInfoLoggerFeature::stop() { stopThread(); }
 
+// whether or not a particular query should be logged.
 bool QueryInfoLoggerFeature::shouldLog(bool isSystem,
                                        bool isSlowQuery) const noexcept {
   if (!_logEnabled) {
@@ -500,6 +539,8 @@ bool QueryInfoLoggerFeature::shouldLog(bool isSystem,
                _logProbability));
 }
 
+// accept a query for logging. the logging itself may be carried out later
+// because it is asynchronous.
 void QueryInfoLoggerFeature::log(
     std::shared_ptr<velocypack::String> const& query) {
   if (_loggerThread != nullptr) {
