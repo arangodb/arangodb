@@ -293,10 +293,14 @@ curl_easy_handle::curl_easy_handle() : _easy_handle(curl_easy_init()) {
   curl_easy_setopt(_easy_handle, CURLOPT_SSL_ENABLE_ALPN, 1l);
   curl_easy_setopt(_easy_handle, CURLOPT_SSL_VERIFYPEER, 0l);
   curl_easy_setopt(_easy_handle, CURLOPT_SSL_VERIFYHOST, 0l);
+  curl_easy_setopt(_easy_handle, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_3);
+
   curl_easy_setopt(_easy_handle, CURLOPT_PROTOCOLS_STR, "HTTP,HTTPS");
 
   curl_easy_setopt(_easy_handle, CURLOPT_TRANSFER_ENCODING, 0l);
   curl_easy_setopt(_easy_handle, CURLOPT_ACCEPT_ENCODING, NULL);
+  // we do decoding on our own
+  curl_easy_setopt(_easy_handle, CURLOPT_HTTP_CONTENT_DECODING, 0l);
 
   curl_easy_setopt(_easy_handle, CURLOPT_VERBOSE, 1l);
   curl_easy_setopt(_easy_handle, CURLOPT_DEBUGFUNCTION, &debug_callback);
