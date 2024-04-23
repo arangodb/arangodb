@@ -101,6 +101,8 @@ struct SupervisedSchedulerPool {
 
   ~SupervisedSchedulerPool() { scheduler.shutdown(); }
 
+  void shutdown() { scheduler.shutdown(); }
+
   // we create multiple schedulers, so each one needs its own metrics feature to
   // register its metrics
   std::shared_ptr<arangodb::metrics::MetricsFeature> metricsFeature;
@@ -289,6 +291,11 @@ void pingPongTest(unsigned numThreads, unsigned numBalls, WorkSimulation work) {
       // that we tried to queue an item after the SchedulerFeature was stopped
       std::this_thread::sleep_for(std::chrono::milliseconds{100});
     }
+
+    // need to explicitly shutdown the pools, otherwise one pool might still try
+    // to push to a pool that is already being destroyed
+    pool2.shutdown();
+    pool1.shutdown();
   }
   auto numOps = counter.load();
   std::cout << std::setw(11) << numOps / durationMs << std::flush;

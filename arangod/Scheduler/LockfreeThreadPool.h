@@ -34,6 +34,9 @@ struct LockfreeThreadPool {
 
   LockfreeThreadPool(const char* name, std::size_t threadCount);
   ~LockfreeThreadPool();
+
+  void shutdown() noexcept;
+
   void push(std::unique_ptr<WorkItem>&& task) noexcept;
 
   template<std::invocable F>

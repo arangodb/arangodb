@@ -70,18 +70,21 @@ LockfreeThreadPool::LockfreeThreadPool(const char* name,
   });
 }
 
-LockfreeThreadPool::~LockfreeThreadPool() {
+LockfreeThreadPool::~LockfreeThreadPool() { shutdown(); }
+
+void LockfreeThreadPool::shutdown() noexcept {
   // push as many stop items as we have threads
   for ([[maybe_unused]] auto& thread : _threads) {
     push(std::unique_ptr<WorkItem>(&stopItem));
   }
   for (auto& thread : _threads) {
-    thread.join();
+    if (thread.joinable()) {
+      thread.join();
+    }
   }
   // pop remaining items from the queue and release them
   WorkItem* item;
   while (_queue.pop(item)) {
-    TRI_ASSERT(item != &stopItem);
     if (item != &stopItem) {
       delete item;
     }

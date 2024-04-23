@@ -216,13 +216,17 @@ WorkStealingThreadPool::WorkStealingThreadPool(const char* name,
   _latch.wait();
 }
 
-WorkStealingThreadPool::~WorkStealingThreadPool() {
+WorkStealingThreadPool::~WorkStealingThreadPool() { shutdown(); }
+
+void WorkStealingThreadPool::shutdown() noexcept {
   for (auto& thread : _threadStates) {
     thread->signalStop();
   }
 
   for (auto& thread : _threads) {
-    thread.join();
+    if (thread.joinable()) {
+      thread.join();
+    }
   }
 }
 

@@ -41,6 +41,9 @@ struct WorkStealingThreadPool {
 
   WorkStealingThreadPool(const char* name, std::size_t threadCount);
   ~WorkStealingThreadPool();
+
+  void shutdown() noexcept;
+
   void push(std::unique_ptr<WorkItem>&& task) noexcept;
 
   template<std::invocable F>
