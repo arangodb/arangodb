@@ -21,6 +21,7 @@
 
 #include "Scheduler.h"
 #include "SimpleThreadPool.h"
+#include "WorkStealingThreadPool.h"
 #include "SchedulerMetrics.h"
 
 namespace arangodb {
@@ -53,7 +54,7 @@ struct ThreadPoolScheduler final : Scheduler {
   std::shared_ptr<SchedulerMetrics> _metrics;
   std::atomic<bool> _stopping;
   std::atomic<uint64_t> _lastLowPriorityDequeueTime;
-  std::vector<std::unique_ptr<SimpleThreadPool>> _threadPools;
+  std::vector<std::unique_ptr<WorkStealingThreadPool>> _threadPools;
 };
 
 }  // namespace arangodb

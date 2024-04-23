@@ -105,6 +105,7 @@ WorkStealingThreadPool::ThreadState::~ThreadState() {
   auto* item = pushQueue.load(std::memory_order_relaxed);
   while (item) {
     auto next = item->next;
+    item->next = nullptr;  // to avoid triggering the assert in the destructor
     delete item;
     item = next;
   }

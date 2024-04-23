@@ -32,10 +32,7 @@
 namespace arangodb {
 
 struct WorkStealingThreadPool {
-  struct WorkItem : Scheduler::WorkItemBase {
-    ~WorkItem() override { TRI_ASSERT(next == nullptr); }
-    WorkItem* next = nullptr;
-  };
+  using WorkItem = Scheduler::WorkItemBase;
 
   WorkStealingThreadPool(const char* name, std::size_t threadCount,
                          ThreadPoolMetrics metrics = {});

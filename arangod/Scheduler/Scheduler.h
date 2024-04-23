@@ -110,8 +110,11 @@ class Scheduler {
   ArangodServer& server() noexcept { return _server; }
 
   struct WorkItemBase {
-    virtual ~WorkItemBase() = default;
+    virtual ~WorkItemBase() { TRI_ASSERT(next == nullptr); }
     virtual void invoke() = 0;
+
+    // used by some schedulers to chain work items
+    WorkItemBase* next = nullptr;
   };
 
   class DelayedWorkItem {
