@@ -45,6 +45,8 @@ const jwt = crypto.jwtEncode(jwtSecret, {
   "iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600
 }, 'HS256');
 
+const start = (new Date()).toISOString();
+
 function RegistrySuite() { 
   const cn = "UnitTests";
   
@@ -88,7 +90,7 @@ function RegistrySuite() {
 
         assertEqual("number", typeof q[0].id, q);
         assertEqual(600, q[0].timeToLive);
-        assertTrue(q[0].expires * 1000 >= Date.now(), q);
+        assertTrue(q[0].expires >= start, q);
         assertEqual(1, q[0].numEngines);
         assertEqual(0, q[0].numOpen);
         assertEqual(0, q[0].errorCode);
@@ -97,7 +99,7 @@ function RegistrySuite() {
         assertEqual(qs, q[0].queryString);
         assertEqual(db._name(), q[0].database);
         assertFalse(q[0].killed, q);
-        assertTrue(q[0].startTime > 0, q);
+        assertTrue(q[0].startTime >= start, q);
         assertMatch(/^PRMR-/, q[0].serverId);
 
         // collections
