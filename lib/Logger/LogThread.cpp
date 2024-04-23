@@ -79,7 +79,8 @@ bool LogThread::log(LogGroup& group, std::unique_ptr<LogMessage>& message) {
 
   if (!_messages.push({&group, message.get()})) {
     // unable to push message onto the queue.
-    // this will execute the rollback.
+    // this will also execute the rollback.
+    return false;
   }
 
   rollback.cancel();
