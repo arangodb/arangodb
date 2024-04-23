@@ -575,40 +575,51 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
       auto end = _bounds.end();
 
       resetInplaceMemory();
-      _builder.openArray(true);
-      for (iterator->Seek(_bounds.start());
-           iterator->Valid() && (cmp->Compare(iterator->key(), end) < 0);
-           iterator->Next()) {
-        LocalDocumentId const docId =
-            RocksDBKey::edgeDocumentId(iterator->key());
 
-        TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(iterator->key()));
+      try {
+        _builder.openArray(true);
+        for (iterator->Seek(_bounds.start());
+             iterator->Valid() && (cmp->Compare(iterator->key(), end) < 0);
+             iterator->Next()) {
+          LocalDocumentId const docId =
+              RocksDBKey::edgeDocumentId(iterator->key());
 
-        size_t previousLength = _builder.bufferRef().byteSize();
+          TRI_ASSERT(_index->objectId() ==
+                     RocksDBKey::objectId(iterator->key()));
 
-        // adding documentId and _from or _to value
-        _builder.add(VPackValue(docId.id()));
-        std::string_view vertexId = RocksDBValue::vertexId(iterator->value());
+          size_t previousLength = _builder.bufferRef().byteSize();
 
-        // construct a potentially prefix-compressed vertex id from the original
-        // _from/_to value
-        std::string_view cacheValue =
-            _index->buildCompressedCacheValue(cacheValueCollection, vertexId);
-        TRI_ASSERT(!cacheValue.empty() && vertexId.ends_with(cacheValue));
-        _builder.add(VPackValue(cacheValue));
+          // adding documentId and _from or _to value
+          _builder.add(VPackValue(docId.id()));
+          std::string_view vertexId = RocksDBValue::vertexId(iterator->value());
 
-        size_t newLength = _builder.bufferRef().byteSize();
-        TRI_ASSERT(newLength >= previousLength);
-        size_t diff = newLength - previousLength;
-        scope.increase(diff);
+          // construct a potentially prefix-compressed vertex id from the
+          // original _from/_to value
+          std::string_view cacheValue =
+              _index->buildCompressedCacheValue(cacheValueCollection, vertexId);
+          TRI_ASSERT(!cacheValue.empty() && vertexId.ends_with(cacheValue));
+          _builder.add(VPackValue(cacheValue));
+
+          size_t newLength = _builder.bufferRef().byteSize();
+          TRI_ASSERT(newLength >= previousLength);
+          size_t diff = newLength - previousLength;
+          scope.increase(diff);
+        }
+        _builder.close();
+      } catch (...) {
+        // clear builder so that _memoryUsage is not != to builder's size().
+        _builder.clear();
+        throw;
       }
-      _builder.close();
 
       // validate that Iterator is in a good shape and hasn't failed
       rocksutils::checkIteratorStatus(*iterator);
     }
     // iterator not needed anymore
-    scope.decrease(expectedIteratorMemoryUsage);
+    scope.revert();
+
+    // now add the actual memory usage for the builder's contents
+    scope.increase(_builder.size());
 
     // now we are responsible for tracking the memory usage
     _memoryUsage += scope.trackedAndSteal();
