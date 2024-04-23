@@ -475,7 +475,6 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
   prepareRequest(pool, req);
 
   auto url = buildUrlForCurl(*req, endpoint);
-  LOG_DEVEL << url;
 
   network::curl::http_method method = network::curl::http_method::kGet;
   switch (req->header.restVerb) {
@@ -496,8 +495,11 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
       method = network::curl::http_method::kHead;
       break;
     case fuerte::v1::RestVerb::Patch:
+      method = network::curl::http_method::kPatch;
+      break;
     case fuerte::v1::RestVerb::Illegal:
     case fuerte::v1::RestVerb::Options:
+      LOG_DEVEL << "UNKNOWN VERB " << to_string(req->header.restVerb);
       abort();
   }
 

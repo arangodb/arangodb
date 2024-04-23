@@ -72,10 +72,25 @@ size_t header_callback(char* buffer, size_t size, size_t nitems,
 
 int debug_callback(CURL* handle, curl_infotype type, char* data, size_t size,
                    void* clientp) {
-  if (true || type == CURLINFO_TEXT) {
-    // LOG_TOPIC("ee411", TRACE, Logger::COMMUNICATION)
-    // LOG_DEVEL << "CURL: " << std::string_view{data, size};
+  std::string_view prefix = "CURL: ";
+  switch (type) {
+    case CURLINFO_HEADER_IN:
+      prefix = "HDR-IN: ";
+      break;
+    case CURLINFO_HEADER_OUT:
+      prefix = "HRD-OUT: ";
+      break;
+    case CURLINFO_SSL_DATA_IN:
+      prefix = "SSL-IN: ";
+      break;
+    case CURLINFO_SSL_DATA_OUT:
+      prefix = "SSL-OUT: ";
+      break;
+    default:
+      break;
   }
+
+  // LOG_DEVEL << prefix << std::string_view{data, size};
   return 0;
 }
 
@@ -281,7 +296,7 @@ curl_easy_handle::curl_easy_handle() : _easy_handle(curl_easy_init()) {
   curl_easy_setopt(_easy_handle, CURLOPT_PROTOCOLS_STR, "HTTP,HTTPS");
 
   curl_easy_setopt(_easy_handle, CURLOPT_TRANSFER_ENCODING, 0l);
-  curl_easy_setopt(_easy_handle, CURLOPT_ACCEPT_ENCODING, "");
+  curl_easy_setopt(_easy_handle, CURLOPT_ACCEPT_ENCODING, NULL);
 
   curl_easy_setopt(_easy_handle, CURLOPT_VERBOSE, 1l);
   curl_easy_setopt(_easy_handle, CURLOPT_DEBUGFUNCTION, &debug_callback);
