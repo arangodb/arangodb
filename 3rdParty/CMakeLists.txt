@@ -307,6 +307,24 @@ set(LINK_DIRECTORIES "${LINK_DIRECTORIES}" PARENT_SCOPE)
 add_subdirectory(fuerte)
 
 ################################################################################
+## curl
+################################################################################
+
+set(BUILD_CURL_EXE OFF CACHE BOOL "")
+set(CURL_DISABLE_INSTALL ON CACHE BOOL "")
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "")
+set(BUILD_STATIC_LIBS OFF CACHE BOOL "")
+set(ENABLE_DEBUG ON CACHE BOOL "")
+set(HTTP_ONLY ON CACHE BOOL "")
+set(BUILD_LIBCURL_DOCS OFF CACHE BOOL "")
+set(BUILD_MISC_DOCS OFF CACHE BOOL "")
+set(ENABLE_CURL_MANUAL OFF CACHE BOOL "")
+set(USE_NGHTTP2 ON CACHE BOOL "")
+set(CURL_DISABLE_LDAP ON CACHE BOOL "")
+set(ENABLE_UNIX_SOCKETS OFF CACHE BOOL "")
+add_subdirectory(curl)
+
+################################################################################
 ## taojson
 ################################################################################
 

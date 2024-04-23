@@ -34,4 +34,4 @@
 	url = https://github.com/arangodb/nghttp2.git
 [submodule "3rdParty/curl"]
 	path = 3rdParty/curl
-	url = https://github.com/curl/curl.git
+	url = https://github.com/curl/curl

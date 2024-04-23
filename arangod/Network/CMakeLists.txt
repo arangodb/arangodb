@@ -11,7 +11,7 @@ target_link_libraries(arango_network
   fuerte
   llhttp
   nghttp2
-  curl
+  libcurl
   arango::validation
   arango_replication2
   immer)
