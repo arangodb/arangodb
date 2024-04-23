@@ -1,6 +1,8 @@
 devel
 -----
 
+* Changed default value of `--log.max-queued-entries` from 10000 to 16384.
+
 * Added metric `arangodb_logger_messages_dropped_total` to count the number
   of log messages that were discarded by the logger if its log queue was full.
 
