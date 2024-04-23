@@ -38,6 +38,12 @@ LogThread::LogThread(application_features::ApplicationServer& server,
 LogThread::~LogThread() {
   Logger::_active = false;
 
+  // make sure there are no memory leaks on uncontrolled shutdown
+  MessageEnvelope env{nullptr, nullptr};
+  while (_messages.pop(env)) {
+    delete env.msg;
+  }
+
   shutdown();
 }
 
