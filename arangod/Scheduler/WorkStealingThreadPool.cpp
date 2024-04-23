@@ -18,6 +18,8 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
+#include "WorkStealingThreadPool.h"
+
 #include <algorithm>
 #include <atomic>
 #include <chrono>
@@ -31,16 +33,19 @@
 
 #include "Logger/LogMacros.h"
 
-#include "WorkStealingThreadPool.h"
-
 namespace arangodb {
 
 struct WorkStealingThreadPool::ThreadState {
   ThreadState(std::size_t id, WorkStealingThreadPool& pool);
+  ~ThreadState();
 
-  void push(std::unique_ptr<WorkItem>&& work) noexcept;
+  void pushBack(std::unique_ptr<WorkItem>&& work) noexcept;
+  void pushFront(std::unique_ptr<WorkItem>&& work) noexcept;
   void run() noexcept;
   void signalStop() noexcept;
+  bool belongsToPool(WorkStealingThreadPool const& pool) const noexcept {
+    return &this->pool == &pool;
+  }
 
   inline static thread_local ThreadState* currentThread = nullptr;
 
@@ -62,25 +67,45 @@ struct WorkStealingThreadPool::ThreadState {
   std::condition_variable cv;
   std::deque<std::unique_ptr<WorkItem>> _queue;
   std::mt19937 rng;
+  ThreadState* prevHint = nullptr;
 };
 
 WorkStealingThreadPool::ThreadState::ThreadState(std::size_t id,
                                                  WorkStealingThreadPool& pool)
     : id(id), pool(pool), rng(id) {}
 
-void WorkStealingThreadPool::ThreadState::push(
+void WorkStealingThreadPool::ThreadState::pushBack(
     std::unique_ptr<WorkItem>&& work) noexcept {
+  TRI_ASSERT(work != nullptr);
+  TRI_ASSERT(work->next == nullptr);
   auto p = work.release();
-  do {
-    p->next = pushQueue.load(std::memory_order_acquire);
-  } while (
-      !pushQueue.compare_exchange_weak(p->next, p, std::memory_order_seq_cst));
+  p->next = pushQueue.load(std::memory_order_acquire);
+  while (
+      !pushQueue.compare_exchange_weak(p->next, p, std::memory_order_seq_cst))
+    ;
   // the CAS and the load both need to be seq_cst to ensure proper ordering
   if (sleeping.load(std::memory_order_seq_cst)) {
     mutex.lock();
     mutex.unlock();
     cv.notify_one();
   }
+}
+
+WorkStealingThreadPool::ThreadState::~ThreadState() {
+  auto* item = pushQueue.load(std::memory_order_relaxed);
+  while (item) {
+    auto next = item->next;
+    delete item;
+    item = next;
+  }
+}
+
+void WorkStealingThreadPool::ThreadState::pushFront(
+    std::unique_ptr<WorkItem>&& work) noexcept {
+  TRI_ASSERT(work != nullptr);
+  TRI_ASSERT(work->next == nullptr);
+  std::unique_lock guard(mutex);
+  _queue.push_front(std::move(work));
 }
 
 void WorkStealingThreadPool::ThreadState::signalStop() noexcept {
@@ -102,13 +127,12 @@ void WorkStealingThreadPool::ThreadState::run() noexcept {
     if (!_queue.empty()) {
       stealAttempts = 0;
       auto item = std::move(_queue.front());
+      TRI_ASSERT(item != nullptr);
       _queue.pop_front();
       guard.unlock();
 
       if (pool.hint.load(std::memory_order_relaxed) == this) {
-        auto expected = this;
-        pool.hint.compare_exchange_weak(expected, nullptr,
-                                        std::memory_order_relaxed);
+        pool.hint.store(prevHint, std::memory_order_relaxed);
       }
 
       runWork(*item);
@@ -126,6 +150,7 @@ void WorkStealingThreadPool::ThreadState::run() noexcept {
     } else {
       guard.unlock();
       if (stealAttempts == 0) {
+        prevHint = pool.hint.load(std::memory_order_relaxed);
         pool.hint.store(this, std::memory_order_relaxed);
       }
       auto work = stealWork();
@@ -151,11 +176,15 @@ void WorkStealingThreadPool::ThreadState::goToSleep(
 
 auto WorkStealingThreadPool::ThreadState::pushMany(WorkItem* item)
     -> std::unique_ptr<WorkItem> {
+  TRI_ASSERT(item != nullptr);
   while (item->next != nullptr) {
     auto next = item->next;
+    item->next = nullptr;
     _queue.push_front(std::unique_ptr<WorkItem>(item));
     item = next;
+    TRI_ASSERT(item != nullptr);
   }
+  TRI_ASSERT(item->next == nullptr);
   return std::unique_ptr<WorkItem>{item};
 }
 
@@ -180,16 +209,18 @@ auto WorkStealingThreadPool::ThreadState::stealWork() noexcept
   if (other->pushQueue.load(std::memory_order_relaxed) != nullptr) {
     auto* item = other->pushQueue.exchange(nullptr, std::memory_order_acquire);
     if (item) {
+      std::unique_lock guard(mutex);
       return pushMany(item);
     }
   }
 
-  std::lock_guard guard(other->mutex);
+  std::unique_lock guard(other->mutex);
   if (other->_queue.empty()) {
     return {};
   }
 
   auto work = std::move(other->_queue.back());
+  TRI_ASSERT(work != nullptr);
   other->_queue.pop_back();
 
   return work;
@@ -231,19 +262,19 @@ void WorkStealingThreadPool::shutdown() noexcept {
 }
 
 void WorkStealingThreadPool::push(std::unique_ptr<WorkItem>&& task) noexcept {
-  if (ThreadState::currentThread != nullptr &&
-      &ThreadState::currentThread->pool == this) {
-    ThreadState::currentThread->push(std::move(task));
+  auto* ts = ThreadState::currentThread;
+  if (ts != nullptr && ts->belongsToPool(*this)) {
+    ts->pushFront(std::move(task));
   } else {
-    auto t = hint.load(std::memory_order_relaxed);
-    if (t) {
-      t->push(std::move(task));
+    ts = hint.load(std::memory_order_relaxed);
+    if (ts != nullptr) {
+      ts->pushBack(std::move(task));
     } else {
       auto idx = pushIdx.fetch_add(1, std::memory_order_relaxed) % numThreads;
-      _threadStates[idx]->push(std::move(task));
+      _threadStates[idx]->pushBack(std::move(task));
     }
+    statistics.queued.fetch_add(1);
   }
-  statistics.queued.fetch_add(1);
 }
 
 }  // namespace arangodb

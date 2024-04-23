@@ -30,12 +30,14 @@
 
 #include <boost/lockfree/queue.hpp>
 
+#include "Assertions/Assert.h"
 #include "Scheduler.h"
 
 namespace arangodb {
 
 struct WorkStealingThreadPool {
   struct WorkItem : Scheduler::WorkItemBase {
+    ~WorkItem() override { TRI_ASSERT(next == nullptr); }
     WorkItem* next = nullptr;
   };
 
