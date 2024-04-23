@@ -147,7 +147,6 @@ class instance {
       if (key.search('extraArgs') >= 0) {
         let splitkey = key.split('.');
         if (splitkey.length !== 2) {
-          print(splitkey.length)
           if (splitkey[1] === this.instanceRole) {
             this.args[splitkey.slice(2).join('.')] = value;
           }
