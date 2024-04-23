@@ -187,6 +187,7 @@ class Manager {
 
   double idealLowerFillRatio() const noexcept;
   double idealUpperFillRatio() const noexcept;
+  std::uint64_t maxCacheValueSize() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Open a new transaction.
@@ -337,7 +338,7 @@ class Manager {
 
   // ratio of caches for which a shrinking attempt will be made if we
   // reach the cache's high water mark (memory limit plus safety buffer)
-  static constexpr double kCachesToShrinkRatio = 0.20;
+  static constexpr double kCachesToShrinkRatio = 0.05;
   static constexpr std::chrono::milliseconds rebalancingGracePeriod{10};
   static const std::uint64_t minCacheAllocation;
 

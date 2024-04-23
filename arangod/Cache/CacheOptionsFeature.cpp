@@ -177,6 +177,18 @@ try to free up memory by evicting the oldest entries.)")
               arangodb::options::Flags::OnDBServer,
               arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31200);
+
+  options
+      ->addOption("--cache.max-cache-value-size",
+                  "The maximum payload size of an individual cache value "
+                  "(excluding the size of the key).",
+                  new UInt64Parameter(&_options.maxCacheValueSize),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::Uncommon,
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31202);
 }
 
 void CacheOptionsFeature::validateOptions(
