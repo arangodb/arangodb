@@ -161,7 +161,12 @@ struct callable {
       // simulate some work
       unsigned i = 0;
       static constexpr unsigned workLimit = 2 << 13;
-      while (!stop.load() && ++i < workLimit) {
+      while (++i < workLimit) {
+        // not doing the stop check in every iteration is especially important
+        // when running with TSan!
+        if (i % 1024 == 0 && stop.load()) {
+          break;
+        }
       }
     }
   }
@@ -243,7 +248,12 @@ struct PingPong {
                                  ? deterministicWorkLimit
                                  : std::mt19937_64{ping + id * 123456789}() &
                                        (randomWorkLimit - 1);
-        while (!stop.load() && ++i < workLimit) {
+        while (++i < workLimit) {
+          // not doing the stop check in every iteration is especially important
+          // when running with TSan!
+          if (i % 1024 == 0 && stop.load()) {
+            break;
+          }
         }
       }
 
@@ -263,7 +273,8 @@ struct PingPong {
 };
 
 template<typename Pool>
-void pingPongTest(unsigned numThreads, unsigned numBalls, WorkSimulation work) {
+std::size_t pingPongTest(unsigned numThreads, unsigned numBalls,
+                         WorkSimulation work) {
   std::atomic<bool> stopSignal = false;
   std::atomic<std::uint64_t> counter = 0;
 
@@ -298,7 +309,7 @@ void pingPongTest(unsigned numThreads, unsigned numBalls, WorkSimulation work) {
     pool1.shutdown();
   }
   auto numOps = counter.load();
-  std::cout << std::setw(11) << numOps / durationMs << std::flush;
+  return numOps / durationMs;
 }
 
 template<typename Pool>
@@ -319,7 +330,8 @@ void runPingPong(WorkSimulation work) {
     }
     std::cout << std::setw(2) << t << " threads: " << std::flush;
     for (auto b : balls) {
-      pingPongTest<Pool>(t, b, work);
+      auto throughput = pingPongTest<Pool>(t, b, work);
+      std::cout << std::setw(11) << throughput << std::flush;
     }
     std::cout << " ops/ms" << std::endl;
   }
