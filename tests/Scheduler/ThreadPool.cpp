@@ -25,6 +25,8 @@
 #include <chrono>
 #include <iostream>
 #include <memory>
+#include <ostream>
+#include <random>
 #include <thread>
 #include "GeneralServer/RequestLane.h"
 #include "Scheduler/LockfreeThreadPool.h"
@@ -134,9 +136,8 @@ class ThreadPoolPerfTest : public testing::Test {
   }
 };
 
-using PoolTypes =
-    ::testing::Types<SimpleThreadPool, LockfreeThreadPool,
-                     WorkStealingThreadPool, SupervisedSchedulerPool>;
+using PoolTypes = ::testing::Types<LockfreeThreadPool, WorkStealingThreadPool,
+                                   SupervisedSchedulerPool>;
 TYPED_TEST_SUITE(ThreadPoolPerfTest, PoolTypes);
 
 namespace {
@@ -217,28 +218,50 @@ TYPED_TEST(ThreadPoolPerfTest, spawn_work) {
   spawnWorkTest<TypeParam>(19);
 }
 
+enum class WorkSimulation { None, Deterministic, Random };
+
 template<typename Pool>
 struct PingPong {
-  PingPong(Pool* pool1, Pool* pool2, int ping, std::atomic<bool>& stop,
-           std::atomic<std::uint64_t>& counter)
-      : pools{pool1, pool2}, ping(ping), stop(stop), counter(counter) {}
+  PingPong(Pool* pool1, Pool* pool2, int id, int ping, std::atomic<bool>& stop,
+           std::atomic<std::uint64_t>& counter, WorkSimulation work)
+      : pools{pool1, pool2},
+        id(id),
+        ping(ping),
+        stop(stop),
+        counter(counter),
+        work(work) {}
 
   void operator()() noexcept {
     if (!stop.load()) {
-      ping = 1 - ping;
-      pools[ping]->push(PingPong(pools[0], pools[1], ping, stop, counter));
+      if (work != WorkSimulation::None) {
+        unsigned i = 0;
+        static constexpr unsigned deterministicWorkLimit = 2 << 11;
+        static constexpr unsigned randomWorkLimit = 2 << 14;
+        unsigned workLimit = work == WorkSimulation::Deterministic
+                                 ? deterministicWorkLimit
+                                 : std::mt19937_64{ping + id * 123456789}() &
+                                       (randomWorkLimit - 1);
+        while (!stop.load() && ++i < workLimit) {
+        }
+      }
+
+      ++ping;
+      pools[ping & 1]->push(
+          PingPong(pools[0], pools[1], id, ping, stop, counter, work));
       counter.fetch_add(1);
     }
   }
 
   Pool* pools[2];
+  int id;
   int ping;
   std::atomic<bool>& stop;
   std::atomic<std::uint64_t>& counter;
+  WorkSimulation work;
 };
 
 template<typename Pool>
-void pingPongTest(unsigned numThreads, unsigned numBalls) {
+void pingPongTest(unsigned numThreads, unsigned numBalls, WorkSimulation work) {
   std::atomic<bool> stopSignal = false;
   std::atomic<std::uint64_t> counter = 0;
 
@@ -250,7 +273,8 @@ void pingPongTest(unsigned numThreads, unsigned numBalls) {
 
     auto start = std::chrono::steady_clock::now();
     for (unsigned i = 0; i < numBalls; ++i) {
-      pool1.push(PingPong<Pool>(&pool1, &pool2, 0, stopSignal, counter));
+      pool1.push(
+          PingPong<Pool>(&pool1, &pool2, i, 0, stopSignal, counter, work));
     }
 
     std::this_thread::sleep_for(std::chrono::seconds{2});
@@ -260,21 +284,24 @@ void pingPongTest(unsigned numThreads, unsigned numBalls) {
                      std::chrono::steady_clock::now() - start)
                      .count();
 
-    // wait a bit so we don't run into an assertion in the SupervisedScheduler
-    // that we tried to queue an item after the SchedulerFeature was stopped
-    std::this_thread::sleep_for(std::chrono::milliseconds{100});
+    if constexpr (std::same_as<Pool, SupervisedSchedulerPool>) {
+      // wait a bit so we don't run into an assertion in the SupervisedScheduler
+      // that we tried to queue an item after the SchedulerFeature was stopped
+      std::this_thread::sleep_for(std::chrono::milliseconds{100});
+    }
   }
   auto numOps = counter.load();
-  std::cout << std::setw(10) << numOps / durationMs;
+  std::cout << std::setw(11) << numOps / durationMs << std::flush;
 }
 
-TYPED_TEST(ThreadPoolPerfTest, ping_pong) {
-  std::array<unsigned, 3> threads = {1, 5, 13};
-  std::array<unsigned, 4> balls = {1, 4, 8, 16};
+template<typename Pool>
+void runPingPong(WorkSimulation work) {
+  std::array<unsigned, 5> threads = {1, 5, 13, 41, 67};
+  std::array<unsigned, 7> balls = {1, 4, 8, 16, 64, 128, 256};
 
   std::cout << "              ";
   for (auto b : balls) {
-    std::cout << std::setw(2) << b << " balls  ";
+    std::cout << std::setw(3) << b << " balls  ";
   }
   std::cout << "\n";
   for (auto t : threads) {
@@ -283,10 +310,22 @@ TYPED_TEST(ThreadPoolPerfTest, ping_pong) {
       // assert
       continue;
     }
-    std::cout << std::setw(2) << t << " threads: ";
+    std::cout << std::setw(2) << t << " threads: " << std::flush;
     for (auto b : balls) {
-      pingPongTest<TypeParam>(t, b);
+      pingPongTest<Pool>(t, b, work);
     }
     std::cout << " ops/ms" << std::endl;
   }
+}
+
+TYPED_TEST(ThreadPoolPerfTest, ping_pong_no_work) {
+  runPingPong<TypeParam>(WorkSimulation::None);
+}
+
+TYPED_TEST(ThreadPoolPerfTest, ping_pong_deterministic_work) {
+  runPingPong<TypeParam>(WorkSimulation::Deterministic);
+}
+
+TYPED_TEST(ThreadPoolPerfTest, ping_pong_random_work) {
+  runPingPong<TypeParam>(WorkSimulation::Random);
 }

@@ -41,24 +41,27 @@ struct WorkStealingThreadPool::ThreadState {
   void push(std::unique_ptr<WorkItem>&& work) noexcept;
   void run() noexcept;
   void signalStop() noexcept;
-  void runWork(WorkItem& work) noexcept;
 
-  auto stealWork() noexcept -> std::unique_ptr<WorkItem>;
-
-  auto pushMany(WorkItem* item) -> std::unique_ptr<WorkItem>;
+  inline static thread_local ThreadState* currentThread = nullptr;
 
   std::size_t const id;
+
+ private:
+  void runWork(WorkItem& work) noexcept;
+  auto stealWork() noexcept -> std::unique_ptr<WorkItem>;
+  auto pushMany(WorkItem* item) -> std::unique_ptr<WorkItem>;
+  void goToSleep(std::unique_lock<std::mutex>& guard) noexcept;
+
   WorkStealingThreadPool& pool;
 
-  std::atomic<bool> stop{false};
   std::atomic<WorkItem*> pushQueue{nullptr};
+  std::atomic<bool> sleeping = false;
+
+  alignas(64) std::atomic<bool> stop{false};
   std::mutex mutex;
   std::condition_variable cv;
   std::deque<std::unique_ptr<WorkItem>> _queue;
-  std::atomic<bool> sleeping = false;
   std::mt19937 rng;
-
-  inline static thread_local ThreadState* currentThread = nullptr;
 };
 
 WorkStealingThreadPool::ThreadState::ThreadState(std::size_t id,
@@ -111,25 +114,20 @@ void WorkStealingThreadPool::ThreadState::run() noexcept {
       runWork(*item);
     } else if (pushQueue.load(std::memory_order_relaxed) != nullptr) {
       auto item = pushQueue.exchange(nullptr, std::memory_order_acquire);
-      if (item == nullptr) {
-        continue;
+      if (item != nullptr) {
+        auto work = pushMany(item);
+        guard.unlock();
+        runWork(*work);
       }
-
-      auto work = pushMany(item);
-      guard.unlock();
-
-      runWork(*work);
     } else if (stealAttempts > maxStealAttempts) {
       // nothing to work -> go to sleep
-      sleeping.store(true);
-      if (pushQueue.load(std::memory_order_relaxed) == nullptr) {
-        cv.wait_for(guard, std::chrono::milliseconds{100});
-      }
-      sleeping.store(false, std::memory_order_relaxed);
+      goToSleep(guard);
       stealAttempts = 0;
     } else {
       guard.unlock();
-      pool.hint.store(this, std::memory_order_relaxed);
+      if (stealAttempts == 0) {
+        pool.hint.store(this, std::memory_order_relaxed);
+      }
       auto work = stealWork();
       if (work) {
         runWork(*work);
@@ -138,6 +136,17 @@ void WorkStealingThreadPool::ThreadState::run() noexcept {
       }
     }
   }
+}
+
+void WorkStealingThreadPool::ThreadState::goToSleep(
+    std::unique_lock<std::mutex>& guard) noexcept {
+  sleeping.store(true, std::memory_order_seq_cst);
+  // the store and load both need to be seq_cst to ensure proper ordering with
+  // the push that wakes us up
+  if (pushQueue.load(std::memory_order_seq_cst) == nullptr) {
+    cv.wait_for(guard, std::chrono::milliseconds{100});
+  }
+  sleeping.store(false, std::memory_order_relaxed);
 }
 
 auto WorkStealingThreadPool::ThreadState::pushMany(WorkItem* item)
