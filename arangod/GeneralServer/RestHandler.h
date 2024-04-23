@@ -127,7 +127,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   RequestLane determineRequestLane();
 
   virtual void prepareExecute(bool isContinue);
-  virtual RestStatus execute() = 0;
+  virtual RestStatus execute();
+  virtual futures::Future<futures::Unit> executeAsync();
   virtual RestStatus continueExecute() { return RestStatus::DONE; }
   virtual void shutdownExecute(bool isFinalized) noexcept;
 

@@ -34,7 +34,7 @@ class RestSupervisionStateHandler : public RestVocbaseBaseHandler {
   ~RestSupervisionStateHandler() = default;
 
  public:
-  RestStatus execute() override;
+  futures::Future<futures::Unit> executeAsync() override;
   char const* name() const override final {
     return "RestSupervisionStateHandler";
   }

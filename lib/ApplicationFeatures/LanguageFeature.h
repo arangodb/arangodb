@@ -23,12 +23,14 @@
 
 #pragma once
 
-#include <memory>
-#include <string>
-#include <unicode/locid.h>
-
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/Utf8Helper.h"
+
+#include <unicode/locid.h>
+
+#include <memory>
+#include <string>
+#include <tuple>
 
 namespace arangodb {
 namespace application_features {
@@ -47,7 +49,6 @@ class LanguageFeature final : public application_features::ApplicationFeature {
       : application_features::ApplicationFeature{server, *this},
         _locale(),
         _langType(basics::LanguageType::INVALID),
-        _binaryPath(server.getBinaryPath()),
         _forceLanguageCheck(true) {
     setOptional(false);
     startsAfter<application_features::GreetingsFeaturePhase, Server>();
@@ -58,23 +59,18 @@ class LanguageFeature final : public application_features::ApplicationFeature {
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
-  static std::string prepareIcu(std::string const& binaryPath,
-                                std::string const& binaryExecutionPath,
-                                std::string& path,
-                                std::string const& binaryName);
-  icu::Locale& getLocale();
+
+  icu_64_64::Locale& getLocale();
   std::tuple<std::string_view, basics::LanguageType> getLanguage() const;
   bool forceLanguageCheck() const;
   std::string getCollatorLanguage() const;
   void resetLanguage(std::string_view language, basics::LanguageType type);
 
  private:
-  icu::Locale _locale;
+  icu_64_64::Locale _locale;
   std::string _defaultLanguage;
   std::string _icuLanguage;
   basics::LanguageType _langType;
-  char const* _binaryPath;
-  std::string _icuData;
   bool _forceLanguageCheck;
 };
 

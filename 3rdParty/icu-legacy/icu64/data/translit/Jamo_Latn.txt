@@ -1,0 +1,12 @@
+﻿# © 2016 and later: Unicode, Inc. and others.
+# License & terms of use: http://www.unicode.org/copyright.html#License
+#
+# File: Jamo_Latn.txt
+# Generated from CLDR
+#
+
+::['ᄀ-하-ᅵᆨ-ᇂ가-힣];
+::NFD;
+::ConjoiningJamo-Latin;
+::NFC;
+

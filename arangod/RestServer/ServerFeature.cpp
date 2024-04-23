@@ -159,7 +159,8 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   DatabaseFeature& db = server().getFeature<DatabaseFeature>();
 
   if (_operationMode == OperationMode::MODE_SERVER && !_restServer &&
-      !db.upgrade()) {
+      !db.upgrade() &&
+      !options->processingResult().touched("rocksdb.verify-sst")) {
     LOG_TOPIC("8daab", FATAL, arangodb::Logger::FIXME)
         << "need at least '--console', '--javascript.unit-tests' or"
         << "'--javascript.script if rest-server is disabled";
