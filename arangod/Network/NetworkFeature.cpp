@@ -412,6 +412,55 @@ bool NetworkFeature::isSaturated() const noexcept {
   return _requestsInFlight.load() >= _maxInFlight;
 }
 
+namespace {
+
+std::string buildUrlForCurl(fuerte::Request const& r,
+                            std::string_view endpoint) {
+  std::string url;
+  url.reserve(512);
+  if (endpoint.starts_with("tcp")) {
+    url += "http";
+  } else {
+    url += "https";
+  }
+
+  url += endpoint.substr(3);
+  if (!r.header.database.empty()) {
+    url += "/_db/";
+    url += r.header.database;
+  }
+  url += r.header.path;
+
+  if (!r.header.parameters.empty()) {
+    url += '?';
+    bool first = true;
+    for (auto const& [key, value] : r.header.parameters) {
+      if (!first) {
+        url += '&';
+      }
+      url += StringUtils::urlEncode(key);
+      url += "=";
+      url += StringUtils::urlEncode(value);
+      first = false;
+    }
+  }
+
+  return url;
+}
+
+fuerte::Error curlErrorToFuerte(CURLcode err) {
+  switch (err) {
+    case CURLE_OK:
+      return fuerte::Error::NoError;
+    case CURLE_COULDNT_CONNECT:
+      return fuerte::Error::CouldNotConnect;
+    default:
+      return fuerte::Error::ProtocolError;
+  }
+}
+
+}  // namespace
+
 void NetworkFeature::sendRequest(network::ConnectionPool& pool,
                                  network::RequestOptions const& options,
                                  std::string const& endpoint,
@@ -425,9 +474,48 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
 
   prepareRequest(pool, req);
 
+  auto url = buildUrlForCurl(*req, endpoint);
+  LOG_DEVEL << url;
+
+  network::curl::http_method method = network::curl::http_method::kGet;
+  switch (req->header.restVerb) {
+    break;
+    case fuerte::v1::RestVerb::Delete:
+      method = network::curl::http_method::kDelete;
+      break;
+    case fuerte::v1::RestVerb::Get:
+      method = network::curl::http_method::kGet;
+      break;
+    case fuerte::v1::RestVerb::Post:
+      method = network::curl::http_method::kPost;
+      break;
+    case fuerte::v1::RestVerb::Put:
+      method = network::curl::http_method::kPut;
+      break;
+    case fuerte::v1::RestVerb::Head:
+      method = network::curl::http_method::kHead;
+      break;
+    case fuerte::v1::RestVerb::Patch:
+    case fuerte::v1::RestVerb::Illegal:
+    case fuerte::v1::RestVerb::Options:
+      abort();
+  }
+
+  network::curl::request_options opts;
+  for (auto const& [k, v] : req->header.meta()) {
+    opts.header.emplace(k, v);
+  }
+
+  opts.header.emplace("Content-Type", "application/x-velocypack");
+  opts.header.emplace("Accept", options.acceptType.empty()
+                                    ? "application/x-velocypack"
+                                    : options.acceptType);
+  // opts.header.emplace("Accept-Encoding", "application/x-velocypack;
+  // charset=utf-8");
+
   bool isFromPool = false;
   auto now = std::chrono::steady_clock::now();
-  auto conn = pool.leaseConnection(endpoint, isFromPool);
+  // auto conn = pool.leaseConnection(endpoint, isFromPool);
   auto dur = std::chrono::steady_clock::now() - now;
   if (dur > std::chrono::seconds(1)) {
     LOG_TOPIC("52418", WARN, Logger::COMMUNICATION)
@@ -444,13 +532,28 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
         << ", url: " << to_string(req->header.restVerb) << " "
         << req->header.path << ", request ptr: " << (void*)req.get();
   }
-  conn->sendRequest(
-      std::move(req),
+
+  network::curl::send_request(
+      pool.curl_pool, method, url, req->payloadAsString(), opts,
       [this, &pool, isFromPool,
        handleContentEncoding = options.handleContentEncoding || didCompress,
-       cb = std::move(cb), endpoint = std::move(endpoint)](
-          fuerte::Error err, std::unique_ptr<fuerte::Request> req,
-          std::unique_ptr<fuerte::Response> res) {
+       cb = std::move(cb), endpoint = std::move(endpoint),
+       req_ptr = req.release()](network::curl::response real_res,
+                                CURLcode result) {
+        auto req = std::unique_ptr<fuerte::Request>(req_ptr);
+        auto err = curlErrorToFuerte(result);
+        auto res = std::make_unique<fuerte::Response>();
+        if (!real_res.body.empty()) {
+          auto buffer = VPackBufferUInt8{};
+          buffer.append(real_res.body);
+          res->setPayload(std::move(buffer), 0);
+        }
+        res->header.responseCode = real_res.code;
+        fuerte::StringMap headers;
+        for (auto const& [k, v] : real_res.headers) {
+          res->header.addMeta(k, v);
+        }
+
         TRI_ASSERT(req != nullptr);
         if (req->timeQueued().time_since_epoch().count() != 0 &&
             req->timeAsyncWrite().time_since_epoch().count() != 0) {

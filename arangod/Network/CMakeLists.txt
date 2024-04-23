@@ -3,13 +3,15 @@ add_library(arango_network STATIC
   ConnectionPool.cpp
   Methods.cpp
   NetworkFeature.cpp
-  Utils.cpp)
+  Utils.cpp
+        curl-stuff.cpp)
 
 target_link_libraries(arango_network
   boost_boost
   fuerte
   llhttp
   nghttp2
+  curl
   arango::validation
   arango_replication2
   immer)

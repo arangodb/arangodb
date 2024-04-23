@@ -27,6 +27,8 @@
 
 #include <fuerte/types.h>
 
+#include "curl-stuff.h"
+
 namespace arangodb {
 namespace fuerte {
 inline namespace v1 {
@@ -97,6 +99,8 @@ class ConnectionPool final {
   size_t numOpenConnections() const;
 
   Config const& config() const;
+
+  curl::connection_pool curl_pool;
 
  protected:
   struct Context;
