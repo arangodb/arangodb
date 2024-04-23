@@ -31,6 +31,7 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/conversions.h"
 #include "Basics/system-functions.h"
 #include "Basics/voc-errors.h"
 #include "Cluster/ClusterFeature.h"
@@ -1578,7 +1579,8 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
           // note: expiry timestamp is a system clock value that indicates
           // number of seconds since the OS was started.
           builder.add("expiryTime",
-                      VPackValue(static_cast<uint64_t>(trx.expiryTime)));
+                      VPackValue(TRI_StringTimeStamp(
+                          trx.expiryTime, Logger::getUseLocalTime())));
           if (!ServerState::instance()->isDBServer()) {
             // proper user information is only present on single servers
             // and coordinators
