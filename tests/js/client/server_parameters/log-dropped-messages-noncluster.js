@@ -39,16 +39,63 @@ const getMetric = require('@arangodb/test-helper').getMetricSingle;
 
 function LoggerSuite() {
   'use strict';
+  
+  let oldLogLevel;
 
   return {
-    testDroppedMessages: function () {
+    testDroppedInfoMessages: function () {
+      const oldValue = getMetric("arangodb_logger_messages_dropped_total");
+      
+      let oldLogLevel;
+      try {
+        oldLogLevel = arango.GET("/_admin/log/level").general;
+        arango.PUT("/_admin/log/level", { general: "info" });
+
+        // messages with level "info" will be dropped
+        let res = arango.POST_RAW("/_admin/execute", "for (let i = 0; i < 100; ++i) { require('console').log('abc'); }");
+        assertEqual(200, res.code, res);
+
+        const newValue = getMetric("arangodb_logger_messages_dropped_total");
+        assertTrue(newValue >= oldValue + 100, {oldValue, newValue});
+      } finally {
+        // restore previous log level for "general" topic;
+        arango.PUT("/_admin/log/level", { general: oldLogLevel });
+      }
+    },
+
+    testNotDroppedWarningMessages: function () {
+      const oldValue = getMetric("arangodb_logger_messages_dropped_total");
+      
+      let oldLogLevel;
+      try {
+        oldLogLevel = arango.GET("/_admin/log/level").general;
+        arango.PUT("/_admin/log/level", { general: "warn" });
+
+        // messages with level "warn" will not be dropped
+        let res = arango.POST_RAW("/_admin/execute", "for (let i = 0; i < 100; ++i) { require('console').warn('abc'); }");
+        assertEqual(200, res.code, res);
+
+        const newValue = getMetric("arangodb_logger_messages_dropped_total");
+        // allow for up to 20 unrelated log messages (from other server
+        // parts to be dropped)
+        assertTrue(newValue <= oldValue + 20, {oldValue, newValue});
+      } finally {
+        // restore previous log level for "general" topic;
+        arango.PUT("/_admin/log/level", { general: oldLogLevel });
+      }
+    },
+
+    testNotDroppedErrorMessages: function () {
       const oldValue = getMetric("arangodb_logger_messages_dropped_total");
 
+      // messages with level "error" will not be dropped
       let res = arango.POST_RAW("/_admin/execute", "for (let i = 0; i < 100; ++i) { require('console').error('abc'); }");
       assertEqual(200, res.code, res);
 
       const newValue = getMetric("arangodb_logger_messages_dropped_total");
-      assertTrue(newValue >= oldValue + 100, {oldValue, newValue});
+      // allow for up to 20 unrelated log messages (from other server
+      // parts to be dropped)
+      assertTrue(newValue <= oldValue + 20, {oldValue, newValue});
     },
 
   };
