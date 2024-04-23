@@ -58,6 +58,9 @@ bool LogThread::log(LogGroup& group, std::unique_ptr<LogMessage>& message) {
       !_messages.push({&group, message.get()})) {
     /* roll back the update */
     _pendingMessages.fetch_sub(1, std::memory_order_relaxed);
+
+    // inform logger that we dropped a message
+    Logger::onDroppedMessage();
     return false;
   }
 

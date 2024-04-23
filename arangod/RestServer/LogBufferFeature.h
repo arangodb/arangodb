@@ -70,6 +70,7 @@ class LogBufferFeature final : public ArangodFeature {
 
  private:
   std::shared_ptr<LogAppender> _inMemoryAppender;
+  std::shared_ptr<LogAppender> _metricsCounter;
   std::string _minInMemoryLogLevel;
   bool _useInMemoryAppender;
 };
