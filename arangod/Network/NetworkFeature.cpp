@@ -427,7 +427,10 @@ std::string buildUrlForCurl(fuerte::Request const& r,
   url += endpoint.substr(3);
   if (!r.header.database.empty()) {
     url += "/_db/";
-    url += r.header.database;
+    url += StringUtils::urlEncode(r.header.database);
+  }
+  if (!r.header.path.starts_with('/')) {
+    url += '/';
   }
   url += r.header.path;
 
