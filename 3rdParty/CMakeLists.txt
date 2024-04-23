@@ -312,6 +312,7 @@ add_subdirectory(fuerte)
 
 set(BUILD_CURL_EXE OFF CACHE BOOL "")
 set(CURL_DISABLE_INSTALL ON CACHE BOOL "")
+set(CURL_ENABLE_EXPORT_TARGET OFF CACHE BOOL "")
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "")
 set(BUILD_STATIC_LIBS OFF CACHE BOOL "")
 set(ENABLE_DEBUG ON CACHE BOOL "")
@@ -319,9 +320,15 @@ set(HTTP_ONLY ON CACHE BOOL "")
 set(BUILD_LIBCURL_DOCS OFF CACHE BOOL "")
 set(BUILD_MISC_DOCS OFF CACHE BOOL "")
 set(ENABLE_CURL_MANUAL OFF CACHE BOOL "")
-set(USE_NGHTTP2 ON CACHE BOOL "")
 set(CURL_DISABLE_LDAP ON CACHE BOOL "")
 set(ENABLE_UNIX_SOCKETS OFF CACHE BOOL "")
+
+
+set(USE_NGHTTP2 ON CACHE BOOL "")
+set(NGHTTP2_LIBRARY nghttp2 CACHE STRING "")
+set(NGHTTP2_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/nghttp2-lib/lib/includes CACHE STRING "")
+
+# curl supports Transfer-Encodings so we could add zlib here as well
 add_subdirectory(curl)
 
 ################################################################################
