@@ -25,6 +25,7 @@
 #include <chrono>
 #include <memory>
 #include <mutex>
+#include <random>
 #include <thread>
 
 #ifdef TRI_HAVE_SYS_PRCTL_H
@@ -32,8 +33,17 @@
 #endif
 
 #include "Logger/LogMacros.h"
+#include "Metrics/Counter.h"
 
 namespace arangodb {
+
+namespace {
+void incCounter(metrics::Counter* cnt, uint64_t delta = 1) {
+  if (cnt) {
+    *cnt += delta;
+  }
+}
+}  // namespace
 
 struct WorkStealingThreadPool::ThreadState {
   ThreadState(std::size_t id, WorkStealingThreadPool& pool);
@@ -189,13 +199,15 @@ auto WorkStealingThreadPool::ThreadState::pushMany(WorkItem* item)
 }
 
 void WorkStealingThreadPool::ThreadState::runWork(WorkItem& work) noexcept {
+  incCounter(pool._metrics.jobsDequeued);
   try {
     work.invoke();
   } catch (...) {
     LOG_TOPIC("d5fb2", WARN, Logger::FIXME)
         << "Scheduler just swallowed an exception.";
   }
-  pool.statistics.done += 1;
+  incCounter(pool._metrics.jobsDone);
+  pool.statistics.done.fetch_add(1);
 }
 
 auto WorkStealingThreadPool::ThreadState::stealWork() noexcept
@@ -227,8 +239,10 @@ auto WorkStealingThreadPool::ThreadState::stealWork() noexcept
 }
 
 WorkStealingThreadPool::WorkStealingThreadPool(const char* name,
-                                               std::size_t threadCount)
+                                               std::size_t threadCount,
+                                               ThreadPoolMetrics metrics)
     : numThreads(threadCount),
+      _metrics(metrics),
       _threads(),
       _threadStates(threadCount),
       _latch(threadCount) {
@@ -273,6 +287,7 @@ void WorkStealingThreadPool::push(std::unique_ptr<WorkItem>&& task) noexcept {
       auto idx = pushIdx.fetch_add(1, std::memory_order_relaxed) % numThreads;
       _threadStates[idx]->pushBack(std::move(task));
     }
+    incCounter(_metrics.jobsQueued);
     statistics.queued.fetch_add(1);
   }
 }

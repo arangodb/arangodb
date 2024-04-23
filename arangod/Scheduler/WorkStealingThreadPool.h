@@ -19,19 +19,15 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
-#include <condition_variable>
 #include <cstddef>
 #include <latch>
 #include <memory>
-#include <random>
 #include <thread>
-#include <deque>
 #include <vector>
 
-#include <boost/lockfree/queue.hpp>
-
 #include "Assertions/Assert.h"
-#include "Scheduler.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/ThreadPoolMetrics.h"
 
 namespace arangodb {
 
@@ -41,7 +37,8 @@ struct WorkStealingThreadPool {
     WorkItem* next = nullptr;
   };
 
-  WorkStealingThreadPool(const char* name, std::size_t threadCount);
+  WorkStealingThreadPool(const char* name, std::size_t threadCount,
+                         ThreadPoolMetrics metrics = {});
   ~WorkStealingThreadPool();
 
   void shutdown() noexcept;
@@ -76,8 +73,9 @@ struct WorkStealingThreadPool {
 
   using Clock = std::chrono::steady_clock;
 
-  std::atomic<std::size_t> pushIdx = 0;
+  ThreadPoolMetrics _metrics;
 
+  std::atomic<std::size_t> pushIdx = 0;
   std::atomic<ThreadState*> hint = nullptr;
   std::vector<std::jthread> _threads;
   std::vector<std::unique_ptr<ThreadState>> _threadStates;

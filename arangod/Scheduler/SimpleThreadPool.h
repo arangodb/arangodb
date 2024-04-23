@@ -25,18 +25,10 @@
 #include <vector>
 #include <deque>
 
-#include "Scheduler.h"
-
-#include "Metrics/Fwd.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/ThreadPoolMetrics.h"
 
 namespace arangodb {
-
-struct ThreadPoolMetrics {
-  metrics::Gauge<uint64_t>* queueLength = nullptr;
-  metrics::Counter* jobsDone = nullptr;
-  metrics::Counter* jobsQueued = nullptr;
-  metrics::Counter* jobsDequeued = nullptr;
-};
 
 struct SimpleThreadPool {
   using WorkItem = Scheduler::WorkItemBase;
