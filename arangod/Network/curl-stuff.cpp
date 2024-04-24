@@ -9,6 +9,24 @@ using namespace arangodb::network;
 using namespace arangodb;
 
 namespace {
+std::atomic<uint64_t> nextRequestId = 0;
+}
+
+struct curl::request {
+  std::string url;
+  std::string body;
+  std::size_t read_offset;
+  curl_easy_handle _curl_handle;
+  curl_slist* _curl_headers;
+  std::function<void(response, CURLcode)> _callback;
+
+  std::uint64_t unique_id;
+
+  response _response;
+  ~request();
+};
+
+namespace {
 
 static size_t write_callback(char* ptr, size_t size, size_t nmemb,
                              void* userdata) {
@@ -72,6 +90,7 @@ size_t header_callback(char* buffer, size_t size, size_t nitems,
 
 int debug_callback(CURL* handle, curl_infotype type, char* data, size_t size,
                    void* clientp) {
+  // auto req = static_cast<request*>(clientp);
   std::string_view prefix = "CURL: ";
   switch (type) {
     case CURLINFO_HEADER_IN:
@@ -90,7 +109,8 @@ int debug_callback(CURL* handle, curl_infotype type, char* data, size_t size,
       break;
   }
 
-  // LOG_DEVEL << prefix << std::string_view{data, size};
+  // LOG_DEVEL << "[" << req->unique_id << "]" << prefix <<
+  // std::string_view{data, size};
   return 0;
 }
 
@@ -105,6 +125,10 @@ void arangodb::network::curl::send_request(
   req->url = std::move(path);
   req->body = std::move(body);
   req->_callback = std::move(callback);
+  req->unique_id = nextRequestId.fetch_add(1, std::memory_order_relaxed);
+
+  // LOG_DEVEL << "[" << req->unique_id << "] URL " << req->url;
+
   curl_easy_setopt(req->_curl_handle._easy_handle, CURLOPT_URL,
                    req->url.c_str());
 
@@ -129,6 +153,11 @@ void arangodb::network::curl::send_request(
                    req.get());
 
   curl_easy_setopt(req->_curl_handle._easy_handle, CURLOPT_PRIVATE, req.get());
+  curl_easy_setopt(req->_curl_handle._easy_handle, CURLOPT_DEBUGDATA,
+                   req.get());
+
+  curl_easy_setopt(req->_curl_handle._easy_handle, CURLOPT_TIMEOUT_MS,
+                   options.timeout.count());
 
   curl_slist* headers = nullptr;
   std::string line;
@@ -139,6 +168,7 @@ void arangodb::network::curl::send_request(
     line += ": ";
     line += value;
     headers = curl_slist_append(headers, line.c_str());
+    // LOG_DEVEL << "[" << req->unique_id << "] HDR " << line;
   }
 
   curl_easy_setopt(req->_curl_handle._easy_handle, CURLOPT_POSTFIELDSIZE_LARGE,

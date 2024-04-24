@@ -35,6 +35,7 @@ struct curl_easy_handle {
 
 struct request_options {
   std::unordered_map<std::string, std::string> header;
+  std::chrono::milliseconds timeout = std::chrono::seconds{120};
 };
 
 enum class http_method { kGet, kPost, kPut, kDelete, kHead, kPatch };
@@ -45,18 +46,7 @@ struct response {
   std::string body;
 };
 
-struct request {
-  std::string url;
-  std::string body;
-  std::size_t read_offset;
-  curl_easy_handle _curl_handle;
-  curl_slist* _curl_headers;
-  std::function<void(response, CURLcode)> _callback;
-
-  response _response;
-
-  ~request();
-};
+struct request;
 
 struct connection_pool {
   connection_pool();

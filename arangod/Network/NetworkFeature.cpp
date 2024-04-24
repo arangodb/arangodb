@@ -447,7 +447,7 @@ std::string buildUrlForCurl(fuerte::Request const& r,
       first = false;
     }
   }
-
+  // LOG_DEVEL << "URL " << url;
   return url;
 }
 
@@ -511,7 +511,11 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
     opts.header.emplace(k, v);
   }
 
-  opts.header.emplace("Content-Type", "application/x-velocypack");
+  opts.timeout =
+      std::chrono::duration_cast<std::chrono::milliseconds>(options.timeout);
+  opts.header.emplace("Content-Type", options.contentType.empty()
+                                          ? "application/x-velocypack"
+                                          : options.contentType);
   opts.header.emplace("Accept", options.acceptType.empty()
                                     ? "application/x-velocypack"
                                     : options.acceptType);
