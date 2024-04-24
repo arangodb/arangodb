@@ -1,0 +1,17 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+wo{
+    Version{"2.1.36.35"}
+    collations{
+        standard{
+            Sequence{
+                "[normalization on]"
+                "&A<à<<<À"
+                "&E<é<<<É<ë<<<Ë"
+                "&N<ñ<<<Ñ<ŋ<<<Ŋ"
+                "&O<ó<<<Ó"
+            }
+            Version{"35.1"}
+        }
+    }
+}

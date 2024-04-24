@@ -552,7 +552,7 @@ class instance {
 
   cleanup() {
     if ((this.pid !== null) && (this.exitStatus === null)) {
-      print(RED + "killing instance (again?) to make sure we can delete its files!" + RESET);
+      print(RED + Date() + "killing instance (again?) to make sure we can delete its files!" + RESET);
       this.terminateInstance();
     }
     if (this.options.extremeVerbosity) {
@@ -748,7 +748,7 @@ class instance {
 
     if (crashUtils.isEnabledWindowsMonitor(this.options, this, this.pid, pu.ARANGOD_BIN)) {
       if (!crashUtils.runProcdump(this.options, this, this.coreDirectory, this.pid)) {
-        print('Killing ' + pu.ARANGOD_BIN + ' - ' + JSON.stringify(this.args));
+        print(Date() + 'Killing ' + pu.ARANGOD_BIN + ' - ' + JSON.stringify(this.args));
         let res = killExternal(this.pid);
         this.pid = res.pid;
         this.exitStatus = res;
@@ -780,7 +780,7 @@ class instance {
     }
     if (crashUtils.isEnabledWindowsMonitor(this.options, this, this.pid, pu.ARANGOD_BIN)) {
       if (!crashUtils.runProcdump(this.options, this, this.coreDirectory, this.pid)) {
-        print('Killing ' + pu.ARANGOD_BIN + ' - ' + JSON.stringify(this.args));
+        print(Date() + 'Killing ' + pu.ARANGOD_BIN + ' - ' + JSON.stringify(this.args));
         let res = killExternal(this.pid);
         this.pid = res.pid;
         this.exitStatus = res;
@@ -1045,7 +1045,7 @@ class instance {
     if ((this.exitStatus === null) ||
         (this.exitStatus.status === 'RUNNING')) {
       if (forceTerminate) {
-        let sockStat = this.getSockStat("Force killing - sockstat before: ");
+        let sockStat = this.getSockStat(Date() + "Force killing - sockstat before: ");
         this.killWithCoreDump('shutdown timeout; instance forcefully KILLED because of fatal timeout in testrun ' + sockStat);
         this.pid = null;
       } else if (this.options.useKillExternal) {

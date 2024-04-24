@@ -54,17 +54,15 @@ class CollectNode : public ExecutionNode {
       std::vector<AggregateVarInfo> const& aggregateVariables,
       Variable const* expressionVariable, Variable const* outVariable,
       std::vector<std::pair<Variable const*, std::string>> const& keepVariables,
-      std::unordered_map<VariableId, std::string const> const& variableMap,
-      bool isDistinctCommand);
+      std::unordered_map<VariableId, std::string const> const& variableMap);
 
   CollectNode(
-      ExecutionPlan*, arangodb::velocypack::Slice const& base,
+      ExecutionPlan*, arangodb::velocypack::Slice base,
       Variable const* expressionVariable, Variable const* outVariable,
       std::vector<std::pair<Variable const*, std::string>> const& keepVariables,
       std::unordered_map<VariableId, std::string const> const& variableMap,
       std::vector<GroupVarInfo> const& collectVariables,
-      std::vector<AggregateVarInfo> const& aggregateVariables,
-      bool isDistinctCommand);
+      std::vector<AggregateVarInfo> const& aggregateVariables);
 
   ~CollectNode() override;
 
@@ -74,20 +72,14 @@ class CollectNode : public ExecutionNode {
   /// @brief return the amount of bytes used
   size_t getMemoryUsedBytes() const override final;
 
-  /// @brief whether or not the node requires an additional post SORT
-  bool isDistinctCommand() const;
-
-  /// @brief whether or not the node is specialized
-  bool isSpecialized() const;
-
-  /// @brief specialize the node
-  void specialized();
+  /// @brief whether or not the collect type is fixed
+  bool isFixedMethod() const noexcept;
 
   /// @brief return the aggregation method
-  CollectOptions::CollectMethod aggregationMethod() const;
+  CollectOptions::CollectMethod aggregationMethod() const noexcept;
 
   /// @brief set the aggregation method
-  void aggregationMethod(CollectOptions::CollectMethod method);
+  void aggregationMethod(CollectOptions::CollectMethod method) noexcept;
 
   /// @brief getOptions
   CollectOptions& getOptions();
@@ -152,13 +144,13 @@ class CollectNode : public ExecutionNode {
 
   /// @brief whether or not the node has an expression variable (i.e. INTO ...
   /// = expr)
-  bool hasExpressionVariable() const;
+  bool hasExpressionVariable() const noexcept;
 
   /// @brief set the expression variable
   void expressionVariable(Variable const* variable);
 
   /// @brief return whether or not the collect has keep variables
-  bool hasKeepVariables() const;
+  bool hasKeepVariables() const noexcept;
 
   /// @brief return the keep variables
   std::vector<std::pair<Variable const*, std::string>> const& keepVariables()
@@ -176,7 +168,7 @@ class CollectNode : public ExecutionNode {
   std::vector<GroupVarInfo> const& groupVariables() const;
 
   /// @brief set all group variables (out, in)
-  void groupVariables(std::vector<GroupVarInfo> const& vars);
+  void groupVariables(std::vector<GroupVarInfo> vars);
 
   /// @brief get all aggregate variables (out, in)
   std::vector<AggregateVarInfo> const& aggregateVariables() const;
@@ -225,12 +217,6 @@ class CollectNode : public ExecutionNode {
 
   /// @brief map of all variable ids and names (needed to construct group data)
   std::unordered_map<VariableId, std::string const> _variableMap;
-
-  /// @brief whether or not the node requires an additional post-SORT
-  bool const _isDistinctCommand;
-
-  /// @brief whether or not the node is specialized
-  bool _specialized;
 };
 
 }  // namespace aql

@@ -35,6 +35,7 @@
 #include <velocypack/Slice.h>
 
 #include <string>
+#include <string_view>
 
 namespace arangodb::aql {
 
@@ -46,19 +47,13 @@ class SortNode : public ExecutionNode {
   friend class ExecutionBlock;
 
  public:
-  enum SorterType { Standard, ConstrainedHeap };
-  static std::string const& sorterTypeName(SorterType);
+  enum class SorterType { kStandard, kConstrainedHeap };
 
- public:
-  SortNode(ExecutionPlan* plan, ExecutionNodeId id,
-           SortElementVector const& elements, bool stable)
-      : ExecutionNode(plan, id),
-        _reinsertInCluster(true),
-        _elements(elements),
-        _stable(stable) {}
+  SortNode(ExecutionPlan* plan, ExecutionNodeId id, SortElementVector elements,
+           bool stable);
 
-  SortNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
-           SortElementVector const& elements, bool stable);
+  SortNode(ExecutionPlan* plan, arangodb::velocypack::Slice base,
+           SortElementVector elements, bool stable);
 
   /// @brief if non-zero, limits the number of elements that the node will
   /// return
@@ -73,7 +68,7 @@ class SortNode : public ExecutionNode {
   size_t getMemoryUsedBytes() const override final;
 
   /// @brief whether or not the sort is stable
-  bool isStable() const { return _stable; }
+  bool isStable() const noexcept { return _stable; }
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -81,11 +76,7 @@ class SortNode : public ExecutionNode {
 
   /// @brief clone ExecutionNode recursively
   ExecutionNode* clone(ExecutionPlan* plan,
-                       bool withDependencies) const override final {
-    return cloneHelper(
-        std::make_unique<SortNode>(plan, _id, _elements, _stable),
-        withDependencies);
-  }
+                       bool withDependencies) const override final;
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
@@ -97,14 +88,10 @@ class SortNode : public ExecutionNode {
                             replacements) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(VarSet& vars) const override final {
-    for (auto& p : _elements) {
-      vars.emplace(p.var);
-    }
-  }
+  void getVariablesUsedHere(VarSet& vars) const override final;
 
   /// @brief get Variables Used Here including ASC/DESC
-  SortElementVector const& elements() const { return _elements; }
+  SortElementVector const& elements() const noexcept { return _elements; }
 
   /// @brief returns all sort information
   SortInformation getSortInformation() const;
@@ -113,16 +100,13 @@ class SortNode : public ExecutionNode {
   /// this will sort expressions if they are constant
   /// the method will return true if all sort expressions were removed after
   /// simplification, and false otherwise
-  bool simplify(ExecutionPlan*);
+  bool simplify(ExecutionPlan* plan);
 
-  SorterType sorterType() const;
+  SorterType sorterType() const noexcept;
 
-  /// @brief if this node is needed on DBServers in cluster.
-  /// if set to false that means some optimizer rule
-  /// has already included sorting in some other node and
-  /// this node is left in plan only in sake of GatherNode
-  /// to properly handle merging.
-  bool _reinsertInCluster;
+  bool reinsertInCluster() const noexcept { return _reinsertInCluster; }
+
+  void dontReinsertInCluster() noexcept { _reinsertInCluster = false; }
 
  protected:
   /// @brief export to VelocyPack
@@ -130,12 +114,21 @@ class SortNode : public ExecutionNode {
                       unsigned flags) const override final;
 
  private:
+  static std::string_view sorterTypeName(SorterType type) noexcept;
+
   /// @brief pairs, consisting of variable and sort direction
   /// (true = ascending | false = descending)
   SortElementVector _elements;
 
   /// whether or not the sort is stable
   bool _stable;
+
+  /// @brief if this node is needed on DBServers in cluster.
+  /// if set to false that means some optimizer rule
+  /// has already included sorting in some other node and
+  /// this node is left in plan only in sake of GatherNode
+  /// to properly handle merging.
+  bool _reinsertInCluster;
 
   /// the maximum number of items to return if non-zero; if zero, unlimited
   size_t _limit = 0;

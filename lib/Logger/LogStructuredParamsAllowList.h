@@ -26,14 +26,13 @@
 #include <frozen/string.h>
 #include <frozen/unordered_set.h>
 
-namespace arangodb {
-namespace structuredParams {
+namespace arangodb::structuredParams {
 // the parameters will be converted to lowercase when parsed, so the allow list
 // is in lowercase too
 static constexpr char DatabaseName[] = "database";
+static constexpr char QueryId[] = "queryid";
 static constexpr char UrlName[] = "url";
 static constexpr char UserName[] = "username";
 constexpr auto allowList = frozen::make_unordered_set<frozen::string>(
-    {DatabaseName, UserName, UrlName});
-}  // namespace structuredParams
-}  // namespace arangodb
+    {DatabaseName, QueryId, UserName, UrlName});
+}  // namespace arangodb::structuredParams

@@ -24,40 +24,9 @@
 
 #include "icu-helper.h"
 
-#include <iostream>
-
-#include "ApplicationFeatures/LanguageFeature.h"
 #include "Basics/Utf8Helper.h"
-#include "Basics/directories.h"
-#include "Basics/files.h"
-
-std::string IcuInitializer::icuData;
 
 void IcuInitializer::reinit() {
   arangodb::basics::Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(
-      "", arangodb::basics::LanguageType::DEFAULT, icuData.data());
-}
-
-void IcuInitializer::setup(char const* path) {
-  if (!icuData.empty()) {
-    return;
-  }
-  std::string p;
-  std::string binaryPath = TRI_LocateBinaryPath(path);
-  icuData = arangodb::LanguageFeature::prepareIcu(TEST_DIRECTORY, binaryPath, p,
-                                                  "basics_suite");
-  if (icuData.empty() ||
-      !arangodb::basics::Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(
-          "", arangodb::basics::LanguageType::DEFAULT, icuData.data())) {
-    std::string msg =
-        "failed to initialize ICU library. The environment variable ICU_DATA";
-    if (getenv("ICU_DATA") != nullptr) {
-      msg += "='" + std::string(getenv("ICU_DATA")) + "'";
-    }
-    msg +=
-        " should point to the directory containing the icudtl.dat file. We "
-        "searched here: " +
-        p;
-    std::cerr << msg << std::endl;
-  }
+      "", arangodb::basics::LanguageType::DEFAULT);
 }

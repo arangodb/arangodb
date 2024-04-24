@@ -119,6 +119,9 @@ void Options::fromVelocyPack(arangodb::velocypack::Slice slice) {
       allowDirtyReads = true;
     }
   }
+  if (auto value = slice.get("skipFastLockRound"); value.isBool()) {
+    skipFastLockRound = value.isTrue();
+  }
 
   if (!ServerState::instance()->isSingleServer()) {
     if (auto value = slice.get("isFollowerTransaction"); value.isBool()) {
@@ -162,6 +165,8 @@ void Options::toVelocyPack(arangodb::velocypack::Builder& builder) const {
   // we are intentionally *not* writing allowImplicitCollectionForWrite here.
   // this is an internal option only used in replication
   builder.add("allowDirtyReads", VPackValue(allowDirtyReads));
+
+  builder.add("skipFastLockRound", VPackValue(skipFastLockRound));
 
   // serialize data for cluster-wide collections
   if (!ServerState::instance()->isSingleServer()) {
