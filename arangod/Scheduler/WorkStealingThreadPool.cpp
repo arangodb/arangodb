@@ -204,7 +204,7 @@ void WorkStealingThreadPool::ThreadState::runWork(WorkItem& work) noexcept {
   try {
     work.invoke();
   } catch (...) {
-    LOG_TOPIC("d5fb2", WARN, Logger::FIXME)
+    LOG_TOPIC("d5fb3", WARN, Logger::FIXME)
         << "Scheduler just swallowed an exception.";
   }
   incCounter(pool._metrics.jobsDone);

@@ -55,7 +55,7 @@ LockfreeThreadPool::LockfreeThreadPool(const char* name,
         try {
           item->invoke();
         } catch (...) {
-          LOG_TOPIC("d5fb2", WARN, Logger::FIXME)
+          LOG_TOPIC("d5fb4", WARN, Logger::FIXME)
               << "Scheduler just swallowed an exception.";
         }
         statistics.done += 1;

@@ -323,7 +323,7 @@ void runPingPong(WorkSimulation work) {
   }
   std::cout << "\n";
   for (auto t : threads) {
-    if constexpr (std::same_as<TypeParam, SupervisedSchedulerPool>) {
+    if constexpr (std::same_as<Pool, SupervisedSchedulerPool>) {
       // the SupervisedScheduler needs at least 4 threads, otherwise it will
       // assert
       continue;
