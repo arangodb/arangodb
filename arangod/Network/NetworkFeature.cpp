@@ -44,6 +44,7 @@
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/MetricsFeature.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "GeneralServer/AuthenticationFeature.h"
 
 namespace {
 void queueGarbageCollection(std::mutex& mutex,
@@ -457,7 +458,19 @@ fuerte::Error curlErrorToFuerte(CURLcode err) {
       return fuerte::Error::NoError;
     case CURLE_COULDNT_CONNECT:
       return fuerte::Error::CouldNotConnect;
+    case CURLE_OPERATION_TIMEDOUT:
+      return fuerte::Error::RequestTimeout;
+    case CURLE_READ_ERROR:
+      return fuerte::Error::ReadError;
+    case CURLE_WRITE_ERROR:
+      return fuerte::Error::WriteError;
+    case CURLE_HTTP2_STREAM:
+    case CURLE_HTTP2:
+      return fuerte::Error::ProtocolError;
+
     default:
+      LOG_TOPIC("9d9bf", ERR, Logger::COMMUNICATION)
+          << "curl error: " << curl_easy_strerror(err) << " (" << err << ")";
       return fuerte::Error::ProtocolError;
   }
 }
@@ -519,6 +532,15 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
   opts.header.emplace("Accept", options.acceptType.empty()
                                     ? "application/x-velocypack"
                                     : options.acceptType);
+
+  AuthenticationFeature* af = AuthenticationFeature::instance();
+  if (af != nullptr && af->isActive()) {
+    std::string const& token = af->tokenCache().jwtToken();
+    if (!token.empty() && !opts.header.contains("Authorization")) {
+      opts.header.emplace("Authorization", "bearer " + token);
+    }
+  }
+
   // opts.header.emplace("Accept-Encoding", "application/x-velocypack;
   // charset=utf-8");
 

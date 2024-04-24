@@ -88,9 +88,11 @@ size_t header_callback(char* buffer, size_t size, size_t nitems,
   return bytes_written;
 }
 
+#define LOG_DEVEL_CURL LOG_DEVEL_IF(false)
+
 int debug_callback(CURL* handle, curl_infotype type, char* data, size_t size,
                    void* clientp) {
-  // auto req = static_cast<request*>(clientp);
+  auto req = static_cast<request*>(clientp);
   std::string_view prefix = "CURL: ";
   switch (type) {
     case CURLINFO_HEADER_IN:
@@ -109,8 +111,8 @@ int debug_callback(CURL* handle, curl_infotype type, char* data, size_t size,
       break;
   }
 
-  // LOG_DEVEL << "[" << req->unique_id << "]" << prefix <<
-  // std::string_view{data, size};
+  LOG_DEVEL_CURL << "[" << req->unique_id << "] " << prefix
+                 << std::string_view{data, size};
   return 0;
 }
 
@@ -127,7 +129,7 @@ void arangodb::network::curl::send_request(
   req->_callback = std::move(callback);
   req->unique_id = nextRequestId.fetch_add(1, std::memory_order_relaxed);
 
-  // LOG_DEVEL << "[" << req->unique_id << "] URL " << req->url;
+  LOG_DEVEL_CURL << "[" << req->unique_id << "] URL " << req->url;
 
   curl_easy_setopt(req->_curl_handle._easy_handle, CURLOPT_URL,
                    req->url.c_str());
@@ -168,7 +170,7 @@ void arangodb::network::curl::send_request(
     line += ": ";
     line += value;
     headers = curl_slist_append(headers, line.c_str());
-    // LOG_DEVEL << "[" << req->unique_id << "] HDR " << line;
+    LOG_DEVEL_CURL << "[" << req->unique_id << "] HDR " << line;
   }
 
   curl_easy_setopt(req->_curl_handle._easy_handle, CURLOPT_POSTFIELDSIZE_LARGE,
