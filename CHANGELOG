@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-432: allow row clicks on all UI tables.
+
 * FE-441: Fix collection unstable default sort in multi-shard collections UI
 
 * Changed default value of `--log.max-queued-entries` from 10000 to 16384.
