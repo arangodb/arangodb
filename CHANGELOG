@@ -15,6 +15,13 @@ devel
   the cache for huge documents or for all the connections of super nodes, and
   thus leaves more memory for other purposes.
 
+* FE-441: Fix collection unstable default sort in multi-shard collections UI
+
+* Changed default value of `--log.max-queued-entries` from 10000 to 16384.
+
+* Added metric `arangodb_logger_messages_dropped_total` to count the number
+  of log messages that were discarded by the logger if its log queue was full.
+
 * Added option `skipFastLockRound` for transactions.
   The option can be set in a streaming write transaction's options (i.e. 
   `{"skipFastLockRound":true}`) to disable the fast lock round inside the
