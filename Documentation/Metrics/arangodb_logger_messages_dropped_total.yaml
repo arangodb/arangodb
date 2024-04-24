@@ -1,0 +1,39 @@
+name: arangodb_logger_messages_dropped_total
+introducedIn: "3.12.1"
+help: |
+  Total number of dropped log messages.
+unit: number
+type: counter
+category: Statistics
+complexity: simple
+exposedBy:
+  - agent
+  - coordinator
+  - dbserver
+  - single
+description: |
+  Total number of log messages that were dropped by the logger.
+
+  Log messages that are produced by worker threads are pushed into a log
+  queue that is owned by a dedicated logger thread. This dedicated log
+  thread is then responsible for writing the log messages out to disk or
+  stdout asynchronously.
+  As there can be many threads that produce log messages, but only one
+  thread that consumes and logs messages from the log queue, it is possible
+  that the log queue grows too large, potentially consuming a lot of
+  memory to buffer all non-consumed log messages in RAM.
+  In order to prevent the log queue from using too much memory, its size
+  is bounded. The startup option `--log.max-queued-entries` controls the
+  maximum size of the log queue.
+  Whenever the log queue has reached its capacity limit and a log producer
+  thread tries to push a log message to the log queue, the log message
+  will be dropped. For every dropped log message this metric will be 
+  increased by one, so it becomes visible that log messages were dropped.
+troubleshoot: |
+  In case this metric is greater than one, there is too much logging
+  going on for the log thread to keep up with incoming log messages. There
+  are two ways to counteract this. 
+  Either the log levels needed to be lowered (e.g. from "trace" to "debug"
+  or from "debug" to "info"), or the maximum capacity of the log queue
+  needs to be increased. This can be achieved by adjusting the value of
+  the startup option `--log.max-queued-entries` to a higher value.
