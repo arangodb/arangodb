@@ -43,7 +43,7 @@
 #define FUERTE_ASSERT(expr)                                                 \
   do {                                                                      \
     if (!(ADB_LIKELY(expr))) {                                              \
-      std::cout << "broken assert (" << #expr << ") in " << __FILE__ << ":" \
+      LogHack{} << "broken assert (" << #expr << ") in " << __FILE__ << ":" \
                 << __LINE__ << std::endl;                                   \
       std::abort();                                                         \
     }                                                                       \
