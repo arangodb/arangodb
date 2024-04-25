@@ -432,7 +432,7 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
   } else {
     LOG_TOPIC_IF("52417", TRACE, Logger::COMMUNICATION,
                  strcmp(pool.config().name, "ClusterComm") == 0)
-        << "have leased connection to '" << endpoint
+        << "have leased connection " << (void*)conn.get() << " to '" << endpoint
         << "' came from pool: " << isFromPool << ", " << requestInfo(*req);
   }
 
