@@ -10,6 +10,13 @@
 std::string myEndpoint = "tcp://localhost:8529";
 std::string myAuthentication = "basic:root:";
 
+// Please leave this code in for the next time we have to debug fuerte.
+#if 1
+void LogHackWriter(std::string_view msg) {
+  std::cout << "88888 Fuerte: " << msg << std::endl;
+}
+#endif
+
 std::vector<std::string> parse_args(int const& argc, char const* const* argv) {
   std::vector<std::string> rv;
   for (int i = 0; i < argc; i++) {
