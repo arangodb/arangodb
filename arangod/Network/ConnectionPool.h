@@ -27,8 +27,6 @@
 
 #include <fuerte/types.h>
 
-#include "curl-stuff.h"
-
 namespace arangodb {
 namespace fuerte {
 inline namespace v1 {
@@ -40,6 +38,9 @@ class EventLoopService;
 class ClusterInfo;
 
 namespace network {
+namespace curl {
+struct connection_pool;
+}
 
 class ConnectionPtr;
 
@@ -100,7 +101,7 @@ class ConnectionPool final {
 
   Config const& config() const;
 
-  curl::connection_pool curl_pool;
+  std::unique_ptr<curl::connection_pool> curl_pool;
 
  protected:
   struct Context;

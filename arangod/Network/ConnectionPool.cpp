@@ -39,6 +39,8 @@
 #include "Metrics/LogScale.h"
 #include "Metrics/MetricsFeature.h"
 
+#include "curl-stuff.h"
+
 #include <fuerte/connection.h>
 #include <memory>
 
@@ -348,7 +350,8 @@ struct ConnectionPool::Impl {
 };
 
 ConnectionPool::ConnectionPool(ConnectionPool::Config const& config)
-    : _impl(std::make_unique<Impl>(config, *this)) {}
+    : curl_pool(std::make_unique<curl::connection_pool>()),
+      _impl(std::make_unique<Impl>(config, *this)) {}
 
 ConnectionPool::~ConnectionPool() { shutdownConnections(); }
 

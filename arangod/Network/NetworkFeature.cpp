@@ -46,6 +46,8 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 
+#include "curl-stuff.h"
+
 namespace {
 void queueGarbageCollection(std::mutex& mutex,
                             arangodb::Scheduler::WorkHandle& workItem,
@@ -536,8 +538,8 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
   AuthenticationFeature* af = AuthenticationFeature::instance();
   if (af != nullptr && af->isActive()) {
     std::string const& token = af->tokenCache().jwtToken();
-    if (!token.empty() && !opts.header.contains("Authorization")) {
-      opts.header.emplace("Authorization", "bearer " + token);
+    if (!token.empty() && !opts.header.contains("authorization")) {
+      opts.header.emplace("authorization", "bearer " + token);
     }
   }
 
@@ -564,8 +566,13 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
         << req->header.path << ", request ptr: " << (void*)req.get();
   }
 
+  if (!pool.curl_pool) {
+    cb(fuerte::Error::ConnectionCanceled, std::move(req), nullptr, isFromPool);
+    return;
+  }
+
   network::curl::send_request(
-      pool.curl_pool, method, url, req->payloadAsString(), opts,
+      *pool.curl_pool, method, url, req->payloadAsString(), opts,
       [this, &pool, isFromPool,
        handleContentEncoding = options.handleContentEncoding || didCompress,
        cb = std::move(cb), endpoint = std::move(endpoint),

@@ -167,8 +167,12 @@ void arangodb::network::curl::send_request(
     line.clear();
     line.reserve(key.size() + value.size() + 2);
     line += key;
-    line += ": ";
-    line += value;
+    if (value.empty()) {
+      line += ';';  // special empty header handling
+    } else {
+      line += ": ";
+      line += value;
+    }
     headers = curl_slist_append(headers, line.c_str());
     LOG_DEVEL_CURL << "[" << req->unique_id << "] HDR " << line;
   }
