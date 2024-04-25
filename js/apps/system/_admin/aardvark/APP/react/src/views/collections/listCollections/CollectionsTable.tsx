@@ -108,6 +108,11 @@ export const CollectionsTable = ({
       <ReactTable<LockableCollectionDescription>
         table={tableInstance}
         emptyStateMessage="No collections found"
+        onRowSelect={row => {
+          window.location.hash = `#cInfo/${encodeURIComponent(
+            row.original.name
+          )}`;
+        }}
       />
     </Flex>
   );

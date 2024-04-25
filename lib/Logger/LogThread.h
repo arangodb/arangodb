@@ -28,6 +28,9 @@
 
 #include <boost/lockfree/queue.hpp>
 
+#include <atomic>
+#include <cstdint>
+
 namespace arangodb {
 class LogGroup;
 namespace application_features {
@@ -50,7 +53,6 @@ class LogThread final : public Thread {
                      std::string const& name, uint32_t maxQueuedLogMessages);
   ~LogThread();
 
- public:
   bool isSystem() const override { return true; }
   bool isSilent() const override { return true; }
   void run() override;
@@ -69,7 +71,7 @@ class LogThread final : public Thread {
   bool processPendingMessages();
 
  private:
-  arangodb::basics::ConditionVariable _condition;
+  basics::ConditionVariable _condition;
   boost::lockfree::queue<MessageEnvelope> _messages;
   std::atomic<size_t> _pendingMessages{0};
   uint32_t _maxQueuedLogMessages{10000};
