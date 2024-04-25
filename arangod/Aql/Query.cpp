@@ -322,6 +322,17 @@ void Query::kill() {
   }
 }
 
+/// @brief the query's transaction id. returns 0 if no transaction
+/// has been assigned to the query yet. use this only for informational
+/// purposes
+TransactionId Query::transactionId() const noexcept {
+  if (_trx == nullptr) {
+    // no transaction yet. simply return 0
+    return TransactionId{0};
+  }
+  return _trx->tid();
+}
+
 /// @brief return the start time of the query (steady clock value)
 double Query::startTime() const noexcept { return _startTime; }
 

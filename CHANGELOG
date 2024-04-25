@@ -4,7 +4,35 @@ devel
 * BTS-1856: Fix a data-race inside the Query class during accesses on a private
   property (`execStats`).
 
-* Updated ArangoDB Starter to v0.19.1-preview-3.
+* FE-432: allow row clicks on all UI tables.
+
+* FE-441: Fix collection unstable default sort in multi-shard collections UI
+
+* Changed default value of `--log.max-queued-entries` from 10000 to 16384.
+
+* Added metric `arangodb_logger_messages_dropped_total` to count the number
+  of log messages that were discarded by the logger if its log queue was full.
+
+* Added option `skipFastLockRound` for transactions.
+  The option can be set in a streaming write transaction's options (i.e. 
+  `{"skipFastLockRound":true}`) to disable the fast lock round inside the
+  transaction. The option defaults to `false, so the fast lock round is tried 
+  where possible.
+  Disabling the fast lock round is normally not necessary, but it can make
+  sense when there are many concurrent streaming transactions queued that all
+  try to access the same collection and lock it exclusively. In this case,
+  the fast lock round actually makes things worse, because there will always
+  be some exclusive locks in the way. In this use case it will be better to
+  skip the fast lock round. Disabling the fast mode makes each actual locking 
+  operation take longer than when in fast mode, but it guarantees a 
+  deterministic locking order and thus avoids deadlocking and retrying that
+  is possible with the fast mode. Overall disabling the fast lock mode can be
+  faster in this case.
+  Setting this option is irrelevant for read-only transactions and will degrade
+  performance when there are no concurrent transactions that use exclusive
+  locks on the same collection.
+
+* Updated ArangoDB Starter to v0.19.1.
 
 * Fixed SEARCH-485 (ES-2010): Search files disappeared during creation of
   HotBackup.
