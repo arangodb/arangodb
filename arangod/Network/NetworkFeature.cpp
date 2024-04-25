@@ -463,6 +463,7 @@ fuerte::Error curlErrorToFuerte(CURLcode err) {
     case CURLE_OPERATION_TIMEDOUT:
       return fuerte::Error::RequestTimeout;
     case CURLE_READ_ERROR:
+    case CURLE_GOT_NOTHING:
       return fuerte::Error::ReadError;
     case CURLE_WRITE_ERROR:
       return fuerte::Error::WriteError;
@@ -580,9 +581,10 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
        req_ptr = req.release(),
        url](network::curl::response real_res, CURLcode result) {
         auto req = std::unique_ptr<fuerte::Request>(req_ptr);
-        LOG_DEVEL_IF(!ServerState::instance()->isAgent() && &pool == _poolPtr)
-            << "CURL " << to_string(req->header.restVerb) << " " << url
-            << " -> " << curl_easy_strerror(result) << " (" << result << ")";
+        // LOG_DEVEL_IF(!ServerState::instance()->isAgent() && &pool ==
+        // _poolPtr)
+        //     << "CURL " << to_string(req->header.restVerb) << " " << url
+        //     << " -> " << curl_easy_strerror(result) << " (" << result << ")";
         auto err = curlErrorToFuerte(result);
         auto res = std::make_unique<fuerte::Response>();
         if (!real_res.body.empty()) {
