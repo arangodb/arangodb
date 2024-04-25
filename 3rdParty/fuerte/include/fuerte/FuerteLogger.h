@@ -23,17 +23,18 @@
 
 // Please leave the following debug code in for the next time we have to
 // debug fuerte.
-#if 0
+#if 1
 #include <iostream>
 #include <sstream>
+#include <string_view>
 
-extern void LogHackWriter(char const* p);
+extern void LogHackWriter(std::string_view msg);
 
 class LogHack {
   std::stringstream _s;
  public:
   LogHack() {};
-  ~LogHack() { LogHackWriter(_s.str().c_str()); };
+  ~LogHack() { LogHackWriter(_s.str()); };
   template<typename T> LogHack& operator<<(T const& o) { _s << o; return *this; }
   typedef std::basic_ostream<char, std::char_traits<char> > CoutType;
   typedef CoutType& (*StandardEndLine)(CoutType&);
@@ -74,21 +75,21 @@ class LogHack {
 #endif
 
 #if ENABLE_FUERTE_LOG_ERROR > 0
-#define FUERTE_LOG_ERROR std::cout
+#define FUERTE_LOG_ERROR LogHack{}
 #else
 #define FUERTE_LOG_ERROR \
   if (0) std::cout
 #endif
 
 #if ENABLE_FUERTE_LOG_DEBUG > 0
-#define FUERTE_LOG_DEBUG std::cout
+#define FUERTE_LOG_DEBUG LogHack{}
 #else
 #define FUERTE_LOG_DEBUG \
   if (0) std::cout
 #endif
 
 #if ENABLE_FUERTE_LOG_TRACE > 0
-#define FUERTE_LOG_TRACE std::cout
+#define FUERTE_LOG_TRACE LogHack{}
 #else
 #define FUERTE_LOG_TRACE \
   if (0) std::cout

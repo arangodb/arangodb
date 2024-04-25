@@ -55,13 +55,16 @@
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 
+#include <string_view>
+
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
 // Please leave this code in for the next time we have to debug fuerte.
-#if 0
-void LogHackWriter(char const* p) {
-  LOG_DEVEL << p;
+#if 1
+void LogHackWriter(std::string_view msg) {
+  LOG_TOPIC("88888", INFO, arangodb::Logger::COMMUNICATION)
+      << "fueter: " << msg;
 }
 #endif
 

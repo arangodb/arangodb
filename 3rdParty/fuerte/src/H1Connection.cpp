@@ -218,7 +218,7 @@ void H1Connection<ST>::finishConnect() {
     FUERTE_ASSERT(this->_active.load());
     this->asyncWriteNextRequest();  // starts writing if queue non-empty
   } else {
-    FUERTE_LOG_ERROR << "finishConnect: found state other than 'Connecting': "
+    FUERTE_LOG_ERROR << this->endpoint() << " finishConnect: found state other than 'Connecting': "
                      << static_cast<int>(exp);
     FUERTE_ASSERT(exp == Connection::State::Closed);
     // If this happens, then the connection has been shut down before
@@ -423,7 +423,7 @@ void H1Connection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
           .append("' reason: '")
           .append(llhttp_get_error_reason(&_parser))
           .append("'");
-      FUERTE_LOG_ERROR << msg << ", this=" << this << "\n";
+      FUERTE_LOG_ERROR << this->endpoint() << " " << msg << ", this=" << this << "\n";
       // will cleanup _item
       this->shutdownConnection(Error::ProtocolError, msg);
       return;
@@ -458,7 +458,7 @@ void H1Connection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
       _item->callback(Error::NoError, std::move(_item->request),
                       std::move(_response));
     } catch (...) {
-      FUERTE_LOG_ERROR << "unhandled exception in fuerte callback\n";
+      FUERTE_LOG_ERROR << this->endpoint() << " unhandled exception in fuerte callback\n";
     }
 
     _item.reset();

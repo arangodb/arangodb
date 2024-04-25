@@ -122,7 +122,7 @@ class GeneralConnection : public fuerte::Connection {
     // Prepare a new request
     this->_numQueued.fetch_add(1, std::memory_order_relaxed);
     if (!this->_queue.push(item.get())) {
-      FUERTE_LOG_ERROR << "connection queue capacity exceeded\n";
+      FUERTE_LOG_ERROR << endpoint() << " connection queue capacity exceeded\n";
       uint32_t q = this->_numQueued.fetch_sub(1, std::memory_order_relaxed);
       FUERTE_ASSERT(q > 0);
       item->invokeOnError(Error::QueueCapacityExceeded);
@@ -171,6 +171,7 @@ class GeneralConnection : public fuerte::Connection {
       tryConnect(_config._maxConnectRetries, Clock::now(),
                  asio_ns::error_code());
     } else {
+      FUERTE_LOG_ERROR << endpoint() << " startConnection. unexpected state: " << (int) this->_state.load();
       FUERTE_LOG_DEBUG << "startConnection: this=" << this
                        << " found unexpected state " << static_cast<int>(exp)
                        << " not equal to 'Created'";
@@ -250,7 +251,7 @@ class GeneralConnection : public fuerte::Connection {
       FUERTE_LOG_DEBUG << "activate: not connected\n";
       this->startConnection();
     } else if (state == Connection::State::Closed) {
-      FUERTE_LOG_ERROR << "activate: queued request on failed connection\n";
+      FUERTE_LOG_ERROR << endpoint() << ": activate: queued request on failed connection\n";
       this->drainQueue(fuerte::Error::ConnectionClosed);
       this->_active.store(false);  // No more activity from our side
     }
@@ -303,6 +304,7 @@ class GeneralConnection : public fuerte::Connection {
   void tryConnect(unsigned retries, Clock::time_point start,
                   asio_ns::error_code const& ec) {
     if (_state.load() != Connection::State::Connecting) {
+      FUERTE_LOG_ERROR << endpoint() << " tryConnect exiting early. ec: " << ec.message() << ", state: " << (int) _state.load() << ", retries: " << retries;
       return;
     }
 
@@ -311,6 +313,7 @@ class GeneralConnection : public fuerte::Connection {
       msg.append((ec != asio_ns::error::operation_aborted) ? ec.message()
                                                            : "timeout");
       msg.push_back('\'');
+      FUERTE_LOG_ERROR << endpoint() << " tryConnect: no retries left. ec: " << ec.message() << ", state: " << (int) _state.load() << ", retries: " << retries << ", msg: " << msg;
       shutdownConnection(Error::CouldNotConnect, msg);
       return;
     }
@@ -320,6 +323,7 @@ class GeneralConnection : public fuerte::Connection {
 
     _proto.timer.expires_at(start + _config._connectTimeout);
     _proto.timer.async_wait([self](asio_ns::error_code const& ec) {
+      FUERTE_LOG_ERROR << self->endpoint() << " tryConnect timer. ec: " << ec.message() << ", state: " << (int) self->state();
       if (!ec && self->state() == Connection::State::Connecting) {
         // the connect handler below gets 'operation_aborted' error
         static_cast<GeneralConnection<ST, RT>&>(*self)._proto.cancel();
@@ -337,6 +341,7 @@ class GeneralConnection : public fuerte::Connection {
         me.finishConnect();
         return;
       }
+      FUERTE_LOG_ERROR << self->endpoint() << " tryConnect connecting failed. ec: " << ec.message() << ", state: " << (int) self->state() << ", retries: " << retries;
       FUERTE_LOG_DEBUG << "connecting failed: " << ec.message() << "\n";
       if (retries > 0 && ec != asio_ns::error::operation_aborted) {
         auto end = std::min(Clock::now() + me._config._connectRetryPause,
@@ -344,6 +349,7 @@ class GeneralConnection : public fuerte::Connection {
         me._proto.timer.expires_at(end);
         me._proto.timer.async_wait(
             [self(std::move(self)), start, retries](auto ec) mutable {
+              FUERTE_LOG_ERROR << self->endpoint() << " tryConnect executed deferred retry. ec: " << ec.message() << ", state: " << (int) self->state() << ", retries: " << (retries - 1);
               auto& me = static_cast<GeneralConnection<ST, RT>&>(*self);
               me.tryConnect(!ec ? retries - 1 : 0, start, ec);
             });
