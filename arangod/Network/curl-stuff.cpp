@@ -19,6 +19,7 @@ struct curl::request {
   curl_easy_handle _curl_handle;
   curl_slist* _curl_headers;
   std::function<void(response, CURLcode)> _callback;
+  bool callback_called{false};
 
   std::uint64_t unique_id;
 
@@ -239,6 +240,7 @@ void connection_pool::resolve_handle(CURL* easy_handle,
 
   curl_easy_getinfo(easy_handle, CURLINFO_RESPONSE_CODE, &req->_response.code);
   try {
+    req->callback_called = true;
     req->_callback(std::move(req->_response), result);
   } catch (std::exception const& e) {
     LOG_TOPIC("d0653", ERR, Logger::COMMUNICATION)
@@ -277,9 +279,14 @@ void connection_pool::install_new_handles() noexcept {
 void connection_pool::run_curl_loop(std::stop_token stoken) noexcept {
   int running_handles = 0;
   do {
-    install_new_handles();
+    if (!stoken.stop_requested()) {
+      install_new_handles();
+    }
 
     running_handles = _curl_multi.perform();
+    LOG_DEVEL_IF(stoken.stop_requested())
+        << "CURL still running: " << running_handles << " requests left.";
+
     size_t num_messages = drain_msg_queue();
     if (num_messages > 0) {
       continue;
@@ -293,6 +300,7 @@ void connection_pool::run_curl_loop(std::stop_token stoken) noexcept {
     }
 
   } while (!stoken.stop_requested() || running_handles != 0);
+  LOG_DEVEL << "CURL thread terminated gracefully";
 }
 
 void connection_pool::push(std::unique_ptr<request>&& req) {
@@ -316,6 +324,9 @@ connection_pool::connection_pool()
 request::~request() {
   if (_curl_headers != NULL) {
     curl_slist_free_all(_curl_headers);
+  }
+  if (!callback_called) {
+    _callback(response{}, CURLE_ABORTED_BY_CALLBACK);
   }
 }
 
@@ -361,6 +372,9 @@ curl_multi_handle::curl_multi_handle() : _multi_handle(curl_multi_init()) {
   }
   curl_multi_setopt(_multi_handle, CURLMOPT_PIPELINING, CURLPIPE_MULTIPLEX);
   curl_multi_setopt(_multi_handle, CURLMOPT_MAX_CONCURRENT_STREAMS, 2000l);
+  curl_multi_setopt(_multi_handle, CURLMOPT_MAX_HOST_CONNECTIONS, 0l);
+  curl_multi_setopt(_multi_handle, CURLMOPT_MAX_TOTAL_CONNECTIONS, 0l);
+  curl_multi_setopt(_multi_handle, CURLMOPT_MAX_PIPELINE_LENGTH, 5l);
 }
 
 curl_multi_handle::~curl_multi_handle() {

@@ -470,6 +470,7 @@ fuerte::Error curlErrorToFuerte(CURLcode err) {
     case CURLE_HTTP2:
       return fuerte::Error::ProtocolError;
 
+    case CURLE_ABORTED_BY_CALLBACK:
     default:
       LOG_TOPIC("9d9bf", ERR, Logger::COMMUNICATION)
           << "curl error: " << curl_easy_strerror(err) << " (" << err << ")";
