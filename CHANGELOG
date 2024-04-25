@@ -1,6 +1,9 @@
 devel
 -----
 
+* BTS-1856: Fix a data-race inside the Query class during accesses on a private
+  property (`execStats`).
+
 * FE-432: allow row clicks on all UI tables.
 
 * FE-441: Fix collection unstable default sort in multi-shard collections UI
