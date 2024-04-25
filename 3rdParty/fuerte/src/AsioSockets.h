@@ -20,11 +20,15 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <exception>
+
+#include "fuerte/FuerteLogger.h"
 #ifndef ARANGO_CXX_DRIVER_ASIO_CONNECTION_H
 #define ARANGO_CXX_DRIVER_ASIO_CONNECTION_H 1
 
 #include <fuerte/asio_ns.h>
 #include <fuerte/loop.h>
+
 #include "debugging.h"
 
 namespace arangodb { namespace fuerte { inline namespace v1 {
@@ -49,11 +53,13 @@ void resolveConnect(detail::ConnectionConfiguration const& config,
                              });
     } catch (std::bad_alloc const&) {
       // definitely an OOM error
-      done(boost::system::errc::make_error_code(boost::system::errc::not_enough_memory));
+      done(boost::system::errc::make_error_code(
+          boost::system::errc::not_enough_memory));
     } catch (...) {
       // probably not an OOM error, but we don't know what it actually is.
       // there is no code for a generic error that we could use here
-      done(boost::system::errc::make_error_code(boost::system::errc::not_enough_memory));
+      done(boost::system::errc::make_error_code(
+          boost::system::errc::not_enough_memory));
     }
   };
 
@@ -121,9 +127,18 @@ struct Socket<SocketType::Tcp> {
 template <>
 struct Socket<fuerte::SocketType::Ssl> {
   Socket(EventLoopService& loop, asio_ns::io_context& ctx)
-    : resolver(ctx), socket(ctx, loop.sslContext()), timer(ctx), cleanupDone(false) {}
+      : resolver(ctx),
+        socket(ctx, loop.sslContext()),
+        timer(ctx),
+        cleanupDone(false) {}
 
-  ~Socket() { this->cancel(); }
+  ~Socket() {
+    try {
+      this->cancel();
+    } catch (std::exception const& e) {
+      FUERTE_LOG_ERROR << "Exception in ~Socket() " << e.what();
+    }
+  }
 
   template <typename F>
   void connect(detail::ConnectionConfiguration const& config, F&& done) {
@@ -141,9 +156,11 @@ struct Socket<fuerte::SocketType::Ssl> {
             socket.next_layer().set_option(asio_ns::ip::tcp::no_delay(true));
 
             // Set SNI Hostname (many hosts need this to handshake successfully)
-            if (!SSL_set_tlsext_host_name(socket.native_handle(), config._host.c_str())) {
+            if (!SSL_set_tlsext_host_name(socket.native_handle(),
+                                          config._host.c_str())) {
               boost::system::error_code ec{
-                static_cast<int>(::ERR_get_error()), boost::asio::error::get_ssl_category()};
+                  static_cast<int>(::ERR_get_error()),
+                  boost::asio::error::get_ssl_category()};
               done(ec);
               return;
             }
@@ -157,7 +174,8 @@ struct Socket<fuerte::SocketType::Ssl> {
             }
           } catch (std::bad_alloc const&) {
             // definitely an OOM error
-            done(boost::system::errc::make_error_code(boost::system::errc::not_enough_memory));
+            done(boost::system::errc::make_error_code(
+                boost::system::errc::not_enough_memory));
             return;
           } catch (boost::system::system_error const& exc) {
             // probably not an OOM error, but we don't know what it actually is.
@@ -170,28 +188,34 @@ struct Socket<fuerte::SocketType::Ssl> {
         });
   }
 
+#define TRY(expr)                                          \
+  try {                                                    \
+    expr;                                                  \
+  } catch (std::exception const& e) {                      \
+    FUERTE_LOG_ERROR << "Exception in " #expr << e.what(); \
+  }
   void cancel() {
-    try {
-      timer.cancel();
-      resolver.cancel();
-      if (socket.lowest_layer().is_open()) {  // non-graceful shutdown
-        asio_ns::error_code ec;
-        socket.lowest_layer().shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
-        ec.clear();
-        socket.lowest_layer().close(ec);
-      }
-    } catch (...) {
+    TRY(timer.cancel());
+    TRY(resolver.cancel());
+    if (socket.lowest_layer().is_open()) {  // non-graceful shutdown
+      asio_ns::error_code ec;
+      TRY(socket.lowest_layer().shutdown(
+          asio_ns::ip::tcp::socket::shutdown_both, ec));
+      ec.clear();
+      TRY(socket.lowest_layer().close(ec));
     }
   }
+#undef TRY
 
   template <typename F>
   void shutdown(F&& cb) {
     // The callback cb plays two roles here:
     //   1. As a callback to be called back.
-    //   2. It captures by value a shared_ptr to the connection object of which this
-    //      socket is a member. This means that the allocation of the connection and
-    //      this of the socket is kept until all asynchronous operations are completed
-    //      (or aborted).
+    //   2. It captures by value a shared_ptr to the connection object of which
+    //   this
+    //      socket is a member. This means that the allocation of the connection
+    //      and this of the socket is kept until all asynchronous operations are
+    //      completed (or aborted).
     asio_ns::error_code ec;  // prevents exceptions
     socket.lowest_layer().cancel(ec);
 
@@ -206,7 +230,8 @@ struct Socket<fuerte::SocketType::Ssl> {
       // Copy in callback such that the connection object is kept alive long
       // enough, please do not delete, although it is not used here!
       if (!cleanupDone && !ec) {
-        socket.lowest_layer().shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
+        socket.lowest_layer().shutdown(asio_ns::ip::tcp::socket::shutdown_both,
+                                       ec);
         ec.clear();
         socket.lowest_layer().close(ec);
         cleanupDone = true;
@@ -215,9 +240,11 @@ struct Socket<fuerte::SocketType::Ssl> {
     socket.async_shutdown([cb(std::forward<F>(cb)), this](auto const& ec) {
       timer.cancel();
 #ifndef _WIN32
-      if (!cleanupDone && (!ec || ec == asio_ns::error::basic_errors::not_connected)) {
+      if (!cleanupDone &&
+          (!ec || ec == asio_ns::error::basic_errors::not_connected)) {
         asio_ns::error_code ec2;
-        socket.lowest_layer().shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec2);
+        socket.lowest_layer().shutdown(asio_ns::ip::tcp::socket::shutdown_both,
+                                       ec2);
         ec2.clear();
         socket.lowest_layer().close(ec2);
         cleanupDone = true;
