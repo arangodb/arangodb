@@ -97,6 +97,8 @@ struct Socket<SocketType::Tcp> {
       if (socket.is_open()) {  // non-graceful shutdown
         asio_ns::error_code ec;
         socket.close(ec);
+      } else {
+        socket.cancel();
       }
     } catch (...) {
     }
@@ -203,6 +205,8 @@ struct Socket<fuerte::SocketType::Ssl> {
           asio_ns::ip::tcp::socket::shutdown_both, ec));
       ec.clear();
       TRY(socket.lowest_layer().close(ec));
+    } else {
+      TRY(socket.lowest_layer().cancel());
     }
   }
 #undef TRY
