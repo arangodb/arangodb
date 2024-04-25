@@ -473,7 +473,7 @@ fuerte::Error curlErrorToFuerte(CURLcode err) {
     default:
       LOG_TOPIC("9d9bf", ERR, Logger::COMMUNICATION)
           << "curl error: " << curl_easy_strerror(err) << " (" << err << ")";
-      return fuerte::Error::ProtocolError;
+      return fuerte::Error::ConnectionCanceled;
   }
 }
 
@@ -576,9 +576,12 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
       [this, &pool, isFromPool,
        handleContentEncoding = options.handleContentEncoding || didCompress,
        cb = std::move(cb), endpoint = std::move(endpoint),
-       req_ptr = req.release()](network::curl::response real_res,
-                                CURLcode result) {
+       req_ptr = req.release(),
+       url](network::curl::response real_res, CURLcode result) {
         auto req = std::unique_ptr<fuerte::Request>(req_ptr);
+        LOG_DEVEL_IF(!ServerState::instance()->isAgent() && &pool == _poolPtr)
+            << "CURL " << to_string(req->header.restVerb) << " " << url
+            << " -> " << curl_easy_strerror(result) << " (" << result << ")";
         auto err = curlErrorToFuerte(result);
         auto res = std::make_unique<fuerte::Response>();
         if (!real_res.body.empty()) {

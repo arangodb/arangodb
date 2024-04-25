@@ -4,7 +4,7 @@ add_library(arango_network STATIC
   Methods.cpp
   NetworkFeature.cpp
   Utils.cpp
-        curl-stuff.cpp)
+  curl-stuff.cpp)
 
 target_link_libraries(arango_network
   boost_boost
