@@ -115,15 +115,25 @@ server_parameters priority=1000 parallelity=5 buckets=6 size=small cluster -- --
 server_permissions,server_secrets priority=1000 parallelity=5 size=small -- --dumpAgencyOnError true
 
 # Dump Tests
-dump size=medium -- --dumpAgencyOnError true
-dump_authentication size=medium -- --dumpAgencyOnError true
-dump_jwt size=medium -- --dumpAgencyOnError true
-dump_multiple size=medium -- --dumpAgencyOnError true
-dump_parallel size=medium -- --dumpAgencyOnError true
-dump_maskings  enterprise size=medium -- --dumpAgencyOnError true
-dump_encrypted enterprise size=medium -- --dumpAgencyOnError true
-dump_mixed_cluster_single size=medium -- --dumpAgencyOnError true
-dump_mixed_single_cluster size=large -- --dumpAgencyOnError true
+dump single size=medium -- --dumpAgencyOnError true
+dump_authentication single size=medium -- --dumpAgencyOnError true
+dump_jwt single size=medium -- --dumpAgencyOnError true
+dump_multiple single size=medium -- --dumpAgencyOnError true
+dump_parallel single size=medium -- --dumpAgencyOnError true
+dump_maskings  single enterprise size=medium -- --dumpAgencyOnError true
+dump_encrypted single enterprise size=medium -- --dumpAgencyOnError true
+
+dump cluster parallelity=4 size=medium -- --dumpAgencyOnError true
+dump_authentication cluster parallelity=4 size=medium -- --dumpAgencyOnError true
+dump_jwt cluster parallelity=4 size=medium -- --dumpAgencyOnError true
+dump_multiple cluster parallelity=4 size=medium -- --dumpAgencyOnError true
+dump_parallel cluster parallelity=4 size=medium -- --dumpAgencyOnError true
+dump_maskings  enterprise cluster parallelity=4 size=medium -- --dumpAgencyOnError true
+dump_encrypted enterprise cluster parallelity=4 size=medium -- --dumpAgencyOnError true
+
+dump_mixed_cluster_single single size=medium -- --dumpAgencyOnError true
+dump_mixed_single_cluster single size=large -- --dumpAgencyOnError true
+
 # takes long, needs to go first. However, doesn't utilize the SUT hard.
 dump_with_crashes !mac size=medium parallelity=1 priority=2000 -- --dumpAgencyOnError true
 dump_with_crashes_parallel !mac size=medium parallelity=1 priority=2000 cluster -- --dumpAgencyOnError true 
