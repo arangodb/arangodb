@@ -577,9 +577,10 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
 
   auto my_id = unique_id.fetch_add(1);
 
-  LOG_DEVEL_IF(!ServerState::instance()->isAgent() && &pool == _poolPtr)
-      << "[" << my_id << "] "
-      << "CURL " << to_string(req->header.restVerb) << " " << url << " BEGIN";
+  // LOG_DEVEL_IF(!ServerState::instance()->isAgent() && &pool == _poolPtr)
+  //     << "[" << my_id << "] "
+  //     << "CURL " << to_string(req->header.restVerb) << " " << url << "
+  //     BEGIN";
 
   network::curl::send_request(
       *pool.curl_pool, method, url, req->payloadAsString(), opts,
@@ -589,10 +590,11 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
        req_ptr = req.release(), url,
        my_id](network::curl::response real_res, CURLcode result) {
         auto req = std::unique_ptr<fuerte::Request>(req_ptr);
-        LOG_DEVEL_IF(!ServerState::instance()->isAgent() && &pool == _poolPtr)
-            << "[" << my_id << "] "
-            << "CURL " << to_string(req->header.restVerb) << " " << url
-            << " -> " << curl_easy_strerror(result) << " (" << result << ")";
+        // LOG_DEVEL_IF(!ServerState::instance()->isAgent() && &pool ==
+        // _poolPtr)
+        //     << "[" << my_id << "] "
+        //     << "CURL " << to_string(req->header.restVerb) << " " << url
+        //     << " -> " << curl_easy_strerror(result) << " (" << result << ")";
         auto err = curlErrorToFuerte(result);
         auto res = std::make_unique<fuerte::Response>();
         if (!real_res.body.empty()) {
