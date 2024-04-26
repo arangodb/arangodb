@@ -115,21 +115,24 @@ function testSuite() {
       // Rather, the commit should succeed.
       let trx = db._createTransaction({ collections: { write: [cn] }, maxTransactionSize: 1024 });
       let c = trx.collection(cn);
-      let i = 0;
-      const maxDocs = 10000;
-      while (i < maxDocs) {
+      let docCount = 0;
+      const maxDocs = 10;
+      while (docCount < maxDocs) {
         try {
-          c.insert({_key: `${testName}-${i}`, value: i});
+          // The insertion takes place inside a loop, because we are particularly interested in
+          // the iteration where the limit is reached. We are expecting a failure after a certain document count.
+          c.insert({_key: `${testName}-${docCount}`, value: docCount});
         } catch (err) {
           assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
           break;
         }
-        ++i;
+        ++docCount;
       }
-      assertTrue(i < 10000, "We actually inserted everything, better check maxTransactionSize!");
+      assertTrue(docCount > 0, "We didn't insert anything, better check maxTransactionSize!")
+      assertTrue(docCount < maxDocs, "We actually inserted everything, better check maxTransactionSize!");
       trx.commit();
       c = db._collection(cn);
-      assertEqual(i, c.count(), `expected ${i} documents in collection ${cn} but got ${c.count()}`);
+      assertEqual(docCount, c.count(), `expected ${docCount} documents in collection ${cn} but got ${c.count()}`);
     },
     
     testAQLTransactionAboveLimit: function() {
