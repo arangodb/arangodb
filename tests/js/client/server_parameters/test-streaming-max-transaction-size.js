@@ -128,7 +128,7 @@ function testSuite() {
         }
         ++docCount;
       }
-      assertTrue(docCount > 0, "We didn't insert anything, better check maxTransactionSize!")
+      assertTrue(docCount > 0, "We didn't insert anything, better check maxTransactionSize!");
       assertTrue(docCount < maxDocs, "We actually inserted everything, better check maxTransactionSize!");
       trx.commit();
       c = db._collection(cn);
