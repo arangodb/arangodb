@@ -479,6 +479,8 @@ fuerte::Error curlErrorToFuerte(CURLcode err) {
   }
 }
 
+std::atomic<uint64_t> unique_id = 0;
+
 }  // namespace
 
 void NetworkFeature::sendRequest(network::ConnectionPool& pool,
@@ -573,18 +575,24 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
     return;
   }
 
+  auto my_id = unique_id.fetch_add(1);
+
+  LOG_DEVEL_IF(!ServerState::instance()->isAgent() && &pool == _poolPtr)
+      << "[" << my_id << "] "
+      << "CURL " << to_string(req->header.restVerb) << " " << url << " BEGIN";
+
   network::curl::send_request(
       *pool.curl_pool, method, url, req->payloadAsString(), opts,
       [this, &pool, isFromPool,
        handleContentEncoding = options.handleContentEncoding || didCompress,
        cb = std::move(cb), endpoint = std::move(endpoint),
-       req_ptr = req.release(),
-       url](network::curl::response real_res, CURLcode result) {
+       req_ptr = req.release(), url,
+       my_id](network::curl::response real_res, CURLcode result) {
         auto req = std::unique_ptr<fuerte::Request>(req_ptr);
-        // LOG_DEVEL_IF(!ServerState::instance()->isAgent() && &pool ==
-        // _poolPtr)
-        //     << "CURL " << to_string(req->header.restVerb) << " " << url
-        //     << " -> " << curl_easy_strerror(result) << " (" << result << ")";
+        LOG_DEVEL_IF(!ServerState::instance()->isAgent() && &pool == _poolPtr)
+            << "[" << my_id << "] "
+            << "CURL " << to_string(req->header.restVerb) << " " << url
+            << " -> " << curl_easy_strerror(result) << " (" << result << ")";
         auto err = curlErrorToFuerte(result);
         auto res = std::make_unique<fuerte::Response>();
         if (!real_res.body.empty()) {
@@ -607,12 +615,13 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
               req->timeAsyncWrite() - req->timeQueued());
           _dequeueDurations.count(dur.count());
           if (req->timeSent().time_since_epoch().count() == 0) {
-            // The request sending was never finished. This could be a timeout
-            // during the sending phase.
+            // The request sending was never finished. This could be a
+            // timeout during the sending phase.
             LOG_TOPIC("effc3", DEBUG, Logger::COMMUNICATION)
                 << "Time to dequeue request to " << endpoint << ": "
                 << dur.count()
-                << " seconds, however, the sending has not yet finished so far"
+                << " seconds, however, the sending has not yet finished so "
+                   "far"
                 << ", endpoint: " << endpoint
                 << ", request ptr: " << (void*)req.get()
                 << ", response ptr: " << (void*)res.get()
