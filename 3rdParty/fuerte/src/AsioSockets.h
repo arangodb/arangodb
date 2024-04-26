@@ -197,6 +197,9 @@ struct Socket<fuerte::SocketType::Ssl> {
     FUERTE_LOG_ERROR << "Exception in " #expr << e.what(); \
   }
   void cancel() {
+    FUERTE_LOG_ERROR << "cancelling proto " << (void*)this
+                     << " socket state is_open "
+                     << socket.lowest_layer().is_open();
     TRY(timer.cancel());
     TRY(resolver.cancel());
     if (socket.lowest_layer().is_open()) {  // non-graceful shutdown
@@ -204,10 +207,9 @@ struct Socket<fuerte::SocketType::Ssl> {
       TRY(socket.lowest_layer().shutdown(
           asio_ns::ip::tcp::socket::shutdown_both, ec));
       ec.clear();
-      TRY(socket.lowest_layer().close(ec));
-    } else {
-      TRY(socket.lowest_layer().cancel());
     }
+    asio_ns::error_code ec;
+    TRY(socket.lowest_layer().close(ec));
   }
 #undef TRY
 
