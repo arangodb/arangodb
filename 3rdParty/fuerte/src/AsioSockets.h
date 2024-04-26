@@ -51,15 +51,19 @@ void resolveConnect(detail::ConnectionConfiguration const& config,
                              [done(std::move(done))](auto ec, auto it) mutable {
                                std::forward<F>(done)(ec);
                              });
-    } catch (std::bad_alloc const&) {
+    } catch (std::bad_alloc const& e) {
       // definitely an OOM error
+      FUERTE_LOG_ERROR << "Exception in catch bad_alloc " << e.what();
       done(boost::system::errc::make_error_code(
           boost::system::errc::not_enough_memory));
-    } catch (...) {
+      FUERTE_LOG_ERROR << "Exception in catch bad_alloc, callback was called.";
+    } catch (std::exception const& ee) {
       // probably not an OOM error, but we don't know what it actually is.
       // there is no code for a generic error that we could use here
+      FUERTE_LOG_ERROR << "Exception in catch ... " << ee.what();
       done(boost::system::errc::make_error_code(
           boost::system::errc::not_enough_memory));
+      FUERTE_LOG_ERROR << "Exception in catch ... callback was called.";
     }
   };
 
@@ -149,6 +153,7 @@ struct Socket<fuerte::SocketType::Ssl> {
         config, resolver, socket.next_layer(),
         [=, this, done(std::forward<F>(done))](auto const& ec) mutable {
           if (ec) {
+            FUERTE_LOG_ERROR << "connect has failed with error " << ec;
             done(ec);
             return;
           }
@@ -163,6 +168,8 @@ struct Socket<fuerte::SocketType::Ssl> {
               boost::system::error_code ec{
                   static_cast<int>(::ERR_get_error()),
                   boost::asio::error::get_ssl_category()};
+              FUERTE_LOG_ERROR
+                  << "SSL_set_tlsext_host_name has failed with error: " << ec;
               done(ec);
               return;
             }
