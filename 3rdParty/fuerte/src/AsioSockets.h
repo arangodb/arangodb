@@ -44,7 +44,7 @@ void resolveConnect(detail::ConnectionConfiguration const& config,
       // A successful resolve operation is guaranteed to pass a
       // non-empty range to the handler.
       asio_ns::async_connect(socket, it,
-                             [done(std::forward<F>(done))](auto ec, auto it) mutable {
+                             [done](auto ec, auto it) mutable {
                                std::forward<F>(done)(ec);
                              });
     } catch (std::bad_alloc const&) {
