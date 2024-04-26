@@ -108,6 +108,29 @@ function testSuite() {
         trx.abort();
       }
     },
+
+    testTransactionAboveLimitCommit: function(testName) {
+      // 1KB limit is quite low
+      // We're testing that the transaction is not aborted when the limit is reached.
+      // Rather, the commit should succeed.
+      let trx = db._createTransaction({ collections: { write: [cn] }, maxTransactionSize: 1024 });
+      let c = trx.collection(cn);
+      let i = 0;
+      const maxDocs = 10000;
+      while (i < maxDocs) {
+        try {
+          c.insert({_key: `${testName}-${i}`, value: i});
+        } catch (err) {
+          assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
+          break;
+        }
+        ++i;
+      }
+      assertTrue(i < 10000, "We actually inserted everything, better check maxTransactionSize!");
+      trx.commit();
+      c = db._collection(cn);
+      assertEqual(i, c.count(), `expected ${i} documents in collection ${cn} but got ${c.count()}`);
+    },
     
     testAQLTransactionAboveLimit: function() {
       let trx = db._createTransaction({ collections: { write: [cn] } });
