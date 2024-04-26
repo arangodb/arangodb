@@ -379,14 +379,17 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(
 
   _engine->getQuery().incHttpRequests(unsigned(1));
 
+  LOG_DEVEL << "ASYNC REQ " << ticket << " BEGIN";
+
   network::sendRequest(pool, _server, type,
                        absl::StrCat(urlPart, "/", _queryId), std::move(body),
                        options, header)
       .thenFinal([this, ticket, sqs = _engine->sharedState()](
                      futures::Try<network::Response> resp) {
+        LOG_DEVEL << "ASYNC REQ " << ticket << " COMPLETED";
         // `this` is only valid as long as sharedState is valid.
         // So we must execute this under sharedState's mutex.
-        sqs->executeAndWakeup([&] {
+        sqs->executeAndWakeup([&]() {
           auto result = basics::catchToResultT([&]() { return &resp.get(); });
 
           std::lock_guard<std::mutex> guard(_communicationMutex);
@@ -409,8 +412,11 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(
               }
             }
 
+            LOG_DEVEL << "ASYNC REQ " << ticket << " WAKE UP QUERY";
             return true;
           }
+
+          LOG_DEVEL << "ASYNC REQ " << ticket << " UNUSED";
           return false;
         });
       });
