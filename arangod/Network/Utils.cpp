@@ -312,9 +312,6 @@ ErrorCode fuerteToArangoErrorCode(fuerte::Error err) {
   LOG_TOPIC_IF("abcdf", ERR, Logger::COMMUNICATION,
                err != fuerte::Error::NoError)
       << "communication error: '" << fuerte::to_string(err) << "'";
-  if (err == fuerte::Error::ConnectionClosed) {
-    CrashHandler::logBacktrace();
-  }
   return toArangoErrorCodeInternal(err);
 }
 
