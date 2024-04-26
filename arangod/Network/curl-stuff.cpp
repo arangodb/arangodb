@@ -336,8 +336,9 @@ curl_easy_handle::curl_easy_handle() : _easy_handle(curl_easy_init()) {
   }
 
   // curl_easy_setopt(_easy_handle, CURLOPT_HTTP_VERSION,
-  // CURL_HTTP_VERSION_2_0);
-  curl_easy_setopt(_easy_handle, CURLOPT_PIPEWAIT, 1l);
+  // CURL_HTTP_VERSION_2_0); curl_easy_setopt(_easy_handle, CURLOPT_PIPEWAIT,
+  // 1l);
+
   curl_easy_setopt(_easy_handle, CURLOPT_SSL_ENABLE_ALPN, 1l);
   curl_easy_setopt(_easy_handle, CURLOPT_SSL_VERIFYPEER, 0l);
   curl_easy_setopt(_easy_handle, CURLOPT_SSL_VERIFYHOST, 0l);
