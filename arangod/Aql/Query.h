@@ -69,6 +69,7 @@ struct AstNode;
 class ExecutionEngine;
 struct ExecutionStats;
 struct QueryCacheResultEntry;
+class QueryList;
 struct QueryProfile;
 class SharedQueryState;
 
@@ -328,6 +329,8 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   void unregisterSnippets();
 
  private:
+  void handlePostProcessing(QueryList& querylist);
+
   ExecutionState cleanupTrxAndEngines(ErrorCode errorCode);
 
   // @brief injects vertex collections into all types of graph nodes:

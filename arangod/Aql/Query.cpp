@@ -40,6 +40,7 @@
 #include "Aql/ProfileLevel.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryExecutionState.h"
+#include "Aql/QueryInfoLoggerFeature.h"
 #include "Aql/QueryList.h"
 #include "Aql/QueryProfile.h"
 #include "Aql/QueryRegistry.h"
@@ -962,7 +963,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
 }
 #endif
 
-ExecutionState Query::finalize(VPackBuilder& extras) {
+ExecutionState Query::finalize(velocypack::Builder& extras) {
   ensureExecutionTime();
 
   if (_queryProfile != nullptr &&
@@ -1005,16 +1006,99 @@ ExecutionState Query::finalize(VPackBuilder& extras) {
   double now = currentSteadyClockValue();
   if (_queryProfile != nullptr &&
       _queryOptions.profile >= ProfileLevel::Basic) {
-    _queryProfile->setStateEnd(QueryExecutionState::ValueType::FINALIZATION,
-                               now);
+    _queryProfile->setStateDone(QueryExecutionState::ValueType::FINALIZATION);
     _queryProfile->toVelocyPack(extras);
   }
   extras.close();
+
+  // elapsed time since query start
+  auto& feature = vocbase().server().getFeature<QueryRegistryFeature>();
+  feature.trackQueryEnd(executionTime());
+
+  if (_queryProfile != nullptr && !queryOptions().skipAudit) {
+    auto queryList = vocbase().queryList();
+    // internal queries that are excluded from audit logging will not be
+    // logged here as slow queries, and will not be inserted into the
+    // _queries system collection
+    if (queryList != nullptr) {
+      handlePostProcessing(*queryList);
+    }
+  }
 
   LOG_TOPIC("95996", DEBUG, Logger::QUERIES)
       << now - _startTime << " Query::finalize:returning"
       << " this: " << (uintptr_t)this;
   return ExecutionState::DONE;
+}
+
+void Query::handlePostProcessing(QueryList& querylist) {
+  // building the query slice is expensive. only do it if we actually need
+  // to log the query.
+  std::shared_ptr<velocypack::String> querySlice;
+  auto buildQuerySlice = [&querySlice, &querylist, this]() {
+    if (querySlice == nullptr) {
+      Query::QuerySerializationOptions options{
+          .includeUser = true,
+          .includeQueryString = querylist.trackQueryString(),
+          .includeBindParameters = querylist.trackBindVars(),
+          .includeDataSources = querylist.trackDataSources(),
+          // always true because the query is already finalized
+          .includeResultCode = true,
+          .queryStringMaxLength = querylist.maxQueryStringLength(),
+      };
+
+      velocypack::Builder builder;
+      toVelocyPack(builder, /*isCurrent*/ false, options);
+
+      querySlice = std::make_shared<velocypack::String>(builder.slice());
+    }
+    return querySlice;
+  };
+
+  // check if the query is considered a slow query and needs special treatment
+  double threshold = queryOptions().stream
+                         ? querylist.slowStreamingQueryThreshold()
+                         : querylist.slowQueryThreshold();
+
+  bool isSlowQuery = (querylist.trackSlowQueries() &&
+                      executionTime() >= threshold && threshold >= 0.0);
+  if (isSlowQuery) {
+    // yes.
+    try {
+      TRI_IF_FAILURE("QueryList::remove") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+
+      auto& queryRegistryFeature =
+          vocbase().server().getFeature<QueryRegistryFeature>();
+      queryRegistryFeature.trackSlowQuery(executionTime());
+
+      Query::QuerySerializationOptions options{
+          .includeUser = true,
+          .includeQueryString = querylist.trackQueryString(),
+          .includeBindParameters = querylist.trackBindVars(),
+          .includeDataSources = querylist.trackDataSources(),
+          // always true because the query is already finalized
+          .includeResultCode = true,
+          .queryStringMaxLength = querylist.maxQueryStringLength(),
+      };
+
+      logSlow(options);
+
+      querylist.trackSlow(buildQuerySlice());
+    } catch (...) {
+    }
+  }
+
+  if (vocbase().server().hasFeature<QueryInfoLoggerFeature>()) {
+    auto& qilf = vocbase().server().getFeature<QueryInfoLoggerFeature>();
+
+    // building the query slice is expensive. only do it if we actually need
+    // to log the query.
+    if (qilf.shouldLog(vocbase().isSystem(), isSlowQuery)) {
+      qilf.log(buildQuerySlice());
+    }
+  }
 }
 
 /// @brief parse an AQL query
@@ -2122,6 +2206,9 @@ void Query::prepareFromVelocyPack(
   }
 
   _queryProfile->registerInQueryList();
+
+  auto& feature = vocbase().server().getFeature<QueryRegistryFeature>();
+  feature.trackQueryStart();
 
   enterState(QueryExecutionState::ValueType::EXECUTION);
 }

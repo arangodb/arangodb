@@ -25,8 +25,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryExecutionState.h"
-#include "Aql/QueryInfoLoggerFeature.h"
-#include "Aql/QueryProfile.h"
 #include "Basics/ErrorCode.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
@@ -55,8 +53,7 @@ using namespace arangodb::aql;
 
 /// @brief create a query list
 QueryList::QueryList(QueryRegistryFeature& feature)
-    : _queryRegistryFeature(feature),
-      _enabled(feature.trackingEnabled()),
+    : _enabled(feature.trackingEnabled()),
       _trackSlowQueries(_enabled && feature.trackSlowQueries()),
       _trackQueryString(feature.trackQueryString()),
       _trackBindVars(feature.trackBindVars()),
@@ -183,7 +180,6 @@ bool QueryList::insert(Query& query) {
 
     writeLocker.unlock();
 
-    _queryRegistryFeature.trackQueryStart();
     return inserted;
   } catch (...) {
     return false;
@@ -201,108 +197,8 @@ void QueryList::remove(Query& query) {
 
   TRI_ASSERT(!query.queryString().empty());
 
-  {
-    // acquire the query list's write lock only for a short amount of
-    // time. if we need to insert a slow query later, we will re-acquire
-    // the lock. but the hope is that for the majority of queries this is
-    // not required
-    WRITE_LOCKER(writeLocker, _lock);
-
-    if (_current.erase(query.id()) == 0) {
-      // not found
-      return;
-    }
-  }
-
-  // elapsed time since query start
-  double elapsed = query.executionTime();
-
-  _queryRegistryFeature.trackQueryEnd(elapsed);
-
-  if (query.queryOptions().skipAudit) {
-    // internal queries that are excluded from audit logging will not be
-    // logged here as slow queries, and will not be inserted into the
-    // _queries system collection
-    return;
-  }
-
-  // building the query slice is expensive. only do it if we actually need
-  // to log the query.
-  std::shared_ptr<velocypack::String> querySlice;
-  auto buildQuerySlice = [&query, &querySlice, this]() {
-    if (querySlice == nullptr) {
-      Query::QuerySerializationOptions options{
-          .includeUser = true,
-          .includeQueryString = trackQueryString(),
-          .includeBindParameters = trackBindVars(),
-          .includeDataSources = trackDataSources(),
-          // always true because the query is already finalized
-          .includeResultCode = true,
-          .queryStringMaxLength = maxQueryStringLength(),
-      };
-
-      velocypack::Builder builder;
-      query.toVelocyPack(builder, /*isCurrent*/ false, options);
-
-      querySlice = std::make_shared<velocypack::String>(builder.slice());
-    }
-    return querySlice;
-  };
-
-  double threshold =
-      query.queryOptions().stream
-          ? _slowStreamingQueryThreshold.load(std::memory_order_relaxed)
-          : _slowQueryThreshold.load(std::memory_order_relaxed);
-
-  // check if we need to push the query into the list of slow queries
-  bool isSlowQuery =
-      (trackSlowQueries() && elapsed >= threshold && threshold >= 0.0);
-  if (isSlowQuery) {
-    // yes.
-    try {
-      TRI_IF_FAILURE("QueryList::remove") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
-
-      _queryRegistryFeature.trackSlowQuery(elapsed);
-
-      Query::QuerySerializationOptions options{
-          .includeUser = true,
-          .includeQueryString = trackQueryString(),
-          .includeBindParameters = trackBindVars(),
-          .includeDataSources = trackDataSources(),
-          // always true because the query is already finalized
-          .includeResultCode = true,
-          .queryStringMaxLength = maxQueryStringLength(),
-      };
-
-      query.logSlow(options);
-
-      {
-        // acquire the query list lock again
-        WRITE_LOCKER(writeLocker, _lock);
-
-        _slow.emplace_back(buildQuerySlice());
-
-        if (_slow.size() > _maxSlowQueries) {
-          // list is full. free first element
-          _slow.pop_front();
-        }
-      }  // release lock so that Builder can be destroyed without
-         // holding on to the lock
-    } catch (...) {
-    }
-  }
-
-  if (query.vocbase().server().hasFeature<QueryInfoLoggerFeature>()) {
-    auto& qilf = query.vocbase().server().getFeature<QueryInfoLoggerFeature>();
-
-    // building the query slice is expensive. only do it if we actually need
-    // to log the query.
-    if (qilf.shouldLog(query.vocbase().isSystem(), isSlowQuery)) {
-      qilf.log(buildQuerySlice());
-    }
-  }
+  WRITE_LOCKER(writeLocker, _lock);
+  _current.erase(query.id());
 }
 
 /// @brief kills a query
@@ -434,6 +330,22 @@ void QueryList::clearSlow() {
 size_t QueryList::count() const {
   READ_LOCKER(writeLocker, _lock);
   return _current.size();
+}
+
+void QueryList::trackSlow(std::shared_ptr<velocypack::String> query) {
+  WRITE_LOCKER(writeLocker, _lock);
+
+  try {
+    _slow.emplace_back(std::move(query));
+  } catch (...) {
+    // if we cant insert the query into the list, so be it
+    return;
+  }
+
+  if (_slow.size() > _maxSlowQueries) {
+    // list is full. free first element
+    _slow.pop_front();
+  }
 }
 
 void QueryList::killQuery(Query& query, size_t maxLength, bool silent) {

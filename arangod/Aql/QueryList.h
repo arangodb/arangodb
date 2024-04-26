@@ -41,13 +41,12 @@ class QueryRegistryFeature;
 class Result;
 
 namespace aql {
-
 class Query;
 
 class QueryList {
  public:
   /// @brief create a query list
-  explicit QueryList(QueryRegistryFeature&);
+  explicit QueryList(QueryRegistryFeature& feature);
 
   QueryList(QueryList const& other) = delete;
   QueryList& operator=(QueryList const& other) = delete;
@@ -114,6 +113,9 @@ class QueryList {
   /// slow queries by the remove call!
   void remove(Query& query);
 
+  /// @brief insert query into slow query list
+  void trackSlow(std::shared_ptr<velocypack::String> query);
+
   /// @brief kills a query
   Result kill(TRI_voc_tick_t id);
 
@@ -142,9 +144,6 @@ class QueryList {
   static constexpr size_t kDefaultMaxSlowQueries = 64;
 
   void killQuery(Query& query, size_t maxLength, bool silent);
-
-  /// @brief query registry, for keeping track of slow queries counter
-  QueryRegistryFeature& _queryRegistryFeature;
 
   /// @brief r/w lock for the list
   arangodb::basics::ReadWriteLock mutable _lock;
