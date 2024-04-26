@@ -278,6 +278,14 @@ class GeneralConnection : public fuerte::Connection {
     }
   }
 
+  void cancelTimer() noexcept {
+    try {
+      this->_proto.timer.cancel();
+    } catch (std::exception const& ex) {
+      FUERTE_LOG_ERROR << "caught exception during timer cancelation: " << ex.what();
+    }
+  }
+
  protected:
   virtual void finishConnect() = 0;
 
@@ -315,17 +323,9 @@ class GeneralConnection : public fuerte::Connection {
     FUERTE_LOG_DEBUG << "tryConnect (" << retries << ") this=" << this << "\n";
     auto self = Connection::shared_from_this();
 
-    _proto.timer.expires_at(start + _config._connectTimeout);
-    _proto.timer.async_wait([self](asio_ns::error_code const& ec) {
-      if (!ec && self->state() == Connection::State::Connecting) {
-        // the connect handler below gets 'operation_aborted' error
-        static_cast<GeneralConnection<ST, RT>&>(*self)._proto.cancel();
-      }
-    });
-
     _proto.connect(_config, [self, start, retries](auto const& ec) mutable {
       auto& me = static_cast<GeneralConnection<ST, RT>&>(*self);
-      me._proto.timer.cancel();
+      me.cancelTimer();
       // Note that is is possible that the alarm has already gone off, in which
       // case its closure might already be queued right after ourselves!
       // However, we now quickly set the state to `Connected` in which case the
@@ -348,6 +348,20 @@ class GeneralConnection : public fuerte::Connection {
         me.tryConnect(0, start, ec);  // <- handles errors
       }
     });
+    
+    _proto.timer.expires_at(start + _config._connectTimeout);
+    _proto.timer.async_wait([self](asio_ns::error_code const& ec) {
+      if (!ec && self->state() == Connection::State::Connecting) {
+        // the connect handler below gets 'operation_aborted' error
+        static_cast<GeneralConnection<ST, RT>&>(*self)._proto.cancel();
+        std::string msg("connecting failed: '");
+        msg.append((ec != asio_ns::error::operation_aborted) ? ec.message()
+                                                           : "timeout");
+        msg.push_back('\'');
+        static_cast<GeneralConnection<ST, RT>&>(*self).shutdownConnection(Error::CouldNotConnect, msg);
+      }
+    });
+
   }
 
  protected:
@@ -422,8 +436,7 @@ struct MultiConnection : public GeneralConnection<ST, RT> {
   void setTimeout(bool setIOBegin) {
     const bool wasIdle = _streams.empty();
     if (wasIdle && !this->_config._useIdleTimeout) {
-      asio_ns::error_code ec;
-      this->_proto.timer.cancel(ec);
+      this->cancelTimer();
       return;
     }
 
