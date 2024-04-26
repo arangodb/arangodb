@@ -602,11 +602,11 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState>,
         << "' '" << fuerte::to_string(_tmp_err) << "'";
 
     Scheduler* sch = SchedulerFeature::SCHEDULER;
-    // if (_options.skipScheduler || sch == nullptr) {
-    //   _promise.setValue(Response{std::move(_destination), _tmp_err,
-    //                              std::move(_tmp_req), std::move(_tmp_res)});
-    //   return;
-    // }
+    if (_options.skipScheduler || sch == nullptr) {
+      _promise.setValue(Response{std::move(_destination), _tmp_err,
+                                 std::move(_tmp_req), std::move(_tmp_res)});
+      return;
+    }
 
     sch->queue(
         _options.continuationLane, [self = shared_from_this()]() mutable {
