@@ -231,18 +231,6 @@ function QueryLoggerSuite() {
         state: "finished",
         modificationQuery: true, 
         stream: false,
-        /*
-        writesExecuted: 1, 
-        writesIgnored: 0, 
-        documentLookups: 0, 
-        scannedFull: 0, 
-        scannedIndex: 0, 
-        cacheHits: 0, 
-        cacheMisses: 0, 
-        filtered: 0, 
-        intermediateCommits: 0, 
-        count: 0, 
-        */
         warnings: 0, 
         exitCode: 0
       });
@@ -259,18 +247,6 @@ function QueryLoggerSuite() {
         state: "finished",
         modificationQuery: true, 
         stream: false, 
-        /*
-        writesExecuted: 2000, 
-        writesIgnored: 0, 
-        documentLookups: 0, 
-        scannedFull: 0, 
-        scannedIndex: 0, 
-        cacheHits: 0, 
-        cacheMisses: 0, 
-        filtered: 0, 
-        intermediateCommits: 0, 
-        count: 0, 
-        */
         warnings: 0, 
         exitCode: 0
       });
@@ -287,18 +263,6 @@ function QueryLoggerSuite() {
         state: "finished",
         modificationQuery: true, 
         stream: false, 
-        /*
-        writesExecuted: 2000, 
-        writesIgnored: 0, 
-        documentLookups: 0, 
-        scannedFull: 0, 
-        scannedIndex: 0, 
-        cacheHits: 0, 
-        cacheMisses: 0, 
-        filtered: 0, 
-        intermediateCommits: 2, 
-        count: 0, 
-        */
         warnings: 0, 
         exitCode: 0
       });
@@ -318,18 +282,6 @@ function QueryLoggerSuite() {
         state: "finished",
         modificationQuery: false, 
         stream: false, 
-        /*
-        writesExecuted: 0, 
-        writesIgnored: 0, 
-        documentLookups: 0, 
-        scannedFull: 0, 
-        scannedIndex: 0, 
-        cacheHits: 0, 
-        cacheMisses: 0, 
-        filtered: 0, 
-        intermediateCommits: 0, 
-        count: 0, 
-        */
         warnings: 0, 
         exitCode: 0
       });
@@ -355,18 +307,6 @@ function QueryLoggerSuite() {
         state: "finished",
         modificationQuery: false, 
         stream: false, 
-        /*
-        writesExecuted: 0, 
-        writesIgnored: 0, 
-        documentLookups: 0, 
-        scannedFull: 25000, 
-        scannedIndex: 0, 
-        cacheHits: 0, 
-        cacheMisses: 0, 
-        filtered: 0, 
-        intermediateCommits: 0, 
-        count: 25000, 
-        */
         warnings: 0, 
         exitCode: 0
       });
@@ -392,18 +332,6 @@ function QueryLoggerSuite() {
         state: "finished",
         modificationQuery: false, 
         stream: false, 
-        /*
-        writesExecuted: 0, 
-        writesIgnored: 0, 
-        documentLookups: 0, 
-        scannedFull: 0,
-        scannedIndex: 25000, 
-        cacheHits: 0, 
-        cacheMisses: 0, 
-        filtered: 0, 
-        intermediateCommits: 0, 
-        count: 25000, 
-        */
         warnings: 0, 
         exitCode: 0
       });
@@ -429,18 +357,6 @@ function QueryLoggerSuite() {
         state: "finished",
         modificationQuery: false, 
         stream: false, 
-        /*
-        writesExecuted: 0, 
-        writesIgnored: 0, 
-        documentLookups: 0, 
-        scannedFull: 25000,
-        scannedIndex: 0,
-        cacheHits: 0, 
-        cacheMisses: 0, 
-        filtered: 12500, 
-        intermediateCommits: 0, 
-        count: 12500, 
-        */
         warnings: 0, 
         exitCode: 0
       });
@@ -467,18 +383,6 @@ function QueryLoggerSuite() {
         state: "finished",
         modificationQuery: false, 
         stream: false, 
-        /*
-        writesExecuted: 0, 
-        writesIgnored: 0, 
-        documentLookups: 12500, 
-        scannedFull: 0,
-        scannedIndex: 12500,
-        cacheHits: 0, 
-        cacheMisses: 0, 
-        filtered: 5000, 
-        intermediateCommits: 0, 
-        count: 7500, 
-        */
         warnings: 0, 
         exitCode: 0
       });
@@ -495,18 +399,6 @@ function QueryLoggerSuite() {
         state: "finished",
         modificationQuery: false, 
         stream: false, 
-        /*
-        writesExecuted: 0, 
-        writesIgnored: 0, 
-        documentLookups: 0, 
-        scannedFull: 0, 
-        scannedIndex: 0, 
-        cacheHits: 0, 
-        cacheMisses: 0, 
-        filtered: 0, 
-        intermediateCommits: 0, 
-        count: 3, 
-        */
         warnings: 3, 
         exitCode: 0
       });
@@ -528,18 +420,6 @@ function QueryLoggerSuite() {
         state: "finished",
         modificationQuery: false, 
         stream: false, 
-        /*
-        writesExecuted: 0, 
-        writesIgnored: 0, 
-        documentLookups: 0, 
-        scannedFull: 0, 
-        scannedIndex: 0, 
-        cacheHits: 0, 
-        cacheMisses: 0, 
-        filtered: 0, 
-        intermediateCommits: 0, 
-        count: 0, 
-        */
         warnings: 0, 
         exitCode: errors.ERROR_QUERY_USER_ASSERT.code,
       });
@@ -556,18 +436,6 @@ function QueryLoggerSuite() {
         state: "finished",
         modificationQuery: false, 
         stream: false, 
-        /*
-        writesExecuted: 0, 
-        writesIgnored: 0, 
-        documentLookups: 0, 
-        scannedFull: 0, 
-        scannedIndex: 0, 
-        cacheHits: 0, 
-        cacheMisses: 0, 
-        filtered: 0, 
-        intermediateCommits: 0, 
-        count: 10000, 
-        */
         warnings: 0, 
         exitCode: 0
       });
@@ -584,18 +452,6 @@ function QueryLoggerSuite() {
         state: "finished",
         modificationQuery: false, 
         stream: true, 
-        /*
-        writesExecuted: 0, 
-        writesIgnored: 0, 
-        documentLookups: 0, 
-        scannedFull: 0, 
-        scannedIndex: 0, 
-        cacheHits: 0, 
-        cacheMisses: 0, 
-        filtered: 0, 
-        intermediateCommits: 0, 
-        count: 10000, 
-        */
         warnings: 0, 
         exitCode: 0
       });
