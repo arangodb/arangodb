@@ -77,7 +77,13 @@ struct Socket<SocketType::Tcp> {
   Socket(EventLoopService&, asio_ns::io_context& ctx)
       : resolver(ctx), socket(ctx), timer(ctx) {}
 
-  ~Socket() { this->cancel(); }
+  ~Socket() { 
+    try {
+      this->cancel(); 
+    } catch (std::exception const& ex) {
+      FUERTE_LOG_ERROR << "caught exception during tcp socket shutdown: " << ex.what();
+    }
+  }
 
   template <typename F>
   void connect(detail::ConnectionConfiguration const& config, F&& done) {
@@ -92,7 +98,8 @@ struct Socket<SocketType::Tcp> {
         asio_ns::error_code ec;
         socket.close(ec);
       }
-    } catch (...) {
+    } catch (std::exception const& ex) {
+      FUERTE_LOG_ERROR << "caught exception during tcp socket cancelation: " << ex.what();
     }
   }
 
@@ -108,7 +115,10 @@ struct Socket<SocketType::Tcp> {
         ec.clear();
         socket.close(ec);
       }
-    } catch (...) {
+    } catch (std::exception const& ex) {
+      // an exception is unlikely to occur here, as we are using the error-code
+      // variants of cancel/shutdown/close above 
+      FUERTE_LOG_ERROR << "caught exception during tcp socket shutdown: " << ex.what();
     }
     std::forward<F>(cb)(ec);
   }
@@ -123,7 +133,13 @@ struct Socket<fuerte::SocketType::Ssl> {
   Socket(EventLoopService& loop, asio_ns::io_context& ctx)
     : resolver(ctx), socket(ctx, loop.sslContext()), timer(ctx), cleanupDone(false) {}
 
-  ~Socket() { this->cancel(); }
+  ~Socket() { 
+    try {
+      this->cancel(); 
+    } catch (std::exception const& ex) {
+      FUERTE_LOG_ERROR << "caught exception during ssl socket shutdown: " << ex.what();
+    }
+  }
 
   template <typename F>
   void connect(detail::ConnectionConfiguration const& config, F&& done) {
@@ -180,7 +196,8 @@ struct Socket<fuerte::SocketType::Ssl> {
         ec.clear();
         socket.lowest_layer().close(ec);
       }
-    } catch (...) {
+    } catch (std::exception const& ex) {
+      FUERTE_LOG_ERROR << "caught exception during ssl socket cancelation: " << ex.what();
     }
   }
 
@@ -201,17 +218,6 @@ struct Socket<fuerte::SocketType::Ssl> {
       return;
     }
     cleanupDone = false;
-    timer.expires_from_now(std::chrono::seconds(3));
-    timer.async_wait([cb, this](asio_ns::error_code ec) {
-      // Copy in callback such that the connection object is kept alive long
-      // enough, please do not delete, although it is not used here!
-      if (!cleanupDone && !ec) {
-        socket.lowest_layer().shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
-        ec.clear();
-        socket.lowest_layer().close(ec);
-        cleanupDone = true;
-      }
-    });
     socket.async_shutdown([cb(std::forward<F>(cb)), this](auto const& ec) {
       timer.cancel();
 #ifndef _WIN32
@@ -224,6 +230,17 @@ struct Socket<fuerte::SocketType::Ssl> {
       }
 #endif
       cb(ec);
+    });
+    timer.expires_from_now(std::chrono::seconds(3));
+    timer.async_wait([cb, this](asio_ns::error_code ec) {
+      // Copy in callback such that the connection object is kept alive long
+      // enough, please do not delete, although it is not used here!
+      if (!cleanupDone && !ec) {
+        socket.lowest_layer().shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
+        ec.clear();
+        socket.lowest_layer().close(ec);
+        cleanupDone = true;
+      }
     });
   }
 
@@ -238,7 +255,14 @@ template <>
 struct Socket<fuerte::SocketType::Unix> {
   Socket(EventLoopService&, asio_ns::io_context& ctx)
       : socket(ctx), timer(ctx) {}
-  ~Socket() { this->cancel(); }
+
+  ~Socket() { 
+    try {
+      this->cancel(); 
+    } catch (std::exception const& ex) {
+      FUERTE_LOG_ERROR << "caught exception during unix socket shutdown: " << ex.what();
+    }
+  }
 
   template <typename F>
   void connect(detail::ConnectionConfiguration const& config, F&& done) {
@@ -247,10 +271,14 @@ struct Socket<fuerte::SocketType::Unix> {
   }
 
   void cancel() {
-    timer.cancel();
-    if (socket.is_open()) {  // non-graceful shutdown
-      asio_ns::error_code ec;
-      socket.close(ec);
+    try {
+      timer.cancel();
+      if (socket.is_open()) {  // non-graceful shutdown
+        asio_ns::error_code ec;
+        socket.close(ec);
+      }
+    } catch (std::exception const& ex) {
+      FUERTE_LOG_ERROR << "caught exception during unix socket cancelation: " << ex.what();
     }
   }
 
