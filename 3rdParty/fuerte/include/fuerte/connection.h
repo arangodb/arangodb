@@ -157,24 +157,6 @@ class ConnectionBuilder {
     return *this;
   }
 
-  /// @brief connect retry pause (1s default)
-  std::chrono::milliseconds connectRetryPause() const {
-    return _conf._connectRetryPause;
-  }
-  /// @brief set the connect retry pause (1s default)
-  ConnectionBuilder& connectRetryPause(std::chrono::milliseconds p) {
-    _conf._connectRetryPause = p;
-    return *this;
-  }
-
-  /// @brief connect retries (3 default)
-  unsigned maxConnectRetries() const { return _conf._maxConnectRetries; }
-  /// @brief set the max connect retries (3 default)
-  ConnectionBuilder& maxConnectRetries(unsigned r) {
-    _conf._maxConnectRetries = r;
-    return *this;
-  }
-
   // Set the authentication type of the connection
   AuthenticationType authenticationType() const {
     return _conf._authenticationType;

@@ -106,8 +106,6 @@ V8ClientConnection::V8ClientConnection(ArangoshServer& server,
   _vpackOptions.buildUnindexedObjects = true;
   _vpackOptions.buildUnindexedArrays = true;
 
-  _builder.maxConnectRetries(3);
-  _builder.connectRetryPause(std::chrono::milliseconds(100));
   _builder.connectTimeout(std::chrono::milliseconds(
       static_cast<int64_t>(1000.0 * _client.connectionTimeout())));
   _builder.onFailure([this](fu::Error err, std::string const& msg) {

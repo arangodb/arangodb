@@ -164,9 +164,7 @@ class GeneralConnection : public fuerte::Connection {
     Connection::State exp = Connection::State::Created;
     if (_state.compare_exchange_strong(exp, Connection::State::Connecting)) {
       FUERTE_LOG_DEBUG << "startConnection: this=" << this << "\n";
-      FUERTE_ASSERT(_config._maxConnectRetries > 0);
-      tryConnect(_config._maxConnectRetries, Clock::now(),
-                 asio_ns::error_code());
+      tryConnect(Clock::now(), asio_ns::error_code());
     } else {
       FUERTE_LOG_DEBUG << "startConnection: this=" << this
                        << " found unexpected state " << static_cast<int>(exp)
@@ -304,48 +302,31 @@ class GeneralConnection : public fuerte::Connection {
                                             RequestCallback&& cb) = 0;
 
  private:
-  // Connect with a given number of retries
-  void tryConnect(unsigned retries, Clock::time_point start,
-                  asio_ns::error_code const& ec) {
+  // Connect 
+  void tryConnect(Clock::time_point start, asio_ns::error_code const& ec) {
     if (_state.load() != Connection::State::Connecting) {
       return;
     }
 
-    if (retries == 0) {
-      std::string msg("connecting failed: '");
-      msg.append((ec != asio_ns::error::operation_aborted) ? ec.message()
-                                                           : "timeout");
-      msg.push_back('\'');
-      shutdownConnection(Error::CouldNotConnect, msg);
-      return;
-    }
-
-    FUERTE_LOG_DEBUG << "tryConnect (" << retries << ") this=" << this << "\n";
+    FUERTE_LOG_DEBUG << "tryConnect this=" << this << "\n";
     auto self = Connection::shared_from_this();
 
-    _proto.connect(_config, [self, start, retries](auto const& ec) mutable {
+    _proto.connect(_config, [self](auto const& ec) mutable {
       auto& me = static_cast<GeneralConnection<ST, RT>&>(*self);
       me.cancelTimer();
       // Note that is is possible that the alarm has already gone off, in which
       // case its closure might already be queued right after ourselves!
       // However, we now quickly set the state to `Connected` in which case the
       // closure will no longer shut down the socket and ruin our success.
-      if (!ec) {
-        me.finishConnect();
-        return;
-      }
-      FUERTE_LOG_DEBUG << "connecting failed: " << ec.message() << "\n";
-      if (retries > 0 && ec != asio_ns::error::operation_aborted) {
-        auto end = std::min(Clock::now() + me._config._connectRetryPause,
-                            start + me._config._connectTimeout);
-        me._proto.timer.expires_at(end);
-        me._proto.timer.async_wait(
-            [self(std::move(self)), start, retries](auto ec) mutable {
-              auto& me = static_cast<GeneralConnection<ST, RT>&>(*self);
-              me.tryConnect(!ec ? retries - 1 : 0, start, ec);
-            });
+      if (ec) {
+        std::string msg("connecting failed: ");
+        msg.append(ec.message());
+        FUERTE_LOG_DEBUG << msg;
+        
+        static_cast<GeneralConnection<ST, RT>&>(*self)._proto.cancel();
+        static_cast<GeneralConnection<ST, RT>&>(*self).shutdownConnection(Error::CouldNotConnect, msg);
       } else {
-        me.tryConnect(0, start, ec);  // <- handles errors
+        me.finishConnect();
       }
     });
     
@@ -353,11 +334,10 @@ class GeneralConnection : public fuerte::Connection {
     _proto.timer.async_wait([self](asio_ns::error_code const& ec) {
       if (!ec && self->state() == Connection::State::Connecting) {
         // the connect handler below gets 'operation_aborted' error
-        static_cast<GeneralConnection<ST, RT>&>(*self)._proto.cancel();
-        std::string msg("connecting failed: '");
+        std::string msg("connecting failed: ");
         msg.append((ec != asio_ns::error::operation_aborted) ? ec.message()
                                                            : "timeout");
-        msg.push_back('\'');
+        static_cast<GeneralConnection<ST, RT>&>(*self)._proto.cancel();
         static_cast<GeneralConnection<ST, RT>&>(*self).shutdownConnection(Error::CouldNotConnect, msg);
       }
     });
