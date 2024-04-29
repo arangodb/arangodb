@@ -14,6 +14,10 @@ devel
   Limiting the size of cache values helps to avoid storing very large values in
   the cache for huge documents or for all the connections of super nodes, and
   thus leaves more memory for other purposes.
+* BTS-1856: Fix a data-race inside the Query class during accesses on a private
+  property (`execStats`).
+
+* FE-432: allow row clicks on all UI tables.
 
 * FE-441: Fix collection unstable default sort in multi-shard collections UI
 
