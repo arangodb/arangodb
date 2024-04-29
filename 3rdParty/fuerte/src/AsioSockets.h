@@ -34,7 +34,7 @@ template <typename SocketT, typename F>
 void resolveConnect(detail::ConnectionConfiguration const& config,
                     asio_ns::ip::tcp::resolver& resolver, SocketT& socket,
                     F&& done) {
-  auto cb = [&socket, done(std::forward<F>(done))](auto ec, auto it) mutable {
+  auto cb = [&socket, done = std::forward<F>(done)](auto ec, auto it) mutable {
     if (ec) {  // error in address resolver
       done(ec);
       return;
@@ -63,7 +63,7 @@ void resolveConnect(detail::ConnectionConfiguration const& config,
   auto it = resolver.resolve(config._host, config._port, ec);
   cb(ec, it);
 #else
-  // Resolve the host asynchronous into a series of endpoints
+  // Resolve the host asynchronously into a series of endpoints
   resolver.async_resolve(config._host, config._port, std::move(cb));
 #endif
 }
@@ -87,7 +87,17 @@ struct Socket<SocketType::Tcp> {
 
   template <typename F>
   void connect(detail::ConnectionConfiguration const& config, F&& done) {
-    resolveConnect(config, resolver, socket, std::forward<F>(done));
+    resolveConnect(config, resolver, socket, [this, done = std::forward<F>(done)](asio_ns::error_code ec) mutable {
+      if (this->canceled) {
+        // cancel() was already called on this socket
+        ec = asio_ns::error::operation_aborted;
+      }
+      done(ec);
+    });
+  }
+
+  void rearm() {
+    // intentionally empty for tcp sockets
   }
 
   void cancel() {
@@ -126,12 +136,13 @@ struct Socket<SocketType::Tcp> {
   asio_ns::ip::tcp::resolver resolver;
   asio_ns::ip::tcp::socket socket;
   asio_ns::steady_timer timer;
+  bool canceled = false;
 };
 
 template <>
 struct Socket<fuerte::SocketType::Ssl> {
   Socket(EventLoopService& loop, asio_ns::io_context& ctx)
-    : resolver(ctx), socket(ctx, loop.sslContext()), timer(ctx), cleanupDone(false) {}
+    : resolver(ctx), socket(ctx, loop.sslContext()), timer(ctx), ctx(ctx), sslContext(loop.sslContext()), cleanupDone(false) {}
 
   ~Socket() { 
     try {
@@ -146,7 +157,11 @@ struct Socket<fuerte::SocketType::Ssl> {
     bool verify = config._verifyHost;
     resolveConnect(
         config, resolver, socket.next_layer(),
-        [=, this](auto const& ec) mutable {
+        [=, this](asio_ns::error_code ec) mutable {
+          if (this->canceled) {
+           // cancel() was already called on this socket
+           ec = asio_ns::error::operation_aborted;
+          }
           if (ec) {
             done(ec);
             return;
@@ -185,8 +200,13 @@ struct Socket<fuerte::SocketType::Ssl> {
                                  std::move(done));
         });
   }
+  
+  void rearm() {
+    socket = asio_ns::ssl::stream<asio_ns::ip::tcp::socket>(this->ctx, this->sslContext);
+  }
 
   void cancel() {
+    this->canceled = true;
     try {
       timer.cancel();
       resolver.cancel();
@@ -247,7 +267,10 @@ struct Socket<fuerte::SocketType::Ssl> {
   asio_ns::ip::tcp::resolver resolver;
   asio_ns::ssl::stream<asio_ns::ip::tcp::socket> socket;
   asio_ns::steady_timer timer;
+  asio_ns::io_context& ctx;
+  asio_ns::ssl::context& sslContext;
   std::atomic<bool> cleanupDone;
+  bool canceled = false;
 };
 
 #ifdef ASIO_HAS_LOCAL_SOCKETS
@@ -257,6 +280,7 @@ struct Socket<fuerte::SocketType::Unix> {
       : socket(ctx), timer(ctx) {}
 
   ~Socket() { 
+    this->canceled = true;
     try {
       this->cancel(); 
     } catch (std::exception const& ex) {
@@ -266,11 +290,22 @@ struct Socket<fuerte::SocketType::Unix> {
 
   template <typename F>
   void connect(detail::ConnectionConfiguration const& config, F&& done) {
+    if (this->canceled) {
+      // cancel() was already called on this socket
+      done(asio_ns::error::operation_aborted);
+      return;
+    }
+
     asio_ns::local::stream_protocol::endpoint ep(config._host);
     socket.async_connect(ep, std::forward<F>(done));
   }
+  
+  void rearm() {
+    // intentionally empty for unix sockets
+  }
 
   void cancel() {
+    this->canceled = true;
     try {
       timer.cancel();
       if (socket.is_open()) {  // non-graceful shutdown
@@ -296,6 +331,7 @@ struct Socket<fuerte::SocketType::Unix> {
 
   asio_ns::local::stream_protocol::socket socket;
   asio_ns::steady_timer timer;
+  bool canceled = false;
 };
 #endif  // ASIO_HAS_LOCAL_SOCKETS
 

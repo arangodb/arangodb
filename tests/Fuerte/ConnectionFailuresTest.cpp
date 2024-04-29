@@ -37,6 +37,7 @@ static void tryToConnectExpectFailure(f::EventLoopService& eventLoopService,
   wg.add();
   f::ConnectionBuilder cbuilder;
   cbuilder.connectTimeout(std::chrono::milliseconds(250));
+  cbuilder.connectRetryPause(std::chrono::milliseconds(100));
   cbuilder.endpoint(url);
 
   cbuilder.onFailure([&](f::Error errorCode, const std::string& errorMessage) {
