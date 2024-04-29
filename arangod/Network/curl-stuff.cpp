@@ -89,7 +89,7 @@ size_t header_callback(char* buffer, size_t size, size_t nitems,
   return bytes_written;
 }
 
-#define LOG_DEVEL_CURL LOG_DEVEL_IF(true)
+#define LOG_DEVEL_CURL LOG_DEVEL_IF(false)
 
 int debug_callback(CURL* handle, curl_infotype type, char* data, size_t size,
                    void* clientp) {

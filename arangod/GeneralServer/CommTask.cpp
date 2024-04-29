@@ -678,6 +678,7 @@ void CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   ContentType respType = handler->request()->contentTypeResponse();
   uint64_t mid = handler->messageId();
 
+  auto* handler_ptr = handler.get();
   // queue the operation for execution in the scheduler
   auto cb = [self = shared_from_this(),
              handler = std::move(handler)]() mutable {
@@ -685,6 +686,7 @@ void CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
     handler->trackTaskStart();
 
     handler->runHandler([self = std::move(self)](rest::RestHandler* handler) {
+      LOG_DEVEL << handler << " ENDED, RESPONSE = " << handler->response();
       handler->trackTaskEnd();
       try {
         // Pass the response to the io context
@@ -699,6 +701,8 @@ void CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   };
 
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+  LOG_DEVEL << handler_ptr << " SCHEDULE EXECUTION, "
+            << handler_ptr->_request->requestUrl();
   bool ok = SchedulerFeature::SCHEDULER->tryBoundedQueue(lane, std::move(cb));
 
   if (!ok) {

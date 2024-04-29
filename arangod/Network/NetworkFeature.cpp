@@ -578,7 +578,7 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
   auto my_id = unique_id.fetch_add(1);
 
   auto constexpr enable_logging =
-      true;  // !ServerState::instance()->isAgent() && &pool == _poolPtr
+      false;  // !ServerState::instance()->isAgent() && &pool == _poolPtr
 
   LOG_DEVEL_IF(enable_logging)
       << "[" << my_id << "] "
