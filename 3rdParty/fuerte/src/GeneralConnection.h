@@ -164,7 +164,8 @@ class GeneralConnection : public fuerte::Connection {
     Connection::State exp = Connection::State::Created;
     if (_state.compare_exchange_strong(exp, Connection::State::Connecting)) {
       FUERTE_LOG_DEBUG << "startConnection: this=" << this << "\n";
-      tryConnect(Clock::now(), asio_ns::error_code());
+      FUERTE_ASSERT(_config._maxConnectRetries > 0);
+      tryConnect(_config._maxConnectRetries);
     } else {
       FUERTE_LOG_DEBUG << "startConnection: this=" << this
                        << " found unexpected state " << static_cast<int>(exp)
@@ -302,43 +303,65 @@ class GeneralConnection : public fuerte::Connection {
                                             RequestCallback&& cb) = 0;
 
  private:
-  // Connect 
-  void tryConnect(Clock::time_point start, asio_ns::error_code const& ec) {
+  // Connect with a given number of retries
+  void tryConnect(unsigned retries) {
+    FUERTE_ASSERT(retries > 0);
+
     if (_state.load() != Connection::State::Connecting) {
       return;
     }
 
-    FUERTE_LOG_DEBUG << "tryConnect this=" << this << "\n";
+    FUERTE_LOG_DEBUG << "tryConnect (" << retries << ") this=" << this << "\n";
     auto self = Connection::shared_from_this();
 
-    _proto.connect(_config, [self](auto const& ec) mutable {
+    _proto.connect(_config, [self, retries](asio_ns::error_code ec) mutable {
       auto& me = static_cast<GeneralConnection<ST, RT>&>(*self);
       me.cancelTimer();
       // Note that is is possible that the alarm has already gone off, in which
       // case its closure might already be queued right after ourselves!
       // However, we now quickly set the state to `Connected` in which case the
       // closure will no longer shut down the socket and ruin our success.
-      if (ec) {
-        std::string msg("connecting failed: ");
-        msg.append(ec.message());
-        FUERTE_LOG_DEBUG << msg;
-        
-        static_cast<GeneralConnection<ST, RT>&>(*self)._proto.cancel();
-        static_cast<GeneralConnection<ST, RT>&>(*self).shutdownConnection(Error::CouldNotConnect, msg);
-      } else {
+      if (!ec) {
         me.finishConnect();
+        return;
+      }
+      FUERTE_LOG_DEBUG << "connecting failed: " << ec.message() << "\n";
+      if (retries > 0 && ec != asio_ns::error::operation_aborted) {
+        auto end = Clock::now() + me._config._connectRetryPause;
+        me._proto.timer.expires_at(end);
+        me._proto.timer.async_wait(
+            [self = std::move(self), retries](asio_ns::error_code ec) mutable {
+              auto& me = static_cast<GeneralConnection<ST, RT>&>(*self);
+              if (ec || retries - 1 == 0) {
+                std::string msg("connecting failed: ");
+                msg.append((ec != asio_ns::error::operation_aborted) ? ec.message()
+                                                             : "timeout");
+                me.shutdownConnection(Error::CouldNotConnect, msg);
+              } else {
+                // rearm socket so that we can use it again
+                me._proto.rearm();
+                me.tryConnect(retries - 1);
+              }
+            });
+      } else {
+        std::string msg("connecting failed: ");
+        msg.append((ec != asio_ns::error::operation_aborted) ? ec.message()
+                                                             : "timeout");
+        me.shutdownConnection(Error::CouldNotConnect, msg);
       }
     });
     
+    auto start = Clock::now();
     _proto.timer.expires_at(start + _config._connectTimeout);
-    _proto.timer.async_wait([self](asio_ns::error_code const& ec) {
+    _proto.timer.async_wait([self = std::move(self)](asio_ns::error_code ec) {
       if (!ec && self->state() == Connection::State::Connecting) {
+        // note: if the timer fires successfully, ec is empty here.
         // the connect handler below gets 'operation_aborted' error
+        auto& me = static_cast<GeneralConnection<ST, RT>&>(*self);
+        me._proto.cancel();
         std::string msg("connecting failed: ");
         msg.append((ec != asio_ns::error::operation_aborted) ? ec.message()
                                                            : "timeout");
-        static_cast<GeneralConnection<ST, RT>&>(*self)._proto.cancel();
-        static_cast<GeneralConnection<ST, RT>&>(*self).shutdownConnection(Error::CouldNotConnect, msg);
       }
     });
 
