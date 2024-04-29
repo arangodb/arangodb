@@ -129,7 +129,7 @@ arangosh without connecting to a server.)");
       "--server.password",
       "The password to use when connecting. If not specified and "
       "authentication is required, you are prompted for a password.\n"
-      "In startup options, you can wrap the names of an environment variables "
+      "In startup options, you can wrap the names of environment variables "
       "in at signs to use their value, like @ARANGO_PASSWORD@. This helps to "
       "expose the password less, like to the process list. "
       "Literal @ need to be escaped as @@.",
