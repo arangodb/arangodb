@@ -2092,6 +2092,8 @@ void RocksDBCollection::setupCache() const {
   auto cache = _cache;
   if (cache == nullptr) {
     TRI_ASSERT(_cacheManager != nullptr);
+    TRI_ASSERT(_cacheManager->options().cacheSize > 0);
+    TRI_ASSERT(_cacheManager->options().maxCacheValueSize > 0);
     LOG_TOPIC("f5df2", DEBUG, Logger::CACHE) << "Creating document cache";
     cache = _cacheManager->createCache<cache::BinaryKeyHasher>(
         cache::CacheType::Transactional);

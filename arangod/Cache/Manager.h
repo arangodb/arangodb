@@ -229,6 +229,8 @@ class Manager {
   void trackTermCall() noexcept;
 #endif
 
+  CacheOptions const& options() const noexcept { return _options; }
+
  private:
   // assume at most 16 slots in each stack -- TODO: check validity
   static constexpr std::uint64_t kTableListsOverhead =
@@ -338,7 +340,7 @@ class Manager {
 
   // ratio of caches for which a shrinking attempt will be made if we
   // reach the cache's high water mark (memory limit plus safety buffer)
-  static constexpr double kCachesToShrinkRatio = 0.05;
+  static constexpr double kCachesToShrinkRatio = 0.20;
   static constexpr std::chrono::milliseconds rebalancingGracePeriod{10};
   static const std::uint64_t minCacheAllocation;
 

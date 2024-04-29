@@ -206,6 +206,16 @@ void CacheOptionsFeature::validateOptions(
            "`--cache.ideal-upper-fill-ratio`";
     FATAL_ERROR_EXIT();
   }
+
+  if (_options.maxCacheValueSize == 0 && _options.cacheSize > 0) {
+    _options.cacheSize = 0;
+    LOG_TOPIC("9b1ae", WARN, arangodb::Logger::FIXME)
+        << "`--cache.max-value-size` was set to 0 via configuration, which "
+           "will "
+           "effectively disable caching in many cases. Please consider "
+           "adjusting the value or turn the cache off explicitly by setting "
+           "`--cache.size` to 0.";
+  }
 }
 
 CacheOptions CacheOptionsFeature::getOptions() const { return _options; }
