@@ -74,6 +74,10 @@
 #include "AsioSockets.h"
 #include "debugging.h"
 
+#include <atomic>
+#include <chrono>
+#include <map>
+
 namespace arangodb { namespace fuerte {
 
 using Clock = std::chrono::steady_clock;
@@ -86,7 +90,11 @@ class GeneralConnection : public fuerte::Connection {
                              detail::ConnectionConfiguration const& config)
       : Connection(config),
         _io_context(loop.nextIOContext()),
-        _proto(loop, *_io_context) {}
+        _proto(loop, *_io_context) {
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  _failConnectAttempts = config._failConnectAttempts;
+#endif
+  }
 
   virtual ~GeneralConnection() noexcept {
     _state.store(Connection::State::Closed);
@@ -195,7 +203,7 @@ class GeneralConnection : public fuerte::Connection {
 
     abortRequests(err, /*now*/ Clock::time_point::max());
 
-    _proto.shutdown([=, this, self(shared_from_this())](auto const& ec) {
+    _proto.shutdown([=, this, self = shared_from_this()](asio_ns::error_code ec) {
       terminateActivity(err);
       onFailure(err, msg);
     });  // Close socket
@@ -261,7 +269,7 @@ class GeneralConnection : public fuerte::Connection {
   /// The following is called when the connection is permanently failed. It is
   /// used to shut down any activity in the derived classes in a way that avoids
   /// sleeping barbers
-  void terminateActivity(const fuerte::Error err) {
+  void terminateActivity(fuerte::Error err) {
     // Usually, we are `active == true` when we get here, except for the
     // following case: If we are inactive but the connection is still open and
     // then the idle timeout goes off, then we shutdownConnection and in the TLS
@@ -325,23 +333,36 @@ class GeneralConnection : public fuerte::Connection {
       // However, we now quickly set the state to `Connected` in which case the
       // closure will no longer shut down the socket and ruin our success.
       if (!ec) {
+        FUERTE_LOG_DEBUG << "tryConnect (" << retries << ") established connection this=" << self.get() << "\n";
         me.finishConnect();
         return;
       }
-      FUERTE_LOG_DEBUG << "connecting failed: " << ec.message() << "\n";
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+      if (me._failConnectAttempts > 0) {
+        --me._failConnectAttempts;
+      }
+#endif
+
+      FUERTE_LOG_DEBUG << "tryConnect (" << retries << "), connecting failed: " << ec.message() << "\n";
       if (retries > 0 && ec != asio_ns::error::operation_aborted) {
+        FUERTE_LOG_DEBUG << "tryConnect (" << retries << "), scheduling retry operation. this=" << self.get() << "\n";
         auto end = Clock::now() + me._config._connectRetryPause;
         me._proto.timer.expires_at(end);
         me._proto.timer.async_wait(
             [self = std::move(self), retries](asio_ns::error_code ec) mutable {
+              if (ec) {
+                FUERTE_LOG_DEBUG << "tryConnect, retry timer canceled. this=" << self.get() << "\n";
+                // timer canceled.
+                return;
+              }
               auto& me = static_cast<GeneralConnection<ST, RT>&>(*self);
-              if (ec || retries - 1 == 0) {
-                std::string msg("connecting failed: ");
-                msg.append((ec != asio_ns::error::operation_aborted) ? ec.message()
-                                                             : "timeout");
+              if (retries - 1 == 0) {
+                std::string msg("connecting failed: timeout");
+                FUERTE_LOG_DEBUG << "tryConnect, timeout this=" << self.get() << "\n";
                 me.shutdownConnection(Error::CouldNotConnect, msg);
               } else {
                 // rearm socket so that we can use it again
+                FUERTE_LOG_DEBUG << "tryConnect, rearming connection this=" << self.get() << "\n";
                 me._proto.rearm();
                 me.tryConnect(retries - 1);
               }
@@ -350,6 +371,7 @@ class GeneralConnection : public fuerte::Connection {
         std::string msg("connecting failed: ");
         msg.append((ec != asio_ns::error::operation_aborted) ? ec.message()
                                                              : "timeout");
+        FUERTE_LOG_DEBUG << "tryConnect, calling shutdownConnection(2): " << msg << " this=" << self.get();
         me.shutdownConnection(Error::CouldNotConnect, msg);
       }
     });
@@ -362,9 +384,7 @@ class GeneralConnection : public fuerte::Connection {
         // the connect handler below gets 'operation_aborted' error
         auto& me = static_cast<GeneralConnection<ST, RT>&>(*self);
         me._proto.cancel();
-        std::string msg("connecting failed: ");
-        msg.append((ec != asio_ns::error::operation_aborted) ? ec.message()
-                                                           : "timeout");
+        FUERTE_LOG_DEBUG << "tryConnect, connect timeout this=" << self.get();
       }
     });
 
@@ -389,6 +409,12 @@ class GeneralConnection : public fuerte::Connection {
   std::atomic<Connection::State> _state{Connection::State::Created};
 
   std::atomic<bool> _active{false};
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  // if this member is > 0, then this many connection attempts will fail
+  // in this connection
+  unsigned _failConnectAttempts = 0;
+#endif
 
   bool _reading = false;  // set to true while an async_read is ongoing
   bool _writing = false;  // set between starting an asyncWrite operation and
