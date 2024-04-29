@@ -128,9 +128,11 @@ arangosh without connecting to a server.)");
   options->addOption(
       "--server.password",
       "The password to use when connecting. If not specified and "
-      "authentication is required, you are prompted for a password. "
-      "You can wrap the name of an environment variable in at signs to use its "
-      "value, like @ARANGO_PASSWORD@. Literal @ need to be escaped as @@.",
+      "authentication is required, you are prompted for a password.\n"
+      "In startup options, you can wrap the names of an environment variables "
+      "in at signs to use their value, like @ARANGO_PASSWORD@. This helps to "
+      "expose the password less, like to the process list. "
+      "Literal @ need to be escaped as @@.",
       new StringParameter(&_password));
 
   if (isArangosh) {
