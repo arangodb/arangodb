@@ -34,8 +34,16 @@ template <typename SocketT, typename F>
 void resolveConnect(detail::ConnectionConfiguration const& config,
                     asio_ns::ip::tcp::resolver& resolver, SocketT& socket,
                     F&& done) {
-  auto cb = [&socket, done = std::forward<F>(done)](auto ec, auto it) mutable {
+  auto cb = [&socket, done = std::forward<F>(done), fail = config._failConnectAttempts > 0](auto ec, auto it) mutable {
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+    if (fail) {
+      // use an error code != operation_aborted
+      ec = boost::system::errc::make_error_code(boost::system::errc::not_enough_memory);
+    }
+#endif
+
     if (ec) {  // error in address resolver
+      FUERTE_LOG_DEBUG << "received error during address resolving: " << ec.message();
       done(ec);
       return;
     }
@@ -45,6 +53,11 @@ void resolveConnect(detail::ConnectionConfiguration const& config,
       // non-empty range to the handler.
       asio_ns::async_connect(socket, it,
                              [done](auto ec, auto it) mutable {
+                               if (ec) {
+                                 FUERTE_LOG_DEBUG << "executing async connect callback, error: " << ec.message();
+                               } else {
+                                 FUERTE_LOG_DEBUG << "executing async connect callback, no error";
+                               }
                                std::forward<F>(done)(ec);
                              });
     } catch (std::bad_alloc const&) {
@@ -64,6 +77,7 @@ void resolveConnect(detail::ConnectionConfiguration const& config,
   cb(ec, it);
 #else
   // Resolve the host asynchronously into a series of endpoints
+  FUERTE_LOG_DEBUG << "scheduled callback to resolve host " << config._host << ":" << config._port;
   resolver.async_resolve(config._host, config._port, std::move(cb));
 #endif
 }
@@ -88,6 +102,7 @@ struct Socket<SocketType::Tcp> {
   template <typename F>
   void connect(detail::ConnectionConfiguration const& config, F&& done) {
     resolveConnect(config, resolver, socket, [this, done = std::forward<F>(done)](asio_ns::error_code ec) mutable {
+      FUERTE_LOG_DEBUG << "executing tcp connect callback, ec: " << ec.message() << ", canceled: " << this->canceled;
       if (this->canceled) {
         // cancel() was already called on this socket
         ec = asio_ns::error::operation_aborted;
@@ -97,7 +112,7 @@ struct Socket<SocketType::Tcp> {
   }
 
   void rearm() {
-    // intentionally empty for tcp sockets
+    canceled = false;
   }
 
   void cancel() {
@@ -158,6 +173,7 @@ struct Socket<fuerte::SocketType::Ssl> {
     resolveConnect(
         config, resolver, socket.next_layer(),
         [=, this](asio_ns::error_code ec) mutable {
+          FUERTE_LOG_DEBUG << "executing ssl connect callback, ec: " << ec.message() << ", canceled: " << this->canceled;
           if (this->canceled) {
            // cancel() was already called on this socket
            ec = asio_ns::error::operation_aborted;
@@ -203,6 +219,7 @@ struct Socket<fuerte::SocketType::Ssl> {
   
   void rearm() {
     socket = asio_ns::ssl::stream<asio_ns::ip::tcp::socket>(this->ctx, this->sslContext);
+    canceled = false;
   }
 
   void cancel() {
@@ -301,7 +318,7 @@ struct Socket<fuerte::SocketType::Unix> {
   }
   
   void rearm() {
-    // intentionally empty for unix sockets
+    canceled = false;
   }
 
   void cancel() {

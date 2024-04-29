@@ -208,6 +208,9 @@ struct ConnectionConfiguration {
         _idleTimeout(300000),
         _connectRetryPause(1000),
         _maxConnectRetries(3),
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+        _failConnectAttempts(0),
+#endif        
         _useIdleTimeout(true),
         _authenticationType(AuthenticationType::None),
         _user(""),
@@ -227,6 +230,9 @@ struct ConnectionConfiguration {
   std::chrono::milliseconds _idleTimeout;
   std::chrono::milliseconds _connectRetryPause;
   unsigned _maxConnectRetries;
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  unsigned _failConnectAttempts;
+#endif  
   bool _useIdleTimeout;
 
   AuthenticationType _authenticationType;
