@@ -30,21 +30,26 @@
 namespace arangodb { namespace fuerte { inline namespace v1 {
 
 namespace {
-template <typename SocketT, typename F>
+template <typename SocketT, typename F, typename IsAbortedCb>
 void resolveConnect(detail::ConnectionConfiguration const& config,
                     asio_ns::ip::tcp::resolver& resolver, SocketT& socket,
-                    F&& done) {
+                    F&& done, IsAbortedCb&& isAborted) {
   auto cb = [&socket, 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
              fail = config._failConnectAttempts > 0,
 #endif
-             done = std::forward<F>(done)](auto ec, auto it) mutable {
+             done = std::forward<F>(done),
+             isAborted = std::forward<IsAbortedCb>(isAborted)](auto ec, auto it) mutable {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
     if (fail) {
       // use an error code != operation_aborted
       ec = boost::system::errc::make_error_code(boost::system::errc::not_enough_memory);
     }
 #endif
+
+    if (isAborted()) {
+      ec = asio_ns::error::operation_aborted;
+    }
 
     if (ec) {  // error in address resolver
       FUERTE_LOG_DEBUG << "received error during address resolving: " << ec.message();
@@ -113,6 +118,8 @@ struct Socket<SocketType::Tcp> {
         ec = asio_ns::error::operation_aborted;
       }
       done(ec);
+    }, [this]() {
+      return canceled;
     });
   }
 
@@ -181,9 +188,9 @@ struct Socket<fuerte::SocketType::Ssl> {
         [=, this](asio_ns::error_code ec) mutable {
           FUERTE_LOG_DEBUG << "executing ssl connect callback, ec: " << ec.message() << ", canceled: " << this->canceled;
           if (canceled) {
-           // cancel() was already called on this socket
-           FUERTE_ASSERT(socket.lowest_layer().is_open() == false);
-           ec = asio_ns::error::operation_aborted;
+            // cancel() was already called on this socket
+            FUERTE_ASSERT(socket.lowest_layer().is_open() == false);
+            ec = asio_ns::error::operation_aborted;
           }
           if (ec) {
             done(ec);
@@ -221,6 +228,8 @@ struct Socket<fuerte::SocketType::Ssl> {
           }
           socket.async_handshake(asio_ns::ssl::stream_base::client,
                                  std::move(done));
+        }, [this]() { 
+          return canceled; 
         });
   }
   
