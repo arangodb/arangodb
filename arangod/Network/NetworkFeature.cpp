@@ -495,7 +495,7 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
 
   injectAcceptEncodingHeader(*req);
 
-  bool didCompress = compressRequestBody(options, *req);
+  std::ignore = compressRequestBody(options, *req);
 
   prepareRequest(pool, req);
 
