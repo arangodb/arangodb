@@ -1,6 +1,5 @@
-
 /* jshint strict: false, sub: true */
-/* global */
+/* global print db arango */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -23,47 +22,39 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Max Neunhoeffer
+// / @author Wilfried Goesgens
 // //////////////////////////////////////////////////////////////////////////////
-
-const functionsDocumentation = {
-  'agency': 'run agency tests'
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief checks that no new databases were left on the SUT. 
+// //////////////////////////////////////////////////////////////////////////////
+exports.checker = class {
+  constructor(runner) {
+    this.runner = runner;
+    this.name = 'databases';
+  }
+  setUp(te) { return true;}
+  runCheck(te) {
+    // TODO: we are currently filtering out the UnitTestDB here because it is 
+    // created and not cleaned up by a lot of the `authentication` tests. This
+    // should be fixed eventually
+    try {
+      db._useDatabase('_system');
+      let databasesAfter = db._databases().filter((name) => name !== 'UnitTestDB');
+      if (databasesAfter.length !== 1 || databasesAfter[0] !== '_system') {
+        this.runner.setResult(te, false, {
+          status: false,
+          message: 'Cleanup missing - test left over databases: [ ' + JSON.stringify(databasesAfter)
+        });
+        return false;
+      }
+      return true;
+    } catch (x) {
+      this.runner.setResult(te, false, {
+        status: false,
+        message: 'failed to fetch the databases list: [' + x.message
+      });
+    }
+    return false;
+  }
 };
 
-const tu = require('@arangodb/testutils/test-utils');
-const tr = require('@arangodb/testutils/testrunner');
-const trs = require('@arangodb/testutils/testrunners');
-
-const testPaths = {
-  'agency': [tu.pathForTesting('client/agency')]
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief agency tests
-// //////////////////////////////////////////////////////////////////////////////
-
-function agency (options) {
-  let testCases = tu.scanTestPaths(testPaths.agency, options);
-
-  let saveAgency = options.agency;
-  let saveCluster = options.cluster;
-
-  options.agency = true;
-  options.cluster = false;
-  let results = new trs.runInArangoshRunner(
-    options,  'agency', {},
-    tr.sutFilters.checkUsers + tr.sutFilters.checkCollections + ["databases"])
-      .run(testCases);
-
-  options.agency = saveAgency;
-  options.cluster = saveCluster;
-
-  return results;
-}
-
-exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
-  Object.assign(allTestPaths, testPaths);
-  testFns['agency'] = agency;
-
-  tu.CopyIntoObject(fnDocs, functionsDocumentation);
-};

@@ -1,6 +1,5 @@
-
 /* jshint strict: false, sub: true */
-/* global */
+/* global print db arango */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -23,47 +22,42 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Max Neunhoeffer
+// / @author Wilfried Goesgens
 // //////////////////////////////////////////////////////////////////////////////
 
-const functionsDocumentation = {
-  'agency': 'run agency tests'
-};
-
-const tu = require('@arangodb/testutils/test-utils');
-const tr = require('@arangodb/testutils/testrunner');
-const trs = require('@arangodb/testutils/testrunners');
-
-const testPaths = {
-  'agency': [tu.pathForTesting('client/agency')]
-};
-
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief agency tests
+// / @brief checks that no new graphs were left on the SUT. 
 // //////////////////////////////////////////////////////////////////////////////
-
-function agency (options) {
-  let testCases = tu.scanTestPaths(testPaths.agency, options);
-
-  let saveAgency = options.agency;
-  let saveCluster = options.cluster;
-
-  options.agency = true;
-  options.cluster = false;
-  let results = new trs.runInArangoshRunner(
-    options,  'agency', {},
-    tr.sutFilters.checkUsers + tr.sutFilters.checkCollections + ["databases"])
-      .run(testCases);
-
-  options.agency = saveAgency;
-  options.cluster = saveCluster;
-
-  return results;
-}
-
-exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
-  Object.assign(allTestPaths, testPaths);
-  testFns['agency'] = agency;
-
-  tu.CopyIntoObject(fnDocs, functionsDocumentation);
+exports.checker = class {
+  constructor(runner) {
+    this.runner = runner;
+    this.name = 'graphs';
+    this.graphCount = 0;
+  }
+  setUp(te) {
+    this.graphCount = db._collection('_graphs').count();
+    return true;
+  }
+  runCheck(te) {
+    let graphs;
+    try {
+      graphs = db._collection('_graphs');
+    } catch (x) {
+      this.runner.setResult(te, false, {
+        status: false,
+        message: 'failed to fetch the graphs: [ ' + x.message
+      });
+      return false;
+    }
+    if (graphs && graphs.count() !== this.graphCount) {
+      this.runner.setResult(te, false, {
+        status: false,
+        message: 'Cleanup of graphs missing - found graph definitions: [ ' +
+          JSON.stringify(graphs.toArray())
+      });
+      this.graphCount = graphs.count();
+      return false;
+    }
+    return true;
+  }
 };

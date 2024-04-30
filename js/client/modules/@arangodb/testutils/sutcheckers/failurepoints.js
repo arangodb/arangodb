@@ -1,6 +1,5 @@
-
 /* jshint strict: false, sub: true */
-/* global */
+/* global print db arango */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -23,47 +22,28 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Max Neunhoeffer
+// / @author Wilfried Goesgens
 // //////////////////////////////////////////////////////////////////////////////
-
-const functionsDocumentation = {
-  'agency': 'run agency tests'
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief checks that no failure points were left engaged on the SUT. 
+// //////////////////////////////////////////////////////////////////////////////
+exports.checker = class {
+  constructor(runner) {
+    this.runner = runner;
+    this.name = 'failurepoints';
+  }
+  setUp(te) { return true; }
+  runCheck(te) {
+    let failurePoints = this.runner.instanceManager.checkServerFailurePoints();
+    if (failurePoints.length > 0) {
+      this.runner.setResult(te, true, {
+        status: false,
+        message: 'Cleanup of failure points missing - found failure points engaged: [ ' +
+          JSON.stringify(failurePoints)
+      });
+      return false;
+    }
+    return true;
+  }
 };
 
-const tu = require('@arangodb/testutils/test-utils');
-const tr = require('@arangodb/testutils/testrunner');
-const trs = require('@arangodb/testutils/testrunners');
-
-const testPaths = {
-  'agency': [tu.pathForTesting('client/agency')]
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief agency tests
-// //////////////////////////////////////////////////////////////////////////////
-
-function agency (options) {
-  let testCases = tu.scanTestPaths(testPaths.agency, options);
-
-  let saveAgency = options.agency;
-  let saveCluster = options.cluster;
-
-  options.agency = true;
-  options.cluster = false;
-  let results = new trs.runInArangoshRunner(
-    options,  'agency', {},
-    tr.sutFilters.checkUsers + tr.sutFilters.checkCollections + ["databases"])
-      .run(testCases);
-
-  options.agency = saveAgency;
-  options.cluster = saveCluster;
-
-  return results;
-}
-
-exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
-  Object.assign(allTestPaths, testPaths);
-  testFns['agency'] = agency;
-
-  tu.CopyIntoObject(fnDocs, functionsDocumentation);
-};
