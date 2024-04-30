@@ -103,7 +103,7 @@ struct Socket<SocketType::Tcp> {
   void connect(detail::ConnectionConfiguration const& config, F&& done) {
     resolveConnect(config, resolver, socket, [this, done = std::forward<F>(done)](asio_ns::error_code ec) mutable {
       FUERTE_LOG_DEBUG << "executing tcp connect callback, ec: " << ec.message() << ", canceled: " << this->canceled;
-      if (this->canceled) {
+      if (canceled) {
         // cancel() was already called on this socket
         ec = asio_ns::error::operation_aborted;
       }
@@ -116,6 +116,7 @@ struct Socket<SocketType::Tcp> {
   }
 
   void cancel() {
+    canceled = true;
     try {
       timer.cancel();
       resolver.cancel();
@@ -174,7 +175,7 @@ struct Socket<fuerte::SocketType::Ssl> {
         config, resolver, socket.next_layer(),
         [=, this](asio_ns::error_code ec) mutable {
           FUERTE_LOG_DEBUG << "executing ssl connect callback, ec: " << ec.message() << ", canceled: " << this->canceled;
-          if (this->canceled) {
+          if (canceled) {
            // cancel() was already called on this socket
            ec = asio_ns::error::operation_aborted;
           }
@@ -223,7 +224,7 @@ struct Socket<fuerte::SocketType::Ssl> {
   }
 
   void cancel() {
-    this->canceled = true;
+    canceled = true;
     try {
       timer.cancel();
       resolver.cancel();
@@ -297,7 +298,7 @@ struct Socket<fuerte::SocketType::Unix> {
       : socket(ctx), timer(ctx) {}
 
   ~Socket() { 
-    this->canceled = true;
+    canceled = true;
     try {
       this->cancel(); 
     } catch (std::exception const& ex) {
@@ -307,7 +308,7 @@ struct Socket<fuerte::SocketType::Unix> {
 
   template <typename F>
   void connect(detail::ConnectionConfiguration const& config, F&& done) {
-    if (this->canceled) {
+    if (canceled) {
       // cancel() was already called on this socket
       done(asio_ns::error::operation_aborted);
       return;
@@ -322,7 +323,7 @@ struct Socket<fuerte::SocketType::Unix> {
   }
 
   void cancel() {
-    this->canceled = true;
+    canceled = true;
     try {
       timer.cancel();
       if (socket.is_open()) {  // non-graceful shutdown
