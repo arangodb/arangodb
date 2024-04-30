@@ -27,6 +27,8 @@ const db = require("@arangodb").db;
 const _ = require("lodash");
 const {md5} = require("@arangodb/crypto");
 
+const batchSize = 10;
+
 // This is a seedable RandomNumberGenerator
 // it is not operfect for Random numbers,
 // but good enough for what we are doing here
@@ -295,7 +297,7 @@ function runQuery(query, queryOptions, testOptions) {
   }
 
   /* Run query */
-  const result = db._createStatement({query: query.queryString, options: queryOptions}).execute();
+  const result = db._createStatement({query: query.queryString, batchSize, options: queryOptions}).execute();
  
   /* Create a simple hash value from the query results, so that we don't have to
    * load the entire result set into memory and work with it */
@@ -320,12 +322,12 @@ function testQuery(query, testOptions) {
   }
 
   /* Run query with all optimizations */
-  const result1 = runQuery(query, {}, testOptions);
+  const result1 = runQuery(query, {batchSize}, testOptions);
 
   /* Run query with full count */
   const result2 = runQuery(
     query,
-    { fullCount: true }, 
+    {fullCount: true, batchSize}, 
     testOptions
   );
 
