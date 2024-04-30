@@ -380,6 +380,7 @@ void NetworkFeature::stop() {
   }
   if (_pool) {
     _pool->shutdownConnections();
+    _pool->curl_pool->stop();
   }
 }
 
@@ -424,6 +425,8 @@ std::string buildUrlForCurl(fuerte::Request const& r,
   if (endpoint.starts_with("tcp")) {
     url += "http";
   } else {
+    ADB_PROD_ASSERT(endpoint.starts_with("ssl"))
+        << "invalid endpoint specification: " << endpoint;
     url += "https";
   }
 
@@ -587,7 +590,7 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
   network::curl::send_request(
       *pool.curl_pool, method, url, req->payloadAsString(), opts,
       [this, &pool, isFromPool,
-       handleContentEncoding = options.handleContentEncoding || didCompress,
+       handleContentEncoding = options.handleContentEncoding,
        cb = std::move(cb), endpoint = std::move(endpoint),
        req_ptr = req.release(), url,
        my_id](network::curl::response real_res, CURLcode result) {

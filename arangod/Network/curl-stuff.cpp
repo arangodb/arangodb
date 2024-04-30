@@ -304,12 +304,21 @@ void connection_pool::run_curl_loop(std::stop_token stoken) noexcept {
 }
 
 void connection_pool::push(std::unique_ptr<request>&& req) {
+  if (_curl_thread.get_stop_source().stop_requested()) {
+    req.reset();
+    return;
+  }
   {
     std::unique_lock guard(_mutex);
     _queue.emplace_back(std::move(req));
   }
   _curl_multi.notify();
   _cv.notify_all();
+}
+
+void connection_pool::stop() {
+  _curl_thread.get_stop_source().request_stop();
+  _curl_thread.join();
 }
 
 connection_pool::~connection_pool() {

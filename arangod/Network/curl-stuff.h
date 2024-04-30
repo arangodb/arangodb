@@ -55,6 +55,8 @@ struct connection_pool {
 
   ~connection_pool();
 
+  void stop();
+
  private:
   void run_curl_loop(std::stop_token stoken) noexcept;
 
