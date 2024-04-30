@@ -45,6 +45,7 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/RequestStatistics.h"
 #include "Utils/ExecContext.h"
+#include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/ticks.h"
 
 using namespace arangodb;
@@ -111,6 +112,34 @@ RequestLane RestHandler::determineRequestLane() {
       _lane = RequestLane::CLIENT_UI;
     } else {
       _lane = lane();
+
+      if (PriorityRequestLane(_lane) == RequestPriority::LOW) {
+        // if this is a low-priority request, check if it contains
+        // a transaction id, but is not the start of an AQL query
+        // or streaming transaction.
+        // if we find out that the request is part of an already
+        // ongoing transaction, we can now increase its priority,
+        // so that ongoing transactions can proceed. however, we
+        // don't want to prioritize the start of new transactions
+        // here.
+        std::string const& value =
+            _request->header(StaticStrings::TransactionId, found);
+
+        if (found) {
+          TransactionId tid = TransactionId::none();
+          std::size_t pos = 0;
+          try {
+            tid = TransactionId{std::stoull(value, &pos, 10)};
+          } catch (...) {
+          }
+          if (!tid.empty() &&
+              !(value.compare(pos, std::string::npos, " aql") == 0 ||
+                value.compare(pos, std::string::npos, " begin") == 0)) {
+            // increase request priority from previously LOW to now MED.
+            _lane = RequestLane::CONTINUATION;
+          }
+        }
+      }
     }
   }
   TRI_ASSERT(_lane != RequestLane::UNDEFINED);
