@@ -37,7 +37,7 @@ class RestCollectionHandler : public arangodb::RestVocbaseBaseHandler {
 
  public:
   char const* name() const override final { return "RestCollectionHandler"; }
-  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
+  RequestLane lane() const override final;
   RestStatus execute() override final;
 
   void shutdownExecute(bool isFinalized) noexcept override final;

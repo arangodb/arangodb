@@ -406,7 +406,8 @@ Result executeTransactionJS(v8::Isolate* isolate,
                            readCollections, writeCollections,
                            exclusiveCollections, trxOptions);
   trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
-  if (ServerState::instance()->isCoordinator()) {
+  if (ServerState::instance()->isCoordinator() &&
+      !trxOptions.skipFastLockRound) {
     // No one knows our Transaction ID yet, so we an run FAST_LOCK_ROUND and
     // potentialy reroll it.
     trx.addHint(transaction::Hints::Hint::ALLOW_FAST_LOCK_ROUND_CLUSTER);

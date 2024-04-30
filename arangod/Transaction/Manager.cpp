@@ -652,14 +652,18 @@ ResultT<TransactionId> Manager::createManagedTrx(
   // We allow to do a fast locking round here
   // We can only do this because we KNOW that the tid is not
   // known to any other place yet.
-  hints.set(transaction::Hints::Hint::ALLOW_FAST_LOCK_ROUND_CLUSTER);
+  if (!options.skipFastLockRound) {
+    hints.set(transaction::Hints::Hint::ALLOW_FAST_LOCK_ROUND_CLUSTER);
+  }
   res = beginTransaction(hints, state);
   if (res.fail()) {
     return res;
   }
   // Unset the FastLockRound hint, if for some reason we ever end up locking
   // something again for this transaction we cannot recover from a fast lock
-  // failure
+  // failure.
+  // note: we can unconditionally call unset here even if skipFastLockRound
+  // was set. this does not do any harm.
   hints.unset(transaction::Hints::Hint::ALLOW_FAST_LOCK_ROUND_CLUSTER);
 
   // During beginTransaction we may reroll the Transaction ID.
@@ -755,6 +759,9 @@ Result Manager::ensureManagedTrx(
 
   // start the transaction
   auto hints = ensureHints(options);
+  TRI_ASSERT(
+      !hints.has(transaction::Hints::Hint::ALLOW_FAST_LOCK_ROUND_CLUSTER));
+
   res = beginTransaction(hints, state);
   if (res.fail()) {
     return res;
