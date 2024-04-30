@@ -367,6 +367,8 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(
   network::RequestOptions options;
   options.database = _query.vocbase().name();
   options.timeout = kDefaultTimeOutSecs;
+  options.skipScheduler = false;
+  options.continuationLane = RequestLane::CLUSTER_INTERNAL;
 
   TRI_IF_FAILURE("RemoteExecutor::impatienceTimeout") {
     // Vastly lower the request timeout. This should guarantee
