@@ -26,12 +26,27 @@
 
 #include "gtest/gtest.h"
 
+#include <string_view>
+
 namespace f = ::arangodb::fuerte;
+
+// for testing connection failures, we need a free port that is not used by
+// another service. because we can't be sure about high port numbers, we are
+// using some from the very range. according to
+// https://www.iana.org/assignments/service-names-port-numbers/service-names-port-numbers.xhtml?&page=2
+// port 60 is unassigned and thus likely not taken by any service on the test
+// host. previously we used port 8629 for testing connection failures, but this
+// was flawed because it was possible that some service was running on port
+// 8629, which then made the connection failure tests fail.
+constexpr std::string_view urls[] = {
+    "http://localhost:60", "h2://localhost:60",  "vst://localhost:60",
+    "ssl://localhost:60",  "h2s://localhost:60",
+};
 
 // tryToConnectExpectFailure tries to make a connection to a host with given
 // url. This is expected to fail.
 static void tryToConnectExpectFailure(f::EventLoopService& eventLoopService,
-                                      std::string const& url, bool useRetries) {
+                                      std::string_view url, bool useRetries) {
   f::WaitGroup wg;
 
   wg.add();
@@ -44,7 +59,7 @@ static void tryToConnectExpectFailure(f::EventLoopService& eventLoopService,
   }
   cbuilder.maxConnectRetries(3);
 #endif
-  cbuilder.endpoint(url);
+  cbuilder.endpoint(std::string{url});
 
   cbuilder.onFailure([&](f::Error errorCode, std::string const& errorMessage) {
     ASSERT_EQ(errorCode, f::Error::CouldNotConnect);
@@ -77,47 +92,16 @@ TEST(ConnectionFailureTest, CannotResolveVst) {
 
 // CannotConnect tests try to make a connection to a host with a valid name
 // but a wrong port.
-TEST(ConnectionFailureTest, CannotConnectHttp) {
-  f::EventLoopService loop;
-  tryToConnectExpectFailure(loop, "http://localhost:8629", false);
+TEST(ConnectionFailureTest, CannotConnect) {
+  for (auto const& url : urls) {
+    f::EventLoopService loop;
+    tryToConnectExpectFailure(loop, url, /*useRetries*/ false);
+  }
 }
 
-TEST(ConnectionFailureTest, CannotConnectHttp2) {
-  f::EventLoopService loop;
-  tryToConnectExpectFailure(loop, "h2://localhost:8629", false);
-}
-
-TEST(ConnectionFailureTest, CannotConnectVst) {
-  f::EventLoopService loop;
-  tryToConnectExpectFailure(loop, "vst://localhost:8629", false);
-}
-
-TEST(ConnectionFailureTest, CannotConnectHttpAndSsl) {
-  f::EventLoopService loop;
-  tryToConnectExpectFailure(loop, "ssl://localhost:8629", false);
-}
-
-TEST(ConnectionFailureTest, CannotConnectHttp2AndSsl) {
-  f::EventLoopService loop;
-  tryToConnectExpectFailure(loop, "h2s://localhost:8629", false);
-}
-
-TEST(ConnectionFailureTest, CannotConnectHttpRetries) {
-  f::EventLoopService loop;
-  tryToConnectExpectFailure(loop, "http://localhost:8629", true);
-}
-
-TEST(ConnectionFailureTest, CannotConnectHttp2Retries) {
-  f::EventLoopService loop;
-  tryToConnectExpectFailure(loop, "h2://localhost:8629", true);
-}
-
-TEST(ConnectionFailureTest, CannotConnectHttpAndSslRetries) {
-  f::EventLoopService loop;
-  tryToConnectExpectFailure(loop, "ssl://localhost:8629", true);
-}
-
-TEST(ConnectionFailureTest, CannotConnectHttp2AndSslRetries) {
-  f::EventLoopService loop;
-  tryToConnectExpectFailure(loop, "h2s://localhost:8629", true);
+TEST(ConnectionFailureTest, CannotConnectForceRetries) {
+  for (auto const& url : urls) {
+    f::EventLoopService loop;
+    tryToConnectExpectFailure(loop, url, /*useRetries*/ true);
+  }
 }
