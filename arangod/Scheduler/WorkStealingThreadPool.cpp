@@ -201,6 +201,7 @@ auto WorkStealingThreadPool::ThreadState::pushMany(WorkItem* item)
 
 void WorkStealingThreadPool::ThreadState::runWork(WorkItem& work) noexcept {
   incCounter(pool._metrics.jobsDequeued);
+  pool.statistics.dequeued.fetch_add(1, std::memory_order_relaxed);
   try {
     work.invoke();
   } catch (...) {
@@ -208,7 +209,7 @@ void WorkStealingThreadPool::ThreadState::runWork(WorkItem& work) noexcept {
         << "Scheduler just swallowed an exception.";
   }
   incCounter(pool._metrics.jobsDone);
-  pool.statistics.done.fetch_add(1);
+  pool.statistics.done.fetch_add(1, std::memory_order_relaxed);
 }
 
 auto WorkStealingThreadPool::ThreadState::stealWork() noexcept
@@ -288,9 +289,9 @@ void WorkStealingThreadPool::push(std::unique_ptr<WorkItem>&& task) noexcept {
       auto idx = pushIdx.fetch_add(1, std::memory_order_relaxed) % numThreads;
       _threadStates[idx]->pushBack(std::move(task));
     }
-    incCounter(_metrics.jobsQueued);
-    statistics.queued.fetch_add(1);
   }
+  incCounter(_metrics.jobsQueued);
+  statistics.queued.fetch_add(1, std::memory_order_relaxed);
 }
 
 }  // namespace arangodb

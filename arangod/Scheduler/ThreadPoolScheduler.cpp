@@ -18,14 +18,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
+#include "ThreadPoolScheduler.h"
 
 #include <velocypack/Builder.h>
 #include <numeric>
 
 #include "Metrics/Gauge.h"
 #include "Metrics/Counter.h"
-
-#include "ThreadPoolScheduler.h"
 
 using namespace arangodb;
 
@@ -65,9 +64,10 @@ ThreadPoolScheduler::getNumberLowPrioOngoingAndQueued() const {
       _threadPools[int(RequestPriority::LOW)]->statistics.dequeued.load();
   auto queued =
       _threadPools[int(RequestPriority::LOW)]->statistics.queued.load();
+  auto remaining = dequeued > queued ? 0 : queued - dequeued;
   return std::make_pair(
       _metrics->_ongoingLowPriorityGauge.load(std::memory_order_relaxed),
-      queued - dequeued);
+      remaining);
 }
 
 double ThreadPoolScheduler::approximateQueueFillGrade() const { return 0; }
