@@ -354,6 +354,9 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(
     fuerte::RestVerb type, std::string const& urlPart,
     VPackBuffer<uint8_t>&& body,
     std::unique_lock<std::mutex>&& communicationGuard) {
+  ADB_PROD_ASSERT(communicationGuard.owns_lock() &&
+                  communicationGuard.mutex() == &_communicationMutex)
+      << "communicationGuard does not hold the lock for the correct mutex";
   NetworkFeature const& nf =
       _engine->getQuery().vocbase().server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
@@ -364,6 +367,12 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(
   network::RequestOptions options;
   options.database = _query.vocbase().name();
   options.timeout = kDefaultTimeOutSecs;
+  options.skipScheduler = false;
+  options.continuationLane = RequestLane::CLUSTER_INTERNAL;
+  // the code below assumes that the network callback is resolved with higher
+  // priority than aql, which is currently medium.
+  static_assert(PriorityRequestLane(RequestLane::CLUSTER_INTERNAL) ==
+                RequestPriority::HIGH);
 
   TRI_IF_FAILURE("RemoteExecutor::impatienceTimeout") {
     // Vastly lower the request timeout. This should guarantee
