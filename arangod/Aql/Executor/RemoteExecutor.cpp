@@ -157,8 +157,9 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<
 
   traceInitializeCursorRequest(builder.slice());
 
-  auto res = sendAsyncRequest(fuerte::RestVerb::Put,
-                              "/_api/aql/initializeCursor", std::move(buffer));
+  auto res =
+      sendAsyncRequest(fuerte::RestVerb::Put, "/_api/aql/initializeCursor",
+                       std::move(buffer), std::move(guard));
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -255,7 +256,7 @@ auto ExecutionBlockImpl<RemoteExecutor>::executeWithoutTrace(
 
   auto res =
       sendAsyncRequest(fuerte::RestVerb::Put, RestAqlHandler::Route::execute(),
-                       std::move(buffer));
+                       std::move(buffer), std::move(guard));
 
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
@@ -351,7 +352,8 @@ Result handleErrorResponse(network::EndpointSpec const& spec, fuerte::Error err,
 
 Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(
     fuerte::RestVerb type, std::string const& urlPart,
-    VPackBuffer<uint8_t>&& body) {
+    VPackBuffer<uint8_t>&& body,
+    std::unique_lock<std::mutex>&& communicationGuard) {
   NetworkFeature const& nf =
       _engine->getQuery().vocbase().server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
@@ -379,6 +381,7 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(
 
   _engine->getQuery().incHttpRequests(unsigned(1));
 
+  communicationGuard.unlock();
   network::sendRequest(pool, _server, type,
                        absl::StrCat(urlPart, "/", _queryId), std::move(body),
                        options, header)
