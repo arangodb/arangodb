@@ -85,7 +85,7 @@ class testRunner {
                                 let basename = p.slice(0, -3);
                                 return (
                                   (extension === '.js') &&
-                                  (disableCheckFilter.filter(f => f !== basename).length === 0)
+                                  (disableCheckFilter.filter(f => f === basename).length === 0)
                                 );
                               }).sort();
     let ret = [];

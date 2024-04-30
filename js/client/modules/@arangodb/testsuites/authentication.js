@@ -62,11 +62,14 @@ function authenticationClient (options) {
 
   testCases = tu.splitBuckets(options, testCases);
 
-  return new trs.runInArangoshRunner(options, 'authentication', Object.assign(
-    {},
-    tu.testServerAuthInfo, {
-      'cluster.create-waits-for-sync-replication': false
-    }), tr.sutFilters.checkUsers).run(testCases);
+  return new trs.runInArangoshRunner(
+    options,
+    'authentication',
+    Object.assign({},
+                  tu.testServerAuthInfo, {
+                    'cluster.create-waits-for-sync-replication': false
+                  }),
+    tr.sutFilters.checkUsers).run(testCases);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
