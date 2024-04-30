@@ -343,8 +343,7 @@ class GeneralConnection : public fuerte::Connection {
       FUERTE_LOG_DEBUG << "tryConnect (" << retries << "), connecting failed: " << ec.message() << "\n";
       if (retries > 1 && ec != asio_ns::error::operation_aborted) {
         FUERTE_LOG_DEBUG << "tryConnect (" << retries << "), scheduling retry operation. this=" << self.get() << "\n";
-        auto end = Clock::now() + me._config._connectRetryPause;
-        me._proto.timer.expires_at(end);
+        me._proto.timer.expires_after(me._config._connectRetryPause);
         me._proto.timer.async_wait(
             [self = std::move(self), retries](asio_ns::error_code ec) mutable {
               if (ec) {
@@ -367,8 +366,7 @@ class GeneralConnection : public fuerte::Connection {
       }
     });
     
-    auto start = Clock::now();
-    _proto.timer.expires_at(start + _config._connectTimeout);
+    _proto.timer.expires_after(_config._connectTimeout);
     _proto.timer.async_wait([self = std::move(self)](asio_ns::error_code ec) {
       if (!ec && self->state() == Connection::State::Connecting) {
         // note: if the timer fires successfully, ec is empty here.

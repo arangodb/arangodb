@@ -34,7 +34,11 @@ template <typename SocketT, typename F>
 void resolveConnect(detail::ConnectionConfiguration const& config,
                     asio_ns::ip::tcp::resolver& resolver, SocketT& socket,
                     F&& done) {
-  auto cb = [&socket, done = std::forward<F>(done), fail = config._failConnectAttempts > 0](auto ec, auto it) mutable {
+  auto cb = [&socket, 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+             fail = config._failConnectAttempts > 0,
+#endif
+             done = std::forward<F>(done)](auto ec, auto it) mutable {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
     if (fail) {
       // use an error code != operation_aborted
@@ -105,6 +109,7 @@ struct Socket<SocketType::Tcp> {
       FUERTE_LOG_DEBUG << "executing tcp connect callback, ec: " << ec.message() << ", canceled: " << this->canceled;
       if (canceled) {
         // cancel() was already called on this socket
+        FUERTE_ASSERT(socket.is_open() == false);
         ec = asio_ns::error::operation_aborted;
       }
       done(ec);
@@ -177,6 +182,7 @@ struct Socket<fuerte::SocketType::Ssl> {
           FUERTE_LOG_DEBUG << "executing ssl connect callback, ec: " << ec.message() << ", canceled: " << this->canceled;
           if (canceled) {
            // cancel() was already called on this socket
+           FUERTE_ASSERT(socket.lowest_layer().is_open() == false);
            ec = asio_ns::error::operation_aborted;
           }
           if (ec) {
