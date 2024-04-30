@@ -8,6 +8,7 @@
 #include <deque>
 #include <condition_variable>
 #include <cstring>
+#include <sstream>
 
 namespace arangodb::network::curl {
 
@@ -44,6 +45,7 @@ struct response {
   long code;
   std::unordered_map<std::string, std::string> headers;
   std::string body;
+  std::stringstream debug_string;
 };
 
 struct request;

@@ -114,6 +114,7 @@ int debug_callback(CURL* handle, curl_infotype type, char* data, size_t size,
 
   LOG_DEVEL_CURL << "[" << req->unique_id << "] " << prefix
                  << std::string_view{data, size};
+  req->_response.debug_string << prefix << std::string_view{data, size} << "\n";
   return 0;
 }
 

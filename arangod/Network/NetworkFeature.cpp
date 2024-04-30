@@ -600,6 +600,11 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
             << "CURL " << to_string(req->header.restVerb) << " " << url
             << " -> " << curl_easy_strerror(result) << " (" << result << ")";
         auto err = curlErrorToFuerte(result);
+        LOG_DEVEL_IF(result != CURLE_OK)
+            << "[" << my_id << "] "
+            << "CURL " << to_string(req->header.restVerb) << " " << url
+            << " -> " << curl_easy_strerror(result) << " (" << result << ")\n"
+            << real_res.debug_string.str();
         auto res = std::make_unique<fuerte::Response>();
         if (!real_res.body.empty()) {
           auto buffer = VPackBufferUInt8{};
