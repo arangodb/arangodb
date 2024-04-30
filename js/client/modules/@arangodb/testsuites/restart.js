@@ -32,6 +32,7 @@ const yaml = require('js-yaml');
 
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const tr = require('@arangodb/testutils/testrunner');
 const trs = require('@arangodb/testutils/testrunners');
 
 const toArgv = require('internal').toArgv;
