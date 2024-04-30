@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-447: fix query spotlight search, make it case-insensitive.
+
 * BTS-1856: Fix a data-race inside the Query class during accesses on a private
   property (`execStats`).
 
