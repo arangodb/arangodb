@@ -96,9 +96,10 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
 
   /// @brief internal method to send a request. Will register a callback to be
   /// reactivated
-  arangodb::Result sendAsyncRequest(fuerte::RestVerb type,
-                                    std::string const& urlPart,
-                                    velocypack::Buffer<uint8_t>&& body);
+  arangodb::Result sendAsyncRequest(
+      fuerte::RestVerb type, std::string const& urlPart,
+      velocypack::Buffer<uint8_t>&& body,
+      std::unique_lock<std::mutex>&& communicationGuard);
 
   // _communicationMutex *must* be locked for this!
   unsigned generateRequestTicket();

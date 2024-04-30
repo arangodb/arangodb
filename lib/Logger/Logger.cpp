@@ -22,14 +22,6 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <chrono>
-#include <cstring>
-#include <iosfwd>
-#include <string>
-#include <string_view>
-#include <thread>
-#include <type_traits>
-
 #include "Logger.h"
 
 #include "Basics/Exceptions.h"
@@ -51,12 +43,20 @@
 #include "Logger/LogStructuredParamsAllowList.h"
 #include "Logger/LogThread.h"
 
+#include <velocypack/Dumper.h>
+#include <velocypack/Sink.h>
+
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
 #endif
 
-#include <velocypack/Dumper.h>
-#include <velocypack/Sink.h>
+#include <chrono>
+#include <cstring>
+#include <iosfwd>
+#include <string>
+#include <string_view>
+#include <thread>
+#include <type_traits>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -111,6 +111,7 @@ void LogMessage::shrink(std::size_t maxLength) {
 
 std::atomic<bool> Logger::_active(false);
 std::atomic<LogLevel> Logger::_level(LogLevel::INFO);
+std::function<void()> Logger::_onDroppedMessage;
 
 std::unordered_set<std::string> Logger::_structuredLogParams({});
 arangodb::basics::ReadWriteLock Logger::_structuredParamsLock;
@@ -976,5 +977,15 @@ void Logger::flush() noexcept {
   ThreadRef loggingThread;
   if (loggingThread) {
     loggingThread->flush();
+  }
+}
+
+void Logger::setOnDroppedMessage(std::function<void()> cb) {
+  _onDroppedMessage = std::move(cb);
+}
+
+void Logger::onDroppedMessage() noexcept {
+  if (_onDroppedMessage) {
+    _onDroppedMessage();
   }
 }
