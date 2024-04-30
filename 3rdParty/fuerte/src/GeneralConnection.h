@@ -341,7 +341,7 @@ class GeneralConnection : public fuerte::Connection {
 #endif
 
       FUERTE_LOG_DEBUG << "tryConnect (" << retries << "), connecting failed: " << ec.message() << "\n";
-      if (retries > 0 && ec != asio_ns::error::operation_aborted) {
+      if (retries > 1 && ec != asio_ns::error::operation_aborted) {
         FUERTE_LOG_DEBUG << "tryConnect (" << retries << "), scheduling retry operation. this=" << self.get() << "\n";
         auto end = Clock::now() + me._config._connectRetryPause;
         me._proto.timer.expires_at(end);
@@ -353,16 +353,10 @@ class GeneralConnection : public fuerte::Connection {
                 return;
               }
               auto& me = static_cast<GeneralConnection<ST, RT>&>(*self);
-              if (retries - 1 == 0) {
-                std::string msg("connecting failed: timeout");
-                FUERTE_LOG_DEBUG << "tryConnect, timeout this=" << self.get() << "\n";
-                me.shutdownConnection(Error::CouldNotConnect, msg);
-              } else {
-                // rearm socket so that we can use it again
-                FUERTE_LOG_DEBUG << "tryConnect, rearming connection this=" << self.get() << "\n";
-                me._proto.rearm();
-                me.tryConnect(retries - 1);
-              }
+              // rearm socket so that we can use it again
+              FUERTE_LOG_DEBUG << "tryConnect, rearming connection this=" << self.get() << "\n";
+              me._proto.rearm();
+              me.tryConnect(retries - 1);
             });
       } else {
         std::string msg("connecting failed: ");
