@@ -75,12 +75,13 @@ function restart (options) {
     clonedOpts.coordinators = 2;
   }
   let testCases = tu.scanTestPaths(testPaths.restart, clonedOpts);
-  global.obj = new broadcastInstance(clonedOpts, 'restart', Object.assign(
+  global.obj = new broadcastInstance(
+    clonedOpts, 'restart', Object.assign(
     {},
     tu.testServerAuthInfo, {
       'server.authentication': false
     }),
-                                               false, false);
+    tr.sutFilters.checkUsers.concat(tr.sutFilters.checkCollections));
   let rc = global.obj.run(testCases);
   options.cleanup = options.cleanup && clonedOpts.cleanup;
   return rc;

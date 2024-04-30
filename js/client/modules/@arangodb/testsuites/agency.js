@@ -52,7 +52,7 @@ function agency (options) {
   options.cluster = false;
   let results = new trs.runInArangoshRunner(
     options,  'agency', {},
-    tr.sutFilters.checkUsers + tr.sutFilters.checkCollections + ["databases"])
+    (tr.sutFilters.checkUsers.concat(tr.sutFilters.checkCollections)).concat(tr.sutFilters.checkDBs))
       .run(testCases);
 
   options.agency = saveAgency;

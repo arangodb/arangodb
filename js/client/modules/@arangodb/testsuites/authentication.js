@@ -33,6 +33,7 @@ const functionsDocumentation = {
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const tr = require('@arangodb/testutils/testrunner');
 const trs = require('@arangodb/testutils/testrunners');
 const im = require('@arangodb/testutils/instance-manager');
 const yaml = require('js-yaml');
@@ -65,7 +66,7 @@ function authenticationClient (options) {
     {},
     tu.testServerAuthInfo, {
       'cluster.create-waits-for-sync-replication': false
-    }), false).run(testCases);
+    }), tr.sutFilters.checkUsers).run(testCases);
 }
 
 // //////////////////////////////////////////////////////////////////////////////

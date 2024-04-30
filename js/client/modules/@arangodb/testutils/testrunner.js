@@ -54,7 +54,8 @@ function isBucketized(testBuckets) {
 }
 exports.sutFilters = {
   checkUsers: ["users"],
-  checkCollections: ["tasks", "collections", "views", "graphs"]
+  checkCollections: ["tasks", "collections", "views", "graphs"],
+  checkDBs: ["databases"]
 };
 class testRunner {
   constructor(options, testname, serverOptions = {}, disableChecks=[]) {
