@@ -45,6 +45,7 @@ const functionsDocumentation = {
 const pu = require('@arangodb/testutils/process-utils');
 const ct = require('@arangodb/testutils/client-tools');
 const tu = require('@arangodb/testutils/test-utils');
+const tr = require('@arangodb/testutils/testrunner');
 const trs = require('@arangodb/testutils/testrunners');
 const im = require('@arangodb/testutils/instance-manager');
 const fs = require('fs');
@@ -89,7 +90,7 @@ const testPaths = {
 
 class DumpRestoreHelper extends trs.runInArangoshRunner {
   constructor(firstRunOptions, secondRunOptions, serverOptions, clientAuth, dumpOptions, restoreOptions, which, afterServerStart, rtaArgs) {
-    super(firstRunOptions, which, serverOptions, false);
+    super(firstRunOptions, which, serverOptions, tr.sutFilters.checkUsers);
     this.serverOptions = serverOptions;
     this.firstRunOptions = firstRunOptions;
     this.secondRunOptions = secondRunOptions;
