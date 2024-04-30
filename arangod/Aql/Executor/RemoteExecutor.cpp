@@ -369,6 +369,10 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(
   options.timeout = kDefaultTimeOutSecs;
   options.skipScheduler = false;
   options.continuationLane = RequestLane::CLUSTER_INTERNAL;
+  // the code below assumes that the network callback is resolved with higher
+  // priority than aql, which is currently medium.
+  static_assert(PriorityRequestLane(RequestLane::CLUSTER_INTERNAL) ==
+                RequestPriority::HIGH);
 
   TRI_IF_FAILURE("RemoteExecutor::impatienceTimeout") {
     // Vastly lower the request timeout. This should guarantee
