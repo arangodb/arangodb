@@ -43,8 +43,6 @@
 /// @brief assert
 #ifndef FUERTE_ASSERT
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-
 #define FUERTE_ASSERT(expr)                                                 \
   do {                                                                      \
     if (!(ADB_LIKELY(expr))) {                                              \
@@ -53,17 +51,6 @@
       std::abort();                                                         \
     }                                                                       \
   } while (0)
-
-#else
-
-#define FUERTE_ASSERT(expr) \
-  while (0) {               \
-    (void)(expr);           \
-  }                         \
-  do {                      \
-  } while (0)
-
-#endif  // #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
 #endif  // #ifndef FUERTE_ASSERT
 
