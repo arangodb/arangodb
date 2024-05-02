@@ -234,6 +234,7 @@ size_t connection_pool::drain_msg_queue() noexcept {
   while (CURLMsg* msg =
              curl_multi_info_read(_curl_multi._multi_handle, &msgs_in_queue)) {
     if (msg->msg == CURLMSG_DONE) {
+      auto guard = std::lock_guard(_requestsPerEndpointMutex);
       resolve_handle(msg->easy_handle, msg->data.result);
       num_message += 1;
     }
@@ -247,17 +248,24 @@ void connection_pool::resolve_handle(CURL* easy_handle,
   void* req_ptr;
   curl_easy_getinfo(easy_handle, CURLINFO_PRIVATE, &req_ptr);
   auto req = std::unique_ptr<request>(static_cast<request*>(req_ptr));
+  LOG_DEVEL << ADB_HERE << " resolving " << req->endpoint << " " << req->unique_id << " with " << result;
 
   curl_multi_remove_handle(_curl_multi._multi_handle, easy_handle);
   bool erased = false;
-  if (auto it = _requestsPerEndpoint.find(req->endpoint);
+  {
+    dumpRequestsPerEndpoint();
+    if (auto it = _requestsPerEndpoint.find(req->endpoint);
       it != _requestsPerEndpoint.end()) {
-    erased = it->second.erase(easy_handle) > 0;
+      erased = it->second.erase(easy_handle) > 0;
+      if (it->second.empty()) {
+        _requestsPerEndpoint.erase(it);
+      }
+    }
   }
   if (not erased) {
     LOG_TOPIC("c6958", ERR, Logger::FIXME)
         << "Request not indexed by endpoint: id=" << req->unique_id
-        << " endpoint=" << req->endpoint << " url=" << req->url;
+        << " endpoint=" << req->endpoint << " url=" << req->url << " result=" << result;
   }
   TRI_ASSERT(erased);
 
@@ -282,7 +290,7 @@ void connection_pool::install_new_handles() noexcept {
       std::swap(canceledEndpoints, _cancelEndpoints);
     }
 
-    if (requests.empty()) {
+    if (requests.empty() && canceledEndpoints.empty()) {
       break;
     }
 
@@ -303,15 +311,16 @@ void connection_pool::install_new_handles() noexcept {
           req->_curl_handle._easy_handle);
       std::ignore = req.release();
     }
+    auto abortHandles = std::vector<CURL*>{};
     {
       std::lock_guard guard(_requestsPerEndpointMutex);
       for (auto const& endpoint : canceledEndpoints) {
         if (auto it = _requestsPerEndpoint.find(endpoint);
             it != _requestsPerEndpoint.end()) {
-          auto handles = std::move(it->second);
-          _requestsPerEndpoint.erase(it);
-          for (auto& handle : handles) {
-            curl_multi_remove_handle(_curl_multi._multi_handle, handle);
+          auto const& handles = it->second;
+          for (auto const& handle : handles) {
+            resolve_handle(handle, CURLE_ABORTED_BY_CALLBACK);
+            abortHandles.emplace_back(handle);
           }
         }
       }
@@ -376,8 +385,13 @@ connection_pool::connection_pool()
           [this](std::stop_token stoken) { this->run_curl_loop(stoken); }) {}
 
 void connection_pool::cancelConnections(std::string endpoint) {
-  std::lock_guard guard(_mutex);
-  _cancelEndpoints.emplace(std::move(endpoint));
+  {
+    std::lock_guard guard(_mutex);
+    _cancelEndpoints.emplace(std::move(endpoint));
+  }
+  _curl_multi.notify();
+  _cv.notify_all();
+}
 }
 
 request::~request() {
