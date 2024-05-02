@@ -77,7 +77,7 @@ Result RocksDBTtlIndex::insert(transaction::Methods& trx, RocksDBMethods* mthds,
   double timestamp = getTimestamp(doc);
   if (timestamp < 0) {
     // index attribute not present or invalid. nothing to do
-    return Result();
+    return {};
   }
   transaction::BuilderLeaser leased(&trx);
   leased->openObject();
@@ -106,7 +106,6 @@ Result RocksDBTtlIndex::remove(transaction::Methods& trx, RocksDBMethods* mthds,
                                    options);
 }
 
-double RocksDBTtlIndex::getTimestamp(
-    arangodb::velocypack::Slice const& doc) const {
+double RocksDBTtlIndex::getTimestamp(velocypack::Slice doc) const {
   return Index::getTimestamp(doc, getAttribute());
 }

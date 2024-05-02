@@ -31,6 +31,7 @@
 #include "Aql/QueryContext.h"
 #include "Aql/QueryExecutionState.h"
 #include "Aql/QueryResult.h"
+#include "Basics/Guarded.h"
 #ifdef USE_V8
 #include "Aql/QueryResultV8.h"
 #endif
@@ -119,6 +120,11 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   double getLockTimeout() const noexcept final;
 
   QueryString const& queryString() const { return _queryString; }
+
+  /// @brief the query's transaction id. returns 0 if no transaction
+  /// has been assigned to the query yet. use this only for informational
+  /// purposes
+  TransactionId transactionId() const noexcept;
 
   /// @brief return the start time of the query (steady clock value)
   double startTime() const noexcept;
@@ -237,7 +243,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   SnippetList const& snippets() const { return _snippets; }
   SnippetList& snippets() { return _snippets; }
   ServerQueryIdList& serverQueryIds() { return _serverQueryIds; }
-  ExecutionStats& executionStats() { return _execStats; }
+  Guarded<ExecutionStats>& executionStatsGuard() { return _execStats; }
 
   // Debug method to kill a query at a specific position
   // during execution. It internally asserts that the query
@@ -314,7 +320,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   QueryString _queryString;
 
   /// collect execution stats, contains aliases
-  ExecutionStats _execStats;
+  Guarded<ExecutionStats> _execStats;
 
   /// @brief transaction context to use for this query
   std::shared_ptr<transaction::Context> _transactionContext;

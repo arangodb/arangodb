@@ -45,6 +45,8 @@ struct CacheOptions {
   std::uint64_t rebalancingInterval = 2'000'000ULL;  // 2s
   // maximum memory usage for spare hash tables kept around by the cache.
   std::uint64_t maxSpareAllocation = 67'108'864ULL;  // 64MB
+  // maximum size of an individual cache value entry (excluding key size)
+  std::uint64_t maxCacheValueSize = 4'194'304;  // 4MB
   // used internally and by tasks. this multiplier is used with the
   // cache's memory limit, and if exceeded, triggers a shrinking of the
   // least frequently accessed kCachesToShrinkRatio caches.

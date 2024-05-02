@@ -23,10 +23,9 @@
 
 #include "LanguageFeature.h"
 
-#include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
+#include "Basics/Utf8Helper.h"
 #include "Basics/application-exit.h"
-#include "Basics/directories.h"
 #include "Basics/error.h"
 #include "Basics/exitcodes.h"
 #include "Basics/files.h"
@@ -42,7 +41,7 @@
 #include <cstdlib>
 
 namespace {
-void setCollator(std::string_view language, void* icuDataPtr,
+void setCollator(std::string_view language,
                  arangodb::basics::LanguageType type) {
   using arangodb::basics::Utf8Helper;
 
@@ -59,8 +58,7 @@ void setCollator(std::string_view language, void* icuDataPtr,
       break;
   }
 
-  if (!Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(language, type,
-                                                         icuDataPtr)) {
+  if (!Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(language, type)) {
     LOG_TOPIC("01490", FATAL, arangodb::Logger::FIXME)
         << "error setting collator language to '" << language << "'. "
         << "The icudtl.dat file might be of the wrong version. "
@@ -69,7 +67,7 @@ void setCollator(std::string_view language, void* icuDataPtr,
   }
 }
 
-void setLocale(icu::Locale& locale) {
+void setLocale(icu_64_64::Locale& locale) {
   using arangodb::basics::Utf8Helper;
   std::string languageName;
 
@@ -77,16 +75,16 @@ void setLocale(icu::Locale& locale) {
     languageName =
         absl::StrCat(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage(), "_",
                      Utf8Helper::DefaultUtf8Helper.getCollatorCountry());
-    locale =
-        icu::Locale(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage().c_str(),
-                    Utf8Helper::DefaultUtf8Helper.getCollatorCountry().c_str()
-                    /*
-                       const   char * variant  = 0,
-                       const   char * keywordsAndValues = 0
-                    */
-        );
+    locale = icu_64_64::Locale(
+        Utf8Helper::DefaultUtf8Helper.getCollatorLanguage().c_str(),
+        Utf8Helper::DefaultUtf8Helper.getCollatorCountry().c_str()
+        /*
+           const   char * variant  = 0,
+           const   char * keywordsAndValues = 0
+        */
+    );
   } else {
-    locale = icu::Locale(
+    locale = icu_64_64::Locale(
         Utf8Helper::DefaultUtf8Helper.getCollatorLanguage().c_str());
     languageName = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
   }
@@ -168,85 +166,7 @@ or `--default-language`. Setting both of them results in an error.)");
       .setIntroducedIn(30800);
 }
 
-std::string LanguageFeature::prepareIcu(std::string const& binaryPath,
-                                        std::string const& binaryExecutionPath,
-                                        std::string& path,
-                                        std::string const& binaryName) {
-  std::string fn("icudtl.dat");
-  if (TRI_GETENV("ICU_DATA", path)) {
-    path = FileUtils::buildFilename(path, fn);
-  }
-  if (path.empty() || !TRI_IsRegularFile(path.c_str())) {
-    if (!path.empty()) {
-      LOG_TOPIC("581d1", WARN, arangodb::Logger::FIXME)
-          << "failed to locate '" << fn << "' at '" << path << "'";
-    }
-
-    std::string bpfn = FileUtils::buildFilename(binaryExecutionPath, fn);
-
-    if (TRI_IsRegularFile(fn.c_str())) {
-      path = fn;
-    } else if (TRI_IsRegularFile(bpfn.c_str())) {
-      path = bpfn;
-    } else {
-      std::string argv0 =
-          FileUtils::buildFilename(binaryExecutionPath, binaryName);
-      path = TRI_LocateInstallDirectory(argv0.c_str(), binaryPath.c_str());
-      path = FileUtils::buildFilename(path, ICU_DESTINATION_DIRECTORY, fn);
-
-      if (!TRI_IsRegularFile(path.c_str())) {
-        // Try whether we have an absolute install prefix:
-        path = FileUtils::buildFilename(ICU_DESTINATION_DIRECTORY, fn);
-      }
-    }
-
-    if (!TRI_IsRegularFile(path.c_str())) {
-      std::string msg = absl::StrCat(
-          "failed to initialize ICU library. Could not locate '", path,
-          "'. Please make sure it is available. "
-          "The environment variable ICU_DATA");
-      std::string icupath;
-      if (TRI_GETENV("ICU_DATA", icupath)) {
-        absl::StrAppend(&msg, "='", icupath, "'");
-      }
-      absl::StrAppend(&msg, " should point to the directory containing '", fn,
-                      "'");
-
-      LOG_TOPIC("0de77", FATAL, arangodb::Logger::FIXME) << msg;
-      FATAL_ERROR_EXIT_CODE(TRI_EXIT_ICU_INITIALIZATION_FAILED);
-    } else {
-      std::string icu_path = path.substr(0, path.length() - fn.length());
-      FileUtils::makePathAbsolute(icu_path);
-      FileUtils::normalizePath(icu_path);
-      setenv("ICU_DATA", icu_path.c_str(), 1);
-    }
-  }
-
-  LOG_TOPIC("c247a", DEBUG, arangodb::Logger::CONFIG)
-      << "loading ICU data from path '" << path << "'";
-
-  std::string icuData = basics::FileUtils::slurp(path);
-
-  if (icuData.empty()) {
-    LOG_TOPIC("d8a98", FATAL, arangodb::Logger::FIXME)
-        << "failed to load '" << fn << "' at '" << path << "' - "
-        << TRI_last_error();
-    FATAL_ERROR_EXIT_CODE(TRI_EXIT_ICU_INITIALIZATION_FAILED);
-  }
-
-  return icuData;
-}
-
 void LanguageFeature::prepare() {
-  std::string p;
-  auto context = ArangoGlobalContext::CONTEXT;
-  std::string binaryExecutionPath = context->getBinaryPath();
-  std::string binaryName = context->binaryName();
-  if (_icuData.empty()) {
-    _icuData = LanguageFeature::prepareIcu(_binaryPath, binaryExecutionPath, p,
-                                           binaryName);
-  }
-
   _langType = ::getLanguageType(_defaultLanguage, _icuLanguage);
 
   if (LanguageType::INVALID == _langType) {
@@ -258,12 +178,12 @@ void LanguageFeature::prepare() {
 
   ::setCollator(
       _langType == LanguageType::ICU ? _icuLanguage : _defaultLanguage,
-      _icuData.data(), _langType);
+      _langType);
 }
 
 void LanguageFeature::start() { ::setLocale(_locale); }
 
-icu::Locale& LanguageFeature::getLocale() { return _locale; }
+icu_64_64::Locale& LanguageFeature::getLocale() { return _locale; }
 
 std::tuple<std::string_view, LanguageType> LanguageFeature::getLanguage()
     const {
@@ -302,7 +222,7 @@ void LanguageFeature::resetLanguage(std::string_view language,
       return;
   }
 
-  ::setCollator(language.data(), _icuData.data(), _langType);
+  ::setCollator(language.data(), _langType);
   ::setLocale(_locale);
 }
 

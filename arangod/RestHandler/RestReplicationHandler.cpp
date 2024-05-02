@@ -277,12 +277,14 @@ static Result checkPlanLeaderDirect(
     // that is prepended by `arango`! WTF!?
     VPackSlice plan =
         res.slice().at(0).get(AgencyCommHelper::path()).get(agencyPath);
-    TRI_ASSERT(plan.isArray() && plan.length() > 0);
 
-    VPackSlice leaderSlice = plan.at(0);
-    TRI_ASSERT(leaderSlice.isString());
-    if (leaderSlice.isEqualString(claimLeaderId)) {
-      return Result{};
+    // The collection might be deleted in the meantime
+    if (plan.isArray() && plan.length() > 0) {
+      VPackSlice leaderSlice = plan.at(0);
+      TRI_ASSERT(leaderSlice.isString());
+      if (leaderSlice.isEqualString(claimLeaderId)) {
+        return Result{};
+      }
     }
   }
 
@@ -3498,9 +3500,17 @@ futures::Future<Result> RestReplicationHandler::createBlockingTransaction(
     co_return res;
   }
 
-  ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
-
   std::string vn = _vocbase.name();
+
+  // we successfully created the transaction.
+  // make sure if it is aborted if something goes wrong.
+  auto transactionAborter = scopeGuard([mgr, id, vn]() noexcept {
+    try {
+      mgr->abortManagedTrx(id, vn).get();
+    } catch (...) {
+    }
+  });
+
   try {
     if (!serverId.empty()) {
       std::string comment =
@@ -3512,7 +3522,7 @@ futures::Future<Result> RestReplicationHandler::createBlockingTransaction(
           // Code does not matter, read only access, so we can roll back.
           transaction::Manager* mgr = transaction::ManagerFeature::manager();
           if (mgr) {
-            mgr->abortManagedTrx(id, vn);
+            mgr->abortManagedTrx(id, vn).get();
           }
         } catch (...) {
           // All errors that show up here can only be
@@ -3520,6 +3530,7 @@ futures::Future<Result> RestReplicationHandler::createBlockingTransaction(
         }
       };
 
+      ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
       auto rGuard =
           std::make_unique<RebootCookie>(ci.rebootTracker().callMeOnChange(
               {serverId, rebootId}, std::move(f), std::move(comment)));
@@ -3543,14 +3554,14 @@ futures::Future<Result> RestReplicationHandler::createBlockingTransaction(
   }
 
   if (isTombstoned(id)) {
-    try {
-      co_return mgr->abortManagedTrx(id, vn);
-    } catch (...) {
-      // Maybe thrown in shutdown.
-    }
-    // DO NOT LOCK in this case, pointless
+    // DO NOT LOCK in this case, pointless.
+    // transactionAborter will abort the transaction for us.
     co_return {TRI_ERROR_TRANSACTION_INTERNAL, "transaction already cancelled"};
   }
+
+  // when we get here, we let the transaction remain active until it
+  // times out or a cancel request is sent.
+  transactionAborter.cancel();
 
   co_return isLockHeld(id);
 }
@@ -3583,7 +3594,7 @@ ResultT<bool> RestReplicationHandler::cancelBlockingTransaction(
   if (res.ok()) {
     transaction::Manager* mgr = transaction::ManagerFeature::manager();
     if (mgr) {
-      auto isAborted = mgr->abortManagedTrx(id, _vocbase.name());
+      auto isAborted = mgr->abortManagedTrx(id, _vocbase.name()).get();
       if (isAborted.ok()) {  // lock was held
         return ResultT<bool>::success(true);
       }
@@ -3713,14 +3724,15 @@ RequestLane RestReplicationHandler::lane() const {
         // In case of a hard-lock this shard is actually blocking
         // other operations. So let's hurry up with this.
         return RequestLane::CLUSTER_INTERNAL;
-      } else {
-        // This process will determine the start of a replication.
-        // It can be delayed a bit and can be queued after other write
-        // operations The follower is not in sync and requires to catch up
-        // anyways.
-        return RequestLane::SERVER_REPLICATION_CATCHUP;
       }
+
+      // This process will determine the start of a replication.
+      // It can be delayed a bit and can be queued after other write
+      // operations The follower is not in sync and requires to catch up
+      // anyways.
+      return RequestLane::SERVER_REPLICATION;
     }
+
     if (command == RemoveFollower || command == LoggerFollow ||
         command == Batch || command == Inventory || command == Revisions ||
         command == Dump) {

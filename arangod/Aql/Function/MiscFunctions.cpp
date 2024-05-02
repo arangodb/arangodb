@@ -193,14 +193,15 @@ AqlValue functions::Reverse(ExpressionContext* expressionContext,
     transaction::StringLeaser buf1(trx);
     velocypack::StringSink adapter(buf1.get());
     appendAsString(vopts, adapter, value);
-    icu::UnicodeString uBuf(buf1->data(), static_cast<int32_t>(buf1->length()));
+    icu_64_64::UnicodeString uBuf(buf1->data(),
+                                  static_cast<int32_t>(buf1->length()));
     // reserve the result buffer, but need to set empty afterwards:
-    icu::UnicodeString result;
+    icu_64_64::UnicodeString result;
     result.getBuffer(uBuf.length());
     result = "";
-    icu::StringCharacterIterator iter(uBuf, uBuf.length());
+    icu_64_64::StringCharacterIterator iter(uBuf, uBuf.length());
     UChar c = iter.previous();
-    while (c != icu::CharacterIterator::DONE) {
+    while (c != icu_64_64::CharacterIterator::DONE) {
       result.append(c);
       c = iter.previous();
     }

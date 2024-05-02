@@ -67,6 +67,19 @@ RestCollectionHandler::RestCollectionHandler(ArangodServer& server,
                                              GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
+RequestLane RestCollectionHandler::lane() const {
+  if (_request->requestType() == rest::RequestType::GET) {
+    auto const& suffixes = _request->suffixes();
+    if (suffixes.size() >= 2 &&
+        (suffixes[1] == "shards" || suffixes[1] == "responsibleShard")) {
+      // these request types are non-blocking, so we can give them high priority
+      return RequestLane::CLUSTER_ADMIN;
+    }
+  }
+
+  return RequestLane::CLIENT_SLOW;
+}
+
 RestStatus RestCollectionHandler::execute() {
   switch (_request->requestType()) {
     case rest::RequestType::GET:
