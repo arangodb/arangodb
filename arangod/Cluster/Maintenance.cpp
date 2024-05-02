@@ -1063,6 +1063,7 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
           continue;
         }
 
+        // NOTE: shardMap only stays valid as long as plan is not deleted. Do not return it.
         auto const shardMap = getShardMap(plan);  // plan shards -> servers
         for (auto const& lcol : VPackObjectIterator(ldbslice)) {
           auto maybeShardID = ShardID::shardIdFromString(lcol.key.stringView());
@@ -1969,6 +1970,7 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       return replication::Version::ONE;
     });
 
+    // NOTE: shardMap only stays valid as long as plan is not deleted. Do not return it.
     ShardMapView shardMap;
     auto pit = plan.find(dbName);
     VPackSlice pdb;
