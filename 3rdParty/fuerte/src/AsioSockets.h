@@ -234,7 +234,7 @@ struct Socket<fuerte::SocketType::Ssl> {
   }
   
   void rearm() {
-    socket = asio_ns::ssl::stream<asio_ns::ip::tcp::socket>(this->ctx, this->sslContext);
+    // socket = asio_ns::ssl::stream<asio_ns::ip::tcp::socket>(this->ctx, this->sslContext);
     canceled = false;
   }
 
