@@ -1,6 +1,10 @@
 devel
 -----
 
+* Improved the time required to create a new Collection in a database with
+  hundreds of collections. This also improves times for indexes and dropping
+  of collections.
+
 * Added startup option `--cache.max-cache-value-size` to limit the maximum size
   of individual values stored in the in-memory cache used for
 
