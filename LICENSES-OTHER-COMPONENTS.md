@@ -384,7 +384,7 @@ _Enterprise Edition only_
 ### RocksDB
 
 * Name: RocksDB
-* Version: 9.3, commit 6349da612bd26bbf338cbce4601de29ffe1a1f1c
+* Version: 9.2, commit 6349da612bd26bbf338cbce4601de29ffe1a1f1c
 * Date: 2024-05-01 16:33:04 -0700
 * GitHub: https://github.com/arangodb/rocksdb
 * License: https://github.com/arangodb/rocksdb/blob/main/README.md

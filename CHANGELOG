@@ -1,7 +1,7 @@
 devel
 -----
 
-* Upgraded bundled version of RocksDB to 9.3.
+* Upgraded bundled version of RocksDB to 9.2.
 
   The default values for the following RocksDB-related startup options were 
   adjusted as well:
@@ -18,6 +18,10 @@ devel
 
   The startup option `--rocksdb.throttle-slow-down-writes-trigger` has been
   obsoleted.
+
+* Improved the time required to create a new Collection in a database with
+  hundreds of collections. This also improves times for indexes and dropping
+  of collections.
 
 * Added startup option `--cache.max-cache-value-size` to limit the maximum size
   of individual values stored in the in-memory cache used for
