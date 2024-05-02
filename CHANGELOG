@@ -2,7 +2,7 @@ v3.11.9 (XXXX-XX-XX)
 --------------------
 
 * Improved the time required to create a new Collection in a database with
-  hundreds of collections. This also imrpoves times for indexes and dropping
+  hundreds of collections. This also improves times for indexes and dropping
   of collections.
 
 * Prioritize requests for commiting or aborting streaming transactions on
