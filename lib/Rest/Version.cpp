@@ -49,6 +49,8 @@
 
 #include "../3rdParty/iresearch/core/utils/version_defines.hpp"
 
+#include <curl/curl.h>
+
 using namespace arangodb;
 using namespace arangodb::rest;
 
@@ -219,7 +221,7 @@ void Version::initialize() {
   Values["oskar-build-repository"] = getOskarBuildRepository();
 #endif
 
-  Values["curl-version"] = "none";
+  Values["curl-version"] = getCurlVersion();
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   Values["assertions"] = "true";
@@ -392,6 +394,24 @@ std::string Version::getBoostReactorType() {
 #else
   return std::string("select");
 #endif
+}
+
+std::string Version::getCurlVersion() {
+  auto* data = curl_version_info(CURLVERSION_NOW);
+  std::stringstream result;
+  result << data->version << "; protocols = ";
+  for (auto* proto = data->protocols; *proto != nullptr; ++proto) {
+    result << *proto << " ";
+  }
+  result << "; features = ";
+  for (auto* feat = data->feature_names; *feat != nullptr; ++feat) {
+    result << *feat << " ";
+  }
+
+  result << "; nghttp2 = " << data->nghttp2_version;
+  result << "; ssl = " << data->ssl_version;
+  result << "; zlib = " << data->libz_version;
+  return result.str();
 }
 
 // get RocksDB version

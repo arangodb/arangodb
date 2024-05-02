@@ -168,6 +168,8 @@ class Version {
   // VelocyPack all data
   static void getVPack(velocypack::Builder&);
 
+  static std::string getCurlVersion();
+
  public:
   static std::map<std::string, std::string> Values;
 };
