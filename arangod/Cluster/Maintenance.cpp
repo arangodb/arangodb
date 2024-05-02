@@ -86,10 +86,13 @@ static std::string_view const PRIMARY("primary");
 static std::string_view const EDGE("edge");
 
 namespace {
+
+// Maps shardID to list of servers
+using ShardMapView = std::unordered_map<ShardID, std::vector<std::string_view>>;
+
 bool isViewIndex(std::string_view indexType) noexcept {
   return indexType == iresearch::StaticStrings::ViewArangoSearchType;
 }
-};  // namespace
 
 static int indexOf(VPackSlice const& slice, std::string const& val) {
   if (slice.isArray()) {
@@ -505,7 +508,7 @@ static void handlePlanShard(
 
 static void handleLocalShard(
     std::string const& dbname, ShardID const& shname, VPackSlice const& cprops,
-    VPackSlice const& shardMap, containers::FlatHashSet<ShardID>& commonShrds,
+    ShardMapView const& shardMap, containers::FlatHashSet<ShardID>& commonShrds,
     containers::FlatHashSet<std::string>& indis, std::string const& serverId,
     std::vector<std::shared_ptr<ActionDescription>>& actions,
     containers::FlatHashSet<DatabaseID>& makeDirty, bool& callNotify,
@@ -551,9 +554,9 @@ static void handleLocalShard(
   // The shard exists in both Plan and Local
   commonShrds.erase(it);  // it not a common shard?
 
-  std::string plannedLeader;
-  if (shardMap.get(std::string{shname}).isArray()) {
-    plannedLeader = shardMap.get(std::string{shname})[0].copyString();
+  std::string_view plannedLeader;
+  if (auto shMapIter = shardMap.find(shname); shMapIter != shardMap.end()) {
+    plannedLeader = shMapIter->second[0];
   }
 
   bool const activeResign = isLeading && plannedLeader != serverId;
@@ -626,27 +629,33 @@ static void handleLocalShard(
 }
 
 /// @brief Get a map shardName -> servers
-VPackBuilder getShardMap(VPackSlice const& collections) {
-  VPackBuilder shardMap;
+ShardMapView getShardMap(VPackSlice collections) {
+  ShardMapView shardMap;
   {
-    VPackObjectBuilder o(&shardMap);
     // Note: collections can be NoneSlice if database is already deleted.
     // But then shardMap can also be empty, so we are good.
     if (collections.isObject()) {
+      shardMap.reserve(collections.length());
       for (auto collection : VPackObjectIterator(collections)) {
         TRI_ASSERT(collection.value.isObject());
-        if (!collection.value.get(SHARDS).isObject()) {
-          continue;
-        }
+        if (auto shards = collection.value.get(SHARDS); shards.isObject()) {
+          for (auto shard : VPackObjectIterator(shards)) {
+            std::vector<std::string_view> servers;
+            servers.reserve(shard.value.length());
+            for (auto srv : VPackArrayIterator(shard.value)) {
+              servers.emplace_back(srv.stringView());
+            }
 
-        for (auto shard : VPackObjectIterator(collection.value.get(SHARDS))) {
-          shardMap.add(shard.key.stringView(), shard.value);
+            shardMap.emplace(ShardID(shard.key.stringView()),
+                             std::move(servers));
+          }
         }
       }
     }
   }
   return shardMap;
 }
+}  // namespace
 
 void arangodb::maintenance::diffReplicatedLogs(
     DatabaseID const& database, ReplicatedLogStatusMap const& localLogs,
@@ -1054,8 +1063,10 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
           continue;
         }
 
+        // NOTE: shardMap only stays valid as long as plan is not deleted. Do
+        // not return it.
+        auto const shardMap = getShardMap(plan);  // plan shards -> servers
         for (auto const& lcol : VPackObjectIterator(ldbslice)) {
-          auto const shardMap = getShardMap(plan);  // plan shards -> servers
           auto maybeShardID = ShardID::shardIdFromString(lcol.key.stringView());
           if (ADB_UNLIKELY(maybeShardID.fail())) {
             TRI_ASSERT(false)
@@ -1063,10 +1074,10 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
                 << " in db: " << ldbname;
             THROW_ARANGO_EXCEPTION(maybeShardID.result());
           }
-          handleLocalShard(ldbname, maybeShardID.get(), lcol.value,
-                           shardMap.slice(), commonShrds, indis, serverId,
-                           actions, makeDirty, callNotify, shardActionMap, rv,
-                           localLogs, shardsToLogs);
+          handleLocalShard(ldbname, maybeShardID.get(), lcol.value, shardMap,
+                           commonShrds, indis, serverId, actions, makeDirty,
+                           callNotify, shardActionMap, rv, localLogs,
+                           shardsToLogs);
         }
       }
     }
@@ -1392,7 +1403,8 @@ static ResultT<std::vector<ServerID>> getLocalFollowers(
 }
 
 static std::tuple<VPackBuilder, bool, bool> assembleLocalCollectionInfo(
-    DatabaseFeature& df, VPackSlice const& info, VPackSlice const& planServers,
+    DatabaseFeature& df, VPackSlice const& info,
+    std::vector<std::string_view> const& planServers,
     std::string const& database, std::string const& shard,
     std::string const& ourselves, MaintenanceFeature::errors_t const& allErrors,
     replication::Version replicationVersion,
@@ -1472,7 +1484,7 @@ static std::tuple<VPackBuilder, bool, bool> assembleLocalCollectionInfo(
         size_t numFollowers;
         std::tie(numFollowers, std::ignore) =
             collection->followers()->injectFollowerInfo(ret);
-        shardInSync = planServers.length() == numFollowers + 1;
+        shardInSync = planServers.size() == numFollowers + 1;
         shardReplicated = numFollowers > 0;
       } else {
         auto const* status =
@@ -1959,7 +1971,9 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       return replication::Version::ONE;
     });
 
-    VPackBuilder shardMap;
+    // NOTE: shardMap only stays valid as long as plan is not deleted. Do not
+    // return it.
+    ShardMapView shardMap;
     auto pit = plan.find(dbName);
     VPackSlice pdb;
     if (pit == plan.end()) {
@@ -2124,13 +2138,11 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
               continue;
             }
 
-            TRI_ASSERT(shardMap.slice().isObject());
-
+            TRI_ASSERT(shardMap.contains(shName)) << shardMap;
             auto const [localCollectionInfo, shardInSync, shardReplicated] =
-                assembleLocalCollectionInfo(
-                    df, shSlice, shardMap.slice().get(std::string{shName}),
-                    dbName, shName, serverId, allErrors, replicationVersion,
-                    localLogs);
+                assembleLocalCollectionInfo(df, shSlice, shardMap.at(shName),
+                                            dbName, shName, serverId, allErrors,
+                                            replicationVersion, localLogs);
             // Collection no longer exists
             TRI_ASSERT(!localCollectionInfo.slice().isNone());
             if (localCollectionInfo.slice().isEmptyObject() ||
@@ -2381,8 +2393,9 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
 
             if (servers.isArray() && servers.length() > 0  // servers in current
                 && servers[0].stringView() == serverId     // we are leading
-                && !ldb.hasKey(shName)                  // no local collection
-                && !shardMap.slice().hasKey(shName)) {  // no such shard in plan
+                && !ldb.hasKey(shName)  // no local collection
+                &&
+                !shardMap.contains(ShardID{shName})) {  // no such shard in plan
               report.add(VPackValue(CURRENT_COLLECTIONS + dbName + "/" +
                                     colName + "/" + shName));
               {
