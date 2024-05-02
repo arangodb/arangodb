@@ -299,7 +299,8 @@ void connection_pool::install_new_handles() noexcept {
             << "curl_multi_add_handle failed: " << curl_multi_strerror(result);
         FATAL_ERROR_ABORT();
       }
-      _requestsPerEndpoint[req->endpoint].emplace(req->_curl_handle._easy_handle);
+      _requestsPerEndpoint[req->endpoint].emplace(
+          req->_curl_handle._easy_handle);
       std::ignore = req.release();
     }
     {
