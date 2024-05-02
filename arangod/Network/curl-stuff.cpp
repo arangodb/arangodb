@@ -248,7 +248,6 @@ void connection_pool::resolve_handle(CURL* easy_handle,
   void* req_ptr;
   curl_easy_getinfo(easy_handle, CURLINFO_PRIVATE, &req_ptr);
   auto req = std::unique_ptr<request>(static_cast<request*>(req_ptr));
-  LOG_DEVEL << ADB_HERE << " resolving " << req->endpoint << " " << req->unique_id << " with " << result;
 
   curl_multi_remove_handle(_curl_multi._multi_handle, easy_handle);
   bool erased = false;
@@ -311,7 +310,6 @@ void connection_pool::install_new_handles() noexcept {
           req->_curl_handle._easy_handle);
       std::ignore = req.release();
     }
-    auto abortHandles = std::vector<CURL*>{};
     {
       std::lock_guard guard(_requestsPerEndpointMutex);
       for (auto const& endpoint : canceledEndpoints) {
@@ -320,7 +318,6 @@ void connection_pool::install_new_handles() noexcept {
           auto const& handles = it->second;
           for (auto const& handle : handles) {
             resolve_handle(handle, CURLE_ABORTED_BY_CALLBACK);
-            abortHandles.emplace_back(handle);
           }
         }
       }
