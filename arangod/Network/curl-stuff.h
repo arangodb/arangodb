@@ -4,6 +4,7 @@
 #include <thread>
 #include <mutex>
 #include <unordered_map>
+#include <unordered_set>
 #include <functional>
 #include <deque>
 #include <condition_variable>
@@ -59,6 +60,8 @@ struct connection_pool {
 
   void stop();
 
+  void cancelConnections(std::string endpoint);
+
  private:
   void run_curl_loop(std::stop_token stoken) noexcept;
 
@@ -72,10 +75,16 @@ struct connection_pool {
   std::mutex _mutex;
   std::condition_variable_any _cv;
   std::vector<std::unique_ptr<request>> _queue;
+  std::unordered_set<std::string> _cancelEndpoints;
+  std::mutex _requestsPerEndpointMutex;
+  std::unordered_map<std::string, std::unordered_set<CURL*>>
+      _requestsPerEndpoint;
   std::jthread _curl_thread;
 };
 
-void send_request(connection_pool& pool, http_method method, std::string path,
-                  std::string body, request_options const& options,
+// TODO endpoint is redundant (part of path)
+void send_request(connection_pool& pool, http_method method,
+                  std::string endpoint, std::string path, std::string body,
+                  request_options const& options,
                   std::function<void(response, CURLcode)> callback);
 }  // namespace arangodb::network::curl

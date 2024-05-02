@@ -2,6 +2,7 @@
 
 #include "Logger/LogMacros.h"
 #include "Basics/application-exit.h"
+#include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 
 using namespace arangodb::network::curl;
@@ -13,6 +14,7 @@ std::atomic<uint64_t> nextRequestId = 0;
 }
 
 struct curl::request {
+  std::string endpoint;
   std::string url;
   std::string body;
   std::size_t read_offset;
@@ -24,6 +26,7 @@ struct curl::request {
   std::uint64_t unique_id;
 
   response _response;
+
   ~request();
 };
 
@@ -121,11 +124,12 @@ int debug_callback(CURL* handle, curl_infotype type, char* data, size_t size,
 }  // namespace
 
 void arangodb::network::curl::send_request(
-    connection_pool& pool, http_method method, std::string path,
-    std::string body, request_options const& options,
+    connection_pool& pool, http_method method, std::string endpoint,
+    std::string path, std::string body, request_options const& options,
     std::function<void(response, CURLcode)> callback) {
   auto req = std::make_unique<request>();
 
+  req->endpoint = std::move(endpoint);
   req->url = std::move(path);
   req->body = std::move(body);
   req->_callback = std::move(callback);
@@ -238,6 +242,17 @@ void connection_pool::resolve_handle(CURL* easy_handle,
   auto req = std::unique_ptr<request>(static_cast<request*>(req_ptr));
 
   curl_multi_remove_handle(_curl_multi._multi_handle, easy_handle);
+  bool erased = false;
+  if (auto it = _requestsPerEndpoint.find(req->endpoint);
+      it != _requestsPerEndpoint.end()) {
+    erased = it->second.erase(easy_handle) > 0;
+  }
+  if (not erased) {
+    LOG_TOPIC("c6958", ERR, Logger::FIXME)
+        << "Request not indexed by endpoint: id=" << req->unique_id
+        << " endpoint=" << req->endpoint << " url=" << req->url;
+  }
+  TRI_ASSERT(erased);
 
   curl_easy_getinfo(easy_handle, CURLINFO_RESPONSE_CODE, &req->_response.code);
   try {
@@ -251,11 +266,13 @@ void connection_pool::resolve_handle(CURL* easy_handle,
 
 void connection_pool::install_new_handles() noexcept {
   std::vector<std::unique_ptr<request>> requests;
+  std::unordered_set<std::string> canceledEndpoints;
 
   while (true) {
     {
       std::unique_lock guard(_mutex);
       std::swap(requests, _queue);
+      std::swap(canceledEndpoints, _cancelEndpoints);
     }
 
     if (requests.empty()) {
@@ -264,6 +281,10 @@ void connection_pool::install_new_handles() noexcept {
 
     CURLMcode result;
     for (auto& req : requests) {
+      if (canceledEndpoints.contains(req->endpoint)) {
+        continue;
+      }
+      std::lock_guard guard(_requestsPerEndpointMutex);
       result = curl_multi_add_handle(_curl_multi._multi_handle,
                                      req->_curl_handle._easy_handle);
       if (result != CURLM_OK) {
@@ -271,12 +292,27 @@ void connection_pool::install_new_handles() noexcept {
             << "curl_multi_add_handle failed: " << curl_multi_strerror(result);
         FATAL_ERROR_ABORT();
       }
+      _requestsPerEndpoint[req->endpoint].emplace(req->_curl_handle._easy_handle);
       std::ignore = req.release();
+    }
+    {
+      std::lock_guard guard(_requestsPerEndpointMutex);
+      for (auto const& endpoint : canceledEndpoints) {
+        if (auto it = _requestsPerEndpoint.find(endpoint);
+            it != _requestsPerEndpoint.end()) {
+          auto handles = std::move(it->second);
+          _requestsPerEndpoint.erase(it);
+          for (auto& handle : handles) {
+            curl_multi_remove_handle(_curl_multi._multi_handle, handle);
+          }
+        }
+      }
     }
 
     requests.clear();
   }
 }
+
 void connection_pool::run_curl_loop(std::stop_token stoken) noexcept {
   int running_handles = 0;
   do {
@@ -330,6 +366,11 @@ connection_pool::~connection_pool() {
 connection_pool::connection_pool()
     : _curl_thread(
           [this](std::stop_token stoken) { this->run_curl_loop(stoken); }) {}
+
+void connection_pool::cancelConnections(std::string endpoint) {
+  std::lock_guard guard(_mutex);
+  _cancelEndpoints.emplace(std::move(endpoint));
+}
 
 request::~request() {
   if (_curl_headers != NULL) {

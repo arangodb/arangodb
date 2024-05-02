@@ -328,6 +328,7 @@ void NetworkFeature::prepare() {
       for (ServerID const& srvId : failed) {
         std::string endpoint = ci->getServerEndpoint(srvId);
         size_t n = _pool->cancelConnections(endpoint);
+        _pool->curl_pool->cancelConnections(endpoint);
         LOG_TOPIC_IF("15d94", INFO, Logger::COMMUNICATION, n > 0)
             << "canceling " << n << " connection(s) to failed server '" << srvId
             << "' on endpoint '" << endpoint << "'";
@@ -588,7 +589,7 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
       << "CURL " << to_string(req->header.restVerb) << " " << url << "BEGIN";
 
   network::curl::send_request(
-      *pool.curl_pool, method, url, req->payloadAsString(), opts,
+      *pool.curl_pool, method, endpoint, url, req->payloadAsString(), opts,
       [this, &pool, isFromPool,
        handleContentEncoding = options.handleContentEncoding,
        cb = std::move(cb), endpoint = std::move(endpoint),
