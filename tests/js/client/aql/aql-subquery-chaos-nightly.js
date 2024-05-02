@@ -64,10 +64,6 @@ const randomModificationDepth = () => {
   return 3;
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for cross-collection queries
-////////////////////////////////////////////////////////////////////////////////
-
 function ahuacatlSubqueryChaos() {
   /// Some queries that caused errors before. We don't have the seeds
   /// to create them, unfortunately, so we test them in here verbatim.
@@ -143,16 +139,6 @@ function ahuacatlSubqueryChaos() {
     },
   };
   return {
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief set up
-    ////////////////////////////////////////////////////////////////////////////////
-    setUp: function () {},
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief tear down
-    ////////////////////////////////////////////////////////////////////////////////
-    tearDown: function () {},
-
     testSpecificQueries: function () {
       for (const [key, value] of Object.entries(specificQueries)) {
         ct.testQuery(value, {});
@@ -160,7 +146,7 @@ function ahuacatlSubqueryChaos() {
     },
 
     testSomeSubqueryChaos: function () {
-      for (var i = 0; i < numberOfQueriesGenerated; i++) {
+      for (let i = 0; i < numberOfQueriesGenerated; i++) {
         ct.testQueryWithSeed({
           numberSubqueries: randomDepth(),
           seed: Math.trunc(Math.random() * 10000),
@@ -171,7 +157,7 @@ function ahuacatlSubqueryChaos() {
     },
 
     testSomeSubqueryModificationChaos: function () {
-      for (var i = 0; i < numberOfQueriesGenerated; i++) {
+      for (let i = 0; i < numberOfQueriesGenerated; i++) {
         ct.testModifyingQueryWithSeed({
           numberSubqueries: randomModificationDepth(),
           seed: Math.trunc(Math.random() * 10000),
@@ -182,10 +168,6 @@ function ahuacatlSubqueryChaos() {
     },
   };
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ahuacatlSubqueryChaos);
 
