@@ -255,7 +255,7 @@ void connection_pool::resolve_handle(CURL* easy_handle,
   {
     dumpRequestsPerEndpoint();
     if (auto it = _requestsPerEndpoint.find(req->endpoint);
-      it != _requestsPerEndpoint.end()) {
+        it != _requestsPerEndpoint.end()) {
       erased = it->second.erase(easy_handle) > 0;
       if (it->second.empty()) {
         _requestsPerEndpoint.erase(it);
@@ -265,7 +265,8 @@ void connection_pool::resolve_handle(CURL* easy_handle,
   if (not erased) {
     LOG_TOPIC("c6958", ERR, Logger::FIXME)
         << "Request not indexed by endpoint: id=" << req->unique_id
-        << " endpoint=" << req->endpoint << " url=" << req->url << " result=" << result;
+        << " endpoint=" << req->endpoint << " url=" << req->url
+        << " result=" << result;
   }
   TRI_ASSERT(erased);
 
