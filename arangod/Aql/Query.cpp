@@ -234,16 +234,6 @@ void Query::destroy() {
         << " this: " << (uintptr_t)this;
   }
 
-  // log to audit log
-  if (!_queryOptions.skipAudit &&
-      ServerState::instance()->isSingleServerOrCoordinator()) {
-    try {
-      events::AqlQuery(*this);
-    } catch (...) {
-      // we must not make any exception escape from here!
-    }
-  }
-
   ErrorCode resultCode = TRI_ERROR_INTERNAL;
   if (killed()) {
     resultCode = TRI_ERROR_QUERY_KILLED;
@@ -1025,6 +1015,16 @@ ExecutionState Query::finalize(velocypack::Builder& extras) {
     }
   }
 
+  // log to audit log
+  if (!_queryOptions.skipAudit &&
+      ServerState::instance()->isSingleServerOrCoordinator()) {
+    try {
+      events::AqlQuery(*this);
+    } catch (...) {
+      // we must not make any exception escape from here!
+    }
+  }
+
   LOG_TOPIC("95996", DEBUG, Logger::QUERIES)
       << now - _startTime << " Query::finalize:returning"
       << " this: " << (uintptr_t)this;
@@ -1652,7 +1652,6 @@ void Query::enterState(QueryExecutionState::ValueType state) {
 /// @brief cleanup plan and engine for current query
 ExecutionState Query::cleanupPlanAndEngine(ErrorCode errorCode, bool sync) {
   ensureExecutionTime();
-
   setResultCode(errorCode);
 
   if (sync && _sharedState) {
