@@ -253,7 +253,6 @@ void connection_pool::resolve_handle(CURL* easy_handle,
   curl_multi_remove_handle(_curl_multi._multi_handle, easy_handle);
   bool erased = false;
   {
-    dumpRequestsPerEndpoint();
     if (auto it = _requestsPerEndpoint.find(req->endpoint);
         it != _requestsPerEndpoint.end()) {
       erased = it->second.erase(easy_handle) > 0;
@@ -392,7 +391,6 @@ void connection_pool::cancelConnections(std::string endpoint) {
   }
   _curl_multi.notify();
   _cv.notify_all();
-}
 }
 
 request::~request() {

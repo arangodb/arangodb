@@ -229,6 +229,7 @@ target_link_libraries(arango
          arango_futures
          arango_static_strings
          arango_crashhandler
+         libcurl
          velocypack
          fuerte
          linenoise-ng
