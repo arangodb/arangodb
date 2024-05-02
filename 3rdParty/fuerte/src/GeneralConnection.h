@@ -74,6 +74,10 @@
 #include "AsioSockets.h"
 #include "debugging.h"
 
+#include <atomic>
+#include <chrono>
+#include <map>
+
 namespace arangodb { namespace fuerte {
 
 using Clock = std::chrono::steady_clock;
@@ -169,8 +173,7 @@ class GeneralConnection : public fuerte::Connection {
     if (_state.compare_exchange_strong(exp, Connection::State::Connecting)) {
       FUERTE_LOG_DEBUG << "startConnection: this=" << this << "\n";
       FUERTE_ASSERT(_config._maxConnectRetries > 0);
-      tryConnect(_config._maxConnectRetries, Clock::now(),
-                 asio_ns::error_code());
+      tryConnect(_config._maxConnectRetries);
     } else {
       FUERTE_LOG_ERROR << (void*)this << " => " << endpoint()
                        << " startConnection. unexpected state: "
@@ -200,7 +203,7 @@ class GeneralConnection : public fuerte::Connection {
 
     abortRequests(err, /*now*/ Clock::time_point::max());
 
-    _proto.shutdown([=, this, self(shared_from_this())](auto const& ec) {
+    _proto.shutdown([=, this, self = shared_from_this()](asio_ns::error_code ec) {
       terminateActivity(err);
       onFailure(err, msg);
     });  // Close socket
@@ -286,6 +289,14 @@ class GeneralConnection : public fuerte::Connection {
     }
   }
 
+  void cancelTimer() noexcept {
+    try {
+      this->_proto.timer.cancel();
+    } catch (std::exception const& ex) {
+      FUERTE_LOG_ERROR << "caught exception during timer cancelation: " << ex.what();
+    }
+  }
+
  protected:
   virtual void finishConnect() = 0;
 
@@ -305,88 +316,66 @@ class GeneralConnection : public fuerte::Connection {
 
  private:
   // Connect with a given number of retries
-  void tryConnect(unsigned retries, Clock::time_point start,
-                  asio_ns::error_code const& ec) {
-    if (_state.load() != Connection::State::Connecting) {
-      FUERTE_LOG_ERROR << (void*)this << " => " << endpoint()
-                       << " tryConnect exiting early. ec: " << ec.message()
-                       << ", state: " << (int)_state.load()
-                       << ", retries: " << retries;
-      return;
-    }
+  void tryConnect(unsigned retries) {
+    FUERTE_ASSERT(retries > 0);
 
-    if (retries == 0) {
-      std::string msg("connecting failed: '");
-      msg.append((ec != asio_ns::error::operation_aborted) ? ec.message()
-                                                           : "timeout");
-      msg.push_back('\'');
-      FUERTE_LOG_ERROR << (void*)this << " => " << endpoint()
-                       << " tryConnect: no retries left. ec: " << ec.message()
-                       << ", state: " << (int)_state.load()
-                       << ", retries: " << retries << ", msg: " << msg;
-      shutdownConnection(Error::CouldNotConnect, msg);
+    if (_state.load() != Connection::State::Connecting) {
       return;
     }
 
     FUERTE_LOG_DEBUG << "tryConnect (" << retries << ") this=" << this << "\n";
     auto self = Connection::shared_from_this();
 
-    _proto.timer.expires_at(start + _config._connectTimeout);
-    _proto.timer.async_wait([self](asio_ns::error_code const& ec) {
-      FUERTE_LOG_ERROR << (void*)(self.get()) << " => " << self->endpoint()
-                       << " tryConnect timer. ec: " << ec.message()
-                       << ", state: " << (int)self->state();
-      if (!ec && self->state() == Connection::State::Connecting) {
-        // the connect handler below gets 'operation_aborted' error
-        std::string msg("connecting failed: '");
-        msg.append((ec != asio_ns::error::operation_aborted) ? ec.message()
-                                                             : "timeout");
-        msg.push_back('\'');
-        FUERTE_LOG_ERROR
-            << (void*)(self.get()) << " => " << self->endpoint()
-            << " tryConnect: connect timeout, state: " << (int)self->state()
-            << ", msg: " << msg << " proto "
-            << (void*)&static_cast<GeneralConnection<ST, RT>&>(*self)._proto;
-        static_cast<GeneralConnection<ST, RT>&>(*self)._proto.cancel();
-        // static_cast<GeneralConnection<ST,
-        // RT>&>(*self).shutdownConnection(Error::CouldNotConnect, msg);
-      }
-    });
-
-    _proto.connect(_config, [self, start, retries](auto const& ec) mutable {
+    _proto.connect(_config, [self, retries](asio_ns::error_code ec) mutable {
       auto& me = static_cast<GeneralConnection<ST, RT>&>(*self);
-      me._proto.timer.cancel();
+      me.cancelTimer();
       // Note that is is possible that the alarm has already gone off, in which
       // case its closure might already be queued right after ourselves!
       // However, we now quickly set the state to `Connected` in which case the
       // closure will no longer shut down the socket and ruin our success.
       if (!ec) {
+        FUERTE_LOG_DEBUG << "tryConnect (" << retries << ") established connection this=" << self.get() << "\n";
         me.finishConnect();
         return;
       }
-      FUERTE_LOG_ERROR << (void*)(self.get()) << " => " << self->endpoint()
-                       << " tryConnect connecting failed. ec: " << ec.message()
-                       << ", state: " << (int)self->state()
-                       << ", retries: " << retries;
-      FUERTE_LOG_DEBUG << "connecting failed: " << ec.message() << "\n";
-      if (retries > 0 && ec != asio_ns::error::operation_aborted) {
-        auto end = std::min(Clock::now() + me._config._connectRetryPause,
-                            start + me._config._connectTimeout);
-        me._proto.timer.expires_at(end);
+
+      FUERTE_LOG_DEBUG << "tryConnect (" << retries << "), connecting failed: " << ec.message() << "\n";
+      if (retries > 1 && ec != asio_ns::error::operation_aborted) {
+        FUERTE_LOG_DEBUG << "tryConnect (" << retries << "), scheduling retry operation. this=" << self.get() << "\n";
+        me._proto.timer.expires_after(me._config._connectRetryPause);
         me._proto.timer.async_wait(
-            [self(std::move(self)), start, retries](auto ec) mutable {
-              FUERTE_LOG_ERROR
-                  << (void*)(self.get()) << " => " << self->endpoint()
-                  << " tryConnect executed deferred retry. ec: " << ec.message()
-                  << ", state: " << (int)self->state()
-                  << ", retries: " << (retries - 1);
+            [self = std::move(self), retries](asio_ns::error_code ec) mutable {
+              if (ec) {
+                FUERTE_LOG_DEBUG << "tryConnect, retry timer canceled. this=" << self.get() << "\n";
+                // timer canceled.
+                return;
+              }
               auto& me = static_cast<GeneralConnection<ST, RT>&>(*self);
-              me.tryConnect(!ec ? retries - 1 : 0, start, ec);
+              // rearm socket so that we can use it again
+              FUERTE_LOG_DEBUG << "tryConnect, rearming connection this=" << self.get() << "\n";
+              me._proto.rearm();
+              me.tryConnect(retries - 1);
             });
       } else {
-        me.tryConnect(0, start, ec);  // <- handles errors
+        std::string msg("connecting failed: ");
+        msg.append((ec != asio_ns::error::operation_aborted) ? ec.message()
+                                                             : "timeout");
+        FUERTE_LOG_DEBUG << "tryConnect, calling shutdownConnection(2): " << msg << " this=" << self.get();
+        me.shutdownConnection(Error::CouldNotConnect, msg);
       }
     });
+    
+    _proto.timer.expires_after(_config._connectTimeout);
+    _proto.timer.async_wait([self = std::move(self)](asio_ns::error_code ec) {
+      if (!ec && self->state() == Connection::State::Connecting) {
+        // note: if the timer fires successfully, ec is empty here.
+        // the connect handler below gets 'operation_aborted' error
+        auto& me = static_cast<GeneralConnection<ST, RT>&>(*self);
+        me._proto.cancel();
+        FUERTE_LOG_DEBUG << "tryConnect, connect timeout this=" << self.get();
+      }
+    });
+
   }
 
  protected:
@@ -461,8 +450,7 @@ struct MultiConnection : public GeneralConnection<ST, RT> {
   void setTimeout(bool setIOBegin) {
     const bool wasIdle = _streams.empty();
     if (wasIdle && !this->_config._useIdleTimeout) {
-      asio_ns::error_code ec;
-      this->_proto.timer.cancel(ec);
+      this->cancelTimer();
       return;
     }
 
