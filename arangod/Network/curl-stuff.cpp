@@ -11,7 +11,14 @@ using namespace arangodb;
 
 namespace {
 std::atomic<uint64_t> nextRequestId = 0;
-}
+
+[[maybe_unused]] struct CurlInitializer {
+  CurlInitializer() { curl_global_init(CURL_GLOBAL_ALL); }
+
+  ~CurlInitializer() { curl_global_cleanup(); }
+} curlInitializer = {};
+
+}  // namespace
 
 struct curl::request {
   std::string endpoint;
