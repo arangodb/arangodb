@@ -150,9 +150,9 @@ arangodb::Result getQueries(TRI_vocbase_t& vocbase, velocypack::Builder& out,
         continue;
       }
 
-      auto f = network::sendRequestRetry(
-          pool, "server:" + coordinator, fuerte::RestVerb::Get, url,
-          VPackBuffer<uint8_t>{}, options, network::addAuthorizationHeader({}));
+      auto f = network::sendRequestRetry(pool, "server:" + coordinator,
+                                         fuerte::RestVerb::Get, url,
+                                         VPackBuffer<uint8_t>{}, options);
       futures.emplace_back(std::move(f));
     }
 
@@ -253,8 +253,7 @@ Result Queries::clearSlow(TRI_vocbase_t& vocbase, bool allDatabases,
 
       auto f = network::sendRequestRetry(pool, "server:" + coordinator,
                                          fuerte::RestVerb::Delete,
-                                         "/_api/query/slow", body, options,
-                                         network::addAuthorizationHeader({}));
+                                         "/_api/query/slow", body, options);
       futures.emplace_back(std::move(f));
     }
 
