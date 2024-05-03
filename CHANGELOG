@@ -9,6 +9,10 @@ v3.11.9 (XXXX-XX-XX)
   The fix is to remove the retry logic, and instead prolong the connection
   timeout to a multiple of the previous timeout value.
 
+* Improved the time required to create a new Collection in a database with
+  hundreds of collections. This also improves times for indexes and dropping
+  of collections.
+
 * Prioritize requests for commiting or aborting streaming transactions on
   leaders and followers, because they can unblock other operations.
 

@@ -844,12 +844,12 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
           std::vector<std::string>{AgencyCommHelper::path(), PLAN, COLLECTIONS,
                                    ldbname});
       if (ldbslice.isObject()) {
+        auto const shardMap = getShardMap(plan);  // plan shards -> servers
         // Note that if `plan` is not an object, then `getShardMap` will simply
         // return an empty object, which is fine for `handleLocalShard`, so we
         // do not have to check anything else here.
         for (auto const& lcol : VPackObjectIterator(ldbslice)) {
           auto const& colname = lcol.key.copyString();
-          auto const shardMap = getShardMap(plan);  // plan shards -> servers
           auto rv = replicationVersion.find(dbname);
           TRI_ASSERT(rv != replicationVersion.end());
 
