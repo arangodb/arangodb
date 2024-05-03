@@ -126,7 +126,7 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
       _queryHash(kDontCache),
       _shutdownState(ShutdownState::None),
       _executionPhase(ExecutionPhase::INITIALIZE),
-      _resultCode(std::nullopt),
+      _result(std::nullopt),
 #ifdef USE_V8
       _executorOwnedByExterior(_transactionContext->isV8Context() &&
                                v8::Isolate::TryGetCurrent() != nullptr),
@@ -234,14 +234,17 @@ void Query::destroy() {
         << " this: " << (uintptr_t)this;
   }
 
-  ErrorCode resultCode = TRI_ERROR_INTERNAL;
   if (killed()) {
-    resultCode = TRI_ERROR_QUERY_KILLED;
+    setResult({TRI_ERROR_QUERY_KILLED});
+  } else {
+    // we intentionally set an error here so that we don't accidentially
+    // commit the query (again) when calling cleanupPlanAndEngine below.
+    setResult({TRI_ERROR_INTERNAL});
   }
 
   // this will reset _trx, so _trx is invalid after here
   try {
-    auto state = cleanupPlanAndEngine(resultCode, /*sync*/ true);
+    auto state = cleanupPlanAndEngine(/*sync*/ true);
     TRI_ASSERT(state != ExecutionState::WAITING);
   } catch (...) {
     // unfortunately we cannot do anything here, as we are in the destructor
@@ -311,7 +314,8 @@ bool Query::killed() const {
 void Query::kill() {
   auto const wasKilled = _queryKilled.exchange(true, std::memory_order_acq_rel);
   if (ServerState::instance()->isCoordinator() && !wasKilled) {
-    cleanupPlanAndEngine(TRI_ERROR_QUERY_KILLED, /*sync*/ false);
+    setResult({TRI_ERROR_QUERY_KILLED});
+    cleanupPlanAndEngine(/*sync*/ false);
   }
 }
 
@@ -418,13 +422,13 @@ void Query::prepareQuery() {
 
     enterState(QueryExecutionState::ValueType::EXECUTION);
   } catch (Exception const& ex) {
-    setResultCode(ex.code());
+    setResult({ex.code(), ex.what()});
     throw;
   } catch (std::bad_alloc const&) {
-    setResultCode(TRI_ERROR_OUT_OF_MEMORY);
+    setResult({TRI_ERROR_OUT_OF_MEMORY});
     throw;
   } catch (...) {
-    setResultCode(TRI_ERROR_INTERNAL);
+    setResult({TRI_ERROR_INTERNAL});
     throw;
   }
 }
@@ -690,33 +694,32 @@ ExecutionState Query::execute(QueryResult& queryResult) {
           QueryCache::instance()->store(&_vocbase, std::move(_cacheEntry));
         }
 
-        logAtEnd(queryResult);
         return state;
       }
     }
     // We should not be able to get here
     TRI_ASSERT(false);
   } catch (Exception const& ex) {
-    queryResult.reset(Result(
-        ex.code(),
-        absl::StrCat("AQL: ", ex.message(),
-                     QueryExecutionState::toStringWithPrefix(_execState))));
-    cleanupPlanAndEngine(ex.code(), /*sync*/ true);
+    setResult({ex.code(), absl::StrCat("AQL: ", ex.message(),
+                                       QueryExecutionState::toStringWithPrefix(
+                                           _execState))});
+    cleanupPlanAndEngine(/*sync*/ true);
+    queryResult.reset(result());
   } catch (std::bad_alloc const&) {
-    queryResult.reset(Result(
-        TRI_ERROR_OUT_OF_MEMORY,
-        absl::StrCat(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
-                     QueryExecutionState::toStringWithPrefix(_execState))));
-    cleanupPlanAndEngine(TRI_ERROR_OUT_OF_MEMORY, /*sync*/ true);
+    setResult(
+        {TRI_ERROR_OUT_OF_MEMORY,
+         absl::StrCat(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
+                      QueryExecutionState::toStringWithPrefix(_execState))});
+    cleanupPlanAndEngine(/*sync*/ true);
+    queryResult.reset(result());
   } catch (std::exception const& ex) {
-    queryResult.reset(Result(
-        TRI_ERROR_INTERNAL,
-        absl::StrCat(ex.what(),
-                     QueryExecutionState::toStringWithPrefix(_execState))));
-    cleanupPlanAndEngine(TRI_ERROR_INTERNAL, /*sync*/ true);
+    setResult({TRI_ERROR_INTERNAL,
+               absl::StrCat(ex.what(), QueryExecutionState::toStringWithPrefix(
+                                           _execState))});
+    cleanupPlanAndEngine(/*sync*/ true);
+    queryResult.reset(result());
   }
 
-  logAtEnd(queryResult);
   return ExecutionState::DONE;
 }
 
@@ -927,35 +930,34 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
       _cacheEntry->_stats = queryResult.extra;
       QueryCache::instance()->store(&_vocbase, std::move(_cacheEntry));
     }
+
     // fallthrough to returning queryResult below...
   } catch (Exception const& ex) {
-    queryResult.reset(Result(
-        ex.code(),
-        absl::StrCat("AQL: ", ex.message(),
-                     QueryExecutionState::toStringWithPrefix(_execState))));
-    cleanupPlanAndEngine(ex.code(), /*sync*/ true);
+    setResult({ex.code(), absl::StrCat("AQL: ", ex.message(),
+                                       QueryExecutionState::toStringWithPrefix(
+                                           _execState))});
+    cleanupPlanAndEngine(/*sync*/ true);
+    queryResult.reset(result());
   } catch (std::bad_alloc const&) {
-    queryResult.reset(Result(
-        TRI_ERROR_OUT_OF_MEMORY,
-        absl::StrCat(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
-                     QueryExecutionState::toStringWithPrefix(_execState))));
-    cleanupPlanAndEngine(TRI_ERROR_OUT_OF_MEMORY, /*sync*/ true);
+    setResult(
+        {TRI_ERROR_OUT_OF_MEMORY,
+         absl::StrCat(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
+                      QueryExecutionState::toStringWithPrefix(_execState))});
+    cleanupPlanAndEngine(/*sync*/ true);
+    queryResult.reset(result());
   } catch (std::exception const& ex) {
-    queryResult.reset(Result(
-        TRI_ERROR_INTERNAL,
-        absl::StrCat(ex.what(),
-                     QueryExecutionState::toStringWithPrefix(_execState))));
-    cleanupPlanAndEngine(TRI_ERROR_INTERNAL, /*sync*/ true);
+    setResult({TRI_ERROR_INTERNAL,
+               absl::StrCat(ex.what(), QueryExecutionState::toStringWithPrefix(
+                                           _execState))});
+    cleanupPlanAndEngine(/*sync*/ true);
+    queryResult.reset(result());
   }
 
-  logAtEnd(queryResult);
   return queryResult;
 }
 #endif
 
 ExecutionState Query::finalize(velocypack::Builder& extras) {
-  ensureExecutionTime();
-
   if (_queryProfile != nullptr &&
       _shutdownState.load(std::memory_order_relaxed) == ShutdownState::None) {
     // the following call removes the query from the list of currently
@@ -964,7 +966,7 @@ ExecutionState Query::finalize(velocypack::Builder& extras) {
     _queryProfile->unregisterFromQueryList();
   }
 
-  auto state = cleanupPlanAndEngine(TRI_ERROR_NO_ERROR, /*sync*/ false);
+  auto state = cleanupPlanAndEngine(/*sync*/ false);
   if (state == ExecutionState::WAITING) {
     return state;
   }
@@ -1001,104 +1003,13 @@ ExecutionState Query::finalize(velocypack::Builder& extras) {
   }
   extras.close();
 
-  // elapsed time since query start
-  auto& feature = vocbase().server().getFeature<QueryRegistryFeature>();
-  feature.trackQueryEnd(executionTime());
-
-  if (_queryProfile != nullptr && !queryOptions().skipAudit) {
-    auto queryList = vocbase().queryList();
-    // internal queries that are excluded from audit logging will not be
-    // logged here as slow queries, and will not be inserted into the
-    // _queries system collection
-    if (queryList != nullptr) {
-      handlePostProcessing(*queryList);
-    }
-  }
-
-  // log to audit log
-  if (!_queryOptions.skipAudit &&
-      ServerState::instance()->isSingleServerOrCoordinator()) {
-    try {
-      events::AqlQuery(*this);
-    } catch (...) {
-      // we must not make any exception escape from here!
-    }
-  }
+  setResult({TRI_ERROR_NO_ERROR});
 
   LOG_TOPIC("95996", DEBUG, Logger::QUERIES)
       << now - _startTime << " Query::finalize:returning"
       << " this: " << (uintptr_t)this;
+
   return ExecutionState::DONE;
-}
-
-void Query::handlePostProcessing(QueryList& querylist) {
-  // building the query slice is expensive. only do it if we actually need
-  // to log the query.
-  std::shared_ptr<velocypack::String> querySlice;
-  auto buildQuerySlice = [&querySlice, &querylist, this]() {
-    if (querySlice == nullptr) {
-      Query::QuerySerializationOptions options{
-          .includeUser = true,
-          .includeQueryString = querylist.trackQueryString(),
-          .includeBindParameters = querylist.trackBindVars(),
-          .includeDataSources = querylist.trackDataSources(),
-          // always true because the query is already finalized
-          .includeResultCode = true,
-          .queryStringMaxLength = querylist.maxQueryStringLength(),
-      };
-
-      velocypack::Builder builder;
-      toVelocyPack(builder, /*isCurrent*/ false, options);
-
-      querySlice = std::make_shared<velocypack::String>(builder.slice());
-    }
-    return querySlice;
-  };
-
-  // check if the query is considered a slow query and needs special treatment
-  double threshold = queryOptions().stream
-                         ? querylist.slowStreamingQueryThreshold()
-                         : querylist.slowQueryThreshold();
-
-  bool isSlowQuery = (querylist.trackSlowQueries() &&
-                      executionTime() >= threshold && threshold >= 0.0);
-  if (isSlowQuery) {
-    // yes.
-    try {
-      TRI_IF_FAILURE("QueryList::remove") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
-
-      auto& queryRegistryFeature =
-          vocbase().server().getFeature<QueryRegistryFeature>();
-      queryRegistryFeature.trackSlowQuery(executionTime());
-
-      Query::QuerySerializationOptions options{
-          .includeUser = true,
-          .includeQueryString = querylist.trackQueryString(),
-          .includeBindParameters = querylist.trackBindVars(),
-          .includeDataSources = querylist.trackDataSources(),
-          // always true because the query is already finalized
-          .includeResultCode = true,
-          .queryStringMaxLength = querylist.maxQueryStringLength(),
-      };
-
-      logSlow(options);
-
-      querylist.trackSlow(buildQuerySlice());
-    } catch (...) {
-    }
-  }
-
-  if (vocbase().server().hasFeature<QueryInfoLoggerFeature>()) {
-    auto& qilf = vocbase().server().getFeature<QueryInfoLoggerFeature>();
-
-    // building the query slice is expensive. only do it if we actually need
-    // to log the query.
-    if (qilf.shouldLog(vocbase().isSystem(), isSlowQuery)) {
-      qilf.log(buildQuerySlice());
-    }
-  }
 }
 
 /// @brief parse an AQL query
@@ -1252,7 +1163,6 @@ QueryResult Query::explain() {
         b.add("executionTime", VPackValue(executionTime()));
       }
     }
-
   } catch (Exception const& ex) {
     result.reset(Result(
         ex.code(),
@@ -1440,11 +1350,9 @@ uint64_t Query::hash() {
 }
 
 /// @brief log a query
-void Query::logAtStart() {
-  if (_queryString.empty()) {
-    return;
-  }
-  if (!vocbase().server().hasFeature<QueryRegistryFeature>()) {
+void Query::logAtStart() const {
+  if (_queryString.empty() ||
+      !vocbase().server().hasFeature<QueryRegistryFeature>()) {
     return;
   }
   auto const& feature = vocbase().server().getFeature<QueryRegistryFeature>();
@@ -1455,19 +1363,16 @@ void Query::logAtStart() {
       << _queryString.extract(maxLength) << "'";
 }
 
-void Query::logAtEnd(QueryResult const& queryResult) const {
-  if (_queryString.empty()) {
-    // nothing to log
-    return;
-  }
-  if (!vocbase().server().hasFeature<QueryRegistryFeature>()) {
+void Query::logAtEnd() const {
+  if (_queryString.empty() ||
+      !vocbase().server().hasFeature<QueryRegistryFeature>()) {
     return;
   }
 
   auto const& feature = vocbase().server().getFeature<QueryRegistryFeature>();
 
   // log failed queries?
-  bool logFailed = feature.logFailedQueries() && queryResult.result.fail();
+  bool logFailed = feature.logFailedQueries() && result().fail();
   // log queries exceeding memory usage threshold
   bool logMemoryUsage =
       resourceMonitor().peak() >= feature.peakMemoryUsageThreshold();
@@ -1496,8 +1401,8 @@ void Query::logAtEnd(QueryResult const& queryResult) const {
         << bindParameters << dataSources << ", database: " << vocbase().name()
         << ", user: " << user() << ", id: " << _queryId << ", token: QRY"
         << _queryId << ", peak memory usage: " << resourceMonitor().peak()
-        << " failed with exit code " << queryResult.result.errorNumber() << ": "
-        << queryResult.result.errorMessage()
+        << " failed with exit code " << result().errorNumber() << ": "
+        << result().errorMessage()
         << ", took: " << Logger::FIXED(executionTime());
   } else {
     LOG_TOPIC("e0b7c", WARN, Logger::QUERIES)
@@ -1622,15 +1527,15 @@ bool Query::canUseQueryCache() const {
   return false;
 }
 
-ErrorCode Query::resultCode() const noexcept {
-  std::lock_guard<std::mutex> guard{_resultCodeMutex};
-  return _resultCode.value_or(TRI_ERROR_NO_ERROR);
+Result Query::result() const {
+  std::lock_guard<std::mutex> guard{_resultMutex};
+  return _result.value_or(Result{});
 }
 
-void Query::setResultCode(ErrorCode code) noexcept {
-  std::lock_guard<std::mutex> guard{_resultCodeMutex};
-  if (!_resultCode.has_value()) {
-    _resultCode = code;
+void Query::setResult(Result&& res) noexcept {
+  std::lock_guard<std::mutex> guard{_resultMutex};
+  if (!_result.has_value()) {
+    _result = std::move(res);
   }
 }
 
@@ -1650,21 +1555,36 @@ void Query::enterState(QueryExecutionState::ValueType state) {
 }
 
 /// @brief cleanup plan and engine for current query
-ExecutionState Query::cleanupPlanAndEngine(ErrorCode errorCode, bool sync) {
+ExecutionState Query::cleanupPlanAndEngine(bool sync) {
   ensureExecutionTime();
-  setResultCode(errorCode);
+
+  {
+    std::unique_lock<std::mutex> guard{_resultMutex};
+    if (!_postProcessingDone) {
+      _postProcessingDone = true;
+
+      guard.unlock();
+
+      try {
+        handlePostProcessing();
+      } catch (std::exception const& ex) {
+        LOG_TOPIC("48fde", WARN, Logger::QUERIES)
+            << "caught exception during query postprocessing: " << ex.what();
+      }
+    }
+  }
 
   if (sync && _sharedState) {
     _sharedState->resetWakeupHandler();
-    auto state = cleanupTrxAndEngines(errorCode);
+    auto state = cleanupTrxAndEngines();
     while (state == ExecutionState::WAITING) {
       _sharedState->waitForAsyncWakeup();
-      state = cleanupTrxAndEngines(errorCode);
+      state = cleanupTrxAndEngines();
     }
     return state;
   }
 
-  return cleanupTrxAndEngines(errorCode);
+  return cleanupTrxAndEngines();
 }
 
 void Query::unregisterSnippets() {
@@ -1672,6 +1592,93 @@ void Query::unregisterSnippets() {
     auto* registry = QueryRegistryFeature::registry();
     if (registry) {
       registry->unregisterSnippets(_snippets);
+    }
+  }
+}
+
+void Query::handlePostProcessing(QueryList& querylist) {
+  Query::QuerySerializationOptions const options{
+      .includeUser = true,
+      .includeQueryString = querylist.trackQueryString(),
+      .includeBindParameters = querylist.trackBindVars(),
+      .includeDataSources = querylist.trackDataSources(),
+      // always true because the query is already finalized
+      .includeResultCode = true,
+      .queryStringMaxLength = querylist.maxQueryStringLength(),
+  };
+
+  // building the query slice is expensive. only do it if we actually need
+  // to log the query.
+  std::shared_ptr<velocypack::String> querySlice;
+  auto buildQuerySlice = [&querySlice, &options, this]() {
+    if (querySlice == nullptr) {
+      velocypack::Builder builder;
+      toVelocyPack(builder, /*isCurrent*/ false, options);
+
+      querySlice = std::make_shared<velocypack::String>(builder.slice());
+    }
+    return querySlice;
+  };
+
+  // check if the query is considered a slow query and needs special treatment
+  double threshold = queryOptions().stream
+                         ? querylist.slowStreamingQueryThreshold()
+                         : querylist.slowQueryThreshold();
+
+  bool isSlowQuery = (querylist.trackSlowQueries() &&
+                      executionTime() >= threshold && threshold >= 0.0);
+  if (isSlowQuery) {
+    // yes.
+    try {
+      TRI_IF_FAILURE("QueryList::remove") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+
+      auto& queryRegistryFeature =
+          vocbase().server().getFeature<QueryRegistryFeature>();
+      queryRegistryFeature.trackSlowQuery(executionTime());
+      logSlow(options);
+
+      querylist.trackSlow(buildQuerySlice());
+    } catch (...) {
+    }
+  }
+
+  if (vocbase().server().hasFeature<QueryInfoLoggerFeature>()) {
+    auto& qilf = vocbase().server().getFeature<QueryInfoLoggerFeature>();
+
+    // building the query slice is expensive. only do it if we actually need
+    // to log the query.
+    if (qilf.shouldLog(vocbase().isSystem(), isSlowQuery)) {
+      qilf.log(buildQuerySlice());
+    }
+  }
+}
+
+void Query::handlePostProcessing() {
+  // elapsed time since query start
+  auto& queryRegistryFeature =
+      vocbase().server().getFeature<QueryRegistryFeature>();
+  queryRegistryFeature.trackQueryEnd(executionTime());
+
+  if (!queryOptions().skipAudit &&
+      ServerState::instance()->isSingleServerOrCoordinator()) {
+    try {
+      auto queryList = vocbase().queryList();
+      // internal queries that are excluded from audit logging will not be
+      // logged here as slow queries, and will not be inserted into the
+      // _queries system collection
+      if (queryList != nullptr) {
+        handlePostProcessing(*queryList);
+      }
+
+      // log to normal log
+      logAtEnd();
+
+      // log to audit log
+      events::AqlQuery(*this);
+    } catch (...) {
+      // we must not make any exception escape from here!
     }
   }
 }
@@ -1850,7 +1857,7 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
                             "unhandled query shutdown exception");
             });
 
-    futures.emplace_back(std::move(f));
+    futures.push_back(std::move(f));
   }
 
   return futures::collectAll(std::move(futures))
@@ -1866,7 +1873,7 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
 }
 }  // namespace
 
-ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
+ExecutionState Query::cleanupTrxAndEngines() {
   ShutdownState exp = _shutdownState.load(std::memory_order_relaxed);
   if (exp == ShutdownState::Done) {
     return ExecutionState::DONE;
@@ -1898,7 +1905,7 @@ ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
       << " this: " << (uintptr_t)this;
 
   // Only one thread is allowed to call commit
-  if (errorCode == TRI_ERROR_NO_ERROR) {
+  if (result().ok()) {
     ScopeGuard guard([this]() noexcept {
       // If we exit here we need to throw the error.
       // The caller will handle the error and will call this method
@@ -1940,7 +1947,7 @@ ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL_AQL);
     }
     std::ignore =
-        ::finishDBServerParts(*this, errorCode)
+        ::finishDBServerParts(*this, result().errorNumber())
             .thenValue([ss = _sharedState, this](Result r) {
               LOG_TOPIC_IF("fd31e", INFO, Logger::QUERIES,
                            r.fail() && r.isNot(TRI_ERROR_HTTP_NOT_FOUND))
@@ -2311,7 +2318,7 @@ void Query::toVelocyPack(velocypack::Builder& builder, bool isCurrent,
   // exit code
   if (options.includeResultCode) {
     // exit code can only be determined if query is fully finished
-    builder.add("exitCode", VPackValue(resultCode()));
+    builder.add("exitCode", VPackValue(result().errorNumber()));
   }
 
   builder.close();
@@ -2344,6 +2351,6 @@ void Query::logSlow(QuerySerializationOptions const& options) const {
       << ", database: " << vocbase().name() << ", user: " << user()
       << ", id: " << id() << ", token: QRY" << id()
       << ", peak memory usage: " << resourceMonitor().peak()
-      << ", exit code: " << resultCode()
+      << ", exit code: " << result().errorNumber()
       << ", took: " << Logger::FIXED(executionTime()) << " s";
 }

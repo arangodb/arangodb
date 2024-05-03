@@ -228,11 +228,9 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   void runInV8ExecutorContext(std::function<void(v8::Isolate*)> const& cb);
 #endif
 
-  /// @brief return the final query result status code (0 = no error,
-  /// > 0 = error, one of TRI_ERROR_...)
-  ErrorCode resultCode() const noexcept;
+  Result result() const;
 
-  void setResultCode(ErrorCode code) noexcept;
+  void setResult(Result&& res) noexcept;
 
   /// @brief return the bind parameters as passed by the user
   std::shared_ptr<velocypack::Builder> bindParameters() const {
@@ -323,15 +321,16 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// @brief enter a new state
   void enterState(QueryExecutionState::ValueType);
 
-  /// @brief cleanup plan and engine for current query can issue WAITING
-  ExecutionState cleanupPlanAndEngine(ErrorCode errorCode, bool sync);
+  /// @brief cleanup plan and engine for current query. can issue WAITING
+  ExecutionState cleanupPlanAndEngine(bool sync);
 
   void unregisterSnippets();
 
  private:
+  void handlePostProcessing();
   void handlePostProcessing(QueryList& querylist);
 
-  ExecutionState cleanupTrxAndEngines(ErrorCode errorCode);
+  ExecutionState cleanupTrxAndEngines();
 
   // @brief injects vertex collections into all types of graph nodes:
   // ExecutionNode::TRAVERSAL, ExecutionNode::SHORTEST_PATH and
@@ -341,10 +340,10 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   void injectVertexCollectionIntoGraphNodes(ExecutionPlan& plan);
 
   // log the start of a query (trace mode only)
-  void logAtStart();
+  void logAtStart() const;
 
   // log the end of a query (warnings only)
-  void logAtEnd(QueryResult const& queryResult) const;
+  void logAtEnd() const;
 
   enum class ExecutionPhase { INITIALIZE, EXECUTE, FINALIZE };
 
@@ -422,11 +421,10 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// repeatability.
   ExecutionPhase _executionPhase;
 
-  /// @brief mutex protecting _resultCode
-  mutable std::mutex _resultCodeMutex;
-  /// @brief return the final query result status code (0 = no error,
-  /// > 0 = error, one of TRI_ERROR_...)
-  std::optional<ErrorCode> _resultCode;
+  /// @brief mutex protecting _result
+  mutable std::mutex _resultMutex;
+  std::optional<Result> _result;
+  bool _postProcessingDone = false;
 
   /// @brief user that started the query
   std::string _user;

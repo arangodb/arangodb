@@ -28,6 +28,7 @@
 #include "Aql/Query.h"
 #include "Aql/QueryOptions.h"
 #include "Aql/QueryString.h"
+#include "Basics/Exceptions.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/Thread.h"
@@ -205,7 +206,8 @@ class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
         "queries-gc", RequestLane::CLIENT_SLOW, std::chrono::seconds(10),
         [this](bool canceled) {
           if (!canceled) {
-            if (Result res = cleanupCollection();
+            if (Result res = basics::catchToResult(
+                    [this]() { return cleanupCollection(); });
                 res.fail() && res.isNot(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) &&
                 res.isNot(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) &&
                 res.isNot(TRI_ERROR_ARANGO_READ_ONLY)) {
@@ -276,7 +278,9 @@ class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
                              aql::Collection::Hint::Collection);
     aql::QueryResult queryResult = query->executeSync();
 
-    LOG_TOPIC_IF("05da1", TRACE, Logger::QUERIES, queryResult.fail())
+    LOG_TOPIC_IF("05da1", TRACE, Logger::QUERIES,
+                 queryResult.fail() &&
+                     queryResult.isNot(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND))
         << "queries collection cleanup query failed with: "
         << queryResult.result.errorMessage();
 
@@ -305,7 +309,7 @@ class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
           *vocbase, options, StaticStrings::QueriesCollection,
           /*isNewDatabase*/ false, collection);
 
-      if (res.fail()) {
+      if (res.fail() && res.isNot(TRI_ERROR_ARANGO_DUPLICATE_NAME)) {
         return {res.errorNumber(),
                 absl::StrCat("unable to create _queries system collection: ",
                              res.errorMessage())};
