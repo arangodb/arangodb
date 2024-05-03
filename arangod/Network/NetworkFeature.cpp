@@ -601,7 +601,7 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
             << "CURL " << to_string(req->header.restVerb) << " " << url
             << " -> " << curl_easy_strerror(result) << " (" << result << ")";
         auto err = curlErrorToFuerte(result);
-        LOG_DEVEL_IF(result != CURLE_OK)
+        LOG_DEVEL_IF(false && result != CURLE_OK)
             << "[" << my_id << "] "
             << "CURL " << to_string(req->header.restVerb) << " " << url
             << " -> " << curl_easy_strerror(result) << " (" << result << ")\n"

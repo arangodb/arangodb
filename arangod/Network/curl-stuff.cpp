@@ -100,6 +100,7 @@ size_t header_callback(char* buffer, size_t size, size_t nitems,
 }
 
 #define LOG_DEVEL_CURL LOG_DEVEL_IF(false)
+#define LOG_DEVEL_CURL_IF(cond) LOG_DEVEL_IF(false && (cond))
 
 int debug_callback(CURL* handle, curl_infotype type, char* data, size_t size,
                    void* clientp) {
@@ -336,7 +337,7 @@ void connection_pool::run_curl_loop(std::stop_token stoken) noexcept {
     }
 
     running_handles = _curl_multi.perform();
-    LOG_DEVEL_IF(stoken.stop_requested())
+    LOG_DEVEL_CURL_IF(stoken.stop_requested())
         << "CURL still running: " << running_handles << " requests left.";
 
     size_t num_messages = drain_msg_queue();
@@ -352,7 +353,7 @@ void connection_pool::run_curl_loop(std::stop_token stoken) noexcept {
     }
 
   } while (!stoken.stop_requested() || running_handles != 0);
-  LOG_DEVEL << "CURL thread terminated gracefully";
+  LOG_DEVEL_CURL << "CURL thread terminated gracefully";
 }
 
 void connection_pool::push(std::unique_ptr<request>&& req) {
@@ -405,9 +406,8 @@ curl_easy_handle::curl_easy_handle() : _easy_handle(curl_easy_init()) {
     throw std::runtime_error("curl_easy_init failed");
   }
 
-  // curl_easy_setopt(_easy_handle, CURLOPT_HTTP_VERSION,
-  // CURL_HTTP_VERSION_2_0); curl_easy_setopt(_easy_handle, CURLOPT_PIPEWAIT,
-  // 1l);
+  curl_easy_setopt(_easy_handle, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
+  curl_easy_setopt(_easy_handle, CURLOPT_PIPEWAIT, 1l);
 
   curl_easy_setopt(_easy_handle, CURLOPT_SSL_ENABLE_ALPN, 1l);
   curl_easy_setopt(_easy_handle, CURLOPT_SSL_VERIFYPEER, 0l);
