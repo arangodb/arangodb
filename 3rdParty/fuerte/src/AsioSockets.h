@@ -156,7 +156,7 @@ struct Socket<SocketType::Tcp> {
 template <>
 struct Socket<fuerte::SocketType::Ssl> {
   Socket(EventLoopService& loop, asio_ns::io_context& ctx)
-    : resolver(ctx), socket(ctx, loop.sslContext()), timer(ctx), ctx(ctx), sslContext(loop.sslContext()), cleanupDone(false) {}
+    : resolver(ctx), socket(ctx, loop.sslContext()), timer(ctx), cleanupDone(false) {}
 
   ~Socket() { 
     try {
@@ -281,8 +281,6 @@ struct Socket<fuerte::SocketType::Ssl> {
   asio_ns::ip::tcp::resolver resolver;
   asio_ns::ssl::stream<asio_ns::ip::tcp::socket> socket;
   asio_ns::steady_timer timer;
-  asio_ns::io_context& ctx;
-  asio_ns::ssl::context& sslContext;
   std::atomic<bool> cleanupDone;
   bool canceled = false;
 };
