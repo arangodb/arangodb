@@ -36,7 +36,10 @@ namespace network {
 class ConnectionPool;
 }  // namespace network
 
+class ClusterInfo;
+
 namespace cluster {
+struct ManyServersLeasesReport;
 
 struct ILeaseManagerNetworkHandler {
   virtual ~ILeaseManagerNetworkHandler() = default;
@@ -45,17 +48,33 @@ struct ILeaseManagerNetworkHandler {
                         std::vector<LeaseId> const& leasedFrom,
                         std::vector<LeaseId> const& leasedTo) const noexcept
       -> futures::Future<Result> = 0;
+
+  virtual auto collectFullLeaseReport() const noexcept
+      -> futures::Future<ManyServersLeasesReport> = 0;
+
+  virtual auto collectLeaseReportForServer(
+      ServerID const& onlyShowServer) const noexcept
+      -> futures::Future<ManyServersLeasesReport> = 0;
 };
 
 struct LeaseManagerNetworkHandler : ILeaseManagerNetworkHandler {
-  explicit LeaseManagerNetworkHandler(network::ConnectionPool* pool);
+  LeaseManagerNetworkHandler(network::ConnectionPool* pool, ClusterInfo* ci);
 
   auto abortIds(ServerID const& server, std::vector<LeaseId> const& leasedFrom,
                 std::vector<LeaseId> const& leasedTo) const noexcept
       -> futures::Future<Result> override;
 
+
+  auto collectFullLeaseReport() const noexcept
+      -> futures::Future<ManyServersLeasesReport> override;
+
+  auto collectLeaseReportForServer(
+      ServerID const& onlyShowServer) const noexcept
+      -> futures::Future<ManyServersLeasesReport> override;
+
  private:
   network::ConnectionPool* _pool;
+  ClusterInfo* _clusterInfo;
 };
 }  // namespace cluster
 }  // namespace arangodb

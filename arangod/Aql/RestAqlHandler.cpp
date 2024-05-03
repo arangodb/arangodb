@@ -41,6 +41,7 @@
 #include "Cluster/CallbackGuard.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/LeaseManager/LeaseId.h"
 #include "Cluster/RebootTracker.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngine.h"
@@ -48,6 +49,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LogStructuredParamsAllowList.h"
+#include "Network/NetworkFeature.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/GeneralRequest.h"
 #include "Transaction/Context.h"
@@ -369,15 +371,38 @@ futures::Future<futures::Unit> RestAqlHandler::setupClusterQuery() {
     auto& clusterInfo = clusterFeature.clusterInfo();
     rGuard = clusterInfo.rebootTracker().callMeOnChange(
         {coordinatorId, rebootId},
-        [queryRegistry = _queryRegistry, vocbaseName = _vocbase.name(),
+        [/*queryRegistry = _queryRegistry, */ vocbaseName = _vocbase.name(),
          queryId = q->id()]() {
+#ifdef TEMP_DISABLED
           queryRegistry->destroyQuery(queryId, TRI_ERROR_TRANSACTION_ABORTED);
+#endif
           LOG_TOPIC("42511", DEBUG, Logger::AQL)
               << "Query snippet destroyed as consequence of "
                  "RebootTracker for coordinator, db="
               << vocbaseName << " queryId=" << queryId;
         },
         "Query aborted since coordinator rebooted or failed.");
+    if (auto leaseSlice = querySlice.get("leaseId"); leaseSlice.isNumber()) {
+      cluster::LeaseId leaseId{leaseSlice.getNumber<uint64_t>()};
+
+      LOG_DEVEL << "Register Query: " << q->id() << " with lease " << leaseId.id() << " using colls: " << q->collectionNames();
+      auto res =
+          server().getFeature<NetworkFeature>().leaseManager().handoutLease(
+              PeerState{.serverId = coordinatorId, .rebootId = rebootId}, leaseId,
+              [queryRegistry = _queryRegistry, vocbaseName = _vocbase.name(),
+               queryId = q->id()]() noexcept {
+                LOG_DEVEL << "EXPECTO ABORTUM!! " << queryId;
+                queryRegistry->destroyQuery(queryId,
+                                            TRI_ERROR_TRANSACTION_ABORTED);
+                LOG_TOPIC("42511", DEBUG, Logger::AQL)
+                    << "Query snippet destroyed as consequence of "
+                       "RebootTracker for coordinator, db="
+                    << vocbaseName << " queryId=" << queryId;
+              });
+      // TODO: Handle error
+      ADB_PROD_ASSERT(res.ok());
+      q->addLeaseToRemoteGuard((std::move(res.get())));
+    }
   }
 
   // query string

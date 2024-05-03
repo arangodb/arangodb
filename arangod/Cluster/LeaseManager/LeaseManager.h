@@ -44,8 +44,13 @@ struct PeerState;
 namespace cluster {
 struct AbortLeaseInformation;
 class RebootTracker;
+struct LeasesReport;
+struct ManyServersLeasesReport;
 
 struct LeaseManager {
+
+  enum GetType { LOCAL, ALL, MINE, FOR_SERVER };
+
   // Note: The Following two share the same properties.
   // But the significant functions dtor and cancel are different
   // There was no point on creating a base class for this, and pay for virtual
@@ -150,7 +155,7 @@ struct LeaseManager {
         std::make_unique<LeaseEntry_Impl<F>>(std::forward<F>(onLeaseLost)));
   }
 
-  auto leasesToVPack() const -> arangodb::velocypack::Builder;
+  auto reportLeases(GetType getType, std::optional<ServerID> forServer) const -> ManyServersLeasesReport;
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   // Get Access to the NetworkHandler for Mocking
@@ -180,6 +185,8 @@ struct LeaseManager {
 
   auto cancelLeaseToRemote(PeerState const& peerState, LeaseId const& leaseId) noexcept -> void;
 
+  auto prepareLocalReport(std::optional<ServerID> onlyForServer) const noexcept
+      -> LeasesReport;
 
   uint64_t _lastUsedLeaseId{0};
   RebootTracker& _rebootTracker;

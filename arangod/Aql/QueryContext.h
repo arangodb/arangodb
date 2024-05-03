@@ -121,6 +121,7 @@ class QueryContext {
   }
 
   void addLeaseFromRemoteGuard(cluster::LeaseManager::LeaseFromRemoteGuard&& guard);
+  void addLeaseToRemoteGuard(cluster::LeaseManager::LeaseToRemoteGuard&& guard);
 
   virtual QueryOptions const& queryOptions() const = 0;
 
@@ -206,6 +207,7 @@ class QueryContext {
   std::mutex _mutex;
 
   std::vector<cluster::LeaseManager::LeaseFromRemoteGuard> _leasesFromRemote;
+  std::vector<cluster::LeaseManager::LeaseToRemoteGuard> _leasesToRemote;
 };
 
 }  // namespace aql

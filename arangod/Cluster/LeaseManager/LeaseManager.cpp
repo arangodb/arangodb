@@ -24,13 +24,14 @@
 
 #include "Cluster/LeaseManager/AbortLeaseInformation.h"
 #include "Cluster/LeaseManager/LeaseManagerNetworkHandler.h"
+#include "Cluster/LeaseManager/LeasesReport.h"
 #include "Cluster/RebootTracker.h"
-#include "Inspection/VPack.h"
 
 #include "Logger/LogMacros.h"
+#include "Cluster/ServerState.h"
 
+using namespace arangodb;
 using namespace arangodb::cluster;
-
 
 LeaseManager::LeaseFromRemoteGuard::LeaseFromRemoteGuard(PeerState peer,
                                                          LeaseId id,
@@ -207,43 +208,40 @@ auto LeaseManager::handoutLeaseInternal(PeerState const& requestedBy,
   return ResultT<LeaseToRemoteGuard>{std::move(guard)};
 }
 
-auto LeaseManager::leasesToVPack() const -> arangodb::velocypack::Builder {
-  VPackBuilder builder;
-  VPackObjectBuilder guard(&builder);
-  {
-    builder.add(VPackValue("leasedFromRemote"));
-    VPackObjectBuilder fromGuard(&builder);
-    _leasedFromRemotePeers.doUnderLock([&builder](auto& guarded) {
-      for (auto const& [peerState, leaseEntry] : guarded.list) {
-        builder.add(VPackValue(
-            fmt::format("{}:{}", peerState.serverId,
-                        basics::StringUtils::itoa(peerState.rebootId.value()))));
-        VPackObjectBuilder leaseMappingGuard(&builder);
-        for (auto const& [id, entry] : leaseEntry._mapping) {
-          builder.add(VPackValue(basics::StringUtils::itoa(id.id())));
-          velocypack::serialize(builder, entry);
-        }
-      }
-    });
-  }
-  {
-    builder.add(VPackValue("leasedToRemote"));
-    VPackObjectBuilder toGuard(&builder);
-    _leasedToRemotePeers.doUnderLock([&builder](auto& guarded) {
-      for (auto const& [peerState, leaseEntry] : guarded.list) {
-        builder.add(VPackValue(
-            fmt::format("{}:{}", peerState.serverId,
-                        basics::StringUtils::itoa(peerState.rebootId.value()))));
-        VPackObjectBuilder leaseMappingGuard(&builder);
-        for (auto const& [id, entry] : leaseEntry._mapping) {
-          builder.add(VPackValue(basics::StringUtils::itoa(id.id())));
-          velocypack::serialize(builder, entry);
-        }
-      }
-    });
-  }
+// TODO: We can make this co_await
+auto LeaseManager::reportLeases(GetType type,
+                                std::optional<ServerID> forServer) const
+    -> ManyServersLeasesReport {
 
-  return builder;
+  TRI_ASSERT(forServer.has_value() || type != FOR_SERVER)
+      << "We can only filter for a Server, if we use the FOR_SERVER type";
+  switch (type) {
+    case LOCAL: {
+      ManyServersLeasesReport report;
+      report.serverLeases.emplace(ServerState::instance()->getId(),
+                                  prepareLocalReport(std::nullopt));
+      return report;
+    }
+    case ALL: {
+      auto report = _networkHandler->collectFullLeaseReport().get();
+      report.serverLeases.emplace(ServerState::instance()->getId(),
+                                  prepareLocalReport(std::nullopt));
+      return report;
+    }
+    case MINE: {
+      ManyServersLeasesReport report;
+      report.serverLeases.emplace(ServerState::instance()->getId(),
+                                  prepareLocalReport(std::nullopt));
+      return report;
+    }
+    case FOR_SERVER: {
+      ManyServersLeasesReport report;
+      report.serverLeases.emplace(ServerState::instance()->getId(),
+                                  prepareLocalReport(std::move(forServer)));
+      return report;
+    }
+  }
+  ADB_PROD_ASSERT(false) << "Reached unreachable code";
 }
 
 auto LeaseManager::returnLeaseFromRemote(PeerState const& peerState, LeaseId const& leaseId) noexcept -> void {
@@ -377,9 +375,9 @@ auto LeaseManager::sendAbortRequestsForAbandonedLeases() noexcept -> void {
           insertPair.leasedFrom.insert(insertPair.leasedFrom.end(),
                                        leasePair.leasedFrom.begin(),
                                        leasePair.leasedFrom.end());
-          insertPair.leasedFrom.insert(insertPair.leasedTo.end(),
-                                       leasePair.leasedTo.begin(),
-                                       leasePair.leasedTo.end());
+          insertPair.leasedTo.insert(insertPair.leasedTo.end(),
+                                     leasePair.leasedTo.begin(),
+                                     leasePair.leasedTo.end());
         });
       }
       // else: We successfully aborted the open IDs. Forget about them now.
@@ -424,4 +422,37 @@ auto LeaseManager::abortLeasesForServer(AbortLeaseInformation info) noexcept
       }
     }
   });
+}
+
+auto LeaseManager::prepareLocalReport(std::optional<ServerID> onlyForServer) const noexcept -> LeasesReport {
+  LeasesReport report;
+  {
+    _leasedFromRemotePeers.doUnderLock([&report](auto& guarded) {
+      for (auto const& [peerState, leaseEntry] : guarded.list) {
+        std::vector<std::string> entries;
+        for (auto const& [id, entry] : leaseEntry._mapping) {
+          entries.emplace_back(fmt::format("{} -> {}", id.id(),
+                                           "TODO: description to be written"));
+        }
+        std::string peerString = fmt::format("{}:{}", peerState.serverId,
+                                             basics::StringUtils::itoa(peerState.rebootId.value()));
+        report.leasesFromRemote.emplace(std::move(peerString), std::move(entries));
+      }
+    });
+  }
+  {
+    _leasedToRemotePeers.doUnderLock([&report](auto& guarded) {
+      for (auto const& [peerState, leaseEntry] : guarded.list) {
+        std::vector<std::string> entries;
+        for (auto const& [id, entry] : leaseEntry._mapping) {
+          entries.emplace_back(fmt::format("{} -> {}", id.id(),
+                                           "TODO: description to be written"));
+        }
+        std::string peerString = fmt::format("{}:{}", peerState.serverId,
+                                             basics::StringUtils::itoa(peerState.rebootId.value()));
+        report.leasesToRemote.emplace(std::move(peerString), std::move(entries));
+      }
+    });
+  }
+  return report;
 }

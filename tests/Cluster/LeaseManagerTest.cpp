@@ -28,6 +28,8 @@
 #include "Cluster/LeaseManager/AbortLeaseInformation.h"
 #include "Cluster/LeaseManager/LeaseManager.h"
 #include "Cluster/LeaseManager/LeaseManagerNetworkHandler.h"
+#include "Cluster/LeaseManager/LeasesReport.h"
+#include "Cluster/LeaseManager/LeasesReportInspectors.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/RebootTracker.h"
@@ -39,6 +41,10 @@
 #include "Mocks/Servers.h"
 #include "PreparedResponseConnectionPool.h"
 
+
+// TODO: This has to be removed
+#include "Inspection/VPack.h"
+
 using namespace arangodb;
 using namespace arangodb::cluster;
 using namespace arangodb::tests;
@@ -48,6 +54,11 @@ struct MockLeaseManagerNetworkHandler : public ILeaseManagerNetworkHandler {
   MOCK_METHOD(futures::Future<Result>, abortIds,
               (ServerID const& server, std::vector<LeaseId> const& leasedFrom,
                std::vector<LeaseId> const& leasedTo),
+              (const, noexcept, override));
+  MOCK_METHOD(futures::Future<ManyServersLeasesReport>, collectFullLeaseReport,
+              (), (const, noexcept, override));
+  MOCK_METHOD(futures::Future<ManyServersLeasesReport>,
+              collectLeaseReportForServer, (ServerID const& onlyShowServer),
               (const, noexcept, override));
 };
 
@@ -172,6 +183,14 @@ class LeaseManagerTest : public ::testing::Test,
         << " full list: " << leaseList.toJson();
   }
 
+  auto assertLeasedFromListContainsLease(ManyServersLeasesReport manyReport,
+                                         PeerState const& leaseIsFor,
+                                         LeaseId const& leaseId) {
+    // TODO Implement this, remove VPackVersion
+    auto builder = velocypack::serialize(manyReport);
+    assertLeasedFromListContainsLease(builder.slice(), leaseIsFor, leaseId);
+  }
+
   auto assertLeasedFromListDoesNotContainLease(VPackSlice leasesVPack,
                                                PeerState const& leaseIsFor,
                                                LeaseId const& leaseId) {
@@ -187,6 +206,14 @@ class LeaseManagerTest : public ::testing::Test,
     }
     // Else case okay if we have no entry for the server, we cannot have an
     // entry for the lease.
+  }
+
+  auto assertLeasedFromListDoesNotContainLease(ManyServersLeasesReport manyReport,
+                                               PeerState const& leaseIsFor,
+                                               LeaseId const& leaseId) {
+    // TODO Implement this, remove VPackVersion
+    auto builder = velocypack::serialize(manyReport);
+    assertLeasedFromListDoesNotContainLease(builder.slice(), leaseIsFor, leaseId);
   }
 
   auto assertLeasedToListContainsLease(VPackSlice leasesVPack,
@@ -206,6 +233,14 @@ class LeaseManagerTest : public ::testing::Test,
         << " full list: " << leaseList.toJson();
   }
 
+  auto assertLeasedToListContainsLease(ManyServersLeasesReport manyReport,
+                                       PeerState const& leaseIsTo,
+                                       LeaseId const& leaseId) {
+    // TODO Implement this, remove VPackVersion
+    auto builder = velocypack::serialize(manyReport);
+    assertLeasedToListContainsLease(builder.slice(), leaseIsTo, leaseId);
+  }
+
   auto assertLeasedToListDoesNotContainLease(VPackSlice leasesVPack,
                                              PeerState const& leaseIsTo,
                                              LeaseId const& leaseId) {
@@ -222,6 +257,14 @@ class LeaseManagerTest : public ::testing::Test,
     // Else case okay if we have no entry for the server, we cannot have an
     // entry for the lease.
   }
+
+  auto assertLeasedToListDoesNotContainLease(ManyServersLeasesReport manyReport,
+                                             PeerState const& leaseIsTo,
+                                             LeaseId const& leaseId) {
+    // TODO Implement this, remove VPackVersion
+    auto builder = velocypack::serialize(manyReport);
+    assertLeasedToListDoesNotContainLease(builder.slice(), leaseIsTo, leaseId);
+  }
 };
 
 ServerID const LeaseManagerTest::serverA = "PRMR-srv-A";
@@ -235,11 +278,10 @@ TEST_F(LeaseManagerTest, test_every_lease_has_a_unique_id) {
   auto guardOne = leaseManager.requireLease(leaseIsFor, ignoreMe);
   auto guardTwo = leaseManager.requireLease(leaseIsFor, ignoreMe);
   EXPECT_NE(guardOne.id(), guardTwo.id());
-  auto leaseReport = leaseManager.leasesToVPack();
-  assertLeasedFromListContainsLease(leaseReport.slice(), leaseIsFor,
-                                    guardOne.id());
-  assertLeasedFromListContainsLease(leaseReport.slice(), leaseIsFor,
-                                    guardTwo.id());
+  auto leaseReport =
+      leaseManager.reportLeases(LeaseManager::GetType::LOCAL, std::nullopt);
+  assertLeasedFromListContainsLease(leaseReport, leaseIsFor, guardOne.id());
+  assertLeasedFromListContainsLease(leaseReport, leaseIsFor, guardTwo.id());
 }
 
 TEST_F(LeaseManagerTest, test_a_lease_from_remote_can_be_moved_around) {
@@ -411,15 +453,17 @@ TEST_F(LeaseManagerTest, test_lease_is_removed_from_list_on_guard_destruction) {
     auto callback = [&]() noexcept { rebootCallbackCalled = true; };
     auto lease = leaseManager.requireLease(leaseIsFor, callback);
     storedId = lease.id();
-    auto leaseReport = leaseManager.leasesToVPack();
-    assertLeasedFromListContainsLease(leaseReport.slice(), leaseIsFor,
+      auto leaseReport =
+      leaseManager.reportLeases(LeaseManager::GetType::LOCAL, std::nullopt);
+    assertLeasedFromListContainsLease(leaseReport, leaseIsFor,
                                       lease.id());
     // Prepare to be called to abort this ID.
     EXPECT_CALL(*networkMock, abortIds(serverA, std::vector<LeaseId>{storedId}, std::vector<LeaseId>{})).Times(1);
   }
   {
-    auto leaseReport = leaseManager.leasesToVPack();
-    assertLeasedFromListDoesNotContainLease(leaseReport.slice(), leaseIsFor,
+      auto leaseReport =
+      leaseManager.reportLeases(LeaseManager::GetType::LOCAL, std::nullopt);
+    assertLeasedFromListDoesNotContainLease(leaseReport, leaseIsFor,
                                             storedId);
 
   }
@@ -443,15 +487,17 @@ TEST_F(LeaseManagerTest, test_lease_to_remote_is_removed_from_list_on_guard_dest
     ASSERT_TRUE(lease.ok()) << "Failed to handout a lease with given ID: " << lease.errorMessage();
 
 
-    auto leaseReport = leaseManager.leasesToVPack();
-    assertLeasedToListContainsLease(leaseReport.slice(), leaseIsTo,
+      auto leaseReport =
+      leaseManager.reportLeases(LeaseManager::GetType::LOCAL, std::nullopt);
+    assertLeasedToListContainsLease(leaseReport, leaseIsTo,
                                       lease->id());
     // Prepare to be called to abort this ID.
     EXPECT_CALL(*networkMock, abortIds(serverA, std::vector<LeaseId>{}, std::vector<LeaseId>{storedId})).Times(1);
   }
   {
-    auto leaseReport = leaseManager.leasesToVPack();
-    assertLeasedToListDoesNotContainLease(leaseReport.slice(), leaseIsTo,
+      auto leaseReport =
+      leaseManager.reportLeases(LeaseManager::GetType::LOCAL, std::nullopt);
+    assertLeasedToListDoesNotContainLease(leaseReport, leaseIsTo,
                                             storedId);
 
   }
@@ -472,14 +518,16 @@ TEST_F(LeaseManagerTest, test_lease_from_remote_can_cancel_abort_callback) {
     auto callback = [&]() noexcept { rebootCallbackCalled = true; };
     auto lease = leaseManager.requireLease(leaseIsFor, callback);
     storedId = lease.id();
-    auto leaseReport = leaseManager.leasesToVPack();
-    assertLeasedFromListContainsLease(leaseReport.slice(), leaseIsFor,
+      auto leaseReport =
+      leaseManager.reportLeases(LeaseManager::GetType::LOCAL, std::nullopt);
+    assertLeasedFromListContainsLease(leaseReport, leaseIsFor,
                                       lease.id());
     lease.cancel();
   }
   {
-    auto leaseReport = leaseManager.leasesToVPack();
-    assertLeasedFromListDoesNotContainLease(leaseReport.slice(), leaseIsFor,
+      auto leaseReport =
+      leaseManager.reportLeases(LeaseManager::GetType::LOCAL, std::nullopt);
+    assertLeasedFromListDoesNotContainLease(leaseReport, leaseIsFor,
                                             storedId);
   }
   // Need to wait for the scheduler to actually work on the RebootTracker.
@@ -502,14 +550,16 @@ TEST_F(LeaseManagerTest, test_lease_to_remote_can_cancel_abort_callback) {
     auto lease = leaseManager.handoutLease(leaseIsFor, storedId, callback);
     ASSERT_TRUE(lease.ok()) << "Failed to handout a lease with given ID: " << lease.errorMessage();
     storedId = lease->id();
-    auto leaseReport = leaseManager.leasesToVPack();
-    assertLeasedToListContainsLease(leaseReport.slice(), leaseIsFor,
+      auto leaseReport =
+      leaseManager.reportLeases(LeaseManager::GetType::LOCAL, std::nullopt);
+    assertLeasedToListContainsLease(leaseReport, leaseIsFor,
                                     lease->id());
     lease->cancel();
   }
   {
-    auto leaseReport = leaseManager.leasesToVPack();
-    assertLeasedToListDoesNotContainLease(leaseReport.slice(), leaseIsFor,
+      auto leaseReport =
+      leaseManager.reportLeases(LeaseManager::GetType::LOCAL, std::nullopt);
+    assertLeasedToListDoesNotContainLease(leaseReport, leaseIsFor,
                                           storedId);
   }
   // Need to wait for the scheduler to actually work on the RebootTracker.
@@ -534,8 +584,9 @@ TEST_F(LeaseManagerTest, test_lease_from_remote_is_aborted_on_peer_reboot) {
     // After a reboot of the other server, the onLeaseAbort callback should be
     // triggered
     EXPECT_TRUE(rebootCallbackCalled);
-    auto leaseReport = leaseManager.leasesToVPack();
-    assertLeasedFromListDoesNotContainLease(leaseReport.slice(), leaseIsFor,
+      auto leaseReport =
+      leaseManager.reportLeases(LeaseManager::GetType::LOCAL, std::nullopt);
+    assertLeasedFromListDoesNotContainLease(leaseReport, leaseIsFor,
                                             lease.id());
   }
 }
@@ -556,8 +607,9 @@ TEST_F(LeaseManagerTest, test_lease_to_remote_is_aborted_on_peer_reboot) {
     // After a reboot of the other server, the onLeaseAbort callback should be
     // triggered
     EXPECT_TRUE(rebootCallbackCalled);
-    auto leaseReport = leaseManager.leasesToVPack();
-    assertLeasedToListDoesNotContainLease(leaseReport.slice(), leaseIsFor,
+      auto leaseReport =
+      leaseManager.reportLeases(LeaseManager::GetType::LOCAL, std::nullopt);
+    assertLeasedToListDoesNotContainLease(leaseReport, leaseIsFor,
                                             lease->id());
   }
 }
@@ -575,16 +627,18 @@ TEST_F(LeaseManagerTest, test_canceled_lease_from_remote_is_not_aborted_on_peer_
     lease.cancel();
     {
       // Cancel does take the Lease out of the list!
-      auto leaseReport = leaseManager.leasesToVPack();
-      assertLeasedFromListDoesNotContainLease(leaseReport.slice(), leaseIsFor,
+        auto leaseReport =
+      leaseManager.reportLeases(LeaseManager::GetType::LOCAL, std::nullopt);
+      assertLeasedFromListDoesNotContainLease(leaseReport, leaseIsFor,
                                               lease.id());
     }
     rebootServer(serverA);
     // NOTE: Lease is still in Scope, but the callback should not be called.
     {
       // Rebooting the server does not magically add the lease to the list
-      auto leaseReport = leaseManager.leasesToVPack();
-      assertLeasedFromListDoesNotContainLease(leaseReport.slice(), leaseIsFor,
+        auto leaseReport =
+      leaseManager.reportLeases(LeaseManager::GetType::LOCAL, std::nullopt);
+      assertLeasedFromListDoesNotContainLease(leaseReport, leaseIsFor,
                                               lease.id());
     }
     EXPECT_FALSE(rebootCallbackCalled)
@@ -610,16 +664,18 @@ TEST_F(LeaseManagerTest,
     lease->cancel();
     {
       // Cancel does take the Lease out of the list!
-      auto leaseReport = leaseManager.leasesToVPack();
-      assertLeasedToListDoesNotContainLease(leaseReport.slice(), leaseIsFor,
+        auto leaseReport =
+      leaseManager.reportLeases(LeaseManager::GetType::LOCAL, std::nullopt);
+      assertLeasedToListDoesNotContainLease(leaseReport, leaseIsFor,
                                             lease->id());
     }
     rebootServer(serverA);
     // NOTE: Lease is still in Scope, but the callback should not be called.
     {
       // Rebooting the server does not magically add the lease to the list
-      auto leaseReport = leaseManager.leasesToVPack();
-      assertLeasedToListDoesNotContainLease(leaseReport.slice(), leaseIsFor,
+        auto leaseReport =
+      leaseManager.reportLeases(LeaseManager::GetType::LOCAL, std::nullopt);
+      assertLeasedToListDoesNotContainLease(leaseReport, leaseIsFor,
                                             lease->id());
     }
     EXPECT_FALSE(rebootCallbackCalled)
@@ -650,8 +706,9 @@ TEST_F(LeaseManagerTest, test_acquire_lease_for_rebooted_server) {
     {
       // This situation is handled the same as if reboot would be AFTER
       // getting the lease. So Server should be dropped here.
-      auto leaseReport = leaseManager.leasesToVPack();
-      assertLeasedFromListDoesNotContainLease(leaseReport.slice(), leaseIsFor,
+        auto leaseReport =
+      leaseManager.reportLeases(LeaseManager::GetType::LOCAL, std::nullopt);
+      assertLeasedFromListDoesNotContainLease(leaseReport, leaseIsFor,
                                               lease.id());
     }
     EXPECT_TRUE(rebootCallbackCalled)
@@ -681,8 +738,9 @@ TEST_F(LeaseManagerTest, test_handout_lease_for_rebooted_server) {
     {
       // This situation is handled the same as if reboot would be AFTER
       // getting the lease. So Server should be dropped here.
-      auto leaseReport = leaseManager.leasesToVPack();
-      assertLeasedToListDoesNotContainLease(leaseReport.slice(), leaseIsFor,
+        auto leaseReport =
+      leaseManager.reportLeases(LeaseManager::GetType::LOCAL, std::nullopt);
+      assertLeasedToListDoesNotContainLease(leaseReport, leaseIsFor,
                                             id);
     }
     EXPECT_TRUE(rebootCallbackCalled)
@@ -719,8 +777,9 @@ TEST_F(LeaseManagerTest, test_acquire_lease_for_server_with_newer_reboot_id) {
     EXPECT_FALSE(rebootCallbackCalled) << "We are ahead of the RebootTracker. So we should not get aborted.";
     {
       // Lease should be in the Report:
-      auto leaseReport = leaseManager.leasesToVPack();
-      assertLeasedFromListContainsLease(leaseReport.slice(), leaseIsFor,
+        auto leaseReport =
+      leaseManager.reportLeases(LeaseManager::GetType::LOCAL, std::nullopt);
+      assertLeasedFromListContainsLease(leaseReport, leaseIsFor,
                                         lease.id());
     }
 
@@ -733,8 +792,9 @@ TEST_F(LeaseManagerTest, test_acquire_lease_for_server_with_newer_reboot_id) {
     EXPECT_FALSE(rebootCallbackCalled) << "We are ahead of the RebootTracker. So we should not get aborted.";
     {
       // Lease should be in the Report:
-      auto leaseReport = leaseManager.leasesToVPack();
-      assertLeasedFromListContainsLease(leaseReport.slice(), leaseIsFor,
+        auto leaseReport =
+      leaseManager.reportLeases(LeaseManager::GetType::LOCAL, std::nullopt);
+      assertLeasedFromListContainsLease(leaseReport, leaseIsFor,
                                         lease.id());
     }
 
@@ -748,8 +808,9 @@ TEST_F(LeaseManagerTest, test_acquire_lease_for_server_with_newer_reboot_id) {
     {
       // This situation is handled the same as if reboot would be AFTER
       // getting the lease. So Server should be dropped here.
-      auto leaseReport = leaseManager.leasesToVPack();
-      assertLeasedFromListDoesNotContainLease(leaseReport.slice(), leaseIsFor,
+        auto leaseReport =
+      leaseManager.reportLeases(LeaseManager::GetType::LOCAL, std::nullopt);
+      assertLeasedFromListDoesNotContainLease(leaseReport, leaseIsFor,
                                               lease.id());
     }
   }
@@ -784,8 +845,9 @@ TEST_F(LeaseManagerTest, test_handout_lease_for_server_with_newer_reboot_id) {
         << "We are ahead of the RebootTracker. So we should not get aborted.";
     {
       // Lease should be in the Report:
-      auto leaseReport = leaseManager.leasesToVPack();
-      assertLeasedToListContainsLease(leaseReport.slice(), leaseIsFor,
+        auto leaseReport =
+      leaseManager.reportLeases(LeaseManager::GetType::LOCAL, std::nullopt);
+      assertLeasedToListContainsLease(leaseReport, leaseIsFor,
                                       lease->id());
     }
 
@@ -799,8 +861,9 @@ TEST_F(LeaseManagerTest, test_handout_lease_for_server_with_newer_reboot_id) {
         << "We are ahead of the RebootTracker. So we should not get aborted.";
     {
       // Lease should be in the Report:
-      auto leaseReport = leaseManager.leasesToVPack();
-      assertLeasedToListContainsLease(leaseReport.slice(), leaseIsFor,
+        auto leaseReport =
+      leaseManager.reportLeases(LeaseManager::GetType::LOCAL, std::nullopt);
+      assertLeasedToListContainsLease(leaseReport, leaseIsFor,
                                       lease->id());
     }
 
@@ -817,8 +880,9 @@ TEST_F(LeaseManagerTest, test_handout_lease_for_server_with_newer_reboot_id) {
     {
       // This situation is handled the same as if reboot would be AFTER
       // getting the lease. So Server should be dropped here.
-      auto leaseReport = leaseManager.leasesToVPack();
-      assertLeasedToListDoesNotContainLease(leaseReport.slice(), leaseIsFor,
+        auto leaseReport =
+      leaseManager.reportLeases(LeaseManager::GetType::LOCAL, std::nullopt);
+      assertLeasedToListDoesNotContainLease(leaseReport, leaseIsFor,
                                             lease->id());
     }
   }
@@ -920,23 +984,24 @@ TEST_F(LeaseManagerTest, test_abort_given_leases_for_server_on_demand) {
 
     {
       // Leases should all be in the Report:
-      auto leaseReport = leaseManager.leasesToVPack();
+        auto leaseReport =
+      leaseManager.reportLeases(LeaseManager::GetType::LOCAL, std::nullopt);
 
-      assertLeasedFromListContainsLease(leaseReport.slice(), leaseIsForA,
+      assertLeasedFromListContainsLease(leaseReport, leaseIsForA,
                                         leaseAOne.id());
-      assertLeasedFromListContainsLease(leaseReport.slice(), leaseIsForA,
+      assertLeasedFromListContainsLease(leaseReport, leaseIsForA,
                                         leaseATwo.id());
-      assertLeasedFromListContainsLease(leaseReport.slice(), leaseIsForA,
+      assertLeasedFromListContainsLease(leaseReport, leaseIsForA,
                                         leaseAThree.id());
-      assertLeasedFromListContainsLease(leaseReport.slice(), leaseIsForB,
+      assertLeasedFromListContainsLease(leaseReport, leaseIsForB,
                                         leaseBOne.id());
 
-      assertLeasedToListContainsLease(leaseReport.slice(), leaseIsForA, idAOne);
-      assertLeasedToListContainsLease(leaseReport.slice(), leaseIsForA,
+      assertLeasedToListContainsLease(leaseReport, leaseIsForA, idAOne);
+      assertLeasedToListContainsLease(leaseReport, leaseIsForA,
                                       idATwo);
-      assertLeasedToListContainsLease(leaseReport.slice(), leaseIsForA,
+      assertLeasedToListContainsLease(leaseReport, leaseIsForA,
                                       idAThree);
-      assertLeasedToListContainsLease(leaseReport.slice(), leaseIsForB, idBOne);
+      assertLeasedToListContainsLease(leaseReport, leaseIsForB, idBOne);
     }
 
     // Now the Actual test...
@@ -970,23 +1035,24 @@ TEST_F(LeaseManagerTest, test_abort_given_leases_for_server_on_demand) {
 
     {
       // Leases should all be in the Report:
-      auto leaseReport = leaseManager.leasesToVPack();
-      assertLeasedFromListDoesNotContainLease(leaseReport.slice(), leaseIsForA,
+        auto leaseReport =
+      leaseManager.reportLeases(LeaseManager::GetType::LOCAL, std::nullopt);
+      assertLeasedFromListDoesNotContainLease(leaseReport, leaseIsForA,
                                               leaseAOne.id());
-      assertLeasedFromListDoesNotContainLease(leaseReport.slice(),
+      assertLeasedFromListDoesNotContainLease(leaseReport,
                                               leaseIsForA, leaseATwo.id());
-      assertLeasedFromListContainsLease(leaseReport.slice(), leaseIsForA,
+      assertLeasedFromListContainsLease(leaseReport, leaseIsForA,
                                         leaseAThree.id());
-      assertLeasedFromListContainsLease(leaseReport.slice(), leaseIsForB,
+      assertLeasedFromListContainsLease(leaseReport, leaseIsForB,
                                         leaseBOne.id());
 
-      assertLeasedToListDoesNotContainLease(leaseReport.slice(), leaseIsForA,
+      assertLeasedToListDoesNotContainLease(leaseReport, leaseIsForA,
                                             idAOne);
-      assertLeasedToListDoesNotContainLease(leaseReport.slice(),
+      assertLeasedToListDoesNotContainLease(leaseReport,
                                             leaseIsForA, idATwo);
-      assertLeasedToListContainsLease(leaseReport.slice(), leaseIsForA,
+      assertLeasedToListContainsLease(leaseReport, leaseIsForA,
                                       idAThree);
-      assertLeasedToListContainsLease(leaseReport.slice(), leaseIsForB, idBOne);
+      assertLeasedToListContainsLease(leaseReport, leaseIsForB, idBOne);
     }
 
     // Cancel all leases that survived the abort call.
@@ -1115,8 +1181,9 @@ TEST_F(LeaseManagerTest, test_abort_before_register_race) {
     waitForSchedulerEmpty();
 
     // The Lease should not be in the Report:
-    auto leaseReport = leaseManager.leasesToVPack();
-    assertLeasedToListDoesNotContainLease(leaseReport.slice(), leaseIsForA, id);
+      auto leaseReport =
+      leaseManager.reportLeases(LeaseManager::GetType::LOCAL, std::nullopt);
+    assertLeasedToListDoesNotContainLease(leaseReport, leaseIsForA, id);
 
     // Now try to get the lease.
     auto leaseGuard = leaseManager.handoutLease(leaseIsForA, id, callback);

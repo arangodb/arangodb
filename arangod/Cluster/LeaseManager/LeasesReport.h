@@ -22,15 +22,27 @@
 
 #pragma once
 
-#include "AbortLeaseInformation.h"
+#include "Basics/Result.h"
 
-namespace arangodb::cluster {
+#include <string>
+#include <unordered_map>
+#include <vector>
 
-template<class Inspector>
-auto inspect(Inspector& f, AbortLeaseInformation& x) {
-  return f.object(x).fields(f.field("server", x.server),
-                            f.field("leasedFrom", x.leasedFrom),
-                            f.field("leasedTo", x.leasedTo));
-}
+namespace arangodb {
+namespace cluster {
 
-}
+struct LeasesReport {
+  std::unordered_map<std::string, std::vector<std::string>> leasesFromRemote;
+  std::unordered_map<std::string, std::vector<std::string>> leasesToRemote;
+};
+
+struct ManyServersLeasesReport {
+  struct EntryOrError {
+    std::variant<LeasesReport, Result> value;
+  };
+
+  std::unordered_map<ServerID, EntryOrError> serverLeases;
+};
+
+}  // namespace cluster
+}  // namespace arangodb

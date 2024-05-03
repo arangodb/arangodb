@@ -345,7 +345,8 @@ void NetworkFeature::prepare() {
     TRI_ASSERT(ci != nullptr) << "Issue with startup ordering of features.";
     _leaseManager = std::make_unique<cluster::LeaseManager>(
         ci->rebootTracker(),
-        std::make_unique<cluster::LeaseManagerNetworkHandler>(pool()));
+        std::make_unique<cluster::LeaseManagerNetworkHandler>(pool(),
+                                                              ci));
   }
 
   _prepared = true;

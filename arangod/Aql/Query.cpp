@@ -97,6 +97,124 @@ constexpr std::string_view fullcountTrue("fullcount:true");
 constexpr std::string_view fullcountFalse("fullcount:false");
 constexpr std::string_view countTrue("count:true");
 constexpr std::string_view countFalse("count:false");
+
+futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
+  TRI_ASSERT(ServerState::instance()->isCoordinator());
+  auto const& serverQueryIds = query.serverQueryIds();
+  TRI_ASSERT(!serverQueryIds.empty());
+
+  auto& server = query.vocbase().server();
+
+  NetworkFeature const& nf = server.getFeature<NetworkFeature>();
+  network::ConnectionPool* pool = nf.pool();
+  if (pool == nullptr) {
+    return futures::makeFuture(Result{TRI_ERROR_SHUTTING_DOWN});
+  }
+
+  // used by hotbackup to prevent commits
+  std::optional<arangodb::transaction::Manager::TransactionCommitGuard>
+      commitGuard;
+  // If the query is not read-only, we want to acquire the transaction
+  // commit lock as read lock, read-only queries can just proceed.
+  // note that we only need to acquire the commit lock if the transaction
+  // is actually about to commit (i.e. no error happened) and not about
+  // to abort:
+  if (query.isModificationQuery() && errorCode == TRI_ERROR_NO_ERROR) {
+    auto* manager = server.getFeature<transaction::ManagerFeature>().manager();
+    commitGuard.emplace(manager->getTransactionCommitGuard());
+  }
+
+  network::RequestOptions options;
+  options.database = query.vocbase().name();
+  options.timeout = network::Timeout(60.0);  // Picked arbitrarily
+  options.continuationLane = RequestLane::CLUSTER_INTERNAL;
+  // Most coordinator AQL code might be executed on the MEDIUM prio lane,
+  // since it comes from a continuation. Therefore, to avoid deadlock, we
+  // must use a lane which has priority HIGH. We do not want to skip the
+  // scheduler, since the cleanup code acquires locks and does some
+  // non-trivial work.
+
+  VPackBuffer<uint8_t> body;
+  VPackBuilder builder(body);
+  builder.openObject(true);
+  builder.add(StaticStrings::Code, VPackValue(errorCode));
+  builder.close();
+
+  query.incHttpRequests(static_cast<unsigned>(serverQueryIds.size()));
+
+  std::vector<futures::Future<Result>> futures;
+  futures.reserve(serverQueryIds.size());
+  auto ss = query.sharedState();
+  TRI_ASSERT(ss != nullptr);
+
+  for (auto const& [server, queryId, rebootId] : serverQueryIds) {
+    TRI_ASSERT(!server.starts_with("server:"));
+
+    auto f =
+        network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Delete,
+                             absl::StrCat("/_api/aql/finish/", queryId), body,
+                             options)
+            .thenValue([ss, &query](network::Response&& res) mutable -> Result {
+              // simon: checked until 3.5, shutdown result is always ignored
+              if (res.fail()) {
+                return Result{network::fuerteToArangoErrorCode(res)};
+              } else if (!res.slice().isObject()) {
+                return Result(TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
+                              "shutdown response of DBServer is malformed");
+              }
+
+              if (VPackSlice val = res.slice().get("stats"); val.isObject()) {
+                ss->executeLocked([&] {
+                  query.executionStatsGuard().doUnderLock(
+                      [&](auto& executionStats) {
+                        executionStats.add(ExecutionStats(val));
+                        if (auto s = val.get("intermediateCommits");
+                            s.isNumber<uint64_t>()) {
+                          query.addIntermediateCommits(s.getNumber<uint64_t>());
+                        }
+                      });
+                });
+              }
+              // read "warnings" attribute if present and add it to our
+              // query
+              if (VPackSlice val = res.slice().get("warnings"); val.isArray()) {
+                for (VPackSlice it : VPackArrayIterator(val)) {
+                  if (it.isObject()) {
+                    VPackSlice code = it.get("code");
+                    VPackSlice message = it.get("message");
+                    if (code.isNumber() && message.isString()) {
+                      query.warnings().registerWarning(
+                          ErrorCode{code.getNumericValue<int>()},
+                          message.copyString());
+                    }
+                  }
+                }
+              }
+
+              if (VPackSlice val = res.slice().get("code"); val.isNumber()) {
+                return Result{ErrorCode{val.getNumericValue<int>()}};
+              }
+              return Result();
+            })
+            .thenError<std::exception>([](std::exception ptr) {
+              return Result(TRI_ERROR_INTERNAL,
+                            "unhandled query shutdown exception");
+            });
+
+    futures.emplace_back(std::move(f));
+  }
+
+  return futures::collectAll(std::move(futures))
+      .thenValue([commitGuard = std::move(commitGuard)](
+                     std::vector<futures::Try<Result>>&& results) -> Result {
+        for (futures::Try<Result>& tryRes : results) {
+          if (tryRes.get().fail()) {
+            return std::move(tryRes).get();
+          }
+        }
+        return Result();
+      });
+}
 }  // namespace
 
 /// @brief internal constructor, Used to construct a full query or a
@@ -1677,127 +1795,6 @@ ExecutionEngine* Query::rootEngine() const {
   }
   return nullptr;
 }
-
-namespace {
-
-futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
-  TRI_ASSERT(ServerState::instance()->isCoordinator());
-  auto const& serverQueryIds = query.serverQueryIds();
-  TRI_ASSERT(!serverQueryIds.empty());
-
-  auto& server = query.vocbase().server();
-
-  NetworkFeature const& nf = server.getFeature<NetworkFeature>();
-  network::ConnectionPool* pool = nf.pool();
-  if (pool == nullptr) {
-    return futures::makeFuture(Result{TRI_ERROR_SHUTTING_DOWN});
-  }
-
-  // used by hotbackup to prevent commits
-  std::optional<arangodb::transaction::Manager::TransactionCommitGuard>
-      commitGuard;
-  // If the query is not read-only, we want to acquire the transaction
-  // commit lock as read lock, read-only queries can just proceed.
-  // note that we only need to acquire the commit lock if the transaction
-  // is actually about to commit (i.e. no error happened) and not about
-  // to abort:
-  if (query.isModificationQuery() && errorCode == TRI_ERROR_NO_ERROR) {
-    auto* manager = server.getFeature<transaction::ManagerFeature>().manager();
-    commitGuard.emplace(manager->getTransactionCommitGuard());
-  }
-
-  network::RequestOptions options;
-  options.database = query.vocbase().name();
-  options.timeout = network::Timeout(60.0);  // Picked arbitrarily
-  options.continuationLane = RequestLane::CLUSTER_INTERNAL;
-  // Most coordinator AQL code might be executed on the MEDIUM prio lane,
-  // since it comes from a continuation. Therefore, to avoid deadlock, we
-  // must use a lane which has priority HIGH. We do not want to skip the
-  // scheduler, since the cleanup code acquires locks and does some
-  // non-trivial work.
-
-  VPackBuffer<uint8_t> body;
-  VPackBuilder builder(body);
-  builder.openObject(true);
-  builder.add(StaticStrings::Code, VPackValue(errorCode));
-  builder.close();
-
-  query.incHttpRequests(static_cast<unsigned>(serverQueryIds.size()));
-
-  std::vector<futures::Future<Result>> futures;
-  futures.reserve(serverQueryIds.size());
-  auto ss = query.sharedState();
-  TRI_ASSERT(ss != nullptr);
-
-  for (auto const& [server, queryId, rebootId] : serverQueryIds) {
-    TRI_ASSERT(!server.starts_with("server:"));
-
-    auto f =
-        network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Delete,
-                             absl::StrCat("/_api/aql/finish/", queryId), body,
-                             options)
-            .thenValue([ss, &query](network::Response&& res) mutable -> Result {
-              // simon: checked until 3.5, shutdown result is always ignored
-              if (res.fail()) {
-                return Result{network::fuerteToArangoErrorCode(res)};
-              } else if (!res.slice().isObject()) {
-                return Result(TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
-                              "shutdown response of DBServer is malformed");
-              }
-
-              if (VPackSlice val = res.slice().get("stats"); val.isObject()) {
-                ss->executeLocked([&] {
-                  query.executionStatsGuard().doUnderLock(
-                      [&](auto& executionStats) {
-                        executionStats.add(ExecutionStats(val));
-                        if (auto s = val.get("intermediateCommits");
-                            s.isNumber<uint64_t>()) {
-                          query.addIntermediateCommits(s.getNumber<uint64_t>());
-                        }
-                      });
-                });
-              }
-              // read "warnings" attribute if present and add it to our
-              // query
-              if (VPackSlice val = res.slice().get("warnings"); val.isArray()) {
-                for (VPackSlice it : VPackArrayIterator(val)) {
-                  if (it.isObject()) {
-                    VPackSlice code = it.get("code");
-                    VPackSlice message = it.get("message");
-                    if (code.isNumber() && message.isString()) {
-                      query.warnings().registerWarning(
-                          ErrorCode{code.getNumericValue<int>()},
-                          message.copyString());
-                    }
-                  }
-                }
-              }
-
-              if (VPackSlice val = res.slice().get("code"); val.isNumber()) {
-                return Result{ErrorCode{val.getNumericValue<int>()}};
-              }
-              return Result();
-            })
-            .thenError<std::exception>([](std::exception ptr) {
-              return Result(TRI_ERROR_INTERNAL,
-                            "unhandled query shutdown exception");
-            });
-
-    futures.emplace_back(std::move(f));
-  }
-
-  return futures::collectAll(std::move(futures))
-      .thenValue([commitGuard = std::move(commitGuard)](
-                     std::vector<futures::Try<Result>>&& results) -> Result {
-        for (futures::Try<Result>& tryRes : results) {
-          if (tryRes.get().fail()) {
-            return std::move(tryRes).get();
-          }
-        }
-        return Result();
-      });
-}
-}  // namespace
 
 ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
   ShutdownState exp = _shutdownState.load(std::memory_order_relaxed);

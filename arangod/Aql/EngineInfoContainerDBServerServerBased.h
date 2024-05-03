@@ -50,12 +50,12 @@ namespace aql {
 class ExecutionNode;
 class GatherNode;
 class GraphNode;
-class QueryContext;
+class Query;
 class QuerySnippet;
 
 class EngineInfoContainerDBServerServerBased {
  public:
-  explicit EngineInfoContainerDBServerServerBased(QueryContext& query) noexcept;
+  explicit EngineInfoContainerDBServerServerBased(Query& query) noexcept;
 
   // Insert a new node into the last engine on the stack
   // If this Node contains Collections, they will be added into the map
@@ -117,7 +117,8 @@ class EngineInfoContainerDBServerServerBased {
   std::vector<bool> buildEngineInfo(
       QueryId clusterQueryId, VPackBuilder& infoBuilder, ServerID const& server,
       std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
-      std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases);
+      std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases,
+      cluster::LeaseId leaseId);
 
   arangodb::futures::Future<Result> buildSetupRequest(
       transaction::Methods& trx, ServerID const& server, VPackSlice infoSlice,
@@ -184,7 +185,7 @@ class EngineInfoContainerDBServerServerBased {
 
   std::vector<std::shared_ptr<QuerySnippet>> _closedSnippets;
 
-  QueryContext& _query;
+  Query& _query;
 
   // @brief List of all graphNodes that need to create TraverserEngines on
   // DBServers

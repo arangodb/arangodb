@@ -27,10 +27,35 @@
 #include "Cluster/LeaseManager/AbortLeaseInformation.h"
 #include "Cluster/LeaseManager/AbortLeaseInformationInspector.h"
 #include "Cluster/LeaseManager/LeaseManager.h"
+#include "Cluster/LeaseManager/LeasesReport.h"
+#include "Cluster/LeaseManager/LeasesReportInspectors.h"
 #include "Inspection/VPack.h"
+
+#include "Logger/LogMacros.h"
 
 using namespace arangodb;
 using namespace arangodb::cluster;
+
+namespace {
+
+auto parseGetType(std::string_view parameter) -> ResultT<LeaseManager::GetType> {
+  if (parameter.empty() || parameter == "local") {
+    return LeaseManager::GetType::LOCAL;
+  } else if (parameter == "all") {
+    return LeaseManager::GetType::ALL;
+  } else if (parameter == "mine") {
+    return LeaseManager::GetType::MINE;
+  } else if (parameter == "server") {
+    return LeaseManager::GetType::FOR_SERVER;
+  } else {
+    // Unknown type
+    return Result{TRI_ERROR_BAD_PARAMETER,
+                  fmt::format("Illegal mode: {}, allowed values are: 'local', "
+                              "'all', 'mine', 'server' ",
+                              parameter)};
+  }
+}
+}  // namespace
 
 LeaseManagerRestHandler::LeaseManagerRestHandler(ArangodServer& server,
                                                  GeneralRequest* request,
@@ -63,7 +88,20 @@ RestStatus LeaseManagerRestHandler::execute() {
 RestStatus LeaseManagerRestHandler::executeGet() {
   auto& networkFeature = server().getFeature<NetworkFeature>();
   auto& leaseManager = networkFeature.leaseManager();
-  auto builder = leaseManager.leasesToVPack();
+  auto getType = parseGetType(request()->value("type"));
+  if (getType.fail()) {
+    generateError(getType.result());
+    return RestStatus::DONE;
+  }
+  auto forServer = std::optional<std::string>{};
+  if (getType == LeaseManager::GetType::FOR_SERVER) {
+    auto serverValue = request()->value("server");
+    if (!serverValue.empty()) {
+      forServer = std::move(serverValue);
+    }
+  }
+  auto report = leaseManager.reportLeases(getType.get(), forServer);
+  auto builder = velocypack::serialize(report);
   generateOk(rest::ResponseCode::OK, builder.slice());
   return RestStatus::DONE;
 }

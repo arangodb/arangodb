@@ -22,15 +22,25 @@
 
 #pragma once
 
-#include "AbortLeaseInformation.h"
+#include "LeasesReport.h"
 
 namespace arangodb::cluster {
+template<class Inspector>
+auto inspect(Inspector& f, LeasesReport& x) {
+  return f.object(x).fields(f.field("leasedFromRemote", x.leasesFromRemote),
+                            f.field("leasedToRemote", x.leasesToRemote));
+}
 
 template<class Inspector>
-auto inspect(Inspector& f, AbortLeaseInformation& x) {
-  return f.object(x).fields(f.field("server", x.server),
-                            f.field("leasedFrom", x.leasedFrom),
-                            f.field("leasedTo", x.leasedTo));
+auto inspect(Inspector& f, ManyServersLeasesReport::EntryOrError& x) {
+  return f.variant(x.value).unqualified().alternatives(
+      arangodb::inspection::inlineType<LeasesReport>(),
+      arangodb::inspection::inlineType<Result>());
 }
 
+template<class Inspector>
+auto inspect(Inspector& f, ManyServersLeasesReport& x) {
+  return f.apply(x.serverLeases);
 }
+
+}  // namespace arangodb::cluster

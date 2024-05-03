@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionNode/GraphNode.h"
+#include "Aql/SharedQueryState.h"
 #include "Aql/TraverserEngineShardLists.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -80,7 +81,7 @@ Result extractRemoteAndShard(VPackSlice keySlice, ExecutionNodeId& remoteId,
 }  // namespace
 
 EngineInfoContainerDBServerServerBased::EngineInfoContainerDBServerServerBased(
-    QueryContext& query) noexcept
+    Query& query) noexcept
     : _query(query), _shardLocking(query), _lastSnippetId(1) {
   // NOTE: We need to start with _lastSnippetID > 0. 0 is reserved for
   // GraphNodes
@@ -136,7 +137,8 @@ void EngineInfoContainerDBServerServerBased::closeSnippet(
 std::vector<bool> EngineInfoContainerDBServerServerBased::buildEngineInfo(
     QueryId clusterQueryId, VPackBuilder& infoBuilder, ServerID const& server,
     std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
-    std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases) {
+    std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases,
+    cluster::LeaseId leaseId) {
   LOG_TOPIC("4bbe6", DEBUG, arangodb::Logger::AQL)
       << "Building Engine Info for " << server;
 
@@ -145,6 +147,8 @@ std::vector<bool> EngineInfoContainerDBServerServerBased::buildEngineInfo(
 
   // query id
   infoBuilder.add("clusterQueryId", VPackValue(clusterQueryId));
+  // LeaseID
+  infoBuilder.add("leaseId", VPackValue(leaseId.id()));
 
   addLockingPart(infoBuilder, server);
   TRI_ASSERT(infoBuilder.isOpenObject());
@@ -415,14 +419,23 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     }
 
     PeerState peerState{.serverId = server, .rebootId = alive->second.rebootId};
-    _query.addLeaseFromRemoteGuard(
-        leaseManager.requireLease(peerState, []() noexcept {
-          // TODO: Implement me.
-        }));
+    auto lease = leaseManager.requireLease(peerState, [ss = _query.sharedState(), query = &_query]() noexcept {
+                               // TODO: Implement me.
+                               LOG_DEVEL << "Le huestensaeft";
+                               // NOTE: This execute protects us against query being out of Scope
+                               // The SharedPtr stays valid, but the Query could be gone.
+                               ss->executeLocked([query]() noexcept {
+                                 LOG_DEVEL << "Killed Query Coordinator";
+                                 query->kill();
+                               });
+
+                             });
+    auto leaseId = lease.id();
+    _query.addLeaseFromRemoteGuard(std::move(lease));
     // Build Lookup Infos
     VPackBuilder infoBuilder;
     auto didCreateEngine = buildEngineInfo(clusterQueryId, infoBuilder, server,
-                                           nodesById, nodeAliases);
+                                           nodesById, nodeAliases, leaseId);
     VPackSlice infoSlice = infoBuilder.slice();
 
     if (isNotSatelliteLeader(infoSlice)) {
