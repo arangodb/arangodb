@@ -180,8 +180,7 @@ RestStatus RestAdminLogHandler::reportLogs(bool newFormat) {
 
       auto f = network::sendRequestRetry(
           pool, "server:" + serverId, fuerte::RestVerb::Get,
-          _request->requestPath(), VPackBuffer<uint8_t>{}, options,
-          network::addAuthorizationHeader(_request->headers()));
+          _request->requestPath(), VPackBuffer<uint8_t>{}, options);
       return waitForFuture(std::move(f).thenValue(
           [self = std::dynamic_pointer_cast<RestAdminLogHandler>(
                shared_from_this())](network::Response const& r) {
@@ -481,10 +480,9 @@ RestStatus RestAdminLogHandler::handleLogLevel() {
         return RestStatus::DONE;  // error message from vpack parser
       }
 
-      auto f = network::sendRequestRetry(
-          pool, "server:" + serverId, requestType, _request->requestPath(),
-          std::move(*body), options,
-          network::addAuthorizationHeader(_request->headers()));
+      auto f = network::sendRequestRetry(pool, "server:" + serverId,
+                                         requestType, _request->requestPath(),
+                                         std::move(*body), options);
       return waitForFuture(std::move(f).thenValue(
           [self = std::dynamic_pointer_cast<RestAdminLogHandler>(
                shared_from_this())](network::Response const& r) {
