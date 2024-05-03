@@ -35,18 +35,8 @@ void resolveConnect(detail::ConnectionConfiguration const& config,
                     asio_ns::ip::tcp::resolver& resolver, SocketT& socket,
                     F&& done, IsAbortedCb&& isAborted) {
   auto cb = [&socket, 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-             fail = config._failConnectAttempts > 0,
-#endif
              done = std::forward<F>(done),
              isAborted = std::forward<IsAbortedCb>(isAborted)](auto ec, auto it) mutable {
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-    if (fail) {
-      // use an error code != operation_aborted
-      ec = boost::system::errc::make_error_code(boost::system::errc::not_enough_memory);
-    }
-#endif
-
     if (isAborted()) {
       ec = asio_ns::error::operation_aborted;
     }
@@ -121,10 +111,6 @@ struct Socket<SocketType::Tcp> {
     }, [this]() {
       return canceled;
     });
-  }
-
-  void rearm() {
-    canceled = false;
   }
 
   void cancel() {
@@ -233,11 +219,6 @@ struct Socket<fuerte::SocketType::Ssl> {
         });
   }
   
-  void rearm() {
-    socket = asio_ns::ssl::stream<asio_ns::ip::tcp::socket>(this->ctx, this->sslContext);
-    canceled = false;
-  }
-
   void cancel() {
     canceled = true;
     try {
@@ -333,10 +314,6 @@ struct Socket<fuerte::SocketType::Unix> {
     socket.async_connect(ep, std::forward<F>(done));
   }
   
-  void rearm() {
-    canceled = false;
-  }
-
   void cancel() {
     canceled = true;
     try {

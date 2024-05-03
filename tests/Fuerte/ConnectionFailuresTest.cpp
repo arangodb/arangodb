@@ -46,19 +46,12 @@ constexpr std::string_view urls[] = {
 // tryToConnectExpectFailure tries to make a connection to a host with given
 // url. This is expected to fail.
 static void tryToConnectExpectFailure(f::EventLoopService& eventLoopService,
-                                      std::string_view url, bool useRetries) {
+                                      std::string_view url) {
   f::WaitGroup wg;
 
   wg.add();
   f::ConnectionBuilder cbuilder;
   cbuilder.connectTimeout(std::chrono::milliseconds(250));
-  cbuilder.connectRetryPause(std::chrono::milliseconds(100));
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-  if (useRetries) {
-    cbuilder.failConnectAttempts(2);
-  }
-  cbuilder.maxConnectRetries(3);
-#endif
   cbuilder.endpoint(std::string{url});
 
   cbuilder.onFailure([&](f::Error errorCode, std::string const& errorMessage) {
@@ -80,14 +73,14 @@ static void tryToConnectExpectFailure(f::EventLoopService& eventLoopService,
 // that cannot be resolved.
 TEST(ConnectionFailureTest, CannotResolveHttp) {
   f::EventLoopService loop;
-  tryToConnectExpectFailure(
-      loop, "http://thishostmustnotexist.arangodb.com:8529", false);
+  tryToConnectExpectFailure(loop,
+                            "http://thishostmustnotexist.arangodb.com:8529");
 }
 
 TEST(ConnectionFailureTest, CannotResolveVst) {
   f::EventLoopService loop;
-  tryToConnectExpectFailure(
-      loop, "vst://thishostmustnotexist.arangodb.com:8529", false);
+  tryToConnectExpectFailure(loop,
+                            "vst://thishostmustnotexist.arangodb.com:8529");
 }
 
 // CannotConnect tests try to make a connection to a host with a valid name
@@ -95,13 +88,6 @@ TEST(ConnectionFailureTest, CannotResolveVst) {
 TEST(ConnectionFailureTest, CannotConnect) {
   for (auto const& url : urls) {
     f::EventLoopService loop;
-    tryToConnectExpectFailure(loop, url, /*useRetries*/ false);
-  }
-}
-
-TEST(ConnectionFailureTest, CannotConnectForceRetries) {
-  for (auto const& url : urls) {
-    f::EventLoopService loop;
-    tryToConnectExpectFailure(loop, url, /*useRetries*/ true);
+    tryToConnectExpectFailure(loop, url);
   }
 }
