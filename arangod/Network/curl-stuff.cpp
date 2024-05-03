@@ -324,6 +324,7 @@ void connection_pool::install_new_handles() noexcept {
     }
 
     requests.clear();
+    canceledEndpoints.clear();
   }
 }
 
