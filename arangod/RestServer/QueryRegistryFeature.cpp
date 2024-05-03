@@ -249,6 +249,10 @@ void QueryRegistryFeature::collectOptions(
                         "query.cache-entries");
   options->addOldOption("database.disable-query-tracking", "query.tracking");
 
+  // option obsoleted since 3.12.1, because the APIs are turned on by default.
+  options->addObsoleteOption("query.enable-debug-apis",
+                             "Whether to enable query debug APIs.", false);
+
   options
       ->addOption("--query.global-memory-limit",
                   "The memory threshold for all AQL queries combined "

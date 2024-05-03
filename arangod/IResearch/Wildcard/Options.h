@@ -48,7 +48,7 @@ struct Options {
   std::vector<irs::by_phrase_options> parts;
   irs::bstring token;
   bool hasPos{true};
-  icu::RegexMatcher* matcher{};
+  icu_64_64::RegexMatcher* matcher{};
 
   // TODO(MBkkt) implement this when we will make filter caching
   bool operator==(const Options& rhs) const noexcept { return false; }

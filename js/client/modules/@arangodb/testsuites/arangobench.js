@@ -38,6 +38,7 @@ const optionsDocumentation = [
 const fs = require('fs');
 const _ = require('lodash');
 const pu = require('@arangodb/testutils/process-utils');
+const ct = require('@arangodb/testutils/client-tools');
 const im = require('@arangodb/testutils/instance-manager');
 const internal = require('internal');
 
@@ -254,7 +255,7 @@ function arangobench (options) {
         args = Object.assign(args, options.benchargs);
       }
 
-      let oneResult = pu.run.arangoBenchmark(options, instanceManager, args, instanceManager.rootDir, options.coreCheck);
+      let oneResult = ct.run.arangoBenchmark(options, instanceManager, args, instanceManager.rootDir, options.coreCheck);
       const expectFailure = (benchTodo.hasOwnProperty('expected-failure') && benchTodo['expected-failure']);
 
       continueTesting = instanceManager.checkInstanceAlive();

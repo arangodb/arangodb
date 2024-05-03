@@ -159,6 +159,18 @@ std::vector<bool> EngineInfoContainerDBServerServerBased::buildEngineInfo(
                   VPackValue(_query.isModificationQuery()));
   infoBuilder.add("isAsyncQuery", VPackValue(_query.isAsyncQuery()));
 
+  // include query string for informational/debugging purposes.
+  // this allows us to link DB server query snippets to actual queries
+  // as written by the end user.
+  QueryContext* qc = &_query;
+  Query* q = dynamic_cast<Query*>(qc);
+  if (q != nullptr) {
+    // only send up to 1K of query strings to save network traffic and
+    // memory on the DB server later
+    infoBuilder.add("qs",
+                    VPackValue(q->queryString().extract(/*maxLength*/ 1024)));
+  }
+
   infoBuilder.add(StaticStrings::AttrCoordinatorRebootId,
                   VPackValue(ServerState::instance()->getRebootId().value()));
   infoBuilder.add(StaticStrings::AttrCoordinatorId,

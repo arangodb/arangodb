@@ -324,16 +324,18 @@ RocksDBCollection::RocksDBCollection(LogicalCollection& collection,
                         .server()
                         .getFeature<CacheManagerFeature>()
                         .manager()),
-      _cacheEnabled(_cacheManager != nullptr && !collection.system() &&
-                    !collection.isAStub() &&
-                    !ServerState::instance()->isCoordinator() &&
-                    basics::VelocyPackHelper::getBooleanValue(
-                        info, StaticStrings::CacheEnabled, false)),
+      _maxCacheValueSize(
+          _cacheManager == nullptr ? 0 : _cacheManager->maxCacheValueSize()),
       _statistics(collection.vocbase()
                       .server()
                       .getFeature<metrics::MetricsFeature>()
                       .serverStatistics()
-                      ._transactionsStatistics) {
+                      ._transactionsStatistics),
+      _cacheEnabled(_cacheManager != nullptr && !collection.system() &&
+                    !collection.isAStub() &&
+                    !ServerState::instance()->isCoordinator() &&
+                    basics::VelocyPackHelper::getBooleanValue(
+                        info, StaticStrings::CacheEnabled, false)) {
   TRI_ASSERT(_logicalCollection.isAStub() || objectId() != 0);
   if (_cacheEnabled.load(std::memory_order_relaxed)) {
     setupCache();
@@ -2050,7 +2052,8 @@ Result RocksDBCollection::lookupDocumentVPack(
   }
 
   TRI_ASSERT(ps.size() > 0);
-  if (options.fillCache && cache != nullptr) {
+  if (options.fillCache && cache != nullptr &&
+      ps.size() <= _maxCacheValueSize) {
     // write entry back to cache
     cache::Cache::SimpleInserter<DocumentCacheType>{
         static_cast<DocumentCacheType&>(*cache), key->string().data(),
@@ -2089,6 +2092,8 @@ void RocksDBCollection::setupCache() const {
   auto cache = _cache;
   if (cache == nullptr) {
     TRI_ASSERT(_cacheManager != nullptr);
+    TRI_ASSERT(_cacheManager->options().cacheSize > 0);
+    TRI_ASSERT(_cacheManager->options().maxCacheValueSize > 0);
     LOG_TOPIC("f5df2", DEBUG, Logger::CACHE) << "Creating document cache";
     cache = _cacheManager->createCache<cache::BinaryKeyHasher>(
         cache::CacheType::Transactional);

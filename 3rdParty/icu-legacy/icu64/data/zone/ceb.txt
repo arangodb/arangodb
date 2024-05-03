@@ -1,0 +1,63 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+ceb{
+    Version{"2.1.49.82"}
+    zoneStrings{
+        "Etc:UTC"{
+            ls{"Koordinado nga Unibersohanong Oras"}
+        }
+        "Etc:Unknown"{
+            ec{"Wala Mailhing Siyudad"}
+        }
+        "meta:America_Central"{
+            ld{"Taliwala sa Kahayag sa Adlawng Oras Norte Amerika"}
+            lg{"Taliwala nga Oras Norte Amerika"}
+            ls{"Taliwala nga Sukdanang Oras Norte Amerika"}
+        }
+        "meta:America_Eastern"{
+            ld{"Norte Amerika Oras sa Sidlakan sa Kahayag sa Adlaw"}
+            lg{"Norte Amerika Oras sa Sidlakan"}
+            ls{"Norte Amerika Sukdanang Oras"}
+        }
+        "meta:America_Mountain"{
+            ld{"Norte Amerika Oras sa Kahayag sa Adlaw sa Kabukiran"}
+            lg{"Norte Amerika Oras sa Kabukiran"}
+            ls{"Norte Amerika Sukdanang Oras sa Kabukiran"}
+        }
+        "meta:America_Pacific"{
+            ld{"Norte Amerika Oras sa Kahayag sa Adlaw sa Pasipiko"}
+            lg{"Norte Amerika Oras sa Pasipiko"}
+            ls{"Norte Amerika Sukdanang Oras sa Pasipiko"}
+        }
+        "meta:Atlantic"{
+            ld{"Norte Amerika Oras sa Kahayag sa Adlaw sa Atlantiko"}
+            lg{"Norte Amerika Oras sa Atlantiko"}
+            ls{"Norte Amerika Sukdanang Oras sa Atlantiko"}
+        }
+        "meta:Europe_Central"{
+            ld{"Oras sa Europa Taliwala sa Adlaw sa Tag-init"}
+            lg{"Oras sa Europa sa Taliwala sa Adlaw"}
+            ls{"Sukdanang Oras sa Europa sa Taliwala sa Adlaw"}
+        }
+        "meta:Europe_Eastern"{
+            ld{"Oras sa Taga-Oryente sa Europa sa Tag-int"}
+            lg{"Oras sa Taga-Oryente sa Europa"}
+            ls{"Sukdanang Oras sa Taga-Oryente sa Europa"}
+        }
+        "meta:Europe_Western"{
+            ld{"Oras sa Kasadpanon sa Europa sa Tag-init"}
+            lg{"Oras sa Kasadpanon sa Europa"}
+            ls{"Sukadanang Oras sa Kasadpanon sa Europa"}
+        }
+        "meta:GMT"{
+            ls{"Kasarangang Oras sa Greenwich"}
+        }
+        fallbackFormat{"{1} {0}"}
+        gmtFormat{"GMT {0}"}
+        gmtZeroFormat{"GMT"}
+        hourFormat{"+HH:mm;-HH:mm"}
+        regionFormat{"Oras {0}"}
+        regionFormatDaylight{"Tag-init Oras {0}"}
+        regionFormatStandard{"Sukdanang Oras {0}"}
+    }
+}
