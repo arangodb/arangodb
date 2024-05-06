@@ -157,6 +157,32 @@ class ConnectionBuilder {
     return *this;
   }
 
+  /// @brief connect retry pause (1s default)
+  std::chrono::milliseconds connectRetryPause() const {
+    return _conf._connectRetryPause;
+  }
+  /// @brief set the connect retry pause (1s default)
+  ConnectionBuilder& connectRetryPause(std::chrono::milliseconds p) {
+    _conf._connectRetryPause = p;
+    return *this;
+  }
+
+  /// @brief connect retries (3 default)
+  unsigned maxConnectRetries() const { return _conf._maxConnectRetries; }
+  /// @brief set the max connect retries (3 default)
+  ConnectionBuilder& maxConnectRetries(unsigned r) {
+    _conf._maxConnectRetries = r;
+    return *this;
+  }
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  unsigned failConnectAttempts() const { return _conf._failConnectAttempts; }
+  ConnectionBuilder& failConnectAttempts(unsigned f) {
+    _conf._failConnectAttempts = f;
+    return *this;
+  }
+#endif
+
   // Set the authentication type of the connection
   AuthenticationType authenticationType() const {
     return _conf._authenticationType;
