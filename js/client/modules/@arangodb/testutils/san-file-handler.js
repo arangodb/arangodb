@@ -47,7 +47,6 @@ class sanHandler {
   }
   detectLogfiles(rootDir, tmpDir) {
     if (this.enabled) {
-      let rootDir = rootDir;
       if (containsDoubleByte(rootDir)) {
         rootDir = tmpDir;
       }
