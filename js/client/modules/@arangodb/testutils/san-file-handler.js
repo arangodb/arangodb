@@ -37,7 +37,7 @@ function containsDoubleByte(str) {
 }
 
 class sanHandler {
-  constructor(binaryName, sanOptions, isSan, arangod, extremeVerbosity) {
+  constructor(binaryName, sanOptions, isSan, extremeVerbosity) {
     this.binaryName = binaryName;
     this.sanOptions = _.clone(sanOptions);
     this.enabled = isSan;
