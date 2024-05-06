@@ -134,8 +134,7 @@ const getDefaultProps = () => {
       "replicationFactor": 2,
       "minReplicationFactor": 1,
       "writeConcern": 1,
-      /* Is this a reasonable default?, We have a new collection */
-      "shardingStrategy": isEnterprise ? "enterprise-compat" : "community-compat",
+      "shardingStrategy": "hash",
       "cacheEnabled": false,
       "computedValues": null,
       "syncByRevision": true,

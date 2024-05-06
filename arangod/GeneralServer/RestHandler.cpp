@@ -43,6 +43,7 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/RequestStatistics.h"
 #include "Utils/ExecContext.h"
+#include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/ticks.h"
 
 #include <absl/strings/str_cat.h>
@@ -120,6 +121,34 @@ RequestLane RestHandler::determineRequestLane() {
       _lane = RequestLane::CLIENT_UI;
     } else {
       _lane = lane();
+
+      if (PriorityRequestLane(_lane) == RequestPriority::LOW) {
+        // if this is a low-priority request, check if it contains
+        // a transaction id, but is not the start of an AQL query
+        // or streaming transaction.
+        // if we find out that the request is part of an already
+        // ongoing transaction, we can now increase its priority,
+        // so that ongoing transactions can proceed. however, we
+        // don't want to prioritize the start of new transactions
+        // here.
+        std::string const& value =
+            _request->header(StaticStrings::TransactionId, found);
+
+        if (found) {
+          TransactionId tid = TransactionId::none();
+          std::size_t pos = 0;
+          try {
+            tid = TransactionId{std::stoull(value, &pos, 10)};
+          } catch (...) {
+          }
+          if (!tid.empty() &&
+              !(value.compare(pos, std::string::npos, " aql") == 0 ||
+                value.compare(pos, std::string::npos, " begin") == 0)) {
+            // increase request priority from previously LOW to now MED.
+            _lane = RequestLane::CONTINUATION;
+          }
+        }
+      }
     }
   }
   TRI_ASSERT(_lane != RequestLane::UNDEFINED);
@@ -145,6 +174,9 @@ void RestHandler::trackTaskStart() noexcept {
 }
 
 void RestHandler::trackTaskEnd() noexcept {
+  // the queueing time in seconds
+  double queueTime = _statistics.ELAPSED_WHILE_QUEUED();
+
   if (_trackedAsOngoingLowPrio) {
     TRI_ASSERT(PriorityRequestLane(determineRequestLane()) ==
                RequestPriority::LOW);
@@ -154,10 +186,18 @@ void RestHandler::trackTaskEnd() noexcept {
 
     // update the time the last low priority item spent waiting in the queue.
 
-    // the queueing time is in ms
-    uint64_t queueTimeMs =
-        static_cast<uint64_t>(_statistics.ELAPSED_WHILE_QUEUED() * 1000.0);
+    // the queueing time in ms
+    uint64_t queueTimeMs = static_cast<uint64_t>(queueTime * 1000.0);
     SchedulerFeature::SCHEDULER->setLastLowPriorityDequeueTime(queueTimeMs);
+  }
+
+  if (queueTime >= 30.0) {
+    // this is an informational message about an exceptionally long queuing
+    // time. it is not per se a bug, but could be a sign of overload of the
+    // instance.
+    LOG_TOPIC("e7b15", INFO, Logger::REQUESTS)
+        << "request to " << _request->fullUrl() << " was queued for "
+        << Logger::FIXED(queueTime) << "s";
   }
 }
 
@@ -178,8 +218,8 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   // we must use the request's permissions here and set them in the
   // thread-local variable when calling forwardingTarget().
   // this is because forwardingTarget() may run permission checks.
-  ExecContext* exec = static_cast<ExecContext*>(_request->requestContext());
-  ExecContextScope scope(exec);
+  ExecContextScope scope(
+      basics::downCast<ExecContext>(_request->requestContext()));
 
   ResultT forwardResult = forwardingTarget();
   if (forwardResult.fail()) {
@@ -316,12 +356,13 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
 
 void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept try {
   auto buildException = [this](ErrorCode code, std::string message,
-                               char const* file, int line) {
+                               SourceLocation location =
+                                   SourceLocation::current()) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("b6302", WARN, arangodb::Logger::FIXME)
         << "maintainer mode: " << message;
 #endif
-    Exception err(code, std::move(message), file, line);
+    Exception err(code, std::move(message), location);
     handleError(err);
   };
 
@@ -332,7 +373,7 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept try {
   } catch (Exception const& ex) {
     std::string message =
         absl::StrCat("caught exception in ", name(), ": ", ex.what());
-    buildException(ex.code(), std::move(message), __FILE__, __LINE__);
+    buildException(ex.code(), std::move(message));
   } catch (velocypack::Exception const& ex) {
     bool const isParseError =
         (ex.errorCode() == arangodb::velocypack::Exception::ParseError ||
@@ -342,19 +383,18 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept try {
         absl::StrCat("caught velocypack error in ", name(), ": ", ex.what());
     buildException(
         isParseError ? TRI_ERROR_HTTP_CORRUPTED_JSON : TRI_ERROR_INTERNAL,
-        std::move(message), __FILE__, __LINE__);
+        std::move(message));
   } catch (std::bad_alloc const& ex) {
     std::string message =
         absl::StrCat("caught memory exception in ", name(), ": ", ex.what());
-    buildException(TRI_ERROR_OUT_OF_MEMORY, std::move(message), __FILE__,
-                   __LINE__);
+    buildException(TRI_ERROR_OUT_OF_MEMORY, std::move(message));
   } catch (std::exception const& ex) {
     std::string message =
         absl::StrCat("caught exception in ", name(), ": ", ex.what());
-    buildException(TRI_ERROR_INTERNAL, std::move(message), __FILE__, __LINE__);
+    buildException(TRI_ERROR_INTERNAL, std::move(message));
   } catch (...) {
     std::string message = absl::StrCat("caught unknown exception in ", name());
-    buildException(TRI_ERROR_INTERNAL, std::move(message), __FILE__, __LINE__);
+    buildException(TRI_ERROR_INTERNAL, std::move(message));
   }
 } catch (...) {
   // we can only get here if putting together an error response or an
@@ -439,7 +479,7 @@ void RestHandler::prepareEngine() {
   if (_canceled) {
     _state = HandlerState::FAILED;
 
-    Exception err(TRI_ERROR_REQUEST_CANCELED, __FILE__, __LINE__);
+    Exception err(TRI_ERROR_REQUEST_CANCELED);
     handleError(err);
     return;
   }
@@ -451,10 +491,10 @@ void RestHandler::prepareEngine() {
   } catch (Exception const& ex) {
     handleError(ex);
   } catch (std::exception const& ex) {
-    Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
+    Exception err(TRI_ERROR_INTERNAL, ex.what());
     handleError(err);
   } catch (...) {
-    Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
+    Exception err(TRI_ERROR_INTERNAL);
     handleError(err);
   }
 
@@ -482,8 +522,8 @@ bool RestHandler::wakeupHandler() {
 
 void RestHandler::executeEngine(bool isContinue) {
   DTRACE_PROBE1(arangod, RestHandlerExecuteEngine, this);
-  ExecContext* exec = static_cast<ExecContext*>(_request->requestContext());
-  ExecContextScope scope(exec);
+  ExecContextScope scope(
+      basics::downCast<ExecContext>(_request->requestContext()));
 
   try {
     RestStatus result = RestStatus::DONE;
@@ -503,8 +543,7 @@ void RestHandler::executeEngine(bool isContinue) {
     }
 
     if (_response == nullptr) {
-      Exception err(TRI_ERROR_INTERNAL, "no response received from handler",
-                    __FILE__, __LINE__);
+      Exception err(TRI_ERROR_INTERNAL, "no response received from handler");
       handleError(err);
     }
 
@@ -529,7 +568,7 @@ void RestHandler::executeEngine(bool isContinue) {
              arangodb::velocypack::Exception::UnexpectedControlCharacter);
     Exception err(
         isParseError ? TRI_ERROR_HTTP_CORRUPTED_JSON : TRI_ERROR_INTERNAL,
-        std::string("VPack error: ") + ex.what(), __FILE__, __LINE__);
+        std::string("VPack error: ") + ex.what());
     handleError(err);
   } catch (std::bad_alloc const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -537,7 +576,7 @@ void RestHandler::executeEngine(bool isContinue) {
         << "maintainer mode: caught memory exception in " << name() << ": "
         << ex.what();
 #endif
-    Exception err(TRI_ERROR_OUT_OF_MEMORY, ex.what(), __FILE__, __LINE__);
+    Exception err(TRI_ERROR_OUT_OF_MEMORY, ex.what());
     handleError(err);
   } catch (std::exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -545,14 +584,14 @@ void RestHandler::executeEngine(bool isContinue) {
         << "maintainer mode: caught exception in " << name() << ": "
         << ex.what();
 #endif
-    Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
+    Exception err(TRI_ERROR_INTERNAL, ex.what());
     handleError(err);
   } catch (...) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("f729c", WARN, arangodb::Logger::FIXME)
         << "maintainer mode: caught unknown exception in " << name();
 #endif
-    Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
+    Exception err(TRI_ERROR_INTERNAL);
     handleError(err);
   }
 
@@ -742,3 +781,9 @@ void RestHandler::resetResponse(rest::ResponseCode code) {
   TRI_ASSERT(_response != nullptr);
   _response->reset(code);
 }
+
+futures::Future<futures::Unit> RestHandler::executeAsync() {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+RestStatus RestHandler::execute() { return waitForFuture(executeAsync()); }

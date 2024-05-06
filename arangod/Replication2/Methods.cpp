@@ -1052,7 +1052,7 @@ struct ReplicatedLogMethodsCoordinator final
     auto leader = clusterInfo.getReplicatedLogLeader(id);
     if (leader.fail()) {
       if (leader.is(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED)) {
-        throw ParticipantResignedException(leader.result(), ADB_HERE);
+        throw ParticipantResignedException(leader.result());
       } else {
         THROW_ARANGO_EXCEPTION(leader.result());
       }

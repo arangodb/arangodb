@@ -137,7 +137,7 @@ class Optimizer {
     return std::move(res.first);
   }
 
-  bool runOnlyRequiredRules(size_t extraPlans) const;
+  bool runOnlyRequiredRules() const noexcept;
 
   /// @brief numberOfPlans, returns the current number of plans in the system
   /// this should be called from rules, it will consider those that the
@@ -145,6 +145,8 @@ class Optimizer {
   size_t numberOfPlans() const noexcept {
     return _plans.size() + _newPlans.size() + 1;
   }
+
+  void initializeRules(ExecutionPlan* plan, QueryOptions const& queryOptions);
 
  private:
   /// @brief disable a specific rule
@@ -164,7 +166,6 @@ class Optimizer {
                        OptimizerRule const& rule, bool wasModified,
                        RuleDatabase::iterator const& nextRule);
 
-  void initializeRules(ExecutionPlan* plan, QueryOptions const& queryOptions);
   void finalizePlans();
   void estimateCosts(QueryOptions const& queryOptions, bool estimateAllPlans);
 

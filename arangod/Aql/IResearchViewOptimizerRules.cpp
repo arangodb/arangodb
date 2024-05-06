@@ -26,19 +26,28 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlFunctionFeature.h"
+#include "Aql/Ast.h"
 #include "Aql/CalculationNodeVarFinder.h"
-#include "Aql/ClusterNodes.h"
 #include "Aql/Condition.h"
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/CalculationNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
+#include "Aql/ExecutionNode/GatherNode.h"
+#include "Aql/ExecutionNode/IResearchViewNode.h"
+#include "Aql/ExecutionNode/LimitNode.h"
+#include "Aql/ExecutionNode/MaterializeSearchNode.h"
+#include "Aql/ExecutionNode/NoResultsNode.h"
+#include "Aql/ExecutionNode/RemoteNode.h"
+#include "Aql/ExecutionNode/ScatterNode.h"
+#include "Aql/ExecutionNode/SortNode.h"
+#include "Aql/ExecutionNode/SubqueryNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/Function.h"
-#include "Aql/IResearchViewNode.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRule.h"
+#include "Aql/Projections.h"
 #include "Aql/Query.h"
 #include "Aql/SortCondition.h"
-#include "Aql/SortNode.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/DownCast.h"
 #include "Basics/StringUtils.h"
@@ -50,7 +59,6 @@
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchViewCoordinator.h"
 #include "IResearch/Search.h"
-#include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <utils/misc.hpp>
@@ -176,8 +184,8 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode,
   if (!addView(*view, query)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_QUERY_PARSE,
-        "failed to process all collections linked with the view '" +
-            view->name() + "'");
+        absl::StrCat("failed to process all collections linked with the view '",
+                     view->name(), "'"));
   }
 
   // build search condition
@@ -240,8 +248,8 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode,
     if (filterCreated.fail()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           filterCreated.errorNumber(),
-          StringUtils::concatT("unsupported SEARCH condition: ",
-                               filterCreated.errorMessage()));
+          absl::StrCat("unsupported SEARCH condition: ",
+                       filterCreated.errorMessage()));
     }
   }
 
@@ -447,7 +455,7 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
   // all sort elements are covered by view's scorers / stored values
   viewNode.setHeapSort(std::move(heapSort),
                        limitNode->offset() + limitNode->limit());
-  sortNode->_reinsertInCluster = false;
+  sortNode->dontReinsertInCluster();
   if (!ServerState::instance()->isCoordinator()) {
     // in cluster node will be unlinked later by 'distributeSortToClusterRule'
     plan->unlinkNode(sortNode);
@@ -579,7 +587,7 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
     assert(!primarySort.empty());
     viewNode.setSort(primarySort, sortElements.size());
 
-    sortNode->_reinsertInCluster = false;
+    sortNode->dontReinsertInCluster();
     if (!ServerState::instance()->isCoordinator()) {
       // in cluster node will be unlinked later by
       // 'distributeSortToClusterRule'
@@ -1153,7 +1161,7 @@ void immutableSearchCondition(Optimizer* opt,
     uint32_t count = 0;
     while (true) {
       auto const type = condition->type;
-      if (!Ast::IsOrOperatorType(type) && !Ast::IsAndOperatorType(type)) {
+      if (!Ast::isOrOperatorType(type) && !Ast::isAndOperatorType(type)) {
         break;
       }
       auto const numMembers = condition->numMembers();

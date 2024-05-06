@@ -35,11 +35,10 @@ class RestCollectionHandler : public arangodb::RestVocbaseBaseHandler {
  public:
   RestCollectionHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
- public:
   char const* name() const override final { return "RestCollectionHandler"; }
-  RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
-  RestStatus execute() override final;
+  RequestLane lane() const override final;
 
+  RestStatus execute() override final;
   void shutdownExecute(bool isFinalized) noexcept override final;
 
  protected:
@@ -70,13 +69,11 @@ class RestCollectionHandler : public arangodb::RestVocbaseBaseHandler {
   RestStatus standardResponse();
   futures::Future<futures::Unit> initializeTransaction(LogicalCollection&);
 
- private:
   futures::Future<RestStatus> handleCommandGet();
   void handleCommandPost();
   futures::Future<RestStatus> handleCommandPut();
   void handleCommandDelete();
 
- private:
   VPackBuilder _builder;
   std::unique_ptr<transaction::Methods> _activeTrx;
   std::unique_ptr<methods::Collections::Context> _ctxt;

@@ -24,12 +24,13 @@
 
 #pragma once
 
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/VarInfoMap.h"
 #include "Aql/WalkerWorker.h"
 #include "Aql/types.h"
-#include "Basics/Common.h"
 
+#include <iosfwd>
+#include <map>
 #include <memory>
 #include <stack>
 #include <vector>

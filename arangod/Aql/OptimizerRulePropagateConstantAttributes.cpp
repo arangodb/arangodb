@@ -22,17 +22,21 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <boost/container_hash/hash.hpp>
+#include "Aql/AstNode.h"
 #include "Aql/Collection.h"
+#include "Aql/ExecutionNode/CalculationNode.h"
+#include "Aql/ExecutionNode/FilterNode.h"
+#include "Aql/ExecutionNode/SubqueryNode.h"
 #include "Aql/Expression.h"
 #include "Aql/Optimizer.h"
 #include "Cluster/ServerState.h"
+#include "Containers/ImmutableMap.h"
 #include "Logger/LogMacros.h"
 #include "OptimizerRules.h"
 #include "OptimizerUtils.h"
 #include "VocBase/LogicalCollection.h"
 
-#include "Containers/ImmutableMap.h"
+#include <boost/container_hash/hash.hpp>
 
 using namespace arangodb;
 using namespace arangodb::aql;

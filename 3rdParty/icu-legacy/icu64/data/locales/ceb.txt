@@ -1,0 +1,359 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+ceb{
+    AuxExemplarCharacters{"[c f j q v x z]"}
+    ExemplarCharacters{"[a b d e g h i k l m n o p r s t u w y]"}
+    ExemplarCharactersIndex{"[a b d e g h i k l m n {ng} o p r s t u w y]"}
+    ExemplarCharactersPunctuation{"[\\- , ; \\: ! ? . … ' ‘ ’ \u0022 “ ” ( ) \\[ \\] @ * / \\& # ′ ″]"}
+    NumberElements{
+        latn{
+            patterns{
+                currencyFormat{"¤#,##0.00"}
+                decimalFormat{"#,##0.###"}
+                percentFormat{"#,#0%"}
+                scientificFormat{"#E0"}
+            }
+            symbols{
+                decimal{"."}
+                group{","}
+                minusSign{"-"}
+                percentSign{"%"}
+                plusSign{"+"}
+            }
+        }
+    }
+    Version{"2.1.49.82"}
+    calendar{
+        generic{
+            DateTimePatterns{
+                "h:mm:ss a zzzz",
+                "h:mm:ss a z",
+                "h:mm:ss a",
+                "h:mm a",
+                "EEEE, MMMM d, y G",
+                "MMMM d, y G",
+                "MMM d, y G",
+                "M/d/y GGGGG",
+                "{1}, {0}",
+                "{1} 'sa' {0}",
+                "{1} 'sa' {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+            }
+            intervalFormats{
+                fallback{"{0} – {1}"}
+            }
+        }
+        gregorian{
+            AmPmMarkers{
+                "AM",
+                "PM",
+            }
+            DateTimePatterns{
+                "h:mm:ss a zzzz",
+                "h:mm:ss a z",
+                "h:mm:ss a",
+                "h:mm a",
+                "EEEE, MMMM d, y",
+                "MMMM d, y",
+                "MMM d, y",
+                "M/d/yy",
+                "{1}, {0}",
+                "{1} 'sa' {0}",
+                "{1} 'sa' {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+            }
+            availableFormats{
+                Bh{"h B"}
+                Bhm{"h:mm B"}
+                Bhms{"h:mm:ss B"}
+                E{"ccc"}
+                EBhm{"E h:mm B"}
+                EBhms{"E h:mm:ss B"}
+                EHm{"E HH:mm"}
+                EHms{"E HH:mm:ss"}
+                Ed{"d E"}
+                Ehm{"E h:mm a"}
+                Ehms{"E h:mm:ss a"}
+                Gy{"G y"}
+                GyMMM{"G y MMM"}
+                GyMMMEd{"G y MMM d, E"}
+                GyMMMd{"G y MMM d"}
+                H{"HH"}
+                Hm{"HH:mm"}
+                Hms{"HH:mm:ss"}
+                Hmsv{"HH:mm:ss v"}
+                Hmv{"HH:mm v"}
+                M{"L"}
+                MEd{"E, M/d"}
+                MMM{"LLL"}
+                MMMEd{"E, MMM d"}
+                MMMMd{"MMMM d"}
+                MMMd{"MMM d"}
+                Md{"M/d"}
+                d{"d"}
+                h{"h a"}
+                hm{"h:mm a"}
+                hms{"h:mm:ss a"}
+                hmsv{"h:mm:ss a v"}
+                hmv{"h:mm a v"}
+                ms{"mm:ss"}
+                y{"y"}
+                yM{"M/y"}
+                yMEd{"E, M/d/y"}
+                yMMM{"MMM y"}
+                yMMMEd{"E, MMM d, y"}
+                yMMMM{"MMMM y"}
+                yMMMd{"MMM d, y"}
+                yMd{"M/d/y"}
+                yQQQ{"QQQ y"}
+                yQQQQ{"QQQQ y"}
+            }
+            dayNames{
+                format{
+                    abbreviated{
+                        "Dom",
+                        "Lun",
+                        "Mar",
+                        "Mks",
+                        "Hu",
+                        "Bi",
+                        "Sa",
+                    }
+                    narrow{
+                        "D",
+                        "L",
+                        "M",
+                        "M",
+                        "H",
+                        "B",
+                        "S",
+                    }
+                    wide{
+                        "Domingo",
+                        "Lunes",
+                        "Martes",
+                        "Miyerkules",
+                        "Huwebes",
+                        "Biyernes",
+                        "Sabado",
+                    }
+                }
+                stand-alone{
+                    narrow{
+                        "D",
+                        "L",
+                        "M",
+                        "M",
+                        "H",
+                        "B",
+                        "S",
+                    }
+                }
+            }
+            eras{
+                abbreviated{
+                    "WK",
+                    "KP",
+                }
+                abbreviated%variant{
+                    "WKP",
+                    "CE",
+                }
+            }
+            intervalFormats{
+                fallback{"{0} – {1}"}
+            }
+            monthNames{
+                format{
+                    abbreviated{
+                        "En",
+                        "Peb",
+                        "Mar",
+                        "Apr",
+                        "May",
+                        "Hun",
+                        "Hul",
+                        "Ag",
+                        "Set",
+                        "Okt",
+                        "Nob",
+                        "Dis",
+                    }
+                    narrow{
+                        "E",
+                        "P",
+                        "M",
+                        "A",
+                        "M",
+                        "H",
+                        "H",
+                        "A",
+                        "S",
+                        "O",
+                        "N",
+                        "D",
+                    }
+                    wide{
+                        "Enero",
+                        "Pebrero",
+                        "Marso",
+                        "April",
+                        "Mayo",
+                        "Hunyo",
+                        "Hulyo",
+                        "Agosto",
+                        "Setyembre",
+                        "Oktubre",
+                        "Nobyembre",
+                        "Disyembre",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "En",
+                        "Peb",
+                        "Mar",
+                        "Apr",
+                        "May",
+                        "Hun",
+                        "Hul",
+                        "Ag",
+                        "Set",
+                        "Okt",
+                        "Nob",
+                        "Dis",
+                    }
+                    narrow{
+                        "E",
+                        "P",
+                        "M",
+                        "A",
+                        "M",
+                        "H",
+                        "H",
+                        "A",
+                        "S",
+                        "O",
+                        "N",
+                        "D",
+                    }
+                    wide{
+                        "Enero",
+                        "Pebrero",
+                        "Marso",
+                        "April",
+                        "Mayo",
+                        "Hunyo",
+                        "Hulyo",
+                        "Agosto",
+                        "Setyembre",
+                        "Oktubre",
+                        "Nobyembre",
+                        "Disyembre",
+                    }
+                }
+            }
+            quarters{
+                format{
+                    abbreviated{
+                        "Q1",
+                        "Q2",
+                        "Q3",
+                        "Q4",
+                    }
+                    wide{
+                        "Una sa matag-tulo ka bulan",
+                        "Ikaduha sa matag-tulo ka bulan",
+                        "Ikatulo sa matag-tulo ka bulan",
+                        "Ikaupat sa matag-tulo ka bulan",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "Q1",
+                        "Q2",
+                        "Q3",
+                        "Q4",
+                    }
+                }
+            }
+        }
+    }
+    delimiters{
+        alternateQuotationEnd{"’"}
+        alternateQuotationStart{"‘"}
+        quotationEnd{"”"}
+        quotationStart{"“"}
+    }
+    fields{
+        day{
+            dn{"Adlaw"}
+            relative{
+                "-1"{"Kagahapon"}
+                "0"{"Karon nga Adlaw"}
+                "1"{"Ugma"}
+            }
+        }
+        day-narrow{
+            dn{"Adlaw"}
+        }
+        day-short{
+            dn{"Adlaw"}
+        }
+        dayperiod{
+            dn{"AM/PM"}
+        }
+        era{
+            dn{"Panahon"}
+        }
+        hour{
+            dn{"Oras"}
+        }
+        minute{
+            dn{"Minuto"}
+        }
+        month{
+            dn{"Bulan"}
+        }
+        month-short{
+            dn{"Bulan"}
+        }
+        quarter{
+            dn{"Ikaupat"}
+        }
+        second{
+            dn{"Segundo"}
+        }
+        week{
+            dn{"Semana"}
+        }
+        weekday{
+            dn{"Adlaw sa Semana"}
+        }
+        year{
+            dn{"tuig"}
+        }
+        zone{
+            dn{"Sona sa Panahon"}
+        }
+    }
+    layout{
+        characters{"left-to-right"}
+        lines{"top-to-bottom"}
+    }
+    listPattern{
+        standard{
+            2{"{0} at {1}"}
+            end{"{0}, at {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+    }
+    measurementSystemNames{
+        UK{"UK"}
+        US{"US"}
+        metric{"Metric"}
+    }
+}

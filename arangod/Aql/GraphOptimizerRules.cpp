@@ -23,10 +23,13 @@
 
 #include "GraphOptimizerRules.h"
 
-#include "Aql/ExecutionNode.h"
+#include "Aql/Ast.h"
+#include "Aql/AstNode.h"
+#include "Aql/ExecutionNode/CalculationNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
+#include "Aql/ExecutionNode/TraversalNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Optimizer.h"
-#include "Aql/TraversalNode.h"
 #include "Containers/SmallVector.h"
 
 using namespace arangodb;

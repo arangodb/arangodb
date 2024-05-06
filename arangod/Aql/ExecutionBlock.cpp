@@ -28,10 +28,10 @@
 #include "Aql/AqlCallStack.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionEngine.h"
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Aql/Timing.h"
 #include "Aql/Query.h"
+#include "Aql/Timing.h"
 #include "Basics/Exceptions.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -137,7 +137,6 @@ void ExecutionBlock::traceExecuteBegin(AqlCallStack const& stack,
   // add timing for block in case profiling is turned on.
   if (_profileLevel >= ProfileLevel::Blocks) {
     // only if profiling is turned on, get current time
-    TRI_ASSERT(_startOfExecution < 0.0);
     _startOfExecution = currentSteadyClockValue();
     TRI_ASSERT(_startOfExecution > 0.0);
   }

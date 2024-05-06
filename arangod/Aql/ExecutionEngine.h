@@ -23,11 +23,11 @@
 
 #pragma once
 
+#include "Aql/AsyncPrefetchSlotsManager.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/types.h"
 #include "Aql/WalkerWorker.h"
-#include "Basics/Common.h"
 #include "Basics/Result.h"
 #include "Cluster/CallbackGuard.h"
 #include "Containers/SmallVector.h"
@@ -65,6 +65,10 @@ class ExecutionEngine {
 
   /// @brief destroy the engine, frees all assigned blocks
   TEST_VIRTUAL ~ExecutionEngine();
+
+  void leaseAsyncPrefetchSlots(size_t value);
+
+  size_t asyncPrefetchSlotsLeased() const noexcept;
 
   // @brief create an execution engine from a plan
   static void instantiateFromPlan(Query& query, ExecutionPlan& plan,
@@ -174,6 +178,10 @@ class ExecutionEngine {
 
   /// @brief whether or not initializeCursor was called
   bool _initializeCursorCalled;
+
+  AsyncPrefetchSlotsManager& _asyncPrefetchSlotsManager;
+
+  AsyncPrefetchSlotsReservation _asyncPrefetchSlotsReservation;
 };
 
 }  // namespace arangodb::aql

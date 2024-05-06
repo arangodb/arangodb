@@ -33,7 +33,6 @@
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/VelocyPackHelper.h"
-#include "Basics/Common.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 

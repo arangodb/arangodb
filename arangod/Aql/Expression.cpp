@@ -27,7 +27,6 @@
 #include "Aql/AqlValue.h"
 #include "Aql/Ast.h"
 #include "Aql/AttributeAccessor.h"
-#include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Function.h"
@@ -88,7 +87,7 @@ Expression::Expression(Ast* ast, AstNode* node)
 }
 
 /// @brief create an expression from VPack
-Expression::Expression(Ast* ast, arangodb::velocypack::Slice const& slice)
+Expression::Expression(Ast* ast, arangodb::velocypack::Slice slice)
     : Expression(ast, ast->createNode(slice.get("expression"))) {
   TRI_ASSERT(_type != UNPROCESSED);
 }

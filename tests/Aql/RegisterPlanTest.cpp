@@ -25,7 +25,7 @@
 
 #include "Mocks/Servers.h"
 
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.cpp"
 #include "Aql/VarUsageFinder.cpp"
@@ -36,6 +36,7 @@
 #include "Basics/StringUtils.h"
 
 #include <optional>
+#include <string_view>
 #include <vector>
 
 using namespace arangodb;
@@ -122,7 +123,7 @@ struct ExecutionNodeMock {
     _regsToClear = std::move(toClear);
   }
 
-  auto getTypeString() const -> std::string const& {
+  auto getTypeString() const -> std::string_view {
     return ExecutionNode::getTypeString(_type);
   }
 

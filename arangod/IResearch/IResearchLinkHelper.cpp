@@ -22,7 +22,6 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
 #include "Basics/DownCast.h"
 
 #include "IResearchLinkHelper.h"

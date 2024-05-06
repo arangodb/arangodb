@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/fpconv.h"
 #include "ProgramOptions/UnitsHelper.h"

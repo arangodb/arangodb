@@ -69,7 +69,14 @@ const ActionCell = ({ info }: { info: CellContext<GraphInfo, any> }) => {
         onClose={onClose}
         graph={info.cell.row.original}
       />
-      <Button onClick={onOpen} size="xs">
+      <Button
+        onClick={e => {
+          e.stopPropagation();
+          e.preventDefault();
+          onOpen();
+        }}
+        size="xs"
+      >
         <EditIcon />
       </Button>
     </>
@@ -100,6 +107,11 @@ export const GraphsTable = () => {
         <ReactTable<GraphInfo>
           table={tableInstance}
           emptyStateMessage="No graphs found"
+          onRowSelect={row => {
+            window.location.hash = `#graphs-v2/${encodeURIComponent(
+              row.original.name
+            )}`;
+          }}
         />
       </Stack>
     </>

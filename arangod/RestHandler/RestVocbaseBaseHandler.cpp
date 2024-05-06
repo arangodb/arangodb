@@ -213,7 +213,7 @@ RestVocbaseBaseHandler::RestVocbaseBaseHandler(ArangodServer& server,
                                                GeneralRequest* request,
                                                GeneralResponse* response)
     : RestBaseHandler(server, request, response),
-      _context(*static_cast<VocbaseContext*>(request->requestContext())),
+      _context(static_cast<VocbaseContext&>(*request->requestContext())),
       _vocbase(_context.vocbase()),
       _scopeVocbaseValues(
           LogContext::makeValue()
@@ -647,7 +647,7 @@ RestVocbaseBaseHandler::createTransaction(
                      !_request->header(StaticStrings::AqlDocumentCall).empty());
 
   std::shared_ptr<transaction::Context> ctx =
-      mgr->leaseManagedTrx(tid, type, isSideUser);
+      co_await mgr->leaseManagedTrx(tid, type, isSideUser);
 
   if (!ctx) {
     LOG_TOPIC("e94ea", DEBUG, Logger::TRANSACTIONS)
@@ -743,7 +743,7 @@ RestVocbaseBaseHandler::createTransactionContext(
     }
   }
 
-  auto ctx = mgr->leaseManagedTrx(tid, mode, /*isSideUser*/ false);
+  auto ctx = co_await mgr->leaseManagedTrx(tid, mode, /*isSideUser*/ false);
   if (!ctx) {
     LOG_TOPIC("2cfed", DEBUG, Logger::TRANSACTIONS)
         << "Transaction with id '" << tid << "' not found";

@@ -24,16 +24,14 @@
 
 #include "IResearchExpressionContext.h"
 
-#include "Aql/AqlItemBlock.h"
 #include "Aql/AqlFunctionsInternalCache.h"
+#include "Aql/AqlItemBlock.h"
+#include "Aql/ExecutionNode/IResearchViewNode.h"
 #include "Aql/QueryContext.h"
-#include "Aql/IResearchViewNode.h"
 #include "Basics/StaticStrings.h"
+#include "Containers/HashSet.h"
 
-#include <Containers/HashSet.h>
-
-namespace arangodb {
-namespace iresearch {
+namespace arangodb::iresearch {
 
 using namespace arangodb::aql;
 
@@ -51,17 +49,17 @@ void ViewExpressionContextBase::registerError(ErrorCode errorCode,
   _query->warnings().registerError(errorCode, msg);
 }
 
-icu::RegexMatcher* ViewExpressionContextBase::buildRegexMatcher(
+icu_64_64::RegexMatcher* ViewExpressionContextBase::buildRegexMatcher(
     std::string_view expr, bool caseInsensitive) {
   return _aqlFunctionsInternalCache->buildRegexMatcher(expr, caseInsensitive);
 }
 
-icu::RegexMatcher* ViewExpressionContextBase::buildLikeMatcher(
+icu_64_64::RegexMatcher* ViewExpressionContextBase::buildLikeMatcher(
     std::string_view expr, bool caseInsensitive) {
   return _aqlFunctionsInternalCache->buildLikeMatcher(expr, caseInsensitive);
 }
 
-icu::RegexMatcher* ViewExpressionContextBase::buildSplitMatcher(
+icu_64_64::RegexMatcher* ViewExpressionContextBase::buildSplitMatcher(
     AqlValue splitExpression, velocypack::Options const* opts,
     bool& isEmptyExpression) {
   return _aqlFunctionsInternalCache->buildSplitMatcher(splitExpression, opts,
@@ -165,9 +163,4 @@ AqlValue ViewExpressionContext::getVariableValue(Variable const* var,
   return value;
 }
 
-}  // namespace iresearch
-}  // namespace arangodb
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+}  // namespace arangodb::iresearch

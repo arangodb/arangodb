@@ -25,9 +25,9 @@
 
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionState.h"
+#include "Aql/Executor/SortExecutor.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
-#include "Aql/SortExecutor.h"
 #include "Aql/SortRegister.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ResourceUsage.h"

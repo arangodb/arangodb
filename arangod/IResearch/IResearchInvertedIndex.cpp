@@ -24,12 +24,12 @@
 #include "IResearchInvertedIndex.h"
 
 #include "Aql/AqlFunctionsInternalCache.h"
-#include "AqlHelper.h"
+#include "Aql/ExecutionNode/IResearchViewNode.h"
 #include "Aql/LateMaterializedOptimizerRulesCommon.h"
 #include "Aql/Projections.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryExpressionContext.h"
-#include "Aql/IResearchViewNode.h"
+#include "AqlHelper.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/DownCast.h"
 #include "Basics/StaticStrings.h"
@@ -50,7 +50,7 @@
 #include "analysis/token_attributes.hpp"
 #include "index/directory_reader.hpp"
 #include "index/index_writer.hpp"
-#include <index/heap_iterator.hpp>
+#include "index/heap_iterator.hpp"
 #include "store/directory.hpp"
 
 #include <filesystem>
@@ -278,8 +278,8 @@ class InvertedIndexExpressionContext final : public aql::ExpressionContext {
       transaction::Methods& trx, aql::AqlFunctionsInternalCache& cache) noexcept
       : _trx{trx}, _cache{cache} {}
 
-  icu::RegexMatcher* buildLikeMatcher(std::string_view expr,
-                                      bool caseInsensitive) final {
+  icu_64_64::RegexMatcher* buildLikeMatcher(std::string_view expr,
+                                            bool caseInsensitive) final {
     return _cache.buildLikeMatcher(expr, caseInsensitive);
   }
 
@@ -298,14 +298,14 @@ class InvertedIndexExpressionContext final : public aql::ExpressionContext {
     TRI_ASSERT(false);
   }
 
-  icu::RegexMatcher* buildRegexMatcher(std::string_view expr,
-                                       bool caseInsensitive) final {
+  icu_64_64::RegexMatcher* buildRegexMatcher(std::string_view expr,
+                                             bool caseInsensitive) final {
     TRI_ASSERT(false);
     return nullptr;
   }
-  icu::RegexMatcher* buildSplitMatcher(aql::AqlValue splitExpression,
-                                       velocypack::Options const* opts,
-                                       bool& isEmptyExpression) final {
+  icu_64_64::RegexMatcher* buildSplitMatcher(aql::AqlValue splitExpression,
+                                             velocypack::Options const* opts,
+                                             bool& isEmptyExpression) final {
     TRI_ASSERT(false);
     return nullptr;
   }

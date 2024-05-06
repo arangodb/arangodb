@@ -22,13 +22,11 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <Containers/HashSet.h>
-
-#include "Aql/VarUsageFinder.h"
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
-
-#include <Logger/LogMacros.h>
+#include "Aql/VarUsageFinder.h"
+#include "Containers/HashSet.h"
+#include "Logger/LogMacros.h"
 
 using namespace arangodb::aql;
 using namespace arangodb::containers;

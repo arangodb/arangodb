@@ -27,8 +27,6 @@
 #error this file is not supposed to be used in builds with -DUSE_V8=Off
 #endif
 
-#include "Basics/Common.h"
-
 #include "Basics/Result.h"
 #include "V8Server/GlobalExecutorMethods.h"
 

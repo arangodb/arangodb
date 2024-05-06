@@ -26,7 +26,6 @@
 #include <set>
 #include <string>
 
-#include "Basics/Common.h"
 #include "RestServer/arangod.h"
 
 namespace arangodb {

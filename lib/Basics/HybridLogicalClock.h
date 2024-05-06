@@ -32,7 +32,6 @@
 #include <velocypack/Slice.h>
 #include <velocypack/Value.h>
 
-#include "Basics/Common.h"
 #include "Basics/debugging.h"
 
 namespace arangodb::basics {

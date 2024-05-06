@@ -1708,10 +1708,19 @@ TEST_F(IResearchLinkTest, test_maintenance_disabled_at_creation) {
     ASSERT_TRUE(created);
     ASSERT_NE(nullptr, link);
 
+    // 1st - tasks active(), 2nd - tasks pending(), 3rd - threads()
     ASSERT_EQ(std::make_tuple(size_t(1), size_t(0), size_t(1)),
               feature.stats(ThreadGroup::_0));
-    ASSERT_EQ(std::make_tuple(size_t(1), size_t(0), size_t(1)),
-              feature.stats(ThreadGroup::_1));
+
+    std::tuple<size_t, size_t, size_t> stats;
+    do {
+      stats = feature.stats(ThreadGroup::_1);
+      if (std::get<0>(stats) == 1) {
+        break;
+      }
+      // spin
+    } while (true);
+    ASSERT_EQ(std::make_tuple(size_t(1), size_t(0), size_t(1)), stats);
   }
 
   ASSERT_TRUE(link->drop().ok());

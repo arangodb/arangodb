@@ -23,13 +23,8 @@
 
 #pragma once
 
+#include <ctime>
 #include <string>
-
-#include "Basics/Common.h"
-
-#ifdef ARANGODB_MISSING_MEMRCHR
-void* memrchr(void const* block, int c, size_t size);
-#endif
 
 // safe localtime
 void TRI_localtime(time_t, struct tm*);

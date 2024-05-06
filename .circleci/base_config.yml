@@ -1,5 +1,9 @@
 version: 2.1
 
+orbs:
+  aws-cli: circleci/aws-cli@4.1.1
+  aws-ecr: circleci/aws-ecr@9.0.1
+  
 parameters:
   enterprise-commit:
     type: string
@@ -15,6 +19,9 @@ parameters:
     type: string
     default: ""
   dont-cancel-pipelines:
+    type: boolean
+    default: false
+  create-docker-images:
     type: boolean
     default: false
   nightly:
@@ -107,6 +114,12 @@ jobs:
           destination: "/home/circleci/project"
       - checkout-enterprise:
           destination: "/home/circleci/project/enterprise"
+      - run:
+          name: Checkout rta-makedata
+          command: |
+            # we are only interested in the rta-makedata submodule because we want to run eslint on it,
+            # but we do not care about the other submodules (specifically we do _not_ want to clone v8)
+            git submodule update --init 3rdParty/rta-makedata
       - persist_to_workspace:
           root: .
           paths:
@@ -128,6 +141,23 @@ jobs:
           name: Check LogIDs
           command: |
             python3 utils/checkLogIds.py
+
+  check-metrics-docs:
+    docker:
+      - image: cimg/python:3.11.1
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: Install pyyaml
+          command: |
+            python -m pip install --upgrade pip
+            pip install pyyaml
+      - run:
+          name: Check LogIDs
+          command: |
+            python3 utils/generateAllMetricsDocumentation.py
 
   clang-format:
     docker:
@@ -228,7 +258,15 @@ jobs:
       - run:
           name: Configure
           command: |
-            cmake --preset << parameters.preset >> -DCMAKE_C_COMPILER=<< pipeline.parameters.c-compiler >> -DCMAKE_CXX_COMPILER=<< pipeline.parameters.cxx-compiler >> -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_LIBRARY_PATH=$OPENSSL_ROOT_DIR/lib -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DOPENSSL_ROOT_DIR=/opt
+            cmake --preset << parameters.preset >> \
+              -DCMAKE_C_COMPILER=<< pipeline.parameters.c-compiler >> \
+              -DCMAKE_CXX_COMPILER=<< pipeline.parameters.cxx-compiler >> \
+              -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" \
+              -DCMAKE_LIBRARY_PATH=$OPENSSL_ROOT_DIR/lib \
+              -DCMAKE_C_COMPILER_LAUNCHER=sccache \
+              -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
+              -DOPENSSL_ROOT_DIR=/opt \
+              -DCMAKE_INSTALL_PREFIX=/
       - run:
           name: Build
           command: |
@@ -244,6 +282,18 @@ jobs:
             fi
             echo "Building targets: $TARGETS"
             cmake --build --preset << parameters.preset >> --parallel 8 --target $TARGETS
+      - when:
+          condition: << pipeline.parameters.create-docker-images >>
+          steps:
+            - run:
+                name: Create install package
+                command: |
+                  mkdir install
+                  # Note: ATM this will rebuild the frontend
+                  DESTDIR=`pwd`/install cmake --build --preset << parameters.preset >> --parallel 8 --target install
+                  strip ./install/usr/bin/arango*
+                  strip ./install/usr/sbin/arangod
+                  tar -czf install.tar.gz -C install ./
       - run:
           name: Size leaderboard
           command: |
@@ -268,8 +318,10 @@ jobs:
             - persist_to_workspace:
                 root: .
                 paths:
+                  - VERSIONS
                   - build/compile_commands.json
                   - CMakePresets.json
+                  - install.tar.gz
                   - build/bin
                   - build/etc
                   - build/3rdParty/iresearch/external/snowball/libstemmer/
@@ -286,6 +338,40 @@ jobs:
                   - tsan_arangodb_suppressions.txt
                   - ubsan_arangodb_suppressions.txt
                   - lsan_arangodb_suppressions.txt
+
+  create-docker-image:
+    parameters:
+      resource-class:
+          type: string
+      arch:
+          type: string
+      tag:
+          type: string
+    docker:
+      - image: cimg/base:current
+    resource_class: << parameters.resource-class >>
+    steps:
+      - aws-cli/setup:
+          role_arn: "arn:aws:iam::242063586340:role/CircleCI-Container-Handler"
+      - aws-ecr/ecr_login:
+          public_registry: true
+      - setup_remote_docker:
+            docker_layer_caching: true
+      - attach_workspace:
+          at: .
+      - run:
+          name: Create Docker Image
+          command: |
+            STARTER_REV=$(grep -Po "STARTER_REV \"\Kv\d+\.\d+\.\d+" VERSIONS)
+            cd scripts/docker/deploy
+            mkdir install
+            tar -xzf ../../../install.tar.gz -C install
+            curl -s -L -o "install/usr/bin/arangodb" "https://github.com/arangodb-helper/arangodb/releases/download/$STARTER_REV/arangodb-linux-<< parameters.arch >>"
+            # TODO
+            #  - download rclone
+            docker build --platform linux/<< parameters.arch >> --build-arg arch=<< parameters.arch >> -t << parameters.tag >> --file deploy-alpine.dockerfile .
+            echo "Pushing image << parameters.tag >>"
+            docker push << parameters.tag >>
 
   run-linux-tests:
     docker:
@@ -322,18 +408,18 @@ jobs:
           no_output_timeout: 20m
           command: |
             mkdir work
-            if [ << pipeline.parameters.sanitizer >> = "alubsan" ]; then
+            if [ "<< pipeline.parameters.sanitizer >>" = "alubsan" ]; then
               export ASAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/alubsan.log:handle_ioctl=true:check_initialization_order=true:detect_container_overflow=true:detect_stack_use_after_return=false:detect_odr_violation=1:strict_init_order=true"
               export LSAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/alubsan.log:suppressions=lsan_arangodb_suppressions.txt:print_suppressions=0"
               export UBSAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/alubsan.log:print_stacktrace=1:suppressions=ubsan_arangodb_suppressions.txt:print_suppressions=0"
               export SAN_MODE=alubsan
-            elif [ << pipeline.parameters.sanitizer >> = "tsan" ]; then
+            elif [ "<< pipeline.parameters.sanitizer >>" = "tsan" ]; then
               export TSAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/tsan.log:detect_deadlocks=true:second_deadlock_stack=1:suppressions=tsan_arangodb_suppressions.txt:print_suppressions=0"
               export SAN_MODE=tsan
             fi
             # Note: we need the leading space for extraArgs to avoid a parsing issue in argparse
             export TIMELIMIT=<< parameters.timeLimit >>
-            python3 scripts/test/test_launch_controller.py << parameters.suites >> \
+            python3 -u scripts/test/test_launch_controller.py << parameters.suites >> \
               --testBuckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX \
               --cluster << parameters.cluster >> \
               --extraArgs " << parameters.extraArgs >>" \
@@ -434,6 +520,10 @@ workflows:
           name: minimal-checkout
       - check-log-ids:
           name: check-log-ids
+          requires:
+            - minimal-checkout
+      - check-metrics-docs:
+          name: check-metrics-docs
           requires:
             - minimal-checkout
       - clang-format:

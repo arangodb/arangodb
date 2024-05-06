@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "VocBase/Identifiers/IndexId.h"
 
 #include <rocksdb/utilities/write_batch_with_index.h>

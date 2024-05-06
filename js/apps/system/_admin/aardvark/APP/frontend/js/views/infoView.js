@@ -67,6 +67,14 @@
             isCluster: frontendConfig.isCluster
           };
 
+          // only render if the info view is still active
+          var isCurrentView =
+            window.location.hash.indexOf(
+              "cInfo/" + encodeURIComponent(this.collectionName)
+            ) > -1;
+          if (!isCurrentView) {
+            return;
+          }
           window.modalView.show(
             'modalCollectionInfo.ejs',
             'Collection: ' + (this.model.get('name').length > 64 ? this.model.get('name').substr(0, 64) + "..." : this.model.get('name')),

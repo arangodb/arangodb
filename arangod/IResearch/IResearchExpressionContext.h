@@ -24,9 +24,9 @@
 
 #pragma once
 
-#include "Aql/ExecutionNode.h"
-#include "Aql/InputAqlItemRow.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExpressionContext.h"
+#include "Aql/InputAqlItemRow.h"
 #include "Aql/RegisterPlan.h"
 #include "Basics/Exceptions.h"
 #include "Containers/FlatHashMap.h"
@@ -67,13 +67,13 @@ struct ViewExpressionContextBase : public arangodb::aql::ExpressionContext {
                        std::string_view msg) override final;
   void registerError(ErrorCode errorCode, std::string_view msg) override final;
 
-  icu::RegexMatcher* buildRegexMatcher(std::string_view expr,
-                                       bool caseInsensitive) override final;
-  icu::RegexMatcher* buildLikeMatcher(std::string_view expr,
-                                      bool caseInsensitive) override final;
-  icu::RegexMatcher* buildSplitMatcher(aql::AqlValue splitExpression,
-                                       velocypack::Options const* opts,
-                                       bool& isEmptyExpression) override final;
+  icu_64_64::RegexMatcher* buildRegexMatcher(
+      std::string_view expr, bool caseInsensitive) override final;
+  icu_64_64::RegexMatcher* buildLikeMatcher(
+      std::string_view expr, bool caseInsensitive) override final;
+  icu_64_64::RegexMatcher* buildSplitMatcher(
+      aql::AqlValue splitExpression, velocypack::Options const* opts,
+      bool& isEmptyExpression) override final;
 
   arangodb::ValidatorBase* buildValidator(
       arangodb::velocypack::Slice) override final;

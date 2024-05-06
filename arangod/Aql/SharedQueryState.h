@@ -47,6 +47,8 @@ class SharedQueryState final
   SharedQueryState() = delete;
   ~SharedQueryState() = default;
 
+  void setMaxTasks(unsigned maxTasks) { _maxTasks = maxTasks; }
+
   void invalidate();
 
   /// @brief executeAndWakeup is to be called on the query object to
@@ -110,14 +112,17 @@ class SharedQueryState final
     bool queued =
         queueAsyncTask([cb(std::forward<F>(cb)), self(shared_from_this())] {
           if (self->_valid) {
+            bool triggerWakeUp = true;
             try {
-              cb(true);
+              triggerWakeUp = cb(true);
             } catch (...) {
               TRI_ASSERT(false);
             }
             std::unique_lock<std::mutex> guard(self->_mutex);
             self->_numTasks.fetch_sub(1);  // simon: intentionally under lock
-            self->notifyWaiter(guard);
+            if (triggerWakeUp) {
+              self->notifyWaiter(guard);
+            }
           } else {  // need to wakeup everybody
             std::unique_lock<std::mutex> guard(self->_mutex);
             self->_numTasks.fetch_sub(1);  // simon: intentionally under lock
@@ -158,7 +163,7 @@ class SharedQueryState final
   unsigned _numWakeups;  // number of times
   unsigned _cbVersion;   // increased once callstack is done
 
-  unsigned const _maxTasks;
+  unsigned _maxTasks;
   std::atomic<unsigned> _numTasks;
   std::atomic<bool> _valid;
 };

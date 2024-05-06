@@ -43,7 +43,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/Exceptions.tpp"
 #include "Basics/Locking.h"
-#include "Basics/NumberUtils.h"
 #include "Basics/DownCast.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/RecursiveLocker.h"
@@ -61,6 +60,7 @@
 #include "Logger/LogMacros.h"
 #include "Metrics/Counter.h"
 #include "Metrics/Gauge.h"
+#include "Metrics/MetricsFeature.h"
 #include "Network/ConnectionPool.h"
 #include "Network/NetworkFeature.h"
 #include "Replication/DatabaseReplicationApplier.h"
@@ -94,10 +94,11 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/LogicalView.h"
-#include "VocBase/VocBaseLogManager.h"
-#include "VocBase/Properties/DatabaseConfiguration.h"
 #include "VocBase/Properties/CreateCollectionBody.h"
+#include "VocBase/Properties/DatabaseConfiguration.h"
 #include "VocBase/Properties/UserInputCollectionProperties.h"
+#include "VocBase/VocBaseLogManager.h"
+#include "VocBase/VocbaseMetrics.h"
 
 #include <thread>
 #include <absl/strings/str_cat.h>
@@ -1338,6 +1339,14 @@ TRI_vocbase_t::TRI_vocbase_t(CreateDatabaseInfo&& info,
   metrics::Gauge<uint64_t>* numberOfCursorsMetric = nullptr;
   metrics::Gauge<uint64_t>* memoryUsageMetric = nullptr;
 
+  if (_info.server().hasFeature<metrics::MetricsFeature>()) {
+    metrics::MetricsFeature& feature =
+        _info.server().getFeature<metrics::MetricsFeature>();
+    _metrics = VocbaseMetrics::create(feature, _info.getName());
+  } else {
+    _metrics = std::make_unique<VocbaseMetrics>();
+  }
+
   if (_info.server().hasFeature<QueryRegistryFeature>()) {
     QueryRegistryFeature& feature =
         _info.server().getFeature<QueryRegistryFeature>();
@@ -1380,6 +1389,7 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_t::MockConstruct,
       _versionTracker(versionTracker),
       _extendedNames(extendedNames),
       _info(std::move(info)),
+      _metrics(std::make_unique<VocbaseMetrics>()),
       _logManager(std::make_shared<VocBaseLogManager>(*this, name())) {}
 #endif
 
@@ -1450,9 +1460,22 @@ ShardingPrototype TRI_vocbase_t::shardingPrototype() const {
 }
 
 std::string const& TRI_vocbase_t::shardingPrototypeName() const {
-  return _info.shardingPrototype() == ShardingPrototype::Users
-             ? StaticStrings::UsersCollection
-             : StaticStrings::GraphCollection;
+  switch (_info.shardingPrototype()) {
+    case ShardingPrototype::Users:
+      // Specifically set defaults should win
+      return StaticStrings::UsersCollection;
+    case ShardingPrototype::Graphs:
+      // Specifically set defaults should win
+      return StaticStrings::GraphCollection;
+    case ShardingPrototype::Undefined:
+      if (isSystem()) {
+        // The sharding Prototype for system databases is always the users
+        return StaticStrings::UsersCollection;
+      } else {
+        // All others should follow _graphs
+        return StaticStrings::GraphCollection;
+      }
+  }
 }
 
 std::vector<std::shared_ptr<LogicalView>> TRI_vocbase_t::views() const {

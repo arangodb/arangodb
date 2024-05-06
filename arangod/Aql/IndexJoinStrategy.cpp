@@ -20,23 +20,25 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
-#include <memory>
-
-#include <velocypack/Slice.h>
-#include "Basics/VelocyPackHelper.h"
 
 #include "IndexJoinStrategy.h"
+
 #include "Aql/IndexJoin/GenericMerge.h"
 #include "Aql/IndexJoin/TwoIndicesMergeJoin.h"
 #include "Aql/IndexJoin/TwoIndicesUniqueMergeJoin.h"
 #include "Aql/QueryOptions.h"
+#include "Basics/VelocyPackHelper.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
+
+#include <velocypack/Slice.h>
+
+#include <memory>
 
 using namespace arangodb::aql;
 
 namespace {
 struct VPackSliceComparator {
-  auto operator()(VPackSlice left, VPackSlice right) {
+  auto operator()(VPackSlice left, VPackSlice right) const {
     return arangodb::basics::VelocyPackHelper::compare(left, right, true) <=> 0;
   }
 };
@@ -46,7 +48,7 @@ auto IndexJoinStrategyFactory::createStrategy(
     aql::QueryOptions::JoinStrategyType joinStrategy)
     -> std::unique_ptr<AqlIndexJoinStrategy> {
   if (desc.size() == 2 &&
-      joinStrategy != aql::QueryOptions::JoinStrategyType::GENERIC) {
+      joinStrategy != aql::QueryOptions::JoinStrategyType::kGeneric) {
     if (desc[0].isUnique && desc[1].isUnique) {
       // build optimized merge join strategy for two unique indices
       return std::make_unique<TwoIndicesUniqueMergeJoin<

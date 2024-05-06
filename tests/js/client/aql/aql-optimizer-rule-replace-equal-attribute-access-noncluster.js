@@ -32,7 +32,6 @@ const _ = require('lodash');
 const database = "ReplaceEqualAccessDatabase";
 
 function optimizerRuleReplaceEqualAttributeAccess() {
-
   const options = {optimizer: {rules: ["+replace-equal-attribute-accesses"]}};
 
   return {
@@ -228,23 +227,28 @@ function optimizerRuleReplaceEqualAttributeAccess() {
 
       const nodes = plan.nodes.map(x => x.type);
       assertNotEqual(nodes.indexOf("SubqueryStartNode"), -1);
+      
+      const calc = plan.nodes[nodes.indexOf("SubqueryStartNode") + 1];
+      assertEqual(calc.type, "CalculationNode");
 
-      const returnNode = plan.nodes[nodes.indexOf("SubqueryStartNode") + 1];
+      const returnNode = plan.nodes[nodes.indexOf("SubqueryStartNode") + 2];
       assertEqual(returnNode.type, "SubqueryEndNode");
 
       const inVar = returnNode.inVariable.id;
 
-      const calc = plan.nodes.filter(x => x.type === "CalculationNode" && x.outVariable.id === inVar)[0];
-      const expr = calc.expression;
-      assertEqual(expr.type, "array");
-      assertEqual(expr.subNodes.length, 2);
+      {
+        const calc = plan.nodes.filter(x => x.type === "CalculationNode" && x.outVariable.id === inVar)[0];
+        const expr = calc.expression;
+        assertEqual(expr.type, "array");
+        assertEqual(expr.subNodes.length, 2);
 
-      const vars = expr.subNodes.map(function (expr) {
-        assertTrue(expr.type, "reference");
-        return expr.name;
-      });
+        const vars = expr.subNodes.map(function (expr) {
+          assertTrue(expr.type, "reference");
+          return expr.name;
+        });
 
-      assertEqual(_.uniq(vars).length, 1);
+        assertEqual(_.uniq(vars).length, 1);
+      }
     },
 
     testDoNotPropagateOutOfSubquery: function () {

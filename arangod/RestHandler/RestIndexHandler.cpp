@@ -470,8 +470,7 @@ RestStatus RestIndexHandler::createIndex() {
   VPackBuilder indexInfo;
   indexInfo.add(body);
 
-  auto execContext = std::unique_ptr<VocbaseContext>(
-      VocbaseContext::create(*_request, _vocbase));
+  auto execContext = VocbaseContext::create(*_request, _vocbase);
   // this is necessary, because the execContext will release the vocbase in its
   // dtor
   if (!_vocbase.use()) {
@@ -484,7 +483,7 @@ RestStatus RestIndexHandler::createIndex() {
   auto cb = [this, self = shared_from_this(),
              execContext = std::move(execContext), collection = std::move(coll),
              body = std::move(indexInfo)] {
-    ExecContextScope scope(execContext.get());
+    ExecContextScope scope(std::move(execContext));
     {
       std::unique_lock<std::mutex> locker(_mutex);
 

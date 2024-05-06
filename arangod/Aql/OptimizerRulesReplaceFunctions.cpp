@@ -28,15 +28,23 @@
 #include "Aql/AstNode.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/CalculationNode.h"
+#include "Aql/ExecutionNode/EnumerateCollectionNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
+#include "Aql/ExecutionNode/FilterNode.h"
+#include "Aql/ExecutionNode/IndexNode.h"
+#include "Aql/ExecutionNode/LimitNode.h"
+#include "Aql/ExecutionNode/ReturnNode.h"
+#include "Aql/ExecutionNode/SingletonNode.h"
+#include "Aql/ExecutionNode/SortNode.h"
+#include "Aql/ExecutionNode/SubqueryNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/Function.h"
 #include "Aql/IndexHint.h"
-#include "Aql/IndexNode.h"
 #include "Aql/Optimizer.h"
 #include "Aql/Query.h"
-#include "Aql/SortNode.h"
+#include "Aql/SortElement.h"
 #include "Aql/Variable.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/StaticStrings.h"
@@ -515,14 +523,15 @@ AstNode* replaceFullText(AstNode* funAstNode, ExecutionNode* calcNode,
   auto* ast = plan->getAst();
   QueryContext& query = ast->query();
 
-  FulltextParams params(funAstNode);  // must be NODE_TYPE_FCALL
+  TRI_ASSERT(funAstNode->type == NODE_TYPE_FCALL);
+  FulltextParams params(funAstNode);
 
   /// index
   //  we create this first as creation of this node is more
   //  likely to fail than the creation of other nodes
 
   //  index - part 1 - figure out index to use
-  std::shared_ptr<arangodb::Index> index = nullptr;
+  std::shared_ptr<arangodb::Index> index;
   std::vector<basics::AttributeName> field;
   TRI_ParseAttributeString(params.attribute, field, false);
 
