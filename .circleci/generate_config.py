@@ -482,17 +482,6 @@ def add_x64_enterprise_workflow(workflows, tests, args):
                 "build-tests": False,
             },
         )
-        add_build_job(
-            workflow,
-            build_config,
-            {
-                "name": "build-ee-no-v8-x64",
-                "preset": "enterprise-pr-no-v8",
-                "publish-artifacts": False,
-                "build-tests": False,
-                "build-v8": False,
-            },
-        )
 
 
 def add_aarch64_community_workflow(workflows, tests, args):

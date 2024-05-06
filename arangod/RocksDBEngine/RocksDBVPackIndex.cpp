@@ -90,10 +90,6 @@ inline rocksdb::Slice lookupValueFromSlice(rocksdb::Slice data) noexcept {
   return data;
 }
 
-// largest "acceptable" cache value size
-constexpr uint64_t kMaxCacheValueSize = 4 * 1024 * 1024;
-static_assert(kMaxCacheValueSize < std::numeric_limits<uint32_t>::max());
-
 using VPackIndexCacheType = cache::TransactionalCache<cache::VPackKeyHasher>;
 
 }  // namespace
@@ -319,6 +315,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
         _index(index),
         _cmp(index->comparator()),
         _cache(std::static_pointer_cast<VPackIndexCacheType>(std::move(cache))),
+        _maxCacheValueSize(_cache == nullptr ? 0 : _cache->maxCacheValueSize()),
         _indexIteratorOptions(opts),
         _key(trx),
         _done(false) {
@@ -506,12 +503,14 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
     TRI_ASSERT(_cache != nullptr);
 
     uint64_t byteSize = slice.byteSize();
+
     rocksdb::Slice key = lookupValueForCache();
-    if (ADB_UNLIKELY(key.size() > kMaxCacheValueSize ||
-                     byteSize > kMaxCacheValueSize)) {
-      // if key or value are too large for the cache, do not store in cache
+    if (ADB_UNLIKELY(byteSize > _maxCacheValueSize ||
+                     key.size() > _maxCacheValueSize)) {
+      // dont even attempt to cache the value due to its excessive size
       return;
     }
+
     cache::Cache::SimpleInserter<VPackIndexCacheType>{
         static_cast<VPackIndexCacheType&>(*_cache), key.data(),
         static_cast<uint32_t>(key.size()), slice.start(),
@@ -527,6 +526,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
   RocksDBVPackIndex const* _index;
   rocksdb::Comparator const* _cmp;
   std::shared_ptr<VPackIndexCacheType> _cache;
+  size_t const _maxCacheValueSize;
   IndexIteratorOptions const _indexIteratorOptions;
   RocksDBKeyLeaser _key;
   bool _done;
@@ -549,6 +549,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
         _index(index),
         _cmp(static_cast<RocksDBVPackComparator const*>(index->comparator())),
         _cache(std::static_pointer_cast<VPackIndexCacheType>(std::move(cache))),
+        _maxCacheValueSize(_cache == nullptr ? 0 : _cache->maxCacheValueSize()),
         _resourceMonitor(monitor),
         _builderOptions(VPackOptions::Defaults),
         _cacheKeyBuilder(&_builderOptions),
@@ -1043,9 +1044,9 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     TRI_ASSERT(_cache != nullptr);
 
     uint64_t byteSize = slice.byteSize();
-    if (ADB_UNLIKELY(_cacheKeyBuilderSize > kMaxCacheValueSize ||
-                     byteSize > kMaxCacheValueSize)) {
-      // if key or value are too large for the cache, do not store in cache
+
+    if (ADB_UNLIKELY(byteSize > _maxCacheValueSize)) {
+      // dont even attempt to cache the value due to its excessive size
       return;
     }
 
@@ -1157,6 +1158,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   RocksDBVPackComparator const* _cmp;
   std::unique_ptr<rocksdb::Iterator> _iterator;
   std::shared_ptr<VPackIndexCacheType> _cache;
+  size_t const _maxCacheValueSize;
   ResourceMonitor& _resourceMonitor;
   // VPackOptions for _cacheKeyBuilder and _resultBuilder. only used when
   // _cache is set

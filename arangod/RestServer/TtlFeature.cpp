@@ -485,8 +485,6 @@ class TtlThread final : public ServerThread<ArangodServer> {
               reqOptions.database = collection->vocbase().name();
               reqOptions.timeout = network::Timeout(30.0);
 
-              network::Headers headers = network::addAuthorizationHeader({});
-
               // pick next coordinator in list (round robin)
               TRI_ASSERT(!coordinators.empty());
               auto const& coordinator =
@@ -497,7 +495,7 @@ class TtlThread final : public ServerThread<ArangodServer> {
                   "/_api/document/", basics::StringUtils::urlEncode(cname));
               auto f = network::sendRequestRetry(
                   pool, "server:" + coordinator, fuerte::RestVerb::Delete, url,
-                  std::move(*queryResult.data->steal()), reqOptions, headers);
+                  std::move(*queryResult.data->steal()), reqOptions);
               auto& val = f.get();
               Result res = val.combinedResult();
 
