@@ -114,3 +114,5 @@ class sanHandler {
   }
 
 }
+
+exports.sanHandler = sanHandler;
