@@ -69,8 +69,8 @@ class sanHandler {
           if (oneSet.length > 0) {
             oneSet += ":";
           }
-          valueOne = valueOne.replaceAll(',', '_');
-          oneSet += `${keyOne}=${valueOne}`;
+          let val = valueOne.replaceAll(',', '_');
+          oneSet += `${keyOne}=${val}`;
         }
         this.backup[key] = process.env[key];
         print(`${key} => ${oneSet}`);
