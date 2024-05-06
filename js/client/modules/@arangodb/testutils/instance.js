@@ -33,6 +33,7 @@ const rp = require('@arangodb/testutils/result-processing');
 const yaml = require('js-yaml');
 const internal = require('internal');
 const crashUtils = require('@arangodb/testutils/crash-utils');
+const sanHandler = require('@arangodb/testutils/san-file-handler');
 const crypto = require('@arangodb/crypto');
 const ArangoError = require('@arangodb').ArangoError;
 const debugGetFailurePoints = require('@arangodb/test-helper').debugGetFailurePoints;
@@ -41,7 +42,6 @@ const debugGetFailurePoints = require('@arangodb/test-helper').debugGetFailurePo
 const {
   toArgv,
   executeExternal,
-  executeExternalAndWait,
   killExternal,
   statusExternal,
   statisticsExternal,
@@ -224,9 +224,7 @@ class instance {
     }
     this.JWT = null;
     this.jwtFiles = null;
-
-    this.sanOptions = _.clone(this.options.sanOptions);
-    this.sanitizerLogPaths = {};
+    this.sanHandler = sanHandler('arangod', this.options.sanOptions, this.options.extremeVerbosity);
 
     this._makeArgsArangod();
 
@@ -468,20 +466,7 @@ class instance {
     if (this.args.hasOwnProperty('server.jwt-secret')) {
       this.JWT = this.args['server.jwt-secret'];
     }
-    if (this.options.isSan) {
-      let rootDir = this.rootDir;
-      if (containsDoubleByte(rootDir)) {
-        rootDir = this.topLevelTmpDir;
-      }
-      for (const [key, value] of Object.entries(this.sanOptions)) {
-        let oneLogFile = fs.join(rootDir, key.toLowerCase().split('_')[0] + '.log');
-        // we need the log files to contain the exe name, otherwise our code to pick them up won't find them
-        this.sanOptions[key]['log_exe_name'] = "true";
-        const origPath = this.sanOptions[key]['log_path'];
-        this.sanOptions[key]['log_path'] = oneLogFile;
-        this.sanitizerLogPaths[key] = { upstream: origPath, local: oneLogFile };
-      }
-    }
+    this.sanHandler.detectLogfiles(this.rootDir, this.topLevelTmpDir);
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -693,21 +678,9 @@ class instance {
     if (this.options.extremeVerbosity) {
       print(Date() + ' starting process ' + cmd + ' with arguments: ' + JSON.stringify(argv));
     }
-    let backup = {};
-    if (this.options.isSan) {
-      print("Using sanOptions ", this.sanOptions);
-      for (const [key, value] of Object.entries(this.sanOptions)) {
-        let oneSet = "";
-        for (const [keyOne, valueOne] of Object.entries(value)) {
-          if (oneSet.length > 0) {
-            oneSet += ":";
-          }
-          oneSet += `${keyOne}=${valueOne}`;
-        }
-        backup[key] = process.env[key];
-        process.env[key] = oneSet;
-      }
-    }
+
+    this.sanHandler.setSanOptions();
+
     if ((this.useableMemory === undefined) && (this.options.memory !== undefined)){
       throw new Error(`${this.name} don't have planned memory though its configured!`);
     }
@@ -719,11 +692,8 @@ class instance {
     }
     process.env['ARANGODB_SERVER_DIR'] = this.rootDir;
     let ret = executeExternal(cmd, argv, false, pu.coverageEnvironment());
-    if (this.options.isSan) {
-      for (const [key, value] of Object.entries(backup)) {
-        process.env[key] = value;
-      }
-    }
+    
+    this.sanHandler.resetSanOptions();
     if (this.useableMemory !== 0) {
       delete process.env['ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY'];
     }
@@ -793,34 +763,6 @@ class instance {
       internal.addPidToMonitor(this.pid);
     }
   };
-
-  fetchSanFileAfterExit() {
-    if (!this.options.isSan) {
-      return;
-    }
-
-    for (const [key, value] of Object.entries(this.sanitizerLogPaths)) {
-      print("processing ", value);
-      const { upstream, local } = value;
-      let fn = `${local}.arangod.${this.pid}`;
-      if (this.options.extremeVerbosity) {
-        print(`checking for ${fn}: ${fs.exists(fn)}`);
-      }
-      if (fs.exists(fn)) {
-        let content = fs.read(fn);
-        if (upstream) {
-          print("found file ", fn, " - writing file ", `${upstream}.arangod.${this.pid}`);
-          fs.write(`${upstream}.arangod.${this.pid}`, content);
-        }
-        if (content.length > 10) {
-          crashUtils.GDB_OUTPUT += `Report of '${this.name}' in ${fn} contains: \n`;
-          crashUtils.GDB_OUTPUT += content;
-          this.serverCrashedLocal = true;
-        }
-      }
-    }
-  }
-  
   waitForExitAfterDebugKill() {
     // Crashutils debugger kills our instance, but we neet to get
     // testing.js sapwned-PID-monitoring adjusted.
@@ -836,7 +778,7 @@ class instance {
     } catch(ex) {
       print(ex);
     }
-    this.fetchSanFileAfterExit();
+    this.serverCrashedLocal = this.sanHandler.fetchSanFileAfterExit(this.pid);
     this.pid = null;
     print('done');
   }
@@ -847,10 +789,10 @@ class instance {
     }
     this.exitStatus = statusExternal(this.pid, true);
     if (this.exitStatus.status !== 'TERMINATED') {
-      this.fetchSanFileAfterExit();
+      this.serverCrashedLocal = this.sanHandler.fetchSanFileAfterExit(this.pid);
       throw new Error(this.name + " didn't exit in a regular way: " + JSON.stringify(this.exitStatus));
     }
-    this.fetchSanFileAfterExit();
+    this.serverCrashedLocal = this.sanHandler.fetchSanFileAfterExit(this.pid);
     this.exitStatus = null;
     this.pid = null;
   }
@@ -1051,7 +993,7 @@ class instance {
       } else if (this.options.useKillExternal) {
         let sockStat = this.getSockStat("Shutdown by kill - sockstat before: ");
         this.exitStatus = killExternal(this.pid);
-        this.fetchSanFileAfterExit();
+        this.serverCrashedLocal = this.sanHandler.fetchSanFileAfterExit(this.pid);
         this.pid = null;
         print(sockStat);
       } else if (this.protocol === 'unix') {
@@ -1073,7 +1015,7 @@ class instance {
           print(Date() + ' Wrong shutdown response: ' + JSON.stringify(reply) + "' " + sockStat + " continuing with hard kill!");
           this.shutdownArangod(true);
         } else {
-          this.fetchSanFileAfterExit();
+          this.serverCrashedLocal = this.sanHandler.fetchSanFileAfterExit(this.pid);
           if (!this.options.noStartStopLogs) {
             print(sockStat);
           }
@@ -1101,7 +1043,7 @@ class instance {
           this.shutdownArangod(true);
         }
         else {
-          this.fetchSanFileAfterExit();
+          this.serverCrashedLocal = this.sanHandler.fetchSanFileAfterExit(this.pid);
           if (!this.options.noStartStopLogs) {
             print(sockStat);
           }
