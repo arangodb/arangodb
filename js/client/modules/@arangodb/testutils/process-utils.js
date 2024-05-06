@@ -397,7 +397,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
 
   // V8 executeExternalAndWait thinks that timeout is in ms, so *1000
   
-  let sanHandler = sanHandler('arangosh', options.sanOptions, options.extremeVerbosity);
+  let sanHandler = new sanHandler('arangosh', options.sanOptions, options.extremeVerbosity);
   sanHandler.detectLogfiles(instanceInfo.rootDir, instanceInfo.rootDir);
   sanHandler.setSanOptions();
 

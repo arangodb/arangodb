@@ -217,7 +217,7 @@ class instance {
     }
     this.JWT = null;
     this.jwtFiles = null;
-    this.sanHandler = sanHandler('arangod', this.options.sanOptions, this.options.extremeVerbosity);
+    this.sanHandler = new sanHandler('arangod', this.options.sanOptions, this.options.extremeVerbosity);
 
     this._makeArgsArangod();
 
