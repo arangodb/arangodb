@@ -6,8 +6,6 @@ v3.11.9 (XXXX-XX-XX)
   In this case, the low-level socket was repurposed, but not reset properly.
   This could leave the connection in an improper state and lead to callbacks
   for some requests to not being called as expected.
-  The fix is to remove the retry logic, and instead prolong the connection
-  timeout to a multiple of the previous timeout value.
 
 * Improved the time required to create a new Collection in a database with
   hundreds of collections. This also improves times for indexes and dropping
