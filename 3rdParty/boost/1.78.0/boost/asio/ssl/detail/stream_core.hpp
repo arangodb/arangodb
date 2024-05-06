@@ -118,6 +118,7 @@ struct stream_core
       input_buffer_space_ =
         BOOST_ASIO_MOVE_CAST(std::vector<unsigned char>)(
           other.input_buffer_space_);
+      input_buffer_ = other.input_buffer_;
       input_ = other.input_;
       other.output_buffer_ = boost::asio::mutable_buffer(0, 0);
       other.input_buffer_ = boost::asio::mutable_buffer(0, 0);
