@@ -397,19 +397,19 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
 
   // V8 executeExternalAndWait thinks that timeout is in ms, so *1000
   
-  let sanHandler = new sanHandler('arangosh', options.sanOptions, options.extremeVerbosity);
-  sanHandler.detectLogfiles(instanceInfo.rootDir, instanceInfo.rootDir);
-  sanHandler.setSanOptions();
+  let sh = new sanHandler('arangosh', options.sanOptions, options.extremeVerbosity);
+  sh.detectLogfiles(instanceInfo.rootDir, instanceInfo.rootDir);
+  sh.setSanOptions();
 
   let res = executeExternalAndWait(cmd, args, false, timeout * 1000, coverageEnvironment());
   
   instanceInfo.pid = res.pid;
   instanceInfo.exitStatus = res;
-  sanHandler.resetSanOptions();
+  sh.resetSanOptions();
   crashUtils.calculateMonitorValues(options, instanceInfo, res.pid, cmd);
   const deltaTime = time() - startTime;
   let errorMessage = ' - ';
-  if (sanHandler.fetchSanFileAfterExit(res.pid)) {
+  if (sh.fetchSanFileAfterExit(res.pid)) {
     serverCrashedLocal = true;
     res.status = false;
     errorMessage += " Sanitizer indicated issues  - ";
