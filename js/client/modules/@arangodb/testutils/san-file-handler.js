@@ -73,7 +73,6 @@ class sanHandler {
           oneSet += `${keyOne}=${val}`;
         }
         this.backup[key] = process.env[key];
-        // print(`${key} => ${oneSet}`);
         process.env[key] = oneSet;
       }
     }
