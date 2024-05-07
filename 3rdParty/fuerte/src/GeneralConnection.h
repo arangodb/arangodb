@@ -325,7 +325,8 @@ class GeneralConnection : public fuerte::Connection {
 
     FUERTE_LOG_DEBUG << "tryConnect (" << retries << ") this=" << this << "\n";
     auto self = Connection::shared_from_this();
-    
+   
+    _proto.connectTimerRole = ConnectTimerRole::kConnect; 
     _proto.timer.expires_after(_config._connectTimeout);
 
     _proto.connect(_config, [self, retries](asio_ns::error_code ec) mutable {
@@ -350,6 +351,7 @@ class GeneralConnection : public fuerte::Connection {
       FUERTE_LOG_DEBUG << "tryConnect (" << retries << "), connecting failed: " << ec.message() << "\n";
       if (retries > 1 && ec != asio_ns::error::operation_aborted) {
         FUERTE_LOG_DEBUG << "tryConnect (" << retries << "), scheduling retry operation. this=" << self.get() << "\n";
+        me._proto.connectTimerRole = ConnectTimerRole::kReconnect;
         me._proto.timer.expires_after(me._config._connectRetryPause);
         me._proto.timer.async_wait(
             [self = std::move(self), retries](asio_ns::error_code ec) mutable {
@@ -378,8 +380,14 @@ class GeneralConnection : public fuerte::Connection {
         // note: if the timer fires successfully, ec is empty here.
         // the connect handler below gets 'operation_aborted' error
         auto& me = static_cast<GeneralConnection<ST, RT>&>(*self);
-        me._proto.cancel();
-        FUERTE_LOG_DEBUG << "tryConnect, connect timeout this=" << self.get() << "\n";
+        if (me._proto.connectTimerRole == ConnectTimerRole::kReconnect) {
+          std::string msg("connecting failed: timeout");
+          FUERTE_LOG_DEBUG << "tryConnect timer, calling shutdownConnection: " << msg << " this=" << self.get() << "\n";
+          me.shutdownConnection(Error::CouldNotConnect, msg);
+        } else {
+          FUERTE_LOG_DEBUG << "tryConnect, connect timeout this=" << self.get() << "\n";
+          me._proto.cancel();
+        }
       }
     });
 
