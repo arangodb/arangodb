@@ -492,7 +492,7 @@ struct MultiConnection : public GeneralConnection<ST, RT> {
     // expires_after cancels pending ops
     this->_proto.timer.expires_at(tp);
     this->_proto.timer.async_wait(
-        [=, self = Connection::weak_from_this()](auto const& ec) {
+        [=, this, self = Connection::weak_from_this()](auto const& ec) {
           std::shared_ptr<Connection> s;
           if (ec || !(s = self.lock())) {  // was canceled / deallocated
             return;
