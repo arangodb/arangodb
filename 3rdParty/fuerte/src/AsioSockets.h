@@ -27,8 +27,6 @@
 #include <fuerte/loop.h>
 #include "debugging.h"
 
-#include <vector>
-
 namespace arangodb { namespace fuerte { inline namespace v1 {
 
 namespace {
@@ -173,10 +171,7 @@ template <>
 struct Socket<fuerte::SocketType::Ssl> {
   Socket(EventLoopService& loop, asio_ns::io_context& ctx)
     : resolver(ctx), socket(ctx, loop.sslContext()), timer(ctx), ctx(ctx),
-      sslContext(loop.sslContext()), cleanupDone(false) {
-    // at least 3 retries
-    deadSockets.reserve(3);
-  }
+      sslContext(loop.sslContext()), cleanupDone(false) {}
 
   ~Socket() { 
     try {
@@ -240,11 +235,7 @@ struct Socket<fuerte::SocketType::Ssl> {
   }
 
   void rearm() {
-    // move away old socket, in case it is still in use by some background operation
-    FUERTE_ASSERT(deadSockets.capacity() > deadSockets.size());
-    deadSockets.push_back(std::move(socket));
-
-    // create a new socket instead and declare it ready
+    // create a new socket and declare it ready
     socket = asio_ns::ssl::stream<asio_ns::ip::tcp::socket>(this->ctx, this->sslContext);
     canceled = false;
   }
@@ -313,7 +304,6 @@ struct Socket<fuerte::SocketType::Ssl> {
   asio_ns::steady_timer timer;
   asio_ns::io_context& ctx;
   asio_ns::ssl::context& sslContext;
-  std::vector<asio_ns::ssl::stream<asio_ns::ip::tcp::socket>> deadSockets;
   std::atomic<bool> cleanupDone;
   bool canceled = false;
 };
