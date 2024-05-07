@@ -202,10 +202,14 @@ class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
       return;
     }
 
+    if (isStopping()) {
+      return;
+    }
+
     auto workItem = scheduler->queueDelayed(
         "queries-gc", RequestLane::CLIENT_SLOW, std::chrono::seconds(10),
         [this](bool canceled) {
-          if (!canceled) {
+          if (!canceled && !isStopping()) {
             if (Result res = basics::catchToResult(
                     [this]() { return cleanupCollection(); });
                 res.fail() && res.isNot(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) &&
@@ -503,6 +507,12 @@ void QueryInfoLoggerFeature::collectOptions(
 
 void QueryInfoLoggerFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> options) {}
+
+void QueryInfoLoggerFeature::beginShutdown() {
+  if (_loggerThread) {
+    _loggerThread->beginShutdown();
+  }
+}
 
 void QueryInfoLoggerFeature::start() {
   if (!ServerState::instance()->isSingleServerOrCoordinator()) {
