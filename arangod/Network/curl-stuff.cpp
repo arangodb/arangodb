@@ -105,8 +105,9 @@ constexpr bool enable_logging = false;
 #define LOG_DEVEL_CURL LOG_DEVEL_IF(enable_logging)
 #define LOG_DEVEL_CURL_IF(cond) LOG_DEVEL_IF(enable_logging && (cond))
 
-int debug_callback(CURL* handle, curl_infotype type, char* data, size_t size,
-                   void* clientp) {
+[[maybe_unused]] int debug_callback(CURL* handle, curl_infotype type,
+                                    char* data, size_t size,
+                                    void* clientp) {
   auto req = static_cast<request*>(clientp);
   std::string_view prefix = "CURL: ";
   switch (type) {
@@ -128,7 +129,10 @@ int debug_callback(CURL* handle, curl_infotype type, char* data, size_t size,
 
   LOG_DEVEL_CURL << "[" << req->unique_id << "] " << prefix
                  << std::string_view{data, size};
-  req->_response.debug_string << prefix << std::string_view{data, size} << "\n";
+  if constexpr (enable_logging) {
+    req->_response.debug_string << prefix << std::string_view{data, size} <<
+        "\n";
+  }
   return 0;
 }
 
@@ -443,8 +447,10 @@ curl_easy_handle::curl_easy_handle() : _easy_handle(curl_easy_init()) {
   // we do decoding on our own
   curl_easy_setopt(_easy_handle, CURLOPT_HTTP_CONTENT_DECODING, 0l);
 
-  curl_easy_setopt(_easy_handle, CURLOPT_VERBOSE, 1l);
-  curl_easy_setopt(_easy_handle, CURLOPT_DEBUGFUNCTION, &debug_callback);
+  if constexpr (enable_logging) {
+    curl_easy_setopt(_easy_handle, CURLOPT_VERBOSE, 1l);
+    curl_easy_setopt(_easy_handle, CURLOPT_DEBUGFUNCTION, &debug_callback);
+  }
   curl_easy_setopt(_easy_handle, CURLOPT_NOSIGNAL, 1l);
   curl_easy_setopt(_easy_handle, CURLOPT_NOPROGRESS, 0l);
   curl_easy_setopt(_easy_handle, CURLOPT_WILDCARDMATCH, 0l);
