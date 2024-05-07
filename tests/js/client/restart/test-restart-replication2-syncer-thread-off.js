@@ -29,8 +29,7 @@ const console = require('console');
 const request = require("@arangodb/request");
 const rh = require('@arangodb/testutils/restart-helper');
 const {getCtrlDBServers} = require('@arangodb/test-helper');
-const {sleep} = require('internal');
-const time = require("internal").time;
+const {sleep, time} = require('internal');
 
 const disableMaintenanceMode = function () {
   const response = db._connection.PUT('/_admin/cluster/maintenance', '"off"');
@@ -130,7 +129,24 @@ function testSuite() {
       assertEqual(200, aliveStatus.status, JSON.stringify(aliveStatus));
 
       disableMaintenanceMode();
-      db._createDatabase(databaseNameR2, {'replicationVersion': '2'});
+
+      const end = time() + 30;
+      do {
+        try {
+          require("console").error("creating database...");
+          db._createDatabase(databaseNameR2, {'replicationVersion': '2'});
+          require("console").error("creating database successful");
+          break;
+        } catch (err) {
+          require("console").error("err: ", err.errorNum, String(err));
+          if (err.errorNum !== errors.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code) {
+            require("console").error("received unexpected error. rethrowing");
+            throw err;
+          }
+          sleep(0.5);
+        }
+      }
+      while (time() < end);
     },
 
     testRestartDisabled: function () {

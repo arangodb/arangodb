@@ -459,7 +459,8 @@ void handleOnStatusCoordinator(Agent* agent, Node const& snapshot,
         Job::addIncreaseRebootId(create, serverID);
 
         // if the current foxxmaster server failed => reset the value to ""
-        if (snapshot.hasAsString(foxxmaster).value() == serverID) {
+        if (auto fx = snapshot.hasAsString(foxxmaster);
+            fx && fx.value() == serverID) {
           create.add(foxxmaster, VPackValue(""));
         }
       }

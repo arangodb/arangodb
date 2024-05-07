@@ -26,23 +26,22 @@
 #include "GeneralServer/AsioSocket.h"
 #include "GeneralServer/GeneralCommTask.h"
 
+#include <boost/lockfree/queue.hpp>
+#include <nghttp2/nghttp2.h>
+#include <velocypack/Buffer.h>
+
 #include <atomic>
 #include <memory>
 #include <map>
 
-#include <boost/lockfree/queue.hpp>
-#include <velocypack/Buffer.h>
-
-#include <nghttp2/nghttp2.h>
-
 namespace arangodb {
 class HttpRequest;
+class HttpResponse;
 
 /// @brief maximum number of concurrent streams
 static constexpr uint32_t H2MaxConcurrentStreams = 32;
 
 namespace rest {
-
 struct H2Response;
 
 template<SocketType T>
@@ -95,7 +94,7 @@ class H2CommTask final : public GeneralCommTask<T> {
     std::string origin;
 
     std::unique_ptr<HttpRequest> request;
-    std::unique_ptr<H2Response> response;  // hold response memory
+    std::unique_ptr<HttpResponse> response;  // hold response memory
     bool mustSendAuthHeader = true;
 
     size_t headerBuffSize = 0;  // total header size
@@ -128,7 +127,7 @@ class H2CommTask final : public GeneralCommTask<T> {
 
   velocypack::Buffer<uint8_t> _outbuffer;
 
-  boost::lockfree::queue<H2Response*,
+  boost::lockfree::queue<HttpResponse*,
                          boost::lockfree::capacity<H2MaxConcurrentStreams>>
       _responses;
 
