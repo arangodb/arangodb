@@ -341,6 +341,7 @@ void HttpResponse::addPayloadInternal(uint8_t const* data, size_t length,
   if (!options) {
     options = &velocypack::Options::Defaults;
   }
+  TRI_ASSERT(options != nullptr);
 
   if (_contentType == rest::ContentType::VPACK) {
     // the input (data) may contain multiple velocypack values, written
@@ -361,14 +362,12 @@ void HttpResponse::addPayloadInternal(uint8_t const* data, size_t length,
       // will contain sanitized data
       VPackBuffer<uint8_t> tmpBuffer;
       if (resolveExternals) {
-        bool resolveExt =
-            VelocyPackHelper::hasNonClientTypes(currentData, true, true);
+        bool resolveExt = VelocyPackHelper::hasNonClientTypes(currentData);
         if (resolveExt) {                  // resolve
           tmpBuffer.reserve(inputLength);  // reserve space already
           VPackBuilder builder(tmpBuffer, options);
           VelocyPackHelper::sanitizeNonClientTypes(
-              currentData, VPackSlice::noneSlice(), builder, options, true,
-              true);
+              currentData, VPackSlice::noneSlice(), builder, *options);
           currentData = VPackSlice(tmpBuffer.data());
           outputLength = currentData.byteSize();
         }

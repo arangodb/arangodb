@@ -658,7 +658,7 @@ SharedAqlItemBlockPtr AqlItemBlock::slice(std::vector<size_t> const& chosen,
 /// @brief toJson, transfer all rows of this AqlItemBlock to Json, the result
 /// can be used to recreate the AqlItemBlock via the Json constructor
 void AqlItemBlock::toVelocyPack(velocypack::Options const* const trxOptions,
-                                VPackBuilder& result) const {
+                                velocypack::Builder& result) const {
   return toVelocyPack(0, numRows(), trxOptions, result);
 }
 
@@ -697,7 +697,7 @@ void AqlItemBlock::toVelocyPack(velocypack::Options const* const trxOptions,
 ///                  such that actual indices start at 2
 void AqlItemBlock::toVelocyPack(size_t from, size_t to,
                                 velocypack::Options const* const trxOptions,
-                                VPackBuilder& result) const {
+                                velocypack::Builder& result) const {
   // Can only have positive slice size
   TRI_ASSERT(from < to);
   // We cannot slice over the upper bound.
@@ -738,7 +738,7 @@ void AqlItemBlock::toVelocyPack(size_t from, size_t to,
 
   // write out data buffered for repeated "empty" or "next" values
   auto writeBuffered = [](State lastState, size_t lastTablePos,
-                          VPackBuilder& result, size_t runLength) {
+                          velocypack::Builder& result, size_t runLength) {
     if (lastState == Range) {
       return;
     }
@@ -867,9 +867,9 @@ void AqlItemBlock::toVelocyPack(size_t from, size_t to,
   result.add("raw", raw.slice());
 }
 
-void AqlItemBlock::rowToSimpleVPack(
-    size_t row, velocypack::Options const* options,
-    arangodb::velocypack::Builder& builder) const {
+void AqlItemBlock::rowToSimpleVPack(size_t row,
+                                    velocypack::Options const* options,
+                                    velocypack::Builder& builder) const {
   VPackArrayBuilder rowBuilder{&builder};
 
   if (isShadowRow(row)) {
