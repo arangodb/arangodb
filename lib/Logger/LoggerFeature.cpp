@@ -60,7 +60,9 @@ using namespace arangodb::options;
 
 // Please leave this code in for the next time we have to debug fuerte.
 #if 0
-void LogHackWriter(std::string_view msg) { LOG_DEVEL << msg; }
+void LogHackWriter(char const* p) {
+  LOG_DEVEL << p;
+}
 #endif
 
 namespace arangodb {

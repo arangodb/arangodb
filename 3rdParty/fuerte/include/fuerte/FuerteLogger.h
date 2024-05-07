@@ -26,15 +26,14 @@
 #if 0
 #include <iostream>
 #include <sstream>
-#include <string_view>
 
-extern void LogHackWriter(std::string_view p);
+extern void LogHackWriter(char const* p);
 
 class LogHack {
   std::stringstream _s;
  public:
   LogHack() {};
-  ~LogHack() { LogHackWriter(_s.str()); };
+  ~LogHack() { LogHackWriter(_s.str().c_str()); };
   template<typename T> LogHack& operator<<(T const& o) { _s << o; return *this; }
   typedef std::basic_ostream<char, std::char_traits<char> > CoutType;
   typedef CoutType& (*StandardEndLine)(CoutType&);
@@ -113,6 +112,13 @@ class LogHack {
 #define FUERTE_LOG_HTTPTRACE std::cout << "[http] "
 #else
 #define FUERTE_LOG_HTTPTRACE \
+  if (0) std::cout
+#endif
+
+#if ENABLE_FUERTE_LOG_NODE > 0
+#define FUERTE_LOG_NODE std::cout
+#else
+#define FUERTE_LOG_NODE \
   if (0) std::cout
 #endif
 

@@ -1,4 +1,4 @@
-v3.11.7.4 (2024-05-06)
+v3.11.7.4 (XXXX-XX-XX)
 ----------------------
 
 * Fix connection retry attempts for cluster-internal TLS connections that ran

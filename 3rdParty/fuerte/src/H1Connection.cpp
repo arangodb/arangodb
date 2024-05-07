@@ -363,7 +363,7 @@ void H1Connection<ST>::asyncWriteCallback(asio_ns::error_code const& ec,
   FUERTE_ASSERT(this->_state == Connection::State::Connected ||
                 this->_state == Connection::State::Closed);
   this->_writing = false;  // indicate that no async write is ongoing any more
-  this->cancelTimer();  // cancel alarm for timeout
+  this->_proto.timer.cancel();  // cancel alarm for timeout
 
   auto const now = Clock::now();
   if (ec || _item == nullptr || _item->expires < now) {
@@ -403,7 +403,7 @@ template <SocketType ST>
 void H1Connection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
   // Do not cancel timeout now, because we might be going on to read!
   if (_item == nullptr) {  // could happen on aborts
-    this->cancelTimer();
+    this->_proto.timer.cancel();
     this->shutdownConnection(Error::CloseRequested);
     return;
   }
@@ -443,8 +443,7 @@ void H1Connection<ST>::asyncReadCallback(asio_ns::error_code const& ec) {
     FUERTE_ASSERT(_response != nullptr);
     _messageComplete = false;  // prevent entering branch on EOF
 
-    this->cancelTimer();  // got response in time
-
+    this->_proto.timer.cancel();  // got response in time
     if (!_responseBuffer.empty()) {
       _response->setPayload(std::move(_responseBuffer), 0);
     }
@@ -503,7 +502,8 @@ template <SocketType ST>
 void H1Connection<ST>::setIOTimeout() {
   const bool isIdle = _item == nullptr;
   if (isIdle && !this->_config._useIdleTimeout) {
-    this->cancelTimer();
+    asio_ns::error_code ec;
+    this->_proto.timer.cancel(ec);
     return;
   }
 
