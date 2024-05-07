@@ -92,11 +92,6 @@ void resolveConnect(detail::ConnectionConfiguration const& config,
 }
 }  // namespace
 
-enum class ConnectTimerRole {
-  kConnect = 1,
-  kReconnect = 2,
-};
-
 template <SocketType T>
 struct Socket {};
 
@@ -169,7 +164,6 @@ struct Socket<SocketType::Tcp> {
   asio_ns::ip::tcp::resolver resolver;
   asio_ns::ip::tcp::socket socket;
   asio_ns::steady_timer timer;
-  ConnectTimerRole connectTimerRole = ConnectTimerRole::kConnect;
   bool canceled = false;
 };
 
@@ -311,7 +305,6 @@ struct Socket<fuerte::SocketType::Ssl> {
   asio_ns::io_context& ctx;
   asio_ns::ssl::context& sslContext;
   std::atomic<bool> cleanupDone;
-  ConnectTimerRole connectTimerRole = ConnectTimerRole::kConnect;
   bool canceled = false;
 };
 
@@ -373,7 +366,6 @@ struct Socket<fuerte::SocketType::Unix> {
 
   asio_ns::local::stream_protocol::socket socket;
   asio_ns::steady_timer timer;
-  ConnectTimerRole connectTimerRole = ConnectTimerRole::kConnect;
   bool canceled = false;
 };
 #endif  // ASIO_HAS_LOCAL_SOCKETS
