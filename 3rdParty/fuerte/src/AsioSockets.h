@@ -252,10 +252,10 @@ struct Socket<fuerte::SocketType::Ssl> {
       return;
     }
     cleanupDone = false;
-    socket.async_shutdown([cb(std::forward<F>(cb)), this](auto const& ec) {
+    socket.async_shutdown([cb, this](auto const& ec) {
       timer.cancel();
 #ifndef _WIN32
-      if (!cleanupDone && (!ec || ec == asio_ns::error::basic_errors::not_connected)) {
+      if ((!ec || ec == asio_ns::error::basic_errors::not_connected) && !cleanupDone) {
         asio_ns::error_code ec2;
         socket.lowest_layer().shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec2);
         ec2.clear();
@@ -266,10 +266,10 @@ struct Socket<fuerte::SocketType::Ssl> {
       cb(ec);
     });
     timer.expires_from_now(std::chrono::seconds(3));
-    timer.async_wait([cb, this](asio_ns::error_code ec) {
+    timer.async_wait([cb(std::forward<F>(cb)), this](asio_ns::error_code ec) {
       // Copy in callback such that the connection object is kept alive long
       // enough, please do not delete, although it is not used here!
-      if (!cleanupDone && !ec) {
+      if (!ec && !cleanupDone) {
         socket.lowest_layer().shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
         ec.clear();
         socket.lowest_layer().close(ec);

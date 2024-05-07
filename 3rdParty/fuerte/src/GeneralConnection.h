@@ -198,9 +198,10 @@ class GeneralConnection : public fuerte::Connection {
 
     abortRequests(err, /*now*/ Clock::time_point::max());
 
-    _proto.shutdown([=, this, self = shared_from_this()](asio_ns::error_code ec) {
-      terminateActivity(err);
-      onFailure(err, msg);
+    _proto.shutdown([=, self = shared_from_this()](asio_ns::error_code ec) {
+      auto& me = static_cast<GeneralConnection<ST, RT>&>(*self);
+      me.terminateActivity(err);
+      me.onFailure(err, msg);
     });  // Close socket
   }
 
