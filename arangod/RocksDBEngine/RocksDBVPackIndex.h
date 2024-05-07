@@ -28,8 +28,6 @@
 #include <velocypack/Buffer.h>
 #include <velocypack/Slice.h>
 
-#include "Aql/AstNode.h"
-#include "Basics/Common.h"
 #include "Containers/SmallVector.h"
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
@@ -50,6 +48,7 @@ class Slice;
 
 namespace arangodb {
 namespace aql {
+struct AstNode;
 class SortCondition;
 struct Variable;
 }  // namespace aql

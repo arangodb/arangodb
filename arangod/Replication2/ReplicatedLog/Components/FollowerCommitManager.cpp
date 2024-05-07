@@ -102,7 +102,7 @@ auto FollowerCommitManager::waitFor(LogIndex index) noexcept
   if (guard->isResigned) {
     auto promise = ResolvePromise{};
     promise.setException(ParticipantResignedException(
-        TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE));
+        TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED));
     return promise.getFuture();
   }
 
@@ -135,7 +135,7 @@ void FollowerCommitManager::resign() noexcept {
   guard->isResigned = true;
   for (auto& [idx, promise] : guard->waitQueue) {
     promise.setException(ParticipantResignedException(
-        TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE));
+        TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED));
   }
   guard->waitQueue.clear();
 }

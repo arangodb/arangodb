@@ -162,6 +162,7 @@ available:
 
 - `database`: The name of the database.
 - `username`: The name of the user.
+- `queryid`: The ID of the AQL query (on DB-Servers only).
 - `url`: The endpoint path.
 
 The format to enable or disable a parameter is `<parameter>=<bool>`, or

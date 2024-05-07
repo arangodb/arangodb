@@ -27,7 +27,6 @@
 #include "Agency/Agent.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/TokenCache.h"
-#include "Basics/Common.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
@@ -42,21 +41,6 @@
 #include <fuerte/types.h>
 
 namespace arangodb::network {
-
-Headers addAuthorizationHeader(
-    std::unordered_map<std::string, std::string> const& originalHeaders) {
-  auto auth = AuthenticationFeature::instance();
-
-  network::Headers headers;
-  if (auth != nullptr && auth->isActive()) {
-    headers.try_emplace(StaticStrings::Authorization,
-                        "bearer " + auth->tokenCache().jwtToken());
-  }
-  for (auto const& header : originalHeaders) {
-    headers.try_emplace(header.first, header.second);
-  }
-  return headers;
-}
 
 futures::Future<ErrorCode> resolveDestination(NetworkFeature const& feature,
                                               DestinationId const& dest,

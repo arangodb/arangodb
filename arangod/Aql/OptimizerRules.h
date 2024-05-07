@@ -31,7 +31,6 @@
 #include "Aql/ExecutionNode/ScatterNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/OptimizerRulesFeature.h"
-#include "Basics/Common.h"
 #include "Containers/SmallUnorderedMap.h"
 #include "VocBase/vocbase.h"
 

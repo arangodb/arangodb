@@ -27,7 +27,6 @@
 #include <unordered_map>
 
 #include "Aql/Collections.h"
-#include "Basics/Common.h"
 #include "Basics/MemoryTypes/MemoryTypes.h"
 
 struct TRI_vocbase_t;
@@ -65,7 +64,7 @@ class BaseEngine {
  public:
   enum EngineType { TRAVERSER, SHORTESTPATH };
 
-  static std::unique_ptr<BaseEngine> BuildEngine(
+  static std::unique_ptr<BaseEngine> buildEngine(
       TRI_vocbase_t& vocbase, aql::QueryContext& query,
       arangodb::velocypack::Slice info);
 

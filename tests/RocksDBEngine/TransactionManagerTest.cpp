@@ -21,8 +21,6 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
-
 #include "gtest/gtest.h"
 #include <chrono>
 #include <condition_variable>
@@ -82,7 +80,7 @@ TEST(RocksDBTransactionManager, test_overlapping) {
   std::atomic<bool> done;
 
   auto getReadLock = [&]() -> void {
-    tm.commitManagedTrx(trxId, "foo");
+    tm.commitManagedTrx(trxId, "foo").get();
     done = true;
   };
 

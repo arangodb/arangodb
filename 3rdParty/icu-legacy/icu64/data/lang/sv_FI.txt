@@ -1,0 +1,14 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+sv_FI{
+    Keys{
+        timezone{"tidszon"}
+    }
+    Languages{
+        ky{"kirgiziska"}
+    }
+    Scripts%variant{
+        Arab{"persisk-arabiska"}
+    }
+    Version{"2.1.47.71"}
+}

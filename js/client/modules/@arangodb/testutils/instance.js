@@ -362,7 +362,9 @@ class instance {
       'temp.intermediate-results-path': fs.join(this.rootDir, 'temp-rocksdb-dir'),
       'log.file': this.logFile
     });
-
+    if (this.options.forceOneShard) {
+      this.args['cluster.force-one-shard'] = true;
+    }
     if (require("@arangodb/test-helper").isEnterprise()) {
       this.args['arangosearch.columns-cache-limit'] = '100000';
     }
@@ -425,7 +427,7 @@ class instance {
         'agency.my-address': this.protocol + '://127.0.0.1:' + this.port,
         // Sometimes for unknown reason the agency startup is too slow.
         // With this log level we might have a chance to see what is going on.
-        'log.level': "agency=debug",
+        'log.level': "agency=info",
       });
       if (!this.args.hasOwnProperty("agency.supervision-grace-period")) {
         this.args['agency.supervision-grace-period'] = '10.0';
@@ -550,7 +552,7 @@ class instance {
 
   cleanup() {
     if ((this.pid !== null) && (this.exitStatus === null)) {
-      print(RED + "killing instance (again?) to make sure we can delete its files!" + RESET);
+      print(RED + Date() + "killing instance (again?) to make sure we can delete its files!" + RESET);
       this.terminateInstance();
     }
     if (this.options.extremeVerbosity) {
@@ -746,7 +748,7 @@ class instance {
 
     if (crashUtils.isEnabledWindowsMonitor(this.options, this, this.pid, pu.ARANGOD_BIN)) {
       if (!crashUtils.runProcdump(this.options, this, this.coreDirectory, this.pid)) {
-        print('Killing ' + pu.ARANGOD_BIN + ' - ' + JSON.stringify(this.args));
+        print(Date() + 'Killing ' + pu.ARANGOD_BIN + ' - ' + JSON.stringify(this.args));
         let res = killExternal(this.pid);
         this.pid = res.pid;
         this.exitStatus = res;
@@ -778,7 +780,7 @@ class instance {
     }
     if (crashUtils.isEnabledWindowsMonitor(this.options, this, this.pid, pu.ARANGOD_BIN)) {
       if (!crashUtils.runProcdump(this.options, this, this.coreDirectory, this.pid)) {
-        print('Killing ' + pu.ARANGOD_BIN + ' - ' + JSON.stringify(this.args));
+        print(Date() + 'Killing ' + pu.ARANGOD_BIN + ' - ' + JSON.stringify(this.args));
         let res = killExternal(this.pid);
         this.pid = res.pid;
         this.exitStatus = res;
@@ -1043,7 +1045,7 @@ class instance {
     if ((this.exitStatus === null) ||
         (this.exitStatus.status === 'RUNNING')) {
       if (forceTerminate) {
-        let sockStat = this.getSockStat("Force killing - sockstat before: ");
+        let sockStat = this.getSockStat(Date() + "Force killing - sockstat before: ");
         this.killWithCoreDump('shutdown timeout; instance forcefully KILLED because of fatal timeout in testrun ' + sockStat);
         this.pid = null;
       } else if (this.options.useKillExternal) {

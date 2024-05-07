@@ -29,6 +29,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
 #include "Basics/files.h"
+#include "Basics/system-functions.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/AgencyCallbackRegistry.h"
 #include "Cluster/ClusterInfo.h"
@@ -1137,11 +1138,11 @@ AgencyCache& ClusterFeature::agencyCache() {
 void ClusterFeature::allocateMembers() {
   _agencyCallbackRegistry =
       std::make_unique<AgencyCallbackRegistry>(server(), agencyCallbacksPath());
-  _clusterInfo = std::make_unique<ClusterInfo>(
-      server(), *_agencyCallbackRegistry, _syncerShutdownCode,
-      server().getFeature<metrics::MetricsFeature>());
   _agencyCache = std::make_unique<AgencyCache>(
       server(), *_agencyCallbackRegistry, _syncerShutdownCode);
+  _clusterInfo = std::make_unique<ClusterInfo>(
+      server(), *_agencyCache, *_agencyCallbackRegistry, _syncerShutdownCode,
+      server().getFeature<metrics::MetricsFeature>());
 }
 
 void ClusterFeature::addDirty(

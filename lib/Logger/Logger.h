@@ -56,6 +56,7 @@
 
 #include <atomic>
 #include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
@@ -65,7 +66,6 @@
 #include <utility>
 #include <vector>
 
-#include "Basics/Common.h"
 #include "Basics/threads.h"
 #include "Logger/LogLevel.h"
 #include "Logger/LogTimeFormat.h"
@@ -310,6 +310,9 @@ class Logger {
   static void shutdown();
   static void flush() noexcept;
 
+  static void setOnDroppedMessage(std::function<void()> cb);
+  static void onDroppedMessage() noexcept;
+
  private:
   // these variables might be changed asynchronously
   static std::atomic<bool> _active;
@@ -344,9 +347,9 @@ class Logger {
     ThreadRef();
     ~ThreadRef();
 
-    ThreadRef(const ThreadRef&) = delete;
+    ThreadRef(ThreadRef const&) = delete;
     ThreadRef(ThreadRef&&) = delete;
-    ThreadRef& operator=(const ThreadRef&) = delete;
+    ThreadRef& operator=(ThreadRef const&) = delete;
     ThreadRef& operator=(ThreadRef&&) = delete;
 
     LogThread* operator->() const noexcept { return _thread; }
@@ -358,8 +361,10 @@ class Logger {
 
   // logger thread. only populated when threaded logging is selected.
   // the pointer must only be used with atomic accessors after the ref counter
-  // has been increased. Best to usethe ThreadRef class for this!
+  // has been increased. Best to use the ThreadRef class for this!
   static std::atomic<std::size_t> _loggingThreadRefs;
   static std::atomic<LogThread*> _loggingThread;
+
+  static std::function<void()> _onDroppedMessage;
 };
 }  // namespace arangodb

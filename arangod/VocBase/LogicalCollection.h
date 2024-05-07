@@ -24,7 +24,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Containers/FlatHashMap.h"
 #include "Cluster/Utils/ShardID.h"
@@ -408,11 +407,6 @@ class LogicalCollection : public LogicalDataSource {
   void setInternalValidatorTypes(uint64_t type);
 
   uint64_t getInternalValidatorTypes() const noexcept;
-
-#ifdef USE_ENTERPRISE
-  static void addEnterpriseShardingStrategy(VPackBuilder& builder,
-                                            VPackSlice collectionProperties);
-#endif
 
   auto groupID() const noexcept
       -> arangodb::replication2::agency::CollectionGroupId;

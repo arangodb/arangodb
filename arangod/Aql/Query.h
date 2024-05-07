@@ -31,13 +31,12 @@
 #include "Aql/QueryContext.h"
 #include "Aql/QueryExecutionState.h"
 #include "Aql/QueryResult.h"
+#include "Basics/Guarded.h"
 #ifdef USE_V8
 #include "Aql/QueryResultV8.h"
 #endif
 #include "Aql/QueryString.h"
-#include "Basics/Common.h"
 #include "Basics/ResourceUsage.h"
-#include "Basics/system-functions.h"
 #include "Scheduler/SchedulerFeature.h"
 #ifdef USE_V8
 #include "V8Server/V8Executor.h"
@@ -122,6 +121,11 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   QueryString const& queryString() const { return _queryString; }
 
+  /// @brief the query's transaction id. returns 0 if no transaction
+  /// has been assigned to the query yet. use this only for informational
+  /// purposes
+  TransactionId transactionId() const noexcept;
+
   /// @brief return the start time of the query (steady clock value)
   double startTime() const noexcept;
 
@@ -159,6 +163,15 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   /// @brief explain an AQL query
   QueryResult explain();
+
+  /// @brief prepare a query out of some velocypack data.
+  /// only to be used on single server or coordinator.
+  /// never call this on a DB server!
+  void prepareFromVelocyPack(velocypack::Slice querySlice,
+                             velocypack::Slice collections,
+                             velocypack::Slice variables,
+                             velocypack::Slice snippets,
+                             QueryAnalyzerRevisions const& analyzersRevision);
 
   /// @brief whether or not a query is a modification query
   bool isModificationQuery() const noexcept final;
@@ -230,7 +243,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   SnippetList const& snippets() const { return _snippets; }
   SnippetList& snippets() { return _snippets; }
   ServerQueryIdList& serverQueryIds() { return _serverQueryIds; }
-  ExecutionStats& executionStats() { return _execStats; }
+  Guarded<ExecutionStats>& executionStatsGuard() { return _execStats; }
 
   // Debug method to kill a query at a specific position
   // during execution. It internally asserts that the query
@@ -307,7 +320,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   QueryString _queryString;
 
   /// collect execution stats, contains aliases
-  ExecutionStats _execStats;
+  Guarded<ExecutionStats> _execStats;
 
   /// @brief transaction context to use for this query
   std::shared_ptr<transaction::Context> _transactionContext;
@@ -358,6 +371,9 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   /// @brief total memory used for building the (partial) result
   size_t _resultMemoryUsage;
+
+  /// @brief total memory used for the velocypack data of an execution plan
+  size_t _planMemoryUsage;
 
   /// @brief hash for this query. will be calculated only once when needed
   mutable uint64_t _queryHash = DontCache;

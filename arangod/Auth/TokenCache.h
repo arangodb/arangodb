@@ -23,25 +23,25 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Basics/LruCache.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
-#include "Basics/debugging.h"
-#include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
 #include "Rest/CommonDefines.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-
 #include <atomic>
+#include <memory>
 #include <mutex>
 #include <string>
+#include <string_view>
 #include <unordered_map>
+#include <vector>
 
-namespace arangodb {
-namespace auth {
+namespace arangodb::velocypack {
+class Builder;
+}
+
+namespace arangodb::auth {
 class UserManager;
 
 /// @brief Caches the basic and JWT authentication tokens
@@ -53,7 +53,6 @@ class TokenCache {
   explicit TokenCache(auth::UserManager* um, double timeout);
   ~TokenCache();
 
- public:
   struct Entry {
     friend class auth::TokenCache;
 
@@ -69,9 +68,7 @@ class TokenCache {
     void authenticated(bool value) noexcept { _authenticated = value; }
     void setExpiry(double expiry) noexcept { _expiry = expiry; }
     double expiry() const noexcept { return _expiry; }
-    bool expired() const noexcept {
-      return _expiry != 0 && _expiry < TRI_microtime();
-    }
+    bool expired() const noexcept;
     std::vector<std::string> const& allowedPaths() const {
       return _allowedPaths;
     }
@@ -104,10 +101,7 @@ class TokenCache {
 #endif
 
   /// Get the jwt token, which should be used for communication
-  std::string const& jwtToken() const noexcept {
-    TRI_ASSERT(!_jwtSuperToken.empty());
-    return _jwtSuperToken;
-  }
+  std::string const& jwtToken() const noexcept;
 
   std::string jwtSecret() const;
 
@@ -149,5 +143,5 @@ class TokenCache {
   /// Timeout in seconds
   double const _authTimeout;
 };
-}  // namespace auth
-}  // namespace arangodb
+
+}  // namespace arangodb::auth

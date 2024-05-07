@@ -125,11 +125,15 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 arangosh without connecting to a server.)");
   }
 
-  options->addOption("--server.password",
-                     "The password to use when connecting. If not specified "
-                     "and authentication is required, the user is prompted for "
-                     "a password",
-                     new StringParameter(&_password));
+  options->addOption(
+      "--server.password",
+      "The password to use when connecting. If not specified and "
+      "authentication is required, you are prompted for a password.\n"
+      "In startup options, you can wrap the names of environment variables "
+      "in at signs to use their value, like @ARANGO_PASSWORD@. This helps to "
+      "expose the password less, like to the process list. "
+      "Literal @ need to be escaped as @@.",
+      new StringParameter(&_password));
 
   if (isArangosh) {
     // this option is only available in arangosh

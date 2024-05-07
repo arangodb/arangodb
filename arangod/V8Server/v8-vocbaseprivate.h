@@ -27,7 +27,6 @@
 #error this file is not supposed to be used in builds with -DUSE_V8=Off
 #endif
 
-#include "Basics/Common.h"
 #include "Transaction/V8Context.h"
 #include "V8/v8-utils.h"
 #include "V8Server/v8-vocbase.h"

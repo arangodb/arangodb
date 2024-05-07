@@ -29,3 +29,6 @@
 [submodule "3rdParty/v8-build"]
 	path = 3rdParty/v8-build/v8
 	url = https://github.com/arangodb/v8.git
+[submodule "3rdParty/nghttp2"]
+	path = 3rdParty/nghttp2-lib
+	url = https://github.com/arangodb/nghttp2.git

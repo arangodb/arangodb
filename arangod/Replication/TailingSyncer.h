@@ -24,7 +24,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Replication/ReplicationMetricsFeature.h"
 #include "Replication/Syncer.h"

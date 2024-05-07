@@ -406,8 +406,17 @@ std::pair<double, double> Manager::globalHitRates() {
 double Manager::idealLowerFillRatio() const noexcept {
   return _options.idealLowerFillRatio;
 }
+
 double Manager::idealUpperFillRatio() const noexcept {
   return _options.idealUpperFillRatio;
+}
+
+std::uint64_t Manager::maxCacheValueSize() const noexcept {
+  // max size of cachable value is the minimum of
+  // - maximum configured cache value size
+  // - the per-cache item value size limit
+  return std::min(static_cast<std::uint64_t>(_options.maxCacheValueSize),
+                  static_cast<std::uint64_t>(CachedValue::kMaxValueSize));
 }
 
 bool Manager::post(std::function<void()> fn) {

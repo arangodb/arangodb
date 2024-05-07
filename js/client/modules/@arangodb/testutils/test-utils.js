@@ -29,6 +29,7 @@
 const _ = require('lodash');
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
+const ct = require('@arangodb/testutils/client-tools');
 const yaml = require('js-yaml');
 
 const toArgv = require('internal').toArgv;
@@ -490,7 +491,7 @@ class runInArangoshRunner extends testRunnerBase {
   }
   runOneTest(file) {
     require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceManager.getStructure());
-    let args = pu.makeArgs.arangosh(this.options);
+    let args = ct.makeArgs.arangosh(this.options);
     args['server.endpoint'] = this.getEndpoint();
 
     args['javascript.unit-tests'] = fs.join(pu.TOP_DIR, file);

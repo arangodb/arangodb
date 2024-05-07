@@ -36,8 +36,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
-
 #include <float.h>
 #include <limits>
 

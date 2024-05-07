@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Basics/Result.h"
 
 #include <velocypack/Builder.h>
@@ -105,7 +104,6 @@ struct QueryResult {
     return value;
   }
 
- public:
   Result result;
   bool cached;
   bool allowDirtyReads;  // indicate that query was done with dirty reads,

@@ -96,7 +96,7 @@ auto InMemoryLogManager::appendLogEntry(
   return _guardedData.doUnderLock([&](auto& data) -> LogIndex {
     if (data._resigned) {
       throw ParticipantResignedException(
-          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
     }
 
     auto const index = data._inMemoryLog.getNextIndex();

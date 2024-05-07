@@ -54,9 +54,9 @@ void Optimizer::disableRules(
   }
 }
 
-bool Optimizer::runOnlyRequiredRules(size_t extraPlans) const {
+bool Optimizer::runOnlyRequiredRules() const noexcept {
   return (_runOnlyRequiredRules ||
-          (_newPlans.size() + _plans.size() + extraPlans >= _maxNumberOfPlans));
+          (_newPlans.size() + _plans.size() + 1 >= _maxNumberOfPlans));
 }
 
 // @brief add a plan to the optimizer
