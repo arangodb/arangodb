@@ -5,6 +5,8 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 
+#include <fmt/core.h>
+
 using namespace arangodb::network::curl;
 using namespace arangodb::network;
 using namespace arangodb;
@@ -99,8 +101,9 @@ size_t header_callback(char* buffer, size_t size, size_t nitems,
   return bytes_written;
 }
 
-#define LOG_DEVEL_CURL LOG_DEVEL_IF(false)
-#define LOG_DEVEL_CURL_IF(cond) LOG_DEVEL_IF(false && (cond))
+constexpr bool enable_logging = false;
+#define LOG_DEVEL_CURL LOG_DEVEL_IF(enable_logging)
+#define LOG_DEVEL_CURL_IF(cond) LOG_DEVEL_IF(enable_logging && (cond))
 
 int debug_callback(CURL* handle, curl_infotype type, char* data, size_t size,
                    void* clientp) {
@@ -111,7 +114,7 @@ int debug_callback(CURL* handle, curl_infotype type, char* data, size_t size,
       prefix = "HDR-IN: ";
       break;
     case CURLINFO_HEADER_OUT:
-      prefix = "HRD-OUT: ";
+      prefix = "HDR-OUT: ";
       break;
     case CURLINFO_SSL_DATA_IN:
       prefix = "SSL-IN: ";
@@ -270,6 +273,23 @@ void connection_pool::resolve_handle(CURL* easy_handle,
   TRI_ASSERT(erased);
 
   curl_easy_getinfo(easy_handle, CURLINFO_RESPONSE_CODE, &req->_response.code);
+  {
+    auto const print_time_t = [&](CURLINFO info, std::string_view desc) {
+      curl_off_t time_t;
+      CURLcode res = curl_easy_getinfo(easy_handle, info, &time_t);
+      LOG_DEVEL_CURL_IF(res == CURLE_OK)
+          << fmt::format("[{}] TIME: [{}]: {}us", req->unique_id, desc, time_t);
+    };
+
+    print_time_t(CURLINFO_QUEUE_TIME_T, "queue");
+    print_time_t(CURLINFO_NAMELOOKUP_TIME_T, "namelookup");
+    print_time_t(CURLINFO_CONNECT_TIME_T, "connect");
+    print_time_t(CURLINFO_APPCONNECT_TIME_T, "appconnect");
+    print_time_t(CURLINFO_PRETRANSFER_TIME_T, "starttransfer");
+    print_time_t(CURLINFO_STARTTRANSFER_TIME_T, "starttransfer");
+    print_time_t(CURLINFO_TOTAL_TIME_T, "total");
+    print_time_t(CURLINFO_REDIRECT_TIME_T, "redirect");
+  }
   try {
     req->callback_called = true;
     req->_callback(std::move(req->_response), result);
