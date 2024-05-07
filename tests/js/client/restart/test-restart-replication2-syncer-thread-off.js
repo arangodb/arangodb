@@ -133,14 +133,10 @@ function testSuite() {
       const end = time() + 30;
       do {
         try {
-          require("console").error("creating database...");
           db._createDatabase(databaseNameR2, {'replicationVersion': '2'});
-          require("console").error("creating database successful");
           break;
         } catch (err) {
-          require("console").error("err: ", err.errorNum, String(err));
           if (err.errorNum !== errors.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code) {
-            require("console").error("received unexpected error. rethrowing");
             throw err;
           }
           sleep(0.5);
