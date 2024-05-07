@@ -322,6 +322,8 @@ class GeneralConnection : public fuerte::Connection {
 
     FUERTE_LOG_DEBUG << "tryConnect (" << retries << ") this=" << this << "\n";
     auto self = Connection::shared_from_this();
+    
+    _proto.timer.expires_after(_config._connectTimeout);
 
     _proto.connect(_config, [self, retries](asio_ns::error_code ec) mutable {
       auto& me = static_cast<GeneralConnection<ST, RT>&>(*self);
@@ -368,7 +370,6 @@ class GeneralConnection : public fuerte::Connection {
       }
     });
     
-    _proto.timer.expires_after(_config._connectTimeout);
     _proto.timer.async_wait([self = std::move(self)](asio_ns::error_code ec) {
       if (!ec && self->state() == Connection::State::Connecting) {
         // note: if the timer fires successfully, ec is empty here.

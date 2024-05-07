@@ -273,6 +273,7 @@ struct Socket<fuerte::SocketType::Ssl> {
       return;
     }
     cleanupDone = false;
+    timer.expires_from_now(std::chrono::seconds(3));
     socket.async_shutdown([cb, this](auto const& ec) {
       timer.cancel();
 #ifndef _WIN32
@@ -286,7 +287,6 @@ struct Socket<fuerte::SocketType::Ssl> {
 #endif
       cb(ec);
     });
-    timer.expires_from_now(std::chrono::seconds(3));
     timer.async_wait([cb(std::forward<F>(cb)), this](asio_ns::error_code ec) {
       // Copy in callback such that the connection object is kept alive long
       // enough, please do not delete, although it is not used here!
