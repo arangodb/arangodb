@@ -1,6 +1,5 @@
 #pragma once
 
-#include <curl/curl.h>
 #include <thread>
 #include <mutex>
 #include <unordered_map>
@@ -10,6 +9,11 @@
 #include <condition_variable>
 #include <cstring>
 #include <sstream>
+
+#include "fuerte/types.h"
+
+struct Curl_easy;
+struct Curl_multi;
 
 namespace arangodb::network::curl {
 
@@ -24,7 +28,7 @@ struct curl_multi_handle {
 
   void notify();
 
-  CURLM* _multi_handle = nullptr;
+  Curl_multi* _multi_handle = nullptr;
 };
 
 struct curl_easy_handle {
@@ -32,7 +36,7 @@ struct curl_easy_handle {
 
   ~curl_easy_handle();
 
-  CURL* _easy_handle = nullptr;
+  Curl_easy* _easy_handle = nullptr;
 };
 
 struct request_options {
@@ -67,7 +71,7 @@ struct connection_pool {
 
   void install_new_handles() noexcept;
 
-  void resolve_handle(CURL* easy_handle, CURLcode result) noexcept;
+  void resolve_handle(Curl_easy* easy_handle, int result) noexcept;
 
   size_t drain_msg_queue() noexcept;
 
@@ -77,14 +81,17 @@ struct connection_pool {
   std::vector<std::unique_ptr<request>> _queue;
   std::unordered_set<std::string> _cancelEndpoints;
   std::mutex _requestsPerEndpointMutex;
-  std::unordered_map<std::string, std::unordered_set<CURL*>>
+  std::unordered_map<std::string, std::unordered_set<Curl_easy*>>
       _requestsPerEndpoint;
-  std::jthread _curl_thread;
+  std::jthread _curlThread;
 };
 
 // TODO endpoint is redundant (part of path)
 void send_request(connection_pool& pool, http_method method,
                   std::string endpoint, std::string path, std::string body,
                   request_options const& options,
-                  std::function<void(response, CURLcode)> callback);
+                  std::function<void(response, int)> callback);
+
+arangodb::fuerte::Error curlErrorToFuerte(int err);
+const char* curlStrError(int err);
 }  // namespace arangodb::network::curl

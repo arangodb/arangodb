@@ -462,31 +462,6 @@ std::string buildUrlForCurl(fuerte::Request const& r,
   return url;
 }
 
-fuerte::Error curlErrorToFuerte(CURLcode err) {
-  switch (err) {
-    case CURLE_OK:
-      return fuerte::Error::NoError;
-    case CURLE_COULDNT_CONNECT:
-      return fuerte::Error::CouldNotConnect;
-    case CURLE_OPERATION_TIMEDOUT:
-      return fuerte::Error::RequestTimeout;
-    case CURLE_READ_ERROR:
-    case CURLE_GOT_NOTHING:
-      return fuerte::Error::ReadError;
-    case CURLE_WRITE_ERROR:
-      return fuerte::Error::WriteError;
-    case CURLE_HTTP2_STREAM:
-    case CURLE_HTTP2:
-      return fuerte::Error::ProtocolError;
-
-    case CURLE_ABORTED_BY_CALLBACK:
-    default:
-      LOG_TOPIC("9d9bf", ERR, Logger::COMMUNICATION)
-          << "curl error: " << curl_easy_strerror(err) << " (" << err << ")";
-      return fuerte::Error::ConnectionCanceled;
-  }
-}
-
 std::atomic<uint64_t> unique_id = 0;
 
 }  // namespace
@@ -599,17 +574,19 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
        handleContentEncoding = options.handleContentEncoding,
        cb = std::move(cb), endpoint = std::move(endpoint),
        req_ptr = req.release(), url,
-       my_id](network::curl::response real_res, CURLcode result) {
+       my_id](network::curl::response real_res, int result) {
         auto req = std::unique_ptr<fuerte::Request>(req_ptr);
         LOG_DEVEL_IF(enable_logging)
             << "[" << my_id << "] "
             << "CURL " << to_string(req->header.restVerb) << " " << url
-            << " -> " << curl_easy_strerror(result) << " (" << result << ")";
-        auto err = curlErrorToFuerte(result);
-        LOG_DEVEL_IF(false && result != CURLE_OK)
+            << " -> " << network::curl::curlStrError(result) << " (" << result
+            << ")";
+        auto err = network::curl::curlErrorToFuerte(result);
+        LOG_DEVEL_IF(false && result != 0)
             << "[" << my_id << "] "
             << "CURL " << to_string(req->header.restVerb) << " " << url
-            << " -> " << curl_easy_strerror(result) << " (" << result << ")\n"
+            << " -> " << network::curl::curlStrError(result) << " (" << result
+            << ")\n"
             << real_res.debug_string.str();
         auto res = std::make_unique<fuerte::Response>();
         if (!real_res.body.empty()) {

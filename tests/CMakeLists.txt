@@ -32,6 +32,7 @@ add_subdirectory(Graph)
 add_subdirectory(Replication2)
 add_subdirectory(Futures)
 add_subdirectory(BuildId)
+add_subdirectory(NetworkCurl)
 
 # ----------------------------------------
 # Link directories

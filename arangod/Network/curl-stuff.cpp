@@ -1,5 +1,6 @@
 #include "curl-stuff.h"
 
+#include "curl/curl.h"
 #include "Logger/LogMacros.h"
 #include "Basics/application-exit.h"
 #include "Basics/Exceptions.h"
@@ -29,7 +30,7 @@ struct curl::request {
   std::size_t read_offset;
   curl_easy_handle _curl_handle;
   curl_slist* _curl_headers;
-  std::function<void(response, CURLcode)> _callback;
+  std::function<void(response, int)> _callback;
   bool callback_called{false};
 
   std::uint64_t unique_id;
@@ -106,8 +107,7 @@ constexpr bool enable_logging = false;
 #define LOG_DEVEL_CURL_IF(cond) LOG_DEVEL_IF(enable_logging && (cond))
 
 [[maybe_unused]] int debug_callback(CURL* handle, curl_infotype type,
-                                    char* data, size_t size,
-                                    void* clientp) {
+                                    char* data, size_t size, void* clientp) {
   auto req = static_cast<request*>(clientp);
   std::string_view prefix = "CURL: ";
   switch (type) {
@@ -130,8 +130,8 @@ constexpr bool enable_logging = false;
   LOG_DEVEL_CURL << "[" << req->unique_id << "] " << prefix
                  << std::string_view{data, size};
   if constexpr (enable_logging) {
-    req->_response.debug_string << prefix << std::string_view{data, size} <<
-        "\n";
+    req->_response.debug_string << prefix << std::string_view{data, size}
+                                << "\n";
   }
   return 0;
 }
@@ -141,7 +141,7 @@ constexpr bool enable_logging = false;
 void arangodb::network::curl::send_request(
     connection_pool& pool, http_method method, std::string endpoint,
     std::string path, std::string body, request_options const& options,
-    std::function<void(response, CURLcode)> callback) {
+    std::function<void(response, int)> callback) {
   auto req = std::make_unique<request>();
 
   req->endpoint = std::move(endpoint);
@@ -251,8 +251,7 @@ size_t connection_pool::drain_msg_queue() noexcept {
   return num_message;
 }
 
-void connection_pool::resolve_handle(CURL* easy_handle,
-                                     CURLcode result) noexcept {
+void connection_pool::resolve_handle(CURL* easy_handle, int result) noexcept {
   void* req_ptr;
   curl_easy_getinfo(easy_handle, CURLINFO_PRIVATE, &req_ptr);
   auto req = std::unique_ptr<request>(static_cast<request*>(req_ptr));
@@ -381,7 +380,7 @@ void connection_pool::run_curl_loop(std::stop_token stoken) noexcept {
 }
 
 void connection_pool::push(std::unique_ptr<request>&& req) {
-  if (_curl_thread.get_stop_source().stop_requested()) {
+  if (_curlThread.get_stop_source().stop_requested()) {
     req.reset();
     return;
   }
@@ -394,8 +393,8 @@ void connection_pool::push(std::unique_ptr<request>&& req) {
 }
 
 void connection_pool::stop() {
-  _curl_thread.get_stop_source().request_stop();
-  _curl_thread.join();
+  _curlThread.get_stop_source().request_stop();
+  _curlThread.join();
 }
 
 connection_pool::~connection_pool() {
@@ -404,7 +403,7 @@ connection_pool::~connection_pool() {
 }
 
 connection_pool::connection_pool()
-    : _curl_thread([this](std::stop_token stoken) {
+    : _curlThread([this](std::stop_token stoken) {
         pthread_setname_np(pthread_self(), "curl_pool");
         this->run_curl_loop(stoken);
       }) {}
@@ -505,3 +504,33 @@ void curl_multi_handle::poll() noexcept {
 }
 
 void curl_multi_handle::notify() { curl_multi_wakeup(_multi_handle); }
+
+arangodb::fuerte::Error curl::curlErrorToFuerte(int err) {
+  switch (err) {
+    case CURLE_OK:
+      return fuerte::Error::NoError;
+    case CURLE_COULDNT_CONNECT:
+      return fuerte::Error::CouldNotConnect;
+    case CURLE_OPERATION_TIMEDOUT:
+      return fuerte::Error::RequestTimeout;
+    case CURLE_READ_ERROR:
+    case CURLE_GOT_NOTHING:
+      return fuerte::Error::ReadError;
+    case CURLE_WRITE_ERROR:
+      return fuerte::Error::WriteError;
+    case CURLE_HTTP2_STREAM:
+    case CURLE_HTTP2:
+      return fuerte::Error::ProtocolError;
+
+    case CURLE_ABORTED_BY_CALLBACK:
+    default:
+      LOG_TOPIC("9d9bf", ERR, Logger::COMMUNICATION)
+          << "curl error: " << curl_easy_strerror(CURLcode(err)) << " (" << err
+          << ")";
+      return fuerte::Error::ConnectionCanceled;
+  }
+}
+
+const char* curl::curlStrError(int err) {
+  return curl_easy_strerror(CURLcode(err));
+}
