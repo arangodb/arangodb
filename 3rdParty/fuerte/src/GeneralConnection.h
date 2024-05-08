@@ -338,7 +338,7 @@ class GeneralConnection : public fuerte::Connection {
       // so we need to check that. For the latter case we now set the state to
       // `Connected`, so the closure will simply do nothing.
 
-      if (!ec && !me._proto.socket.is_open()) {
+      if (!ec && !me._proto.isOpen()) {
         // timer went off earlier and has already closed the socket.
         ec = asio_ns::error::operation_aborted;
       }
