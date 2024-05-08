@@ -23,12 +23,44 @@ std::atomic<uint64_t> nextRequestId = 0;
 
 }  // namespace
 
+void curl_easy_handle_pool::release(curl_easy_handle&& handle) {
+  std::unique_lock guard(_mutex);
+  if (_handles.size() < _handles.capacity()) {
+    _handles.emplace_back(std::move(handle));
+  }
+}
+
+curl_easy_handle curl_easy_handle_pool::acquire() {
+  std::unique_lock guard(_mutex);
+  if (_handles.empty()) {
+    return {};
+  } else {
+    curl_easy_handle handle = std::move(_handles.back());
+    _handles.pop_back();
+    // handle.reset_handle();
+    return handle;
+  }
+}
+
+curl_easy_handle_pool::curl_easy_handle_pool(size_t max_handles) {
+  _handles.reserve(max_handles);
+}
+curl_easy_handle_guard::curl_easy_handle_guard(curl_easy_handle_pool* pool)
+    : pool(pool), handle(pool ? pool->acquire() : curl_easy_handle{}) {}
+curl_easy_handle_guard::~curl_easy_handle_guard() {
+  if (handle && pool) {
+    pool->release(std::move(handle));
+  }
+}
+
 struct curl::request {
+  explicit request(curl_easy_handle_guard&& handle)
+      : _curl_handle(std::move(handle)) {}
   std::string endpoint;
   std::string url;
   std::string body;
   std::size_t read_offset;
-  curl_easy_handle _curl_handle;
+  curl_easy_handle_guard _curl_handle;
   curl_slist* _curl_headers;
   std::function<void(response, int)> _callback;
   bool callback_called{false};
@@ -142,7 +174,13 @@ void arangodb::network::curl::send_request(
     connection_pool& pool, http_method method, std::string endpoint,
     std::string path, std::string body, request_options const& options,
     std::function<void(response, int)> callback) {
-  auto req = std::make_unique<request>();
+  constexpr auto use_handle_pool = false;
+  curl_easy_handle_pool* handle_pool = nullptr;
+  if constexpr (use_handle_pool) {
+    handle_pool = &pool.handlePool;
+  }
+
+  auto req = std::make_unique<request>(curl_easy_handle_guard(handle_pool));
 
   req->endpoint = std::move(endpoint);
   req->url = std::move(path);
@@ -152,34 +190,34 @@ void arangodb::network::curl::send_request(
 
   LOG_DEVEL_CURL << "[" << req->unique_id << "] URL " << req->url;
 
-  curl_easy_setopt(req->_curl_handle._easy_handle, CURLOPT_URL,
+  curl_easy_setopt(req->_curl_handle->_easy_handle, CURLOPT_URL,
                    req->url.c_str());
 
-  curl_easy_setopt(req->_curl_handle._easy_handle, CURLOPT_WRITEFUNCTION,
+  curl_easy_setopt(req->_curl_handle->_easy_handle, CURLOPT_WRITEFUNCTION,
                    &write_callback);
-  curl_easy_setopt(req->_curl_handle._easy_handle, CURLOPT_WRITEDATA,
+  curl_easy_setopt(req->_curl_handle->_easy_handle, CURLOPT_WRITEDATA,
                    req.get());
 
-  // curl_easy_setopt(req->_curl_handle._easy_handle, CURLOPT_READFUNCTION,
+  // curl_easy_setopt(req->_curl_handle->_easy_handle, CURLOPT_READFUNCTION,
   //                  &read_callback);
-  // curl_easy_setopt(req->_curl_handle._easy_handle, CURLOPT_READDATA,
+  // curl_easy_setopt(req->_curl_handle->_easy_handle, CURLOPT_READDATA,
   // req.get());
 
-  curl_easy_setopt(req->_curl_handle._easy_handle, CURLOPT_XFERINFOFUNCTION,
+  curl_easy_setopt(req->_curl_handle->_easy_handle, CURLOPT_XFERINFOFUNCTION,
                    &progress_callback);
-  curl_easy_setopt(req->_curl_handle._easy_handle, CURLOPT_XFERINFODATA,
+  curl_easy_setopt(req->_curl_handle->_easy_handle, CURLOPT_XFERINFODATA,
                    req.get());
 
-  curl_easy_setopt(req->_curl_handle._easy_handle, CURLOPT_HEADERFUNCTION,
+  curl_easy_setopt(req->_curl_handle->_easy_handle, CURLOPT_HEADERFUNCTION,
                    &header_callback);
-  curl_easy_setopt(req->_curl_handle._easy_handle, CURLOPT_HEADERDATA,
+  curl_easy_setopt(req->_curl_handle->_easy_handle, CURLOPT_HEADERDATA,
                    req.get());
 
-  curl_easy_setopt(req->_curl_handle._easy_handle, CURLOPT_PRIVATE, req.get());
-  curl_easy_setopt(req->_curl_handle._easy_handle, CURLOPT_DEBUGDATA,
+  curl_easy_setopt(req->_curl_handle->_easy_handle, CURLOPT_PRIVATE, req.get());
+  curl_easy_setopt(req->_curl_handle->_easy_handle, CURLOPT_DEBUGDATA,
                    req.get());
 
-  curl_easy_setopt(req->_curl_handle._easy_handle, CURLOPT_TIMEOUT_MS,
+  curl_easy_setopt(req->_curl_handle->_easy_handle, CURLOPT_TIMEOUT_MS,
                    options.timeout.count());
 
   curl_slist* headers = nullptr;
@@ -198,40 +236,41 @@ void arangodb::network::curl::send_request(
     LOG_DEVEL_CURL << "[" << req->unique_id << "] HDR " << line;
   }
 
-  curl_easy_setopt(req->_curl_handle._easy_handle, CURLOPT_POSTFIELDSIZE_LARGE,
+  curl_easy_setopt(req->_curl_handle->_easy_handle, CURLOPT_POSTFIELDSIZE_LARGE,
                    (curl_off_t)req->body.size());
-  curl_easy_setopt(req->_curl_handle._easy_handle, CURLOPT_POSTFIELDS,
+  curl_easy_setopt(req->_curl_handle->_easy_handle, CURLOPT_POSTFIELDS,
                    req->body.data());
 
   switch (method) {
     case http_method::kGet:
-      curl_easy_setopt(req->_curl_handle._easy_handle, CURLOPT_HTTPGET, 1l);
+      curl_easy_setopt(req->_curl_handle->_easy_handle, CURLOPT_HTTPGET, 1l);
       break;
     case http_method::kPost:
-      curl_easy_setopt(req->_curl_handle._easy_handle, CURLOPT_POST, 1l);
+      curl_easy_setopt(req->_curl_handle->_easy_handle, CURLOPT_POST, 1l);
       break;
     case http_method::kPut:
-      curl_easy_setopt(req->_curl_handle._easy_handle, CURLOPT_POST, 1l);
-      curl_easy_setopt(req->_curl_handle._easy_handle, CURLOPT_CUSTOMREQUEST,
+      curl_easy_setopt(req->_curl_handle->_easy_handle, CURLOPT_POST, 1l);
+      curl_easy_setopt(req->_curl_handle->_easy_handle, CURLOPT_CUSTOMREQUEST,
                        "PUT");
       break;
     case http_method::kDelete:
-      curl_easy_setopt(req->_curl_handle._easy_handle, CURLOPT_POST, 1l);
-      curl_easy_setopt(req->_curl_handle._easy_handle, CURLOPT_CUSTOMREQUEST,
+      curl_easy_setopt(req->_curl_handle->_easy_handle, CURLOPT_POST, 1l);
+      curl_easy_setopt(req->_curl_handle->_easy_handle, CURLOPT_CUSTOMREQUEST,
                        "DELETE");
       break;
     case http_method::kPatch:
-      curl_easy_setopt(req->_curl_handle._easy_handle, CURLOPT_POST, 1l);
-      curl_easy_setopt(req->_curl_handle._easy_handle, CURLOPT_CUSTOMREQUEST,
+      curl_easy_setopt(req->_curl_handle->_easy_handle, CURLOPT_POST, 1l);
+      curl_easy_setopt(req->_curl_handle->_easy_handle, CURLOPT_CUSTOMREQUEST,
                        "PATCH");
       break;
     case http_method::kHead:
-      curl_easy_setopt(req->_curl_handle._easy_handle, CURLOPT_NOBODY, 1l);
+      curl_easy_setopt(req->_curl_handle->_easy_handle, CURLOPT_NOBODY, 1l);
       break;
   }
 
   req->_curl_headers = headers;
-  curl_easy_setopt(req->_curl_handle._easy_handle, CURLOPT_HTTPHEADER, headers);
+  curl_easy_setopt(req->_curl_handle->_easy_handle, CURLOPT_HTTPHEADER,
+                   headers);
 
   pool.push(std::move(req));
 }
@@ -324,14 +363,14 @@ void connection_pool::install_new_handles() noexcept {
       }
       std::lock_guard guard(_requestsPerEndpointMutex);
       result = curl_multi_add_handle(_curl_multi._multi_handle,
-                                     req->_curl_handle._easy_handle);
+                                     req->_curl_handle->_easy_handle);
       if (result != CURLM_OK) {
         LOG_TOPIC("f2be4", FATAL, Logger::COMMUNICATION)
             << "curl_multi_add_handle failed: " << curl_multi_strerror(result);
         FATAL_ERROR_ABORT();
       }
       _requestsPerEndpoint[req->endpoint].emplace(
-          req->_curl_handle._easy_handle);
+          req->_curl_handle->_easy_handle);
       std::ignore = req.release();
     }
     {
@@ -403,7 +442,7 @@ connection_pool::~connection_pool() {
 }
 
 connection_pool::connection_pool()
-    : _curlThread([this](std::stop_token stoken) {
+    : handlePool(512), _curlThread([this](std::stop_token stoken) {
         pthread_setname_np(pthread_self(), "curl_pool");
         this->run_curl_loop(stoken);
       }) {}
@@ -431,7 +470,7 @@ curl_easy_handle::curl_easy_handle() : _easy_handle(curl_easy_init()) {
     throw std::runtime_error("curl_easy_init failed");
   }
 
-#if 0
+#if 1
   curl_easy_setopt(_easy_handle, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
   curl_easy_setopt(_easy_handle, CURLOPT_PIPEWAIT, 1l);
 #endif
@@ -465,6 +504,11 @@ curl_easy_handle::~curl_easy_handle() {
     curl_easy_cleanup(_easy_handle);
   }
 }
+curl_easy_handle::curl_easy_handle(curl_easy_handle&& other) {
+  std::swap(other._easy_handle, _easy_handle);
+}
+
+void curl_easy_handle::reset_handle() { curl_easy_reset(_easy_handle); }
 
 curl_multi_handle::curl_multi_handle() : _multi_handle(curl_multi_init()) {
   if (!_multi_handle) {
@@ -472,8 +516,8 @@ curl_multi_handle::curl_multi_handle() : _multi_handle(curl_multi_init()) {
   }
   curl_multi_setopt(_multi_handle, CURLMOPT_PIPELINING, CURLPIPE_MULTIPLEX);
   curl_multi_setopt(_multi_handle, CURLMOPT_MAX_CONCURRENT_STREAMS, 2000l);
-  curl_multi_setopt(_multi_handle, CURLMOPT_MAX_HOST_CONNECTIONS, 0l);
-  curl_multi_setopt(_multi_handle, CURLMOPT_MAX_TOTAL_CONNECTIONS, 0l);
+  curl_multi_setopt(_multi_handle, CURLMOPT_MAX_HOST_CONNECTIONS, 50l);
+  curl_multi_setopt(_multi_handle, CURLMOPT_MAX_TOTAL_CONNECTIONS, 100l);
   curl_multi_setopt(_multi_handle, CURLMOPT_MAX_PIPELINE_LENGTH, 5l);
 }
 

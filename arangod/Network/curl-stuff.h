@@ -33,10 +33,44 @@ struct curl_multi_handle {
 
 struct curl_easy_handle {
   curl_easy_handle();
-
+  curl_easy_handle(curl_easy_handle&&);
   ~curl_easy_handle();
 
+  void reset_handle();
+
+  operator bool() { return _easy_handle != nullptr; }
+
   Curl_easy* _easy_handle = nullptr;
+};
+
+struct curl_easy_handle_pool {
+  explicit curl_easy_handle_pool(size_t max_handles);
+
+  curl_easy_handle acquire();
+
+  void release(curl_easy_handle&& handle);
+
+ private:
+  // TODO this can be implemented in a lock-free fashion using atomics and
+  //  linked lists
+  std::mutex _mutex;
+  std::vector<curl_easy_handle> _handles;
+};
+
+struct curl_easy_handle_guard {
+  explicit curl_easy_handle_guard(curl_easy_handle_pool* pool);
+  explicit curl_easy_handle_guard(curl_easy_handle_guard&&) = default;
+
+  ~curl_easy_handle_guard();
+
+  curl_easy_handle& operator*() { return handle; }
+  curl_easy_handle* operator->() { return &handle; }
+
+  curl_easy_handle const& operator*() const { return handle; }
+  curl_easy_handle const* operator->() const { return &handle; }
+
+  curl_easy_handle_pool* const pool;
+  curl_easy_handle handle;
 };
 
 struct request_options {
@@ -65,6 +99,8 @@ struct connection_pool {
   void stop();
 
   void cancelConnections(std::string endpoint);
+
+  curl_easy_handle_pool handlePool;
 
  private:
   void run_curl_loop(std::stop_token stoken) noexcept;
