@@ -355,9 +355,6 @@ class GeneralConnection : public fuerte::Connection {
               auto& me = static_cast<GeneralConnection<ST, RT>&>(*self);
               if (ec) {
                 FUERTE_LOG_DEBUG << "tryConnect, retry timer canceled. this=" << self.get() << "\n";
-                // we should not get here, because it is totally unexpected that the
-                // retry timer gets canceled
-                FUERTE_ASSERT(false && "retry timer should not have been canceled");
                 me.shutdownConnection(Error::CouldNotConnect, "connecting failed: retry timer canceled");
                 return;
               }
