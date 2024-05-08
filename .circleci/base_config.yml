@@ -10,7 +10,7 @@ parameters:
     default: ""
   build-docker-image:
     type: string
-    default: "arangodb/ubuntubuildarangodb-devel:3"
+    default: "arangodb/ubuntubuildarangodb-devel:4"
   test-docker-image:
     type: string
     default: public.ecr.aws/b0b8h2r4/test-ubuntu:23.10-fc8ee57e
