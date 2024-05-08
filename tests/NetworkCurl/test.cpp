@@ -50,18 +50,30 @@ void send_request(curl::connection_pool& pool, std::latch& done, int counter) {
   }
 }
 
-int main(int argc, char* argv[]) {
-  curl::connection_pool pool;
+struct multi_connection_pool {
+  explicit multi_connection_pool(size_t num) : pools(num) {}
 
-  constexpr auto number_of_requests = 10000;
+  curl::connection_pool& next_pool() {
+    auto idx = counter.fetch_add(1, std::memory_order_relaxed);
+    return pools[idx % pools.size()];
+  }
+
+  std::atomic<uint64_t> counter;
+  std::vector<curl::connection_pool> pools;
+};
+
+int main(int argc, char* argv[]) {
+  constexpr auto number_of_requests = 100000;
   {
+    multi_connection_pool pools(4);
+
     std::latch latch(number_of_requests);
     auto const start = std::chrono::steady_clock::now();
 
-    rate(std::chrono::microseconds{50}, number_of_requests, [&] {
+    rate(std::chrono::microseconds{5}, number_of_requests, [&] {
       curl::request_options options;
       curl::send_request(
-          pool, arangodb::network::curl::http_method::kGet,
+          pools.next_pool(), arangodb::network::curl::http_method::kGet,
           "http://localhost:8529", "http://localhost:8529/_api/version", {},
           options, [&](curl::response const& response, int code) {
             if (code != 0) {
@@ -83,7 +95,9 @@ int main(int argc, char* argv[]) {
               << std::endl;
   }
 
+#if 0
   {
+    curl::connection_pool pool;
     std::latch latch(1);
     auto const start = std::chrono::steady_clock::now();
     send_request(pool, latch, number_of_requests);
@@ -96,4 +110,5 @@ int main(int argc, char* argv[]) {
               << " rps = " << ((double)number_of_requests / seconds.count())
               << std::endl;
   }
+#endif
 }
