@@ -69,12 +69,19 @@ ManagerFeature::ManagerFeature(Server& server)
       return;
     }
 
-    MANAGER->garbageCollect(/*abortAll*/ false);
+    if (MANAGER != nullptr) {
+      MANAGER->garbageCollect(/*abortAll*/ false);
+    }
 
     if (!this->server().isStopping()) {
       queueGarbageCollection();
     }
   };
+}
+
+ManagerFeature::~ManagerFeature() {
+  std::lock_guard<std::mutex> guard(_workItemMutex);
+  _workItem.reset();
 }
 
 void ManagerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {

@@ -274,7 +274,16 @@ SupervisedScheduler::SupervisedScheduler(
   TRI_ASSERT(fifo3Size > 0);
 }
 
-SupervisedScheduler::~SupervisedScheduler() = default;
+SupervisedScheduler::~SupervisedScheduler() {
+  // make sure we are freeing all items from all queues here if we
+  // are in an uncontrolled shutdown
+  for (size_t i = 0; i < NumberOfQueues; ++i) {
+    WorkItemBase* res = nullptr;
+    while (_queues[i].queue.pop(res)) {
+      delete res;
+    }
+  }
+}
 
 bool SupervisedScheduler::queueItem(RequestLane lane,
                                     std::unique_ptr<WorkItemBase> work,
