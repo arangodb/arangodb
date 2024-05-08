@@ -112,6 +112,10 @@ struct Socket<SocketType::Tcp> {
       return canceled;
     });
   }
+  
+  bool isOpen() const {
+    return socket.is_open();
+  }
 
   void cancel() {
     canceled = true;
@@ -219,6 +223,10 @@ struct Socket<fuerte::SocketType::Ssl> {
         });
   }
   
+  bool isOpen() const {
+    return socket.lowest_layer().is_open();
+  }
+  
   void cancel() {
     canceled = true;
     try {
@@ -310,6 +318,10 @@ struct Socket<fuerte::SocketType::Unix> {
 
     asio_ns::local::stream_protocol::endpoint ep(config._host);
     socket.async_connect(ep, std::forward<F>(done));
+  }
+  
+  bool isOpen() const {
+    return socket.is_open();
   }
   
   void cancel() {
