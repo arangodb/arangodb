@@ -32,6 +32,7 @@ const rp = require('@arangodb/testutils/result-processing');
 const yaml = require('js-yaml');
 const internal = require('internal');
 const crashUtils = require('@arangodb/testutils/crash-utils');
+const {sanHandler} = require('@arangodb/testutils/san-file-handler');
 const crypto = require('@arangodb/crypto');
 const ArangoError = require('@arangodb').ArangoError;
 const debugGetFailurePoints = require('@arangodb/test-helper').debugGetFailurePoints;
@@ -465,8 +466,8 @@ function setupBinaries (builddir, buildType, configDir) {
     let fileName = san + "_arangodb_suppressions.txt";
     if (!process.env.hasOwnProperty(envName) &&
         fs.exists(fileName)) {
-      // print('preparing ' + san + ' environment');
       process.env[envName] = `suppressions=${fs.join(fs.makeAbsolute(''), fileName)}`;
+      print('preparing ' + san + ' environment:', envName + '=' + process.env[envName]);
     }
   });
 
@@ -876,14 +877,23 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
     }
   } else {
     // V8 executeExternalAndWait thinks that timeout is in ms, so *1000
-    res = executeExternalAndWait(cmd, args, false, timeout*1000, coverageEnvironment());
+    let sh = new sanHandler(cmd.replace(/.*\//, ''), options.sanOptions, options.isSan, options.extremeVerbosity);
+    sh.detectLogfiles(instanceInfo.rootDir, instanceInfo.rootDir);
+    sh.setSanOptions();
+    res = executeExternalAndWait(cmd, args, false, timeout * 1000, coverageEnvironment());
     instanceInfo.pid = res.pid;
     instanceInfo.exitStatus = res;
+    sh.resetSanOptions();
     crashUtils.calculateMonitorValues(options, instanceInfo, res.pid, cmd);
   }
   const deltaTime = time() - startTime;
 
   let errorMessage = ' - ';
+  if (sh.fetchSanFileAfterExit(res.pid)) {
+    serverCrashedLocal = true;
+    res.status = false;
+    errorMessage += " Sanitizer indicated issues  - ";
+  }
 
   if (coreCheck &&
       instanceInfo.exitStatus.hasOwnProperty('signal') &&
@@ -945,7 +955,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
       duration: deltaTime
     };
   } else if (res.status === 'TIMEOUT') {
-    print('Killing ' + cmd + ' - ' + JSON.stringify(args));
+    print('Date() + Killing ' + cmd + ' - ' + JSON.stringify(args));
     let resKill = killExternal(res.pid, abortSignal);
     if (coreCheck) {
       print(Date() + " executeAndWait: Marking crashy because of timeout - " + JSON.stringify(instanceInfo));
