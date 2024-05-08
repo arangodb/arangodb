@@ -51,6 +51,7 @@ class ExecutionNode;
 class GatherNode;
 class GraphNode;
 class Query;
+struct QueryAborter;
 class QuerySnippet;
 
 class EngineInfoContainerDBServerServerBased {
@@ -85,6 +86,7 @@ class EngineInfoContainerDBServerServerBased {
   //   simon: in v3.7 we get a global QueryId for all snippets on a server
   Result buildEngines(
       std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
+      std::shared_ptr<QueryAborter> queryAborter,
       MapRemoteToSnippet& snippetIds, aql::ServerQueryIdList& serverQueryIds,
       std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases);
 

@@ -333,7 +333,7 @@ void Query::destroy() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   TRI_ASSERT(!std::exchange(_wasDestroyed, true));
 #endif
-
+  ensureExecutionTime();
   unregisterQueryInTransactionState();
   TRI_ASSERT(!_registeredQueryInTrx);
 
@@ -467,7 +467,7 @@ void Query::ensureExecutionTime() noexcept {
   }
 }
 
-void Query::prepareQuery() {
+void Query::prepareQuery(std::shared_ptr<QueryAborter> queryAborter) {
   try {
     init(/*createProfile*/ true);
 
@@ -523,7 +523,7 @@ void Query::prepareQuery() {
 
     // simon: assumption is _queryString is empty for DBServer snippets
     bool const planRegisters = !_queryString.empty();
-    ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters);
+    ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters, queryAborter);
 
     _plans.push_back(std::move(plan));
 
@@ -653,7 +653,8 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
 }
 
 /// @brief execute an AQL query
-ExecutionState Query::execute(QueryResult& queryResult) {
+ExecutionState Query::execute(std::shared_ptr<QueryAborter> aborter,
+                              QueryResult& queryResult) {
   LOG_TOPIC("e8ed7", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime) << " Query::execute"
       << " this: " << (uintptr_t)this;
@@ -692,7 +693,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
 
         // will throw if it fails
         if (!_ast) {  // simon: hack for AQL_EXECUTEJSON
-          prepareQuery();
+          prepareQuery(aborter);
         }
 
         logAtStart();
@@ -861,12 +862,12 @@ ExecutionState Query::execute(QueryResult& queryResult) {
  *
  * @return The result of this query. The result is always complete
  */
-QueryResult Query::executeSync() {
+QueryResult Query::executeSync(std::shared_ptr<QueryAborter> aborter) {
   std::shared_ptr<SharedQueryState> ss;
 
   QueryResult queryResult;
   do {
-    auto state = execute(queryResult);
+    auto state = execute(aborter, queryResult);
     if (state != ExecutionState::WAITING) {
       TRI_ASSERT(state == ExecutionState::DONE);
       return queryResult;
@@ -883,7 +884,7 @@ QueryResult Query::executeSync() {
 
 #ifdef USE_V8
 // execute an AQL query: may only be called with an active V8 handle scope
-QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
+QueryResultV8 Query::executeV8(v8::Isolate* isolate, std::shared_ptr<QueryAborter> aborter) {
   LOG_TOPIC("6cac7", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime) << " Query::executeV8"
       << " this: " << (uintptr_t)this;
@@ -918,7 +919,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
     }
 
     // will throw if it fails
-    prepareQuery();
+    prepareQuery(aborter);
 
     logAtStart();
 
@@ -1572,6 +1573,17 @@ std::string Query::extractQueryString(size_t maxLength, bool show) const {
   return queryString().extract(maxLength);
 }
 
+auto Query::completeLeases() -> void {
+  for (auto& lease : _leasesFromRemote) {
+    lease.cancel();
+  }
+  _leasesFromRemote.clear();
+  for (auto& lease : _leasesToRemote) {
+    lease.cancel();
+  }
+  _leasesToRemote.clear();
+}
+
 void Query::stringifyBindParameters(std::string& out, std::string_view prefix,
                                     size_t maxLength) const {
   auto bp = bindParameters();
@@ -2042,7 +2054,8 @@ void Query::debugKillQuery() {
 void Query::prepareFromVelocyPack(
     velocypack::Slice querySlice, velocypack::Slice collections,
     velocypack::Slice variables, velocypack::Slice snippets,
-    QueryAnalyzerRevisions const& analyzersRevision) {
+    QueryAnalyzerRevisions const& analyzersRevision,
+    std::shared_ptr<QueryAborter> queryAborter) {
   TRI_ASSERT(!ServerState::instance()->isDBServer());
 
   LOG_TOPIC("9636f", DEBUG, Logger::QUERIES)
@@ -2108,7 +2121,7 @@ void Query::prepareFromVelocyPack(
     auto plan = ExecutionPlan::instantiateFromVelocyPack(_ast.get(), snippet);
     TRI_ASSERT(plan != nullptr);
 
-    ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters);
+    ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters, queryAborter);
     _plans.push_back(std::move(plan));
   };
 

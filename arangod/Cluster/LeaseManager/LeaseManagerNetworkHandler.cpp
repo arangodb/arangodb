@@ -112,11 +112,15 @@ auto LeaseManagerNetworkHandler::abortIds(
     -> futures::Future<Result> {
   static auto path = "/_admin/leases";
   VPackBufferUInt8 buffer;
+  // NOTE: We need to flip leasedFrom and leasedTo in the request.
+  // Our input is: This server has leasedFrom the other server.
+  // For the other the server the viewpoint is, that it has leasedTo us.
+  // And vice versa.
   auto info = AbortLeaseInformation{
       .server = {.serverId = ServerState::instance()->getId(),
                  .rebootId = ServerState::instance()->getRebootId()},
-      .leasedFrom = leasedFrom,
-      .leasedTo = leasedTo};
+      .leasedFrom = leasedTo,
+      .leasedTo = leasedFrom};
   {
     VPackBuilder builder(buffer);
     arangodb::velocypack::serialize(builder, info);

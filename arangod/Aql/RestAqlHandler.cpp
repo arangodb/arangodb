@@ -32,6 +32,7 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ProfileLevel.h"
+#include "Aql/QueryAborter.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/SharedQueryState.h"
 #include "Basics/Exceptions.h"
@@ -351,10 +352,12 @@ futures::Future<futures::Unit> RestAqlHandler::setupClusterQuery() {
     generateError(revisionRes);
     co_return;
   }
+  auto aborter = std::make_shared<aql::QueryAborter>(q);
   q->prepareFromVelocyPack(querySlice, collectionBuilder.slice(),
                            variablesSlice, snippetsSlice, traverserSlice,
                            _request->value(StaticStrings::UserString),
-                           answerBuilder, analyzersRevision, fastPath);
+                           answerBuilder, analyzersRevision, fastPath,
+                           aborter);
 
   answerBuilder.close();  // result
   answerBuilder.close();

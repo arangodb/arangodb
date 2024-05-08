@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionNode/GraphNode.h"
+#include "Aql/QueryAborter.h"
 #include "Aql/SharedQueryState.h"
 #include "Aql/TraverserEngineShardLists.h"
 #include "Basics/StaticStrings.h"
@@ -302,6 +303,7 @@ bool EngineInfoContainerDBServerServerBased::isNotSatelliteLeader(
 //   the DBServers will clean up their snippets after a TTL.
 Result EngineInfoContainerDBServerServerBased::buildEngines(
     std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
+    std::shared_ptr<QueryAborter> queryAborter,
     MapRemoteToSnippet& snippetIds, aql::ServerQueryIdList& serverToQueryId,
     std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases) {
   TRI_ASSERT(serverToQueryId.empty());
@@ -419,17 +421,12 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     }
 
     PeerState peerState{.serverId = server, .rebootId = alive->second.rebootId};
-    auto lease = leaseManager.requireLease(peerState, [ss = _query.sharedState(), query = &_query]() noexcept {
-                               // TODO: Implement me.
-                               LOG_DEVEL << "Le huestensaeft";
-                               // NOTE: This execute protects us against query being out of Scope
-                               // The SharedPtr stays valid, but the Query could be gone.
-                               ss->executeLocked([query]() noexcept {
-                                 LOG_DEVEL << "Killed Query Coordinator";
-                                 query->kill();
-                               });
-
-                             });
+    auto lease =
+        leaseManager.requireLease(peerState, [queryAborter]() noexcept {
+          // TODO: Implement me.
+          LOG_DEVEL << "Le huestensaeft";
+          queryAborter->abort();
+        });
     auto leaseId = lease.id();
     _query.addLeaseFromRemoteGuard(std::move(lease));
     // Build Lookup Infos

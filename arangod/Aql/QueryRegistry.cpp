@@ -391,6 +391,8 @@ void QueryRegistry::deleteQuery(QueryInfoMap::iterator queryMapIt) {
     _engines.erase(engine->engineId());
   }
 
+  queryInfo->_query->completeLeases();
+
   LOG_TOPIC("6756c", DEBUG, arangodb::Logger::AQL)
       << "query with id " << id << " is now destroyed";
 }
