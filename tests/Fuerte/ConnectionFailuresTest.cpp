@@ -27,9 +27,15 @@
 
 #include "gtest/gtest.h"
 
+#include <atomic>
 #include <string_view>
+#include <utility>
+
+#include "Logger/LogMacros.h"
 
 namespace f = ::arangodb::fuerte;
+
+extern std::string myEndpoint;
 
 // for testing connection failures, we need a free port that is not used by
 // another service. because we can't be sure about high port numbers, we are
@@ -45,6 +51,43 @@ constexpr std::string_view urls[] = {
     "ssl://localhost:60",
     "h2s://localhost:60",
 };
+
+static std::pair<int, int> runTimeoutTest(f::ConnectionBuilder& cbuilder,
+                                          int n) {
+  cbuilder.verifyHost(false);
+
+  f::WaitGroup wg;
+  f::EventLoopService loop;
+
+  std::atomic<int> callbacksCalled = 0;
+  std::atomic<int> failureCallbacksCalled = 0;
+
+  cbuilder.onFailure([&](f::Error errorCode, std::string const& errorMessage) {
+    ASSERT_EQ(errorCode, f::Error::CouldNotConnect);
+    wg.done();
+    ++failureCallbacksCalled;
+  });
+
+  for (int i = 0; i < n; ++i) {
+    wg.add();
+    auto connection = cbuilder.connect(loop);
+    // Send a first request. (HTTP connection is only started upon first
+    // request)
+    auto request = f::createRequest(f::RestVerb::Get, "/_api/version");
+    connection->sendRequest(std::move(request),
+                            [&](f::Error error, std::unique_ptr<f::Request>,
+                                std::unique_ptr<f::Response>) {
+                              ++callbacksCalled;
+                              if (error != f::Error::CouldNotConnect) {
+                                wg.done();
+                              }
+                            });
+  }
+  auto success = wg.wait_for(std::chrono::seconds(60));
+  EXPECT_TRUE(success);
+
+  return {callbacksCalled.load(), failureCallbacksCalled.load()};
+}
 
 // tryToConnectExpectFailure tries to make a connection to a host with given
 // url. This is expected to fail.
@@ -101,4 +144,56 @@ TEST(ConnectionFailureTest, CannotConnectForceRetries) {
     f::EventLoopService loop;
     tryToConnectExpectFailure(loop, url, /*useRetries*/ true);
   }
+}
+
+TEST(ConnectionFailureTest, LowTimeouts) {
+  f::ConnectionBuilder cbuilder;
+  cbuilder.connectTimeout(std::chrono::milliseconds(1));
+  cbuilder.connectRetryPause(std::chrono::milliseconds(1));
+  cbuilder.maxConnectRetries(15);
+  cbuilder.endpoint("ssl://localhost:60");
+
+  int n = 100;
+  auto [callbacksCalled, failureCallbacksCalled] = runTimeoutTest(cbuilder, n);
+  ASSERT_EQ(n, callbacksCalled);
+  ASSERT_LE(n, failureCallbacksCalled);
+}
+
+TEST(ConnectionFailureTest, LowTimeoutsActualBackend) {
+  f::ConnectionBuilder cbuilder;
+  cbuilder.connectTimeout(std::chrono::milliseconds(1));
+  cbuilder.connectRetryPause(std::chrono::milliseconds(5));
+  cbuilder.maxConnectRetries(15);
+  cbuilder.endpoint(myEndpoint);
+
+  int n = 100;
+  auto [callbacksCalled, failureCallbacksCalled] = runTimeoutTest(cbuilder, n);
+  ASSERT_EQ(n, callbacksCalled);
+  ASSERT_LE(failureCallbacksCalled, n);
+}
+
+TEST(ConnectionFailureTest, BorderlineTimeoutsActualBackend) {
+  f::ConnectionBuilder cbuilder;
+  cbuilder.connectTimeout(std::chrono::milliseconds(5));
+  cbuilder.connectRetryPause(std::chrono::milliseconds(5));
+  cbuilder.maxConnectRetries(15);
+  cbuilder.endpoint(myEndpoint);
+
+  int n = 100;
+  auto [callbacksCalled, failureCallbacksCalled] = runTimeoutTest(cbuilder, n);
+  ASSERT_EQ(n, callbacksCalled);
+  ASSERT_LE(failureCallbacksCalled, n);
+}
+
+TEST(ConnectionFailureTest, HighEnoughTimeoutsActualBackend) {
+  f::ConnectionBuilder cbuilder;
+  cbuilder.connectTimeout(std::chrono::milliseconds(60000));
+  cbuilder.connectRetryPause(std::chrono::milliseconds(5));
+  cbuilder.maxConnectRetries(15);
+  cbuilder.endpoint(myEndpoint);
+
+  int n = 100;
+  auto [callbacksCalled, failureCallbacksCalled] = runTimeoutTest(cbuilder, n);
+  ASSERT_EQ(n, callbacksCalled);
+  ASSERT_EQ(0, failureCallbacksCalled);
 }
