@@ -845,7 +845,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
       getStructure: function() { return {}; }
     };
   }
-
+  let sh;
   let res = {};
   if (platform.substr(0, 3) === 'win' && !options.disableMonitor) {
     res = executeExternal(cmd, args, false, coverageEnvironment());
@@ -877,7 +877,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
     }
   } else {
     // V8 executeExternalAndWait thinks that timeout is in ms, so *1000
-    let sh = new sanHandler(cmd.replace(/.*\//, ''), options.sanOptions, options.isSan, options.extremeVerbosity);
+    sh = new sanHandler(cmd.replace(/.*\//, ''), options.sanOptions, options.isSan, options.extremeVerbosity);
     sh.detectLogfiles(instanceInfo.rootDir, instanceInfo.rootDir);
     sh.setSanOptions();
     res = executeExternalAndWait(cmd, args, false, timeout * 1000, coverageEnvironment());
