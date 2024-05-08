@@ -25,6 +25,7 @@
 
 #include "Metrics/Fwd.h"
 
+#include <atomic>
 #include <fuerte/types.h>
 
 namespace arangodb {
@@ -101,7 +102,11 @@ class ConnectionPool final {
 
   Config const& config() const;
 
-  std::unique_ptr<curl::connection_pool> curl_pool;
+  std::size_t num_curl_pools;
+  std::atomic<std::size_t> next_pool = 0;
+  std::unique_ptr<std::vector<curl::connection_pool>> curl_pools;
+
+  auto getAnyPool() noexcept -> curl::connection_pool&;
 
  protected:
   struct Context;

@@ -350,7 +350,9 @@ struct ConnectionPool::Impl {
 };
 
 ConnectionPool::ConnectionPool(ConnectionPool::Config const& config)
-    : curl_pool(std::make_unique<curl::connection_pool>()),
+    : num_curl_pools{16},
+      curl_pools{
+          std::make_unique<std::vector<curl::connection_pool>>(num_curl_pools)},
       _impl(std::make_unique<Impl>(config, *this)) {}
 
 ConnectionPool::~ConnectionPool() { shutdownConnections(); }
@@ -393,6 +395,11 @@ ConnectionPool::Config const& ConnectionPool::config() const {
 
 fuerte::EventLoopService& ConnectionPool::eventLoopService() {
   return _impl->_loop;
+}
+
+auto ConnectionPool::getAnyPool() noexcept -> curl::connection_pool& {
+  auto const i = next_pool.fetch_add(1, std::memory_order_relaxed);
+  return curl_pools->operator[](i % num_curl_pools);
 }
 
 ConnectionPool::Context::Context(std::shared_ptr<fuerte::Connection> c,

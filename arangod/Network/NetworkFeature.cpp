@@ -328,7 +328,9 @@ void NetworkFeature::prepare() {
       for (ServerID const& srvId : failed) {
         std::string endpoint = ci->getServerEndpoint(srvId);
         size_t n = _pool->cancelConnections(endpoint);
-        _pool->curl_pool->cancelConnections(endpoint);
+        for (auto& pool : *_pool->curl_pools) {
+          pool.cancelConnections(endpoint);
+        }
         LOG_TOPIC_IF("15d94", INFO, Logger::COMMUNICATION, n > 0)
             << "canceling " << n << " connection(s) to failed server '" << srvId
             << "' on endpoint '" << endpoint << "'";
@@ -381,7 +383,9 @@ void NetworkFeature::stop() {
   }
   if (_pool) {
     _pool->shutdownConnections();
-    _pool->curl_pool->stop();
+    for (auto& pool : *_pool->curl_pools) {
+      pool.stop();
+    }
   }
 }
 
@@ -574,7 +578,7 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
         << req->header.path << ", request ptr: " << (void*)req.get();
   }
 
-  if (!pool.curl_pool) {
+  if (!pool.curl_pools) {
     cb(fuerte::Error::ConnectionCanceled, std::move(req), nullptr, isFromPool);
     return;
   }
@@ -588,8 +592,9 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
       << "[" << my_id << "] "
       << "CURL " << to_string(req->header.restVerb) << " " << url << "BEGIN";
 
+  auto& curl_pool = pool.getAnyPool();
   network::curl::send_request(
-      *pool.curl_pool, method, endpoint, url, req->payloadAsString(), opts,
+      curl_pool, method, endpoint, url, req->payloadAsString(), opts,
       [this, &pool, isFromPool,
        handleContentEncoding = options.handleContentEncoding,
        cb = std::move(cb), endpoint = std::move(endpoint),
