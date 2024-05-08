@@ -392,6 +392,15 @@ futures::Future<futures::Unit> RestAqlHandler::setupClusterQuery() {
       auto res =
           server().getFeature<NetworkFeature>().leaseManager().handoutLease(
               PeerState{.serverId = coordinatorId, .rebootId = rebootId}, leaseId,
+              [query = std::weak_ptr(q)]() noexcept -> std::string {
+                if (auto q = query.lock(); q) {
+                  return fmt::format(
+                      "Query {} of transaction {} in database {} query: '{}'",
+                      q->id(), q->transactionId().id(), q->vocbase().name(),
+                      q->queryString().string());
+                }
+                return fmt::format("Already aborted query.");
+              },
               [queryRegistry = _queryRegistry, vocbaseName = _vocbase.name(),
                queryId = q->id()]() noexcept {
                 LOG_DEVEL << "EXPECTO ABORTUM!! " << queryId;

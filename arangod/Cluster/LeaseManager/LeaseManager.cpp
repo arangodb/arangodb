@@ -103,7 +103,10 @@ LeaseManager::LeaseManager(
       << "Broken setup. We do not have a network handler in LeaseManager.";
 }
 
-auto LeaseManager::requireLeaseInternal(PeerState const& requestFrom, std::unique_ptr<LeaseEntry> leaseEntry) -> LeaseFromRemoteGuard {
+auto LeaseManager::requireLeaseInternal(PeerState const& requestFrom,
+                                        std::function<std::string()> details,
+                                        std::unique_ptr<LeaseEntry> leaseEntry)
+    -> LeaseFromRemoteGuard {
   // NOTE: In theory _nextLeaseId can overflow here, but that should never be a problem.
   // if we ever reach that point without restarting the server, it is highly unlikely that
   // we still have handed out low number leases.
@@ -112,20 +115,27 @@ auto LeaseManager::requireLeaseInternal(PeerState const& requestFrom, std::uniqu
   _leasedFromRemotePeers.doUnderLock([&](auto& guarded) {
     auto& list = guarded.list;
     if (auto it = list.find(requestFrom); it == list.end()) {
-      auto trackerGuard = _rebootTracker.callMeOnChange(requestFrom, [&, peer = requestFrom]() {
+      auto trackerGuard = _rebootTracker.callMeOnChange(
+          requestFrom,
+          [&, peer = requestFrom]() {
             // The server has rebooted make sure we erase all it's entries
             // This needs to call abort methods of all leases.
             _leasedFromRemotePeers.doUnderLock(
                 [&](auto& guarded) { guarded.list.erase(peer); });
-          }, "Abort leases of the LeaseManager.");
+          },
+          "Abort leases of the LeaseManager.");
       auto it2 = list.emplace(
           requestFrom,
           LeaseListOfPeer{._serverAbortCallback{std::move(trackerGuard)},
                           ._mapping{}});
       TRI_ASSERT(it2.second) << "Failed to register new peer state";
-      it2.first->second._mapping.emplace(id, std::move(leaseEntry));
+      it2.first->second._mapping.emplace(
+          id, std::make_unique<LeaseListOfPeer::Entry>(std::move(leaseEntry),
+                                                       std::move(details)));
     } else {
-      it->second._mapping.emplace(id, std::move(leaseEntry));
+      it->second._mapping.emplace(
+          id, std::make_unique<LeaseListOfPeer::Entry>(std::move(leaseEntry),
+                                                       std::move(details)));
     }
   });
 
@@ -134,9 +144,11 @@ auto LeaseManager::requireLeaseInternal(PeerState const& requestFrom, std::uniqu
 
 auto LeaseManager::handoutLeaseInternal(PeerState const& requestedBy,
                                         LeaseId leaseId,
+                                        std::function<std::string()> details,
                                         std::unique_ptr<LeaseEntry> leaseEntry)
     -> ResultT<LeaseToRemoteGuard> {
-  auto registeredLease = _leasedToRemotePeers.doUnderLock([&](auto& guarded) -> Result {
+  auto registeredLease = _leasedToRemotePeers.doUnderLock([&](auto& guarded)
+                                                              -> Result {
     auto& graveyard = guarded.graveyard;
     if (!graveyard.empty()) {
       // NOTE: In most cases the graveyard will be empty, as we only
@@ -147,8 +159,8 @@ auto LeaseManager::handoutLeaseInternal(PeerState const& requestedBy,
         if (tombIt->second._list.contains(leaseId)) {
           // The server is in the graveyard, we need to abort the lease.
           // We do not need to add it to the graveyard again, as the server is
-          // already in there. We do not need to add it to the abort list, as the
-          // server is already in the graveyard.
+          // already in there. We do not need to add it to the abort list, as
+          // the server is already in the graveyard.
 
           // Abort this lease entry, pretend it never existed.
           leaseEntry->abort();
@@ -176,8 +188,9 @@ auto LeaseManager::handoutLeaseInternal(PeerState const& requestedBy,
       TRI_ASSERT(it2.second) << "Failed to register new peer state";
       TRI_ASSERT(it2.first->second._mapping.empty())
           << "We just added the list for this Peer, it is required to be empty";
-      auto insertedElement =
-          it2.first->second._mapping.emplace(leaseId, std::move(leaseEntry));
+      auto insertedElement = it2.first->second._mapping.emplace(
+          leaseId, std::make_unique<LeaseListOfPeer::Entry>(
+                       std::move(leaseEntry), std::move(details)));
       TRI_ASSERT(insertedElement.second)
           << "We just added the list for this Peer, it is required to be empty";
       if (!insertedElement.second) {
@@ -188,9 +201,11 @@ auto LeaseManager::handoutLeaseInternal(PeerState const& requestedBy,
     } else {
       auto exists = it->second._mapping.contains(leaseId);
       if (!exists) {
-        auto insertedElement =
-            it->second._mapping.try_emplace(leaseId, std::move(leaseEntry));
-        TRI_ASSERT(insertedElement.second) << "Failed to add an entry in a map.";
+        auto insertedElement = it->second._mapping.try_emplace(
+            leaseId, std::make_unique<LeaseListOfPeer::Entry>(
+                         std::move(leaseEntry), std::move(details)));
+        TRI_ASSERT(insertedElement.second)
+            << "Failed to add an entry in a map.";
       } else {
         // Abort this lease entry, pretend it never existed.
         leaseEntry->abort();
@@ -254,7 +269,7 @@ auto LeaseManager::returnLeaseFromRemote(PeerState const& peerState, LeaseId con
       if (auto lease = it->second._mapping.find(leaseId); lease != it->second._mapping.end()) {
         // We should abort the Guard here.
         // We returned our lease no need to tell us to abort;
-        lease->second->abort();
+        lease->second->entry->abort();
         addLeaseToAbort = true;
         // Now delete the lease from the list.
         it->second._mapping.erase(lease);
@@ -288,7 +303,7 @@ auto LeaseManager::cancelLeaseFromRemote(PeerState const& peerState, LeaseId con
       // The lease may already be removed, e.g. by RebootTracker.
       // So we do not really care if it is removed from this list here or not.
       if (auto it2 = it->second._mapping.find(leaseId); it2 != it->second._mapping.end()) {
-        it2->second->abort();
+        it2->second->entry->abort();
         // Now delete the lease from the list.
         // To avoid calling remote about abortion.
         it->second._mapping.erase(it2);
@@ -308,7 +323,7 @@ auto LeaseManager::returnLeaseToRemote(PeerState const& peerState, LeaseId const
       if (auto lease = it->second._mapping.find(leaseId); lease != it->second._mapping.end()) {
         // We should abort the Guard here.
         // We returned our lease no need to tell us to abort;
-        lease->second->abort();
+        lease->second->entry->abort();
         addLeaseToAbort = true;
         // Now delete the lease from the list.
         it->second._mapping.erase(lease);
@@ -342,7 +357,7 @@ auto LeaseManager::cancelLeaseToRemote(PeerState const& peerState, LeaseId const
       // The lease may already be removed, e.g. by RebootTracker.
       // So we do not really care if it is removed from this list here or not.
       if (auto it2 = it->second._mapping.find(leaseId); it2 != it->second._mapping.end()) {
-        it2->second->abort();
+        it2->second->entry->abort();
         // Now delete the lease from the list.
         // To avoid calling remote about abortion.
         it->second._mapping.erase(it2);
@@ -431,8 +446,8 @@ auto LeaseManager::prepareLocalReport(std::optional<ServerID> onlyForServer) con
       for (auto const& [peerState, leaseEntry] : guarded.list) {
         std::vector<std::string> entries;
         for (auto const& [id, entry] : leaseEntry._mapping) {
-          entries.emplace_back(fmt::format("{} -> {}", id.id(),
-                                           "TODO: description to be written"));
+          entries.emplace_back(
+              fmt::format("{} -> {}", id.id(), entry->details()));
         }
         std::string peerString = fmt::format("{}:{}", peerState.serverId,
                                              basics::StringUtils::itoa(peerState.rebootId.value()));
@@ -445,8 +460,8 @@ auto LeaseManager::prepareLocalReport(std::optional<ServerID> onlyForServer) con
       for (auto const& [peerState, leaseEntry] : guarded.list) {
         std::vector<std::string> entries;
         for (auto const& [id, entry] : leaseEntry._mapping) {
-          entries.emplace_back(fmt::format("{} -> {}", id.id(),
-                                           "TODO: description to be written"));
+          entries.emplace_back(
+              fmt::format("{} -> {}", id.id(), entry->details()));
         }
         std::string peerString = fmt::format("{}:{}", peerState.serverId,
                                              basics::StringUtils::itoa(peerState.rebootId.value()));

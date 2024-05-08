@@ -421,10 +421,15 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     }
 
     PeerState peerState{.serverId = server, .rebootId = alive->second.rebootId};
-    auto lease =
-        leaseManager.requireLease(peerState, [queryAborter]() noexcept {
-          // TODO: Implement me.
-          LOG_DEVEL << "Le huestensaeft";
+    auto lease = leaseManager.requireLease(
+        peerState,
+        [dbname = _query.vocbase().name(), id = _query.id(),
+         trxId = _query.transactionId().id()]() noexcept -> std::string {
+          return fmt::format("Query {} of transaction {} in database {}", id,
+                             trxId, dbname);
+        },
+        [queryAborter]() noexcept {
+          LOG_DEVEL << "Trigger query abort due to lease loss.";
           queryAborter->abort();
         });
     auto leaseId = lease.id();

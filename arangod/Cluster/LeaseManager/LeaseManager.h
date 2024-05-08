@@ -124,8 +124,12 @@ struct LeaseManager {
   };
 
   struct LeaseListOfPeer {
+    struct Entry {
+      std::unique_ptr<LeaseEntry> entry;
+      std::function<std::string()> details;
+    };
     CallbackGuard _serverAbortCallback;
-    std::unordered_map<LeaseId, std::unique_ptr<LeaseEntry>> _mapping;
+    std::unordered_map<LeaseId, std::unique_ptr<Entry>> _mapping;
   };
 
   struct GraveyardOfPeer {
@@ -136,22 +140,25 @@ struct LeaseManager {
   LeaseManager(RebootTracker& rebootTracker, std::unique_ptr<ILeaseManagerNetworkHandler> networkHandler);
 
   template<typename F>
-  [[nodiscard]] auto requireLease(PeerState const& requestFrom, F&& onLeaseLost)
+  [[nodiscard]] auto requireLease(PeerState const& requestFrom, std::function<std::string()> details, F&& onLeaseLost)
       -> LeaseFromRemoteGuard {
     static_assert(std::is_nothrow_invocable_r_v<void, F>,
                   "The abort method of a leaser must be noexcept");
     return requireLeaseInternal(
         requestFrom,
+        std::move(details),
         std::make_unique<LeaseEntry_Impl<F>>(std::forward<F>(onLeaseLost)));
   }
 
   template<typename F>
   [[nodiscard]] auto handoutLease(PeerState const& requestedBy, LeaseId leaseId,
+                                  std::function<std::string()> details,
                                   F&& onLeaseLost) -> ResultT<LeaseToRemoteGuard> {
     static_assert(std::is_nothrow_invocable_r_v<void, F>,
                   "The abort method of a leaser must be noexcept");
     return handoutLeaseInternal(
         requestedBy, leaseId,
+        std::move(details),
         std::make_unique<LeaseEntry_Impl<F>>(std::forward<F>(onLeaseLost)));
   }
 
@@ -167,13 +174,14 @@ struct LeaseManager {
   auto abortLeasesForServer(AbortLeaseInformation) noexcept -> void;
 
  private:
-
-  [[nodiscard]] auto requireLeaseInternal(PeerState const& requestFrom,
-                    std::unique_ptr<LeaseEntry> abortMethod) -> LeaseFromRemoteGuard;
+  [[nodiscard]] auto requireLeaseInternal(
+      PeerState const& requestFrom, std::function<std::string()> details,
+      std::unique_ptr<LeaseEntry> onLeaseLost) -> LeaseFromRemoteGuard;
 
   [[nodiscard]] auto handoutLeaseInternal(
       PeerState const& requestedBy, LeaseId leaseId,
-      std::unique_ptr<LeaseEntry> abortMethod) -> ResultT<LeaseToRemoteGuard>;
+      std::function<std::string()> details,
+      std::unique_ptr<LeaseEntry> onLeaseLost) -> ResultT<LeaseToRemoteGuard>;
 
   auto sendAbortRequestsForAbandonedLeases() noexcept -> void;
 
