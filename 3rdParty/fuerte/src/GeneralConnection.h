@@ -321,10 +321,16 @@ class GeneralConnection : public fuerte::Connection {
     _proto.connect(_config, [self](asio_ns::error_code ec) mutable {
       auto& me = static_cast<GeneralConnection<ST, RT>&>(*self);
       me.cancelTimer();
-      // Note that is is possible that the alarm has already gone off, in which
-      // case its closure might already be queued right after ourselves!
-      // However, we now quickly set the state to `Connected` in which case the
-      // closure will no longer shut down the socket and ruin our success.
+      // Note that is is possible that the alarm has already gone off. In this
+      // case its closure could have already executed, or it may be queued right
+      // after ourselves! In the first case the socket has already been closed,
+      // so we need to check that. For the latter case we now set the state to
+      // `Connected`, so the closure will simply do nothing.
+
+      if (!ec && !me._proto.isOpen()) {
+        // timer went off earlier and has already closed the socket.
+        ec = asio_ns::error::operation_aborted;
+      }
       if (!ec) {
         FUERTE_LOG_DEBUG << "tryConnect established connection this=" << self.get() << "\n";
         me.finishConnect();
