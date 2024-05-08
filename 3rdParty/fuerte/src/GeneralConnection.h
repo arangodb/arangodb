@@ -322,7 +322,8 @@ class GeneralConnection : public fuerte::Connection {
 
     FUERTE_LOG_DEBUG << "tryConnect (" << retries << ") this=" << this << "\n";
     auto self = Connection::shared_from_this();
-    
+   
+    _proto.connectTimerRole = ConnectTimerRole::kConnect; 
     _proto.timer.expires_after(_config._connectTimeout);
 
     _proto.connect(_config, [self, retries](asio_ns::error_code ec) mutable {
@@ -347,18 +348,17 @@ class GeneralConnection : public fuerte::Connection {
       FUERTE_LOG_DEBUG << "tryConnect (" << retries << "), connecting failed: " << ec.message() << "\n";
       if (retries > 1 && ec != asio_ns::error::operation_aborted) {
         FUERTE_LOG_DEBUG << "tryConnect (" << retries << "), scheduling retry operation. this=" << self.get() << "\n";
+        me._proto.connectTimerRole = ConnectTimerRole::kReconnect;
         me._proto.timer.expires_after(me._config._connectRetryPause);
         me._proto.timer.async_wait(
             [self = std::move(self), retries](asio_ns::error_code ec) mutable {
               auto& me = static_cast<GeneralConnection<ST, RT>&>(*self);
               if (ec) {
-                // timer canceled.
                 FUERTE_LOG_DEBUG << "tryConnect, retry timer canceled. this=" << self.get() << "\n";
-                // this can happen when the timeout callback was already queued - in this
-                // case the connect callback will not be called with operation_aborted,
-                // so we must shutdown here
-                me.shutdownConnection(Error::CouldNotConnect,
-                                      "connecting failed: timeout");
+                // we should not get here, because it is totally unexpected that the
+                // retry timer gets canceled
+                FUERTE_ASSERT(false && "retry timer should not have been canceled");
+                me.shutdownConnection(Error::CouldNotConnect, "connecting failed: retry timer canceled");
                 return;
               }
               // rearm socket so that we can use it again
@@ -374,16 +374,27 @@ class GeneralConnection : public fuerte::Connection {
         me.shutdownConnection(Error::CouldNotConnect, msg);
       }
     });
-    
-    _proto.timer.async_wait([self = std::move(self)](asio_ns::error_code ec) {
-      if (!ec && self->state() == Connection::State::Connecting) {
-        // note: if the timer fires successfully, ec is empty here.
-        // the connect handler below gets 'operation_aborted' error
-        auto& me = static_cast<GeneralConnection<ST, RT>&>(*self);
-        me._proto.cancel();
-        FUERTE_LOG_DEBUG << "tryConnect, connect timeout this=" << self.get() << "\n";
-      }
-    });
+  
+    // only if we are still in the connect phase, we want to schedule a timer
+    // for the connect timeout. if the connect already failed and scheduled a
+    // timer for the reconnect timeout, we do not want to mess with the timer here.
+    if (_proto.connectTimerRole == ConnectTimerRole::kConnect) {
+      _proto.timer.async_wait([self = std::move(self)](asio_ns::error_code ec) {
+        if (!ec && self->state() == Connection::State::Connecting) {
+          // note: if the timer fires successfully, ec is empty here.
+          // the connect handler below gets 'operation_aborted' error
+          auto& me = static_cast<GeneralConnection<ST, RT>&>(*self);
+          // cancel the socket operations only if we are still in the connect
+          // phase.
+          // otherwise, we are in the reconnect phase already, and we
+          // do not want to cancel the socket.
+          if (me._proto.connectTimerRole == ConnectTimerRole::kConnect) {
+            FUERTE_LOG_DEBUG << "tryConnect, connect timeout this=" << self.get() << "\n";
+            me._proto.cancel();
+          } 
+        }
+      });
+    }
 
   }
 
