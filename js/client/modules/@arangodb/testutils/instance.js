@@ -771,7 +771,7 @@ class instance {
     } catch(ex) {
       print(ex);
     }
-    this.serverCrashedLocal = this.sanHandler.fetchSanFileAfterExit(this.pid);
+    this.serverCrashedLocal = this.serverCrashedLocal || this.sanHandler.fetchSanFileAfterExit(this.pid);
     this.pid = null;
     print('done');
   }
@@ -782,10 +782,10 @@ class instance {
     }
     this.exitStatus = statusExternal(this.pid, true);
     if (this.exitStatus.status !== 'TERMINATED') {
-      this.serverCrashedLocal = this.sanHandler.fetchSanFileAfterExit(this.pid);
+      this.serverCrashedLocal = this.serverCrashedLocal || this.sanHandler.fetchSanFileAfterExit(this.pid);
       throw new Error(this.name + " didn't exit in a regular way: " + JSON.stringify(this.exitStatus));
     }
-    this.serverCrashedLocal = this.sanHandler.fetchSanFileAfterExit(this.pid);
+    this.serverCrashedLocal = this.serverCrashedLocal || this.sanHandler.fetchSanFileAfterExit(this.pid);
     this.exitStatus = null;
     this.pid = null;
   }
@@ -986,7 +986,7 @@ class instance {
       } else if (this.options.useKillExternal) {
         let sockStat = this.getSockStat("Shutdown by kill - sockstat before: ");
         this.exitStatus = killExternal(this.pid);
-        this.serverCrashedLocal = this.sanHandler.fetchSanFileAfterExit(this.pid);
+        this.serverCrashedLocal = this.serverCrashedLocal || this.sanHandler.fetchSanFileAfterExit(this.pid);
         this.pid = null;
         print(sockStat);
       } else if (this.protocol === 'unix') {
@@ -1008,7 +1008,7 @@ class instance {
           print(Date() + ' Wrong shutdown response: ' + JSON.stringify(reply) + "' " + sockStat + " continuing with hard kill!");
           this.shutdownArangod(true);
         } else {
-          this.serverCrashedLocal = this.sanHandler.fetchSanFileAfterExit(this.pid);
+          this.serverCrashedLocal = this.serverCrashedLocal || this.sanHandler.fetchSanFileAfterExit(this.pid);
           if (!this.options.noStartStopLogs) {
             print(sockStat);
           }
@@ -1036,7 +1036,7 @@ class instance {
           this.shutdownArangod(true);
         }
         else {
-          this.serverCrashedLocal = this.sanHandler.fetchSanFileAfterExit(this.pid);
+          this.serverCrashedLocal = this.serverCrashedLocal || this.sanHandler.fetchSanFileAfterExit(this.pid);
           if (!this.options.noStartStopLogs) {
             print(sockStat);
           }
