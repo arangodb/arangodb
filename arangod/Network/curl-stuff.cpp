@@ -404,8 +404,10 @@ connection_pool::~connection_pool() {
 }
 
 connection_pool::connection_pool()
-    : _curl_thread(
-          [this](std::stop_token stoken) { this->run_curl_loop(stoken); }) {}
+    : _curl_thread([this](std::stop_token stoken) {
+        pthread_setname_np(pthread_self(), "curl_pool");
+        this->run_curl_loop(stoken);
+      }) {}
 
 void connection_pool::cancelConnections(std::string endpoint) {
   {
