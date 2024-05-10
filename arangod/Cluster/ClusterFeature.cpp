@@ -655,13 +655,17 @@ void ClusterFeature::prepare() {
 
   reportRole(_requestedRole);
 
-  network::ConnectionPool::Config config(_metrics);
+  network::ConnectionPool::Config config;
   config.numIOThreads = 2u;
   config.maxOpenConnections = 2;
   config.idleConnectionMilli = 10000;
   config.verifyHosts = false;
   config.clusterInfo = &clusterInfo();
   config.name = "AgencyComm";
+
+  auto& metricsFeature = server().getFeature<metrics::MetricsFeature>();
+  config.metrics = network::ConnectionPool::Metrics::fromMetricsFeature(
+      metricsFeature, config.name);
 
   _asyncAgencyCommPool = std::make_unique<network::ConnectionPool>(config);
 
