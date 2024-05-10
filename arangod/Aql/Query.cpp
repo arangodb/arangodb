@@ -1782,7 +1782,7 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
 
   network::RequestOptions options;
   options.database = query.vocbase().name();
-  options.timeout = network::Timeout(60.0);  // Picked arbitrarily
+  options.timeout = network::Timeout(120.0);  // Picked arbitrarily
   options.continuationLane = RequestLane::CLUSTER_INTERNAL;
   // Most coordinator AQL code might be executed on the MEDIUM prio lane,
   // since it comes from a continuation. Therefore, to avoid deadlock, we
@@ -1807,9 +1807,9 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
     TRI_ASSERT(!server.starts_with("server:"));
 
     auto f =
-        network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Delete,
-                             absl::StrCat("/_api/aql/finish/", queryId), body,
-                             options)
+        network::sendRequestRetry(
+            pool, "server:" + server, fuerte::RestVerb::Delete,
+            absl::StrCat("/_api/aql/finish/", queryId), body, options)
             .thenValue([ss, &query](network::Response&& res) mutable -> Result {
               // simon: checked until 3.5, shutdown result is always ignored
               if (res.fail()) {
