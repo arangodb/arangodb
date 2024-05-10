@@ -1,6 +1,8 @@
 v3.11.9 (XXXX-XX-XX)
 --------------------
 
+* FE-448: auto-repair collection document JSON on save.
+
 * Retry cluster query shutdown in case no connection can be made to the
   DB-Servers for the shutdown request.
 
