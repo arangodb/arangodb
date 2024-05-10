@@ -1,6 +1,9 @@
 v3.11.9 (XXXX-XX-XX)
 --------------------
 
+* Retry cluster query shutdown in case no connection can be made to the
+  DB-Servers for the shutdown request.
+
 * Improved the time required to create a new Collection in a database with
   hundreds of collections. This also improves times for indexes and dropping
   of collections.
