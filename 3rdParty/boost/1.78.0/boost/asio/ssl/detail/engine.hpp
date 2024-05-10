@@ -122,6 +122,8 @@ private:
   engine(const engine&);
   engine& operator=(const engine&);
 
+  BOOST_ASIO_DECL void clear();
+
   // Callback used when the SSL implementation wants to verify a certificate.
   BOOST_ASIO_DECL static int verify_callback_function(
       int preverified, X509_STORE_CTX* ctx);
