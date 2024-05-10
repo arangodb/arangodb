@@ -1,4 +1,4 @@
-v3.11.7.4 (XXXX-XX-XX)
+v3.11.7.4 (2024-05-10)
 ----------------------
 
 * Retry cluster query shutdown in case no connection can be made to the
