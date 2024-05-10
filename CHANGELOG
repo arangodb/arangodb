@@ -7,10 +7,9 @@ v3.11.7.4 (XXXX-XX-XX)
 * Fix connection retry attempts for cluster-internal TLS connections that ran 
   into the 15 seconds timeout during the connection establishing attempt.
   In this case, the low-level socket was repurposed, but not reset properly.
-  This could leave the connection in an improper state and lead to callbacks
-  for some requests to not being called as expected.
-  The fix is to remove the retry logic, and instead prolong the connection
-  timeout to a multiple of the previous timeout value.
+  This could leave the connection in an improper state and lead to callbacks for
+  some requests to not being called as expected.
+  The connection timeout was also increased from 15 seconds to 60 seconds.
 
 
 v3.11.7.3 (2024-04-17)
