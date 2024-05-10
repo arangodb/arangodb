@@ -6,6 +6,7 @@ devel
   In this case, the low-level socket was repurposed, but not reset properly.
   This could leave the connection in an improper state and lead to callbacks
   for some requests to not being called as expected.
+  The connection timeout was also increased from 15 seconds to 60 seconds.
 
 * Improved the time required to create a new Collection in a database with
   hundreds of collections. This also improves times for indexes and dropping
