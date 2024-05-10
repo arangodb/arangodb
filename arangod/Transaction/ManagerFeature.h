@@ -40,6 +40,7 @@ class ManagerFeature final : public ArangodFeature {
   }
 
   explicit ManagerFeature(Server& server);
+  ~ManagerFeature();
 
   void collectOptions(
       std::shared_ptr<arangodb::options::ProgramOptions> options) override;
