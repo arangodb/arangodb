@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-448: auto-repair collection document JSON on save.
+
 * Improved the time required to create a new Collection in a database with
   hundreds of collections. This also improves times for indexes and dropping
   of collections.
