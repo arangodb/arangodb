@@ -289,7 +289,8 @@ void NetworkFeature::prepare() {
   config.verifyHosts = _verifyHosts;
   config.clusterInfo = ci;
   config.name = "ClusterComm";
-  config.metrics = network::ConnectionPool::Metrics::fromMetricsFeature(metricsFeature);
+  config.metrics = network::ConnectionPool::Metrics::fromMetricsFeature(
+      metricsFeature, config.name);
 
   // using an internal network protocol other than HTTP/1 is
   // not supported since 3.9. the protocol is always hard-coded
