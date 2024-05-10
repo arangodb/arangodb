@@ -8,6 +8,8 @@ devel
   for some requests to not being called as expected.
   The connection timeout was also increased from 15 seconds to 60 seconds.
 
+* FE-448: auto-repair collection document JSON on save.
+
 * Improved the time required to create a new Collection in a database with
   hundreds of collections. This also improves times for indexes and dropping
   of collections.
