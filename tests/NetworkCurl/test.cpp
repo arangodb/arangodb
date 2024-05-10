@@ -4,6 +4,8 @@
 
 #include "curl/curl.h"
 
+#include "ConnectionPool.h"
+
 using namespace arangodb::network;
 
 // calls fn every d intervals for total amount of time
@@ -32,24 +34,6 @@ void rate(Duration d, uint64_t total, F&& fn) {
   }
 }
 
-void send_request(curl::connection_pool& pool, std::latch& done, int counter) {
-  if (counter == 0) {
-    done.count_down();
-  } else {
-    curl::request_options options;
-    curl::send_request(
-        pool, arangodb::network::curl::http_method::kGet,
-        "http://localhost:8529", "http://localhost:8529/_api/version", {},
-        options, [&, counter](curl::response const& response, int code) {
-          if (code != 0) {
-            std::cout << "CODE = " << curl_easy_strerror(CURLcode(code))
-                      << std::endl;
-          }
-          send_request(pool, done, counter - 1);
-        });
-  }
-}
-
 struct multi_connection_pool {
   explicit multi_connection_pool(size_t num) : pools(num) {}
 
@@ -61,6 +45,24 @@ struct multi_connection_pool {
   std::atomic<uint64_t> counter;
   std::vector<curl::connection_pool> pools;
 };
+
+void send_request(multi_connection_pool& pool, std::latch& done, int counter) {
+  if (counter == 0) {
+    done.count_down();
+  } else {
+    curl::request_options options;
+    curl::send_request(
+        pool.next_pool(), arangodb::network::curl::http_method::kGet,
+        "http://localhost:8529", "http://localhost:8529/_api/version", {},
+        options, [&, counter](curl::response const& response, int code) {
+          if (code != 0) {
+            std::cout << "CODE = " << curl_easy_strerror(CURLcode(code))
+                      << std::endl;
+          }
+          send_request(pool, done, counter - 1);
+        });
+  }
+}
 
 int main(int argc, char* argv[]) {
   constexpr auto number_of_requests = 100000;
@@ -95,12 +97,15 @@ int main(int argc, char* argv[]) {
               << std::endl;
   }
 
-#if 0
   {
-    curl::connection_pool pool;
-    std::latch latch(1);
+    constexpr auto number_of_threads = 5;
+    multi_connection_pool pool(4);
+    std::latch latch(5);
+
     auto const start = std::chrono::steady_clock::now();
-    send_request(pool, latch, number_of_requests);
+    for (auto i = 0; i < number_of_threads; i++) {
+      send_request(pool, latch, number_of_requests);
+    }
     latch.wait();
     auto const end = std::chrono::steady_clock::now();
 
@@ -110,5 +115,4 @@ int main(int argc, char* argv[]) {
               << " rps = " << ((double)number_of_requests / seconds.count())
               << std::endl;
   }
-#endif
 }

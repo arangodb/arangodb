@@ -25,7 +25,7 @@ target_link_libraries(arango_network PUBLIC
   llhttp
   nghttp2
   arango::validation
-  arango_replication2
+  arango_futures
   immer)
 
 target_link_libraries(arango_network PRIVATE
