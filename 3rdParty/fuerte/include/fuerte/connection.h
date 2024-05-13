@@ -175,6 +175,14 @@ class ConnectionBuilder {
     return *this;
   }
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  unsigned failConnectAttempts() const { return _conf._failConnectAttempts; }
+  ConnectionBuilder& failConnectAttempts(unsigned f) {
+    _conf._failConnectAttempts = f;
+    return *this;
+  }
+#endif
+
   // Set the authentication type of the connection
   AuthenticationType authenticationType() const {
     return _conf._authenticationType;
