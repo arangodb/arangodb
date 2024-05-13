@@ -934,7 +934,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
   containers::FlatHashSet<TRI_voc_tick_t> ids;
   for (auto options : VPackObjectIterator(databases)) {
     try {
-      ids.emplace(std::stoul(options.value.get("id").copyString()));
+      ids.emplace(std::stoull(options.value.get("id").copyString()));
     } catch (std::exception const& e) {
       LOG_TOPIC("a9235", ERR, Logger::CLUSTER)
           << "Failed to read planned databases " << options.key.stringView()
