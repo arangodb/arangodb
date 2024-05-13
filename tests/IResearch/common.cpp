@@ -594,7 +594,7 @@ arangodb::aql::QueryResult executeQuery(
           arangodb::velocypack::Parser::fromJson(optionsString)->slice()));
 
   arangodb::aql::QueryResult result;
-  auto aborter = std::make_shared<arangodb::aql::QueryAborter>();
+  auto aborter = std::make_shared<arangodb::aql::QueryAborter>(query);
   while (true) {
     auto state = query->execute(aborter, result);
     if (state == arangodb::aql::ExecutionState::WAITING) {
@@ -638,7 +638,7 @@ std::shared_ptr<arangodb::aql::Query> prepareQuery(
       arangodb::aql::QueryOptions(
           arangodb::velocypack::Parser::fromJson(optionsString)->slice()));
 
-  auto aborter = std::make_shared<arangodb::aql::QueryAborter>();
+  auto aborter = std::make_shared<arangodb::aql::QueryAborter>(query);
   query->prepareQuery(aborter);
   return query;
 }
@@ -744,7 +744,7 @@ void assertFilterOptimized(
       std::move(ctx), arangodb::aql::QueryString(queryString), bindVars,
       arangodb::aql::QueryOptions(options->slice()));
 
-  auto aborter = std::make_shared<arangodb::aql::QueryAborter>();
+  auto aborter = std::make_shared<arangodb::aql::QueryAborter>(query);
   query->prepareQuery(aborter);
   EXPECT_TRUE(query->plan());
   auto plan = const_cast<arangodb::aql::ExecutionPlan*>(query->plan());

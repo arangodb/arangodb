@@ -48,6 +48,10 @@
 using namespace arangodb;
 using namespace arangodb::cluster;
 
+namespace {
+auto emptyPrint() -> std::string { return "Dummy Details"; }
+}  // namespace
+
 class LeaseManagerRestHandlerTest : public ::testing::Test {
 
   struct LeaseResponse {
@@ -163,11 +167,14 @@ TEST_F(LeaseManagerRestHandlerTest, test_get_request_including_leases) {
                                  fakeResponse.release());
   auto& leaseManager = getLeaseManager();
   auto leaseIsForA = getPeerState(serverA);
-  auto leaseGuardA = leaseManager.requireLease(leaseIsForA, []() noexcept {});
+  auto leaseGuardA =
+      leaseManager.requireLease(leaseIsForA, ::emptyPrint, []() noexcept {});
 
   auto leaseIsForB = getPeerState(serverA);
-  auto leaseGuardB1 = leaseManager.requireLease(leaseIsForB, []() noexcept {});
-  auto leaseGuardB2 = leaseManager.requireLease(leaseIsForB, []() noexcept {});
+  auto leaseGuardB1 =
+      leaseManager.requireLease(leaseIsForB, ::emptyPrint, []() noexcept {});
+  auto leaseGuardB2 =
+      leaseManager.requireLease(leaseIsForB, ::emptyPrint, []() noexcept {});
   {
     ScopeGuard freeAllTheLeases{[&]() noexcept {
       // Make sure we cancel the leases before they go
