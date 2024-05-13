@@ -69,7 +69,6 @@ class sanHandler {
           if (oneSet.length > 0) {
             oneSet += ":";
           }
-          print(valueOne);
           let val = valueOne;
           if (typeof val === 'string' || val instanceof String) {
             val = valueOne.replace(/,/g, '_');
