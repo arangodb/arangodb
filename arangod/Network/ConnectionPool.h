@@ -60,7 +60,8 @@ class ConnectionPool final {
 
     metrics::Histogram<metrics::LogScale<float>>* leaseHistMSec;
 
-    static Metrics fromMetricsFeature(metrics::MetricsFeature& feature, std::string_view name);
+    static Metrics fromMetricsFeature(metrics::MetricsFeature& feature,
+                                      std::string_view name);
     static Metrics createStub(std::string_view name);
   };
 
