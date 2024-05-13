@@ -70,7 +70,10 @@ class sanHandler {
             oneSet += ":";
           }
           print(valueOne);
-          let val = valueOne.replaceAll(',', '_');
+          let val = valueOne;
+          if (typeof val === 'string' || val instanceof String) {
+            val = valueOne.replaceAll(',', '_');
+          }
           oneSet += `${keyOne}=${val}`;
         }
         this.backup[key] = process.env[key];
