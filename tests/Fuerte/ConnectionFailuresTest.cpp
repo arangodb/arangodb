@@ -159,7 +159,7 @@ TEST(ConnectionFailureTest, LowTimeouts) {
   int n = 100;
   auto [callbacksCalled, failureCallbacksCalled] = runTimeoutTest(cbuilder, n);
   ASSERT_EQ(n, callbacksCalled);
-  ASSERT_LE(n, failureCallbacksCalled);
+  ASSERT_LE(failureCallbacksCalled, n);
 }
 
 TEST(ConnectionFailureTest, LowTimeoutsActualBackend) {
