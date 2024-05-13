@@ -69,6 +69,7 @@ class sanHandler {
           if (oneSet.length > 0) {
             oneSet += ":";
           }
+          print(valueOne);
           let val = valueOne.replaceAll(',', '_');
           oneSet += `${keyOne}=${val}`;
         }
