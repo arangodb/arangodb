@@ -532,7 +532,7 @@ MockClusterServer::MockClusterServer(bool useAgencyMockPool,
 
   network::ConnectionPool::Config config;
   config.metrics = network::ConnectionPool::Metrics::fromMetricsFeature(
-      _server.getFeature<metrics::MetricsFeature>(), "mock");
+      _server.getFeature<metrics::MetricsFeature>(), "network-mock");
   config.numIOThreads = 1;
   config.maxOpenConnections = 8;
   config.verifyHosts = false;
