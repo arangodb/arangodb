@@ -70,7 +70,7 @@ struct NetworkConnectionPoolTest : public ::testing::Test {
 TEST_F(NetworkConnectionPoolTest, prune_while_in_flight) {
   ConnectionPool::Config config;
   config.metrics = ConnectionPool::Metrics::fromMetricsFeature(
-      server.getFeature<metrics::MetricsFeature>(), "mock");
+      server.getFeature<metrics::MetricsFeature>(), "");
   config.numIOThreads = 1;
   config.maxOpenConnections = 3;
   config.idleConnectionMilli = 5;  // extra small for testing
@@ -135,7 +135,7 @@ TEST_F(NetworkConnectionPoolTest, prune_while_in_flight) {
 TEST_F(NetworkConnectionPoolTest, acquire_endpoint) {
   ConnectionPool::Config config;
   config.metrics = ConnectionPool::Metrics::fromMetricsFeature(
-      server.getFeature<metrics::MetricsFeature>(), "mock");
+      server.getFeature<metrics::MetricsFeature>(), "");
   config.numIOThreads = 1;
   config.maxOpenConnections = 3;
   config.idleConnectionMilli = 10;  // extra small for testing
@@ -157,7 +157,7 @@ TEST_F(NetworkConnectionPoolTest, acquire_endpoint) {
 TEST_F(NetworkConnectionPoolTest, acquire_multiple_endpoint) {
   ConnectionPool::Config config;
   config.metrics = ConnectionPool::Metrics::fromMetricsFeature(
-      server.getFeature<metrics::MetricsFeature>(), "mock");
+      server.getFeature<metrics::MetricsFeature>(), "");
   config.numIOThreads = 1;
   config.maxOpenConnections = 3;
   config.idleConnectionMilli = 10;  // extra small for testing
@@ -189,7 +189,7 @@ TEST_F(NetworkConnectionPoolTest, acquire_multiple_endpoint) {
 TEST_F(NetworkConnectionPoolTest, release_multiple_endpoints_one) {
   ConnectionPool::Config config;
   config.metrics = ConnectionPool::Metrics::fromMetricsFeature(
-      server.getFeature<metrics::MetricsFeature>(), "mock");
+      server.getFeature<metrics::MetricsFeature>(), "");
   config.numIOThreads = 1;
   config.maxOpenConnections = 3;
   config.idleConnectionMilli = 5;  // extra small for testing
@@ -234,7 +234,7 @@ TEST_F(NetworkConnectionPoolTest, release_multiple_endpoints_one) {
 TEST_F(NetworkConnectionPoolTest, release_multiple_endpoints_two) {
   ConnectionPool::Config config;
   config.metrics = ConnectionPool::Metrics::fromMetricsFeature(
-      server.getFeature<metrics::MetricsFeature>(), "mock");
+      server.getFeature<metrics::MetricsFeature>(), "");
   config.numIOThreads = 1;
   config.maxOpenConnections = 3;
   config.idleConnectionMilli = 10;  // extra small for testing
@@ -346,7 +346,7 @@ TEST_F(NetworkConnectionPoolTest, release_multiple_endpoints_two) {
 TEST_F(NetworkConnectionPoolTest, force_drain) {
   ConnectionPool::Config config;
   config.metrics = ConnectionPool::Metrics::fromMetricsFeature(
-      server.getFeature<metrics::MetricsFeature>(), "mock");
+      server.getFeature<metrics::MetricsFeature>(), "");
   config.numIOThreads = 1;
   config.maxOpenConnections = 3;
   config.idleConnectionMilli = 10;  // extra small for testing
@@ -382,7 +382,7 @@ TEST_F(NetworkConnectionPoolTest, force_drain) {
 TEST_F(NetworkConnectionPoolTest, checking_min_and_max_connections) {
   ConnectionPool::Config config;
   config.metrics =
-      ConnectionPool::Metrics::fromMetricsFeature(metrics(), "mock");
+      ConnectionPool::Metrics::fromMetricsFeature(metrics(), "");
   config.numIOThreads = 1;
   config.maxOpenConnections = 2;
   config.idleConnectionMilli = 10;  // extra small for testing
@@ -494,7 +494,7 @@ TEST_F(NetworkConnectionPoolTest, checking_min_and_max_connections) {
 TEST_F(NetworkConnectionPoolTest, checking_expiration) {
   ConnectionPool::Config config;
   config.metrics = ConnectionPool::Metrics::fromMetricsFeature(
-      server.getFeature<metrics::MetricsFeature>(), "mock");
+      server.getFeature<metrics::MetricsFeature>(), "");
   config.numIOThreads = 1;
   config.maxOpenConnections = 2;
   config.idleConnectionMilli = 10;  // extra small for testing
@@ -578,7 +578,7 @@ TEST_F(NetworkConnectionPoolTest, checking_expiration) {
 TEST_F(NetworkConnectionPoolTest, checking_expiration_multiple_endpints) {
   ConnectionPool::Config config;
   config.metrics = ConnectionPool::Metrics::fromMetricsFeature(
-      server.getFeature<metrics::MetricsFeature>(), "mock");
+      server.getFeature<metrics::MetricsFeature>(), "");
   config.numIOThreads = 1;
   config.maxOpenConnections = 2;
   config.idleConnectionMilli = 10;  // extra small for testing
@@ -731,7 +731,7 @@ TEST_F(NetworkConnectionPoolTest, checking_expiration_multiple_endpints) {
 TEST_F(NetworkConnectionPoolTest, test_cancel_endpoint_all) {
   ConnectionPool::Config config;
   config.metrics = ConnectionPool::Metrics::fromMetricsFeature(
-      server.getFeature<metrics::MetricsFeature>(), "mock");
+      server.getFeature<metrics::MetricsFeature>(), "");
   config.numIOThreads = 1;
   config.maxOpenConnections = 2;
   config.idleConnectionMilli = 10;  // extra small for testing
@@ -771,7 +771,7 @@ TEST_F(NetworkConnectionPoolTest, test_cancel_endpoint_some) {
   std::string endpointB = "tcp://example.org:800";
   ConnectionPool::Config config;
   config.metrics = ConnectionPool::Metrics::fromMetricsFeature(
-      server.getFeature<metrics::MetricsFeature>(), "mock");
+      server.getFeature<metrics::MetricsFeature>(), "");
   config.numIOThreads = 1;
   config.maxOpenConnections = 2;
   config.idleConnectionMilli = 10;  // extra small for testing
