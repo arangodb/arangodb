@@ -69,10 +69,7 @@ class sanHandler {
           if (oneSet.length > 0) {
             oneSet += ":";
           }
-          let val = valueOne;
-          if (typeof val === 'string' || val instanceof String) {
-            val = valueOne.replace(/,/g, '_');
-          }
+          let val = valueOne.replace(/,/g, '_');
           oneSet += `${keyOne}=${val}`;
         }
         this.backup[key] = process.env[key];
