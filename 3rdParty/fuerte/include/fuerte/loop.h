@@ -27,9 +27,11 @@
 
 #include <fuerte/asio_ns.h>
 
+#include <memory>
 #include <mutex>
 #include <thread>
 #include <utility>
+#include <vector>
 
 // run / runWithWork / poll for Loop mapping to ioservice
 // free function run with threads / with thread group barrier and work
