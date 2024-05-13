@@ -176,7 +176,7 @@ struct NetworkMethodsTest
   network::ConnectionPool::Config config() {
     network::ConnectionPool::Config config;
     config.metrics = network::ConnectionPool::Metrics::fromMetricsFeature(
-        server.getFeature<metrics::MetricsFeature>(), "mock");
+        server.getFeature<metrics::MetricsFeature>(), "mock-network");
     config.clusterInfo = &server.getFeature<ClusterFeature>().clusterInfo();
     config.numIOThreads = 1;
     config.maxOpenConnections = 3;

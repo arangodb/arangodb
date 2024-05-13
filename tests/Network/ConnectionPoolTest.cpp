@@ -381,8 +381,7 @@ TEST_F(NetworkConnectionPoolTest, force_drain) {
 
 TEST_F(NetworkConnectionPoolTest, checking_min_and_max_connections) {
   ConnectionPool::Config config;
-  config.metrics =
-      ConnectionPool::Metrics::fromMetricsFeature(metrics(), "");
+  config.metrics = ConnectionPool::Metrics::fromMetricsFeature(metrics(), "");
   config.numIOThreads = 1;
   config.maxOpenConnections = 2;
   config.idleConnectionMilli = 10;  // extra small for testing
