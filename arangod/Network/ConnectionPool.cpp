@@ -411,22 +411,44 @@ struct LeaseTimeScale {
 DECLARE_HISTOGRAM(arangodb_connection_pool_lease_time_hist, LeaseTimeScale,
                   "Time to lease a connection from pool [ms]");
 
+namespace {
+template<typename Gen>
+ConnectionPool::Metrics createMetrics(Gen&& g, std::string_view name) {
+  ConnectionPool::Metrics m;
+  m.totalConnectionsInPool =
+      g(arangodb_connection_pool_connections_current{}.withLabel("pool", name));
+  m.successSelect =
+      g(arangodb_connection_pool_leases_successful_total{}.withLabel("pool",
+                                                                     name));
+  m.noSuccessSelect =
+      g(arangodb_connection_pool_leases_failed_total{}.withLabel("pool", name));
+  m.connectionsCreated =
+      g(arangodb_connection_pool_connections_created_total{}.withLabel("pool",
+                                                                       name));
+  m.leaseHistMSec =
+      g(arangodb_connection_pool_lease_time_hist{}.withLabel("pool", name));
+  return m;
+}
+
+}  // namespace
+
 ConnectionPool::Metrics ConnectionPool::Metrics::fromMetricsFeature(
     metrics::MetricsFeature& metricsFeature, std::string_view name) {
-  Metrics m;
-  m.totalConnectionsInPool = &metricsFeature.add(
-      arangodb_connection_pool_connections_current{}.withLabel("pool", name));
-  m.successSelect = &metricsFeature.add(
-      arangodb_connection_pool_leases_successful_total{}.withLabel("pool",
-                                                                   name));
-  m.noSuccessSelect = &metricsFeature.add(
-      arangodb_connection_pool_leases_failed_total{}.withLabel("pool", name));
-  m.connectionsCreated = &metricsFeature.add(
-      arangodb_connection_pool_connections_created_total{}.withLabel("pool",
-                                                                     name));
-  m.leaseHistMSec = &metricsFeature.add(
-      arangodb_connection_pool_lease_time_hist{}.withLabel("pool", name));
-  return m;
+  return createMetrics(
+      [&](auto&& builder) { return &metricsFeature.add(std::move(builder)); },
+      name);
+}
+
+ConnectionPool::Metrics ConnectionPool::Metrics::createStub(
+    std::string_view name) {
+  return createMetrics(
+      [&]<typename Builder>(Builder&& builder) {
+        static std::vector<std::shared_ptr<typename Builder::MetricT>> metrics;
+        auto ptr = std::dynamic_pointer_cast<typename Builder::MetricT>(
+            Builder{}.build());
+        return metrics.emplace_back(ptr).get();
+      },
+      name);
 }
 
 }  // namespace network
