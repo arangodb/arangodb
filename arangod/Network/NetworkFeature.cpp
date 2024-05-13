@@ -28,6 +28,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/EncodingUtils.h"
 #include "Basics/FunctionUtils.h"
+#include "Basics/NumberOfCores.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
@@ -109,7 +110,7 @@ NetworkFeature::NetworkFeature(Server& server, metrics::MetricsFeature& metrics,
       _protocol(),
       _maxOpenConnections(config.maxOpenConnections),
       _idleTtlMilli(config.idleConnectionMilli),
-      _numIOThreads(config.numIOThreads),
+      _numIOThreads(defaultIOThreads()),
       _verifyHosts(config.verifyHosts),
       _prepared(false),
       _forwardedRequests(
@@ -408,6 +409,10 @@ bool NetworkFeature::isCongested() const noexcept {
 
 bool NetworkFeature::isSaturated() const noexcept {
   return _requestsInFlight.load() >= _maxInFlight;
+}
+
+uint64_t NetworkFeature::defaultIOThreads() {
+  return std::max(uint64_t(1), uint64_t(NumberOfCores::getValue() / 4));
 }
 
 void NetworkFeature::sendRequest(network::ConnectionPool& pool,
