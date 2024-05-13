@@ -144,14 +144,16 @@ void NetworkFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   options->addSection("network", "cluster-internal networking");
 
-  options->addOption("--network.io-threads",
-                     "The number of network I/O threads for cluster-internal "
-                     "communication.",
-                     new UInt32Parameter(&_numIOThreads));
-  options->addOption("--network.max-open-connections",
-                     "The maximum number of open TCP connections for "
-                     "cluster-internal communication per endpoint",
-                     new UInt64Parameter(&_maxOpenConnections));
+  options->addOption(
+      "--network.io-threads",
+      "The number of network I/O threads for cluster-internal "
+      "communication.",
+      new UInt32Parameter(&_numIOThreads, /*base*/ 1, /*minValue*/ 1));
+  options->addOption(
+      "--network.max-open-connections",
+      "The maximum number of open TCP connections for "
+      "cluster-internal communication per endpoint",
+      new UInt64Parameter(&_maxOpenConnections, /*base*/ 1, /*minValue*/ 8));
   options->addOption("--network.idle-connection-ttl",
                      "The default time-to-live of idle connections for "
                      "cluster-internal communication (in milliseconds).",
@@ -233,10 +235,6 @@ then no compression will be performed.)");
 
 void NetworkFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> opts) {
-  _numIOThreads = std::max<unsigned>(1, std::min<unsigned>(_numIOThreads, 8));
-  if (_maxOpenConnections < 8) {
-    _maxOpenConnections = 8;
-  }
   if (!opts->processingResult().touched("--network.idle-connection-ttl")) {
     auto& gs = server().getFeature<GeneralServerFeature>();
     _idleTtlMilli = uint64_t(gs.keepAliveTimeout() * 1000 / 2);
