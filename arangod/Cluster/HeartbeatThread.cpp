@@ -964,7 +964,14 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
   }
 
   // loop over all database names we got and create a local database
-  // instance if not yet present:
+  // instance if not yet present.
+  // redundant functionality also exists in ClusterInfo::loadPlan().
+  // however, keeping the same code around here can lead to the
+  // databases being picked up more quickly, in case they were created
+  // by a different coordinator.
+  // if this code is removed, some tests will fail that create a
+  // database on one coordinator and then access the newly created
+  // database via another coordinator.
   for (auto options : VPackObjectIterator(databases)) {
     if (!options.value.isObject()) {
       continue;
