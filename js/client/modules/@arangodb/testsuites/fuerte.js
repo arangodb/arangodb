@@ -81,11 +81,10 @@ function gtestRunner(options) {
   }
 
   // start server
-  print('Starting server...');
+  print('Starting ' + options.protocol + ' server...');
 
-  let instanceManager = new im.instanceManager('tcp', options, {
+  let instanceManager = new im.instanceManager(options.protocol, options, {
     "http.keep-alive-timeout": "10",
-    "log.level": "requests=INFO"
   }, 'fuerte');
   instanceManager.prepareInstance();
   instanceManager.launchTcpDump("");
