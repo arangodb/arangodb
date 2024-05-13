@@ -2535,7 +2535,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
   arangodb::network::ConnectionPool::Config poolConfig;
   poolConfig.metrics =
       arangodb::network::ConnectionPool::Metrics::fromMetricsFeature(
-          server.getFeature<arangodb::metrics::MetricsFeature>(), "mock");
+          server.getFeature<arangodb::metrics::MetricsFeature>(), "mock-foo");
   poolConfig.clusterInfo =
       &server.getFeature<arangodb::ClusterFeature>().clusterInfo();
   poolConfig.numIOThreads = 1;
