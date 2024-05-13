@@ -72,7 +72,7 @@ class sanHandler {
           print(valueOne);
           let val = valueOne;
           if (typeof val === 'string' || val instanceof String) {
-            val = valueOne.replaceAll(',', '_');
+            val = valueOne.replace(/,/g, '_');
           }
           oneSet += `${keyOne}=${val}`;
         }
