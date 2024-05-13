@@ -911,7 +911,6 @@ void RocksDBEngine::verifySstFiles(rocksdb::Options const& options) const {
       << "' completed successfully";
   Logger::flush();
   // exit with status code = 0, without leaking
-  exit(EXIT_SUCCESS);
   int exitCode = static_cast<int>(TRI_ERROR_NO_ERROR);
   TRI_EXIT_FUNCTION(exitCode, nullptr);
   exit(exitCode);
