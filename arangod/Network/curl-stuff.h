@@ -81,6 +81,7 @@ struct request_options {
 enum class http_method { kGet, kPost, kPut, kDelete, kHead, kPatch };
 
 struct response {
+  std::uint64_t unique_id;
   long code;
   std::unordered_map<std::string, std::string> headers;
   std::string body;
@@ -89,8 +90,10 @@ struct response {
 
 struct request;
 
+enum class http_version { http1 = 0, http2 };
+
 struct connection_pool {
-  connection_pool();
+  connection_pool(http_version = {});
 
   void push(std::unique_ptr<request>&& req);
 
@@ -101,6 +104,8 @@ struct connection_pool {
   void cancelConnections(std::string endpoint);
 
   curl_easy_handle_pool handlePool;
+
+  http_version const httpVersion;
 
  private:
   void run_curl_loop(std::stop_token stoken) noexcept;

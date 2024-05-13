@@ -35,18 +35,24 @@ void rate(Duration d, uint64_t total, F&& fn) {
 }
 
 struct multi_connection_pool {
-  explicit multi_connection_pool(size_t num) : pools(num) {}
+  explicit multi_connection_pool(size_t num, curl::http_version httpVersion)
+      : pools() {
+    std::generate_n(std::back_inserter(pools), num, [&]() {
+      return std::make_unique<curl::connection_pool>(httpVersion);
+    });
+  }
 
   curl::connection_pool& next_pool() {
     auto idx = counter.fetch_add(1, std::memory_order_relaxed);
-    return pools[idx % pools.size()];
+    return *pools[idx % pools.size()];
   }
 
   std::atomic<uint64_t> counter;
-  std::vector<curl::connection_pool> pools;
+  std::vector<std::unique_ptr<curl::connection_pool>> pools;
 };
 
-void send_request(multi_connection_pool& pool, std::latch& done, int counter) {
+void send_requests(multi_connection_pool& pool, std::latch& done, int counter,
+                   int& errors) {
   if (counter == 0) {
     done.count_down();
   } else {
@@ -55,64 +61,99 @@ void send_request(multi_connection_pool& pool, std::latch& done, int counter) {
         pool.next_pool(), arangodb::network::curl::http_method::kGet,
         "http://localhost:8529", "http://localhost:8529/_api/version", {},
         options, [&, counter](curl::response const& response, int code) {
-          if (code != 0) {
-            std::cout << "CODE = " << curl_easy_strerror(CURLcode(code))
+          if (code != 0 && errors < 3) {
+            ++errors;
+            std::cerr << "CODE = " << curl_easy_strerror(CURLcode(code))
                       << std::endl;
           }
-          send_request(pool, done, counter - 1);
+          if (errors > 0) {
+            done.count_down();
+            return;
+          }
+          send_requests(pool, done, counter - 1, errors);
         });
   }
 }
 
+void rate_test(std::ptrdiff_t number_of_requests,
+               curl::http_version httpVersion) {
+  multi_connection_pool pools(4, httpVersion);
+
+  std::latch latch(number_of_requests);
+  auto const start = std::chrono::steady_clock::now();
+
+  auto errors = 0;
+  rate(std::chrono::microseconds{5}, number_of_requests, [&] {
+    curl::request_options options;
+    curl::send_request(
+        pools.next_pool(), arangodb::network::curl::http_method::kGet,
+        "http://localhost:8529", "http://localhost:8529/_api/version", {},
+        options, [&](curl::response const& response, int code) {
+          if (code != 0 && errors < 3) {
+            std::cerr << "CODE [" << response.unique_id << "] = " << curl_easy_strerror(CURLcode(code))
+                      << std::endl;
+            ++errors;
+          }
+          latch.count_down();
+        });
+  });
+
+  // std::cout << "done sending\n";
+  latch.wait();
+  auto const end = std::chrono::steady_clock::now();
+
+  auto const seconds =
+      std::chrono::duration_cast<std::chrono::duration<double>>(end - start);
+  if (errors == 0) {
+    std::cout << "rate_test ("
+              << (httpVersion == curl::http_version::http1 ? "http1" : "http2")
+              << "): " << number_of_requests << " took " << seconds
+              << " rps = " << ((double)number_of_requests / seconds.count())
+              << std::endl;
+  } else {
+    std::cout << "rate_test ("
+              << (httpVersion == curl::http_version::http1 ? "http1" : "http2")
+              << "): failed" << std::endl;
+  }
+}
+
+void thread_test(std::ptrdiff_t number_of_requests,
+                 curl::http_version httpVersion) {
+  constexpr auto number_of_threads = 5;
+  multi_connection_pool pool(4, httpVersion);
+  std::latch latch(number_of_threads);
+  auto errors = 0;
+
+  auto const start = std::chrono::steady_clock::now();
+  auto num_reqs_to_distribute = number_of_requests;
+  for (auto i = 0; i < number_of_threads; i++) {
+    auto const reqs = num_reqs_to_distribute / (number_of_threads - i);
+    num_reqs_to_distribute -= reqs;
+    send_requests(pool, latch, reqs, errors);
+  }
+  latch.wait();
+  auto const end = std::chrono::steady_clock::now();
+
+  auto const seconds =
+      std::chrono::duration_cast<std::chrono::duration<double>>(end - start);
+  if (errors == 0) {
+    std::cout << "thread_test ("
+              << (httpVersion == curl::http_version::http1 ? "http1" : "http2")
+              << "): " << number_of_requests << " took " << seconds
+              << " rps = " << ((double)number_of_requests / seconds.count())
+              << std::endl;
+  } else {
+    std::cout << "thread_test ("
+              << (httpVersion == curl::http_version::http1 ? "http1" : "http2")
+              << "): failed" << std::endl;
+  }
+}
+
 int main(int argc, char* argv[]) {
-  constexpr auto number_of_requests = 100000;
-  {
-    multi_connection_pool pools(4);
-
-    std::latch latch(number_of_requests);
-    auto const start = std::chrono::steady_clock::now();
-
-    rate(std::chrono::microseconds{5}, number_of_requests, [&] {
-      curl::request_options options;
-      curl::send_request(
-          pools.next_pool(), arangodb::network::curl::http_method::kGet,
-          "http://localhost:8529", "http://localhost:8529/_api/version", {},
-          options, [&](curl::response const& response, int code) {
-            if (code != 0) {
-              std::cout << "CODE = " << curl_easy_strerror(CURLcode(code))
-                        << std::endl;
-            }
-            latch.count_down();
-          });
-    });
-
-    std::cout << "done sending\n";
-    latch.wait();
-    auto const end = std::chrono::steady_clock::now();
-
-    auto const seconds =
-        std::chrono::duration_cast<std::chrono::duration<double>>(end - start);
-    std::cout << number_of_requests << " took " << seconds
-              << " rps = " << ((double)number_of_requests / seconds.count())
-              << std::endl;
-  }
-
-  {
-    constexpr auto number_of_threads = 5;
-    multi_connection_pool pool(4);
-    std::latch latch(5);
-
-    auto const start = std::chrono::steady_clock::now();
-    for (auto i = 0; i < number_of_threads; i++) {
-      send_request(pool, latch, number_of_requests);
-    }
-    latch.wait();
-    auto const end = std::chrono::steady_clock::now();
-
-    auto const seconds =
-        std::chrono::duration_cast<std::chrono::duration<double>>(end - start);
-    std::cout << number_of_requests << " took " << seconds
-              << " rps = " << ((double)number_of_requests / seconds.count())
-              << std::endl;
-  }
+  auto number_of_requests = 10000;
+  rate_test(number_of_requests, curl::http_version::http1);
+  //rate_test(number_of_requests, curl::http_version::http2);
+  number_of_requests = 1000;
+  thread_test(number_of_requests, curl::http_version::http1);
+  //thread_test(number_of_requests, curl::http_version::http2);
 }

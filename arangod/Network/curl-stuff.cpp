@@ -159,7 +159,7 @@ constexpr bool enable_logging = false;
       break;
   }
 
-  LOG_DEVEL_CURL << "[" << req->unique_id << "] " << prefix
+  LOG_DEVEL << "[" << req->unique_id << "] " << prefix
                  << std::string_view{data, size};
   if constexpr (enable_logging) {
     req->_response.debug_string << prefix << std::string_view{data, size}
@@ -187,8 +187,26 @@ void arangodb::network::curl::send_request(
   req->body = std::move(body);
   req->_callback = std::move(callback);
   req->unique_id = nextRequestId.fetch_add(1, std::memory_order_relaxed);
+  req->_response.unique_id = req->unique_id;
 
   LOG_DEVEL_CURL << "[" << req->unique_id << "] URL " << req->url;
+
+  switch (pool.httpVersion) {
+    case http_version::http1: {
+      curl_easy_setopt(req->_curl_handle->_easy_handle, CURLOPT_HTTP_VERSION,
+                       CURL_HTTP_VERSION_1_1);
+      curl_easy_setopt(req->_curl_handle->_easy_handle, CURLOPT_PIPEWAIT,
+                       0l);
+    }
+    break;
+    case http_version::http2: {
+      curl_easy_setopt(req->_curl_handle->_easy_handle, CURLOPT_HTTP_VERSION,
+                       CURL_HTTP_VERSION_2_0);
+      curl_easy_setopt(req->_curl_handle->_easy_handle, CURLOPT_PIPEWAIT,
+                       1l);
+    }
+    break;
+  }
 
   curl_easy_setopt(req->_curl_handle->_easy_handle, CURLOPT_URL,
                    req->url.c_str());
@@ -316,7 +334,7 @@ void connection_pool::resolve_handle(CURL* easy_handle, int result) noexcept {
 
   curl_easy_getinfo(easy_handle, CURLINFO_RESPONSE_CODE, &req->_response.code);
   {
-    auto const print_time_t = [&](CURLINFO info, std::string_view desc) {
+    [[maybe_unused]] auto const print_time_t = [&](CURLINFO info, std::string_view desc) {
       curl_off_t time_t;
       CURLcode res = curl_easy_getinfo(easy_handle, info, &time_t);
       LOG_DEVEL_CURL_IF(res == CURLE_OK)
@@ -441,8 +459,8 @@ connection_pool::~connection_pool() {
   _cv.notify_all();
 }
 
-connection_pool::connection_pool()
-    : handlePool(512), _curlThread([this](std::stop_token stoken) {
+connection_pool::connection_pool(http_version httpVersion)
+    : handlePool(512), httpVersion(httpVersion), _curlThread([this](std::stop_token stoken) {
         pthread_setname_np(pthread_self(), "curl_pool");
         this->run_curl_loop(stoken);
       }) {}
@@ -470,17 +488,14 @@ curl_easy_handle::curl_easy_handle() : _easy_handle(curl_easy_init()) {
     throw std::runtime_error("curl_easy_init failed");
   }
 
-#if 0
-  curl_easy_setopt(_easy_handle, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
-  curl_easy_setopt(_easy_handle, CURLOPT_PIPEWAIT, 1l);
-#endif
-
   curl_easy_setopt(_easy_handle, CURLOPT_SSL_ENABLE_ALPN, 1l);
   curl_easy_setopt(_easy_handle, CURLOPT_SSL_VERIFYPEER, 0l);
   curl_easy_setopt(_easy_handle, CURLOPT_SSL_VERIFYHOST, 0l);
   curl_easy_setopt(_easy_handle, CURLOPT_SSLVERSION, CURL_SSLVERSION_TLSv1_3);
 
   curl_easy_setopt(_easy_handle, CURLOPT_PROTOCOLS_STR, "HTTP,HTTPS");
+
+  curl_easy_setopt(_easy_handle, CURLOPT_TCP_NODELAY, 1l);
 
   curl_easy_setopt(_easy_handle, CURLOPT_TRANSFER_ENCODING, 0l);
   curl_easy_setopt(_easy_handle, CURLOPT_ACCEPT_ENCODING, NULL);
