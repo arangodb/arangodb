@@ -1,6 +1,13 @@
 v3.11.9 (XXXX-XX-XX)
 --------------------
 
+* Fix connection retry attempts for cluster-internal TLS connections that ran 
+  into the 15 seconds timeout during the connection establishing attempt.
+  In this case, the low-level socket was repurposed, but not reset properly.
+  This could leave the connection in an improper state and lead to callbacks
+  for some requests to not being called as expected.
+  The connection timeout was also increased from 15 seconds to 60 seconds.
+
 * FE-448: auto-repair collection document JSON on save.
 
 * Retry cluster query shutdown in case no connection can be made to the
@@ -9,9 +16,6 @@ v3.11.9 (XXXX-XX-XX)
 * Improved the time required to create a new Collection in a database with
   hundreds of collections. This also improves times for indexes and dropping
   of collections.
-
-* Prioritize requests for commiting or aborting streaming transactions on
-  leaders and followers, because they can unblock other operations.
 
 * Prioritize requests for commiting or aborting streaming transactions on
   leaders and followers, because they can unblock other operations. Also
