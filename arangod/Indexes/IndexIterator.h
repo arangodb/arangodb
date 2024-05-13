@@ -54,7 +54,7 @@
 #include <cstdint>
 #include <functional>
 #include <string_view>
-#include <function2/function2.hpp>
+#include <function2.hpp>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-common.h>
 
