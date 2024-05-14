@@ -61,6 +61,7 @@ class LogScale final : public Scale<T> {
     }
     _div = this->_delim.front() - low;
     TRI_ASSERT(_div > T(0));
+    TRI_ASSERT(_base > 0);
     _lbase = std::log(_base);
     TRI_ASSERT(_lbase > 0);
   }
