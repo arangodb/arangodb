@@ -889,7 +889,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
   const deltaTime = time() - startTime;
 
   let errorMessage = ' - ';
-  if (sh.fetchSanFileAfterExit(res.pid)) {
+  if (platform.substr(0, 3) !== 'win' && sh.fetchSanFileAfterExit(res.pid)) {
     serverCrashedLocal = true;
     res.status = false;
     errorMessage += " Sanitizer indicated issues  - ";
