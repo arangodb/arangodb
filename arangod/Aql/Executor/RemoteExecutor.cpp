@@ -380,9 +380,9 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(
     options.timeout = std::chrono::seconds(2);
   }
 
-  network::Headers header;
+  network::Headers headers;
   if (!_distributeId.empty()) {
-    header.emplace(StaticStrings::AqlShardIdHeader, _distributeId);
+    headers.emplace(StaticStrings::AqlShardIdHeader, _distributeId);
   }
 
   _requestInFlight = true;
@@ -393,7 +393,7 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(
   communicationGuard.unlock();
   network::sendRequest(pool, _server, type,
                        absl::StrCat(urlPart, "/", _queryId), std::move(body),
-                       options, header)
+                       std::move(options), std::move(headers))
       .thenFinal([this, ticket, sqs = _engine->sharedState()](
                      futures::Try<network::Response> resp) {
         // `this` is only valid as long as sharedState is valid.
