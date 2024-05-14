@@ -499,8 +499,15 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
   // for in waitForCurrentToCatchUp
   auto const index = agencyCache.index();
   // wait for cluster info to catch up
-  ci.waitForCurrent(index);
-  ci.waitForPlan(index);
+  auto futCurrent = ci.waitForCurrent(index);
+  auto futPlan = ci.waitForPlan(index);
+  if (auto r = futCurrent.get(); r.fail()) {
+    return r;
+  }
+  if (auto r = futPlan.get(); r.fail()) {
+    return r;
+  }
+  return {};
 }
 
 template<replication::Version ReplicationVersion>
