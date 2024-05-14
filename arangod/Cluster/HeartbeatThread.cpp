@@ -1383,7 +1383,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
     for (VPackObjectIterator::ObjectPair options :
          VPackObjectIterator(databases)) {
       try {
-        ids.push_back(std::stoul(options.value.get("id").copyString()));
+        ids.push_back(std::stoull(options.value.get("id").copyString()));
       } catch (std::invalid_argument& e) {
         LOG_TOPIC("a9233", ERR, Logger::CLUSTER)
             << "Number conversion for planned database id for "
