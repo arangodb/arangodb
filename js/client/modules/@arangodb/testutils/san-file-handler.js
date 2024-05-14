@@ -60,6 +60,13 @@ class sanHandler {
       }
     }
   }
+  detectSelfLogfile() {
+    if (this.enabled) {
+      for (const [key, value] of Object.entries(this.sanOptions)) {
+        print(`testing.js logfile is: ${this.sanOptions[key]['log_path']}`);
+      }
+    }
+  }
   setSanOptions() {
     if (this.enabled) {
       print("Using sanOptions ", this.sanOptions);
@@ -103,6 +110,28 @@ class sanHandler {
           print("found file ", fn, " - writing file ", `${upstream}.${this.binaryName}.${this.pid}`);
           fs.write(`${upstream}.${this.binaryName}.${this.pid}`, content);
         }
+        if (content.length > 10) {
+          crashUtils.GDB_OUTPUT += `Report of '${this.name}' in ${fn} contains: \n`;
+          crashUtils.GDB_OUTPUT += content;
+          ret = true;
+        }
+      }
+    }
+    return ret;
+  }
+  fetchSelfSanFile() {
+    if (!this.enabled) {
+      return false;
+    }
+    let ret = false;
+    for (const [key, value] of Object.entries(this.sanOptions)) {
+      print("processing ", value);
+      let fn = this.sanOptions[key]['log_path'];
+      //if (this.extremeVerbosity) {
+        print(`checking for ${fn}: ${fs.exists(fn)}`);
+      //}
+      if (fs.exists(fn)) {
+        let content = fs.read(fn);
         if (content.length > 10) {
           crashUtils.GDB_OUTPUT += `Report of '${this.name}' in ${fn} contains: \n`;
           crashUtils.GDB_OUTPUT += content;

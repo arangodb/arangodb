@@ -36,6 +36,7 @@ const tu = require('@arangodb/testutils/test-utils');
 const {versionHas, flushInstanceInfo} = require("@arangodb/test-helper");
 const internal = require('internal');
 const platform = internal.platform;
+const {sanHandler} = require('@arangodb/testutils/san-file-handler');
 
 const BLUE = internal.COLORS.COLOR_BLUE;
 const CYAN = internal.COLORS.COLOR_CYAN;
@@ -586,6 +587,10 @@ function iterateTests(cases, options) {
   if (options.extremeVerbosity === true) {
     rp.yamlDumpResults(options, results);
   }
+  // try to find out whether we did bad already (we can not know further down the road however):
+  let sh = new sanHandler(pu.ARANGOSH_BIN.replace(/.*\//, ''), options.sanOptions, options.isSan, options.extremeVerbosity);
+  sh.detectSelfLogfile();
+  sh.fetchSelfSanFile();
   return results;
 }
 
