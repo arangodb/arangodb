@@ -311,9 +311,9 @@ void EnvironmentFeature::prepare() {
 
         struct sysinfo info;
         int res = sysinfo(&info);
-        if (res == 0) {
+        double ram = static_cast<double>(PhysicalMemory::getValue());
+        if (res == 0 && ram > 0) {
           double swapSpace = static_cast<double>(info.totalswap);
-          double ram = static_cast<double>(PhysicalMemory::getValue());
           double rr =
               (ram >= swapSpace) ? 100.0 * ((ram - swapSpace) / ram) : 0.0;
           if (static_cast<double>(r) < 0.99 * rr) {

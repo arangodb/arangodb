@@ -1090,6 +1090,7 @@ double SupervisedScheduler::approximateQueueFillGrade() const {
   uint64_t const maxLength = _maxFifoSizes[3];
   uint64_t const qLength =
       std::min<uint64_t>(maxLength, _metricsQueueLength.load());
+  TRI_ASSERT(maxLength > 0);
   return static_cast<double>(qLength) / static_cast<double>(maxLength);
 }
 
