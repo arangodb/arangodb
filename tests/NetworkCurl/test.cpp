@@ -5,7 +5,10 @@
 #include "curl/curl.h"
 
 #include "ConnectionPool.h"
+#include "Basics/Result.h"
+#include "Network/Methods.h"
 
+using namespace arangodb;
 using namespace arangodb::network;
 
 // calls fn every d intervals for total amount of time
@@ -34,51 +37,41 @@ void rate(Duration d, uint64_t total, F&& fn) {
   }
 }
 
-void send_requests(curl::multi_connection_pool& pool, std::latch& done, int counter,
+struct NetworkInterface {
+  virtual ~NetworkInterface() = default;
+
+  // to be expanded with additional parameter
+  virtual void sendRequest(std::function<void(Result)>) = 0;
+};
+
+void send_requests(NetworkInterface& net, std::latch& done, int counter,
                    int& errors) {
   if (counter == 0) {
     done.count_down();
   } else {
-    curl::request_options options;
-    curl::send_request(
-        pool.next_pool(), arangodb::network::curl::http_method::kGet,
-        "http://localhost:8529", "http://localhost:8529/_api/version", {},
-        options, [&, counter](curl::response const& response, int code) {
-          if (code != 0 && errors < 3) {
-            ++errors;
-            std::cerr << "CODE = " << curl_easy_strerror(CURLcode(code))
-                      << std::endl;
-          }
-          if (errors > 0) {
-            done.count_down();
-            return;
-          }
-          send_requests(pool, done, counter - 1, errors);
-        });
+    net.sendRequest([&, counter](Result res) {
+      if (!res.ok()) {
+        done.count_down();
+        return;
+      }
+      send_requests(net, done, counter - 1, errors);
+    });
   }
 }
 
-void rate_test(std::ptrdiff_t number_of_requests,
-               curl::http_version httpVersion) {
-  curl::multi_connection_pool pools(4, httpVersion);
-
+void rate_test(NetworkInterface& net, std::ptrdiff_t number_of_requests) {
   std::latch latch(number_of_requests);
   auto const start = std::chrono::steady_clock::now();
 
   auto errors = 0;
   rate(std::chrono::microseconds{5}, number_of_requests, [&] {
-    curl::request_options options;
-    curl::send_request(
-        pools.next_pool(), arangodb::network::curl::http_method::kGet,
-        "http://localhost:8529", "http://localhost:8529/_api/version", {},
-        options, [&](curl::response const& response, int code) {
-          if (code != 0 && errors < 3) {
-            std::cerr << "CODE [" << response.unique_id << "] = " << curl_easy_strerror(CURLcode(code))
-                      << std::endl;
-            ++errors;
-          }
-          latch.count_down();
-        });
+    net.sendRequest([&](Result res) {
+      if (!res.ok()) {
+        ++errors;
+      }
+
+      latch.count_down();
+    });
   });
 
   // std::cout << "done sending\n";
@@ -88,22 +81,16 @@ void rate_test(std::ptrdiff_t number_of_requests,
   auto const seconds =
       std::chrono::duration_cast<std::chrono::duration<double>>(end - start);
   if (errors == 0) {
-    std::cout << "rate_test ("
-              << (httpVersion == curl::http_version::http1 ? "http1" : "http2")
-              << "): " << number_of_requests << " took " << seconds
+    std::cout << "rate_test : " << number_of_requests << " took " << seconds
               << " rps = " << ((double)number_of_requests / seconds.count())
               << std::endl;
   } else {
-    std::cout << "rate_test ("
-              << (httpVersion == curl::http_version::http1 ? "http1" : "http2")
-              << "): failed" << std::endl;
+    std::cout << "rate_test : failed" << std::endl;
   }
 }
 
-void thread_test(std::ptrdiff_t number_of_requests,
-                 curl::http_version httpVersion) {
+void thread_test(NetworkInterface& net, std::ptrdiff_t number_of_requests) {
   constexpr auto number_of_threads = 5;
-  curl::multi_connection_pool pool(4, httpVersion);
   std::latch latch(number_of_threads);
   auto errors = 0;
 
@@ -112,7 +99,7 @@ void thread_test(std::ptrdiff_t number_of_requests,
   for (auto i = 0; i < number_of_threads; i++) {
     auto const reqs = num_reqs_to_distribute / (number_of_threads - i);
     num_reqs_to_distribute -= reqs;
-    send_requests(pool, latch, reqs, errors);
+    send_requests(net, latch, reqs, errors);
   }
   latch.wait();
   auto const end = std::chrono::steady_clock::now();
@@ -120,23 +107,67 @@ void thread_test(std::ptrdiff_t number_of_requests,
   auto const seconds =
       std::chrono::duration_cast<std::chrono::duration<double>>(end - start);
   if (errors == 0) {
-    std::cout << "thread_test ("
-              << (httpVersion == curl::http_version::http1 ? "http1" : "http2")
-              << "): " << number_of_requests << " took " << seconds
+    std::cout << "thread_test : " << number_of_requests << " took " << seconds
               << " rps = " << ((double)number_of_requests / seconds.count())
               << std::endl;
   } else {
-    std::cout << "thread_test ("
-              << (httpVersion == curl::http_version::http1 ? "http1" : "http2")
-              << "): failed" << std::endl;
+    std::cout << "thread_test : failed" << std::endl;
   }
 }
 
+struct CurlNetworkInterface final : NetworkInterface {
+  CurlNetworkInterface(size_t num, curl::http_version httpVersion)
+      : pool(num, httpVersion) {}
+
+  void sendRequest(std::function<void(Result)> function) override {
+    curl::send_request(
+        pool.next_pool(), curl::http_method::kGet, "http://localhost:8529",
+        "http://localhost:8529/_api/version", {}, {},
+        [=](curl::response const& response, int code) {
+          auto res = [&] {
+            if (code != 0) {
+              std::cerr << "CODE [" << response.unique_id
+                        << "] = " << curl_easy_strerror(CURLcode(code))
+                        << std::endl;
+              return Result{TRI_ERROR_WAS_ERLAUBE};
+            }
+
+            return Result{};
+          }();
+          function(res);
+        });
+  }
+
+  curl::multi_connection_pool pool;
+};
+
+struct FuerteNetworkInterface final : NetworkInterface {
+  void sendRequest(std::function<void(Result)> function) override {
+    network::sendRequest(&pool, "http://localhost:8529",
+                         arangodb::fuerte::RestVerb::Get, "_api/version", {},
+                         {}, {})
+        .thenFinal([=](auto&& result) {
+          auto res = result.get().combinedResult();
+          if (!res.ok()) {
+            std::cerr << "FUERTE ERROR " << res.errorMessage() << std::endl;
+          }
+          function(res);
+        });
+  }
+
+  network::ConnectionPool pool;
+};
+
 int main(int argc, char* argv[]) {
-  auto number_of_requests = 10000;
-  rate_test(number_of_requests, curl::http_version::http1);
-  //rate_test(number_of_requests, curl::http_version::http2);
-  number_of_requests = 1000;
-  thread_test(number_of_requests, curl::http_version::http1);
-  //thread_test(number_of_requests, curl::http_version::http2);
+  {
+    std::cout << "CURL HTTP 1" << std::endl;
+    CurlNetworkInterface net{4, arangodb::network::curl::http_version::http1};
+
+    auto number_of_requests = 10000;
+    rate_test(net, number_of_requests);
+    // rate_test(number_of_requests, curl::http_version::http2);
+    number_of_requests = 1000;
+    thread_test(net, number_of_requests);
+    // thread_test(number_of_requests, curl::http_version::http2);
+  }
 }
