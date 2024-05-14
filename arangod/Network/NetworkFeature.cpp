@@ -28,6 +28,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/EncodingUtils.h"
 #include "Basics/FunctionUtils.h"
+#include "Basics/NumberOfCores.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
@@ -109,7 +110,7 @@ NetworkFeature::NetworkFeature(Server& server, metrics::MetricsFeature& metrics,
       _protocol(),
       _maxOpenConnections(config.maxOpenConnections),
       _idleTtlMilli(config.idleConnectionMilli),
-      _numIOThreads(config.numIOThreads),
+      _numIOThreads(defaultIOThreads()),
       _verifyHosts(config.verifyHosts),
       _prepared(false),
       _forwardedRequests(
@@ -145,14 +146,16 @@ void NetworkFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   options->addSection("network", "cluster-internal networking");
 
-  options->addOption("--network.io-threads",
-                     "The number of network I/O threads for cluster-internal "
-                     "communication.",
-                     new UInt32Parameter(&_numIOThreads));
-  options->addOption("--network.max-open-connections",
-                     "The maximum number of open TCP connections for "
-                     "cluster-internal communication per endpoint",
-                     new UInt64Parameter(&_maxOpenConnections));
+  options->addOption(
+      "--network.io-threads",
+      "The number of network I/O threads for cluster-internal "
+      "communication.",
+      new UInt32Parameter(&_numIOThreads, /*base*/ 1, /*minValue*/ 1));
+  options->addOption(
+      "--network.max-open-connections",
+      "The maximum number of open TCP connections for "
+      "cluster-internal communication per endpoint",
+      new UInt64Parameter(&_maxOpenConnections, /*base*/ 1, /*minValue*/ 8));
   options->addOption("--network.idle-connection-ttl",
                      "The default time-to-live of idle connections for "
                      "cluster-internal communication (in milliseconds).",
@@ -234,10 +237,6 @@ then no compression will be performed.)");
 
 void NetworkFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> opts) {
-  _numIOThreads = std::max<unsigned>(1, std::min<unsigned>(_numIOThreads, 8));
-  if (_maxOpenConnections < 8) {
-    _maxOpenConnections = 8;
-  }
   if (!opts->processingResult().touched("--network.idle-connection-ttl")) {
     auto& gs = server().getFeature<GeneralServerFeature>();
     _idleTtlMilli = uint64_t(gs.keepAliveTimeout() * 1000 / 2);
@@ -412,6 +411,10 @@ bool NetworkFeature::isCongested() const noexcept {
 
 bool NetworkFeature::isSaturated() const noexcept {
   return _requestsInFlight.load() >= _maxInFlight;
+}
+
+uint64_t NetworkFeature::defaultIOThreads() {
+  return std::max(uint64_t(1), uint64_t(NumberOfCores::getValue() / 4));
 }
 
 void NetworkFeature::sendRequest(network::ConnectionPool& pool,

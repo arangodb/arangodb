@@ -1393,8 +1393,8 @@ struct InsertProcessor : ModifyingProcessorBase<InsertProcessor> {
       basics::VelocyPackHelper::sanitizeNonClientTypes(
           _newDocumentBuilder->slice(), VPackSlice::noneSlice(),
           *_replicationData,
-          _methods.transactionContextPtr()->getVPackOptions(), true, true,
-          false);
+          *_methods.transactionContextPtr()->getVPackOptions(),
+          /*allowUnindexed*/ false);
     }
 
     return res;
@@ -1592,8 +1592,8 @@ struct ModifyProcessor : ModifyingProcessorBase<ModifyProcessor> {
       basics::VelocyPackHelper::sanitizeNonClientTypes(
           _newDocumentBuilder->slice(), VPackSlice::noneSlice(),
           *_replicationData,
-          _methods.transactionContextPtr()->getVPackOptions(), true, true,
-          false);
+          *_methods.transactionContextPtr()->getVPackOptions(),
+          /*allowUnindexed*/ false);
     }
 
     return res;
