@@ -149,6 +149,7 @@ class NetworkFeature final : public ArangodFeature {
   enum class CompressionType { kNone, kDeflate, kGzip, kLz4, kAuto };
   CompressionType _compressionType;
   std::string _compressionTypeLabel;
+  metrics::MetricsFeature& _metrics;
 };
 
 }  // namespace arangodb
