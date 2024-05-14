@@ -672,12 +672,12 @@ void ClusterFeature::prepare() {
   AsyncAgencyCommManager::INSTANCE->setSkipScheduler(true);
   AsyncAgencyCommManager::INSTANCE->pool(_asyncAgencyCommPool.get());
 
-  for (const auto& _agencyEndpoint : _agencyEndpoints) {
-    std::string const unified = Endpoint::unifiedForm(_agencyEndpoint);
+  for (auto const& agencyEndpoint : _agencyEndpoints) {
+    std::string unified = Endpoint::unifiedForm(agencyEndpoint);
 
     if (unified.empty()) {
       LOG_TOPIC("1b759", FATAL, arangodb::Logger::CLUSTER)
-          << "invalid endpoint '" << _agencyEndpoint
+          << "invalid endpoint '" << agencyEndpoint
           << "' specified for --cluster.agency-endpoint";
       FATAL_ERROR_EXIT();
     }
