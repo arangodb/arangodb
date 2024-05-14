@@ -478,7 +478,7 @@ Result RocksDBMetaCollection::takeCareOfRevisionTreePersistence(
     rocksdb::SequenceNumber wantedMaxCommitSeq, bool force,
     std::string const& context, std::string& scratch,
     rocksdb::SequenceNumber& appliedSeq) {
-  TRI_ASSERT(coll.useSyncByRevision());
+  TRI_ASSERT(coll.useSyncByRevision() || coll.deleted());
 
   // might lower `appliedSeq`!
 
@@ -750,6 +750,10 @@ rocksdb::SequenceNumber RocksDBMetaCollection::serializeRevisionTree(
     std::string& output, rocksdb::SequenceNumber commitSeq, bool force,
     std::unique_lock<std::mutex> const& lock) {
   TRI_ASSERT(lock.owns_lock());
+  if (_logicalCollection.deleted()) {
+    return commitSeq;
+  }
+
   TRI_ASSERT(_logicalCollection.useSyncByRevision());
 
   if (!_revisionTree && !haveBufferedOperations(lock)) {  // empty collection
