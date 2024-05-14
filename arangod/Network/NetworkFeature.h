@@ -91,6 +91,8 @@ class NetworkFeature final : public ArangodFeature {
   void retryRequest(std::shared_ptr<network::RetryableRequest>, RequestLane,
                     std::chrono::steady_clock::duration);
 
+  static uint64_t defaultIOThreads();
+
  protected:
   void prepareRequest(network::ConnectionPool const& pool,
                       std::unique_ptr<fuerte::Request>& req);
