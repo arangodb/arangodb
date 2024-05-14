@@ -88,7 +88,7 @@ futures::Future<ErrorCode> resolveDestination(ClusterInfo& ci,
     if (maybeServer.fail()) {
       LOG_TOPIC("60ee8", ERR, Logger::CLUSTER)
           << "cannot find responsible server for shard '" << spec.shardId
-          << "'";
+          << "': " << maybeServer.errorMessage();
       co_return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
     }
 

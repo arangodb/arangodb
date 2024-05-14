@@ -82,6 +82,9 @@ struct ConnectionPool::Bucket {
 };
 
 struct ConnectionPool::Impl {
+  Impl(Impl const& other) = delete;
+  Impl& operator=(Impl const& other) = delete;
+
   explicit Impl(ConnectionPool::Config const& config, ConnectionPool& pool)
       : _config(config),
         _pool(pool),
@@ -391,10 +394,6 @@ std::shared_ptr<fuerte::Connection> ConnectionPool::createConnection(
 
 ConnectionPool::Config const& ConnectionPool::config() const {
   return _impl->_config;
-}
-
-fuerte::EventLoopService& ConnectionPool::eventLoopService() {
-  return _impl->_loop;
 }
 
 auto ConnectionPool::getAnyPool() noexcept -> curl::connection_pool& {
