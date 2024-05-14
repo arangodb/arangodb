@@ -127,6 +127,15 @@ struct connection_pool {
   std::jthread _curlThread;
 };
 
+struct multi_connection_pool {
+  explicit multi_connection_pool(size_t num, curl::http_version httpVersion);
+
+  curl::connection_pool& next_pool();
+ private:
+  std::atomic<uint64_t> counter;
+  std::vector<std::unique_ptr<curl::connection_pool>> pools;
+};
+
 // TODO endpoint is redundant (part of path)
 void send_request(connection_pool& pool, http_method method,
                   std::string endpoint, std::string path, std::string body,

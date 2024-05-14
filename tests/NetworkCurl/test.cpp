@@ -34,24 +34,7 @@ void rate(Duration d, uint64_t total, F&& fn) {
   }
 }
 
-struct multi_connection_pool {
-  explicit multi_connection_pool(size_t num, curl::http_version httpVersion)
-      : pools() {
-    std::generate_n(std::back_inserter(pools), num, [&]() {
-      return std::make_unique<curl::connection_pool>(httpVersion);
-    });
-  }
-
-  curl::connection_pool& next_pool() {
-    auto idx = counter.fetch_add(1, std::memory_order_relaxed);
-    return *pools[idx % pools.size()];
-  }
-
-  std::atomic<uint64_t> counter;
-  std::vector<std::unique_ptr<curl::connection_pool>> pools;
-};
-
-void send_requests(multi_connection_pool& pool, std::latch& done, int counter,
+void send_requests(curl::multi_connection_pool& pool, std::latch& done, int counter,
                    int& errors) {
   if (counter == 0) {
     done.count_down();
@@ -77,7 +60,7 @@ void send_requests(multi_connection_pool& pool, std::latch& done, int counter,
 
 void rate_test(std::ptrdiff_t number_of_requests,
                curl::http_version httpVersion) {
-  multi_connection_pool pools(4, httpVersion);
+  curl::multi_connection_pool pools(4, httpVersion);
 
   std::latch latch(number_of_requests);
   auto const start = std::chrono::steady_clock::now();
@@ -120,7 +103,7 @@ void rate_test(std::ptrdiff_t number_of_requests,
 void thread_test(std::ptrdiff_t number_of_requests,
                  curl::http_version httpVersion) {
   constexpr auto number_of_threads = 5;
-  multi_connection_pool pool(4, httpVersion);
+  curl::multi_connection_pool pool(4, httpVersion);
   std::latch latch(number_of_threads);
   auto errors = 0;
 
