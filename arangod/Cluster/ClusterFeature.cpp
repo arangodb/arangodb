@@ -663,9 +663,8 @@ void ClusterFeature::prepare() {
   config.clusterInfo = &clusterInfo();
   config.name = "AgencyComm";
 
-  auto& metricsFeature = server().getFeature<metrics::MetricsFeature>();
   config.metrics = network::ConnectionPool::Metrics::fromMetricsFeature(
-      metricsFeature, config.name);
+      _metrics, config.name);
 
   _asyncAgencyCommPool = std::make_unique<network::ConnectionPool>(config);
 
