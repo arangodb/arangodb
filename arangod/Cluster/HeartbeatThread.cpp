@@ -240,7 +240,9 @@ HeartbeatThread::HeartbeatThread(Server& server,
           arangodb_heartbeat_send_time_msec{})),
       _heartbeat_failure_counter(
           server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_heartbeat_failures_total{})) {}
+              arangodb_heartbeat_failures_total{})) {
+  TRI_ASSERT(_maxFailsBeforeWarning > 0);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a heartbeat thread
@@ -1077,6 +1079,7 @@ bool HeartbeatThread::sendServerState() {
   }
 
   if (!isStopping()) {
+    TRI_ASSERT(_maxFailsBeforeWarning > 0);
     if (++_numFails % _maxFailsBeforeWarning == 0) {
       _heartbeat_failure_counter.count();
       std::string const endpoints =
@@ -1154,6 +1157,7 @@ void HeartbeatThread::sendServerStateAsync() {
         try {
           auto const& result = tryResult.get().asResult();
           if (result.fail()) {
+            TRI_ASSERT(self->_maxFailsBeforeWarning > 0);
             if (++self->_numFails % self->_maxFailsBeforeWarning == 0) {
               self->_heartbeat_failure_counter.count();
               std::string const endpoints =
