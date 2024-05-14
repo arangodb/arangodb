@@ -73,7 +73,8 @@ struct WorkStealingThreadPool {
   ThreadPoolMetrics _metrics;
 
   std::atomic<std::size_t> pushIdx = 0;
-  std::atomic<ThreadState*> hint = nullptr;
+  static constexpr auto NoHint = std::numeric_limits<std::size_t>::max();
+  std::atomic<std::size_t> hint = NoHint;
   std::vector<std::jthread> _threads;
   std::vector<std::unique_ptr<ThreadState>> _threadStates;
   std::latch _latch;

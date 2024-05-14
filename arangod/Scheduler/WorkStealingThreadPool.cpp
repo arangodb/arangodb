@@ -23,6 +23,7 @@
 #include <algorithm>
 #include <atomic>
 #include <chrono>
+#include <cstddef>
 #include <memory>
 #include <mutex>
 #include <random>
@@ -43,10 +44,33 @@ void incCounter(metrics::Counter* cnt, uint64_t delta = 1) {
     *cnt += delta;
   }
 }
+
+auto calculateCoprimes(std::size_t n) -> std::vector<std::size_t> {
+  TRI_ASSERT(n > 0);
+  if (n <= 2) {
+    return {1};
+  }
+  if (n == 3) {
+    return {1, 2};
+  }
+
+  std::vector<std::size_t> result;
+  result.push_back(1);
+  result.push_back(n - 1);
+
+  for (std::size_t i = 2; i <= n / 2; ++i) {
+    if (std::gcd(i, n) == 1) {
+      result.push_back(i);
+      result.push_back(n - i);
+    }
+  }
+  return result;
+}
 }  // namespace
 
 struct WorkStealingThreadPool::ThreadState {
-  ThreadState(std::size_t id, WorkStealingThreadPool& pool);
+  ThreadState(std::size_t id, std::size_t stepSize,
+              WorkStealingThreadPool& pool);
   ~ThreadState();
 
   void pushBack(std::unique_ptr<WorkItem>&& work) noexcept;
@@ -77,12 +101,15 @@ struct WorkStealingThreadPool::ThreadState {
   std::condition_variable cv;
   std::deque<std::unique_ptr<WorkItem>> _queue;
   std::mt19937 rng;
-  ThreadState* prevHint = nullptr;
+  std::size_t prevHint = NoHint;
+  std::size_t stealHint = NoHint;
+  std::size_t stepSize;
 };
 
 WorkStealingThreadPool::ThreadState::ThreadState(std::size_t id,
+                                                 std::size_t stepSize,
                                                  WorkStealingThreadPool& pool)
-    : id(id), pool(pool), rng(id) {}
+    : id(id), pool(pool), rng(id), stepSize(stepSize) {}
 
 void WorkStealingThreadPool::ThreadState::pushBack(
     std::unique_ptr<WorkItem>&& work) noexcept {
@@ -90,6 +117,7 @@ void WorkStealingThreadPool::ThreadState::pushBack(
   TRI_ASSERT(work->next == nullptr);
   auto p = work.release();
   p->next = pushQueue.load(std::memory_order_acquire);
+  // the compare_exchange implicitly reloads the next pointer
   while (
       !pushQueue.compare_exchange_weak(p->next, p, std::memory_order_seq_cst))
     ;
@@ -131,8 +159,10 @@ void WorkStealingThreadPool::ThreadState::run() noexcept {
   pool._latch.arrive_and_wait();
 
   unsigned stealAttempts = 0;
-  unsigned maxStealAttempts =
-      std::clamp<unsigned>(pool.numThreads * 200, 1000, 2000);
+  unsigned const d = id + 1;
+  // threads with lower ids should spin longer before going to sleep
+  unsigned const totalMaxStealAttempts = 1 + 4096 / (d * d * d);
+  auto maxStealAttempts = totalMaxStealAttempts;
   while (!stop.load(std::memory_order_relaxed)) {
     std::unique_lock guard(mutex);
     if (!_queue.empty()) {
@@ -142,31 +172,40 @@ void WorkStealingThreadPool::ThreadState::run() noexcept {
       _queue.pop_front();
       guard.unlock();
 
-      if (pool.hint.load(std::memory_order_relaxed) == this) {
+      if (pool.hint.load(std::memory_order_relaxed) == id) {
         pool.hint.store(prevHint, std::memory_order_relaxed);
       }
 
       runWork(*item);
+      maxStealAttempts = totalMaxStealAttempts;
     } else if (pushQueue.load(std::memory_order_relaxed) != nullptr) {
       auto item = pushQueue.exchange(nullptr, std::memory_order_acquire);
       if (item != nullptr) {
         auto work = pushMany(item);
         guard.unlock();
         runWork(*work);
+        maxStealAttempts = totalMaxStealAttempts;
       }
     } else if (stealAttempts > maxStealAttempts) {
       // nothing to work -> go to sleep
       goToSleep(guard);
+      if (maxStealAttempts > 2) {
+        maxStealAttempts /= 2;
+      }
       stealAttempts = 0;
     } else {
       guard.unlock();
       if (stealAttempts == 0) {
-        prevHint = pool.hint.load(std::memory_order_relaxed);
-        pool.hint.store(this, std::memory_order_relaxed);
+        auto hint = pool.hint.load(std::memory_order_relaxed);
+        if (hint > id) {
+          prevHint = hint;
+          pool.hint.store(id, std::memory_order_relaxed);
+        }
       }
       auto work = stealWork();
       if (work) {
         runWork(*work);
+        maxStealAttempts = totalMaxStealAttempts;
       } else {
         ++stealAttempts;
       }
@@ -214,30 +253,52 @@ void WorkStealingThreadPool::ThreadState::runWork(WorkItem& work) noexcept {
 
 auto WorkStealingThreadPool::ThreadState::stealWork() noexcept
     -> std::unique_ptr<WorkItem> {
-  auto idx = rng() % pool.numThreads;
-  if (idx == id) {
-    return {};
+  // we start at a random index and iterate through the other threads
+  // using our stepSize. Since the stepSizes are coprimes of the number of
+  // threads this is guaranteed to cover all threads, but different threads will
+  // likely use a different order.
+  auto idx = stealHint;
+  if (idx == NoHint) {
+    idx = rng() % pool.numThreads;
   }
 
-  auto& other = pool._threadStates[idx];
-  if (other->pushQueue.load(std::memory_order_relaxed) != nullptr) {
-    auto* item = other->pushQueue.exchange(nullptr, std::memory_order_acquire);
-    if (item) {
-      std::unique_lock guard(mutex);
-      return pushMany(item);
+  for (std::size_t i = 0; i < pool.numThreads; ++i) {
+    if (idx != id) {
+      auto& other = pool._threadStates[idx];
+      if (other->pushQueue.load(std::memory_order_relaxed) != nullptr) {
+        auto* item =
+            other->pushQueue.exchange(nullptr, std::memory_order_acquire);
+        if (item) {
+          std::unique_lock guard(mutex);
+          auto res = pushMany(item);
+          // remember this thread so next time we try to steal from it first
+          stealHint = idx;
+          return res;
+        }
+      }
+
+      std::unique_lock guard(other->mutex);
+      if (!other->_queue.empty()) {
+        auto work = std::move(other->_queue.back());
+        TRI_ASSERT(work != nullptr);
+        other->_queue.pop_back();
+        // remember this thread so next time we try to steal from it first
+        stealHint = idx;
+        return work;
+      }
+    }
+    if (this->pushQueue.load(std::memory_order_relaxed) != nullptr) {
+      // work has been pushed into our queue -> no need to still anything
+      return {};
+    }
+    idx += stepSize;
+    if (idx >= pool.numThreads) {
+      idx -= pool.numThreads;
     }
   }
-
-  std::unique_lock guard(other->mutex);
-  if (other->_queue.empty()) {
-    return {};
-  }
-
-  auto work = std::move(other->_queue.back());
-  TRI_ASSERT(work != nullptr);
-  other->_queue.pop_back();
-
-  return work;
+  // nothing found - reset the hint so next time we start at a random index
+  stealHint = NoHint;
+  return {};
 }
 
 WorkStealingThreadPool::WorkStealingThreadPool(const char* name,
@@ -248,12 +309,20 @@ WorkStealingThreadPool::WorkStealingThreadPool(const char* name,
       _threads(),
       _threadStates(threadCount),
       _latch(threadCount) {
+  auto coprimes = calculateCoprimes(threadCount);
+  std::size_t coprimeIdx = 0;
   for (std::size_t i = 0; i < threadCount; ++i) {
-    _threads.emplace_back(std::jthread([this, i] {
+    _threads.emplace_back(std::jthread([this, i, &coprimes, coprimeIdx]() {
       // we intentionally create the ThreadStates _inside_ the thread
-      _threadStates[i] = std::make_unique<ThreadState>(i, *this);
+      _threadStates[i] =
+          std::make_unique<ThreadState>(i, coprimes[coprimeIdx], *this);
+
       _threadStates[i]->run();
     }));
+    ++coprimeIdx;
+    if (coprimeIdx >= coprimes.size()) {
+      coprimeIdx = 0;
+    }
 
 #ifdef TRI_HAVE_SYS_PRCTL_H
     pthread_setname_np(_threads.back().native_handle(), name);
@@ -278,13 +347,13 @@ void WorkStealingThreadPool::shutdown() noexcept {
 }
 
 void WorkStealingThreadPool::push(std::unique_ptr<WorkItem>&& task) noexcept {
-  auto* ts = ThreadState::currentThread;
-  if (ts != nullptr && ts->belongsToPool(*this)) {
+  if (auto* ts = ThreadState::currentThread;
+      ts != nullptr && ts->belongsToPool(*this)) {
     ts->pushFront(std::move(task));
   } else {
-    ts = hint.load(std::memory_order_relaxed);
-    if (ts != nullptr) {
-      ts->pushBack(std::move(task));
+    auto h = hint.load(std::memory_order_relaxed);
+    if (h != NoHint) {
+      _threadStates[h]->pushBack(std::move(task));
     } else {
       auto idx = pushIdx.fetch_add(1, std::memory_order_relaxed) % numThreads;
       _threadStates[idx]->pushBack(std::move(task));
