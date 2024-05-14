@@ -5184,7 +5184,6 @@ auto ClusterInfo::getDatabaseNameForShard(
     ShardID shardId) -> std::optional<DatabaseID> {
   TRI_ASSERT(readLocker.getLock() == &_planProt.lock);
   TRI_ASSERT(readLocker.isLocked());
-  auto maybeDbId = std::optional<DatabaseID>();
   if (auto it = _shardToDb.find(shardId); it != _shardToDb.end()) {
     return DatabaseID{it->second};
   } else {
