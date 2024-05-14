@@ -1,6 +1,18 @@
 devel
 -----
 
+* Fix potentially hanging threads during index creation if starting one of the
+  parallel index creation threads returned an error.
+
+* Fix connection retry attempts for cluster-internal TLS connections that ran
+  into the 15 seconds timeout during the connection establishing attempt.
+  In this case, the low-level socket was repurposed, but not reset properly.
+  This could leave the connection in an improper state and lead to callbacks
+  for some requests to not being called as expected.
+  The connection timeout was also increased from 15 seconds to 60 seconds.
+
+* FE-448: auto-repair collection document JSON on save.
+
 * Improved the time required to create a new Collection in a database with
   hundreds of collections. This also improves times for indexes and dropping
   of collections.
@@ -18,6 +30,7 @@ devel
   Limiting the size of cache values helps to avoid storing very large values in
   the cache for huge documents or for all the connections of super nodes, and
   thus leaves more memory for other purposes.
+
 * BTS-1856: Fix a data-race inside the Query class during accesses on a private
   property (`execStats`).
 
