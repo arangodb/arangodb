@@ -7,6 +7,7 @@
 #include "ConnectionPool.h"
 #include "Basics/Result.h"
 #include "Network/Methods.h"
+#include "Network/ConnectionPool.h"
 
 using namespace arangodb;
 using namespace arangodb::network;
@@ -155,6 +156,15 @@ struct FuerteNetworkInterface final : NetworkInterface {
         });
   }
 
+  FuerteNetworkInterface()
+      : pool(network::ConnectionPool::Config{
+            .metrics = network::ConnectionPool::Metrics::createStub("fuerte"),
+            .maxOpenConnections = 10000,
+            .numIOThreads = 1,
+            .verifyHosts = false,
+            .protocol = arangodb::fuerte::ProtocolType::Http,
+        }) {}
+
   network::ConnectionPool pool;
 };
 
@@ -162,6 +172,17 @@ int main(int argc, char* argv[]) {
   {
     std::cout << "CURL HTTP 1" << std::endl;
     CurlNetworkInterface net{4, arangodb::network::curl::http_version::http1};
+
+    auto number_of_requests = 10000;
+    rate_test(net, number_of_requests);
+    // rate_test(number_of_requests, curl::http_version::http2);
+    number_of_requests = 1000;
+    thread_test(net, number_of_requests);
+    // thread_test(number_of_requests, curl::http_version::http2);
+  }
+  {
+    std::cout << "FUERTE HTTP 1" << std::endl;
+    FuerteNetworkInterface net;
 
     auto number_of_requests = 10000;
     rate_test(net, number_of_requests);
