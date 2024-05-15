@@ -6921,6 +6921,9 @@ Result ClusterInfo::agencyPlan(std::shared_ptr<VPackBuilder> const& body) {
 }
 
 arangodb::Result ClusterInfo::agencyReplan(VPackSlice plan) {
+  TRI_IF_FAILURE("ClusterInfo::failReplanAgency") {
+    return TRI_ERROR_DEBUG;
+  }
   // Apply only Collections and DBServers
   AgencyWriteTransaction transaction(std::vector<AgencyOperation>{
       {"Current/Collections", AgencyValueOperationType::SET,
