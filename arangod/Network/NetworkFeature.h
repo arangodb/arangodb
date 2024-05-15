@@ -91,6 +91,8 @@ class NetworkFeature final : public ArangodFeature {
   void retryRequest(std::shared_ptr<network::RetryableRequest>, RequestLane,
                     std::chrono::steady_clock::duration);
 
+  static uint64_t defaultIOThreads();
+
  protected:
   void prepareRequest(network::ConnectionPool const& pool,
                       std::unique_ptr<fuerte::Request>& req);
@@ -147,6 +149,7 @@ class NetworkFeature final : public ArangodFeature {
   enum class CompressionType { kNone, kDeflate, kGzip, kLz4, kAuto };
   CompressionType _compressionType;
   std::string _compressionTypeLabel;
+  metrics::MetricsFeature& _metrics;
 };
 
 }  // namespace arangodb

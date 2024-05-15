@@ -33,7 +33,10 @@
 namespace arangodb { namespace fuerte { inline namespace v1 {
 
 EventLoopService::EventLoopService(unsigned int threadCount, char const* name)
-    : _lastUsed(0), _sslContext(nullptr) {
+    : _lastUsed(0) {
+  _ioContexts.reserve(threadCount);
+  _guards.reserve(threadCount);
+  _threads.reserve(threadCount);
   for (unsigned i = 0; i < threadCount; i++) {
     _ioContexts.emplace_back(std::make_shared<asio_ns::io_context>(1));
     _guards.emplace_back(asio_ns::make_work_guard(*_ioContexts.back()));
@@ -57,9 +60,9 @@ asio_ns::ssl::context& EventLoopService::sslContext() {
   std::lock_guard<std::mutex> guard(_sslContextMutex);
   if (!_sslContext) {
 #if (OPENSSL_VERSION_NUMBER >= 0x10100000L)
-    _sslContext.reset(new asio_ns::ssl::context(asio_ns::ssl::context::tls));
+    _sslContext = std::make_unique<asio_ns::ssl::context>(asio_ns::ssl::context::tls);
 #else
-    _sslContext.reset(new asio_ns::ssl::context(asio_ns::ssl::context::sslv23));
+    _sslContext = std::make_unique<asio_ns::ssl::context>(asio_ns::ssl::context::sslv23);
 #endif
     _sslContext->set_default_verify_paths();
   }

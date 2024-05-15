@@ -189,6 +189,7 @@ class Manager {
 
   double idealLowerFillRatio() const noexcept;
   double idealUpperFillRatio() const noexcept;
+  std::uint64_t maxCacheValueSize() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Open a new transaction.
@@ -229,6 +230,8 @@ class Manager {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   void trackTermCall() noexcept;
 #endif
+
+  CacheOptions const& options() const noexcept { return _options; }
 
  private:
   // assume at most 16 slots in each stack -- TODO: check validity

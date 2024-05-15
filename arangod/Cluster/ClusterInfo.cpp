@@ -4663,7 +4663,10 @@ futures::Future<Result> ClusterInfo::getLeadersForShards(
       // std::shared_ptr<std::vector<ServerId>>>
       auto it = _shardsToCurrentServers.find(shardId);
       if (it == _shardsToCurrentServers.end()) {
-        return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
+        return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                      fmt::format("Could not find servers of shard {} in "
+                                  "Current version {} (raft index {})",
+                                  shardId, _currentVersion, _currentIndex)};
       }
       auto& servers = it->second;
       TRI_ASSERT(servers != nullptr);
@@ -4692,10 +4695,26 @@ futures::Future<Result> ClusterInfo::getLeadersForShards(
       co_return std::get<Result>(resolveResult);
     } else {
       auto shardId = std::get<ShardID>(resolveResult);
-      auto database = getDatabaseNameForShard(shardId);
-      auto collection = getCollectionNameForShard(shardId);
-      if (!database.has_value() || collection.empty()) {
-        co_return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
+
+      auto readLocker = basics::ReadLocker(&_planProt.lock,
+                                           basics::LockerType::BLOCKING, true);
+      auto const database = getDatabaseNameForShard(readLocker, shardId);
+      auto const collection = getCollectionNameForShard(readLocker, shardId);
+      auto const planVersion = _planVersion;
+      auto const planIndex = _planIndex;
+      readLocker.unlock();
+      if (!database.has_value()) {
+        co_return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                   fmt::format("Could not find database for shard {} in Plan "
+                               "version {} (raft index {})",
+                               shardId, planVersion, planIndex)};
+      }
+      if (collection.empty()) {
+        co_return {
+            TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+            fmt::format("Could not find collection for shard {} in Plan "
+                        "version {} (raft index {}) (database is {})",
+                        shardId, planVersion, planIndex, database.value())};
       }
       LOG_TOPIC("289f7", INFO, Logger::CLUSTER)
           << "getLeaderForShard: found resigned leader for shard " << shardId
@@ -4715,7 +4734,14 @@ futures::Future<Result> ClusterInfo::getLeadersForShards(
                   -> std::optional<std::tuple<Result, consensus::index_t>> {
                 if (servers.isNone()) {
                   return std::make_tuple(
-                      Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND}, index);
+                      Result{
+                          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                          fmt::format(
+                              "Database or collection ({}/{}) gone in Current "
+                              "while waiting for leader of shard {} (raft "
+                              "index {})",
+                              *database, collection, shardId, index)},
+                      index);
                 }
 
                 bool const leaderResigned = [&]() {
@@ -5129,8 +5155,16 @@ Result ClusterInfo::getShardServers(ShardID shardId,
 }
 
 CollectionID ClusterInfo::getCollectionNameForShard(ShardID shardId) {
-  READ_LOCKER(readLocker, _planProt.lock);
+  auto readLocker =
+      basics::ReadLocker(&_planProt.lock, basics::LockerType::BLOCKING, true);
+  return getCollectionNameForShard(readLocker, shardId);
+}
 
+CollectionID ClusterInfo::getCollectionNameForShard(
+    basics::ReadLocker<std::decay_t<decltype(_planProt.lock)>>& readLocker,
+    ShardID shardId) {
+  TRI_ASSERT(readLocker.getLock() == &_planProt.lock);
+  TRI_ASSERT(readLocker.isLocked());
   if (auto it = _shardToName.find(shardId); it != _shardToName.end()) {
     return CollectionID{it->second};
   }
@@ -5139,8 +5173,17 @@ CollectionID ClusterInfo::getCollectionNameForShard(ShardID shardId) {
 
 auto ClusterInfo::getDatabaseNameForShard(ShardID shardId)
     -> std::optional<DatabaseID> {
-  READ_LOCKER(readLocker, _planProt.lock);
+  auto readLocker =
+      basics::ReadLocker(&_planProt.lock, basics::LockerType::BLOCKING, true);
+  return getDatabaseNameForShard(readLocker, shardId);
+}
 
+auto ClusterInfo::getDatabaseNameForShard(
+    [[maybe_unused]] basics::ReadLocker<std::decay_t<decltype(_planProt.lock)>>&
+        readLocker,
+    ShardID shardId) -> std::optional<DatabaseID> {
+  TRI_ASSERT(readLocker.getLock() == &_planProt.lock);
+  TRI_ASSERT(readLocker.isLocked());
   if (auto it = _shardToDb.find(shardId); it != _shardToDb.end()) {
     return DatabaseID{it->second};
   } else {

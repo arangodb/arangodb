@@ -29,8 +29,10 @@
 #include "Aql/Collections.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Query.h"
+#include "Aql/Timing.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/conversions.h"
 #include "Basics/system-functions.h"
 #include "Basics/voc-errors.h"
 #include "Cluster/CallbackGuard.h"
@@ -506,6 +508,8 @@ size_t QueryRegistry::numberRegisteredQueries() {
 
 /// @brief export query registry contents to velocypack
 void QueryRegistry::toVelocyPack(velocypack::Builder& builder) const {
+  double const now = TRI_microtime();
+
   READ_LOCKER(readLocker, _lock);
 
   for (auto const& it : _queries) {
@@ -517,7 +521,8 @@ void QueryRegistry::toVelocyPack(velocypack::Builder& builder) const {
       // note: expires timestamp is a system clock value that indicates
       // number of seconds since the OS was started.
       builder.add("expires",
-                  VPackValue(static_cast<uint64_t>(it.second->_expires)));
+                  VPackValue(TRI_StringTimeStamp(it.second->_expires,
+                                                 Logger::getUseLocalTime())));
       builder.add("numEngines", VPackValue(it.second->_numEngines));
       builder.add("numOpen", VPackValue(it.second->_numOpen));
       builder.add("errorCode",
@@ -529,6 +534,7 @@ void QueryRegistry::toVelocyPack(velocypack::Builder& builder) const {
       auto const* query = it.second->_query.get();
       if (query != nullptr) {
         builder.add("id", VPackValue(query->id()));
+        builder.add("transactionId", VPackValue(query->transactionId().id()));
         builder.add("database", VPackValue(query->vocbase().name()));
         builder.add("collections", VPackValue(VPackValueType::Array));
         query->collections().visit(
@@ -543,8 +549,11 @@ void QueryRegistry::toVelocyPack(velocypack::Builder& builder) const {
             });
         builder.close();  // collections
         builder.add("killed", VPackValue(query->killed()));
-        builder.add("startTime",
-                    VPackValue(static_cast<double>(query->startTime())));
+
+        double const elapsed = elapsedSince(query->startTime());
+        auto timeString =
+            TRI_StringTimeStamp(now - elapsed, Logger::getUseLocalTime());
+        builder.add("startTime", VPackValue(timeString));
         builder.add("isModificationQuery",
                     VPackValue(query->isModificationQuery()));
       }

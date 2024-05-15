@@ -1,5 +1,5 @@
 /* jshint globalstrict:true, strict:true, maxlen: 5000 */
-/* global assertTrue, assertFalse, assertEqual, arango */
+/* global assertTrue, assertFalse, assertEqual, assertMatch, arango */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -98,7 +98,78 @@ function TransactionCommitAbortOverwhelmSuite () {
       db._useDatabase('_system');
       db._dropDatabase(cn);
     },
-    
+
+    testManyBlockingTransactions : function () {
+      const header = {"X-Arango-Async": "store"};
+      
+      // start many exclusive trx. they will all block each other except
+      // for one of the time that can operate.
+      let ids = {};
+      for (let i = 0; i < 100; ++i) {
+        let res = arango.POST_RAW(`/_api/transaction/begin`, { collections: { exclusive: "d" }, skipFastLockRound: true }, header);
+        assertFalse(res.error, res);
+        assertEqual(202, res.code);
+        ids[res.headers["x-arango-async-id"]] = true;
+      }
+
+      try {
+        // give this 100 seconds to complete
+        const end = internal.time() + 100;
+        while (internal.time() <= end) {
+          let keys = Object.keys(ids);
+
+          if (keys.length === 0) {
+            // done!
+            break;
+          }
+
+          let found = false;
+          keys.forEach((key) => {
+            if (found) {
+              return;
+            }
+            let res = arango.PUT_RAW(`/_api/job/${key}`, {});
+            if (res.code === 201) {
+              // job started.
+              assertFalse(res.error, res);
+              assertEqual(201, res.code, res);
+              // transaction must have started successfully
+              let trxId = res.parsedBody.result.id;
+              assertMatch(/^\d+$/, trxId, res);
+              // don't query status of this job anymore
+              delete ids[key];
+
+              // insert 100 docs into the collection inside the transaction
+              let cursor = arango.POST_RAW(`/_api/cursor`, {query: "FOR i IN 1..100 INSERT {} INTO d"}, {"x-arango-trx-id": trxId});
+              assertFalse(cursor.error, cursor);
+              assertEqual(201, cursor.code, cursor);
+              assertEqual([], cursor.parsedBody.result, cursor);
+
+              // commit the transaction
+              let commit = arango.PUT_RAW(`/_api/transaction/${trxId}`, {}, {"x-arango-trx-id": trxId});
+
+              assertFalse(commit.error, commit);
+              assertEqual(200, commit.code, commit);
+              
+              found = true;
+            } else {
+              // job not yet started
+              assertEqual(204, res.code, res);
+            }
+          });
+
+          // wait a bit for next transaction to acquire the lock, and then try again
+          internal.sleep(0.001);
+        }
+      } catch (err) {
+        // abort all write transactions that we have started and that may still
+        // be lingering around
+        arango.DELETE("/_api/transaction/write", {});
+        // rethrow original error
+        throw err;
+      }
+    },
+   
     testQueryNotBlockedForAlreadyStartedTransaction : function () {
       const header = {"X-Arango-Async": "store"};
       

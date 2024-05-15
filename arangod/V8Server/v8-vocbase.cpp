@@ -311,7 +311,8 @@ static void JS_GetIcuTimezones(
 
   UErrorCode status = U_ZERO_ERROR;
 
-  icu::StringEnumeration* timeZones = icu::TimeZone::createEnumeration();
+  icu_64_64::StringEnumeration* timeZones =
+      icu_64_64::TimeZone::createEnumeration();
   if (timeZones) {
     int32_t idsCount = timeZones->count(status);
 
@@ -347,10 +348,11 @@ static void JS_GetIcuLocales(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Handle<v8::Array> result = v8::Array::New(isolate);
 
   int32_t count = 0;
-  const icu::Locale* locales = icu::Locale::getAvailableLocales(count);
+  const icu_64_64::Locale* locales =
+      icu_64_64::Locale::getAvailableLocales(count);
   if (locales) {
     for (int32_t i = 0; i < count; ++i) {
-      const icu::Locale* l = locales + i;
+      const icu_64_64::Locale* l = locales + i;
       char const* str = l->getBaseName();
 
       result
@@ -383,7 +385,7 @@ static void JS_FormatDatetime(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::String::Value pattern(
       isolate, args[1]->ToString(context).FromMaybe(v8::Handle<v8::String>()));
 
-  icu::TimeZone* tz = nullptr;
+  icu_64_64::TimeZone* tz = nullptr;
   if (args.Length() > 2) {
     v8::String::Value value(isolate, args[2]->ToString(context).FromMaybe(
                                          v8::Handle<v8::String>()));
@@ -394,27 +396,29 @@ static void JS_FormatDatetime(v8::FunctionCallbackInfo<v8::Value> const& args) {
     // compilers.
     // ..........................................................................
 
-    icu::UnicodeString ts((const UChar*)*value, value.length());
-    tz = icu::TimeZone::createTimeZone(ts);
+    icu_64_64::UnicodeString ts((const UChar*)*value, value.length());
+    tz = icu_64_64::TimeZone::createTimeZone(ts);
   } else {
-    tz = icu::TimeZone::createDefault();
+    tz = icu_64_64::TimeZone::createDefault();
   }
 
-  icu::Locale locale;
+  icu_64_64::Locale locale;
   if (args.Length() > 3) {
     std::string name = TRI_ObjectToString(isolate, args[3]);
-    locale = icu::Locale::createFromName(name.c_str());
+    locale = icu_64_64::Locale::createFromName(name.c_str());
   } else {
     // use language of default collator
     std::string name = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
-    locale = icu::Locale::createFromName(name.c_str());
+    locale = icu_64_64::Locale::createFromName(name.c_str());
   }
 
-  icu::UnicodeString formattedString;
+  icu_64_64::UnicodeString formattedString;
   UErrorCode status = U_ZERO_ERROR;
-  icu::UnicodeString aPattern((const UChar*)*pattern, pattern.length());
-  icu::DateFormatSymbols* ds = new icu::DateFormatSymbols(locale, status);
-  icu::SimpleDateFormat* s = new icu::SimpleDateFormat(aPattern, ds, status);
+  icu_64_64::UnicodeString aPattern((const UChar*)*pattern, pattern.length());
+  icu_64_64::DateFormatSymbols* ds =
+      new icu_64_64::DateFormatSymbols(locale, status);
+  icu_64_64::SimpleDateFormat* s =
+      new icu_64_64::SimpleDateFormat(aPattern, ds, status);
   s->setTimeZone(*tz);
   s->format((UDate)(datetime * 1000), formattedString);
 
@@ -447,7 +451,7 @@ static void JS_ParseDatetime(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::String::Value pattern(
       isolate, args[1]->ToString(context).FromMaybe(v8::Handle<v8::String>()));
 
-  icu::TimeZone* tz = nullptr;
+  icu_64_64::TimeZone* tz = nullptr;
   if (args.Length() > 2) {
     v8::String::Value value(isolate, args[2]->ToString(context).FromMaybe(
                                          v8::Handle<v8::String>()));
@@ -458,28 +462,30 @@ static void JS_ParseDatetime(v8::FunctionCallbackInfo<v8::Value> const& args) {
     // compilers.
     // ..........................................................................
 
-    icu::UnicodeString ts((const UChar*)*value, value.length());
-    tz = icu::TimeZone::createTimeZone(ts);
+    icu_64_64::UnicodeString ts((const UChar*)*value, value.length());
+    tz = icu_64_64::TimeZone::createTimeZone(ts);
   } else {
-    tz = icu::TimeZone::createDefault();
+    tz = icu_64_64::TimeZone::createDefault();
   }
 
-  icu::Locale locale;
+  icu_64_64::Locale locale;
   if (args.Length() > 3) {
     std::string name = TRI_ObjectToString(isolate, args[3]);
-    locale = icu::Locale::createFromName(name.c_str());
+    locale = icu_64_64::Locale::createFromName(name.c_str());
   } else {
     // use language of default collator
     std::string name = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
-    locale = icu::Locale::createFromName(name.c_str());
+    locale = icu_64_64::Locale::createFromName(name.c_str());
   }
 
-  icu::UnicodeString formattedString((const UChar*)*datetimeString,
-                                     datetimeString.length());
+  icu_64_64::UnicodeString formattedString((const UChar*)*datetimeString,
+                                           datetimeString.length());
   UErrorCode status = U_ZERO_ERROR;
-  icu::UnicodeString aPattern((const UChar*)*pattern, pattern.length());
-  icu::DateFormatSymbols* ds = new icu::DateFormatSymbols(locale, status);
-  icu::SimpleDateFormat* s = new icu::SimpleDateFormat(aPattern, ds, status);
+  icu_64_64::UnicodeString aPattern((const UChar*)*pattern, pattern.length());
+  icu_64_64::DateFormatSymbols* ds =
+      new icu_64_64::DateFormatSymbols(locale, status);
+  icu_64_64::SimpleDateFormat* s =
+      new icu_64_64::SimpleDateFormat(aPattern, ds, status);
   s->setTimeZone(*tz);
 
   UDate udate = s->parse(formattedString, status);

@@ -24,12 +24,20 @@
 #pragma once
 
 #include "Aql/types.h"
+#include "Futures/Future.h"
+#include "Logger/LogContext.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
+
+#include <memory>
+#include <string>
 
 struct TRI_vocbase_t;
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::velocypack {
+class Slice;
+}
+
+namespace arangodb::aql {
 class Query;
 class QueryRegistry;
 
@@ -38,11 +46,13 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
  public:
   RestAqlHandler(ArangodServer&, GeneralRequest*, GeneralResponse*,
                  QueryRegistry*);
+  ~RestAqlHandler();
 
   char const* name() const override final { return "RestAqlHandler"; }
   RequestLane lane() const override final;
   RestStatus execute() override;
   RestStatus continueExecute() override;
+  void prepareExecute(bool isContinue) override;
   void shutdownExecute(bool isFinalized) noexcept override;
 
   class Route {
@@ -50,6 +60,7 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
     static auto execute() -> const char* { return "/_api/aql/execute"; }
   };
 
+ private:
   // PUT method for /_api/aql/<operation>/<queryId>, this is using
   // the part of the cursor API with side effects.
   // <operation>: can be "execute", "skipSome" "initializeCursor" or
@@ -94,7 +105,6 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   RestStatus useQuery(std::string const& operation,
                       std::string const& idString);
 
- private:
   // POST method for /_api/aql/setup (internal)
   // Only available on DBServers in the Cluster.
   // This route sets-up all the query engines required
@@ -127,14 +137,16 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   // handle query finalization for all engines
   RestStatus handleFinishQuery(std::string const& idString);
 
- private:
   // dig out vocbase from context and query from ID, handle errors
   Result findEngine(std::string const& idString);
 
   // our query registry
   QueryRegistry* _queryRegistry;
 
-  aql::ExecutionEngine* _engine;
+  ExecutionEngine* _engine;
+
+  std::shared_ptr<LogContext::Values> _logContextQueryIdValue;
+  LogContext::EntryPtr _logContextQueryIdEntry;
 };
-}  // namespace aql
-}  // namespace arangodb
+
+}  // namespace arangodb::aql

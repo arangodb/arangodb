@@ -436,8 +436,8 @@ Result createSystemCollectionsIndices(
 
 }  // namespace
 
-bool UpgradeTasks::createSystemCollectionsAndIndices(
-    TRI_vocbase_t& vocbase, arangodb::velocypack::Slice slice) {
+Result UpgradeTasks::createSystemCollectionsAndIndices(
+    TRI_vocbase_t& vocbase, velocypack::Slice slice) {
   // after the call to ::createSystemCollections this vector should contain
   // a LogicalCollection for *every* (required) system collection.
   std::vector<std::shared_ptr<LogicalCollection>> presentSystemCollections;
@@ -450,7 +450,7 @@ bool UpgradeTasks::createSystemCollectionsAndIndices(
     LOG_TOPIC("94824", ERR, Logger::STARTUP)
         << "could not create system collections"
         << ": error: " << res.errorMessage();
-    return false;
+    return res;
   }
 
   TRI_IF_FAILURE("UpgradeTasks::HideDatabaseUntilCreationIsFinished") {
@@ -469,26 +469,25 @@ bool UpgradeTasks::createSystemCollectionsAndIndices(
     LOG_TOPIC("fedc0", ERR, Logger::STARTUP)
         << "could not create indices for system collections"
         << ": error: " << res.errorMessage();
-    return false;
+    return res;
   }
 
-  return true;
+  return {};
 }
 
-bool UpgradeTasks::createStatisticsCollectionsAndIndices(
-    TRI_vocbase_t& vocbase, arangodb::velocypack::Slice slice) {
+Result UpgradeTasks::createStatisticsCollectionsAndIndices(
+    TRI_vocbase_t& vocbase, velocypack::Slice slice) {
   // This vector should after the call to ::createSystemCollections contain
   // a LogicalCollection for *every* (required) system collection.
   std::vector<std::shared_ptr<LogicalCollection>> presentSystemCollections;
-  Result res;
-
-  res = ::createSystemStatisticsCollections(vocbase, presentSystemCollections);
+  Result res =
+      ::createSystemStatisticsCollections(vocbase, presentSystemCollections);
 
   if (res.fail()) {
     LOG_TOPIC("2824e", ERR, Logger::STARTUP)
         << "could not create system collections"
         << ": error: " << res.errorMessage();
-    return false;
+    return res;
   }
 
   res = ::createSystemStatisticsIndices(vocbase, presentSystemCollections);
@@ -496,17 +495,17 @@ bool UpgradeTasks::createStatisticsCollectionsAndIndices(
     LOG_TOPIC("dffbd", ERR, Logger::STARTUP)
         << "could not create indices for system collections"
         << ": error: " << res.errorMessage();
-    return false;
+    return res;
   }
 
-  return true;
+  return {};
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops '_iresearch_analyzers' collection
 ////////////////////////////////////////////////////////////////////////////////
-bool UpgradeTasks::dropLegacyAnalyzersCollection(
-    TRI_vocbase_t& vocbase, arangodb::velocypack::Slice /*upgradeParams*/) {
+Result UpgradeTasks::dropLegacyAnalyzersCollection(
+    TRI_vocbase_t& vocbase, velocypack::Slice /*upgradeParams*/) {
   // drop legacy collection if upgrading the system vocbase and collection found
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (!vocbase.server().hasFeature<arangodb::SystemDatabaseFeature>()) {
@@ -514,9 +513,7 @@ bool UpgradeTasks::dropLegacyAnalyzersCollection(
         << "failure to find '" << arangodb::SystemDatabaseFeature::name()
         << "' feature while registering legacy static analyzers with vocbase '"
         << vocbase.name() << "'";
-    TRI_set_errno(TRI_ERROR_INTERNAL);
-
-    return false;  // internal error
+    return {TRI_ERROR_INTERNAL, "unable to find system database"};
   }
   auto& sysDatabase =
       vocbase.server().getFeature<arangodb::SystemDatabaseFeature>();
@@ -533,28 +530,32 @@ bool UpgradeTasks::dropLegacyAnalyzersCollection(
     CollectionDropOptions dropOptions{.allowDropSystem = true,
                                       .allowDropGraphCollection = true};
     res = arangodb::methods::Collections::drop(*col, dropOptions);
-    return res.ok();
   }
-  return res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+    // this type of error is expected
+    res.reset();
+  }
+  return res;
 }
 
-bool UpgradeTasks::addDefaultUserOther(TRI_vocbase_t& vocbase,
-                                       arangodb::velocypack::Slice params) {
+Result UpgradeTasks::addDefaultUserOther(TRI_vocbase_t& vocbase,
+                                         velocypack::Slice params) {
   TRI_ASSERT(!vocbase.isSystem());
   TRI_ASSERT(params.isObject());
 
   VPackSlice users = params.get("users");
 
   if (users.isNone()) {
-    return true;  // exit, no users were specified
-  } else if (!users.isArray()) {
+    return {};  // exit, no users were specified
+  }
+  if (!users.isArray()) {
     LOG_TOPIC("44623", ERR, Logger::STARTUP)
         << "addDefaultUserOther: users is invalid";
-    return false;
+    return {TRI_ERROR_INTERNAL, "invalid users array"};
   }
   auth::UserManager* um = AuthenticationFeature::instance()->userManager();
   if (um == nullptr) {
-    return true;  // server does not support users
+    return {};  // server does not support users
   }
 
   for (VPackSlice slice : VPackArrayIterator(users)) {
@@ -588,13 +589,14 @@ bool UpgradeTasks::addDefaultUserOther(TRI_vocbase_t& vocbase,
       LOG_TOPIC("60019", WARN, Logger::STARTUP)
           << "could not set permissions for new user " << user << ": "
           << res.errorMessage();
+      // this failure does not abort the operation or make it return an error.
     }
   }
-  return true;
+  return {};
 }
 
-bool UpgradeTasks::renameReplicationApplierStateFiles(
-    TRI_vocbase_t& vocbase, arangodb::velocypack::Slice slice) {
+Result UpgradeTasks::renameReplicationApplierStateFiles(
+    TRI_vocbase_t& vocbase, velocypack::Slice slice) {
   std::string const path = vocbase.engine().databasePath();
 
   std::string const source = arangodb::basics::FileUtils::buildFilename(
@@ -602,42 +604,35 @@ bool UpgradeTasks::renameReplicationApplierStateFiles(
 
   if (!basics::FileUtils::isRegularFile(source)) {
     // source file does not exist
-    return true;
+    return {};
   }
-
-  bool result = true;
 
   // copy file REPLICATION-APPLIER-STATE to REPLICATION-APPLIER-STATE-<id>
-  Result res =
-      basics::catchToResult([&vocbase, &path, &source, &result]() -> Result {
-        std::string const dest = arangodb::basics::FileUtils::buildFilename(
-            path, "REPLICATION-APPLIER-STATE-" + std::to_string(vocbase.id()));
+  return basics::catchToResult([&vocbase, &path, &source]() -> Result {
+    std::string const dest = arangodb::basics::FileUtils::buildFilename(
+        path, "REPLICATION-APPLIER-STATE-" + std::to_string(vocbase.id()));
 
-        LOG_TOPIC("75337", TRACE, Logger::STARTUP)
-            << "copying replication applier file '" << source << "' to '"
-            << dest << "'";
+    LOG_TOPIC("75337", TRACE, Logger::STARTUP)
+        << "copying replication applier file '" << source << "' to '" << dest
+        << "'";
 
-        std::string error;
-        if (!TRI_CopyFile(source, dest, error)) {
-          LOG_TOPIC("6c90c", WARN, Logger::STARTUP)
-              << "could not copy replication applier file '" << source
-              << "' to '" << dest << "'";
-          result = false;
-        }
-        return {};
-      });
-  if (res.fail()) {
-    return false;
-  }
-  return result;
+    std::string error;
+    if (!TRI_CopyFile(source, dest, error)) {
+      auto msg = absl::StrCat("could not copy replication applier file '",
+                              source, "' to '", dest, "'");
+      LOG_TOPIC("6c90c", WARN, Logger::STARTUP) << msg;
+      return {TRI_ERROR_INTERNAL, std::move(msg)};
+    }
+    return {};
+  });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief drops '_pregel_queries' collection
 ////////////////////////////////////////////////////////////////////////////////
 
-bool UpgradeTasks::dropPregelQueriesCollection(
-    TRI_vocbase_t& vocbase, arangodb::velocypack::Slice /*upgradeParams*/) {
+Result UpgradeTasks::dropPregelQueriesCollection(
+    TRI_vocbase_t& vocbase, velocypack::Slice /*upgradeParams*/) {
   std::shared_ptr<arangodb::LogicalCollection> col;
   auto res =
       arangodb::methods::Collections::lookup(vocbase, "_pregel_queries", col);
@@ -645,7 +640,10 @@ bool UpgradeTasks::dropPregelQueriesCollection(
     CollectionDropOptions dropOptions{.allowDropSystem = true,
                                       .allowDropGraphCollection = true};
     res = arangodb::methods::Collections::drop(*col, dropOptions);
-    return res.ok();
   }
-  return res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+    // this error is expected
+    res.reset();
+  }
+  return res;
 }

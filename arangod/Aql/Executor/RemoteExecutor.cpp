@@ -41,6 +41,7 @@
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
 #include "Network/ConnectionPool.h"
+#include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Rest/CommonDefines.h"
@@ -156,8 +157,9 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<
 
   traceInitializeCursorRequest(builder.slice());
 
-  auto res = sendAsyncRequest(fuerte::RestVerb::Put,
-                              "/_api/aql/initializeCursor", std::move(buffer));
+  auto res =
+      sendAsyncRequest(fuerte::RestVerb::Put, "/_api/aql/initializeCursor",
+                       std::move(buffer), std::move(guard));
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -254,7 +256,7 @@ auto ExecutionBlockImpl<RemoteExecutor>::executeWithoutTrace(
 
   auto res =
       sendAsyncRequest(fuerte::RestVerb::Put, RestAqlHandler::Route::execute(),
-                       std::move(buffer));
+                       std::move(buffer), std::move(guard));
 
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
@@ -350,7 +352,11 @@ Result handleErrorResponse(network::EndpointSpec const& spec, fuerte::Error err,
 
 Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(
     fuerte::RestVerb type, std::string const& urlPart,
-    VPackBuffer<uint8_t>&& body) {
+    VPackBuffer<uint8_t>&& body,
+    std::unique_lock<std::mutex>&& communicationGuard) {
+  ADB_PROD_ASSERT(communicationGuard.owns_lock() &&
+                  communicationGuard.mutex() == &_communicationMutex)
+      << "communicationGuard does not hold the lock for the correct mutex";
   NetworkFeature const& nf =
       _engine->getQuery().vocbase().server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
@@ -358,66 +364,67 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(
     // nullptr only happens on controlled shutdown
     return {TRI_ERROR_SHUTTING_DOWN};
   }
+  network::RequestOptions options;
+  options.database = _query.vocbase().name();
+  options.timeout = kDefaultTimeOutSecs;
+  options.skipScheduler = false;
+  options.continuationLane = RequestLane::CLUSTER_INTERNAL;
+  // the code below assumes that the network callback is resolved with higher
+  // priority than aql, which is currently medium.
+  static_assert(PriorityRequestLane(RequestLane::CLUSTER_INTERNAL) ==
+                RequestPriority::HIGH);
 
-  arangodb::network::EndpointSpec spec;
-  auto res = network::resolveDestination(nf, _server, spec).get();
-  if (res != TRI_ERROR_NO_ERROR) {
-    return Result(res);
-  }
-  TRI_ASSERT(!spec.endpoint.empty());
-
-  auto req = fuerte::createRequest(type, fuerte::ContentType::VPack);
-  req->header.database = _query.vocbase().name();
-  req->header.path = absl::StrCat(urlPart, "/", _queryId);
-  req->addVPack(std::move(body));
-
-  // Later, we probably want to set these sensibly:
-  req->timeout(kDefaultTimeOutSecs);
-  if (!_distributeId.empty()) {
-    req->header.addMeta(StaticStrings::AqlShardIdHeader, _distributeId);
-  }
-
-  network::addSourceHeader(nullptr, *req);
-
-  LOG_TOPIC("2713c", DEBUG, Logger::COMMUNICATION)
-      << "request to '" << _server << "' '" << fuerte::to_string(type) << " "
-      << req->header.path << "'";
-
-  bool isFromPool;
-  network::ConnectionPtr conn =
-      pool->leaseConnection(spec.endpoint, isFromPool);
-
-  _requestInFlight = true;
-  auto ticket = generateRequestTicket();
   TRI_IF_FAILURE("RemoteExecutor::impatienceTimeout") {
     // Vastly lower the request timeout. This should guarantee
     // a network timeout triggered and not continue with the query.
-    req->timeout(std::chrono::seconds(2));
+    options.timeout = std::chrono::seconds(2);
   }
 
-  conn->sendRequest(
-      std::move(req),
-      [this, ticket, spec, sqs = _engine->sharedState()](
-          fuerte::Error err, std::unique_ptr<fuerte::Request> req,
-          std::unique_ptr<fuerte::Response> res) {
+  network::Headers headers;
+  if (!_distributeId.empty()) {
+    headers.emplace(StaticStrings::AqlShardIdHeader, _distributeId);
+  }
+
+  _requestInFlight = true;
+  auto ticket = generateRequestTicket();
+
+  _engine->getQuery().incHttpRequests(unsigned(1));
+
+  communicationGuard.unlock();
+  network::sendRequest(pool, _server, type,
+                       absl::StrCat(urlPart, "/", _queryId), std::move(body),
+                       std::move(options), std::move(headers))
+      .thenFinal([this, ticket, sqs = _engine->sharedState()](
+                     futures::Try<network::Response> resp) {
         // `this` is only valid as long as sharedState is valid.
         // So we must execute this under sharedState's mutex.
-        sqs->executeAndWakeup([&] {
+        sqs->executeAndWakeup([&]() {
+          auto result = basics::catchToResultT([&]() { return &resp.get(); });
+
           std::lock_guard<std::mutex> guard(_communicationMutex);
+
           if (_lastTicket == ticket) {
-            if (err != fuerte::Error::NoError || res->statusCode() >= 400) {
-              _lastError = handleErrorResponse(spec, err, res.get());
+            ScopeGuard inFlightGuard(
+                [&]() noexcept { _requestInFlight = false; });
+
+            if (result.fail()) {
+              _lastError = result.result();
             } else {
-              _lastResponse = std::move(res);
+              auto err = result.get()->error;
+              auto res = result.get()->stealResponse();
+              if (err != fuerte::Error::NoError || res->statusCode() >= 400) {
+                network::EndpointSpec spec;
+                spec.serverId = _server;
+                _lastError = handleErrorResponse(spec, err, res.get());
+              } else {
+                _lastResponse = std::move(res);
+              }
             }
-            _requestInFlight = false;
             return true;
           }
           return false;
         });
       });
-
-  _engine->getQuery().incHttpRequests(unsigned(1));
 
   return {};
 }

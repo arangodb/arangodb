@@ -244,6 +244,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
         _resourceMonitor(monitor),
         _index(index),
         _cache(std::static_pointer_cast<EdgeIndexCacheType>(std::move(cache))),
+        _maxCacheValueSize(_cache == nullptr ? 0 : _cache->maxCacheValueSize()),
         _keys(std::move(keys)),
         _keysIterator(_keys.slice()),
         _bounds(RocksDBKeyBounds::EdgeIndex(0)),
@@ -574,35 +575,52 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
       auto end = _bounds.end();
 
       resetInplaceMemory();
-      _builder.openArray(true);
-      for (iterator->Seek(_bounds.start());
-           iterator->Valid() && (cmp->Compare(iterator->key(), end) < 0);
-           iterator->Next()) {
-        LocalDocumentId const docId =
-            RocksDBKey::edgeDocumentId(iterator->key());
 
-        TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(iterator->key()));
+      try {
+        _builder.openArray(true);
+        for (iterator->Seek(_bounds.start());
+             iterator->Valid() && (cmp->Compare(iterator->key(), end) < 0);
+             iterator->Next()) {
+          LocalDocumentId const docId =
+              RocksDBKey::edgeDocumentId(iterator->key());
 
-        // adding documentId and _from or _to value
-        _builder.add(VPackValue(docId.id()));
-        std::string_view vertexId = RocksDBValue::vertexId(iterator->value());
+          TRI_ASSERT(_index->objectId() ==
+                     RocksDBKey::objectId(iterator->key()));
 
-        // construct a potentially prefix-compressed vertex id from the original
-        // _from/_to value
-        std::string_view cacheValue =
-            _index->buildCompressedCacheValue(cacheValueCollection, vertexId);
-        TRI_ASSERT(!cacheValue.empty() && vertexId.ends_with(cacheValue));
-        _builder.add(VPackValue(cacheValue));
+          size_t previousLength = _builder.bufferRef().byteSize();
+
+          // adding documentId and _from or _to value
+          _builder.add(VPackValue(docId.id()));
+          std::string_view vertexId = RocksDBValue::vertexId(iterator->value());
+
+          // construct a potentially prefix-compressed vertex id from the
+          // original _from/_to value
+          std::string_view cacheValue =
+              _index->buildCompressedCacheValue(cacheValueCollection, vertexId);
+          TRI_ASSERT(!cacheValue.empty() && vertexId.ends_with(cacheValue));
+          _builder.add(VPackValue(cacheValue));
+
+          size_t newLength = _builder.bufferRef().byteSize();
+          TRI_ASSERT(newLength >= previousLength);
+          size_t diff = newLength - previousLength;
+          scope.increase(diff);
+        }
+        _builder.close();
+      } catch (...) {
+        // clear builder so that _memoryUsage is not != to builder's size().
+        _builder.clear();
+        throw;
       }
-      _builder.close();
 
       // validate that Iterator is in a good shape and hasn't failed
       rocksutils::checkIteratorStatus(*iterator);
     }
     // iterator not needed anymore
-    scope.decrease(expectedIteratorMemoryUsage);
+    scope.revert();
 
+    // now add the actual memory usage for the builder's contents
     scope.increase(_builder.size());
+
     // now we are responsible for tracking the memory usage
     _memoryUsage += scope.trackedAndSteal();
 
@@ -622,6 +640,13 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
     TRI_ASSERT(_cache != nullptr);
     TRI_ASSERT(slice.isArray());
 
+    size_t const originalSize = slice.byteSize();
+
+    if (ADB_UNLIKELY(originalSize > _maxCacheValueSize)) {
+      // dont even attempt to cache the value due to its excessive size
+      return;
+    }
+
     bool const isEmpty = slice.length() == 0;
 
     auto& cmf =
@@ -632,8 +657,6 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
     size_t const minValueSizeForCompression =
         cmf.minValueSizeForEdgeCompression();
     int const accelerationFactor = cmf.accelerationFactorForEdgeCompression();
-
-    size_t const originalSize = slice.byteSize();
 
     auto [data, size, didCompress] = tryCompress(
         slice, originalSize, minValueSizeForCompression, accelerationFactor,
@@ -663,6 +686,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
   RocksDBEdgeIndex const* _index;
 
   std::shared_ptr<EdgeIndexCacheType> _cache;
+  size_t const _maxCacheValueSize;
   velocypack::Builder _keys;
   velocypack::ArrayIterator _keysIterator;
 

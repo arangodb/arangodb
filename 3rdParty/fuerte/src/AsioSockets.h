@@ -30,12 +30,29 @@
 namespace arangodb { namespace fuerte { inline namespace v1 {
 
 namespace {
-template <typename SocketT, typename F>
+template <typename SocketT, typename F, typename IsAbortedCb>
 void resolveConnect(detail::ConnectionConfiguration const& config,
                     asio_ns::ip::tcp::resolver& resolver, SocketT& socket,
-                    F&& done) {
-  auto cb = [&socket, done(std::forward<F>(done))](auto ec, auto it) mutable {
+                    F&& done, IsAbortedCb&& isAborted) {
+  auto cb = [&socket, 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+             fail = config._failConnectAttempts > 0,
+#endif  
+             done = std::forward<F>(done),
+             isAborted = std::forward<IsAbortedCb>(isAborted)](auto ec, auto it) mutable {
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+    if (fail) {
+      // use an error code != operation_aborted
+      ec = boost::system::errc::make_error_code(boost::system::errc::not_enough_memory);
+    }
+#endif
+
+    if (isAborted()) {
+      ec = asio_ns::error::operation_aborted;
+    }
+
     if (ec) {  // error in address resolver
+      FUERTE_LOG_DEBUG << "received error during address resolving: " << ec.message() << "\n";
       done(ec);
       return;
     }
@@ -44,7 +61,12 @@ void resolveConnect(detail::ConnectionConfiguration const& config,
       // A successful resolve operation is guaranteed to pass a
       // non-empty range to the handler.
       asio_ns::async_connect(socket, it,
-                             [done(std::move(done))](auto ec, auto it) mutable {
+                             [done](auto ec, auto it) mutable {
+                               if (ec) {
+                                 FUERTE_LOG_DEBUG << "executing async connect callback, error: " << ec.message() << "\n";
+                               } else {
+                                 FUERTE_LOG_DEBUG << "executing async connect callback, no error\n";
+                               }
                                std::forward<F>(done)(ec);
                              });
     } catch (std::bad_alloc const&) {
@@ -63,11 +85,17 @@ void resolveConnect(detail::ConnectionConfiguration const& config,
   auto it = resolver.resolve(config._host, config._port, ec);
   cb(ec, it);
 #else
-  // Resolve the host asynchronous into a series of endpoints
+  // Resolve the host asynchronously into a series of endpoints
+  FUERTE_LOG_DEBUG << "scheduled callback to resolve host " << config._host << ":" << config._port << "\n";
   resolver.async_resolve(config._host, config._port, std::move(cb));
 #endif
 }
 }  // namespace
+
+enum class ConnectTimerRole {
+  kConnect = 1,
+  kReconnect = 2,
+};
 
 template <SocketType T>
 struct Socket {};
@@ -77,14 +105,39 @@ struct Socket<SocketType::Tcp> {
   Socket(EventLoopService&, asio_ns::io_context& ctx)
       : resolver(ctx), socket(ctx), timer(ctx) {}
 
-  ~Socket() { this->cancel(); }
+  ~Socket() { 
+    try {
+      this->cancel(); 
+    } catch (std::exception const& ex) {
+      FUERTE_LOG_ERROR << "caught exception during tcp socket shutdown: " << ex.what() << "\n";
+    }
+  }
 
   template <typename F>
   void connect(detail::ConnectionConfiguration const& config, F&& done) {
-    resolveConnect(config, resolver, socket, std::forward<F>(done));
+    resolveConnect(config, resolver, socket, [this, done = std::forward<F>(done)](asio_ns::error_code ec) mutable {
+      FUERTE_LOG_DEBUG << "executing tcp connect callback, ec: " << ec.message() << ", canceled: " << this->canceled << "\n";
+      if (canceled) {
+        // cancel() was already called on this socket
+        FUERTE_ASSERT(socket.is_open() == false);
+        ec = asio_ns::error::operation_aborted;
+      }
+      done(ec);
+    }, [this]() {
+      return canceled;
+    });
   }
 
+  bool isOpen() const {
+    return socket.is_open();
+  }
+
+  void rearm() {
+    canceled = false;
+  }  
+
   void cancel() {
+    canceled = true;
     try {
       timer.cancel();
       resolver.cancel();
@@ -92,23 +145,28 @@ struct Socket<SocketType::Tcp> {
         asio_ns::error_code ec;
         socket.close(ec);
       }
-    } catch (...) {
+    } catch (std::exception const& ex) {
+      FUERTE_LOG_ERROR << "caught exception during tcp socket cancelation: " << ex.what() << "\n";
     }
   }
 
   template <typename F>
   void shutdown(F&& cb) {
-    asio_ns::error_code ec;  // prevents exceptions
+    // ec is an out parameter here that is passed to the methods so they
+    // can fill in whatever error happened. we ignore it here anyway. we
+    // use the ec-variants of the methods here to prevent exceptions.
+    asio_ns::error_code ec;
     try {
-#ifndef _WIN32
-      socket.cancel(ec);
-#endif
+      timer.cancel(ec);
       if (socket.is_open()) {
+        socket.cancel(ec);
         socket.shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
-        ec.clear();
         socket.close(ec);
       }
-    } catch (...) {
+    } catch (std::exception const& ex) {
+      // an exception is unlikely to occur here, as we are using the error-code
+      // variants of cancel/shutdown/close above 
+      FUERTE_LOG_ERROR << "caught exception during tcp socket shutdown: " << ex.what() << "\n";
     }
     std::forward<F>(cb)(ec);
   }
@@ -116,21 +174,36 @@ struct Socket<SocketType::Tcp> {
   asio_ns::ip::tcp::resolver resolver;
   asio_ns::ip::tcp::socket socket;
   asio_ns::steady_timer timer;
+  ConnectTimerRole connectTimerRole = ConnectTimerRole::kConnect;
+  bool canceled = false;
 };
 
 template <>
 struct Socket<fuerte::SocketType::Ssl> {
   Socket(EventLoopService& loop, asio_ns::io_context& ctx)
-    : resolver(ctx), socket(ctx, loop.sslContext()), timer(ctx), cleanupDone(false) {}
+    : resolver(ctx), socket(ctx, loop.sslContext()), timer(ctx), ctx(ctx),
+      sslContext(loop.sslContext()), cleanupDone(false) {}
 
-  ~Socket() { this->cancel(); }
+  ~Socket() { 
+    try {
+      this->cancel(); 
+    } catch (std::exception const& ex) {
+      FUERTE_LOG_ERROR << "caught exception during ssl socket shutdown: " << ex.what() << "\n";
+    }
+  }
 
   template <typename F>
   void connect(detail::ConnectionConfiguration const& config, F&& done) {
     bool verify = config._verifyHost;
     resolveConnect(
         config, resolver, socket.next_layer(),
-        [=, this, done(std::forward<F>(done))](auto const& ec) mutable {
+        [=, this](asio_ns::error_code ec) mutable {
+          FUERTE_LOG_DEBUG << "executing ssl connect callback, ec: " << ec.message() << ", canceled: " << this->canceled << "\n";
+          if (canceled) {
+            // cancel() was already called on this socket
+            FUERTE_ASSERT(socket.lowest_layer().is_open() == false);
+            ec = asio_ns::error::operation_aborted;
+          }
           if (ec) {
             done(ec);
             return;
@@ -167,20 +240,33 @@ struct Socket<fuerte::SocketType::Ssl> {
           }
           socket.async_handshake(asio_ns::ssl::stream_base::client,
                                  std::move(done));
+        }, [this]() { 
+          return canceled; 
         });
   }
+  
+  bool isOpen() const {
+    return socket.lowest_layer().is_open();
+  }
 
+  void rearm() {
+    // create a new socket and declare it ready
+    socket = asio_ns::ssl::stream<asio_ns::ip::tcp::socket>(this->ctx, this->sslContext);
+    canceled = false;
+  }
+  
   void cancel() {
+    canceled = true;
     try {
       timer.cancel();
       resolver.cancel();
       if (socket.lowest_layer().is_open()) {  // non-graceful shutdown
         asio_ns::error_code ec;
         socket.lowest_layer().shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
-        ec.clear();
         socket.lowest_layer().close(ec);
       }
-    } catch (...) {
+    } catch (std::exception const& ex) {
+      FUERTE_LOG_ERROR << "caught exception during ssl socket cancelation: " << ex.what() << "\n";
     }
   }
 
@@ -192,45 +278,51 @@ struct Socket<fuerte::SocketType::Ssl> {
     //      socket is a member. This means that the allocation of the connection and
     //      this of the socket is kept until all asynchronous operations are completed
     //      (or aborted).
-    asio_ns::error_code ec;  // prevents exceptions
-    socket.lowest_layer().cancel(ec);
+    
+    // ec is an out parameter here that is passed to the methods so they
+    // can fill in whatever error happened. we ignore it here anyway. we
+    // use the ec-variants of the methods here to prevent exceptions.
+    asio_ns::error_code ec; 
 
     if (!socket.lowest_layer().is_open()) {
       timer.cancel(ec);
       std::forward<F>(cb)(ec);
       return;
     }
+      
+    socket.lowest_layer().cancel(ec);
     cleanupDone = false;
-    timer.expires_from_now(std::chrono::seconds(3));
-    timer.async_wait([cb, this](asio_ns::error_code ec) {
-      // Copy in callback such that the connection object is kept alive long
-      // enough, please do not delete, although it is not used here!
-      if (!cleanupDone && !ec) {
+    // implicitly cancels any previous timers
+    timer.expires_after(std::chrono::seconds(3));
+
+    socket.async_shutdown([cb, this](asio_ns::error_code ec) {
+      timer.cancel();
+      if (!cleanupDone) {
         socket.lowest_layer().shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
-        ec.clear();
         socket.lowest_layer().close(ec);
         cleanupDone = true;
       }
+      cb(ec);
     });
-    socket.async_shutdown([cb(std::forward<F>(cb)), this](auto const& ec) {
-      timer.cancel();
-#ifndef _WIN32
-      if (!cleanupDone && (!ec || ec == asio_ns::error::basic_errors::not_connected)) {
-        asio_ns::error_code ec2;
-        socket.lowest_layer().shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec2);
-        ec2.clear();
-        socket.lowest_layer().close(ec2);
+    timer.async_wait([cb(std::forward<F>(cb)), this](asio_ns::error_code ec) {
+      // Copy in callback such that the connection object is kept alive long
+      // enough, please do not delete, although it is not used here!
+      if (!ec && !cleanupDone) {
+        socket.lowest_layer().shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
+        socket.lowest_layer().close(ec);
         cleanupDone = true;
       }
-#endif
-      cb(ec);
     });
   }
 
   asio_ns::ip::tcp::resolver resolver;
   asio_ns::ssl::stream<asio_ns::ip::tcp::socket> socket;
   asio_ns::steady_timer timer;
+  asio_ns::io_context& ctx;
+  asio_ns::ssl::context& sslContext;
   std::atomic<bool> cleanupDone;
+  ConnectTimerRole connectTimerRole = ConnectTimerRole::kConnect;
+  bool canceled = false;
 };
 
 #ifdef ASIO_HAS_LOCAL_SOCKETS
@@ -238,36 +330,74 @@ template <>
 struct Socket<fuerte::SocketType::Unix> {
   Socket(EventLoopService&, asio_ns::io_context& ctx)
       : socket(ctx), timer(ctx) {}
-  ~Socket() { this->cancel(); }
+
+  ~Socket() { 
+    canceled = true;
+    try {
+      this->cancel(); 
+    } catch (std::exception const& ex) {
+      FUERTE_LOG_ERROR << "caught exception during unix socket shutdown: " << ex.what() << "\n";
+    }
+  }
 
   template <typename F>
   void connect(detail::ConnectionConfiguration const& config, F&& done) {
+    if (canceled) {
+      // cancel() was already called on this socket
+      done(asio_ns::error::operation_aborted);
+      return;
+    }
+
     asio_ns::local::stream_protocol::endpoint ep(config._host);
     socket.async_connect(ep, std::forward<F>(done));
   }
+  
+  bool isOpen() const {
+    return socket.is_open();
+  }
 
+  void rearm() {
+    canceled = false;
+  }
+  
   void cancel() {
-    timer.cancel();
-    if (socket.is_open()) {  // non-graceful shutdown
-      asio_ns::error_code ec;
-      socket.close(ec);
+    canceled = true;
+    try {
+      timer.cancel();
+      if (socket.is_open()) {  // non-graceful shutdown
+        asio_ns::error_code ec;
+        socket.close(ec);
+      }
+    } catch (std::exception const& ex) {
+      FUERTE_LOG_ERROR << "caught exception during unix socket cancelation: " << ex.what() << "\n";
     }
   }
 
   template <typename F>
   void shutdown(F&& cb) {
-    asio_ns::error_code ec;  // prevents exceptions
-    timer.cancel(ec);
-    if (socket.is_open()) {
-      socket.cancel(ec);
-      socket.shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
-      socket.close(ec);
+    // ec is an out parameter here that is passed to the methods so they
+    // can fill in whatever error happened. we ignore it here anyway. we
+    // use the ec-variants of the methods here to prevent exceptions.
+    asio_ns::error_code ec; 
+    try {
+      timer.cancel(ec);
+      if (socket.is_open()) {
+        socket.cancel(ec);
+        socket.shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
+        socket.close(ec);
+      }
+    } catch (std::exception const& ex) {
+      // an exception is unlikely to occur here, as we are using the error-code
+      // variants of cancel/shutdown/close above 
+      FUERTE_LOG_ERROR << "caught exception during unix socket shutdown: " << ex.what() << "\n";
     }
     std::forward<F>(cb)(ec);
   }
 
   asio_ns::local::stream_protocol::socket socket;
   asio_ns::steady_timer timer;
+  ConnectTimerRole connectTimerRole = ConnectTimerRole::kConnect;
+  bool canceled = false;
 };
 #endif  // ASIO_HAS_LOCAL_SOCKETS
 

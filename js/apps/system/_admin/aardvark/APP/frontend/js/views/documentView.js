@@ -409,6 +409,7 @@
     },
 
     saveDocument: function () {
+      this.editor.repair();
       if ($('#saveDocumentButton').attr('disabled') === undefined) {
         if (this.collection.first().attributes._id.substr(0, 1) === '_') {
           var buttons = []; var tableContent = [];

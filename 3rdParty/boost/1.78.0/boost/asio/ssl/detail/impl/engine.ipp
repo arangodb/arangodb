@@ -68,6 +68,26 @@ engine::engine(engine&& other) BOOST_ASIO_NOEXCEPT
 
 engine::~engine()
 {
+  clear();
+}
+
+#if defined(BOOST_ASIO_HAS_MOVE)
+engine& engine::operator=(engine&& other) BOOST_ASIO_NOEXCEPT
+{
+  if (this != &other)
+  {
+    clear();
+    ssl_ = other.ssl_;
+    ext_bio_ = other.ext_bio_;
+    other.ssl_ = 0;
+    other.ext_bio_ = 0;
+  }
+  return *this;
+}
+#endif // defined(BOOST_ASIO_HAS_MOVE)
+
+void engine::clear()
+{
   if (ssl_ && SSL_get_app_data(ssl_))
   {
     delete static_cast<verify_callback_base*>(SSL_get_app_data(ssl_));
@@ -80,20 +100,6 @@ engine::~engine()
   if (ssl_)
     ::SSL_free(ssl_);
 }
-
-#if defined(BOOST_ASIO_HAS_MOVE)
-engine& engine::operator=(engine&& other) BOOST_ASIO_NOEXCEPT
-{
-  if (this != &other)
-  {
-    ssl_ = other.ssl_;
-    ext_bio_ = other.ext_bio_;
-    other.ssl_ = 0;
-    other.ext_bio_ = 0;
-  }
-  return *this;
-}
-#endif // defined(BOOST_ASIO_HAS_MOVE)
 
 SSL* engine::native_handle()
 {
