@@ -3932,7 +3932,7 @@ arangodb::Result lockServersTrxCommit(network::ConnectionPool* pool,
 
   if (finalRes.ok()) {
     LOG_TOPIC("c1869", DEBUG, Logger::BACKUP)
-        << "acquired transaction locks on all db servers";
+        << "acquired transaction locks on all coordinators";
   }
 
   return finalRes;
@@ -3941,7 +3941,8 @@ arangodb::Result lockServersTrxCommit(network::ConnectionPool* pool,
 arangodb::Result unlockServersTrxCommit(
     network::ConnectionPool* pool, std::string const& backupId,
     std::vector<ServerID> const& lockedServers) {
-  using namespace std::chrono;
+  LOG_TOPIC("2ba8f", DEBUG, Logger::BACKUP)
+      << "best try to kill all locks on coordinators " << lockedServers;
 
   // Make sure all db servers have the backup with backup Id
 
@@ -3960,18 +3961,29 @@ arangodb::Result unlockServersTrxCommit(
   std::vector<Future<network::Response>> futures;
   futures.reserve(lockedServers.size());
 
-  for (auto const& dbServer : lockedServers) {
-    futures.emplace_back(network::sendRequestRetry(pool, "server:" + dbServer,
-                                                   fuerte::RestVerb::Post, url,
-                                                   body, reqOpts));
+  for (auto const& server : lockedServers) {
+    futures.emplace_back(network::sendRequestRetry(
+        pool, "server:" + server, fuerte::RestVerb::Post, url, body, reqOpts));
   }
 
-  std::ignore = futures::collectAll(futures).get();
+  auto responses = futures::collectAll(std::move(futures)).get();
 
-  LOG_TOPIC("2ba8f", DEBUG, Logger::BACKUP)
-      << "best try to kill all locks on db servers";
+  Result res;
+  for (auto const& tryRes : responses) {
+    network::Response const& r = tryRes.get();
 
-  return arangodb::Result();
+    if (r.combinedResult().fail() && res.ok()) {
+      res = r.combinedResult();
+    }
+  }
+
+  LOG_TOPIC("48510", DEBUG, Logger::BACKUP)
+      << "killing all locks on coordinators resulted in: "
+      << res.errorMessage();
+
+  // return value is ignored by callers, but we'll return our status
+  // anyway.
+  return res;
 }
 
 std::vector<std::string> idPath{"result", "id"};
