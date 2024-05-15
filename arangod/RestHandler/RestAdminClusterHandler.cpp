@@ -1670,7 +1670,7 @@ RestAdminClusterHandler::waitForDBServerMaintenance(std::string const& serverId,
       true, true);
   auto& cf = server().getFeature<ClusterFeature>();
 
-  if (auto result = cf.agencyCallbackRegistry()->registerCallback(cb, true);
+  if (auto result = cf.agencyCallbackRegistry()->registerCallback(cb);
       result.fail()) {
     return {};
   }

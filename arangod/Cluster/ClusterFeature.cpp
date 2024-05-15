@@ -48,6 +48,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/LogScale.h"
@@ -907,8 +908,8 @@ void ClusterFeature::start() {
     _hotbackupRestoreCallback =
         std::make_shared<AgencyCallback>(server(), "Sync/HotBackupRestoreDone",
                                          hotBackupRestoreDone, true, false);
-    Result r = _agencyCallbackRegistry->registerCallback(
-        _hotbackupRestoreCallback, true);
+    Result r =
+        _agencyCallbackRegistry->registerCallback(_hotbackupRestoreCallback);
     if (r.fail()) {
       LOG_TOPIC("82516", WARN, Logger::BACKUP)
           << "Could not register hotbackup restore callback, this could lead "
@@ -1136,8 +1137,10 @@ AgencyCache& ClusterFeature::agencyCache() {
 }
 
 void ClusterFeature::allocateMembers() {
-  _agencyCallbackRegistry =
-      std::make_unique<AgencyCallbackRegistry>(server(), agencyCallbacksPath());
+  _agencyCallbackRegistry = std::make_unique<AgencyCallbackRegistry>(
+      server(), *this, server().getFeature<EngineSelectorFeature>(),
+      server().getFeature<DatabaseFeature>(),
+      server().getFeature<metrics::MetricsFeature>(), agencyCallbacksPath());
   _agencyCache = std::make_unique<AgencyCache>(
       server(), *_agencyCallbackRegistry, _syncerShutdownCode);
   _clusterInfo = std::make_unique<ClusterInfo>(
