@@ -141,6 +141,8 @@ NetworkFeature::NetworkFeature(Server& server, metrics::MetricsFeature& metrics,
   startsAfter<EngineSelectorFeature>();
 }
 
+NetworkFeature::~NetworkFeature() { cancelRetryRequests(); }
+
 void NetworkFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   options->addSection("network", "cluster-internal networking");
@@ -348,15 +350,7 @@ void NetworkFeature::start() {
 }
 
 void NetworkFeature::beginShutdown() {
-  {
-    std::lock_guard<std::mutex> guard(_workItemMutex);
-    _workItem.reset();
-    for (auto const& [req, item] : _retryRequests) {
-      TRI_ASSERT(item != nullptr);
-      item->cancel();
-    }
-    _retryRequests.clear();
-  }
+  cancelRetryRequests();
   _poolPtr.store(nullptr, std::memory_order_relaxed);
   if (_pool) {  // first cancel all connections
     _pool->shutdownConnections();
@@ -364,16 +358,7 @@ void NetworkFeature::beginShutdown() {
 }
 
 void NetworkFeature::stop() {
-  {
-    // we might have posted another workItem during shutdown.
-    std::lock_guard<std::mutex> guard(_workItemMutex);
-    _workItem.reset();
-    for (auto const& [req, item] : _retryRequests) {
-      TRI_ASSERT(item != nullptr);
-      item->cancel();
-    }
-    _retryRequests.clear();
-  }
+  cancelRetryRequests();
   if (_pool) {
     _pool->shutdownConnections();
   }
@@ -383,6 +368,19 @@ void NetworkFeature::unprepare() {
   if (_pool) {
     _pool->drainConnections();
   }
+}
+
+void NetworkFeature::cancelRetryRequests() noexcept try {
+  std::lock_guard<std::mutex> guard(_workItemMutex);
+  _workItem.reset();
+  for (auto const& [req, item] : _retryRequests) {
+    TRI_ASSERT(item != nullptr);
+    item->cancel();
+  }
+  _retryRequests.clear();
+} catch (std::exception const& ex) {
+  LOG_TOPIC("2b843", WARN, Logger::COMMUNICATION)
+      << "caught exception while canceling retry requests: " << ex.what();
 }
 
 network::ConnectionPool* NetworkFeature::pool() const noexcept {

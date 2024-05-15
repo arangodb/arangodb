@@ -57,6 +57,7 @@ class NetworkFeature final : public ArangodFeature {
 
   NetworkFeature(Server& server, metrics::MetricsFeature& metrics,
                  network::ConnectionPool::Config);
+  ~NetworkFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
@@ -65,6 +66,8 @@ class NetworkFeature final : public ArangodFeature {
   void beginShutdown() override;
   void stop() override;
   void unprepare() override;
+
+  void cancelRetryRequests() noexcept;
 
   bool prepared() const noexcept;
 

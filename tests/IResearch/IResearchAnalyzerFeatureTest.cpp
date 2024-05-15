@@ -22,7 +22,6 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <Agency/AsyncAgencyComm.h>
 #include "gtest/gtest.h"
 
 #include "analysis/analyzers.hpp"
@@ -37,6 +36,7 @@
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
 
+#include "Agency/AsyncAgencyComm.h"
 #include "Agency/Store.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
@@ -45,6 +45,7 @@
 #include "Aql/Function.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/QueryRegistry.h"
+#include "Auth/UserManager.h"
 #include "Basics/files.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
