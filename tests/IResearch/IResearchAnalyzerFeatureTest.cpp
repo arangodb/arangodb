@@ -2532,8 +2532,10 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
       .agencyCache()
       .applyTestTransaction(bogus.slice());
 
-  arangodb::network::ConnectionPool::Config poolConfig(
-      server.server().getFeature<arangodb::metrics::MetricsFeature>());
+  arangodb::network::ConnectionPool::Config poolConfig;
+  poolConfig.metrics =
+      arangodb::network::ConnectionPool::Metrics::fromMetricsFeature(
+          server.getFeature<arangodb::metrics::MetricsFeature>(), "mock-foo");
   poolConfig.clusterInfo =
       &server.getFeature<arangodb::ClusterFeature>().clusterInfo();
   poolConfig.numIOThreads = 1;
@@ -2647,8 +2649,11 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     auto& cluster = newServer.addFeature<arangodb::ClusterFeature>();
     auto& networkFeature = newServer.addFeature<arangodb::NetworkFeature>(
         newServer.getFeature<arangodb::metrics::MetricsFeature>(),
-        arangodb::network::ConnectionPool::Config(
-            newServer.getFeature<arangodb::metrics::MetricsFeature>()));
+        arangodb::network::ConnectionPool::Config{
+            .metrics =
+                arangodb::network::ConnectionPool::Metrics::fromMetricsFeature(
+                    newServer.getFeature<arangodb::metrics::MetricsFeature>(),
+                    "mock")});
     auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();
     auto& selector = newServer.addFeature<arangodb::EngineSelectorFeature>();
     StorageEngineMock engine(newServer);
@@ -2738,8 +2743,11 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     auto& cluster = newServer.addFeature<arangodb::ClusterFeature>();
     auto& networkFeature = newServer.addFeature<arangodb::NetworkFeature>(
         newServer.getFeature<arangodb::metrics::MetricsFeature>(),
-        arangodb::network::ConnectionPool::Config(
-            newServer.getFeature<arangodb::metrics::MetricsFeature>()));
+        arangodb::network::ConnectionPool::Config{
+            .metrics =
+                arangodb::network::ConnectionPool::Metrics::fromMetricsFeature(
+                    newServer.getFeature<arangodb::metrics::MetricsFeature>(),
+                    "mock")});
     auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();
     auto& selector = newServer.addFeature<arangodb::EngineSelectorFeature>();
     StorageEngineMock engine(newServer);

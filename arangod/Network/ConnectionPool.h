@@ -52,8 +52,21 @@ class ConnectionPool final {
   friend class ConnectionPtr;
 
  public:
+  struct Metrics {
+    metrics::Gauge<uint64_t>* totalConnectionsInPool;
+    metrics::Counter* successSelect;
+    metrics::Counter* noSuccessSelect;
+    metrics::Counter* connectionsCreated;
+
+    metrics::Histogram<metrics::LogScale<float>>* leaseHistMSec;
+
+    static Metrics fromMetricsFeature(metrics::MetricsFeature& feature,
+                                      std::string_view name);
+    static Metrics createStub(std::string_view name);
+  };
+
   struct Config {
-    metrics::MetricsFeature& metricsFeature;
+    Metrics metrics;
     // note: clusterInfo can remain a nullptr in unit tests
     ClusterInfo* clusterInfo = nullptr;
     uint64_t maxOpenConnections = 1024;     /// max number of connections
@@ -63,9 +76,6 @@ class ConnectionPool final {
     fuerte::ProtocolType protocol = fuerte::ProtocolType::Http;
     // name must remain valid for the lifetime of the Config object.
     char const* name = "";
-
-    Config(metrics::MetricsFeature& metricsFeature)
-        : metricsFeature(metricsFeature) {}
   };
 
   ConnectionPool(ConnectionPool const& other) = delete;
