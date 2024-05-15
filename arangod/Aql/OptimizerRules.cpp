@@ -9032,7 +9032,7 @@ void arangodb::aql::optimizeProjections(Optimizer* opt,
                                  /*expectedAttribute*/ "",
                                  /*excludeStartNodeFilterCondition*/ true,
                                  attributes)) {
-        if (attributes.size() <= DocumentProducingNode::kMaxProjections) {
+        if (attributes.size() <= matNode->maxProjections()) {
           matNode->projections() = Projections(std::move(attributes));
         }
       }
