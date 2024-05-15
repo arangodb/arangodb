@@ -32,6 +32,7 @@
 #include "Agency/Node.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Containers/FlatHashSet.h"
 #include "Logger/LoggerFeature.h"
@@ -46,25 +47,34 @@
 
 namespace arangodb::metrics {
 
+template<typename Server>
 MetricsFeature::MetricsFeature(Server& server,
                                QueryRegistryFeature& queryRegistryFeature,
                                StatisticsFeature& statisticsFeature,
                                EngineSelectorFeature& engineSelectorFeature,
-                               ClusterMetricsFeature& clusterMetricsFeature)
-    : ArangodFeature{server, *this},
+                               ClusterMetricsFeature& clusterMetricsFeature,
+                               ClusterFeature& clusterFeature)
+    : ApplicationFeature{server, *this},
       _queryRegistryFeature(queryRegistryFeature),
       _statisticsFeature(statisticsFeature),
       _engineSelectorFeature(engineSelectorFeature),
       _clusterMetricsFeature(clusterMetricsFeature),
+      _clusterFeature(clusterFeature),
       _export{true},
       _exportReadWriteMetrics{false},
       _ensureWhitespace{true},
       _usageTrackingModeString{"disabled"},
       _usageTrackingMode{UsageTrackingMode::kDisabled} {
   setOptional(false);
-  startsAfter<LoggerFeature>();
-  startsBefore<application_features::GreetingsFeaturePhase>();
+  startsAfter<LoggerFeature, Server>();
+  startsBefore<application_features::GreetingsFeaturePhase, Server>();
 }
+
+template MetricsFeature::MetricsFeature(ArangodServer&, QueryRegistryFeature&,
+                                        StatisticsFeature&,
+                                        EngineSelectorFeature&,
+                                        ClusterMetricsFeature&,
+                                        ClusterFeature&);
 
 void MetricsFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
@@ -254,7 +264,8 @@ void MetricsFeature::toPrometheus(std::string& result,
     // StatisticsFeature only provides standard metrics
     auto time = std::chrono::duration<double, std::milli>(
         std::chrono::system_clock::now().time_since_epoch());
-    _statisticsFeature.toPrometheus(result, time.count(), _globals, _ensureWhitespace);
+    _statisticsFeature.toPrometheus(result, time.count(), _globals,
+                                    _ensureWhitespace);
 
     // Storage engine only provides standard metrics
     auto& es = _engineSelectorFeature.engine();
@@ -263,7 +274,8 @@ void MetricsFeature::toPrometheus(std::string& result,
     }
 
     // ClusterMetricsFeature only provides standard metrics
-    if (hasGlobals && _clusterMetricsFeature.isEnabled() && mode != CollectMode::Local) {
+    if (hasGlobals && _clusterMetricsFeature.isEnabled() &&
+        mode != CollectMode::Local) {
       _clusterMetricsFeature.toPrometheus(result, _globals, _ensureWhitespace);
     }
 
@@ -297,13 +309,14 @@ void MetricsFeature::toVPack(velocypack::Builder& builder,
     TRI_ASSERT(i.second);
     auto const name = i.second->name();
     if (kCoordinatorMetrics.count(name)) {
-      i.second->toVPack(builder, server());
+      i.second->toVPack(builder);
     }
   }
+  auto& ci = _clusterFeature.clusterInfo();
   for (auto const& [name, batch] : _batch) {
     TRI_ASSERT(batch);
     if (kCoordinatorBatch.count(name)) {
-      batch->toVPack(builder, server());
+      batch->toVPack(builder, ci);
     }
   }
   lock.unlock();

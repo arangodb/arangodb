@@ -47,6 +47,11 @@
 #include "Transaction/Options.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
+#include "Cluster/ClusterFeature.h"
+#include "Metrics/ClusterMetricsFeature.h"
+#include "Statistics/StatisticsFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 
 using namespace arangodb;
 
@@ -77,7 +82,12 @@ class PhysicalCollectionTest
     features.emplace_back(selector);
     selector.setEngineTesting(&engine);
     features.emplace_back(
-        server.addFeature<arangodb::metrics::MetricsFeature>());
+        server.addFeature<arangodb::metrics::MetricsFeature>(
+          server.template getFeature<arangodb::QueryRegistryFeature>(),
+          server.template getFeature<arangodb::StatisticsFeature>(),
+          server.template getFeature<arangodb::EngineSelectorFeature>(),
+          server.template getFeature<arangodb::metrics::ClusterMetricsFeature>(),
+          server.template getFeature<arangodb::ClusterFeature>()));
     features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(
         server.template getFeature<
             arangodb::metrics::MetricsFeature>()));  // required for

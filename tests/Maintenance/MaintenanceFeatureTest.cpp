@@ -39,6 +39,11 @@
 #include "Mocks/Servers.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/UpgradeFeature.h"
+#include "Cluster/ClusterFeature.h"
+#include "Metrics/ClusterMetricsFeature.h"
+#include "Statistics/StatisticsFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 
 #include "MaintenanceFeatureMock.h"
 
@@ -202,7 +207,12 @@ class MaintenanceFeatureTestUnthreaded : public ::testing::Test {
   void SetUp() override {
     as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(
         std::true_type{});
-    as.addFeature<arangodb::metrics::MetricsFeature>();
+    as.addFeature<arangodb::metrics::MetricsFeature>(
+      as.template getFeature<arangodb::QueryRegistryFeature>(),
+      as.template getFeature<arangodb::StatisticsFeature>(),
+      as.template getFeature<arangodb::EngineSelectorFeature>(),
+      as.template getFeature<arangodb::metrics::ClusterMetricsFeature>(),
+      as.template getFeature<arangodb::ClusterFeature>());
   }
 
   std::shared_ptr<arangodb::options::ProgramOptions> po =
@@ -439,7 +449,12 @@ struct MaintenanceFeatureTestThreaded : ::testing::Test {
   void SetUp() override {
     as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(
         std::false_type{});
-    as.addFeature<arangodb::metrics::MetricsFeature>();
+    as.addFeature<arangodb::metrics::MetricsFeature>(
+      as.template getFeature<arangodb::QueryRegistryFeature>(),
+      as.template getFeature<arangodb::StatisticsFeature>(),
+      as.template getFeature<arangodb::EngineSelectorFeature>(),
+      as.template getFeature<arangodb::metrics::ClusterMetricsFeature>(),
+      as.template getFeature<arangodb::ClusterFeature>());
   }
 };
 

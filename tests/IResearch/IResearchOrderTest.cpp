@@ -40,6 +40,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
 #include "Aql/SortCondition.h"
+#include "Cluster/ClusterFeature.h"
 #include "IResearch/AqlHelper.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/IResearchFeature.h"
@@ -47,9 +48,11 @@
 #include "IResearch/IResearchOrderFactory.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
+#include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
+#include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -281,7 +284,12 @@ class IResearchOrderTest
     selector.setEngineTesting(&engine);
     features.emplace_back(selector, false);
     features.emplace_back(
-        server.addFeature<arangodb::metrics::MetricsFeature>(), false);
+        server.addFeature<arangodb::metrics::MetricsFeature>(
+          server.template getFeature<arangodb::QueryRegistryFeature>(),
+          server.template getFeature<arangodb::StatisticsFeature>(),
+          server.template getFeature<arangodb::EngineSelectorFeature>(),
+          server.template getFeature<arangodb::metrics::ClusterMetricsFeature>(),
+          server.template getFeature<arangodb::ClusterFeature>()), false);
     features.emplace_back(server.addFeature<arangodb::AqlFeature>(), true);
     features.emplace_back(
         server.addFeature<arangodb::QueryRegistryFeature>(

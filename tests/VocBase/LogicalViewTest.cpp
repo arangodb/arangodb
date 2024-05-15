@@ -43,6 +43,11 @@
 #include "VocBase/LogicalView.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/vocbase.h"
+#include "Cluster/ClusterFeature.h"
+#include "Metrics/ClusterMetricsFeature.h"
+#include "Statistics/StatisticsFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 
 namespace {
 struct TestView : public arangodb::LogicalView {
@@ -124,11 +129,16 @@ class LogicalViewTest
     features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(),
                           false);
     features.emplace_back(
-        server.addFeature<arangodb::metrics::MetricsFeature>(), false);
-    features.emplace_back(
         server.addFeature<arangodb::QueryRegistryFeature>(
             server.template getFeature<arangodb::metrics::MetricsFeature>()),
         false);  // required for TRI_vocbase_t
+    features.emplace_back(
+      server.addFeature<arangodb::metrics::MetricsFeature>(
+        server.template getFeature<arangodb::QueryRegistryFeature>(),
+        server.template getFeature<arangodb::StatisticsFeature>(),
+        server.template getFeature<arangodb::EngineSelectorFeature>(),
+        server.template getFeature<arangodb::metrics::ClusterMetricsFeature>(),
+        server.template getFeature<arangodb::ClusterFeature>()), false);
     features.emplace_back(server.addFeature<arangodb::ViewTypesFeature>(),
                           false);  // required for LogicalView::create(...)
 

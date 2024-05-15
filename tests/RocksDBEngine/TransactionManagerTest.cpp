@@ -31,6 +31,11 @@
 #include "Metrics/MetricsFeature.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
+#include "Cluster/ClusterFeature.h"
+#include "Metrics/ClusterMetricsFeature.h"
+#include "Statistics/StatisticsFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 
 using namespace arangodb;
 
@@ -43,7 +48,12 @@ using namespace arangodb;
 /// @brief simple non-overlapping
 TEST(RocksDBTransactionManager, test_non_overlapping) {
   ArangodServer server{nullptr, nullptr};
-  server.addFeature<metrics::MetricsFeature>();
+  server.addFeature<metrics::MetricsFeature>(
+    server.template getFeature<arangodb::QueryRegistryFeature>(),
+    server.template getFeature<arangodb::StatisticsFeature>(),
+    server.template getFeature<arangodb::EngineSelectorFeature>(),
+    server.template getFeature<arangodb::metrics::ClusterMetricsFeature>(),
+    server.template getFeature<arangodb::ClusterFeature>());
   transaction::ManagerFeature feature(server);
   transaction::Manager tm(feature);
 
@@ -65,7 +75,12 @@ TEST(RocksDBTransactionManager, test_non_overlapping) {
 TEST(RocksDBTransactionManager, test_overlapping) {
   auto trxId = static_cast<TransactionId>(1);
   ArangodServer server{nullptr, nullptr};
-  server.addFeature<metrics::MetricsFeature>();
+  server.addFeature<metrics::MetricsFeature>(
+    server.template getFeature<arangodb::QueryRegistryFeature>(),
+    server.template getFeature<arangodb::StatisticsFeature>(),
+    server.template getFeature<arangodb::EngineSelectorFeature>(),
+    server.template getFeature<arangodb::metrics::ClusterMetricsFeature>(),
+    server.template getFeature<arangodb::ClusterFeature>());
   transaction::ManagerFeature feature(server);
   transaction::Manager tm(feature);
 

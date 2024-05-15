@@ -43,6 +43,11 @@
 #include "RocksDBEngine/RocksDBRecoveryHelper.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "Cluster/ClusterFeature.h"
+#include "Metrics/ClusterMetricsFeature.h"
+#include "Statistics/StatisticsFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
 #endif
@@ -68,7 +73,12 @@ class FlushFeatureTest
 
   FlushFeatureTest() : server(nullptr, nullptr), engine(server) {
     features.emplace_back(
-        server.addFeature<arangodb::metrics::MetricsFeature>(), false);
+        server.addFeature<arangodb::metrics::MetricsFeature>(
+          server.template getFeature<arangodb::QueryRegistryFeature>(),
+          server.template getFeature<arangodb::StatisticsFeature>(),
+          server.template getFeature<arangodb::EngineSelectorFeature>(),
+          server.template getFeature<arangodb::metrics::ClusterMetricsFeature>(),
+          server.template getFeature<arangodb::ClusterFeature>()), false);
     features.emplace_back(server.addFeature<arangodb::AuthenticationFeature>(),
                           false);  // required for ClusterFeature::prepare()
     features.emplace_back(server.addFeature<arangodb::ClusterFeature>(),

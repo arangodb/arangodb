@@ -41,7 +41,7 @@
 
 namespace arangodb::metrics {
 
-class MetricsFeature final : public ArangodFeature {
+class MetricsFeature final : public ApplicationFeature {
  public:
   enum class UsageTrackingMode {
     // no tracking
@@ -54,11 +54,13 @@ class MetricsFeature final : public ArangodFeature {
 
   static constexpr std::string_view name() noexcept { return "Metrics"; }
 
+  template<typename Server>
   explicit MetricsFeature(Server& server,
                           QueryRegistryFeature& queryRegistryFeature,
                           StatisticsFeature& statisticsFeature,
                           EngineSelectorFeature& engineSelectorFeature,
-                          ClusterMetricsFeature& clusterMetricsFeature);
+                          ClusterMetricsFeature& clusterMetricsFeature,
+                          ClusterFeature& clusterFeature);
 
   bool exportAPI() const noexcept;
   bool ensureWhitespace() const noexcept;
@@ -133,6 +135,7 @@ class MetricsFeature final : public ArangodFeature {
   StatisticsFeature& _statisticsFeature;
   EngineSelectorFeature& _engineSelectorFeature;
   ClusterMetricsFeature& _clusterMetricsFeature;
+  ClusterFeature& _clusterFeature;
 
   mutable std::shared_mutex _mutex;
 

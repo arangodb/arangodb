@@ -48,6 +48,11 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
+#include "Cluster/ClusterFeature.h"
+#include "Metrics/ClusterMetricsFeature.h"
+#include "Statistics/StatisticsFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 
 using namespace arangodb;
 using namespace arangodb::cluster;
@@ -203,7 +208,12 @@ class ShardDistributionReporterTest
     features.emplace_back(selector, false);
     selector.setEngineTesting(&engine);
     features.emplace_back(
-        server.addFeature<arangodb::metrics::MetricsFeature>(), false);
+        server.addFeature<arangodb::metrics::MetricsFeature>(
+          server.template getFeature<arangodb::QueryRegistryFeature>(),
+          server.template getFeature<arangodb::StatisticsFeature>(),
+          selector,
+          server.template getFeature<arangodb::metrics::ClusterMetricsFeature>(),
+          server.template getFeature<arangodb::ClusterFeature>()), false);
     features.emplace_back(
         server.addFeature<arangodb::QueryRegistryFeature>(
             server.template getFeature<arangodb::metrics::MetricsFeature>()),

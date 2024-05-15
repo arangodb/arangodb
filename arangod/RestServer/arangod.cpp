@@ -119,7 +119,8 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
               server, server.template getFeature<QueryRegistryFeature>(),
               server.template getFeature<StatisticsFeature>(),
               server.template getFeature<EngineSelectorFeature>(),
-              server.template getFeature<metrics::ClusterMetricsFeature>());
+              server.template getFeature<metrics::ClusterMetricsFeature>(),
+              server.template getFeature<ClusterFeature>());
         },
         [](auto& server, TypeTag<NetworkFeature>) {
           auto& metrics =
