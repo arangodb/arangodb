@@ -27,6 +27,7 @@
 #include <velocypack/Exception.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/TokenCache.h"
 #include "Basics/RecursiveLocker.h"
 #include "Basics/debugging.h"
 #include "Basics/dtrace-wrapper.h"

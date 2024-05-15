@@ -23,9 +23,9 @@
 
 #include "RestAuthHandler.h"
 
-#include <fuerte/jwt.h>
-#include <velocypack/Builder.h>
-
+#include "Auth/Handler.h"
+#include "Auth/TokenCache.h"
+#include "Auth/UserManager.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -33,6 +33,9 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Utils/Events.h"
+
+#include <fuerte/jwt.h>
+#include <velocypack/Builder.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;

@@ -28,6 +28,7 @@
 #include "Aql/QueryCache.h"
 #include "Aql/QueryList.h"
 #include "Aql/QueryRegistry.h"
+#include "Auth/UserManager.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/FileUtils.h"
 #include "Basics/NumberUtils.h"

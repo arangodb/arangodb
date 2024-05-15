@@ -25,6 +25,7 @@
 #include "VstCommTask.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/UserManager.h"
 #include "Basics/Result.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"

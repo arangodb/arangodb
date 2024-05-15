@@ -23,6 +23,7 @@
 
 #include "ConnectionPool.h"
 
+#include "Auth/TokenCache.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -37,6 +38,10 @@
 #include "Metrics/MetricsFeature.h"
 
 #include <fuerte/connection.h>
+#include <fuerte/loop.h>
+#include <fuerte/types.h>
+
+#include <memory>
 
 DECLARE_GAUGE(arangodb_connection_pool_connections_current, uint64_t,
               "Current number of connections in pool");
