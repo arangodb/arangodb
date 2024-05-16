@@ -1,6 +1,11 @@
 v3.11.9 (XXXX-XX-XX)
 --------------------
 
+* Remove artificial upper bounds for the command-line options regarding the
+  number of IO threads: `--server.io-threads` and `--network.io-threads` were
+  previously limited to 64 and 16, resp. Now there is no upper bound for these
+  options anymore. The default values remain unchanged.
+
 * Fix potentially hanging threads during index creation if starting one of the
   parallel index creation threads returned an error.
 
