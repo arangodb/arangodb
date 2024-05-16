@@ -301,7 +301,7 @@ void AuthenticationFeature::unprepare() {
 }
 
 AuthenticationFeature* AuthenticationFeature::instance() noexcept {
-  return INSTANCE.load(std::memory_order_relaxed);
+  return INSTANCE.load(std::memory_order_acquire);
 }
 
 bool AuthenticationFeature::isActive() const noexcept {
