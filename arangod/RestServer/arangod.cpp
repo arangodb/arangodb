@@ -118,7 +118,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
           auto& metrics =
               server.template getFeature<arangodb::metrics::MetricsFeature>();
           return std::make_unique<NetworkFeature>(
-              server, metrics, network::ConnectionPool::Config{metrics});
+              server, metrics, network::ConnectionPool::Config{});
         },
         [](auto& server, TypeTag<QueryRegistryFeature>) {
           return std::make_unique<QueryRegistryFeature>(

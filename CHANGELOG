@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-443: Fix inconsistent tooltip padding in Create Index dialog.
+
 * Fix potentially hanging threads during index creation if starting one of the
   parallel index creation threads returned an error.
 
