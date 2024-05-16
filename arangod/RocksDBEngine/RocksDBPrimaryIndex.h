@@ -170,5 +170,8 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
 
  private:
   std::vector<std::vector<basics::AttributeName>> const _coveredFields;
+
+  // maximum size of values to be stored in the in-memory cache
+  size_t const _maxCacheValueSize;
 };
 }  // namespace arangodb

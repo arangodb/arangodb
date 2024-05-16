@@ -1921,6 +1921,7 @@ AqlValue Expression::executeSimpleExpressionArithmetic(ExpressionContext& ctx,
       result = l * r;
       break;
     case NODE_TYPE_OPERATOR_BINARY_DIV:
+      TRI_ASSERT(r != 0.0);
       result = l / r;
       break;
     case NODE_TYPE_OPERATOR_BINARY_MOD:

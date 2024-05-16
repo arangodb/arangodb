@@ -56,9 +56,7 @@ using namespace arangodb::options;
 
 // Please leave this code in for the next time we have to debug fuerte.
 #if 0
-void LogHackWriter(char const* p) {
-  LOG_DEVEL << p;
-}
+void LogHackWriter(std::string_view msg) { LOG_DEVEL << msg; }
 #endif
 
 namespace arangodb {
@@ -722,9 +720,9 @@ void LoggerFeature::prepare() {
   }
 
   if (_forceDirect || _supervisor) {
-    Logger::initialize(server(), false, _maxQueuedLogMessages);
+    Logger::initialize(false, _maxQueuedLogMessages);
   } else {
-    Logger::initialize(server(), _threaded, _maxQueuedLogMessages);
+    Logger::initialize(_threaded, _maxQueuedLogMessages);
   }
 }
 

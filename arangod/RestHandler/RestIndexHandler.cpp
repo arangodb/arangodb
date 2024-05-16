@@ -293,7 +293,7 @@ RestStatus RestIndexHandler::getIndexes() {
                     << " index already finished.";
               }
             }
-            if (progress != 0) {
+            if (progress != 0 && shards->size() > 0) {
               // Don't show progress 0, this is in particular relevant
               // when isBackground is false, in which case no progress
               // is reported by design.

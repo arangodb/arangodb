@@ -655,13 +655,16 @@ void ClusterFeature::prepare() {
 
   reportRole(_requestedRole);
 
-  network::ConnectionPool::Config config(_metrics);
+  network::ConnectionPool::Config config;
   config.numIOThreads = 2u;
   config.maxOpenConnections = 2;
   config.idleConnectionMilli = 10000;
   config.verifyHosts = false;
   config.clusterInfo = &clusterInfo();
   config.name = "AgencyComm";
+
+  config.metrics = network::ConnectionPool::Metrics::fromMetricsFeature(
+      _metrics, config.name);
 
   _asyncAgencyCommPool = std::make_unique<network::ConnectionPool>(config);
 
@@ -672,12 +675,12 @@ void ClusterFeature::prepare() {
   AsyncAgencyCommManager::INSTANCE->setSkipScheduler(true);
   AsyncAgencyCommManager::INSTANCE->pool(_asyncAgencyCommPool.get());
 
-  for (const auto& _agencyEndpoint : _agencyEndpoints) {
-    std::string const unified = Endpoint::unifiedForm(_agencyEndpoint);
+  for (auto const& agencyEndpoint : _agencyEndpoints) {
+    std::string unified = Endpoint::unifiedForm(agencyEndpoint);
 
     if (unified.empty()) {
       LOG_TOPIC("1b759", FATAL, arangodb::Logger::CLUSTER)
-          << "invalid endpoint '" << _agencyEndpoint
+          << "invalid endpoint '" << agencyEndpoint
           << "' specified for --cluster.agency-endpoint";
       FATAL_ERROR_EXIT();
     }
