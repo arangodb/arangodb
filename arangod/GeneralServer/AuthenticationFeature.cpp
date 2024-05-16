@@ -306,7 +306,7 @@ void AuthenticationFeature::prepare() {
   _authCache->setJwtSecret(_jwtSecretProgramOption);
 #endif
 
-  INSTANCE.store(this, std::memory_order_relaxed);
+  INSTANCE.store(this, std::memory_order_release);
 }
 
 void AuthenticationFeature::start() {
