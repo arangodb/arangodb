@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-447: fix query spotlight search, make it case-insensitive.
+
 * FE-443: Fix inconsistent tooltip padding in Create Index dialog.
 
 * Fix potentially hanging threads during index creation if starting one of the
