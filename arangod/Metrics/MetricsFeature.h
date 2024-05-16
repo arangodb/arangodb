@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "ApplicationFeatures/LazyApplicationFeatureReference.h"
 #include "Basics/DownCast.h"
 #include "Containers/FlatHashMap.h"
 #include "Metrics/Batch.h"
@@ -55,12 +56,17 @@ class MetricsFeature final : public ApplicationFeature {
   static constexpr std::string_view name() noexcept { return "Metrics"; }
 
   template<typename Server>
-  explicit MetricsFeature(Server& server,
-                          QueryRegistryFeature& queryRegistryFeature,
-                          StatisticsFeature& statisticsFeature,
-                          EngineSelectorFeature& engineSelectorFeature,
-                          ClusterMetricsFeature& clusterMetricsFeature,
-                          ClusterFeature& clusterFeature);
+  explicit MetricsFeature(
+      Server& server,
+      LazyApplicationFeatureReference<QueryRegistryFeature>
+          lazyQueryRegistryFeatureRef,
+      LazyApplicationFeatureReference<StatisticsFeature>
+          lazyStatisticsFeatureRef,
+      LazyApplicationFeatureReference<EngineSelectorFeature>
+          lazyEngineSelectorFeatureRef,
+      LazyApplicationFeatureReference<ClusterMetricsFeature>
+          lazyClusterMetricsFeatureRef,
+      LazyApplicationFeatureReference<ClusterFeature> lazyClusterFeatureRef);
 
   bool exportAPI() const noexcept;
   bool ensureWhitespace() const noexcept;
@@ -125,17 +131,28 @@ class MetricsFeature final : public ApplicationFeature {
       std::string_view name) const;
   void batchRemove(std::string_view name, std::string_view labels);
 
+  void prepare() override;
+
  private:
   std::shared_ptr<Metric> doAdd(Builder& builder);
   std::shared_ptr<Metric> doAddDynamic(Builder& builder);
   std::shared_ptr<Metric> doEnsureMetric(Builder& builder);
   std::shared_lock<std::shared_mutex> initGlobalLabels() const;
 
-  QueryRegistryFeature& _queryRegistryFeature;
-  StatisticsFeature& _statisticsFeature;
-  EngineSelectorFeature& _engineSelectorFeature;
-  ClusterMetricsFeature& _clusterMetricsFeature;
-  ClusterFeature& _clusterFeature;
+  LazyApplicationFeatureReference<QueryRegistryFeature>
+      _lazyQueryRegistryFeatureRef;
+  LazyApplicationFeatureReference<StatisticsFeature> _lazyStatisticsFeatureRef;
+  LazyApplicationFeatureReference<EngineSelectorFeature>
+      _lazyEngineSelectorFeatureRef;
+  LazyApplicationFeatureReference<ClusterMetricsFeature>
+      _lazyClusterMetricsFeatureRef;
+  LazyApplicationFeatureReference<ClusterFeature> _lazyClusterFeatureRef;
+
+  QueryRegistryFeature* _queryRegistryFeature = nullptr;
+  StatisticsFeature* _statisticsFeature = nullptr;
+  EngineSelectorFeature* _engineSelectorFeature = nullptr;
+  ClusterMetricsFeature* _clusterMetricsFeature = nullptr;
+  ClusterFeature* _clusterFeature = nullptr;
 
   mutable std::shared_mutex _mutex;
 
