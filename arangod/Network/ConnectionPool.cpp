@@ -23,9 +23,7 @@
 
 #include "ConnectionPool.h"
 
-#include <fuerte/loop.h>
-#include <fuerte/types.h>
-
+#include "Auth/TokenCache.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "Containers/SmallVector.h"
@@ -40,6 +38,9 @@
 #include "Metrics/MetricsFeature.h"
 
 #include <fuerte/connection.h>
+#include <fuerte/loop.h>
+#include <fuerte/types.h>
+
 #include <memory>
 
 namespace arangodb {

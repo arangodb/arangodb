@@ -28,6 +28,7 @@
 #include "Aql/Query.h"
 #include "Aql/QueryList.h"
 #include "Aql/QueryRegistry.h"
+#include "Auth/TokenCache.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
