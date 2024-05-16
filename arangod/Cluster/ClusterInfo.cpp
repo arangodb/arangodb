@@ -5289,25 +5289,23 @@ Result ClusterInfo::agencyPlan(std::shared_ptr<VPackBuilder> const& body) {
 }
 
 Result ClusterInfo::agencyReplan(VPackSlice const plan) {
+  TRI_IF_FAILURE("ClusterInfo::failReplanAgency") { return TRI_ERROR_DEBUG; }
+  // Apply only Collections and DBServers
   auto trxOperations = std::vector<AgencyOperation>{
       {"Current/Collections", AgencyValueOperationType::SET,
        VPackSlice::emptyObjectSlice()},
-      {"Plan/Collections", AgencyValueOperationType::SET,
-       plan.get({"arango", "Plan", "Collections"})},
+      SetOldEntry("Plan/Collections", {"arango", "Plan", "Collections"}, plan),
       {"Current/Databases", AgencyValueOperationType::SET,
        VPackSlice::emptyObjectSlice()},
-      {"Plan/Databases", AgencyValueOperationType::SET,
-       plan.get({"arango", "Plan", "Databases"})},
+      SetOldEntry("Plan/Databases", {"arango", "Plan", "Databases"}, plan),
       {"Current/Views", AgencyValueOperationType::SET,
        VPackSlice::emptyObjectSlice()},
       {"Current/CollectionGroups", AgencyValueOperationType::SET,
        VPackSlice::emptyObjectSlice()},
       {"Current/ReplicatedLogs", AgencyValueOperationType::SET,
        VPackSlice::emptyObjectSlice()},
-      {"Plan/Analyzers", AgencyValueOperationType::SET,
-       plan.get({"arango", "Plan", "Analyzers"})},
-      {"Plan/Views", AgencyValueOperationType::SET,
-       plan.get({"arango", "Plan", "Views"})},
+      SetOldEntry("Plan/Analyzers", {"arango", "Plan", "Analyzers"}, plan),
+      SetOldEntry("Plan/Views", {"arango", "Plan", "Views"}, plan),
       {"Current/Version", AgencySimpleOperationType::INCREMENT_OP},
       {"Plan/Version", AgencySimpleOperationType::INCREMENT_OP},
       {"Sync/UserVersion", AgencySimpleOperationType::INCREMENT_OP},
@@ -5356,7 +5354,14 @@ Result ClusterInfo::agencyReplan(VPackSlice const plan) {
   Result rr;
   if (VPackSlice resultsSlice = r.slice().get("results");
       resultsSlice.length() > 0) {
-    rr = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
+    auto raftIndex = resultsSlice[0].getNumber<uint64_t>();
+    if (raftIndex == 0) {
+      // This means the above request was actually illegal
+      return {TRI_ERROR_HOT_BACKUP_INTERNAL,
+              "Failed to restore agency plan from Hotbackup. Please contact "
+              "ArangoDB support immediately."};
+    }
+    rr = waitForPlan(raftIndex).get();
   }
 
   return rr;
