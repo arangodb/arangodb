@@ -25,7 +25,6 @@
 #include <thread>
 #include <vector>
 
-#include "Assertions/Assert.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/ThreadPoolMetrics.h"
 
@@ -73,6 +72,8 @@ struct WorkStealingThreadPool {
   ThreadPoolMetrics _metrics;
 
   std::atomic<std::size_t> pushIdx = 0;
+  std::atomic<std::size_t> numSleeping = 0;
+  std::atomic<std::size_t> lastSleepIdx = 0;
   static constexpr auto NoHint = std::numeric_limits<std::size_t>::max();
   std::atomic<std::size_t> hint = NoHint;
   std::vector<std::jthread> _threads;
