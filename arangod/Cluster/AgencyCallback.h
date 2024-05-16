@@ -105,14 +105,17 @@ class AgencyCallback {
                  std::string key, CallbackType, bool needsValue,
                  bool needsInitialValue = true);
   [[deprecated(
-      "Avoid this constructor to get rid of the ArangodServer dependency")]]
-  AgencyCallback(ArangodServer& server, std::string const&,
-                 std::function<bool(velocypack::Slice const&)> const&,
-                 bool needsValue, bool needsInitialValue = true);
+      "Avoid this constructor to get rid of the ArangodServer "
+      "dependency")]] AgencyCallback(ArangodServer& server, std::string const&,
+                                     std::function<
+                                         bool(velocypack::Slice const&)> const&,
+                                     bool needsValue,
+                                     bool needsInitialValue = true);
   [[deprecated(
-      "Avoid this constructor to get rid of the ArangodServer dependency")]]
-  AgencyCallback(ArangodServer& server, std::string key, CallbackType,
-                 bool needsValue, bool needsInitialValue = true);
+      "Avoid this constructor to get rid of the ArangodServer "
+      "dependency")]] AgencyCallback(ArangodServer& server, std::string key,
+                                     CallbackType, bool needsValue,
+                                     bool needsInitialValue = true);
 
   std::string const key;
   arangodb::basics::ConditionVariable _cv;

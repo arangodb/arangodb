@@ -584,8 +584,11 @@ class AgencyComm {
   static uint64_t const MAX_SLEEP_TIME = 50000;     // microseconds
 
  public:
-  [[deprecated("Avoid this constructor to get rid of the ArangodServer dependency")]] explicit AgencyComm(ArangodServer&);
-  AgencyComm(ApplicationServer&, ClusterFeature&, EngineSelectorFeature&, DatabaseFeature&);
+  [[deprecated(
+      "Avoid this constructor to get rid of the ArangodServer "
+      "dependency")]] explicit AgencyComm(ArangodServer&);
+  AgencyComm(ApplicationServer&, ClusterFeature&, EngineSelectorFeature&,
+             DatabaseFeature&);
 
   AgencyCommResult sendServerState(double timeout);
 
