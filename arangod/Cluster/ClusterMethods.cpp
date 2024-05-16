@@ -3547,9 +3547,7 @@ arangodb::Result lockServersTrxCommit(network::ConnectionPool* pool,
                                       std::vector<ServerID> const& servers,
                                       double lockWait,
                                       std::vector<ServerID>& lockedServers) {
-  using namespace std::chrono;
-
-  // Make sure all db servers have the backup with backup Id
+  // Make sure all servers have the backup with backup Id
 
   std::string const url = apiStr + "lock";
 
@@ -3591,8 +3589,8 @@ arangodb::Result lockServersTrxCommit(network::ConnectionPool* pool,
       if (finalRes.errorNumber() == TRI_ERROR_LOCAL_LOCK_FAILED) {
         c = TRI_ERROR_LOCAL_LOCK_FAILED;
       }
-      finalRes = arangodb::Result(
-          c, StringUtils::concatT(finalRes.errorMessage(), ", ", m));
+      finalRes =
+          arangodb::Result(c, absl::StrCat(finalRes.errorMessage(), ", ", m));
     }
   };
   for (Future<network::Response>& f : futures) {
@@ -3627,19 +3625,21 @@ arangodb::Result lockServersTrxCommit(network::ConnectionPool* pool,
         reportError(err, slc.get(StaticStrings::ErrorMessage).copyString());
         continue;
       }
-      reportError(TRI_ERROR_LOCAL_LOCK_FAILED,
-                  std::string("lock was denied from ") + r.destination +
-                      " when trying to check for lockId for hot backup " +
-                      backupId + ": " + slc.toJson());
+      reportError(
+          TRI_ERROR_LOCAL_LOCK_FAILED,
+          absl::StrCat("lock was denied from ", r.destination,
+                       " when trying to check for lockId for hot backup ",
+                       backupId, ": ", slc.toJson()));
       continue;
     }
 
     if (!slc.hasKey(lockPath) || !slc.get(lockPath).isNumber() ||
         !slc.hasKey("result") || !slc.get("result").isObject()) {
-      reportError(TRI_ERROR_LOCAL_LOCK_FAILED,
-                  std::string("invalid response from ") + r.destination +
-                      " when trying to check for lockId for hot backup " +
-                      backupId + ": " + slc.toJson());
+      reportError(
+          TRI_ERROR_LOCAL_LOCK_FAILED,
+          absl::StrCat("invalid response from ", r.destination,
+                       " when trying to check for lockId for hot backup ",
+                       backupId, ": ", slc.toJson()));
       continue;
     }
 
@@ -3650,10 +3650,11 @@ arangodb::Result lockServersTrxCommit(network::ConnectionPool* pool,
           << "acquired lock from " << r.destination << " for backupId "
           << backupId << " with lockId " << lockId;
     } catch (std::exception const& e) {
-      reportError(TRI_ERROR_LOCAL_LOCK_FAILED,
-                  std::string("invalid response from ") + r.destination +
-                      " when trying to get lockId for hot backup " + backupId +
-                      ": " + slc.toJson() + ", msg: " + e.what());
+      reportError(
+          TRI_ERROR_LOCAL_LOCK_FAILED,
+          absl::StrCat("invalid response from ", r.destination,
+                       " when trying to get lockId for hot backup ", backupId,
+                       ": ", slc.toJson(), ", msg: ", e.what()));
       continue;
     }
 
@@ -3663,7 +3664,11 @@ arangodb::Result lockServersTrxCommit(network::ConnectionPool* pool,
 
   if (finalRes.ok()) {
     LOG_TOPIC("c1869", DEBUG, Logger::BACKUP)
-        << "acquired transaction locks on all db servers";
+        << "acquired transaction locks on all coordinators";
+  } else {
+    LOG_TOPIC("8226a", DEBUG, Logger::BACKUP)
+        << "unable to acquire transaction locks on all coordinators: "
+        << finalRes.errorMessage();
   }
 
   return finalRes;
@@ -3672,9 +3677,11 @@ arangodb::Result lockServersTrxCommit(network::ConnectionPool* pool,
 arangodb::Result unlockServersTrxCommit(
     network::ConnectionPool* pool, std::string const& backupId,
     std::vector<ServerID> const& lockedServers) {
-  using namespace std::chrono;
+  LOG_TOPIC("2ba8f", DEBUG, Logger::BACKUP)
+      << "best effort attempt to kill all locks on coordinators "
+      << lockedServers;
 
-  // Make sure all db servers have the backup with backup Id
+  // Make sure all servers have the backup with backup Id
 
   std::string const url = apiStr + "unlock";
 
@@ -3696,12 +3703,23 @@ arangodb::Result unlockServersTrxCommit(
         pool, "server:" + server, fuerte::RestVerb::Post, url, body, reqOpts));
   }
 
-  std::ignore = futures::collectAll(futures).get();
+  auto responses = futures::collectAll(std::move(futures)).get();
 
-  LOG_TOPIC("2ba8f", DEBUG, Logger::BACKUP)
-      << "best try to kill all locks on db servers";
+  Result res;
+  for (auto const& tryRes : responses) {
+    network::Response const& r = tryRes.get();
+    if (r.combinedResult().fail() && res.ok()) {
+      res = r.combinedResult();
+    }
+  }
 
-  return {};
+  LOG_TOPIC("48510", DEBUG, Logger::BACKUP)
+      << "killing all locks on coordinators resulted in: "
+      << res.errorMessage();
+
+  // return value is ignored by callers, but we'll return our status
+  // anyway.
+  return res;
 }
 
 std::vector<std::string> idPath{"result", "id"};

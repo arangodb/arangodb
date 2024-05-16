@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryList.h"
+#include "Auth/TokenCache.h"
 #include "Assertions/ProdAssert.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"

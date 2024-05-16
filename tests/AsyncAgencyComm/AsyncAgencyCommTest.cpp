@@ -188,8 +188,9 @@ struct AsyncAgencyCommTest
   }
 
   network::ConnectionPool::Config config() {
-    network::ConnectionPool::Config config(
-        server.getFeature<metrics::MetricsFeature>());
+    network::ConnectionPool::Config config;
+    config.metrics = network::ConnectionPool::Metrics::fromMetricsFeature(
+        server.getFeature<metrics::MetricsFeature>(), "agency-comm");
     config.clusterInfo = &server.getFeature<ClusterFeature>().clusterInfo();
     config.numIOThreads = 1;
     config.maxOpenConnections = 3;

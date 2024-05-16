@@ -720,9 +720,9 @@ void LoggerFeature::prepare() {
   }
 
   if (_forceDirect || _supervisor) {
-    Logger::initialize(server(), false, _maxQueuedLogMessages);
+    Logger::initialize(false, _maxQueuedLogMessages);
   } else {
-    Logger::initialize(server(), _threaded, _maxQueuedLogMessages);
+    Logger::initialize(_threaded, _maxQueuedLogMessages);
   }
 }
 
