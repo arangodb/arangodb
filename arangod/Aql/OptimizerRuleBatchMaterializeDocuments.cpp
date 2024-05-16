@@ -136,6 +136,7 @@ void arangodb::aql::batchMaterializeDocumentsRule(
 
     plan->insertAfter(indexNode, materialized);
 
+    materialized->setMaxProjections(indexNode->maxProjections());
     if (!indexNode->projections().empty()) {
       TRI_ASSERT(!indexNode->projections().usesCoveringIndex());
       TRI_ASSERT(!indexNode->projections().hasOutputRegisters());
