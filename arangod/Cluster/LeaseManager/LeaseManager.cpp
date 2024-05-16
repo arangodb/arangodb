@@ -94,9 +94,11 @@ void LeaseManager::OpenHandouts::registerTombstone(PeerState const& server, Leas
 
 LeaseManager::LeaseManager(
     RebootTracker& rebootTracker,
-    std::unique_ptr<ILeaseManagerNetworkHandler> networkHandler)
+    std::unique_ptr<ILeaseManagerNetworkHandler> networkHandler,
+    Scheduler& scheduler)
     : _rebootTracker(rebootTracker),
       _networkHandler(std::move(networkHandler)),
+      _scheduler(scheduler),
       _leasedFromRemotePeers(),
       _leasedToRemotePeers() {
   TRI_ASSERT(_networkHandler != nullptr)
@@ -410,7 +412,13 @@ auto LeaseManager::abortLeasesForServer(AbortLeaseInformation info) noexcept
       for (auto const& id : info.leasedTo) {
         // Try to erase the ID from the list.
         // Do not put the ID on the abort list, the remote server just told us to remove it.
-        if (auto numErased = it->second._mapping.erase(id); numErased == 0) {
+        auto entry = it->second._mapping.find(id);
+        if (entry != it->second._mapping.end()) {
+          _scheduler.queue(RequestLane::CLUSTER_INTERNAL, [lease = std::move(entry->second->entry)]() {
+            // This Callback is okay to be empty, we only need the lease to go out of scope and call the destructor.
+          });
+          it->second._mapping.erase(entry);
+        } else {
           // Rare case: Element Aborted that does not yet exist.
           // Add a Tombstone for it
           list.registerTombstone(info.server, id, *this);
@@ -431,7 +439,13 @@ auto LeaseManager::abortLeasesForServer(AbortLeaseInformation info) noexcept
       for (auto const& id : info.leasedFrom) {
         // Try to erase the ID from the list.
         // Do not put the ID on the abort list, the remote server just told us to remove it.
-        it->second._mapping.erase(id);
+        auto entry = it->second._mapping.find(id);
+        if (entry != it->second._mapping.end()) {
+          _scheduler.queue(RequestLane::CLUSTER_INTERNAL, [lease = std::move(entry->second->entry)]() {
+            // This Callback is okay to be empty, we only need the lease to go out of scope and call the destructor.
+          });
+          it->second._mapping.erase(entry);
+        }
         // NOTE: We do not need tombstone handling here.
         // This server is generating the IDs, so it cannot abort them before.
       }

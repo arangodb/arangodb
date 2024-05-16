@@ -274,6 +274,9 @@ futures::Future<Result> ClusterQuery::finalizeClusterQuery(
         << elapsedSince(_startTime) << " Query::finalizeSnippets post commit()"
         << " this: " << (uintptr_t)this;
 
+    // Query commited/aborted. We can clear the leases.
+    completeLeases();
+
     executionStatsGuard().doUnderLock([&](auto& executionStats) {
       executionStats.requests += _numRequests.load(std::memory_order_relaxed);
       executionStats.setPeakMemoryUsage(_resourceMonitor.peak());

@@ -167,7 +167,7 @@ class LeaseManagerTest : public ::testing::Test,
                        });
       return future;
     });
-    return LeaseManager{rebootTracker, std::move(networkMock)};
+    return LeaseManager{rebootTracker, std::move(networkMock), *scheduler};
   }
 
   auto getNetworkMock(LeaseManager& manager)

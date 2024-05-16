@@ -411,8 +411,10 @@ futures::Future<futures::Unit> RestAqlHandler::setupClusterQuery() {
                        "RebootTracker for coordinator, db="
                     << vocbaseName << " queryId=" << queryId;
               });
-      // TODO: Handle error
-      ADB_PROD_ASSERT(res.ok());
+      if (res.fail()) {
+        generateError(res.result());
+        co_return;
+      }
       q->addLeaseToRemoteGuard((std::move(res.get())));
     }
   }

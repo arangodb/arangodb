@@ -1889,6 +1889,11 @@ ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
                   << "received error from DBServer on query finalization: "
                   << r.errorNumber() << ", '" << r.errorMessage() << "'";
               _sharedState->executeAndWakeup([&] {
+                if (r.ok()) {
+                  // Query was successfully finished.
+                  // Let us complete the leases.
+                  this->completeLeases();
+                }
                 _shutdownState.store(ShutdownState::Done,
                                      std::memory_order_relaxed);
                 return true;

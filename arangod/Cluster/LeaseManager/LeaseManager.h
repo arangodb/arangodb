@@ -40,6 +40,8 @@ namespace velocypack {
 class Builder;
 }
 
+class Scheduler;
+
 struct PeerState;
 namespace cluster {
 struct AbortLeaseInformation;
@@ -137,7 +139,7 @@ struct LeaseManager {
     std::unordered_set<LeaseId> _list;
   };
 
-  LeaseManager(RebootTracker& rebootTracker, std::unique_ptr<ILeaseManagerNetworkHandler> networkHandler);
+  LeaseManager(RebootTracker& rebootTracker, std::unique_ptr<ILeaseManagerNetworkHandler> networkHandler, Scheduler& scheduler);
 
   template<typename F>
   [[nodiscard]] auto requireLease(PeerState const& requestFrom, std::function<std::string()> details, F&& onLeaseLost)
@@ -199,6 +201,7 @@ struct LeaseManager {
   uint64_t _lastUsedLeaseId{0};
   RebootTracker& _rebootTracker;
   std::unique_ptr<ILeaseManagerNetworkHandler> _networkHandler;
+  Scheduler& _scheduler;
 
   // NOTE: The two lists of leases are using more or less the same implementation
   // We only added this differentiation, so we can easier inspect if the local server
