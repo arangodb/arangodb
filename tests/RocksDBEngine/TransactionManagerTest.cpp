@@ -49,11 +49,13 @@ using namespace arangodb;
 TEST(RocksDBTransactionManager, test_non_overlapping) {
   ArangodServer server{nullptr, nullptr};
   server.addFeature<metrics::MetricsFeature>(
-    server.template getFeature<arangodb::QueryRegistryFeature>(),
-    server.template getFeature<arangodb::StatisticsFeature>(),
-    server.template getFeature<arangodb::EngineSelectorFeature>(),
-    server.template getFeature<arangodb::metrics::ClusterMetricsFeature>(),
-    server.template getFeature<arangodb::ClusterFeature>());
+      LazyApplicationFeatureReference<QueryRegistryFeature>::fromServer(server),
+      LazyApplicationFeatureReference<StatisticsFeature>::fromServer(server),
+      LazyApplicationFeatureReference<EngineSelectorFeature>::fromServer(
+          server),
+      LazyApplicationFeatureReference<
+          metrics::ClusterMetricsFeature>::fromServer(server),
+      LazyApplicationFeatureReference<ClusterFeature>::fromServer(server));
   transaction::ManagerFeature feature(server);
   transaction::Manager tm(feature);
 
@@ -76,11 +78,13 @@ TEST(RocksDBTransactionManager, test_overlapping) {
   auto trxId = static_cast<TransactionId>(1);
   ArangodServer server{nullptr, nullptr};
   server.addFeature<metrics::MetricsFeature>(
-    server.template getFeature<arangodb::QueryRegistryFeature>(),
-    server.template getFeature<arangodb::StatisticsFeature>(),
-    server.template getFeature<arangodb::EngineSelectorFeature>(),
-    server.template getFeature<arangodb::metrics::ClusterMetricsFeature>(),
-    server.template getFeature<arangodb::ClusterFeature>());
+      LazyApplicationFeatureReference<QueryRegistryFeature>::fromServer(server),
+      LazyApplicationFeatureReference<StatisticsFeature>::fromServer(server),
+      LazyApplicationFeatureReference<EngineSelectorFeature>::fromServer(
+          server),
+      LazyApplicationFeatureReference<
+          metrics::ClusterMetricsFeature>::fromServer(server),
+      LazyApplicationFeatureReference<ClusterFeature>::fromServer(server));
   transaction::ManagerFeature feature(server);
   transaction::Manager tm(feature);
 

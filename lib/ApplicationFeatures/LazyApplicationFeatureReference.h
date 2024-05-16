@@ -45,11 +45,14 @@ template<typename FeatureT>
 // requires std::derived_from<FeatureT,
 // application_features::ApplicationFeature>
 struct LazyApplicationFeatureReference {
+  // get() should not be called before prepare() (probably exactly once during
+  // prepare)
   auto get() noexcept -> FeatureT&;
 
   using Factory = fu2::unique_function<FeatureT*() noexcept>;
 
   explicit LazyApplicationFeatureReference(Factory factory);
+  LazyApplicationFeatureReference(FeatureT& feature);
   // convenience constructor, should probably be removed/replaced later (see
   // comment above).
   template<typename Server>
@@ -78,6 +81,11 @@ template<typename FeatureT>
 LazyApplicationFeatureReference<FeatureT>::LazyApplicationFeatureReference(
     LazyApplicationFeatureReference::Factory factory)
     : _factory(std::move(factory)) {}
+
+template<typename FeatureT>
+LazyApplicationFeatureReference<FeatureT>::LazyApplicationFeatureReference(
+    FeatureT& feature)
+    : _feature(&feature) {}
 
 template<typename FeatureT>
 auto LazyApplicationFeatureReference<FeatureT>::get() noexcept -> FeatureT& {

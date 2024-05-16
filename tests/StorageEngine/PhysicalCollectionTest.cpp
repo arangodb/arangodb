@@ -77,21 +77,22 @@ class PhysicalCollectionTest
     features.emplace_back(
         server.addFeature<
             arangodb::AuthenticationFeature>());  // required for VocbaseContext
-    features.emplace_back(server.addFeature<arangodb::DatabaseFeature>());
-    auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
+    features.emplace_back(server.addFeature<DatabaseFeature>());
+    auto& selector = server.addFeature<EngineSelectorFeature>();
     features.emplace_back(selector);
     selector.setEngineTesting(&engine);
-    features.emplace_back(
-        server.addFeature<arangodb::metrics::MetricsFeature>(
-          server.template getFeature<arangodb::QueryRegistryFeature>(),
-          server.template getFeature<arangodb::StatisticsFeature>(),
-          server.template getFeature<arangodb::EngineSelectorFeature>(),
-          server.template getFeature<arangodb::metrics::ClusterMetricsFeature>(),
-          server.template getFeature<arangodb::ClusterFeature>()));
-    features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(
+    features.emplace_back(server.addFeature<metrics::MetricsFeature>(
+        LazyApplicationFeatureReference<QueryRegistryFeature>::fromServer(
+            server),
+        LazyApplicationFeatureReference<StatisticsFeature>::fromServer(server),
+        LazyApplicationFeatureReference<EngineSelectorFeature>::fromServer(
+            server),
+        LazyApplicationFeatureReference<
+            metrics::ClusterMetricsFeature>::fromServer(server),
+        LazyApplicationFeatureReference<ClusterFeature>::fromServer(server)));
+    features.emplace_back(server.addFeature<QueryRegistryFeature>(
         server.template getFeature<
-            arangodb::metrics::MetricsFeature>()));  // required for
-                                                     // TRI_vocbase_t
+            metrics::MetricsFeature>()));  // required for TRI_vocbase_t
 
     for (auto& f : features) {
       f.get().prepare();
@@ -99,8 +100,7 @@ class PhysicalCollectionTest
   }
 
   ~PhysicalCollectionTest() {
-    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(
-        nullptr);
+    server.getFeature<EngineSelectorFeature>().setEngineTesting(nullptr);
 
     for (auto& f : features) {
       f.get().unprepare();

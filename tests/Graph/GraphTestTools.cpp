@@ -60,11 +60,15 @@ GraphTestSetup::GraphTestSetup() : server(nullptr, nullptr), engine(server) {
   // setup required application features
   features.emplace_back(
       server.addFeature<arangodb::metrics::MetricsFeature>(
-          server.template getFeature<QueryRegistryFeature>(),
-          server.template getFeature<StatisticsFeature>(),
-          server.template getFeature<EngineSelectorFeature>(),
-          server.template getFeature<metrics::ClusterMetricsFeature>(),
-          server.template getFeature<ClusterFeature>()),
+          LazyApplicationFeatureReference<QueryRegistryFeature>::fromServer(
+              server),
+          LazyApplicationFeatureReference<StatisticsFeature>::fromServer(
+              server),
+          LazyApplicationFeatureReference<EngineSelectorFeature>::fromServer(
+              server),
+          LazyApplicationFeatureReference<
+              metrics::ClusterMetricsFeature>::fromServer(server),
+          LazyApplicationFeatureReference<ClusterFeature>::fromServer(server)),
       false);
   features.emplace_back(server.addFeature<arangodb::DatabasePathFeature>(),
                         false);

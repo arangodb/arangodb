@@ -136,11 +136,14 @@ struct HttpEndpointProviderMock final : public HttpEndpointProvider {
 static void SetupGreetingsPhase(MockServer& server) {
   server.addFeature<GreetingsFeaturePhase>(false, std::false_type{});
   server.addFeature<metrics::MetricsFeature>(
-      false, server.template getFeature<QueryRegistryFeature>(),
-      server.template getFeature<StatisticsFeature>(),
-      server.template getFeature<EngineSelectorFeature>(),
-      server.template getFeature<metrics::ClusterMetricsFeature>(),
-      server.template getFeature<ClusterFeature>());
+      false,
+      LazyApplicationFeatureReference<QueryRegistryFeature>::fromServer(server),
+      LazyApplicationFeatureReference<StatisticsFeature>::fromServer(server),
+      LazyApplicationFeatureReference<EngineSelectorFeature>::fromServer(
+          server),
+      LazyApplicationFeatureReference<
+          metrics::ClusterMetricsFeature>::fromServer(server),
+      LazyApplicationFeatureReference<ClusterFeature>::fromServer(server));
   server.addFeature<SharedPRNGFeature>(false);
   server.addFeature<SoftShutdownFeature>(false);
   // We do not need any further features from this phase

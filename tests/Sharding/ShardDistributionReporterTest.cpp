@@ -209,11 +209,16 @@ class ShardDistributionReporterTest
     selector.setEngineTesting(&engine);
     features.emplace_back(
         server.addFeature<arangodb::metrics::MetricsFeature>(
-          server.template getFeature<arangodb::QueryRegistryFeature>(),
-          server.template getFeature<arangodb::StatisticsFeature>(),
-          selector,
-          server.template getFeature<arangodb::metrics::ClusterMetricsFeature>(),
-          server.template getFeature<arangodb::ClusterFeature>()), false);
+            arangodb::LazyApplicationFeatureReference<
+                arangodb::QueryRegistryFeature>::fromServer(server),
+            arangodb::LazyApplicationFeatureReference<
+                arangodb::StatisticsFeature>::fromServer(server),
+            selector,
+            arangodb::LazyApplicationFeatureReference<
+                arangodb::metrics::ClusterMetricsFeature>::fromServer(server),
+            arangodb::LazyApplicationFeatureReference<
+                arangodb::ClusterFeature>::fromServer(server)),
+        false);
     features.emplace_back(
         server.addFeature<arangodb::QueryRegistryFeature>(
             server.template getFeature<arangodb::metrics::MetricsFeature>()),

@@ -524,17 +524,20 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
         std::false_type{});
     auto& selector = as.addFeature<arangodb::EngineSelectorFeature>();
     auto& metrics = as.addFeature<arangodb::metrics::MetricsFeature>(
-      as.template getFeature<arangodb::QueryRegistryFeature>(),
-      as.template getFeature<arangodb::StatisticsFeature>(),
-      selector,
-      as.template getFeature<arangodb::metrics::ClusterMetricsFeature>(),
-      as.template getFeature<arangodb::ClusterFeature>());
+        arangodb::LazyApplicationFeatureReference<
+            arangodb::QueryRegistryFeature>::fromServer(as),
+        arangodb::LazyApplicationFeatureReference<
+            arangodb::StatisticsFeature>::fromServer(as),
+        selector,
+        arangodb::LazyApplicationFeatureReference<
+            arangodb::metrics::ClusterMetricsFeature>::fromServer(as),
+        arangodb::LazyApplicationFeatureReference<
+            arangodb::ClusterFeature>::fromServer(as));
 
     // need to construct this after adding the MetricsFeature to the application
     // server
     engine = std::make_unique<arangodb::RocksDBEngine>(
-        as, as.template getFeature<arangodb::RocksDBOptionFeature>(),
-        metrics);
+        as, as.template getFeature<arangodb::RocksDBOptionFeature>(), metrics);
     selector.setEngineTesting(engine.get());
   }
 

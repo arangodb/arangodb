@@ -133,12 +133,18 @@ class LogicalViewTest
             server.template getFeature<arangodb::metrics::MetricsFeature>()),
         false);  // required for TRI_vocbase_t
     features.emplace_back(
-      server.addFeature<arangodb::metrics::MetricsFeature>(
-        server.template getFeature<arangodb::QueryRegistryFeature>(),
-        server.template getFeature<arangodb::StatisticsFeature>(),
-        server.template getFeature<arangodb::EngineSelectorFeature>(),
-        server.template getFeature<arangodb::metrics::ClusterMetricsFeature>(),
-        server.template getFeature<arangodb::ClusterFeature>()), false);
+        server.addFeature<arangodb::metrics::MetricsFeature>(
+            arangodb::LazyApplicationFeatureReference<
+                arangodb::QueryRegistryFeature>::fromServer(server),
+            arangodb::LazyApplicationFeatureReference<
+                arangodb::StatisticsFeature>::fromServer(server),
+            arangodb::LazyApplicationFeatureReference<
+                arangodb::EngineSelectorFeature>::fromServer(server),
+            arangodb::LazyApplicationFeatureReference<
+                arangodb::metrics::ClusterMetricsFeature>::fromServer(server),
+            arangodb::LazyApplicationFeatureReference<
+                arangodb::ClusterFeature>::fromServer(server)),
+        false);
     features.emplace_back(server.addFeature<arangodb::ViewTypesFeature>(),
                           false);  // required for LogicalView::create(...)
 

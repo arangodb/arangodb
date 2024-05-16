@@ -208,11 +208,16 @@ class MaintenanceFeatureTestUnthreaded : public ::testing::Test {
     as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(
         std::true_type{});
     as.addFeature<arangodb::metrics::MetricsFeature>(
-      as.template getFeature<arangodb::QueryRegistryFeature>(),
-      as.template getFeature<arangodb::StatisticsFeature>(),
-      as.template getFeature<arangodb::EngineSelectorFeature>(),
-      as.template getFeature<arangodb::metrics::ClusterMetricsFeature>(),
-      as.template getFeature<arangodb::ClusterFeature>());
+        arangodb::LazyApplicationFeatureReference<
+            arangodb::QueryRegistryFeature>::fromServer(as),
+        arangodb::LazyApplicationFeatureReference<
+            arangodb::StatisticsFeature>::fromServer(as),
+        arangodb::LazyApplicationFeatureReference<
+            arangodb::EngineSelectorFeature>::fromServer(as),
+        arangodb::LazyApplicationFeatureReference<
+            arangodb::metrics::ClusterMetricsFeature>::fromServer(as),
+        arangodb::LazyApplicationFeatureReference<
+            arangodb::ClusterFeature>::fromServer(as));
   }
 
   std::shared_ptr<arangodb::options::ProgramOptions> po =
@@ -450,11 +455,16 @@ struct MaintenanceFeatureTestThreaded : ::testing::Test {
     as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(
         std::false_type{});
     as.addFeature<arangodb::metrics::MetricsFeature>(
-      as.template getFeature<arangodb::QueryRegistryFeature>(),
-      as.template getFeature<arangodb::StatisticsFeature>(),
-      as.template getFeature<arangodb::EngineSelectorFeature>(),
-      as.template getFeature<arangodb::metrics::ClusterMetricsFeature>(),
-      as.template getFeature<arangodb::ClusterFeature>());
+        arangodb::LazyApplicationFeatureReference<
+            arangodb::QueryRegistryFeature>::fromServer(as),
+        arangodb::LazyApplicationFeatureReference<
+            arangodb::StatisticsFeature>::fromServer(as),
+        arangodb::LazyApplicationFeatureReference<
+            arangodb::EngineSelectorFeature>::fromServer(as),
+        arangodb::LazyApplicationFeatureReference<
+            arangodb::metrics::ClusterMetricsFeature>::fromServer(as),
+        arangodb::LazyApplicationFeatureReference<
+            arangodb::ClusterFeature>::fromServer(as));
   }
 };
 
