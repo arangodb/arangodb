@@ -77,6 +77,7 @@ double ThreadPoolScheduler::unavailabilityQueueFillGrade() const { return 0; }
 bool ThreadPoolScheduler::queueItem(RequestLane lane,
                                     std::unique_ptr<WorkItemBase> item,
                                     bool bounded) {
+  item->enqueueTime = std::chrono::steady_clock::now();
   auto prio = PriorityRequestLane(lane);
   _threadPools[int(prio)]->push(std::move(item));
   return true;
@@ -94,21 +95,26 @@ ThreadPoolScheduler::ThreadPoolScheduler(
 
   _threadPools.reserve(4);
 
-  poolMetrics.queueLength = metrics->_metricsQueueLengths[0];
+  poolMetrics.queueLength = _metrics->_metricsQueueLengths[0];
+  poolMetrics.dequeueTimes = _metrics->_metricsDequeueTimes[0];
   _threadPools.emplace_back(std::make_unique<WorkStealingThreadPool>(
-      "SchedMaintenance", std::max(std::ceil(maxThreads * 0.1), 2.)));
+      "SchedMaintenance", std::max(std::ceil(maxThreads * 0.1), 2.),
+      poolMetrics));
 
-  poolMetrics.queueLength = metrics->_metricsQueueLengths[1];
+  poolMetrics.queueLength = _metrics->_metricsQueueLengths[1];
+  poolMetrics.dequeueTimes = _metrics->_metricsDequeueTimes[1];
   _threadPools.emplace_back(std::make_unique<WorkStealingThreadPool>(
-      "SchedHigh", std::max(std::ceil(maxThreads * 0.4), 8.)));
+      "SchedHigh", std::max(std::ceil(maxThreads * 0.4), 8.), poolMetrics));
 
-  poolMetrics.queueLength = metrics->_metricsQueueLengths[2];
+  poolMetrics.queueLength = _metrics->_metricsQueueLengths[2];
+  poolMetrics.dequeueTimes = _metrics->_metricsDequeueTimes[2];
   _threadPools.emplace_back(std::make_unique<WorkStealingThreadPool>(
-      "SchedMedium", std::max(std::ceil(maxThreads * 0.4), 8.)));
+      "SchedMedium", std::max(std::ceil(maxThreads * 0.4), 8.), poolMetrics));
 
-  poolMetrics.queueLength = metrics->_metricsQueueLengths[3];
+  poolMetrics.queueLength = _metrics->_metricsQueueLengths[3];
+  poolMetrics.dequeueTimes = _metrics->_metricsDequeueTimes[3];
   _threadPools.emplace_back(std::make_unique<WorkStealingThreadPool>(
-      "SchedLow", std::max(std::ceil(maxThreads * 0.6), 16.)));
+      "SchedLow", std::max(std::ceil(maxThreads * 0.6), 16.), poolMetrics));
 }
 
 void ThreadPoolScheduler::shutdown() {

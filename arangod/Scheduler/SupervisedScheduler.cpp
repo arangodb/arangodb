@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <atomic>
+#include <chrono>
 #include <cstdint>
 #include <memory>
 
@@ -210,6 +211,8 @@ bool SupervisedScheduler::queueItem(RequestLane lane,
   TRI_ASSERT(lane != RequestLane::UNDEFINED);
   auto const queueNo = static_cast<size_t>(PriorityRequestLane(lane));
   TRI_ASSERT(queueNo < NumberOfQueues);
+
+  work->enqueueTime = std::chrono::steady_clock::now();
 
   auto& queue = _queues[queueNo];
   if (bounded) {
@@ -743,6 +746,14 @@ std::unique_ptr<SupervisedScheduler::WorkItemBase> SupervisedScheduler::getWork(
           res = reinterpret_cast<WorkItemBase*>(raw - 1);
         }
         *_metrics->_metricsQueueLengths[i] -= 1;
+
+        auto queueTime = std::chrono::duration<double>(
+            std::chrono::steady_clock::now() - res->enqueueTime);
+        auto d = std::chrono::duration_cast<std::chrono::microseconds, double>(
+                     queueTime)
+                     .count();
+        _metrics->_metricsDequeueTimes[i]->count(d);
+
         return res;
       }
     }

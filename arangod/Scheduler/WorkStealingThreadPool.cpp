@@ -35,6 +35,8 @@
 
 #include "Logger/LogMacros.h"
 #include "Metrics/Counter.h"
+#include "Metrics/Histogram.h"
+#include "Metrics/LogScale.h"
 
 namespace arangodb {
 
@@ -240,6 +242,14 @@ auto WorkStealingThreadPool::ThreadState::pushMany(WorkItem* item)
 
 void WorkStealingThreadPool::ThreadState::runWork(WorkItem& work) noexcept {
   incCounter(pool._metrics.jobsDequeued);
+  if (pool._metrics.dequeueTimes) {
+    auto queueTime = std::chrono::duration<double>(
+        std::chrono::steady_clock::now() - work.enqueueTime);
+    auto d =
+        std::chrono::duration_cast<std::chrono::microseconds, double>(queueTime)
+            .count();
+    pool._metrics.dequeueTimes->count(d);
+  }
   pool.statistics.dequeued.fetch_add(1, std::memory_order_relaxed);
   try {
     work.invoke();

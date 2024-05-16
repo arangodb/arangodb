@@ -30,6 +30,7 @@ struct ThreadPoolMetrics {
   metrics::Counter* jobsDone = nullptr;
   metrics::Counter* jobsQueued = nullptr;
   metrics::Counter* jobsDequeued = nullptr;
+  metrics::Histogram<metrics::LogScale<double>>* dequeueTimes = nullptr;
 };
 
 }  // namespace arangodb

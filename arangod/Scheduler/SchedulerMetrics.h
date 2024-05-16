@@ -50,6 +50,8 @@ struct SchedulerMetrics {
   /// this metric is only updated probabilistically
   metrics::Gauge<uint64_t>& _metricsLastLowPriorityDequeueTime;
 
+  std::array<metrics::Histogram<metrics::LogScale<double>>*, 4>
+      _metricsDequeueTimes;
   std::array<metrics::Gauge<uint64_t>*, 4> _metricsQueueLengths;
 
   SchedulerMetrics(metrics::MetricsFeature& metrics);

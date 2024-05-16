@@ -113,6 +113,8 @@ class Scheduler {
     virtual ~WorkItemBase() { TRI_ASSERT(next == nullptr); }
     virtual void invoke() = 0;
 
+    std::chrono::steady_clock::time_point enqueueTime;
+
     // used by some schedulers to chain work items
     WorkItemBase* next = nullptr;
   };
