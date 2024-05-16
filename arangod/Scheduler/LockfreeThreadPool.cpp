@@ -19,6 +19,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 #include <algorithm>
+#include <atomic>
 #include <memory>
 #include <thread>
 
@@ -41,12 +42,15 @@ struct StopWorkItem : LockfreeThreadPool::WorkItem {
 }  // namespace
 
 LockfreeThreadPool::LockfreeThreadPool(const char* name,
-                                       std::size_t threadCount)
-    : numThreads(threadCount), _threads() {
+                                       std::size_t threadCount,
+                                       ThreadPoolMetrics metrics)
+    : numThreads(threadCount), _threads(), _metrics(metrics) {
+  unsigned cnt = 1;
   std::generate_n(std::back_inserter(_threads), threadCount, [&]() {
-    auto thread = std::jthread([this]() noexcept {
+    auto id = cnt++;
+    auto thread = std::jthread([this, id]() noexcept {
       while (true) {
-        auto item = pop();
+        auto item = pop(id);
         if (item.get() == &stopItem) {
           std::ignore = item.release();
           return;
@@ -100,9 +104,10 @@ void LockfreeThreadPool::push(std::unique_ptr<WorkItem>&& task) noexcept {
   }
 }
 
-auto LockfreeThreadPool::pop() noexcept -> std::unique_ptr<WorkItem> {
+auto LockfreeThreadPool::pop(unsigned id) noexcept
+    -> std::unique_ptr<WorkItem> {
   while (true) {
-    constexpr unsigned maxTries = 100;
+    unsigned const maxTries = 10 + 4096 * 4 / (id * id * id);
     unsigned tryCount = 0;
     while (true) {
       WorkItem* task = nullptr;

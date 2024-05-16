@@ -25,14 +25,16 @@
 
 #include <boost/lockfree/queue.hpp>
 
-#include "Scheduler.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/ThreadPoolMetrics.h"
 
 namespace arangodb {
 
 struct LockfreeThreadPool {
   using WorkItem = Scheduler::WorkItemBase;
 
-  LockfreeThreadPool(const char* name, std::size_t threadCount);
+  LockfreeThreadPool(const char* name, std::size_t threadCount,
+                     ThreadPoolMetrics metrics = {});
   ~LockfreeThreadPool();
 
   void shutdown() noexcept;
@@ -64,12 +66,13 @@ struct LockfreeThreadPool {
   const std::size_t numThreads;
 
  private:
-  auto pop() noexcept -> std::unique_ptr<WorkItem>;
+  auto pop(unsigned) noexcept -> std::unique_ptr<WorkItem>;
 
   using Clock = std::chrono::steady_clock;
 
   boost::lockfree::queue<WorkItem*> _queue;
   std::vector<std::jthread> _threads;
+  ThreadPoolMetrics _metrics;
 };
 
 }  // namespace arangodb
