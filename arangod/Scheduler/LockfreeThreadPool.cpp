@@ -107,6 +107,7 @@ auto LockfreeThreadPool::pop() noexcept -> std::unique_ptr<WorkItem> {
     while (true) {
       WorkItem* task = nullptr;
       if (_queue.pop(task)) {
+        statistics.inQueue.fetch_sub(1, std::memory_order_relaxed);
         return std::unique_ptr<WorkItem>{task};
       }
 
