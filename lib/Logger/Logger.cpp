@@ -883,8 +883,7 @@ void Logger::append(LogGroup& group, std::unique_ptr<LogMessage> msg,
 /// @brief initializes the logging component
 ////////////////////////////////////////////////////////////////////////////////
 
-void Logger::initialize(application_features::ApplicationServer& server,
-                        bool threaded, uint32_t maxQueuedLogMessages) {
+void Logger::initialize(bool threaded, uint32_t maxQueuedLogMessages) {
   if (_active.exchange(true, std::memory_order_acquire)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "Logger already initialized");
@@ -892,8 +891,8 @@ void Logger::initialize(application_features::ApplicationServer& server,
 
   // logging is now active
   if (threaded) {
-    auto loggingThread = std::make_unique<LogThread>(
-        server, std::string(logThreadName), maxQueuedLogMessages);
+    auto loggingThread = std::make_unique<LogThread>(std::string(logThreadName),
+                                                     maxQueuedLogMessages);
     if (!loggingThread->start()) {
       LOG_TOPIC("28bd9", FATAL, arangodb::Logger::FIXME)
           << "could not start logging thread";

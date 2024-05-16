@@ -393,8 +393,9 @@ MockV8Server::MockV8Server(bool start) : MockServer() {
   SetupV8Phase(*this);
   addFeature<NetworkFeature>(
       false, _server.getFeature<metrics::MetricsFeature>(),
-      network::ConnectionPool::Config(
-          _server.getFeature<metrics::MetricsFeature>()));
+      network::ConnectionPool::Config{
+          .metrics = network::ConnectionPool::Metrics::fromMetricsFeature(
+              _server.getFeature<metrics::MetricsFeature>(), "mock")});
 
   if (start) {
     MockV8Server::startFeatures();
@@ -470,8 +471,9 @@ MockRestServer::MockRestServer(bool start) : MockServer() {
       false, getFeature<arangodb::metrics::MetricsFeature>());
   addFeature<NetworkFeature>(
       false, _server.getFeature<metrics::MetricsFeature>(),
-      network::ConnectionPool::Config(
-          _server.getFeature<metrics::MetricsFeature>()));
+      network::ConnectionPool::Config{
+          .metrics = network::ConnectionPool::Metrics::fromMetricsFeature(
+              _server.getFeature<metrics::MetricsFeature>(), "mock")});
   if (start) {
     MockRestServer::startFeatures();
   }
@@ -528,8 +530,9 @@ MockClusterServer::MockClusterServer(bool useAgencyMockPool,
   addFeature<replication2::replicated_state::ReplicatedStateAppFeature>(false);
   addFeature<ReplicatedLogFeature>(false);
 
-  network::ConnectionPool::Config config(
-      _server.getFeature<metrics::MetricsFeature>());
+  network::ConnectionPool::Config config;
+  config.metrics = network::ConnectionPool::Metrics::fromMetricsFeature(
+      _server.getFeature<metrics::MetricsFeature>(), "network-mock");
   config.numIOThreads = 1;
   config.maxOpenConnections = 8;
   config.verifyHosts = false;
@@ -544,12 +547,13 @@ MockClusterServer::~MockClusterServer() {
 void MockClusterServer::startFeatures() {
   MockServer::startFeatures();
 
-  network::ConnectionPool::Config poolConfig(
-      _server.getFeature<metrics::MetricsFeature>());
+  network::ConnectionPool::Config poolConfig;
   poolConfig.clusterInfo = &getFeature<ClusterFeature>().clusterInfo();
   poolConfig.numIOThreads = 1;
   poolConfig.maxOpenConnections = 3;
   poolConfig.verifyHosts = false;
+  poolConfig.metrics = network::ConnectionPool::Metrics::fromMetricsFeature(
+      _server.getFeature<metrics::MetricsFeature>(), "mock");
 
   if (_useAgencyMockPool) {
     _pool = std::make_unique<AsyncAgencyStorePoolMock>(_server, poolConfig);
@@ -1003,7 +1007,8 @@ MockRestAqlServer::MockRestAqlServer() {
   SetupAqlPhase(*this);
   addFeature<NetworkFeature>(
       false, _server.getFeature<metrics::MetricsFeature>(),
-      network::ConnectionPool::Config(
-          _server.getFeature<metrics::MetricsFeature>()));
+      network::ConnectionPool::Config{
+          .metrics = network::ConnectionPool::Metrics::fromMetricsFeature(
+              _server.getFeature<metrics::MetricsFeature>(), "mock")});
   MockRestAqlServer::startFeatures();
 }

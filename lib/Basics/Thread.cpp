@@ -181,11 +181,13 @@ std::string Thread::stringify(ThreadState state) {
 }
 
 /// @brief constructs a thread
-Thread::Thread(application_features::ApplicationServer& server,
+Thread::Thread(application_features::ApplicationServer&,
                std::string const& name, bool deleteOnExit,
                std::uint32_t terminationTimeout)
-    : _server(server),
-      _threadStructInitialized(false),
+    : Thread(name, deleteOnExit, terminationTimeout) {}
+Thread::Thread(std::string const& name, bool deleteOnExit,
+               std::uint32_t terminationTimeout)
+    : _threadStructInitialized(false),
       _refs(0),
       _name(name),
       _thread(),
@@ -265,14 +267,6 @@ bool Thread::isStopping() const noexcept {
 
 /// @brief starts the thread
 bool Thread::start(ConditionVariable* finishedCondition) {
-  if (!isSystem() && !_server.isPrepared()) {
-    LOG_TOPIC("6ba8a", FATAL, arangodb::Logger::FIXME)
-        << "trying to start a thread '" << _name
-        << "' before prepare has finished, current state: "
-        << (int)_server.state();
-    FATAL_ERROR_ABORT();
-  }
-
   _finishedCondition = finishedCondition;
   ThreadState state = _state.load();
 

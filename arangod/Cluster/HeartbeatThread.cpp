@@ -24,6 +24,7 @@
 #include "HeartbeatThread.h"
 
 #include "Agency/AsyncAgencyComm.h"
+#include "Auth/UserManager.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
@@ -240,7 +241,9 @@ HeartbeatThread::HeartbeatThread(Server& server,
           arangodb_heartbeat_send_time_msec{})),
       _heartbeat_failure_counter(
           server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_heartbeat_failures_total{})) {}
+              arangodb_heartbeat_failures_total{})) {
+  TRI_ASSERT(_maxFailsBeforeWarning > 0);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a heartbeat thread
@@ -733,10 +736,8 @@ void HeartbeatThread::handleUserVersionChange(VPackSlice userVersion) {
     } catch (...) {
     }
 
-    if (version > 0) {
-      if (af.isActive() && af.userManager() != nullptr) {
-        af.userManager()->setGlobalVersion(version);
-      }
+    if (version > 0 && af.isActive() && af.userManager() != nullptr) {
+      af.userManager()->setGlobalVersion(version);
     }
   }
 }
@@ -934,7 +935,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
   containers::FlatHashSet<TRI_voc_tick_t> ids;
   for (auto options : VPackObjectIterator(databases)) {
     try {
-      ids.emplace(std::stoul(options.value.get("id").copyString()));
+      ids.emplace(std::stoull(options.value.get("id").copyString()));
     } catch (std::exception const& e) {
       LOG_TOPIC("a9235", ERR, Logger::CLUSTER)
           << "Failed to read planned databases " << options.key.stringView()
@@ -964,7 +965,14 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
   }
 
   // loop over all database names we got and create a local database
-  // instance if not yet present:
+  // instance if not yet present.
+  // redundant functionality also exists in ClusterInfo::loadPlan().
+  // however, keeping the same code around here can lead to the
+  // databases being picked up more quickly, in case they were created
+  // by a different coordinator.
+  // if this code is removed, some tests will fail that create a
+  // database on one coordinator and then access the newly created
+  // database via another coordinator.
   for (auto options : VPackObjectIterator(databases)) {
     if (!options.value.isObject()) {
       continue;
@@ -1070,6 +1078,7 @@ bool HeartbeatThread::sendServerState() {
   }
 
   if (!isStopping()) {
+    TRI_ASSERT(_maxFailsBeforeWarning > 0);
     if (++_numFails % _maxFailsBeforeWarning == 0) {
       _heartbeat_failure_counter.count();
       std::string const endpoints =
@@ -1147,6 +1156,7 @@ void HeartbeatThread::sendServerStateAsync() {
         try {
           auto const& result = tryResult.get().asResult();
           if (result.fail()) {
+            TRI_ASSERT(self->_maxFailsBeforeWarning > 0);
             if (++self->_numFails % self->_maxFailsBeforeWarning == 0) {
               self->_heartbeat_failure_counter.count();
               std::string const endpoints =
