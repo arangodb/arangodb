@@ -145,21 +145,25 @@ NetworkFeature::NetworkFeature(Server& server,
   startsAfter<EngineSelectorFeature>();
 }
 
+NetworkFeature::~NetworkFeature() { cancelRetryRequests(); }
+
 void NetworkFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   options->addSection("network", "cluster-internal networking");
 
   options
-      ->addOption("--network.io-threads",
-                  "The number of network I/O threads for cluster-internal "
-                  "communication.",
-                  new UInt32Parameter(&_numIOThreads))
+      ->addOption(
+          "--network.io-threads",
+          "The number of network I/O threads for cluster-internal "
+          "communication.",
+          new UInt32Parameter(&_numIOThreads, /*base*/ 1, /*minValue*/ 1))
       .setIntroducedIn(30600);
   options
-      ->addOption("--network.max-open-connections",
-                  "The maximum number of open TCP connections for "
-                  "cluster-internal communication per endpoint",
-                  new UInt64Parameter(&_maxOpenConnections))
+      ->addOption(
+          "--network.max-open-connections",
+          "The maximum number of open TCP connections for "
+          "cluster-internal communication per endpoint",
+          new UInt64Parameter(&_maxOpenConnections, /*base*/ 1, /*minValue*/ 1))
       .setIntroducedIn(30600);
   options
       ->addOption("--network.idle-connection-ttl",
@@ -198,10 +202,6 @@ void NetworkFeature::collectOptions(
 
 void NetworkFeature::validateOptions(
     std::shared_ptr<options::ProgramOptions> opts) {
-  _numIOThreads = std::max<unsigned>(1, std::min<unsigned>(_numIOThreads, 8));
-  if (_maxOpenConnections < 8) {
-    _maxOpenConnections = 8;
-  }
   if (!opts->processingResult().touched("--network.idle-connection-ttl")) {
     auto& gs = server().getFeature<GeneralServerFeature>();
     _idleTtlMilli = uint64_t(gs.keepAliveTimeout() * 1000 / 2);
@@ -298,15 +298,7 @@ void NetworkFeature::start() {
 }
 
 void NetworkFeature::beginShutdown() {
-  {
-    std::lock_guard<std::mutex> guard(_workItemMutex);
-    _workItem.reset();
-    for (auto const& [req, item] : _retryRequests) {
-      TRI_ASSERT(item != nullptr);
-      item->cancel();
-    }
-    _retryRequests.clear();
-  }
+  cancelRetryRequests();
   _poolPtr.store(nullptr, std::memory_order_relaxed);
   if (_pool) {  // first cancel all connections
     _pool->shutdownConnections();
@@ -314,16 +306,7 @@ void NetworkFeature::beginShutdown() {
 }
 
 void NetworkFeature::stop() {
-  {
-    // we might have posted another workItem during shutdown.
-    std::lock_guard<std::mutex> guard(_workItemMutex);
-    _workItem.reset();
-    for (auto const& [req, item] : _retryRequests) {
-      TRI_ASSERT(item != nullptr);
-      item->cancel();
-    }
-    _retryRequests.clear();
-  }
+  cancelRetryRequests();
   if (_pool) {
     _pool->shutdownConnections();
   }
@@ -333,6 +316,19 @@ void NetworkFeature::unprepare() {
   if (_pool) {
     _pool->drainConnections();
   }
+}
+
+void NetworkFeature::cancelRetryRequests() noexcept try {
+  std::lock_guard<std::mutex> guard(_workItemMutex);
+  _workItem.reset();
+  for (auto const& [req, item] : _retryRequests) {
+    TRI_ASSERT(item != nullptr);
+    item->cancel();
+  }
+  _retryRequests.clear();
+} catch (std::exception const& ex) {
+  LOG_TOPIC("2b843", WARN, Logger::COMMUNICATION)
+      << "caught exception while canceling retry requests: " << ex.what();
 }
 
 network::ConnectionPool* NetworkFeature::pool() const noexcept {

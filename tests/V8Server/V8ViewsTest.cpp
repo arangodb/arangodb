@@ -21,7 +21,6 @@
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
-#include "Basics/DownCast.h"
 
 #include "Mocks/Servers.h"  // this must be first because windows
 
@@ -36,10 +35,11 @@
 #include "IResearch/common.h"
 #include "Mocks/LogLevels.h"
 
-#include "V8/V8SecurityFeature.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Aql/QueryRegistry.h"
+#include "Auth/UserManager.h"
+#include "Basics/DownCast.h"
 #include "Basics/StaticStrings.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogTopic.h"
@@ -49,6 +49,7 @@
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/ExecContext.h"
+#include "V8/V8SecurityFeature.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/v8-externals.h"
