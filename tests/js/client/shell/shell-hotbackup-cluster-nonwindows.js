@@ -79,7 +79,6 @@ function HotBackupSuite () {
         dropExtraCollections();
         db._create(colNameTwo);
         assertAdditionalDataDoesNotExist();
-        require("internal").print(JSON.stringify(backupGood));
 
         // Validate we can restore the backup with Analyzers entry, just for good measure.
         arango.POST("/_admin/backup/restore", {id: backupGood.id});
