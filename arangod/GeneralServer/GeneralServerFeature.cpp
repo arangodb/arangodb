@@ -23,6 +23,7 @@
 
 #include "GeneralServerFeature.h"
 
+#include <algorithm>
 #include <chrono>
 #include <stdexcept>
 #include <thread>
@@ -133,8 +134,6 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-constexpr uint64_t const maxIoThreads = 64;
-
 struct RequestBodySizeScale {
   static metrics::LogScale<uint64_t> scale() { return {2, 64, 65536, 10}; }
 };
@@ -170,7 +169,10 @@ GeneralServerFeature::GeneralServerFeature(Server& server)
       _permanentRootRedirect(true),
       _redirectRootTo("/_admin/aardvark/index.html"),
       _supportInfoApiPolicy("admin"),
-      _numIoThreads(0),
+      // default number of io tasks: # cores / 4  in range [1, 64]
+      _numIoThreads(
+          std::clamp(static_cast<uint64_t>(NumberOfCores::getValue() / 4),
+                     uint64_t(1), uint64_t(64))),
       _requestBodySizeHttp1(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_request_body_size_http1{})),
       _requestBodySizeHttp2(server.getFeature<metrics::MetricsFeature>().add(
@@ -193,13 +195,6 @@ GeneralServerFeature::GeneralServerFeature(Server& server)
   startsAfter<SslServerFeature>();
   startsAfter<SchedulerFeature>();
   startsAfter<UpgradeFeature>();
-
-  _numIoThreads =
-      (std::max)(static_cast<uint64_t>(1),
-                 static_cast<uint64_t>(NumberOfCores::getValue() / 4));
-  if (_numIoThreads > maxIoThreads) {
-    _numIoThreads = maxIoThreads;
-  }
 }
 
 void GeneralServerFeature::collectOptions(
@@ -248,7 +243,7 @@ batch processing.)");
 
   options->addOption(
       "--server.io-threads", "The number of threads used to handle I/O.",
-      new UInt64Parameter(&_numIoThreads),
+      new UInt64Parameter(&_numIoThreads, /*base*/ 1, /*minValue*/ 1),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
   options
@@ -398,16 +393,6 @@ void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
                          return basics::StringUtils::trim(value).empty();
                        }),
         _accessControlAllowOrigins.end());
-  }
-
-  // we need at least one io thread and context
-  if (_numIoThreads == 0) {
-    LOG_TOPIC("1ade3", WARN, Logger::FIXME) << "Need at least one io-context";
-    _numIoThreads = 1;
-  } else if (_numIoThreads > maxIoThreads) {
-    LOG_TOPIC("80dcf", WARN, Logger::FIXME)
-        << "io-contexts are limited to " << maxIoThreads;
-    _numIoThreads = maxIoThreads;
   }
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
