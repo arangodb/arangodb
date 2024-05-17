@@ -1,4 +1,4 @@
-v3.11.9 (XXXX-XX-XX)
+v3.11.9 (2024-05-18)
 --------------------
 
 * Fixed the listDatabases API: Directly after adding a new empty DBServer, or
