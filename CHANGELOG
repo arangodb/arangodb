@@ -1,6 +1,12 @@
 v3.11.9 (XXXX-XX-XX)
 --------------------
 
+* Fixed the listDatabases API: Directly after adding a new empty DBServer, or
+  after restoring a Hotbackup the listDatabases() would return an empty list
+  of existing databases, which goes back to normal quickly. This bug only
+  effected the APIs exposing the list of database names, all databases in
+  fact still exist and are fully functional.
+
 * Fix potentially hanging threads during index creation if starting one of the
   parallel index creation threads returned an error.
 
