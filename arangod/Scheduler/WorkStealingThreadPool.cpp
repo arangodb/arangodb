@@ -99,6 +99,7 @@ struct WorkStealingThreadPool::ThreadState {
 
   std::atomic<WorkItem*> pushQueue{nullptr};
   std::atomic<bool> sleeping = false;
+  std::atomic<std::size_t> queueSize = 0;
   std::size_t const stepSize;
   WorkStealingThreadPool& pool;
   std::atomic<std::size_t> stealHint = NoHint;
@@ -174,6 +175,7 @@ void WorkStealingThreadPool::ThreadState::pushFront(
   TRI_ASSERT(work->next == nullptr);
   std::unique_lock guard(mutex);
   _queue.push_front(std::move(work));
+  queueSize.store(_queue.size(), std::memory_order_relaxed);
 }
 
 void WorkStealingThreadPool::ThreadState::signalStop() noexcept {
@@ -192,30 +194,35 @@ void WorkStealingThreadPool::ThreadState::run() noexcept {
   // threads with lower ids should spin longer before going to sleep
   unsigned const totalMaxStealAttempts = 1 + 4096 / (d * d * d);
   auto maxStealAttempts = totalMaxStealAttempts;
+
+  auto doWork = [&](WorkItem& work) {
+    if (pool.hint.load(std::memory_order_relaxed) == id) {
+      auto h = prevHint.load(std::memory_order_relaxed);
+      pool.hint.store(h, std::memory_order_relaxed);
+    }
+
+    runWork(work);
+
+    stealAttempts = 0;
+    maxStealAttempts = totalMaxStealAttempts;
+  };
+
   while (!stop.load(std::memory_order_relaxed)) {
     std::unique_lock guard(mutex);
     if (!_queue.empty()) {
       auto item = std::move(_queue.front());
       TRI_ASSERT(item != nullptr);
       _queue.pop_front();
+      queueSize.store(_queue.size(), std::memory_order_relaxed);
       guard.unlock();
 
-      if (pool.hint.load(std::memory_order_relaxed) == id) {
-        auto h = prevHint.load(std::memory_order_relaxed);
-        pool.hint.store(h, std::memory_order_relaxed);
-      }
-
-      runWork(*item);
-      stealAttempts = 0;
-      maxStealAttempts = totalMaxStealAttempts;
+      doWork(*item);
     } else if (pushQueue.load(std::memory_order_relaxed) != nullptr) {
       auto item = pushQueue.exchange(nullptr, std::memory_order_acquire);
       if (item != nullptr) {
         auto work = pushMany(item);
         guard.unlock();
-        runWork(*work);
-        stealAttempts = 0;
-        maxStealAttempts = totalMaxStealAttempts;
+        doWork(*work);
       }
     } else if (stealAttempts > maxStealAttempts) {
       // nothing to work -> go to sleep
@@ -227,17 +234,26 @@ void WorkStealingThreadPool::ThreadState::run() noexcept {
     } else {
       guard.unlock();
       if (stealAttempts == 0) {
-        auto hint = pool.hint.load(std::memory_order_relaxed);
-        if (hint > id) {
-          prevHint.store(hint, std::memory_order_relaxed);
-          pool.hint.store(id, std::memory_order_relaxed);
+        // try to insert ourselves in the hint chain
+        // threads with lower IDs spin longer, so we prefer to have them at the
+        // front of the chain, provided they are not sleeping already.
+        // We simply limit ourselves to 4 steps before giving up (note that the
+        // chain can contain loops)
+        auto* hint = &pool.hint;
+        for (unsigned i = 0; i < 4; ++i) {
+          auto h = hint->load(std::memory_order_relaxed);
+          auto& ts = pool._threadStates[h];
+          if (h > id || ts->sleeping.load(std::memory_order_relaxed)) {
+            prevHint.store(h, std::memory_order_relaxed);
+            hint->store(id, std::memory_order_relaxed);
+            break;
+          }
+          hint = &ts->prevHint;
         }
       }
       auto work = stealWork();
       if (work) {
-        runWork(*work);
-        stealAttempts = 0;
-        maxStealAttempts = totalMaxStealAttempts;
+        doWork(*work);
       } else {
         basics::cpu_relax();
         ++stealAttempts;
@@ -270,6 +286,7 @@ auto WorkStealingThreadPool::ThreadState::pushMany(WorkItem* item)
     item = next;
     TRI_ASSERT(item != nullptr);
   }
+  queueSize.store(_queue.size(), std::memory_order_relaxed);
   TRI_ASSERT(item->next == nullptr);
   return std::unique_ptr<WorkItem>{item};
 }
@@ -321,14 +338,35 @@ auto WorkStealingThreadPool::ThreadState::stealWork() noexcept
         }
       }
 
-      std::unique_lock guard(other->mutex);
-      if (!other->_queue.empty()) {
-        auto work = std::move(other->_queue.back());
-        TRI_ASSERT(work != nullptr);
-        other->_queue.pop_back();
-        // remember this thread so next time we try to steal from it first
-        stealHint.store(idx, std::memory_order_relaxed);
-        return work;
+      if (other->queueSize.load(std::memory_order_relaxed) > 0) {
+        // stealing is only best effort - try to acquire lock, but don't bother
+        // if we don't get it right away
+        std::unique_lock guard(other->mutex, std::try_to_lock);
+        if (guard.owns_lock() && !other->_queue.empty()) {
+          auto toSteal = std::max<std::size_t>(1, other->_queue.size() / 2);
+
+          auto work = std::move(other->_queue.back());
+          TRI_ASSERT(work != nullptr);
+          other->_queue.pop_back();
+          if (toSteal > 1) {
+            std::unique_lock guard2(mutex);
+            for (std::size_t i = 1; i < toSteal; ++i) {
+              _queue.push_front(std::move(work));
+
+              TRI_ASSERT(other->_queue.size() > 0);
+              work = std::move(other->_queue.back());
+              TRI_ASSERT(work != nullptr);
+              other->_queue.pop_back();
+            }
+            queueSize.store(_queue.size(), std::memory_order_relaxed);
+          }
+          other->queueSize.store(other->_queue.size(),
+                                 std::memory_order_relaxed);
+
+          // remember this thread so next time we try to steal from it first
+          stealHint.store(idx, std::memory_order_relaxed);
+          return work;
+        }
       }
     }
     if (this->pushQueue.load(std::memory_order_relaxed) != nullptr) {
