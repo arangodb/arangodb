@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global arango, assertTrue, assertEqual, assertNotEqual, db*/
+/*global arango, assertTrue, assertEqual, assertNotEqual, assertUndefined, assertNotUndefined, db*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test hotbackup in single server
@@ -56,14 +56,22 @@ function HotBackupSuite () {
         db._createDatabase(dbName);
         db._create(colName);
 
-        const backupGood = arango.POST("/_admin/backup/create", {}).result;
+        const req = arango.POST("/_admin/backup/create", {});
+        if (!require("internal").isEnterprise()) {
+          // Hotbackup is an enterprise feature this call should respond with 404.
+          assertTrue(req.error);
+          assertEqual(req.code, 404);
+          return;
+        }
+        // Entering Enterprise test code
+        const backupGood = req.result;
 
         // Now create the regression. In version 3.6 the entry /arango/Plan/Analyzers did not exist.
 
 
-        assertTrue(readAgencyValueAt("Plan/Analyzers") !== undefined, "We should have analyzers in plan by default.");
+        assertNotUndefined(readAgencyValueAt("Plan/Analyzers"), "We should have analyzers in plan by default.");
         serverHelper.agency.remove("Plan/Analyzers");
-        assertTrue(readAgencyValueAt("Plan/Analyzers") === undefined, "Failed to simulate 3.6 behaviour by removing the analyzers entry");
+        assertUndefined(readAgencyValueAt("Plan/Analyzers"), "Failed to simulate 3.6 behaviour by removing the analyzers entry");
 
         const backupRegressed = arango.POST("/_admin/backup/create", {}).result;
 
@@ -95,7 +103,14 @@ function HotBackupSuite () {
 
     testRegressionFailedReplanIsReported: function() {
       if (debugCanUseFailAt()) {
-        const backup = arango.POST("/_admin/backup/create", {}).result;
+        const req = arango.POST("/_admin/backup/create", {});
+        if (!require("internal").isEnterprise()) {
+          // Hotbackup is an enterprise feature this call should respond with 404.
+          assertTrue(req.error);
+          assertEqual(req.code, 404);
+          return;
+        }
+        const backup = req.result;
         const colName = "additionalCollection";
         db._create(colName);
         try {
