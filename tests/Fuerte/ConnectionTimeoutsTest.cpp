@@ -130,8 +130,26 @@ void performRequests(fu::ProtocolType pt) {
 
 }  // namespace
 
-TEST(RequestTimeout, VelocyStream) { ::performRequests(fu::ProtocolType::Vst); }
+TEST(RequestTimeout, VelocyStream) {
+#ifdef _WIN32
+  GTEST_SKIP() << "test disabled on Windows";
+#else
+  ::performRequests(fu::ProtocolType::Vst);
+#endif
+}
 
-TEST(RequestTimeout, HTTP) { ::performRequests(fu::ProtocolType::Http); }
+TEST(RequestTimeout, HTTP) {
+#ifdef _WIN32
+  GTEST_SKIP() << "test disabled on Windows";
+#else
+  ::performRequests(fu::ProtocolType::Http);
+#endif
+}
 
-TEST(RequestTimeout, HTTP2) { ::performRequests(fu::ProtocolType::Http2); }
+TEST(RequestTimeout, HTTP2) {
+#ifdef _WIN32
+  GTEST_SKIP() << "test disabled on Windows";
+#else
+  ::performRequests(fu::ProtocolType::Http2);
+#endif
+}
