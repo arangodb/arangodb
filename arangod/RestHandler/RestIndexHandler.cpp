@@ -203,7 +203,7 @@ RestStatus RestIndexHandler::getIndexes() {
       tmp.add(VPackValue("indexes"));
       {
         VPackArrayBuilder guard(&tmp);
-        for (auto const& i : VPackArrayIterator(indexes.slice())) {
+        for (auto i : VPackArrayIterator(indexes.slice())) {
           tmp.add(i);
         }
         if (withHidden) {
@@ -211,13 +211,18 @@ RestStatus RestIndexHandler::getIndexes() {
                                         "/", coll->planId().id(), "/indexes");
           auto& ac =
               _vocbase.server().getFeature<ClusterFeature>().agencyCache();
+          // we need to wait for the latest commit index here, because otherwise
+          // we may not see all indexes that were declared ready by the
+          // supervision.
+          ac.waitForLatestCommitIndex().get();
+
           auto [plannedIndexes, idx] = ac.get(ap);
 
           try {  // this is a best effort progress display.
-            for (auto const& pi : VPackArrayIterator(plannedIndexes->slice())) {
+            for (auto pi : VPackArrayIterator(plannedIndexes->slice())) {
               if (pi.get("isBuilding").isTrue()) {
                 VPackObjectBuilder o(&tmp);
-                for (auto const& source : VPackObjectIterator(
+                for (auto source : VPackObjectIterator(
                          pi, /* useSequentialIterator */ true)) {
                   tmp.add(source.key.stringView(), source.value);
                 }
@@ -296,7 +301,7 @@ RestStatus RestIndexHandler::getIndexes() {
                         << " index already finished.";
                   }
                 }
-                if (progress != 0) {
+                if (progress != 0 && shards->size() != 0) {
                   // Don't show progress 0, this is in particular relevant
                   // when isBackground is false, in which case no progress
                   // is reported by design.
