@@ -31,6 +31,8 @@
 #include <velocypack/Iterator.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/TokenCache.h"
+#include "Auth/UserManager.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/AgencyCache.h"
@@ -746,10 +748,8 @@ void HeartbeatThread::handleUserVersionChange(VPackSlice userVersion) {
     } catch (...) {
     }
 
-    if (version > 0) {
-      if (af.isActive() && af.userManager() != nullptr) {
-        af.userManager()->setGlobalVersion(version);
-      }
+    if (version > 0 && af.isActive() && af.userManager() != nullptr) {
+      af.userManager()->setGlobalVersion(version);
     }
   }
 }
