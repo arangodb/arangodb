@@ -934,8 +934,6 @@ bool ClusterInfo::doesDatabaseExist(std::string_view databaseID) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::vector<DatabaseID> ClusterInfo::databases() {
-  std::vector<DatabaseID> result;
-
   if (_clusterId.empty()) {
     loadClusterId();
   }
@@ -947,44 +945,16 @@ std::vector<DatabaseID> ClusterInfo::databases() {
     }
   }
 
-  if (!_currentProt.isValid) {
-    Result r = waitForCurrent(1).get();
-    if (r.fail()) {
-      THROW_ARANGO_EXCEPTION(r);
-    }
-  }
-
-  if (!_dbServersProt.isValid) {
-    loadCurrentDBServers();
-  }
-
-  // From now on we know that all data has been valid once, so no need
-  // to check the isValid flags again under the lock.
-
-  size_t expectedSize;
-  {
-    READ_LOCKER(readLocker, _dbServersProt.lock);
-    expectedSize = _dbServers.size();
-  }
-
+  // The _plannedDatabases map contains all Databases that
+  // are planned to exist, and that do not have the "isBuilding"
+  // flag set. Hence those databases have been successfully created
+  // and should be listed.
+  std::vector<DatabaseID> result;
   {
     READ_LOCKER(readLockerPlanned, _planProt.lock);
-    READ_LOCKER(readLockerCurrent, _currentProt.lock);
     // _plannedDatabases is a map-type<DatabaseID, VPackSlice>
-    auto it = _plannedDatabases.begin();
-
-    while (it != _plannedDatabases.end()) {
-      // _currentDatabases is:
-      //   a map-type<DatabaseID, a map-type<ServerID, VPackSlice>>
-      auto it2 = _currentDatabases.find((*it).first);
-
-      if (it2 != _currentDatabases.end()) {
-        if ((*it2).second.size() >= expectedSize) {
-          result.push_back((*it).first);
-        }
-      }
-
-      ++it;
+    for (auto const& it : _plannedDatabases) {
+      result.emplace_back(it.first);
     }
   }
   return result;
