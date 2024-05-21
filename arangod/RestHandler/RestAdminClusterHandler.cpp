@@ -2870,6 +2870,7 @@ RestAdminClusterHandler::collectRebalanceInformation(
           collectionRef.shards.push_back(shardIndex);
           auto& shardRef = p.shards.emplace_back();
           shardRef.name = shard.first;
+          TRI_ASSERT(!shard.second.empty());
           shardRef.leader = getDBServerIndex(shard.second[0]);
           shardRef.id = shardIndex;
           shardRef.collectionId = index;
