@@ -8371,6 +8371,7 @@ void arangodb::aql::asyncPrefetchRule(Optimizer* opt,
     plan->root()->walk(enabler);
     modified = enabler.modified;
     if (modified) {
+      TRI_ASSERT(!plan->getAst()->containsModificationNode());
       plan->getAst()->setContainsAsyncPrefetch();
     }
   }

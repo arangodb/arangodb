@@ -506,10 +506,10 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, velocypack::Slice slice)
         Variable* oneVariable = allVars->getVariable(oneVarUsedLater.id);
 
         if (oneVariable == nullptr) {
-          std::string errmsg =
-              "varsUsedLaterStack: ID not found in all-array: " +
-              StringUtils::itoa(oneVarUsedLater.id);
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL, errmsg);
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_INTERNAL_AQL,
+              absl::StrCat("varsUsedLaterStack: ID not found in all-array: ",
+                           oneVarUsedLater.id));
         }
         varsUsedLater.insert(oneVariable);
       }
@@ -538,9 +538,10 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, velocypack::Slice slice)
         Variable* oneVariable = allVars->getVariable(oneVarValid.id);
 
         if (oneVariable == nullptr) {
-          std::string errmsg = "varsValidStack: ID not found in all-array: " +
-                               StringUtils::itoa(oneVarValid.id);
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL, errmsg);
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_INTERNAL_AQL,
+              absl::StrCat("varsValidStack: ID not found in all-array: ",
+                           oneVarValid.id));
         }
         varsValid.insert(oneVariable);
       }
@@ -1091,6 +1092,7 @@ void ExecutionNode::toVelocyPack(velocypack::Builder& builder,
   // this works because they default to false, and helps to keep the output
   // small.
   if (isAsyncPrefetchEnabled()) {
+    TRI_ASSERT(!_plan->getAst()->containsModificationNode());
     builder.add("isAsyncPrefetchEnabled", VPackValue(true));
   }
   if (_isCallstackSplitEnabled) {
