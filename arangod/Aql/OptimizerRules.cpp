@@ -8366,12 +8366,12 @@ void arangodb::aql::asyncPrefetchRule(Optimizer* opt,
   plan->root()->walk(checker);
 
   if (checker.eligible) {
+    TRI_ASSERT(!plan->getAst()->containsModificationNode());
     // only if it does, start modifying nodes in the query
     AsyncPrefetchEnabler enabler;
     plan->root()->walk(enabler);
     modified = enabler.modified;
     if (modified) {
-      TRI_ASSERT(!plan->getAst()->containsModificationNode());
       plan->getAst()->setContainsAsyncPrefetch();
     }
   }

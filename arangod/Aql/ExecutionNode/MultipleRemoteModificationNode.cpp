@@ -148,6 +148,11 @@ CostEstimate MultipleRemoteModificationNode::estimateCost() const {
   return estimate;
 }
 
+AsyncPrefetchEligibility
+MultipleRemoteModificationNode::canUseAsyncPrefetching() const noexcept {
+  return AsyncPrefetchEligibility::kDisableGlobally;
+}
+
 std::vector<Variable const*>
 MultipleRemoteModificationNode::getVariablesSetHere() const {
   std::vector<Variable const*> vec;
