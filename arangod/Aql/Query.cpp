@@ -1633,7 +1633,10 @@ std::shared_ptr<transaction::Context> Query::newTrxContext() const {
     // some degree of parallel execution. nodes should better not
     // share the transaction context, but create their own, non-shared
     // objects.
-    TRI_ASSERT(!_ast->containsModificationNode());
+    TRI_ASSERT(!_ast->containsModificationNode())
+        << "can apply parallelism: " << _ast->canApplyParallelism()
+        << ", contains async prefetch: " << _ast->containsAsyncPrefetch()
+        << ", query: " << _queryString.string();
     return _transactionContext->clone();
   }
   // no parallelism in this query. all parts can use the same

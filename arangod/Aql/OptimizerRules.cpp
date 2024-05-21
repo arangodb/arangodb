@@ -758,6 +758,10 @@ std::optional<arangodb::ShardID> getSingleShardId(
         return std::nullopt;
       }
 
+      if (n->containsBindParameter()) {
+        return std::nullopt;
+      }
+
       // the lookup value is a string, and the only shard key is _key: so we
       // can use it
       builder.add(VPackValue(arangodb::StaticStrings::KeyString));
@@ -778,6 +782,9 @@ std::optional<arangodb::ShardID> getSingleShardId(
         if (it != toFind.end()) {
           // we found one of the shard keys!
           auto v = sub->getMember(0);
+          if (v->containsBindParameter()) {
+            return std::nullopt;
+          }
           if (v->isConstant()) {
             // if the attribute value is a constant, we copy it into our
             // builder
@@ -789,6 +796,9 @@ std::optional<arangodb::ShardID> getSingleShardId(
         }
       }
     } else {
+      if (n->containsBindParameter()) {
+        return std::nullopt;
+      }
       if (nullptr != collectionVariable) {
         ::findShardKeysInExpression(n, collectionVariable, toFind, builder);
       } else {
@@ -803,10 +813,14 @@ std::optional<arangodb::ShardID> getSingleShardId(
       // we can only handle a single index here
       return std::nullopt;
     }
+
     auto const* condition = c->condition();
 
     if (condition != nullptr) {
       arangodb::aql::AstNode const* root = condition->root();
+      if (root->containsBindParameter()) {
+        return std::nullopt;
+      }
       ::findShardKeysInExpression(root, inputVariable, toFind, builder);
     }
   }
@@ -818,6 +832,9 @@ std::optional<arangodb::ShardID> getSingleShardId(
 
     if (en->hasFilter()) {
       arangodb::aql::AstNode const* root = en->filter()->node();
+      if (root->containsBindParameter()) {
+        return std::nullopt;
+      }
       ::findShardKeysInExpression(root, inputVariable, toFind, builder);
     }
   }
