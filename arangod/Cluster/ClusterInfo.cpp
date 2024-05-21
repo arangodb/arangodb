@@ -365,6 +365,19 @@ void doQueueLinkDrop(IndexId id, std::string const& collection,
   };
   scheduler->queue(RequestLane::INTERNAL_LOW, dropTask);
 }
+
+inline arangodb::AgencyOperation SetOldEntry(
+    std::string const& key, std::vector<std::string_view> const& path,
+    VPackSlice plan) {
+  VPackSlice newEntry = plan.get(path);
+  if (newEntry.isNone()) {
+    // This is a countermeasure to protect against non-existing paths. If we
+    // get anything else original plan is already broken.
+    newEntry = VPackSlice::emptyObjectSlice();
+  }
+  return {key, AgencyValueOperationType::SET, newEntry};
+}
+
 }  // namespace
 }  // namespace arangodb
 
