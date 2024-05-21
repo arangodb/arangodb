@@ -2815,7 +2815,8 @@ RestAdminClusterHandler::collectRebalanceInformation(
         collectionRef.weight = 1.0;
         distributeShardsLikeCounter[collectionRef.name].index = index;
 
-        for (auto const& shard : *collection->shardIds()) {
+        auto shardIds = collection->shardIds();
+        for (auto const& shard : *shardIds) {
           auto shardIndex =
               static_cast<decltype(collectionRef.shards)::value_type>(
                   p.shards.size());
