@@ -23,17 +23,18 @@
 
 #include "RestShutdownHandler.h"
 
-#include <velocypack/Builder.h>
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Agency/AgencyComm.h"
 #include "Agency/AsyncAgencyComm.h"
+#include "Auth/UserManager.h"
 #include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "RestServer/SoftShutdownFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Utils/ExecContext.h"
+
+#include <velocypack/Builder.h>
 
 using namespace arangodb;
 using namespace arangodb::application_features;

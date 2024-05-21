@@ -69,15 +69,15 @@ class TraversalNode : public virtual GraphNode {
    public:
     explicit TraversalEdgeConditionBuilder(TraversalNode const*);
 
-    TraversalEdgeConditionBuilder(TraversalNode const*,
-                                  arangodb::velocypack::Slice const&);
+    TraversalEdgeConditionBuilder(TraversalNode const* tn,
+                                  arangodb::velocypack::Slice condition);
 
-    TraversalEdgeConditionBuilder(TraversalNode const*,
-                                  TraversalEdgeConditionBuilder const*);
+    TraversalEdgeConditionBuilder(TraversalNode const* tn,
+                                  TraversalEdgeConditionBuilder const* other);
 
     ~TraversalEdgeConditionBuilder() = default;
 
-    void toVelocyPack(arangodb::velocypack::Builder&, bool);
+    void toVelocyPack(arangodb::velocypack::Builder& builder, bool verbose);
   };
 
   friend class ExecutionBlock;
@@ -90,7 +90,7 @@ class TraversalNode : public virtual GraphNode {
                 std::unique_ptr<Expression> pruneExpression,
                 std::unique_ptr<graph::BaseOptions> options);
 
-  TraversalNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
+  TraversalNode(ExecutionPlan* plan, arangodb::velocypack::Slice base);
 
   ~TraversalNode();
 

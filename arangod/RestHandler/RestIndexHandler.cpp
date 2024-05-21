@@ -204,23 +204,27 @@ RestStatus RestIndexHandler::getIndexes() {
     if (ServerState::instance()->isCoordinator() && withHidden) {
       tmp.add(VPackValue("indexes"));
       VPackArrayBuilder guard(&tmp);
-      for (auto const& i : VPackArrayIterator(indexes.slice())) {
+      for (auto i : VPackArrayIterator(indexes.slice())) {
         tmp.add(i);
       }
       std::string ap = absl::StrCat("Plan/Collections/", _vocbase.name(), "/",
                                     coll->planId().id(), "/indexes");
       auto& ac = _vocbase.server().getFeature<ClusterFeature>().agencyCache();
+      // we need to wait for the latest commit index here, because otherwise
+      // we may not see all indexes that were declared ready by the supervision.
+      ac.waitForLatestCommitIndex().get();
+
       auto [plannedIndexes, idx] = ac.get(ap);
 
       try {  // this is a best effort progress display.
-        for (auto const& pi : VPackArrayIterator(plannedIndexes->slice())) {
+        for (auto pi : VPackArrayIterator(plannedIndexes->slice())) {
           if (pi.get(StaticStrings::IndexIsBuilding).isTrue()) {
             VPackObjectBuilder o(&tmp);
-            for (auto const& source :
+            for (auto source :
                  VPackObjectIterator(pi, /* useSequentialIterator */ true)) {
               tmp.add(source.key.stringView(), source.value);
             }
-            std::string iid = pi.get("id").copyString();
+            std::string_view iid = pi.get("id").stringView();
             double progress = 0;
             auto const shards = coll->shardIds();
             auto const body = VPackBuffer<uint8_t>();
@@ -308,7 +312,7 @@ RestStatus RestIndexHandler::getIndexes() {
     }
 
     tmp.add("identifiers", VPackValue(VPackValueType::Object));
-    for (VPackSlice const& index : VPackArrayIterator(indexes.slice())) {
+    for (auto index : VPackArrayIterator(indexes.slice())) {
       VPackSlice id = index.get("id");
       tmp.add(id.stringView(), index);
     }

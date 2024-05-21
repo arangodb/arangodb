@@ -22,7 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Syncer.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/UserManager.h"
 #include "Basics/Exceptions.h"
 #include "Basics/RocksDBUtils.h"
 #include "Basics/StaticStrings.h"
