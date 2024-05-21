@@ -82,7 +82,7 @@ RestStatus RestSimpleHandler::execute() {
 }
 
 futures::Future<RestStatus> RestSimpleHandler::removeByKeys(
-    VPackSlice const& slice) {
+    velocypack::Slice slice) {
   TRI_ASSERT(slice.isObject());
   std::string collectionName;
   {
@@ -249,7 +249,7 @@ void RestSimpleHandler::handleQueryResultLookupByKeys() {
 }
 
 futures::Future<RestStatus> RestSimpleHandler::lookupByKeys(
-    VPackSlice const& slice) {
+    velocypack::Slice slice) {
   if (response() == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response");
   }
@@ -277,7 +277,7 @@ futures::Future<RestStatus> RestSimpleHandler::lookupByKeys(
     }
   }
 
-  VPackSlice const keys = slice.get("keys");
+  VPackSlice keys = slice.get("keys");
 
   if (!keys.isArray()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,

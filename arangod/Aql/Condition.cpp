@@ -1822,11 +1822,18 @@ AstNode* Condition::deduplicateInOperation(AstNode* operation) {
   TRI_ASSERT(operation->numMembers() == 2);
 
   auto rhs = operation->getMemberUnchecked(1);
+  if (rhs->containsBindParameter()) {
+    AstNode* array = _ast->createNodeArray();
+    array->addMember(rhs);
+    return _ast->createNodeFunctionCall("SORTED_UNIQUE", array, true);
+  }
+
   if (!rhs->isArray() || !rhs->isConstant()) {
     return operation;
   }
 
-  auto deduplicated = _ast->deduplicateArray(rhs);
+  AstNode const* deduplicated = _ast->deduplicateArray(rhs);
+
   if (deduplicated != rhs) {
     // there were duplicates
     operation = _ast->shallowCopyForModify(operation);

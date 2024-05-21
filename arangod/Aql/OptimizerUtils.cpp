@@ -814,7 +814,7 @@ void extractNonConstPartsOfLeafNode(
   if (lhs->isAttributeAccessForVariable(indexVariable, false)) {
     // Index is responsible for the left side, check if right side
     // has to be evaluated
-    if (!rhs->isConstant()) {
+    if (!rhs->isConstant() || rhs->containsBindParameter()) {
       if (leaf->type == NODE_TYPE_OPERATOR_BINARY_IN) {
         rhs = wrapInUniqueCall(
             ast, rhs,

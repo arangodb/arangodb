@@ -92,7 +92,7 @@ bool canBeNull(
   }
 
   try {
-    if (nonNullAttributes.find(access->toString()) != nonNullAttributes.end()) {
+    if (nonNullAttributes.contains(access->toString())) {
       // found an attribute marked as non-null
       return false;
     }
@@ -835,27 +835,17 @@ bool Index::canUseConditionPart(
         (other->type == aql::NODE_TYPE_EXPANSION ||
          other->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS)) {
       // value IN a.b  OR  value IN a.b[*]
-      if (!access->isConstant()) {
+      if (!access->isConstant() || access->containsBindParameter()) {
         return false;
       }
 
-      /* A sparse index will store null in Array
-      if (access->isNullValue()) {
-        return false;
-      }
-      */
     } else if (op->type == aql::NODE_TYPE_OPERATOR_BINARY_IN &&
                access->type == aql::NODE_TYPE_EXPANSION) {
       // value[*] IN a.b
-      if (!other->isConstant()) {
+      if (!other->isConstant() || other->containsBindParameter()) {
         return false;
       }
 
-      /* A sparse index will store null in Array
-      if (other->isNullValue()) {
-        return false;
-      }
-      */
     } else if (access->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
       // a.b == value  OR  a.b IN values
 
@@ -865,6 +855,9 @@ bool Index::canUseConditionPart(
         ::markAsNonNull(op, access, nonNullAttributes);
       } else if (op->type == aql::NODE_TYPE_OPERATOR_BINARY_LT ||
                  op->type == aql::NODE_TYPE_OPERATOR_BINARY_LE) {
+        if (other->containsBindParameter()) {
+          return false;
+        }
         // <  and  <= are not supported with sparse indexes as this may include
         // null values
         if (::canBeNull(op, access, nonNullAttributes)) {
@@ -875,7 +868,7 @@ bool Index::canUseConditionPart(
         ::markAsNonNull(op, access, nonNullAttributes);
       }
 
-      if (other->isConstant()) {
+      if (other->isConstant() && !other->containsBindParameter()) {
         if (op->type == aql::NODE_TYPE_OPERATOR_BINARY_NE &&
             other->isNullValue()) {
           // != null. now note that a certain attribute cannot become null
@@ -905,7 +898,8 @@ bool Index::canUseConditionPart(
           size_t const n = other->numMembers();
 
           for (size_t i = 0; i < n; ++i) {
-            if (other->getMemberUnchecked(i)->isNullValue()) {
+            if (other->getMemberUnchecked(i)->isNullValue() ||
+                other->getMemberUnchecked(i)->containsBindParameter()) {
               return false;
             }
           }
@@ -914,6 +908,9 @@ bool Index::canUseConditionPart(
         }
       } else {
         // !other->isConstant()
+        if (other->containsBindParameter()) {
+          return false;
+        }
         if (::canBeNull(op, access, nonNullAttributes)) {
           return false;
         }
