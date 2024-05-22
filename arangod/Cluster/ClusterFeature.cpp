@@ -968,7 +968,7 @@ void ClusterFeature::stop() {
     shutdown();
 
     // We try to actively cancel all open requests that may still be in the
-    // Agency We cannot react to them anymore.
+    // Agency. We cannot react to them anymore.
     _asyncAgencyCommPool->shutdownConnections();
   }
 }
@@ -976,6 +976,9 @@ void ClusterFeature::stop() {
 void ClusterFeature::unprepare() {
   if (_enableCluster) {
     _clusterInfo->unprepare();
+    if (_asyncAgencyCommPool) {
+      _asyncAgencyCommPool->drainConnections();
+    }
   }
 }
 
@@ -1006,6 +1009,10 @@ void ClusterFeature::shutdown() try {
   // must make sure that the HeartbeatThread is fully stopped before
   // we destroy the AgencyCallbackRegistry.
   _heartbeatThread.reset();
+
+  if (_asyncAgencyCommPool) {
+    _asyncAgencyCommPool->drainConnections();
+  }
 } catch (...) {
   // this is called from the dtor. not much we can do here except logging
   LOG_TOPIC("9f538", WARN, Logger::CLUSTER)
