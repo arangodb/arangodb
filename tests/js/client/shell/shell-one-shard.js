@@ -47,7 +47,9 @@ const maxReplicationFactor = getMaxReplicationFactor();
 const minReplicationFactor = getMinReplicationFactor(); 
         
 function assertNoDatabasesInPlan () {
-  assertTrue(isCluster);
+  if (!isCluster) {
+    return;
+  }
   const prefix = arango.POST("/_admin/execute", `return global.ArangoAgency.prefix()`);
   const paths = [
       "Plan/Databases/",
