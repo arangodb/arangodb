@@ -86,7 +86,10 @@ ConnectionPool::ConnectionPool(ConnectionPool::Config const& config)
   TRI_ASSERT(config.numIOThreads > 0);
 }
 
-ConnectionPool::~ConnectionPool() { shutdownConnections(); }
+ConnectionPool::~ConnectionPool() {
+  shutdownConnections();
+  drainConnections();
+}
 
 /// @brief request a connection for a specific endpoint
 /// note: it is the callers responsibility to ensure the endpoint

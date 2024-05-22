@@ -961,13 +961,6 @@ void ClusterFeature::beginShutdown() {
   _agencyCache->beginShutdown();
 }
 
-void ClusterFeature::unprepare() {
-  if (!_enableCluster) {
-    return;
-  }
-  _clusterInfo->cleanup();
-}
-
 void ClusterFeature::stop() {
   if (!_enableCluster) {
     shutdownHeartbeatThread();
@@ -1023,6 +1016,16 @@ void ClusterFeature::stop() {
   // We try to actively cancel all open requests that may still be in the Agency
   // We cannot react to them anymore.
   _asyncAgencyCommPool->shutdownConnections();
+}
+
+void ClusterFeature::unprepare() {
+  if (!_enableCluster) {
+    return;
+  }
+  _clusterInfo->cleanup();
+  if (_asyncAgencyCommPool) {
+    _asyncAgencyCommPool->drainConnections();
+  }
 }
 
 void ClusterFeature::setUnregisterOnShutdown(bool unregisterOnShutdown) {
