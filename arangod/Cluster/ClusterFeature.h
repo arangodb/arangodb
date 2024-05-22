@@ -92,24 +92,36 @@ class ClusterFeature : public ArangodFeature {
   std::string const clusterRestPath() const { return "/_api/cluster"; }
 
   void setUnregisterOnShutdown(bool);
-  bool createWaitsForSyncReplication() const {
+  bool createWaitsForSyncReplication() const noexcept {
     return _createWaitsForSyncReplication;
   }
-  std::uint32_t writeConcern() const { return _writeConcern; }
-  std::uint32_t systemReplicationFactor() const {
+  std::uint32_t writeConcern() const noexcept { return _writeConcern; }
+  std::uint32_t systemReplicationFactor() const noexcept {
     return _systemReplicationFactor;
   }
-  std::uint32_t defaultReplicationFactor() const {
+  std::uint32_t defaultReplicationFactor() const noexcept {
     return _defaultReplicationFactor;
   }
-  std::uint32_t maxNumberOfShards() const { return _maxNumberOfShards; }
-  std::uint32_t minReplicationFactor() const { return _minReplicationFactor; }
-  std::uint32_t maxReplicationFactor() const { return _maxReplicationFactor; }
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  void defaultReplicationFactor(std::uint32_t value) noexcept {
+    _defaultReplicationFactor = value;
+  }
+#endif
+
+  std::uint32_t maxNumberOfShards() const noexcept {
+    return _maxNumberOfShards;
+  }
+  std::uint32_t minReplicationFactor() const noexcept {
+    return _minReplicationFactor;
+  }
+  std::uint32_t maxReplicationFactor() const noexcept {
+    return _maxReplicationFactor;
+  }
   std::uint32_t maxNumberOfMoveShards() const { return _maxNumberOfMoveShards; }
-  bool forceOneShard() const { return _forceOneShard; }
+  bool forceOneShard() const noexcept { return _forceOneShard; }
   /// @brief index creation timeout in seconds. note: this used to be
   /// a configurable parameter in previous versions, but is now hard-coded.
-  double indexCreationTimeout() const { return _indexCreationTimeout; }
+  double indexCreationTimeout() const noexcept { return _indexCreationTimeout; }
 
   std::shared_ptr<HeartbeatThread> heartbeatThread();
 
