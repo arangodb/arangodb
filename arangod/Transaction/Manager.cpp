@@ -293,9 +293,9 @@ arangodb::cluster::CallbackGuard Manager::buildCallbackGuard(
       auto& clusterInfo = clusterFeature.clusterInfo();
       rGuard = clusterInfo.rebootTracker().callMeOnChange(
           origin,
-          [this, tid = state.id(), vocbase = state.vocbase().name()]() {
+          [this, tid = state.id(), databaseName = state.vocbase().name()]() {
             // abort the transaction once the coordinator goes away
-            abortManagedTrx(tid, vocbase).get();
+            abortManagedTrx(tid, databaseName).get();
           },
           "Transaction aborted since coordinator rebooted or failed.");
     }
