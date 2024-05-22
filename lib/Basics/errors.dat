@@ -99,7 +99,7 @@ ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,1203,"collection or view not found","Will be 
 ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,1204,"parameter 'collection' not found","Will be raised when the collection parameter is missing."
 ERROR_ARANGO_DOCUMENT_HANDLE_BAD,1205,"illegal document identifier","Will be raised when a document identifier is corrupt."
 ERROR_ARANGO_DUPLICATE_NAME,1207,"duplicate name","Will be raised when a name duplicate is detected."
-ERROR_ARANGO_ILLEGAL_NAME,1208,"illegal name","Will be raised when the name of a database, collection, View, Analyzer, index, graph, or other is invalid, respectively, against the naming constraints."
+ERROR_ARANGO_ILLEGAL_NAME,1208,"illegal name","Will be raised when the name of a database, collection, View, Analyzer, index, graph, or other object is invalid, respectively, when it is against the naming constraints."
 ERROR_ARANGO_NO_INDEX,1209,"no suitable index known","Will be raised when no suitable index for the query is known."
 ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED,1210,"unique constraint violated","Will be raised when there is a unique constraint violation."
 ERROR_ARANGO_INDEX_NOT_FOUND,1212,"index not found","Will be raised when an index with a given identifier is unknown."
