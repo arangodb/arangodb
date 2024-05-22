@@ -226,17 +226,17 @@ class ClusterFeature : public ArangodFeature {
   std::string _myEndpoint;
   std::string _myAdvertisedEndpoint;
   std::string _apiJwtPolicy;
+
+  // hard-coded limit for maximum replicationFactor value
+  static constexpr std::uint32_t kMaxReplicationFactor = 10;
+
   std::uint32_t _connectivityCheckInterval = 3600;  // seconds
   std::uint32_t _writeConcern = 1;                  // write concern
-  std::uint32_t _defaultReplicationFactor =
-      0;  // a value of 0 means it will use the min replication factor
+  std::uint32_t _defaultReplicationFactor = 1;
   std::uint32_t _systemReplicationFactor = 2;
-  std::uint32_t _minReplicationFactor =
-      1;  // minimum replication factor (0 = unrestricted)
-  std::uint32_t _maxReplicationFactor =
-      10;  // maximum replication factor (0 = unrestricted)
-  std::uint32_t _maxNumberOfShards =
-      1000;  // maximum number of shards (0 = unrestricted)
+  std::uint32_t _minReplicationFactor = 1;
+  std::uint32_t _maxReplicationFactor = kMaxReplicationFactor;
+  std::uint32_t _maxNumberOfShards = 1000;  // maximum number of shards
   std::uint32_t _maxNumberOfMoveShards =
       10;  // maximum number of shards to be moved per rebalance operation
            // if value = 0, no move shards operations will be scheduled
