@@ -327,7 +327,10 @@ struct ConnectionPool::Impl {
 ConnectionPool::ConnectionPool(ConnectionPool::Config const& config)
     : _impl(std::make_unique<Impl>(config, *this)) {}
 
-ConnectionPool::~ConnectionPool() { shutdownConnections(); }
+ConnectionPool::~ConnectionPool() {
+  shutdownConnections();
+  drainConnections();
+}
 
 /// @brief request a connection for a specific endpoint
 /// note: it is the callers responsibility to ensure the endpoint
