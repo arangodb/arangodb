@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,9 +24,9 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Containers/FlatHashMap.h"
+#include "Cluster/Utils/ShardID.h"
 #include "Futures/Future.h"
 #include "Indexes/IndexIterator.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
@@ -47,7 +47,6 @@ class Builder;
 class Slice;
 }  // namespace velocypack
 typedef std::string ServerID;  // ID of a server
-typedef std::string ShardID;   // ID of a shard
 using ShardMap = containers::FlatHashMap<ShardID, std::vector<ServerID>>;
 
 struct UserInputCollectionProperties;
@@ -135,9 +134,9 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief current version for collections
   static constexpr Version currentVersion() { return Version::v37; }
 
-  static replication2::LogId shardIdToStateId(std::string_view shardId);
+  static replication2::LogId shardIdToStateId(ShardID const& shardId);
   static std::optional<replication2::LogId> tryShardIdToStateId(
-      std::string_view shardId);
+      ShardID const& shardId);
 
   // SECTION: Meta Information
   Version version() const noexcept { return _version; }
@@ -165,8 +164,8 @@ class LogicalCollection : public LogicalDataSource {
 
   // SECTION: Properties
   RevisionId revision(transaction::Methods*) const;
-  bool waitForSync() const noexcept { return _waitForSync; }
-  void waitForSync(bool value) { _waitForSync = value; }
+  bool waitForSync() const noexcept;
+  bool cacheEnabled() const noexcept;
 #ifdef USE_ENTERPRISE
   bool isDisjoint() const noexcept { return _isDisjoint; }
   bool isSmart() const noexcept { return _isSmart; }
@@ -183,6 +182,7 @@ class LogicalCollection : public LogicalDataSource {
   bool isSmartEdgeCollection() const noexcept;
   bool isSatToSmartEdgeCollection() const noexcept;
   bool isSmartToSatEdgeCollection() const noexcept;
+  bool isSmartVertexCollection() const noexcept;
 
 #else
   bool isDisjoint() const noexcept { return false; }
@@ -256,16 +256,22 @@ class LogicalCollection : public LogicalDataSource {
   void setShardMap(std::shared_ptr<ShardMap> map) noexcept;
 
   // query shard for a given document
-  ErrorCode getResponsibleShard(velocypack::Slice slice, bool docComplete,
-                                std::string& shardID);
-  ErrorCode getResponsibleShard(std::string_view key, std::string& shardID);
+  ResultT<ShardID> getResponsibleShard(velocypack::Slice slice,
+                                       bool docComplete);
+  ResultT<ShardID> getResponsibleShard(std::string_view key);
 
-  ErrorCode getResponsibleShard(velocypack::Slice slice, bool docComplete,
-                                std::string& shardID,
-                                bool& usesDefaultShardKeys,
-                                std::string_view key = std::string_view());
+  ResultT<ShardID> getResponsibleShard(
+      velocypack::Slice slice, bool docComplete, bool& usesDefaultShardKeys,
+      std::string_view key = std::string_view());
 
-  auto getDocumentState()
+  /**
+   * Test if this Logical collection is the leading shard.
+   * Will only return true on DBServers and Shards, and only
+   * if they are leading. Independent of the Replication version
+   */
+  auto isLeadingShard() const -> bool;
+
+  auto getDocumentState() const
       -> std::shared_ptr<replication2::replicated_state::ReplicatedState<
           replication2::replicated_state::document::DocumentState>>;
   auto getDocumentStateLeader() -> std::shared_ptr<
@@ -278,13 +284,6 @@ class LogicalCollection : public LogicalDataSource {
   std::unique_ptr<IndexIterator> getAllIterator(transaction::Methods* trx,
                                                 ReadOwnWrites readOwnWrites);
   std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx);
-
-  /// @brief return all indexes of the collection
-  std::vector<std::shared_ptr<Index>> getIndexes() const;
-
-  void getIndexesVPack(
-      velocypack::Builder&,
-      std::function<bool(Index const*, uint8_t&)> const& filter) const;
 
   /// @brief a method to skip certain documents in AQL write operations,
   /// this is only used in the Enterprise Edition for SmartGraphs
@@ -326,10 +325,14 @@ class LogicalCollection : public LogicalDataSource {
 
   // SECTION: Indexes
 
+  using Replication2Callback =
+      fu2::unique_function<futures::Future<ResultT<replication2::LogIndex>>()>;
+
   /// @brief Create a new Index based on VelocyPack description
-  virtual std::shared_ptr<Index> createIndex(
+  virtual futures::Future<std::shared_ptr<Index>> createIndex(
       velocypack::Slice, bool&,
-      std::shared_ptr<std::function<arangodb::Result(double)>> = nullptr);
+      std::shared_ptr<std::function<arangodb::Result(double)>> = nullptr,
+      Replication2Callback replicationCb = nullptr);
 
   /// @brief Find index by definition
   std::shared_ptr<Index> lookupIndex(velocypack::Slice) const;
@@ -404,11 +407,6 @@ class LogicalCollection : public LogicalDataSource {
   void setInternalValidatorTypes(uint64_t type);
 
   uint64_t getInternalValidatorTypes() const noexcept;
-
-#ifdef USE_ENTERPRISE
-  static void addEnterpriseShardingStrategy(VPackBuilder& builder,
-                                            VPackSlice collectionProperties);
-#endif
 
   auto groupID() const noexcept
       -> arangodb::replication2::agency::CollectionGroupId;

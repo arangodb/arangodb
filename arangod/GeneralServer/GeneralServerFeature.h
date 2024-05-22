@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -45,7 +45,8 @@ class GeneralServerFeature final : public ArangodFeature {
  public:
   static constexpr std::string_view name() noexcept { return "GeneralServer"; }
 
-  explicit GeneralServerFeature(Server& server);
+  explicit GeneralServerFeature(Server& server,
+                                metrics::MetricsFeature& metrics);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -57,6 +58,7 @@ class GeneralServerFeature final : public ArangodFeature {
   void unprepare() override final;
 
   double keepAliveTimeout() const noexcept;
+  bool handleContentEncodingForUnauthenticatedRequests() const noexcept;
   bool proxyCheck() const noexcept;
   bool returnQueueTimeHeader() const noexcept;
   std::vector<std::string> trustedProxies() const;
@@ -65,6 +67,8 @@ class GeneralServerFeature final : public ArangodFeature {
   bool permanentRootRedirect() const noexcept;
   std::string redirectRootTo() const;
   std::string const& supportInfoApiPolicy() const noexcept;
+  std::string const& optionsApiPolicy() const noexcept;
+  uint64_t compressResponseThreshold() const noexcept;
 
   std::shared_ptr<rest::RestHandlerFactory> handlerFactory() const;
   rest::AsyncJobManager& jobManager();
@@ -77,15 +81,9 @@ class GeneralServerFeature final : public ArangodFeature {
     _requestBodySizeHttp2.count(bodySize);
   }
 
-  void countVstRequest(uint64_t bodySize) noexcept {
-    _requestBodySizeVst.count(bodySize);
-  }
-
   void countHttp1Connection() { _http1Connections.count(); }
 
   void countHttp2Connection() { _http2Connections.count(); }
-
-  void countVstConnection() { _vstConnections.count(); }
 
   bool isTelemetricsEnabled() const noexcept { return _enableTelemetrics; }
   uint64_t telemetricsMaxRequestsPerInterval() const noexcept {
@@ -110,14 +108,17 @@ class GeneralServerFeature final : public ArangodFeature {
   bool _startedListening;
 #endif
   bool _allowEarlyConnections;
+  bool _handleContentEncodingForUnauthenticatedRequests;
   bool _enableTelemetrics;
   bool _proxyCheck;
   bool _returnQueueTimeHeader;
   bool _permanentRootRedirect;
+  uint64_t _compressResponseThreshold;
   std::vector<std::string> _trustedProxies;
   std::vector<std::string> _accessControlAllowOrigins;
   std::string _redirectRootTo;
   std::string _supportInfoApiPolicy;
+  std::string _optionsApiPolicy;
   std::shared_ptr<rest::RestHandlerFactory> _handlerFactory;
   std::unique_ptr<rest::AsyncJobManager> _jobManager;
   std::vector<std::unique_ptr<rest::GeneralServer>> _servers;
@@ -130,10 +131,8 @@ class GeneralServerFeature final : public ArangodFeature {
   // Some metrics about requests and connections
   metrics::Histogram<metrics::LogScale<uint64_t>>& _requestBodySizeHttp1;
   metrics::Histogram<metrics::LogScale<uint64_t>>& _requestBodySizeHttp2;
-  metrics::Histogram<metrics::LogScale<uint64_t>>& _requestBodySizeVst;
   metrics::Counter& _http1Connections;
   metrics::Counter& _http2Connections;
-  metrics::Counter& _vstConnections;
 };
 
 }  // namespace arangodb

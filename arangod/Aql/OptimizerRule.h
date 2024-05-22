@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,8 +25,6 @@
 
 #include <memory>
 #include <type_traits>
-
-#include "Basics/Common.h"
 
 namespace arangodb::aql {
 class ExecutionPlan;
@@ -105,6 +103,8 @@ struct OptimizerRule {
 
     inlineSubqueriesRule,
 
+    replaceLikeWithRange,
+
     /// simplify some conditions in CalculationNodes
     simplifyConditionsRule,
 
@@ -147,6 +147,9 @@ struct OptimizerRule {
 
     interchangeAdjacentEnumerationsRule,
 
+    // replace attribute accesses that are equal due to a filter statement
+    // with the same value. This might enable other optimizations later on.
+
     // "Pass 4": moving nodes "up" (potentially outside loops) (second try):
     // ======================================================
 
@@ -157,6 +160,8 @@ struct OptimizerRule {
     // move filters up the dependency chain (to make result sets as small
     // as possible as early as possible)
     moveFiltersUpRule2,
+
+    replaceEqualAttributeAccesses,
 
     /// "Pass 5": try to remove redundant or unnecessary nodes (second try)
     // remove filters from the query that are not necessary at all
@@ -209,6 +214,9 @@ struct OptimizerRule {
 
     // merge filters into graph traversals
     optimizeTraversalsRule,
+
+    // put path filters into enumerate paths
+    optimizeEnumeratePathsFilterRule,
 
     // optimize K_PATHS
     optimizePathsRule,
@@ -358,6 +366,9 @@ struct OptimizerRule {
     // for index
     lateDocumentMaterializationRule,
 
+    // batch materialization rule
+    batchMaterializeDocumentsRule,
+
 #ifdef USE_ENTERPRISE
     lateMaterialiationOffsetInfoRule,
 #endif
@@ -366,6 +377,10 @@ struct OptimizerRule {
     // for it.
     joinIndexNodesRule,
 
+    pushDownLateMaterialization,
+
+    // introduce a new out variable for late materialization blocks
+    materializeIntoSeparateVariable,
     // remove unnecessary projections & store projection attributes in
     // individual registers. must be executed after the joinIndexNodesRule,
     // otherwise the projections handling of JoinNodes will be incorrect.

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,34 +27,48 @@
 #include "Aql/Aggregator.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
-#include "Aql/CollectNode.h"
 #include "Aql/CollectOptions.h"
 #include "Aql/Collection.h"
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/CalculationNode.h"
+#include "Aql/ExecutionNode/CollectNode.h"
+#include "Aql/ExecutionNode/EnumerateCollectionNode.h"
+#include "Aql/ExecutionNode/EnumerateListNode.h"
+#include "Aql/ExecutionNode/EnumeratePathsNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
+#include "Aql/ExecutionNode/FilterNode.h"
+#include "Aql/ExecutionNode/IResearchViewNode.h"
+#include "Aql/ExecutionNode/IndexNode.h"
+#include "Aql/ExecutionNode/InsertNode.h"
+#include "Aql/ExecutionNode/LimitNode.h"
+#include "Aql/ExecutionNode/NoResultsNode.h"
+#include "Aql/ExecutionNode/RemoveNode.h"
+#include "Aql/ExecutionNode/ReplaceNode.h"
+#include "Aql/ExecutionNode/ReturnNode.h"
+#include "Aql/ExecutionNode/ShortestPathNode.h"
+#include "Aql/ExecutionNode/SingletonNode.h"
+#include "Aql/ExecutionNode/SortNode.h"
+#include "Aql/ExecutionNode/SubqueryNode.h"
+#include "Aql/ExecutionNode/TraversalNode.h"
+#include "Aql/ExecutionNode/UpdateNode.h"
+#include "Aql/ExecutionNode/UpsertNode.h"
+#include "Aql/ExecutionNode/WindowNode.h"
 #include "Aql/Expression.h"
 #include "Aql/Function.h"
-#include "Aql/IResearchViewNode.h"
 #include "Aql/IndexHint.h"
-#include "Aql/EnumeratePathsNode.h"
-#include "Aql/ModificationNodes.h"
 #include "Aql/NodeFinder.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
-#include "Aql/ShortestPathNode.h"
-#include "Aql/SortNode.h"
-#include "Aql/TraversalNode.h"
 #include "Aql/VarUsageFinder.h"
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
-#include "Aql/WindowNode.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Containers/SmallVector.h"
-#include "Graph/ShortestPathOptions.h"
 #include "Graph/PathType.h"
+#include "Graph/ShortestPathOptions.h"
 #include "Graph/TraverserOptions.h"
 #include "Logger/LoggerStream.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -340,13 +354,13 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(
           if (maxProjections.fail()) {
             // will raise a warning, which can optionally abort the query
             ExecutionPlan::invalidOptionAttribute(query, "invalid", "FOR",
-                                                  name.data(), name.size());
+                                                  name);
           } else {
             options->setMaxProjections(maxProjections.get());
           }
         } else {
-          ExecutionPlan::invalidOptionAttribute(
-              ast->query(), "unknown", "TRAVERSAL", name.data(), name.size());
+          ExecutionPlan::invalidOptionAttribute(ast->query(), "unknown",
+                                                "TRAVERSAL", name);
         }
       }
     }
@@ -376,8 +390,8 @@ std::unique_ptr<graph::BaseOptions> createShortestPathOptions(
 
   aql::QueryContext& query = ast->query();
   auto options = std::make_unique<graph::ShortestPathOptions>(query);
-  options->minDepth = minDepth;
-  options->maxDepth = maxDepth;
+  options->setMinDepth(minDepth);
+  options->setMaxDepth(maxDepth);
 
   if (optionsNode != nullptr && optionsNode->type == NODE_TYPE_OBJECT) {
     size_t n = optionsNode->numMembers();
@@ -399,8 +413,7 @@ std::unique_ptr<graph::BaseOptions> createShortestPathOptions(
         } else {
           ExecutionPlan::invalidOptionAttribute(
               ast->query(), "unknown",
-              arangodb::graph::PathType::toString(type), name.data(),
-              name.size());
+              arangodb::graph::PathType::toString(type), name);
         }
       }
     }
@@ -427,7 +440,7 @@ void setForOptions(QueryContext& query, AstNode const* node,
           if (maxProjections.fail()) {
             // will raise a warning, which can optionally abort the query
             ExecutionPlan::invalidOptionAttribute(query, "invalid", "FOR",
-                                                  name.data(), name.size());
+                                                  name);
           } else {
             dn->setMaxProjections(maxProjections.get());
           }
@@ -439,7 +452,7 @@ void setForOptions(QueryContext& query, AstNode const* node,
           } else {
             // will raise a warning, which can optionally abort the query
             ExecutionPlan::invalidOptionAttribute(query, "invalid", "FOR",
-                                                  name.data(), name.size());
+                                                  name);
           }
         }
       }
@@ -459,8 +472,7 @@ std::unique_ptr<Expression> createPruneExpression(ExecutionPlan* plan, Ast* ast,
 
 /// @brief create the plan
 ExecutionPlan::ExecutionPlan(Ast* ast, bool trackMemoryUsage)
-    : _ids(),
-      _root(nullptr),
+    : _root(nullptr),
       _trackMemoryUsage(trackMemoryUsage),
       _planValid(true),
       _varUsageComputed(false),
@@ -468,8 +480,8 @@ ExecutionPlan::ExecutionPlan(Ast* ast, bool trackMemoryUsage)
       _nextId(0),
       _ast(ast),
       _lastLimitNode(nullptr),
-      _subqueries(),
-      _typeCounts{} {}
+      _typeCounts{},
+      _asyncPrefetchNodes(0) {}
 
 /// @brief destroy the plan, frees all assigned nodes
 ExecutionPlan::~ExecutionPlan() {
@@ -541,22 +553,31 @@ ExecutionPlan::~ExecutionPlan() {
   return plan;
 }
 
-void ExecutionPlan::invalidOptionAttribute(QueryContext& query,
-                                           char const* errorReason,
-                                           char const* operationName,
-                                           char const* name, size_t length) {
-  std::string msg("usage of ");
-  msg.append(errorReason);
-  msg.append(" OPTIONS attribute '");
-  msg.append(name, length);
-  msg.append("' in ");
-  msg.append(operationName);
-  msg.append(" statement");
+/// @brief increase number of async prefetch nodes
+void ExecutionPlan::increaseAsyncPrefetchNodes() noexcept {
+  ++_asyncPrefetchNodes;
+}
 
+/// @brief decrease number of async prefetch nodes
+void ExecutionPlan::decreaseAsyncPrefetchNodes() noexcept {
+  TRI_ASSERT(_asyncPrefetchNodes > 0);
+  --_asyncPrefetchNodes;
+}
+
+size_t ExecutionPlan::asyncPrefetchNodes() const noexcept {
+  return _asyncPrefetchNodes;
+}
+
+void ExecutionPlan::invalidOptionAttribute(QueryContext& query,
+                                           std::string_view errorReason,
+                                           std::string_view operationName,
+                                           std::string_view name) {
   // if warnings are converted into errors, adding this warning will
   // abort the query
-  query.warnings().registerWarning(TRI_ERROR_QUERY_INVALID_OPTIONS_ATTRIBUTE,
-                                   msg.c_str());
+  query.warnings().registerWarning(
+      TRI_ERROR_QUERY_INVALID_OPTIONS_ATTRIBUTE,
+      absl::StrCat("usage of ", errorReason, " OPTIONS attribute '", name,
+                   "' in ", operationName, " statement"));
 }
 
 bool ExecutionPlan::contains(ExecutionNode::NodeType type) const {
@@ -584,7 +605,7 @@ void ExecutionPlan::increaseCounter(ExecutionNode const& node) noexcept {
 
 /// @brief process the list of collections in a VelocyPack
 void ExecutionPlan::getCollectionsFromVelocyPack(aql::Collections& colls,
-                                                 VPackSlice const slice) {
+                                                 velocypack::Slice slice) {
   VPackSlice collectionsSlice = slice;
   if (slice.isObject()) {
     collectionsSlice = slice.get("collections");
@@ -596,43 +617,56 @@ void ExecutionPlan::getCollectionsFromVelocyPack(aql::Collections& colls,
         "json node \"collections\" not found or not an array");
   }
 
-  for (VPackSlice const collection : VPackArrayIterator(collectionsSlice)) {
+  for (auto collection : VPackArrayIterator(collectionsSlice)) {
     colls.add(
         basics::VelocyPackHelper::checkAndGetStringValue(collection, "name"),
         AccessMode::fromString(
             arangodb::basics::VelocyPackHelper::checkAndGetStringValue(
-                collection, "type")
-                .c_str()),
+                collection, "type")),
         aql::Collection::Hint::Shard);
   }
 }
 
 /// @brief create an execution plan from VelocyPack
 std::unique_ptr<ExecutionPlan> ExecutionPlan::instantiateFromVelocyPack(
-    Ast* ast, VPackSlice const slice) {
+    Ast* ast, velocypack::Slice slice) {
   TRI_ASSERT(ast != nullptr);
 
-  auto plan = std::make_unique<ExecutionPlan>(ast, true);
+  auto plan = std::make_unique<ExecutionPlan>(ast, /*trackMemoryUsage*/ true);
   plan->_root = plan->fromSlice(slice);
   plan->setVarUsageComputed();
+
+  if (auto rules = slice.get("rules"); rules.isArray()) {
+    for (auto rule : VPackArrayIterator(rules)) {
+      int ruleId = OptimizerRulesFeature::translateRule(rule.stringView());
+      plan->_appliedRules.push_back(ruleId);
+    }
+  }
+
+  if (auto apfn = slice.get("asyncPrefetchNodes"); apfn.isNumber<size_t>()) {
+    plan->_asyncPrefetchNodes = apfn.getNumericValue<size_t>();
+  }
 
   return plan;
 }
 
 /// @brief clone an existing execution plan
-ExecutionPlan* ExecutionPlan::clone(Ast* ast) {
+std::unique_ptr<ExecutionPlan> ExecutionPlan::clone(Ast* ast) {
+  TRI_ASSERT(ast != nullptr);
+
   auto plan = std::make_unique<ExecutionPlan>(ast, _trackMemoryUsage);
   plan->_nextId = _nextId;
-  plan->_root = _root->clone(plan.get(), true, false);
+  plan->_root = _root->clone(plan.get(), true);
   plan->_appliedRules = _appliedRules;
   plan->_disabledRules = _disabledRules;
   plan->_nestingLevel = _nestingLevel;
+  plan->_asyncPrefetchNodes = _asyncPrefetchNodes;
 
-  return plan.release();
+  return plan;
 }
 
 /// @brief clone an existing execution plan
-ExecutionPlan* ExecutionPlan::clone() { return clone(_ast); }
+std::unique_ptr<ExecutionPlan> ExecutionPlan::clone() { return clone(_ast); }
 
 // build flags for plan serialization
 unsigned ExecutionPlan::buildSerializationFlags(
@@ -655,9 +689,11 @@ unsigned ExecutionPlan::buildSerializationFlags(
 }
 
 /// @brief export to VelocyPack
-void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast,
-                                 unsigned flags) const {
+void ExecutionPlan::toVelocyPack(
+    velocypack::Builder& builder, unsigned flags,
+    std::function<void(velocypack::Builder&)> const& serializeQueryData) const {
   builder.openObject();
+
   builder.add(VPackValue("nodes"));
   _root->allToVelocyPack(builder, flags);
 
@@ -665,28 +701,20 @@ void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast,
   TRI_ASSERT(builder.isOpenObject());
   builder.add(VPackValue("rules"));
   builder.openArray();
-  for (auto const& ruleName :
-       OptimizerRulesFeature::translateRules(_appliedRules)) {
-    builder.add(VPackValue(ruleName));
+  for (int rule : _appliedRules) {
+    std::string_view ruleName = OptimizerRulesFeature::translateRule(rule);
+    if (!ruleName.empty()) {
+      builder.add(VPackValue(ruleName));
+    }
   }
   builder.close();
 
-  // set up collections
-  TRI_ASSERT(builder.isOpenObject());
-  builder.add(VPackValue("collections"));
-  ast->query().collections().toVelocyPack(builder);
-
-  // set up variables
-  TRI_ASSERT(builder.isOpenObject());
-  builder.add(VPackValue("variables"));
-  ast->variables()->toVelocyPack(builder);
-
+  // the following attributes are read by the explainer
   CostEstimate estimate = _root->getCost();
-  // simon: who is reading this ?
   builder.add("estimatedCost", VPackValue(estimate.estimatedCost));
   builder.add("estimatedNrItems", VPackValue(estimate.estimatedNrItems));
-  builder.add("isModificationQuery",
-              VPackValue(ast->containsModificationNode()));
+
+  serializeQueryData(builder);
 
   builder.close();
 }
@@ -697,7 +725,7 @@ void ExecutionPlan::addAppliedRule(int level) {
   }
 }
 
-bool ExecutionPlan::hasAppliedRule(int level) const {
+bool ExecutionPlan::hasAppliedRule(int level) const noexcept {
   return std::any_of(_appliedRules.begin(), _appliedRules.end(),
                      [level](int l) { return l == level; });
 }
@@ -706,8 +734,8 @@ void ExecutionPlan::enableRule(int rule) { _disabledRules.erase(rule); }
 
 void ExecutionPlan::disableRule(int rule) { _disabledRules.emplace(rule); }
 
-bool ExecutionPlan::isDisabledRule(int rule) const {
-  return (_disabledRules.find(rule) != _disabledRules.end());
+bool ExecutionPlan::isDisabledRule(int rule) const noexcept {
+  return _disabledRules.contains(rule);
 }
 
 ExecutionNodeId ExecutionPlan::nextId() {
@@ -724,10 +752,9 @@ ExecutionNode* ExecutionPlan::getNodeById(ExecutionNodeId id) const {
     return (*it).second;
   }
 
-  std::string msg = std::string("node [") + std::to_string(id.id()) +
-                    std::string("] wasn't found");
   // node unknown
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL, absl::StrCat("node [", id.id(), "] wasn't found"));
 }
 
 std::unordered_map<ExecutionNodeId, ExecutionNode*> const&
@@ -877,9 +904,7 @@ ExecutionNode* ExecutionPlan::createCalculation(Variable* out,
   }
 
   CalculationNode* en =
-      new CalculationNode(this, nextId(), std::move(expr), out);
-
-  registerNode(reinterpret_cast<ExecutionNode*>(en));
+      createNode<CalculationNode>(this, nextId(), std::move(expr), out);
 
   if (previous != nullptr) {
     en->addDependency(previous);
@@ -953,8 +978,9 @@ Variable const* ExecutionPlan::getOutVariable(ExecutionNode const* node) const {
   }
 
   THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_INTERNAL, std::string("invalid node type '") +
-                              node->getTypeString() + "' in getOutVariable");
+      TRI_ERROR_INTERNAL,
+      absl::StrCat("invalid node type '", node->getTypeString(),
+                   "' in getOutVariable"));
 }
 
 /// @brief creates an anonymous COLLECT node (for a DISTINCT)
@@ -968,14 +994,14 @@ CollectNode* ExecutionPlan::createAnonymousCollect(
       GroupVarInfo{out, previous->outVariable()}};
   std::vector<AggregateVarInfo> const aggregateVariables{};
 
-  auto en = new CollectNode(this, nextId(), CollectOptions(), groupVariables,
-                            aggregateVariables, nullptr, nullptr,
-                            std::vector<Variable const*>(),
-                            _ast->variables()->variables(false), true);
+  CollectOptions options;
+  options.fixMethod(CollectOptions::CollectMethod::kDistinct);
 
-  registerNode(en);
-  en->aggregationMethod(CollectOptions::CollectMethod::DISTINCT);
-  en->specialized();
+  auto en = createNode<CollectNode>(
+      this, nextId(), std::move(options), std::move(groupVariables),
+      std::move(aggregateVariables), nullptr, nullptr,
+      std::vector<std::pair<Variable const*, std::string>>{},
+      _ast->variables()->variables(false));
 
   return en;
 }
@@ -1007,8 +1033,12 @@ bool ExecutionPlan::hasExclusiveAccessOption(AstNode const* node) {
 
 /// @brief create modification options from an AST node
 ModificationOptions ExecutionPlan::parseModificationOptions(
-    QueryContext& query, char const* operationName, AstNode const* node,
+    QueryContext& query, std::string_view operationName, AstNode const* node,
     bool addWarnings) {
+  TRI_ASSERT(operationName == "INSERT" || operationName == "UPDATE" ||
+             operationName == "REPLACE" || operationName == "REMOVE" ||
+             operationName == "UPSERT");
+
   ModificationOptions options;
 
   // parse the modification options we got
@@ -1052,14 +1082,24 @@ ModificationOptions ExecutionPlan::parseModificationOptions(
           }
         } else if (name == StaticStrings::IgnoreRevsString) {
           options.ignoreRevs = value->isTrue();
+        } else if (name == StaticStrings::VersionAttributeString &&
+                   value->isStringValue() &&
+                   (operationName == "INSERT" || operationName == "UPDATE" ||
+                    operationName == "REPLACE")) {
+          options.versionAttribute = value->getString();
         } else if (name == "exclusive") {
           options.exclusive = value->isTrue();
         } else if (name == "ignoreErrors") {
           options.ignoreErrors = value->isTrue();
+        } else if (name == StaticStrings::ReadOwnWrites &&
+                   operationName == "UPSERT") {
+          // UPSERT supports "readOwnWrites" attribute, but other
+          // modification options don't.
+          // the value of readOwnWrites is already picked up during AST creation
+          // and does not need to be handled here anymore.
         } else {
           if (addWarnings) {
-            invalidOptionAttribute(query, "unknown", operationName, name.data(),
-                                   name.size());
+            invalidOptionAttribute(query, "unknown", operationName, name);
           }
         }
       }
@@ -1071,7 +1111,7 @@ ModificationOptions ExecutionPlan::parseModificationOptions(
 
 /// @brief create modification options from an AST node
 ModificationOptions ExecutionPlan::createModificationOptions(
-    char const* operationName, AstNode const* node) {
+    std::string_view operationName, AstNode const* node) {
   ModificationOptions options = parseModificationOptions(
       _ast->query(), operationName, node, /*addWarnings*/ true);
   return options;
@@ -1096,14 +1136,13 @@ CollectOptions ExecutionPlan::createCollectOptions(AstNode const* node) {
           if (value->isStringValue()) {
             options.method =
                 CollectOptions::methodFromString(value->getStringView());
-            if (options.method != CollectOptions::CollectMethod::UNDEFINED) {
+            if (options.method != CollectOptions::CollectMethod::kUndefined) {
               handled = true;
             }
           }
         }
         if (!handled) {
-          invalidOptionAttribute(_ast->query(), "unknown", "COLLECT",
-                                 name.data(), name.size());
+          invalidOptionAttribute(_ast->query(), "unknown", "COLLECT", name);
         }
       }
     }
@@ -1118,7 +1157,7 @@ ExecutionNode* ExecutionPlan::registerNode(
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->plan() == this);
   TRI_ASSERT(node->id() > ExecutionNodeId{0});
-  TRI_ASSERT(_ids.find(node->id()) == _ids.end());
+  TRI_ASSERT(!_ids.contains(node->id()));
 
   {
     ResourceUsageScope scope(
@@ -1254,8 +1293,7 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
   } else {
     // second operand is some misc. expression
     auto calc = createTemporaryCalculation(expression, previous);
-    en = registerNode(
-        new EnumerateListNode(this, nextId(), getOutVariable(calc), v));
+    en = createNode<EnumerateListNode>(this, nextId(), getOutVariable(calc), v);
     previous = calc;
   }
 
@@ -1784,7 +1822,7 @@ ExecutionNode* ExecutionPlan::fromNodeCollect(ExecutionNode* previous,
     }
   }
 
-  std::vector<Variable const*> keepVariables;
+  std::vector<std::pair<Variable const*, std::string>> keepVariables;
   auto const keep = node->getMember(5);
 
   if (keep->type != NODE_TYPE_NOP) {
@@ -1796,7 +1834,8 @@ ExecutionNode* ExecutionPlan::fromNodeCollect(ExecutionNode* previous,
     for (size_t i = 0; i < keepVarsSize; ++i) {
       auto ref = keep->getMember(i);
       TRI_ASSERT(ref->type == NODE_TYPE_REFERENCE);
-      keepVariables.emplace_back(static_cast<Variable const*>(ref->getData()));
+      auto var = static_cast<Variable const*>(ref->getData());
+      keepVariables.emplace_back(std::make_pair(var, var->name));
     }
   } else if (into->type != NODE_TYPE_NOP && expression->type == NODE_TYPE_NOP) {
     // `COLLECT ... INTO var ...` with neither an explicit expression
@@ -1807,12 +1846,10 @@ ExecutionNode* ExecutionPlan::fromNodeCollect(ExecutionNode* previous,
     CollectNode::calculateAccessibleUserVariables(*previous, keepVariables);
   }
 
-  auto collectNode =
-      new CollectNode(this, nextId(), options, groupVariables, aggregateVars,
-                      expressionVariable, outVariable, keepVariables,
-                      _ast->variables()->variables(false), false);
-
-  auto en = registerNode(collectNode);
+  auto en = createNode<CollectNode>(this, nextId(), options, groupVariables,
+                                    aggregateVars, expressionVariable,
+                                    outVariable, keepVariables,
+                                    _ast->variables()->variables(false));
 
   return addDependency(previous, en);
 }
@@ -1927,8 +1964,8 @@ ExecutionNode* ExecutionPlan::fromNodeRemove(ExecutionNode* previous,
     auto v = static_cast<Variable*>(expression->getData());
 
     TRI_ASSERT(v != nullptr);
-    en = registerNode(
-        new RemoveNode(this, nextId(), collection, options, v, outVariableOld));
+    en = createNode<RemoveNode>(this, nextId(), collection, options, v,
+                                outVariableOld);
   } else {
     // operand is some misc expression
     auto calc = createTemporaryCalculation(expression, previous);
@@ -2147,6 +2184,43 @@ ExecutionNode* ExecutionPlan::fromNodeUpsert(ExecutionNode* previous,
     collection->setExclusiveAccess();
   }
 
+  if (node->hasFlag(AstNodeFlagType::FLAG_READ_OWN_WRITES) &&
+      ServerState::instance()->isCoordinator()) {
+    // we are in the cluster, and the UPSERT node has the
+    // "readOwnWrites" option not set or set to true.
+    if (collection->numberOfShards() > 1) {
+      // collection with multiple shards. the query will use
+      // a DistributeNode, and the UPSERT cannot guarantee that
+      // its lookup part has observed all previous writes.
+      _ast->query().warnings().registerWarning(
+          TRI_ERROR_QUERY_INVALID_OPTIONS_ATTRIBUTE,
+          absl::StrCat("UPSERT operation on sharded collection '",
+                       collection->name(),
+                       "' cannot guarantee that own writes can be fully "
+                       "observed. To opt out of this warning, set the "
+                       "`readOwnWrites` option to `false` for the UPSERT"));
+    } else {
+#ifdef USE_ENTERPRISE
+      bool warnAboutSingleShardCollections = false;
+#else
+      bool warnAboutSingleShardCollections =
+          !_ast->query().vocbase().isOneShard();
+#endif
+      if (warnAboutSingleShardCollections) {
+        // single-shard collection. if we are not in a OneShard
+        // database, the query will also use a DistributeNode, and
+        // the UPSERT cannot guarantee that its lookup part has
+        // observed all previous writes.
+        _ast->query().warnings().registerWarning(
+            TRI_ERROR_QUERY_INVALID_OPTIONS_ATTRIBUTE,
+            absl::StrCat("UPSERT operation on collection '", collection->name(),
+                         "' cannot guarantee that own writes can be fully "
+                         "observed. To opt out of this warning, set the "
+                         "`readOwnWrites` option to `false` for the UPSERT"));
+      }
+    }
+  }
+
   auto docExpression = node->getMember(2);
   auto insertExpression = node->getMember(3);
   auto updateExpression = node->getMember(4);
@@ -2182,9 +2256,10 @@ ExecutionNode* ExecutionPlan::fromNodeUpsert(ExecutionNode* previous,
 
   bool isReplace =
       (node->getIntValue(true) == static_cast<int64_t>(NODE_TYPE_REPLACE));
-  ExecutionNode* en = registerNode(
-      new UpsertNode(this, nextId(), collection, options, docVariable,
-                     insertVar, updateVar, outVariableNew, isReplace));
+  bool canReadOwnWrites = node->hasFlag(AstNodeFlagType::FLAG_READ_OWN_WRITES);
+  ExecutionNode* en = createNode<UpsertNode>(
+      this, nextId(), collection, options, docVariable, insertVar, updateVar,
+      outVariableNew, isReplace, canReadOwnWrites);
 
   return addDependency(previous, en);
 }
@@ -2388,14 +2463,20 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
     TRI_ASSERT(en != nullptr);
 
     if (en == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "type not handled");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          absl::StrCat("type not handled: ", member->getTypeString()));
     }
 
     if (_ids.size() > maxPlanNodes) {
       // maximum number of execution nodes reached
       // we have to limit this to prevent super-long runtimes for query
       // optimization and execution
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_TOO_MUCH_NESTING);
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_QUERY_TOO_MUCH_NESTING,
+          absl::StrCat("total number of generated execution nodes for query "
+                       "execution plans reached the maximum possible value (",
+                       maxPlanNodes, ")"));
     }
   }
 
@@ -2883,22 +2964,54 @@ struct Shower final
 
   static LoggerStreamBase& logNode(LoggerStreamBase& log,
                                    ExecutionNode const& node) {
-    return log << "[" << node.id() << "]" << detailedNodeType(node);
+    return log << "[" << node.id() << "] " << node.getTypeString()
+               << nodeDetails(node);
   }
 
-  static std::string detailedNodeType(ExecutionNode const& node) {
+  static std::string nodeDetails(ExecutionNode const& node) {
+    std::string result;
+
     switch (node.getType()) {
+      case ExecutionNode::CALCULATION: {
+        auto const& calcNode =
+            *ExecutionNode::castTo<CalculationNode const*>(&node);
+        absl::StrAppend(&result, " $", calcNode.outVariable()->id, " = ");
+        calcNode.expression()->stringify(result);
+        break;
+      }
+      case ExecutionNode::FILTER: {
+        auto const& filterNode =
+            *ExecutionNode::castTo<FilterNode const*>(&node);
+        absl::StrAppend(&result, " $", filterNode.inVariable()->id);
+        break;
+      }
+      case ExecutionNode::SORT: {
+        auto const& sortNode = *ExecutionNode::castTo<SortNode const*>(&node);
+        for (auto const& it : sortNode.elements()) {
+          absl::StrAppend(&result, " ", it.toString());
+        }
+        break;
+      }
       case ExecutionNode::TRAVERSAL:
       case ExecutionNode::SHORTEST_PATH:
       case ExecutionNode::ENUMERATE_PATHS: {
         auto const& graphNode = *ExecutionNode::castTo<GraphNode const*>(&node);
-        auto type = std::string{node.getTypeString()};
         if (graphNode.isUsedAsSatellite()) {
-          type += " used as satellite";
+          absl::StrAppend(&result, " used as satellite");
         }
-        return type;
+        break;
       }
-      case ExecutionNode::INDEX:
+      case ExecutionNode::INDEX: {
+        auto* indexNode = ExecutionNode::castTo<IndexNode const*>(&node);
+        absl::StrAppend(&result, " ", indexNode->collection()->name(), " -> ",
+                        indexNode->outVariable()->name);
+        if (indexNode->condition() != nullptr &&
+            indexNode->condition()->root() != nullptr) {
+          absl::StrAppend(&result, " ",
+                          indexNode->condition()->root()->toString());
+        }
+        break;
+      }
       case ExecutionNode::ENUMERATE_COLLECTION:
       case ExecutionNode::UPDATE:
       case ExecutionNode::INSERT:
@@ -2907,18 +3020,32 @@ struct Shower final
       case ExecutionNode::UPSERT: {
         auto const& colAccess =
             *ExecutionNode::castTo<CollectionAccessingNode const*>(&node);
-        auto type = std::string{node.getTypeString()};
-        type += " (";
-        type += colAccess.collection()->name();
-        type += ")";
+        absl::StrAppend(&result, " (", colAccess.collection()->name(), ")");
         if (colAccess.isUsedAsSatellite()) {
-          type += " used as satellite";
+          absl::StrAppend(&result, " used as satellite");
         }
-        return type;
+        break;
       }
       default:
-        return {node.getTypeString()};
+        break;
     }
+
+    switch (node.getType()) {
+      case ExecutionNode::ENUMERATE_COLLECTION:
+      case ExecutionNode::INDEX: {
+        auto* docNode = dynamic_cast<DocumentProducingNode const*>(&node);
+        TRI_ASSERT(docNode != nullptr);
+        Expression* filter = docNode->filter();
+        if (filter != nullptr) {
+          absl::StrAppend(&result, " filter: ", filter->node()->toString());
+        }
+        break;
+      }
+      default: {
+      }
+    }
+
+    return result;
   }
 };
 

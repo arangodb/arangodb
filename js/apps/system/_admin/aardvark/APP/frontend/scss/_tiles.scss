@@ -472,7 +472,7 @@ div {
     .foxxActions {
       float: right;
       margin-right: 5px;
-      margin-top: 67px;
+      margin-top: 62px;
       position: relative;
       z-index: 3;
     }
@@ -484,7 +484,7 @@ div {
       z-index: 10;
 
       p {
-        color: $c-dark-grey;
+        color: var(--gray-900);
         font-size: 12px;
         font-weight: 100;
         margin: 0;

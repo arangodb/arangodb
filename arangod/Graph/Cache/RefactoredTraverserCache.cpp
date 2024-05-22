@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,6 +27,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/Query.h"
 #include "Aql/TraversalStats.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringHeap.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
@@ -216,8 +217,7 @@ bool RefactoredTraverserCache::appendVertex(
     THROW_ARANGO_EXCEPTION(collectionNameResult.result());
   }
 
-  auto findDocumentInShard =
-      [&](std::string_view const& collectionName) -> bool {
+  auto findDocumentInCollection = [&](std::string const& shardId) -> bool {
     if (!_produceVertices) {
       // we don't need any vertex data, return quickly
       result.add(VPackSlice::nullSlice());
@@ -256,9 +256,12 @@ bool RefactoredTraverserCache::appendVertex(
         }
         return true;
       };
-      Result res = _trx->documentFastPathLocal(
-          collectionName,
-          id.substr(collectionNameResult.get().second + 1).stringView(), cb);
+      Result res =
+          _trx->documentFastPathLocal(
+                  shardId,
+                  id.substr(collectionNameResult.get().second + 1).stringView(),
+                  cb)
+              .get();
       if (res.ok()) {
         return true;
       }
@@ -270,10 +273,9 @@ bool RefactoredTraverserCache::appendVertex(
     } catch (basics::Exception const& ex) {
       if (isWithClauseMissing(ex)) {
         // turn the error into a different error
-        auto message =
-            absl::StrCat("collection not known to traversal: '", collectionName,
-                         "'. please add 'WITH ", collectionName,
-                         "' as the first line in your AQL");
+        auto message = absl::StrCat("collection not known to traversal: '",
+                                    shardId, "'. please add 'WITH ", shardId,
+                                    "' as the first line in your AQL");
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
                                        message);
       }
@@ -286,7 +288,7 @@ bool RefactoredTraverserCache::appendVertex(
   std::string const& collectionName = collectionNameResult.get().first;
   if (_collectionToShardMap.empty()) {
     TRI_ASSERT(!ServerState::instance()->isDBServer());
-    if (findDocumentInShard(collectionName)) {
+    if (findDocumentInCollection(collectionName)) {
       return true;
     }
   } else {
@@ -300,7 +302,7 @@ bool RefactoredTraverserCache::appendVertex(
               "' as the first line in your AQL");
     }
     for (auto const& shard : it->second) {
-      if (findDocumentInShard(shard)) {
+      if (findDocumentInCollection(shard)) {
         // Short circuit, as soon as one shard contains this document
         // we can return it.
         return true;

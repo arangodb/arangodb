@@ -237,6 +237,9 @@
       toDelete.destroy({wait: true});
 
       window.App.navigate('#users', {trigger: true});
+      window.arangoHelper.arangoNotification(
+        'User "' + username + '" deleted.'
+      );
     },
 
     submitEditCurrentUserProfile: function () {
@@ -352,7 +355,7 @@
         $('#subNavigationBar .breadcrumb').html(
           'User: ' + _.escape(this.username)
         );
-        arangoHelper.buildUserSubNav(self.currentUser.get('user'), 'General');
+        arangoHelper.buildUserSubNav(encodeURIComponent(self.currentUser.get('user')), 'General');
       } else {
         window.setTimeout(function () {
           self.breadcrumb();

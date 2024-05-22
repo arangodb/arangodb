@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,15 +21,11 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <rocksdb/db.h>
-#include <rocksdb/utilities/transaction.h>
-
-#include <velocypack/Iterator.h>
-
 #include "RocksDBMetadata.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/system-compiler.h"
 #include "Logger/LogMacros.h"
@@ -42,9 +38,14 @@
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Context.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
+
+#include <rocksdb/db.h>
+#include <rocksdb/utilities/transaction.h>
+#include <velocypack/Iterator.h>
 
 #include <chrono>
 #include <thread>
@@ -405,10 +406,7 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
   // store original applied seq
   stats.originalAppliedSeq = appliedSeq;
 
-  auto& engine = coll.vocbase()
-                     .server()
-                     .getFeature<EngineSelectorFeature>()
-                     .engine<RocksDBEngine>();
+  auto& engine = coll.vocbase().engine<RocksDBEngine>();
   std::string const context = coll.vocbase().name() + "/" + coll.name();
 
   rocksdb::SequenceNumber const maxCommitSeq = committableSeq(appliedSeq);
@@ -495,7 +493,7 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
   }
 
   // Step 3. store the index estimates
-  auto indexes = coll.getIndexes();
+  auto indexes = coll.getPhysical()->getReadyIndexes();
   for (std::shared_ptr<arangodb::Index>& index : indexes) {
     RocksDBIndex* idx = static_cast<RocksDBIndex*>(index.get());
     RocksDBCuckooIndexEstimatorType* est = idx->estimator();
@@ -578,10 +576,7 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db,
   RocksDBCollection* rcoll =
       static_cast<RocksDBCollection*>(coll.getPhysical());
 
-  auto& engine = coll.vocbase()
-                     .server()
-                     .getFeature<EngineSelectorFeature>()
-                     .engine<RocksDBEngine>();
+  auto& engine = coll.vocbase().engine<RocksDBEngine>();
   rocksdb::SequenceNumber globalSeq =
       engine.settingsManager()->earliestSeqNeeded();
 
@@ -647,7 +642,7 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db,
   }
 
   // Step 3. load the index estimates
-  auto indexes = coll.getIndexes();
+  auto indexes = coll.getPhysical()->getReadyIndexes();
   for (std::shared_ptr<arangodb::Index> const& index : indexes) {
     RocksDBIndex* idx = static_cast<RocksDBIndex*>(index.get());
     if (idx->estimator() == nullptr) {

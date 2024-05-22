@@ -1,19 +1,16 @@
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief Foxx service manager
-// /
-// / @file
-// /
 // / DISCLAIMER
 // /
-// / Copyright 2013 triagens GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,7 +18,7 @@
 // / See the License for the specific language governing permissions and
 // / limitations under the License.
 // /
-// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Dr. Frank Celler
 // / @author Michael Hackstein
@@ -791,8 +788,9 @@ function createServiceBundle (mount, bundlePath = FoxxService.bundlePath(mount))
 }
 
 function downloadServiceBundleFromRemote (url) {
+  const timeout = 60.0;
   try {
-    const res = request.get(url, {encoding: null});
+    const res = request.get(url, {encoding: null, timeout});
     if (res.json && res.json.errorNum) {
       throw new ArangoError(res.json);
     }
@@ -801,12 +799,16 @@ function downloadServiceBundleFromRemote (url) {
     fs.writeFileSync(tempFile, res.body);
     return tempFile;
   } catch (e) {
+    const timeoutMessage = (
+      e.message.includes('timeout during') ?
+      ` (timeout after ${timeout.toFixed(1)}s)` : ''
+    );
     throw Object.assign(
       new ArangoError({
         errorNum: errors.ERROR_SERVICE_SOURCE_ERROR.code,
         errorMessage: dd`
           ${errors.ERROR_SERVICE_SOURCE_ERROR.message}
-          URL: ${url}
+          URL: ${url}${timeoutMessage}
         `
       }),
       {cause: e}

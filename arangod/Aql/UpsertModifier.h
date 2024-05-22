@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,9 +23,9 @@
 
 #pragma once
 
-#include "Aql/ModificationExecutor.h"
-#include "Aql/ModificationExecutorAccumulator.h"
-#include "Aql/ModificationExecutorInfos.h"
+#include "Aql/Executor/ModificationExecutor.h"
+#include "Aql/Executor/ModificationExecutorAccumulator.h"
+#include "Aql/Executor/ModificationExecutorInfos.h"
 
 #include "Aql/InsertModifier.h"
 #include "Aql/UpdateReplaceModifier.h"
@@ -91,17 +91,7 @@ class UpsertModifier {
   };
 
  public:
-  explicit UpsertModifier(ModificationExecutorInfos& infos)
-      : _infos(infos),
-        _updateResults(Result(), infos._options),
-        _insertResults(Result(), infos._options),
-
-        // Batch size has to be 1 so that the upsert modifier sees its own
-        // writes.
-        // This behaviour could be improved, if we can prove that an UPSERT
-        // does not need to see its own writes
-        _batchSize(1),
-        _resultState(ModificationExecutorResultState::NoResult) {}
+  explicit UpsertModifier(ModificationExecutorInfos& infos);
 
   ~UpsertModifier() = default;
 

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -36,15 +36,19 @@
 #include "Cluster/TraverserEngine.h"
 #include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
-#include "RestServer/QueryRegistryFeature.h"
+#include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Iterator.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
+
+// Wait 2s to get the Lock in FastPath, otherwise assume dead-lock.
+constexpr double kFastPathLockTimeout = 2.0;
 
 ClusterQuery::ClusterQuery(QueryId id,
                            std::shared_ptr<transaction::Context> ctx,
@@ -56,12 +60,10 @@ ClusterQuery::ClusterQuery(QueryId id,
             std::move(options),
             /*sharedState*/ ServerState::instance()->isDBServer()
                 ? nullptr
-                : std::make_shared<SharedQueryState>(ctx->vocbase().server())},
-      _planMemoryUsage(0) {}
+                : std::make_shared<SharedQueryState>(ctx->vocbase().server())} {
+}
 
 ClusterQuery::~ClusterQuery() {
-  _resourceMonitor.decreaseMemoryUsage(_planMemoryUsage);
-
   try {
     _traversers.clear();
   } catch (...) {
@@ -91,12 +93,35 @@ std::shared_ptr<ClusterQuery> ClusterQuery::create(
                                            std::move(options));
 }
 
-void ClusterQuery::prepareClusterQuery(
-    VPackSlice querySlice, VPackSlice collections, VPackSlice variables,
-    VPackSlice snippets, VPackSlice traverserSlice, VPackBuilder& answerBuilder,
-    QueryAnalyzerRevisions const& analyzersRevision) {
-  LOG_TOPIC("9636f", DEBUG, Logger::QUERIES)
-      << elapsedSince(_startTime) << " ClusterQuery::prepareClusterQuery"
+void ClusterQuery::buildTraverserEngines(velocypack::Slice traverserSlice,
+                                         velocypack::Builder& answerBuilder) {
+  TRI_ASSERT(answerBuilder.isOpenObject());
+
+  if (traverserSlice.isArray()) {
+    // used to be RestAqlHandler::registerTraverserEngines
+    answerBuilder.add("traverserEngines", VPackValue(VPackValueType::Array));
+    for (auto te : VPackArrayIterator(traverserSlice)) {
+      auto engine = traverser::BaseEngine::buildEngine(_vocbase, *this, te);
+      answerBuilder.add(VPackValue(engine->engineId()));
+      _traversers.emplace_back(std::move(engine));
+    }
+    answerBuilder.close();  // traverserEngines
+  }
+}
+
+/// @brief prepare a query out of some velocypack data.
+/// only to be used on a DB server.
+/// never call this on a single server or coordinator!
+void ClusterQuery::prepareFromVelocyPack(
+    velocypack::Slice querySlice, velocypack::Slice collections,
+    velocypack::Slice variables, velocypack::Slice snippets,
+    velocypack::Slice traverserSlice, std::string const& user,
+    velocypack::Builder& answerBuilder,
+    QueryAnalyzerRevisions const& analyzersRevision, bool fastPathLocking) {
+  TRI_ASSERT(ServerState::instance()->isDBServer());
+
+  LOG_TOPIC("45493", DEBUG, Logger::QUERIES)
+      << elapsedSince(_startTime) << " ClusterQuery::prepareFromVelocyPack"
       << " this: " << (uintptr_t)this;
 
   // track memory usage
@@ -107,14 +132,12 @@ void ClusterQuery::prepareClusterQuery(
 
   _planMemoryUsage += scope.trackedAndSteal();
 
-  init(/*createProfile*/ true);
+  init(/*createProfile*/ false);
 
-  VPackSlice val = querySlice.get("isModificationQuery");
-  if (val.isBool() && val.getBool()) {
+  if (auto val = querySlice.get("isModificationQuery"); val.isTrue()) {
     _ast->setContainsModificationNode();
   }
-  val = querySlice.get("isAsyncQuery");
-  if (val.isBool() && val.getBool()) {
+  if (auto val = querySlice.get("isAsyncQuery"); val.isTrue()) {
     _ast->setContainsParallelNode();
   }
 
@@ -132,9 +155,7 @@ void ClusterQuery::prepareClusterQuery(
   if (_queryOptions.transactionOptions.skipInaccessibleCollections) {
     inaccessibleCollections = _queryOptions.inaccessibleCollections;
   }
-#endif
 
-#ifdef USE_ENTERPRISE
   waitForSatellites();
 #endif
 
@@ -145,14 +166,21 @@ void ClusterQuery::prepareClusterQuery(
   // create the transaction object, but do not start the transaction yet
   _trx->addHint(
       transaction::Hints::Hint::FROM_TOPLEVEL_AQL);  // only used on toplevel
-  if (_trx->state()->isDBServer()) {
-    _trx->state()->acceptAnalyzersRevision(analyzersRevision);
+  _trx->state()->acceptAnalyzersRevision(analyzersRevision);
+  _trx->setUsername(user);
+
+  double origLockTimeout = _trx->state()->options().lockTimeout;
+  if (fastPathLocking) {
+    _trx->state()->options().lockTimeout = kFastPathLockTimeout;
   }
 
   Result res = _trx->begin();
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
+
+  // restore original lock timeout
+  _trx->state()->options().lockTimeout = origLockTimeout;
 
   TRI_IF_FAILURE("Query::setupLockTimeout") {
     if (!_trx->state()->isReadOnlyTransaction() &&
@@ -161,59 +189,43 @@ void ClusterQuery::prepareClusterQuery(
     }
   }
 
+  _collections.visit([&](std::string const&, aql::Collection const& c) -> bool {
+    // this code will only execute on leaders
+    _trx->state()->trackShardRequest(*_trx->resolver(), _vocbase.name(),
+                                     c.name(), user, c.accessType(), "aql");
+    return true;
+  });
+
   enterState(QueryExecutionState::ValueType::PARSING);
 
   bool const planRegisters = !_queryString.empty();
-  auto instantiateSnippet = [&](VPackSlice snippet) {
+  auto instantiateSnippet = [&](velocypack::Slice snippet) {
     auto plan = ExecutionPlan::instantiateFromVelocyPack(_ast.get(), snippet);
     TRI_ASSERT(plan != nullptr);
-
-    plan->findVarUsage();  // I think this is a no-op
 
     ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters);
     _plans.push_back(std::move(plan));
   };
 
+  TRI_ASSERT(answerBuilder.isOpenObject());
   answerBuilder.add("snippets", VPackValue(VPackValueType::Object));
   for (auto pair : VPackObjectIterator(snippets, /*sequential*/ true)) {
     instantiateSnippet(pair.value);
 
     TRI_ASSERT(!_snippets.empty());
-    TRI_ASSERT(!_trx->state()->isDBServer() ||
-               _snippets.back()->engineId() != 0);
+    TRI_ASSERT(_snippets.back()->engineId() != 0);
 
-    answerBuilder.add(pair.key);
-    answerBuilder.add(VPackValue(std::to_string(_snippets.back()->engineId())));
+    answerBuilder.add(pair.key.stringView(),
+                      VPackValue(std::to_string(_snippets.back()->engineId())));
   }
   answerBuilder.close();  // snippets
 
   if (!_snippets.empty()) {
-    TRI_ASSERT(_trx->state()->isDBServer() || _snippets[0]->engineId() == 0);
-    // simon: just a hack for AQL_EXECUTEJSON
-    if (_trx->state()->isCoordinator()) {  // register coordinator snippets
-      TRI_ASSERT(_trx->state()->isCoordinator());
-      QueryRegistryFeature::registry()->registerSnippets(_snippets);
-    }
-
     registerQueryInTransactionState();
   }
 
-  if (traverserSlice.isArray()) {
-    // used to be RestAqlHandler::registerTraverserEngines
-    answerBuilder.add("traverserEngines", VPackValue(VPackValueType::Array));
-    for (auto const te : VPackArrayIterator(traverserSlice)) {
-      auto engine = traverser::BaseEngine::BuildEngine(_vocbase, *this, te);
-      answerBuilder.add(VPackValue(engine->engineId()));
+  buildTraverserEngines(traverserSlice, answerBuilder);
 
-      _traversers.emplace_back(std::move(engine));
-    }
-    answerBuilder.close();  // traverserEngines
-  }
-  TRI_ASSERT(_trx != nullptr);
-
-  if (_queryProfile) {  // simon: just a hack for AQL_EXECUTEJSON
-    _queryProfile->registerInQueryList();
-  }
   enterState(QueryExecutionState::ValueType::EXECUTION);
 }
 
@@ -239,7 +251,9 @@ futures::Future<Result> ClusterQuery::finalizeClusterQuery(
 
   for (auto& engine : _snippets) {  // make sure all snippets are unused
     engine->sharedState()->invalidate();
-    engine->collectExecutionStats(_execStats);
+    executionStatsGuard().doUnderLock([&](auto& executionStats) {
+      engine->collectExecutionStats(executionStats);
+    });
   }
 
   // Use async API, commit on followers sends a request
@@ -259,10 +273,14 @@ futures::Future<Result> ClusterQuery::finalizeClusterQuery(
         << elapsedSince(_startTime) << " Query::finalizeSnippets post commit()"
         << " this: " << (uintptr_t)this;
 
-    _execStats.requests += _numRequests.load(std::memory_order_relaxed);
-    _execStats.setPeakMemoryUsage(_resourceMonitor.peak());
-    _execStats.setExecutionTime(elapsedSince(_startTime));
-    _execStats.setIntermediateCommits(_trx->state()->numIntermediateCommits());
+    executionStatsGuard().doUnderLock([&](auto& executionStats) {
+      executionStats.requests += _numRequests.load(std::memory_order_relaxed);
+      executionStats.setPeakMemoryUsage(_resourceMonitor.peak());
+      executionStats.setExecutionTime(elapsedSince(_startTime));
+      executionStats.setIntermediateCommits(
+          _trx->state()->numIntermediateCommits());
+    });
+
     _shutdownState.store(ShutdownState::Done);
 
     unregisterQueryInTransactionState();

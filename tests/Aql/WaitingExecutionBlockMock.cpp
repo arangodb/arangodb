@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -69,13 +69,15 @@ static auto blocksToInfos(std::deque<SharedAqlItemBlockPtr> const& blocks)
 WaitingExecutionBlockMock::WaitingExecutionBlockMock(
     ExecutionEngine* engine, ExecutionNode const* node,
     std::deque<SharedAqlItemBlockPtr>&& data, WaitingBehaviour variant,
-    size_t subqueryDepth, WakeupCallback wakeUpCallback)
+    size_t subqueryDepth, WakeupCallback wakeUpCallback,
+    ExecuteCallback executeCallback)
     : ExecutionBlock(engine, node),
       _hasWaited(false),
       _variant{variant},
       _infos{::blocksToInfos(data)},
       _blockData{*engine, node, _infos},
-      _wakeUpCallback(std::move(wakeUpCallback)) {
+      _wakeUpCallback(std::move(wakeUpCallback)),
+      _executeCallback(std::move(executeCallback)) {
   SkipResult s;
   for (size_t i = 0; i < subqueryDepth; ++i) {
     s.incrementSubquery();
@@ -119,6 +121,8 @@ WaitingExecutionBlockMock::execute(AqlCallStack const& stack) {
 
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
 WaitingExecutionBlockMock::executeWithoutTrace(AqlCallStack stack) {
+  executeCallback();
+
   auto myCall = stack.peek();
 
   TRI_ASSERT(
@@ -202,5 +206,11 @@ WaitingExecutionBlockMock::executeWithoutTrace(AqlCallStack stack) {
 void WaitingExecutionBlockMock::wakeupCallback() {
   if (_wakeUpCallback) {
     _wakeUpCallback();
+  }
+}
+
+void WaitingExecutionBlockMock::executeCallback() {
+  if (_executeCallback) {
+    _executeCallback();
   }
 }

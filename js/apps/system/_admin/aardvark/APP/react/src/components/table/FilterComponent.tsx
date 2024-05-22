@@ -1,5 +1,11 @@
 import { MinusIcon } from "@chakra-ui/icons";
-import { Flex, FormLabel, IconButton, Input, Stack } from "@chakra-ui/react";
+import {
+  FormLabel,
+  Grid,
+  IconButton,
+  Input,
+  Stack
+} from "@chakra-ui/react";
 import { Column, ColumnDef, Table as TableType } from "@tanstack/react-table";
 import * as React from "react";
 import MultiSelect from "../select/MultiSelect";
@@ -26,56 +32,38 @@ export const FilterComponent = <Data extends object>({
     return null;
   }
   return (
-    <Flex alignItems="flex-end">
-      <Stack width="full">
-        <FilterLabel<Data>
-          columnInstance={columnInstance}
-          currentFilterColumns={currentFilterColumns}
-          column={column}
-          setCurrentFilterColumns={setCurrentFilterColumns}
-        />
-        <FilterInput<Data>
-          column={column}
-          columnInstance={columnInstance}
-          options={options}
-          columnFilterValue={columnFilterValue}
-        />
-      </Stack>
-    </Flex>
+    <Grid
+      templateColumns="1fr 1fr auto"
+      width="full"
+      alignItems="center"
+      gap="2"
+    >
+      <FilterLabel<Data> columnInstance={columnInstance} />
+      <FilterInput<Data>
+        column={column}
+        columnInstance={columnInstance}
+        options={options}
+        columnFilterValue={columnFilterValue}
+      />
+      <RemoveFilterButton
+        currentFilterColumns={currentFilterColumns}
+        column={column}
+        setCurrentFilterColumns={setCurrentFilterColumns}
+        columnInstance={columnInstance}
+      />
+    </Grid>
   );
 };
 const FilterLabel = <Data extends object>({
-  columnInstance,
-  currentFilterColumns,
-  column,
-  setCurrentFilterColumns
+  columnInstance
 }: {
   columnInstance: Column<Data, unknown>;
-  currentFilterColumns: (ColumnDef<Data> | undefined)[];
-  column: ColumnDef<Data>;
-  setCurrentFilterColumns: (filters: (ColumnDef<Data> | undefined)[]) => void;
 }) => {
   return (
     <Stack direction="row" alignItems="center">
       <FormLabel margin="0" htmlFor={columnInstance.id}>
         {columnInstance.columnDef.header}
       </FormLabel>
-      <IconButton
-        size="xxs"
-        borderRadius="full"
-        variant="outline"
-        icon={<MinusIcon boxSize="2" />}
-        padding="1"
-        aria-label={"Remove filter"}
-        colorScheme="red"
-        onClick={() => {
-          const newCurrentFilterColumns = currentFilterColumns.filter(
-            currentFilter => currentFilter?.id !== column.id
-          );
-          setCurrentFilterColumns(newCurrentFilterColumns);
-          columnInstance.setFilterValue(undefined);
-        }}
-      />
     </Stack>
   );
 };
@@ -179,6 +167,39 @@ const FilterInput = <Data extends object>({
           return;
         }
         columnInstance.setFilterValue(value?.value);
+      }}
+    />
+  );
+};
+
+const RemoveFilterButton = <Data extends object>({
+  currentFilterColumns,
+  column,
+  setCurrentFilterColumns,
+  columnInstance
+}: {
+  currentFilterColumns: (ColumnDef<Data, unknown> | undefined)[];
+  column: ColumnDef<Data, unknown>;
+  setCurrentFilterColumns: (
+    filters: (ColumnDef<Data, unknown> | undefined)[]
+  ) => void;
+  columnInstance: Column<Data, unknown>;
+}) => {
+  return (
+    <IconButton
+      size="xxs"
+      borderRadius="full"
+      variant="outline"
+      icon={<MinusIcon boxSize="2" />}
+      padding="1"
+      aria-label={"Remove filter"}
+      colorScheme="red"
+      onClick={() => {
+        const newCurrentFilterColumns = currentFilterColumns.filter(
+          currentFilter => currentFilter?.id !== column.id
+        );
+        setCurrentFilterColumns(newCurrentFilterColumns);
+        columnInstance.setFilterValue(undefined);
       }}
     />
   );

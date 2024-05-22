@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -34,6 +34,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/DatabaseGuard.h"
@@ -94,6 +95,17 @@ EnsureIndex::~EnsureIndex() = default;
 arangodb::Result EnsureIndex::setProgress(double d) {
   _progress = d;
   return {};
+}
+
+void EnsureIndex::setState(ActionState state) {
+  if (_description.isRunEvenIfDuplicate() &&
+      (COMPLETE == state || FAILED == state) && _state != state) {
+    // calling unlockShard here is safe, because nothing before it
+    // can go throw. if some code is added before the unlock that
+    // can throw, it must be made sure that the unlock is always called
+    _feature.unlockShard(ShardID{_description.get(SHARD)});
+  }
+  ActionBase::setState(state);
 }
 
 bool EnsureIndex::first() {
@@ -164,9 +176,11 @@ bool EnsureIndex::first() {
       }
       auto index = VPackBuilder();
       auto res = methods::Indexes::ensureIndex(*col, body.slice(), true, index,
-                                               std::move(lambda));
+                                               std::move(lambda))
+                     .get();
       if (res.ok()) {
         indexCreationLogging(index.slice());
+        setProgress(100.);
       }
       return res;
     });
@@ -242,10 +256,17 @@ auto EnsureIndex::ensureIndexReplication2(
     std::shared_ptr<LogicalCollection> coll, VPackSlice indexInfo,
     std::shared_ptr<methods::Indexes::ProgressTracker> progress) noexcept
     -> Result {
-  return basics::catchToResult(
-      [&coll, indexInfo, progress = std::move(progress)]() mutable {
-        return coll->getDocumentStateLeader()
-            ->createIndex(coll->name(), indexInfo, std::move(progress))
-            .get();
-      });
+  auto maybeShardID = ShardID::shardIdFromString(coll->name());
+  if (ADB_UNLIKELY(maybeShardID.fail())) {
+    // This will only throw if we take a real collection here and not a shard.
+    TRI_ASSERT(false) << "Tried to ensure index on Collection " << coll->name()
+                      << " which is not considered a shard.";
+    return maybeShardID.result();
+  }
+  return basics::catchToResult([&coll, shard = maybeShardID.get(), indexInfo,
+                                progress = std::move(progress)]() mutable {
+    return coll->getDocumentStateLeader()
+        ->createIndex(shard, indexInfo, std::move(progress))
+        .get();
+  });
 }

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -83,63 +83,54 @@ bool Options::isIntermediateCommitEnabled() const noexcept {
          intermediateCommitCount != UINT64_MAX;
 }
 
-void Options::fromVelocyPack(arangodb::velocypack::Slice const& slice) {
-  VPackSlice value;
-
-  value = slice.get("lockTimeout");
-  if (value.isNumber()) {
+void Options::fromVelocyPack(arangodb::velocypack::Slice slice) {
+  if (auto value = slice.get("lockTimeout"); value.isNumber()) {
     lockTimeout = value.getNumber<double>();
   }
-  value = slice.get("maxTransactionSize");
-  if (value.isNumber()) {
+  if (auto value = slice.get("maxTransactionSize"); value.isNumber()) {
     maxTransactionSize = value.getNumber<uint64_t>();
   }
-  value = slice.get("intermediateCommitSize");
-  if (value.isNumber()) {
+  if (auto value = slice.get("intermediateCommitSize"); value.isNumber()) {
     intermediateCommitSize = value.getNumber<uint64_t>();
   }
-  value = slice.get("intermediateCommitCount");
-  if (value.isNumber()) {
+  if (auto value = slice.get("intermediateCommitCount"); value.isNumber()) {
     intermediateCommitCount = value.getNumber<uint64_t>();
   }
   // simon: 'allowImplicit' is due to naming in 'db._executeTransaction(...)'
-  value = slice.get("allowImplicit");
-  if (value.isBool()) {
-    allowImplicitCollectionsForRead = value.getBool();
+  if (auto value = slice.get("allowImplicit"); value.isBool()) {
+    allowImplicitCollectionsForRead = value.isTrue();
   }
 #ifdef USE_ENTERPRISE
-  value = slice.get("skipInaccessibleCollections");
-  if (value.isBool()) {
-    skipInaccessibleCollections = value.getBool();
+  if (auto value = slice.get("skipInaccessibleCollections"); value.isBool()) {
+    skipInaccessibleCollections = value.isTrue();
   }
 #endif
-  value = slice.get(StaticStrings::WaitForSyncString);
-  if (value.isBool()) {
-    waitForSync = value.getBool();
+  if (auto value = slice.get(StaticStrings::WaitForSyncString);
+      value.isBool()) {
+    waitForSync = value.isTrue();
   }
-  value = slice.get("fillBlockCache");
-  if (value.isBool()) {
-    fillBlockCache = value.getBool();
+  if (auto value = slice.get("fillBlockCache"); value.isBool()) {
+    fillBlockCache = value.isTrue();
   }
-  value = slice.get("allowDirtyReads");
-  if (value.isBool()) {
-    allowDirtyReads = value.getBool();
+  if (auto value = slice.get("allowDirtyReads"); value.isBool()) {
+    allowDirtyReads = value.isTrue();
   } else {
     TRI_IF_FAILURE("TransactionState::dirtyReadsAreDefault") {
       allowDirtyReads = true;
     }
   }
+  if (auto value = slice.get("skipFastLockRound"); value.isBool()) {
+    skipFastLockRound = value.isTrue();
+  }
 
   if (!ServerState::instance()->isSingleServer()) {
-    value = slice.get("isFollowerTransaction");
-    if (value.isBool()) {
-      isFollowerTransaction = value.getBool();
+    if (auto value = slice.get("isFollowerTransaction"); value.isBool()) {
+      isFollowerTransaction = value.isTrue();
     }
 
     // pick up the originating coordinator's id. note: this can be
     // empty if the originating coordinator is an ArangoDB 3.7.
-    value = slice.get("origin");
-    if (value.isObject()) {
+    if (auto value = slice.get("origin"); value.isObject()) {
       origin.serverId =
           value.get(StaticStrings::AttrCoordinatorId).stringView();
       origin.rebootId =
@@ -174,6 +165,8 @@ void Options::toVelocyPack(arangodb::velocypack::Builder& builder) const {
   // we are intentionally *not* writing allowImplicitCollectionForWrite here.
   // this is an internal option only used in replication
   builder.add("allowDirtyReads", VPackValue(allowDirtyReads));
+
+  builder.add("skipFastLockRound", VPackValue(skipFastLockRound));
 
   // serialize data for cluster-wide collections
   if (!ServerState::instance()->isSingleServer()) {

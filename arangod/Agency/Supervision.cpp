@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,7 +23,6 @@
 
 #include "Supervision.h"
 
-#include "Agency/ActiveFailoverJob.h"
 #include "Agency/AddFollower.h"
 #include "Agency/Agent.h"
 #include "Agency/CleanOutServer.h"
@@ -201,8 +200,9 @@ struct HealthRecord {
 // This is initialized in AgencyFeature:
 std::string Supervision::_agencyPrefix = "/arango";
 
-Supervision::Supervision(ArangodServer& server)
-    : arangodb::Thread(server, "Supervision"),
+Supervision::Supervision(ArangodServer& server,
+                         metrics::MetricsFeature& metrics)
+    : arangodb::ServerThread<ArangodServer>(server, "Supervision"),
       _agent(nullptr),
       _snapshot(nullptr),
       _transient(Node::create()),
@@ -218,14 +218,11 @@ Supervision::Supervision(ArangodServer& server)
       _upgraded(false),
       _nextServerCleanup(),
       _supervision_runtime_msec(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_agency_supervision_runtime_msec{})),
-      _supervision_runtime_wait_for_sync_msec(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_agency_supervision_runtime_wait_for_replication_msec{})),
+          metrics.add(arangodb_agency_supervision_runtime_msec{})),
+      _supervision_runtime_wait_for_sync_msec(metrics.add(
+          arangodb_agency_supervision_runtime_wait_for_replication_msec{})),
       _supervision_failed_server_counter(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_agency_supervision_failed_server_total{})) {}
+          metrics.add(arangodb_agency_supervision_failed_server_total{})) {}
 
 Supervision::~Supervision() { shutdown(); }
 
@@ -462,7 +459,8 @@ void handleOnStatusCoordinator(Agent* agent, Node const& snapshot,
         Job::addIncreaseRebootId(create, serverID);
 
         // if the current foxxmaster server failed => reset the value to ""
-        if (snapshot.hasAsString(foxxmaster).value() == serverID) {
+        if (auto fx = snapshot.hasAsString(foxxmaster);
+            fx && fx.value() == serverID) {
           create.add(foxxmaster, VPackValue(""));
         }
       }
@@ -500,10 +498,8 @@ void handleOnStatusSingle(Agent* agent, Node const& snapshot,
       persisted.status == Supervision::HEALTH_STATUS_BAD &&
       transisted.status == Supervision::HEALTH_STATUS_FAILED) {
     if (!snapshot.has(failedServerPath)) {
-      envelope = std::make_shared<VPackBuilder>();
-      ActiveFailoverJob(snapshot, agent, std::to_string(jobId), "supervision",
-                        serverID)
-          .create(envelope);
+      TRI_ASSERT(false) << "we should only get here in active failover case, "
+                           "which is disabled";
     }
   }
 }
@@ -923,11 +919,6 @@ bool Supervision::doChecks() {
              "Coordinators");
   LOG_TOPIC("aadeb", TRACE, Logger::SUPERVISION) << "Checking coordinators...";
   check(ServerState::roleToAgencyListKey(ServerState::ROLE_COORDINATOR));
-  TRI_ASSERT(ServerState::roleToAgencyListKey(ServerState::ROLE_SINGLE) ==
-             "Singles");
-  LOG_TOPIC("aadec", TRACE, Logger::SUPERVISION)
-      << "Checking single servers (active failover)...";
-  check(ServerState::roleToAgencyListKey(ServerState::ROLE_SINGLE));
   LOG_TOPIC("aaded", TRACE, Logger::SUPERVISION) << "Server checks done.";
 
   return true;
@@ -3554,6 +3545,11 @@ void Supervision::checkUndoLeaderChangeActions() {
         return Result{TRI_ERROR_BAD_PARAMETER, "collection missing"};
       }
 
+      auto maybeShardID = ShardID::shardIdFromString(id);
+      if (ADB_UNLIKELY(maybeShardID.fail())) {
+        return Result{TRI_ERROR_BAD_PARAMETER, maybeShardID.errorMessage()};
+      }
+
       if (isReplication2(*database)) {
         auto stateId =
             Job::getReplicatedStateId(snapshot(), *database, *collection, id);
@@ -3562,17 +3558,18 @@ void Supervision::checkUndoLeaderChangeActions() {
                         fmt::format("replicated log with ID {} missing", id)};
         }
 
-        return UndoAction{
-            UndoAction::UndoMoveShardR2{
-                std::move(*database), std::move(*collection), id,
-                std::move(*fromServer), std::move(*toServer), stateId.value()},
-            deadline, started, jobId, rebootId};
+        return UndoAction{UndoAction::UndoMoveShardR2{
+                              std::move(*database), std::move(*collection),
+                              maybeShardID.get(), std::move(*fromServer),
+                              std::move(*toServer), stateId.value()},
+                          deadline, started, jobId, rebootId};
       }
 
-      return UndoAction{UndoAction::UndoMoveShardR1{
-                            std::move(*database), std::move(*collection), id,
-                            std::move(*fromServer), std::move(*toServer)},
-                        deadline, started, jobId, rebootId};
+      return UndoAction{
+          UndoAction::UndoMoveShardR1{
+              std::move(*database), std::move(*collection), maybeShardID.get(),
+              std::move(*fromServer), std::move(*toServer)},
+          deadline, started, jobId, rebootId};
     } else if (jobOpt = undoOp.get("reconfigureReplicatedLog");
                jobOpt != nullptr) {
       Node const& job(*jobOpt);
@@ -3585,15 +3582,6 @@ void Supervision::checkUndoLeaderChangeActions() {
       auto server = job.hasAsString("server");
       if (!server) {
         return Result{TRI_ERROR_BAD_PARAMETER, "server missing"};
-      }
-
-      if (!isReplication2(*database)) {
-        auto result = Result{TRI_ERROR_BAD_PARAMETER,
-                             "reconfigureReplicatedLog "
-                             "job for non-replication2 "
-                             "database"};
-        TRI_ASSERT(false) << result;
-        return result;
       }
 
       auto logId = replication2::LogId::fromString(id);
@@ -3612,9 +3600,9 @@ void Supervision::checkUndoLeaderChangeActions() {
     return Result{TRI_ERROR_BAD_PARAMETER, "unknown undo action"};
   };
 
-  auto const isServerInPlan =
-      [&](std::string_view database, std::string_view collection,
-          std::string_view shard, std::string_view server) -> bool {
+  auto const isServerInPlan = [&](std::string_view database,
+                                  std::string_view collection, ShardID shard,
+                                  std::string_view server) -> bool {
     auto path = basics::StringUtils::joinT("/", "Plan/Collections", database,
                                            collection, "shards", shard);
     auto servers = snapshot().hasAsArray(path);
@@ -3700,9 +3688,9 @@ void Supervision::checkUndoLeaderChangeActions() {
         undo.action);
   };
 
-  auto const isServerInSync =
-      [&](std::string_view database, std::string_view collection,
-          std::string_view shard, std::string_view server) -> bool {
+  auto const isServerInSync = [&](std::string_view database,
+                                  std::string_view collection, ShardID shard,
+                                  std::string_view server) -> bool {
     auto path = basics::StringUtils::joinT("/", "Current/Collections", database,
                                            collection, shard, "servers");
     auto servers = snapshot().hasAsArray(path);

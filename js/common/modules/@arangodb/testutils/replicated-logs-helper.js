@@ -1,26 +1,27 @@
 /*jshint strict: true */
 'use strict';
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2021 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License")
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Lars Maier
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 const internal = require("internal");
 const {wait} = internal;
@@ -33,6 +34,7 @@ const db = arangodb.db;
 const lpreds = require("@arangodb/testutils/replicated-logs-predicates");
 const helper = require('@arangodb/test-helper-common');
 const clientHelper = require('@arangodb/test-helper');
+const isServer = arangodb.isServer;
 
 const waitFor = function (checkFn, maxTries = 240, onErrorCallback) {
   const waitTimes = [0.1, 0.1, 0.2, 0.2, 0.2, 0.3, 0.5];
@@ -60,8 +62,8 @@ const waitFor = function (checkFn, maxTries = 240, onErrorCallback) {
   }
 };
 
-const readAgencyValueAt = function (key) {
-  const response = clientHelper.agency.get(key);
+const readAgencyValueAt = function (key, jwtBearerToken) {
+  const response = clientHelper.agency.get(key, jwtBearerToken);
   const path = ['arango', ...key.split('/').filter(i => i)];
   let result = response;
   for (const p of path) {
@@ -75,6 +77,10 @@ const readAgencyValueAt = function (key) {
 
 const getServerRebootId = function (serverId) {
   return readAgencyValueAt(`Current/ServersKnown/${serverId}/rebootId`);
+};
+
+const isDBServerInCurrent = function (serverId) {
+  return readAgencyValueAt(`Current/DBServers/${serverId}`);
 };
 
 const bumpServerRebootId = function (serverId) {
@@ -116,7 +122,7 @@ const getServerHealth = function (serverId) {
 };
 
 const dbservers = (function () {
-  return clientHelper.getServersByType('dbserver').map((x) => x.id);
+  return clientHelper.getDBServers().map((x) => x.id);
 }());
 const coordinators = (function () {
   return clientHelper.getServersByType('coordinator').map((x) => x.id);
@@ -299,10 +305,15 @@ const waitForReplicatedLogAvailable = function (id) {
 
 
 const getServerProcessID = function (serverId) {
-  // Now look for instanceManager:
-  let pos = _.findIndex(global.instanceManager.arangods,
+  let arangods = [];
+  try {
+    arangods = global.instanceManager.arangods;
+  } catch(_) {
+    arangods = helper.getServersByType("dbserver");
+  }
+  let pos = _.findIndex(arangods,
       x => x.id === serverId);
-  return global.instanceManager.arangods[pos].pid;
+  return arangods[pos].pid;
 };
 
 const stopServerImpl = function (serverId) {
@@ -685,13 +696,13 @@ const dumpLogHead = function (logId, limit=1000) {
   return log.head(limit);
 };
 
-const getShardsToLogsMapping = function (dbName, colId) {
-  const colPlan = readAgencyValueAt(`Plan/Collections/${dbName}/${colId}`);
+const getShardsToLogsMapping = function (dbName, colId, jwtBearerToken) {
+  const colPlan = readAgencyValueAt(`Plan/Collections/${dbName}/${colId}`, jwtBearerToken);
   let mapping = {};
   if (colPlan.hasOwnProperty("groupId")) {
     const groupId = colPlan.groupId;
     const shards = colPlan.shardsR2;
-    const colGroup = readAgencyValueAt(`Plan/CollectionGroups/${dbName}/${groupId}`);
+    const colGroup = readAgencyValueAt(`Plan/CollectionGroups/${dbName}/${groupId}`, jwtBearerToken);
     const shardSheaves = colGroup.shardSheaves;
     for (let idx = 0; idx < shards.length; ++idx) {
       mapping[shards[idx]] = shardSheaves[idx].replicatedLog;
@@ -726,6 +737,11 @@ const unsetLeader = (database, logId) => {
  * Causes underlying replicated logs to trigger leader recovery.
  */
 const bumpTermOfLogsAndWaitForConfirmation = function (dbn, col) {
+  const {numberOfShards, isSmart} = col.properties();
+  if (isSmart && numberOfShards === 0) {
+    // Adjust for SmartEdgeCollections
+    col = db._collection(`_local_${col.name()}`);
+  }
   const shards = col.shards();
   const shardsToLogs = getShardsToLogsMapping(dbn, col._id);
   const stateMachineIds = shards.map(s => shardsToLogs[s]);
@@ -787,6 +803,7 @@ exports.getReplicatedLogLeaderPlan = getReplicatedLogLeaderPlan;
 exports.getReplicatedLogLeaderTarget = getReplicatedLogLeaderTarget;
 exports.getServerHealth = getServerHealth;
 exports.getServerRebootId = getServerRebootId;
+exports.isDBServerInCurrent = isDBServerInCurrent;
 exports.bumpServerRebootId = bumpServerRebootId;
 exports.getServerUrl = getServerUrl;
 exports.getSupervisionActionTypes = getSupervisionActionTypes;

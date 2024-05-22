@@ -2,18 +2,16 @@
 /* global assertTrue, assertEqual, assertNotEqual, assertNotNull, assertFalse, arango */
 'use strict';
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief ArangoDB Enterprise License Tests
-// /
-// /
 // / DISCLAIMER
 // /
-// / Copyright 2022 ArangoDB Inc, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,7 +19,7 @@
 // / See the License for the specific language governing permissions and
 // / limitations under the License.
 // /
-// / Copyright holder is ArangoDB Inc, Cologne, Germany
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Lars Maier
 // //////////////////////////////////////////////////////////////////////////////
@@ -69,7 +67,7 @@ function getRebalancePlan(moveLeaders, moveFollowers, leaderChanges, excludeSyst
 
 function getServersHealth() {
   let result = arango.GET_RAW('/_admin/cluster/health');
-  assertTrue(result.parsedBody.hasOwnProperty("Health"));
+  assertTrue(result.parsedBody.hasOwnProperty("Health"), "Health not found in response: " + JSON.stringify(result.parsedBody));
   return result.parsedBody.Health;
 }
 
@@ -236,30 +234,58 @@ function clusterRebalanceOtherOptionsSuite() {
           const serverShortName = result[dbServer.id].ShortName;
           assertEqual(serverHealth, "FAILED");
           startTime = Date.now();
-          let serverUsed;
-          do {
-            wait(2);
-            serverUsed = false;
-            for (let j = 0; j < numCols; ++j) {
-              result = arango.GET("/_admin/cluster/shardDistribution").results["col" + j].Plan;
-              for (let key of Object.keys(result)) {
-                if (result[key].leader === serverShortName) {
-                  serverUsed = true;
+          if (db._properties().replicationVersion !== "2") {
+            // In Replication 1 we will eventually replace the dead server
+            let serverUsed;
+            do {
+              wait(2);
+              serverUsed = false;
+              for (let j = 0; j < numCols; ++j) {
+                result = arango.GET("/_admin/cluster/shardDistribution").results["col" + j].Plan;
+                for (let key of Object.keys(result)) {
+                  if (result[key].leader === serverShortName) {
+                    serverUsed = true;
+                    break;
+                  }
+                  result[key].followers.forEach(follower => {
+                    if (follower === serverShortName) {
+                      serverUsed = true;
+                    }
+                  });
+                }
+                if (serverUsed === true) {
                   break;
                 }
-                result[key].followers.forEach(follower => {
-                  if (follower === serverShortName) {
-                    serverUsed = true;
-                  }
-                });
               }
-              if (serverUsed === true) {
-                break;
-              }
+              // We only have 300s to move shards
               const timeElapsed = (Date.now() - startTime) / 1000;
               assertTrue(timeElapsed < 300, "Moving shards from server in ill state not acquired");
-            }
-          } while (serverUsed);
+            } while (serverUsed);
+          } else {
+            // In Replication2 we consider "server dead" to be an active operation.
+            // Otherwise we assume it will return shortly.
+            // However it should not stay a leader.
+            let serverUsed;
+            do {
+              wait(2);
+              serverUsed = false;
+              for (let j = 0; j < numCols; ++j) {
+                result = arango.GET("/_admin/cluster/shardDistribution").results["col" + j].Plan;
+                for (let key of Object.keys(result)) {
+                  if (result[key].leader === serverShortName) {
+                    serverUsed = true;
+                    break;
+                  }
+                }
+                if (serverUsed === true) {
+                  break;
+                }
+              }
+              // We only have 300s to move shards
+              const timeElapsed = (Date.now() - startTime) / 1000;
+              assertTrue(timeElapsed < 300, "Moving leader shards from server in ill state not acquired");
+            } while (serverUsed);
+          }
 
           result = getRebalancePlan(true, true, true, false);
           let moves = result.result.moves;

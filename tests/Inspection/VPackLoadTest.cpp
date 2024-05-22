@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -205,6 +205,42 @@ TEST_F(VPackLoadInspectorTest, load_map) {
       m.map);
   EXPECT_EQ((std::unordered_map<std::string, int>{{"4", 4}, {"5", 5}}),
             m.unordered);
+}
+
+TEST_F(VPackLoadInspectorTest, load_transformed_map) {
+  builder.openObject();
+  builder.add(VPackValue("map"));
+  builder.openArray();
+  builder.openObject();
+  builder.add("key", 1);
+  builder.add(VPackValue("value"));
+  builder.openObject();
+  builder.add("i", VPackValue(1));
+  builder.close();
+  builder.close();
+  builder.openObject();
+  builder.add("key", 2);
+  builder.add(VPackValue("value"));
+  builder.openObject();
+  builder.add("i", VPackValue(2));
+  builder.close();
+  builder.close();
+  builder.openObject();
+  builder.add("key", 3);
+  builder.add(VPackValue("value"));
+  builder.openObject();
+  builder.add("i", VPackValue(3));
+  builder.close();
+  builder.close();
+  builder.close();
+  builder.close();
+  VPackLoadInspector inspector{builder};
+
+  TransformedMap m;
+  auto result = inspector.apply(m);
+  ASSERT_TRUE(result.ok());
+
+  EXPECT_EQ((std::map<int, Container>{{1, {1}}, {2, {2}}, {3, {3}}}), m.map);
 }
 
 TEST_F(VPackLoadInspectorTest, load_set) {

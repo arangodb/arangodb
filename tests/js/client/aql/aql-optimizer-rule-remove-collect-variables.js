@@ -1,30 +1,29 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
 /*global assertEqual, assertTrue, assertNotEqual */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for optimizer rules
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Jan Steemann
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const helper = require("@arangodb/aql-helper");
@@ -56,7 +55,7 @@ function optimizerRuleTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        let result = db._createStatement({query: query, bindVars:  { }, options:  paramNone}).explain();
+        let result = db._createStatement({query: query, bindVars: {}, options: paramNone}).explain();
         assertEqual([ ], result.plan.rules);
       });
     },
@@ -81,7 +80,7 @@ function optimizerRuleTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        let result = db._createStatement({query: query, bindVars:  { }, options:  paramEnabled}).explain();
+        let result = db._createStatement({query: query, bindVars: {}, options: paramEnabled}).explain();
         assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
       });
     },
@@ -103,7 +102,7 @@ function optimizerRuleTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        let result = db._createStatement({query: query, bindVars:  { }, options:  paramEnabled}).explain();
+        let result = db._createStatement({query: query, bindVars: {}, options: paramEnabled}).explain();
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
       });
     },
@@ -111,7 +110,6 @@ function optimizerRuleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test generated plans
 ////////////////////////////////////////////////////////////////////////////////
-
 
     testPlans : function () {
       const plans = [
@@ -126,7 +124,7 @@ function optimizerRuleTestSuite () {
       ];
 
       plans.forEach(function(plan) {
-        let result = db._createStatement({query: plan[0], bindVars:  { }, options:  paramEnabled}).explain();
+        let result = db._createStatement({query: plan[0], bindVars: {}, options: paramEnabled}).explain();
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), plan[0]);
         assertEqual(plan[1], helper.getCompactPlan(result).map(function(node) { return node.type; }), plan[0]);
       });
@@ -150,8 +148,8 @@ function optimizerRuleTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        let planDisabled   = db._createStatement({query: query[0], bindVars:  { }, options:  paramDisabled}).explain();
-        let planEnabled    = db._createStatement({query: query[0], bindVars:  { }, options:  paramEnabled}).explain();
+        let planDisabled   = db._createStatement({query: query[0], bindVars: {}, options: paramDisabled}).explain();
+        let planEnabled    = db._createStatement({query: query[0], bindVars: {}, options: paramEnabled}).explain();
 
         let resultDisabled = db._query(query[0], { }, paramDisabled).toArray();
         let resultEnabled  = db._query(query[0], { }, paramEnabled).toArray();
@@ -183,7 +181,7 @@ function optimizerRuleTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        let plan    = db._createStatement({query: query[0], bindVars:  { }, options:  paramEnabled}).explain();
+        let plan    = db._createStatement({query: query[0], bindVars: {}, options: paramEnabled}).explain();
         let result  = db._query(query[0], { }, paramEnabled).toArray();
 
         assertEqual(-1, plan.plan.rules.indexOf(ruleName), query[0]);
@@ -213,7 +211,7 @@ function optimizerRuleTestSuite () {
       let resultEnabled = db._query(query, { }, paramEnabled).toArray();
       assertEqual(expected, resultEnabled);
 
-      let explain =  db._createStatement({query: query, bindVars:  { }, options:  paramEnabled}).explain();
+      let explain =  db._createStatement({query: query, bindVars: {}, options: paramEnabled}).explain();
       assertEqual(-1, explain.plan.rules.indexOf(ruleName));
     },
 
@@ -240,7 +238,7 @@ function optimizerRuleTestSuite () {
       let resultEnabled = db._query(query, { }, paramEnabled).toArray();
       assertEqual(expected, resultEnabled);
 
-      let explain =  db._createStatement({query: query, bindVars:  { }, options:  paramEnabled}).explain();
+      let explain =  db._createStatement({query: query, bindVars: {}, options: paramEnabled}).explain();
       assertEqual(-1, explain.plan.rules.indexOf(ruleName));
     },
 
@@ -266,7 +264,7 @@ function optimizerRuleTestSuite () {
       let resultEnabled = db._query(query, { }, paramEnabled).toArray();
       assertEqual(expected, resultEnabled);
 
-      let explain =  db._createStatement({query: query, bindVars:  { }, options:  paramEnabled}).explain();
+      let explain =  db._createStatement({query: query, bindVars: {}, options: paramEnabled}).explain();
       assertEqual(-1, explain.plan.rules.indexOf(ruleName));
     },
 
@@ -284,7 +282,7 @@ function optimizerRuleTestSuite () {
       let resultEnabled = db._query(query, { }, paramEnabled).toArray();
       assertEqual(expected, resultEnabled);
 
-      let explain =  db._createStatement({query: query, bindVars:  { }, options:  paramEnabled}).explain();
+      let explain =  db._createStatement({query: query, bindVars: {}, options: paramEnabled}).explain();
       assertNotEqual(-1, explain.plan.rules.indexOf(ruleName));
     },
 
@@ -303,7 +301,7 @@ function optimizerRuleTestSuite () {
       let resultEnabled = db._query(query, { }, paramEnabled).toArray();
       assertEqual(expected, resultEnabled);
 
-      let explain =  db._createStatement({query: query, bindVars:  { }, options:  paramEnabled}).explain();
+      let explain =  db._createStatement({query: query, bindVars: {}, options: paramEnabled}).explain();
       assertNotEqual(-1, explain.plan.rules.indexOf(ruleName));
 
     },
@@ -327,7 +325,7 @@ function optimizerRuleTestSuite () {
       let resultEnabled = db._query(query, { }, paramEnabled).toArray();
       assertEqual(expected, resultEnabled);
 
-      let explain =  db._createStatement({query: query, bindVars:  { }, options:  paramEnabled}).explain();
+      let explain =  db._createStatement({query: query, bindVars: {}, options: paramEnabled}).explain();
       assertNotEqual(-1, explain.plan.rules.indexOf(ruleName));
     },
 
@@ -345,7 +343,7 @@ function optimizerRuleTestSuite () {
       let resultEnabled = db._query(query, { }, paramEnabled).toArray();
       assertEqual(expected, resultEnabled);
 
-      let explain =  db._createStatement({query: query, bindVars:  { }, options:  paramEnabled}).explain();
+      let explain =  db._createStatement({query: query, bindVars: {}, options: paramEnabled}).explain();
       assertNotEqual(-1, explain.plan.rules.indexOf(ruleName));
     },
 
@@ -365,7 +363,7 @@ function optimizerRuleTestSuite () {
       let resultEnabled = db._query(query, { }, paramEnabled).toArray();
       assertEqual(expected, resultEnabled);
 
-      let explain =  db._createStatement({query: query, bindVars:  { }, options:  paramEnabled}).explain();
+      let explain =  db._createStatement({query: query, bindVars: {}, options: paramEnabled}).explain();
       assertNotEqual(-1, explain.plan.rules.indexOf(ruleName));
     },
 
@@ -385,7 +383,7 @@ function optimizerRuleTestSuite () {
       let resultEnabled = db._query(query, { }, paramEnabled).toArray();
       assertEqual(expected, resultEnabled);
 
-      let explain =  db._createStatement({query: query, bindVars:  { }, options:  paramEnabled}).explain();
+      let explain =  db._createStatement({query: query, bindVars: {}, options: paramEnabled}).explain();
       assertNotEqual(-1, explain.plan.rules.indexOf(ruleName));
     },
 
@@ -402,7 +400,7 @@ function optimizerRuleTestSuite () {
       let resultEnabled = db._query(query, { }, paramEnabled).toArray();
       assertEqual(expected, resultEnabled);
 
-      let explain =  db._createStatement({query: query, bindVars:  { }, options:  paramEnabled}).explain();
+      let explain =  db._createStatement({query: query, bindVars: {}, options: paramEnabled}).explain();
       assertNotEqual(-1, explain.plan.rules.indexOf(ruleName));
     },
 
@@ -438,7 +436,7 @@ function optimizerRuleTestSuite () {
       let resultEnabled = db._query(query, { }, paramEnabled).toArray();
       assertEqual(expected, resultEnabled);
 
-      let explain =  db._createStatement({query: query, bindVars:  { }, options:  paramEnabled}).explain();
+      let explain =  db._createStatement({query: query, bindVars: {}, options: paramEnabled}).explain();
       assertNotEqual(-1, explain.plan.rules.indexOf(ruleName));
     },
 

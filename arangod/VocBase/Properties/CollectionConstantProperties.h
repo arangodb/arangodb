@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2022-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -50,7 +51,6 @@ struct CollectionConstantProperties {
   // NOTE: These attributes are not documented
   bool isSmart = false;
   bool isDisjoint = false;
-  bool cacheEnabled = false;
 
   inspection::NonNullOptional<std::string> smartGraphAttribute = std::nullopt;
   inspection::NonNullOptional<std::vector<DataSourceId>> shadowCollections =
@@ -82,8 +82,6 @@ auto inspect(Inspector& f, CollectionConstantProperties& props) {
           .fallback(f.keep()),
       f.field(StaticStrings::IsSmart, props.isSmart).fallback(f.keep()),
       f.field(StaticStrings::IsDisjoint, props.isDisjoint).fallback(f.keep()),
-      f.field(StaticStrings::CacheEnabled, props.cacheEnabled)
-          .fallback(f.keep()),
       f.field(StaticStrings::GraphSmartGraphAttribute,
               props.smartGraphAttribute)
           .invariant(UtilityInvariants::isNonEmptyIfPresent),

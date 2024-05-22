@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -358,10 +358,18 @@ void clusterCollectionName(LogicalCollection const& collection, ClusterInfo* ci,
   // or added to the server. New links already has collection name set,
   // but here we must get this name on our own.
   if (name.empty()) {
-    name = ci ? ci->getCollectionNameForShard(collection.name())
-              : collection.name();
+    if (ci) {
+      // Non ShardIDs will be handled because the name stays empty.
+      if (auto maybeShardID = ShardID::shardIdFromString(collection.name());
+          maybeShardID.ok()) {
+        name = ci->getCollectionNameForShard(maybeShardID.get());
+      }
+    } else {
+      name = collection.name();
+    }
     LOG_TOPIC("86ece", TRACE, TOPIC) << "Setting collection name '" << name
                                      << "' for new index '" << id << "'";
+
     if (ADB_UNLIKELY(name.empty())) {
       LOG_TOPIC_IF("67da6", WARN, TOPIC, indexIdAttribute)
           << "Failed to init collection name for the index '" << id
@@ -646,9 +654,16 @@ IResearchDataStore::IResearchDataStore(
 #ifdef USE_ENTERPRISE
   if (!collection.isAStub() && _asyncFeature->columnsCacheOnlyLeaders()) {
     auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
-    auto r = ci.getShardLeadership(ServerState::instance()->getId(),
-                                   collection.name());
-    _useSearchCache = r == ClusterInfo::ShardLeadership::kLeader;
+    auto maybeShardID = ShardID::shardIdFromString(collection.name());
+    if (maybeShardID.fail()) {
+      // Illegal shard name, could be collection name
+      _useSearchCache = false;
+    } else {
+      TRI_ASSERT(maybeShardID.ok());
+      auto r = ci.getShardLeadership(ServerState::instance()->getId(),
+                                     maybeShardID.get());
+      _useSearchCache = r == ClusterInfo::ShardLeadership::kLeader;
+    }
   }
 #endif
   _beforeCommitCallback = [this](TransactionState& state) {
@@ -774,18 +789,20 @@ Result IResearchDataStore::cleanupUnsafeImpl() {
   return {};
 }
 
-Result IResearchDataStore::commit(bool wait /*= true*/) {
+ResultT<IResearchDataStore::CommitResult> IResearchDataStore::commit(
+    bool wait /*= true*/) {
   auto linkLock = _asyncSelf->lock();  // '_dataStore' can be async modified
   if (!linkLock) {
     // the current link is no longer valid (checked after ReadLock acquisition)
-    return {TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,
-            absl::StrCat("failed to lock ArangoSearch index '",
-                         index().id().id(), "' while committing it")};
+    return Result{TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,
+                  absl::StrCat("failed to lock ArangoSearch index '",
+                               index().id().id(), "' while committing it")};
   }
   return commit(linkLock, wait);
 }
 
-Result IResearchDataStore::commit(LinkLock& linkLock, bool wait) {
+ResultT<IResearchDataStore::CommitResult> IResearchDataStore::commit(
+    LinkLock& linkLock, bool wait) {
   TRI_ASSERT(linkLock);
   TRI_ASSERT(linkLock->_dataStore);
 
@@ -807,7 +824,9 @@ Result IResearchDataStore::commit(LinkLock& linkLock, bool wait) {
     linkLock->_cleanupIntervalCount = 0;
     std::ignore = linkLock->cleanupUnsafe();
   }
-
+  if (result.ok()) {
+    return code;
+  }
   return result;
 }
 
@@ -889,8 +908,15 @@ Result IResearchDataStore::commitUnsafeImpl(
                      .server()
                      .getFeature<ClusterFeature>()
                      .clusterInfo();
+      auto maybeShardID = ShardID::shardIdFromString(collection.name());
+      if (maybeShardID.fail()) {
+        // Could not parse shardID, could be collection name
+        // Make this equivalent to Unclear.
+        return false;
+      }
+      TRI_ASSERT(maybeShardID.ok());
       auto r = ci.getShardLeadership(ServerState::instance()->getId(),
-                                     collection.name());
+                                     maybeShardID.get());
       if (r == ClusterInfo::ShardLeadership::kUnclear) {
         return false;
       }
@@ -1172,6 +1198,7 @@ irs::IndexWriterOptions IResearchDataStore::getWriterOptions(
     }
   }
   // setup columnstore compression/encryption if requested by storage engine
+  // TODO(MBkkt) we probably want to disable encryption for geo and norm columns
   auto const encrypt =
       (nullptr != _dataStore._directory->attributes().encryption());
   options.column_info =
@@ -1236,7 +1263,7 @@ Result IResearchDataStore::initDataStore(
                          index().id().id(), "'")};
   }
 
-  _engine = &server.getFeature<EngineSelectorFeature>().engine();
+  _engine = &index().collection().vocbase().engine();
 
   _dataStore._path = getPersistedPath(dbPathFeature, *this);
 
@@ -1638,13 +1665,49 @@ Result IResearchDataStore::insert(transaction::Methods& trx,
       return r;
     }
     TRI_IF_FAILURE("ArangoSearch::MisreportCreationInsertAsFailed") {
-      return {TRI_ERROR_DEBUG};
+      // For replication two only the Leader should throw this error.
+      // Note: Due to the asynchronous nature of replication2, there is a chance
+      // a follower is applying an operation after the leader successfully
+      // passed a test. This can lead to the race that we activate a
+      // failurePoint for the next insert, that is still applied to the previous
+      // insert on the followers.
+      bool isAllLeaders = false;
+      state.allCollections([&](TransactionCollection const& c) {
+        // The transaction can only be all followers are all leaders, never a
+        // mix So just take first collections information
+        isAllLeaders = c.collection()->isLeadingShard();
+        // always return false, do abort iteration.
+        return false;
+      });
+      if (trx.vocbase().replicationVersion() !=
+              arangodb::replication::Version::TWO ||
+          isAllLeaders) {
+        return {TRI_ERROR_DEBUG};
+      }
     }
     return {};
   }
 
   TRI_IF_FAILURE("ArangoSearch::BlockInsertsWithoutIndexCreationHint") {
-    return {TRI_ERROR_DEBUG};
+    // For replication two only the Leader should throw this error.
+    // Note: Due to the asynchronous nature of replication2, there is a chance
+    // a follower is applying an operation after the leader successfully
+    // passed a test. This can lead to the race that we activate a
+    // failurePoint for the next insert, that is still applied to the previous
+    // insert on the followers.
+    bool isAllLeaders = false;
+    state.allCollections([&](TransactionCollection const& c) {
+      // The transaction can only be all followers are all leaders, never a mix
+      // So just take first collections information
+      isAllLeaders = c.collection()->isLeadingShard();
+      // always return false, do abort iteration.
+      return false;
+    });
+    if (trx.vocbase().replicationVersion() !=
+            arangodb::replication::Version::TWO ||
+        isAllLeaders) {
+      return {TRI_ERROR_DEBUG};
+    }
   }
 
   auto* ctx = getContext(state);

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,10 +20,6 @@
 ///
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
-
-#include <stddef.h>
-#include <type_traits>
-#include <utility>
 
 #include "ScriptLoader.h"
 
@@ -37,80 +33,20 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 
+#include <cstddef>
+#include <utility>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a loader
-////////////////////////////////////////////////////////////////////////////////
-
-ScriptLoader::ScriptLoader() : _scripts(), _directory(), _lock() {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief gets the directory for scripts
-////////////////////////////////////////////////////////////////////////////////
-
-std::string const& ScriptLoader::getDirectory() const { return _directory; }
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the directory for scripts
-////////////////////////////////////////////////////////////////////////////////
-
 void ScriptLoader::setDirectory(std::string const& directory) {
   std::lock_guard mutexLocker{_lock};
 
   _directory = directory;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief build a script from an array of strings
-////////////////////////////////////////////////////////////////////////////////
-
-std::string ScriptLoader::buildScript(char const** script) {
-  std::string scriptString;
-
-  while (true) {
-    std::string tempStr = std::string(*script);
-
-    if (tempStr == "//__end__") {
-      break;
-    }
-
-    scriptString += tempStr + "\n";
-
-    ++script;
-  }
-
-  return scriptString;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief defines a new named script
-////////////////////////////////////////////////////////////////////////////////
-
-void ScriptLoader::defineScript(std::string const& name,
-                                std::string const& script) {
-  std::lock_guard mutexLocker{_lock};
-
-  _scripts[name] = script;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief defines a new named script
-////////////////////////////////////////////////////////////////////////////////
-
-void ScriptLoader::defineScript(std::string const& name, char const** script) {
-  std::string scriptString = buildScript(script);
-
-  std::lock_guard mutexLocker{_lock};
-
-  _scripts[name] = scriptString;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a named script
-////////////////////////////////////////////////////////////////////////////////
-
 std::string const& ScriptLoader::findScript(std::string const& name) {
   std::lock_guard mutexLocker{_lock};
 
@@ -144,10 +80,7 @@ std::string const& ScriptLoader::findScript(std::string const& name) {
   return StaticStrings::Empty;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief gets a list of all specified directory parts
-////////////////////////////////////////////////////////////////////////////////
-
 std::vector<std::string> ScriptLoader::getDirectoryParts() {
   std::vector<std::string> directories;
 
@@ -157,13 +90,8 @@ std::vector<std::string> ScriptLoader::getDirectoryParts() {
     // implementations, otherwise we will only allow ";"
     // .........................................................................
 
-#ifdef _WIN32
-    std::vector<std::string> parts =
-        basics::StringUtils::split(_directory, ';');
-#else
     std::vector<std::string> parts =
         basics::StringUtils::split(_directory, ":;");
-#endif
 
     for (size_t i = 0; i < parts.size(); ++i) {
       std::string part = StringUtils::trim(parts[i]);

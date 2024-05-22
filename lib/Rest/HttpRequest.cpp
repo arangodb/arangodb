@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -30,6 +30,8 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/conversions.h"
 #include "Basics/debugging.h"
+
+#include <fuerte/types.h>
 
 #include <velocypack/Builder.h>
 #include <velocypack/Options.h>
@@ -594,7 +596,7 @@ void HttpRequest::setHeader(std::string key, std::string value) {
   } else if (_contentType == ContentType::UNSET &&
              key == StaticStrings::ContentTypeHeader) {
     auto res = rest::stringToContentType(value, /*default*/ ContentType::UNSET);
-    // simon: the "@arangodb/requests" module by default the "text/plain"
+    // simon: the "@arangodb/requests" module by default uses the "text/plain"
     // content-types for JSON in most tests. As soon as someone fixes all the
     // tests we can enable these again.
     if (res == ContentType::JSON || res == ContentType::VPACK ||
@@ -603,16 +605,8 @@ void HttpRequest::setHeader(std::string key, std::string value) {
       return;
     }
   } else if (key == StaticStrings::AcceptEncoding) {
-    // This can be much more elaborated as the can specify weights on encodings
-    // However, for now just toggle on deflate if deflate is requested
-    if (StaticStrings::EncodingDeflate == value) {
-      // FXIME: cannot use substring search, Java driver chokes on deflated
-      // response
-      _acceptEncoding = EncodingType::DEFLATE;
-    } else if (StaticStrings::EncodingGzip == value) {
-      _acceptEncoding = EncodingType::GZIP;
-    }
-  } else if (key == "cookie") {
+    _acceptEncoding = parseAcceptEncoding(value);
+  } else if (key == StaticStrings::Cookie) {
     parseCookies(value.c_str(), value.size());
     return;
   }
@@ -913,4 +907,19 @@ VPackSlice HttpRequest::payload(bool strictValidation) {
   }
 
   return VPackSlice::noneSlice();
+}
+
+EncodingType HttpRequest::parseAcceptEncoding(std::string_view value) const {
+  // let fuerte translate the content encoding for us
+  switch (fuerte::to_ContentEncoding(value)) {
+    case fuerte::ContentEncoding::Deflate:
+      return EncodingType::DEFLATE;
+    case fuerte::ContentEncoding::Gzip:
+      return EncodingType::GZIP;
+    case fuerte::ContentEncoding::Lz4:
+      return EncodingType::LZ4;
+    default:
+      // everything else counts as unset
+      return EncodingType::UNSET;
+  }
 }

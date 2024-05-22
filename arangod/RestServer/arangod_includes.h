@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -43,14 +43,13 @@
 #include "ApplicationFeatures/ShutdownFeature.h"
 #include "ApplicationFeatures/TempFeature.h"
 #ifdef USE_V8
-#include "ApplicationFeatures/V8PlatformFeature.h"
+#include "V8/V8PlatformFeature.h"
 #include "V8/V8SecurityFeature.h"
 #endif
 #include "ApplicationFeatures/VersionFeature.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Basics/ArangoGlobalContext.h"
-#include "Basics/Common.h"
 #include "Basics/FileUtils.h"
 #include "Basics/directories.h"
 #include "Basics/operating-system.h"
@@ -87,7 +86,6 @@
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/MetricsFeature.h"
 #include "Network/NetworkFeature.h"
-#include "Pregel/PregelFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomFeature.h"
 #include "Replication/ReplicationFeature.h"
@@ -155,15 +153,9 @@
 #include "V8Server/V8DealerFeature.h"
 #endif
 
-#ifdef _WIN32
-#include "Basics/win-utils.h"
-#include "RestServer/WindowsServiceFeature.h"
-#endif
-
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Audit/AuditFeature.h"
 #include "Enterprise/Encryption/EncryptionFeature.h"
-#include "Enterprise/Ldap/LdapFeature.h"
 #include "Enterprise/License/LicenseFeature.h"
 #include "Enterprise/RClone/RCloneFeature.h"
 #include "Enterprise/Ssl/SslServerFeatureEE.h"

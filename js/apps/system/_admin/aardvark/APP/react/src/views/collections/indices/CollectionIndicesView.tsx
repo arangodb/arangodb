@@ -39,26 +39,26 @@ export const CollectionIndicesView = () => {
 const IndexViewHeader = ({ onOpen }: { onOpen: () => void }) => {
   const { stats } = useCollectionIndicesContext();
   return (
-    <Stack direction="row" marginBottom="4" alignItems="center" spacing="6">
+    <Stack direction="row" marginBottom="4" alignItems="baseline" spacing="6">
       <Heading size="lg">Indexes</Heading>
-      <Flex gap="2" alignItems="center">
-        <Stat>
-          <StatNumber>{stats ? stats.count : <Spinner size="sm" />}</StatNumber>
-          <StatLabel>Index count</StatLabel>
+      <Flex gap="2" alignItems="baseline">
+        <Stat gap="2">
+          <StatNumber lineHeight="base">{stats ? stats.count : <Spinner size="sm" />}</StatNumber>
+          <StatLabel lineHeight="base">Index count</StatLabel>
         </Stat>
 
-        <Stat>
-          <StatNumber>
+        <Stat gap="2">
+          <StatNumber lineHeight="base">
             {stats ? window.prettyBytes(stats.size) : <Spinner size="sm" />}
           </StatNumber>
-          <StatLabel>Estimated memory used</StatLabel>
+          <StatLabel lineHeight="base">Estimated memory used</StatLabel>
         </Stat>
       </Flex>
 
       <Button
         size="sm"
         leftIcon={<AddIcon />}
-        colorScheme="blue"
+        colorScheme="green"
         onClick={() => {
           onOpen();
         }}

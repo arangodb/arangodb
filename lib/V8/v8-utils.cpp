@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,18 +27,7 @@
 #error this file is not supposed to be used in builds with -DUSE_V8=Off
 #endif
 
-#include "Basics/Common.h"
 #include "Basics/operating-system.h"
-
-#ifdef _WIN32
-#include <WinSock2.h>  // must be before windows.h
-#include <conio.h>
-#include <fcntl.h>
-#include <io.h>
-#include <windef.h>
-#include <windows.h>
-#include "Basics/win-utils.h"
-#endif
 
 #include <errno.h>
 #include <signal.h>
@@ -101,6 +90,7 @@
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "ProgramOptions/ProgramOptions.h"
 #include "Random/UniformCharacter.h"
 #include "Rest/CommonDefines.h"
 #include "Rest/GeneralRequest.h"
@@ -140,6 +130,15 @@ static UniformCharacter JSNumGenerator("0123456789");
 static UniformCharacter JSSaltGenerator(
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*(){}"
     "[]:;<>,.?/|");
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute a single garbage collection run
+////////////////////////////////////////////////////////////////////////////////
+
+bool singleRunGarbageCollectionV8(v8::Isolate* isolate, int idleTimeInMs) {
+  isolate->LowMemoryNotification();
+  return isolate->IdleNotificationDeadline(idleTimeInMs);
+}
 
 Result doSleep(double n,
                arangodb::application_features::ApplicationServer& server) {
@@ -283,20 +282,13 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
 
   auto guard = scopeGuard([&content]() noexcept { TRI_FreeString(content); });
 
-  if (content == nullptr) {
-    LOG_TOPIC("89c6f", ERR, arangodb::Logger::FIXME)
-        << "cannot load JavaScript file '" << filename
-        << "': " << TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
-    return false;
-  }
-
   v8::Handle<v8::String> name = TRI_V8_STRING(isolate, filename);
   v8::Handle<v8::String> source =
       TRI_V8_PAIR_STRING(isolate, content, (int)length);
 
   v8::TryCatch tryCatch(isolate);
 
-  v8::ScriptOrigin scriptOrigin(name);
+  v8::ScriptOrigin scriptOrigin(isolate, name);
   v8::Handle<v8::Script> script =
       v8::Script::Compile(TRI_IGETC, source, &scriptOrigin)
           .FromMaybe(v8::Local<v8::Script>());
@@ -350,13 +342,9 @@ static void JS_Options(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_v8security;
 
-  auto filter = [&v8security, isolate](std::string const& name) {
-    if (name.find("passwd") != std::string::npos ||
-        name.find("password") != std::string::npos ||
-        name.find("secret") != std::string::npos) {
-      return false;
-    }
-    return v8security.shouldExposeStartupOption(isolate, name);
+  auto filter = [&v8security, isolate](std::string const& name) -> bool {
+    return options::ProgramOptions::defaultOptionsFilter(name) &&
+           v8security.shouldExposeStartupOption(isolate, name);
   };
 
   VPackBuilder builder = v8g->_server.options(filter);
@@ -460,7 +448,7 @@ static void JS_Parse(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   v8::TryCatch tryCatch(isolate);
 
-  v8::ScriptOrigin scriptOrigin(TRI_ObjectToString(context, filename));
+  v8::ScriptOrigin scriptOrigin(isolate, TRI_ObjectToString(context, filename));
   v8::Handle<v8::Script> script =
       v8::Script::Compile(
           TRI_IGETC,
@@ -556,7 +544,7 @@ static void JS_ParseFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   v8::TryCatch tryCatch(isolate);
 
-  v8::ScriptOrigin scriptOrigin(TRI_ObjectToString(context, args[0]));
+  v8::ScriptOrigin scriptOrigin(isolate, TRI_ObjectToString(context, args[0]));
   v8::Handle<v8::Script> script =
       v8::Script::Compile(TRI_IGETC,
                           TRI_V8_PAIR_STRING(isolate, content, (int)length),
@@ -1011,7 +999,8 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
 
     SimpleHttpClientParams params(timeout, false, addContentLength);
-    params.setSupportDeflate(false);
+    // turn off transparent compression/decompression
+    params.setCompressRequestThreshold(0);
     // security by obscurity won't work. Github requires a useragent nowadays.
     params.setExposeArangoDB(true);
     if (!jwtToken.empty()) {
@@ -1230,7 +1219,8 @@ static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
   {
     v8::TryCatch tryCatch(isolate);
 
-    v8::ScriptOrigin scriptOrigin(TRI_ObjectToString(context, filename));
+    v8::ScriptOrigin scriptOrigin(isolate,
+                                  TRI_ObjectToString(context, filename));
     script = v8::Script::Compile(context, TRI_ObjectToString(context, source),
                                  &scriptOrigin)
                  .FromMaybe(v8::Local<v8::Script>());
@@ -1475,18 +1465,10 @@ static void JS_Getline(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-#ifdef _WIN32
-  std::wstring wline;
-  _setmode(_fileno(stdin), _O_U16TEXT);
-  std::getline(std::wcin, wline);
-
-  TRI_V8_RETURN_STD_WSTRING(wline);
-#else
   std::string line;
   getline(std::cin, line);
 
   TRI_V8_RETURN_STD_STRING(line);
-#endif
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2080,9 +2062,8 @@ static void JS_Load(v8::FunctionCallbackInfo<v8::Value> const& args) {
     v8::TryCatch tryCatch(isolate);
 
     result = TRI_ExecuteJavaScriptString(
-        isolate, isolate->GetCurrentContext(),
-        TRI_V8_PAIR_STRING(isolate, content, length),
-        TRI_ObjectToString(context, filename), false);
+        isolate, std::string_view(content, length),
+        TRI_ObjectToString(isolate, filename), false);
 
     TRI_FreeString(content);
 
@@ -2742,18 +2723,6 @@ static void JS_PollStdin(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("pollStdin()");
   }
 
-  bool hasData = false;
-#ifdef _WIN32
-  auto hin = ::GetStdHandle(STD_INPUT_HANDLE);
-  if (GetFileType(hin) == FILE_TYPE_PIPE) {
-    DWORD numBytes = 0;
-    if (PeekNamedPipe(hin, nullptr, 0, nullptr, &numBytes, nullptr)) {
-      hasData = numBytes > 0;
-    }
-  } else {
-    hasData = _kbhit() != 0;
-  }
-#else
   struct timeval tv;
   fd_set fds;
   tv.tv_sec = 0;
@@ -2761,8 +2730,7 @@ static void JS_PollStdin(v8::FunctionCallbackInfo<v8::Value> const& args) {
   FD_ZERO(&fds);
   FD_SET(STDIN_FILENO, &fds);
   select(STDIN_FILENO + 1, &fds, nullptr, nullptr, &tv);
-  hasData = FD_ISSET(STDIN_FILENO, &fds);
-#endif
+  bool hasData = FD_ISSET(STDIN_FILENO, &fds);
 
   if (hasData) {
     char c[1024] = {0};
@@ -3332,17 +3300,9 @@ static void JS_Append(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("append(<filename>, <content>)");
   }
 
-#if _WIN32  // the wintendo needs utf16 filenames
-  v8::String::Value str(isolate, args[0]);
-  std::wstring name{reinterpret_cast<wchar_t*>(*str),
-                    static_cast<size_t>(str.length())};
-  TRI_Utf8ValueNFC utf8Str(isolate, args[0]);
-  std::string utf8Name(*utf8Str, utf8Str.length());
-#else
   TRI_Utf8ValueNFC str(isolate, args[0]);
   std::string name(*str, str.length());
   std::string const& utf8Name = name;
-#endif
 
   if (name.empty()) {
     TRI_V8_THROW_TYPE_ERROR("<filename> must be a non-empty string");
@@ -3408,17 +3368,9 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() < 2) {
     TRI_V8_THROW_EXCEPTION_USAGE("write(<filename>, <content>)");
   }
-#if _WIN32  // the wintendo needs utf16 filenames
-  v8::String::Value str(isolate, args[0]);
-  std::wstring name{reinterpret_cast<wchar_t*>(*str),
-                    static_cast<size_t>(str.length())};
-  TRI_Utf8ValueNFC utf8Str(isolate, args[0]);
-  std::string utf8Name(*utf8Str, utf8Str.length());
-#else
   TRI_Utf8ValueNFC str(isolate, args[0]);
   std::string name(*str, str.length());
   std::string const& utf8Name = name;
-#endif
 
   if (name.length() == 0) {
     TRI_V8_THROW_TYPE_ERROR("<filename> must be a string");
@@ -3632,12 +3584,7 @@ static void JS_RemoveRecursiveDirectory(
 
     std::string const path(*name);
 
-#ifdef _WIN32
-    // windows paths are case-insensitive
-    if (!TRI_CaseEqualString(path.c_str(), tempPath.c_str(), tempPath.size())) {
-#else
     if (!path.starts_with(tempPath)) {
-#endif
       std::string errorMessage = std::string("directory to be removed [") +
                                  path + "] is outside of temporary path [" +
                                  tempPath + "]";
@@ -4289,7 +4236,6 @@ static void convertPipeStatus(v8::FunctionCallbackInfo<v8::Value> const& args,
       .FromMaybe(false);
 
   // Now report about possible stdin and stdout pipes:
-#ifndef _WIN32
   if (external._readPipe >= 0) {
     result
         ->Set(context, TRI_V8_ASCII_STRING(isolate, "readPipe"),
@@ -4302,26 +4248,6 @@ static void convertPipeStatus(v8::FunctionCallbackInfo<v8::Value> const& args,
               v8::Number::New(isolate, external._writePipe))
         .FromMaybe(false);
   }
-#else
-  if (external._readPipe != INVALID_HANDLE_VALUE) {
-    auto fn = getFileNameFromHandle(external._readPipe);
-    if (fn.length() > 0) {
-      result
-          ->Set(context, TRI_V8_ASCII_STRING(isolate, "readPipe"),
-                TRI_V8_STD_STRING(isolate, fn))
-          .FromMaybe(false);
-    }
-  }
-  if (external._writePipe != INVALID_HANDLE_VALUE) {
-    auto fn = getFileNameFromHandle(external._writePipe);
-    if (fn.length() > 0) {
-      result
-          ->Set(context, TRI_V8_ASCII_STRING(isolate, "writePipe"),
-                TRI_V8_STD_STRING(isolate, fn))
-          .FromMaybe(false);
-    }
-  }
-#endif
   TRI_V8_TRY_CATCH_END;
 }
 
@@ -4883,11 +4809,7 @@ static void JS_KillExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   ExternalId pid;
 
-#ifndef _WIN32
   pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(isolate, args[0], true));
-#else
-  pid._pid = static_cast<DWORD>(TRI_ObjectToUInt64(isolate, args[0], true));
-#endif
   if (pid._pid == 0) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "not allowed to kill 0");
@@ -4932,11 +4854,7 @@ static void JS_SuspendExternal(
 
   ExternalId pid;
 
-#ifndef _WIN32
   pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(isolate, args[0], true));
-#else
-  pid._pid = static_cast<DWORD>(TRI_ObjectToUInt64(isolate, args[0], true));
-#endif
   if (pid._pid == 0) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(
         TRI_ERROR_FORBIDDEN, "not allowed to suspend the invoking process!");
@@ -4975,11 +4893,7 @@ static void JS_ContinueExternal(
 
   ExternalId pid;
 
-#ifndef _WIN32
   pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(isolate, args[0], true));
-#else
-  pid._pid = static_cast<DWORD>(TRI_ObjectToUInt64(isolate, args[0], true));
-#endif
 
   // return the result
   if (TRI_ContinueExternalProcess(pid)) {
@@ -5089,7 +5003,6 @@ static void JS_FishbowlSet(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("FISHBOWL_SET(<value>)");
   }
 
-  ISOLATE;
   auto builder = std::make_shared<VPackBuilder>();
   TRI_V8ToVPack(isolate, *builder, args[0], false);
 
@@ -5115,7 +5028,6 @@ static void JS_FishbowlGet(v8::FunctionCallbackInfo<v8::Value> const& args) {
     builder = ::fishbowlData;
   }
 
-  ISOLATE;
   v8::Handle<v8::Value> result;
   if (builder == nullptr) {
     result = v8::Array::New(isolate);
@@ -5533,17 +5445,22 @@ bool TRI_ParseJavaScriptFile(v8::Isolate* isolate, char const* filename) {
 /// @brief executes a string within a V8 context, optionally print the result
 ////////////////////////////////////////////////////////////////////////////////
 
-v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(
-    v8::Isolate* isolate, v8::Handle<v8::Context> context,
-    v8::Handle<v8::String> const source, v8::Handle<v8::String> const name,
-    bool printResult) {
+v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(v8::Isolate* isolate,
+                                                  std::string_view source,
+                                                  std::string_view name,
+                                                  bool printResult) {
   v8::EscapableHandleScope scope(isolate);
 
-  v8::ScriptOrigin scriptOrigin(name);
+  TRI_ASSERT(isolate->InContext());
+  v8::Handle<v8::Context> context = isolate->GetCurrentContext();
 
+  v8::ScriptOrigin scriptOrigin(
+      isolate, TRI_V8_PAIR_STRING(isolate, name.data(), name.size()));
   v8::Handle<v8::Value> result;
   v8::Handle<v8::Script> script =
-      v8::Script::Compile(context, source, &scriptOrigin)
+      v8::Script::Compile(
+          context, TRI_V8_PAIR_STRING(isolate, source.data(), source.size()),
+          &scriptOrigin)
           .FromMaybe(v8::Local<v8::Script>());
 
   // compilation failed, print errors that happened during compilation
@@ -5569,7 +5486,6 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(
         v8::Handle<v8::Function>::Cast(context->Global()
                                            ->Get(context, printFuncName)
                                            .FromMaybe(v8::Local<v8::Value>()));
-
     if (print->IsFunction()) {
       v8::Handle<v8::Value> arguments[] = {result};
       print->Call(TRI_IGETC, print, 1, arguments)
@@ -5596,6 +5512,7 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an error in a javascript object, based on arangodb::result
 ////////////////////////////////////////////////////////////////////////////////
+
 void TRI_CreateErrorObject(v8::Isolate* isolate, arangodb::Result const& res) {
   TRI_CreateErrorObject(isolate, res.errorNumber(), res.errorMessage(), false);
 }
@@ -5637,15 +5554,16 @@ void TRI_normalize_V8_Obj(v8::FunctionCallbackInfo<v8::Value> const& args,
   size_t str_len = str.length();
   if (str_len > 0) {
     UErrorCode errorCode = U_ZERO_ERROR;
-    icu::Normalizer2 const* normalizer = icu::Normalizer2::getInstance(
-        nullptr, "nfc", UNORM2_COMPOSE, errorCode);
+    icu_64_64::Normalizer2 const* normalizer =
+        icu_64_64::Normalizer2::getInstance(nullptr, "nfc", UNORM2_COMPOSE,
+                                            errorCode);
 
     if (U_FAILURE(errorCode)) {
       TRI_V8_RETURN(TRI_V8_PAIR_STRING(isolate, (char*)*str, (int)str_len));
     }
 
-    icu::UnicodeString result = normalizer->normalize(
-        icu::UnicodeString((UChar*)*str, (int32_t)str_len), errorCode);
+    icu_64_64::UnicodeString result = normalizer->normalize(
+        icu_64_64::UnicodeString((UChar*)*str, (int32_t)str_len), errorCode);
 
     if (U_FAILURE(errorCode)) {
       TRI_V8_RETURN(TRI_V8_STRING_UTF16(isolate, *str, (int)str_len));
@@ -5672,11 +5590,7 @@ v8::Handle<v8::Array> static V8PathList(v8::Isolate* isolate,
                                         std::string const& modules) {
   v8::EscapableHandleScope scope(isolate);
   auto context = TRI_IGETC;
-#ifdef _WIN32
-  std::vector<std::string> paths = StringUtils::split(modules, ';');
-#else
   std::vector<std::string> paths = StringUtils::split(modules, ";:");
-#endif
 
   uint32_t const n = static_cast<uint32_t>(paths.size());
   v8::Handle<v8::Array> result = v8::Array::New(isolate, n);
@@ -5687,18 +5601,6 @@ v8::Handle<v8::Array> static V8PathList(v8::Isolate* isolate,
   }
 
   return scope.Escape<v8::Array>(result);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief execute a single garbage collection run
-////////////////////////////////////////////////////////////////////////////////
-
-static bool SingleRunGarbageCollectionV8(v8::Isolate* isolate,
-                                         int idleTimeInMs) {
-  isolate->LowMemoryNotification();
-  bool rc = isolate->IdleNotificationDeadline(idleTimeInMs);
-  isolate->RunMicrotasks();
-  return rc;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5733,7 +5635,7 @@ bool TRI_RunGarbageCollectionV8(v8::Isolate* isolate, double availableTime) {
     int gcTries = 0;
 
     while (++gcTries <= gcAttempts) {
-      if (SingleRunGarbageCollectionV8(isolate, idleTimeInMs)) {
+      if (::singleRunGarbageCollectionV8(isolate, idleTimeInMs)) {
         return false;
       }
     }
@@ -5744,7 +5646,7 @@ bool TRI_RunGarbageCollectionV8(v8::Isolate* isolate, double availableTime) {
         // garbage collection only every x iterations, otherwise we'll use too
         // much CPU
         if (++gcTries > gcAttempts ||
-            SingleRunGarbageCollectionV8(isolate, idleTimeInMs)) {
+            ::singleRunGarbageCollectionV8(isolate, idleTimeInMs)) {
           return false;
         }
       }

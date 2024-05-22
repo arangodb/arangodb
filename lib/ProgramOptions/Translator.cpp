@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -91,19 +91,6 @@ std::string arangodb::options::EnvironmentTranslator(std::string const& value,
             if (k == "PID") {
               vv = std::to_string(Thread::currentProcessId());
             }
-#if _WIN32
-            else if (k == "ROOTDIR") {
-              vv = TRI_LocateInstallDirectory(nullptr, binaryPath);
-
-              if (!vv.empty()) {
-                char c = *(vv.rbegin());
-
-                if (c == TRI_DIR_SEPARATOR_CHAR || c == '/') {
-                  vv.pop_back();
-                }
-              }
-            }
-#endif
           }
 
           result += vv;

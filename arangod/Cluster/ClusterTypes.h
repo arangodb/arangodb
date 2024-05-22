@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -38,8 +38,6 @@ namespace arangodb {
 typedef std::string ServerID;         // ID of a server
 typedef std::string DatabaseID;       // ID/name of a database
 typedef std::string CollectionID;     // ID of a collection
-typedef std::string ViewID;           // ID of a view
-typedef std::string ShardID;          // ID of a shard
 typedef uint32_t ServerShortID;       // Short ID of a server
 typedef std::string ServerShortName;  // Short name of a server
 

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,13 +24,19 @@
 #include "RestIndexHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Futures/Utilities.h"
+#include "Logger/LogMacros.h"
+#include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
 #include "RestServer/VocbaseContext.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Methods.h"
 #include "Transaction/OperationOrigin.h"
@@ -49,6 +55,7 @@
 
 using namespace arangodb;
 using namespace arangodb::basics;
+using namespace arangodb::futures;
 using namespace arangodb::rest;
 
 RestIndexHandler::RestIndexHandler(ArangodServer& server,
@@ -67,7 +74,7 @@ RestStatus RestIndexHandler::execute() {
   if (type == rest::RequestType::GET) {
     if (_request->suffixes().size() == 1 &&
         _request->suffixes()[0] == "selectivity") {
-      return getSelectivityEstimates();
+      return waitForFuture(getSelectivityEstimates());
     }
     return getIndexes();
   } else if (type == rest::RequestType::POST) {
@@ -179,7 +186,8 @@ RestStatus RestIndexHandler::getIndexes() {
     bool withHidden = _request->parsedValue("withHidden", false);
 
     VPackBuilder indexes;
-    Result res = methods::Indexes::getAll(*coll, flags, withHidden, indexes);
+    Result res =
+        methods::Indexes::getAll(*coll, flags, withHidden, indexes).get();
     if (!res.ok()) {
       generateError(rest::ResponseCode::BAD, res.errorNumber(),
                     res.errorMessage());
@@ -192,9 +200,119 @@ RestStatus RestIndexHandler::getIndexes() {
     tmp.add(StaticStrings::Error, VPackValue(false));
     tmp.add(StaticStrings::Code,
             VPackValue(static_cast<int>(ResponseCode::OK)));
-    tmp.add("indexes", indexes.slice());
+
+    if (ServerState::instance()->isCoordinator() && withHidden) {
+      tmp.add(VPackValue("indexes"));
+      VPackArrayBuilder guard(&tmp);
+      for (auto i : VPackArrayIterator(indexes.slice())) {
+        tmp.add(i);
+      }
+      std::string ap = absl::StrCat("Plan/Collections/", _vocbase.name(), "/",
+                                    coll->planId().id(), "/indexes");
+      auto& ac = _vocbase.server().getFeature<ClusterFeature>().agencyCache();
+      // we need to wait for the latest commit index here, because otherwise
+      // we may not see all indexes that were declared ready by the supervision.
+      ac.waitForLatestCommitIndex().get();
+
+      auto [plannedIndexes, idx] = ac.get(ap);
+
+      try {  // this is a best effort progress display.
+        for (auto pi : VPackArrayIterator(plannedIndexes->slice())) {
+          if (pi.get(StaticStrings::IndexIsBuilding).isTrue()) {
+            VPackObjectBuilder o(&tmp);
+            for (auto source :
+                 VPackObjectIterator(pi, /* useSequentialIterator */ true)) {
+              tmp.add(source.key.stringView(), source.value);
+            }
+            std::string_view iid = pi.get("id").stringView();
+            double progress = 0;
+            auto const shards = coll->shardIds();
+            auto const body = VPackBuffer<uint8_t>();
+            auto* pool =
+                coll->vocbase().server().getFeature<NetworkFeature>().pool();
+            std::vector<Future<network::Response>> futures;
+            futures.reserve(shards->size());
+            std::string const prefix = "/_api/index/";
+            network::RequestOptions reqOpts;
+            reqOpts.param("withHidden", withHidden ? "true" : "false");
+            reqOpts.database = _vocbase.name();
+            // best effort. only displaying progress
+            reqOpts.timeout = network::Timeout(10.0);
+            for (auto const& shard : *shards) {
+              std::string const url =
+                  absl::StrCat(prefix, "s", shard.first.id(), "/", iid);
+              futures.emplace_back(network::sendRequestRetry(
+                  pool, absl::StrCat("shard:s", shard.first.id()),
+                  fuerte::RestVerb::Get, url, body, reqOpts));
+            }
+            for (Future<network::Response>& f : futures) {
+              network::Response const& r = f.get();
+
+              // Only best effort accounting. If something breaks here, we
+              // just ignore the output. Account for what we can and move
+              // on.
+              if (r.fail()) {
+                LOG_TOPIC("afde4", INFO, Logger::CLUSTER)
+                    << "Communication error while fetching index data "
+                       "for collection "
+                    << coll->name() << " from " << r.destination;
+                continue;
+              }
+              VPackSlice resSlice = r.slice();
+              if (!resSlice.isObject() ||
+                  !resSlice.get(StaticStrings::Error).isBoolean()) {
+                LOG_TOPIC("aabe4", INFO, Logger::CLUSTER)
+                    << "Result of collecting index data for collection "
+                    << coll->name() << " from " << r.destination
+                    << " is invalid";
+                continue;
+              }
+              if (resSlice.get(StaticStrings::Error).isTrue()) {
+                // this can happen when the DB-Servers have not yet
+                // started the creation of the index on a shard, for
+                // example if the number of maintenance threads is low.
+                auto errorNum = TRI_ERROR_NO_ERROR;
+                if (VPackSlice errorNumSlice =
+                        resSlice.get(StaticStrings::ErrorNum);
+                    errorNumSlice.isNumber()) {
+                  errorNum = ::ErrorCode{errorNumSlice.getNumber<int>()};
+                }
+                // do not log an expected error such as "index not found",
+                if (errorNum != TRI_ERROR_ARANGO_INDEX_NOT_FOUND) {
+                  LOG_TOPIC("a4bea", INFO, Logger::CLUSTER)
+                      << "Failed to collect index data for collection "
+                      << coll->name() << " from " << r.destination << ": "
+                      << resSlice.toJson();
+                }
+                continue;
+              }
+              if (resSlice.get("progress").isNumber()) {
+                progress += resSlice.get("progress").getNumber<double>();
+              } else {
+                // Obviously, the index is already ready there.
+                progress += 100.0;
+                LOG_TOPIC("aeab4", DEBUG, Logger::CLUSTER)
+                    << "No progress entry on index " << iid << " from "
+                    << r.destination << ": " << resSlice.toJson()
+                    << " index already finished.";
+              }
+            }
+            if (progress != 0 && shards->size() > 0) {
+              // Don't show progress 0, this is in particular relevant
+              // when isBackground is false, in which case no progress
+              // is reported by design.
+              tmp.add("progress", VPackValue(progress / shards->size()));
+            }
+          }
+        }
+      } catch (...) {
+      }  // best effort only
+    } else {
+      tmp.add("indexes", indexes.slice());
+    }
+
     tmp.add("identifiers", VPackValue(VPackValueType::Object));
-    for (VPackSlice const& index : VPackArrayIterator(indexes.slice())) {
+    for (auto index : VPackArrayIterator(indexes.slice())) {
       VPackSlice id = index.get("id");
       tmp.add(id.stringView(), index);
     }
@@ -215,12 +333,11 @@ RestStatus RestIndexHandler::getIndexes() {
     }
 
     std::string const& iid = suffixes[1];
-
     VPackBuilder tmp;
     tmp.add(VPackValue(cName + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
 
     VPackBuilder output;
-    Result res = methods::Indexes::getIndex(*coll, tmp.slice(), output);
+    Result res = methods::Indexes::getIndex(*coll, tmp.slice(), output).get();
     if (res.ok()) {
       VPackBuilder b;
       b.openObject();
@@ -239,7 +356,7 @@ RestStatus RestIndexHandler::getIndexes() {
   return RestStatus::DONE;
 }
 
-RestStatus RestIndexHandler::getSelectivityEstimates() {
+futures::Future<futures::Unit> RestIndexHandler::getSelectivityEstimates() {
   // .............................................................................
   // /_api/index/selectivity?collection=<collection-name>
   // .............................................................................
@@ -249,7 +366,7 @@ RestStatus RestIndexHandler::getSelectivityEstimates() {
   if (cName.empty()) {
     generateError(rest::ResponseCode::NOT_FOUND,
                   TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-    return RestStatus::DONE;
+    co_return;
   }
 
   auto origin =
@@ -259,8 +376,8 @@ RestStatus RestIndexHandler::getSelectivityEstimates() {
   std::unique_ptr<transaction::Methods> trx;
 
   try {
-    trx = createTransaction(cName, AccessMode::Type::READ, OperationOptions(),
-                            origin);
+    trx = co_await createTransaction(cName, AccessMode::Type::READ,
+                                     OperationOptions(), origin);
   } catch (basics::Exception const& ex) {
     if (ex.code() == TRI_ERROR_TRANSACTION_NOT_FOUND) {
       // this will happen if the tid of a managed transaction is passed in,
@@ -280,11 +397,11 @@ RestStatus RestIndexHandler::getSelectivityEstimates() {
   Result res = trx->begin();
   if (res.fail()) {
     generateError(res);
-    return RestStatus::DONE;
+    co_return;
   }
 
   LogicalCollection* coll = trx->documentCollection(cName);
-  auto idxs = coll->getIndexes();
+  auto idxs = coll->getPhysical()->getReadyIndexes();
 
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
@@ -307,7 +424,7 @@ RestStatus RestIndexHandler::getSelectivityEstimates() {
   builder.close();
 
   generateResult(rest::ResponseCode::OK, std::move(buffer));
-  return RestStatus::DONE;
+  co_return;
 }
 
 RestStatus RestIndexHandler::createIndex() {
@@ -357,8 +474,7 @@ RestStatus RestIndexHandler::createIndex() {
   VPackBuilder indexInfo;
   indexInfo.add(body);
 
-  auto execContext = std::unique_ptr<VocbaseContext>(
-      VocbaseContext::create(*_request, _vocbase));
+  auto execContext = VocbaseContext::create(*_request, _vocbase);
   // this is necessary, because the execContext will release the vocbase in its
   // dtor
   if (!_vocbase.use()) {
@@ -371,13 +487,15 @@ RestStatus RestIndexHandler::createIndex() {
   auto cb = [this, self = shared_from_this(),
              execContext = std::move(execContext), collection = std::move(coll),
              body = std::move(indexInfo)] {
-    ExecContextScope scope(execContext.get());
+    ExecContextScope scope(std::move(execContext));
     {
       std::unique_lock<std::mutex> locker(_mutex);
 
       try {
-        _createInBackgroundData.result = methods::Indexes::ensureIndex(
-            *collection, body.slice(), true, _createInBackgroundData.response);
+        _createInBackgroundData.result =
+            methods::Indexes::ensureIndex(*collection, body.slice(), true,
+                                          _createInBackgroundData.response)
+                .get();
 
         if (_createInBackgroundData.result.ok()) {
           VPackSlice created =
@@ -441,7 +559,7 @@ RestStatus RestIndexHandler::dropIndex() {
         VPackValue(absl::StrCat(cName, TRI_INDEX_HANDLE_SEPARATOR_STR, iid)));
   }
 
-  Result res = methods::Indexes::drop(*coll, idBuilder.slice());
+  Result res = methods::Indexes::drop(*coll, idBuilder.slice()).get();
   if (res.ok()) {
     VPackBuilder b;
     b.openObject();
@@ -457,8 +575,7 @@ RestStatus RestIndexHandler::dropIndex() {
 }
 
 RestStatus RestIndexHandler::syncCaches() {
-  StorageEngine& engine =
-      _vocbase.server().getFeature<EngineSelectorFeature>().engine();
+  StorageEngine& engine = _vocbase.engine();
   engine.syncIndexCaches();
 
   generateResult(rest::ResponseCode::OK, VPackSlice::emptyObjectSlice());

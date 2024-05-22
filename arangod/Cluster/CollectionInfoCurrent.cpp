@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -38,7 +38,7 @@ CollectionInfoCurrent::CollectionInfoCurrent(uint64_t currentVersion)
 
 CollectionInfoCurrent::~CollectionInfoCurrent() = default;
 
-bool CollectionInfoCurrent::add(std::string_view shardID, VPackSlice slice) {
+bool CollectionInfoCurrent::add(ShardID const& shardID, VPackSlice slice) {
   auto it = _vpacks.find(shardID);
   if (it == _vpacks.end()) {
     _vpacks.emplace(shardID, std::make_shared<VPackBuilder>(slice));
@@ -47,7 +47,7 @@ bool CollectionInfoCurrent::add(std::string_view shardID, VPackSlice slice) {
   return false;
 }
 
-VPackSlice CollectionInfoCurrent::getIndexes(std::string_view shardID) const {
+VPackSlice CollectionInfoCurrent::getIndexes(ShardID const& shardID) const {
   auto it = _vpacks.find(shardID);
   if (it != _vpacks.end()) {
     VPackSlice slice = it->second->slice();
@@ -56,7 +56,7 @@ VPackSlice CollectionInfoCurrent::getIndexes(std::string_view shardID) const {
   return VPackSlice::noneSlice();
 }
 
-bool CollectionInfoCurrent::error(std::string_view shardID) const {
+bool CollectionInfoCurrent::error(ShardID const& shardID) const {
   return getFlag(StaticStrings::Error, shardID);
 }
 
@@ -64,7 +64,7 @@ containers::FlatHashMap<ShardID, bool> CollectionInfoCurrent::error() const {
   return getFlag(StaticStrings::Error);
 }
 
-int CollectionInfoCurrent::errorNum(std::string_view shardID) const {
+int CollectionInfoCurrent::errorNum(ShardID const& shardID) const {
   auto it = _vpacks.find(shardID);
   if (it != _vpacks.end()) {
     VPackSlice slice = it->second->slice();
@@ -86,7 +86,7 @@ containers::FlatHashMap<ShardID, int> CollectionInfoCurrent::errorNum() const {
 }
 
 std::vector<ServerID> CollectionInfoCurrent::servers(
-    std::string_view shardID) const {
+    ShardID const& shardID) const {
   std::vector<ServerID> v;
 
   auto it = _vpacks.find(shardID);
@@ -106,7 +106,7 @@ std::vector<ServerID> CollectionInfoCurrent::servers(
 }
 
 std::vector<ServerID> CollectionInfoCurrent::failoverCandidates(
-    std::string_view shardID) const {
+    ShardID const& shardID) const {
   std::vector<ServerID> v;
 
   auto it = _vpacks.find(shardID);
@@ -126,8 +126,7 @@ std::vector<ServerID> CollectionInfoCurrent::failoverCandidates(
   return v;
 }
 
-std::string CollectionInfoCurrent::errorMessage(
-    std::string_view shardID) const {
+std::string CollectionInfoCurrent::errorMessage(ShardID const& shardID) const {
   auto it = _vpacks.find(shardID);
   if (it != _vpacks.end()) {
     VPackSlice slice = it->second->slice();
@@ -143,7 +142,7 @@ uint64_t CollectionInfoCurrent::getCurrentVersion() const {
 }
 
 bool CollectionInfoCurrent::getFlag(std::string_view name,
-                                    std::string_view shardID) const {
+                                    ShardID const& shardID) const {
   auto it = _vpacks.find(shardID);
   if (it != _vpacks.end()) {
     return arangodb::basics::VelocyPackHelper::getBooleanValue(

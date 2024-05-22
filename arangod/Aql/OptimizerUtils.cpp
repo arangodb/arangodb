@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,23 +25,27 @@
 
 #include "Aql/Ast.h"
 #include "Aql/AttributeNamePath.h"
-#include "Aql/ClusterNodes.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/CalculationNode.h"
+#include "Aql/ExecutionNode/EnumerateCollectionNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
+#include "Aql/ExecutionNode/GatherNode.h"
+#include "Aql/ExecutionNode/IResearchViewNode.h"
+#include "Aql/ExecutionNode/IndexNode.h"
+#include "Aql/ExecutionNode/RemoveNode.h"
+#include "Aql/ExecutionNode/SubqueryNode.h"
+#include "Aql/ExecutionNode/TraversalNode.h"
+#include "Aql/ExecutionNode/UpdateReplaceNode.h"
+#include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
-#include "Aql/IndexNode.h"
-#include "Aql/IResearchViewNode.h"
-#include "Aql/ModificationNodes.h"
 #include "Aql/NonConstExpressionContainer.h"
+#include "Aql/QueryContext.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SortCondition.h"
-#include "Aql/TraversalNode.h"
 #include "Aql/Variable.h"
-#include "Aql/ExecutionPlan.h"
-#include "Aql/QueryContext.h"
-#include "Indexes/Index.h"
 #include "IResearch/IResearchFeature.h"
+#include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
 
 #include <absl/strings/str_cat.h>
@@ -323,8 +327,8 @@ std::pair<bool, bool> findIndexHandleForAndNode(
     aql::Variable const* reference, aql::SortCondition const& sortCondition,
     size_t itemsInCollection, aql::IndexHint const& hint,
     std::vector<transaction::Methods::IndexHandle>& usedIndexes,
-    aql::AstNode*& specializedCondition, bool& isSparse,
-    bool failOnForcedHint) {
+    aql::AstNode*& specializedCondition, bool& isSparse, bool failOnForcedHint,
+    ReadOwnWrites readOwnWrites) {
   if (hint.type() == aql::IndexHint::HintType::Disabled) {
     // usage of index disabled via index hint: disableIndex: true
     return std::make_pair(false, false);
@@ -337,7 +341,7 @@ std::pair<bool, bool> findIndexHandleForAndNode(
 
   auto considerIndex =
       [&trx, &bestIndex, &bestCost, &bestSupportsFilter, &bestSupportsSort,
-       &indexes, node, reference, itemsInCollection,
+       &indexes, node, reference, itemsInCollection, readOwnWrites,
        &sortCondition](std::shared_ptr<Index> const& idx) -> void {
     TRI_ASSERT(!idx->inProgress());
 
@@ -348,6 +352,12 @@ std::pair<bool, bool> findIndexHandleForAndNode(
 
     bool supportsFilter = false;
     bool supportsSort = false;
+
+    if (readOwnWrites == ReadOwnWrites::yes &&
+        idx->type() == arangodb::Index::TRI_IDX_TYPE_INVERTED_INDEX) {
+      // inverted index does not support ReadOwnWrites
+      return;
+    }
 
     // check if the index supports the filter condition
     Index::FilterCosts costs = idx->supportsFilterCondition(
@@ -448,6 +458,9 @@ std::pair<bool, bool> findIndexHandleForAndNode(
     for (std::string const& hinted : hintedIndices) {
       std::shared_ptr<Index> matched;
       for (std::shared_ptr<Index> const& idx : indexes) {
+        if (idx->inProgress()) {
+          continue;
+        }
         if (idx->name() == hinted) {
           matched = idx;
           break;
@@ -471,6 +484,9 @@ std::pair<bool, bool> findIndexHandleForAndNode(
 
   if (bestIndex == nullptr) {
     for (auto const& idx : indexes) {
+      if (idx->inProgress()) {
+        continue;
+      }
       if (!Index::onlyHintForced(idx->type())) {
         considerIndex(idx);
       }
@@ -1101,6 +1117,45 @@ bool findProjections(ExecutionNode* n, Variable const* v,
   return true;
 }
 
+Projections translateLMIndexVarsToProjections(
+    ExecutionPlan* plan, IndexNode::IndexValuesVars const& indexVars,
+    transaction::Methods::IndexHandle index) {
+  // Translate the late materialize "projections" description
+  // into the usual projections description
+  auto& coveredFields = index->coveredFields();
+
+  std::vector<AttributeNamePath> projectedAttributes;
+  for (auto [var, fieldIndex] : indexVars.second) {
+    auto& field = coveredFields[fieldIndex];
+    std::vector<std::string> fieldCopy;
+    fieldCopy.reserve(field.size());
+    std::transform(field.begin(), field.end(), std::back_inserter(fieldCopy),
+                   [&](auto const& attr) {
+                     TRI_ASSERT(attr.shouldExpand == false);
+                     return attr.name;
+                   });
+    projectedAttributes.emplace_back(std::move(fieldCopy),
+                                     plan->getAst()->query().resourceMonitor());
+  }
+
+  Projections projections{std::move(projectedAttributes)};
+
+  std::size_t i = 0;
+  for (auto [var, fieldIndex] : indexVars.second) {
+    auto& proj = projections[i++];
+    proj.coveringIndexPosition = fieldIndex;
+    proj.coveringIndexCutoff = proj.path.size();
+    proj.variable = var;
+    proj.levelsToClose = proj.startsAtLevel = 0;
+    proj.type = proj.path.type();
+  }
+
+  if (index->covers(projections)) {
+    projections.setCoveringContext(index->collection().id(), index);
+  }
+  return projections;
+}
+
 /// @brief Gets the best fitting index for one specific condition.
 ///        Difference to IndexHandles: Condition is only one NARY_AND
 ///        and the Condition stays unmodified. Also does not care for sorting
@@ -1110,7 +1165,8 @@ bool getBestIndexHandleForFilterCondition(
     transaction::Methods& trx, aql::Collection const& collection,
     aql::AstNode* node, aql::Variable const* reference,
     size_t itemsInCollection, aql::IndexHint const& hint,
-    std::shared_ptr<Index>& usedIndex, bool onlyEdgeIndexes) {
+    std::shared_ptr<Index>& usedIndex, ReadOwnWrites readOwnWrites,
+    bool onlyEdgeIndexes) {
   // We can only start after DNF transformation and only a single AND
   TRI_ASSERT(node->type == aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_AND);
   if (node->numMembers() == 0) {
@@ -1136,7 +1192,7 @@ bool getBestIndexHandleForFilterCondition(
   if (findIndexHandleForAndNode(trx, indexes, node, reference, sortCondition,
                                 itemsInCollection, hint, usedIndexes,
                                 specializedCondition, isSparse,
-                                true /*failOnForcedHint*/)
+                                true /*failOnForcedHint*/, readOwnWrites)
           .first) {
     TRI_ASSERT(!usedIndexes.empty());
     usedIndex = usedIndexes[0];
@@ -1154,7 +1210,7 @@ std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
     aql::SortCondition const* sortCondition, size_t itemsInCollection,
     aql::IndexHint const& hint,
     std::vector<std::shared_ptr<Index>>& usedIndexes, bool& isSorted,
-    bool& isAllCoveredByIndex) {
+    bool& isAllCoveredByIndex, ReadOwnWrites readOwnWrites) {
   // We can only start after DNF transformation
   TRI_ASSERT(root->type == aql::AstNodeType::NODE_TYPE_OPERATOR_NARY_OR);
   auto indexes = coll.indexes();
@@ -1172,24 +1228,32 @@ std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
   // Give it a try
   if (std::exchange(isAllCoveredByIndex, false)) {
     for (auto& index : indexes) {
-      if (index.get()->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX &&
+      if (index->inProgress()) {
+        continue;
+      }
+      if (readOwnWrites == ReadOwnWrites::yes &&
+          index->type() == arangodb::Index::TRI_IDX_TYPE_INVERTED_INDEX) {
+        // inverted index does not support ReadOwnWrites
+        continue;
+      }
+      if (index->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX &&
           // apply this index only if hinted
           hint.type() == IndexHint::Simple &&
           std::find(hint.hint().begin(), hint.hint().end(), index->name()) !=
               hint.hint().end()) {
-        auto costs = index.get()->supportsFilterCondition(
+        auto costs = index->supportsFilterCondition(
             trx, indexes, root, reference, itemsInCollection);
         if (costs.supportsCondition) {
           // we need to find 'root' in 'ast' and replace it with specialized
           // version but for now we know that index will not alter the node, so
           // just an assert
-          index.get()->specializeCondition(trx, root, reference);
+          index->specializeCondition(trx, root, reference);
           usedIndexes.emplace_back(index);
           isAllCoveredByIndex = true;
           // FIXME: we should somehow consider other indices and calculate here
           // "overall" score Also a question: if sort is covered but filter is
           // not ? What is more optimal?
-          auto const sortSupport = index.get()->supportsSortCondition(
+          auto const sortSupport = index->supportsSortCondition(
               sortCondition, reference, itemsInCollection);
           return std::make_pair(true, sortSupport.supportsCondition);
         }
@@ -1207,7 +1271,8 @@ std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
         (hint.isForced() && i + 1 == n && usedIndexes.empty());
     auto canUseIndex = findIndexHandleForAndNode(
         trx, indexes, node, reference, *sortCondition, itemsInCollection, hint,
-        usedIndexes, specializedCondition, isSparse, failOnForcedHint);
+        usedIndexes, specializedCondition, isSparse, failOnForcedHint,
+        readOwnWrites);
 
     if (canUseIndex.second && !canUseIndex.first) {
       // index can be used for sorting only
@@ -1282,6 +1347,9 @@ bool getIndexForSortCondition(aql::Collection const& coll,
         for (std::string const& hinted : hintedIndices) {
           std::shared_ptr<Index> matched;
           for (std::shared_ptr<Index> const& idx : indexes) {
+            if (idx->inProgress()) {
+              continue;
+            }
             if (idx->name() == hinted) {
               matched = idx;
               break;
@@ -1305,6 +1373,9 @@ bool getIndexForSortCondition(aql::Collection const& coll,
 
       if (bestIndex == nullptr) {
         for (auto const& idx : indexes) {
+          if (idx->inProgress()) {
+            continue;
+          }
           if (!Index::onlyHintForced(idx->type())) {
             considerIndex(idx);
           }
@@ -1338,6 +1409,32 @@ NonConstExpressionContainer extractNonConstPartsOfIndexCondition(
   extractNonConstPartsOfJunctionCondition(ast, varInfo, evaluateFCalls, index,
                                           condition, indexVariable, {}, result);
   return result;
+}
+
+arangodb::aql::Collection const* getCollection(
+    arangodb::aql::ExecutionNode const* node) {
+  using EN = arangodb::aql::ExecutionNode;
+  using arangodb::aql::ExecutionNode;
+
+  switch (node->getType()) {
+    case EN::ENUMERATE_COLLECTION:
+      return ExecutionNode::castTo<
+                 arangodb::aql::EnumerateCollectionNode const*>(node)
+          ->collection();
+    case EN::INDEX:
+      return ExecutionNode::castTo<arangodb::aql::IndexNode const*>(node)
+          ->collection();
+    case EN::TRAVERSAL:
+    case EN::ENUMERATE_PATHS:
+    case EN::SHORTEST_PATH:
+      return ExecutionNode::castTo<arangodb::aql::GraphNode const*>(node)
+          ->collection();
+
+    default:
+      // note: modification nodes are not covered here yet
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "node type does not have a collection");
+  }
 }
 
 }  // namespace arangodb::aql::utils

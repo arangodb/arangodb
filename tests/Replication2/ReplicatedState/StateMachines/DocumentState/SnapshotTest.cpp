@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2023-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -112,8 +113,8 @@ TEST_F(DocumentStateSnapshotTest,
   EXPECT_TRUE(res.isReady() && res.get().ok());
 
   // Acquire a new snapshot with a different set of shards
-  const ShardID shardId1 = "s123";
-  const ShardID shardId2 = "s345";
+  const ShardID shardId1{123};
+  const ShardID shardId2{345};
   ON_CALL(*leaderInterfaceMock, startSnapshot).WillByDefault([&]() {
     return futures::Future<ResultT<SnapshotBatch>>{
         std::in_place,
@@ -148,7 +149,7 @@ TEST_F(DocumentStateSnapshotTest,
   EXPECT_CALL(*shardHandlerMock, ensureShard(shardId2, TRI_COL_TYPE_EDGE, _))
       .Times(1);
 
-  follower->acquireSnapshot("participantId");
+  std::ignore = follower->acquireSnapshot("participantId");
   EXPECT_TRUE(res.isReady() && res.get().ok());
 
   Mock::VerifyAndClearExpectations(shardHandlerMock.get());
@@ -159,9 +160,9 @@ TEST_F(DocumentStateSnapshotTest, snapshot_fetch_multiple_shards) {
   using namespace testing;
 
   auto snapshotId = SnapshotId{1};
-  const ShardID shardId1 = "s1";
-  const ShardID shardId2 = "s2";
-  const ShardID shardId3 = "s3";
+  const ShardID shardId1{1};
+  const ShardID shardId2{2};
+  const ShardID shardId3{3};
 
   // The snapshot should fetch the shards in the reverse order of their
   // insertion. This way, we ensure the order looks natural (1, 2, 3).
@@ -204,6 +205,9 @@ TEST_F(DocumentStateSnapshotTest, snapshot_fetch_multiple_shards) {
               collectionReaderMock3);
         }
         TRI_ASSERT(false) << "Unexpected shard name: " << shard->name();
+        // The following is only to keep the compiler happy in non-maintainer
+        // builds:
+        return std::unique_ptr<MockCollectionReaderDelegator>(nullptr);
       });
 
   auto snapshot = Snapshot(

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -78,7 +78,7 @@ TEST_F(UserManagerTest, unknown_user_will_have_no_access) {
 TEST_F(UserManagerTest,
        granting_rw_access_on_database_star_will_grant_to_all_databases) {
   auth::UserMap userEntryMap;
-  auto testUser = auth::User::newUser("test", "test", auth::Source::Local);
+  auto testUser = auth::User::newUser("test", "test");
   testUser.grantDatabase("*", auth::Level::RW);
   userEntryMap.emplace("test", testUser);
 
@@ -91,7 +91,7 @@ TEST_F(
     UserManagerTest,
     setting_serverstate_to_readonly_will_make_all_users_effectively_ro_users) {
   auth::UserMap userEntryMap;
-  auto testUser = auth::User::newUser("test", "test", auth::Source::Local);
+  auto testUser = auth::User::newUser("test", "test");
   testUser.grantDatabase("*", auth::Level::RW);
   userEntryMap.emplace("test", testUser);
 
@@ -105,7 +105,7 @@ TEST_F(
 TEST_F(UserManagerTest,
        in_readonly_mode_the_configured_access_level_will_still_be_accessible) {
   auth::UserMap userEntryMap;
-  auto testUser = auth::User::newUser("test", "test", auth::Source::Local);
+  auto testUser = auth::User::newUser("test", "test");
   testUser.grantDatabase("*", auth::Level::RW);
   userEntryMap.emplace("test", testUser);
 
@@ -121,7 +121,7 @@ TEST_F(
     UserManagerTest,
     setting_serverstate_to_readonly_will_make_all_users_effective_ro_users_collection_level) {
   auth::UserMap userEntryMap;
-  auto testUser = auth::User::newUser("test", "test", auth::Source::Local);
+  auto testUser = auth::User::newUser("test", "test");
   testUser.grantDatabase("*", auth::Level::RW);
   testUser.grantCollection("test", "test", auth::Level::RW);
   userEntryMap.emplace("test", testUser);
@@ -137,7 +137,7 @@ TEST_F(
     UserManagerTest,
     in_readonly_mode_the_configured_access_level_will_still_be_accessible_collection_level) {
   auth::UserMap userEntryMap;
-  auto testUser = auth::User::newUser("test", "test", auth::Source::Local);
+  auto testUser = auth::User::newUser("test", "test");
   testUser.grantDatabase("*", auth::Level::RW);
   testUser.grantCollection("test", "test", auth::Level::RW);
   userEntryMap.emplace("test", testUser);

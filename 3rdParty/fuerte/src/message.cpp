@@ -20,7 +20,6 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <fuerte/detail/vst.h>
 #include <fuerte/helper.h>
 #include <fuerte/message.h>
 #include <velocypack/Validator.h>
@@ -43,9 +42,11 @@ inline int hex2int(char ch, int errorCode) {
 
   return errorCode;
 }
-} // namespace
+}  // namespace
 
-namespace arangodb { namespace fuerte { inline namespace v1 {
+namespace arangodb {
+namespace fuerte {
+inline namespace v1 {
 
 ///////////////////////////////////////////////
 // class MessageHeader
@@ -113,7 +114,8 @@ void RequestHeader::parseArangoPath(std::string_view p) {
           int h = ::hex2int(p[1], 256) << 4;
           h += ::hex2int(p[2], 256);
           if (h >= 256) {
-            throw std::invalid_argument("invalid encoding value in request URL");
+            throw std::invalid_argument(
+                "invalid encoding value in request URL");
           }
           this->database.push_back(static_cast<char>(h & 0xFF));
           p += 2;
@@ -175,32 +177,16 @@ ContentType Request::acceptType() const { return header.acceptType(); }
 
 //// add payload add VelocyPackData
 void Request::addVPack(VPackSlice const slice) {
-#ifdef FUERTE_CHECKED_MODE
-  // FUERTE_LOG_ERROR << "Checking data that is added to the message: " <<
-  // std::endl;
-  vst::parser::validateAndCount(slice.start(), slice.byteSize());
-#endif
-
   header.contentType(ContentType::VPack);
   _payload.append(slice.start(), slice.byteSize());
 }
 
 void Request::addVPack(VPackBuffer<uint8_t> const& buffer) {
-#ifdef FUERTE_CHECKED_MODE
-  // FUERTE_LOG_ERROR << "Checking data that is added to the message: " <<
-  // std::endl;
-  vst::parser::validateAndCount(buffer.data(), buffer.byteSize());
-#endif
   header.contentType(ContentType::VPack);
   _payload.append(buffer);
 }
 
 void Request::addVPack(VPackBuffer<uint8_t>&& buffer) {
-#ifdef FUERTE_CHECKED_MODE
-  // FUERTE_LOG_ERROR << "Checking data that is added to the message: " <<
-  // std::endl;
-  vst::parser::validateAndCount(buffer.data(), buffer.byteSize());
-#endif
   header.contentType(ContentType::VPack);
   _payload = std::move(buffer);
 }
@@ -231,10 +217,20 @@ std::vector<VPackSlice> Request::slices() const {
 
 // get payload as binary
 asio_ns::const_buffer Request::payload() const {
-  return asio_ns::const_buffer(_payload.data(), _payload.byteSize());
+  return asio_ns::const_buffer(_payload.data(), payloadSize());
 }
 
-size_t Request::payloadSize() const { return _payload.byteSize(); }
+size_t Request::payloadSize() const {
+  if (header.contentEncoding() == ContentEncoding::Deflate ||
+      header.contentEncoding() == ContentEncoding::Gzip ||
+      header.contentEncoding() == ContentEncoding::Lz4) {
+    // when the request body is deflate-, gzip- or lz4-encoded,
+    // it is not ok to call byteSize() because the request
+    // body is not velocypack anymore.
+    return _payload.size();
+  }
+  return _payload.byteSize();
+}
 
 ///////////////////////////////////////////////
 // class Response
@@ -298,4 +294,6 @@ std::shared_ptr<velocypack::Buffer<uint8_t>> Response::stealPayload() {
   _payloadOffset = 0;
   return buffer;
 }
-}}}  // namespace arangodb::fuerte::v1
+}  // namespace v1
+}  // namespace fuerte
+}  // namespace arangodb

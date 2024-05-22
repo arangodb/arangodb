@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -47,10 +47,6 @@
 #include "V8Server/V8DealerFeature.h"
 #endif
 
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
@@ -83,18 +79,15 @@ class FlushFeatureTest
     auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
     features.emplace_back(selector, false);
     selector.setEngineTesting(&engine);
-    features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(),
-                          false);  // required for TRI_vocbase_t
+    features.emplace_back(
+        server.addFeature<arangodb::QueryRegistryFeature>(
+            server.template getFeature<arangodb::metrics::MetricsFeature>()),
+        false);  // required for TRI_vocbase_t
 #ifdef USE_V8
     features.emplace_back(
-        server.addFeature<arangodb::V8DealerFeature>(),
+        server.addFeature<arangodb::V8DealerFeature>(
+            server.template getFeature<arangodb::metrics::MetricsFeature>()),
         false);  // required for DatabaseFeature::createDatabase(...)
-#endif
-
-#if USE_ENTERPRISE
-    features.emplace_back(
-        server.addFeature<arangodb::LdapFeature>(),
-        false);  // required for AuthenticationFeature with USE_ENTERPRISE
 #endif
 
     for (auto& f : features) {

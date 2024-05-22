@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,14 +25,12 @@
 
 #include "Aql/AqlValue.h"
 #include "Aql/Collection.h"
-#include "Aql/ModificationExecutor.h"
-#include "Aql/ModificationExecutorAccumulator.h"
-#include "Aql/ModificationExecutorHelpers.h"
+#include "Aql/Executor/ModificationExecutor.h"
+#include "Aql/Executor/ModificationExecutorAccumulator.h"
+#include "Aql/Executor/ModificationExecutorHelpers.h"
 #include "Aql/QueryContext.h"
-#include "Basics/Common.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/application-exit.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -143,6 +141,15 @@ ModificationExecutorResultState UpsertModifier::resultState() const noexcept {
   std::lock_guard<std::mutex> guard(_resultStateMutex);
   return _resultState;
 }
+
+UpsertModifier::UpsertModifier(ModificationExecutorInfos& infos)
+    : _infos(infos),
+      _updateResults(Result(), infos._options),
+      _insertResults(Result(), infos._options),
+      // Batch size has to be 1 in case the upsert modifier sees its own
+      // writes. otherwise it will use the default batching
+      _batchSize(_infos._batchSize),
+      _resultState(ModificationExecutorResultState::NoResult) {}
 
 void UpsertModifier::reset() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

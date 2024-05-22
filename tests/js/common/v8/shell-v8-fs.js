@@ -1,32 +1,29 @@
 /*jshint globalstrict:false, strict:false, maxlen: 5000 */
 /*global assertTrue, assertFalse, assertEqual, assertNotEqual, fail */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test filesystem functions
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Jan Steemann
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
 
@@ -473,16 +470,7 @@ function FileSystemSuite () {
       // tolerate a max deviation of 60 seconds
       // (deviation needs to be > 1 to make the tests succeed even on busy
       // test servers)
-      if (require("internal").platform.substr(0, 3) === 'win') {
-        // Windows is bugged. For details see:
-        // http://stackoverflow.com/questions/19800811/last-modification-time-reported-by-stat-changes-depending-on-daylight-savings
-        // we just work around it here.
-        var deltaModulo = Math.abs(mtime - now);
-        assertTrue(deltaModulo <= 60 || (deltaModulo > 3540));
-      }
-      else {
-        assertTrue(Math.abs(mtime - now) <= 60);
-      }
+      assertTrue(Math.abs(mtime - now) <= 60);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

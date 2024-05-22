@@ -1,28 +1,29 @@
 /*jshint globalstrict:false, strict:false */
 /* global getOptions, assertEqual, assertNotEqual, assertTrue, arango */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test for configurable behaviour of failed write concern
-///
-/// DISCLAIMER
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB Inc, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Max Neunhoeffer
 /// @author Copyright 2023, ArangoDB Inc, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 if (getOptions === true) {
   return {
@@ -33,10 +34,16 @@ let jsunity = require('jsunity');
 const errors = require('@arangodb').errors;
 const cn = "UnitTestsCollection";
 let db = require('internal').db;
+let lh = require('@arangodb/testutils/replicated-logs-helper');
+let lpreds = require('@arangodb/testutils/replicated-logs-predicates');
 let reconnectRetry = require('@arangodb/replication-common').reconnectRetry;
 
-let { getEndpointById
-    } = require('@arangodb/test-helper');
+let {
+  getEndpointById,
+  getCtrlDBServers
+} = require('@arangodb/test-helper');
+
+const replicationVersion = db._properties().replicationVersion;
 
 function testSuite() {
   return {
@@ -57,6 +64,10 @@ function testSuite() {
       let shard = Object.keys(shards)[0];
       let servers = shards[shard];
       assertEqual(2, servers.length);
+
+      let dbServers = getCtrlDBServers();
+      let followerId = servers[1];
+      let followerCtrl = dbServers.filter(s => s.id === followerId)[0];
       let follower1 = getEndpointById(servers[1]);
 
       try {
@@ -64,12 +75,17 @@ function testSuite() {
         let d1 = c.insert({Hallo:1});
         let d2 = c.insert({Hallo:2});
 
-        reconnectRetry(follower1, "_system", "root", "");
-        arango.PUT_RAW("/_admin/debug/failat/LogicalCollection::insert", {});
-        arango.PUT_RAW("/_admin/debug/failat/SynchronizeShard::disable", {});
-        reconnectRetry(coordinator, "_system", "root", "");
-
-        let d = c.insert({Hallo:3});  // This drops the followers, but works
+        if (replicationVersion === "1") {
+          reconnectRetry(follower1, "_system", "root", "");
+          arango.PUT_RAW("/_admin/debug/failat/LogicalCollection::insert", {});
+          arango.PUT_RAW("/_admin/debug/failat/SynchronizeShard::disable", {});
+          reconnectRetry(coordinator, "_system", "root", "");
+          let d = c.insert({Hallo:3});  // This drops the followers, but works
+        } else {
+          // stop the follower, causing a failed write concern
+          followerCtrl.suspend();
+          lh.waitFor(lpreds.serverFailed(followerId));
+        }
 
         // INSERT test, single document:
         let startTime = new Date();
@@ -162,13 +178,17 @@ function testSuite() {
         assertTrue(timeSpentMs < 5000);
 
       } finally {
-        reconnectRetry(follower1, "_system", "root", "");
-        arango.DELETE_RAW("/_admin/debug/failat/LogicalCollection::insert");
-        arango.DELETE_RAW("/_admin/debug/failat/SynchronizeShard::disable");
-        reconnectRetry(coordinator, "_system", "root", "");
+        if (replicationVersion === "1") {
+          reconnectRetry(follower1, "_system", "root", "");
+          arango.DELETE_RAW("/_admin/debug/failat/LogicalCollection::insert");
+          arango.DELETE_RAW("/_admin/debug/failat/SynchronizeShard::disable");
+          reconnectRetry(coordinator, "_system", "root", "");
+        } else {
+          followerCtrl.resume();
+          lh.waitFor(lpreds.serverHealthy(followerId));
+        }
       }
     },
-    
   };
 }
 

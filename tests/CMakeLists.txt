@@ -1,5 +1,18 @@
 add_compile_warnings_flags()
 
+if (USE_GOOGLE_TESTS)
+  add_definitions("-DTEST_VIRTUAL=virtual")
+else()
+  add_definitions("-DTEST_VIRTUAL=")
+endif()
+
+# add necessary defines for ICU. this will suffix all included ICU functions
+# and the ICU namespace with _64_64
+add_definitions("-DU_HAVE_LIB_SUFFIX=1")
+add_definitions("-DU_LIB_SUFFIX_C_NAME=_64")
+# also make sure that the correct ICU directory appears early in the list of include files
+include_directories(BEFORE SYSTEM ${ICU64_INCLUDE_DIR})
+
 # ----------------------------------------
 # Fuerte tests
 # ----------------------------------------
@@ -30,10 +43,6 @@ if (USE_V8)
   endforeach()
 endif ()
 
-if (WINDOWS)
-  set(RCFILE Maintenance/json.rc)
-endif ()
-
 add_library(arango_tests_basics OBJECT
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/ClusterInfoMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/FakeScheduler.cpp
@@ -53,7 +62,6 @@ add_library(arango_tests_basics OBJECT
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/ExpressionContextMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/RestHandlerMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Aql/VelocyPackHelper.cpp
-  ../cmake/activeCodePage.manifest
   main.cpp)
 
 target_include_directories(arango_tests_basics
@@ -72,7 +80,6 @@ add_subdirectory(IResearch)
 set(ARANGODB_TESTS_SOURCES
   ${ARANGODB_IRESEARCH_TESTS_SOURCES}
   ${RCFILE}
-  Agency/ActiveFailoverTest.cpp
   Agency/AddFollowerTest.cpp
   Agency/CleanOutServerTest.cpp
   Agency/CleanUpLostCollectionTest.cpp
@@ -88,7 +95,6 @@ set(ARANGODB_TESTS_SOURCES
   Agency/SupervisionTest.cpp
   Agency/TransactionBuilderTests.cpp
   Aql/AqlCallListTest.cpp
-  Aql/AqlExecutorTestCase.cpp
   Aql/AqlHelper.cpp
   Aql/AqlItemBlockInputRangeTest.cpp
   Aql/AqlItemBlockTest.cpp
@@ -98,75 +104,77 @@ set(ARANGODB_TESTS_SOURCES
   Aql/AqlValueMemoryLayoutTest.cpp
   Aql/AstNodeTest.cpp
   Aql/AstResourcesTest.cpp
-  Aql/AsyncExecutorTest.cpp
   Aql/AttributeNamePathTest.cpp
-  Aql/BitFunctionsTest.cpp
   Aql/BlockCollector.cpp
-  Aql/CalculationExecutorTest.cpp
-  Aql/CountCollectExecutorTest.cpp
-  Aql/DateFunctionsTest.cpp
-  Aql/DecaysFunctionTest.cpp
   Aql/DependencyProxyMock.cpp
-  Aql/DistanceFunctionTest.cpp
-  Aql/DistinctCollectExecutorTest.cpp
   Aql/EngineInfoContainerCoordinatorTest.cpp
-  Aql/EnumerateCollectionExecutorTest.cpp
-  Aql/EnumerateListExecutorTest.cpp
-  Aql/EnumeratePathsExecutorTest.cpp
-  Aql/EnumeratePathsNodeTest.cpp
   Aql/ExecutionBlockImplTest.cpp
-  Aql/ExecutionNodeTest.cpp
-  Aql/ExecutorTestHelper.cpp
-  Aql/FilterExecutorTest.cpp
+  Aql/ExecutionNode/EnumeratePathsNodeTest.cpp
+  Aql/ExecutionNode/ExecutionNodeTest.cpp
+  Aql/ExecutionNode/IndexNodeTest.cpp
+  Aql/ExecutionNode/MockTypedNode.cpp
+  Aql/ExecutionNode/ShortestPathNodeTest.cpp
+  Aql/ExecutionNode/TraversalNodeTest.cpp
+  Aql/Executor/AqlExecutorTestCase.cpp
+  Aql/Executor/AsyncExecutorTest.cpp
+  Aql/Executor/CalculationExecutorTest.cpp
+  Aql/Executor/CountCollectExecutorTest.cpp
+  Aql/Executor/DistinctCollectExecutorTest.cpp
+  Aql/Executor/EnumerateCollectionExecutorTest.cpp
+  Aql/Executor/EnumerateListExecutorTest.cpp
+  Aql/Executor/EnumeratePathsExecutorTest.cpp
+  Aql/Executor/ExecutorTestHelper.cpp
+  Aql/Executor/FilterExecutorTest.cpp
+  Aql/Executor/GatherExecutorCommonTest.cpp
+  Aql/Executor/HashedCollectExecutorTest.cpp
+  Aql/Executor/IdExecutorTest.cpp
+  Aql/Executor/InsertExecutorTest.cpp
+  Aql/Executor/LimitExecutorTest.cpp
+  Aql/Executor/NoResultsExecutorTest.cpp
+  Aql/Executor/RemoteExecutorTest.cpp
+  Aql/Executor/RemoveExecutorTest.cpp
+  Aql/Executor/ReplaceExecutorTest.cpp
+  Aql/Executor/ReturnExecutorTest.cpp
+  Aql/Executor/ScatterExecutorTest.cpp
+  Aql/Executor/ShortestPathExecutorTest.cpp
+  Aql/Executor/SortExecutorTest.cpp
+  Aql/Executor/SortedCollectExecutorTest.cpp
+  Aql/Executor/SubqueryEndExecutorTest.cpp
+  Aql/Executor/SubqueryStartExecutorTest.cpp
+  Aql/Executor/TestEmptyExecutorHelper.cpp
+  Aql/Executor/TestLambdaExecutor.cpp
+  Aql/Executor/UpdateExecutorTest.cpp
+  Aql/Executor/UpsertExecutorTest.cpp
+  Aql/Executor/WindowExecutorTest.cpp
   Aql/FixedOutputExecutionBlockMock.cpp
-  Aql/GatherExecutorCommonTest.cpp
-  Aql/HashedCollectExecutorTest.cpp
-  Aql/IdExecutorTest.cpp
-  Aql/InRangeFunctionTest.cpp
-  Aql/IndexNodeTest.cpp
+  Aql/Function/BitFunctionsTest.cpp
+  Aql/Function/DateFunctionsTest.cpp
+  Aql/Function/DecaysFunctionTest.cpp
+  Aql/Function/DistanceFunctionTest.cpp
+  Aql/Function/InRangeFunctionTest.cpp
+  Aql/Function/JaccardFunctionTest.cpp
+  Aql/Function/LevenshteinMatchFunctionTest.cpp
+  Aql/Function/MinHashFunctionsTest.cpp
+  Aql/Function/NgramMatchFunctionTest.cpp
+  Aql/Function/NgramPosSimilarityFunctionTest.cpp
+  Aql/Function/NgramSimilarityFunctionTest.cpp
   Aql/InputRangeTest.cpp
-  Aql/InsertExecutorTest.cpp
-  Aql/JaccardFunctionTest.cpp
-  Aql/JoinStrategy/GenericJoinTest.cpp
+  Aql/JoinStrategy/GenericAndTwoNonUniqueJoinTest.cpp
   Aql/JoinStrategy/TwoIndicesUniqueJoinTest.cpp
-  Aql/LevenshteinMatchFunctionTest.cpp
-  Aql/LimitExecutorTest.cpp
-  Aql/MinHashFunctionsTest.cpp
-  Aql/MockTypedNode.cpp
-  Aql/NgramMatchFunctionTest.cpp
-  Aql/NgramPosSimilarityFunctionTest.cpp
-  Aql/NgramSimilarityFunctionTest.cpp
-  Aql/NoResultsExecutorTest.cpp
   Aql/NodeWalkerTest.cpp
+  Aql/ParserTest.cpp
   Aql/ProjectionsTest.cpp
   Aql/QueryCursorTest.cpp
   Aql/QueryHelper.cpp
   Aql/QueryLimitsTest.cpp
   Aql/RegisterPlanTest.cpp
-  Aql/RemoteExecutorTest.cpp
-  Aql/RemoveExecutorTest.cpp
-  Aql/ReplaceExecutorTest.cpp
-  Aql/ReturnExecutorTest.cpp
   Aql/RowFetcherHelper.cpp
-  Aql/ScatterExecutorTest.cpp
   Aql/ShadowRowForwardingTest.cpp
-  Aql/ShortestPathExecutorTest.cpp
-  Aql/ShortestPathNodeTest.cpp
   Aql/SkipResultTest.cpp
-  Aql/SortExecutorTest.cpp
   Aql/SortLimitTest.cpp
-  Aql/SortedCollectExecutorTest.cpp
   Aql/SpliceSubqueryOptimizerRuleTest.cpp
   Aql/SplicedSubqueryIntegrationTest.cpp
-  Aql/SubqueryEndExecutorTest.cpp
-  Aql/SubqueryStartExecutorTest.cpp
-  Aql/TestEmptyExecutorHelper.cpp
-  Aql/TestLambdaExecutor.cpp
-  Aql/TraversalNodeTest.cpp
-  Aql/UpdateExecutorTest.cpp
-  Aql/UpsertExecutorTest.cpp
   Aql/WaitingExecutionBlockMock.cpp
-  Aql/WindowExecutorTest.cpp
   AsyncAgencyComm/AsyncAgencyCommTest.cpp
   Auth/UserManagerClusterTest.cpp
   Auth/UserManagerTest.cpp
@@ -195,6 +203,8 @@ set(ARANGODB_TESTS_SOURCES
   Cluster/QueryAnalyzerRevisionsTest.cpp
   Cluster/RebootTrackerTest.cpp
   Cluster/ShardAutoRebalancerTest.cpp
+  Cluster/ShardIDTest.cpp
+  Cluster/ServerStateTest.cpp
   Containers/EnumerateTest.cpp
   Containers/HashSetTest.cpp
   Containers/MerkleTreeTest.cpp
@@ -225,7 +235,6 @@ set(ARANGODB_TESTS_SOURCES
   RestHandler/RestDocumentHandlerTest.cpp
   RestHandler/RestUsersHandlerTest.cpp
   RestHandler/RestViewHandlerTest.cpp
-  RestHandler/VstResponseTest.cpp
   RestServer/FlushFeatureTest.cpp
   RestServer/LanguageFeatureTest.cpp
   Restore/CollectionRestoreOrder.cpp
@@ -313,8 +322,6 @@ target_link_libraries(arangodbtests
   arango_tests_graph
   arango_tests_futures
   arango_tests_zkd
-  arango_tests_pregel
-  arango_tests_pregel_graphstore
   arango_tests_actor
   arango_tests_inspection
   arango_inspection_test_helper
@@ -323,6 +330,7 @@ target_link_libraries(arangodbtests
   arango_rocksdb
   arangoserver
   arango_restore
+  clienttools_utils
   fuerte
   rocksdb
   snappy
@@ -339,6 +347,8 @@ endif ()
 if (USE_ENTERPRISE)
   target_link_libraries(arangodbtests arango_rclone)
 endif ()
+
+add_dependencies(arangodbtests iculegacy_build)
 
 if (USE_JEMALLOC)
   target_link_libraries(arangodbtests ${JEMALLOC_LIB})
@@ -396,6 +406,5 @@ foreach(ELEMENT ${IRESEARCH_LIB_RESOURCES})
 endforeach()
 
 add_subdirectory(Actor)
-add_subdirectory(Pregel)
 add_subdirectory(sepp)
 add_subdirectory(VocBase/Properties)

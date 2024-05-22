@@ -12,7 +12,7 @@ if (USE_BUILD_ID_READER)
   target_link_options(arango_build_id
     PUBLIC
       ${CMAKE_CURRENT_SOURCE_DIR}/BuildId.ld
-      -Wl,--build-id)
+      -Wl,--build-id=sha1)
 
 else ()
 

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,6 +28,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Containers/SmallVector.h"
 #include "Logger/LogMacros.h"
@@ -161,7 +162,8 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info,
   if (shardsSlice.isObject()) {
     for (auto const& shardSlice : VPackObjectIterator(shardsSlice)) {
       if (shardSlice.key.isString() && shardSlice.value.isArray()) {
-        ShardID shard = shardSlice.key.copyString();
+        // NOTE: Can throw if shard is not a valid shard name
+        ShardID shard{shardSlice.key.stringView()};
 
         std::vector<ServerID> servers;
         for (auto const& serverSlice : VPackArrayIterator(shardSlice.value)) {
@@ -272,9 +274,9 @@ Result ShardingInfo::extractShardKeys(velocypack::Slice info,
           // remove : char at the beginning or end (for enterprise)
           std::string_view stripped;
           if (!key.empty()) {
-            if (key.front() == ':') {
+            if (key.starts_with(':')) {
               stripped = key.substr(1);
-            } else if (key.back() == ':') {
+            } else if (key.ends_with(':')) {
               stripped = key.substr(0, key.size() - 1);
             } else {
               stripped = key;
@@ -321,7 +323,9 @@ LogicalCollection* ShardingInfo::collection() const noexcept {
   return _collection;
 }
 
-void ShardingInfo::toVelocyPack(VPackBuilder& result, bool translateCids,
+void ShardingInfo::toVelocyPack(VPackBuilder& result,
+                                bool ignoreCollectionGroupAttributes,
+                                bool translateCids,
                                 bool includeShardsEntry) const {
   result.add(StaticStrings::NumberOfShards, VPackValue(_numberOfShards));
 
@@ -344,17 +348,20 @@ void ShardingInfo::toVelocyPack(VPackBuilder& result, bool translateCids,
     result.close();  // shards
   }
 
-  if (isSatellite()) {
-    result.add(StaticStrings::ReplicationFactor,
-               VPackValue(StaticStrings::Satellite));
-  } else {
-    result.add(StaticStrings::ReplicationFactor,
-               VPackValue(_replicationFactor));
+  if (!ignoreCollectionGroupAttributes) {
+    // For replication Two this class is not responsible for the following
+    // attributes.
+    if (isSatellite()) {
+      result.add(StaticStrings::ReplicationFactor,
+                 VPackValue(StaticStrings::Satellite));
+    } else {
+      result.add(StaticStrings::ReplicationFactor,
+                 VPackValue(_replicationFactor));
+    }
+    // minReplicationFactor deprecated in 3.6
+    result.add(StaticStrings::WriteConcern, VPackValue(_writeConcern));
+    result.add(StaticStrings::MinReplicationFactor, VPackValue(_writeConcern));
   }
-
-  // minReplicationFactor deprecated in 3.6
-  result.add(StaticStrings::WriteConcern, VPackValue(_writeConcern));
-  result.add(StaticStrings::MinReplicationFactor, VPackValue(_writeConcern));
 
   if (!_distributeShardsLike.empty()) {
     if (ServerState::instance()->isCoordinator()) {
@@ -473,13 +480,12 @@ std::vector<std::string> const& ShardingInfo::shardKeys() const noexcept {
 
 std::shared_ptr<ShardMap> ShardingInfo::shardIds() const { return _shardIds; }
 
-std::shared_ptr<std::vector<ShardID>> ShardingInfo::shardListAsShardID() const {
-  auto vector = std::make_shared<std::vector<ShardID>>();
+std::set<ShardID> ShardingInfo::shardListAsShardID() const {
+  std::set<ShardID> result;
   for (auto const& mapElement : *_shardIds) {
-    vector->emplace_back(mapElement.first);
+    result.emplace(mapElement.first);
   }
-  sortShardNamesNumerically(*vector);
-  return vector;
+  return result;
 }
 
 // return a filtered list of the collection's shards
@@ -507,11 +513,10 @@ void ShardingInfo::setShardMap(std::shared_ptr<ShardMap> const& map) {
   _numberOfShards = map->size();
 }
 
-ErrorCode ShardingInfo::getResponsibleShard(arangodb::velocypack::Slice slice,
-                                            bool docComplete, ShardID& shardID,
-                                            bool& usesDefaultShardKeys,
-                                            std::string_view key) {
-  return _shardingStrategy->getResponsibleShard(slice, docComplete, shardID,
+ResultT<ShardID> ShardingInfo::getResponsibleShard(
+    arangodb::velocypack::Slice slice, bool docComplete,
+    bool& usesDefaultShardKeys, std::string_view key) {
+  return _shardingStrategy->getResponsibleShard(slice, docComplete,
                                                 usesDefaultShardKeys, key);
 }
 

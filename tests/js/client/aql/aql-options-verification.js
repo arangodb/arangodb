@@ -1,30 +1,29 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
 /*global assertEqual, assertTrue, assertMatch, fail */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for invalid OPTIONS attributes
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2016 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Jan Steemann
 /// @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 const internal = require("internal");
 const db = require('internal').db;
@@ -376,30 +375,33 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
 
     testUpsert: function () {
       const prefix = "FOR doc IN " + cn + " UPSERT { testi: 1234 } INSERT { testi: 1234 } UPDATE { testi: OLD.testi + 1 } IN " + cn + " OPTIONS ";
+      // note: we have to set readOwnWrites: false here to avoid
+      // a warning about the UPSERT not being able to observe its
+      // own writes in sharded collections or CE cluster runs.
       const queries = [
-        [prefix + "{ waitForSync: false }"],
-        [prefix + "{ waitForSync: true }"],
-        [prefix + "{ waitForSync: +1 }"],
-        [prefix + "{ waitForSync: -1 }"],
-        [prefix + "{ indexHint: 'primary' }"],
-        [prefix + "{ forceIndexHint: true }"],
-        [prefix + "{ disableIndex: true }"],
-        [prefix + "{ skipDocumentValidation: true }"],
-        [prefix + "{ keepNull: true }"],
-        [prefix + "{ mergeObjects: true }"],
-        [prefix + "{ overwrite: true }"],
-        [prefix + "{ overwriteMode: 'ignore' }"],
-        [prefix + "{ ignoreRevs: true }"],
-        [prefix + "{ exclusive: true }"],
-        [prefix + "{ ignoreErrors: true }"],
-        [prefix + "{ useCache: true }"],
-        [prefix + "{ useCache: false }"],
+        [prefix + "{ waitForSync: false, readOwnWrites: false }"],
+        [prefix + "{ waitForSync: true, readOwnWrites: false }"],
+        [prefix + "{ waitForSync: +1, readOwnWrites: false }"],
+        [prefix + "{ waitForSync: -1, readOwnWrites: false }"],
+        [prefix + "{ indexHint: 'primary', readOwnWrites: false }"],
+        [prefix + "{ forceIndexHint: true, readOwnWrites: false }"],
+        [prefix + "{ disableIndex: true, readOwnWrites: false }"],
+        [prefix + "{ skipDocumentValidation: true, readOwnWrites: false }"],
+        [prefix + "{ keepNull: true, readOwnWrites: false }"],
+        [prefix + "{ mergeObjects: true, readOwnWrites: false }"],
+        [prefix + "{ overwrite: true, readOwnWrites: false }"],
+        [prefix + "{ overwriteMode: 'ignore', readOwnWrites: false }"],
+        [prefix + "{ ignoreRevs: true, readOwnWrites: false }"],
+        [prefix + "{ exclusive: true, readOwnWrites: false }"],
+        [prefix + "{ ignoreErrors: true, readOwnWrites: false }"],
+        [prefix + "{ useCache: true, readOwnWrites: false }"],
+        [prefix + "{ useCache: false, readOwnWrites: false }"],
 
-        [prefix + "{ overwriteMode: true }", "overwriteMode"],
-        [prefix + "{ method: 'hash' }", "method"],
-        [prefix + "{ tititi: 'piff' }", "tititi"],
-        [prefix + "{ maxProjections: 123 }", "maxProjections"],
-        [prefix + "{ lookahead: 0 }", "lookahead"],
+        [prefix + "{ overwriteMode: true, readOwnWrites: false }", "overwriteMode"],
+        [prefix + "{ method: 'hash', readOwnWrites: false }", "method"],
+        [prefix + "{ tititi: 'piff', readOwnWrites: false }", "tititi"],
+        [prefix + "{ maxProjections: 123, readOwnWrites: false }", "maxProjections"],
+        [prefix + "{ lookahead: 0, readOwnWrites: false }", "lookahead"],
       ];
 
       checkQueries("UPSERT", queries);
@@ -411,20 +413,23 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
         db[cn].ensureIndex({type: 'persistent', fields: ['value'], name: 'index2'});
         db[cn].ensureIndex({type: 'persistent', fields: ['value', '5678'], name: 'index3'});
         const prefix = "FOR doc IN " + cn + " UPSERT { testi: 1234 } INSERT { testi: 1234 } UPDATE { testi: OLD.testi + 1 } IN " + cn + " OPTIONS ";
+        // note: we have to set readOwnWrites: false here to avoid
+        // a warning about the UPSERT not being able to observe its
+        // own writes in sharded collections or CE cluster runs.
         const queries = [
-          [prefix + "{ waitForSync: false }"],
-          [prefix + "{ waitForSync: true }"],
-          [prefix + "{ waitForSync: +1 }"],
-          [prefix + "{ waitForSync: -1 }"],
-          [prefix + "{ indexHint: 'index1' }"],
-          [prefix + "{ indexHint: 'index1', exclusive: true }"],
-          [prefix + "{ indexHint: 'index1', waitForSync: true}"],
-          [prefix + "{ indexHint: 'index2' }"],
-          [prefix + "{ indexHint: 'index2', exclusive: true }"],
-          [prefix + "{ indexHint: 'index2', waitForSync: true}"],
-          [prefix + "{ indexHint: 'index3' }"],
-          [prefix + "{ indexHint: 'index3', exclusive: true }"],
-          [prefix + "{ indexHint: 'index3', waitForSync: true}"]
+          [prefix + "{ waitForSync: false, readOwnWrites: false }"],
+          [prefix + "{ waitForSync: true, readOwnWrites: false }"],
+          [prefix + "{ waitForSync: +1, readOwnWrites: false }"],
+          [prefix + "{ waitForSync: -1, readOwnWrites: false }"],
+          [prefix + "{ indexHint: 'index1', readOwnWrites: false }"],
+          [prefix + "{ indexHint: 'index1', exclusive: true , readOwnWrites: false }"],
+          [prefix + "{ indexHint: 'index1', waitForSync: true, readOwnWrites: false }"],
+          [prefix + "{ indexHint: 'index2', readOwnWrites: false }"],
+          [prefix + "{ indexHint: 'index2', exclusive: true , readOwnWrites: false }"],
+          [prefix + "{ indexHint: 'index2', waitForSync: true, readOwnWrites: false }"],
+          [prefix + "{ indexHint: 'index3', readOwnWrites: false }"],
+          [prefix + "{ indexHint: 'index3', exclusive: true , readOwnWrites: false }"],
+          [prefix + "{ indexHint: 'index3', waitForSync: true, readOwnWrites: false }"],
         ];
 
         checkQueries("UPSERT", queries);

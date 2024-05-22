@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -42,10 +42,20 @@ class LogicalCollection;
 struct CollectionCreationInfo;
 class CollectionNameResolver;
 struct CreateCollectionBody;
+struct ShardID;
 
 namespace transaction {
 class Methods;
 }
+
+struct CollectionDropOptions {
+  // allow dropping system collection
+  bool allowDropSystem = false;
+  // flag if we want to keep access rights in-place
+  bool keepUserRights = false;
+  // allow dropping collections that are part of a graph
+  bool allowDropGraphCollection = false;
+};
 
 namespace methods {
 
@@ -60,7 +70,8 @@ struct Collections {
 
     ~Context();
 
-    transaction::Methods* trx(AccessMode::Type const& type, bool embeddable);
+    futures::Future<transaction::Methods*> trx(AccessMode::Type const& type,
+                                               bool embeddable);
 
     std::shared_ptr<LogicalCollection> coll() const;
 
@@ -108,7 +119,7 @@ struct Collections {
   [[nodiscard]] static arangodb::Result createShard(
       TRI_vocbase_t& vocbase,  // shard database
       OperationOptions const& options,
-      std::string const& name,                 // shard name
+      ShardID const& name,                     // shard name
       TRI_col_type_e collectionType,           // shard type
       velocypack::Slice properties,            // shard properties
       std::shared_ptr<LogicalCollection>& ret  // ReturnValue: created Shard
@@ -125,20 +136,18 @@ struct Collections {
       CreateCollectionBody& col, TRI_vocbase_t const& vocbase,
       DatabaseConfiguration const& config, bool isLegacyDatabase);
 
-  static Result properties(Context& ctxt, velocypack::Builder&);
-  static Result updateProperties(LogicalCollection& collection,
-                                 velocypack::Slice props,
-                                 OperationOptions const& options);
+  static futures::Future<Result> properties(Context& ctxt,
+                                            velocypack::Builder&);
+  static futures::Future<Result> updateProperties(
+      LogicalCollection& collection, velocypack::Slice props,
+      OperationOptions const& options);
 
   static Result rename(LogicalCollection& collection,
                        std::string const& newName, bool doOverride);
 
   static arangodb::Result drop(           // drop collection
       arangodb::LogicalCollection& coll,  // collection to drop
-      bool allowDropSystem,               // allow dropping system collection
-      bool keepUserRights =
-          false  // flag if we want to keep access rights in-place
-  );
+      arangodb::CollectionDropOptions options);
 
   static futures::Future<Result> warmup(TRI_vocbase_t& vocbase,
                                         LogicalCollection const& coll);
@@ -146,9 +155,10 @@ struct Collections {
   static futures::Future<OperationResult> revisionId(
       Context& ctxt, OperationOptions const& options);
 
-  static arangodb::Result checksum(LogicalCollection& collection,
-                                   bool withRevisions, bool withData,
-                                   uint64_t& checksum, RevisionId& revId);
+  static futures::Future<Result> checksum(LogicalCollection& collection,
+                                          bool withRevisions, bool withData,
+                                          uint64_t& checksum,
+                                          RevisionId& revId);
 
   /// @brief filters properties for collection creation
   static arangodb::velocypack::Builder filterInput(

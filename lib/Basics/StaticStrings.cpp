@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -65,6 +65,7 @@ std::string const StaticStrings::OverwriteCollectionPrefix(
 std::string const StaticStrings::IsSynchronousReplicationString(
     "isSynchronousReplication");
 std::string const StaticStrings::RefillIndexCachesString("refillIndexCaches");
+std::string const StaticStrings::VersionAttributeString("versionAttribute");
 std::string const StaticStrings::Group("group");
 std::string const StaticStrings::Namespace("namespace");
 std::string const StaticStrings::Prefix("prefix");
@@ -72,6 +73,7 @@ std::string const StaticStrings::Overwrite("overwrite");
 std::string const StaticStrings::OverwriteMode("overwriteMode");
 std::string const StaticStrings::Compact("compact");
 std::string const StaticStrings::DontWaitForCommit("dontWaitForCommit");
+std::string const StaticStrings::UserString("user");
 
 // dump headers
 std::string const StaticStrings::DumpAuthUser("x-arango-dump-auth-user");
@@ -108,7 +110,6 @@ std::string const StaticStrings::JobsCollection("_jobs");
 std::string const StaticStrings::AppsCollection("_apps");
 std::string const StaticStrings::AppBundlesCollection("_appbundles");
 std::string const StaticStrings::FrontendCollection("_frontend");
-std::string const StaticStrings::PregelCollection("_pregel_queries");
 std::string const StaticStrings::StatisticsCollection("_statistics");
 std::string const StaticStrings::Statistics15Collection("_statistics15");
 std::string const StaticStrings::StatisticsRawCollection("_statisticsRaw");
@@ -144,10 +145,12 @@ std::string const StaticStrings::IndexIsBuilding("isBuilding");
 std::string const StaticStrings::IndexName("name");
 std::string const StaticStrings::IndexSparse("sparse");
 std::string const StaticStrings::IndexStoredValues("storedValues");
+std::string const StaticStrings::IndexPrefixFields("prefixFields");
 std::string const StaticStrings::IndexType("type");
 std::string const StaticStrings::IndexUnique("unique");
 std::string const StaticStrings::IndexEstimates("estimates");
 std::string const StaticStrings::IndexLegacyPolygons("legacyPolygons");
+std::string const StaticStrings::IndexCreationError("creationError");
 
 // static index names
 std::string const StaticStrings::IndexNameEdge("edge");
@@ -195,6 +198,7 @@ std::string const StaticStrings::Authorization("authorization");
 std::string const StaticStrings::BatchContentType(
     "application/x-arango-batchpart");
 std::string const StaticStrings::CacheControl("cache-control");
+std::string const StaticStrings::Chunked("chunked");
 std::string const StaticStrings::Close("Close");
 std::string const StaticStrings::ClusterCommSource("x-arango-source");
 std::string const StaticStrings::Code("code");
@@ -202,6 +206,7 @@ std::string const StaticStrings::Connection("connection");
 std::string const StaticStrings::ContentEncoding("content-encoding");
 std::string const StaticStrings::ContentLength("content-length");
 std::string const StaticStrings::ContentTypeHeader("content-type");
+std::string const StaticStrings::Cookie("cookie");
 std::string const StaticStrings::CorsMethods(
     "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT");
 std::string const StaticStrings::Error("error");
@@ -259,8 +264,10 @@ std::string const StaticStrings::MimeTypeVPack("application/x-velocypack");
 std::string const StaticStrings::MultiPartContentType("multipart/form-data");
 
 // accept-encodings
+std::string const StaticStrings::EncodingArangoLz4("x-arango-lz4");
 std::string const StaticStrings::EncodingDeflate("deflate");
 std::string const StaticStrings::EncodingGzip("gzip");
+std::string const StaticStrings::EncodingLz4("lz4");
 
 std::string const StaticStrings::Body("body");
 std::string const StaticStrings::ParsedBody("parsedBody");
@@ -404,6 +411,7 @@ std::string const StaticStrings::BackupSearchToDeleteName(
 
 // aql api strings
 std::string const StaticStrings::AqlDocumentCall("x-arango-aql-document-aql");
+std::string const StaticStrings::AqlFastPath("x-arango-fast-path");
 std::string const StaticStrings::AqlRemoteExecute("execute");
 std::string const StaticStrings::AqlRemoteCallStack("callStack");
 std::string const StaticStrings::AqlRemoteLimit("limit");

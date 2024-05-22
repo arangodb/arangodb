@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -34,7 +34,6 @@
 #include "Agency/RestAgencyPrivHandler.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Aql/RestAqlHandler.h"
-#include "Basics/NumberOfCores.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
@@ -53,8 +52,7 @@
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/MetricsFeature.h"
-#include "Pregel/REST/RestControlPregelHandler.h"
-#include "Pregel/REST/RestPregelHandler.h"
+#include "Network/NetworkFeature.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -93,11 +91,14 @@
 #include "RestHandler/RestHandlerCreator.h"
 #include "RestHandler/RestImportHandler.h"
 #include "RestHandler/RestIndexHandler.h"
+#include "RestHandler/RestKeyGeneratorsHandler.h"
 #include "RestHandler/RestJobHandler.h"
 #include "RestHandler/RestLicenseHandler.h"
 #include "RestHandler/RestLogHandler.h"
 #include "RestHandler/RestLogInternalHandler.h"
 #include "RestHandler/RestMetricsHandler.h"
+#include "RestHandler/RestOptionsDescriptionHandler.h"
+#include "RestHandler/RestOptionsHandler.h"
 #include "RestHandler/RestQueryCacheHandler.h"
 #include "RestHandler/RestQueryHandler.h"
 #include "RestHandler/RestShutdownHandler.h"
@@ -114,6 +115,7 @@
 #include "RestHandler/RestTransactionHandler.h"
 #include "RestHandler/RestTtlHandler.h"
 #include "RestHandler/RestUploadHandler.h"
+#include "RestHandler/RestUsageMetricsHandler.h"
 #include "RestHandler/RestUsersHandler.h"
 #include "RestHandler/RestVersionHandler.h"
 #include "RestHandler/RestViewHandler.h"
@@ -143,8 +145,6 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-constexpr uint64_t const maxIoThreads = 64;
-
 struct RequestBodySizeScale {
   static metrics::LogScale<uint64_t> scale() { return {2, 64, 65536, 10}; }
 };
@@ -153,18 +153,15 @@ DECLARE_HISTOGRAM(arangodb_request_body_size_http1, RequestBodySizeScale,
                   "Body size of HTTP/1.1 requests");
 DECLARE_HISTOGRAM(arangodb_request_body_size_http2, RequestBodySizeScale,
                   "Body size of HTTP/2 requests");
-DECLARE_HISTOGRAM(arangodb_request_body_size_vst, RequestBodySizeScale,
-                  "Body size of VST requests");
 DECLARE_COUNTER(arangodb_http1_connections_total,
                 "Total number of HTTP/1.1 connections");
 DECLARE_COUNTER(arangodb_http2_connections_total,
                 "Total number of HTTP/2 connections");
-DECLARE_COUNTER(arangodb_vst_connections_total,
-                "Total number of VST connections");
 DECLARE_GAUGE(arangodb_requests_memory_usage, std::uint64_t,
               "Memory consumed by incoming requests");
 
-GeneralServerFeature::GeneralServerFeature(Server& server)
+GeneralServerFeature::GeneralServerFeature(Server& server,
+                                           metrics::MetricsFeature& metrics)
     : ArangodFeature{server, *this},
       _currentRequestsSize(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_requests_memory_usage{})),
@@ -173,6 +170,7 @@ GeneralServerFeature::GeneralServerFeature(Server& server)
       _startedListening(false),
 #endif
       _allowEarlyConnections(false),
+      _handleContentEncodingForUnauthenticatedRequests(false),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _enableTelemetrics(false),
 #else
@@ -181,21 +179,15 @@ GeneralServerFeature::GeneralServerFeature(Server& server)
       _proxyCheck(true),
       _returnQueueTimeHeader(true),
       _permanentRootRedirect(true),
+      _compressResponseThreshold(0),
       _redirectRootTo("/_admin/aardvark/index.html"),
       _supportInfoApiPolicy("admin"),
-      _numIoThreads(0),
-      _requestBodySizeHttp1(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_request_body_size_http1{})),
-      _requestBodySizeHttp2(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_request_body_size_http2{})),
-      _requestBodySizeVst(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_request_body_size_vst{})),
-      _http1Connections(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_http1_connections_total{})),
-      _http2Connections(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_http2_connections_total{})),
-      _vstConnections(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_vst_connections_total{})) {
+      _optionsApiPolicy("jwt"),
+      _numIoThreads(NetworkFeature::defaultIOThreads()),
+      _requestBodySizeHttp1(metrics.add(arangodb_request_body_size_http1{})),
+      _requestBodySizeHttp2(metrics.add(arangodb_request_body_size_http2{})),
+      _http1Connections(metrics.add(arangodb_http1_connections_total{})),
+      _http2Connections(metrics.add(arangodb_http2_connections_total{})) {
   static_assert(
       Server::isCreatedAfter<GeneralServerFeature, metrics::MetricsFeature>());
 
@@ -206,13 +198,6 @@ GeneralServerFeature::GeneralServerFeature(Server& server)
   startsAfter<SslServerFeature>();
   startsAfter<SchedulerFeature>();
   startsAfter<UpgradeFeature>();
-
-  _numIoThreads =
-      (std::max)(static_cast<uint64_t>(1),
-                 static_cast<uint64_t>(NumberOfCores::getValue() / 4));
-  if (_numIoThreads > maxIoThreads) {
-    _numIoThreads = maxIoThreads;
-  }
 }
 
 void GeneralServerFeature::collectOptions(
@@ -261,7 +246,7 @@ batch processing.)");
 
   options->addOption(
       "--server.io-threads", "The number of threads used to handle I/O.",
-      new UInt64Parameter(&_numIoThreads),
+      new UInt64Parameter(&_numIoThreads, /*base*/ 1, /*minValue*/ 1),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
   options
@@ -273,6 +258,15 @@ batch processing.)");
                       std::unordered_set<std::string>{"disabled", "jwt",
                                                       "admin", "public"}))
       .setIntroducedIn(30900);
+
+  options
+      ->addOption("--server.options-api",
+                  "The policy for exposing the options API.",
+                  new DiscreteValuesParameter<StringParameter>(
+                      &_optionsApiPolicy,
+                      std::unordered_set<std::string>{"disabled", "jwt",
+                                                      "admin", "public"}))
+      .setIntroducedIn(31200);
 
   options->addSection("http", "HTTP server features");
 
@@ -318,6 +312,22 @@ Client applications and drivers can use this value to control the server load
 and also react on overload.)");
 
   options
+      ->addOption("--http.compress-response-threshold",
+                  "The HTTP response body size from which on responses are "
+                  "transparently compressed in case the client asks for it.",
+                  new UInt64Parameter(&_compressResponseThreshold))
+      .setIntroducedIn(31200)
+      .setLongDescription(
+          R"(Automatically compress outgoing HTTP responses with the
+deflate or gzip compression format, in case the client request advertises
+support for this. Compression will only happen for HTTP/1.1 and HTTP/2
+connections, if the size of the uncompressed response body exceeds 
+the threshold value controlled by this startup option,
+and if the response body size after compression is less than the original 
+response body size.
+Using the value 0 disables the automatic response compression.")");
+
+  options
       ->addOption("--server.early-connections",
                   "Allow requests to a limited set of APIs early during the "
                   "server startup.",
@@ -357,6 +367,18 @@ and also react on overload.)");
       arangodb::options::makeFlags(arangodb::options::Flags::Default,
                                    arangodb::options::Flags::Uncommon));
 #endif
+
+  options
+      ->addOption(
+          "--http.handle-content-encoding-for-unauthenticated-requests",
+          "Handle Content-Encoding headers for unauthenticated requests.",
+          new BooleanParameter(
+              &_handleContentEncodingForUnauthenticatedRequests))
+      .setIntroducedIn(31200)
+      .setLongDescription(
+          R"(If the option is set to `true`, the server will automatically 
+uncompress incoming HTTP requests with Content-Encodings gzip and deflate
+even if the request is not authenticated.)");
 }
 
 void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
@@ -372,7 +394,7 @@ void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
         // "none" means no origins are allowed
         _accessControlAllowOrigins.clear();
         break;
-      } else if (!it.empty() && it.back() == '/') {
+      } else if (it.ends_with('/')) {
         // strip trailing slash
         it = it.substr(0, it.size() - 1);
       }
@@ -386,16 +408,6 @@ void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
                          return basics::StringUtils::trim(value).empty();
                        }),
         _accessControlAllowOrigins.end());
-  }
-
-  // we need at least one io thread and context
-  if (_numIoThreads == 0) {
-    LOG_TOPIC("1ade3", WARN, Logger::FIXME) << "Need at least one io-context";
-    _numIoThreads = 1;
-  } else if (_numIoThreads > maxIoThreads) {
-    LOG_TOPIC("80dcf", WARN, Logger::FIXME)
-        << "io-contexts are limited to " << maxIoThreads;
-    _numIoThreads = maxIoThreads;
   }
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
@@ -501,6 +513,11 @@ double GeneralServerFeature::keepAliveTimeout() const noexcept {
   return _keepAliveTimeout;
 }
 
+bool GeneralServerFeature::handleContentEncodingForUnauthenticatedRequests()
+    const noexcept {
+  return _handleContentEncodingForUnauthenticatedRequests;
+}
+
 bool GeneralServerFeature::proxyCheck() const noexcept { return _proxyCheck; }
 
 bool GeneralServerFeature::returnQueueTimeHeader() const noexcept {
@@ -537,6 +554,14 @@ std::string GeneralServerFeature::redirectRootTo() const {
 
 std::string const& GeneralServerFeature::supportInfoApiPolicy() const noexcept {
   return _supportInfoApiPolicy;
+}
+
+std::string const& GeneralServerFeature::optionsApiPolicy() const noexcept {
+  return _optionsApiPolicy;
+}
+
+uint64_t GeneralServerFeature::compressResponseThreshold() const noexcept {
+  return _compressResponseThreshold;
 }
 
 std::shared_ptr<rest::RestHandlerFactory> GeneralServerFeature::handlerFactory()
@@ -628,10 +653,6 @@ void GeneralServerFeature::defineRemainingHandlers(
 
   f.addPrefixHandler(RestVocbaseBaseHandler::BATCH_PATH,
                      RestHandlerCreator<RestBatchHandler>::createNoData);
-
-  f.addPrefixHandler(
-      RestVocbaseBaseHandler::CONTROL_PREGEL_PATH,
-      RestHandlerCreator<RestControlPregelHandler>::createNoData);
 
   auto queryRegistry = QueryRegistryFeature::registry();
   f.addPrefixHandler(
@@ -741,14 +762,15 @@ void GeneralServerFeature::defineRemainingHandlers(
   f.addPrefixHandler("/_api/explain",
                      RestHandlerCreator<RestExplainHandler>::createNoData);
 
+  f.addPrefixHandler(
+      "/_api/key-generators",
+      RestHandlerCreator<RestKeyGeneratorsHandler>::createNoData);
+
   f.addPrefixHandler("/_api/query",
                      RestHandlerCreator<RestQueryHandler>::createNoData);
 
   f.addPrefixHandler("/_api/query-cache",
                      RestHandlerCreator<RestQueryCacheHandler>::createNoData);
-
-  f.addPrefixHandler("/_api/pregel",
-                     RestHandlerCreator<RestPregelHandler>::createNoData);
 
   f.addPrefixHandler("/_api/wal",
                      RestHandlerCreator<RestWalAccessHandler>::createNoData);
@@ -835,6 +857,14 @@ void GeneralServerFeature::defineRemainingHandlers(
                  RestHandlerCreator<RestTelemetricsHandler>::createNoData);
   }
 
+  if (_optionsApiPolicy != "disabled") {
+    f.addHandler("/_admin/options",
+                 RestHandlerCreator<RestOptionsHandler>::createNoData);
+    f.addHandler(
+        "/_admin/options-description",
+        RestHandlerCreator<RestOptionsDescriptionHandler>::createNoData);
+  }
+
   f.addHandler("/_admin/system-report",
                RestHandlerCreator<RestSystemReportHandler>::createNoData);
 
@@ -887,6 +917,10 @@ void GeneralServerFeature::defineRemainingHandlers(
   f.addPrefixHandler(
       "/_admin/metrics",
       RestHandlerCreator<arangodb::RestMetricsHandler>::createNoData);
+
+  f.addPrefixHandler(
+      "/_admin/usage-metrics",
+      RestHandlerCreator<arangodb::RestUsageMetricsHandler>::createNoData);
 
   f.addHandler(
       "/_admin/statistics-description",

@@ -68,7 +68,6 @@ add_library(arangoserver STATIC
   GeneralServer/RestHandlerFactory.cpp
   GeneralServer/ServerSecurityFeature.cpp
   GeneralServer/SslServerFeature.cpp
-  GeneralServer/VstCommTask.cpp
   RestHandler/RestAdminClusterHandler.cpp
   RestHandler/RestAdminDatabaseHandler.cpp
   RestHandler/RestAdminLogHandler.cpp
@@ -92,7 +91,11 @@ add_library(arangoserver STATIC
   RestHandler/RestImportHandler.cpp
   RestHandler/RestIndexHandler.cpp
   RestHandler/RestJobHandler.cpp
+  RestHandler/RestKeyGeneratorsHandler.cpp
   RestHandler/RestLicenseHandler.cpp
+  RestHandler/RestOptionsBaseHandler.cpp
+  RestHandler/RestOptionsDescriptionHandler.cpp
+  RestHandler/RestOptionsHandler.cpp
   RestHandler/RestQueryCacheHandler.cpp
   RestHandler/RestQueryHandler.cpp
   RestHandler/RestShutdownHandler.cpp
@@ -216,7 +219,6 @@ target_link_libraries(arangoserver
   arango_iresearch
   arango_metrics
   arango_network
-  arango_pregel
   arango_replication
   arango_storage_engine
   arango_utils

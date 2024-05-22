@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,9 +26,9 @@
 #include <velocypack/Iterator.h>
 
 #include "Aql/AqlFunctionFeature.h"
-#include "Aql/IResearchViewNode.h"
-#include "Aql/Query.h"
+#include "Aql/ExecutionNode/IResearchViewNode.h"
 #include "Aql/OptimizerRulesFeature.h"
+#include "Aql/Query.h"
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchLink.h"
 #include "IResearch/IResearchLinkHelper.h"
@@ -160,7 +160,7 @@ class QueryTestMulti
             arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
             arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
         [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
-           arangodb::aql::VPackFunctionParametersView params) {
+           arangodb::aql::functions::VPackFunctionParametersView params) {
           TRI_ASSERT(!params.empty());
           return params[0];
         }});
@@ -176,7 +176,7 @@ class QueryTestMulti
             arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
             arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
         [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
-           arangodb::aql::VPackFunctionParametersView params) {
+           arangodb::aql::functions::VPackFunctionParametersView params) {
           TRI_ASSERT(!params.empty());
           return params[0];
         }});
@@ -284,10 +284,10 @@ class QueryNoMaterialization : public QueryTestMulti {
                "version": $1, $2
                "includeAllFields": true })",
           index, version(), addition));
-      logicalCollection1->createIndex(createJson->slice(), created);
+      logicalCollection1->createIndex(createJson->slice(), created).get();
       ASSERT_TRUE(created);
       created = false;
-      logicalCollection2->createIndex(createJson->slice(), created);
+      logicalCollection2->createIndex(createJson->slice(), created).get();
       ASSERT_TRUE(created);
     };
 

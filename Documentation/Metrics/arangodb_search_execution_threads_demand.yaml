@@ -10,8 +10,10 @@ exposedBy:
   - dbserver
   - single
 description: |
-    The value of this metric represents the number of currently used execution
-    threads for `SEARCH` operations against Views.
+  This metric tracks the desired parallelism for `SEARCH` operations against
+  Views. If the value is below the configured thread limit
+  (`--arangosearch.execution-threads-limit` startup option), it coincides with
+  the number of currently active threads.
 troubleshoot: |
   If this metric contains a value lower than the configured
   `--arangosearch.execution-threads-limit` (number of cores * 2 by default)

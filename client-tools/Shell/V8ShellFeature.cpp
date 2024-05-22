@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,8 +26,9 @@
 #include "V8ShellFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/GreetingsFeature.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
-#include "ApplicationFeatures/V8PlatformFeature.h"
+#include "V8/V8PlatformFeature.h"
 #include "V8/V8SecurityFeature.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "Basics/ArangoGlobalContext.h"
@@ -310,9 +311,19 @@ void V8ShellFeature::copyInstallationFiles() {
       FileUtils::buildFilename("js", "node", "node_modules");
   std::string const nodeModulesPathVersioned = basics::FileUtils::buildFilename(
       "js", versionAppendix, "node", "node_modules");
+  std::string const jsAppsPath = FileUtils::buildFilename("js", "apps");
+  std::string const jsActionsPath = FileUtils::buildFilename("js", "actions");
+  std::string const jsServerModulesPath =
+      FileUtils::buildFilename("js", "server");
   std::regex const binRegex("[/\\\\]\\.bin[/\\\\]", std::regex::ECMAScript);
 
-  auto filter = [&nodeModulesPath, &nodeModulesPathVersioned,
+  auto filterPath = [](std::string_view normalizedPath,
+                       std::string_view filterPath) -> bool {
+    return !filterPath.empty() && normalizedPath.ends_with(filterPath);
+  };
+
+  auto filter = [&filterPath, &nodeModulesPath, &nodeModulesPathVersioned,
+                 &jsAppsPath, &jsActionsPath, &jsServerModulesPath,
                  &binRegex](std::string const& filename) -> bool {
     if (std::regex_search(filename, binRegex)) {
       // don't copy files in .bin
@@ -321,15 +332,11 @@ void V8ShellFeature::copyInstallationFiles() {
 
     std::string normalized = filename;
     FileUtils::normalizePath(normalized);
-    if ((!nodeModulesPath.empty() &&
-         normalized.size() >= nodeModulesPath.size() &&
-         normalized.substr(normalized.size() - nodeModulesPath.size(),
-                           nodeModulesPath.size()) == nodeModulesPath) ||
-        (!nodeModulesPathVersioned.empty() &&
-         normalized.size() >= nodeModulesPathVersioned.size() &&
-         normalized.substr(normalized.size() - nodeModulesPathVersioned.size(),
-                           nodeModulesPathVersioned.size()) ==
-             nodeModulesPathVersioned)) {
+    if (filterPath(normalized, nodeModulesPath) ||
+        filterPath(normalized, nodeModulesPathVersioned) ||
+        filterPath(normalized, jsAppsPath) ||
+        filterPath(normalized, jsActionsPath) ||
+        filterPath(normalized, jsServerModulesPath)) {
       // filter it out!
       return true;
     }
@@ -386,6 +393,7 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
         << "Copyright (c) ArangoDB GmbH";
 
       console.printLine(s.str());
+      console.printLine(LGPLNotice);
       console.printLine("");
 
       console.printWelcomeInfo();
@@ -503,9 +511,6 @@ ErrorCode V8ShellFeature::runShell(
 
   v8LineEditor.open(console.autoComplete());
 
-  v8::Local<v8::String> name(
-      TRI_V8_ASCII_STRING(_isolate, TRI_V8_SHELL_COMMAND_NAME));
-
   uint64_t nrCommands = 0;
 
   ClientFeature* client = nullptr;
@@ -558,7 +563,7 @@ ErrorCode V8ShellFeature::runShell(
     double t1 = TRI_microtime();
 
     v8::Handle<v8::Value> v = TRI_ExecuteJavaScriptString(
-        _isolate, context, TRI_V8_STD_STRING(_isolate, input), name, true);
+        _isolate, input, TRI_V8_SHELL_COMMAND_NAME, true);
 
     lastDuration = TRI_microtime() - t1;
 
@@ -798,9 +803,8 @@ bool V8ShellFeature::runString(std::vector<std::string> const& strings,
   for (auto const& script : strings) {
     v8::TryCatch tryCatch(_isolate);
 
-    v8::Handle<v8::Value> result = TRI_ExecuteJavaScriptString(
-        _isolate, context, TRI_V8_STD_STRING(_isolate, script),
-        TRI_V8_ASCII_STRING(_isolate, "(command-line)"), false);
+    v8::Handle<v8::Value> result =
+        TRI_ExecuteJavaScriptString(_isolate, script, "(command-line)", false);
 
     if (tryCatch.HasCaught()) {
       std::string exception(TRI_StringifyV8Exception(_isolate, &tryCatch));
@@ -875,13 +879,10 @@ bool V8ShellFeature::runUnitTests(std::vector<std::string> const& files,
       .FromMaybe(false);
 
   // run tests
-  auto input = TRI_V8_ASCII_STRING(
-      _isolate, "require(\"@arangodb/testrunner\").runCommandLineTests();");
-
-  auto name = TRI_V8_ASCII_STRING(_isolate, TRI_V8_SHELL_COMMAND_NAME);
-
   v8::TryCatch tryCatch(isolate);
-  TRI_ExecuteJavaScriptString(_isolate, context, input, name, true);
+  TRI_ExecuteJavaScriptString(
+      _isolate, "require(\"@arangodb/testrunner\").runCommandLineTests();",
+      TRI_V8_SHELL_COMMAND_NAME, true);
 
   if (tryCatch.HasCaught()) {
     std::string exception(TRI_StringifyV8Exception(_isolate, &tryCatch));
@@ -1253,8 +1254,6 @@ void V8ShellFeature::initMode(ShellFeature::RunMode runMode,
 }
 
 void V8ShellFeature::loadModules(ShellFeature::RunMode runMode) {
-  auto context = _isolate->GetCurrentContext();
-
   JSLoader loader;
   loader.setDirectory(_startupDirectory);
 
@@ -1284,7 +1283,7 @@ void V8ShellFeature::loadModules(ShellFeature::RunMode runMode) {
   files.push_back("client/" + _clientModule);  // needs internal
 
   for (auto const& file : files) {
-    switch (loader.loadScript(_isolate, context, file, nullptr)) {
+    switch (loader.loadScript(_isolate, file, nullptr)) {
       case JSLoader::eSuccess:
         LOG_TOPIC("edc8d", TRACE, arangodb::Logger::FIXME)
             << "loaded JavaScript file '" << file << "'";

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -42,6 +42,7 @@
 #include "RocksDBEngine/RocksDBIndexCacheRefillThread.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
@@ -271,7 +272,7 @@ void RocksDBIndexCacheRefillFeature::buildStartupIndexRefillTasks() {
       methods::Collections::enumerate(
           &guard.database(),
           [&](std::shared_ptr<LogicalCollection> const& collection) {
-            auto indexes = collection->getIndexes();
+            auto indexes = collection->getPhysical()->getReadyIndexes();
             for (auto const& index : indexes) {
               if (!index->canWarmup()) {
                 // index not suitable for warmup
@@ -375,7 +376,7 @@ Result RocksDBIndexCacheRefillFeature::warmupIndex(
   auto releaser = scopeGuard(
       [&]() noexcept { guard.database().releaseCollection(c.get()); });
 
-  auto indexes = c->getIndexes();
+  auto indexes = c->getPhysical()->getReadyIndexes();
   for (auto const& index : indexes) {
     if (index->id() == iid) {
       // found the correct index

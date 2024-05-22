@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,11 +23,14 @@
 
 #pragma once
 
-#include "Aql/Ast.h"
-#include "Basics/Common.h"
+#include "Aql/LazyConditions.h"
+#include "Basics/ErrorCode.h"
 
-namespace arangodb {
-namespace aql {
+#include <cstddef>
+#include <string_view>
+
+namespace arangodb::aql {
+class Ast;
 struct AstNode;
 class QueryContext;
 struct QueryResult;
@@ -35,16 +38,20 @@ class QueryString;
 
 /// @brief the parser
 class Parser {
-  Parser(Parser const&) = delete;
-
  public:
+  Parser(Parser const&) = delete;
+  Parser& operator=(Parser const&) = delete;
+
   /// @brief create the parser
   explicit Parser(QueryContext&, Ast&, QueryString&);
 
   /// @brief destroy the parser
   ~Parser();
 
- public:
+  /// @brief return a reference to the lazy conditions manager
+  LazyConditions const& lazyConditions() const;
+  LazyConditions& lazyConditions();
+
   /// @brief return the ast during parsing
   Ast* ast() { return &_ast; }
 
@@ -81,11 +88,7 @@ class Parser {
   void decreaseOffset(size_t offset) { _offset -= offset; }
 
   /// @brief fill the output buffer with a fragment of the query
-  void fillBuffer(char* result, size_t length) {
-    memcpy(result, _buffer, length);
-    _buffer += length;
-    _remainingLength -= length;
-  }
+  void fillBuffer(char* result, size_t length);
 
   /// @brief set data for write queries
   bool configureWriteQuery(AstNode const*, AstNode* optionNode);
@@ -134,7 +137,7 @@ class Parser {
   void* popStack();
 
   /// @brief peek at a temporary value from the parser's stack
-  void* peekStack();
+  void* peekStack() const;
 
  private:
   /// @brief a pointer to the start of the query string
@@ -168,9 +171,11 @@ class Parser {
 
   /// @brief a stack of things, used temporarily during parsing
   std::vector<void*> _stack;
+
+  /// @brief stack for handling of lazy conditions
+  LazyConditions _lazyConditions;
 };
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql
 
 /// @brief forward for the parse function provided by the parser (.y)
 int Aqlparse(arangodb::aql::Parser*);

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -45,11 +45,12 @@ using namespace arangodb;
 using namespace arangodb::basics;
 
 HttpResponse::HttpResponse(ResponseCode code, uint64_t mid,
-                           std::unique_ptr<basics::StringBuffer> buffer)
+                           std::unique_ptr<basics::StringBuffer> buffer,
+                           rest::ResponseCompressionType rct)
     : GeneralResponse(code, mid),
       _body(std::move(buffer)),
       _bodySize(0),
-      _allowCompression(false) {
+      _allowCompression(rct) {
   _contentType = ContentType::TEXT;
 
   if (!_body) {
@@ -139,6 +140,18 @@ size_t HttpResponse::bodySize() const {
   }
   TRI_ASSERT(_body != nullptr);
   return _body->length();
+}
+
+void HttpResponse::setAllowCompression(
+    rest::ResponseCompressionType rct) noexcept {
+  if (_allowCompression == rest::ResponseCompressionType::kUnset) {
+    _allowCompression = rct;
+  }
+}
+
+rest::ResponseCompressionType HttpResponse::compressionAllowed()
+    const noexcept {
+  return _allowCompression;
 }
 
 void HttpResponse::writeHeader(StringBuffer* output) {
@@ -328,6 +341,7 @@ void HttpResponse::addPayloadInternal(uint8_t const* data, size_t length,
   if (!options) {
     options = &velocypack::Options::Defaults;
   }
+  TRI_ASSERT(options != nullptr);
 
   if (_contentType == rest::ContentType::VPACK) {
     // the input (data) may contain multiple velocypack values, written
@@ -348,14 +362,12 @@ void HttpResponse::addPayloadInternal(uint8_t const* data, size_t length,
       // will contain sanitized data
       VPackBuffer<uint8_t> tmpBuffer;
       if (resolveExternals) {
-        bool resolveExt =
-            VelocyPackHelper::hasNonClientTypes(currentData, true, true);
+        bool resolveExt = VelocyPackHelper::hasNonClientTypes(currentData);
         if (resolveExt) {                  // resolve
           tmpBuffer.reserve(inputLength);  // reserve space already
           VPackBuilder builder(tmpBuffer, options);
           VelocyPackHelper::sanitizeNonClientTypes(
-              currentData, VPackSlice::noneSlice(), builder, options, true,
-              true);
+              currentData, VPackSlice::noneSlice(), builder, *options);
           currentData = VPackSlice(tmpBuffer.data());
           outputLength = currentData.byteSize();
         }
@@ -415,4 +427,16 @@ void HttpResponse::addPayloadInternal(uint8_t const* data, size_t length,
 
     headResponse(static_cast<size_t>(sink.length()));
   }
+}
+
+ErrorCode HttpResponse::zlibDeflate(bool onlyIfSmaller) {
+  return _body->zlibDeflate(onlyIfSmaller);
+}
+
+ErrorCode HttpResponse::gzipCompress(bool onlyIfSmaller) {
+  return _body->gzipCompress(onlyIfSmaller);
+}
+
+ErrorCode HttpResponse::lz4Compress(bool onlyIfSmaller) {
+  return _body->lz4Compress(onlyIfSmaller);
 }

@@ -27,7 +27,9 @@ export const DeleteIndexModal = ({
   return (
     <Modal isOpen onClose={onClose}>
       <ModalHeader>Delete Index</ModalHeader>
-      <ModalBody>Are you sure you want to delete {foundCollectionIndex.name}?</ModalBody>
+      <ModalBody>
+        Are you sure you want to delete {foundCollectionIndex.name}?
+      </ModalBody>
       <ModalFooter>
         <Stack direction="row">
           <Button colorScheme="gray" onClick={() => onClose()}>

@@ -13,6 +13,10 @@ signal:crashHandlerSignalHandler
 
 signal:c_exit_handler
 
+# alloc in signal handers strack trace here:
+signal:arangodb::application_features::ApplicationServer::wait
+
+    
 # A compiler optimization in DBImpl::ReleaseSnapshot() produces code where a
 # register is populated with different addresses based on some condition, and
 # this register is later read to populate the variable `oldest_snapshot`.
@@ -55,3 +59,10 @@ deadlock:consensus::Agent::setPersistedState
 
 # TODO Fix data race in arangodbtests
 race:DummyConnection::sendRequest
+
+# ATM we build V8 with sanitizers _disabled_, so the V8 code is not instrumented
+# which means the sanitizer cannot observe the synchronizations inside that code.
+# So when the V8 code calls back into instrumented code (e.g. the C runtime), TSan
+# might report potential data races because of these missing synchronizations.
+# For that reason we simply need to ignore _all_ data races coming from V8.
+race:v8::*

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -46,6 +46,8 @@ class SharedQueryState final
   SharedQueryState(ArangodServer& server, Scheduler* scheduler);
   SharedQueryState() = delete;
   ~SharedQueryState() = default;
+
+  void setMaxTasks(unsigned maxTasks) { _maxTasks = maxTasks; }
 
   void invalidate();
 
@@ -110,14 +112,17 @@ class SharedQueryState final
     bool queued =
         queueAsyncTask([cb(std::forward<F>(cb)), self(shared_from_this())] {
           if (self->_valid) {
+            bool triggerWakeUp = true;
             try {
-              cb(true);
+              triggerWakeUp = cb(true);
             } catch (...) {
               TRI_ASSERT(false);
             }
             std::unique_lock<std::mutex> guard(self->_mutex);
             self->_numTasks.fetch_sub(1);  // simon: intentionally under lock
-            self->notifyWaiter(guard);
+            if (triggerWakeUp) {
+              self->notifyWaiter(guard);
+            }
           } else {  // need to wakeup everybody
             std::unique_lock<std::mutex> guard(self->_mutex);
             self->_numTasks.fetch_sub(1);  // simon: intentionally under lock
@@ -158,7 +163,7 @@ class SharedQueryState final
   unsigned _numWakeups;  // number of times
   unsigned _cbVersion;   // increased once callstack is done
 
-  unsigned const _maxTasks;
+  unsigned _maxTasks;
   std::atomic<unsigned> _numTasks;
   std::atomic<bool> _valid;
 };

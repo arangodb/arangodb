@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -32,6 +32,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Replication2/ReplicatedState/ReplicatedState.h"
+#include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/DatabaseGuard.h"
@@ -93,7 +94,11 @@ bool DropCollection::first() {
       if (vocbase.replicationVersion() == replication::Version::TWO) {
         result(dropCollectionReplication2(shard, coll));
       } else {
-        result(Collections::drop(*coll, false));
+        // both flags should not be necessary here, as we are only dealing with
+        // shard names here and not actual cluster-wide collection names
+        CollectionDropOptions dropOptions{.allowDropSystem = true,
+                                          .allowDropGraphCollection = true};
+        result(Collections::drop(*coll, dropOptions));
       }
 
       // it is safe here to clear our replication failure statistics even

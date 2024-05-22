@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -180,10 +180,15 @@ class RocksDBKey {
   void constructRevisionTreeValue(uint64_t objectId);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Create a fully-specified key for zkd index
+  /// @brief Create a fully-specified key for mdi
   //////////////////////////////////////////////////////////////////////////////
-  void constructZkdIndexValue(uint64_t objectId, const zkd::byte_string& value);
-  void constructZkdIndexValue(uint64_t objectId, const zkd::byte_string& value,
+  void constructMdiIndexValue(uint64_t objectId, velocypack::Slice prefix,
+                              const zkd::byte_string& value);
+  void constructMdiIndexValue(uint64_t objectId, velocypack::Slice prefix,
+                              const zkd::byte_string& value,
+                              LocalDocumentId documentId);
+  void constructMdiIndexValue(uint64_t objectId, const zkd::byte_string& value);
+  void constructMdiIndexValue(uint64_t objectId, const zkd::byte_string& value,
                               LocalDocumentId documentId);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -293,11 +298,17 @@ class RocksDBKey {
   static uint64_t geoValue(rocksdb::Slice const& slice);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Extracts the zkd index value
+  /// @brief Extracts the mdi value
   ///
-  /// May be called only on zkd index values
+  /// May be called only on mdi values
   //////////////////////////////////////////////////////////////////////////////
-  static zkd::byte_string_view zkdIndexValue(rocksdb::Slice const& slice);
+  static zkd::byte_string_view mdiVPackIndexCurveValue(
+      rocksdb::Slice const& slice);
+  static zkd::byte_string_view mdiUniqueVPackIndexCurveValue(
+      rocksdb::Slice const& slice);
+  static zkd::byte_string_view mdiIndexCurveValue(rocksdb::Slice const& slice);
+  static zkd::byte_string_view mdiUniqueIndexCurveValue(
+      rocksdb::Slice const& slice);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts log index from key
@@ -360,7 +371,14 @@ class RocksDBKey {
   static std::string_view primaryKey(char const* data, size_t size);
   static std::string_view vertexId(char const* data, size_t size);
   static VPackSlice indexedVPack(char const* data, size_t size);
-  static zkd::byte_string_view zkdIndexValue(char const* data, size_t size);
+  static zkd::byte_string_view mdiIndexCurveValue(char const* data,
+                                                  size_t size);
+  static zkd::byte_string_view mdiUniqueIndexCurveValue(char const* data,
+                                                        size_t size);
+  static zkd::byte_string_view mdiVPackIndexCurveValue(char const* data,
+                                                       size_t size);
+  static zkd::byte_string_view mdiUniqueVPackIndexCurveValue(char const* data,
+                                                             size_t size);
 
  private:
   static const char _stringSeparator;

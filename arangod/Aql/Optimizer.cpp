@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,11 +25,12 @@
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionNode/EnumerateCollectionNode.h"
 #include "Aql/OptimizerRule.h"
 #include "Aql/OptimizerRules.h"
 #include "Aql/OptimizerRulesFeature.h"
-#include "Aql/QueryOptions.h"
 #include "Aql/ProfileLevel.h"
+#include "Aql/QueryOptions.h"
 #include "Basics/debugging.h"
 #include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
@@ -53,9 +54,9 @@ void Optimizer::disableRules(
   }
 }
 
-bool Optimizer::runOnlyRequiredRules(size_t extraPlans) const {
+bool Optimizer::runOnlyRequiredRules() const noexcept {
   return (_runOnlyRequiredRules ||
-          (_newPlans.size() + _plans.size() + extraPlans >= _maxNumberOfPlans));
+          (_newPlans.size() + _plans.size() + 1 >= _maxNumberOfPlans));
 }
 
 // @brief add a plan to the optimizer
@@ -243,24 +244,24 @@ void Optimizer::initializeRules(ExecutionPlan* plan,
                        }));
 
     int index = -1;
-    for (auto& rule : OptimizerRulesFeature::rules()) {
+    for (auto const& rule : rules) {
       // insert position of rule inside OptimizerRulesFeature::_rules
       _rules.emplace_back(++index);
-      if (rule.isDisabledByDefault()) {
+      if (rule.isDisabledByDefault() || plan->isDisabledRule(rule.level)) {
         disableRule(plan, rule.level);
       }
     }
-  }
 
-  // enable/disable rules as per user request
-  for (auto const& name : queryOptions.optimizerRules) {
-    if (name.empty()) {
-      continue;
-    }
-    if (name[0] == '-') {
-      disableRule(plan, name);
-    } else {
-      enableRule(plan, name);
+    // enable/disable rules as per user request
+    for (auto const& name : queryOptions.optimizerRules) {
+      if (name.empty()) {
+        continue;
+      }
+      if (name[0] == '-') {
+        disableRule(plan, name);
+      } else {
+        enableRule(plan, name);
+      }
     }
   }
 }
@@ -314,7 +315,8 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
         // skip over rules if we should
         // however, we don't want to skip those rules that will not create
         // additional plans
-        if (p->isDisabledRule(rule.level) ||
+        auto ruleDisabled = p->isDisabledRule(rule.level);
+        if (ruleDisabled ||
             (_runOnlyRequiredRules && rule.canCreateAdditionalPlans() &&
              rule.canBeDisabled())) {
           // we picked a disabled rule or we have reached the max number of
@@ -323,7 +325,8 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
                  // iteration
           _newPlans.push_back(std::move(p), it);  // nothing to do, just keep it
 
-          if (!rule.isHidden()) {
+          if (!rule.isHidden() &&
+              !(rule.isDisabledByDefault() && ruleDisabled)) {
             ++_stats.rulesSkipped;
           }
 
@@ -338,6 +341,7 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
         p->findVarUsage();
         p->setValidity(false);
 
+        size_t numberOfPlansBeforeRule = _newPlans.size();
         if (queryOptions.getProfileLevel() >= ProfileLevel::Blocks) {
           // run rule with tracing optimizer rule execution time
           if (_stats.executionTimes == nullptr) {
@@ -362,6 +366,16 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
           // run rule without tracing optimizer rules
           rule.func(this, std::move(p), rule);
         }
+
+        // we should have at least one more plan than before
+        TRI_ASSERT(_newPlans.size() > numberOfPlansBeforeRule);
+        // if the rule is marked to create additional plans, it can create
+        // an arbitrary number of plans. otherwise it must create exactly
+        // one plan (which may be the same as its input plan).
+        TRI_ASSERT(rule.canCreateAdditionalPlans() ||
+                   _newPlans.size() == numberOfPlansBeforeRule + 1)
+            << "optimizer rule " << rule.name
+            << " executed additional plans although it is not marked as such";
 
         if (!rule.isHidden()) {
           ++_stats.rulesExecuted;
@@ -396,9 +410,15 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
   estimateCosts(queryOptions, estimateAllPlans);
 
   // Best plan should not have forced hints left.
-  // There might be other plans that has, but we don't care
-  if (auto& bestPlan = _plans.list.front().first;
-      bestPlan->hasForcedIndexHints()) {
+  while (true) {
+    auto& bestPlan = _plans.list.front().first;
+    if (!bestPlan->hasForcedIndexHints()) {
+      // no forced index hints in best plan
+      break;
+    }
+    // our best plan contains forced index hints.
+    // now check if they are all satisfied.
+    bool foundForcedHint = false;
     containers::SmallVector<ExecutionNode*, 8> nodes;
     bestPlan->findNodesOfType(nodes, ExecutionNode::ENUMERATE_COLLECTION, true);
     for (auto n : nodes) {
@@ -408,10 +428,24 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
           ExecutionNode::castTo<EnumerateCollectionNode const*>(n);
       auto const& hint = en->hint();
       if (hint.type() == aql::IndexHint::HintType::Simple && hint.isForced()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE,
-            "could not use index hint to serve query; " + hint.toString());
+        // unsatisfied index hint.
+        foundForcedHint = true;
+        if (_plans.size() == 1) {
+          // we are the last plan and cannot satisfy the index hint -> fail
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE,
+              "could not use index hint to serve query; " + hint.toString());
+        }
+
+        // there are more plans left to try.
+        // discard the current plan and continue with the next-best plan.
+        _plans.list.pop_front();
+        break;
       }
+    }
+    if (!foundForcedHint) {
+      // all index hints satisified in current best plan
+      break;
     }
   }
 

@@ -1,40 +1,35 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
 /*global arango, fail, assertEqual, assertNotEqual, assertTrue, assertNull */
 
-////////////////////////////////////////////////////////////////////////////////
-/// Copyright 2023 ArangoDB GmbH, Cologne, Germany
-///
-/// The Programs (which include both the software and documentation) contain
-/// proprietary information of ArangoDB GmbH; they are provided under a license
-/// agreement containing restrictions on use and disclosure and are also
-/// protected by copyright, patent and other intellectual and industrial
-/// property laws. Reverse engineering, disassembly or decompilation of the
-/// Programs, except to the extent required to obtain interoperability with
-/// other independently created software or as specified by law, is prohibited.
-///
-/// It shall be the licensee's responsibility to take all appropriate fail-safe,
-/// backup, redundancy, and other measures to ensure the safe use of
-/// applications if the Programs are used for purposes such as nuclear,
-/// aviation, mass transit, medical, or other inherently dangerous applications,
-/// and ArangoDB GmbH disclaims liability for any damages caused by such use of
-/// the Programs.
-///
-/// This software is the confidential and proprietary information of ArangoDB
-/// GmbH. You shall not disclose such confidential and proprietary information
-/// and shall use it only in accordance with the terms of the license agreement
-/// you entered into with ArangoDB GmbH.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Jan Steemann
 /// @author Alexey Bakharew
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 (function () {
   'use strict';
 
   const db = require('@arangodb').db;
   const internal = require("internal");
-  const { getCompleteMetricsValues } = require('@arangodb/test-helper');
+  const { getCompleteMetricsValues, waitForEstimatorSync } = require('@arangodb/test-helper');
 
   const bufferedMemoryMetric = "arangodb_revision_tree_buffered_memory_usage";
   const estimatesMetric = "arangodb_index_estimates_memory_usage";
@@ -132,14 +127,14 @@
 
       testRevisionTreeMemoryUsageShouldIncreaseAfterBatchedInserts: function () {
         // wait until all pending estimates & revision tree buffers have been applied
-        let res = arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
+        let res = waitForEstimatorSync();
         assertNull(res);
         
         // block sync thread from doing anything from now on
         internal.debugSetFailAt("RocksDBSettingsManagerSync");
 
         // wait until all pending estimates & revision tree buffers have been applied
-        res = arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
+        res = waitForEstimatorSync();
         assertNull(res);
         
         db._create(collectionName, collectionCreationOptions);
@@ -153,7 +148,7 @@
         // Now check that metric value will go down
         internal.debugClearFailAt();
         // wait until all pending estimates & revision tree buffers have been applied
-        res = arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
+        res = waitForEstimatorSync();
         assertNull(res);
         
         waitForMetricToBeZero(bufferedMemoryMetric);
@@ -161,14 +156,14 @@
 
       testRevisionTreeMemoryUsageShouldIncreaseAfterSingleInserts: function () {
         // wait until all pending estimates & revision tree buffers have been applied
-        let res = arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
+        let res = waitForEstimatorSync();
         assertNull(res);
 
         // block sync thread from doing anything from now on
         internal.debugSetFailAt("RocksDBSettingsManagerSync");
 
         // wait until all pending estimates & revision tree buffers have been applied
-        res = arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
+        res = waitForEstimatorSync();
         assertNull(res);
 
         let c = db._create(collectionName, collectionCreationOptions);
@@ -188,7 +183,7 @@
         // Now check that metric value will go down
         internal.debugClearFailAt();
         // wait until all pending estimates & revision tree buffers have been applied
-        res = arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
+        res = waitForEstimatorSync();
         assertNull(res);
 
         waitForMetricToBeZero(bufferedMemoryMetric);
@@ -196,7 +191,7 @@
 
       testRevisionTreeMemoryUsageShouldIncreaseAndDecreaseAfterAql: function () {               
         // wait until all pending estimates & revision tree buffers have been applied
-        let res = arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
+        let res = waitForEstimatorSync();
         assertNull(res);
 
         // Check that metric value is 0 before inserting documents
@@ -274,7 +269,7 @@
         internal.debugSetFailAt("RocksDBSettingsManagerSync");
 
         // wait until all pending estimates & revision tree buffers have been applied
-        let res = arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
+        let res = waitForEstimatorSync();
         assertNull(res);
 
         const metric0 = getCompleteMetricsValues(estimatesMetric);
@@ -305,7 +300,7 @@
         internal.debugSetFailAt("RocksDBSettingsManagerSync");
 
         // wait until all pending estimates & revision tree buffers have been applied
-        let res = arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();");
+        let res = waitForEstimatorSync();
         assertNull(res);
 
         const metric0 = getCompleteMetricsValues(estimatesMetric);

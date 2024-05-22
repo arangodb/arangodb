@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -205,7 +205,6 @@ static_assert(!std::is_default_constructible<Root::Arango::Agency::Definition>::
 static_assert(!std::is_default_constructible<Root::Arango::InitDone>::value, CONSTRUCTIBLE_MESSAGE);
 
 // Exclude these on windows, because the constructor is made public there.
-#ifndef _WIN32
 
 // Second, constructors with parent
 static_assert(!std::is_constructible<Root::Arango, Root>::value, CONSTRUCTIBLE_MESSAGE);
@@ -375,7 +374,7 @@ static_assert(!std::is_constructible<Root::Arango::Current::Coordinators::Server
 static_assert(!std::is_constructible<Root::Arango::Current::DbServers::Server, Root::Arango::Current::DbServers, ServerID>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Current::Collections::Database, Root::Arango::Current::Collections, DatabaseID>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Current::Collections::Database::Collection, Root::Arango::Current::Collections::Database, CollectionID>::value, CONSTRUCTIBLE_MESSAGE);
-static_assert(!std::is_constructible<Root::Arango::Current::Collections::Database::Collection::Shard, Root::Arango::Current::Collections::Database::Collection, ShardID>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Current::Collections::Database::Collection::Shard, Root::Arango::Current::Collections::Database::Collection, std::string>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Current::Databases::Database, Root::Arango::Current::Databases, DatabaseID>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Current::Databases::Database::Server, Root::Arango::Current::Databases::Database, ServerID>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Current::ReplicatedLogs::Database, Root::Arango::Current::ReplicatedLogs, std::string>::value, CONSTRUCTIBLE_MESSAGE);
@@ -386,8 +385,8 @@ static_assert(!std::is_constructible<Root::Arango::Plan::Coordinators::Server, R
 static_assert(!std::is_constructible<Root::Arango::Plan::DbServers::Server, Root::Arango::Plan::DbServers, ServerID>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database, Root::Arango::Plan::Collections, DatabaseID>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database::Collection, Root::Arango::Plan::Collections::Database, CollectionID>::value, CONSTRUCTIBLE_MESSAGE);
-static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database::Collection::ReplicatedLogs::Shard, Root::Arango::Plan::Collections::Database::Collection::ReplicatedLogs, ShardID>::value, CONSTRUCTIBLE_MESSAGE);
-static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database::Collection::Shards::Shard, Root::Arango::Plan::Collections::Database::Collection::Shards, ShardID>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database::Collection::ReplicatedLogs::Shard, Root::Arango::Plan::Collections::Database::Collection::ReplicatedLogs, std::string>::value, CONSTRUCTIBLE_MESSAGE);
+static_assert(!std::is_constructible<Root::Arango::Plan::Collections::Database::Collection::Shards::Shard, Root::Arango::Plan::Collections::Database::Collection::Shards, std::string>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::Databases::Database, Root::Arango::Plan::Databases, DatabaseID>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Supervision::Health::Server, Root::Arango::Supervision::Health, ServerID>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Target::MapUniqueToShortId::Server, Root::Arango::Target::MapUniqueToShortId, ServerID>::value, CONSTRUCTIBLE_MESSAGE);
@@ -395,7 +394,6 @@ static_assert(!std::is_constructible<Root::Arango::Plan::ReplicatedLogs::Databas
 static_assert(!std::is_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log, Root::Arango::Plan::ReplicatedLogs::Database, std::string>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::ParticipantsConfig::Participants::Server, Root::Arango::Plan::ReplicatedLogs::Database::Log::ParticipantsConfig::Participants, ServerID>::value, CONSTRUCTIBLE_MESSAGE);
 
-#endif
 // clang-format on
 #undef CONSTRUCTIBLE_MESSAGE
 

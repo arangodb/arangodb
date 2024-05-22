@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,6 +17,8 @@
 /// limitations under the License.
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 #include <vector>
@@ -31,8 +33,10 @@ class Slice;
 class LocalDocumentId;
 
 struct IndexStreamOptions {
+  // positions of which keys to use for the actual index join
   std::vector<std::size_t> usedKeyFields;
   std::vector<std::size_t> projectedFields;
+  std::vector<std::size_t> constantFields;
 };
 
 std::ostream& operator<<(std::ostream&, IndexStreamOptions const&);
@@ -64,7 +68,9 @@ struct IndexStreamIterator {
 
   // called to reset the iterator to the initial position and loads that
   // positions keys into span. returns false if the iterator is exhausted.
-  virtual bool reset(std::span<SliceType> span) = 0;
+  // Constants remain valid until the next reset call.
+  virtual bool reset(std::span<SliceType> span,
+                     std::span<SliceType> constants) = 0;
 };
 
 struct AqlIndexStreamIterator

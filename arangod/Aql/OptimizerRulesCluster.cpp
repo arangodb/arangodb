@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,15 +24,21 @@
 
 #include "OptimizerRules.h"
 
-#include "Aql/ClusterNodes.h"
+#include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/CalculationNode.h"
+#include "Aql/ExecutionNode/EnumerateListNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
+#include "Aql/ExecutionNode/IndexNode.h"
+#include "Aql/ExecutionNode/InsertNode.h"
+#include "Aql/ExecutionNode/ModificationNode.h"
+#include "Aql/ExecutionNode/MultipleRemoteModificationNode.h"
+#include "Aql/ExecutionNode/RemoveNode.h"
+#include "Aql/ExecutionNode/SingleRemoteOperationNode.h"
+#include "Aql/ExecutionNode/UpdateReplaceNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
-#include "Aql/IndexNode.h"
-#include "Aql/ModificationNodes.h"
-#include "Aql/MultipleRemoteModificationNode.h"
 #include "Aql/Optimizer.h"
 #include "Aql/QueryContext.h"
 #include "Basics/StaticStrings.h"

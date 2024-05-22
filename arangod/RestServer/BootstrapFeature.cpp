@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,6 +27,7 @@
 #include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryList.h"
+#include "Auth/UserManager.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -230,7 +231,7 @@ void runCoordinatorJS(TRI_vocbase_t* vocbase) {
     VPackBuilder builder;
     vocbase->server()
         .getFeature<V8DealerFeature>()
-        .loadJavaScriptFileInAllContexts(
+        .loadJavaScriptFileInAllExecutors(
             vocbase, "server/bootstrap/coordinator.js", &builder);
 
     auto slice = builder.slice();
@@ -263,49 +264,6 @@ void runCoordinatorJS(TRI_vocbase_t* vocbase) {
 }
 #endif
 
-// Try to become leader in active-failover setup
-void runActiveFailoverStart(BootstrapFeature& feature,
-                            std::string const& myId) {
-  std::string const leaderPath = "Plan/AsyncReplication/Leader";
-  try {
-    VPackBuilder myIdBuilder;
-    myIdBuilder.add(VPackValue(myId));
-    AgencyComm agency(feature.server());
-    AgencyCommResult res = agency.getValues(leaderPath);
-    if (res.successful()) {
-      VPackSlice leader =
-          res.slice()[0].get(AgencyCommHelper::slicePath(leaderPath));
-      if (!leader.isString() ||
-          leader.getStringLength() == 0) {  // no leader in agency
-        if (leader.isNone()) {
-          res = agency.casValue(leaderPath, myIdBuilder.slice(),
-                                /*prevExist*/ false,
-                                /*ttl*/ 0, /*timeout*/ 5.0);
-        } else {
-          res = agency.casValue(leaderPath, /*old*/ leader,
-                                /*new*/ myIdBuilder.slice(),
-                                /*ttl*/ 0, /*timeout*/ 5.0);
-        }
-        if (res.successful()) {  // successful leadership takeover
-          leader = myIdBuilder.slice();
-        }  // ignore for now, heartbeat thread will handle it
-      }
-
-      if (leader.isString() && leader.getStringLength() > 0) {
-        ServerState::instance()->setFoxxmaster(leader.copyString());
-        if (basics::VelocyPackHelper::equal(leader, myIdBuilder.slice(),
-                                            false)) {
-          LOG_TOPIC("95023", INFO, Logger::STARTUP)
-              << "Became leader in active-failover setup";
-        } else {
-          LOG_TOPIC("f0bdc", INFO, Logger::STARTUP)
-              << "Following: " << ServerState::instance()->getFoxxmaster();
-        }
-      }
-    }
-  } catch (...) {
-  }  // weglaecheln
-}
 }  // namespace
 
 void BootstrapFeature::start() {
@@ -364,20 +322,15 @@ void BootstrapFeature::start() {
 
     // become leader before running server.js to ensure the leader
     // is the foxxmaster. Everything else is handled in heartbeat
-    if (ServerState::isSingleServer(role) &&
-        AsyncAgencyCommManager::isEnabled()) {
-      ::runActiveFailoverStart(*this, myId);
-    } else {
-      ServerState::instance()->setFoxxmaster(
-          myId);  // could be empty, but set anyway
-    }
+    ServerState::instance()->setFoxxmaster(
+        myId);  // could be empty, but set anyway
 
 #ifdef USE_V8
     if (v8Enabled) {  // runs the single server bootstrap JS
       // will run foxx/manager.js::_startup() and more (start queues, load
       // routes, etc)
       LOG_TOPIC("e0c8b", DEBUG, Logger::STARTUP) << "Running server/server.js";
-      server().getFeature<V8DealerFeature>().loadJavaScriptFileInAllContexts(
+      server().getFeature<V8DealerFeature>().loadJavaScriptFileInAllExecutors(
           vocbase.get(), "server/server.js", nullptr);
     }
 #endif
@@ -393,14 +346,8 @@ void BootstrapFeature::start() {
     waitForHealthEntry();
   }
 
-  if (ServerState::isSingleServer(role) &&
-      AsyncAgencyCommManager::isEnabled()) {
-    // simon: this is set to correct value in the heartbeat thread
-    ServerState::setServerMode(ServerState::Mode::TRYAGAIN);
-  } else {
-    // Start service properly:
-    ServerState::setServerMode(ServerState::Mode::DEFAULT);
-  }
+  // Start service properly:
+  ServerState::setServerMode(ServerState::Mode::DEFAULT);
 
   if (!databaseFeature.upgrade()) {
     LOG_TOPIC("cf3f4", INFO, arangodb::Logger::FIXME)

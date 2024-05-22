@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -47,11 +47,6 @@
 
 #include <llhttp.h>
 
-// Work-around for nghttp2 non-standard definition ssize_t under windows
-// https://github.com/nghttp2/nghttp2/issues/616
-#if defined(_WIN32) && defined(_MSC_VER)
-#define ssize_t long
-#endif
 #include <nghttp2/nghttp2.h>
 
 using namespace arangodb::basics;
@@ -61,14 +56,29 @@ namespace {
 constexpr std::string_view switchingProtocols(
     "HTTP/1.1 101 Switching Protocols\r\nConnection: "
     "Upgrade\r\nUpgrade: h2c\r\n\r\n");
+
+bool expectResponseBody(int statusCode) {
+  return statusCode == 101 ||
+         (statusCode / 100 != 1 && statusCode != 304 && statusCode != 204);
+}
+
 }  // namespace
 
-namespace arangodb {
-namespace rest {
+#ifdef USE_DTRACE
+// Moved out to avoid duplication by templates.
+static void __attribute__((noinline)) DTraceH2CommTaskSendResponse(size_t th) {
+  DTRACE_PROBE1(arangod, H2CommTaskSendResponse, th);
+}
+#else
+static void DTraceH2CommTaskSendResponse(size_t) {}
+#endif
+
+namespace arangodb::rest {
 
 struct H2Response : public HttpResponse {
   H2Response(ResponseCode code, uint64_t mid)
-      : HttpResponse(code, mid, nullptr) {}
+      : HttpResponse(code, mid, nullptr,
+                     rest::ResponseCompressionType::kUnset) {}
 
   RequestStatistics::Item statistics;
 };
@@ -85,7 +95,7 @@ template<SocketType T>
   }
 
   int32_t const sid = frame->hd.stream_id;
-  me->acquireStatistics(sid).SET_READ_START(TRI_microtime());
+  me->acquireRequestStatistics(sid).SET_READ_START(TRI_microtime());
   auto req =
       std::make_unique<HttpRequest>(me->_connectionInfo, /*messageId*/ sid);
   me->createStream(sid, std::move(req));
@@ -210,7 +220,10 @@ template<SocketType T>
   if (it != me->_streams.end()) {
     Stream& strm = it->second;
     if (strm.response) {
-      strm.response->statistics.SET_WRITE_END();
+      auto* h2Response = dynamic_cast<H2Response*>(strm.response.get());
+      if (h2Response != nullptr) {
+        h2Response->statistics.SET_WRITE_END();
+      }
     }
     me->_streams.erase(it);
   }
@@ -278,7 +291,7 @@ H2CommTask<T>::~H2CommTask() noexcept {
     LOG_TOPIC("924cf", DEBUG, Logger::REQUESTS)
         << "<http2> got " << _streams.size() << " remaining streams";
   }
-  H2Response* res = nullptr;
+  HttpResponse* res = nullptr;
   while (_responses.pop(res)) {
     delete res;
   }
@@ -624,7 +637,7 @@ void H2CommTask<T>::processRequest(Stream& stream,
   // store origin header for later use
   stream.origin = req->header(StaticStrings::Origin);
   auto messageId = req->messageId();
-  RequestStatistics::Item const& stat = this->statistics(messageId);
+  RequestStatistics::Item const& stat = this->requestStatistics(messageId);
   stat.SET_REQUEST_TYPE(req->requestType());
   stat.ADD_RECEIVED_BYTES(stream.headerBuffSize + req->body().size());
   stat.SET_READ_END();
@@ -652,10 +665,10 @@ void H2CommTask<T>::processRequest(Stream& stream,
     return;  // prepareExecution sends the error message
   }
 
-  // unzip / deflate
-  if (!this->handleContentEncoding(*req)) {
+  // gzip-uncompress / zlib-deflate / lz4-uncompress
+  if (Result res = this->handleContentEncoding(*req); res.fail()) {
     this->sendErrorResponse(rest::ResponseCode::BAD, req->contentTypeResponse(),
-                            1, TRI_ERROR_BAD_PARAMETER, "decoding error");
+                            1, TRI_ERROR_BAD_PARAMETER, res.errorMessage());
     return;
   }
 
@@ -665,22 +678,6 @@ void H2CommTask<T>::processRequest(Stream& stream,
   resp->setContentType(req->contentTypeResponse());
   this->executeRequest(std::move(req), std::move(resp), mode);
 }
-
-namespace {
-bool expectResponseBody(int status_code) {
-  return status_code == 101 ||
-         (status_code / 100 != 1 && status_code != 304 && status_code != 204);
-}
-}  // namespace
-
-#ifdef USE_DTRACE
-// Moved out to avoid duplication by templates.
-static void __attribute__((noinline)) DTraceH2CommTaskSendResponse(size_t th) {
-  DTRACE_PROBE1(arangod, H2CommTaskSendResponse, th);
-}
-#else
-static void DTraceH2CommTaskSendResponse(size_t) {}
-#endif
 
 template<SocketType T>
 void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
@@ -694,7 +691,9 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
     return;
   }
 
-  auto* tmp = static_cast<H2Response*>(res.get());
+  // note: the response we get here can either be an H2Response (HTTP/2) or an
+  // HTTP/1 response!
+  auto* tmp = static_cast<HttpResponse*>(res.get());
 
   // handle response code 204 No Content
   if (tmp->responseCode() == rest::ResponseCode::NO_CONTENT) {
@@ -722,7 +721,10 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
       << "\"," << Logger::FIXED(stat.ELAPSED_SINCE_READ_START(), 6) << ","
       << Logger::FIXED(stat.ELAPSED_WHILE_QUEUED(), 6);
 
-  tmp->statistics = std::move(stat);
+  auto* h2Response = dynamic_cast<H2Response*>(tmp);
+  if (h2Response != nullptr) {
+    h2Response->statistics = std::move(stat);
+  }
 
   // this uses a fixed capacity queue, push might fail (unlikely, we limit max
   // streams)
@@ -764,11 +766,11 @@ void H2CommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> res,
 // queue the response onto the session, call only on IO thread
 template<SocketType T>
 void H2CommTask<T>::queueHttp2Responses() {
-  H2Response* response = nullptr;
+  HttpResponse* response = nullptr;
   while (_responses.pop(response)) {
-    std::unique_ptr<H2Response> guard(response);
+    std::unique_ptr<HttpResponse> guard(response);
 
-    const int32_t streamId = static_cast<int32_t>(response->messageId());
+    int32_t streamId = static_cast<int32_t>(response->messageId());
     Stream* strm = findStream(streamId);
     if (strm == nullptr) {  // stream was already closed for some reason
       LOG_TOPIC("e2773", DEBUG, Logger::REQUESTS)
@@ -829,7 +831,7 @@ void H2CommTask<T>::queueHttp2Responses() {
     }
 
     // add "Server" response header
-    if (!seenServerHeader) {
+    if (!seenServerHeader && this->_isUserRequest) {
       nva.push_back(
           {(uint8_t*)"server", (uint8_t*)"ArangoDB", 6, 8,
            NGHTTP2_NV_FLAG_NO_COPY_NAME | NGHTTP2_NV_FLAG_NO_COPY_VALUE});
@@ -904,7 +906,12 @@ void H2CommTask<T>::queueHttp2Responses() {
       prd_ptr = &prd;
     }
 
-    res.statistics.ADD_SENT_BYTES(res.bodySize());
+    // we may have an HTTP/1 response here or an HTTP/2 response.
+    // try if upcasting works, and only if so, treat it as HTTP/2.
+    auto* h2Response = dynamic_cast<H2Response*>(&res);
+    if (h2Response != nullptr) {
+      h2Response->statistics.ADD_SENT_BYTES(res.bodySize());
+    }
 
     int rv = nghttp2_submit_response(this->_session, streamId, nva.data(),
                                      nva.size(), prd_ptr);
@@ -1039,9 +1046,6 @@ bool H2CommTask<T>::shouldStop() const {
 
 template class arangodb::rest::H2CommTask<SocketType::Tcp>;
 template class arangodb::rest::H2CommTask<SocketType::Ssl>;
-#ifndef _WIN32
 template class arangodb::rest::H2CommTask<SocketType::Unix>;
-#endif
 
-}  // namespace rest
-}  // namespace arangodb
+}  // namespace arangodb::rest

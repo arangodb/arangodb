@@ -2,19 +2,16 @@
 /* global describe, print */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief Helper module to generate users with specific rights
-// /
-// / @file
-// /
 // / DISCLAIMER
 // /
-// / Copyright 2017 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License");
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -68,24 +65,6 @@ const executeJS = (code) => {
     httpOptions);
 };
 
-let __ldapResolved__ = false;
-let __ldapEnabled__ = false;
-function isLdapEnabled() {
-  if (__ldapResolved__) {
-    return __ldapEnabled__;
-  } else {
-    let res = executeJS('return require("internal").ldapEnabled()');
-    try {
-      res = JSON.parse(res.body);
-    } catch (ignore) {
-      res = false;
-    }
-    __ldapResolved__ = true;
-    __ldapEnabled__ = res;
-    return res;
-  }
-};
-
 // The Naming Convention will be
 // UnitTest_server-level_db-level_col-level
 //
@@ -97,26 +76,13 @@ function isLdapEnabled() {
 // d == DEFAULT
 
 exports.removeAllUsers = () => {
-  if (isLdapEnabled()) {
-    // create special arangoadmin role and add root alike permissions
-    try {
-      users.remove(':role:adminrole');
-    } catch (e) {
-      // If the user does not exist
-    }
-  }
-
   for (let sys of rightLevels) {
     for (let db of rightLevels) {
       for (let col of rightLevels) {
         let name = `${namePrefix}_${sys}_${db}_${col}`;
         let role = `:role:${namePrefix}_${sys}_${db}_${col}`;
         try {
-          if (isLdapEnabled()) {
-            users.remove(role);
-          } else {
-            users.remove(name);
-          }
+          users.remove(name);
         } catch (e) {
           // If the user does not exist
         }
@@ -130,22 +96,12 @@ exports.removeAllUsers = () => {
   }
 };
 
-exports.isLdapEnabledExternal = () => {
-  return isLdapEnabled();
-};
-
 exports.loginUser = (user) => {
   var baseUrl = function () {
     return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
   };
 
   let password = '';
-  if (isLdapEnabled()) {
-    if (user === 'root') {
-      user = 'arangoadmin';
-    }
-    password = 'abc';
-  }
   if (user === 'bob') {
     password = '';
   }
@@ -173,12 +129,6 @@ exports.switchUser = (user, dbName) => {
   if (dbName) {
     database = dbName;
   }
-  if (isLdapEnabled()) {
-    if (user === 'root') {
-      user = 'arangoadmin';
-    }
-    password = 'abc';
-  }
   if (user === 'bob') {
     password = '';
   }
@@ -187,7 +137,6 @@ exports.switchUser = (user, dbName) => {
 
 exports.generateAllUsers = () => {
 
-  // in ldap case, roles will be generated
   let dbs = db._databases();
   let create = true;
   for (let d of dbs) {
@@ -206,33 +155,16 @@ exports.generateAllUsers = () => {
     db._useDatabase('_system');
   }
 
-  if (isLdapEnabled()) {
-    // create special arangoadmin role and add root alike permissions
-    users.save(':role:adminrole', null, true);
-  }
-
   for (let sys of rightLevels) {
     for (let db of rightLevels) {
       for (let col of rightLevels) {
         let name = `${namePrefix}_${sys}_${db}_${col}`;
         let password = '';
 
-        if (isLdapEnabled()) {
-          users.save(":role:" + name, password, true);
-          users.grantDatabase(":role:" + name, '_system', sys);
-          users.grantDatabase(":role:" + name, dbName, db);
-          users.grantCollection(":role:" + name, dbName, colName, col);
-
-          // login to ldap user to update permission roles
-          exports.loginUser(name);
-          // login back to administrator
-          exports.loginUser('root');
-        } else {
-          users.save(name, password, true);
-          users.grantDatabase(name, '_system', sys);
-          users.grantDatabase(name, dbName, db);
-          users.grantCollection(name, dbName, colName, col);
-        }
+        users.save(name, password, true);
+        users.grantDatabase(name, '_system', sys);
+        users.grantDatabase(name, dbName, db);
+        users.grantCollection(name, dbName, colName, col);
         userSet.add(name);
 
         let sysPerm = users.permission(name, '_system');

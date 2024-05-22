@@ -38,6 +38,7 @@ if "MAX_CORESIZE" in os.environ:
 pp = pprint.PrettyPrinter(indent=4)
 
 ZIPFORMAT = "gztar"
+ZIPEXT="tar.gz"
 try:
     import py7zr
 
@@ -45,6 +46,7 @@ try:
         "7zip", py7zr.pack_7zarchive, description="7zip archive"
     )
     ZIPFORMAT = "7zip"
+    ZIPEXT="7z"
 except ModuleNotFoundError:
     pass
 
@@ -71,7 +73,7 @@ def testing_runner(testing_instance, this, arangosh):
         ret = arangosh.run_testing(
             this.suite,
             this.args,
-            999999999,
+            15*60, # 15 Minutes screen idle before timeout
             this.base_logdir,
             this.log_file,
             this.name_enum,
@@ -596,7 +598,11 @@ class TestingRunner:
 
         try:
             shutil.rmtree(TEMP, ignore_errors=False)
-            shutil.make_archive(tarfile, ZIPFORMAT, self.cfg.run_root, ".", True)
+            zipformat = ZIPFORMAT
+            if (self.cfg.run_root / f"innerlogs.{ZIPEXT}").stat().st_size > 1024*1024*200:
+                logging.info("Falling back to tar since innerlogs is huge!")
+                zipformat = "tar"
+            shutil.make_archive(tarfile, zipformat, self.cfg.run_root, ".", True)
         except Exception as ex:
             logging.error("Failed to create testreport zip: %s", str(ex))
             self.append_report_txt("Failed to create testreport zip: " + str(ex))
@@ -663,8 +669,6 @@ class TestingRunner:
             if parallelity == 1:
                 parallelity = 4
             args += ["--cluster", "true", "--dumpAgencyOnError", "true"]
-        if "ldap" in test["flags"] and not "LDAPHOST" in os.environ:
-            return
 
         if "buckets" in params and not self.cfg.small_machine:
             num_buckets = int(params["buckets"])

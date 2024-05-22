@@ -1,28 +1,29 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
 /*global assertEqual, assertNotEqual, fail */
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2010-2014 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Jan Steemann
 /// @author Copyright 2020, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
@@ -38,84 +39,6 @@ const smartGraphAttribute = 'smart';
 
 function BaseTestConfig() {
   return {
-    testWithDroppedEdgeCollection : function () {
-      // drop one of the edge collections
-      db._drop(en + "1");
-      
-      try {
-        db._query(`FOR v IN ANY "${vn}/A1" GRAPH "${gn}" OPTIONS { edgeCollections: "${en}1" } RETURN v`);
-        fail();
-      } catch (err) {
-        assertEqual(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
-      }
-    },
-    
-    testWithDroppedOtherEdgeCollection : function () {
-      // drop one of the edge collections
-      db._drop(en + "1");
-      
-      try {
-        db._query(`FOR v IN ANY "${vn}/A1" GRAPH "${gn}" OPTIONS { edgeCollections: "${en}2" } RETURN v`);
-        fail();
-      } catch (err) {
-        assertEqual(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
-      }
-    },
-    
-    testWithDroppedOrphanCollection : function () {
-      db._drop(on);
-      
-      try {
-        db._query(`FOR v IN ANY "${on}/A1" GRAPH "${gn}" OPTIONS { vertexCollections: "${on}" } RETURN v`);
-        fail();
-      } catch (err) {
-        assertEqual(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
-      }
-    },
-    
-    testWithDroppedOrphanCollection2 : function () {
-      db._drop(on);
-      
-      try {
-        db._query(`FOR v IN ANY "${vn}/A1" GRAPH "${gn}" OPTIONS { vertexCollections: "${on}" } RETURN v`);
-        fail();
-      } catch (err) {
-        assertEqual(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
-      }
-    },
-    
-    testWithDroppedVertexCollection : function () {
-      try {
-        db._drop(vn);
-      } catch (err) {
-        // in SmartGraphs, we cannot drop a vertex collection because of 
-        // distributeShardsLike
-        assertEqual(errors.ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE.code, err.errorNum);
-        return;
-      }
-      
-      try {
-        db._query(`FOR v IN ANY "${vn}/A1" GRAPH "${gn}" OPTIONS { vertexCollections: "${vn}" } RETURN v`);
-        fail();
-      } catch (err) {
-        assertEqual(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
-      }
-    },
-    
-    testWithDroppedVertexAndEdgeCollection : function () {
-      db._drop(en + "1");
-      db._drop(en + "2");
-      db._drop(on);
-      db._drop(vn);
-      
-      try {
-        db._query(`FOR v IN ANY "${vn}/A1" GRAPH "${gn}" OPTIONS { vertexCollections: "${vn}" } RETURN v`);
-        fail();
-      } catch (err) {
-        assertEqual(errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code, err.errorNum);
-      }
-    },
-    
     testWithPoisonedEdge : function () {
       const n = "doesnotexist";
       db._create(n);

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -31,6 +31,7 @@
 #include "Graph/PathManagement/PathResult.h"
 #include "Containers/FlatHashMap.h"
 
+#include <limits>
 #include <set>
 #include <deque>
 
@@ -100,9 +101,29 @@ class WeightedTwoSidedEnumerator {
 
     [[nodiscard]] bool isEmpty() const { return _queue.empty(); }
 
-    [[nodiscard]] std::vector<CalculatedCandidate> getQueue() const& {
-      return _queue;
-    };
+    [[nodiscard]] std::vector<Step*> getLeftLooseEnds() {
+      std::vector<Step*> steps;
+
+      for (auto& [_, step, __] : _queue) {
+        if (!step.isProcessable()) {
+          steps.emplace_back(&step);
+        }
+      }
+
+      return steps;
+    }
+
+    [[nodiscard]] std::vector<Step*> getRightLooseEnds() {
+      std::vector<Step*> steps;
+
+      for (auto& [_, __, step] : _queue) {
+        if (!step.isProcessable()) {
+          steps.emplace_back(&step);
+        }
+      }
+
+      return steps;
+    }
 
     [[nodiscard]] CalculatedCandidate& peek() {
       TRI_ASSERT(!_queue.empty());
@@ -156,16 +177,17 @@ class WeightedTwoSidedEnumerator {
     auto buildPath(Step const& vertexInShell,
                    PathResult<ProviderType, Step>& path) -> void;
 
-    [[nodiscard]] auto matchResultsInShell(
-        Step const& match, CandidatesStore& results,
-        PathValidatorType const& otherSideValidator) -> double;
+    auto matchResultsInShell(Step const& match, CandidatesStore& results,
+                             PathValidatorType const& otherSideValidator)
+        -> void;
 
-    // @brief returns a positive double in a match has been found.
-    // returns -1.0 if no match has been found.
-    [[nodiscard]] auto computeNeighbourhoodOfNextVertex(
-        Ball& other, CandidatesStore& results) -> double;
+    auto computeNeighbourhoodOfNextVertex(Ball& other, CandidatesStore& results)
+        -> void;
 
     [[nodiscard]] auto hasBeenVisited(Step const& step) -> bool;
+    auto validateSingletonPath(CandidatesStore& candidates) -> void;
+
+    auto ensureQueueHasProcessableElement() -> void;
 
     // Ensure that we have fetched all vertices in the _results list.
     // Otherwise, we will not be able to generate the resulting path
@@ -173,6 +195,8 @@ class WeightedTwoSidedEnumerator {
     auto fetchResult(CalculatedCandidate& candidate) -> void;
 
     auto provider() -> ProviderType&;
+
+    auto getDiameter() const noexcept -> double { return _diameter; }
 
    private:
     auto clearProvider() -> void;
@@ -194,6 +218,7 @@ class WeightedTwoSidedEnumerator {
         _visitedNodes;
     Direction _direction;
     GraphOptions _graphOptions;
+    double _diameter = -std::numeric_limits<double>::infinity();
   };
   enum BallSearchLocation { LEFT, RIGHT, FINISH };
 
@@ -302,7 +327,7 @@ class WeightedTwoSidedEnumerator {
 
   // Check where we want to continue our search
   // (Left or right ball)
-  auto getBallToContinueSearch() -> BallSearchLocation;
+  auto getBallToContinueSearch() const -> BallSearchLocation;
 
   // In case we call this method, we know that we've already produced
   // enough results. This flag will be checked within the "isDone" method
@@ -310,9 +335,6 @@ class WeightedTwoSidedEnumerator {
   // graph searches of type "Shortest Path".
   auto setAlgorithmFinished() -> void;
   auto setAlgorithmUnfinished() -> void;
-
-  auto setInitialFetchVerified() -> void;
-  auto getInitialFetchVerified() -> bool;
   [[nodiscard]] auto isAlgorithmFinished() const -> bool;
 
  private:
@@ -320,28 +342,14 @@ class WeightedTwoSidedEnumerator {
   Ball _left;
   Ball _right;
 
-  // We always start with two vertices (start- and end vertex)
-  // Initially, we want to fetch both and then decide based on the
-  // initial results, where to continue our search.
-  bool _leftInitialFetch{false};   // TODO: Put this into the ball?
-  bool _rightInitialFetch{false};  // TODO: Put this into the ball?
-  // Bool to check whether we've verified our initial fetched steps
-  // or not. This is an optimization. Only during our initial _left and
-  // _right fetch it may be possible that we find matches, which are valid
-  // paths - but not the shortest one. Therefore, we need to compare with both
-  // queues. After that check - we always pull the minStep from both queues.
-  // After init, this check is no longer required as we will always have the
-  // smallest (in terms of path-weight) step in our hands.
-  bool _handledInitialFetch{false};
-
   // Templated result list, where only valid result(s) are stored in
   CandidatesStore _candidatesStore{};
   ResultCache _resultsCache;
   ResultList _results{};
-  double _bestCandidateLength = -1.0;
 
   bool _resultsFetched{false};
   bool _algorithmFinished{false};
+  bool _singleton{false};
 
   PathResult<ProviderType, Step> _resultPath;
 };

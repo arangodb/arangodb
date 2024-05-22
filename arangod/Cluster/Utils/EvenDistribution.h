@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2022-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -31,15 +32,18 @@ struct EvenDistribution : public IShardDistributionFactory {
                    std::vector<ServerID> avoidServers,
                    bool enforceReplicationFactor);
 
-  Result planShardsOnServers(
-      std::vector<ServerID> availableServers,
-      std::unordered_set<ServerID>& serversPlanned) override;
+  auto checkDistributionPossible(std::vector<ServerID>& availableServers)
+      -> Result override;
+
+  auto planShardsOnServers(std::vector<ServerID> availableServers,
+                           std::unordered_set<ServerID>& serversPlanned)
+      -> Result override;
 
  private:
-  uint64_t _numberOfShards;
-  uint64_t _replicationFactor;
-  std::vector<ServerID> _avoidServers;
-  bool _enforceReplicationFactor;
+  uint64_t const _numberOfShards;
+  uint64_t const _replicationFactor;
+  std::vector<ServerID> const _avoidServers;
+  bool const _enforceReplicationFactor;
 };
 
 }  // namespace arangodb

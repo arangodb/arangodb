@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -62,8 +62,13 @@ auto MaintenanceActionExecutor::executeCreateCollection(
 
 auto MaintenanceActionExecutor::executeDropCollection(
     std::shared_ptr<LogicalCollection> col) noexcept -> Result {
-  auto res = basics::catchToResult(
-      [&]() { return methods::Collections::drop(*col, false); });
+  auto res = basics::catchToResult([&]() {
+    // both flags should not be necessary here, as we are only dealing with
+    // shard names here and not actual cluster-wide collection names
+    CollectionDropOptions dropOptions{.allowDropSystem = true,
+                                      .allowDropGraphCollection = true};
+    return methods::Collections::drop(*col, dropOptions);
+  });
 
   LOG_CTX("accd8", DEBUG, _loggerContext)
       << "Dropping local collection " << _vocbase.name() << "/" << col->name()
@@ -79,7 +84,8 @@ auto MaintenanceActionExecutor::executeModifyCollection(
       basics::catchToResult([&col, properties = std::move(properties)]() {
         OperationOptions options(ExecContext::current());
         return methods::Collections::updateProperties(*col, properties.slice(),
-                                                      options);
+                                                      options)
+            .get();
       });
 
   if (res.fail()) {
@@ -103,12 +109,14 @@ auto MaintenanceActionExecutor::executeModifyCollection(
 
 auto MaintenanceActionExecutor::executeCreateIndex(
     std::shared_ptr<LogicalCollection> col, velocypack::SharedSlice properties,
-    std::shared_ptr<methods::Indexes::ProgressTracker> progress) noexcept
-    -> Result {
+    std::shared_ptr<methods::Indexes::ProgressTracker> progress,
+    methods::Indexes::Replication2Callback callback) noexcept -> Result {
   VPackBuilder output;
   auto res = basics::catchToResult([&]() {
     return methods::Indexes::ensureIndex(*col, properties.slice(), true, output,
-                                         std::move(progress));
+                                         std::move(progress),
+                                         std::move(callback))
+        .get();
   });
 
   if (res.ok()) {
@@ -125,14 +133,14 @@ auto MaintenanceActionExecutor::executeCreateIndex(
 }
 
 auto MaintenanceActionExecutor::executeDropIndex(
-    std::shared_ptr<LogicalCollection> col,
-    velocypack::SharedSlice index) noexcept -> Result {
+    std::shared_ptr<LogicalCollection> col, IndexId indexId) noexcept
+    -> Result {
   auto res = basics::catchToResult(
-      [&]() { return methods::Indexes::drop(*col, index.slice()); });
+      [&] { return methods::Indexes::dropDBServer(*col, indexId).get(); });
 
   LOG_CTX("e155f", DEBUG, _loggerContext)
-      << "Dropping local index " << index.toJson() << " of " << _vocbase.name()
-      << "/" << col->name() << ": " << res;
+      << "Dropping local index " << indexId << " of " << _vocbase.name() << "/"
+      << col->name() << ": " << res;
   return res;
 }
 

@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2023-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,6 +23,10 @@
 
 #pragma once
 
+#include "Inspection/Format.h"
+#include "Inspection/Status.h"
+#include "Inspection/Types.h"
+#include "Inspection/VPack.h"
 #include "Replication2/StateMachines/Document/ReplicatedOperation.h"
 
 namespace arangodb::replication2::replicated_state::document {
@@ -44,9 +49,16 @@ struct EnumTypeTransformer {
 };
 
 template<class Inspector>
+auto inspect(Inspector& f, ReplicatedOperation::DocumentOperation::Options& x) {
+  return f.object(x).fields(f.field("refillIndexCaches", x.refillIndexCaches));
+}
+
+template<class Inspector>
 auto inspect(Inspector& f, ReplicatedOperation::DocumentOperation& x) {
   return f.object(x).fields(f.field("tid", x.tid), f.field("shard", x.shard),
-                            f.field("payload", x.payload));
+                            f.field("payload", x.payload),
+                            f.field("options", x.options),
+                            f.field("username", x.userName));
 }
 
 template<class Inspector>
@@ -104,7 +116,7 @@ auto inspect(Inspector& f, ReplicatedOperation::CreateIndex& x) {
 template<class Inspector>
 auto inspect(Inspector& f, ReplicatedOperation::DropIndex& x) {
   return f.object(x).fields(f.field("shard", x.shard),
-                            f.field("index", x.index));
+                            f.field("indexId", x.indexId));
 }
 
 template<class Inspector>
@@ -152,6 +164,20 @@ auto inspect(Inspector& f, ReplicatedOperation& x) {
           inspection::type<ReplicatedOperation::Update>("Update"),
           inspection::type<ReplicatedOperation::Replace>("Replace"),
           inspection::type<ReplicatedOperation::Remove>("Remove"));
+}
+
+template<typename Inspector>
+auto inspect(Inspector& f, UserTransactionOperation& x) {
+  return f.variant(x).embedded("type").alternatives(
+      inspection::type<ReplicatedOperation::Commit>("Commit"),
+      inspection::type<ReplicatedOperation::IntermediateCommit>(
+          "IntermediateCommit"),
+      inspection::type<ReplicatedOperation::Abort>("Abort"),
+      inspection::type<ReplicatedOperation::Truncate>("Truncate"),
+      inspection::type<ReplicatedOperation::Insert>("Insert"),
+      inspection::type<ReplicatedOperation::Update>("Update"),
+      inspection::type<ReplicatedOperation::Replace>("Replace"),
+      inspection::type<ReplicatedOperation::Remove>("Remove"));
 }
 }  // namespace arangodb::replication2::replicated_state::document
 

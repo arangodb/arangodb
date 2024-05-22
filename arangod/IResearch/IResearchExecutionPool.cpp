@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,35 +27,24 @@
 
 namespace arangodb::iresearch {
 
-uint64_t IResearchExecutionPool::allocateThreads(uint64_t deltaActive,
-                                                 uint64_t deltaDemand) {
-  TRI_ASSERT(deltaActive > 0);
-  TRI_ASSERT(deltaDemand <= deltaActive);
+uint64_t IResearchExecutionPool::allocateThreads(uint64_t active,
+                                                 uint64_t demand) {
+  TRI_ASSERT(0 < active);
+  TRI_ASSERT(demand <= active);
   auto curr = _active.load(std::memory_order_relaxed);
   uint64_t newval;
   do {
-    newval = std::min(curr + deltaActive, _limit);
+    newval = std::min(curr + active, _limit);
   } while (!_active.compare_exchange_weak(curr, newval));
-  auto add = newval - curr;
-  if (add > 0) {
-    // TODO: add a single call to thread_pool to change both
-    _pool.max_idle_delta(static_cast<int>(add));
-    _pool.max_threads_delta(static_cast<int>(add));
-  }
-  fetch_add(deltaDemand);
-  return add;
+  fetch_add(demand);
+  return newval - curr;
 }
 
 void IResearchExecutionPool::releaseThreads(uint64_t active, uint64_t demand) {
   TRI_ASSERT(active > 0 || demand > 0);
   TRI_ASSERT(_active.load() >= active);
   TRI_ASSERT(load() >= demand);
-
-  TRI_ASSERT(active < std::numeric_limits<int>::max());
   if (active) {
-    int delta = static_cast<int>(active);
-    _pool.max_idle_delta(-delta);
-    _pool.max_threads_delta(-delta);
     _active.fetch_sub(active);
   }
   fetch_sub(demand);

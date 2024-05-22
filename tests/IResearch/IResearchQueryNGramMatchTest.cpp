@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -653,7 +653,8 @@ class QueryNGramMatch : public QueryTest {
     // test via default analyzer
     if (flags & kAnalyzerIdentity) {
       std::vector<arangodb::velocypack::Slice> expected = {
-          // no results  will be found as identity analyzer has no positions
+          // exact match because fallback to term query in case of single ngram
+          _insertedDocs[0].slice(),
       };
       auto result = arangodb::tests::executeQuery(
           vocbase,
@@ -666,7 +667,7 @@ class QueryNGramMatch : public QueryTest {
 
       for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
         auto const resolved = itr.value().resolveExternals();
-        EXPECT_TRUE(i < expected.size());
+        ASSERT_TRUE(i < expected.size()) << slice.toJson();
         EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                               expected[i++], resolved, true)));
       }
@@ -1142,7 +1143,8 @@ class QueryNGramMatch : public QueryTest {
     // test via default analyzer
     if (flags & kAnalyzerIdentity) {
       std::vector<arangodb::velocypack::Slice> expected = {
-          // no results  will be found as identity analyzer has no positions
+          // exact match because fallback to term query in case of single ngram
+          _insertedDocs[0].slice(),
       };
       auto result = arangodb::tests::executeQuery(
           vocbase,
@@ -1155,7 +1157,7 @@ class QueryNGramMatch : public QueryTest {
 
       for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
         auto const resolved = itr.value().resolveExternals();
-        EXPECT_TRUE(i < expected.size());
+        ASSERT_TRUE(i < expected.size()) << slice.toJson();
         EXPECT_TRUE((0 == arangodb::basics::VelocyPackHelper::compare(
                               expected[i++], resolved, true)));
       }
@@ -1239,7 +1241,7 @@ class QueryNGramMatchSearch : public QueryNGramMatch {
         version(), toString(analyzer)));
     auto collection = vocbase.lookupCollection("testCollection0");
     ASSERT_TRUE(collection);
-    collection->createIndex(createJson->slice(), created);
+    collection->createIndex(createJson->slice(), created).get();
     ASSERT_TRUE(created);
 
     // add view

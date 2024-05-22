@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -182,13 +182,15 @@ struct AsyncAgencyCommTest
       public arangodb::tests::LogSuppressor<arangodb::Logger::THREADS,
                                             arangodb::LogLevel::FATAL> {
   AsyncAgencyCommTest() : server("CRDN_0001", false) {
-    server.addFeature<SchedulerFeature>(true);
+    server.addFeature<SchedulerFeature>(
+        true, server.template getFeature<arangodb::metrics::MetricsFeature>());
     server.startFeatures();
   }
 
   network::ConnectionPool::Config config() {
-    network::ConnectionPool::Config config(
-        server.getFeature<metrics::MetricsFeature>());
+    network::ConnectionPool::Config config;
+    config.metrics = network::ConnectionPool::Metrics::fromMetricsFeature(
+        server.getFeature<metrics::MetricsFeature>(), "agency-comm");
     config.clusterInfo = &server.getFeature<ClusterFeature>().clusterInfo();
     config.numIOThreads = 1;
     config.maxOpenConnections = 3;

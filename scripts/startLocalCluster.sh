@@ -117,7 +117,7 @@ else
 fi
 
 if [ "$TRANSPORT" == "ssl" ]; then
-  SSLKEYFILE="--ssl.keyfile UnitTests/server.pem"
+  SSLKEYFILE="--ssl.keyfile etc/testing/server.pem"
   CURL="curl --insecure $CURL_AUTHENTICATION -s -f -X GET https:"
 else
   SSLKEYFILE=""
@@ -305,14 +305,14 @@ for p in `seq $CO_BASE $PORTTOPCO` ; do
 done
 
 if [[ -d "$PWD/enterprise" ]]; then
-    "${BUILD}"/bin/arangosh --server.endpoint "$TRANSPORT://[::1]:$CO_BASE" --javascript.execute "enterprise/scripts/startLocalCluster.js"
+    "${BUILD}"/bin/arangosh --server.endpoint "$TRANSPORT://$ADDRESS:$CO_BASE" --javascript.execute "enterprise/scripts/startLocalCluster.js"
 fi
 
 echo == Done, your cluster is ready at
 for p in `seq $CO_BASE $PORTTOPCO` ; do
   if [ -z "$JWT_SECRET" ];then
-    echo "   ${BUILD}/bin/arangosh --server.endpoint $TRANSPORT://[::1]:$p"
+    echo "   ${BUILD}/bin/arangosh --server.endpoint $TRANSPORT://$ADDRESS:$p"
   else
-    echo "   ${BUILD}/bin/arangosh --server.endpoint $TRANSPORT://[::1]:$p --server.jwt-secret-keyfile cluster/jwt.secret"
+    echo "   ${BUILD}/bin/arangosh --server.endpoint $TRANSPORT://$ADDRESS:$p --server.jwt-secret-keyfile cluster/jwt.secret"
   fi
 done

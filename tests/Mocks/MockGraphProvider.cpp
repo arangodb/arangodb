@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -183,6 +184,8 @@ auto MockGraphProvider::addEdgeToBuilder(const Step::Edge& edge,
     -> void {
   std::string fromId = edge.getEdge()._from;
   std::string toId = edge.getEdge()._to;
+  ADB_PROD_ASSERT(fromId.size() >= 2) << "fromId: `" << fromId << "`";
+  ADB_PROD_ASSERT(toId.size() >= 2) << "toId: `" << toId << "`";
   std::string keyId = fromId.substr(2) + "-" + toId.substr(2);
 
   builder.openObject();

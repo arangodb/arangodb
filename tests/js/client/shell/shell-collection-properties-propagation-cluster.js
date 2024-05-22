@@ -1,28 +1,29 @@
 /*jshint globalstrict:false, strict:false, maxlen: 5000 */
 /* global assertTrue, assertFalse, assertEqual, assertUndefined, fail */
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Jan Steemann
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
 
@@ -105,6 +106,11 @@ function CollectionPropertiesPropagationSuite() {
     },
     
     testCreateOtherWithDifferentWriteConcern : function () {
+      if (db._properties().replicationVersion === "2") {
+        // in replication 2 the writeConcern is associated with the log (i.e., with the collection group),
+        // so we cannot create a collection with a different writeConcern
+        return;
+      }
       let c = db._create(other, { distributeShardsLike: proto, writeConcern: 1 });
 
       let p = c.properties();
@@ -151,6 +157,12 @@ function CollectionPropertiesPropagationSuite() {
         internal.sleep(1);
       }
       assertEqual(2, servers.length);
+
+      // For ReplicationVersion 2 shards and followerCollections
+      // all report the change in ReplicationFactor.
+      // For ReplicationVersion 1 only the Leading collection
+      // knows about the change.
+      const expectedRF = db._properties().replicationVersion === "2" ? 2 : 3;
      
       // shards do not see the replicationFactor update
       let keys;
@@ -163,7 +175,7 @@ function CollectionPropertiesPropagationSuite() {
         assertTrue(keys.length > 0);
         let found = 0;
         keys.forEach((s) => {
-          if (p[s].replicationFactor === 3) {
+          if (p[s].replicationFactor === expectedRF) {
             ++found;
           }
         });
@@ -174,20 +186,18 @@ function CollectionPropertiesPropagationSuite() {
       }
           
       keys.forEach((s) => {
-        assertEqual(3, p[s].replicationFactor, {s, p});
+        assertEqual(expectedRF, p[s].replicationFactor, {s, p});
       });
 
-      // dependent collection won't see the replicationFactor update
       p = c.properties();
       assertEqual(proto, p.distributeShardsLike);
-      assertEqual(3, p.replicationFactor);
-
-      // nor do its shards
+      assertEqual(expectedRF, p.replicationFactor, p);
+      
       p = propertiesOnDBServers(c);
       keys = Object.keys(p);
       assertTrue(keys.length > 0);
       keys.forEach((s) => {
-        assertEqual(3, p[s].replicationFactor, {s, p});
+        assertEqual(expectedRF, p[s].replicationFactor, {s, p});
       });
     },
     
@@ -197,7 +207,7 @@ function CollectionPropertiesPropagationSuite() {
       db[proto].properties({ writeConcern: 1 });
       
       let p = db[proto].properties();
-      assertEqual(1, p.writeConcern);
+      assertEqual(1, p.writeConcern, p);
       
       // shards will see the writeConcern update
       let keys;
@@ -225,16 +235,24 @@ function CollectionPropertiesPropagationSuite() {
       });
 
       // dependent collection won't see the writeConcern update
+      const isReplicationTwo = db._properties().replicationVersion === "2";
+      // In Replication1 the followers won't see the writeConcern update
+      // as they are not changed
+      // In Replication2 the followers share the replicated log with the
+      // leader, and the log holds the writeConcern, hence all are updated.
+      // The above holds true for the collection as well as the corresponding
+      // shards.
+      const expectedFollowerWriteConcern = isReplicationTwo ? 1 : 2;
       p = c.properties();
       assertEqual(proto, p.distributeShardsLike);
-      assertEqual(2, p.writeConcern);
 
-      // nor do its shards
+      assertEqual(expectedFollowerWriteConcern, p.writeConcern);
+
       p = propertiesOnDBServers(c);
       keys = Object.keys(p);
       assertTrue(keys.length > 0);
       keys.forEach((s) => {
-        assertEqual(2, p[s].writeConcern, {s, p});
+        assertEqual(expectedFollowerWriteConcern, p[s].writeConcern, {s, p});
       });
     },
     
@@ -251,13 +269,46 @@ function CollectionPropertiesPropagationSuite() {
     
     testChangeWriteConcernForOther : function () {
       let c = db._create(other, { distributeShardsLike: proto });
-
-      try {
-        c.properties({ writeConcern: 1 });
-        fail();
-      } catch (err) {
-        assertEqual(internal.errors.ERROR_FORBIDDEN.code, err.errorNum);
+      
+      let p = db[proto].properties();
+      assertEqual(2, p.writeConcern, p);
+      
+      p = db[other].properties();
+      assertEqual(2, p.writeConcern, p);
+        
+      db[other].properties({ writeConcern: 1 });
+      
+      p = db[proto].properties();
+      const isReplicationTwo = db._properties().replicationVersion === "2";
+      assertEqual(isReplicationTwo ? 1 : 2, p.writeConcern, p);
+      
+      p = db[other].properties();
+      assertEqual(1, p.writeConcern, p);
+      
+      // shards will see the writeConcern update
+      let keys;
+      let tries = 15;
+      // propagation to DB servers is carried out by the
+      // maintenance. give it some time...
+      while (tries-- > 0) {
+        p = propertiesOnDBServers(db[other]);
+        keys = Object.keys(p);
+        assertTrue(keys.length > 0);
+        let found = 0;
+        keys.forEach((s) => {
+          if (p[s].writeConcern === 1) {
+            ++found;
+          }
+        });
+        if (found === keys.length) {
+          break;
+        }
+        internal.sleep(1);
       }
+        
+      keys.forEach((s) => {
+        assertEqual(1, p[s].writeConcern, {s, p});
+      });
     },
   };
 }

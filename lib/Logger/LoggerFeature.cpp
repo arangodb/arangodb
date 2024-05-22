@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -31,14 +31,10 @@
 #include <unistd.h>
 #endif
 
-#if _WIN32
-#include <iostream>
-#include "Basics/win-utils.h"
-#endif
-
 #include "LoggerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/FileUtils.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
@@ -60,9 +56,7 @@ using namespace arangodb::options;
 
 // Please leave this code in for the next time we have to debug fuerte.
 #if 0
-void LogHackWriter(char const* p) {
-  LOG_DEVEL << p;
-}
+void LogHackWriter(std::string_view msg) { LOG_DEVEL << msg; }
 #endif
 
 namespace arangodb {
@@ -166,8 +160,8 @@ available:
 
 - `database`: The name of the database.
 - `username`: The name of the user.
+- `queryid`: The ID of the AQL query (on DB-Servers only).
 - `url`: The endpoint path.
-- `pregelID`: The ID of the Pregel job.
 
 The format to enable or disable a parameter is `<parameter>=<bool>`, or
 `<parameter>` to enable it. You can specify the option multiple times to
@@ -182,11 +176,7 @@ You can adjust the parameter settings at runtime using the
   options
       ->addOption("--log.output,-o",
                   "Log destination(s), e.g. "
-#ifdef _WIN32
-                  "file://C:\\path\\to\\file"
-#else
                   "file:///path/to/file"
-#endif
                   " (any occurrence of $PID is replaced with the process ID).",
                   new VectorParameter<StringParameter>(&_output))
       .setLongDescription(R"(This option allows you to direct the global or
@@ -229,8 +219,7 @@ applied as well.
 
 If you specify `--log.file-group <name>`, then any newly created log file tries
 to use `<name>` as the group name. Note that you have to be a member of that
-group. Otherwise, the group ownership is not changed. This option is only
-available under Linux and macOS. It is not available under Windows.
+group. Otherwise, the group ownership is not changed.
 
 The old `--log.file` option is still available for convenience. It is a
 shortcut for the more general option `--log.output file://filename`.
@@ -655,9 +644,8 @@ void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
     if (valid && gidNumber >= 0) {
 #ifdef ARANGODB_HAVE_GETGRGID
-      group* g = getgrgid(gidNumber);
-
-      if (g == nullptr) {
+      std::optional<gid_t> gid = FileUtils::findGroup(_fileGroup);
+      if (!gid) {
         LOG_TOPIC("174c2", FATAL, arangodb::Logger::FIXME)
             << "unknown numeric gid '" << _fileGroup << "'";
         FATAL_ERROR_EXIT();
@@ -665,10 +653,9 @@ void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 #endif
     } else {
 #ifdef ARANGODB_HAVE_GETGRNAM
-      group* g = getgrnam(_fileGroup.c_str());
-
-      if (g != nullptr) {
-        gidNumber = g->gr_gid;
+      std::optional<gid_t> gid = FileUtils::findGroup(_fileGroup);
+      if (gid) {
+        gidNumber = gid.value();
       } else {
         TRI_set_errno(TRI_ERROR_SYS_ERROR);
         LOG_TOPIC("11a2c", FATAL, arangodb::Logger::FIXME)
@@ -695,13 +682,6 @@ void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void LoggerFeature::prepare() {
-#if _WIN32
-  if (!TRI_InitWindowsEventLog()) {
-    std::cerr << "failed to init event log" << std::endl;
-    FATAL_ERROR_EXIT();
-  }
-#endif
-
   // set maximum length for each log entry
   Logger::defaultLogGroup().maxLogEntryLength(
       std::max<uint32_t>(256, _maxEntryLength));
@@ -740,9 +720,9 @@ void LoggerFeature::prepare() {
   }
 
   if (_forceDirect || _supervisor) {
-    Logger::initialize(server(), false, _maxQueuedLogMessages);
+    Logger::initialize(false, _maxQueuedLogMessages);
   } else {
-    Logger::initialize(server(), _threaded, _maxQueuedLogMessages);
+    Logger::initialize(_threaded, _maxQueuedLogMessages);
   }
 }
 

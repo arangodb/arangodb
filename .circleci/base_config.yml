@@ -1,15 +1,48 @@
 version: 2.1
 
+orbs:
+  aws-cli: circleci/aws-cli@4.1.1
+  aws-ecr: circleci/aws-ecr@9.0.1
+  
 parameters:
+  enterprise-commit:
+    type: string
+    default: ""
+  build-docker-image:
+    type: string
+    default: "arangodb/ubuntubuildarangodb-devel:4"
+  test-docker-image:
+    type: string
+    default: public.ecr.aws/b0b8h2r4/test-ubuntu:23.10-fc8ee57e
+  # Unused here, but it will be forwarded from config and will cause errors if not defined
   enterprise-branch:
     type: string
     default: ""
-  default-enterprise-branch:
+  dont-cancel-pipelines:
+    type: boolean
+    default: false
+  create-docker-images:
+    type: boolean
+    default: false
+  nightly:
+    type: boolean
+    default: false
+  replication-two:
+    type: boolean
+    default: false
+  sanitizer:
     type: string
-    default: "devel"
+    default: ""
+  c-compiler:
+    type: string
+    default: "clang"
+  cxx-compiler:
+    type: string
+    default: "clang++"
+  # these are basically global constants
   build-targets:
     type: string
-    default: "arangod arangoimport arangoexport arangodump arangorestore arangobench"
+    default: "arangod arangoimport arangoexport arangodump arangorestore arangobench frontend"
   test-build-targets:
     type: string
     default: "arangodbtests fuertetest"
@@ -19,9 +52,6 @@ parameters:
   v8-build-targets:
     type: string
     default: "arangosh"
-  build-docker-tag:
-    type: string
-    default: arangodb/build-alpine:3.16-gcc11.2-openssl3.1.3-4999848556c
 
 commands:
   checkout-arangodb:
@@ -63,22 +93,13 @@ commands:
             - "f9:49:75:1a:ad:44:89:10:4b:3c:70:70:ba:d3:c3:ce"
       - run:
           name: Checkout Enterprise
+          environment:
+            GIT_SSH_COMMAND: "ssh -o StrictHostKeyChecking=no"
           command: |
-            ssh-keyscan github.com >> ~/.ssh/known_hosts
-            if ["<< pipeline.parameters.enterprise-branch >>" == ""]; then
-              set +e
-              git ls-remote --exit-code --heads git@github.com:arangodb/enterprise.git "$CIRCLE_BRANCH"
-              if [ "$?" == "0" ] ; then
-                ENTERPRISE_BRANCH=$CIRCLE_BRANCH
-              else
-                ENTERPRISE_BRANCH=devel
-              fi
-              set -e
-            else
-              ENTERPRISE_BRANCH=<< pipeline.parameters.enterprise-branch >>
-            fi
-            echo "Using enterprise branch $ENTERPRISE_BRANCH"
-            git clone --depth 1 git@github.com:arangodb/enterprise.git --branch "$ENTERPRISE_BRANCH" << parameters.destination >>
+            mkdir -p << parameters.destination >>
+            cd << parameters.destination >>
+            git clone git@github.com:arangodb/enterprise.git .
+            git reset --hard << pipeline.parameters.enterprise-commit >>
 
 jobs:
   minimal-checkout:
@@ -93,6 +114,12 @@ jobs:
           destination: "/home/circleci/project"
       - checkout-enterprise:
           destination: "/home/circleci/project/enterprise"
+      - run:
+          name: Checkout rta-makedata
+          command: |
+            # we are only interested in the rta-makedata submodule because we want to run eslint on it,
+            # but we do not care about the other submodules (specifically we do _not_ want to clone v8)
+            git submodule update --init 3rdParty/rta-makedata
       - persist_to_workspace:
           root: .
           paths:
@@ -114,6 +141,23 @@ jobs:
           name: Check LogIDs
           command: |
             python3 utils/checkLogIds.py
+
+  check-metrics-docs:
+    docker:
+      - image: cimg/python:3.11.1
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: Install pyyaml
+          command: |
+            python -m pip install --upgrade pip
+            pip install pyyaml
+      - run:
+          name: Check LogIDs
+          command: |
+            python3 utils/generateAllMetricsDocumentation.py
 
   clang-format:
     docker:
@@ -190,13 +234,15 @@ jobs:
         type: string
         default: ""
     docker:
-      - image: << pipeline.parameters.build-docker-tag >>
+      - image: << pipeline.parameters.build-docker-image >>
     resource_class: << parameters.resource-class >>
     environment:
       GIT_SSH_COMMAND: ssh
       SCCACHE_ERROR_LOG: /tmp/sccache.log
       SCCACHE_LOG: info,sccache::cache=debug,sccache::compiler::compiler=debug
       SCCACHE_S3_KEY_PREFIX: << parameters.s3-prefix >>
+      CC: /tools/clang
+      CXX: /tools/clang++
     steps:
       - checkout-arangodb:
           with-submodules: true
@@ -212,7 +258,15 @@ jobs:
       - run:
           name: Configure
           command: |
-            cmake --preset << parameters.preset >> -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_LIBRARY_PATH=$OPENSSL_ROOT_DIR/lib
+            cmake --preset << parameters.preset >> \
+              -DCMAKE_C_COMPILER=<< pipeline.parameters.c-compiler >> \
+              -DCMAKE_CXX_COMPILER=<< pipeline.parameters.cxx-compiler >> \
+              -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" \
+              -DCMAKE_LIBRARY_PATH=$OPENSSL_ROOT_DIR/lib \
+              -DCMAKE_C_COMPILER_LAUNCHER=sccache \
+              -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
+              -DOPENSSL_ROOT_DIR=/opt \
+              -DCMAKE_INSTALL_PREFIX=/
       - run:
           name: Build
           command: |
@@ -228,6 +282,18 @@ jobs:
             fi
             echo "Building targets: $TARGETS"
             cmake --build --preset << parameters.preset >> --parallel 8 --target $TARGETS
+      - when:
+          condition: << pipeline.parameters.create-docker-images >>
+          steps:
+            - run:
+                name: Create install package
+                command: |
+                  mkdir install
+                  # Note: ATM this will rebuild the frontend
+                  DESTDIR=`pwd`/install cmake --build --preset << parameters.preset >> --parallel 8 --target install
+                  strip ./install/usr/bin/arango*
+                  strip ./install/usr/sbin/arangod
+                  tar -czf install.tar.gz -C install ./
       - run:
           name: Size leaderboard
           command: |
@@ -237,6 +303,8 @@ jobs:
           command: |
             find build/ -iname *.a -delete || true
             find build/ -iname *.o -delete || true
+            find build/ -iname *.o.d -delete || true
+            rm js/apps/system/_admin/aardvark/APP/react/node_modules -rf
       - run:
           name: SCCache Statistics
           command: sccache -s
@@ -250,9 +318,14 @@ jobs:
             - persist_to_workspace:
                 root: .
                 paths:
+                  - VERSIONS
                   - build/compile_commands.json
                   - CMakePresets.json
-                  - build/
+                  - install.tar.gz
+                  - build/bin
+                  - build/etc
+                  - build/3rdParty/iresearch/external/snowball/libstemmer/
+                  - build/build_version.cc
                   - scripts/
                   - js/
                   - enterprise/js
@@ -260,146 +333,49 @@ jobs:
                   - tests/js
                   - enterprise/tests/js
                   - utils
-                  - UnitTests
                   - 3rdParty/iresearch/tests/resources
                   - 3rdParty/rta-makedata
+                  - tsan_arangodb_suppressions.txt
+                  - ubsan_arangodb_suppressions.txt
+                  - lsan_arangodb_suppressions.txt
 
-  compile-mac:
+  create-docker-image:
     parameters:
-      preset:
-        type: string
-      resource:
-        type: string
-      build-tests:
-        type: boolean
-      enterprise:
-        type: boolean
-        default: false
-      publish-artifacts:
-        type: boolean
-        default: true
-    macos:
-      xcode: 14.2.0
-    resource_class: << parameters.resource >>
-    steps:
-      - checkout-arangodb:
-          with-submodules: true
-          destination: "~/project"
-      - when:
-          condition: << parameters.enterprise >>
-          steps:
-            - checkout-enterprise:
-                destination: "~/project/enterprise"
-      - run:
-          name: "Install llvm"
-          command: |
-            brew install cmake llvm@14
-      - run:
-          name: "Install OpenSSL"
-          command: |
-            export MAC_OPENSSL=`grep OPENSSL_MACOS ~/project/VERSIONS|cut -d '"' -f 2-2`
-            wget https://www.openssl.org/source/openssl-$MAC_OPENSSL.tar.gz --directory-prefix=/tmp
-            mkdir ~/openssl
-            tar zvxf /tmp/openssl-$MAC_OPENSSL.tar.gz -C ~/openssl --strip-components 1
-            cd ~/openssl/
-            ./config
-            make -j8
-      - run:
-          name: "Configure"
-          command: |
-            export PATH="/opt/homebrew/opt/llvm@14/bin:/usr/local/opt/llvm@14/bin:$PATH"
-            export MACOSX_DEPLOYMENT_TARGET=11.0
-            export OPENSSL_ROOT_DIR=~/openssl
-            mkdir ~/build
-            cmake --preset << parameters.preset >> -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_LIBRARY_PATH=~/openssl/ -DSTATIC_EXECUTABLES=Off -DCMAKE_EXE_LINKER_FLAGS="-Wl" -S ~/project -B ~/build
-      - run:
-          name: "Build"
-          command: |
-            echo "Building targets: client-tools"
-            cmake --build ~/build --parallel 8 --target client-tools
-
-  compile-windows:
-    parameters:
-      preset:
-        type: string
-      build-tests:
-        type: boolean
-      publish-artifacts:
-        type: boolean
-        default: true
-    machine: true
-    resource_class: "arangodb/win"
-    shell: powershell.exe
-    environment:
-      GIT_SSH_COMMAND: ssh
-      SCCACHE_ERROR_LOG: /tmp/sccache.log
-      SCCACHE_LOG: info,sccache::cache=debug,sccache::compiler::compiler=debug
-    steps:
-      - checkout-arangodb:
-          with-submodules: true
-          destination: "D:/CircleCI/project"
-      # TODO - checking out enterprise is does currently not work on windows; will be addressed in a separate PR
-      # for windows we build only enterprise, so we can check it out unconditionally
-      # - checkout-enterprise:
-      #    destination: "D:/CircleCI/project/enterprise"
-      # TODO - sccache currently doesn't work on windows; will be addressed in a separate PR
-      # - run:
-      #     name: Print SCCache Settings
-      #     command: sccache -s
-      - run:
-          name: "Configure"
-          shell: powershell.exe
-          command: |
-            mkdir build
-            # make sure we have the latest image!
-            docker pull arangodb/build-windows-x64:10.0.17763.4737-VS-17.3.3-OpenSSL-3.1.3
-            # TODO - use preset
-            # TODO - enable enterprise!
-            docker run --rm --isolation process -v D:/CircleCI/project:C:/project -w C:/project/build arangodb/build-windows-x64:10.0.17763.4737-VS-17.3.3-OpenSSL-3.1.3 cmake -G 'Visual Studio 17 2022' -T 'v143,host=x64' -DUSE_MAINTAINER_MODE=On -DUSE_GOOGLE_TESTS=On -DUSE_ENTERPRISE=Off -DCMAKE_BUILD_TYPE=RelWithDebInfo -DPACKAGING=NSIS -DCMAKE_INSTALL_PREFIX=/ -DSKIP_PACKAGING=On -DUSE_FAILURE_TESTS=On -DSTATIC_EXECUTABLES=On -DOPENSSL_USE_STATIC_LIBS=On -DUSE_STRICT_OPENSSL_VERSION=On ..
-      - run:
-          name: "Build"
-          shell: powershell.exe
-          command: |
-            docker run --rm --isolation process -v D:/CircleCI/project:C:/project -w C:/project/build arangodb/build-windows-x64:10.0.17763.4737-VS-17.3.3-OpenSSL-3.1.3 cmake --build . --config `"RelWithDebInfo`" --parallel -- /p:CL_MPcount=24
-      - store_artifacts:
-          destination: arangod.exe
-          path: D:/CircleCI/project/build/bin/RelWithDebInfo/arangod.exe
-
-      # TODO - enable artifact upload once we actually use them
-      # - run:
-      #     name: Cleanup build directory
-      #     command: |
-      #       find build/ -iname *.a -delete || true
-      #       find build/ -iname *.o -delete || true
-      # - run:
-      #     name: SCCache Statistics
-      #     command: sccache -s
-      # - store_artifacts:
-      #     path: /tmp/sccache.log
-      # - when:
-      #     condition: << parameters.publish-artifacts >>
-      #     steps:
-      #       - store_artifacts:
-      #           path: build/bin/arango*
-      #       - persist_to_workspace:
-      #           root: .
-      #           paths:
-      #             - CMakePresets.json
-      #             - build/
-      #             - scripts/
-      #             - js/
-      #             - enterprise/js
-      #             - etc/
-      #             - tests/js
-      #             - enterprise/tests/js
-      #             - utils
-      #             - UnitTests
-      #             - 3rdParty/iresearch/tests/resources
-      #             - 3rdParty/rta-makedata
-
-  run-tests:
+      resource-class:
+          type: string
+      arch:
+          type: string
+      tag:
+          type: string
     docker:
-      - image: arangodb/test-ubuntu:22.04-6c4e824d8d2
+      - image: cimg/base:current
+    resource_class: << parameters.resource-class >>
+    steps:
+      - aws-cli/setup:
+          role_arn: "arn:aws:iam::242063586340:role/CircleCI-Container-Handler"
+      - aws-ecr/ecr_login:
+          public_registry: true
+      - setup_remote_docker:
+            docker_layer_caching: true
+      - attach_workspace:
+          at: .
+      - run:
+          name: Create Docker Image
+          command: |
+            STARTER_REV=$(grep -Po "STARTER_REV \"\Kv\d+\.\d+\.\d+" VERSIONS)
+            cd scripts/docker/deploy
+            mkdir install
+            tar -xzf ../../../install.tar.gz -C install
+            curl -s -L -o "install/usr/bin/arangodb" "https://github.com/arangodb-helper/arangodb/releases/download/$STARTER_REV/arangodb-linux-<< parameters.arch >>"
+            # TODO
+            #  - download rclone
+            docker build --platform linux/<< parameters.arch >> --build-arg arch=<< parameters.arch >> -t << parameters.tag >> --file deploy-alpine.dockerfile .
+            echo "Pushing image << parameters.tag >>"
+            docker push << parameters.tag >>
+
+  run-linux-tests:
+    docker:
+      - image: << pipeline.parameters.test-docker-image >>
     parameters:
       suiteName:
         type: string
@@ -415,6 +391,9 @@ jobs:
         default: 1
       cluster:
         type: boolean
+      timeLimit:
+        type: integer
+        default: 1800
     resource_class: << parameters.size >>
     parallelism: << parameters.buckets >>
     steps:
@@ -429,8 +408,18 @@ jobs:
           no_output_timeout: 20m
           command: |
             mkdir work
+            if [ "<< pipeline.parameters.sanitizer >>" = "alubsan" ]; then
+              export ASAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/alubsan.log:handle_ioctl=true:check_initialization_order=true:detect_container_overflow=true:detect_stack_use_after_return=false:detect_odr_violation=1:strict_init_order=true"
+              export LSAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/alubsan.log:suppressions=lsan_arangodb_suppressions.txt:print_suppressions=0"
+              export UBSAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/alubsan.log:print_stacktrace=1:suppressions=ubsan_arangodb_suppressions.txt:print_suppressions=0"
+              export SAN_MODE=alubsan
+            elif [ "<< pipeline.parameters.sanitizer >>" = "tsan" ]; then
+              export TSAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/tsan.log:detect_deadlocks=true:second_deadlock_stack=1:suppressions=tsan_arangodb_suppressions.txt:print_suppressions=0"
+              export SAN_MODE=tsan
+            fi
             # Note: we need the leading space for extraArgs to avoid a parsing issue in argparse
-            python3 scripts/test/test_launch_controller.py << parameters.suites >> \
+            export TIMELIMIT=<< parameters.timeLimit >>
+            python3 -u scripts/test/test_launch_controller.py << parameters.suites >> \
               --testBuckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX \
               --cluster << parameters.cluster >> \
               --extraArgs " << parameters.extraArgs >>" \
@@ -439,6 +428,7 @@ jobs:
           name: Copy test results
           when: always
           command: |
+            ls -la ./work/
             mkdir test-results
             find testrunXml -iname *xml -exec cp "{}" --target-directory=./test-results \;
       - store_artifacts:
@@ -449,7 +439,7 @@ jobs:
 
   run-hotbackup-tests:
     docker:
-      - image: arangodb/test-ubuntu:22.04-6c4e824d8d2
+      - image: << pipeline.parameters.test-docker-image >>
     parameters:
       size:
         type: string
@@ -463,7 +453,7 @@ jobs:
       - run:
           name: Install dependencies
           command: |
-            pip install -r scripts/toolbox/requirements.txt
+            pip install -r scripts/toolbox/requirements.txt --break-system-packages
       - run:
           name: Run HotBackup tests
           command: |
@@ -481,18 +471,26 @@ jobs:
 
   run-cppcheck:
     docker:
-      - image: << pipeline.parameters.build-docker-tag >>
+      - image: << pipeline.parameters.build-docker-image >>
     resource_class: medium+
     steps:
       - run:
           name: Prepare container
           command: |
             mkdir -p /root/workspace/ 
-            mkdir -p /root/project/ 
+            mkdir -p /root/project/
       - attach_workspace:
           at: "/root/workspace/"
+      - run:
+          name: Print workspace size
+          command: |
+            du -sh /root/workspace/*
+            echo ===================
+            du -sh /root/workspace/build/*
+            echo ===================
+            du -sh /root/workspace/build/bin/*
       - checkout-arangodb:
-          with-submodules: true 
+          with-submodules: true
           destination: "/root/project"
       - checkout-enterprise:
           destination: "/root/project/enterprise"
@@ -501,7 +499,7 @@ jobs:
           command: |
             ln -s /root/workspace/build/ /root/project/
             cd /root/project/ 
-            utils/cppcheck-circleci.sh /root/workspace/build/compile_commands.json  
+            utils/cppcheck-circleci.sh /root/workspace/build/compile_commands.json
       - run:
           name: Format result
           when: always
@@ -524,6 +522,10 @@ workflows:
           name: check-log-ids
           requires:
             - minimal-checkout
+      - check-metrics-docs:
+          name: check-metrics-docs
+          requires:
+            - minimal-checkout
       - clang-format:
           name: clang-format
           requires:
@@ -532,128 +534,4 @@ workflows:
           name: eslint
           requires:
             - minimal-checkout
-
-  x64-community-pr:
-    jobs:
-      - compile-linux:
-          context:
-            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
-          resource-class: xlarge
-          name: build-ce-x64
-          preset: community-pr
-          enterprise: false
-      - run-cppcheck:
-          name: cppcheck
-          requires:
-            - build-ce-x64
-
-  x64-enterprise-pr:
-    jobs:
-      - compile-linux:
-          context:
-            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
-          resource-class: xlarge
-          name: build-ee-x64
-          preset: enterprise-pr
-          enterprise: true
-      - compile-linux:
-          context:
-            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
-          resource-class: xlarge
-          name: build-ee-non-maintainer-x64
-          preset: enterprise-pr-non-maintainer
-          enterprise: true
-          publish-artifacts: false
-          build-tests: false
-      - compile-linux:
-          context:
-            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
-          resource-class: xlarge
-          name: build-ee-no-v8-x64
-          preset: enterprise-pr-no-v8
-          enterprise: true
-          publish-artifacts: false
-          build-tests: false
-          build-v8: false
-
-      - run-cppcheck:
-          name: cppcheck
-          requires:
-            - build-ee-x64
-      - run-hotbackup-tests:
-          name: run-hotbackup-tests-x64
-          size: medium
-          requires:
-            - build-ee-x64
-
-  aarch64-community-pr:
-    jobs:
-      - compile-linux:
-          context:
-            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
-          resource-class: arm.xlarge
-          s3-prefix: aarch64
-          name: build-ce-aarch64
-          preset: community-pr
-          enterprise: false
-
-  aarch64-enterprise-pr:
-    jobs:
-      - compile-linux:
-          context:
-            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
-          resource-class: arm.xlarge
-          s3-prefix: aarch64
-          name: build-ee-aarch64
-          preset: enterprise-pr
-          enterprise: true
-      - run-hotbackup-tests:
-          name: run-hotbackup-tests-aarch64
-          size: arm.medium
-          requires:
-            - build-ee-aarch64
-
-  windows-community-pr:
-    jobs:
-      - compile-windows:
-          context:
-            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
-          name: build-ee-win
-          preset: enterprise-pr
-          build-tests: true
-
-  mac-tools-pr:
-    jobs:
-      - compile-mac:
-          context:
-            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
-          name: mac-tools-m1-enterprise-pr
-          resource: macos.m1.medium.gen1
-          preset: enterprise-pr
-          build-tests: false
-          enterprise: true
-      - compile-mac:
-          context:
-            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
-          name: mac-tools-m1-community-pr
-          resource: macos.m1.medium.gen1
-          preset: community-pr
-          build-tests: false
-          enterprise: false
-      - compile-mac:
-          context:
-            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
-          name: mac-tools-x86-enterprise-pr
-          resource: macos.x86.medium.gen2
-          preset: enterprise-pr
-          build-tests: false
-          enterprise: true
-      - compile-mac:
-          context:
-            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
-          name: mac-tools-x86-community-pr
-          resource: macos.x86.medium.gen2
-          preset: community-pr
-          build-tests: false
-          enterprise: false
-
+  # all other workflows are defined in generate_config.py

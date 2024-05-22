@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -65,9 +65,9 @@ RestStatus RestSimpleHandler::execute() {
     std::string const& prefix = _request->requestPath();
 
     if (prefix == RestVocbaseBaseHandler::SIMPLE_REMOVE_PATH) {
-      return removeByKeys(body);
+      return waitForFuture(removeByKeys(body));
     } else if (prefix == RestVocbaseBaseHandler::SIMPLE_LOOKUP_PATH) {
-      return lookupByKeys(body);
+      return waitForFuture(lookupByKeys(body));
     } else {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                     "unsupported value for <operation>");
@@ -81,7 +81,8 @@ RestStatus RestSimpleHandler::execute() {
   return RestStatus::DONE;
 }
 
-RestStatus RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
+futures::Future<RestStatus> RestSimpleHandler::removeByKeys(
+    VPackSlice const& slice) {
   TRI_ASSERT(slice.isObject());
   std::string collectionName;
   {
@@ -90,7 +91,7 @@ RestStatus RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
     if (!value.isString()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                     "expecting string for <collection>");
-      return RestStatus::DONE;
+      co_return RestStatus::DONE;
     }
 
     collectionName = value.copyString();
@@ -109,7 +110,7 @@ RestStatus RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
   if (!keys.isArray()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                   "expecting array for <keys>");
-    return RestStatus::DONE;
+    co_return RestStatus::DONE;
   }
 
   bool waitForSync = false;
@@ -156,8 +157,9 @@ RestStatus RestSimpleHandler::removeByKeys(VPackSlice const& slice) {
   data.close();  // bindVars
   data.close();
 
-  return registerQueryOrCursor(data.slice(), transaction::OperationOriginREST{
-                                                 "removing documents by keys"});
+  co_return co_await registerQueryOrCursor(
+      data.slice(),
+      transaction::OperationOriginREST{"removing documents by keys"});
 }
 
 RestStatus RestSimpleHandler::handleQueryResult() {
@@ -246,7 +248,8 @@ void RestSimpleHandler::handleQueryResultLookupByKeys() {
                  _queryResult.context);
 }
 
-RestStatus RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
+futures::Future<RestStatus> RestSimpleHandler::lookupByKeys(
+    VPackSlice const& slice) {
   if (response() == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response");
   }
@@ -258,7 +261,7 @@ RestStatus RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
     if (!value.isString()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                     "expecting string for <collection>");
-      return RestStatus::DONE;
+      co_return RestStatus::DONE;
     }
 
     collectionName = value.copyString();
@@ -279,7 +282,7 @@ RestStatus RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
   if (!keys.isArray()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                   "expecting array for <keys>");
-    return RestStatus::DONE;
+    co_return RestStatus::DONE;
   }
 
   std::string const aql(
@@ -297,7 +300,7 @@ RestStatus RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
   data.close();  // bindVars
   data.close();
 
-  return registerQueryOrCursor(
+  co_return co_await registerQueryOrCursor(
       data.slice(),
       transaction::OperationOriginREST{"looking up documents by keys"});
 }

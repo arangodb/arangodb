@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -55,6 +55,7 @@
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "RocksDBEngine/RocksDBValue.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/AccessMode.h"
@@ -286,7 +287,6 @@ IResearchRocksDBRecoveryHelper::getRanges(uint64_t objectId) {
 
 IResearchRocksDBRecoveryHelper::Ranges
 IResearchRocksDBRecoveryHelper::makeRanges(uint64_t objectId) {
-  TRI_ASSERT(!_skipAllItems);
   auto collection = lookupCollection(objectId);
   if (!collection) {
     // TODO(MBkkt) it was ok in the old implementation
@@ -307,7 +307,7 @@ IResearchRocksDBRecoveryHelper::makeRanges(uint64_t objectId) {
     }
   };
 
-  for (auto&& index : collection->getIndexes()) {
+  for (auto&& index : collection->getPhysical()->getReadyIndexes()) {
     TRI_ASSERT(index != nullptr);
     if (index->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX) {
       add(_indexes, basics::downCast<IResearchRocksDBInvertedIndex>(*index));

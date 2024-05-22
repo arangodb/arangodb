@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -148,6 +148,11 @@ void Inception::gossip() {
   long waitInterval = 250000;
 
   network::RequestOptions reqOpts;
+  // never compress requests to the agency, so that we do not spend too much
+  // CPU on compression/decompression. some agent instances run with a very
+  // low number of cores (even fractions of physical cores), so we cannot
+  // waste too much CPU resources there.
+  reqOpts.allowCompression = false;
   reqOpts.timeout = network::Timeout(1);
 
   while (!this->isStopping() && !_agent.isStopping()) {
@@ -185,11 +190,11 @@ void Inception::gossip() {
           return;
         }
 
-        network::sendRequest(cp, p, fuerte::RestVerb::Post, path, buffer,
-                             reqOpts)
-            .thenValue([=, this](network::Response r) {
-              ::handleGossipResponse(r, p, &_agent, version);
-            });
+        std::ignore = network::sendRequest(cp, p, fuerte::RestVerb::Post, path,
+                                           buffer, reqOpts)
+                          .thenValue([=, this](network::Response r) {
+                            ::handleGossipResponse(r, p, &_agent, version);
+                          });
       }
     }
 
@@ -216,11 +221,12 @@ void Inception::gossip() {
           return;
         }
 
-        network::sendRequest(cp, pair.second, fuerte::RestVerb::Post, path,
-                             buffer, reqOpts)
-            .thenValue([=, this](network::Response r) {
-              ::handleGossipResponse(r, pair.second, &_agent, version);
-            });
+        std::ignore =
+            network::sendRequest(cp, pair.second, fuerte::RestVerb::Post, path,
+                                 buffer, reqOpts)
+                .thenValue([=, this](network::Response r) {
+                  ::handleGossipResponse(r, pair.second, &_agent, version);
+                });
       }
     }
 
@@ -290,6 +296,11 @@ bool Inception::restartingActiveAgent() {
   network::RequestOptions reqOpts;
   reqOpts.timeout = network::Timeout(2);
   reqOpts.skipScheduler = true;  // hack to speed up future.get()
+  // never compress requests to the agency, so that we do not spend too much
+  // CPU on compression/decompression. some agent instances run with a very
+  // low number of cores (even fractions of physical cores), so we cannot
+  // waste too much CPU resources there.
+  reqOpts.allowCompression = false;
 
   seconds const timeout(3600);
   long waitInterval(500000);

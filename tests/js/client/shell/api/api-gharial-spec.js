@@ -5,13 +5,14 @@
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
-// / Copyright 2016 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -365,7 +366,7 @@ describe('_api/gharial', () => {
           };
           let req = arango.POST(url + '/' + exampleGraphName + '/edge/knows', edgeDef);
           expect(req.code).to.equal(404);
-          expect(req.errorNum).to.equal(ERRORS.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED.code);
+          expect(req.errorNum).to.equal(ERRORS.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_PART_OF_THE_GRAPH.code);
 
           expect(db._collection(eName)).to.not.be.null;
           expect(db._collection(vName)).to.not.be.null;
@@ -443,7 +444,7 @@ describe('_api/gharial', () => {
           };
           let req = arango.POST(url + '/' + exampleGraphName + '/edge/knows', edgeDef);
           expect(req.code).to.equal(404);
-          expect(req.errorNum).to.equal(ERRORS.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED.code);
+          expect(req.errorNum).to.equal(ERRORS.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_PART_OF_THE_GRAPH.code);
 
           expect(db._collection(eName)).to.not.be.null;
           expect(db._collection(vName)).to.not.be.null;
@@ -461,7 +462,7 @@ describe('_api/gharial', () => {
           };
           let req = arango.POST(url + '/' + exampleGraphName + '/edge/knows', edgeDef);
           expect(req.code).to.equal(404);
-          expect(req.errorNum).to.equal(ERRORS.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED.code);
+          expect(req.errorNum).to.equal(ERRORS.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_PART_OF_THE_GRAPH.code);
 
           expect(db._collection(eName)).to.not.be.null;
           expect(db._collection(vName)).to.not.be.null;
@@ -604,7 +605,7 @@ describe('_api/gharial', () => {
           const _key = db.knows.any()._key;
           let req = arango.PATCH(url + '/' + exampleGraphName + '/edge/knows/' + _key, edgeDef);
           expect(req.code).to.equal(404);
-          expect(req.errorNum).to.equal(ERRORS.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED.code);
+          expect(req.errorNum).to.equal(ERRORS.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_PART_OF_THE_GRAPH.code);
 
           expect(db._collection(eName)).to.not.be.null;
           expect(db._collection(vName)).to.not.be.null;
@@ -625,7 +626,47 @@ describe('_api/gharial', () => {
           const _key = db.knows.any()._key;
           let req = arango.PATCH(url + '/' + exampleGraphName + '/edge/knows/' + _key, edgeDef);
           expect(req.code).to.equal(404);
-          expect(req.errorNum).to.equal(ERRORS.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED.code);
+          expect(req.errorNum).to.equal(ERRORS.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_PART_OF_THE_GRAPH.code);
+
+          expect(db._collection(eName)).to.not.be.null;
+          expect(db._collection(vName)).to.not.be.null;
+        });
+
+        it('_from vertex collection not part of graph definition, partial patch only', () => {
+          expect(db._collection(eName)).to.be.null; // edgec
+          expect(db._collection(vName)).to.be.null; // vertexc
+          const g = examples.loadGraph(exampleGraphName);
+          expect(g).to.not.be.null;
+
+          const edgeDef = {
+            _from: 'collectionNotPartOfTheGraph/charlie'
+          };
+
+          // get a (any) valid key of an existing edge document
+          const _key = db.knows.any()._key;
+          let req = arango.PATCH(url + '/' + exampleGraphName + '/edge/knows/' + _key, edgeDef);
+          expect(req.code).to.equal(404);
+          expect(req.errorNum).to.equal(ERRORS.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_PART_OF_THE_GRAPH.code);
+
+          expect(db._collection(eName)).to.not.be.null;
+          expect(db._collection(vName)).to.not.be.null;
+        });
+
+        it('_to vertex collection not part of graph definition, partial patch only', () => {
+          expect(db._collection(eName)).to.be.null; // edgec
+          expect(db._collection(vName)).to.be.null; // vertexc
+          const g = examples.loadGraph(exampleGraphName);
+          expect(g).to.not.be.null;
+
+          const edgeDef = {
+            _to: 'collectionNotPartOfTheGraph/charlie'
+          };
+
+          // get a (any) valid key of an existing edge document
+          const _key = db.knows.any()._key;
+          let req = arango.PATCH(url + '/' + exampleGraphName + '/edge/knows/' + _key, edgeDef);
+          expect(req.code).to.equal(404);
+          expect(req.errorNum).to.equal(ERRORS.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_PART_OF_THE_GRAPH.code);
 
           expect(db._collection(eName)).to.not.be.null;
           expect(db._collection(vName)).to.not.be.null;
@@ -854,7 +895,7 @@ describe('_api/gharial', () => {
           const _key = db.knows.any()._key;
           let req = arango.PUT(url + '/' + exampleGraphName + '/edge/knows/' + _key, edgeDef);
           expect(req.code).to.equal(404);
-          expect(req.errorNum).to.equal(ERRORS.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED.code);
+          expect(req.errorNum).to.equal(ERRORS.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_PART_OF_THE_GRAPH.code);
 
           expect(db._collection(eName)).to.not.be.null;
           expect(db._collection(vName)).to.not.be.null;
@@ -875,7 +916,7 @@ describe('_api/gharial', () => {
           const _key = db.knows.any()._key;
           let req = arango.PUT(url + '/' + exampleGraphName + '/edge/knows/' + _key, edgeDef);
           expect(req.code).to.equal(404);
-          expect(req.errorNum).to.equal(ERRORS.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED.code);
+          expect(req.errorNum).to.equal(ERRORS.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_PART_OF_THE_GRAPH.code);
 
           expect(db._collection(eName)).to.not.be.null;
           expect(db._collection(vName)).to.not.be.null;
@@ -1219,7 +1260,7 @@ describe('_api/gharial', () => {
 
           let reqx = arango.POST(url + '/' + exampleGraphName + '/edge/' + eName, edgeLinkDef);
           expect(reqx.code).to.equal(404);
-          expect(reqx.errorNum).to.equal(ERRORS.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED.code);
+          expect(reqx.errorNum).to.equal(ERRORS.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_PART_OF_THE_GRAPH.code);
           expect(reqx.error).to.equal(true);
         });
       });

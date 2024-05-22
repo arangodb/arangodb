@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -48,21 +48,11 @@ class SupervisedScheduler final : public Scheduler {
                       uint64_t fifo1Size, uint64_t fifo2Size,
                       uint64_t fifo3Size, uint64_t ongoingLowPriorityLimit,
                       double unavailabilityQueueFillGrade,
-                      uint64_t maxNumberDetachedThreads);
+                      metrics::MetricsFeature& metrics);
   ~SupervisedScheduler() final;
 
   bool start() override;
   void shutdown() override;
-
-  /// @brief Take current thread out of the Scheduler (to finish some
-  /// potentially long running task and allow a new thread to be started).
-  /// This should be called from a scheduler thread. If an error is returned
-  /// this operation has not worked. The thread can then consider to error
-  /// out instead of starting its long running task. Note that his also
-  /// happens if a configurable total number of detached threads has been
-  /// reached.
-  Result detachThread(uint64_t* detachedThreads,
-                      uint64_t* maximumDetachedThreads) override;
 
   void toVelocyPack(velocypack::Builder&) const override;
   Scheduler::QueueStatistics queueStatistics() const override;
@@ -197,7 +187,6 @@ class SupervisedScheduler final : public Scheduler {
   size_t const _maxNumWorkers;
   uint64_t const _maxFifoSizes[NumberOfQueues];
   uint64_t const _ongoingLowPriorityLimit;
-  uint64_t const _maxNumberDetachedThreads;
 
   /// @brief fill grade of the scheduler's queue (in %) from which onwards
   /// the server is considered unavailable (because of overload)

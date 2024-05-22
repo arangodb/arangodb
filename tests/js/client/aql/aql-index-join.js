@@ -1,25 +1,28 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
 /*global fail, assertEqual, assertNotEqual, assertTrue, assertFalse */
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2010-2016 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+/// @author Wilfried Goesgens
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
@@ -119,7 +122,7 @@ const IndexJoinTestSuite = function () {
 
   const queryOptions = {
     optimizer: {
-      rules: ["+join-index-nodes"]
+      rules: ["+join-index-nodes", "-replace-equal-attribute-accesses"]
     },
     maxNumberOfPlans: 1
   };
@@ -849,7 +852,7 @@ const IndexJoinTestSuite = function () {
               RETURN [doc1.x, doc2.x, doc3.x, doc4.x]
       `;
 
-      const plan = db._createStatement(query).explain().plan;
+      const plan = db._createStatement({query, options: queryOptions}).explain().plan;
       const joins = plan.nodes.filter(x => x.type === "JoinNode");
       assertEqual(joins.length, 2);
       for (const join of joins) {
@@ -880,7 +883,7 @@ const IndexJoinTestSuite = function () {
               RETURN [doc1.x, doc2.x, doc3.x]
       `;
 
-      const plan = db._createStatement(query).explain().plan;
+      const plan = db._createStatement({query, options: queryOptions}).explain().plan;
       const nodes = plan.nodes.map(x => x.type);
 
       assertEqual(nodes.indexOf("JoinNode"), 1);
@@ -897,6 +900,272 @@ const IndexJoinTestSuite = function () {
       for (const [a, b, c] of result) {
         assertEqual(a, b);
         assertEqual(a, c);
+      }
+    },
+
+    testTripleIndexJoinTwoOfThreeA: function () {
+      const A = createCollection("A", ["x"]);
+      A.ensureIndex({type: "persistent", fields: ["x"]});
+      fillCollection("A", singleAttributeGenerator(20, "x", x => `${x}`));
+      const B = createCollection("B", ["x"]);
+      B.ensureIndex({type: "persistent", fields: ["x"]});
+      fillCollection("B", singleAttributeGenerator(20, "x", x => `${x}`));
+      const C = createCollection("C", ["x"]);
+      C.ensureIndex({type: "persistent", fields: ["x", "y"]});
+      fillCollection("C", singleAttributeGenerator(20, "y", x => `${x}`));
+
+      const query = `
+        FOR doc1 IN A
+          FOR doc2 IN B
+            FOR doc3 IN C
+              FILTER doc1.x == doc2.x
+              FILTER doc1.x == doc3.y
+              RETURN [doc1.x, doc2.x, doc3.y]
+      `;
+
+      const plan = db._createStatement({query, options: queryOptions}).explain().plan;
+      const nodes = plan.nodes.map(x => x.type);
+
+      assertEqual(nodes.indexOf("JoinNode"), 1);
+      const join = plan.nodes[1];
+      assertEqual(join.type, "JoinNode");
+
+      assertEqual(join.indexInfos.length, 2);
+      assertEqual(normalize(join.indexInfos[0].projections), [["x"]]);
+      assertEqual(normalize(join.indexInfos[1].projections), [["x"]]);
+
+      const result = db._createStatement(query).execute().toArray();
+      assertEqual(result.length, 20);
+      for (const [a, b, c] of result) {
+        assertEqual(a, b);
+        assertEqual(a, c);
+      }
+    },
+/* NOT SUPPORTED The optimizer rearranges the for loops that turn the enumeration on A and C into point lookups.
+    testTripleIndexJoinTwoOfThreeB: function () {
+      const A = createCollection("A", ["x"]);
+      A.ensureIndex({type: "persistent", fields: ["x"]});
+      fillCollection("A", singleAttributeGenerator(20, "x", x => `${x}`));
+      const B = createCollection("B", ["x"]);
+      B.ensureIndex({type: "persistent", fields: ["x", "y"]});
+      fillCollection("B", singleAttributeGenerator(20, "y", x => `${x}`));
+      const C = createCollection("C", ["x"]);
+      C.ensureIndex({type: "persistent", fields: ["x"]});
+      fillCollection("C", singleAttributeGenerator(20, "x", x => `${x}`));
+
+      const query = `
+        FOR doc1 IN A
+          FOR doc2 IN B
+            FOR doc3 IN C
+              FILTER doc1.x == doc2.y
+              FILTER doc1.x == doc3.x
+              RETURN [doc1.x, doc2.y, doc3.x]
+      `;
+      db._explain(query, null, queryOptions);
+
+      const plan = db._createStatement({query, options: queryOptions}).explain().plan;
+      const nodes = plan.nodes.map(x => x.type);
+
+      assertEqual(nodes.indexOf("JoinNode"), 1);
+      const join = plan.nodes[1];
+      assertEqual(join.type, "JoinNode");
+
+      assertEqual(join.indexInfos.length, 2);
+      assertEqual(normalize(join.indexInfos[0].projections), [["x"]]);
+      assertEqual(normalize(join.indexInfos[1].projections), [["x"]]);
+
+      const result = db._createStatement(query).execute().toArray();
+      assertEqual(result.length, 20);
+      for (const [a, b, c] of result) {
+        assertEqual(a, b);
+        assertEqual(a, c);
+      }
+    },
+*/
+    testJoinPastEnumerate: function () {
+      const A = createCollection("A", ["x"]);
+      A.ensureIndex({type: "persistent", fields: ["x"]});
+      fillCollection("A", singleAttributeGenerator(20, "x", x => `${x}`));
+      const B = createCollection("B", ["x"]);
+      fillCollection("B", singleAttributeGenerator(20, "x", x => `${x}`));
+      const C = createCollection("C", ["x"]);
+      C.ensureIndex({type: "persistent", fields: ["x"]});
+      fillCollection("C", singleAttributeGenerator(20, "x", x => `${x}`));
+
+      const query = `
+        FOR doc1 IN A
+          FOR doc2 IN B
+            FOR doc3 IN C
+              FILTER doc1.x == doc2.x
+              FILTER doc1.x == doc3.x
+              RETURN [doc1.x, doc2.x, doc3.x]
+      `;
+
+      const plan = db._createStatement({query, options: queryOptions}).explain().plan;
+      const nodes = plan.nodes.map(x => x.type);
+
+      assertEqual(nodes.indexOf("JoinNode"), 1);
+      const join = plan.nodes[1];
+      assertEqual(join.type, "JoinNode");
+
+      assertEqual(join.indexInfos.length, 2);
+      assertEqual(normalize(join.indexInfos[0].projections), [["x"]]);
+      assertEqual(normalize(join.indexInfos[1].projections), [["x"]]);
+
+      const result = db._createStatement(query).execute().toArray();
+      assertEqual(result.length, 20);
+      for (const [a, b, c] of result) {
+        assertEqual(a, b);
+        assertEqual(a, c);
+      }
+    },
+
+    testTwoByTwoJoin: function () {
+      const A = createCollection("A", ["x"]);
+      A.ensureIndex({type: "persistent", fields: ["x"]});
+      fillCollection("A", singleAttributeGenerator(20, "x", x => `${x}`));
+      const B = createCollection("B", ["x"]);
+      B.ensureIndex({type: "persistent", fields: ["x"]});
+      fillCollection("B", singleAttributeGenerator(20, "x", x => `${x}`));
+      const C = createCollection("C", ["x"]);
+      C.ensureIndex({type: "persistent", fields: ["x"]});
+      fillCollection("C", singleAttributeGenerator(20, "x", x => `${x}`));
+      const D = createCollection("D", ["x"]);
+      D.ensureIndex({type: "persistent", fields: ["x"]});
+      fillCollection("D", singleAttributeGenerator(20, "x", x => `${x}`));
+
+      const query = `
+        FOR doc1 IN A
+          FOR doc2 IN B
+            FOR doc3 IN C
+              FOR doc4 IN D
+              FILTER doc1.x == doc3.x
+              FILTER doc2.x == doc4.x
+              RETURN [doc1.x, doc2.x, doc3.x, doc4.x]
+      `;
+
+      const plan = db._createStatement({query, options: queryOptions}).explain().plan;
+      const nodes = plan.nodes.map(x => x.type);
+
+      assertEqual(nodes.indexOf("JoinNode"), 1);
+      const join = plan.nodes[1];
+      assertEqual(join.type, "JoinNode");
+
+      assertEqual(join.indexInfos.length, 2);
+      assertEqual(normalize(join.indexInfos[0].projections), [["x"]]);
+      assertEqual(normalize(join.indexInfos[1].projections), [["x"]]);
+
+      const result = db._createStatement(query).execute().toArray();
+      assertEqual(result.length, 400);
+      for (const [a, b, c, d] of result) {
+        assertEqual(b, d);
+        assertEqual(a, c);
+      }
+    },
+
+    testJoinInClusterShardedLocalExpansions: function () {
+      const A = db._create("A", {numberOfShards: 10, replicationFactor: 1, writeConcern: 1, waitForSync: true});
+      fillCollection(A.name(), singleAttributeGenerator(20, "x", x => x));
+      const query = `FOR c1 IN A FOR c2 IN A FILTER c1._key == c2._key RETURN c1._key`;
+      const result = db._query(query, null, {}).toArray();
+      assertEqual(result.length, A.count());
+    },
+
+    testJoinInClusterShardedLocalExpansionsMaterialize: function () {
+      const A = db._create("A", {numberOfShards: 10, replicationFactor: 1, writeConcern: 1, waitForSync: true});
+      fillCollection(A.name(), singleAttributeGenerator(10000, "x", x => x));
+      const query = `FOR c1 IN A FOR c2 IN A FILTER c1._key == c2._key RETURN c1`;
+      const result = db._query(query, null, {}).toArray();
+      assertEqual(result.length, A.count());
+    },
+
+    testLateMaterialized: function () {
+      const A = createCollection("A", ["x"]);
+      A.ensureIndex({type: "persistent", fields: ["x"]});
+      fillCollection("A", singleAttributeGenerator(100, "x", x => `${x}`));
+      const B = createCollection("B", ["x"]);
+      B.ensureIndex({type: "persistent", fields: ["x"]});
+      fillCollection("B", singleAttributeGenerator(100, "x", x => `${x}`));
+
+      const query = `
+        for doc1 in A
+          for doc2 in B
+            filter doc2.x == doc1.x
+            sort doc2.x
+            limit 20
+            return [doc1.x, doc2]
+      `;
+      const plan = db._createStatement({query, options: queryOptions}).explain().plan;
+      const nodes = plan.nodes.map(x => x.type);
+
+      assertEqual(nodes.indexOf("JoinNode"), 1);
+      const join = plan.nodes[1];
+      assertEqual(join.type, "JoinNode");
+
+      assertEqual(join.indexInfos.length, 2);
+      assertEqual(normalize(join.indexInfos[0].projections), [["x"]]);
+      assertEqual(normalize(join.indexInfos[1].projections), [["x"]]);
+      assertEqual(join.indexInfos[1].isLateMaterialized, true);
+      assertEqual(join.indexInfos[1].producesOutput, true);
+      assertEqual(join.indexInfos[1].indexCoversProjections, true);
+
+
+      const result = db._createStatement(query).execute().toArray();
+      assertEqual(result.length, 20);
+      for (const [a, b] of result) {
+        assertEqual(a, b.x);
+      }
+    },
+
+    testLateMaterializedPushPastJoin: function () {
+      const A = createCollection("A", ["x"]);
+      A.ensureIndex({type: "persistent", fields: ["x"], storedValues: ["z"]});
+      fillCollection("A", attributeGenerator(100, {x: x => `${x}`, z: x => 0}));
+      const B = createCollection("B", ["x"]);
+      B.ensureIndex({type: "persistent", fields: ["x"]});
+      fillCollection("B", singleAttributeGenerator(100, "x", x => `${x}`));
+
+      const query = `
+        for doc1 in A
+          sort doc1.x
+          for doc2 in B
+            filter doc2.x == doc1.x
+            sort doc2.x
+            limit 20
+            filter doc1.z == 0
+            return [doc1, doc2]
+      `;
+      const plan = db._createStatement({query, options: queryOptions}).explain().plan;
+      const nodes = plan.nodes.map(x => x.type);
+
+      assertEqual(nodes.indexOf("JoinNode"), 1);
+      const join = plan.nodes[1];
+      assertEqual(join.type, "JoinNode");
+
+      assertEqual(join.indexInfos.length, 2);
+      assertEqual(normalize(join.indexInfos[0].projections), [["z"]]);
+      assertEqual(normalize(join.indexInfos[1].projections), [["x"]]);
+      assertEqual(join.indexInfos[0].isLateMaterialized, true);
+      assertEqual(join.indexInfos[0].producesOutput, true);
+      assertEqual(join.indexInfos[0].indexCoversProjections, true);
+      assertEqual(join.indexInfos[1].isLateMaterialized, true);
+      assertEqual(join.indexInfos[1].producesOutput, true);
+      assertEqual(join.indexInfos[1].indexCoversProjections, true);
+
+      // We expect the materialize nodes to be pushed past the limit node
+      const relevantNodes = nodes.filter(x =>
+          ["LimitNode", "MaterializeNode", "FilterNode", "RemoteNode"].indexOf(x) !== -1);
+      if (isCluster) {
+        assertEqual(relevantNodes, ["LimitNode", "MaterializeNode", "MaterializeNode",
+          "RemoteNode", "LimitNode", "FilterNode"]);
+      } else {
+        assertEqual(relevantNodes, ["LimitNode", "FilterNode", "MaterializeNode", "MaterializeNode"]);
+      }
+
+      const result = db._createStatement(query).execute().toArray();
+      assertEqual(result.length, 20);
+      for (const [a, b] of result) {
+        assertEqual(a.x, b.x);
       }
     },
 

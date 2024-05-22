@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -33,6 +34,7 @@
 #include "Replication2/Storage/RocksDB/LogPersistor.h"
 #include "Replication2/Storage/RocksDB/StatePersistor.h"
 #include "Replication2/Storage/RocksDB/Metrics.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBFormat.h"
 
 #include "Replication2/Mocks/FakeStorageEngineMethods.h"
@@ -43,7 +45,7 @@ using namespace arangodb::replication2;
 
 namespace arangodb::replication2::storage::rocksdb::test {
 
-struct RocksDBInstance {
+struct RocksDBInstance : public ICompactKeyRange {
   explicit RocksDBInstance(std::string path) : _path(std::move(path)) {
     ::rocksdb::Options options;
     options.create_if_missing = true;
@@ -59,6 +61,15 @@ struct RocksDBInstance {
   }
 
   [[nodiscard]] auto getDatabase() const -> ::rocksdb::DB* { return _db; }
+
+  void compactRange(RocksDBKeyBounds range) override {
+    auto start = range.start();
+    auto end = range.end();
+    std::ignore = _db->CompactRange(
+        ::rocksdb::CompactRangeOptions{.exclusive_manual_compaction = false,
+                                       .allow_write_stall = false},
+        range.columnFamily(), &start, &end);
+  }
 
  private:
   ::rocksdb::DB* _db = nullptr;
@@ -174,7 +185,7 @@ struct RocksDBFactory {
     auto logPersistor = std::make_unique<LogPersistor>(
         logId, objectId, vocbaseId, rocksdb->getDatabase(),
         rocksdb->getDatabase()->DefaultColumnFamily(), std::move(writeBatcher),
-        std::move(metrics));
+        std::move(metrics), rocksdb.get());
     auto statePersistor = std::make_unique<StatePersistor>(
         logId, objectId, vocbaseId, rocksdb->getDatabase(),
         rocksdb->getDatabase()->DefaultColumnFamily());

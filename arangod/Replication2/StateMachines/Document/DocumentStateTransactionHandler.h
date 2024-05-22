@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,6 +27,7 @@
 #include "Replication2/StateMachines/Document/DocumentStateErrorHandler.h"
 #include "Replication2/StateMachines/Document/ReplicatedOperation.h"
 
+#include "Basics/Guarded.h"
 #include "Transaction/Options.h"
 #include "VocBase/Identifiers/TransactionId.h"
 
@@ -60,7 +61,7 @@ struct IDocumentStateTransactionHandler {
   virtual auto getTransactionsForShard(ShardID const&)
       -> std::vector<TransactionId> = 0;
   [[nodiscard]] virtual auto getUnfinishedTransactions() const
-      -> TransactionMap const& = 0;
+      -> TransactionMap = 0;
 };
 
 class DocumentStateTransactionHandler
@@ -84,7 +85,7 @@ class DocumentStateTransactionHandler
       -> std::vector<TransactionId> override;
 
   [[nodiscard]] auto getUnfinishedTransactions() const
-      -> TransactionMap const& override;
+      -> TransactionMap override;
 
  private:
   auto getTrx(TransactionId tid) -> std::shared_ptr<IDocumentStateTransaction>;
@@ -98,17 +99,19 @@ class DocumentStateTransactionHandler
   auto applyOp(ReplicatedOperation::CreateShard const&) -> Result;
   auto applyOp(ReplicatedOperation::ModifyShard const&) -> Result;
   auto applyOp(ReplicatedOperation::DropShard const&) -> Result;
+
+  // TODO These should return futures
   auto applyOp(ReplicatedOperation::CreateIndex const&) -> Result;
   auto applyOp(ReplicatedOperation::DropIndex const&) -> Result;
 
  private:
-  GlobalLogIdentifier _gid;
-  TRI_vocbase_t* _vocbase;
-  LoggerContext _loggerContext;
-  std::shared_ptr<IDocumentStateHandlersFactory> _factory;
-  std::shared_ptr<IDocumentStateShardHandler> _shardHandler;
-  std::shared_ptr<IDocumentStateErrorHandler> _errorHandler;
-  TransactionMap _transactions;
+  GlobalLogIdentifier const _gid;
+  TRI_vocbase_t* const _vocbase;
+  LoggerContext const _loggerContext;
+  std::shared_ptr<IDocumentStateHandlersFactory> const _factory;
+  std::shared_ptr<IDocumentStateShardHandler> const _shardHandler;
+  std::shared_ptr<IDocumentStateErrorHandler> const _errorHandler;
+  Guarded<TransactionMap> _transactions;
 };
 
 }  // namespace arangodb::replication2::replicated_state::document

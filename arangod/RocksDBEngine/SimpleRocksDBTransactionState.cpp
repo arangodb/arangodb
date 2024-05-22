@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -30,6 +30,7 @@
 #include "RocksDBEngine/Methods/RocksDBTrxMethods.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <absl/strings/str_cat.h>
@@ -44,16 +45,14 @@ SimpleRocksDBTransactionState::SimpleRocksDBTransactionState(
 
 SimpleRocksDBTransactionState::~SimpleRocksDBTransactionState() {}
 
-Result SimpleRocksDBTransactionState::beginTransaction(
+futures::Future<Result> SimpleRocksDBTransactionState::beginTransaction(
     transaction::Hints hints) {
-  auto res = RocksDBTransactionState::beginTransaction(hints);
+  auto res = co_await RocksDBTransactionState::beginTransaction(hints);
   if (!res.ok()) {
-    return res;
+    co_return res;
   }
 
-  auto& selector = vocbase().server().getFeature<EngineSelectorFeature>();
-  auto& engine = selector.engine<RocksDBEngine>();
-  rocksdb::TransactionDB* db = engine.db();
+  rocksdb::TransactionDB* db = vocbase().engine<RocksDBEngine>().db();
 
   TRI_ASSERT(_rocksMethods == nullptr);
 
@@ -80,7 +79,7 @@ Result SimpleRocksDBTransactionState::beginTransaction(
     maybeDisableIndexing();
   }
 
-  return res;
+  co_return res;
 }
 
 void SimpleRocksDBTransactionState::maybeDisableIndexing() {
@@ -105,7 +104,8 @@ void SimpleRocksDBTransactionState::maybeDisableIndexing() {
       if (!AccessMode::isWriteOrExclusive(trxCollection->accessType())) {
         continue;
       }
-      auto indexes = trxCollection->collection()->getIndexes();
+      auto indexes =
+          trxCollection->collection()->getPhysical()->getAllIndexes();
       for (auto const& idx : indexes) {
         if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
           // primary index is unique, but we can ignore it here.
@@ -227,11 +227,7 @@ SimpleRocksDBTransactionState::createTransactionCollection(
 }
 
 rocksdb::SequenceNumber SimpleRocksDBTransactionState::prepare() {
-  auto& engine = vocbase()
-                     .server()
-                     .getFeature<EngineSelectorFeature>()
-                     .engine<RocksDBEngine>();
-  rocksdb::TransactionDB* db = engine.db();
+  rocksdb::TransactionDB* db = vocbase().engine<RocksDBEngine>().db();
 
   rocksdb::SequenceNumber preSeq = db->GetLatestSequenceNumber();
 

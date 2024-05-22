@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -33,7 +33,10 @@
 #include "VocBase/Methods/Version.h"
 #include "VocBase/vocbase.h"
 
+#include <absl/strings/str_cat.h>
+#include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
 
 namespace {
 
@@ -67,7 +70,7 @@ UpgradeResult Upgrade::clusterBootstrap(TRI_vocbase_t& system) {
 
 /// corresponding to local-database.js
 UpgradeResult Upgrade::createDB(TRI_vocbase_t& vocbase,
-                                arangodb::velocypack::Slice const& users) {
+                                velocypack::Slice users) {
   TRI_ASSERT(users.isArray());
 
   uint32_t clusterFlag = 0;
@@ -158,14 +161,14 @@ UpgradeResult Upgrade::startup(TRI_vocbase_t& vocbase, bool isUpgrade,
         // we do not perform upgrades without being told so during startup
         LOG_TOPIC("3bc7f", ERR, Logger::STARTUP)
             << "Database directory version (" << vinfo.databaseVersion
-            << ") is lower than current version (" << vinfo.serverVersion
-            << ").";
+            << ") is lower than current executable version ("
+            << vinfo.serverVersion << ").";
 
         LOG_TOPIC("ebca0", ERR, Logger::STARTUP)
             << "---------------------------------------------------------------"
                "-------";
         LOG_TOPIC("24e3c", ERR, Logger::STARTUP)
-            << "It seems like you have upgraded the ArangoDB binary.";
+            << "It seems like you have upgraded the ArangoDB executable.";
         LOG_TOPIC("8bcec", ERR, Logger::STARTUP)
             << "If this is what you wanted to do, please restart with the";
         LOG_TOPIC("b0360", ERR, Logger::STARTUP)
@@ -174,7 +177,7 @@ UpgradeResult Upgrade::startup(TRI_vocbase_t& vocbase, bool isUpgrade,
             << "option to upgrade the data in the database directory.";
         LOG_TOPIC("24bd1", ERR, Logger::STARTUP)
             << "---------------------------------------------------------------"
-               "-------'";
+               "-------";
         return UpgradeResult(TRI_ERROR_BAD_PARAMETER, vinfo.status);
       }
       // do perform the upgrade
@@ -185,8 +188,8 @@ UpgradeResult Upgrade::startup(TRI_vocbase_t& vocbase, bool isUpgrade,
       // we do not support downgrades, just error out
       LOG_TOPIC("fdbd9", ERR, Logger::STARTUP)
           << "Database directory version (" << vinfo.databaseVersion
-          << ") is higher than current version (" << vinfo.serverVersion
-          << ").";
+          << ") is higher than current executable version ("
+          << vinfo.serverVersion << ").";
       LOG_TOPIC("b99ca", ERR, Logger::STARTUP)
           << "It seems like you are running ArangoDB on a database directory"
           << " that was created with a newer version of ArangoDB. Maybe this"
@@ -198,9 +201,10 @@ UpgradeResult Upgrade::startup(TRI_vocbase_t& vocbase, bool isUpgrade,
     case VersionResult::NO_SERVER_VERSION: {
       LOG_TOPIC("bb6ba", DEBUG, Logger::STARTUP)
           << "Error reading version file";
-      std::string msg =
-          std::string("error during ") + (isUpgrade ? "upgrade" : "startup");
-      return UpgradeResult(TRI_ERROR_INTERNAL, msg, vinfo.status);
+      return UpgradeResult(
+          TRI_ERROR_INTERNAL,
+          absl::StrCat("error during ", (isUpgrade ? "upgrade" : "startup")),
+          vinfo.status);
     }
     case VersionResult::NO_VERSION_FILE:
       LOG_TOPIC("9ce49", DEBUG, Logger::STARTUP) << "No VERSION file found";
@@ -212,7 +216,7 @@ UpgradeResult Upgrade::startup(TRI_vocbase_t& vocbase, bool isUpgrade,
   // should not do anything on VERSION_MATCH, and init the database
   // with all tasks if they were not executed yet. Tasks not listed
   // in the "tasks" attribute will be executed automatically
-  VPackSlice const params = VPackSlice::emptyObjectSlice();
+  VPackSlice params = VPackSlice::emptyObjectSlice();
   return runTasks(vocbase, vinfo, params, clusterFlag, dbflag);
 }
 
@@ -222,7 +226,7 @@ UpgradeResult methods::Upgrade::startupCoordinator(TRI_vocbase_t& vocbase) {
   // this will return a hard-coded version result
   VersionResult vinfo = Version::check(&vocbase);
 
-  VPackSlice const params = VPackSlice::emptyObjectSlice();
+  VPackSlice params = VPackSlice::emptyObjectSlice();
   return runTasks(vocbase, vinfo, params, Flags::CLUSTER_COORDINATOR_GLOBAL,
                   Flags::DATABASE_UPGRADE);
 }
@@ -257,14 +261,13 @@ void methods::Upgrade::registerTasks(arangodb::UpgradeFeature& upgradeFeature) {
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_DB_SERVER_LOCAL,
           /*database*/ DATABASE_UPGRADE | DATABASE_EXISTING,
           &UpgradeTasks::renameReplicationApplierStateFiles);
-
-  // Note: Added with ArangoDB version 3.11
-  addTask(upgradeFeature, "createHistoricPregelSystemCollection",
-          "creates the pregel system collection",
-          /*system*/ Flags::DATABASE_ALL,
-          /*cluster*/ Flags::CLUSTER_NONE,
-          /*database*/ DATABASE_INIT | DATABASE_UPGRADE | DATABASE_EXISTING,
-          &UpgradeTasks::createHistoricPregelSystemCollection);
+  addTask(upgradeFeature, "dropPregelQueriesCollection",
+          "drop _pregel_queries collection",
+          /*system*/ Upgrade::Flags::DATABASE_ALL,
+          /*cluster*/ Upgrade::Flags::CLUSTER_COORDINATOR_GLOBAL |
+              Upgrade::Flags::CLUSTER_NONE,
+          /*database*/ DATABASE_UPGRADE | DATABASE_EXISTING,
+          &UpgradeTasks::dropPregelQueriesCollection);
 
   // IResearch related upgrade tasks:
   // NOTE: db-servers do not have a dedicated collection for storing analyzers,
@@ -278,15 +281,17 @@ void methods::Upgrade::registerTasks(arangodb::UpgradeFeature& upgradeFeature) {
               | Upgrade::Flags::DATABASE_UPGRADE,
           &UpgradeTasks::dropLegacyAnalyzersCollection  // action
   );
+
 #ifdef USE_ENTERPRISE
   registerTasksEE(upgradeFeature);
 #endif
 }
 
-UpgradeResult methods::Upgrade::runTasks(
-    TRI_vocbase_t& vocbase, VersionResult& vinfo,
-    arangodb::velocypack::Slice const& params, uint32_t clusterFlag,
-    uint32_t dbFlag) {
+UpgradeResult methods::Upgrade::runTasks(TRI_vocbase_t& vocbase,
+                                         VersionResult& vinfo,
+                                         velocypack::Slice params,
+                                         uint32_t clusterFlag,
+                                         uint32_t dbFlag) {
   auto& upgradeFeature =
       vocbase.server().getFeature<arangodb::UpgradeFeature>();
   auto& tasks = upgradeFeature._tasks;
@@ -347,13 +352,14 @@ UpgradeResult methods::Upgrade::runTasks(
     LOG_TOPIC("15144", DEBUG, Logger::STARTUP)
         << "Upgrade: executing " << t.name;
     try {
-      bool ranTask = t.action(vocbase, params);
-      if (!ranTask) {
+      Result res = t.action(vocbase, params);
+      if (res.fail()) {
         std::string msg =
-            "executing " + t.name + " (" + t.description + ") failed.";
+            absl::StrCat("executing ", t.name, " (", t.description,
+                         ") failed: ", res.errorMessage());
         LOG_TOPIC("0a886", ERR, Logger::STARTUP)
             << msg << " aborting upgrade procedure.";
-        return UpgradeResult(TRI_ERROR_INTERNAL, msg, vinfo.status);
+        return UpgradeResult(res.errorNumber(), std::move(msg), vinfo.status);
       }
     } catch (std::exception const& e) {
       LOG_TOPIC("022fe", ERR, Logger::STARTUP)

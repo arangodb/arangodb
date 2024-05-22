@@ -1,28 +1,29 @@
 /*jshint globalstrict:false, strict:false */
 /*global assertEqual, fail, getOptions*/
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Jan Christoph Uhde
 /// @author Copyright 2019, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 if (getOptions === true) {
   return {
@@ -34,8 +35,11 @@ const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const db = arangodb.db;
 const errors = arangodb.errors;
-const { getEndpointsByType, debugCanUseFailAt, debugSetFailAt, debugClearFailAt } = require('@arangodb/test-helper');
-const ep = getEndpointsByType('coordinator');
+const { getCoordinators, getAgents, debugCanUseFailAt, debugSetFailAt, debugClearFailAt } = require('@arangodb/test-helper');
+
+// In replication2, the shard distribution is handled by the supervision.
+// In replication1, the shard distribution is handled by the coordinator.
+const ep = db._properties().replicationVersion === "2" ? getAgents() : getCoordinators();
 
 function OptionsTestSuite () {
   const cn = "UnitTestsCollection";
@@ -45,7 +49,7 @@ function OptionsTestSuite () {
     setUp : function () {
       // make all shards end up on the same DB server
       ep.forEach((ep) => {
-        debugSetFailAt(ep, "allShardsOnSameServer");
+        debugSetFailAt(ep.endpoint, "allShardsOnSameServer");
       });
 
       for (let i = 0; i < 5; ++i) {
@@ -58,7 +62,7 @@ function OptionsTestSuite () {
     },
 
     tearDown : function () {
-      ep.forEach((ep) => debugClearFailAt(ep));
+      ep.forEach((ep) => debugClearFailAt(ep.endpoint));
       // must delete in reverse order because of distributeShardsLike
       for (let i = 5; i > 0; --i) {
         db._drop(cn + (i - 1));
@@ -80,7 +84,8 @@ function OptionsTestSuite () {
             db._query(query);
             fail();
           } catch (err) {
-            assertEqual(errors.ERROR_QUERY_TOO_MANY_COLLECTIONS.code, err.errorNum);
+            assertEqual(errors.ERROR_QUERY_TOO_MANY_COLLECTIONS.code, err.errorNum,
+              `i=${i}, query=${query}, err=${JSON.stringify(err)}`);
           }
         }
       }
@@ -89,7 +94,7 @@ function OptionsTestSuite () {
   };
 }
 
-if (ep.length && debugCanUseFailAt(ep[0])) {
+if (ep.length && debugCanUseFailAt(ep[0].endpoint)) {
   jsunity.run(OptionsTestSuite);
 }
 return jsunity.done();

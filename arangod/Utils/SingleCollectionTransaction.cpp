@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SingleCollectionTransaction.h"
-#include "Basics/StringUtils.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
@@ -102,16 +101,17 @@ LogicalCollection* SingleCollectionTransaction::documentCollection() {
   return _documentCollection;
 }
 
-DataSourceId SingleCollectionTransaction::addCollectionAtRuntime(
-    std::string_view name, AccessMode::Type type) {
+futures::Future<DataSourceId>
+SingleCollectionTransaction::addCollectionAtRuntime(std::string_view name,
+                                                    AccessMode::Type type) {
   TRI_ASSERT(!name.empty());
   if ((name[0] < '0' || name[0] > '9') &&
       name != resolveTrxCollection()->collectionName()) {
-    auto message = absl::StrCat(
-        TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION), ": ",
-        name);
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION, message);
+        TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
+        absl::StrCat(
+            TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION),
+            ": ", name));
   }
 
   if (AccessMode::isWriteOrExclusive(type) &&
@@ -119,10 +119,9 @@ DataSourceId SingleCollectionTransaction::addCollectionAtRuntime(
     // trying to write access a collection that is marked read-access
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
-        std::string(
-            TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) +
-            ": " + std::string{name} + " [" + AccessMode::typeString(type) +
-            "]");
+        absl::StrCat(
+            TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION),
+            ": ", name, " [", AccessMode::typeString(type), "]"));
   }
 
   return _cid;

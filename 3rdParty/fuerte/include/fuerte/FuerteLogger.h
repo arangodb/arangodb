@@ -26,14 +26,15 @@
 #if 0
 #include <iostream>
 #include <sstream>
+#include <string_view>
 
-extern void LogHackWriter(char const* p);
+extern void LogHackWriter(std::string_view p);
 
 class LogHack {
   std::stringstream _s;
  public:
   LogHack() {};
-  ~LogHack() { LogHackWriter(_s.str().c_str()); };
+  ~LogHack() { LogHackWriter(_s.str()); };
   template<typename T> LogHack& operator<<(T const& o) { _s << o; return *this; }
   typedef std::basic_ostream<char, std::char_traits<char> > CoutType;
   typedef CoutType& (*StandardEndLine)(CoutType&);
@@ -54,14 +55,6 @@ class LogHack {
 
 #ifndef ENABLE_FUERTE_LOG_TRACE
 #define ENABLE_FUERTE_LOG_TRACE 0
-#endif
-
-#ifndef ENABLE_FUERTE_LOG_VSTTRACE
-#define ENABLE_FUERTE_LOG_VSTTRACE 0
-#endif
-
-#ifndef ENABLE_FUERTE_LOG_VST_CHUNK_TRACE
-#define ENABLE_FUERTE_LOG_VST_CHUNK_TRACE 0
 #endif
 
 #ifndef ENABLE_FUERTE_LOG_HTTPTRACE
@@ -94,31 +87,10 @@ class LogHack {
   if (0) std::cout
 #endif
 
-#if ENABLE_FUERTE_LOG_VSTTRACE > 0
-#define FUERTE_LOG_VSTTRACE std::cout << "[vst] "
-#else
-#define FUERTE_LOG_VSTTRACE \
-  if (0) std::cout
-#endif
-
-#if ENABLE_FUERTE_LOG_VSTCHUNKTRACE > 0
-#define FUERTE_LOG_VSTCHUNKTRACE std::cout << "[vst] "
-#else
-#define FUERTE_LOG_VSTCHUNKTRACE \
-  if (0) std::cout
-#endif
-
 #if ENABLE_FUERTE_LOG_HTTPTRACE > 0
 #define FUERTE_LOG_HTTPTRACE std::cout << "[http] "
 #else
 #define FUERTE_LOG_HTTPTRACE \
-  if (0) std::cout
-#endif
-
-#if ENABLE_FUERTE_LOG_NODE > 0
-#define FUERTE_LOG_NODE std::cout
-#else
-#define FUERTE_LOG_NODE \
   if (0) std::cout
 #endif
 

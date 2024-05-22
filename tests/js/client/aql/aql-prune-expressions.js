@@ -1,30 +1,29 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
 /*global assertEqual, fail */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for traversal optimization
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2014 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Jan Steemann
 /// @author Copyright 2020, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
@@ -101,6 +100,37 @@ function PruneExpressionsSuite() {
         assertEqual(err.errorNum, errors.ERROR_QUERY_PARSE.code);
       }
     },
+    
+    testVertexVariableUsedOnlyInPruneExpression: function () {
+      let q = `FOR m IN ${vn}
+                 FOR node, edge IN 1..1000 OUTBOUND m ${en}
+                 PRUNE node.value == 'test'
+                   OPTIONS {order: "bfs", uniqueVertices: "global", parallelism: 4}
+                   RETURN 1`;
+      let res = db._query(q).toArray();
+      assertEqual(3, res.length);
+    },
+    
+    testEdgeVariableUsedOnlyInPruneExpression: function () {
+      let q = `FOR m IN ${vn}
+                 FOR node, edge IN 1..1000 OUTBOUND m ${en}
+                 PRUNE edge != null
+                   OPTIONS {order: "bfs", uniqueVertices: "global", parallelism: 4}
+                   RETURN 1`;
+      let res = db._query(q).toArray();
+      assertEqual(2, res.length);
+    },
+    
+    testPathVariableUsedOnlyInPruneExpression: function () {
+      let q = `FOR m IN ${vn}
+                 FOR node, edge, path IN 1..1000 OUTBOUND m ${en}
+                 PRUNE path.vertices[*].value ALL == 'test'
+                   OPTIONS {order: "bfs", uniqueVertices: "global", parallelism: 4}
+                   RETURN 1`;
+      let res = db._query(q).toArray();
+      assertEqual(3, res.length);
+    },
+
   };
 }
 

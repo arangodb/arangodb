@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2023-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,6 +27,7 @@
 //   "explicit specialization of 'std::char_traits<unsigned char>' after
 //   instantiation"
 // errors.
+#include "Replication2/Mocks/SchedulerMocks.h"
 #include "utils/string.hpp"
 
 #include "Replication2/ReplicatedState/ReplicatedStateImpl.tpp"
@@ -86,6 +88,8 @@ struct DocumentStateMachineTest : testing::Test {
       arangodb::tests::mocks::MockServer();
   MockVocbase vocbaseMock = MockVocbase(
       mockServer.server(), MockDocumentStateHandlersFactory::kDbName, 2);
+  std::shared_ptr<IScheduler> schedulerMock =
+      std::make_shared<test::SyncScheduler>();
 
   auto createDocumentEntry(
       TransactionId tid,
@@ -93,7 +97,7 @@ struct DocumentStateMachineTest : testing::Test {
     using namespace replicated_state::document;
 
     return DocumentLogEntry{ReplicatedOperation::buildDocumentOperation(
-        op, TransactionId{tid}, shardId, velocypack::SharedSlice())};
+        op, TransactionId{tid}, shardId, velocypack::SharedSlice(), "root")};
   }
 
   auto createRealTransactionHandler()
@@ -129,7 +133,7 @@ struct DocumentStateMachineTest : testing::Test {
         handlersFactoryMock, transactionManagerMock);
     return std::make_shared<DocumentFollowerStateWrapper>(
         factory.constructCore(vocbaseMock, globalId, coreParams),
-        handlersFactoryMock);
+        handlersFactoryMock, schedulerMock);
   }
 
   void SetUp() override {
@@ -251,7 +255,7 @@ struct DocumentStateMachineTest : testing::Test {
   static constexpr LogId logId = LogId{1};
   const std::string dbName = "testDB";
   const GlobalLogIdentifier globalId{dbName, logId};
-  const ShardID shardId = "s1";
+  const ShardID shardId{1};
   const replicated_state::document::DocumentCoreParameters coreParams{dbName, 0,
                                                                       0};
   const velocypack::SharedSlice coreParamsSlice = coreParams.toSharedSlice();

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -105,7 +105,7 @@ void transaction::V8Context::enterV8Context() {
   if (v8g == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
-        "no v8 context available to enter for current transaction context");
+        "no v8 executor available to enter for current transaction context");
   }
   TRI_ASSERT(v8g != nullptr);
 
@@ -157,7 +157,7 @@ transaction::V8Context::getParentState() {
 
 /// @brief check whether the transaction is embedded
 /*static*/ bool transaction::V8Context::isEmbedded() {
-  return (getParentState() != nullptr);
+  return getParentState() != nullptr;
 }
 
 /// @brief create a context, returned in a shared ptr
@@ -174,7 +174,7 @@ transaction::V8Context::createWhenRequired(TRI_vocbase_t& vocbase,
   // is V8 enabled and are currently in a V8 scope ?
   if (vocbase.server().hasFeature<V8DealerFeature>() &&
       vocbase.server().isEnabled<V8DealerFeature>() &&
-      v8::Isolate::GetCurrent() != nullptr) {
+      v8::Isolate::TryGetCurrent() != nullptr) {
     return transaction::V8Context::create(vocbase, operationOrigin, embeddable);
   }
 
@@ -182,7 +182,7 @@ transaction::V8Context::createWhenRequired(TRI_vocbase_t& vocbase,
 }
 
 /*static*/ TRI_v8_global_t* transaction::V8Context::getV8State() noexcept {
-  v8::Isolate* isolate = v8::Isolate::GetCurrent();
+  v8::Isolate* isolate = v8::Isolate::TryGetCurrent();
   if (isolate == nullptr) {
     return nullptr;
   }

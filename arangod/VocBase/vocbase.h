@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,8 +23,9 @@
 
 #pragma once
 
-#include <cstddef>
 #include <atomic>
+#include <concepts>
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -33,7 +34,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "Basics/ResultT.h"
@@ -41,6 +41,7 @@
 #include "Containers/FlatHashMap.h"
 #include "Replication2/Version.h"
 #include "RestServer/arangod.h"
+#include "Utils/VersionTracker.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/VocbaseInfo.h"
@@ -103,7 +104,9 @@ class LogicalView;
 struct CreateCollectionBody;
 class ReplicationClientsProgressTracker;
 class StorageEngine;
+class VersionTracker;
 struct VocBaseLogManager;
+struct VocbaseMetrics;
 }  // namespace arangodb
 
 /// @brief document handle separator as character
@@ -123,13 +126,17 @@ struct TRI_vocbase_t {
   friend class arangodb::StorageEngine;
 
   explicit TRI_vocbase_t(arangodb::CreateDatabaseInfo&& info);
+  TRI_vocbase_t(arangodb::CreateDatabaseInfo&& info,
+                arangodb::VersionTracker& versionTracker, bool extendedNames);
   TEST_VIRTUAL ~TRI_vocbase_t();
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
  protected:
   struct MockConstruct {
   } constexpr static mockConstruct = {};
-  explicit TRI_vocbase_t(MockConstruct, arangodb::CreateDatabaseInfo&& info);
+  TRI_vocbase_t(MockConstruct, arangodb::CreateDatabaseInfo&& info,
+                arangodb::StorageEngine& engine,
+                arangodb::VersionTracker& versionTracker, bool extendedNames);
 #endif
 
  private:
@@ -140,6 +147,9 @@ struct TRI_vocbase_t {
   TRI_vocbase_t& operator=(TRI_vocbase_t const&) = delete;
 
   arangodb::ArangodServer& _server;
+  arangodb::StorageEngine& _engine;
+  arangodb::VersionTracker& _versionTracker;
+  bool const _extendedNames;  // TODO - move this into CreateDatabaseInfo
 
   arangodb::CreateDatabaseInfo _info;
 
@@ -170,11 +180,29 @@ struct TRI_vocbase_t {
   std::unique_ptr<arangodb::aql::QueryList> _queries;
   std::unique_ptr<arangodb::CursorRepository> _cursorRepository;
 
+  std::unique_ptr<arangodb::VocbaseMetrics> _metrics;
+
   std::unique_ptr<arangodb::DatabaseReplicationApplier> _replicationApplier;
   std::unique_ptr<arangodb::ReplicationClientsProgressTracker>
       _replicationClients;
 
  public:
+  arangodb::StorageEngine& engine() const noexcept { return _engine; }
+
+  auto extendedNames() const noexcept -> bool { return _extendedNames; }
+
+  auto versionTracker() noexcept -> arangodb::VersionTracker& {
+    return _versionTracker;
+  }
+
+  arangodb::VocbaseMetrics const& metrics() const noexcept { return *_metrics; }
+
+  template<typename As>
+  As& engine() const noexcept
+      requires(std::derived_from<As, arangodb::StorageEngine>) {
+    return static_cast<As&>(_engine);
+  }
+
   std::shared_ptr<arangodb::VocBaseLogManager> _logManager;
 
  public:
@@ -214,6 +242,7 @@ struct TRI_vocbase_t {
       -> std::shared_ptr<arangodb::replication2::replicated_log::ILogFollower>;
 
   void shutdownReplicatedLogs() noexcept;
+  void dropReplicatedLogs() noexcept;
 
   [[nodiscard]] auto getDatabaseConfiguration()
       -> arangodb::DatabaseConfiguration;

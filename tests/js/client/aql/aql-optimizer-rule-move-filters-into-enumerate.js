@@ -1,32 +1,29 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
 /*global assertEqual, assertNotEqual */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for optimizer rules
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Jan Steemann
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 let jsunity = require("jsunity");
 let {db, isCluster} = require("internal");
@@ -41,9 +38,11 @@ function optimizerRuleTestSuite () {
     setUpAll : function () {
       db._drop(cn);
       let c = db._create(cn, { numberOfShards: 2 });
+      let docs = [];
       for (let i = 0; i < 2000; ++i) {
-        c.insert({ _key: "test" + i, value1: i, value2: i });
+        docs.push({ _key: "test" + i, value1: i, value2: i });
       }
+      c.insert(docs);
       c.ensureIndex({ type: "persistent", fields: ["value1"] });
     },
     
@@ -107,7 +106,7 @@ function optimizerRuleTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        let result = db._createStatement({query: query[0], bindVars:  null, options:  { optimizer: { rules: ["-" + ruleName] } }}).explain();
+        let result = db._createStatement({query: query[0], bindVars: null, options: { optimizer: { rules: ["-" + ruleName] } }}).explain();
         assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
         result = db._query(query[0], null, { optimizer: { rules: ["-" + ruleName] } }).toArray().length;
         assertEqual(query[1], result, query);
@@ -152,7 +151,7 @@ function optimizerRuleTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        let result = db._createStatement({query: query[0], bindVars:  null, options:  { optimizer: { rules: ["-" + ruleName] } }}).explain();
+        let result = db._createStatement({query: query[0], bindVars: null, options: { optimizer: { rules: ["-" + ruleName] } }}).explain();
         assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
         assertEqual(1, result.plan.nodes.filter(function(n) { return n.type === 'FilterNode'; }).length);
         result = db._query(query[0], null, { optimizer: { rules: ["-" + ruleName] } }).toArray().length;
@@ -198,7 +197,7 @@ function optimizerRuleTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        let result = db._createStatement({query: query, bindVars:  null, options:  { optimizer: { rules: [ "-interchange-adjacent-enumerations" ] } }}).explain();
+        let result = db._createStatement({query, bindVars: null, options: { optimizer: { rules: [ "-interchange-adjacent-enumerations" ] } }}).explain();
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
         // all filters should be removed here, and moved into the respective FOR loops
         assertEqual(0, result.plan.nodes.filter((node) => node.type === 'FilterNode').length);
@@ -215,7 +214,7 @@ function optimizerRuleTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        let result = db._createStatement({query: query, bindVars:  null, options:  { optimizer: { rules: [ "-interchange-adjacent-enumerations" ] } }}).explain();
+        let result = db._createStatement({query, bindVars: null, options: { optimizer: { rules: [ "-interchange-adjacent-enumerations" ] } }}).explain();
         assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
         assertNotEqual(-1, result.plan.rules.indexOf("use-indexes"), query);
         assertNotEqual(0, result.plan.nodes.filter((node) => node.type === 'IndexNode').length, query);
@@ -227,13 +226,13 @@ function optimizerRuleTestSuite () {
     
     testFiltersNoEarlyPruning : function () {
       let queries = [
-        // cannot pull FILTER into FOR loop, because "inner" is not available in FOR loop yet
-        `FOR doc1 IN ${cn} FOR inner IN 1..10 FILTER doc1.abc == inner RETURN doc1`,
-        `FOR doc1 IN ${cn} FOR inner IN 1..10 FILTER doc1.xyz == inner RETURN doc1`,
+        // cannot pull FILTER into first FOR loop, because "inner" is not available in FOR loop yet
+        `FOR doc1 IN ${cn} FOR inner IN 1..10 FILTER doc1.abc == NOOPT(inner) RETURN doc1`,
+        `FOR doc1 IN ${cn} FOR inner IN 1..10 FILTER doc1.xyz == NOOPT(inner) RETURN doc1`,
       ];
 
       queries.forEach(function(query) {
-        let result = db._createStatement({query: query, bindVars:  null, options:  { optimizer: { rules: [ "-interchange-adjacent-enumerations" ] } }}).explain();
+        let result = db._createStatement({query, bindVars: null, options: { optimizer: { rules: [ "-interchange-adjacent-enumerations" ] } }}).explain();
         assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
         assertEqual(-1, result.plan.rules.indexOf("use-indexes"), query);
         assertEqual(1, result.plan.nodes.filter((node) => node.type === 'EnumerateCollectionNode').length, query);
@@ -243,12 +242,12 @@ function optimizerRuleTestSuite () {
     
     testFiltersWithIndexNoEarlyPruning : function () {
       let queries = [
-        // cannot pull FILTER into FOR loop, because "inner" is not available in FOR loop yet
-        `FOR doc1 IN ${cn} FILTER doc1.value1 == 35 FOR inner IN 1..10 FILTER doc1.abc == inner RETURN doc1`,
+        // cannot pull FILTER into first FOR loop, because "inner" is not available in FOR loop yet
+        `FOR doc1 IN ${cn} FILTER doc1.value1 == 35 FOR inner IN 1..10 FILTER doc1.abc == NOOPT(inner) RETURN doc1`,
       ];
 
       queries.forEach(function(query) {
-        let result = db._createStatement({query: query, bindVars:  null, options:  { optimizer: { rules: [ "-interchange-adjacent-enumerations" ] } }}).explain();
+        let result = db._createStatement({query, bindVars: null, options: { optimizer: { rules: [ "-interchange-adjacent-enumerations" ] } }}).explain();
         assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
         assertNotEqual(-1, result.plan.rules.indexOf("use-indexes"), query);
         assertEqual(1, result.plan.nodes.filter((node) => node.type === 'IndexNode').length, query);
@@ -276,19 +275,8 @@ function optimizerRuleTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        let result = db._createStatement(query).explain();
-        // In these queries something odd happens, due to the distributed
-        // nature of the cluster and the cost calculation we use, the execution
-        // plan we prefer in the single server becomes more expensive than
-        // another plan, which cannot pull the FILTER into the
-        // EnumerateCollectionNode. Therefore another plan is chosen and
-        // we do not see our rule used. Therefore we have to distinguish
-        // cases here:
-        if (isCluster()) {
-          assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
-        } else {
-          assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
-        }
+        let result = db._createStatement({query, options: {optimizer: {rules: ["-interchange-adjacent-enumerations"] } } }).explain();
+        assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
       });
     },
 
@@ -344,9 +332,11 @@ function optimizerRuleIndexesTestSuite () {
     setUpAll : function () {
       db._drop(cn);
       let c = db._create(cn, { numberOfShards: 2 });
+      let docs = [];
       for (let i = 0; i < 2000; ++i) {
-        c.insert({ _key: "test" + i, value1: i, value2: i, value3: i });
+        docs.push({ _key: "test" + i, value1: i, value2: i, value3: i });
       }
+      c.insert(docs);
       c.ensureIndex({ type: "persistent", fields: ["value1", "value2"] });
     },
     
@@ -377,9 +367,9 @@ function optimizerRuleIndexesTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        let result = db._createStatement({query: query[0], bindVars:  null, options:  { optimizer: { rules: ["-use-index-for-sort"] } }}).explain();
+        let result = db._createStatement({query: query[0], bindVars: null, options: { optimizer: { rules: ["-use-index-for-sort"] } }}).explain();
         assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
-        assertNotEqual(-1, result.plan.rules.indexOf(lateRuleName), query);
+        assertNotEqual(-1, result.plan.rules.indexOf("push-down-late-materialization"), query);
         assertEqual(0, result.plan.nodes.filter(function(n) { return n.type === 'FilterNode'; }).length);
         result = db._query(query[0], null, { optimizer: { rules: ["-use-index-for-sort"] } }).toArray().length;
         assertEqual(query[1], result, query);
@@ -395,7 +385,7 @@ function optimizerRuleIndexesTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        let result = db._createStatement({query: query[0], bindVars:  null, options:  { optimizer: { rules: ["-" + ruleName] } }}).explain();
+        let result = db._createStatement({query: query[0], bindVars: null, options: { optimizer: { rules: ["-" + ruleName] } }}).explain();
         assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
         assertEqual(-1, result.plan.rules.indexOf(lateRuleName), query);
         result = db._query(query[0], null, { optimizer: { rules: ["-" + ruleName] } }).toArray().length;
@@ -413,7 +403,71 @@ function optimizerRuleIndexesTestSuite () {
   };
 }
 
+function optimizerRuleListTestSuite () {
+  return {
+    testListDoesNotApplyBecauseOfCondition : function () {
+      let queries = [ 
+        [ `FOR i IN 1..1000 FILTER i >= RAND() RETURN i`, 1000 ],
+        [ `FOR i IN 1..1000 FILTER NOOPT(i) > 0 RETURN i`, 1000 ],
+        [ `FOR i IN 1..1000 FILTER NOOPT(i) > 0 LIMIT 500 RETURN i`, 500 ],
+        [ `FOR i IN 1..1000 FILTER NOOPT(i) > 0 LIMIT 500, 510 RETURN i`, 500 ],
+      ];
+
+      queries.forEach(function(query) {
+        let result = db._createStatement(query[0]).explain();
+        assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
+        assertEqual(1, result.plan.nodes.filter(function(n) { return n.type === 'FilterNode'; }).length);
+        result = db._query(query[0]).toArray().length;
+        assertEqual(query[1], result, query);
+      });
+    },
+    
+    testListResults : function () {
+      let queries = [ 
+        [ `FOR i IN 1..1000 FILTER i >= 1 && i <= 1000 RETURN i`, 1, 1000 ],
+        [ `FOR i IN 1..2000 FILTER i >= 1 && i <= 1000 RETURN i`, 1, 1000 ],
+        [ `FOR i IN 1..2002 FILTER i >= 1 && i <= 2000 RETURN i`, 1, 2000 ],
+        [ `FOR i IN 1..2002 FILTER i >= 1540 && i <= 1760 RETURN i`, 1540, 1760 ],
+        [ `FOR i IN 1..10000 FILTER i >= 1234 && i <= 8999 RETURN i`, 1234, 8999 ],
+        [ `FOR i IN 1..2001 FILTER i >= 1500 LIMIT 100 RETURN i`, 1500, 1599 ],
+        [ `FOR i IN 1..2001 FILTER i >= 1500 LIMIT 2000 RETURN i`, 1500, 2001 ],
+        [ `FOR i IN 1..2000 FILTER i >= 1500 LIMIT 10, 10 RETURN i`, 1510, 1519 ],
+        [ `FOR i IN 1..2000 FILTER i >= 0 LIMIT 1500, 10 RETURN i`, 1501, 1510 ],
+        [ `FOR i IN 1..2000 FILTER i >= 10 LIMIT 1500, 10 RETURN i`, 1510, 1519 ],
+        [ `FOR i IN 1..2000 FILTER i >= 10 && i <= 20 LIMIT 5 RETURN i`, 10, 14 ],
+        [ `FOR i IN 1..2000 FILTER i >= 10 && i <= 20 LIMIT 1, 5 RETURN i`, 11, 15 ],
+        [ `FOR i IN 1..2000 FILTER i >= 10 && i <= 20 LIMIT 5, 5 RETURN i`, 15, 19 ],
+        [ `FOR i IN 1..2000 FILTER i >= 10 && i <= 20 LIMIT 6, 5 RETURN i`, 16, 20 ],
+        [ `FOR i IN 1..10000 FILTER i >= 1234 && i <= 8999 LIMIT 1234, 1222 RETURN i`, 2468, 3689 ],
+      ];
+
+      queries.forEach(function(query) {
+        let result = db._createStatement(query[0]).explain();
+        assertNotEqual(-1, result.plan.rules.indexOf(ruleName), query);
+        assertEqual(0, result.plan.nodes.filter(function(n) { return n.type === 'FilterNode'; }).length);
+        
+        result = db._query(query[0]).toArray();
+        let lower = query[1];
+        let upper = query[2];
+        assertEqual(result.length, upper - lower + 1, {length: result.length, query});
+        result.forEach((v, i) => {
+          assertEqual(v, i + lower, query);
+        });
+        
+        // turn rule off. result should be identical
+        result = db._query(query[0], null, {optimizer: {rules: ["-" + ruleName] } }).toArray();
+        assertEqual(result.length, upper - lower + 1, {length: result.length, query});
+        result.forEach((v, i) => {
+          assertEqual(v, i + lower, query);
+        });
+      });
+    },
+    
+  };
+}
+
 jsunity.run(optimizerRuleTestSuite);
 jsunity.run(optimizerRuleIndexesTestSuite);
+jsunity.run(optimizerRuleListTestSuite);
 
 return jsunity.done();

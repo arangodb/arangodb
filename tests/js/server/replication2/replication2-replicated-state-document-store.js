@@ -2,27 +2,28 @@
 /*global assertTrue, assertFalse, assertEqual, assertNotNull, print*/
 'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2021 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License")
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Alexandru Petenchea
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
 const arangodb = require("@arangodb");
@@ -101,7 +102,10 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
     testReplicateOperationsCommit: function() {
       const opType = "Commit";
 
-      collection.insert({_key: "abcd"});
+      dh.logIfFailure(() => {
+        collection.insert({_key: "abcd"});
+      }, `Failed to insert document in collection ${collectionName}`,{collections: [collection]});
+
       const mergedLogs = dh.mergeLogs(logs);
       let commitEntries = dh.getDocumentEntries(mergedLogs, opType);
       let insertEntries = dh.getDocumentEntries(mergedLogs, "Insert");
@@ -118,12 +122,16 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
 
       // Insert single document
       let documents = [{_key: "foo"}, {_key: "bar"}];
-      documents.forEach(doc => collection.insert(doc));
+      dh.logIfFailure(() => {
+        documents.forEach(doc => collection.insert(doc));
+      }, `Failed to insert documents in collection ${collectionName}`, {collections: [collection]});
       dh.searchDocs(logs, documents, opType);
 
       // Insert multiple documents
       documents = [...Array(10).keys()].map(i => {return {name: "testInsert1", foobar: i};});
-      collection.insert(documents);
+      dh.logIfFailure(() => {
+        collection.insert(documents);
+      }, `Failed to insert documents in collection ${collectionName}`, {collections: [collection]});
       let result = dh.getArrayElements(logs, opType, "testInsert1");
       for (const doc of documents) {
         assertTrue(result.find(entry => entry.foobar === doc.foobar) !== undefined);
@@ -229,7 +237,29 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
           JSON.stringify(allEntries.filter(entry => !entry.hasOwnProperty("payload") ||
               entry.hasOwnProperty("payload") && entry.payload.operation.type !== "Insert"
               && entry.payload.operation.type !== "Commit")));
-    }
+    },
+
+    testFollowersAppliedIndex: function(testName) {
+      for (let i = 0; i < 10; ++i) {
+        collection.insert({_key: `${testName}-${i}`});
+      }
+
+      for (const log of logs) {
+        lh.waitFor(() => {
+          const status = log.status();
+          const leader = Object.values(status.participants).find(({response:{role}}) => role === 'leader');
+          const followers = Object.entries(status.participants).filter(([_,{response:{role}}]) => role === 'follower');
+          const commitIndex = leader.response.local.commitIndex;
+          for (const [id, follower] of followers) {
+            const appliedIndex = follower.response.local.appliedIndex;
+            if (appliedIndex !== commitIndex) {
+              return Error(`Applied index ${appliedIndex} of follower ${id} has not reached the commit index ${commitIndex}.`);
+            }
+          }
+          return true;
+        });
+      }
+    },
   };
 };
 
@@ -347,6 +377,7 @@ const replicatedStateFollowerSuite = function (dbParams) {
   let shardId = null;
   let shards = null;
   let shardsToLogs = null;
+  /** @type {Array<ArangoReplicatedLog>} */
   let logs = null;
 
   const {setUpAll, tearDownAll, setUpAnd, tearDownAnd} =
@@ -441,7 +472,7 @@ const replicatedStateFollowerSuite = function (dbParams) {
       dh.checkFollowersValue(servers, database, shardId, shardsToLogs[shardId], `${testName}-foo`, `${testName}-bar`, isReplication2);
       collection.truncate();
       dh.checkFollowersValue(servers, database, shardId, shardsToLogs[shardId], `${testName}-foo`, null, isReplication2);
-    }
+    },
   };
 };
 
@@ -597,7 +628,9 @@ const replicatedStateRecoverySuite = function () {
         documents.push({_key: `${testName}-${counter}`, value: counter, temporary: counter});
       }
       for (let idx = 0; idx < documents.length; ++idx) {
-        collection.insert(documents[idx]);
+        dh.logIfFailure(() => {
+          collection.insert(documents[idx]);
+        }, `Failed to insert document ${JSON.stringify(documents[idx])}`, {collections: [collection], logs: [log]});
       }
 
       // The following operation will be used to trigger errors, which should be ignored during recovery.
@@ -632,13 +665,17 @@ const replicatedStateRecoverySuite = function () {
 
       // Insert a doc that has the same temporary as an existing one.
       // When the index creation is going to be replayed, it will fail, but the error should be ignored.
-      collection.insert({_key: `${testName}-temporary`, value: 1234567, temporary: 0});
+      dh.logIfFailure(() => {
+        collection.insert({_key: `${testName}-temporary`, value: 1234567, temporary: 0});
+      }, `Failed to insert document`, {collections: [collection], logs: [log]});
 
       // Insert two docs that have a common property
       const commonDoc1 = {_key: `${testName}-common1`, value: 1234};
       const commonDoc2 = {_key: `${testName}-common2`, value: 1234};
-      collection.insert(commonDoc1);
-      collection.insert(commonDoc2);
+      dh.logIfFailure(() => {
+        collection.insert(commonDoc1);
+        collection.insert(commonDoc2);
+      }, `Failed to insert document`, {collections: [collection], logs: [log]});
       // Delete the first doc
       collection.remove(commonDoc1);
       // Create an unique index. When commonDoc1 insertion is replayed, it should trigger a unique constraint violation.
@@ -681,7 +718,9 @@ const replicatedStateRecoverySuite = function () {
       const commitIndexAfterCreateShard = status.participants[leader].response.local.commitIndex + 1;
 
       // Because the last entry (i.e. CreateShard) is always kept in the log, insert another one on top.
-      col2.insert({_key: `${testName}-a`});
+      dh.logIfFailure(() => {
+        col2.insert({_key: `${testName}-a`});
+      }, `Failed to insert document`, {collections: [collection, col2], logs: [log]});
 
       let logContents = log.head(1000);
 
@@ -757,7 +796,9 @@ const replicatedStateRecoverySuite = function () {
       extraCollections = [];
 
       // Before switching to a new leader, insert some documents into the leader collection.
-      collection.insert({_key: `${testName}-foo1`, value: `${testName}-bar1`});
+      dh.logIfFailure(() => {
+        collection.insert({_key: `${testName}-foo1`, value: `${testName}-bar1`});
+      }, `Failed to insert document`, {collections: [collection], logs: [log]});
 
       // The following shard modification should not affect previously inserted documents.
       collection.properties({computedValues: [{
@@ -769,7 +810,9 @@ const replicatedStateRecoverySuite = function () {
       lh.waitFor(dh.computedValuesAppliedPredicate(collection, "createdAt"));
 
       // The following document should have a createdAt value.
-      collection.insert({_key: `${testName}-foo2`, value: `${testName}-bar2`});
+      dh.logIfFailure(() => {
+        collection.insert({_key: `${testName}-foo2`, value: `${testName}-bar2`});
+      }, `Failed to insert document`, {collections: [collection], logs: [log]});
 
       logContents = log.head(1000);
 
@@ -813,8 +856,10 @@ const replicatedStateRecoverySuite = function () {
           numberOfShards: 1,
           distributeShardsLike: collectionName,
         });
-        col.insert({_key: `${testName}-${counter}`});
         extraCollections.push(col);
+        dh.logIfFailure(() => {
+          col.insert({_key: `${testName}-${counter}`});
+        }, `Failed to insert document`, {collections: [...extraCollections, collection], logs: [log]});
       }
 
       // Wait for operations to be synced to disk
@@ -948,9 +993,11 @@ const replicatedStateSnapshotTransferSuite = function () {
       extraCollections.push(col2);
 
       // Insert a document into each collection, so the shards are not empty.
-      collection.insert({_key: testName});
-      col1.insert({_key: testName});
-      col2.insert({_key: testName});
+      dh.logIfFailure(() => {
+        collection.insert({_key: testName});
+        col1.insert({_key: testName});
+        col2.insert({_key: testName});
+      }, `Failed to insert document`, {collections: [collection, col1, col2], logs: [log]});
 
       const participants = lhttp.listLogs(coordinator, database).result[logId];
       let leaderUrl = lh.getServerUrl(participants[0]);
@@ -995,8 +1042,10 @@ const replicatedStateSnapshotTransferSuite = function () {
           numberOfShards: 1,
           distributeShardsLike: collectionName,
         });
-        col.insert({_key: `${testName}-${counter}`});
         extraCollections.push(col);
+        dh.logIfFailure(() => {
+          col.insert({_key: `${testName}-${counter}`});
+        }, `Failed to insert document`, {collections: [...extraCollections, collection], logs: [log]});
       }
 
       // Insert some documents into the original collection.
@@ -1006,7 +1055,9 @@ const replicatedStateSnapshotTransferSuite = function () {
         documents1.push({_key: `foo-${testName}-${counter}`});
       }
       for (let idx = 0; idx < documents1.length; ++idx) {
-        collection.insert(documents1[idx]);
+        dh.logIfFailure(() => {
+          collection.insert(documents1[idx]);
+        }, `Failed to insert document ${JSON.stringify(documents1[idx])}`, {collections: [...extraCollections, collection], logs: [log]});
       }
 
       // Wait for operations to be synced to disk
@@ -1029,7 +1080,9 @@ const replicatedStateSnapshotTransferSuite = function () {
         documents2.push({_key: `bar-${testName}-${counter}`});
       }
       for (let idx = 0; idx < documents2.length; ++idx) {
-        collection.insert(documents2[idx]);
+        dh.logIfFailure(() => {
+          collection.insert(documents2[idx]);
+        }, `Failed to insert document ${JSON.stringify(documents2[idx])}`, {collections: [...extraCollections, collection], logs: [log]});
       }
 
       // The following shard modification should not affect previously inserted documents.
@@ -1237,13 +1290,11 @@ const replicatedStateSnapshotTransferSuite = function () {
 
       // Insert a couple of documents, so there's something for the snapshot,
       // then compact the log in order to trigger a snapshot transfer next time a server is added.
-      try {
+      dh.logIfFailure(() => {
         for (let i = 0; i < 10; ++i) {
           collection.insert({_key: `${testName}_${i}`});
         }
-      } catch (e) {
-        throw new Error(`Failed to insert documents, error: ${e}, logId: ${logId}, log contents: ${JSON.stringify(log.head(1000))}`);
-      }
+      }, `Failed to insert document`, {collections: [collection], logs: [log]});
 
       // Wait for operations to be synced to disk
       let status = log.status();
@@ -1327,17 +1378,23 @@ const replicatedStateSnapshotTransferSuite = function () {
       const stopFollower = _.without(operational, leader)[0];
       stopServerWait(stopFollower);
       lh.waitFor(checkEffectiveWriteConcern(2));
-      collection.insert({_key: `${testName}_bar`});
+      dh.logIfFailure(() => {
+        collection.insert({_key: `${testName}_bar`});
+      }, `Failed to insert document`, {collections: [collection], logs: [log]});
 
       // Now we can finish the snapshot transfer. This should raise the effective write concern to 3.
       helper.debugClearFailAt(lh.getServerUrl(leader), "DocumentStateSnapshot::infiniteSnapshot");
       lh.waitFor(checkEffectiveWriteConcern(3));
-      collection.insert({_key: `${testName}_baz`});
+      dh.logIfFailure(() => {
+        collection.insert({_key: `${testName}_baz`});
+      }, `Failed to insert document`, {collections: [collection], logs: [log]});
 
       // Resuming the follower should raise the effective write concern to 4.
       continueServerWait(stopFollower);
       lh.waitFor(checkEffectiveWriteConcern(4));
-      collection.insert({_key: `${testName}_kuh`});
+      dh.logIfFailure(() => {
+        collection.insert({_key: `${testName}_kuh`});
+      }, `Failed to insert document`, {collections: [collection], logs: [log]});
     }
   };
 };
@@ -1410,11 +1467,24 @@ const replicatedStateDocumentShardsSuite = function () {
       }
       const indexId = index.id.split('/')[1];
 
+      // Wait for the index to appear in Current. This is how we know that the leader has created it successfully.
+      lh.waitFor(() => {
+        if (!dh.isIndexInCurrent(database, collection._id, indexId)) {
+          return Error(`Index ${indexId} is not in Current`);
+        }
+        return true;
+      });
+
       // Check if the CreateIndex operation appears in the log.
       for (let log of logs) {
-        const logContents = log.head(1000);
-        assertTrue(dh.getOperationsByType(logContents, "CreateIndex").length > 0,
-          `CreateIndex not found! Contents of log ${log.id()}: ${JSON.stringify(logContents)}`);
+        // The CreateIndex operation may appear in the log after the index is added to Current.
+        lh.waitFor(() => {
+          const logContents = log.head(1000);
+          if (dh.getOperationsByType(logContents, "CreateIndex").length > 0) {
+            return true;
+          }
+          return Error(`CreateIndex not found! Contents of log ${log.id()}: ${JSON.stringify(logContents)}`);
+        });
       }
 
       // Check that the newly created index is available on all participants.
@@ -1528,11 +1598,17 @@ const replicatedStateDocumentShardsSuite = function () {
           computeOn: ["insert"]
         }]});
 
+      // Get the log id.
+      const {logId, shardId} = dh.getSingleLogId(database, collection);
+      let log = db._replicatedLog(logId);
+
       // Wait for the shard to be modified.
       let cnt = 0;
       lh.waitFor(() => {
         ++cnt;
-        collection.insert({_key: `bar${cnt}`});
+        dh.logIfFailure(() => {
+          collection.insert({_key: `bar${cnt}`});
+        }, `Failed to insert document`, {collections: [collection], logs: [log]});
         let doc = collection.document(`bar${cnt}`);
         if ("createdAt" in doc) {
           return true;
@@ -1541,11 +1617,8 @@ const replicatedStateDocumentShardsSuite = function () {
       });
       const firstTermCollection = collection.toArray();
 
-      // Get the log id.
-      const {logId, shardId} = dh.getSingleLogId(database, collection);
-
       // Check if the ModifyShard command appears in the log during the current term.
-      let logContents = lh.dumpLogHead(logId);
+      let logContents = log.head(1000);
       let modifyShardEntryFound = _.some(logContents, entry => {
         if (entry.payload === undefined) {
           return false;
@@ -1565,7 +1638,9 @@ const replicatedStateDocumentShardsSuite = function () {
       lh.waitFor(lp.replicatedLogLeaderEstablished(database, logId, newTerm, followers));
 
       // The new leader should have executed the ModifyShard command.
-      collection.insert({_key: "foo"});
+      dh.logIfFailure(() => {
+        collection.insert({_key: "foo"});
+      }, `Failed to insert document`, {collections: [collection], logs: [log]});
       let doc = collection.document("foo");
       assertTrue('createdAt' in doc, JSON.stringify(doc));
 
@@ -1605,7 +1680,9 @@ const replicatedStateDocumentShardsSuite = function () {
 
       // Inserting docs into the collection, so there's something for the snapshot.
       for (let idx = 0; idx < 10; ++idx) {
-        collection.insert({_key: `${testName}-${idx}`});
+        dh.logIfFailure(() => {
+          collection.insert({_key: `${testName}-${idx}`});
+        }, `Failed to insert document`, {collections: [collection], logs: [log]});
       }
 
       // Wait for operations to be synced to disk

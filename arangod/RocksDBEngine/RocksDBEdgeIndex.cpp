@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -244,6 +244,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
         _resourceMonitor(monitor),
         _index(index),
         _cache(std::static_pointer_cast<EdgeIndexCacheType>(std::move(cache))),
+        _maxCacheValueSize(_cache == nullptr ? 0 : _cache->maxCacheValueSize()),
         _keys(std::move(keys)),
         _keysIterator(_keys.slice()),
         _bounds(RocksDBKeyBounds::EdgeIndex(0)),
@@ -268,12 +269,9 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
     _resourceMonitor.decreaseMemoryUsage(_memoryUsage);
 
     // report compression metrics to storage engine
-    _collection->vocbase()
-        .server()
-        .getFeature<EngineSelectorFeature>()
-        .engine<RocksDBEngine>()
-        .addCacheMetrics(_totalCachedSizeInitial, _totalCachedSizeEffective,
-                         _totalInserts, _totalCompressed, _totalEmptyInserts);
+    _collection->vocbase().engine<RocksDBEngine>().addCacheMetrics(
+        _totalCachedSizeInitial, _totalCachedSizeEffective, _totalInserts,
+        _totalCompressed, _totalEmptyInserts);
   }
 
   std::string_view typeName() const noexcept final {
@@ -577,33 +575,52 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
       auto end = _bounds.end();
 
       resetInplaceMemory();
-      _builder.openArray(true);
-      for (iterator->Seek(_bounds.start());
-           iterator->Valid() && (cmp->Compare(iterator->key(), end) < 0);
-           iterator->Next()) {
-        LocalDocumentId const docId =
-            RocksDBKey::edgeDocumentId(iterator->key());
 
-        // adding documentId and _from or _to value
-        _builder.add(VPackValue(docId.id()));
-        std::string_view vertexId = RocksDBValue::vertexId(iterator->value());
+      try {
+        _builder.openArray(true);
+        for (iterator->Seek(_bounds.start());
+             iterator->Valid() && (cmp->Compare(iterator->key(), end) < 0);
+             iterator->Next()) {
+          LocalDocumentId const docId =
+              RocksDBKey::edgeDocumentId(iterator->key());
 
-        // construct a potentially prefix-compressed vertex id from the original
-        // _from/_to value
-        std::string_view cacheValue =
-            _index->buildCompressedCacheValue(cacheValueCollection, vertexId);
-        TRI_ASSERT(!cacheValue.empty() && vertexId.ends_with(cacheValue));
-        _builder.add(VPackValue(cacheValue));
+          TRI_ASSERT(_index->objectId() ==
+                     RocksDBKey::objectId(iterator->key()));
+
+          size_t previousLength = _builder.bufferRef().byteSize();
+
+          // adding documentId and _from or _to value
+          _builder.add(VPackValue(docId.id()));
+          std::string_view vertexId = RocksDBValue::vertexId(iterator->value());
+
+          // construct a potentially prefix-compressed vertex id from the
+          // original _from/_to value
+          std::string_view cacheValue =
+              _index->buildCompressedCacheValue(cacheValueCollection, vertexId);
+          TRI_ASSERT(!cacheValue.empty() && vertexId.ends_with(cacheValue));
+          _builder.add(VPackValue(cacheValue));
+
+          size_t newLength = _builder.bufferRef().byteSize();
+          TRI_ASSERT(newLength >= previousLength);
+          size_t diff = newLength - previousLength;
+          scope.increase(diff);
+        }
+        _builder.close();
+      } catch (...) {
+        // clear builder so that _memoryUsage is not != to builder's size().
+        _builder.clear();
+        throw;
       }
-      _builder.close();
 
       // validate that Iterator is in a good shape and hasn't failed
       rocksutils::checkIteratorStatus(*iterator);
     }
     // iterator not needed anymore
-    scope.decrease(expectedIteratorMemoryUsage);
+    scope.revert();
 
+    // now add the actual memory usage for the builder's contents
     scope.increase(_builder.size());
+
     // now we are responsible for tracking the memory usage
     _memoryUsage += scope.trackedAndSteal();
 
@@ -623,6 +640,13 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
     TRI_ASSERT(_cache != nullptr);
     TRI_ASSERT(slice.isArray());
 
+    size_t const originalSize = slice.byteSize();
+
+    if (ADB_UNLIKELY(originalSize > _maxCacheValueSize)) {
+      // dont even attempt to cache the value due to its excessive size
+      return;
+    }
+
     bool const isEmpty = slice.length() == 0;
 
     auto& cmf =
@@ -633,8 +657,6 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
     size_t const minValueSizeForCompression =
         cmf.minValueSizeForEdgeCompression();
     int const accelerationFactor = cmf.accelerationFactorForEdgeCompression();
-
-    size_t const originalSize = slice.byteSize();
 
     auto [data, size, didCompress] = tryCompress(
         slice, originalSize, minValueSizeForCompression, accelerationFactor,
@@ -664,6 +686,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
   RocksDBEdgeIndex const* _index;
 
   std::shared_ptr<EdgeIndexCacheType> _cache;
+  size_t const _maxCacheValueSize;
   velocypack::Builder _keys;
   velocypack::ArrayIterator _keysIterator;
 
@@ -719,22 +742,14 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(IndexId iid, LogicalCollection& collection,
           RocksDBColumnFamilyManager::get(
               RocksDBColumnFamilyManager::Family::EdgeIndex),
           basics::VelocyPackHelper::stringUInt64(info, StaticStrings::ObjectId),
-          !ServerState::instance()->isCoordinator() &&
-              collection.vocbase()
-                  .server()
-                  .getFeature<EngineSelectorFeature>()
-                  .engine<RocksDBEngine>()
-                  .useEdgeCache() /*useCache*/,
+          /*useCache*/ !ServerState::instance()->isCoordinator(),
           /*cacheManager*/
           collection.vocbase()
               .server()
               .getFeature<CacheManagerFeature>()
               .manager(),
           /*engine*/
-          collection.vocbase()
-              .server()
-              .getFeature<EngineSelectorFeature>()
-              .engine<RocksDBEngine>()),
+          collection.vocbase().engine<RocksDBEngine>()),
       _directionAttr(attr),
       _isFromIndex(attr == StaticStrings::FromString),
       _forceCacheRefill(collection.vocbase()
@@ -752,8 +767,6 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(IndexId iid, LogicalCollection& collection,
     // We activate the estimator only on DBServers
     _estimator = std::make_unique<RocksDBCuckooIndexEstimatorType>(
         &collection.vocbase()
-             .server()
-             .getFeature<EngineSelectorFeature>()
              .engine<RocksDBEngine>()
              .indexEstimatorMemoryUsageMetric(),
         RocksDBIndex::ESTIMATOR_SIZE);
@@ -1184,12 +1197,9 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
   LOG_TOPIC("99a29", DEBUG, Logger::ENGINES) << "loaded n: " << n;
 
   // report compression metrics to storage engine
-  _collection.vocbase()
-      .server()
-      .getFeature<EngineSelectorFeature>()
-      .engine<RocksDBEngine>()
-      .addCacheMetrics(totalCachedSizeInitial, totalCachedSizeEffective,
-                       totalInserts, totalCompressed, /*totalEmpty*/ 0);
+  _collection.vocbase().engine<RocksDBEngine>().addCacheMetrics(
+      totalCachedSizeInitial, totalCachedSizeEffective, totalInserts,
+      totalCompressed, /*totalEmpty*/ 0);
 }
 
 // ===================== Helpers ==================

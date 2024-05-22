@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -66,7 +66,7 @@ void AqlFunctionFeature::prepare() {
 
 void AqlFunctionFeature::add(Function const& func) {
   TRI_ASSERT(func.name == basics::StringUtils::toupper(func.name));
-  TRI_ASSERT(_functionNames.find(func.name) == _functionNames.end());
+  TRI_ASSERT(!_functionNames.contains(func.name));
   // add function to the map
   _functionNames.try_emplace(func.name, func);
 }
@@ -96,9 +96,7 @@ void AqlFunctionFeature::toVelocyPack(VPackBuilder& builder) const {
 }
 
 bool AqlFunctionFeature::exists(std::string const& name) const {
-  auto it = _functionNames.find(name);
-
-  return it != _functionNames.end();
+  return _functionNames.contains(name);
 }
 
 Function const* AqlFunctionFeature::byName(std::string const& name) const {
@@ -117,7 +115,9 @@ Function const* AqlFunctionFeature::byName(std::string const& name) const {
 // ------------------------------------------------------
 //
 // . = argument of any type (except collection)
-// c = collection name, will be converted into list with documents
+// b = argument of any type. if it is a bind parameter it
+//     will be marked as a required bind parameter that will
+//     be expanded early in the query processing pipeline
 // h = collection name, will be converted into string
 // , = next argument
 // | = separates mandatory from optional arguments
@@ -202,6 +202,8 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"HASH", ".", flags, &functions::Hash});
   add({"TO_BASE64", ".", flags, &functions::ToBase64});
   add({"TO_HEX", ".", flags, &functions::ToHex});
+  add({"TO_CHAR", ".", flags, &functions::ToChar});
+  add({"REPEAT", ".,.|.", flags, &functions::Repeat});
   add({"ENCODE_URI_COMPONENT", ".", flags, &functions::EncodeURIComponent});
   add({"SOUNDEX", ".", flags, &functions::Soundex});
   add({"LEVENSHTEIN_DISTANCE", ".,.", flags, &functions::LevenshteinDistance});
@@ -290,6 +292,8 @@ void AqlFunctionFeature::addNumericFunctions() {
       Function::makeFlags(FF::CanRunOnDBServerCluster,
                           FF::CanRunOnDBServerOneShard, FF::CanUseInAnalyzer);
   add({"RAND", "", nonDeterministicFlags, &functions::Rand});
+  // RANDOM is an alias for RAND
+  addAlias("RANDOM", "RAND");
 }
 
 void AqlFunctionFeature::addListFunctions() {
@@ -447,31 +451,31 @@ void AqlFunctionFeature::addDateFunctions() {
   // date functions
   add({"DATE_TIMESTAMP", ".|.,.,.,.,.,.", flags, &functions::DateTimestamp});
   add({"DATE_ISO8601", ".|.,.,.,.,.,.", flags, &functions::DateIso8601});
-  add({"DATE_DAYOFWEEK", ".", flags, &functions::DateDayOfWeek});
-  add({"DATE_YEAR", ".", flags, &functions::DateYear});
-  add({"DATE_MONTH", ".", flags, &functions::DateMonth});
-  add({"DATE_DAY", ".", flags, &functions::DateDay});
-  add({"DATE_HOUR", ".", flags, &functions::DateHour});
-  add({"DATE_MINUTE", ".", flags, &functions::DateMinute});
+  add({"DATE_DAYOFWEEK", ".|.", flags, &functions::DateDayOfWeek});
+  add({"DATE_YEAR", ".|.", flags, &functions::DateYear});
+  add({"DATE_MONTH", ".|.", flags, &functions::DateMonth});
+  add({"DATE_DAY", ".|.", flags, &functions::DateDay});
+  add({"DATE_HOUR", ".|.", flags, &functions::DateHour});
+  add({"DATE_MINUTE", ".|.", flags, &functions::DateMinute});
   add({"DATE_SECOND", ".", flags, &functions::DateSecond});
   add({"DATE_MILLISECOND", ".", flags, &functions::DateMillisecond});
-  add({"DATE_DAYOFYEAR", ".", flags, &functions::DateDayOfYear});
-  add({"DATE_ISOWEEK", ".", flags, &functions::DateIsoWeek});
-  add({"DATE_ISOWEEKYEAR", ".", flags, &functions::DateIsoWeekYear});
-  add({"DATE_LEAPYEAR", ".", flags, &functions::DateLeapYear});
-  add({"DATE_QUARTER", ".", flags, &functions::DateQuarter});
-  add({"DATE_DAYS_IN_MONTH", ".", flags, &functions::DateDaysInMonth});
-  add({"DATE_ADD", ".,.|.", flags, &functions::DateAdd});
-  add({"DATE_SUBTRACT", ".,.|.", flags, &functions::DateSubtract});
-  add({"DATE_DIFF", ".,.,.|.", flags, &functions::DateDiff});
-  add({"DATE_COMPARE", ".,.,.|.", flags, &functions::DateCompare});
-  add({"DATE_FORMAT", ".,.", flags, &functions::DateFormat});
-  add({"DATE_TRUNC", ".,.", flags, &functions::DateTrunc});
+  add({"DATE_DAYOFYEAR", ".|.", flags, &functions::DateDayOfYear});
+  add({"DATE_ISOWEEK", ".|.", flags, &functions::DateIsoWeek});
+  add({"DATE_ISOWEEKYEAR", ".|.", flags, &functions::DateIsoWeekYear});
+  add({"DATE_LEAPYEAR", ".|.", flags, &functions::DateLeapYear});
+  add({"DATE_QUARTER", ".|.", flags, &functions::DateQuarter});
+  add({"DATE_DAYS_IN_MONTH", ".|.", flags, &functions::DateDaysInMonth});
+  add({"DATE_ADD", ".,.|.,.", flags, &functions::DateAdd});
+  add({"DATE_SUBTRACT", ".,.|.,.", flags, &functions::DateSubtract});
+  add({"DATE_DIFF", ".,.,.|.,.,.", flags, &functions::DateDiff});
+  add({"DATE_COMPARE", ".,.,.|.,.,.", flags, &functions::DateCompare});
+  add({"DATE_FORMAT", ".,.|.", flags, &functions::DateFormat});
+  add({"DATE_TRUNC", ".,.|.", flags, &functions::DateTrunc});
   add({"DATE_UTCTOLOCAL", ".,.|.", flags, &functions::DateUtcToLocal});
   add({"DATE_LOCALTOUTC", ".,.|.", flags, &functions::DateLocalToUtc});
   add({"DATE_TIMEZONE", "", flags, &functions::DateTimeZone});
   add({"DATE_TIMEZONES", "", flags, &functions::DateTimeZones});
-  add({"DATE_ROUND", ".,.,.", flags, &functions::DateRound});
+  add({"DATE_ROUND", ".,.,.|.", flags, &functions::DateRound});
 
   // special flags:
   add({"DATE_NOW", "",
@@ -492,6 +496,8 @@ void AqlFunctionFeature::addMiscFunctions() {
   add({"FIRST_LIST", ".|+", flags, &functions::FirstList});
   add({"FIRST_DOCUMENT", ".|+", flags, &functions::FirstDocument});
   add({"PARSE_IDENTIFIER", ".", flags, &functions::ParseIdentifier});
+  add({"PARSE_KEY", ".", flags, &functions::ParseKey});
+  add({"PARSE_COLLECTION", ".", flags, &functions::ParseCollection});
   add({"IS_SAME_COLLECTION", ".h,.h", flags, &functions::IsSameCollection});
   add({"DECODE_REV", ".", flags, &functions::DecodeRev});
 
@@ -548,10 +554,6 @@ void AqlFunctionFeature::addMiscFunctions() {
        &functions::CheckDocument});  // not deterministic and not cacheable
   add({"COLLECTION_COUNT", ".h", Function::makeFlags(FF::CanReadDocuments),
        &functions::CollectionCount});  // not deterministic and not cacheable
-  add({"PREGEL_RESULT", ".|.",
-       Function::makeFlags(FF::CanReadDocuments, FF::CanRunOnDBServerCluster,
-                           FF::CanRunOnDBServerOneShard),
-       &functions::PregelResult});  // not deterministic and not cacheable
   add({"ASSERT", ".,.",
        Function::makeFlags(FF::CanRunOnDBServerCluster,
                            FF::CanRunOnDBServerOneShard, FF::CanUseInAnalyzer),

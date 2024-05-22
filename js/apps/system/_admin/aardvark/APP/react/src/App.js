@@ -18,6 +18,7 @@ require('./views/graphV2/listGraphs/GraphsListReactView');
 require('./views/databases/DatabasesReactView');
 require('./views/graphV2/viewGraph/GraphV2ReactView');
 require('./views/users/UserManagementReactView');
+require('./views/users/viewUser/UserPermissionsReactView');
 require('./views/views/ViewsReactView');
 require('./views/collections/indices/CollectionIndicesReactView');
 require('./views/query/QueryReactView');
@@ -148,7 +149,7 @@ window.d3 = d3;
 window.prettyBytes = require('../../frontend/js/lib/pretty-bytes.js');
 window.Dygraph = require('../../frontend/js/lib/dygraph-combined.min.js');
 require('../../frontend/js/config/dygraphConfig.js');
-window.moment = require('../../frontend/js/lib/moment.min.js');
+window.moment = require('moment');
 
 // sigma
 window.sigma = Sigma;

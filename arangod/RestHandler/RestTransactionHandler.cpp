@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -44,7 +44,7 @@
 #include "Utils/ExecContext.h"
 #ifdef USE_V8
 #include "V8/JavaScriptSecurityContext.h"
-#include "V8Server/V8Context.h"
+#include "V8Server/V8Executor.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/Methods/Transactions.h"
 #endif
@@ -61,12 +61,58 @@ RestTransactionHandler::RestTransactionHandler(ArangodServer& server,
                                                GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response), _v8Context(nullptr) {}
 
+RequestLane RestTransactionHandler::lane() const {
+  if (_request->requestType() == RequestType::GET) {
+    // a GET request only returns the list of ongoing transactions.
+    // this is used only for debugging and should not be blocked
+    // by if most scheduler threads are busy.
+    return RequestLane::CLUSTER_ADMIN;
+  }
+
+  bool isCommit = _request->requestType() == rest::RequestType::PUT;
+  bool isAbort = _request->requestType() == rest::RequestType::DELETE_REQ;
+
+  if ((isCommit || isAbort) &&
+      ServerState::instance()->isSingleServerOrCoordinator()) {
+    // give commits and aborts a higer priority than normal document
+    // operations on coordinators and single servers, because these
+    // operations can unblock other operations.
+    // strictly speaking, the request lane should not be "continuation"
+    // here, as it is no continuation. but we don't have a better
+    // other request lane with medium priority. the only important
+    // thing here is that the request lane priority is set to medium.
+    return RequestLane::CONTINUATION;
+  }
+
+  if (ServerState::instance()->isDBServer()) {
+    bool isSyncReplication = false;
+    // We do not care for the real value, enough if it is there.
+    std::ignore = _request->value(StaticStrings::IsSynchronousReplicationString,
+                                  isSyncReplication);
+    if (isSyncReplication) {
+      return RequestLane::SERVER_SYNCHRONOUS_REPLICATION;
+      // This leads to the high queue, we want replication requests (for
+      // commit or abort in the El Cheapo case) to be executed with a
+      // higher prio than leader requests, even if they are done from
+      // AQL.
+    }
+
+    if (isCommit || isAbort) {
+      // commit or abort on leader gets a medium priority, because it
+      // can unblock other operations
+      return RequestLane::CONTINUATION;
+    }
+  }
+
+  return RequestLane::CLIENT_V8;
+}
+
 RestStatus RestTransactionHandler::execute() {
   switch (_request->requestType()) {
     case rest::RequestType::POST:
       if (_request->suffixes().size() == 1 &&
           _request->suffixes()[0] == "begin") {
-        executeBegin();
+        return waitForFuture(executeBegin());
       } else if (_request->suffixes().empty()) {
         executeJSTransaction();
       } else {
@@ -75,12 +121,10 @@ RestStatus RestTransactionHandler::execute() {
       break;
 
     case rest::RequestType::PUT:
-      executeCommit();
-      break;
+      return waitForFuture(executeCommit());
 
     case rest::RequestType::DELETE_REQ:
-      executeAbort();
-      break;
+      return waitForFuture(executeAbort());
 
     case rest::RequestType::GET:
       executeGetState();
@@ -108,7 +152,11 @@ void RestTransactionHandler::executeGetState() {
 
     bool fanout = ServerState::instance()->isCoordinator() &&
                   !_request->parsedValue("local", false);
-    mgr->toVelocyPack(builder, _vocbase.name(), exec.user(), fanout);
+    // note: "details" parameter is not documented and not part of the public
+    // API, so the output format of toVelocyPack(details=true) may change
+    // without notice
+    bool details = _request->parsedValue("details", false);
+    mgr->toVelocyPack(builder, _vocbase.name(), exec.user(), fanout, details);
 
     builder.close();  // array
     builder.close();  // object
@@ -146,7 +194,7 @@ void RestTransactionHandler::executeGetState() {
     return;
   }
 
-  transaction::Status status = mgr->getManagedTrxStatus(tid, _vocbase.name());
+  transaction::Status status = mgr->getManagedTrxStatus(tid);
 
   if (status == transaction::Status::UNDEFINED) {
     generateError(rest::ResponseCode::NOT_FOUND,
@@ -156,7 +204,7 @@ void RestTransactionHandler::executeGetState() {
   }
 }
 
-void RestTransactionHandler::executeBegin() {
+futures::Future<futures::Unit> RestTransactionHandler::executeBegin() {
   TRI_ASSERT(_request->suffixes().size() == 1 &&
              _request->suffixes()[0] == "begin");
 
@@ -164,7 +212,7 @@ void RestTransactionHandler::executeBegin() {
   VPackSlice slice = parseVPackBody(parseSuccess);
   if (!parseSuccess) {
     // error message generated in parseVPackBody
-    return;
+    co_return;
   }
 
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
@@ -184,20 +232,20 @@ void RestTransactionHandler::executeBegin() {
       generateError(
           rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
           "unexpected transaction ID received in begin transaction request");
-      return;
+      co_return;
     }
     // figure out the transaction ID
     TransactionId tid = TransactionId{basics::StringUtils::uint64(value)};
     if (tid.empty() || !tid.isChildTransactionId()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                     "invalid transaction ID on DBServer");
-      return;
+      co_return;
     }
     TRI_ASSERT(tid.isSet());
     TRI_ASSERT(!tid.isLegacyTransactionId());
-    TRI_ASSERT(tid.isSet());
 
-    Result res = mgr->ensureManagedTrx(_vocbase, tid, slice, origin, false);
+    Result res =
+        co_await mgr->ensureManagedTrx(_vocbase, tid, slice, origin, false);
     if (res.fail()) {
       generateError(res);
     } else {
@@ -210,7 +258,7 @@ void RestTransactionHandler::executeBegin() {
       generateError(
           rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
           "missing transaction ID in internal transaction begin request");
-      return;
+      co_return;
     }
 
     // Check if dirty reads are allowed:
@@ -227,8 +275,8 @@ void RestTransactionHandler::executeBegin() {
     }
 
     // start
-    ResultT<TransactionId> res =
-        mgr->createManagedTrx(_vocbase, slice, origin, allowDirtyReads);
+    ResultT<TransactionId> res = co_await mgr->createManagedTrx(
+        _vocbase, slice, origin, allowDirtyReads);
     if (res.fail()) {
       generateError(res.result());
     } else {
@@ -238,23 +286,23 @@ void RestTransactionHandler::executeBegin() {
   }
 }
 
-void RestTransactionHandler::executeCommit() {
+futures::Future<futures::Unit> RestTransactionHandler::executeCommit() {
   if (_request->suffixes().size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
-    return;
+    co_return;
   }
 
   TransactionId tid{basics::StringUtils::uint64(_request->suffixes()[0])};
   if (tid.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "bad transaction ID");
-    return;
+    co_return;
   }
 
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
 
-  Result res = mgr->commitManagedTrx(tid, _vocbase.name());
+  Result res = co_await mgr->commitManagedTrx(tid, _vocbase.name());
   if (res.fail()) {
     generateError(res);
   } else {
@@ -263,10 +311,10 @@ void RestTransactionHandler::executeCommit() {
   }
 }
 
-void RestTransactionHandler::executeAbort() {
+futures::Future<futures::Unit> RestTransactionHandler::executeAbort() {
   if (_request->suffixes().size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
-    return;
+    co_return;
   }
 
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
@@ -301,10 +349,10 @@ void RestTransactionHandler::executeAbort() {
     if (tid.empty()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                     "bad transaction ID");
-      return;
+      co_return;
     }
 
-    Result res = mgr->abortManagedTrx(tid, _vocbase.name());
+    Result res = co_await mgr->abortManagedTrx(tid, _vocbase.name());
 
     if (res.fail()) {
       generateError(res);
@@ -356,7 +404,7 @@ void RestTransactionHandler::executeJSTransaction() {
       server().getFeature<ActionFeature>().allowUseDatabase();
   JavaScriptSecurityContext securityContext =
       JavaScriptSecurityContext::createRestActionContext(allowUseDatabase);
-  V8Context* v8Context = server().getFeature<V8DealerFeature>().enterContext(
+  V8Executor* v8Context = server().getFeature<V8DealerFeature>().enterExecutor(
       &_vocbase, securityContext);
 
   if (!v8Context) {
@@ -364,13 +412,13 @@ void RestTransactionHandler::executeJSTransaction() {
     return;
   }
 
-  // register a function to release the V8Context whenever we exit from this
+  // register a function to release the V8Executor whenever we exit from this
   // scope
   auto guard = scopeGuard([this]() noexcept {
     try {
       WRITE_LOCKER(lock, _lock);
       if (_v8Context != nullptr) {
-        server().getFeature<V8DealerFeature>().exitContext(_v8Context);
+        server().getFeature<V8DealerFeature>().exitExecutor(_v8Context);
         _v8Context = nullptr;
       }
     } catch (std::exception const& ex) {
@@ -381,7 +429,7 @@ void RestTransactionHandler::executeJSTransaction() {
   });
 
   {
-    // make our V8Context available to the cancel function
+    // make our V8Executor available to the cancel function
     WRITE_LOCKER(lock, _lock);
     _v8Context = v8Context;
     if (_canceled) {
@@ -395,8 +443,8 @@ void RestTransactionHandler::executeJSTransaction() {
 
   VPackBuilder result;
   try {
-    Result res = executeTransaction(v8Context->_isolate, _lock, _canceled,
-                                    slice, portType, result);
+    Result res = executeTransaction(v8Context, _lock, _canceled, slice,
+                                    portType, result);
     if (res.ok()) {
       VPackSlice slice = result.slice();
       if (slice.isNone()) {
@@ -427,7 +475,7 @@ void RestTransactionHandler::cancel() {
   _canceled.store(true);
 #ifdef USE_V8
   if (_v8Context != nullptr) {
-    auto isolate = _v8Context->_isolate;
+    v8::Isolate* isolate = _v8Context->isolate();
     if (!isolate->IsExecutionTerminating()) {
       isolate->TerminateExecution();
     }

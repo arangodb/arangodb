@@ -16,8 +16,7 @@ const errors = arangodb.errors;
 const db = arangodb.db;
 const aql = arangodb.aql;
 const _ = require("lodash");
-const origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:').replace(/^h2:/, 'http:');
-const isVst = arango.getEndpoint().match('^vst://') !== null;
+const origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^h2:/, 'http:');
 
 function loadFoxxIntoZip(path) {
   let zip = utils.zipDirectory(path);
@@ -109,6 +108,7 @@ describe('FoxxApi commit', function () {
       { accept: 'image/webp,text/html,application/x-html,*/*;q=0.8', test: "third", 'accept-encoding': 'identity'},
       { accept: 'image/webp,text/html,application/x-html,*/*;q=0.8', test: "third", 'accept-encoding': 'deflate'},
       { accept: 'image/webp,text/html,application/x-html,*/*;q=0.8', test: "third", 'accept-encoding': 'gzip'},
+      { accept: 'image/webp,text/html,application/x-html,*/*;q=0.8', test: "third", 'accept-encoding': 'none'},
       { accept: 'image/webp,text/html,application/x-html,*/*;q=0.8', test: "third"},
       { accept: 'application/json; charset=utf-8', test: "fourth", "content-type": "image/jpg"}
     ].forEach(headers => {
@@ -123,18 +123,13 @@ describe('FoxxApi commit', function () {
       Object.keys(headers).forEach(function(key) {
         let value = headers[key];
         if (key === 'origin') {
-          if (arango.getEndpoint().match(/^vst:/)) {
-            // GeneralServer/HttpCommTask.cpp handles this, not implemented for vst
-            expect(body['origin']).to.equal(origin);
-          } else {
-            expect(result.headers['access-control-allow-origin']).to.equal(origin);
-          }
+          expect(result.headers['access-control-allow-origin']).to.equal(origin);
         }
         expect(body[key]).to.equal(headers[key]);
         
       });
-      if (!headers.hasOwnProperty('accept-encoding')) {
-        expect(body['accept-encoding']).to.equal(undefined);
+      if (headers.hasOwnProperty('accept-encoding')) {
+        expect(body['accept-encoding']).to.equal(headers['accept-encoding']);
       }
     });
 
@@ -206,67 +201,29 @@ describe('FoxxApi commit', function () {
     expect(result).to.have.property('parsedBody');
 
     result = arango.GET_RAW('/_api/version', {'accept-encoding': 'deflate'});
-    if (!isVst) {
-      // no transparent compression support in VST atm.
-      expect(result.body).to.be.instanceof(Buffer);
-    } else {
-      expect(result).to.have.property('parsedBody');
-    }
+    expect(result.body).to.be.instanceof(Buffer);
 
     result = arango.GET_RAW('/_api/version', {'accept-encoding': 'gzip'});
-    if (!isVst) {
-      // no transparent compression support in VST atm.
-      expect(result.body).to.be.instanceof(Buffer);
-    } else {
-      expect(result).to.have.property('parsedBody');
-    }
+    expect(result.body).to.be.instanceof(Buffer);
 
     result = arango.GET_RAW('/test/encode-object-deflate', {'accept-encoding': 'deflate'});
-    if (!isVst) {
-      // no transparent compression support in VST atm.
-      expect(result.body).to.be.instanceof(Buffer);
-    } else {
-      expect(result).to.have.property('parsedBody');
-    }
+    expect(result.body).to.be.instanceof(Buffer);
 
     result = arango.GET_RAW('/test/encode-array-deflate', {'accept-encoding': 'deflate'});
-    if (!isVst) {
-      // no transparent compression support in VST atm.
-      expect(result.body).to.be.instanceof(Buffer);
-    } else {
-      expect(result).to.have.property('parsedBody');
-    }
+    expect(result.body).to.be.instanceof(Buffer);
     
     result = arango.GET_RAW('/test/encode-object-gzip', {'accept-encoding': 'gzip'});
-    if (!isVst) {
-      // no transparent compression support in VST atm.
-      expect(result.body).to.be.instanceof(Buffer);
-    } else {
-      expect(result).to.have.property('parsedBody');
-    }
+    expect(result.body).to.be.instanceof(Buffer);
 
     result = arango.GET_RAW('/test/encode-array-gzip', {'accept-encoding': 'gzip'});
-    if (!isVst) {
-      // no transparent compression support in VST atm.
-      expect(result.body).to.be.instanceof(Buffer);
-    } else {
-      expect(result).to.have.property('parsedBody');
-    }
+    expect(result.body).to.be.instanceof(Buffer);
 
-    if (!isVst) {
-      // doesn't work with vst..
-      arango.GET_RAW('/test/encode-array-base64encode', {'accept-encoding': 'base64'});
+    arango.GET_RAW('/test/encode-array-base64encode', {'accept-encoding': 'base64'});
 
-      arango.GET_RAW('/test/encode-object-base64encode', {'accept-encoding': 'base64'});
-    }
+    arango.GET_RAW('/test/encode-object-base64encode', {'accept-encoding': 'base64'});
 
     result = arango.GET_RAW('/_api/version', {'accept-encoding': 'deflate'});
-    if (!isVst) {
-      // no transparent compression support in VST atm.
-      expect(result.body).to.be.instanceof(Buffer);
-    } else {
-      expect(result).to.have.property('parsedBody');
-    }
+    expect(result.body).to.be.instanceof(Buffer);
 
     result = arango.GET_RAW('/_api/version', {'accept-encoding': 'gzip'});
     expect(result).to.have.property('parsedBody');
@@ -315,67 +272,29 @@ describe('FoxxApi commit', function () {
     expect(result).to.have.property('parsedBody');
 
     result = proxy('/_api/version', {'accept-encoding': 'deflate'});
-    if (!isVst) {
-      // no transparent compression support in VST atm.
-      expect(result.body).to.be.instanceof(Buffer);
-    } else {
-      expect(result).to.have.property('parsedBody');
-    }
+    expect(result.body).to.be.instanceof(Buffer);
 
     result = proxy('/_api/version', {'accept-encoding': 'gzip'});
-    if (!isVst) {
-      // no transparent compression support in VST atm.
-      expect(result.body).to.be.instanceof(Buffer);
-    } else {
-      expect(result).to.have.property('parsedBody');
-    }
+    expect(result.body).to.be.instanceof(Buffer);
 
     result = proxy('/test/encode-object-deflate', {'accept-encoding': 'deflate'});
-    if (!isVst) {
-      // no transparent compression support in VST atm.
-      expect(result.body).to.be.instanceof(Buffer);
-    } else {
-      expect(result).to.have.property('parsedBody');
-    }
+    expect(result.body).to.be.instanceof(Buffer);
 
     result = proxy('/test/encode-array-deflate', {'accept-encoding': 'deflate'});
-    if (!isVst) {
-      // no transparent compression support in VST atm.
-      expect(result.body).to.be.instanceof(Buffer);
-    } else {
-      expect(result).to.have.property('parsedBody');
-    }
+    expect(result.body).to.be.instanceof(Buffer);
     
     result = proxy('/test/encode-object-gzip', {'accept-encoding': 'gzip'});
-    if (!isVst) {
-      // no transparent compression support in VST atm.
-      expect(result.body).to.be.instanceof(Buffer);
-    } else {
-      expect(result).to.have.property('parsedBody');
-    }
+    expect(result.body).to.be.instanceof(Buffer);
 
     result = proxy('/test/encode-array-gzip', {'accept-encoding': 'gzip'});
-    if (!isVst) {
-      // no transparent compression support in VST atm.
-      expect(result.body).to.be.instanceof(Buffer);
-    } else {
-      expect(result).to.have.property('parsedBody');
-    }
+    expect(result.body).to.be.instanceof(Buffer);
 
-    if (!isVst) {
-      // doesn't work with vst..
-      proxy('/test/encode-array-base64encode', {'accept-encoding': 'base64'});
+    proxy('/test/encode-array-base64encode', {'accept-encoding': 'base64'});
 
-      proxy('/test/encode-object-base64encode', {'accept-encoding': 'base64'});
-    }
+    proxy('/test/encode-object-base64encode', {'accept-encoding': 'base64'});
 
     result = proxy('/_api/version', {'accept-encoding': 'deflate'});
-    if (!isVst) {
-      // no transparent compression support in VST atm.
-      expect(result.body).to.be.instanceof(Buffer);
-    } else {
-      expect(result).to.have.property('parsedBody');
-    }
+    expect(result.body).to.be.instanceof(Buffer);
 
     result = proxy('/_api/version', {'accept-encoding': 'gzip'});
     expect(result).to.have.property('parsedBody');
@@ -1197,7 +1116,7 @@ describe('Foxx service', () => {
 
   it('should be downloadable', () => {
     installFoxx(mount, {type: 'dir', buffer: minimalWorkingServicePath});
-    const resp = arango.POST('/_api/foxx/download?mount=' + mount, '');
+    const resp = arango.POST_RAW('/_api/foxx/download?mount=' + mount, '', { "accept-encoding": "" }).body;
     // expect(resp.headers['content-type']).to.equal('application/zip');
     expect(util.isZipBuffer(resp)).to.equal(true);
   });
@@ -1433,7 +1352,7 @@ describe('Foxx service', () => {
   it('idiomatic tests reporter should return string', () => {
     const testPath = path.resolve(internal.pathForTesting('common'), 'test-data', 'apps', 'with-tests');
     FoxxManager.install(testPath, mount);
-    const resp = arango.POST('/_api/foxx/tests?reporter=xunit&idiomatic=true&mount=' + mount, '');
+    const resp = arango.POST_RAW('/_api/foxx/tests?reporter=xunit&idiomatic=true&mount=' + mount, '', { "accept-encoding": "" }).body;
     expect(resp).to.be.instanceof(Buffer);
     expect(resp.toString("utf-8").startsWith("<?xml")).to.equal(true);
   });

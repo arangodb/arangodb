@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -56,6 +56,7 @@
 
 #include <atomic>
 #include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
@@ -65,7 +66,6 @@
 #include <utility>
 #include <vector>
 
-#include "Basics/Common.h"
 #include "Basics/threads.h"
 #include "Logger/LogLevel.h"
 #include "Logger/LogTimeFormat.h"
@@ -183,7 +183,6 @@ class Logger {
   static LogTopic MAINTENANCE;
   static LogTopic MEMORY;
   static LogTopic MMAP;
-  static LogTopic PREGEL;
   static LogTopic QUERIES;
   static LogTopic REPLICATION;
   static LogTopic REPLICATION2;
@@ -306,10 +305,12 @@ class Logger {
                                    : topic.level());
   }
 
-  static void initialize(application_features::ApplicationServer&, bool,
-                         uint32_t maxQueuedLogMessages);
+  static void initialize(bool, uint32_t maxQueuedLogMessages);
   static void shutdown();
   static void flush() noexcept;
+
+  static void setOnDroppedMessage(std::function<void()> cb);
+  static void onDroppedMessage() noexcept;
 
  private:
   // these variables might be changed asynchronously
@@ -345,9 +346,9 @@ class Logger {
     ThreadRef();
     ~ThreadRef();
 
-    ThreadRef(const ThreadRef&) = delete;
+    ThreadRef(ThreadRef const&) = delete;
     ThreadRef(ThreadRef&&) = delete;
-    ThreadRef& operator=(const ThreadRef&) = delete;
+    ThreadRef& operator=(ThreadRef const&) = delete;
     ThreadRef& operator=(ThreadRef&&) = delete;
 
     LogThread* operator->() const noexcept { return _thread; }
@@ -359,8 +360,10 @@ class Logger {
 
   // logger thread. only populated when threaded logging is selected.
   // the pointer must only be used with atomic accessors after the ref counter
-  // has been increased. Best to usethe ThreadRef class for this!
+  // has been increased. Best to use the ThreadRef class for this!
   static std::atomic<std::size_t> _loggingThreadRefs;
   static std::atomic<LogThread*> _loggingThread;
+
+  static std::function<void()> _onDroppedMessage;
 };
 }  // namespace arangodb

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -68,6 +68,7 @@ class StaticStrings {
   static std::string const OverwriteCollectionPrefix;
   static std::string const IsSynchronousReplicationString;
   static std::string const RefillIndexCachesString;
+  static std::string const VersionAttributeString;
   static std::string const Group;
   static std::string const Namespace;
   static std::string const Prefix;
@@ -75,6 +76,7 @@ class StaticStrings {
   static std::string const OverwriteMode;
   static std::string const Compact;
   static std::string const DontWaitForCommit;
+  static std::string const UserString;
 
   // dump headers
   static std::string const DumpAuthUser;
@@ -104,7 +106,6 @@ class StaticStrings {
   static std::string const AppsCollection;
   static std::string const AppBundlesCollection;
   static std::string const FrontendCollection;
-  static std::string const PregelCollection;
   static std::string const StatisticsCollection;
   static std::string const Statistics15Collection;
   static std::string const StatisticsRawCollection;
@@ -142,11 +143,13 @@ class StaticStrings {
   static std::string const IndexName;            // index name
   static std::string const IndexSparse;          // index sparsity marker
   static std::string const IndexStoredValues;    // index stored values
+  static std::string const IndexPrefixFields;    // index prefix fields (zkd)
   static std::string const IndexType;            // index type
   static std::string const IndexUnique;          // index uniqueness marker
   static std::string const IndexEstimates;       // index estimates flag
   static std::string const IndexLegacyPolygons;  // index legacyPolygons flag
   static std::string_view constexpr IndexLookahead{"lookahead"};
+  static std::string const IndexCreationError;  // index failed to create
 
   // static index names
   static std::string const IndexNameEdge;
@@ -186,6 +189,7 @@ class StaticStrings {
   static std::string const Authorization;
   static std::string const BatchContentType;
   static std::string const CacheControl;
+  static std::string const Chunked;
   static std::string const Close;
   static std::string const ClusterCommSource;
   static std::string const Code;
@@ -193,6 +197,8 @@ class StaticStrings {
   static std::string const ContentEncoding;
   static std::string const ContentLength;
   static std::string const ContentTypeHeader;
+  static std::string const Cookie;
+  ;
   static std::string const CorsMethods;
   static std::string const Error;
   static std::string const ErrorCode;
@@ -239,8 +245,10 @@ class StaticStrings {
   static std::string const MultiPartContentType;
 
   // encodings
+  static std::string const EncodingArangoLz4;
   static std::string const EncodingDeflate;
   static std::string const EncodingGzip;
+  static std::string const EncodingLz4;
 
   // arangosh result body
   static std::string const Body;
@@ -358,6 +366,7 @@ class StaticStrings {
   static std::string const FirstIndex;
   static std::string const ReleaseIndex;
   static std::string const SyncIndex;
+  constexpr static std::string_view AppliedIndex = "appliedIndex";
   constexpr static std::string_view MessageId = "messageId";
   constexpr static std::string_view LogIndex = "logIndex";
   constexpr static std::string_view LogTerm = "logTerm";
@@ -390,6 +399,7 @@ class StaticStrings {
 
   // aql api strings
   static std::string const AqlDocumentCall;
+  static std::string const AqlFastPath;
   static std::string const AqlRemoteExecute;
   static std::string const AqlRemoteCallStack;
   static std::string const AqlRemoteLimit;

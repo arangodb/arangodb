@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -60,11 +60,11 @@ bool ClusterTransactionCollection::canAccess(
 }
 
 // simon: actually probably never called on coordinator
-Result ClusterTransactionCollection::lockUsage() {
+futures::Future<Result> ClusterTransactionCollection::lockUsage() {
   if (_collection == nullptr) {
     // open the collection
     if (_transaction->vocbase().server().isStopping()) {
-      return {TRI_ERROR_SHUTTING_DOWN};
+      co_return {TRI_ERROR_SHUTTING_DOWN};
     }
     ClusterInfo& ci = _transaction->vocbase()
                           .server()
@@ -74,7 +74,7 @@ Result ClusterTransactionCollection::lockUsage() {
     _collection = ci.getCollectionNT(_transaction->vocbase().name(),
                                      std::to_string(_cid.id()));
     if (_collection == nullptr) {
-      return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
+      co_return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
     }
 
     if (!_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER)) {
@@ -85,17 +85,17 @@ Result ClusterTransactionCollection::lockUsage() {
 
   if (AccessMode::isWriteOrExclusive(_accessType) && !isLocked()) {
     // r/w lock the collection
-    Result res = doLock(_accessType);
+    Result res = co_await doLock(_accessType);
 
     // TRI_ERROR_LOCKED is not an error, but it indicates that the lock
     // operation has actually acquired the lock (and that the lock has not
     // been held before)
     if (res.fail() && res.isNot(TRI_ERROR_LOCKED)) {
-      return res;
+      co_return res;
     }
   }
 
-  return {};
+  co_return {};
 }
 
 void ClusterTransactionCollection::releaseUsage() {
@@ -117,15 +117,16 @@ void ClusterTransactionCollection::releaseUsage() {
 /// returns TRI_ERROR_LOCKED in case the lock was successfully acquired
 /// returns TRI_ERROR_NO_ERROR in case the lock does not need to be acquired and
 /// no other error occurred returns any other error code otherwise
-Result ClusterTransactionCollection::doLock(AccessMode::Type type) {
+futures::Future<Result> ClusterTransactionCollection::doLock(
+    AccessMode::Type type) {
   if (!AccessMode::isWriteOrExclusive(type)) {
     _lockType = type;
-    return {};
+    return Result{};
   }
 
   if (_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER)) {
     // never lock
-    return {};
+    return Result{};
   }
 
   TRI_ASSERT(_collection != nullptr);

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -73,6 +73,12 @@ struct VocBaseLogManager {
 
   void resignAll() noexcept;
 
+  /// This method is meant to be called during database drop. It cleans up
+  /// all the available replicated states and their associated resources (such
+  /// as shards). However, it does not remove their persistent data from
+  /// storage.
+  void prepareDropAll() noexcept;
+
   auto updateReplicatedState(
       arangodb::replication2::LogId id,
       arangodb::replication2::agency::LogPlanTermSpecification const& term,
@@ -130,8 +136,19 @@ struct VocBaseLogManager {
         TRI_vocbase_t& vocbase)
         -> ResultT<std::shared_ptr<
             replication2::replicated_state::ReplicatedStateBase>>;
+
+    auto stealReplicatedState(replication2::LogId id)
+        -> ResultT<GuardedData::StateAndLog>;
   };
   Guarded<GuardedData> _guardedData;
+
+ private:
+  /// Helper function to gracefully resign and drop a replicated log. This
+  /// may leave the log in an unusable state, even when the method is
+  /// unsuccessful. The returned value can be used to delete the associated
+  /// persistent data from the storage engine.
+  static auto resignAndDrop(GuardedData::StateAndLog& stateAndLog)
+      -> std::unique_ptr<replication2::storage::IStorageEngineMethods>;
 };
 
 }  // namespace arangodb

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -330,7 +330,8 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
               using BaseType::StaticComponent;
 
-              class Shard : public DynamicComponent<Shard, Shards, ShardID> {
+              class Shard
+                  : public DynamicComponent<Shard, Shards, std::string> {
                public:
                 char const* component() const noexcept {
                   return value().c_str();
@@ -339,7 +340,7 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
                 using BaseType::DynamicComponent;
               };
 
-              std::shared_ptr<Shard const> shard(ShardID name) const {
+              std::shared_ptr<Shard const> shard(std::string name) const {
                 return Shard::make_shared(shared_from_this(), std::move(name));
               }
             };
@@ -398,8 +399,8 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
               using BaseType::StaticComponent;
 
-              class Shard
-                  : public DynamicComponent<Shard, ReplicatedLogs, ShardID> {
+              class Shard : public DynamicComponent<Shard, ReplicatedLogs,
+                                                    std::string> {
                public:
                 char const* component() const noexcept {
                   return value().c_str();
@@ -408,7 +409,7 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
                 using BaseType::DynamicComponent;
               };
 
-              std::shared_ptr<Shard const> shard(ShardID value) const {
+              std::shared_ptr<Shard const> shard(std::string value) const {
                 return Shard::make_shared(shared_from_this(), std::move(value));
               }
             };
@@ -1364,7 +1365,8 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
             using BaseType::DynamicComponent;
 
-            class Shard : public DynamicComponent<Shard, Collection, ShardID> {
+            class Shard
+                : public DynamicComponent<Shard, Collection, std::string> {
              public:
               char const* component() const noexcept { return value().c_str(); }
 
@@ -1451,7 +1453,7 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
               }
             };
 
-            std::shared_ptr<Shard const> shard(ShardID name) const {
+            std::shared_ptr<Shard const> shard(std::string name) const {
               return Shard::make_shared(shared_from_this(), std::move(name));
             }
           };
@@ -2642,6 +2644,20 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
 
             std::shared_ptr<Schema const> schema() const {
               return Schema::make_shared(shared_from_this());
+            }
+
+            class CacheEnabled
+                : public StaticComponent<CacheEnabled, Collection> {
+             public:
+              constexpr char const* component() const noexcept {
+                return "cacheEnabled";
+              }
+
+              using BaseType::StaticComponent;
+            };
+
+            std::shared_ptr<CacheEnabled const> cacheEnabled() const {
+              return CacheEnabled::make_shared(shared_from_this());
             }
 
             class ComputedValues

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -31,6 +31,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/MaintenanceFeature.h"
+#include "Cluster/Utils/ShardID.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -41,6 +42,7 @@
 #include "VocBase/Methods/Databases.h"
 #include "VocBase/vocbase.h"
 #include "Replication2/ReplicatedState/ReplicatedState.h"
+#include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 
 #include <velocypack/Compare.h>
@@ -201,18 +203,20 @@ bool CreateCollection::first() {
         _doNotIncrement = true;
         return false;
       }
+
       std::stringstream error;
       error << "creating local shard '" << database << "/" << shard
             << "' for central '" << database << "/" << collection
             << "' failed: " << res;
-      LOG_TOPIC("63687", ERR, Logger::MAINTENANCE) << error.str();
-
       if (res.is(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER) ||
           res.is(TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_FOUND)) {
         // Do not store this error
         // TODO prevent busy loop and wait for log to become ready (CINFRA-831).
         std::this_thread::sleep_for(std::chrono::milliseconds{50});
         ignoreTemporaryError = true;
+        LOG_TOPIC("63688", DEBUG, Logger::MAINTENANCE) << error.str();
+      } else {
+        LOG_TOPIC("63687", ERR, Logger::MAINTENANCE) << error.str();
       }
 
       res.reset(TRI_ERROR_FAILED, error.str());
@@ -365,8 +369,9 @@ replication2::LogId CreateCollection::getReplicatedLogId(
 
   bool found = false;
   std::size_t index = 0;
+  std::string cmpShard{shard};
   for (auto sid : VPackArrayIterator(shardsR2)) {
-    if (sid.isEqualString(shard)) {
+    if (sid.isEqualString(cmpShard)) {
       found = true;
       break;
     }

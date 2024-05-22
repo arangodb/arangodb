@@ -1,27 +1,29 @@
 /*jshint strict: true */
 'use strict';
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2023 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License")
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Alexandru Petenchea
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
+const internal = require("internal");
 const lh = require("@arangodb/testutils/replicated-logs-helper");
 const request = require("@arangodb/request");
 const jsunity = require('jsunity');
@@ -287,9 +289,9 @@ const getSingleLogId = function (database, collection) {
   return {logId, shardId};
 };
 
-const getCollectionShardsAndLogs = function (db, collection) {
+const getCollectionShardsAndLogs = function (db, collection, jwtBearerToken) {
   const shards = collection.shards();
-  const shardsToLogs = lh.getShardsToLogsMapping(db._name(), collection._id);
+  const shardsToLogs = lh.getShardsToLogsMapping(db._name(), collection._id, jwtBearerToken);
   const logs = shards.map(shardId => db._replicatedLog(shardsToLogs[shardId]));
   return {shards, shardsToLogs, logs};
 };
@@ -312,6 +314,44 @@ const computedValuesAppliedPredicate = function (collection, attribute) {
     }
     return true;
   };
+};
+
+const logIfFailure = function (fun, msg, dumpObjects) {
+  try {
+    fun();
+  } catch (e) {
+    let dumpMsg = {};
+    if (dumpObjects !== undefined) {
+      // dump collections
+      if (dumpObjects.hasOwnProperty('collections')) {
+        let collections = {};
+        for (const collection of dumpObjects.collections) {
+          try {
+            collections[collection.name()] = collection.toArray();
+          } catch (e) {
+            collections[collection.name()] = e;
+          }
+        }
+        dumpMsg['collections'] = collections;
+      }
+
+      // dump logs
+      if (dumpObjects.hasOwnProperty('logs')) {
+        let logs = {};
+        for (const log of dumpObjects.logs) {
+          try {
+            logs[log.id()] = log.head(1000);
+          } catch (e) {
+            logs[log.id()] = e;
+          }
+        }
+        dumpMsg['logs'] = logs;
+      }
+    }
+
+    internal.print(`${msg}: ${JSON.stringify(e)}. Dump: ${JSON.stringify(dumpMsg)}`);
+    throw e;
+  }
 };
 
 exports.getLocalValue = getLocalValue;
@@ -338,3 +378,4 @@ exports.getSingleLogId = getSingleLogId;
 exports.getCollectionShardsAndLogs = getCollectionShardsAndLogs;
 exports.isIndexInCurrent = isIndexInCurrent;
 exports.computedValuesAppliedPredicate = computedValuesAppliedPredicate;
+exports.logIfFailure = logIfFailure;

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -555,6 +555,7 @@ class AutoIncrementKeyGenerator final : public KeyGenerator {
       if (lastValue < _offset) {
         keyValue = _offset;
       } else {
+        TRI_ASSERT(_increment > 0);
         keyValue =
             lastValue + _increment - ((lastValue - _offset) % _increment);
       }
@@ -813,6 +814,15 @@ std::string const KeyGeneratorHelper::lowestKey;
 std::string const KeyGeneratorHelper::highestKey(
     KeyGeneratorHelper::maxKeyLength,
     std::numeric_limits<std::string::value_type>::max());
+
+std::vector<std::string> KeyGeneratorHelper::generatorNames() {
+  std::vector<std::string> names;
+  names.reserve(::generatorNames.size());
+  for (auto const& it : ::generatorNames) {
+    names.push_back(it.first);
+  }
+  return names;
+}
 
 uint64_t KeyGeneratorHelper::decodePadded(char const* data,
                                           size_t length) noexcept {

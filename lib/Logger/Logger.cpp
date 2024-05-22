@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,14 +21,6 @@
 /// @author Achim Brandt
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
-
-#include <chrono>
-#include <cstring>
-#include <iosfwd>
-#include <string>
-#include <string_view>
-#include <thread>
-#include <type_traits>
 
 #include "Logger.h"
 
@@ -51,16 +43,20 @@
 #include "Logger/LogStructuredParamsAllowList.h"
 #include "Logger/LogThread.h"
 
-#ifdef _WIN32
-#include "Basics/win-utils.h"
-#endif
+#include <velocypack/Dumper.h>
+#include <velocypack/Sink.h>
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
 #endif
 
-#include <velocypack/Dumper.h>
-#include <velocypack/Sink.h>
+#include <chrono>
+#include <cstring>
+#include <iosfwd>
+#include <string>
+#include <string_view>
+#include <thread>
+#include <type_traits>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -115,6 +111,7 @@ void LogMessage::shrink(std::size_t maxLength) {
 
 std::atomic<bool> Logger::_active(false);
 std::atomic<LogLevel> Logger::_level(LogLevel::INFO);
+std::function<void()> Logger::_onDroppedMessage;
 
 std::unordered_set<std::string> Logger::_structuredLogParams({});
 arangodb::basics::ReadWriteLock Logger::_structuredParamsLock;
@@ -886,8 +883,7 @@ void Logger::append(LogGroup& group, std::unique_ptr<LogMessage> msg,
 /// @brief initializes the logging component
 ////////////////////////////////////////////////////////////////////////////////
 
-void Logger::initialize(application_features::ApplicationServer& server,
-                        bool threaded, uint32_t maxQueuedLogMessages) {
+void Logger::initialize(bool threaded, uint32_t maxQueuedLogMessages) {
   if (_active.exchange(true, std::memory_order_acquire)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "Logger already initialized");
@@ -895,8 +891,8 @@ void Logger::initialize(application_features::ApplicationServer& server,
 
   // logging is now active
   if (threaded) {
-    auto loggingThread = std::make_unique<LogThread>(
-        server, std::string(logThreadName), maxQueuedLogMessages);
+    auto loggingThread = std::make_unique<LogThread>(std::string(logThreadName),
+                                                     maxQueuedLogMessages);
     if (!loggingThread->start()) {
       LOG_TOPIC("28bd9", FATAL, arangodb::Logger::FIXME)
           << "could not start logging thread";
@@ -980,5 +976,15 @@ void Logger::flush() noexcept {
   ThreadRef loggingThread;
   if (loggingThread) {
     loggingThread->flush();
+  }
+}
+
+void Logger::setOnDroppedMessage(std::function<void()> cb) {
+  _onDroppedMessage = std::move(cb);
+}
+
+void Logger::onDroppedMessage() noexcept {
+  if (_onDroppedMessage) {
+    _onDroppedMessage();
   }
 }

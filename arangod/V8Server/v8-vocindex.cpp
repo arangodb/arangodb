@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -91,7 +91,8 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
 
   VPackBuilder output;
   auto res = methods::Indexes::ensureIndex(*collection, builder.slice(), create,
-                                           output);
+                                           output)
+                 .get();
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -148,7 +149,7 @@ static void JS_DropIndexVocbaseCol(
   VPackBuilder builder;
   TRI_V8ToVPack(isolate, builder, args[0], false, false);
 
-  auto res = methods::Indexes::drop(*collection, builder.slice());
+  auto res = methods::Indexes::drop(*collection, builder.slice()).get();
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -182,7 +183,8 @@ static void JS_GetIndexesVocbaseCol(
   }
 
   VPackBuilder output;
-  auto res = methods::Indexes::getAll(*collection, flags, withHidden, output);
+  auto res =
+      methods::Indexes::getAll(*collection, flags, withHidden, output).get();
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);

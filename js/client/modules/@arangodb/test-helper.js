@@ -1,19 +1,16 @@
 /*jshint strict: false */
 /* global print */
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief helper for JavaScript Tests
-// /
-// / @file
-// /
 // / DISCLAIMER
 // /
-// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,7 +18,7 @@
 // / See the License for the specific language governing permissions and
 // / limitations under the License.
 // /
-// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Wilfried Goesgens
 // / @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
@@ -46,6 +43,7 @@ const inst = require('@arangodb/testutils/instance');
 const request = require('@arangodb/request');
 const arangosh = require('@arangodb/arangosh');
 const jsunity = require('jsunity');
+const { isCluster } = require('../../bootstrap/modules/internal');
 const arango = internal.arango;
 const db = internal.db;
 const {assertTrue, assertFalse, assertEqual} = jsunity.jsUnity.assertions;
@@ -108,7 +106,7 @@ exports.debugCanUseFailAt = function (endpoint) {
     let res = arango.GET_RAW('/_admin/debug/failat');
     return res.code === 200;
   } finally {
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
+    reconnectRetry(primaryEndpoint, db._name(), "root", "");
   }
 };
 
@@ -123,7 +121,7 @@ exports.debugSetFailAt = function (endpoint, failAt) {
     }
     return true;
   } finally {
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
+    reconnectRetry(primaryEndpoint, db._name(), "root", "");
   }
 };
 
@@ -137,7 +135,7 @@ exports.debugResetRaceControl = function (endpoint) {
     }
     return false;
   } finally {
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
+    reconnectRetry(primaryEndpoint, db._name(), "root", "");
   }
 };
 
@@ -152,7 +150,7 @@ exports.debugRemoveFailAt = function (endpoint, failAt) {
     }
     return true;
   } finally {
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
+    reconnectRetry(primaryEndpoint, db._name(), "root", "");
   }
 };
 
@@ -166,7 +164,7 @@ exports.debugClearFailAt = function (endpoint) {
     }
     return true;
   } finally {
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
+    reconnectRetry(primaryEndpoint, db._name(), "root", "");
   }
 };
 
@@ -183,7 +181,7 @@ exports.debugGetFailurePoints = function (endpoint) {
       return res.parsedBody;
     }
   } finally {
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
+    reconnectRetry(primaryEndpoint, db._name(), "root", "");
   }
   return [];
 };
@@ -198,7 +196,7 @@ exports.getChecksum = function (endpoint, name) {
     }
     return res.parsedBody.checksum;
   } finally {
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
+    reconnectRetry(primaryEndpoint, db._name(), "root", "");
   }
 };
 
@@ -208,7 +206,7 @@ exports.getRawMetric = function (endpoint, tags) {
     if (endpoint !== primaryEndpoint) {
       reconnectRetry(endpoint, db._name(), "root", "");
     }
-    return arango.GET_RAW('/_admin/metrics' + tags);
+    return arango.GET_RAW('/_admin/metrics' + tags, { 'accept-encoding': 'identity' });
   } finally {
     if (endpoint !== primaryEndpoint) {
       reconnectRetry(primaryEndpoint, db._name(), "root", "");
@@ -483,8 +481,8 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
 
       const logfile = client.file + '.log';
       if (client.failed) {
-        if (fs.exists(logfile)) {
-          debug("test client with pid " + client.pid + " has failed and wrote logfile: " + fs.readFileSync(logfile).toString());
+        if (fs.exists(logfile) && fs.readFileSync(logfile).toString() !== '') {
+          debug("test client with pid " + client.pid + " has failed and wrote logfile '" + logfile + ": " + fs.readFileSync(logfile).toString());
         } else {
           debug("test client with pid " + client.pid + " has failed and did not write a logfile");
         }
@@ -511,7 +509,7 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
 };
 
 exports.waitForEstimatorSync = function() {
-  arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();"); // make sure estimates are consistent
+  return arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();"); // make sure estimates are consistent
 };
 
 exports.waitForShardsInSync = function (cn, timeout, minimumRequiredFollowers = 0) {
@@ -521,8 +519,7 @@ exports.waitForShardsInSync = function (cn, timeout, minimumRequiredFollowers = 
   let start = internal.time();
   while (true) {
     if (internal.time() - start > timeout) {
-      assertTrue(false, Date() + " Shards were not getting in sync in time, giving up!");
-      return;
+      assertTrue(false, `${Date()} Shards for collection '${cn}' were not getting in sync in time, giving up!`);
     }
     let shardDistribution = arango.GET("/_admin/cluster/shardDistribution");
     assertFalse(shardDistribution.error);
@@ -624,8 +621,62 @@ exports.triggerMetrics = function () {
   require("internal").sleep(2);
 };
 
-exports.getAllMetricsFromEndpoints = function (roles = "") {
+exports.activateFailure = function (name) {
+  const isCluster = require("internal").isCluster();
+  let roles = [];
+  if (isCluster) {
+    roles.push("dbserver");
+    roles.push("coordinator");
+  } else {
+    roles.push("single");
+  }
   
+  roles.forEach(role => {
+    exports.getEndpointsByType(role).forEach(ep => exports.debugSetFailAt(ep, name));
+  });
+
+};
+
+exports.deactivateFailure = function (name) {
+  const isCluster = require("internal").isCluster();
+  let roles = [];
+  if (isCluster) {
+    roles.push("dbserver");
+    roles.push("coordinator");
+  } else {
+    roles.push("single");
+  }
+
+  roles.forEach(role => {
+    exports.getEndpointsByType(role).forEach(ep => exports.debugClearFailAt(ep, name));
+  });
+};
+
+exports.getMaxNumberOfShards = function () {
+  return arango.POST("/_admin/execute", "return require('internal').maxNumberOfShards;");
+};
+
+exports.getMaxReplicationFactor = function () {
+  return arango.POST("/_admin/execute", "return require('internal').maxReplicationFactor;");
+};
+
+exports.getMinReplicationFactor = function () {
+  return arango.POST("/_admin/execute", "return require('internal').minReplicationFactor;");
+};
+
+exports.getDbPath = function () {
+  return arango.POST("/_admin/execute", `return require("internal").db._path();`);
+};
+
+exports.getResponsibleShardFromClusterInfo = function (vertexCollectionId, v) {
+  return arango.POST("/_admin/execute", `return global.ArangoClusterInfo.getResponsibleShard(${JSON.stringify(vertexCollectionId)}, ${JSON.stringify(v)})`);
+};
+
+exports.getResponsibleServersFromClusterInfo = function (arg) {
+  return arango.POST("/_admin/execute", `return global.ArangoClusterInfo.getResponsibleServers(${JSON.stringify(arg)});`);
+};
+
+exports.getAllMetricsFromEndpoints = function (roles = "") {
   const isCluster = require("internal").isCluster();
   
   let res = [];
@@ -699,7 +750,7 @@ exports.getAgentEndpoints = function () {
   return exports.getEndpoints(inst.instanceRole.agent);
 };
 
-const callAgency = function (operation, body) {
+const callAgency = function (operation, body, jwtBearerToken) {
   // Memoize the agents
   const getAgents = (function () {
     let agents;
@@ -712,11 +763,15 @@ const callAgency = function (operation, body) {
   }());
   const agents = getAgents();
   assertTrue(agents.length > 0, 'No agents present');
-  const res = request.post({
-    url: `${agents[0]}/_api/agency/${operation}`,
-    body: JSON.stringify(body),
-    timeout: 300,
-  });
+  const req = {
+      url: `${agents[0]}/_api/agency/${operation}`,
+      body: JSON.stringify(body),
+      timeout: 300,
+  };
+  if (jwtBearerToken) {
+      req.auth = { bearer: jwtBearerToken };
+  }
+  const res = request.post(req);
   assertTrue(res instanceof request.Response);
   assertTrue(res.hasOwnProperty('statusCode'), JSON.stringify(res));
   assertEqual(res.statusCode, 200, JSON.stringify(res));
@@ -726,46 +781,73 @@ const callAgency = function (operation, body) {
 
 // client-side API compatible to global.ArangoAgency
 exports.agency = {
-  get: function (key) {
+  get: function (key, jwtBearerToken) {
     const res = callAgency('read', [[
       `/arango/${key}`,
-    ]]);
+    ]], jwtBearerToken);
     return res[0];
   },
 
-  set: function (path, value) {
-    callAgency('write', [[{
+  set: function (path, value, jwtBearerToken) {
+    return callAgency('write', [[{
       [`/arango/${path}`]: {
         'op': 'set',
         'new': value,
       },
-    }]]);
+    }]], jwtBearerToken);
   },
 
-  remove: function (path) {
-    callAgency('write', [[{
+  remove: function(path, jwtBearerToken) {
+    return callAgency('write', [[{
       [`/arango/${path}`]: {
         'op': 'delete'
       },
-    }]]);
+    }]], jwtBearerToken);
   },
 
   call: callAgency,
-  transact: (body) => callAgency("transact", body),
 
-  increaseVersion: function (path) {
-    callAgency('write', [[{
+  transact: function (body, jwtBearerToken) {
+    return callAgency("transact", body, jwtBearerToken);
+  },
+
+  increaseVersion: function (path, jwtBearerToken) {
+    return callAgency('write', [[{
       [`/arango/${path}`]: {
         'op': 'increment',
       },
-    }]]);
+    }]], jwtBearerToken);
   },
-
   // TODO implement the rest...
 };
 
 exports.uniqid = function  () {
   return JSON.parse(db._connection.POST("/_admin/execute?returnAsJSON=true", "return global.ArangoClusterInfo.uniqid()"));
+};
+
+exports.arangoClusterInfoFlush = function () {
+  return arango.POST("/_admin/execute", `return global.ArangoClusterInfo.flush()`);
+};
+
+exports.arangoClusterInfoGetCollectionInfo = function (dbName, collName) {
+  return arango.POST("/_admin/execute", 
+    `return global.ArangoClusterInfo.getCollectionInfo(${JSON.stringify(dbName)}, ${JSON.stringify(collName)})`);
+};
+
+exports.arangoClusterInfoGetCollectionInfoCurrent = function (dbName, collName, shard) {
+  return arango.POST("/_admin/execute", 
+    `return global.ArangoClusterInfo.getCollectionInfoCurrent(
+      ${JSON.stringify(dbName)}, 
+      ${JSON.stringify(collName)}, 
+      ${JSON.stringify(shard)})`);
+};
+
+exports.arangoClusterInfoGetAnalyzersRevision = function (dbName) {
+  return arango.POST("/_admin/execute", `return global.ArangoClusterInfo.getAnalyzersRevision(${JSON.stringify(dbName)})`);
+};
+
+exports.arangoClusterInfoWaitForPlanVersion = function (requiredVersion) {
+  return arango.POST("/_admin/execute", `return global.ArangoClusterInfo.waitForPlanVersion(${JSON.stringify(requiredVersion)})`);
 };
 
 exports.AQL_EXPLAIN = function(query, bindVars, options) {
@@ -788,8 +870,10 @@ exports.AQL_EXECUTE = function(query, bindVars, options) {
     warnings: extra.warnings,
     profile: extra.profile,
     plan: extra.plan,
-    cached: cursor.cached};
+    cached: cursor.cached
+  };
 };
+
 exports.insertManyDocumentsIntoCollection 
   = function(db, coll, maker, limit, batchSize) {
   // This function uses the asynchronous API of `arangod` to quickly
@@ -843,7 +927,7 @@ exports.insertManyDocumentsIntoCollection
       }
     }
     if ((done && l.length > 0) || l.length >= batchSize) {
-      jobs.push(arango.POST_RAW(`/_db/${db}/_api/document/${coll}`,
+      jobs.push(arango.POST_RAW(`/_db/${encodeURIComponent(db)}/_api/document/${encodeURIComponent(coll)}`,
                                 l, {"x-arango-async": "store"})
          .headers["x-arango-async-id"]);
       l = [];

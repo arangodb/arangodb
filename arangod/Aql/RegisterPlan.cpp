@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,14 +26,8 @@
 
 #include "RegisterPlan.h"
 
-#include "Aql/ClusterNodes.h"
-#include "Aql/CollectNode.h"
-#include "Aql/ExecutionNode.h"
-#include "Aql/GraphNode.h"
-#include "Aql/IResearchViewNode.h"
-#include "Aql/IndexNode.h"
-#include "Aql/ModificationNodes.h"
-#include "Aql/SubqueryEndExecutionNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
+#include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
 #include "Containers/Enumerate.h"
 
@@ -168,24 +162,17 @@ void RegisterPlanWalkerT<T>::after(T* en) {
       VarSet varsUsedHere;
       en->getVariablesUsedHere(varsUsedHere);
       for (auto const& v : varsUsedHere) {
-        auto it = varsUsedLater.find(v);
-
-        if (it == varsUsedLater.end()) {
-          auto it2 = plan->varInfo.find(v->id);
-
-          if (it2 == plan->varInfo.end()) {
-            // report an error here to prevent crashing
-            THROW_ARANGO_EXCEPTION_MESSAGE(
-                TRI_ERROR_INTERNAL,
-                absl::StrCat("missing variable ",
-                             ((!v->name.empty() && v->name[0] >= '0' &&
-                               v->name[0] <= '9')
-                                  ? "#"
-                                  : ""),
-                             v->name, " (id ", v->id, ") for node #",
-                             en->id().id(), " (", en->getTypeString(),
-                             ") while planning registers"));
-          }
+        if (!varsUsedLater.contains(v) && !plan->varInfo.contains(v->id)) {
+          // report an error here to prevent crashing
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_INTERNAL,
+              absl::StrCat(
+                  "missing variable ",
+                  ((!v->name.empty() && v->name[0] >= '0' && v->name[0] <= '9')
+                       ? "#"
+                       : ""),
+                  v->name, " (id ", v->id, ") for node #", en->id().id(), " (",
+                  en->getTypeString(), ") while planning registers"));
         }
       }
     }
@@ -510,9 +497,7 @@ RegisterId RegisterPlanT<T>::registerVariable(
   }
   TRI_ASSERT(regId.isConstRegister() == (v->type() == Variable::Type::Const));
 
-  bool inserted;
-  std::tie(std::ignore, inserted) =
-      varInfo.try_emplace(v->id, VarInfo(depth, regId));
+  auto [_, inserted] = varInfo.try_emplace(v->id, VarInfo(depth, regId));
   TRI_ASSERT(inserted);
   if (!inserted) {
     THROW_ARANGO_EXCEPTION_MESSAGE(

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -31,9 +31,6 @@
 namespace arangodb {
 namespace application_features {
 class ApplicationServer;
-}
-namespace basics {
-class StringBuffer;
 }
 namespace httpclient {
 class SimpleHttpClient;
@@ -65,10 +62,10 @@ class SenderThread final : public arangodb::Thread {
 
   bool hasError();
   /// Ready to start sending
-  bool isReady();
+  bool isReady() const;
   /// Currently not sending data
-  bool isIdle();
-  bool isDone();
+  bool isIdle() const;
+  bool isDone() const;
 
   std::string const& errorMessage() const { return _errorMessage; }
 
@@ -78,7 +75,7 @@ class SenderThread final : public arangodb::Thread {
   void run() override;
 
  private:
-  basics::ConditionVariable _condition;
+  basics::ConditionVariable mutable _condition;
   std::unique_ptr<httpclient::SimpleHttpClient> _client;
   std::function<void()> _wakeup;
   std::string _url;

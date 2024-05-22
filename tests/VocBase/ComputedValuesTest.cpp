@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -813,6 +813,7 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesInsertOverwriteTrue) {
                        EXPECT_EQ("test", doc.get("attr").stringView());
                        return true;
                      })
+                  .get()
                   .ok());
 
   auto doc2 = velocypack::Parser::fromJson("{\"_key\":\"test2\"}");
@@ -823,6 +824,7 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesInsertOverwriteTrue) {
                        EXPECT_EQ("test", doc.get("attr").stringView());
                        return true;
                      })
+                  .get()
                   .ok());
 }
 
@@ -856,6 +858,7 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesInsertOverwriteFalse) {
                        EXPECT_EQ("abc", doc.get("attr").stringView());
                        return true;
                      })
+                  .get()
                   .ok());
   auto doc2 = velocypack::Parser::fromJson("{\"_key\":\"test2\"}");
   EXPECT_TRUE(trx.insert("test", doc2->slice(), OperationOptions()).ok());
@@ -865,6 +868,7 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesInsertOverwriteFalse) {
                        EXPECT_EQ("test", doc.get("attr").stringView());
                        return true;
                      })
+                  .get()
                   .ok());
 }
 
@@ -894,6 +898,7 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesUpdateOverwriteTrue) {
                        EXPECT_EQ("abc", doc.get("attr").stringView());
                        return true;
                      })
+                  .get()
                   .ok());
 
   auto doc2 =
@@ -906,6 +911,7 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesUpdateOverwriteTrue) {
                        EXPECT_EQ("update", doc.get("attr").stringView());
                        return true;
                      })
+                  .get()
                   .ok());
 }
 
@@ -935,6 +941,7 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesUpdateOverwriteFalse) {
                        EXPECT_EQ("abc", doc.get("attr").stringView());
                        return true;
                      })
+                  .get()
                   .ok());
 
   auto doc2 =
@@ -947,6 +954,7 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesUpdateOverwriteFalse) {
                        EXPECT_EQ("qux", doc.get("attr").stringView());
                        return true;
                      })
+                  .get()
                   .ok());
 }
 
@@ -1011,6 +1019,7 @@ TEST_F(ComputedValuesTest, createCollectionComputedValuesInvalidValuesDynamic) {
                        EXPECT_EQ(23, doc.get("value2").getNumber<int>());
                        return true;
                      })
+                  .get()
                   .ok());
 }
 
@@ -1045,6 +1054,7 @@ TEST_F(ComputedValuesTest, insertKeepNullTrue) {
                        EXPECT_TRUE(doc.get("attr").isNull());
                        return true;
                      })
+                  .get()
                   .ok());
   auto doc2 = velocypack::Parser::fromJson(
       "{\"_key\":\"test2\", \"attr\":null, \"value\": null}");
@@ -1055,6 +1065,7 @@ TEST_F(ComputedValuesTest, insertKeepNullTrue) {
                        EXPECT_TRUE(doc.get("attr").isNull());
                        return true;
                      })
+                  .get()
                   .ok());
   auto doc3 = velocypack::Parser::fromJson(
       "{\"_key\":\"test3\", \"attr\":null, \"value\": 1}");
@@ -1066,5 +1077,6 @@ TEST_F(ComputedValuesTest, insertKeepNullTrue) {
                        EXPECT_EQ(1, doc.get("attr").getNumber<int>());
                        return true;
                      })
+                  .get()
                   .ok());
 }

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,12 +26,10 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
-#include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Replication2/ReplicatedLog/LogEntry.h"
 #include "RocksDBEngine/RocksDBFormat.h"
-
 #include "Transaction/Helpers.h"
 
 using namespace arangodb;
@@ -82,13 +80,13 @@ RocksDBValue RocksDBValue::VPackIndexValue(VPackSlice data) {
   return RocksDBValue(RocksDBEntryType::VPackIndexValue, data);
 }
 
-RocksDBValue RocksDBValue::ZkdIndexValue() {
-  return RocksDBValue(RocksDBEntryType::ZkdIndexValue);
+RocksDBValue RocksDBValue::MdiIndexValue(VPackSlice data) {
+  return RocksDBValue(RocksDBEntryType::MdiIndexValue, data);
 }
 
-RocksDBValue RocksDBValue::UniqueZkdIndexValue(LocalDocumentId docId) {
-  return RocksDBValue(RocksDBEntryType::UniqueZkdIndexValue, docId,
-                      RevisionId::none());
+RocksDBValue RocksDBValue::UniqueMdiIndexValue(LocalDocumentId docId,
+                                               VPackSlice data) {
+  return RocksDBValue(RocksDBEntryType::UniqueMdiIndexValue, docId, data);
 }
 
 RocksDBValue RocksDBValue::UniqueVPackIndexValue(LocalDocumentId docId) {
@@ -219,7 +217,7 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, LocalDocumentId docId,
     : _type(type), _buffer() {
   switch (_type) {
     case RocksDBEntryType::UniqueVPackIndexValue:
-    case RocksDBEntryType::UniqueZkdIndexValue:
+    case RocksDBEntryType::UniqueMdiIndexValue:
     case RocksDBEntryType::PrimaryIndexValue: {
       if (!revision) {
         _buffer.reserve(sizeof(uint64_t));
@@ -241,7 +239,8 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, LocalDocumentId docId,
                            VPackSlice data)
     : _type(type), _buffer() {
   switch (_type) {
-    case RocksDBEntryType::UniqueVPackIndexValue: {
+    case RocksDBEntryType::UniqueVPackIndexValue:
+    case RocksDBEntryType::UniqueMdiIndexValue: {
       size_t byteSize = static_cast<size_t>(data.byteSize());
       _buffer.reserve(sizeof(uint64_t) + byteSize);
       uint64ToPersistent(_buffer, docId.id());  // LocalDocumentId
@@ -258,6 +257,7 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, VPackSlice data)
     : _type(type), _buffer() {
   switch (_type) {
     case RocksDBEntryType::VPackIndexValue:
+    case RocksDBEntryType::MdiIndexValue:
       TRI_ASSERT(data.isArray());
       [[fallthrough]];
 

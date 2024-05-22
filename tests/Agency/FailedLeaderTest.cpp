@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -56,7 +56,7 @@ namespace failed_leader_test {
 [[maybe_unused]] const std::string PREFIX = "arango";
 [[maybe_unused]] const std::string DATABASE = "database";
 [[maybe_unused]] const std::string COLLECTION = "collection";
-[[maybe_unused]] const std::string SHARD = "s99";
+[[maybe_unused]] const ShardID SHARD{99};
 [[maybe_unused]] const std::string SHARD_LEADER = "leader";
 [[maybe_unused]] const std::string SHARD_FOLLOWER1 = "follower1";
 [[maybe_unused]] const std::string SHARD_FOLLOWER2 = "follower2";
@@ -285,6 +285,13 @@ class FailedLeaderTest
       }
     }
     {
+      // Assert that collection still exists
+      auto path =
+          "/arango/Plan/Collections/" + si.database + "/" + si.collection;
+      ASSERT_TRUE(pre.hasKey(path)) << path << pre.toJson();
+      AssertOldNotEmptyObject(pre.get(path));
+    }
+    {
       // Section: Protection against lost plan updates:
       if (!si.isFollower) {
         // Plan, only the leader needs to be unmodified. The Followers can only
@@ -486,6 +493,14 @@ class FailedLeaderTest
     bool oldEmpty = VelocyPackHelper::getBooleanValue(obj, "oldEmpty", false);
     // Required to be TRUE!
     EXPECT_TRUE(oldEmpty);
+  }
+
+  void AssertOldNotEmptyObject(VPackSlice obj) {
+    ASSERT_TRUE(obj.isObject());
+    // Will be set to false if ommited, or actively se t to false
+    bool oldEmpty = VelocyPackHelper::getBooleanValue(obj, "oldEmpty", false);
+    // Required to be FALSE!
+    EXPECT_FALSE(oldEmpty);
   }
 
   void AssertOldIsString(VPackSlice obj, std::string const& expected) {
@@ -941,7 +956,7 @@ TEST_F(FailedLeaderTest, abort_any_moveshard_job_blocking) {
         }
       }
       if (path == "/arango/Supervision/Shards") {
-        builder->add(SHARD, VPackValue("2"));
+        builder->add(std::string{SHARD}, VPackValue("2"));
       } else if (path == "/arango/Target/ToDo") {
         builder->add("1", createBuilder(todo).slice());
       } else if (path == "/arango/Target/Pending") {

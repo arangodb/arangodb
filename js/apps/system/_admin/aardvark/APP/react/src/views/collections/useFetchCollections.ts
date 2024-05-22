@@ -32,9 +32,7 @@ export const useFetchCollections = () => {
         setCollections(newCollections);
       }
     };
-    if (!window.frontendConfig.ldapEnabled) {
-      window.arangoHelper.syncAndReturnUnfinishedAardvarkJobs("index", callback);
-    }
+    window.arangoHelper.syncAndReturnUnfinishedAardvarkJobs("index", callback);
   };
 
   useEffect(() => {

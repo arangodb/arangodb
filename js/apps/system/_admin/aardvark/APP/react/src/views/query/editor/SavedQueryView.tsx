@@ -6,21 +6,21 @@ import {
   IconButton,
   Spinner,
   Stack,
+  Text,
   useDisclosure
 } from "@chakra-ui/react";
 import { CellContext, createColumnHelper } from "@tanstack/react-table";
+import momentMin from "moment";
 import React, { useMemo } from "react";
 import { InfoCircle } from "styled-icons/boxicons-solid";
 import { PlayArrow } from "styled-icons/material";
-import momentMin from "../../../../../frontend/js/lib/moment.min";
 import aqlTemplates from "../../../../public/assets/aqltemplates.json";
 import { ControlledJSONEditor } from "../../../components/jsonEditor/ControlledJSONEditor";
-import { FiltersList } from "../../../components/table/FiltersList";
 import { ReactTable } from "../../../components/table/ReactTable";
+import { TableControl } from "../../../components/table/TableControl";
 import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
-import { download, downloadLocalData } from "../../../utils/downloadHelper";
+import { download } from "../../../utils/downloadHelper";
 import { useQueryContext } from "../QueryContextProvider";
-import { getQueryStorageKey } from "../queryHelper";
 import { AQLEditor } from "./AQLEditor";
 import { DeleteQueryModal } from "./DeleteQueryModal";
 import { ImportQueryModal } from "./ImportQueryModal";
@@ -197,7 +197,7 @@ const SavedQueryTable = ({ savedQueries }: { savedQueries?: QueryType[] }) => {
   const tableInstance = useSortableReactTable<QueryType>({
     columns: TABLE_COLUMNS,
     data: finalData,
-    initialSorting: [
+    defaultSorting: [
       {
         id: "created_at",
         desc: true
@@ -220,13 +220,20 @@ const SavedQueryTable = ({ savedQueries }: { savedQueries?: QueryType[] }) => {
     >
       <Stack height="full" overflow="auto">
         <Box paddingLeft="2" paddingTop="1">
-          <FiltersList<QueryType>
-            columns={TABLE_COLUMNS}
+          <TableControl
             table={tableInstance}
+            columns={TABLE_COLUMNS}
+            showColumnSelector={false}
           />
         </Box>
         <ReactTable<QueryType>
           table={tableInstance}
+          layout="fixed"
+          getCellProps={() => {
+            return {
+              verticalAlign: "top"
+            };
+          }}
           onRowSelect={row => {
             if (!row.getIsSelected()) {
               row.toggleSelected();
@@ -245,8 +252,11 @@ const QueryPreview = ({ query }: { query: QueryType | null }) => {
   }
   return (
     <Stack height="full">
-      <Box fontWeight="medium" fontSize="md">
-        Preview: {query.name}
+      <Box fontWeight="medium" fontSize="sm">
+        Preview:{" "}
+        <Text isTruncated title={query.name} maxWidth="500px">
+          {query.name}
+        </Text>
       </Box>
       <Grid gridTemplateColumns="1fr 1fr" height="full">
         <Stack>
@@ -283,16 +293,6 @@ const SavedQueryBottomBar = () => {
     onClose: onCloseImportModal
   } = useDisclosure();
   const onDownload = () => {
-    const storageKey = getQueryStorageKey();
-    if (window.frontendConfig.ldapEnabled) {
-      const data = localStorage.getItem(storageKey) || "[]";
-      downloadLocalData({
-        data,
-        fileName: `savedQueries-${window.frontendConfig.db}.json`,
-        type: "json"
-      });
-      return;
-    }
     download(`query/download/${window.App.currentUser || "root"}`);
   };
   return (

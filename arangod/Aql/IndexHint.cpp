@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -35,8 +35,7 @@
 
 #include <ostream>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 namespace {
 std::string_view constexpr kTypeDisabled("disabled");
 std::string_view constexpr kTypeIllegal("illegal");
@@ -92,8 +91,8 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node) {
             // indexHint: string
             if (_type == HintType::Disabled) {
               // disableIndex vs. indexHint is contradicting...
-              ExecutionPlan::invalidOptionAttribute(
-                  query, "contradicting", "FOR", name.data(), name.size());
+              ExecutionPlan::invalidOptionAttribute(query, "contradicting",
+                                                    "FOR", name);
             }
             _type = HintType::Simple;
             _hint.simple.emplace_back(value->getStringValue(),
@@ -102,8 +101,8 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node) {
             // indexHint: string: array
             if (_type == HintType::Disabled) {
               // disableIndex vs. indexHint is contradicting...
-              ExecutionPlan::invalidOptionAttribute(
-                  query, "contradicting", "FOR", name.data(), name.size());
+              ExecutionPlan::invalidOptionAttribute(query, "contradicting",
+                                                    "FOR", name);
             }
             _type = HintType::Simple;
             for (size_t j = 0; j < value->numMembers(); j++) {
@@ -136,8 +135,8 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node) {
               _type = HintType::Disabled;
               if (!_hint.simple.empty()) {
                 // disableIndex vs. indexHint is contradicting...
-                ExecutionPlan::invalidOptionAttribute(
-                    query, "contradicting", "FOR", name.data(), name.size());
+                ExecutionPlan::invalidOptionAttribute(query, "contradicting",
+                                                      "FOR", name);
                 _hint.simple.clear();
               }
               TRI_ASSERT(_hint.simple.empty());
@@ -157,12 +156,11 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node) {
             _lookahead = value->getIntValue();
           } else {
             ExecutionPlan::invalidOptionAttribute(query, "invalid", "FOR",
-                                                  name.data(), name.size());
+                                                  name);
           }
           handled = true;
         } else {
-          ExecutionPlan::invalidOptionAttribute(query, "unknown", "FOR",
-                                                name.data(), name.size());
+          ExecutionPlan::invalidOptionAttribute(query, "unknown", "FOR", name);
           handled = true;
         }
 
@@ -170,8 +168,7 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node) {
           VPackBuilder builder;
           child->getMember(0)->toVelocyPackValue(builder);
           std::string msg = "invalid value " + builder.toJson() + " in ";
-          ExecutionPlan::invalidOptionAttribute(query, msg.data(), "FOR",
-                                                name.data(), name.size());
+          ExecutionPlan::invalidOptionAttribute(query, msg, "FOR", name);
         }
       }
     }
@@ -255,5 +252,4 @@ std::ostream& operator<<(std::ostream& stream, IndexHint const& hint) {
   return stream;
 }
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql

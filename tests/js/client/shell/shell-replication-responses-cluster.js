@@ -4,13 +4,14 @@
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
-// / Copyright 2018 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,7 +19,7 @@
 // / See the License for the specific language governing permissions and
 // / limitations under the License.
 // /
-// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Jan Steemann
 // //////////////////////////////////////////////////////////////////////////////
@@ -30,10 +31,19 @@ const _ = require('lodash');
 const db = arangodb.db;
 const { debugCanUseFailAt, debugClearFailAt, debugSetFailAt, getEndpointById, getUrlById, getEndpointsByType } = require('@arangodb/test-helper');
 const request = require('@arangodb/request');
+const isReplication2 = db._properties().replicationVersion === "2";
+const {ERROR_HTTP_NOT_ACCEPTABLE, ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE} = internal.errors;
 
 function followerResponsesSuite() {
   'use strict';
   const cn = 'UnitTestsCollection';
+
+  const assertIsReplication2FollowerResponse = (body) => {
+    const {error, code, errorNum} = body;
+    assertTrue(error, `Should get error response, instead got ${JSON.stringify(body)}`);
+    assertEqual(ERROR_HTTP_NOT_ACCEPTABLE.code, code, `Should get error response, instead got ${JSON.stringify(body)}`);
+    assertEqual(ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE.code, errorNum, `Should get error response, instead got ${JSON.stringify(body)}`);
+  };
 
   return {
 
@@ -68,8 +78,12 @@ function followerResponsesSuite() {
         json: true
       });
 
-      // verify that response is empty
-      assertEqual({}, response.json);
+      if (isReplication2) {
+        assertIsReplication2FollowerResponse(response.json);
+      } else {
+        // verify that response is empty
+        assertEqual({}, response.json);
+      }
       
       // send multi document replication insert request
       response = request({
@@ -79,8 +93,12 @@ function followerResponsesSuite() {
         json: true
       });
 
-      // verify that response is empty
-      assertEqual([], response.json);
+      if (isReplication2) {
+        assertIsReplication2FollowerResponse(response.json);
+      } else {
+        // verify that response is empty
+        assertEqual({}, response.json);
+      }
     },
     
     testUpdate: function () {
@@ -110,8 +128,12 @@ function followerResponsesSuite() {
         json: true
       });
 
-      // verify that response is empty
-      assertEqual({}, response.json);
+      if (isReplication2) {
+        assertIsReplication2FollowerResponse(response.json);
+      } else {
+        // verify that response is empty
+        assertEqual({}, response.json);
+      }
       
       // send multi document replication update request
       response = request({
@@ -121,8 +143,12 @@ function followerResponsesSuite() {
         json: true
       });
 
-      // verify that response is empty
-      assertEqual([], response.json);
+      if (isReplication2) {
+        assertIsReplication2FollowerResponse(response.json);
+      } else {
+        // verify that response is empty
+        assertEqual({}, response.json);
+      }
     },
     
     testRemove: function () {
@@ -152,8 +178,12 @@ function followerResponsesSuite() {
         json: true
       });
 
-      // verify that response is empty
-      assertEqual({}, response.json);
+      if (isReplication2) {
+        assertIsReplication2FollowerResponse(response.json);
+      } else {
+        // verify that response is empty
+        assertEqual({}, response.json);
+      }
       
       // send multi document replication remove request
       response = request({
@@ -163,8 +193,12 @@ function followerResponsesSuite() {
         json: true
       });
 
-      // verify that response is empty
-      assertEqual([], response.json);
+      if (isReplication2) {
+        assertIsReplication2FollowerResponse(response.json);
+      } else {
+        // verify that response is empty
+        assertEqual({}, response.json);
+      }
     },
   };
 }

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -52,37 +52,43 @@ DocumentStateTransactionHandler::DocumentStateTransactionHandler(
 
 auto DocumentStateTransactionHandler::getTrx(TransactionId tid)
     -> std::shared_ptr<IDocumentStateTransaction> {
-  auto it = _transactions.find(tid);
-  if (it == _transactions.end()) {
-    return nullptr;
-  }
-  return it->second;
+  return _transactions.doUnderLock(
+      [&](auto& transactions) -> std::shared_ptr<IDocumentStateTransaction> {
+        auto it = transactions.find(tid);
+        if (it == transactions.end()) {
+          return nullptr;
+        }
+        return it->second;
+      });
 }
 
 void DocumentStateTransactionHandler::setTrx(
     TransactionId tid, std::shared_ptr<IDocumentStateTransaction> trx) {
-  auto [_, isInserted] = _transactions.emplace(tid, std::move(trx));
+  auto [_, isInserted] =
+      _transactions.getLockedGuard()->emplace(tid, std::move(trx));
   ADB_PROD_ASSERT(isInserted)
       << "Transaction " << tid << " already exists (gid " << _gid << ")";
 }
 
 void DocumentStateTransactionHandler::removeTransaction(TransactionId tid) {
-  _transactions.erase(tid);
+  _transactions.getLockedGuard()->erase(tid);
 }
 
 auto DocumentStateTransactionHandler::getUnfinishedTransactions() const
-    -> TransactionMap const& {
-  return _transactions;
+    -> TransactionMap {
+  return _transactions.copy();
 }
 
 auto DocumentStateTransactionHandler::getTransactionsForShard(
     ShardID const& sid) -> std::vector<TransactionId> {
   std::vector<TransactionId> result;
-  for (auto const& [tid, trx] : _transactions) {
-    if (trx->containsShard(sid)) {
-      result.emplace_back(tid);
+  _transactions.doUnderLock([&](auto& transactions) {
+    for (auto const& [tid, trx] : transactions) {
+      if (trx->containsShard(sid)) {
+        result.emplace_back(tid);
+      }
     }
-  }
+  });
   return result;
 }
 
@@ -125,7 +131,8 @@ auto DocumentStateTransactionHandler::applyOp(
                           ? AccessMode::Type::EXCLUSIVE
                           : AccessMode::Type::WRITE;
     TRI_ASSERT(_vocbase != nullptr) << op << " " << _gid;
-    trx = _factory->createTransaction(*_vocbase, op.tid, op.shard, accessType);
+    trx = _factory->createTransaction(*_vocbase, op.tid, op.shard, accessType,
+                                      op.userName);
     setTrx(op.tid, trx);
   }
 
@@ -135,7 +142,7 @@ auto DocumentStateTransactionHandler::applyOp(
 
 auto DocumentStateTransactionHandler::applyOp(
     ReplicatedOperation::AbortAllOngoingTrx const&) -> Result {
-  _transactions.clear();
+  _transactions.getLockedGuard()->clear();
   return {};
 }
 
@@ -170,7 +177,7 @@ auto DocumentStateTransactionHandler::applyOp(
 
 auto DocumentStateTransactionHandler::applyOp(
     ReplicatedOperation::DropIndex const& op) -> Result {
-  return _shardHandler->dropIndex(op.shard, op.index);
+  return _shardHandler->dropIndex(op.shard, op.indexId);
 }
 
 auto DocumentStateTransactionHandler::applyEntry(

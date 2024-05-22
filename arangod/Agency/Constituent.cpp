@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,17 +23,14 @@
 
 #include "Constituent.h"
 
-#include <chrono>
-#include <iomanip>
-#include <thread>
-
-#include <velocypack/Iterator.h>
-
 #include "Agency/Agent.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Basics/application-exit.h"
+#include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/MetricsFeature.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Random/RandomGenerator.h"
@@ -45,8 +42,11 @@
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
-#include "Metrics/GaugeBuilder.h"
-#include "Metrics/MetricsFeature.h"
+#include <velocypack/Iterator.h>
+
+#include <chrono>
+#include <iomanip>
+#include <thread>
 
 using namespace arangodb::consensus;
 using namespace arangodb::rest;
@@ -470,6 +470,11 @@ void Constituent::callElection() {
   network::ConnectionPool* cp = nf.pool();
 
   network::RequestOptions reqOpts;
+  // never compress requests to the agency, so that we do not spend too much
+  // CPU on compression/decompression. some agent instances run with a very
+  // low number of cores (even fractions of physical cores), so we cannot
+  // waste too much CPU resources there.
+  reqOpts.allowCompression = false;
   reqOpts.timeout = timeout;
   reqOpts.param("term", std::to_string(savedTerm))
       .param("candidateId", _id)
@@ -488,35 +493,38 @@ void Constituent::callElection() {
     if (i == _id) {
       continue;
     }
-    network::sendRequest(cp, _agent->config().poolAt(i), fuerte::RestVerb::Get,
-                         "/_api/agency_priv/requestVote",
-                         VPackBuffer<uint8_t>(), reqOpts)
-        .thenValue([=](network::Response r) {
-          if (r.ok() && r.statusCode() == 200) {
-            VPackSlice slc = r.slice();
+    std::ignore =
+        network::sendRequest(
+            cp, _agent->config().poolAt(i), fuerte::RestVerb::Get,
+            "/_api/agency_priv/requestVote", VPackBuffer<uint8_t>(), reqOpts)
+            .thenValue([=](network::Response r) {
+              if (r.ok() && r.statusCode() == 200) {
+                VPackSlice slc = r.slice();
 
-            // Got ballot
-            if (slc.isObject() && slc.hasKey("term") &&
-                slc.hasKey("voteGranted")) {
-              // Follow right away?
-              term_t receivedT = slc.get("term").getUInt();
-              if (receivedT >
-                  savedTerm) {  // only count vote if term is equal or smaller
-                term_t expectedT = maxTermReceived->load();
-                maxTermReceived->compare_exchange_strong(expectedT, receivedT);
-              } else {
-                // Check result and counts
-                if (slc.get("voteGranted").getBool()) {  // majority in favor?
-                  yea->fetch_add(1);
-                  // Vote is counted as yea
-                  return;
+                // Got ballot
+                if (slc.isObject() && slc.hasKey("term") &&
+                    slc.hasKey("voteGranted")) {
+                  // Follow right away?
+                  term_t receivedT = slc.get("term").getUInt();
+                  if (receivedT > savedTerm) {  // only count vote if term is
+                                                // equal or smaller
+                    term_t expectedT = maxTermReceived->load();
+                    maxTermReceived->compare_exchange_strong(expectedT,
+                                                             receivedT);
+                  } else {
+                    // Check result and counts
+                    if (slc.get("voteGranted")
+                            .getBool()) {  // majority in favor?
+                      yea->fetch_add(1);
+                      // Vote is counted as yea
+                      return;
+                    }
+                  }
                 }
               }
-            }
-          }
-          // Count the vote as a nay
-          nay->fetch_add(1);
-        });
+              // Count the vote as a nay
+              nay->fetch_add(1);
+            });
   }
 
   // We collect votes, we leave the following loop when one of the following

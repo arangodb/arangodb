@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -133,7 +133,7 @@ IResearchQueryTest::IResearchQueryTest() : server{false} {
           arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
           arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
       [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
-         arangodb::aql::VPackFunctionParametersView params) {
+         arangodb::aql::functions::VPackFunctionParametersView params) {
         TRI_ASSERT(!params.empty());
         return params[0];
       }});
@@ -149,7 +149,7 @@ IResearchQueryTest::IResearchQueryTest() : server{false} {
           arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
           arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
       [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
-         arangodb::aql::VPackFunctionParametersView params) {
+         arangodb::aql::functions::VPackFunctionParametersView params) {
         TRI_ASSERT(!params.empty());
         return params[0];
       }});
@@ -307,7 +307,7 @@ void QueryTest::createIndexes(std::string_view definition1,
         version(), definition1));
     auto collection = _vocbase.lookupCollection("testCollection0");
     ASSERT_TRUE(collection);
-    collection->createIndex(createJson->slice(), created);
+    collection->createIndex(createJson->slice(), created).get();
     ASSERT_TRUE(created);
   }
   // testIndex1
@@ -321,7 +321,7 @@ void QueryTest::createIndexes(std::string_view definition1,
         version(), definition2));
     auto collection = _vocbase.lookupCollection("testCollection1");
     ASSERT_TRUE(collection);
-    collection->createIndex(createJson->slice(), created);
+    collection->createIndex(createJson->slice(), created).get();
     EXPECT_TRUE(created);
   }
 }

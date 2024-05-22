@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -589,7 +589,6 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
     return false;
   }
 
-#ifndef _WIN32
   if (syncFile) {
     // also sync target directory
     std::string const dir = TRI_Dirname(filename);
@@ -615,7 +614,6 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
       }
     }
   }
-#endif
 
   return true;
 }
@@ -764,26 +762,25 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs, bool useUTF8,
   }
 }
 
-bool VelocyPackHelper::hasNonClientTypes(VPackSlice input, bool checkExternals,
-                                         bool checkCustom) {
+bool VelocyPackHelper::hasNonClientTypes(velocypack::Slice input) {
   if (input.isExternal()) {
-    return checkExternals;
+    return true;
   } else if (input.isCustom()) {
-    return checkCustom;
+    return true;
   } else if (input.isObject()) {
     auto it = VPackObjectIterator(input, true);
     while (it.valid()) {
       if (!it.key(/*translate*/ false).isString()) {
         return true;
       }
-      if (hasNonClientTypes(it.value(), checkExternals, checkCustom)) {
+      if (hasNonClientTypes(it.value())) {
         return true;
       }
       it.next();
     }
   } else if (input.isArray()) {
-    for (VPackSlice it : VPackArrayIterator(input)) {
-      if (hasNonClientTypes(it, checkExternals, checkCustom)) {
+    for (auto it : VPackArrayIterator(input)) {
+      if (hasNonClientTypes(it)) {
         return true;
       }
     }
@@ -791,38 +788,34 @@ bool VelocyPackHelper::hasNonClientTypes(VPackSlice input, bool checkExternals,
   return false;
 }
 
-void VelocyPackHelper::sanitizeNonClientTypes(VPackSlice input, VPackSlice base,
-                                              VPackBuilder& output,
-                                              VPackOptions const* options,
-                                              bool sanitizeExternals,
-                                              bool sanitizeCustom,
-                                              bool allowUnindexed) {
-  if (sanitizeExternals && input.isExternal()) {
+void VelocyPackHelper::sanitizeNonClientTypes(
+    velocypack::Slice input, velocypack::Slice base,
+    velocypack::Builder& output, velocypack::Options const& options,
+    bool allowUnindexed) {
+  if (input.isExternal()) {
     // recursively resolve externals
     sanitizeNonClientTypes(input.resolveExternal(), base, output, options,
-                           sanitizeExternals, sanitizeCustom, allowUnindexed);
-  } else if (sanitizeCustom && input.isCustom()) {
-    if (options == nullptr || options->customTypeHandler == nullptr) {
+                           allowUnindexed);
+  } else if (input.isCustom()) {
+    if (options.customTypeHandler == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL,
           "cannot sanitize vpack without custom type handler");
     }
     std::string custom =
-        options->customTypeHandler->toString(input, options, base);
+        options.customTypeHandler->toString(input, &options, base);
     output.add(VPackValue(custom));
   } else if (input.isObject()) {
     output.openObject(allowUnindexed);
     for (auto it : VPackObjectIterator(input, true)) {
       output.add(VPackValue(it.key.stringView()));
-      sanitizeNonClientTypes(it.value, input, output, options,
-                             sanitizeExternals, sanitizeCustom, allowUnindexed);
+      sanitizeNonClientTypes(it.value, input, output, options, allowUnindexed);
     }
     output.close();
   } else if (input.isArray()) {
     output.openArray(allowUnindexed);
-    for (VPackSlice it : VPackArrayIterator(input)) {
-      sanitizeNonClientTypes(it, input, output, options, sanitizeExternals,
-                             sanitizeCustom, allowUnindexed);
+    for (auto it : VPackArrayIterator(input)) {
+      sanitizeNonClientTypes(it, input, output, options, allowUnindexed);
     }
     output.close();
   } else {

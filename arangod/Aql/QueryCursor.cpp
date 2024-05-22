@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -59,6 +59,7 @@ QueryResultCursor::QueryResultCursor(TRI_vocbase_t& vocbase,
       _guard(vocbase),
       _result(std::move(result)),
       _iterator(_result.data->slice()),
+      _memoryUsageAtStart(_result.memoryUsage()),
       _cached(_result.cached) {
   TRI_ASSERT(_result.data->slice().isArray());
 }
@@ -80,6 +81,10 @@ VPackSlice QueryResultCursor::next() {
   VPackSlice slice = _iterator.value();
   _iterator.next();
   return slice;
+}
+
+uint64_t QueryResultCursor::memoryUsage() const noexcept {
+  return _memoryUsageAtStart;
 }
 
 /// @brief return the cursor size
@@ -190,7 +195,7 @@ QueryStreamCursor::QueryStreamCursor(
     _stateChangeCb = nullptr;
   }
 
-  _query->exitV8Context();
+  _query->exitV8Executor();
 }
 
 QueryStreamCursor::~QueryStreamCursor() {
@@ -220,6 +225,14 @@ void QueryStreamCursor::debugKillQuery() {
 #endif
 }
 
+uint64_t QueryStreamCursor::memoryUsage() const noexcept {
+  // while a stream AQL query is operating, its memory usage
+  // is tracked by the still-running query. the cursor does
+  // not use a lot of memory on its own.
+  uint64_t value = 2048 /* arbitrary fixed size value */;
+  return value;
+}
+
 std::pair<ExecutionState, Result> QueryStreamCursor::dump(
     VPackBuilder& builder) {
   TRI_IF_FAILURE("QueryCursor::directKillBeforeQueryIsGettingDumped") {
@@ -242,7 +255,7 @@ std::pair<ExecutionState, Result> QueryStreamCursor::dump(
   auto guard = scopeGuard([&]() noexcept {
     try {
       if (_query) {
-        _query->exitV8Context();
+        _query->exitV8Executor();
       }
     } catch (std::exception const& ex) {
       LOG_TOPIC("a2bf8", ERR, Logger::QUERIES)
@@ -311,7 +324,7 @@ Result QueryStreamCursor::dumpSync(VPackBuilder& builder) {
   auto guard = scopeGuard([&]() noexcept {
     try {
       if (_query) {
-        _query->exitV8Context();
+        _query->exitV8Executor();
       }
     } catch (std::exception const& ex) {
       LOG_TOPIC("db997", ERR, Logger::QUERIES)

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -95,6 +95,7 @@ T getMetric(IResearchLink const& link) {
   metric.addLabel("db", link.getDbName());
   metric.addLabel("view", link.getViewId());
   metric.addLabel("collection", link.getCollectionName());
+  metric.addLabel("index_id", std::to_string(link.index().id().id()));
   metric.addLabel("shard", link.getShardName());
   return metric;
 }
@@ -103,6 +104,7 @@ std::string getLabels(IResearchLink const& link) {
   return absl::StrCat("db=\"", link.getDbName(),                     //
                       "\",view=\"", link.getViewId(),                //
                       "\",collection=\"", link.getCollectionName(),  //
+                      "\",index_id=\"", link.index().id().id(),      //
                       "\",shard=\"", link.getShardName(), "\"");
 }
 
@@ -118,7 +120,8 @@ Result linkWideCluster(LogicalCollection const& logical, IResearchView* view) {
     return {};
   }
   for (auto& entry : *shardIds) {  // per-shard collection is always in vocbase
-    auto collection = logical.vocbase().lookupCollection(entry.first);
+    auto collection =
+        logical.vocbase().lookupCollection(std::string{entry.first});
     if (!collection) {
       // missing collection should be created after Plan becomes Current
       continue;
@@ -212,8 +215,7 @@ Result IResearchLink::initDBServer(bool& pathExists, InitCallback const& init) {
     return linkWideCluster(index().collection(), view.get());
   }
   if (_meta._collectionName.empty() && !clusterEnabled &&
-      server.getFeature<EngineSelectorFeature>().engine().inRecovery() &&
-      _meta.willIndexIdAttribute()) {
+      vocbase.engine().inRecovery() && _meta.willIndexIdAttribute()) {
     LOG_TOPIC("f25ce", FATAL, TOPIC)
         << "Upgrade conflicts with recovering ArangoSearch link '"
         << index().id().id()

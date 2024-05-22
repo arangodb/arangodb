@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -590,31 +590,36 @@ void Projections::toVelocyPack(velocypack::Builder& b,
   return result;
 }
 
+template<typename P>
+void Projections::addPathInternal(P&& path) {
+  if (path.empty()) {
+    // ignore all completely empty paths
+    return;
+  }
+
+  // categorize the projection, based on the attribute name.
+  // we do this here only once in order to not do expensive string
+  // comparisons at runtime later
+  AttributeNamePath::Type type = path.type();
+  size_t length = path.size();
+  if (length >= std::numeric_limits<uint16_t>::max()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "attribute path too long for projection");
+  }
+  // take over the projection
+  _projections.emplace_back(
+      Projection{std::move(path), kNoCoveringIndexPosition,
+                 /*coveringIndexCutoff*/ 0, /*startsAtLevel*/ 0,
+                 /*levelsToClose*/ static_cast<uint16_t>(length - 1), type,
+                 /*variable*/ nullptr});
+}
+
 /// @brief shared init function
 template<typename T>
 void Projections::init(T paths) {
   _projections.reserve(paths.size());
   for (auto& path : paths) {
-    if (path.empty()) {
-      // ignore all completely empty paths
-      continue;
-    }
-
-    // categorize the projection, based on the attribute name.
-    // we do this here only once in order to not do expensive string
-    // comparisons at runtime later
-    AttributeNamePath::Type type = path.type();
-    size_t length = path.size();
-    if (length >= std::numeric_limits<uint16_t>::max()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "attribute path too long for projection");
-    }
-    // take over the projection
-    _projections.emplace_back(
-        Projection{std::move(path), kNoCoveringIndexPosition,
-                   /*coveringIndexCutoff*/ 0, /*startsAtLevel*/ 0,
-                   /*levelsToClose*/ static_cast<uint16_t>(length - 1), type,
-                   /*variable*/ nullptr});
+    addPathInternal(std::move(path));
   }
 
   TRI_ASSERT(_projections.size() <= paths.size());
@@ -719,6 +724,18 @@ std::size_t hash_value(Projections::Projection const& p) {
 std::size_t Projections::hash() const noexcept {
   using boost::hash_value;
   return hash_value(_projections);
+}
+
+void Projections::addPath(AttributeNamePath path) {
+  addPathInternal(std::move(path));
+  healProjections();
+}
+
+void Projections::healProjections() {
+  std::sort(
+      _projections.begin(), _projections.end(),
+      [](auto const& lhs, auto const& rhs) { return lhs.path < rhs.path; });
+  handleSharedPrefixes();
 }
 
 std::ostream& operator<<(std::ostream& stream,

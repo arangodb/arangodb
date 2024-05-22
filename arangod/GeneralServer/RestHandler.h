@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Basics/ResultT.h"
 #include "Futures/Unit.h"
 #include "GeneralServer/RequestLane.h"
@@ -69,7 +68,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   virtual ~RestHandler();
 
   void assignHandlerId();
-  uint64_t handlerId() const { return _handlerId; }
+  uint64_t handlerId() const noexcept { return _handlerId; }
   uint64_t messageId() const;
 
   /// @brief called when the handler is queued for execution in the scheduler
@@ -93,11 +92,12 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   ArangodServer& server() noexcept { return _server; }
   ArangodServer const& server() const noexcept { return _server; }
 
-  RequestStatistics::Item const& statistics() const noexcept {
+  [[nodiscard]] RequestStatistics::Item const& requestStatistics()
+      const noexcept {
     return _statistics;
   }
-  RequestStatistics::Item&& stealStatistics();
-  void setStatistics(RequestStatistics::Item&& stat);
+  [[nodiscard]] RequestStatistics::Item&& stealRequestStatistics();
+  void setRequestStatistics(RequestStatistics::Item&& stat);
 
   void setIsAsyncRequest() noexcept { _isAsyncRequest = true; }
 
@@ -127,7 +127,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   RequestLane determineRequestLane();
 
   virtual void prepareExecute(bool isContinue);
-  virtual RestStatus execute() = 0;
+  virtual RestStatus execute();
+  virtual futures::Future<futures::Unit> executeAsync();
   virtual RestStatus continueExecute() { return RestStatus::DONE; }
   virtual void shutdownExecute(bool isFinalized) noexcept;
 
@@ -162,7 +163,8 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   // generates an error
   void generateError(arangodb::Result const&);
 
-  RestStatus waitForFuture(futures::Future<futures::Unit>&& f);
+  [[nodiscard]] RestStatus waitForFuture(futures::Future<futures::Unit>&& f);
+  [[nodiscard]] RestStatus waitForFuture(futures::Future<RestStatus>&& f);
 
   enum class HandlerState : uint8_t {
     PREPARE = 0,
@@ -205,6 +207,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
  private:
   mutable std::recursive_mutex _executionMutex;
   mutable std::atomic_uint8_t _executionCounter{0};
+  mutable RestStatus _followupRestStatus;
 
   std::function<void(rest::RestHandler*)> _callback;
 

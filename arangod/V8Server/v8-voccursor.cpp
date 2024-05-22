@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -205,7 +205,9 @@ struct V8Cursor final {
       _handle.Reset();
     }
     if (_isolate) {
-      TRI_GET_GLOBALS2(_isolate);
+      TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(
+          _isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT));
+      TRI_ASSERT(v8g != nullptr);
       TRI_vocbase_t* vocbase = v8g->_vocbase;
       if (vocbase) {
         CursorRepository* cursors = vocbase->cursorRepository();

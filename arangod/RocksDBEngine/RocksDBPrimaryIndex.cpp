@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -425,6 +425,7 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
     transaction::BuilderLeaser builder(transaction());
 
     do {
+      TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iterator->key()));
       LocalDocumentId documentId = RocksDBValue::documentId(_iterator->value());
       std::string_view key = RocksDBKey::primaryKey(_iterator->key());
 
@@ -507,12 +508,30 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
       _iterator = mthds->NewIterator(
           _index->columnFamily(), [&](rocksdb::ReadOptions& options) {
             TRI_ASSERT(options.prefix_same_as_start);
-            // we need to have a pointer to a slice for the upper bound
-            // so we need to assign the slice to an instance variable here
-            if constexpr (reverse) {
-              options.iterate_lower_bound = &_rangeBound;
-            } else {
-              options.iterate_upper_bound = &_rangeBound;
+            // note: iterate_lower_bound/iterate_upper_bound should only be
+            // set if the iterator is not supposed to check the bounds
+            // for every operation.
+            // when the iterator is a db snapshot-based iterator, it is ok
+            // to set iterate_lower_bound/iterate_upper_bound, because this
+            // is well supported by RocksDB.
+            // if the iterator is a multi-level iterator that merges data from
+            // the db snapshot with data from an ongoing in-memory transaction
+            // (contained in a WriteBatchWithIndex, WBWI), then RocksDB does
+            // not properly support the bounds checking using
+            // iterate_lower_bound/ iterate_upper_bound. in this case we must
+            // avoid setting the bounds here and rely on our own bounds checking
+            // using the comparator. at least one underlying issue was fixed in
+            // RocksDB in version 8.8.0 via
+            // https://github.com/facebook/rocksdb/pull/11680. we can revisit
+            // the issue once we have upgraded to RocksDB >= 8.8.0.
+            if constexpr (!mustCheckBounds) {
+              // we need to have a pointer to a slice for the upper bound
+              // so we need to assign the slice to an instance variable here
+              if constexpr (reverse) {
+                options.iterate_lower_bound = &_rangeBound;
+              } else {
+                options.iterate_upper_bound = &_rangeBound;
+              }
             }
           });
       TRI_ASSERT(_mustSeek);
@@ -594,12 +613,11 @@ RocksDBPrimaryIndex::RocksDBPrimaryIndex(LogicalCollection& collection,
               .getFeature<CacheManagerFeature>()
               .manager(),
           /*engine*/
-          collection.vocbase()
-              .server()
-              .getFeature<EngineSelectorFeature>()
-              .engine<RocksDBEngine>()),
+          collection.vocbase().engine<RocksDBEngine>()),
       _coveredFields({{AttributeName(StaticStrings::KeyString, false)},
-                      {AttributeName(StaticStrings::IdString, false)}}) {
+                      {AttributeName(StaticStrings::IdString, false)}}),
+      _maxCacheValueSize(
+          _cacheManager == nullptr ? 0 : _cacheManager->maxCacheValueSize()) {
   TRI_ASSERT(_cf == RocksDBColumnFamilyManager::get(
                         RocksDBColumnFamilyManager::Family::PrimaryIndex));
   TRI_ASSERT(objectId() != 0);
@@ -672,7 +690,7 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
     return LocalDocumentId();
   }
 
-  if (cache != nullptr && !lockTimeout) {
+  if (cache != nullptr && !lockTimeout && val.size() <= _maxCacheValueSize) {
     // write entry back to cache
     cache::Cache::SimpleInserter<PrimaryIndexCacheType>{
         static_cast<PrimaryIndexCacheType&>(*cache), key->string().data(),
@@ -1404,7 +1422,9 @@ struct RocksDBPrimaryIndexStreamIterator final : AqlIndexStreamIterator {
     cache[0] = _cache;
   }
 
-  bool reset(std::span<VPackSlice> span) override {
+  bool reset(std::span<VPackSlice> span,
+             std::span<VPackSlice> constants) override {
+    TRI_ASSERT(constants.empty());
     seekInternal({});
     return position(span);
   }
@@ -1435,6 +1455,10 @@ bool RocksDBPrimaryIndex::checkSupportsStreamInterface(
   TRI_ASSERT(coveredFields.size() == 2);
   TRI_ASSERT(coveredFields[0][0].name == StaticStrings::KeyString &&
              coveredFields[1][0].name == StaticStrings::IdString);
+
+  if (!streamOpts.constantFields.empty()) {
+    return false;
+  }
 
   for (auto idx : streamOpts.projectedFields) {
     if (idx != 0) {

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -38,16 +38,7 @@
 
 #include "Basics/operating-system.h"
 
-#ifdef _WIN32
-#include <Shlwapi.h>
-#include <tchar.h>
-#include <windows.h>
-#include "Basics/win-utils.h"
-#endif
-
-#ifndef _WIN32
 #include <sys/statvfs.h>
-#endif
 
 #ifdef TRI_HAVE_DIRENT_H
 #include <dirent.h>
@@ -96,16 +87,10 @@ using namespace arangodb;
 namespace {
 
 // whether or not we can use the splice system call on Linux
-#ifdef __linux__
 bool canUseSplice = true;
-#endif
 
 /// @brief names of blocking files
-#ifdef TRI_HAVE_WIN32_FILE_LOCKING
-std::vector<std::pair<std::string, HANDLE>> OpenedFiles;
-#else
 std::vector<std::pair<std::string, int>> OpenedFiles;
-#endif
 
 /// @brief lock for protected access to vector OpenedFiles
 static basics::ReadWriteLock OpenedFilesLock;
@@ -118,13 +103,8 @@ struct LockfileRemover {
     WRITE_LOCKER(locker, OpenedFilesLock);
 
     for (auto const& it : OpenedFiles) {
-#ifdef TRI_HAVE_WIN32_FILE_LOCKING
-      HANDLE fd = it.second;
-      CloseHandle(fd);
-#else
       int fd = it.second;
       TRI_CLOSE(fd);
-#endif
 
       TRI_UnlinkFile(it.first.c_str());
     }
@@ -226,9 +206,7 @@ static std::string LocateConfigDirectoryEnv() {
   return r;
 }
 
-#ifdef __linux__
 void TRI_SetCanUseSplice(bool value) noexcept { ::canUseSplice = value; }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the size of a file
@@ -252,28 +230,10 @@ int64_t TRI_SizeFile(char const* path) {
 /// @brief checks if file or directory is writable
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef _WIN32
-
-bool TRI_IsWritable(char const* path) {
-  // ..........................................................................
-  // will attempt the following:
-  //   if path is a directory, then attempt to create temporary file
-  //   if path is a file, then attempt to open it in read/write mode
-  // ..........................................................................
-
-  // #error "TRI_IsWritable needs to be implemented for Windows"
-  // TODO: implementation for seems to be non-trivial
-  return true;
-}
-
-#else
-
 bool TRI_IsWritable(char const* path) {
   // we can use POSIX access() from unistd.h to check for write permissions
   return (access(path, W_OK) == 0);
 }
-
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if path is a directory
@@ -305,15 +265,6 @@ bool TRI_IsRegularFile(char const* path) {
 /// @brief checks if path is a symbolic link
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef _WIN32
-
-bool TRI_IsSymbolicLink(char const* path) {
-  // TODO : check if a file is a symbolic link - without opening the file
-  return false;
-}
-
-#else
-
 bool TRI_IsSymbolicLink(char const* path) {
   struct stat stbuf;
   int res;
@@ -323,24 +274,12 @@ bool TRI_IsSymbolicLink(char const* path) {
   return (res == 0) && ((stbuf.st_mode & S_IFMT) == S_IFLNK);
 }
 
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a symbolic link
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_CreateSymbolicLink(std::string const& target,
                             std::string const& linkpath, std::string& error) {
-#ifdef _WIN32
-  bool created = ::CreateSymbolicLinkW(toWString(linkpath).data(),
-                                       toWString(target).data(), 0x0);
-  if (!created) {
-    auto rv = translateWindowsError(::GetLastError());
-    error = StringUtils::concatT("failed to create a symlink ", target, " -> ",
-                                 linkpath, " - ", rv.errorMessage());
-  }
-  return created;
-#else
   int res = symlink(target.c_str(), linkpath.c_str());
 
   if (res < 0) {
@@ -348,23 +287,12 @@ bool TRI_CreateSymbolicLink(std::string const& target,
                                  linkpath, " - ", strerror(errno));
   }
   return res == 0;
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief resolves a symbolic link
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef _WIN32
-std::string TRI_ResolveSymbolicLink(std::string path, bool& hadError,
-                                    bool recursive) {
-  return path;
-}
-
-std::string TRI_ResolveSymbolicLink(std::string path, bool recursive) {
-  return path;
-}
-#else
 namespace {
 static bool IsSymbolicLink(char const* path, struct stat* stbuf) {
   int res = lstat(path, stbuf);
@@ -405,42 +333,9 @@ std::string TRI_ResolveSymbolicLink(std::string path, bool recursive) {
   return TRI_ResolveSymbolicLink(std::move(path), ignore, recursive);
 }
 
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if file or directory exists
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef _WIN32
-
-bool TRI_ExistsFile(char const* path) {
-  if (path == nullptr) {
-    return false;
-  }
-
-  TRI_stat_t stbuf;
-  int res;
-
-  size_t len = strlen(path);
-
-  // path must not end with a \ on Windows, other stat() will return -1
-  if (len > 0 && path[len - 1] == TRI_DIR_SEPARATOR_CHAR) {
-    std::string copy(path);
-
-    // remove trailing slash
-    while (!copy.empty() && IsDirSeparatorChar(copy[copy.size() - 1])) {
-      copy.pop_back();
-    }
-
-    res = TRI_STAT(copy.c_str(), &stbuf);
-  } else {
-    res = TRI_STAT(path, &stbuf);
-  }
-
-  return res == 0;
-}
-
-#else
 
 bool TRI_ExistsFile(char const* path) {
   if (path == nullptr) {
@@ -453,15 +348,8 @@ bool TRI_ExistsFile(char const* path) {
   return res == 0;
 }
 
-#endif
-
 ErrorCode TRI_ChMod(char const* path, long mode, std::string& err) {
-  int res;
-#ifdef _WIN32
-  res = _wchmod(toWString(path).data(), static_cast<int>(mode));
-#else
-  res = chmod(path, mode);
-#endif
+  int res = chmod(path, mode);
 
   if (res != 0) {
     auto res2 = TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -512,14 +400,6 @@ ErrorCode TRI_CreateRecursiveDirectory(char const* path, long& systemError,
   while (*p != '\0') {
     if (*p == TRI_DIR_SEPARATOR_CHAR) {
       if (p - s > 0) {
-#ifdef _WIN32
-        // Don't try to create the drive letter as directory:
-        if ((p - copy.data() == 2) && (s[1] == ':')) {
-          s = p + 1;
-          continue;
-        }
-#endif
-        // *p = '\0';
         copy[p - copy.data()] = '\0';
         res = TRI_CreateDirectory(copy.c_str(), systemError, systemErrorStr);
 
@@ -791,34 +671,6 @@ std::string TRI_Basename(std::string const& path) {
 /// @brief returns a list of files in path
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_HAVE_WIN32_LIST_FILES
-
-std::vector<std::string> TRI_FilesDirectory(char const* path) {
-  std::vector<std::string> result;
-  std::string filter(path);
-  filter.append("\\*");
-
-  struct _wfinddata_t fd;
-
-  intptr_t handle = _wfindfirst(toWString(filter).data(), &fd);
-
-  if (handle == -1) {
-    return result;
-  }
-
-  do {
-    if (wcscmp(fd.name, L".") != 0 && wcscmp(fd.name, L"..") != 0) {
-      result.emplace_back(fromWString(fd.name));
-    }
-  } while (_wfindnext(handle, &fd) != -1);
-
-  _findclose(handle);
-
-  return result;
-}
-
-#else
-
 std::vector<std::string> TRI_FilesDirectory(char const* path) {
   std::vector<std::string> result;
 
@@ -843,8 +695,6 @@ std::vector<std::string> TRI_FilesDirectory(char const* path) {
   return result;
 }
 
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lists the directory tree including files and directories
 ////////////////////////////////////////////////////////////////////////////////
@@ -864,30 +714,8 @@ std::vector<std::string> TRI_FullTreeDirectory(char const* path) {
 
 ErrorCode TRI_RenameFile(char const* old, char const* filename,
                          long* systemError, std::string* systemErrorStr) {
-  int res;
   TRI_ERRORBUF;
-#ifdef _WIN32
-  BOOL moveResult = 0;
-
-  moveResult = MoveFileExW(toWString(old).data(), toWString(filename).data(),
-                           MOVEFILE_COPY_ALLOWED | MOVEFILE_REPLACE_EXISTING);
-
-  if (!moveResult) {
-    TRI_SYSTEM_ERROR();
-
-    if (systemError != nullptr) {
-      *systemError = errno;
-    }
-    if (systemErrorStr != nullptr) {
-      *systemErrorStr = windowsErrorBuf;
-    }
-    res = -1;
-  } else {
-    res = 0;
-  }
-#else
-  res = rename(old, filename);
-#endif
+  int res = rename(old, filename);
 
   if (res != 0) {
     if (systemError != nullptr) {
@@ -1015,14 +843,6 @@ ErrorCode TRI_WriteFile(char const* filename, char const* data, size_t length) {
 bool TRI_fsync(int fd) {
   int res = fsync(fd);
 
-#ifdef __APPLE__
-
-  if (res == 0) {
-    res = fcntl(fd, F_FULLFSYNC, 0);
-  }
-
-#endif
-
   if (res == 0) {
     return true;
   } else {
@@ -1103,7 +923,7 @@ bool TRI_ProcessFile(
 
   auto guard = scopeGuard([&fd]() noexcept { TRI_CLOSE(fd); });
 
-  char buffer[4096];
+  char buffer[16384];
 
   while (true) {
     TRI_read_return_t n = TRI_READ(fd, &buffer[0], sizeof(buffer));
@@ -1126,77 +946,6 @@ bool TRI_ProcessFile(
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a lock file based on the PID
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_HAVE_WIN32_FILE_LOCKING
-
-ErrorCode TRI_CreateLockFile(char const* filename) {
-  TRI_ERRORBUF;
-  OVERLAPPED ol;
-
-  WRITE_LOCKER(locker, OpenedFilesLock);
-
-  for (size_t i = 0; i < OpenedFiles.size(); ++i) {
-    if (OpenedFiles[i].first == filename) {
-      // file already exists
-      return TRI_ERROR_NO_ERROR;
-    }
-  }
-
-  HANDLE fd = CreateFileW(toWString(filename).data(), GENERIC_WRITE, 0, NULL,
-                          CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-
-  if (fd == INVALID_HANDLE_VALUE) {
-    TRI_SYSTEM_ERROR();
-    LOG_TOPIC("64d0d", ERR, arangodb::Logger::FIXME)
-        << "cannot create lockfile '" << filename << "': " << TRI_GET_ERRORBUF;
-    return TRI_set_errno(TRI_ERROR_SYS_ERROR);
-  }
-
-  TRI_pid_t pid = Thread::currentProcessId();
-  std::string buf = std::to_string(pid);
-  DWORD len;
-
-  BOOL r = WriteFile(fd, buf.c_str(), static_cast<unsigned int>(buf.size()),
-                     &len, NULL);
-
-  if (!r || len != buf.size()) {
-    TRI_SYSTEM_ERROR();
-    LOG_TOPIC("c2286", ERR, arangodb::Logger::FIXME)
-        << "cannot write lockfile '" << filename << "': " << TRI_GET_ERRORBUF;
-    auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
-
-    if (r) {
-      CloseHandle(fd);
-    }
-
-    TRI_UNLINK(filename);
-
-    return res;
-  }
-
-  memset(&ol, 0, sizeof(ol));
-  r = LockFileEx(fd, LOCKFILE_EXCLUSIVE_LOCK | LOCKFILE_FAIL_IMMEDIATELY, 0, 0,
-                 128, &ol);
-
-  if (!r) {
-    TRI_SYSTEM_ERROR();
-    LOG_TOPIC("f0d61", ERR, arangodb::Logger::FIXME)
-        << "cannot set lockfile status '" << filename
-        << "': " << TRI_GET_ERRORBUF;
-    auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
-
-    CloseHandle(fd);
-    TRI_UNLINK(filename);
-
-    return res;
-  }
-
-  OpenedFiles.push_back(std::make_pair(filename, fd));
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-#else
 
 ErrorCode TRI_CreateLockFile(char const* filename) {
   WRITE_LOCKER(locker, OpenedFilesLock);
@@ -1252,37 +1001,9 @@ ErrorCode TRI_CreateLockFile(char const* filename) {
   return TRI_ERROR_NO_ERROR;
 }
 
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief verifies a lock file based on the PID
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_HAVE_WIN32_FILE_LOCKING
-
-ErrorCode TRI_VerifyLockFile(char const* filename) {
-  if (!TRI_ExistsFile(filename)) {
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  HANDLE fd = CreateFile(filename, GENERIC_WRITE, 0, NULL, OPEN_EXISTING,
-                         FILE_ATTRIBUTE_NORMAL, NULL);
-
-  if (fd == INVALID_HANDLE_VALUE) {
-    if (GetLastError() == ERROR_SHARING_VIOLATION) {
-      return TRI_ERROR_ARANGO_DATADIR_LOCKED;
-    }
-
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  CloseHandle(fd);
-  TRI_UnlinkFile(filename);
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-#else
 
 ErrorCode TRI_VerifyLockFile(char const* filename) {
   if (!TRI_ExistsFile(filename)) {
@@ -1381,31 +1102,9 @@ ErrorCode TRI_VerifyLockFile(char const* filename) {
   return TRI_ERROR_ARANGO_DATADIR_LOCKED;
 }
 
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief releases a lock file based on the PID
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_HAVE_WIN32_FILE_LOCKING
-
-ErrorCode TRI_DestroyLockFile(char const* filename) {
-  WRITE_LOCKER(locker, OpenedFilesLock);
-  for (size_t i = 0; i < OpenedFiles.size(); ++i) {
-    if (OpenedFiles[i].first == filename) {
-      HANDLE fd = OpenedFiles[i].second;
-      CloseHandle(fd);
-      TRI_UnlinkFile(filename);
-
-      OpenedFiles.erase(OpenedFiles.begin() + i);
-      break;
-    }
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-#else
 
 ErrorCode TRI_DestroyLockFile(char const* filename) {
   WRITE_LOCKER(locker, OpenedFilesLock);
@@ -1447,8 +1146,6 @@ ErrorCode TRI_DestroyLockFile(char const* filename) {
   return TRI_ERROR_NO_ERROR;
 }
 
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the filename component of a file (without path)
 ////////////////////////////////////////////////////////////////////////////////
@@ -1469,82 +1166,6 @@ std::string TRI_GetFilename(std::string const& filename) {
 /// It is the caller's responsibility to free the string created by this
 /// function
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef _WIN32
-
-std::string TRI_GetAbsolutePath(std::string const& fileName,
-                                std::string const& currentWorkingDirectory) {
-  // Check that fileName actually makes some sense
-  if (fileName.empty()) {
-    return std::string();
-  }
-
-  // ...........................................................................
-  // Under windows we can assume that fileName is absolute if fileName starts
-  // with a letter A-Z followed by a colon followed by either a forward or
-  // backslash.
-  // ...........................................................................
-
-  if (fileName.size() >= 3 &&
-      ((fileName[0] > 64 && fileName[0] < 91) ||
-       (fileName[0] > 96 && fileName[0] < 123)) &&
-      fileName[1] == ':' && (fileName[2] == '/' || fileName[2] == '\\')) {
-    return fileName;
-  }
-
-  // ...........................................................................
-  // The fileName itself was not absolute, so we attempt to amalgamate the
-  // currentWorkingDirectory with the fileName
-  // ...........................................................................
-
-  // Check that the currentWorkingDirectory makes sense
-  if (currentWorkingDirectory.empty()) {
-    return std::string();
-  }
-
-  // ...........................................................................
-  // Under windows the currentWorkingDirectory should start
-  // with a letter A-Z followed by a colon followed by either a forward or
-  // backslash.
-  // ...........................................................................
-
-  if (currentWorkingDirectory.size() >= 3 &&
-      ((currentWorkingDirectory[0] > 64 && currentWorkingDirectory[0] < 91) ||
-       (currentWorkingDirectory[0] > 96 && currentWorkingDirectory[0] < 123)) &&
-      currentWorkingDirectory[1] == ':' &&
-      (currentWorkingDirectory[2] == '/' ||
-       currentWorkingDirectory[2] == '\\')) {
-    // e.g. C:/ or Z:\ drive letter paths
-  } else if (currentWorkingDirectory[0] == '/' ||
-             currentWorkingDirectory[0] == '\\') {
-    // directory name can also start with a backslash
-    // /... or \...
-  } else {
-    return std::string();
-  }
-
-  // Determine the total length of the new string
-  std::string result;
-
-  if (currentWorkingDirectory.back() == '\\' ||
-      currentWorkingDirectory.back() == '/' || fileName.front() == '\\' ||
-      fileName.front() == '/') {
-    // we do not require a backslash
-    result.reserve(currentWorkingDirectory.size() + fileName.size());
-    result.append(currentWorkingDirectory);
-    result.append(fileName);
-  } else {
-    // we do require a backslash
-    result.reserve(currentWorkingDirectory.size() + fileName.size() + 1);
-    result.append(currentWorkingDirectory);
-    result.push_back('\\');
-    result.append(fileName);
-  }
-
-  return result;
-}
-
-#else
 
 std::string TRI_GetAbsolutePath(std::string const& fileName,
                                 std::string const& currentWorkingDirectory) {
@@ -1576,8 +1197,6 @@ std::string TRI_GetAbsolutePath(std::string const& fileName,
   return result;
 }
 
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the binary name without any path or suffix
 ////////////////////////////////////////////////////////////////////////////////
@@ -1596,32 +1215,6 @@ std::string TRI_BinaryName(char const* argv0) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string TRI_LocateBinaryPath(char const* argv0) {
-#if _WIN32
-  wchar_t buff[4096];
-  int res = GetModuleFileNameW(nullptr, buff, sizeof(buff));
-
-  if (res != 0) {
-    buff[4095] = '\0';
-
-    wchar_t* q = buff + res;
-
-    while (buff < q) {
-      if (*q == '\\' || *q == '/') {
-        *q = '\0';
-        break;
-      }
-
-      --q;
-    }
-
-    size_t len = q - buff;
-    return fromWString(buff, len);
-  }
-
-  return std::string();
-
-#else
-
   std::string binaryPath;
 
   // check if name contains a '/' ( or '\' for windows)
@@ -1658,7 +1251,6 @@ std::string TRI_LocateBinaryPath(char const* argv0) {
   }
 
   return binaryPath;
-#endif
 }
 
 std::string TRI_GetInstallRoot(std::string const& binaryPath,
@@ -1696,7 +1288,6 @@ std::string TRI_GetInstallRoot(std::string const& binaryPath,
 
   bool rc = true;
 
-#ifdef __linux__
   if (::canUseSplice) {
     // Linux-specific file-copying code based on splice()
     // The splice() system call first appeared in Linux 2.6.17; library support
@@ -1749,7 +1340,6 @@ std::string TRI_GetInstallRoot(std::string const& binaryPath,
 
     return rc;
   }
-#endif
 
   // systems other than Linux use regular file-copying.
   // note: regular file copying will also be used on Linux
@@ -1815,20 +1405,6 @@ std::string TRI_GetInstallRoot(std::string const& binaryPath,
 /// @brief copies the contents of a file
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef _WIN32
-bool TRI_CopyFile(std::string const& src, std::string const& dst,
-                  std::string& error) {
-  TRI_ERRORBUF;
-
-  bool rc = CopyFileW(toWString(src).data(), toWString(dst).data(), true) != 0;
-  if (!rc) {
-    TRI_SYSTEM_ERROR();
-    error = "failed to copy " + src + " to " + dst + ": " + TRI_GET_ERRORBUF;
-  }
-
-  return rc;
-}
-#else
 bool TRI_CopyFile(std::string const& src, std::string const& dst,
                   std::string& error, struct stat* statbuf /*= nullptr*/) {
   int srcFD = open(src.c_str(), O_RDONLY);
@@ -1896,7 +1472,6 @@ bool TRI_CopyFile(std::string const& src, std::string const& dst,
   close(dstFD);
   return rc;
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copies the filesystem attributes of a file
@@ -1904,7 +1479,6 @@ bool TRI_CopyFile(std::string const& src, std::string const& dst,
 
 bool TRI_CopyAttributes(std::string const& srcItem, std::string const& dstItem,
                         std::string& error) {
-#ifndef _WIN32
   struct stat statbuf;
 
   TRI_STAT(srcItem.c_str(), &statbuf);
@@ -1929,7 +1503,6 @@ bool TRI_CopyAttributes(std::string const& srcItem, std::string const& dstItem,
     return false;
   }
 
-#endif
   return true;
 }
 
@@ -1939,7 +1512,6 @@ bool TRI_CopyAttributes(std::string const& srcItem, std::string const& dstItem,
 
 bool TRI_CopySymlink(std::string const& srcItem, std::string const& dstItem,
                      std::string& error) {
-#ifndef _WIN32
   char buffer[PATH_MAX];
   auto rc = readlink(srcItem.c_str(), buffer, sizeof(buffer) - 1);
   if (rc == -1) {
@@ -1953,7 +1525,6 @@ bool TRI_CopySymlink(std::string const& srcItem, std::string const& dstItem,
             buffer + ": " + strerror(errno);
     return false;
   }
-#endif
   return true;
 }
 
@@ -1963,7 +1534,6 @@ bool TRI_CopySymlink(std::string const& srcItem, std::string const& dstItem,
 
 bool TRI_CreateHardlink(std::string const& existingFile,
                         std::string const& newFile, std::string& error) {
-#ifndef _WIN32
   int rc = link(existingFile.c_str(), newFile.c_str());
 
   if (rc == -1) {
@@ -1972,10 +1542,6 @@ bool TRI_CreateHardlink(std::string const& existingFile,
   }  // if
 
   return 0 == rc;
-#else
-  error = "Windows TRI_CreateHardlink not written, yet.";
-  return false;
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1984,21 +1550,6 @@ bool TRI_CreateHardlink(std::string const& existingFile,
 /// Under windows there is no 'HOME' directory as such so getenv("HOME") may
 /// return NULL -- which it does under windows.  A safer approach below
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef _WIN32
-
-std::string TRI_HomeDirectory() {
-  std::string drive;
-  std::string path;
-
-  if (!TRI_GETENV("HOMEDRIVE", drive) || !TRI_GETENV("HOMEPATH", path)) {
-    return std::string();
-  }
-
-  return drive + path;
-}
-
-#else
 
 std::string TRI_HomeDirectory() {
   char const* result = getenv("HOME");
@@ -2009,8 +1560,6 @@ std::string TRI_HomeDirectory() {
 
   return std::string(result);
 }
-
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set the application's name, should be called before the first
@@ -2026,95 +1575,6 @@ void TRI_SetApplicationName(std::string const& name) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the system's temporary path
 ////////////////////////////////////////////////////////////////////////////////
-#ifdef _WIN32
-static std::string getTempPath() {
-  // ..........................................................................
-  // Unfortunately we generally have little control on whether or not the
-  // application will be compiled with UNICODE defined. In some cases such as
-  // this one, we attempt to cater for both. MS provides some methods which are
-  // 'defined' for both, for example, GetTempPath (below) actually converts to
-  // GetTempPathA (ascii) or GetTempPathW (wide characters or what MS call
-  // unicode).
-  // ..........................................................................
-
-#define LOCAL_MAX_PATH_BUFFER 2049
-  wchar_t tempPathName[LOCAL_MAX_PATH_BUFFER];
-  DWORD dwReturnValue = 0;
-  // ..........................................................................
-  // Attempt to locate the path where the users temporary files are stored
-  // Note we are imposing a limit of 2048+1 characters for the maximum size of a
-  // possible path
-  // ..........................................................................
-
-  /* from MSDN:
-     The GetTempPath function checks for the existence of environment variables
-     in the following order and uses the first path found:
-
-     The path specified by the TMP environment variable.
-     The path specified by the TEMP environment variable.
-     The path specified by the USERPROFILE environment variable.
-     The Windows directory.
-  */
-  dwReturnValue = GetTempPathW(LOCAL_MAX_PATH_BUFFER, tempPathName);
-
-  if ((dwReturnValue > LOCAL_MAX_PATH_BUFFER) || (dwReturnValue == 0)) {
-    // something wrong
-    LOG_TOPIC("79ec5", TRACE, arangodb::Logger::FIXME)
-        << "GetTempPathW failed: LOCAL_MAX_PATH_BUFFER="
-        << LOCAL_MAX_PATH_BUFFER << ":dwReturnValue=" << dwReturnValue;
-  }
-
-  std::string result = fromWString(tempPathName, dwReturnValue);
-
-  if (result.empty() || (result.back() != TRI_DIR_SEPARATOR_CHAR)) {
-    result += TRI_DIR_SEPARATOR_STR;
-  }
-  return result;
-}
-
-static ErrorCode mkDTemp(char* s, size_t bufferSize) {
-  std::string tmp(s, bufferSize);
-  std::wstring ws = toWString(tmp);
-
-  // get writeable copy of wstring buffer and replace the _XXX part in the
-  // buffer
-  std::vector<wchar_t> writeBuffer;
-  writeBuffer.resize(ws.size());
-  memcpy(writeBuffer.data(), ws.data(), sizeof(wchar_t) * ws.size());
-  auto rc = _wmktemp_s(
-      writeBuffer.data(),
-      writeBuffer.size());  // requires writeable buffer -- returns errno_t
-  auto rv = TRI_ERROR_NO_ERROR;
-
-  if (rc == 0) {  // error of 0 is ok
-    // if it worked out, we need to return the utf8 version:
-    ws = std::wstring(writeBuffer.data(),
-                      writeBuffer.size());  // write back to wstring
-    tmp = fromWString(ws);
-    memcpy(s, tmp.data(), bufferSize);  // copy back into parameter
-    rc = TRI_MKDIR(s, 0700);
-    if (rc != 0) {
-      rc = errno;
-      rv = TRI_set_errno(TRI_ERROR_SYS_ERROR);
-      if (rc == ENOENT) {
-        // for some reason we should create the upper directory too?
-        std::string error;
-        long systemError;
-        rv = TRI_CreateRecursiveDirectory(s, systemError, error);
-        if (rv != TRI_ERROR_NO_ERROR) {
-          LOG_TOPIC("6656f", ERR, arangodb::Logger::FIXME)
-              << "Unable to create temporary directory " << error;
-        }
-      }
-    }
-  } else {
-    rv = TRI_set_errno(TRI_ERROR_SYS_ERROR);
-  }
-
-  return rv;
-}
-
-#else
 
 static std::string getTempPath() {
   std::string system = "";
@@ -2136,8 +1596,6 @@ static ErrorCode mkDTemp(char* s, size_t /*bufferSize*/) {
   }
   return TRI_set_errno(TRI_ERROR_SYS_ERROR);
 }
-
-#endif
 
 /// @brief the actual temp path used
 static std::unique_ptr<char[]> SystemTempPath;
@@ -2361,29 +1819,7 @@ std::string TRI_LocateInstallDirectory(char const* argv0,
 /// Will always end in a directory separator.
 ////////////////////////////////////////////////////////////////////////////////
 
-#if _WIN32
-
-std::string TRI_LocateConfigDirectory(char const* binaryPath) {
-  std::string v = LocateConfigDirectoryEnv();
-
-  if (!v.empty()) {
-    return v;
-  }
-
-  std::string r = TRI_LocateInstallDirectory(nullptr, binaryPath);
-  std::string scDir = _SYSCONFDIR_;
-  if (r.length() == 1 && r == TRI_DIR_SEPARATOR_STR &&
-      scDir[0] == TRI_DIR_SEPARATOR_CHAR) {
-    r = scDir;
-  } else {
-    r += _SYSCONFDIR_;
-  }
-  r += std::string(1, TRI_DIR_SEPARATOR_CHAR);
-
-  return r;
-}
-
-#elif defined(_SYSCONFDIR_)
+#if defined(_SYSCONFDIR_)
 
 std::string TRI_LocateConfigDirectory(char const* binaryPath) {
   std::string v = LocateConfigDirectoryEnv();
@@ -2416,27 +1852,13 @@ std::string TRI_LocateConfigDirectory(char const*) {
 #endif
 
 bool TRI_PathIsAbsolute(std::string const& path) {
-#if _WIN32
-  return !PathIsRelativeW(toWString(path).data());
-#else
-  return (!path.empty()) && path.c_str()[0] == '/';
-#endif
+  return path.starts_with('/');
 }
 
 /// @brief return the amount of total and free disk space for the given path
 arangodb::Result TRI_GetDiskSpaceInfo(std::string const& path,
                                       uint64_t& totalSpace,
                                       uint64_t& freeSpace) {
-#if _WIN32
-  ULARGE_INTEGER freeBytesAvailableToCaller;
-  ULARGE_INTEGER totalNumberOfBytes;
-  if (GetDiskFreeSpaceExW(toWString(path).data(), &freeBytesAvailableToCaller,
-                          &totalNumberOfBytes, nullptr) == 0) {
-    return translateWindowsError(::GetLastError());
-  }
-  freeSpace = static_cast<uint64_t>(freeBytesAvailableToCaller.QuadPart);
-  totalSpace = static_cast<uint64_t>(totalNumberOfBytes.QuadPart);
-#else
   struct statvfs stat;
 
   if (statvfs(path.c_str(), &stat) == -1) {
@@ -2445,13 +1867,7 @@ arangodb::Result TRI_GetDiskSpaceInfo(std::string const& path,
     return {TRI_errno(), TRI_last_error()};
   }
 
-#ifdef __APPLE__
-  // at least on macOS f_bsize produces incorrect results. it is unclear
-  // yet if we need to use f_frsize on Linux as well.
-  auto const factor = static_cast<uint64_t>(stat.f_frsize);
-#else
   auto const factor = static_cast<uint64_t>(stat.f_bsize);
-#endif
 
   totalSpace = factor * static_cast<uint64_t>(stat.f_blocks);
 
@@ -2466,7 +1882,6 @@ arangodb::Result TRI_GetDiskSpaceInfo(std::string const& path,
     // root user can access all disk space
     freeSpace = factor * static_cast<uint64_t>(stat.f_bfree);
   }
-#endif
   return {};
 }
 
@@ -2475,11 +1890,6 @@ arangodb::Result TRI_GetDiskSpaceInfo(std::string const& path,
 arangodb::Result TRI_GetINodesInfo(std::string const& path,
                                    uint64_t& totalINodes,
                                    uint64_t& freeINodes) {
-#if _WIN32
-  // hard-coded to always return 0
-  totalINodes = 0;
-  freeINodes = 0;
-#else
   struct statvfs stat;
 
   if (statvfs(path.c_str(), &stat) == -1) {
@@ -2489,7 +1899,6 @@ arangodb::Result TRI_GetINodesInfo(std::string const& path,
   }
   totalINodes = static_cast<uint64_t>(stat.f_files);
   freeINodes = static_cast<uint64_t>(stat.f_ffree);
-#endif
   return {};
 }
 
@@ -2499,16 +1908,6 @@ arangodb::Result TRI_GetINodesInfo(std::string const& path,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_GETENV(char const* which, std::string& value) {
-#ifdef _WIN32
-  wchar_t const* wideBuffer = _wgetenv(toWString(which).data());
-
-  if (wideBuffer == nullptr) {
-    return false;
-  }
-
-  value = fromWString(wideBuffer);
-  return true;
-#else
   char const* v = getenv(which);
 
   if (v == nullptr) {
@@ -2517,5 +1916,4 @@ bool TRI_GETENV(char const* which, std::string& value) {
   value.clear();
   value = v;
   return true;
-#endif
 }

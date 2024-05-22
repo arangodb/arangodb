@@ -32,7 +32,7 @@ export const AddEdgeHandler = () => {
           </Text>
           <Button
             onClick={() => setSelectedAction(undefined)}
-            colorScheme="blue"
+            colorScheme="green"
           >
             Turn off
           </Button>

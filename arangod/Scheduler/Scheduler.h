@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -63,9 +63,6 @@ class Scheduler {
   // ---------------------------------------------------------------------------
   // Scheduling and Task Queuing - the relevant stuff
   // ---------------------------------------------------------------------------
-  virtual Result detachThread(uint64_t* detachedThreads,
-                              uint64_t* maximumDetachedThreads);
-
   class DelayedWorkItem;
   typedef std::chrono::steady_clock clock;
   typedef std::shared_ptr<DelayedWorkItem> WorkHandle;
@@ -243,6 +240,22 @@ class Scheduler {
         throw std::logic_error("delay was cancelled");
       }
     });
+  }
+
+  // Yield the current thread
+  futures::Future<futures::Unit> yield(
+      RequestLane lane = RequestLane::CONTINUATION) {
+    struct awaitable {
+      bool await_ready() { return false; }
+      void await_suspend(std::coroutine_handle<> coro) {
+        sched->queue(lane, [coro] { coro.resume(); });
+      }
+      void await_resume() {}
+      Scheduler* sched;
+      RequestLane lane;
+    };
+
+    co_await awaitable{this, lane};
   }
 
   // ---------------------------------------------------------------------------

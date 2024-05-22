@@ -48,10 +48,10 @@ export const EditGraphButtons = ({
         onSuccess={onClose}
         currentGraph={graph}
       />
-      <Button colorScheme="red" type="button" onClick={onOpenDeleteModal}>
+      <Button size="sm" colorScheme="red" type="button" onClick={onOpenDeleteModal}>
         Delete
       </Button>
-      <Button colorScheme="orange" type="button" onClick={resetDisplaySettings}>
+      <Button size="sm" colorScheme="gray" type="button" onClick={resetDisplaySettings}>
         Reset display settings
       </Button>
     </>

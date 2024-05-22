@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/Common.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
@@ -141,9 +140,9 @@ Result extractIndexHandle(velocypack::Slice arg, bool extendedNames,
 
 }  // namespace
 
-Result Indexes::getIndex(LogicalCollection const& collection,
-                         VPackSlice indexId, VPackBuilder& out,
-                         transaction::Methods* trx) {
+futures::Future<arangodb::Result> Indexes::getIndex(
+    LogicalCollection const& collection, VPackSlice indexId, VPackBuilder& out,
+    transaction::Methods* trx) {
   // do some magic to parse the iid
   std::string
       id;  // will (eventually) be fully-qualified; "collection/identifier"
@@ -170,24 +169,21 @@ Result Indexes::getIndex(LogicalCollection const& collection,
     id = collection.name() + "/" + name;
     hasName = false;
   } else {
-    return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
+    co_return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
   }
 
   if (hasName && !name.empty()) {
-    bool extendedNames = collection.vocbase()
-                             .server()
-                             .getFeature<DatabaseFeature>()
-                             .extendedNames();
+    bool extendedNames = collection.vocbase().extendedNames();
     if (auto res = IndexNameValidator::validateName(extendedNames, name);
         res.fail()) {
-      return res;
+      co_return res;
     }
   }
 
   VPackBuilder tmp;
-  Result res =
-      Indexes::getAll(collection, Index::makeFlags(Index::Serialize::Estimates),
-                      /*withHidden*/ true, tmp, trx);
+  Result res = co_await Indexes::getAll(
+      collection, Index::makeFlags(Index::Serialize::Estimates),
+      /*withHidden*/ true, tmp, trx);
   if (res.ok()) {
     for (VPackSlice index : VPackArrayIterator(tmp.slice())) {
       if ((index.hasKey(StaticStrings::IndexId) &&
@@ -195,15 +191,15 @@ Result Indexes::getIndex(LogicalCollection const& collection,
           (hasName && index.hasKey(StaticStrings::IndexName) &&
            index.get(StaticStrings::IndexName).compareString(name) == 0)) {
         out.add(index);
-        return Result();
+        co_return Result();
       }
     }
   }
-  return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
+  co_return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
 }
 
 /// @brief get all indexes, skips view links
-arangodb::Result Indexes::getAll(
+futures::Future<arangodb::Result> Indexes::getAll(
     LogicalCollection const& collection,
     std::underlying_type<Index::Serialize>::type flags, bool withHidden,
     VPackBuilder& result, transaction::Methods* inputTrx) {
@@ -220,9 +216,10 @@ arangodb::Result Indexes::getAll(
       Result rv = selectivityEstimatesOnCoordinator(feature, databaseName, cid,
                                                     estimates);
       if (rv.fail()) {
-        return Result(rv.errorNumber(), basics::StringUtils::concatT(
-                                            "could not retrieve estimates: '",
-                                            rv.errorMessage(), "'"));
+        co_return Result(
+            rv.errorNumber(),
+            basics::StringUtils::concatT("could not retrieve estimates: '",
+                                         rv.errorMessage(), "'"));
       }
 
       // we will merge in the index estimates later
@@ -235,15 +232,15 @@ arangodb::Result Indexes::getAll(
                    .getFeature<ClusterFeature>()
                    .clusterInfo();
     auto c = ci.getCollection(databaseName, cid);
-    c->getIndexesVPack(tmpInner,
-                       [withHidden, flags](arangodb::Index const* idx,
-                                           decltype(flags)& indexFlags) {
-                         if (withHidden || !idx->isHidden()) {
-                           indexFlags = flags;
-                           return true;
-                         }
-                         return false;
-                       });
+    c->getPhysical()->getIndexesVPack(
+        tmpInner, [withHidden, flags](arangodb::Index const* idx,
+                                      decltype(flags)& indexFlags) {
+          if (withHidden || !idx->isHidden()) {
+            indexFlags = flags;
+            return true;
+          }
+          return false;
+        });
 
     tmp.openArray();
     for (VPackSlice s : VPackArrayIterator(tmpInner.slice())) {
@@ -273,17 +270,16 @@ arangodb::Result Indexes::getAll(
           transaction::StandaloneContext::create(collection.vocbase(), origin),
           collection, AccessMode::Type::READ);
 
-      Result res = trx->begin();
+      Result res = co_await trx->beginAsync();
       if (!res.ok()) {
-        return res;
+        co_return res;
       }
     }
 
     // get list of indexes
-    auto indexes = collection.getIndexes();
-
+    auto indexes = collection.getPhysical()->getAllIndexes();
     tmp.openArray(true);
-    for (std::shared_ptr<arangodb::Index> const& idx : indexes) {
+    for (auto const& idx : indexes) {
       if (!withHidden && idx->isHidden()) {
         continue;
       }
@@ -294,7 +290,7 @@ arangodb::Result Indexes::getAll(
     if (!inputTrx) {
       Result res = trx->finish({});
       if (res.fail()) {
-        return res;
+        co_return res;
       }
     }
   }
@@ -388,22 +384,24 @@ arangodb::Result Indexes::getAll(
     merge = VPackCollection::merge(index, merge.slice(), true);
     result.add(merge.slice());
   }
-  return Result();
+  co_return Result();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures an index, locally
 ////////////////////////////////////////////////////////////////////////////////
 
-static Result EnsureIndexLocal(
+static futures::Future<Result> EnsureIndexLocal(
     arangodb::LogicalCollection& collection, VPackSlice definition, bool create,
-    VPackBuilder& output, std::shared_ptr<Indexes::ProgressTracker> progress) {
-  return arangodb::basics::catchVoidToResult([&]() -> void {
+    VPackBuilder& output, std::shared_ptr<Indexes::ProgressTracker> progress,
+    Indexes::Replication2Callback replicationCb) {
+  auto lambda = [&]() -> futures::Future<futures::Unit> {
     bool created = false;
     std::shared_ptr<arangodb::Index> idx;
 
     if (create) {
-      idx = collection.createIndex(definition, created, std::move(progress));
+      idx = co_await collection.createIndex(
+          definition, created, std::move(progress), std::move(replicationCb));
       TRI_ASSERT(idx != nullptr);
     } else {
       idx = collection.lookupIndex(definition);
@@ -425,7 +423,8 @@ static Result EnsureIndexLocal(
           VPackValue(collection.name() + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
     b.close();
     output = VPackCollection::merge(tmp.slice(), b.slice(), false);
-  });
+  };
+  co_return co_await asResult(lambda());
 }
 
 Result Indexes::ensureIndexCoordinator(
@@ -438,9 +437,34 @@ Result Indexes::ensureIndexCoordinator(
       cluster.indexCreationTimeout());
 }
 
-Result Indexes::ensureIndex(LogicalCollection& collection, VPackSlice input,
-                            bool create, VPackBuilder& output,
-                            std::shared_ptr<ProgressTracker> progress) {
+namespace {
+std::unordered_set<std::string_view> extractRelevantKeysForSharding(
+    VPackSlice indexDef) {
+  std::unordered_set<std::string_view> indexKeys;
+
+  auto const fieldsIntoSet = [](VPackSlice slice,
+                                std::unordered_set<std::string_view>& result) {
+    for (auto f : VPackArrayIterator(slice)) {
+      TRI_ASSERT(f.isString());  // after index validation
+      result.emplace(f.stringView());
+    }
+  };
+
+  fieldsIntoSet(indexDef.get(arangodb::StaticStrings::IndexFields), indexKeys);
+  if (auto prefixFields = indexDef.get(StaticStrings::IndexPrefixFields);
+      prefixFields.isArray()) {
+    fieldsIntoSet(prefixFields, indexKeys);
+  }
+
+  return indexKeys;
+}
+
+}  // namespace
+
+futures::Future<arangodb::Result> Indexes::ensureIndex(
+    LogicalCollection& collection, VPackSlice input, bool create,
+    VPackBuilder& output, std::shared_ptr<ProgressTracker> progress,
+    Replication2Callback replicationCb) {
   ErrorCode ensureIndexResult = TRI_ERROR_INTERNAL;
   // always log a message at the end of index creation
   auto logResultToAuditLog = scopeGuard([&]() noexcept {
@@ -461,21 +485,18 @@ Result Indexes::ensureIndex(LogicalCollection& collection, VPackSlice input,
     if ((create && (lvl != auth::Level::RW || !canModify)) ||
         (lvl == auth::Level::NONE || !canRead)) {
       ensureIndexResult = TRI_ERROR_FORBIDDEN;
-      return Result(TRI_ERROR_FORBIDDEN);
+      co_return Result(TRI_ERROR_FORBIDDEN);
     }
   }
 
   VPackBuilder normalized;
-  StorageEngine& engine = collection.vocbase()
-                              .server()
-                              .getFeature<EngineSelectorFeature>()
-                              .engine();
+  StorageEngine& engine = collection.vocbase().engine();
   auto res = engine.indexFactory().enhanceIndexDefinition(
       input, normalized, create, collection.vocbase());
 
   if (res.fail()) {
     ensureIndexResult = res.errorNumber();
-    return res;
+    co_return res;
   }
 
   VPackSlice indexDef = normalized.slice();
@@ -501,7 +522,8 @@ Result Indexes::ensureIndex(LogicalCollection& collection, VPackSlice input,
     // check if there is an attempt to create a unique index on non-shard keys
     if (create) {
       Index::validateFields(indexDef);
-      auto v = indexDef.get(arangodb::StaticStrings::IndexUnique);
+      auto isUnique =
+          indexDef.get(arangodb::StaticStrings::IndexUnique).isTrue();
 
       /* the following combinations of shardKeys and indexKeys are allowed/not
        allowed:
@@ -518,34 +540,20 @@ Result Indexes::ensureIndex(LogicalCollection& collection, VPackSlice input,
        a b c         a b c        ok
        */
 
-      if (v.isBoolean() && v.getBoolean()) {
+      if (isUnique && collection.numberOfShards() > 1) {
         // unique index, now check if fields and shard keys match
-        auto flds = indexDef.get(arangodb::StaticStrings::IndexFields);
 
-        if (flds.isArray() && collection.numberOfShards() > 1) {
-          std::vector<std::string> const& shardKeys = collection.shardKeys();
-          std::unordered_set<std::string> indexKeys;
-          size_t n = static_cast<size_t>(flds.length());
+        std::vector<std::string> const& shardKeys = collection.shardKeys();
+        std::unordered_set<std::string_view> indexKeys =
+            extractRelevantKeysForSharding(indexDef);
 
-          for (size_t i = 0; i < n; ++i) {
-            VPackSlice f = flds.at(i);
-            if (!f.isString()) {
-              // index attributes must be strings
-              ensureIndexResult = TRI_ERROR_INTERNAL;
-              return Result(TRI_ERROR_INTERNAL,
-                            "index field names should be strings");
-            }
-            indexKeys.emplace(f.copyString());
-          }
-
-          // all shard-keys must be covered by the index
-          for (auto& it : shardKeys) {
-            if (indexKeys.find(it) == indexKeys.end()) {
-              ensureIndexResult = TRI_ERROR_CLUSTER_UNSUPPORTED;
-              return Result(
-                  TRI_ERROR_CLUSTER_UNSUPPORTED,
-                  "shard key '" + it + "' must be present in unique index");
-            }
+        // all shard-keys must be covered by the index
+        for (auto& it : shardKeys) {
+          if (indexKeys.find(it) == indexKeys.end()) {
+            ensureIndexResult = TRI_ERROR_CLUSTER_UNSUPPORTED;
+            co_return Result(
+                TRI_ERROR_CLUSTER_UNSUPPORTED,
+                "shard key '" + it + "' must be present in unique index");
           }
         }
       }
@@ -598,19 +606,19 @@ Result Indexes::ensureIndex(LogicalCollection& collection, VPackSlice input,
       }
     }
   } else {
-    res = EnsureIndexLocal(collection, indexDef, create, output,
-                           std::move(progress));
+    res = co_await EnsureIndexLocal(collection, indexDef, create, output,
+                                    std::move(progress),
+                                    std::move(replicationCb));
   }
 
   ensureIndexResult = res.errorNumber();
-  return res;
+  co_return res;
 }
 
-arangodb::Result Indexes::createIndex(LogicalCollection& coll,
-                                      Index::IndexType type,
-                                      std::vector<std::string> const& fields,
-                                      bool unique, bool sparse,
-                                      bool estimates) {
+futures::Future<arangodb::Result> Indexes::createIndex(
+    LogicalCollection& coll, Index::IndexType type,
+    std::vector<std::string> const& fields, bool unique, bool sparse,
+    bool estimates) {
   VPackBuilder props;
 
   props.openObject();
@@ -633,7 +641,7 @@ arangodb::Result Indexes::createIndex(LogicalCollection& coll,
   props.close();
 
   VPackBuilder ignored;
-  return ensureIndex(coll, props.slice(), true, ignored);
+  co_return co_await ensureIndex(coll, props.slice(), true, ignored);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -647,10 +655,7 @@ Result Indexes::extractHandle(arangodb::LogicalCollection const& collection,
   // reset the collection identifier
   std::string collectionName;
 
-  bool extendedNames = collection.vocbase()
-                           .server()
-                           .getFeature<DatabaseFeature>()
-                           .extendedNames();
+  bool extendedNames = collection.vocbase().extendedNames();
 
   // extract the index identifier from a string
   if (val.isString() || val.isNumber()) {
@@ -687,115 +692,181 @@ Result Indexes::extractHandle(arangodb::LogicalCollection const& collection,
   return {};
 }
 
-Result Indexes::drop(LogicalCollection& collection,
-                     velocypack::Slice indexArg) {
+auto constexpr getHandle = [](LogicalCollection& collection,
+                              velocypack::Slice indexArg,
+                              CollectionNameResolver const* resolver,
+                              transaction::Methods* trx = nullptr)
+    -> futures::Future<ResultT<std::pair<IndexId, std::string>>> {
+  IndexId iid = IndexId::none();
+  std::string name;
+  Result res =
+      Indexes::extractHandle(collection, resolver, indexArg, iid, name);
+
+  if (!res.ok()) {
+    events::DropIndex(collection.vocbase().name(), collection.name(), "",
+                      res.errorNumber());
+    co_return res;
+  }
+
+  if (iid.empty() && !name.empty()) {
+    VPackBuilder builder;
+    res =
+        co_await methods::Indexes::getIndex(collection, indexArg, builder, trx);
+    if (!res.ok()) {
+      events::DropIndex(collection.vocbase().name(), collection.name(), "",
+                        res.errorNumber());
+      co_return res;
+    }
+
+    VPackSlice idSlice = builder.slice().get(StaticStrings::IndexId);
+    res = Indexes::extractHandle(collection, resolver, idSlice, iid, name);
+
+    if (!res.ok()) {
+      events::DropIndex(collection.vocbase().name(), collection.name(), "",
+                        res.errorNumber());
+    }
+  }
+
+  co_return std::pair(iid, std::move(name));
+};
+
+futures::Future<arangodb::Result> Indexes::drop(LogicalCollection& collection,
+                                                velocypack::Slice indexArg) {
   ExecContext const& exec = ExecContext::current();
   if (!exec.isSuperuser()) {
     if (exec.databaseAuthLevel() != auth::Level::RW ||
         !exec.canUseCollection(collection.name(), auth::Level::RW)) {
       events::DropIndex(collection.vocbase().name(), collection.name(), "",
                         TRI_ERROR_FORBIDDEN);
-      return {TRI_ERROR_FORBIDDEN};
+      co_return {TRI_ERROR_FORBIDDEN};
     }
   }
-
-  IndexId iid = IndexId::none();
-  std::string name;
-  auto getHandle = [&collection, &indexArg, &iid, &name](
-                       CollectionNameResolver const* resolver,
-                       transaction::Methods* trx = nullptr) -> Result {
-    Result res =
-        Indexes::extractHandle(collection, resolver, indexArg, iid, name);
-
-    if (!res.ok()) {
-      events::DropIndex(collection.vocbase().name(), collection.name(), "",
-                        res.errorNumber());
-      return res;
-    }
-
-    if (iid.empty() && !name.empty()) {
-      VPackBuilder builder;
-      res = methods::Indexes::getIndex(collection, indexArg, builder, trx);
-      if (!res.ok()) {
-        events::DropIndex(collection.vocbase().name(), collection.name(), "",
-                          res.errorNumber());
-        return res;
-      }
-
-      VPackSlice idSlice = builder.slice().get(StaticStrings::IndexId);
-      res = Indexes::extractHandle(collection, resolver, idSlice, iid, name);
-
-      if (!res.ok()) {
-        events::DropIndex(collection.vocbase().name(), collection.name(), "",
-                          res.errorNumber());
-      }
-    }
-
-    return res;
-  };
 
   if (ServerState::instance()->isCoordinator()) {
     CollectionNameResolver resolver(collection.vocbase());
-    Result res = getHandle(&resolver);
-    if (!res.ok()) {
-      return res;
+    auto handleRes = co_await getHandle(collection, indexArg, &resolver);
+    if (!handleRes.ok()) {
+      co_return std::move(handleRes).result();
     }
+    auto&& [iid, name] = handleRes.get();
+    auto const indexId = iid;
 
-    // flush estimates
-    collection.getPhysical()->flushClusterIndexEstimates();
-
-#ifdef USE_ENTERPRISE
-    res = Indexes::dropCoordinatorEE(collection, iid);
-#else
-    res = ClusterIndexMethods::dropIndexCoordinator(collection, iid, 0.0);
-#endif
-    return res;
+    co_return co_await dropCoordinator(collection, indexId);
   } else {
-    auto origin = transaction::OperationOriginREST{::moduleName};
-    READ_LOCKER(readLocker, collection.vocbase()._inventoryLock);
-
-    transaction::Options trxOpts;
-    trxOpts.requiresReplication = false;
-#ifdef USE_V8
-    SingleCollectionTransaction trx(transaction::V8Context::createWhenRequired(
-                                        collection.vocbase(), origin, false),
-                                    collection, AccessMode::Type::EXCLUSIVE,
-                                    trxOpts);
-#else
-    SingleCollectionTransaction trx(
-        transaction::StandaloneContext::create(collection.vocbase(), origin),
-        collection, AccessMode::Type::EXCLUSIVE, trxOpts);
-#endif
-    Result res = trx.begin();
-
-    if (!res.ok()) {
-      events::DropIndex(collection.vocbase().name(), collection.name(), "",
-                        res.errorNumber());
-      return res;
-    }
-
-    LogicalCollection* col = trx.documentCollection();
-    res = getHandle(trx.resolver(), &trx);
-    if (!res.ok()) {
-      return res;
-    }
-
-    std::shared_ptr<Index> idx = collection.lookupIndex(iid);
-    if (!idx || idx->id().empty() || idx->id().isPrimary()) {
-      events::DropIndex(collection.vocbase().name(), collection.name(),
-                        std::to_string(iid.id()),
-                        TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
-      return {TRI_ERROR_ARANGO_INDEX_NOT_FOUND};
-    }
-    if (!idx->canBeDropped()) {
-      events::DropIndex(collection.vocbase().name(), collection.name(),
-                        std::to_string(iid.id()), TRI_ERROR_FORBIDDEN);
-      return {TRI_ERROR_FORBIDDEN};
-    }
-
-    res = col->dropIndex(idx->id());
-    events::DropIndex(collection.vocbase().name(), collection.name(),
-                      std::to_string(iid.id()), res.errorNumber());
-    return res;
+    co_return co_await dropDBServer(collection, indexArg);
   }
 }
+
+futures::Future<arangodb::Result> Indexes::drop(LogicalCollection& collection,
+                                                IndexId indexId) {
+  ExecContext const& exec = ExecContext::current();
+  if (!exec.isSuperuser()) {
+    if (exec.databaseAuthLevel() != auth::Level::RW ||
+        !exec.canUseCollection(collection.name(), auth::Level::RW)) {
+      events::DropIndex(collection.vocbase().name(), collection.name(), "",
+                        TRI_ERROR_FORBIDDEN);
+      co_return {TRI_ERROR_FORBIDDEN};
+    }
+  }
+
+  if (ServerState::instance()->isCoordinator()) {
+    co_return co_await dropCoordinator(collection, indexId);
+  } else {
+    co_return co_await dropDBServer(collection, indexId);
+  }
+}
+
+futures::Future<arangodb::Result> Indexes::dropCoordinator(
+    LogicalCollection& collection, IndexId indexId) {
+  // flush estimates
+  collection.getPhysical()->flushClusterIndexEstimates();
+
+#ifdef USE_ENTERPRISE
+  auto res = Indexes::dropCoordinatorEE(collection, indexId);
+#else
+  auto res =
+      ClusterIndexMethods::dropIndexCoordinator(collection, indexId, 0.0);
+#endif
+  co_return res;
+}
+
+std::unique_ptr<SingleCollectionTransaction> Indexes::createTrxForDrop(
+    LogicalCollection& collection) {
+  auto origin = transaction::OperationOriginREST{::moduleName};
+  transaction::Options trxOpts;
+  trxOpts.requiresReplication = false;
+#ifdef USE_V8
+  return std::make_unique<SingleCollectionTransaction>(
+      transaction::V8Context::createWhenRequired(collection.vocbase(), origin,
+                                                 false),
+      collection, AccessMode::Type::EXCLUSIVE, trxOpts);
+#else
+  return std::make_unique<SingleCollectionTransaction>(
+      transaction::StandaloneContext::create(collection.vocbase(), origin),
+      collection, AccessMode::Type::EXCLUSIVE, trxOpts);
+#endif
+}
+
+template<typename IndexSpec>
+requires std::is_same_v<IndexSpec, IndexId> or
+    std::is_same_v<IndexSpec, velocypack::Slice>
+        futures::Future<arangodb::Result> Indexes::dropDBServer(
+            LogicalCollection& col, IndexSpec indexSpec) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  READ_LOCKER(readLocker, col.vocbase()._inventoryLock);
+
+  auto trx = createTrxForDrop(col);
+
+  auto beginRes = co_await trx->beginAsync();
+  auto& collection = *trx->documentCollection();
+
+  if (!beginRes.ok()) {
+    events::DropIndex(collection.vocbase().name(), collection.name(), "",
+                      beginRes.errorNumber());
+    co_return beginRes;
+  }
+
+  auto indexIdRes = co_await std::invoke(
+      overload{
+          [](IndexId indexId) -> futures::Future<ResultT<IndexId>> {
+            co_return indexId;
+          },
+          [&](velocypack::Slice indexArg) -> futures::Future<ResultT<IndexId>> {
+            auto res = co_await getHandle(collection, indexArg, trx->resolver(),
+                                          trx.get());
+            if (!res.ok()) {
+              co_return std::move(res).result();
+            }
+            auto&& [iid, name] = res.get();
+            co_return iid;
+          },
+      },
+      indexSpec);
+  if (!indexIdRes.ok()) {
+    co_return std::move(indexIdRes).result();
+  }
+  auto const indexId = indexIdRes.get();
+
+  std::shared_ptr<Index> idx = collection.lookupIndex(indexId);
+  if (!idx || idx->id().empty() || idx->id().isPrimary()) {
+    events::DropIndex(collection.vocbase().name(), collection.name(),
+                      std::to_string(indexId.id()),
+                      TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
+    co_return {TRI_ERROR_ARANGO_INDEX_NOT_FOUND};
+  }
+  if (!idx->canBeDropped()) {
+    events::DropIndex(collection.vocbase().name(), collection.name(),
+                      std::to_string(indexId.id()), TRI_ERROR_FORBIDDEN);
+    co_return {TRI_ERROR_FORBIDDEN};
+  }
+
+  auto res = collection.dropIndex(indexId);
+  events::DropIndex(collection.vocbase().name(), collection.name(),
+                    std::to_string(indexId.id()), res.errorNumber());
+  co_return res;
+}
+
+template futures::Future<arangodb::Result> Indexes::dropDBServer<IndexId>(
+    LogicalCollection&, IndexId);
+template futures::Future<arangodb::Result>
+Indexes::dropDBServer<velocypack::Slice>(LogicalCollection&, velocypack::Slice);

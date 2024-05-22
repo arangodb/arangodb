@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,7 +28,6 @@
 #include "Aql/QueryExecutionState.h"
 #include "Aql/QueryList.h"
 #include "Auth/TokenCache.h"
-#include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
@@ -50,17 +49,6 @@ using namespace arangodb::methods;
 
 namespace {
 enum class QueriesMode { Current, Slow };
-
-network::Headers buildHeaders() {
-  auto auth = AuthenticationFeature::instance();
-
-  network::Headers headers;
-  if (auth != nullptr && auth->isActive()) {
-    headers.try_emplace(StaticStrings::Authorization,
-                        "bearer " + auth->tokenCache().jwtToken());
-  }
-  return headers;
-}
 
 arangodb::Result checkAuthorization(TRI_vocbase_t& vocbase, bool allDatabases) {
   Result res;
@@ -161,9 +149,9 @@ arangodb::Result getQueries(TRI_vocbase_t& vocbase, velocypack::Builder& out,
         continue;
       }
 
-      auto f = network::sendRequestRetry(
-          pool, "server:" + coordinator, fuerte::RestVerb::Get, url,
-          VPackBuffer<uint8_t>{}, options, buildHeaders());
+      auto f = network::sendRequestRetry(pool, "server:" + coordinator,
+                                         fuerte::RestVerb::Get, url,
+                                         VPackBuffer<uint8_t>{}, options);
       futures.emplace_back(std::move(f));
     }
 
@@ -262,9 +250,9 @@ Result Queries::clearSlow(TRI_vocbase_t& vocbase, bool allDatabases,
         continue;
       }
 
-      auto f = network::sendRequestRetry(
-          pool, "server:" + coordinator, fuerte::RestVerb::Delete,
-          "/_api/query/slow", body, options, buildHeaders());
+      auto f = network::sendRequestRetry(pool, "server:" + coordinator,
+                                         fuerte::RestVerb::Delete,
+                                         "/_api/query/slow", body, options);
       futures.emplace_back(std::move(f));
     }
 

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,12 +23,8 @@
 
 #include "RestAgencyHandler.h"
 
-#include <thread>
-
-#include <velocypack/Builder.h>
-
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Agency/Agent.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Logger/LogMacros.h"
 #include "Metrics/Histogram.h"
@@ -36,6 +32,10 @@
 #include "Rest/Version.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/StandaloneContext.h"
+
+#include <velocypack/Builder.h>
+
+#include <thread>
 
 using namespace arangodb;
 
@@ -779,7 +779,8 @@ RestStatus RestAgencyHandler::reportMethodNotAllowed() {
 }
 
 RestStatus RestAgencyHandler::execute() {
-  response()->setAllowCompression(true);
+  response()->setAllowCompression(
+      rest::ResponseCompressionType::kAllowCompression);
   try {
     auto const& suffixes = _request->suffixes();
     if (suffixes.empty()) {  // Empty request

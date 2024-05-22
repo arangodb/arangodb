@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -844,8 +844,7 @@ bool Job::abortable(Node const& snapshot, std::string const& jobId) {
     return false;
   }
   std::string const& type = tmp_type.value();
-  if (type == "failedServer" || type == "failedLeader" ||
-      type == "activeFailover") {
+  if (type == "failedServer" || type == "failedLeader") {
     return false;
   } else if (type == "addFollower" || type == "moveShard" ||
              type == "cleanOutServer" || type == "resignLeadership") {
@@ -1040,6 +1039,19 @@ void Job::addPreconditionJobStillInPending(Builder& pre,
   {
     VPackObjectBuilder guard(&pre);
     pre.add("oldEmpty", VPackValue(false));
+  }
+}
+
+void Job::addPreconditionClonesStillExist(Builder& pre,
+                                          std::string_view database,
+                                          std::vector<shard_t> const& clones) {
+  for (auto const& shard : clones) {
+    pre.add(VPackValue(StringUtils::concatT("/Plan/Collections/", database, "/",
+                                            shard.collection)));
+    {
+      VPackObjectBuilder guard(&pre);
+      pre.add("oldEmpty", VPackValue(false));
+    }
   }
 }
 

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -52,6 +52,8 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "VocBase/vocbase.h"
 
+#include <absl/strings/str_cat.h>
+
 using namespace arangodb::application_features;
 using namespace arangodb::velocypack;
 using namespace std::chrono;
@@ -93,11 +95,12 @@ std::string const privApiPrefix("/_api/agency_priv/");
 std::string const NO_LEADER("");
 
 /// Agent configuration
-Agent::Agent(ArangodServer& server, config_t const& config)
+Agent::Agent(ArangodServer& server, metrics::MetricsFeature& metrics,
+             config_t const& config)
     : arangodb::ServerThread<ArangodServer>(server, "Agent"),
       _constituent(server),
-      _supervision(std::make_unique<Supervision>(server)),
-      _state(server),
+      _supervision(std::make_unique<Supervision>(server, metrics)),
+      _state(metrics),
       _config(config),
       _commitIndex(0),
       _agentNeedsWakeup(false),
@@ -105,30 +108,15 @@ Agent::Agent(ArangodServer& server, config_t const& config)
       _ready(false),
       _preparing(0),
       _loaded(false),
-      _write_ok(server.getFeature<arangodb::metrics::MetricsFeature>().add(
-          arangodb_agency_write_ok_total{})),
-      _write_no_leader(
-          server.getFeature<arangodb::metrics::MetricsFeature>().add(
-              arangodb_agency_write_no_leader_total{})),
-      _read_ok(server.getFeature<arangodb::metrics::MetricsFeature>().add(
-          arangodb_agency_read_ok_total{})),
-      _read_no_leader(
-          server.getFeature<arangodb::metrics::MetricsFeature>().add(
-              arangodb_agency_read_no_leader_total{})),
-      _write_hist_msec(
-          server.getFeature<arangodb::metrics::MetricsFeature>().add(
-              arangodb_agency_write_hist{})),
-      _commit_hist_msec(
-          server.getFeature<arangodb::metrics::MetricsFeature>().add(
-              arangodb_agency_commit_hist{})),
-      _append_hist_msec(
-          server.getFeature<arangodb::metrics::MetricsFeature>().add(
-              arangodb_agency_append_hist{})),
-      _compaction_hist_msec(
-          server.getFeature<arangodb::metrics::MetricsFeature>().add(
-              arangodb_agency_compaction_hist{})),
-      _local_index(server.getFeature<arangodb::metrics::MetricsFeature>().add(
-          arangodb_agency_local_commit_index{})) {
+      _write_ok(metrics.add(arangodb_agency_write_ok_total{})),
+      _write_no_leader(metrics.add(arangodb_agency_write_no_leader_total{})),
+      _read_ok(metrics.add(arangodb_agency_read_ok_total{})),
+      _read_no_leader(metrics.add(arangodb_agency_read_no_leader_total{})),
+      _write_hist_msec(metrics.add(arangodb_agency_write_hist{})),
+      _commit_hist_msec(metrics.add(arangodb_agency_commit_hist{})),
+      _append_hist_msec(metrics.add(arangodb_agency_append_hist{})),
+      _compaction_hist_msec(metrics.add(arangodb_agency_compaction_hist{})),
+      _local_index(metrics.add(arangodb_agency_local_commit_index{})) {
   _state.configure(this);
   _constituent.configure(this);
   _inception = std::make_unique<Inception>(*this);
@@ -770,6 +758,11 @@ void Agent::sendAppendEntriesRPC() {
           << "Setting _earliestPackage to now + 30s for id " << followerId;
 
       network::RequestOptions reqOpts;
+      // never compress requests to the agency, so that we do not spend too much
+      // CPU on compression/decompression. some agent instances run with a very
+      // low number of cores (even fractions of physical cores), so we cannot
+      // waste too much CPU resources there.
+      reqOpts.allowCompression = false;
       reqOpts.timeout = network::Timeout(150);
       reqOpts.param("term", std::to_string(t))
           .param("leaderId", id())
@@ -781,12 +774,14 @@ void Agent::sendAppendEntriesRPC() {
 
       // Send request
       auto ac = AgentCallback{this, followerId, highest, toLog};
-      network::sendRequest(
-          cp, _config.poolAt(followerId), fuerte::RestVerb::Post,
-          // cppcheck-suppress accessMoved
-          "/_api/agency_priv/appendEntries", std::move(buffer), reqOpts)
-          .thenValue(
-              [ac = std::move(ac)](network::Response r) { ac.operator()(r); });
+      std::ignore = network::sendRequest(cp, _config.poolAt(followerId),
+                                         fuerte::RestVerb::Post,
+                                         // cppcheck-suppress accessMoved
+                                         "/_api/agency_priv/appendEntries",
+                                         std::move(buffer), reqOpts)
+                        .thenValue([ac = std::move(ac)](network::Response r) {
+                          ac.operator()(r);
+                        });
 
       // Note the timeout is relatively long, but due to the 30 seconds
       // above, we only ever have at most 5 messages in flight.
@@ -851,11 +846,18 @@ void Agent::sendEmptyAppendEntriesRPC(std::string const& followerId) {
 
   // Send request
   VPackBufferUInt8 buffer;
-  buffer.append(VPackSlice::emptyArraySlice().begin(), 1);
+  VPackBuilder builder(buffer);
+  builder.add(VPackSlice::emptyArraySlice());
+
   auto ac = AgentCallback{this, followerId, 0, 0};
 
   network::RequestOptions reqOpts;
   reqOpts.skipScheduler = true;
+  // never compress requests to the agency, so that we do not spend too much
+  // CPU on compression/decompression. some agent instances run with a very
+  // low number of cores (even fractions of physical cores), so we cannot
+  // waste too much CPU resources there.
+  reqOpts.allowCompression = false;
   reqOpts.timeout =
       network::Timeout(3 * _config.minPing() * _config.timeoutMult());
   reqOpts.param("term", std::to_string(_constituent.term()))
@@ -867,11 +869,12 @@ void Agent::sendEmptyAppendEntriesRPC(std::string const& followerId) {
              std::to_string(std::llround(steadyClockToDouble() * 1000)));
 
   double now = TRI_microtime();
-  network::sendRequest(cp, _config.poolAt(followerId), fuerte::RestVerb::Post,
-                       // cppcheck-suppress accessMoved
-                       "/_api/agency_priv/appendEntries", std::move(buffer),
-                       reqOpts)
-      .thenValue([=](network::Response r) { ac.operator()(r); });
+  std::ignore = network::sendRequest(cp, _config.poolAt(followerId),
+                                     fuerte::RestVerb::Post,
+                                     // cppcheck-suppress accessMoved
+                                     "/_api/agency_priv/appendEntries",
+                                     std::move(buffer), reqOpts)
+                    .thenValue([=](network::Response r) { ac.operator()(r); });
   double diff = TRI_microtime() - now;
   if (diff > 0.01) {
     LOG_TOPIC("cfb7c", DEBUG, Logger::AGENCY)
@@ -887,7 +890,7 @@ void Agent::sendEmptyAppendEntriesRPC(std::string const& followerId) {
   diff = TRI_microtime() - now;
   if (diff > 0.01) {
     LOG_TOPIC("cfb7b", DEBUG, Logger::AGENCY)
-        << "Logging of a line took more than 1/100 of a second, this is bad:"
+        << "Logging of a line took more than 1/100 of a second, this is bad: "
         << diff;
   }
 }
@@ -1385,6 +1388,7 @@ write_ret_t Agent::write(velocypack::Slice query, WriteMode const& wmode) {
     // ourselves.
 
     size_t ntrans = query.length();
+    TRI_ASSERT(_config.maxAppendSize() > 0);
     size_t npacks = ntrans / _config.maxAppendSize();
     if (ntrans % _config.maxAppendSize() != 0) {
       npacks++;
@@ -2006,8 +2010,8 @@ query_t Agent::gossip(VPackSlice slice, bool isCallback, size_t version) {
   if (!slice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_AGENCY_MALFORMED_GOSSIP_MESSAGE,
-        std::string("Gossip message must be an object. Incoming type is ") +
-            slice.typeName());
+        absl::StrCat("Gossip message must be an object. Incoming type is ",
+                     slice.typeName()));
   }
 
   if (slice.hasKey(StaticStrings::Error)) {
@@ -2201,10 +2205,6 @@ query_t Agent::gossip(VPackSlice slice, bool isCallback, size_t version) {
   }
 
   return out;
-}
-
-void Agent::resetRAFTTimes(double minTimeout, double maxTimeout) {
-  _config.pingTimes(minTimeout, maxTimeout);
 }
 
 void Agent::ready(bool b) {

@@ -5,7 +5,7 @@ R"=(
       "Collections": {
         "database": {
           "collection": {
-            "shard": {
+            "s1337": {
               "servers": [
                 "leader",
                 "follower1",
@@ -22,7 +22,7 @@ R"=(
           "collection": {
             "replicationFactor": 3,
             "shards": {
-              "shard": [
+              "s1337": [
                 "leader",
                 "follower1",
                 "follower2"

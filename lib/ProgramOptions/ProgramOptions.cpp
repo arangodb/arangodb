@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -43,6 +43,16 @@
 #define ARANGODB_PROGRAM_OPTIONS_PROGNAME "#progname#"
 
 using namespace arangodb::options;
+
+/*static*/ std::function<bool(std::string const&)> const
+    ProgramOptions::defaultOptionsFilter = [](std::string const& name) {
+      if (name.find("passwd") != std::string::npos ||
+          name.find("password") != std::string::npos ||
+          name.find("secret") != std::string::npos) {
+        return false;
+      }
+      return true;
+    };
 
 ProgramOptions::ProcessingResult::ProcessingResult()
     : _positionals(), _touched(), _frozen(), _exitCode(0) {}
@@ -297,17 +307,9 @@ VPackBuilder ProgramOptions::toVelocyPack(
           builder.add("requiresValue",
                       VPackValue(option.parameter->requiresValue()));
 
-          // OS support
+          // OS support (hard coded to ["Linux"] right now)
           builder.add("os", VPackValue(VPackValueType::Array));
-          if (option.hasFlag(arangodb::options::Flags::OsLinux)) {
-            builder.add(VPackValue("linux"));
-          }
-          if (option.hasFlag(arangodb::options::Flags::OsMac)) {
-            builder.add(VPackValue("macos"));
-          }
-          if (option.hasFlag(arangodb::options::Flags::OsWindows)) {
-            builder.add(VPackValue("windows"));
-          }
+          builder.add(VPackValue("linux"));
           builder.close();
 
           // component support
@@ -758,24 +760,12 @@ void ProgramOptions::fail(int exitCode, std::string const& message) {
             << TRI_Basename(_progname.c_str()) << ":" << colorEnd << std::endl;
   failNotice(exitCode, message);
   std::cerr << std::endl;
-#ifdef _WIN32
-  // additionally log these errors to the debug output window in MSVC so
-  // we can see them during development
-  OutputDebugString(message.c_str());
-  OutputDebugString("\r\n");
-#endif
 }
 
 void ProgramOptions::failNotice(int exitCode, std::string const& message) {
   _processingResult.fail(exitCode);
 
   std::cerr << "  " << message << std::endl;
-#ifdef _WIN32
-  // additionally log these errors to the debug output window in MSVC so
-  // we can see them during development
-  OutputDebugString(message.c_str());
-  OutputDebugString("\r\n");
-#endif
 }
 
 // add a positional argument (callback from parser)

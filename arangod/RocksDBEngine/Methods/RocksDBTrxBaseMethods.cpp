@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -167,11 +167,10 @@ Result RocksDBTrxBaseMethods::addOperation(
 
   if (_memoryTracker.memoryUsage() > _state->options().maxTransactionSize) {
     // we hit the transaction size limit
-    return {
-        TRI_ERROR_RESOURCE_LIMIT,
-        absl::StrCat(
-            "aborting transaction because maximal transaction size limit of ",
-            _state->options().maxTransactionSize, " bytes is reached")};
+    return {TRI_ERROR_RESOURCE_LIMIT,
+            absl::StrCat("Maximal transaction size limit of ",
+                         _state->options().maxTransactionSize,
+                         " bytes is reached")};
   }
 
   switch (operationType) {
@@ -486,9 +485,7 @@ Result RocksDBTrxBaseMethods::doCommitImpl() {
 
   TRI_IF_FAILURE("TransactionChaos::randomSync") {
     if (RandomGenerator::interval(uint32_t(1000)) > 950) {
-      auto& selector =
-          _state->vocbase().server().getFeature<EngineSelectorFeature>();
-      auto& engine = selector.engine<RocksDBEngine>();
+      auto& engine = _state->vocbase().engine<RocksDBEngine>();
       auto* sm = engine.settingsManager();
       if (sm) {
         sm->sync(/*force*/ true);
@@ -548,9 +545,7 @@ Result RocksDBTrxBaseMethods::doCommitImpl() {
 
   // wait for sync if required
   if (_state->waitForSync()) {
-    auto& selector =
-        _state->vocbase().server().getFeature<EngineSelectorFeature>();
-    auto& engine = selector.engine<RocksDBEngine>();
+    auto& engine = _state->vocbase().engine<RocksDBEngine>();
     if (engine.syncThread()) {
       // we do have a sync thread
       return engine.syncThread()->syncWal();
@@ -587,6 +582,19 @@ void RocksDBTrxBaseMethods::MultiGet(rocksdb::Snapshot const* snapshot,
 
   // Timestamps and multiple ColumnFamilies are not necessary for us
   _db->MultiGet(_readOptions, &family, count, keys, values, statuses, false);
+}
+
+void RocksDBTrxBaseMethods::MultiGet(rocksdb::ColumnFamilyHandle& family,
+                                     size_t count, rocksdb::Slice const* keys,
+                                     rocksdb::PinnableSlice* values,
+                                     rocksdb::Status* statuses,
+                                     ReadOwnWrites readOwnWrites) {
+  if (readOwnWrites == ReadOwnWrites::yes) {
+    _rocksTransaction->MultiGet(_readOptions, &family, count, keys, values,
+                                statuses, false);
+  } else {
+    _db->MultiGet(_readOptions, &family, count, keys, values, statuses, false);
+  }
 }
 
 size_t RocksDBTrxBaseMethods::currentWriteBatchSize() const noexcept {

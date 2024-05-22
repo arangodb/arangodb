@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2023-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -56,12 +57,8 @@ auto DefaultRebootIdCache::getRebootIdsFor(
       // We need to report a RebootId for each participant. Reporting 0 is
       // always safe, as it is the most pessimistic assumption.
       result.try_emplace(participant, RebootId(0));
-      // All participants should always be available in the lists of known
-      // servers (I think).
-      TRI_ASSERT(false) << fmt::format(
-          "Participant {} not found in ServersKnown. LogLeader asked for these "
-          "participants: {} while the ClusterInfo provided these servers: {}",
-          participant, participants, rebootIds);
+      // This can happen if a server is still a following participant,
+      // but has been removed from the cluster.
     }
   }
 

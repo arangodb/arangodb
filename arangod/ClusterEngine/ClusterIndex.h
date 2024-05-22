@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,7 +25,6 @@
 
 #include <velocypack/Builder.h>
 
-#include "Basics/Common.h"
 #include "ClusterEngine/ClusterTransactionState.h"
 #include "ClusterEngine/Common.h"
 #include "Indexes/Index.h"
@@ -56,9 +55,6 @@ class ClusterIndex : public Index {
   bool isHidden() const override {
     return false;  // do not generally hide indexes
   }
-
-  /// @brief if true this index should not be shown externally
-  virtual bool inProgress() const override;
 
   IndexType type() const override { return _indexType; }
 
@@ -113,6 +109,11 @@ class ClusterIndex : public Index {
   bool supportsStreamInterface(
       IndexStreamOptions const&) const noexcept override;
 
+  std::vector<std::vector<basics::AttributeName>> const& prefixFields()
+      const noexcept {
+    return _prefixFields;
+  }
+
  protected:
   ClusterEngineType _engineType;
   Index::IndexType _indexType;
@@ -122,5 +123,7 @@ class ClusterIndex : public Index {
 
   // Only used in RocksDB edge index.
   std::vector<std::vector<basics::AttributeName>> _coveredFields;
+  // Only used in TRI_IDX_TYPE_MDI_PREFIXED_INDEX
+  std::vector<std::vector<basics::AttributeName>> _prefixFields;
 };
 }  // namespace arangodb

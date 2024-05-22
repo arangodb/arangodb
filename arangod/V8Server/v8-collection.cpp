@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -221,6 +221,12 @@ static void getOperationOptionsFromObject(v8::Isolate* isolate,
                       IsSynchronousReplicationKey)) {
     options.isSynchronousReplicationFrom = TRI_ObjectToString(
         isolate, optionsObject->Get(context, IsSynchronousReplicationKey)
+                     .FromMaybe(v8::Local<v8::Value>()));
+  }
+  TRI_GET_GLOBAL_STRING(VersionAttributeKey);
+  if (TRI_HasProperty(context, isolate, optionsObject, VersionAttributeKey)) {
+    options.versionAttribute = TRI_ObjectToString(
+        isolate, optionsObject->Get(context, VersionAttributeKey)
                      .FromMaybe(v8::Local<v8::Value>()));
   }
   TRI_GET_GLOBAL_STRING(CompactKey);
@@ -1035,7 +1041,9 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   try {
-    auto res = methods::Collections::drop(*collection, allowDropSystem);
+    CollectionDropOptions dropOptions{.allowDropSystem = allowDropSystem,
+                                      .allowDropGraphCollection = false};
+    auto res = methods::Collections::drop(*collection, dropOptions);
     if (res.fail()) {
       TRI_V8_THROW_EXCEPTION(res);
     }
@@ -1136,15 +1144,15 @@ static void JS_GetResponsibleShardVocbaseCol(
     TRI_V8_THROW_EXCEPTION_USAGE("getResponsibleShard(<object>)");
   }
 
-  std::string shardId;
   TRI_ASSERT(builder.slice().isObject());
-  auto res = collection->getResponsibleShard(builder.slice(), false, shardId);
+  auto maybeShard = collection->getResponsibleShard(builder.slice(), false);
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
+  if (maybeShard.fail()) {
+    TRI_V8_THROW_EXCEPTION(maybeShard.result());
   }
 
-  v8::Handle<v8::Value> result = TRI_V8_STD_STRING(isolate, shardId);
+  v8::Handle<v8::Value> result =
+      TRI_V8_STD_STRING(isolate, std::string{maybeShard.get()});
   TRI_V8_RETURN(result);
 
   TRI_V8_TRY_CATCH_END
@@ -1266,7 +1274,8 @@ static void JS_PropertiesVocbaseCol(
       OperationOptions options(ExecContext::current());
 
       auto res = methods::Collections::updateProperties(
-          *consoleColl, builder.slice(), options);
+                     *consoleColl, builder.slice(), options)
+                     .get();
       if (res.fail() && ServerState::instance()->isCoordinator()) {
         TRI_V8_THROW_EXCEPTION(res);
       }
@@ -1283,7 +1292,7 @@ static void JS_PropertiesVocbaseCol(
   if (coll) {
     VPackObjectBuilder object(&builder, true);
     methods::Collections::Context ctxt(coll);
-    Result res = methods::Collections::properties(ctxt, builder);
+    Result res = methods::Collections::properties(ctxt, builder).get();
 
     if (res.fail()) {
       TRI_V8_THROW_EXCEPTION(res);
@@ -1884,6 +1893,12 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
           isolate, optionsObject->Get(context, IsSynchronousReplicationKey)
                        .FromMaybe(v8::Local<v8::Value>()));
     }
+    TRI_GET_GLOBAL_STRING(VersionAttributeKey);
+    if (TRI_HasProperty(context, isolate, optionsObject, VersionAttributeKey)) {
+      options.versionAttribute = TRI_ObjectToString(
+          isolate, optionsObject->Get(context, VersionAttributeKey)
+                       .FromMaybe(v8::Local<v8::Value>()));
+    }
   } else {
     options.waitForSync =
         ExtractBooleanArgument(isolate, args, optsIdx + 1, false);
@@ -2374,12 +2389,6 @@ static void JS_CompletionsVocbase(
   result->Set(context, j++, TRI_V8_ASCII_STRING(isolate, "_path()"))
       .FromMaybe(false);
   result->Set(context, j++, TRI_V8_ASCII_STRING(isolate, "_parse()"))
-      .FromMaybe(false);
-  result->Set(context, j++, TRI_V8_ASCII_STRING(isolate, "_pregelStart()"))
-      .FromMaybe(false);
-  result->Set(context, j++, TRI_V8_ASCII_STRING(isolate, "_pregelStatus()"))
-      .FromMaybe(false);
-  result->Set(context, j++, TRI_V8_ASCII_STRING(isolate, "_pregelStop()"))
       .FromMaybe(false);
   result->Set(context, j++, TRI_V8_ASCII_STRING(isolate, "_profileQuery()"))
       .FromMaybe(false);

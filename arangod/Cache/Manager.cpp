@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -406,8 +406,17 @@ std::pair<double, double> Manager::globalHitRates() {
 double Manager::idealLowerFillRatio() const noexcept {
   return _options.idealLowerFillRatio;
 }
+
 double Manager::idealUpperFillRatio() const noexcept {
   return _options.idealUpperFillRatio;
+}
+
+std::uint64_t Manager::maxCacheValueSize() const noexcept {
+  // max size of cachable value is the minimum of
+  // - maximum configured cache value size
+  // - the per-cache item value size limit
+  return std::min(static_cast<std::uint64_t>(_options.maxCacheValueSize),
+                  static_cast<std::uint64_t>(CachedValue::kMaxValueSize));
 }
 
 bool Manager::post(std::function<void()> fn) {
@@ -768,6 +777,7 @@ void Manager::shrinkOvergrownCaches(Manager::TaskEnvironment environment,
         // by default, resizeCache() will only free memory from caches by
         // eviciting cache entries. it will not shrink the hash table sizes
         bool allowShrinking = false;
+        TRI_ASSERT(cacheList.size() > 0);
         if (static_cast<double>(i) / static_cast<double>(cacheList.size()) <=
             kCachesToShrinkRatio) {
           // for the bottom kCachesToShrinkRation caches we will also trigger a
@@ -1022,6 +1032,7 @@ Manager::PriorityList Manager::priorityList() {
       minimumWeight *= 1.001;  // bump by 0.1% until we fix precision issues
     }
 
+    TRI_ASSERT(_caches.size() > 0);
     double uniformMarginalWeight = 0.2 / static_cast<double>(_caches.size());
     double baseWeight = std::max(minimumWeight, uniformMarginalWeight);
 
@@ -1065,6 +1076,7 @@ Manager::PriorityList Manager::priorityList() {
     }
     // avoid div-by-zero
     globalUsage = std::max(globalUsage, std::uint64_t(1));
+    TRI_ASSERT(globalUsage > 0);
 
     // gather all unaccessed caches at beginning of list
     for (auto& c : _caches) {

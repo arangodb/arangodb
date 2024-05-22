@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -53,9 +53,12 @@ replicated_log::ReplicatedLog::ReplicatedLog(
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
     std::shared_ptr<IParticipantsFactory> participantsFactory,
     LoggerContext const& logContext, agency::ServerInstanceReference myself)
-    :  // TODO is it possible to add myself to the
-       //      logger context? even if it is changed later?
-      _logContext(logContext.with<logContextKeyLogId>(storage->getLogId())),
+    :  // TODO `logContextKeyMyself` should contain `myself`, including the
+       //      RebootId; however, that can change during updateConfig. It would
+       //      be nice to add that, but the update has to be implemented as
+       //      well. For now, the serverId is better than nothing.
+      _logContext(logContext.with<logContextKeyLogId>(storage->getLogId())
+                      .with<logContextKeyMyself>(myself.serverId)),
       _metrics(std::move(metrics)),
       _options(std::move(options)),
       _participantsFactory(std::move(participantsFactory)),
@@ -78,7 +81,7 @@ auto replicated_log::ReplicatedLog::connect(
   auto guard = _guarded.getLockedGuard();
   ADB_PROD_ASSERT(guard->stateHandle == nullptr);
   guard->stateHandle = std::move(stateHandle);
-  tryBuildParticipant(guard.get());
+  std::ignore = tryBuildParticipant(guard.get());
   return ReplicatedLogConnection(this);
 }
 

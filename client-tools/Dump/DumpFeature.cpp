@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,6 +26,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/BumpFileDescriptorsFeature.h"
+#include "ApplicationFeatures/GreetingsFeature.h"
 #include "Basics/BoundedChannel.h"
 #include "Basics/EncodingUtils.h"
 #include "Basics/Exceptions.h"
@@ -41,6 +42,7 @@
 #include "Basics/files.h"
 #include "Basics/system-functions.h"
 #include "FeaturePhases/BasicFeaturePhaseClient.h"
+#include "Logger/LogMacros.h"
 #include "Logger/LogTimeFormat.h"
 #include "Maskings/Maskings.h"
 #include "ProgramOptions/Parameters.h"
@@ -429,11 +431,6 @@ arangodb::Result dumpCollection(arangodb::httpclient::SimpleHttpClient& client,
                     arangodb::StaticStrings::MimeTypeDump);
   }
 
-  if (job.options.useGzipForTransport) {
-    headers.emplace(arangodb::StaticStrings::AcceptEncoding,
-                    arangodb::StaticStrings::EncodingGzip);
-  }
-
   while (true) {
     std::string url = absl::StrCat(baseUrl, "&chunkSize=", chunkSize);
 
@@ -660,22 +657,6 @@ Result DumpFeature::DumpCollectionJob::run(
         VPackObjectBuilder subObject(&excludes, "parameters");
         subObject->add(StaticStrings::ShadowCollections,
                        VPackSlice::nullSlice());
-
-        if (!options.clusterMode) {
-          // single server.
-          // remove replicationFactor, writeConcern and others that are
-          // only relevant in cluster
-          subObject->add(StaticStrings::MinReplicationFactor,
-                         VPackSlice::nullSlice());
-          subObject->add(StaticStrings::NumberOfShards,
-                         VPackSlice::nullSlice());
-          subObject->add(StaticStrings::ReplicationFactor,
-                         VPackSlice::nullSlice());
-          subObject->add(StaticStrings::WriteConcern, VPackSlice::nullSlice());
-          // note: we cannot exclude shardKeys and sharding, because they
-          // can be used even in single-server SmartGraphs.
-          subObject->add("shards", VPackSlice::nullSlice());
-        }
       }
     }
 
@@ -916,14 +897,6 @@ void DumpFeature::collectOptions(
                      new BooleanParameter(&_options.useGzipForStorage));
 
   options
-      ->addOption("--compress-transfer",
-                  "Compress data for transport using the gzip format.",
-                  new BooleanParameter(&_options.useGzipForTransport),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(31200);
-
-  options
       ->addOption("--dump-vpack",
                   "Dump collection data in velocypack format (more compact "
                   "than JSON, but requires ArangoDB 3.12 or higher to restore)",
@@ -943,7 +916,8 @@ of the dump protocol on the server side. It is only supported with ArangoDB
 servers running version 3.12 or higher.
 If the dump should be restored into versions of ArangoDB older than 3.12, this
 option should be turned off.)")
-      .setIntroducedIn(31200);
+      .setIntroducedIn(31008)
+      .setIntroducedIn(31102);
   // option was renamed in 3.12
   options->addOldOption("--use-experimental-dump", "--parallel-dump");
 
@@ -955,31 +929,35 @@ option should be turned off.)")
       .setLongDescription(R"(This option only has effect when the option
 `--parallel-dump` is set to `true`. Restoring split files also
 requires an arangorestore version that is capable of restoring data of a
-single collection/shard from multiple files, i.e. ArangoDB 3.12 or higher.)")
-      .setIntroducedIn(31200);
+single collection/shard from multiple files.)")
+      .setIntroducedIn(31010)
+      .setIntroducedIn(31102);
 
   options
       ->addOption("--dbserver-worker-threads",
-                  "Number of worker threads on each dbserver.",
+                  "Number of worker threads on each DB-Server.",
                   new UInt64Parameter(&_options.dbserverWorkerThreads),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(31200);
+      .setIntroducedIn(31008)
+      .setIntroducedIn(31102);
 
   options
       ->addOption("--dbserver-prefetch-batches",
-                  "Number of batches to prefetch on each dbserver.",
+                  "Number of batches to prefetch on each DB-Server.",
                   new UInt64Parameter(&_options.dbserverPrefetchBatches),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(31200);
+      .setIntroducedIn(31008)
+      .setIntroducedIn(31102);
 
   options
       ->addOption("--local-writer-threads", "Number of local writer threads.",
                   new UInt64Parameter(&_options.localWriterThreads),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(31200);
+      .setIntroducedIn(31008)
+      .setIntroducedIn(31102);
 
   options
       ->addOption("--local-network-threads",
@@ -988,7 +966,8 @@ single collection/shard from multiple files, i.e. ArangoDB 3.12 or higher.)")
                   new UInt64Parameter(&_options.dbserverWorkerThreads),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(31200);
+      .setIntroducedIn(31008)
+      .setIntroducedIn(31102);
 }
 
 void DumpFeature::validateOptions(
@@ -1438,6 +1417,8 @@ ClientTaskQueue<DumpFeature::DumpJob>& DumpFeature::taskQueue() {
   return _clientTaskQueue;
 }
 
+void DumpFeature::prepare() { logLGPLNotice(); }
+
 void DumpFeature::start() {
   using arangodb::basics::StringUtils::formatSize;
 
@@ -1639,11 +1620,11 @@ bool shouldRetryRequest(httpclient::SimpleHttpResult const* response,
   if (response != nullptr) {
     // check for retryable errors in simple http client
     switch (response->getResultType()) {
-      case httpclient::SimpleHttpResult::COULD_NOT_CONNECT:
+      case httpclient::SimpleHttpResult::ResultType::COULD_NOT_CONNECT:
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
         return true;
-      case httpclient::SimpleHttpResult::WRITE_ERROR:
-      case httpclient::SimpleHttpResult::READ_ERROR:
+      case httpclient::SimpleHttpResult::ResultType::WRITE_ERROR:
+      case httpclient::SimpleHttpResult::ResultType::READ_ERROR:
         return true;  // retry loop
       default:
         break;
@@ -1789,7 +1770,8 @@ Result DumpFeature::ParallelDumpServer::run(
 
   printBlockStats();
 
-  LOG_TOPIC("1b7fe", INFO, Logger::DUMP) << "all data received for " << server;
+  LOG_TOPIC("1b7fe", INFO, Logger::DUMP)
+      << "all data received from " << (server.empty() ? "server" : server);
 
   return {};
 }
@@ -1870,18 +1852,11 @@ DumpFeature::ParallelDumpServer::receiveNextBatch(
     url += "&lastBatch=" + std::to_string(*lastBatch);
   }
 
-  std::unordered_map<std::string, std::string> headers;
-  if (options.useGzipForTransport) {
-    headers.emplace(arangodb::StaticStrings::AcceptEncoding,
-                    arangodb::StaticStrings::EncodingGzip);
-  }
-
   std::size_t retryCounter = 100;
 
   while (true) {
     std::unique_ptr<arangodb::httpclient::SimpleHttpResult> response(
-        client.request(arangodb::rest::RequestType::POST, url, nullptr, 0,
-                       headers));
+        client.request(arangodb::rest::RequestType::POST, url, nullptr, 0, {}));
     auto check = ::arangodb::HttpResponseChecker::check(
         client.getErrorMessage(), response.get());
     if (check.fail()) {
@@ -1997,20 +1972,6 @@ void DumpFeature::ParallelDumpServer::runWriterThread() {
 
     std::string_view body = {response->getBody().c_str(),
                              response->getBody().size()};
-
-    // transparently uncompress gzip-encoded data
-    std::string uncompressed;
-    auto header = response->getHeaderField(
-        arangodb::StaticStrings::ContentEncoding, headerExtracted);
-    if (headerExtracted && header == arangodb::StaticStrings::EncodingGzip) {
-      auto res = arangodb::encoding::gzipUncompress(
-          reinterpret_cast<uint8_t const*>(body.data()), body.size(),
-          uncompressed);
-      if (res != TRI_ERROR_NO_ERROR) {
-        THROW_ARANGO_EXCEPTION(res);
-      }
-      body = uncompressed;
-    }
 
     auto [file, collectionName] = getDataForShard(shardId);
     arangodb::Result result = dumpData(stats, maskings, *file, body,

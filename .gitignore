@@ -97,14 +97,9 @@ test.cpp.txt
 .sass-cache/
 
 js/apps/*
-!js/apps/system
-!js/apps/system/*
+!js/apps/system/
 js/apps/system/_admin/aardvark/APP/react/node_modules/
-js/apps/system/_admin/aardvark/APP/react/node_modules/*
-!js/apps/system/_admin/aardvark/APP/react/build
-!js/apps/system/_admin/aardvark/APP/react/build/**
-!js/apps/system/_admin/aardvark/APP/react/build/static
-!js/apps/system/_admin/aardvark/APP/react/build/static/**
+js/apps/system/_admin/aardvark/APP/react/build/
 js/node/**/node_modules/.bin/
 js/node/node_modules/**/*.md
 !js/node/node_modules/**/LICENSE.md

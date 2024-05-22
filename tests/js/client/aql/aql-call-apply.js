@@ -1,43 +1,36 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
 /*global assertEqual */
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for query language, functions
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Jan Steemann
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
-var errors = internal.errors;
-var jsunity = require("jsunity");
-var helper = require("@arangodb/aql-helper");
-var getQueryResults = helper.getQueryResults;
-var assertQueryError = helper.assertQueryError;
-var assertQueryWarningAndNull = helper.assertQueryWarningAndNull;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+const internal = require("internal");
+const errors = internal.errors;
+const jsunity = require("jsunity");
+const helper = require("@arangodb/aql-helper");
+const getQueryResults = helper.getQueryResults;
+const assertQueryError = helper.assertQueryError;
+const assertQueryWarningAndNull = helper.assertQueryWarningAndNull;
 
 function ahuacatlCallApplyTestSuite () {
   return {
@@ -47,7 +40,7 @@ function ahuacatlCallApplyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCall : function () {
-      var data = [
+      const data = [
         [ "foo bar", [ "TRIM", "  foo bar  " ] ],
         [ "foo bar", [ "TRIM", "  foo bar  ", "\r\n \t" ] ],
         [ "..foo bar..", [ "TRIM", "  ..foo bar..  " ] ],
@@ -67,7 +60,7 @@ function ahuacatlCallApplyTestSuite () {
       ];
 
       data.forEach(function (d) {
-        var actual = getQueryResults("RETURN CALL(" + d[1].map(function (v) { return JSON.stringify(v); }).join(", ") + ")");
+        let actual = getQueryResults("RETURN CALL(" + d[1].map(function (v) { return JSON.stringify(v); }).join(", ") + ")");
         if (Array.isArray(d[0])) {
           assertEqual(d[0].sort(), actual[0].sort(), d);
         } else {
@@ -81,7 +74,7 @@ function ahuacatlCallApplyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCallDynamic1 : function () {
-      var actual = getQueryResults("FOR func IN [ 'TRIM', 'LOWER', 'UPPER' ] RETURN CALL(func, '  foObAr  ')");
+      let actual = getQueryResults("FOR func IN [ 'TRIM', 'LOWER', 'UPPER' ] RETURN CALL(func, '  foObAr  ')");
       assertEqual(actual, [ 'foObAr', '  foobar  ', '  FOOBAR  ' ]);
     },
 
@@ -90,7 +83,7 @@ function ahuacatlCallApplyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCallDynamic2 : function () {
-      var actual = getQueryResults("FOR doc IN [ { value: '  foobar', func: 'TRIM' }, { value: 'FOOBAR', func: 'LOWER' }, { value: 'foobar', func: 'UPPER' } ] RETURN CALL(doc.func, doc.value)");
+      let actual = getQueryResults("FOR doc IN [ { value: '  foobar', func: 'TRIM' }, { value: 'FOOBAR', func: 'LOWER' }, { value: 'foobar', func: 'UPPER' } ] RETURN CALL(doc.func, doc.value)");
       assertEqual(actual, [ 'foobar', 'foobar', 'FOOBAR' ]);
     },
 
@@ -112,8 +105,9 @@ function ahuacatlCallApplyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test call function
 ////////////////////////////////////////////////////////////////////////////////
+
     testCallRecursive : function () {
-      var actual = getQueryResults("RETURN CALL('CALL', 'TRIM', '  foo bar  ')");
+      let actual = getQueryResults("RETURN CALL('CALL', 'TRIM', '  foo bar  ')");
       assertEqual(actual, [ 'foo bar' ]);
       actual = getQueryResults("RETURN CALL('APPLY', 'TRIM', ['  foo bar  '])");
       assertEqual(actual, [ 'foo bar' ]);
@@ -135,7 +129,7 @@ function ahuacatlCallApplyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testApply : function () {
-      var data = [
+      let data = [
         [ "foo bar", [ "TRIM", "  foo bar  " ] ],
         [ "foo bar", [ "TRIM", "  foo bar  ", "\r\n \t" ] ],
         [ "..foo bar..", [ "TRIM", "  ..foo bar..  " ] ],
@@ -155,11 +149,11 @@ function ahuacatlCallApplyTestSuite () {
       ];
 
       data.forEach(function (d) {
-        var args = [ ];
-        for (var i = 1; i < d[1].length; ++i) {
+        let args = [];
+        for (let i = 1; i < d[1].length; ++i) {
           args.push(d[1][i]);
         }
-        var actual = getQueryResults("RETURN APPLY(" + JSON.stringify(d[1][0]) + ", " + JSON.stringify(args) + ")");
+        let actual = getQueryResults("RETURN APPLY(" + JSON.stringify(d[1][0]) + ", " + JSON.stringify(args) + ")");
         if (Array.isArray(d[0])) {
           assertEqual(d[0].sort(), actual[0].sort(), d);
         } else {
@@ -173,7 +167,7 @@ function ahuacatlCallApplyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testApplyDynamic1 : function () {
-      var actual = getQueryResults("FOR func IN [ 'TRIM', 'LOWER', 'UPPER' ] RETURN APPLY(func, [ '  foObAr  ' ])");
+      let actual = getQueryResults("FOR func IN [ 'TRIM', 'LOWER', 'UPPER' ] RETURN APPLY(func, [ '  foObAr  ' ])");
       assertEqual(actual, [ 'foObAr', '  foobar  ', '  FOOBAR  ' ]);
     },
 
@@ -182,7 +176,7 @@ function ahuacatlCallApplyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testApplyDynamic2 : function () {
-      var actual = getQueryResults("FOR doc IN [ { value: '  foobar', func: 'TRIM' }, { value: 'FOOBAR', func: 'LOWER' }, { value: 'foobar', func: 'UPPER' } ] RETURN APPLY(doc.func, [ doc.value ])");
+      let actual = getQueryResults("FOR doc IN [ { value: '  foobar', func: 'TRIM' }, { value: 'FOOBAR', func: 'LOWER' }, { value: 'foobar', func: 'UPPER' } ] RETURN APPLY(doc.func, [ doc.value ])");
       assertEqual(actual, [ 'foobar', 'foobar', 'FOOBAR' ]);
     },
 
@@ -207,7 +201,7 @@ function ahuacatlCallApplyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testApplyRecursive : function () {
-      var actual = getQueryResults("RETURN APPLY('CALL', ['TRIM', '  foo bar  '])");
+      let actual = getQueryResults("RETURN APPLY('CALL', ['TRIM', '  foo bar  '])");
       assertEqual(actual, [ 'foo bar' ]);
       actual = getQueryResults("RETURN APPLY('APPLY', ['TRIM', ['  foo bar  ']])");
       assertEqual(actual, [ 'foo bar' ]);
@@ -235,19 +229,10 @@ function ahuacatlCallApplyTestSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
-
 function ahuacatlCallUserDefinedTestSuite () {
-  var aqlfunctions = require("@arangodb/aql/functions");
+  const aqlfunctions = require("@arangodb/aql/functions");
 
   return {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
     setUp : function () {
       [ "add3", "add2", "call", "throwing" ].forEach(function (f) {
         try {
@@ -271,10 +256,6 @@ function ahuacatlCallUserDefinedTestSuite () {
       });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
     tearDown : function () {
       [ "add3", "add2", "call", "throwing" ].forEach(function (f) {
         try {
@@ -290,7 +271,7 @@ function ahuacatlCallUserDefinedTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUserDefCall : function () {
-      var data = [
+      const data = [
         [ null, [ "UnitTests::func::call", 1234 ] ],
         [ null, [ "UnitTests::func::call", "foo", "bar" ] ],
         [ null, [ "UnitTests::func::add2" ] ],
@@ -308,7 +289,7 @@ function ahuacatlCallUserDefinedTestSuite () {
       ];
 
       data.forEach(function (d) {
-        var actual = getQueryResults("RETURN CALL(" + d[1].map(function (v) { return JSON.stringify(v); }).join(", ") + ")");
+        let actual = getQueryResults("RETURN CALL(" + d[1].map(function (v) { return JSON.stringify(v); }).join(", ") + ")");
         assertEqual(d[0], actual[0], d);
       });
     },
@@ -318,7 +299,7 @@ function ahuacatlCallUserDefinedTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUserDefApply : function () {
-      var data = [
+      const data = [
         [ null, [ "UnitTests::func::call", 1234 ] ],
         [ null, [ "UnitTests::func::call", "foo", "bar" ] ],
         [ null, [ "UnitTests::func::add2" ] ],
@@ -336,11 +317,11 @@ function ahuacatlCallUserDefinedTestSuite () {
       ];
 
       data.forEach(function (d) {
-        var args = [ ];
-        for (var i = 1; i < d[1].length; ++i) {
+        let args = [];
+        for (let i = 1; i < d[1].length; ++i) {
           args.push(d[1][i]);
         }
-        var actual = getQueryResults("RETURN APPLY(" + JSON.stringify(d[1][0]) + ", " + JSON.stringify(args) + ")");
+        let actual = getQueryResults("RETURN APPLY(" + JSON.stringify(d[1][0]) + ", " + JSON.stringify(args) + ")");
         assertEqual(d[0], actual[0], d);
       });
     },
@@ -370,7 +351,7 @@ function ahuacatlCallUserDefinedTestSuite () {
     testUserDefFunctionName : function () {
       aqlfunctions.register("UnitTests::func::call", function () { return this.name; });
 
-      var actual = getQueryResults("RETURN UnitTests::func::call()");
+      let actual = getQueryResults("RETURN UnitTests::func::call()");
       assertEqual("UNITTESTS::FUNC::CALL", actual[0]);
       
       actual = getQueryResults("RETURN CALL('UNITTESTS::FUNC::CALL', [])");
@@ -383,12 +364,7 @@ function ahuacatlCallUserDefinedTestSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
-
 jsunity.run(ahuacatlCallApplyTestSuite);
 jsunity.run(ahuacatlCallUserDefinedTestSuite);
 
 return jsunity.done();
-

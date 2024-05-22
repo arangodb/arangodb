@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,7 +24,6 @@
 #include "Version.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/Common.h"
 #include "Basics/FileUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
@@ -101,10 +100,8 @@ VersionResult Version::check(TRI_vocbase_t* vocbase) {
     return VersionResult{VersionResult::VERSION_MATCH, serverVersion,
                          serverVersion, tasks};
   }
-  StorageEngine& engine =
-      vocbase->server().getFeature<EngineSelectorFeature>().engine();
 
-  std::string versionFile = engine.versionFilename(vocbase->id());
+  std::string versionFile = vocbase->engine().versionFilename(vocbase->id());
   if (!basics::FileUtils::exists(versionFile)) {
     LOG_TOPIC("fde3f", DEBUG, Logger::STARTUP)
         << "VERSION file '" << versionFile << "' not found";
@@ -183,10 +180,7 @@ VersionResult Version::check(TRI_vocbase_t* vocbase) {
 
 Result Version::write(TRI_vocbase_t* vocbase,
                       std::map<std::string, bool> const& tasks, bool sync) {
-  StorageEngine& engine =
-      vocbase->server().getFeature<EngineSelectorFeature>().engine();
-
-  std::string versionFile = engine.versionFilename(vocbase->id());
+  std::string versionFile = vocbase->engine().versionFilename(vocbase->id());
   if (versionFile.empty()) {
     // cluster engine
     return Result();

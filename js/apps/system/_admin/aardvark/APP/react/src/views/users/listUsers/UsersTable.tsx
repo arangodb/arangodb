@@ -1,8 +1,8 @@
 import { Stack } from "@chakra-ui/react";
 import { createColumnHelper } from "@tanstack/react-table";
 import React from "react";
-import { FiltersList } from "../../../components/table/FiltersList";
 import { ReactTable } from "../../../components/table/ReactTable";
+import { TableControl } from "../../../components/table/TableControl";
 import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
 import { DatabaseUserValues } from "../addUser/CreateUser.types";
 import { useUsersContext } from "../UsersContext";
@@ -53,24 +53,31 @@ export const UsersTable = () => {
   const tableInstance = useSortableReactTable<DatabaseUserValues>({
     data: users || [],
     columns: TABLE_COLUMNS,
-    initialSorting: [
+    defaultSorting: [
       {
         id: "user",
         desc: false
       }
-    ]
+    ],
+    defaultFilters: [],
+    storageKey: "users"
   });
 
   return (
     <>
       <Stack>
-        <FiltersList<DatabaseUserValues>
-          columns={TABLE_COLUMNS}
+        <TableControl<DatabaseUserValues>
           table={tableInstance}
+          columns={TABLE_COLUMNS}
         />
         <ReactTable<DatabaseUserValues>
           table={tableInstance}
           emptyStateMessage="No users found"
+          onRowSelect={row => {
+            window.location.hash = `#user/${encodeURIComponent(
+              row.original.user
+            )}`;
+          }}
         />
       </Stack>
     </>

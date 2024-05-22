@@ -1,28 +1,29 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
 /*global fail, assertEqual, assertNotEqual, assertTrue */
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2010-2016 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Michael Hackstein
 /// @author Copyright 2016, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 const internal = require("internal");
 const db = require('internal').db;
@@ -33,10 +34,16 @@ const analyzers = require("@arangodb/analyzers");
 
 function indexHintSuite () {
   const getIndexNames = function (query) {
-    return db._createStatement(query).explain()
-      .plan.nodes.filter(node => (node.type === 'IndexNode' ||
+    const explain = db._createStatement(query).explain();
+    const usedIndicesInJoin = explain.plan.nodes.filter(node => (node.type === 'JoinNode'))
+      .map(node => node.indexInfos.map(indexInfo => indexInfo.index.name))
+      .map(subArray => subArray.map(item => [item]))[0];
+
+    const usedIndices =  explain.plan.nodes.filter(node => (node.type === 'IndexNode' ||
         node.type === 'SingleRemoteOperationNode'))
       .map(node => node.indexes.map(index => index.name));
+
+    return usedIndicesInJoin === undefined ? usedIndices : usedIndices.concat(usedIndicesInJoin);
   };
 
   const cn = 'UnitTestsIndexHints';

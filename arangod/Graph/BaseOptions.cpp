@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -29,7 +29,6 @@
 #include "Aql/Condition.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
-#include "Aql/IndexNode.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/NonConstExpression.h"
 #include "Aql/OptimizerUtils.h"
@@ -407,7 +406,7 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
   auto& trx = plan->getAst()->query().trxForOptimization();
   bool res = aql::utils::getBestIndexHandleForFilterCondition(
       trx, *coll, info.indexCondition, _tmpVar, itemsInCollection,
-      aql::IndexHint(), info.idxHandles[0], onlyEdgeIndexes);
+      aql::IndexHint(), info.idxHandles[0], ReadOwnWrites::no, onlyEdgeIndexes);
   // Right now we have an enforced edge index which should always fit.
   if (!res) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -483,15 +482,14 @@ void BaseOptions::serializeVariables(VPackBuilder& builder) const {
 }
 
 void BaseOptions::setCollectionToShard(
-    std::unordered_map<std::string, std::string> const& in) {
+    std::unordered_map<std::string, ShardID> const& in) {
   _collectionToShard.clear();
   _collectionToShard.reserve(in.size());
   for (auto const& [key, value] : in) {
     ResourceUsageAllocator<MonitoredCollectionToShardMap, ResourceMonitor>
         alloc = {_query.resourceMonitor()};
-    auto myVec = MonitoredStringVector{alloc};
-    auto myString = MonitoredString{value, alloc};
-    myVec.emplace_back(std::move(myString));
+    auto myVec = MonitoredShardIDVector{alloc};
+    myVec.emplace_back(value);
     _collectionToShard.emplace(key, std::move(myVec));
   }
 }

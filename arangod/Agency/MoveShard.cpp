@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -47,7 +47,7 @@ constexpr auto EXPECTED_TARGET_VERSION = "expectedTargetVersion";
 MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
                      std::string const& jobId, std::string const& creator,
                      std::string const& database, std::string const& collection,
-                     std::string const& shard, std::string const& from,
+                     ShardID const& shard, std::string const& from,
                      std::string const& to, bool isLeader, bool remainsFollower,
                      bool tryUndo)
     : Job(NOTFOUND, snapshot, agent, jobId, creator),
@@ -85,7 +85,7 @@ MoveShard::MoveShard(Node const& snapshot, AgentInterface* agent,
     _collection = tmp_collection.value();
     _from = tmp_from.value();
     _to = tmp_to.value();
-    _shard = tmp_shard.value();
+    _shard = ShardID{tmp_shard.value()};
     _isLeader = *tmp_isLeader;
     _remainsFollower = tmp_remainsFollower.value_or(_isLeader);
     _toServerIsFollower = false;

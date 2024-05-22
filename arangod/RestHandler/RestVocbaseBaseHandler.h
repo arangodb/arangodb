@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -66,9 +66,6 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
 
   /// @brief collection path
   static std::string const COLLECTION_PATH;
-
-  /// @brief control pregel path
-  static std::string const CONTROL_PREGEL_PATH;
 
   /// @brief cursor path
   static std::string const CURSOR_PATH;
@@ -192,16 +189,16 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
    * @return A freshly created transaction for the given collection with proper
    * locking or a leased transaction.
    */
-  std::unique_ptr<transaction::Methods> createTransaction(
+  futures::Future<std::unique_ptr<transaction::Methods>> createTransaction(
       std::string const& cname, AccessMode::Type mode,
       OperationOptions const& opOptions,
       transaction::OperationOrigin operationOrigin,
       transaction::Options&& trxOpts = transaction::Options()) const;
 
   /// @brief create proper transaction context, including the proper IDs
-  std::shared_ptr<transaction::Context> createTransactionContext(
-      AccessMode::Type mode,
-      transaction::OperationOrigin operationOrigin) const;
+  futures::Future<std::shared_ptr<transaction::Context>>
+  createTransactionContext(AccessMode::Type mode,
+                           transaction::OperationOrigin operationOrigin) const;
 
  protected:
   /// @brief request context

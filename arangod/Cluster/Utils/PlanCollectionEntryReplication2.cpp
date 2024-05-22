@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2022-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,7 +25,6 @@
 #include "Inspection/VPack.h"
 #include "Replication2/AgencyCollectionSpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
-#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "VocBase/Properties/CreateCollectionBody.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -41,8 +41,9 @@ auto transform(UserInputCollectionProperties col)
   // TODO Maybe we can find a better way than this for transformation.
   replication2::agency::CollectionTargetSpecification spec;
   spec.groupId = col.groupId.value();
-  spec.mutableProperties = {std::move(col.computedValues),
-                            std::move(col.schema)};
+  spec.mutableProperties = {.computedValues = std::move(col.computedValues),
+                            .schema = std::move(col.schema),
+                            .cacheEnabled = col.cacheEnabled};
   spec.immutableProperties = {col,
                               col.name,
                               col.isSystem,
@@ -50,7 +51,6 @@ auto transform(UserInputCollectionProperties col)
                               col.keyOptions,
                               col.isSmart,
                               col.isDisjoint,
-                              col.cacheEnabled,
                               col.shardingStrategy.value(),
                               col.shardKeys.value(),
                               col.smartJoinAttribute,

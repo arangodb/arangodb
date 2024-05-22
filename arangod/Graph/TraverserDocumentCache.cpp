@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -79,41 +79,6 @@ void TraverserDocumentCache::insertEdgeIntoResult(
     EdgeDocumentToken const& idToken, VPackBuilder& builder) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   builder.add(lookupToken(idToken));
-}
-
-bool TraverserDocumentCache::appendVertex(
-    std::string_view idString, arangodb::velocypack::Builder& result) {
-  auto finding = lookup(idString);
-  if (finding.found()) {
-    auto val = finding.value();
-    VPackSlice slice(val->value());
-    // finding makes sure that slice contant stays valid.
-    result.add(slice);
-    return true;
-  }
-  // Not in cache. Fetch and insert.
-  auto const& buffer = result.bufferRef();
-  size_t const startPosition = buffer.size();
-  bool found = TraverserCache::appendVertex(idString, result);
-  insertIntoCache(idString,
-                  arangodb::velocypack::Slice(buffer.data() + startPosition));
-  return found;
-}
-
-bool TraverserDocumentCache::appendVertex(std::string_view idString,
-                                          arangodb::aql::AqlValue& result) {
-  auto finding = lookup(idString);
-  if (finding.found()) {
-    auto val = finding.value();
-    VPackSlice slice(val->value());
-    // finding makes sure that slice contant stays valid.
-    result = arangodb::aql::AqlValue(slice);
-    return true;
-  }
-  // Not in cache. Fetch and insert.
-  bool found = TraverserCache::appendVertex(idString, result);
-  insertIntoCache(idString, result.slice());
-  return found;
 }
 
 aql::AqlValue TraverserDocumentCache::fetchEdgeAqlResult(

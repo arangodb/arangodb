@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,7 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
-#include "Aql/GraphNode.h"
+#include "Aql/ExecutionNode/GraphNode.h"
 #include "Aql/TraverserEngineShardLists.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -39,21 +39,19 @@
 #include "Transaction/Manager.h"
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/ExecContext.h"
 
 #include <velocypack/Collection.h>
-#include <set>
 
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::basics;
 
 namespace {
-const double SETUP_TIMEOUT = 60.0;
-// Wait 2s to get the Lock in FastPath, otherwise assume dead-lock.
-const double FAST_PATH_LOCK_TIMEOUT = 2.0;
+constexpr double kSetupTimeout = 60.0;
 
-std::string const finishUrl("/_api/aql/finish/");
-std::string const traverserUrl("/_internal/traverser/");
+constexpr std::string_view finishUrl("/_api/aql/finish/");
+constexpr std::string_view traverserUrl("/_internal/traverser/");
 
 Result extractRemoteAndShard(VPackSlice keySlice, ExecutionNodeId& remoteId,
                              std::string& shardId) {
@@ -144,6 +142,8 @@ std::vector<bool> EngineInfoContainerDBServerServerBased::buildEngineInfo(
 
   infoBuilder.clear();
   infoBuilder.openObject();
+
+  // query id
   infoBuilder.add("clusterQueryId", VPackValue(clusterQueryId));
 
   addLockingPart(infoBuilder, server);
@@ -158,6 +158,18 @@ std::vector<bool> EngineInfoContainerDBServerServerBased::buildEngineInfo(
   infoBuilder.add("isModificationQuery",
                   VPackValue(_query.isModificationQuery()));
   infoBuilder.add("isAsyncQuery", VPackValue(_query.isAsyncQuery()));
+
+  // include query string for informational/debugging purposes.
+  // this allows us to link DB server query snippets to actual queries
+  // as written by the end user.
+  QueryContext* qc = &_query;
+  Query* q = dynamic_cast<Query*>(qc);
+  if (q != nullptr) {
+    // only send up to 1K of query strings to save network traffic and
+    // memory on the DB server later
+    infoBuilder.add("qs",
+                    VPackValue(q->queryString().extract(/*maxLength*/ 1024)));
+  }
 
   infoBuilder.add(StaticStrings::AttrCoordinatorRebootId,
                   VPackValue(ServerState::instance()->getRebootId().value()));
@@ -185,8 +197,8 @@ EngineInfoContainerDBServerServerBased::buildSetupRequest(
     transaction::Methods& trx, ServerID const& server, VPackSlice infoSlice,
     std::vector<bool> didCreateEngine, MapRemoteToSnippet& snippetIds,
     aql::ServerQueryIdList& serverToQueryId, std::mutex& serverToQueryIdLock,
-    network::ConnectionPool* pool,
-    network::RequestOptions const& options) const {
+    network::ConnectionPool* pool, network::RequestOptions const& options,
+    bool fastPath) const {
   TRI_ASSERT(!server.starts_with("server:"));
 
   auto byteSize = infoSlice.byteSize();
@@ -196,6 +208,9 @@ EngineInfoContainerDBServerServerBased::buildSetupRequest(
   // add the transaction ID header
   network::Headers headers;
   ClusterTrxMethods::addAQLTransactionHeader(trx, server, headers);
+  if (fastPath) {
+    headers.emplace(StaticStrings::AqlFastPath, "true");
+  }
 
   TRI_ASSERT(infoSlice.isObject()) << valueTypeName(infoSlice.type());
   TRI_ASSERT(infoSlice.get("clusterQueryId").isNumber<QueryId>())
@@ -352,8 +367,9 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
 
   network::RequestOptions options;
   options.database = _query.vocbase().name();
-  options.timeout = network::Timeout(SETUP_TIMEOUT);
+  options.timeout = network::Timeout(kSetupTimeout);
   options.skipScheduler = true;  // hack to speed up future.get()
+  network::addUserParameter(options, trx.username());
 
   TRI_IF_FAILURE("Query::setupTimeout") {
     options.timeout = network::Timeout(
@@ -370,17 +386,13 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     options.timeout = network::Timeout(t);
   }
 
+  auto& clusterInfo =
+      _query.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+
   /// cluster global query id, under which the query will be registered
   /// on DB servers from 3.8 onwards.
-  QueryId clusterQueryId = _query.vocbase()
-                               .server()
-                               .getFeature<ClusterFeature>()
-                               .clusterInfo()
-                               .uniqid();
+  QueryId clusterQueryId = clusterInfo.uniqid();
 
-  // decreases lock timeout manually for fast path
-  auto oldLockTimeout = _query.getLockTimeout();
-  _query.setLockTimeout(FAST_PATH_LOCK_TIMEOUT);
   std::mutex serverToQueryIdLock{};
   std::vector<std::tuple<ServerID, std::shared_ptr<VPackBuffer<uint8_t>>,
                          std::vector<bool>>>
@@ -410,9 +422,9 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
       serversAdded.emplace(server);
     }
 
-    networkCalls.emplace_back(
-        buildSetupRequest(trx, server, infoSlice, didCreateEngine, snippetIds,
-                          serverToQueryId, serverToQueryIdLock, pool, options));
+    networkCalls.emplace_back(buildSetupRequest(
+        trx, server, infoSlice, didCreateEngine, snippetIds, serverToQueryId,
+        serverToQueryIdLock, pool, options, true /* fastPath */));
     if (!isReadOnly) {
       // need to keep a copy of the request only in case of write queries,
       // when it is possible that the initial lock request fails due to a
@@ -504,11 +516,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     TRI_ASSERT(serverToQueryId.empty());
 
     // we must generate a new query id, because the fast path setup has failed
-    clusterQueryId = _query.vocbase()
-                         .server()
-                         .getFeature<ClusterFeature>()
-                         .clusterInfo()
-                         .uniqid();
+    clusterQueryId = clusterInfo.uniqid();
 
     if (trx.isMainTransaction() && !trx.state()->isReadOnlyTransaction()) {
       // when we are not in a streaming transaction, it is ok to roll a new trx
@@ -520,8 +528,6 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
       trx.state()->coordinatorRerollTransactionId();
     }
 
-    // set back to default lock timeout for slow path fallback
-    _query.setLockTimeout(oldLockTimeout);
     LOG_TOPIC("f5022", DEBUG, Logger::AQL)
         << "Potential deadlock detected, using slow path for locking. This "
            "is expected if exclusive locks are used.";
@@ -565,7 +571,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
       auto request = buildSetupRequest(
           trx, std::move(server), newRequest.slice(),
           std::move(didCreateEngine), snippetIds, serverToQueryId,
-          serverToQueryIdLock, pool, options);
+          serverToQueryIdLock, pool, options, false /* fastPath */);
       _query.incHttpRequests(unsigned(1));
       if (request.get().fail()) {
         // this will trigger the cleanupGuard.
@@ -719,7 +725,7 @@ EngineInfoContainerDBServerServerBased::cleanupEngines(
     TRI_ASSERT(!server.starts_with("server:"));
     requests.emplace_back(network::sendRequestRetry(
         pool, "server:" + server, fuerte::RestVerb::Delete,
-        ::finishUrl + std::to_string(queryId),
+        absl::StrCat(::finishUrl, queryId),
         /*copy*/ body, options));
   }
   _query.incHttpRequests(static_cast<unsigned>(serverQueryIds.size()));
@@ -733,8 +739,7 @@ EngineInfoContainerDBServerServerBased::cleanupEngines(
       TRI_ASSERT(!engine.first.starts_with("server:"));
       requests.emplace_back(network::sendRequestRetry(
           pool, "server:" + engine.first, fuerte::RestVerb::Delete,
-          ::traverserUrl + basics::StringUtils::itoa(engine.second), noBody,
-          options));
+          absl::StrCat(::traverserUrl, engine.second), noBody, options));
     }
     _query.incHttpRequests(static_cast<unsigned>(allEngines->size()));
     gn->clearEngines();

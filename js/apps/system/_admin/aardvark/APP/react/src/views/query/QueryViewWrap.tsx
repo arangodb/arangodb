@@ -35,7 +35,7 @@ const QueryViewWrapInner = () => {
   }
   return (
     <Box width="full" height="calc(100vh - 60px)" overflow="auto">
-      <Tabs height="full" isLazy>
+      <Tabs size="sm" height="full" isLazy>
         <TabList>
           <Tab>Editor</Tab>
           <Tab>Running Queries</Tab>

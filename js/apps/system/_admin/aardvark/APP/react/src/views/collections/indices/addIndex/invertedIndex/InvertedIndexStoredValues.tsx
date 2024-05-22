@@ -90,7 +90,7 @@ const StoredValuesField = ({ field }: { field: FormFieldProps }) => {
             })}
             <Button
               isDisabled={field.isDisabled}
-              colorScheme="blue"
+              colorScheme="green"
               onClick={() => {
                 push({ fields: [], compression: "lz4" });
               }}

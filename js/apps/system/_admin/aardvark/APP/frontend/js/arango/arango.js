@@ -49,6 +49,13 @@
         version = v.replace(/^(\d+\.\d+).*$/, '$1');
       }
       return version;
+    },
+    getDocuVersion: function () {
+      var version =
+        window.frontendConfig &&
+        window.frontendConfig.version &&
+        window.frontendConfig.version.version;
+      return this.toDocuVersion(version || "");
     }
   };
 
@@ -442,10 +449,10 @@
     buildUserSubNav: function (username, activeKey) {
       var menus = {
         General: {
-          route: '#user/' + encodeURIComponent(username)
+          route: '#user/' + username
         },
         Permissions: {
-          route: '#user/' + encodeURIComponent(username) + '/permission'
+          route: '#user/' + username + '/permission'
         }
       };
 
@@ -1175,7 +1182,7 @@
       });
     },
 
-    checkDatabasePermissions: function (roCallback, rwCallback) {
+    checkDatabasePermissions: function (roCallback, rwCallback, errorCallback) {
       var url = arangoHelper.databaseUrl('/_api/user/' +
         encodeURIComponent(window.App.userCollection.activeUser || "root") +
         '/database/' + encodeURIComponent(frontendConfig.db));
@@ -1201,10 +1208,17 @@
                 rwCallback(false);
               }
             }
+          } else {
+            if (errorCallback) {
+              errorCallback(data);
+            }
           }
         },
         error: function (data) {
           arangoHelper.arangoError('User', 'Could not fetch collection permissions.');
+          if (errorCallback) {
+            errorCallback(data);
+          }
         }
       });
     },

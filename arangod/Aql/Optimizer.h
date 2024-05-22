@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -137,7 +137,7 @@ class Optimizer {
     return std::move(res.first);
   }
 
-  bool runOnlyRequiredRules(size_t extraPlans) const;
+  bool runOnlyRequiredRules() const noexcept;
 
   /// @brief numberOfPlans, returns the current number of plans in the system
   /// this should be called from rules, it will consider those that the
@@ -145,6 +145,8 @@ class Optimizer {
   size_t numberOfPlans() const noexcept {
     return _plans.size() + _newPlans.size() + 1;
   }
+
+  void initializeRules(ExecutionPlan* plan, QueryOptions const& queryOptions);
 
  private:
   /// @brief disable a specific rule
@@ -164,7 +166,6 @@ class Optimizer {
                        OptimizerRule const& rule, bool wasModified,
                        RuleDatabase::iterator const& nextRule);
 
-  void initializeRules(ExecutionPlan* plan, QueryOptions const& queryOptions);
   void finalizePlans();
   void estimateCosts(QueryOptions const& queryOptions, bool estimateAllPlans);
 

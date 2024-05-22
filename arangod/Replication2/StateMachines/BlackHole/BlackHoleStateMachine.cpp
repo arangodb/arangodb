@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -38,7 +38,7 @@ auto BlackHoleLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
 }
 
 auto BlackHoleLeaderState::write(std::string_view data) -> LogIndex {
-  BlackHoleLogEntry entry{.value = std::string{data}};
+  auto entry = BlackHoleLogEntry::createFromString(data);
   return getStream()->insert(entry);
 }
 
@@ -59,6 +59,12 @@ auto BlackHoleLeaderState::release(LogIndex idx) const
   });
 }
 
+auto BlackHoleLeaderState::insert(LogPayload payload, bool waitForSync)
+    -> LogIndex {
+  auto const& stream = getStream();
+  return stream->insert({std::move(payload)}, waitForSync);
+}
+
 auto BlackHoleFollowerState::acquireSnapshot(
     ParticipantId const& destination) noexcept -> futures::Future<Result> {
   return {TRI_ERROR_NO_ERROR};
@@ -77,7 +83,8 @@ auto BlackHoleFollowerState::resign() && noexcept
   return std::move(_core);
 }
 
-auto BlackHoleFactory::constructFollower(std::unique_ptr<BlackHoleCore> core)
+auto BlackHoleFactory::constructFollower(std::unique_ptr<BlackHoleCore> core,
+                                         std::shared_ptr<IScheduler> scheduler)
     -> std::shared_ptr<BlackHoleFollowerState> {
   return std::make_shared<BlackHoleFollowerState>(std::move(core));
 }
@@ -98,7 +105,7 @@ operator()(
     streams::serializer_tag_t<replicated_state::black_hole::BlackHoleLogEntry>,
     velocypack::Slice s) const
     -> replicated_state::black_hole::BlackHoleLogEntry {
-  return replicated_state::black_hole::BlackHoleLogEntry{s.copyString()};
+  return replicated_state::black_hole::BlackHoleLogEntry::createFromSlice(s);
 }
 
 void replicated_state::EntrySerializer<
@@ -106,7 +113,7 @@ void replicated_state::EntrySerializer<
 operator()(
     streams::serializer_tag_t<replicated_state::black_hole::BlackHoleLogEntry>,
     black_hole::BlackHoleLogEntry const& e, velocypack::Builder& b) const {
-  b.add(velocypack::Value(e.value));
+  b.add(e.value.slice());
 }
 
 #include "Replication2/ReplicatedState/ReplicatedStateImpl.tpp"

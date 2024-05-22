@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2023-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -83,7 +84,8 @@ template<class Inspector>
 auto inspect(Inspector& f, Collection::MutableProperties& props) {
   return f.object(props).fields(
       f.field(StaticStrings::Schema, props.schema),
-      f.field(StaticStrings::ComputedValues, props.computedValues));
+      f.field(StaticStrings::ComputedValues, props.computedValues),
+      f.field(StaticStrings::CacheEnabled, props.cacheEnabled));
 }
 
 template<class Inspector>
@@ -94,7 +96,6 @@ auto inspect(Inspector& f, Collection::ImmutableProperties& props) {
       f.field(StaticStrings::DataSourceSystem, props.isSystem),
       f.field(StaticStrings::IsSmart, props.isSmart),
       f.field(StaticStrings::IsDisjoint, props.isDisjoint),
-      f.field(StaticStrings::CacheEnabled, props.cacheEnabled),
       f.field(StaticStrings::ShardingStrategy, props.shardingStrategy),
       f.field(StaticStrings::ShardKeys, props.shardKeys),
       f.field(StaticStrings::GraphSmartGraphAttribute,

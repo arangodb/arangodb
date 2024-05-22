@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -140,20 +140,6 @@ void ServerState::findHost(std::string const& fallback) {
     }
   }
 
-#ifdef __APPLE__
-  static_assert(sizeof(uuid_t) == 16, "");
-  uuid_t localUuid;
-  struct timespec timeout;
-  timeout.tv_sec = 5;
-  timeout.tv_nsec = 0;
-  int res = gethostuuid(localUuid, &timeout);
-  if (res == 0) {
-    _host = StringUtils::encodeHex(reinterpret_cast<char*>(localUuid),
-                                   sizeof(uuid_t));
-    return;
-  }
-#endif
-
   // Finally, as a last resort, take the fallback, coming from
   // the ClusterFeature with the value of --cluster.my-address
   // or by the AgencyFeature with the value of --agency.my-address:
@@ -167,6 +153,25 @@ ServerState::~ServerState() = default;
 ////////////////////////////////////////////////////////////////////////////////
 
 ServerState* ServerState::instance() noexcept { return Instance; }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the id is from a coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+bool ServerState::isCoordinatorId(std::string_view id) {
+  // intended to be a cheap validation, and intentionally not using
+  return id.starts_with("CRDN-") &&
+         std::regex_match(id.begin(), id.end(), ::uuidRegex);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the id is from a DB server
+////////////////////////////////////////////////////////////////////////////////
+
+bool ServerState::isDBServerId(std::string_view id) {
+  return id.starts_with("PRMR-") &&
+         std::regex_match(id.begin(), id.end(), ::uuidRegex);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the string representation of a role
@@ -214,7 +219,8 @@ std::string ServerState::roleToShortString(ServerState::RoleEnum role) {
 /// @brief convert a string to a role
 ////////////////////////////////////////////////////////////////////////////////
 
-ServerState::RoleEnum ServerState::stringToRole(std::string_view value) {
+ServerState::RoleEnum ServerState::stringToRole(
+    std::string_view value) noexcept {
   if (value == "SINGLE") {
     return ROLE_SINGLE;
   } else if (value == "PRIMARY" || value == "DBSERVER") {
@@ -256,7 +262,8 @@ std::string ServerState::stateToString(StateEnum state) {
 /// @brief convert a string representation to a state
 ////////////////////////////////////////////////////////////////////////////////
 
-ServerState::StateEnum ServerState::stringToState(std::string_view value) {
+ServerState::StateEnum ServerState::stringToState(
+    std::string_view value) noexcept {
   if (value == "STARTUP") {
     return STATE_STARTUP;
   } else if (value == "SERVING") {
@@ -280,10 +287,6 @@ std::string ServerState::modeToString(Mode mode) {
       return "startup";
     case Mode::MAINTENANCE:
       return "maintenance";
-    case Mode::TRYAGAIN:
-      return "tryagain";
-    case Mode::REDIRECT:
-      return "redirect";
     case Mode::INVALID:
       return "invalid";
   }
@@ -296,59 +299,56 @@ std::string ServerState::modeToString(Mode mode) {
 /// @brief convert string to mode
 ////////////////////////////////////////////////////////////////////////////////
 
-ServerState::Mode ServerState::stringToMode(std::string_view value) {
+ServerState::Mode ServerState::stringToMode(std::string_view value) noexcept {
   if (value == "default") {
     return Mode::DEFAULT;
   } else if (value == "startup") {
     return Mode::STARTUP;
   } else if (value == "maintenance") {
     return Mode::MAINTENANCE;
-  } else if (value == "tryagain") {
-    return Mode::TRYAGAIN;
-  } else if (value == "redirect") {
-    return Mode::REDIRECT;
-  } else {
-    return Mode::INVALID;
   }
+  return Mode::INVALID;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief atomically load current server mode
 ////////////////////////////////////////////////////////////////////////////////
-ServerState::Mode ServerState::mode() {
+
+ServerState::Mode ServerState::mode() noexcept {
   return ::serverMode.load(std::memory_order_acquire);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief change server mode, returns previously set mode
 ////////////////////////////////////////////////////////////////////////////////
-ServerState::Mode ServerState::setServerMode(ServerState::Mode value) {
+
+ServerState::Mode ServerState::setServerMode(ServerState::Mode value) noexcept {
   if (::serverMode.load(std::memory_order_acquire) != value) {
     return ::serverMode.exchange(value, std::memory_order_release);
   }
   return value;
 }
 
-bool ServerState::isStartupOrMaintenance() {
+bool ServerState::isStartupOrMaintenance() noexcept {
   Mode value = mode();
   return value == Mode::STARTUP || value == Mode::MAINTENANCE;
 }
 
-bool ServerState::readOnly() {
+bool ServerState::readOnly() noexcept {
   return ::serverStateReadOnly.load(std::memory_order_acquire) ||
          ::licenseReadOnly.load(std::memory_order_acquire);
 }
 
-bool ServerState::readOnlyByAPI() {
+bool ServerState::readOnlyByAPI() noexcept {
   return ::serverStateReadOnly.load(std::memory_order_acquire);
 }
 
-bool ServerState::readOnlyByLicense() {
+bool ServerState::readOnlyByLicense() noexcept {
   return ::licenseReadOnly.load(std::memory_order_acquire);
 }
 
 /// @brief set server read-only
-bool ServerState::setReadOnly(ReadOnlyMode ro) {
+bool ServerState::setReadOnly(ReadOnlyMode ro) noexcept {
   auto ret = readOnly();
   if (ro == API_FALSE) {
     ::serverStateReadOnly.store(false, std::memory_order_release);

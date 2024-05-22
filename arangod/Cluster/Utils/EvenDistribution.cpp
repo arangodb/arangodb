@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2022-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,7 +24,9 @@
 #include "EvenDistribution.h"
 
 #include "Basics/debugging.h"
+#include "CrashHandler/CrashHandler.h"
 #include "Logger/LogMacros.h"
+#include "Inspection/Format.h"
 
 #include <numeric>
 #include <random>
@@ -39,10 +42,8 @@ EvenDistribution::EvenDistribution(uint64_t numberOfShards,
       _avoidServers{std::move(avoidServers)},
       _enforceReplicationFactor{enforceReplicationFactor} {}
 
-Result EvenDistribution::planShardsOnServers(
-    std::vector<ServerID> availableServers,
-    std::unordered_set<ServerID>& serversPlanned) {
-  // Caller needs to ensure we have something to place shards on
+auto EvenDistribution::checkDistributionPossible(
+    std::vector<ServerID>& availableServers) -> Result {
   if (availableServers.empty()) {
     return {TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS,
             "Do not have a single server to make responsible for shards"};
@@ -76,11 +77,30 @@ Result EvenDistribution::planShardsOnServers(
         << " avoid list size: " << _avoidServers.size();
     return {TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS};
   }
+  return {};
+}
+
+auto EvenDistribution::planShardsOnServers(
+    std::vector<ServerID> availableServers,
+    std::unordered_set<ServerID>& serversPlanned) -> Result {
+  // Caller needs to ensure we have something to place shards on
+  auto res = checkDistributionPossible(availableServers);
+  if (res.fail()) {
+    return res;
+  }
 
   // Shuffle the servers, such that we don't always start with the same one
   std::random_device rd;
   std::mt19937 g(rd());
   std::shuffle(availableServers.begin(), availableServers.end(), g);
+
+  TRI_IF_FAILURE("allShardsOnSameServer") {
+    // Only one server shall remain available
+    if (!availableServers.empty()) {
+      std::sort(availableServers.begin(), availableServers.end());
+      availableServers.resize(1);
+    }
+  }
 
   _shardToServerMapping.clear();
 
@@ -101,10 +121,13 @@ Result EvenDistribution::planShardsOnServers(
   size_t serversToPick = std::min(
       _replicationFactor, static_cast<uint64_t>(availableServers.size()));
 
+  TRI_ASSERT(availableServers.size() > 0);
+  TRI_ASSERT(_replicationFactor > 0);
   size_t k = availableServers.size() /
              std::gcd(serversToPick, availableServers.size());
   size_t offset = 0;
   for (uint64_t i = 0; i < _numberOfShards; ++i) {
+    TRI_ASSERT(k != 0);
     if (i % k == 0) {
       offset += 1;
     }

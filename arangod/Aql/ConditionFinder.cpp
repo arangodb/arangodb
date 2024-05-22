@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,12 +23,18 @@
 
 #include "ConditionFinder.h"
 
+#include "Aql/Ast.h"
 #include "Aql/Condition.h"
+#include "Aql/ExecutionNode/CalculationNode.h"
+#include "Aql/ExecutionNode/EnumerateCollectionNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
+#include "Aql/ExecutionNode/FilterNode.h"
+#include "Aql/ExecutionNode/IndexNode.h"
+#include "Aql/ExecutionNode/NoResultsNode.h"
+#include "Aql/ExecutionNode/SortNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
-#include "Aql/IndexNode.h"
 #include "Aql/SortCondition.h"
-#include "Aql/SortNode.h"
 #include "Basics/tryEmplaceHelper.h"
 
 using namespace arangodb::aql;
@@ -251,8 +257,7 @@ bool ConditionFinder::handleFilterCondition(
   if (conditionIsImpossible) {
     // condition is always false
     for (auto const& x : en->getParents()) {
-      auto noRes = new NoResultsNode(_plan, _plan->nextId());
-      _plan->registerNode(noRes);
+      auto noRes = _plan->createNode<NoResultsNode>(_plan, _plan->nextId());
       _plan->insertDependency(x, noRes);
       _producesEmptyResult = true;
     }

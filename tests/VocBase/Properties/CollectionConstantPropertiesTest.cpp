@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2022-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -91,7 +92,6 @@ TEST_F(CollectionConstantPropertiesTest, test_minimal_user_input) {
   ASSERT_TRUE(testee.ok());
   EXPECT_EQ(testee->type, TRI_col_type_e::TRI_COL_TYPE_DOCUMENT);
   EXPECT_FALSE(testee->isSystem);
-  EXPECT_FALSE(testee->cacheEnabled);
   EXPECT_FALSE(testee->smartJoinAttribute.has_value());
   EXPECT_TRUE(std::holds_alternative<TraditionalKeyGeneratorProperties>(
       testee->keyOptions));
@@ -132,7 +132,6 @@ TEST_F(CollectionConstantPropertiesTest, test_collection_type) {
 GenerateBoolAttributeTest(CollectionConstantPropertiesTest, isSystem);
 GenerateBoolAttributeTest(CollectionConstantPropertiesTest, isSmart);
 GenerateBoolAttributeTest(CollectionConstantPropertiesTest, isDisjoint);
-GenerateBoolAttributeTest(CollectionConstantPropertiesTest, cacheEnabled);
 
 GenerateOptionalStringAttributeTest(CollectionConstantPropertiesTest,
                                     smartJoinAttribute);
@@ -173,7 +172,6 @@ class CollectionConstantSmartPropertiesTest
 
 GenerateBoolAttributeTest(CollectionConstantSmartPropertiesTest, isSystem);
 GenerateBoolAttributeTest(CollectionConstantSmartPropertiesTest, isDisjoint);
-GenerateBoolAttributeTest(CollectionConstantSmartPropertiesTest, cacheEnabled);
 
 GenerateOptionalStringAttributeTest(CollectionConstantSmartPropertiesTest,
                                     smartGraphAttribute);

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -36,6 +36,7 @@
 
 #include "Inspection/Access.h"
 #include "Inspection/Format.h"
+#include "Inspection/Transformers.h"
 #include "Inspection/Types.h"
 
 namespace {
@@ -114,6 +115,16 @@ auto inspect(Inspector& f, Map& x) {
   return f.object(x).fields(f.field("map", x.map),
                             f.field("unordered", x.unordered));
 }
+
+struct TransformedMap {
+  std::map<int, Container> map;
+
+  friend inline auto inspect(auto& f, TransformedMap& x) {
+    return f.object(x).fields(
+        f.field("map", x.map)
+            .transformWith(arangodb::inspection::mapToListTransformer(x.map)));
+  }
+};
 
 struct Set {
   std::set<Container> set;

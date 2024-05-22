@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,16 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "InitDatabaseFeature.h"
-
-#ifdef _WIN32
-#include <io.h>
-#include <fcntl.h>
-#include <locale.h>
-#include <string.h>
-#include <tchar.h>
-#include <unicode/locid.h>
-#include <iomanip>
-#endif
 
 #include <chrono>
 #include <iostream>
@@ -151,24 +141,12 @@ std::string InitDatabaseFeature::readPassword(std::string const& message) {
   std::this_thread::sleep_for(std::chrono::milliseconds(500));
   std::cerr << std::flush;
   std::cout << message << ": " << std::flush;
-#ifdef _WIN32
-  terminal_utils::setStdinVisibility(false);
-  auto sg = arangodb::scopeGuard(
-      [&]() noexcept { terminal_utils::setStdinVisibility(true); });
-  std::wstring wpassword;
-  _setmode(_fileno(stdin), _O_U16TEXT);
-  std::getline(std::wcin, wpassword);
-  icu::UnicodeString pw(wpassword.c_str(),
-                        static_cast<int32_t>(wpassword.length()));
-  pw.toUTF8String<std::string>(password);
-#else
 #ifdef TRI_HAVE_TERMIOS_H
   terminal_utils::setStdinVisibility(false);
   std::getline(std::cin, password);
   terminal_utils::setStdinVisibility(true);
 #else
   std::getline(std::cin, password);
-#endif
 #endif
   std::cout << std::endl;
 

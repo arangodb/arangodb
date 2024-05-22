@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -53,7 +53,7 @@ static const std::string SHARDS = "shards";
 static const std::string TYPE = "type";
 
 #ifndef USE_ENTERPRISE
-/*static*/ std::unique_ptr<BaseEngine> BaseEngine::BuildEngine(
+/*static*/ std::unique_ptr<BaseEngine> BaseEngine::buildEngine(
     TRI_vocbase_t& vocbase, aql::QueryContext& query, VPackSlice info) {
   VPackSlice type = info.get(std::initializer_list<std::string_view>(
       {StaticStrings::GraphOptions, TYPE}));
@@ -122,14 +122,18 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase, aql::QueryContext& query,
   for (auto collection : VPackObjectIterator(vertexSlice)) {
     ResourceUsageAllocator<MonitoredCollectionToShardMap, ResourceMonitor>
         alloc = {_query.resourceMonitor()};
-    MonitoredStringVector shards{alloc};
+    MonitoredShardIDVector shards{alloc};
     TRI_ASSERT(collection.value.isArray());
     for (auto shard : VPackArrayIterator(collection.value)) {
       TRI_ASSERT(shard.isString());
-      std::string name = shard.copyString();
-      _query.collections().add(name, AccessMode::Type::READ,
+      auto shardString = shard.copyString();
+      auto maybeShardID = ShardID::shardIdFromString(shardString);
+      _query.collections().add(shardString, AccessMode::Type::READ,
                                aql::Collection::Hint::Shard);
-      shards.emplace_back(std::move(name));
+      TRI_ASSERT(maybeShardID.ok())
+          << "Parsed a list of shards contianing an invalid name: "
+          << shardString;
+      shards.emplace_back(std::move(maybeShardID.get()));
     }
     _vertexShards.emplace(collection.key.copyString(), std::move(shards));
   }
@@ -203,7 +207,8 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder,
       return true;
     };
     for (auto const& shard : shards->second) {
-      Result res = _trx->documentFastPathLocal(shard, vertex, cb);
+      Result res =
+          _trx->documentFastPathLocal(std::string{shard}, vertex, cb).get();
       if (res.ok()) {
         break;
       }

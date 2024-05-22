@@ -1,30 +1,29 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
 /*global assertEqual, assertTrue, fail */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for COLLECT w/ INTO var = expr
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Jan Steemann
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
@@ -373,6 +372,37 @@ function optimizerCollectExpressionTestSuite () {
       assertEqual(expectedResults, res);
     },
      
+    testCollectIntoAndCalculationRemoval : function () {
+      const query = "FOR i IN " + c.name() + " COLLECT gender = i.gender INTO docs = i.value OPTIONS { method: 'hash' } SORT null RETURN { gender, docs }";
+
+      let nodes = db._createStatement(query).explain().plan.nodes;
+      assertEqual(1, nodes.filter((n) => n.type === 'EnumerateCollectionNode').length);
+      let ec = nodes.filter((n) => n.type === 'EnumerateCollectionNode')[0];
+      assertEqual(2, ec.projections.length);
+      assertEqual(1, nodes.filter((n) => n.type === 'CollectNode').length);
+      assertEqual(0, nodes.filter((n) => n.type === 'SortNode').length);
+      // we expect only a single calculation node in the plan, for calculating the return value
+      assertEqual(1, nodes.filter((n) => n.type === 'CalculationNode').length);
+      let cn = nodes.filter((n) => n.type === 'CalculationNode')[0];
+      assertEqual("object", cn.expression.type);
+    },
+    
+    testCollectIntoAndCalculationRemoval2 : function () {
+      const query = "FOR i IN " + c.name() + " COLLECT gender = i.gender INTO docs OPTIONS { method: 'hash' } SORT null RETURN { gender, docs }";
+      
+      let nodes = db._createStatement(query).explain().plan.nodes;
+      assertEqual(1, nodes.filter((n) => n.type === 'EnumerateCollectionNode').length);
+      let ec = nodes.filter((n) => n.type === 'EnumerateCollectionNode')[0];
+      assertEqual(0, ec.projections.length);
+      assertEqual(1, nodes.filter((n) => n.type === 'CollectNode').length);
+      assertEqual(0, nodes.filter((n) => n.type === 'SortNode').length);
+      // we expect 2 calculation nodes in the plan, for calculating the return value and for the projection
+      assertEqual(2, nodes.filter((n) => n.type === 'CalculationNode').length);
+      let cn = nodes.filter((n) => n.type === 'CalculationNode')[0];
+      assertEqual("attribute access", cn.expression.type);
+      cn = nodes.filter((n) => n.type === 'CalculationNode')[1];
+      assertEqual("object", cn.expression.type);
+    },
   };
 }
 

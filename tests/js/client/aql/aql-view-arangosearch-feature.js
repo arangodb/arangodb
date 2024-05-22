@@ -1,28 +1,29 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
 /*global assertUndefined, assertNotUndefined, assertNotEqual, assertEqual, assertTrue, assertFalse, assertNull, assertNotNull, fail, db._query */
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require("jsunity");
 var db = require("@arangodb").db;
@@ -1875,7 +1876,7 @@ function iResearchFeatureAqlTestSuite () {
       let analyzerName = "pipeUnderTest";
       try { analyzers.remove(analyzerName, true); } catch(e) {}
       {
-        analyzers.save(analyzerName,"pipeline",
+        analyzers.save(analyzerName, "pipeline",
                         {pipeline:[
                           {type:"delimiter", properties:{delimiter:" "}},
                           {type:"delimiter", properties:{delimiter:","}},
@@ -1896,7 +1897,7 @@ function iResearchFeatureAqlTestSuite () {
       }
       // upper + ngram utf8 sequence
       {
-        analyzers.save(analyzerName,"pipeline",
+        analyzers.save(analyzerName, "pipeline",
                         {pipeline:[
                           {type:"norm", properties:{locale:"ru_RU.UTF8", "case":"upper"}},
                           {type:"ngram", properties: { "preserveOriginal":false, min:2, max:3, streamType:"utf8"}}]});
@@ -2031,7 +2032,7 @@ function iResearchFeatureAqlTestSuite () {
       try { analyzers.remove(analyzerName, true); } catch(e) {}
       // soundex expression
       {
-        analyzers.save(analyzerName,"aql",{queryString:"RETURN SOUNDEX(@param)"});
+        analyzers.save(analyzerName, "aql",{queryString:"RETURN SOUNDEX(@param)"});
         try {
           let result = db._query(
             "RETURN TOKENS(['Andrei', 'Andrey'], '" + analyzerName + "' )",
@@ -2047,7 +2048,7 @@ function iResearchFeatureAqlTestSuite () {
       }
       // datetime
       {
-        analyzers.save(analyzerName,"aql",{queryString:"RETURN DATE_ISO8601(@param)"});
+        analyzers.save(analyzerName, "aql",{queryString:"RETURN DATE_ISO8601(@param)"});
         try {
           let result = db._query(
             "RETURN TOKENS('1974-06-09', '" + analyzerName + "' )",
@@ -2062,8 +2063,8 @@ function iResearchFeatureAqlTestSuite () {
         }
       }
       // cycle
-      {
-        analyzers.save(analyzerName,"aql",{queryString:"FOR d IN 1..TO_NUMBER(@param) FILTER d%2==0 RETURN TO_STRING(d)"});
+       {
+        analyzers.save(analyzerName, "aql",{queryString:"FOR d IN 1..TO_NUMBER(@param) FILTER d%2==0 RETURN TO_STRING(d)"});
         try {
           let result = db._query(
             "RETURN TOKENS('4', '" + analyzerName + "' )",
@@ -2079,7 +2080,7 @@ function iResearchFeatureAqlTestSuite () {
       }
       // pipeline for upper + ngram utf8 sequence
       {
-        analyzers.save(analyzerName,"pipeline",
+        analyzers.save(analyzerName, "pipeline",
                         {pipeline:[
                           {type:"aql", properties:{queryString:"RETURN UPPER(@param)"}},
                           {type:"ngram", properties: { "preserveOriginal":false, min:2, max:3, streamType:"utf8"}}]});
@@ -2099,7 +2100,7 @@ function iResearchFeatureAqlTestSuite () {
       }
       // pipeline for ngram utf8 sequence + upper
       {
-        analyzers.save(analyzerName,"pipeline",
+        analyzers.save(analyzerName, "pipeline",
                         {pipeline:[
                           {type:"ngram", properties: { "preserveOriginal":false, min:2, max:3, streamType:"utf8"}},
                           {type:"aql", properties:{queryString:"RETURN UPPER(@param)"}}]});
@@ -2133,7 +2134,7 @@ function iResearchFeatureAqlTestSuite () {
       let analyzerName = "stopwordsUnderTest";
       try { analyzers.remove(analyzerName, true); } catch(e) {}
       {
-        analyzers.save(analyzerName,"stopwords",
+        analyzers.save(analyzerName, "stopwords",
                         {stopwords:["QWE", "qwe", "qqq", "abcd"]}, ["position", "frequency"]);
         try {
           let result = db._query(
@@ -2154,7 +2155,7 @@ function iResearchFeatureAqlTestSuite () {
       }
       try { analyzers.remove(analyzerName, true); } catch(e) {}
       {
-        analyzers.save(analyzerName,"stopwords",
+        analyzers.save(analyzerName, "stopwords",
                         {stopwords:["515745", "717765", "717171"], hex:true}, ["position", "frequency"]);
         try {
           let result = db._query(
@@ -2178,11 +2179,11 @@ function iResearchFeatureAqlTestSuite () {
       let analyzerName = "collationUnderTest";
       try { analyzers.remove(analyzerName, true); } catch(e) {}
       try { 
-        analyzers.save(analyzerName,"collation", {}, []);
+        analyzers.save(analyzerName, "collation", {}, []);
         assertTrue(false);
       } catch (e) { }
       {
-        analyzers.save(analyzerName,"collation", {locale:"ru_RU.UTf-8"}, []);
+        analyzers.save(analyzerName, "collation", {locale:"ru_RU.UTF-8"}, []);
         try {
           let result = db._query(
             "RETURN TOKENS('АрангоДБ', '" + analyzerName + "' )",
@@ -2191,12 +2192,19 @@ function iResearchFeatureAqlTestSuite () {
           assertEqual(1, result.length);
           assertEqual(16, result[0][0].length);
 
-          const expected = [
+          // old ICU generates this
+          const expected1 = [
             39, 6,  1158, 6, 120, 16, 1090, 26, 12,
             1, 12, 1, 1862, 1537, 1862, 1862];
 
+          // new ICU generates this
+          const expected2 = [
+            39, 6,  1158, 6, 120, 16, 1090, 26, 12,
+            1, 12, 1, 1731, 1537, 1731, 1731 ];
+
+          const actual = result[0][0].split('').map(c => c.charCodeAt(0));
           assertTrue(
-            _.isEqual(expected, result[0][0].split('').map(c => c.charCodeAt(0))));
+            _.isEqual(expected1, actual) || _.isEqual(expected2, actual), {expected1, expected2, actual});
         } finally {
           analyzers.remove(analyzerName, true);
         }
@@ -2276,7 +2284,7 @@ function iResearchFeatureAqlTestSuite () {
       let analyzerName = "segmentationUnderTest";
       try { analyzers.remove(analyzerName, true); } catch(e) {}
       {
-        analyzers.save(analyzerName,"segmentation", {}, []);
+        analyzers.save(analyzerName, "segmentation", {}, []);
         try {
           let result = db._query(
             "RETURN TOKENS('Arango DB', '" + analyzerName + "' )",

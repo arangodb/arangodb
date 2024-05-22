@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -73,7 +73,10 @@ struct IndexFactoryMock : arangodb::IndexFactory {
   IndexFactoryMock(arangodb::ArangodServer& server, bool injectClusterIndexes)
       : IndexFactory(server) {
     if (injectClusterIndexes) {
-      arangodb::ClusterIndexFactory::linkIndexFactories(server, *this);
+      arangodb::ClusterIndexFactory::linkIndexFactories(
+          server, *this,
+          server.getFeature<arangodb::EngineSelectorFeature>()
+              .engine<arangodb::ClusterEngine>());
     }
   }
 
@@ -444,7 +447,8 @@ std::unique_ptr<TRI_vocbase_t> StorageEngineMock::openDatabase(
   auto new_info = info;
   new_info.setId(++vocbaseCount);
 
-  return std::make_unique<TRI_vocbase_t>(std::move(new_info));
+  return std::make_unique<TRI_vocbase_t>(std::move(new_info), _versionTracker,
+                                         true);
 }
 
 TRI_voc_tick_t StorageEngineMock::releasedTick() const {
@@ -526,10 +530,11 @@ class TransactionCollectionMock : public arangodb::TransactionCollection {
   bool canAccess(arangodb::AccessMode::Type accessType) const override;
   bool hasOperations() const override;
   void releaseUsage() override;
-  arangodb::Result lockUsage() override;
+  arangodb::futures::Future<arangodb::Result> lockUsage() override;
 
  private:
-  arangodb::Result doLock(arangodb::AccessMode::Type type) override;
+  arangodb::futures::Future<arangodb::Result> doLock(
+      arangodb::AccessMode::Type type) override;
   arangodb::Result doUnlock(arangodb::AccessMode::Type type) override;
 };
 
@@ -557,12 +562,13 @@ void TransactionCollectionMock::releaseUsage() {
   }
 }
 
-arangodb::Result TransactionCollectionMock::lockUsage() {
+arangodb::futures::Future<arangodb::Result>
+TransactionCollectionMock::lockUsage() {
   bool shouldLock = !arangodb::AccessMode::isNone(_accessType);
 
   if (shouldLock && !isLocked()) {
     // r/w lock the collection
-    arangodb::Result res = doLock(_accessType);
+    arangodb::Result res = co_await doLock(_accessType);
 
     if (res.is(TRI_ERROR_LOCKED)) {
       // TRI_ERROR_LOCKED is not an error, but it indicates that the lock
@@ -570,7 +576,7 @@ arangodb::Result TransactionCollectionMock::lockUsage() {
       // been held before)
       res.reset();
     } else if (res.fail()) {
-      return res;
+      co_return res;
     }
   }
 
@@ -587,19 +593,20 @@ arangodb::Result TransactionCollectionMock::lockUsage() {
     }
   }
 
-  return arangodb::Result(_collection ? TRI_ERROR_NO_ERROR
-                                      : TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  co_return arangodb::Result(_collection
+                                 ? TRI_ERROR_NO_ERROR
+                                 : TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 }
 
-arangodb::Result TransactionCollectionMock::doLock(
+arangodb::futures::Future<arangodb::Result> TransactionCollectionMock::doLock(
     arangodb::AccessMode::Type type) {
   if (_lockType > _accessType) {
-    return {TRI_ERROR_INTERNAL};
+    co_return {TRI_ERROR_INTERNAL};
   }
 
   _lockType = type;
 
-  return {};
+  co_return {};
 }
 
 arangodb::Result TransactionCollectionMock::doUnlock(
@@ -636,23 +643,23 @@ arangodb::Result TransactionStateMock::abortTransaction(
   return arangodb::Result();
 }
 
-arangodb::Result TransactionStateMock::beginTransaction(
-    arangodb::transaction::Hints hints) {
+arangodb::futures::Future<arangodb::Result>
+TransactionStateMock::beginTransaction(arangodb::transaction::Hints hints) {
   ++beginTransactionCount;
   _hints = hints;
 
-  arangodb::Result res = useCollections();
+  arangodb::Result res = co_await useCollections();
   if (res.fail()) {  // something is wrong
-    return res;
+    co_return res;
   }
 
   if (!res.ok()) {
     updateStatus(arangodb::transaction::Status::ABORTED);
     resetTransactionId();
-    return res;
+    co_return res;
   }
   updateStatus(arangodb::transaction::Status::RUNNING);
-  return arangodb::Result();
+  co_return arangodb::Result();
 }
 
 arangodb::futures::Future<arangodb::Result>

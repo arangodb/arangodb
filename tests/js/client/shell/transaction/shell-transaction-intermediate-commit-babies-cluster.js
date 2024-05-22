@@ -2,18 +2,16 @@
 /* global fail, assertEqual, assertNotEqual, assertFalse */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief ArangoTransaction sTests
-// /
-// /
 // / DISCLAIMER
 // /
-// / Copyright 2018 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,7 +19,7 @@
 // / See the License for the specific language governing permissions and
 // / limitations under the License.
 // /
-// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Jan Steemann
 // //////////////////////////////////////////////////////////////////////////////
@@ -59,6 +57,8 @@ function assertInSync(leader, follower, shardId) {
 function transactionIntermediateCommitsBabiesFollowerSuite() {
   'use strict';
 
+  let isReplication2 = false;
+
   let collectionInfo = () => {
     let shards = db._collection(cn).shards(true);
     let shardId = Object.keys(shards)[0];
@@ -74,6 +74,7 @@ function transactionIntermediateCommitsBabiesFollowerSuite() {
       getEndpointsByType("dbserver").forEach((ep) => debugClearFailAt(ep));
       db._drop(cn);
       db._create(cn, { numberOfShards: 1, replicationFactor: 2 });
+      isReplication2 = db._properties().replicationVersion === "2";
     },
 
     tearDown: function () {
@@ -164,11 +165,15 @@ function transactionIntermediateCommitsBabiesFollowerSuite() {
       } catch (err) {
       }
       assertFalse(didWork);
-      
-      // a follower will be dropped here because we abort the transaction on the leader,
-      // but have had intermediate commits on the follower
+
       let droppedFollowersAfter = getMetric(leader, "arangodb_dropped_followers_total");
-      assertEqual(droppedFollowersBefore + 1, droppedFollowersAfter);
+      if (isReplication2) {
+        assertEqual(droppedFollowersBefore, droppedFollowersAfter);
+      } else {
+        // a follower will be dropped here because we abort the transaction on the leader,
+        // but have had intermediate commits on the follower
+        assertEqual(droppedFollowersBefore + 1, droppedFollowersAfter);
+      }
     
       // some intermediate commit must have happened (not 100, but 9, because AQL insert operates
       // in batch sizes of 1000)

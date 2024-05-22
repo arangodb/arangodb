@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -59,6 +59,10 @@ struct AddCollectionGroupToPlan {
   std::unordered_map<CollectionID, agency::CollectionPlanSpecification>
       collections;
 };
+struct UpdateCollectionGroupInPlan {
+  agency::CollectionGroupId id;
+  agency::CollectionGroup::Attributes::MutableAttributes spec;
+};
 struct UpdateCollectionShardMap {
   CollectionID cid;
   PlanShardToServerMapping mapping;
@@ -92,6 +96,12 @@ struct IndexConvergedCurrent {
   arangodb::velocypack::SharedSlice index;
 };
 
+struct IndexErrorCurrent {
+  CollectionID cid;
+  arangodb::velocypack::SharedSlice index;
+  Result error;
+};
+
 struct NoActionRequired {};
 struct NoActionPossible {
   std::string reason;
@@ -101,9 +111,10 @@ struct NoActionPossible {
 using Action = std::variant<
     NoActionRequired, NoActionPossible, UpdateReplicatedLogConfig,
     UpdateConvergedVersion, DropCollectionPlan, DropCollectionGroup,
-    AddCollectionToPlan, AddCollectionGroupToPlan, UpdateCollectionShardMap,
-    AddParticipantToLog, RemoveParticipantFromLog, UpdateCollectionPlan,
-    RemoveCollectionIndexPlan, AddCollectionIndexPlan, IndexConvergedCurrent>;
+    AddCollectionToPlan, AddCollectionGroupToPlan, UpdateCollectionGroupInPlan,
+    UpdateCollectionShardMap, AddParticipantToLog, RemoveParticipantFromLog,
+    UpdateCollectionPlan, RemoveCollectionIndexPlan, AddCollectionIndexPlan,
+    IndexConvergedCurrent, IndexErrorCurrent>;
 
 struct CollectionGroup {
   agency::CollectionGroupTargetSpecification target;

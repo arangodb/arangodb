@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -167,6 +168,9 @@ auto FollowerStateManager<S>::GuardedData::maybeScheduleApplyEntries(
     auto promise = futures::Promise<Result>();
     auto future = promise.getFuture();
     auto rttGuard = MeasureTimeGuard(*metrics->replicatedStateApplyEntriesRtt);
+    // TODO - applyEntries is not longer synchronous, so we could call it
+    // directly now
+
     // As applyEntries is currently synchronous, we have to post it on the
     // scheduler to avoid blocking the current appendEntries request from
     // returning. By using _applyEntriesPositionInFlight we make sure not to
@@ -185,6 +189,7 @@ auto FollowerStateManager<S>::GuardedData::maybeScheduleApplyEntries(
         auto logIter = methods->getCommittedLogIterator(range);
         return std::make_unique<IterType>(std::move(logIter));
       }();
+      // TODO - do not call applyEntries for empty iterators
       if (iter != nullptr) {
         // cppcheck-suppress accessMoved ; iter is accessed only once - bogus
         followerState->applyEntries(std::move(iter))
@@ -196,7 +201,7 @@ auto FollowerStateManager<S>::GuardedData::maybeScheduleApplyEntries(
                 });
       } else {
         promise.setException(replicated_log::ParticipantResignedException(
-            TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE));
+            TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED));
       }
     });
 
@@ -364,15 +369,26 @@ template<typename S>
 auto FollowerStateManager<S>::resign() && noexcept
     -> std::pair<std::unique_ptr<CoreType>,
                  std::unique_ptr<replicated_log::IReplicatedLogMethodsBase>> {
-  auto guard = _guardedData.getLockedGuard();
-  auto core = std::move(*guard->_followerState).resign();
-  auto methods = std::move(*guard->_stream).resign();
-  guard->_followerState = nullptr;
-  guard->_stream.reset();
+  std::shared_ptr<IReplicatedFollowerState<S>> followerState;
+  std::shared_ptr<StreamImpl> stream;
+  _guardedData.doUnderLock([&](auto& data) {
+    followerState = std::move(data._followerState);
+    stream = std::move(data._stream);
+  });
+
+  // we must not call resign under the lock to prevent a deadlock with
+  // applyEntries. resign has to wait until it is guaranteed that all
+  // transaction have finished (committed or aborted). However, when the future
+  // returned by applyEntries is resolved, we are acquiring the
+  // FollowerStateManager lock to update the commit index. So we must not hold
+  // the lock while waiting in resign.
+  auto core = std::move(*followerState).resign();
+  auto methods = std::move(*stream).resign();
+
   auto tryResult = futures::Try<LogIndex>(
       std::make_exception_ptr(replicated_log::ParticipantResignedException(
-          TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE)));
-  guard->_waitQueue.resolveAllWith(
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED)));
+  _guardedData.getLockedGuard()->_waitQueue.resolveAllWith(
       std::move(tryResult), [&scheduler = *_scheduler]<typename F>(F&& f) {
         static_assert(noexcept(std::decay_t<decltype(f)>(std::forward<F>(f))));
         scheduler.queue([f = std::forward<F>(f)]() mutable noexcept {
@@ -392,7 +408,9 @@ auto FollowerStateManager<S>::getInternalStatus() const -> Status::Follower {
   if (guard->_followerState == nullptr || guard->_stream->isResigned()) {
     return {Status::Follower::Resigned{}};
   } else {
-    return {Status::Follower::Constructed{}};
+    return {Status::Follower::Constructed{
+        .appliedIndex = guard->_lastAppliedPosition.index(),
+    }};
   }
 }
 

@@ -31,7 +31,8 @@ export const useQueryEditorHandlers = () => {
     setQueryValue(value);
     setQueryBindParams(prevQueryBindParams => {
       const parsedBindParamsMap = parsedBindParams.reduce((acc, bindParam) => {
-        acc[bindParam] = prevQueryBindParams[bindParam] || "";
+        const prevQueryBindParam = prevQueryBindParams[bindParam];
+        acc[bindParam] = prevQueryBindParam;
         return acc;
       }, {} as { [key: string]: string });
       window.sessionStorage.setItem(

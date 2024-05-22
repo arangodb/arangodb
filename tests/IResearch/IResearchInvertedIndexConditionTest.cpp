@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,20 +21,23 @@
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/AttributeNamePath.h"
 #include "common.h"
 #include "gtest/gtest.h"
 
 #include "Aql/Ast.h"
+#include "Aql/AttributeNamePath.h"
+#include "Aql/ExecutionNode/CalculationNode.h"
+#include "Aql/ExecutionNode/SortNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/ExpressionContext.h"
-#include "Aql/Query.h"
 #include "Aql/Projections.h"
-#include "Aql/SortNode.h"
+#include "Aql/Query.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/StaticStrings.h"
 #include "IResearch/AqlHelper.h"
-#include "IResearch/IResearchInvertedIndex.h"
 #include "IResearch/ExpressionContextMock.h"
+#include "IResearch/IResearchInvertedIndex.h"
 #include "Mocks/LogLevels.h"
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
@@ -44,8 +47,6 @@
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
-#include "Basics/StaticStrings.h"
-#include "Basics/GlobalResourceMonitor.h"
 
 using namespace arangodb::aql;
 
@@ -93,7 +94,7 @@ class IResearchInvertedIndexConditionTest
     auto builder = getInvertedIndexPropertiesSlice(id, fields, &storedFields,
                                                    nullptr, "unique_name2");
     bool created = false;
-    auto inverted = _collection->createIndex(builder.slice(), created);
+    auto inverted = _collection->createIndex(builder.slice(), created).get();
     ASSERT_TRUE(created);
     ASSERT_TRUE(inverted);
     auto* index = dynamic_cast<arangodb::iresearch::IResearchInvertedIndex*>(
@@ -126,7 +127,7 @@ class IResearchInvertedIndexConditionTest
     auto builder = getInvertedIndexPropertiesSlice(id, fields, nullptr, nullptr,
                                                    "unique_name3");
     bool created = false;
-    auto inverted = _collection->createIndex(builder.slice(), created);
+    auto inverted = _collection->createIndex(builder.slice(), created).get();
     ASSERT_TRUE(created);
     ASSERT_TRUE(inverted);
     auto* index = dynamic_cast<arangodb::iresearch::IResearchInvertedIndex*>(
@@ -206,7 +207,7 @@ class IResearchInvertedIndexConditionTest
     auto builder = getInvertedIndexPropertiesSlice(id, indexFields, nullptr,
                                                    &fields, "unique_name3");
     bool created = false;
-    auto inverted = _collection->createIndex(builder.slice(), created);
+    auto inverted = _collection->createIndex(builder.slice(), created).get();
     ASSERT_TRUE(created);
     ASSERT_TRUE(inverted);
     auto* index = dynamic_cast<arangodb::iresearch::IResearchInvertedIndex*>(
@@ -1037,5 +1038,5 @@ TEST_F(IResearchInvertedIndexConditionTest,
 }
 
 #if USE_ENTERPRISE
-#include "tests/IResearch/IResearchInvertedIndexConditionTestEE.hpp"
+#include "tests/IResearch/IResearchInvertedIndexConditionTestEE.h"
 #endif

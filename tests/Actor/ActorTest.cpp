@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -30,6 +30,7 @@
 #include "Actor/Actor.h"
 #include "Actor/DistributedActorPID.h"
 #include "Actor/DistributedRuntime.h"
+#include "Actor/ExitReason.h"
 #include "Actor/Message.h"
 #include "Actor/MPSCQueue.h"
 
@@ -129,7 +130,7 @@ TEST(ActorTest, sets_itself_to_finish) {
       runtime, std::make_unique<TrivialState>());
   ASSERT_FALSE(actor->isFinishedAndIdle());
 
-  actor->finish();
+  actor->finish(ExitReason::kFinished);
 
   ASSERT_TRUE(actor->isFinishedAndIdle());
 }
@@ -141,7 +142,7 @@ TYPED_TEST(ActorTest, does_not_work_on_new_messages_after_actor_finished) {
   auto actor = std::make_shared<Actor<DistributedRuntime, TrivialActor>>(
       DistributedActorPID{.server = "A", .database = "database", .id = {1}},
       runtime, std::make_unique<TrivialState>());
-  actor->finish();
+  actor->finish(ExitReason::kFinished);
 
   // send message to actor
   auto message =
