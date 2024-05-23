@@ -779,7 +779,8 @@ void TRI_CreateExternalProcess(char const* executable,
   StartExternalProcessPosixSpawn(external.get(), usePipes, additionalEnv,
                                  fileForStdErr);
 
-  if (external->_status != TRI_EXT_RUNNING) {
+  if (external->_status != TRI_EXT_RUNNING &&
+      external->_status != TRI_EXT_TERMINATED) {
     pid->_pid = TRI_INVALID_PROCESS_ID;
     return;
   }
