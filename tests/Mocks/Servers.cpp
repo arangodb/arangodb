@@ -170,6 +170,9 @@ static void SetupClusterFeaturePhase(MockServer& server) {
   SetupDatabaseFeaturePhase(server);
   server.addFeature<ClusterFeaturePhase>(false);
   server.addFeature<ClusterFeature>(false);
+  // set default replication factor to 1 for tests. otherwise the default value
+  // is 0, which will lead to follow up errors if it is not corrected later.
+  server.getFeature<ClusterFeature>().defaultReplicationFactor(1);
 
   // fake the exit code with which unresolved futures are returned on
   // shutdown. if we don't do this lots of places in ClusterInfo will
