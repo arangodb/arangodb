@@ -271,9 +271,110 @@ static bool CreatePipes(int* pipe_server_to_child, int* pipe_child_to_server) {
 /// @brief starts external process
 ////////////////////////////////////////////////////////////////////////////////
 
-static void StartExternalProcess(ExternalProcess* external, bool usePipes,
-                                 std::vector<std::string> const& additionalEnv,
-                                 std::string const& fileForStdErr) {
+#include <spawn.h>
+
+static void StartExternalProcess(
+    ExternalProcess* external, bool usePipes,
+    std::vector<std::string> const& additionalEnv,
+    std::string const& fileForStdErr) {
+  int pipe_server_to_child[2];
+  int pipe_child_to_server[2];
+
+  if (usePipes) {
+    bool ok = CreatePipes(pipe_server_to_child, pipe_child_to_server);
+
+    if (!ok) {
+      external->_status = TRI_EXT_PIPE_FAILED;
+      return;
+    }
+  }
+
+  posix_spawn_file_actions_t file_actions;
+  posix_spawn_file_actions_init(&file_actions);
+  // file actions are performed in order they were added.
+
+  if (usePipes) {
+    posix_spawn_file_actions_adddup2(&file_actions, pipe_server_to_child[0], 0);
+    posix_spawn_file_actions_adddup2(&file_actions, pipe_child_to_server[1], 1);
+
+    posix_spawn_file_actions_addclose(&file_actions, pipe_server_to_child[0]);
+    posix_spawn_file_actions_addclose(&file_actions, pipe_server_to_child[1]);
+    posix_spawn_file_actions_addclose(&file_actions, pipe_child_to_server[0]);
+    posix_spawn_file_actions_addclose(&file_actions, pipe_child_to_server[1]);
+  } else {
+    posix_spawn_file_actions_addopen(&file_actions, 0, "/dev/null", O_RDONLY,
+                                     0);
+  }
+
+  if (!fileForStdErr.empty()) {
+    posix_spawn_file_actions_addopen(&file_actions, 2, fileForStdErr.c_str(),
+                                     O_CREAT | O_WRONLY | O_TRUNC, 0644);
+  }
+
+  posix_spawnattr_t spawn_attrs;
+  posix_spawnattr_init(&spawn_attrs);
+
+  std::vector<char*> envs;
+  envs.reserve(additionalEnv.size());
+  std::transform(
+      additionalEnv.begin(), additionalEnv.end(), std::back_inserter(envs),
+      [](auto& str) -> char* { return const_cast<char*>(str.data()); });
+
+  int result = posix_spawnp(&external->_pid, external->_executable.c_str(),
+                            &file_actions, &spawn_attrs, external->_arguments,
+                            envs.data());
+
+  posix_spawnattr_destroy(&spawn_attrs);
+  posix_spawn_file_actions_destroy(&file_actions);
+
+  bool executableNotFound = false;
+
+  if (result != 0) {
+    if (errno == ENOENT) {
+      executableNotFound = true;
+    } else {
+      external->_status = TRI_EXT_FORK_FAILED;
+
+      LOG_TOPIC("e3a2b", ERR, arangodb::Logger::FIXME)
+          << "spawn failed: " << strerror(errno);
+
+      if (usePipes) {
+        close(pipe_server_to_child[0]);
+        close(pipe_server_to_child[1]);
+        close(pipe_child_to_server[0]);
+        close(pipe_child_to_server[1]);
+      }
+
+      return;
+    }
+  }
+
+  LOG_TOPIC("ac58b", DEBUG, arangodb::Logger::FIXME)
+      << "spawn succeeded, child pid: " << external->_pid;
+
+  if (usePipes) {
+    close(pipe_server_to_child[0]);
+    close(pipe_child_to_server[1]);
+
+    external->_writePipe = pipe_server_to_child[1];
+    external->_readPipe = pipe_child_to_server[0];
+  } else {
+    external->_writePipe = -1;
+    external->_readPipe = -1;
+  }
+
+  if (executableNotFound) {
+    external->_status = TRI_EXT_TERMINATED;
+    external->_exitStatus = 1;
+  } else {
+    external->_status = TRI_EXT_RUNNING;
+  }
+}
+
+/*static void StartExternalProcess(
+    ExternalProcess* external, bool usePipes,
+    std::vector<std::string> const& additionalEnv,
+    std::string const& fileForStdErr) {
   int pipe_server_to_child[2];
   int pipe_child_to_server[2];
 
@@ -370,7 +471,7 @@ static void StartExternalProcess(ExternalProcess* external, bool usePipes,
 
   external->_pid = processPid;
   external->_status = TRI_EXT_RUNNING;
-}
+}*/
 #else
 static bool createPipes(HANDLE* hChildStdinRd, HANDLE* hChildStdinWr,
                         HANDLE* hChildStdoutRd, HANDLE* hChildStdoutWr) {
