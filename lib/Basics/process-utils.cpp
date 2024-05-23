@@ -315,10 +315,15 @@ static void StartExternalProcess(
   posix_spawnattr_init(&spawn_attrs);
 
   std::vector<char*> envs;
-  envs.reserve(additionalEnv.size());
+  for (char** e = environ; *e != nullptr; ++e) {
+    envs.push_back(*e);
+  }
+
+  envs.reserve(additionalEnv.size() + 1);
   std::transform(
       additionalEnv.begin(), additionalEnv.end(), std::back_inserter(envs),
       [](auto& str) -> char* { return const_cast<char*>(str.data()); });
+  envs.emplace_back(nullptr);
 
   int result = posix_spawnp(&external->_pid, external->_executable.c_str(),
                             &file_actions, &spawn_attrs, external->_arguments,
