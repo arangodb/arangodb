@@ -21,9 +21,12 @@
 #include "WorkStealingThreadPool.h"
 
 #include <algorithm>
+#include <condition_variable>
 #include <atomic>
 #include <chrono>
 #include <cstddef>
+#include <deque>
+#include <exception>
 #include <memory>
 #include <mutex>
 #include <random>
@@ -304,8 +307,11 @@ void WorkStealingThreadPool::ThreadState::runWork(WorkItem& work) noexcept {
   pool.statistics.dequeued.fetch_add(1, std::memory_order_relaxed);
   try {
     work.invoke();
+  } catch (std::exception const& e) {
+    LOG_TOPIC("71d10", WARN, Logger::FIXME)
+        << "Scheduler just swallowed an exception: " << e.what();
   } catch (...) {
-    LOG_TOPIC("d5fb3", WARN, Logger::FIXME)
+    LOG_TOPIC("c1380", WARN, Logger::FIXME)
         << "Scheduler just swallowed an exception.";
   }
   incCounter(pool._metrics.jobsDone);
@@ -362,6 +368,7 @@ auto WorkStealingThreadPool::ThreadState::stealWork() noexcept
           }
           other->queueSize.store(other->_queue.size(),
                                  std::memory_order_relaxed);
+          guard.unlock();
 
           // remember this thread so next time we try to steal from it first
           stealHint.store(idx, std::memory_order_relaxed);
@@ -392,19 +399,13 @@ WorkStealingThreadPool::WorkStealingThreadPool(const char* name,
       _threadStates(threadCount),
       _latch(threadCount) {
   auto coprimes = calculateCoprimes(threadCount);
-  std::size_t coprimeIdx = 0;
   for (std::size_t i = 0; i < threadCount; ++i) {
-    _threads.emplace_back(std::jthread([this, i, &coprimes, coprimeIdx]() {
+    auto stepSize = coprimes[i % coprimes.size()];
+    _threads.emplace_back(std::jthread([this, i, stepSize]() {
       // we intentionally create the ThreadStates _inside_ the thread
-      _threadStates[i] =
-          std::make_unique<ThreadState>(i, coprimes[coprimeIdx], *this);
-
+      _threadStates[i] = std::make_unique<ThreadState>(i, stepSize, *this);
       _threadStates[i]->run();
     }));
-    ++coprimeIdx;
-    if (coprimeIdx >= coprimes.size()) {
-      coprimeIdx = 0;
-    }
 
 #ifdef TRI_HAVE_SYS_PRCTL_H
     pthread_setname_np(_threads.back().native_handle(), name);

@@ -20,6 +20,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include <algorithm>
 #include <atomic>
+#include <exception>
 #include <memory>
 #include <thread>
 
@@ -58,6 +59,9 @@ LockfreeThreadPool::LockfreeThreadPool(const char* name,
 
         try {
           item->invoke();
+        } catch (std::exception const& e) {
+          LOG_TOPIC("d5fb3", WARN, Logger::FIXME)
+              << "Scheduler just swallowed an exception: " << e.what();
         } catch (...) {
           LOG_TOPIC("d5fb4", WARN, Logger::FIXME)
               << "Scheduler just swallowed an exception.";

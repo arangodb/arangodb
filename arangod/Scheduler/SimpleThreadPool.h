@@ -48,6 +48,9 @@ struct SimpleThreadPool {
       void invoke() noexcept override { std::forward<F>(_func)(); }
     };
 
+    // Note: push is noexcept, so any bad_alloc exception from make_unique will
+    // terminate the process This is intentional since we are screwed anyway if
+    // we can't even schedule something.
     push(std::make_unique<LambdaTask>(std::forward<F>(fn)));
   }
 

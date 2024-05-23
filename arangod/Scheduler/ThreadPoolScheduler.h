@@ -52,8 +52,8 @@ struct ThreadPoolScheduler final : Scheduler {
 
  private:
   std::shared_ptr<SchedulerMetrics> _metrics;
-  std::atomic<bool> _stopping;
-  std::atomic<uint64_t> _lastLowPriorityDequeueTime;
+  std::atomic<bool> _stopping = false;
+  std::atomic<uint64_t> _lastLowPriorityDequeueTime = 0;
   std::vector<std::unique_ptr<WorkStealingThreadPool>> _threadPools;
 };
 

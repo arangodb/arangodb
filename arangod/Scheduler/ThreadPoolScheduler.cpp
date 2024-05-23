@@ -47,7 +47,7 @@ void ThreadPoolScheduler::trackEndOngoingLowPriorityTask() noexcept {
   _metrics->_ongoingLowPriorityGauge -= 1;
 }
 void ThreadPoolScheduler::trackQueueTimeViolation() {}
-void ThreadPoolScheduler::trackQueueItemSize(std::int64_t int64) noexcept {}
+void ThreadPoolScheduler::trackQueueItemSize(std::int64_t) noexcept {}
 
 uint64_t ThreadPoolScheduler::getLastLowPriorityDequeueTime() const noexcept {
   return _lastLowPriorityDequeueTime.load(std::memory_order::relaxed);
@@ -98,23 +98,26 @@ ThreadPoolScheduler::ThreadPoolScheduler(
   poolMetrics.queueLength = _metrics->_metricsQueueLengths[0];
   poolMetrics.dequeueTimes = _metrics->_metricsDequeueTimes[0];
   _threadPools.emplace_back(std::make_unique<WorkStealingThreadPool>(
-      "SchedMaintenance", std::max(std::ceil(maxThreads * 0.1), 2.),
+      "SchedMaintenance", std::max<std::size_t>(std::ceil(maxThreads * 0.1), 2),
       poolMetrics));
 
   poolMetrics.queueLength = _metrics->_metricsQueueLengths[1];
   poolMetrics.dequeueTimes = _metrics->_metricsDequeueTimes[1];
   _threadPools.emplace_back(std::make_unique<WorkStealingThreadPool>(
-      "SchedHigh", std::max(std::ceil(maxThreads * 0.4), 8.), poolMetrics));
+      "SchedHigh", std::max<std::size_t>(std::ceil(maxThreads * 0.4), 8),
+      poolMetrics));
 
   poolMetrics.queueLength = _metrics->_metricsQueueLengths[2];
   poolMetrics.dequeueTimes = _metrics->_metricsDequeueTimes[2];
   _threadPools.emplace_back(std::make_unique<WorkStealingThreadPool>(
-      "SchedMedium", std::max(std::ceil(maxThreads * 0.4), 8.), poolMetrics));
+      "SchedMedium", std::max<std::size_t>(std::ceil(maxThreads * 0.4), 8),
+      poolMetrics));
 
   poolMetrics.queueLength = _metrics->_metricsQueueLengths[3];
   poolMetrics.dequeueTimes = _metrics->_metricsDequeueTimes[3];
   _threadPools.emplace_back(std::make_unique<WorkStealingThreadPool>(
-      "SchedLow", std::max(std::ceil(maxThreads * 0.6), 16.), poolMetrics));
+      "SchedLow", std::max<std::size_t>(std::ceil(maxThreads * 0.6), 16),
+      poolMetrics));
 }
 
 void ThreadPoolScheduler::shutdown() {
