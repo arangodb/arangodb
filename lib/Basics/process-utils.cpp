@@ -274,25 +274,33 @@ static void StartExternalProcessPosixSpawn(
       additionalEnv.begin(), additionalEnv.end(), std::back_inserter(envs),
       [](auto& str) -> char* { return const_cast<char*>(str.data()); });
 
-  int result =
-      posix_spawn(&external->_pid, external->_executable.c_str(), &file_actions,
-                  &spawn_attrs, external->_arguments, envs.data());
+  int result = posix_spawnp(&external->_pid, external->_executable.c_str(),
+                            &file_actions, &spawn_attrs, external->_arguments,
+                            envs.data());
 
   posix_spawnattr_destroy(&spawn_attrs);
   posix_spawn_file_actions_destroy(&file_actions);
 
+  bool executableNotFound = false;
+
   if (result != 0) {
-    LOG_TOPIC("e3a2b", ERR, arangodb::Logger::FIXME) << "spawn failed";
+    if (errno == ENOENT) {
+      executableNotFound = true;
+    } else {
+      external->_status = TRI_EXT_FORK_FAILED;
 
-    if (usePipes) {
-      close(pipe_server_to_child[0]);
-      close(pipe_server_to_child[1]);
-      close(pipe_child_to_server[0]);
-      close(pipe_child_to_server[1]);
+      LOG_TOPIC("e3a2b", ERR, arangodb::Logger::FIXME)
+          << "spawn failed: " << strerror(errno);
+
+      if (usePipes) {
+        close(pipe_server_to_child[0]);
+        close(pipe_server_to_child[1]);
+        close(pipe_child_to_server[0]);
+        close(pipe_child_to_server[1]);
+      }
+
+      return;
     }
-
-    external->_status = TRI_EXT_FORK_FAILED;
-    return;
   }
 
   LOG_TOPIC("ac58b", DEBUG, arangodb::Logger::FIXME)
@@ -309,7 +317,12 @@ static void StartExternalProcessPosixSpawn(
     external->_readPipe = -1;
   }
 
-  external->_status = TRI_EXT_RUNNING;
+  if (executableNotFound) {
+    external->_status = TRI_EXT_TERMINATED;
+    external->_exitStatus = 1;
+  } else {
+    external->_status = TRI_EXT_RUNNING;
+  }
 }
 
 [[maybe_unused]] static void StartExternalProcess(
