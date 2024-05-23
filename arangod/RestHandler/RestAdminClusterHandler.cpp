@@ -2863,13 +2863,15 @@ RestAdminClusterHandler::collectRebalanceInformation(
         collectionRef.weight = 1.0;
         distributeShardsLikeCounter[collectionRef.name].index = index;
 
-        for (auto const& shard : *collection->shardIds()) {
+        auto shardIds = collection->shardIds();
+        for (auto const& shard : *shardIds) {
           auto shardIndex =
               static_cast<decltype(collectionRef.shards)::value_type>(
                   p.shards.size());
           collectionRef.shards.push_back(shardIndex);
           auto& shardRef = p.shards.emplace_back();
           shardRef.name = shard.first;
+          TRI_ASSERT(!shard.second.empty());
           shardRef.leader = getDBServerIndex(shard.second[0]);
           shardRef.id = shardIndex;
           shardRef.collectionId = index;

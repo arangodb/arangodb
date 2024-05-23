@@ -7,6 +7,8 @@ devel
   the APIs exposing the list of database names, all databases in fact still
   exist and are fully functional.
 
+* Fix a potential race in collectRebalanceInformation.
+
 * FE-447: fix query spotlight search, make it case-insensitive.
 
 * FE-443: Fix inconsistent tooltip padding in Create Index dialog.

@@ -142,7 +142,12 @@ NetworkFeature::NetworkFeature(Server& server, metrics::MetricsFeature& metrics,
   startsAfter<EngineSelectorFeature>();
 }
 
-NetworkFeature::~NetworkFeature() { cancelRetryRequests(); }
+NetworkFeature::~NetworkFeature() {
+  cancelRetryRequests();
+  if (_pool) {
+    _pool->drainConnections();
+  }
+}
 
 void NetworkFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
@@ -363,10 +368,12 @@ void NetworkFeature::stop() {
   cancelRetryRequests();
   if (_pool) {
     _pool->shutdownConnections();
+    _pool->drainConnections();
   }
 }
 
 void NetworkFeature::unprepare() {
+  cancelRetryRequests();
   if (_pool) {
     _pool->drainConnections();
   }
