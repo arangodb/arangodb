@@ -64,7 +64,7 @@ exports.checker = class {
     } catch (x) {
       this.runner.setResult(te, true, {
         status: false,
-        message: 'failed to fetch the tasks on the system after the test: [' + x.message
+        message: 'failed to fetch the tasks on the system after the test: ' + x.message
       });
       return false;
     }
