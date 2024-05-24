@@ -329,10 +329,19 @@ static void StartExternalProcess(ExternalProcess* external, bool usePipes,
 
   posix_spawnattr_t spawn_attrs;
   err |= posix_spawnattr_init(&spawn_attrs);
-  err |= posix_spawnattr_setflags(&spawn_attrs, POSIX_SPAWN_SETSIGDEF);
+  err |= posix_spawnattr_setflags(
+      &spawn_attrs, POSIX_SPAWN_SETSIGDEF | POSIX_SPAWN_SETSIGMASK);
   sigset_t all;
   sigfillset(&all);
   err |= posix_spawnattr_setsigdefault(&spawn_attrs, &all);
+  sigset_t none;
+  sigemptyset(&none);
+  err |= posix_spawnattr_setsigmask(&spawn_attrs, &none);
+
+  ScopeGuard cleanup([&]() noexcept {
+    posix_spawnattr_destroy(&spawn_attrs);
+    posix_spawn_file_actions_destroy(&file_actions);
+  });
 
   if (err != 0) {
     external->_status = TRI_EXT_PIPE_FAILED;
@@ -359,11 +368,6 @@ static void StartExternalProcess(ExternalProcess* external, bool usePipes,
   int result = posix_spawnp(&external->_pid, external->_executable.c_str(),
                             &file_actions, &spawn_attrs, external->_arguments,
                             envs.data());
-
-  ScopeGuard cleanup([&]() noexcept {
-    posix_spawnattr_destroy(&spawn_attrs);
-    posix_spawn_file_actions_destroy(&file_actions);
-  });
 
   if (result != 0) {
     int errnoCopy = errno;
