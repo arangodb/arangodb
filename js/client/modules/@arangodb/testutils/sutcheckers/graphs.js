@@ -52,7 +52,7 @@ exports.checker = class {
     if (graphs && graphs.count() !== this.graphCount) {
       this.runner.setResult(te, false, {
         status: false,
-        message: 'Cleanup of graphs missing - found graph definitions: [ ' +
+        message: 'Cleanup of graphs missing - found graph definitions: ' +
           JSON.stringify(graphs.toArray())
       });
       this.graphCount = graphs.count();
