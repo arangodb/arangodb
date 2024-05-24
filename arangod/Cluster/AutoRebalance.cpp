@@ -221,8 +221,11 @@ ShardImbalance AutoRebalanceProblem::computeShardImbalance() const {
     res.totalShards += res.numberShards[i];
     totalVolumes += dbServers[i].volumeSize;
   }
-  for (size_t i = 0; i < dbServers.size(); ++i) {
-    res.targetSize[i] = dbServers[i].volumeSize / totalVolumes * res.totalUsed;
+  if (totalVolumes > 0.0) {
+    for (size_t i = 0; i < dbServers.size(); ++i) {
+      res.targetSize[i] =
+          dbServers[i].volumeSize / totalVolumes * res.totalUsed;
+    }
   }
   for (size_t i = 0; i < dbServers.size(); ++i) {
     res.imbalance += pow(res.sizeUsed[i] - res.targetSize[i], 2.0);
@@ -256,6 +259,7 @@ std::vector<double> AutoRebalanceProblem::piCoefficients(
       }
     }
   }
+  TRI_ASSERT(dbServersAffected > 0);
   double avg = sum / dbServersAffected;
   for (size_t i = 0; i < dbServers.size(); ++i) {
     if (haveShards[i]) {  // only if affected
@@ -279,9 +283,11 @@ LeaderImbalance AutoRebalanceProblem::computeLeaderImbalance() const {
     res.totalShards += res.numberShards[i];
     totalCapacity += dbServers[i].CPUcapacity;
   }
-  for (size_t i = 0; i < dbServers.size(); ++i) {
-    res.targetWeight[i] =
-        res.totalWeight / totalCapacity * dbServers[i].CPUcapacity;
+  if (totalCapacity != 0.0) {
+    for (size_t i = 0; i < dbServers.size(); ++i) {
+      res.targetWeight[i] =
+          res.totalWeight / totalCapacity * dbServers[i].CPUcapacity;
+    }
   }
   for (auto const& c : collections) {
     std::vector<double> pis = piCoefficients(c);

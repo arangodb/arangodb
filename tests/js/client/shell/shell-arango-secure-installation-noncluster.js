@@ -52,12 +52,6 @@ function arangoSecureInstallationSuite () {
     },
     
     testInvokeArangoSecureInstallationWithoutPassword: function () {
-      let platform = internal.platform;
-      if (platform !== 'linux') {
-        // test is currently only supported on Linux
-        return;
-      }
-
       let path = fs.getTempFile();
       // database directory
       fs.makeDirectory(path);
@@ -67,8 +61,8 @@ function arangoSecureInstallationSuite () {
         let args = [path];
         // invoke arango-secure-installation without password. this will fail
         let actualRc = internal.executeExternalAndWait(arangoSecureInstallation, args);
-        assertTrue(actualRc.hasOwnProperty("exit"));
-        assertEqual(1, actualRc.exit);
+        assertTrue(actualRc.hasOwnProperty("exit"), actualRc);
+        assertEqual(1, actualRc.exit, actualRc);
       } finally {
         try {
           fs.removeDirectory(path);
@@ -77,12 +71,6 @@ function arangoSecureInstallationSuite () {
     },
 
     testInvokeArangoSecureInstallationWithPassword: function () {
-      let platform = internal.platform;
-      if (platform !== 'linux') {
-        // test is currently only supported on Linux
-        return;
-      }
-
       let path = fs.getTempFile();
       // database directory
       fs.makeDirectory(path);
@@ -93,8 +81,8 @@ function arangoSecureInstallationSuite () {
         let args = [path];
         // invoke arango-secure-installation with password. this must succeed
         let actualRc = internal.executeExternalAndWait(arangoSecureInstallation, args);
-        assertTrue(actualRc.hasOwnProperty("exit"));
-        assertEqual(0, actualRc.exit);
+        assertTrue(actualRc.hasOwnProperty("exit"), actualRc);
+        assertEqual(0, actualRc.exit, actualRc);
       } finally {
         try {
           fs.removeDirectory(path);

@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryList.h"
+#include "Auth/TokenCache.h"
 #include "Assertions/ProdAssert.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
@@ -292,9 +293,9 @@ arangodb::cluster::CallbackGuard Manager::buildCallbackGuard(
       auto& clusterInfo = clusterFeature.clusterInfo();
       rGuard = clusterInfo.rebootTracker().callMeOnChange(
           origin,
-          [this, tid = state.id()]() {
+          [this, tid = state.id(), databaseName = state.vocbase().name()]() {
             // abort the transaction once the coordinator goes away
-            abortManagedTrx(tid, std::string()).get();
+            abortManagedTrx(tid, databaseName).get();
           },
           "Transaction aborted since coordinator rebooted or failed.");
     }
@@ -1117,7 +1118,6 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
     auto& buck = _transactions[bucket];
     auto it = buck._managed.find(tid);
     if (it == buck._managed.end()) {
-      ADB_PROD_ASSERT(database != "");
       // insert a tombstone for an aborted transaction that we never saw before
       auto inserted = buck._managed.try_emplace(
           tid, _feature, MetaType::Tombstone,
