@@ -38,7 +38,7 @@ exports.checker = class {
     if (failurePoints.length > 0) {
       this.runner.setResult(te, true, {
         status: false,
-        message: 'Cleanup of failure points missing - found failure points engaged: [ ' +
+        message: 'Cleanup of failure points missing - found failure points engaged: ' +
           JSON.stringify(failurePoints)
       });
       return false;
