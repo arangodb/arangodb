@@ -53,7 +53,7 @@ exports.checker = class {
       if (userManager.all().length !== this.usersCount) {
         this.runner.setResult(te, false, {
           status: false,
-          message: 'Cleanup of users missing - found users left over: [ ' +
+          message: 'Cleanup of users missing - found users left over: ' +
             JSON.stringify(userManager.all())
         });
         return false;
