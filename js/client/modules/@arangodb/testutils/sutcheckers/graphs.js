@@ -45,7 +45,7 @@ exports.checker = class {
     } catch (x) {
       this.runner.setResult(te, false, {
         status: false,
-        message: 'failed to fetch the graphs: [ ' + x.message
+        message: 'failed to fetch the graphs: ' + x.message
       });
       return false;
     }
