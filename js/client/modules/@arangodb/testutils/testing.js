@@ -314,7 +314,7 @@ function loadModuleOptions () {
   let testModules = _.filter(fs.list(__dirname),
                              function (p) {
                                return (
-                                 p.substr(-3) === '.js' && !(
+                                 p.endsWith('.js') && !(
                                    (p.indexOf('aql-') !== -1) ||
                                      (nonModules.find(m => { return m === p;}) === p)
                                  )
