@@ -95,6 +95,9 @@ ThreadPoolScheduler::ThreadPoolScheduler(
 
   _threadPools.reserve(4);
 
+  // Note: in total we allocate 1.5 times the number of requested threads,
+  // because in this scheduler implementation we no longer share threads between
+  // the different priorities, so we want to compensate that a bit.
   poolMetrics.queueLength = _metrics->_metricsQueueLengths[0];
   poolMetrics.dequeueTimes = _metrics->_metricsDequeueTimes[0];
   _threadPools.emplace_back(std::make_unique<WorkStealingThreadPool>(

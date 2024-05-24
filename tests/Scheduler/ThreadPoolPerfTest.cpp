@@ -20,71 +20,23 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <gtest/gtest.h>
+
 #include <array>
 #include <atomic>
 #include <chrono>
 #include <iostream>
 #include <memory>
-#include <ostream>
 #include <random>
 #include <thread>
+
 #include "GeneralServer/RequestLane.h"
 #include "Scheduler/LockfreeThreadPool.h"
-#include "Scheduler/SimpleThreadPool.h"
 #include "Scheduler/SupervisedScheduler.h"
 #include "Scheduler/WorkStealingThreadPool.h"
-#include "Logger/Logger.h"
 #include "Mocks/Servers.h"
 #include "Metrics/MetricsFeature.h"
 
 using namespace arangodb;
-
-TEST(ThreadPoolTest, start_stop_test) {
-  SimpleThreadPool pool{"test-sched", 1};
-}
-
-TEST(ThreadPoolTest, simple_counter) {
-  std::atomic<std::size_t> counter{0};
-  {
-    SimpleThreadPool pool{"test-sched", 1};
-    pool.push([&]() noexcept { counter++; });
-    pool.push([&]() noexcept { counter++; });
-    pool.push([&]() noexcept { counter++; });
-  }
-
-  ASSERT_EQ(counter, 3);
-}
-
-TEST(ThreadPoolTest, multi_thread_counter) {
-  std::atomic<std::size_t> counter{0};
-  {
-    SimpleThreadPool pool{"test-sched", 3};
-    for (size_t k = 0; k < 100; k++) {
-      pool.push([&]() noexcept { counter++; });
-    }
-  }
-
-  ASSERT_EQ(counter, 100);
-}
-
-TEST(ThreadPoolTest, stop_when_sleeping) {
-  {
-    SimpleThreadPool pool{"test-sched", 3};
-    std::this_thread::sleep_for(std::chrono::seconds{3});
-  }
-}
-
-TEST(ThreadPoolTest, work_when_sleeping) {
-  std::atomic<std::size_t> counter{0};
-  {
-    SimpleThreadPool pool{"test-sched", 3};
-    std::this_thread::sleep_for(std::chrono::seconds{3});
-    pool.push([&]() noexcept { counter++; });
-    pool.push([&]() noexcept { counter++; });
-    pool.push([&]() noexcept { counter++; });
-  }
-  ASSERT_EQ(counter, 3);
-}
 
 struct SupervisedSchedulerPool {
   static constexpr auto limit = 1024 * 64;
