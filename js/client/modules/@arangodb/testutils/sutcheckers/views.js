@@ -67,10 +67,7 @@ exports.checker = class {
       });
       return false;
     }
-    let delta = tu.diffArray(this.viewsBefore, viewsAfter).filter(function(name) {
-      return ! ((name[0] === '_') || (name === "compact") || (name === "election")
-                || (name === "log")); // exclude system/agency collections from the comparison
-    });
+    let delta = tu.diffArray(this.viewsBefore, viewsAfter);
     if (delta.length !== 0) {
       this.runner.setResult(te, false, {
         status: false,
