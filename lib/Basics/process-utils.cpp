@@ -273,10 +273,9 @@ static bool CreatePipes(int* pipe_server_to_child, int* pipe_child_to_server) {
 
 #include <spawn.h>
 
-static void StartExternalProcess(
-    ExternalProcess* external, bool usePipes,
-    std::vector<std::string> const& additionalEnv,
-    std::string const& fileForStdErr) {
+static void StartExternalProcess(ExternalProcess* external, bool usePipes,
+                                 std::vector<std::string> const& additionalEnv,
+                                 std::string const& fileForStdErr) {
   int pipe_server_to_child[2];
   int pipe_child_to_server[2];
 
