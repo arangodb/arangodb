@@ -42,7 +42,7 @@ exports.checker = class {
     } catch (x) {
       this.runner.setResult(te, true, {
         status: false,
-        message: 'failed to fetch the users on the system before the test: [' + x.message
+        message: 'failed to fetch the users on the system before the test: ' + x.message
       });
       return false;
     }
