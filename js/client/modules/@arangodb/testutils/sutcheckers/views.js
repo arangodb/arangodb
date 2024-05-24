@@ -74,7 +74,7 @@ exports.checker = class {
     if (delta.length !== 0) {
       this.runner.setResult(te, false, {
         status: false,
-        message: 'Cleanup missing - test left over view: [ ' + delta
+        message: 'Cleanup missing - test left over view: ' + delta
       });
       return false;
     }
