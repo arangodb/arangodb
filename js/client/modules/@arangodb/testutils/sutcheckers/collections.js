@@ -48,7 +48,7 @@ exports.checker = class {
     } catch (x) {
       this.runner.setResult(te, true, {
         status: false,
-        message: 'failed to fetch the previously available collections: [' + x.message
+        message: 'failed to fetch the previously available collections: ' + x.message
       });
       return false;
     }
