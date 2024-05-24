@@ -75,7 +75,7 @@ exports.checker = class {
     if (delta.length !== 0) {
        this.runner.setResult(te, true, {
         status: false,
-        message: 'Cleanup missing - test left over collection: [' + delta
+        message: 'Cleanup missing - test left over collection: ' + delta
        });
       return false;
     }
