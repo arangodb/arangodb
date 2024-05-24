@@ -63,7 +63,7 @@ exports.checker = class {
     } catch (x) {
       this.runner.setResult(te, false, {
         status: false,
-        message: 'failed to fetch the currently available views: [' + x.message
+        message: 'failed to fetch the currently available views: ' + x.message
       });
       return false;
     }
