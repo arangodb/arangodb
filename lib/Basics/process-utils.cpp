@@ -28,6 +28,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <signal.h>
 #include <algorithm>
 #include <chrono>
 #include <memory>
@@ -37,6 +38,7 @@
 
 #include "process-utils.h"
 #include "signals.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/system-functions.h"
 
 #if defined(TRI_HAVE_MACOS_MEM_STATS)
@@ -85,6 +87,13 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+
+#ifdef __APPLE__
+// The following hack is required to get access to the environment variables
+// in the same way as on Linux:
+#include <crt_externs.h>
+#define environ (*_NSGetEnviron())
+#endif
 
 using namespace arangodb;
 
@@ -243,37 +252,60 @@ static void StartExternalProcessPosixSpawn(
     }
   }
 
+  int err = 0;  // accumulate any errors we might get
   posix_spawn_file_actions_t file_actions;
-  posix_spawn_file_actions_init(&file_actions);
+  err |= posix_spawn_file_actions_init(&file_actions);
   // file actions are performed in order they were added.
 
   if (usePipes) {
-    posix_spawn_file_actions_adddup2(&file_actions, pipe_server_to_child[0], 0);
-    posix_spawn_file_actions_adddup2(&file_actions, pipe_child_to_server[1], 1);
+    err |= posix_spawn_file_actions_adddup2(&file_actions,
+                                            pipe_server_to_child[0], 0);
+    err |= posix_spawn_file_actions_adddup2(&file_actions,
+                                            pipe_child_to_server[1], 1);
 
-    posix_spawn_file_actions_addclose(&file_actions, pipe_server_to_child[0]);
-    posix_spawn_file_actions_addclose(&file_actions, pipe_server_to_child[1]);
-    posix_spawn_file_actions_addclose(&file_actions, pipe_child_to_server[0]);
-    posix_spawn_file_actions_addclose(&file_actions, pipe_child_to_server[1]);
+    err |= posix_spawn_file_actions_addclose(&file_actions,
+                                             pipe_server_to_child[0]);
+    err |= posix_spawn_file_actions_addclose(&file_actions,
+                                             pipe_server_to_child[1]);
+    err |= posix_spawn_file_actions_addclose(&file_actions,
+                                             pipe_child_to_server[0]);
+    err |= posix_spawn_file_actions_addclose(&file_actions,
+                                             pipe_child_to_server[1]);
   } else {
-    posix_spawn_file_actions_addopen(&file_actions, 0, "/dev/null", O_RDONLY,
-                                     0);
+    err |= posix_spawn_file_actions_addopen(&file_actions, 0, "/dev/null",
+                                            O_RDONLY, 0);
   }
 
   if (!fileForStdErr.empty()) {
-    posix_spawn_file_actions_addopen(&file_actions, 2, fileForStdErr.c_str(),
-                                     O_CREAT | O_WRONLY | O_TRUNC, 0644);
+    err |= posix_spawn_file_actions_addopen(&file_actions, 2,
+                                            fileForStdErr.c_str(),
+                                            O_CREAT | O_WRONLY | O_TRUNC, 0644);
   }
 
   posix_spawnattr_t spawn_attrs;
-  posix_spawnattr_init(&spawn_attrs);
+  err |= posix_spawnattr_init(&spawn_attrs);
+  err |= posix_spawnattr_setflags(&spawn_attrs, POSIX_SPAWN_SETSIGDEF);
+  sigset_t all;
+  sigfillset(&all);
+  err |= posix_spawnattr_setsigdefault(&spawn_attrs, &all);
+
+  if (err != 0) {
+    external->_status = TRI_EXT_PIPE_FAILED;
+    if (usePipes) {
+      close(pipe_server_to_child[0]);
+      close(pipe_server_to_child[1]);
+      close(pipe_child_to_server[0]);
+      close(pipe_child_to_server[1]);
+    }
+    return;
+  }
 
   std::vector<char*> envs;
   for (char** e = environ; *e != nullptr; ++e) {
     envs.push_back(*e);
   }
 
-  envs.reserve(additionalEnv.size() + 1);
+  envs.reserve(envs.size() + additionalEnv.size() + 1);
   std::transform(
       additionalEnv.begin(), additionalEnv.end(), std::back_inserter(envs),
       [](auto& str) -> char* { return const_cast<char*>(str.data()); });
@@ -283,29 +315,33 @@ static void StartExternalProcessPosixSpawn(
                             &file_actions, &spawn_attrs, external->_arguments,
                             envs.data());
 
-  posix_spawnattr_destroy(&spawn_attrs);
-  posix_spawn_file_actions_destroy(&file_actions);
-
-  bool executableNotFound = false;
+  ScopeGuard cleanup([&]() noexcept {
+    posix_spawnattr_destroy(&spawn_attrs);
+    posix_spawn_file_actions_destroy(&file_actions);
+  });
 
   if (result != 0) {
-    if (errno == ENOENT) {
-      executableNotFound = true;
+    int errnoCopy = errno;
+    if (errnoCopy == ENOENT) {
+      // We fake the old legacy behaviour here from the fork/exec times:
+      external->_status = TRI_EXT_TERMINATED;
+      external->_exitStatus = 1;
+      LOG_TOPIC("e3a2a", ERR, arangodb::Logger::FIXME)
+          << "spawn failed: executable not found";
     } else {
       external->_status = TRI_EXT_FORK_FAILED;
 
       LOG_TOPIC("e3a2b", ERR, arangodb::Logger::FIXME)
-          << "spawn failed: " << strerror(errno);
-
-      if (usePipes) {
-        close(pipe_server_to_child[0]);
-        close(pipe_server_to_child[1]);
-        close(pipe_child_to_server[0]);
-        close(pipe_child_to_server[1]);
-      }
-
-      return;
+          << "spawn failed: " << strerror(errnoCopy);
     }
+    if (usePipes) {
+      close(pipe_server_to_child[0]);
+      close(pipe_server_to_child[1]);
+      close(pipe_child_to_server[0]);
+      close(pipe_child_to_server[1]);
+    }
+
+    return;
   }
 
   LOG_TOPIC("ac58b", DEBUG, arangodb::Logger::FIXME)
@@ -322,12 +358,7 @@ static void StartExternalProcessPosixSpawn(
     external->_readPipe = -1;
   }
 
-  if (executableNotFound) {
-    external->_status = TRI_EXT_TERMINATED;
-    external->_exitStatus = 1;
-  } else {
-    external->_status = TRI_EXT_RUNNING;
-  }
+  external->_status = TRI_EXT_RUNNING;
 }
 
 [[maybe_unused]] static void StartExternalProcess(
