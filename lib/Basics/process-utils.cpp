@@ -28,6 +28,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <signal.h>
 #include <algorithm>
 #include <chrono>
 #include <memory>
@@ -328,6 +329,10 @@ static void StartExternalProcess(ExternalProcess* external, bool usePipes,
 
   posix_spawnattr_t spawn_attrs;
   err |= posix_spawnattr_init(&spawn_attrs);
+  err |= posix_spawnattr_setflags(&spawn_attrs, POSIX_SPAWN_SETSIGDEF);
+  sigset_t all;
+  sigfillset(&all);
+  err |= posix_spawnattr_setsigdefault(&spawn_attrs, &all);
 
   if (err != 0) {
     external->_status = TRI_EXT_PIPE_FAILED;
