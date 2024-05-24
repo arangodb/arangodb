@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <errno.h>
+#include <spawn.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -87,13 +88,6 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-
-#ifdef __APPLE__
-// The following hack is required to get access to the environment variables
-// in the same way as on Linux:
-#include <crt_externs.h>
-#define environ (*_NSGetEnviron())
-#endif
 
 using namespace arangodb;
 
@@ -233,8 +227,6 @@ static bool CreatePipes(int* pipe_server_to_child, int* pipe_child_to_server) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief starts external process
 ////////////////////////////////////////////////////////////////////////////////
-
-#include <spawn.h>
 
 static void StartExternalProcessPosixSpawn(
     ExternalProcess* external, bool usePipes,
