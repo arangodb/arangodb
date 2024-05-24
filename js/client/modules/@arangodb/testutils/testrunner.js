@@ -106,7 +106,7 @@ class testRunner {
     if (serverDead) {
       this.serverDead = true;
     }
-    this.results[this.translateResult(te)].message += " ] - Original test status: \n" + orgRes;
+    this.results[this.translateResult(te)].message += " - Original test status: \n" + orgRes;
   }
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief Hooks that you can overload to be invoked in different phases:
