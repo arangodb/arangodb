@@ -1,3 +1,10 @@
+v3.11.7.5 (xxxx-xx-xx)
+----------------------
+
+* Use posix_spawn instead of fork/exec for subprocesses. This solves a
+  performance issue during hotbackup upload.
+
+
 v3.11.7.4 (2024-05-10)
 ----------------------
 
