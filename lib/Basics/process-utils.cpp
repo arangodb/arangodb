@@ -94,6 +94,13 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 
+#ifdef __APPLE__
+// The following hack is required to get access to the environment variables
+// in the same way as on Linux:
+#include <crt_externs.h>
+#define environ (*_NSGetEnviron())
+#endif
+
 using namespace arangodb;
 
 namespace {
