@@ -51,7 +51,7 @@ exports.checker = class {
     } catch (x) {
       this.runner.setResult(te, false, {
         status: false,
-        message: 'failed to fetch the databases list: [' + x.message
+        message: 'failed to fetch the databases list: ' + x.message
       });
     }
     return false;
