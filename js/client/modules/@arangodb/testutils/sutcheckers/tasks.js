@@ -56,7 +56,7 @@ exports.checker = class {
       if (this.filterTasksList(tasks.get()).length !== this.taskCount) {
         this.runner.setResult(te, false, {
           status: false,
-          message: 'Cleanup of tasks missing - found tasks left over: [ ' +
+          message: 'Cleanup of tasks missing - found tasks left over: ' +
             JSON.stringify(tasks.get())
         });
         return false;
