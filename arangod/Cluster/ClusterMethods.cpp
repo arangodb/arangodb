@@ -3460,7 +3460,11 @@ arangodb::Result hotRestoreCoordinator(ClusterFeature& feature,
   result = (matches.empty()) ? ci.agencyReplan(plan.slice())
                              : ci.agencyReplan(newPlan.slice());
   if (!result.ok()) {
-    result = controlMaintenanceFeature(pool, "proceed", backupId, dbServers);
+    // We ignore the result of the Proceed here.
+    // In case one of the servers does not proceed now, it will automatically
+    // reactivate maintenance after 30s.
+    std::ignore =
+        controlMaintenanceFeature(pool, "proceed", backupId, dbServers);
     events::RestoreHotbackup(backupId, result.errorNumber());
     return result;
   }

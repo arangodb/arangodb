@@ -25,8 +25,8 @@
 // / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var internal = require('internal');
-var jsunity = require('jsunity');
+const internal = require('internal');
+const jsunity = require('jsunity');
 
 function runSetup () {
   'use strict';
@@ -60,12 +60,6 @@ function recoverySuite () {
       let crashFile = internal.env["crash-log"];
 
       assertTrue(fs.isFile(crashFile), crashFile);
-
-      let platform = internal.platform;
-      if (platform !== 'linux') {
-        // crash handler only available on Linux
-        return;
-      }
 
       let versionDetails = internal.db._version(true).details;
       assertTrue(versionDetails.hasOwnProperty("asan"));
