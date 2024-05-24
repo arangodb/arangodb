@@ -330,7 +330,7 @@ static void StartExternalProcessPosixSpawn(
       // We fake the old legacy behaviour here from the fork/exec times:
       external->_status = TRI_EXT_TERMINATED;
       external->_exitStatus = 1;
-      LOG_TOPIC("e3a2a", ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("e3a2c", ERR, arangodb::Logger::FIXME)
           << "spawn failed: executable not found";
     } else {
       external->_status = TRI_EXT_FORK_FAILED;
