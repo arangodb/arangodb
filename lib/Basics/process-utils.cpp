@@ -361,17 +361,18 @@ static void StartExternalProcess(ExternalProcess* external, bool usePipes,
   });
 
   if (result != 0) {
-    if (errno == ENOENT) {
+    int errnoCopy = errno;
+    if (errnoCopy == ENOENT) {
       // We fake the old legacy behaviour here from the fork/exec times:
       external->_status = TRI_EXT_TERMINATED;
       external->_exitStatus = 1;
-      LOG_TOPIC("e3a2b", ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC("e3a2a", ERR, arangodb::Logger::FIXME)
           << "spawn failed: executable not found";
     } else {
       external->_status = TRI_EXT_FORK_FAILED;
 
       LOG_TOPIC("e3a2b", ERR, arangodb::Logger::FIXME)
-          << "spawn failed: " << strerror(errno);
+          << "spawn failed: " << strerror(errnoCopy);
     }
     if (usePipes) {
       close(pipe_server_to_child[0]);
