@@ -1,7 +1,8 @@
-v3.11.7.5 (2024-05-27)
+v3.11.7.5 (XXXX-XX-XX)
 ----------------------
 
 * Detach threads in getResponsibleServers if they wait for more than 1s.
+
 
 v3.11.7.4 (2024-05-10)
 ----------------------
