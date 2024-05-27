@@ -32,7 +32,6 @@ namespace fuerte {
 inline namespace v1 {
 class Connection;
 class ConnectionBuilder;
-class EventLoopService;
 }  // namespace v1
 }  // namespace fuerte
 class ClusterInfo;
