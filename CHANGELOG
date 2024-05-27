@@ -1,8 +1,7 @@
 devel
 -----
 
-* Fix file counting in hotbackup upload in case of errors in remote-to-remote
-  copies. Also prevent spurious rclone errors in S3.
+* Prevent spurious rclone errors in S3.
 
 * Use posix_spawn instead of fork/exec for subprocesses. This solves a
   performance issue during hotbackup upload.
