@@ -1,7 +1,11 @@
-v3.11.9 (2024-05-18)
---------------------
+v3.11.10 (XXXX-XX-XX)
+---------------------
 
 * Fix a potential race in collectRebalanceInformation.
+
+
+v3.11.9 (2024-05-18)
+--------------------
 
 * Fixed the listDatabases API: Directly after adding a new empty DBServer, or
   after restoring a Hotbackup the listDatabases() would return an empty list of
