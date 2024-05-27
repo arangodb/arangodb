@@ -13,6 +13,10 @@ v3.11.10 (XXXX-XX-XX)
   want to fetch and remember the previous log levels settings. Such tools can
   now simply call the new API to restore the original log levels.
 
+* Updated ArangoDB Starter to v0.18.6-preview-2.
+
+* Fix a potential race in collectRebalanceInformation.
+
 
 v3.11.9 (2024-05-18)
 --------------------
