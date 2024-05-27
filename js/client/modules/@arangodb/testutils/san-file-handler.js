@@ -94,8 +94,15 @@ class sanHandler {
       print("processing ", value);
       const { upstream, local } = value;
       let fn = `${local}.${this.binaryname}.${pid}`;
-      if (this.extremeVerbosity) {
+      if (true || this.extremeVerbosity) {
         print(`checking for ${fn}: ${fs.exists(fn)}`);
+        let t = fn.split(fs.pathSeparator);
+        t.pop();
+        t = fs.join(t);
+        print("Files in ", t);
+        for (let f of fs.list(t)) {
+          print(f);
+        }
       }
       if (fs.exists(fn)) {
         let content = fs.read(fn);

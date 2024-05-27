@@ -958,7 +958,7 @@ class instance {
   // //////////////////////////////////////////////////////////////////////////////
 
   shutdownArangod (forceTerminate) {
-    print(CYAN + Date() +' stopping ' + this.name + ', url: ' + this.url + ', force terminate: ' + forceTerminate + ' ' + this.protocol + RESET);
+    print(CYAN + Date() +' stopping ' + this.name + ', pid ' + this.pid + ', url: ' + this.url + ', force terminate: ' + forceTerminate + ' ' + this.protocol + RESET);
     if (forceTerminate === undefined) {
       forceTerminate = false;
     }
