@@ -2,7 +2,7 @@
  "info": {
   "description": "ArangoDB REST API Interface",
   "title": "ArangoDB",
-  "version": "3.11.9"
+  "version": "3.11.10"
  },
  "openapi": "3.1.0",
  "paths": {
@@ -4696,7 +4696,7 @@
              "type": "array"
             },
             "expression": {
-             "description": "An AQL `RETURN` operation with an expression that computes the desired value.\nSee [Computed Value Expressions](../../concepts/data-structure/documents/computed-values.md#computed-value-expressions) for details.\n",
+             "description": "An AQL `RETURN` operation with an expression that computes the desired value.\nSee [Computed Value Expressions](https://docs.arangodb.com/3.11/concepts/data-structure/documents/computed-values/#computed-value-expressions) for details.\n",
              "type": "string"
             },
             "failOnWarning": {
@@ -4782,7 +4782,7 @@
           "type": "integer"
          },
          "schema": {
-          "description": "Optional object that specifies the collection level schema for\ndocuments. The attribute keys `rule`, `level` and `message` must follow the\nrules documented in [Document Schema Validation](../../concepts/data-structure/documents/schema-validation.md)\n",
+          "description": "Optional object that specifies the collection level schema for\ndocuments. The attribute keys `rule`, `level` and `message` must follow the\nrules documented in [Document Schema Validation](https://docs.arangodb.com/3.11/concepts/data-structure/documents/schema-validation/)\n",
           "type": "object"
          },
          "shardKeys": {
@@ -5561,7 +5561,7 @@
              "type": "array"
             },
             "expression": {
-             "description": "An AQL `RETURN` operation with an expression that computes the desired value.\nSee [Computed Value Expressions](../../concepts/data-structure/documents/computed-values.md#computed-value-expressions) for details.\n",
+             "description": "An AQL `RETURN` operation with an expression that computes the desired value.\nSee [Computed Value Expressions](https://docs.arangodb.com/3.11/concepts/data-structure/documents/computed-values/#computed-value-expressions) for details.\n",
              "type": "string"
             },
             "failOnWarning": {
@@ -5595,7 +5595,7 @@
           "type": "integer"
          },
          "schema": {
-          "description": "Optional object that specifies the collection level schema for\ndocuments. The attribute keys `rule`, `level` and `message` must follow the\nrules documented in [Document Schema Validation](../../concepts/data-structure/documents/schema-validation.md)\n",
+          "description": "Optional object that specifies the collection level schema for\ndocuments. The attribute keys `rule`, `level` and `message` must follow the\nrules documented in [Document Schema Validation](https://docs.arangodb.com/3.11/concepts/data-structure/documents/schema-validation/)\n",
           "type": "object"
          },
          "waitForSync": {
@@ -12192,7 +12192,7 @@
       }
      },
      {
-      "description": "Drop the collection as well.\nThe collection is only dropped if it is not used in other graphs.\n",
+      "description": "Drop the edge collection in addition to removing it from the graph.\nThe collection is only dropped if it is not used in other graphs.\n",
       "in": "query",
       "name": "dropCollections",
       "required": false,
@@ -12934,7 +12934,7 @@
       }
      },
      {
-      "description": "Drop the collection as well.\nThe collection is only dropped if it is not used in other graphs.\n",
+      "description": "Drop the edge collection in addition to removing it from the graph.\nThe collection is only dropped if it is not used in other graphs.\n",
       "in": "query",
       "name": "dropCollections",
       "required": false,
@@ -15418,7 +15418,7 @@
       }
      },
      {
-      "description": "Drop the collection as well.\nThe collection is only dropped if it is not used in other graphs.\n",
+      "description": "Drop the collection in addition to removing it from the graph.\nThe collection is only dropped if it is not used in other graphs.\n",
       "in": "query",
       "name": "dropCollection",
       "required": false,
@@ -17663,7 +17663,7 @@
       }
      },
      {
-      "description": "Whether to include hidden indexes in the result.\n",
+      "description": "Whether to include hidden indexes in the result. Internal indexes\nand ones that are currently built in the background are hidden.\n",
       "in": "query",
       "name": "withHidden",
       "required": false,
@@ -21654,7 +21654,7 @@
           "type": "object"
          },
          "links": {
-          "description": "Expects an object with the attribute keys being names of to be linked collections,\nand the link properties as attribute values. See\n[`arangosearch` View Link Properties](../../../index-and-search/arangosearch/arangosearch-views-reference.md#link-properties)\nfor details.\n",
+          "description": "Expects an object with the attribute keys being names of to be linked collections,\nand the link properties as attribute values. See\n[`arangosearch` View Link Properties](https://docs.arangodb.com/3.11/index-and-search/arangosearch/arangosearch-views-reference/#link-properties)\nfor details.\n",
           "type": "object"
          },
          "name": {
@@ -21906,7 +21906,7 @@
           "type": "object"
          },
          "links": {
-          "description": "Expects an object with the attribute keys being names of to be linked collections,\nand the link properties as attribute values. See\n[`arangosearch` View Link Properties](../../../index-and-search/arangosearch/arangosearch-views-reference.md#link-properties)\nfor details.\n",
+          "description": "Expects an object with the attribute keys being names of to be linked collections,\nand the link properties as attribute values. See\n[`arangosearch` View Link Properties](https://docs.arangodb.com/3.11/index-and-search/arangosearch/arangosearch-views-reference/#link-properties)\nfor details.\n",
           "type": "object"
          }
         },
@@ -21964,7 +21964,7 @@
           "type": "object"
          },
          "links": {
-          "description": "Expects an object with the attribute keys being names of to be linked collections,\nand the link properties as attribute values. See\n[`arangosearch` View Link Properties](../../../index-and-search/arangosearch/arangosearch-views-reference.md#link-properties)\nfor details.\n",
+          "description": "Expects an object with the attribute keys being names of to be linked collections,\nand the link properties as attribute values. See\n[`arangosearch` View Link Properties](https://docs.arangodb.com/3.11/index-and-search/arangosearch/arangosearch-views-reference/#link-properties)\nfor details.\n",
           "type": "object"
          }
         },
