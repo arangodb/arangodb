@@ -240,6 +240,8 @@ class Logger {
   static LogLevel logLevel();
   static std::unordered_set<std::string> structuredLogParams();
   static std::vector<std::pair<std::string, LogLevel>> logLevelTopics();
+  static std::vector<std::pair<std::string, LogLevel>> const&
+  defaultLogLevelTopics();
   static void setLogLevel(LogLevel);
   static void setLogLevel(std::string const&);
   static void setLogLevel(std::vector<std::string> const&);
@@ -305,7 +307,7 @@ class Logger {
                                    : topic.level());
   }
 
-  static void initialize(bool, uint32_t maxQueuedLogMessages);
+  static void initialize(bool threaded, uint32_t maxQueuedLogMessages);
   static void shutdown();
   static void flush() noexcept;
 
@@ -316,6 +318,10 @@ class Logger {
   // these variables might be changed asynchronously
   static std::atomic<bool> _active;
   static std::atomic<LogLevel> _level;
+
+  // default log levels, captured once at startup. these can be used
+  // to reset the log levels back to defaults.
+  static std::vector<std::pair<std::string, LogLevel>> _defaultLogLevelTopics;
 
   // these variables must be set before calling initialized
   static std::unordered_set<std::string>
