@@ -1,4 +1,4 @@
-v3.11.9 (XXXX-XX-XX)
+v3.11.9 (2024-05-18)
 --------------------
 
 * Fix a potential race in collectRebalanceInformation.
