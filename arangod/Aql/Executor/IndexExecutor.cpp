@@ -438,6 +438,7 @@ IndexExecutor::CursorReader::CursorReader(
                               : buildDocumentCallback<false, false>(context);
       break;
   }
+
   if (_coveringProducer) {
     if (_strategy == IndexNode::Strategy::kCovering) {
       _coveringSkipper =
@@ -449,7 +450,8 @@ IndexExecutor::CursorReader::CursorReader(
                                                WithProjectionsCoveredByIndex{},
                                            context);
     } else if (_strategy == IndexNode::Strategy::kCoveringFilterScanOnly ||
-               _strategy == IndexNode::Strategy::kCoveringFilterOnly) {
+               _strategy == IndexNode::Strategy::kCoveringFilterOnly ||
+               _strategy == IndexNode::Strategy::kLateMaterialized) {
       _coveringSkipper =
           checkUniqueness ? ::getCallback<true, true, /*produceResult*/ false>(
                                 DocumentProducingCallbackVariant::
@@ -550,10 +552,13 @@ size_t IndexExecutor::CursorReader::skipIndex(size_t toSkip) {
   if (_infos.getFilter() != nullptr || _checkUniqueness) {
     while (hasMore() && (skipped < toSkip)) {
       switch (_strategy) {
+        case IndexNode::Strategy::kLateMaterialized:
+          _context.setAllowCoveringIndexOptimization(true);
+          [[fallthrough]];
+
         case IndexNode::Strategy::kCovering:
         case IndexNode::Strategy::kCoveringFilterScanOnly:
         case IndexNode::Strategy::kCoveringFilterOnly:
-        case IndexNode::Strategy::kLateMaterialized:
           TRI_ASSERT(_coveringSkipper != nullptr);
           _cursor->nextCovering(_coveringSkipper, toSkip - skipped);
           break;
