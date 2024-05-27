@@ -13,6 +13,12 @@ devel
   want to fetch and remember the previous log levels settings. Such tools can
   now simply call the new API to restore the original log levels.
 
+* Updated ArangoDB Starter to v0.19.2-preview-1.
+
+* Fixed OASIS-25823: when late materialization was used together with skipping
+  over documents or the `fullCount` operation, it was possible for AQL queries
+  to fail with errors such as `bad_function_call`.
+
 * Fixed the listDatabases API: Directly after adding a new empty DBServer, or
   after restoring a Hotbackup the listDatabases() would return an empty list of
   existing databases, which goes back to normal quickly. This bug only effected
