@@ -7,6 +7,20 @@ v3.11.10 (XXXX-XX-XX)
 * Use posix_spawn instead of fork/exec for subprocesses. This solves a
   performance issue during hotbackup upload.
 
+* Added new REST API endpoint HTTP DELETE `/_admin/log/level` to reset all log
+  levels to their startup values. The log levels will be reset to their factory
+  defaults unless they were overridden via a configuration file or command-line
+  options. In this case, the log levels will be reset to the value they were
+  configured to at startup.
+  All modifications to the log levels since the instance startup will be lost
+  when calling this API.
+
+  This API is useful for tools that temporarily change log levels but do not
+  want to fetch and remember the previous log levels settings. Such tools can
+  now simply call the new API to restore the original log levels.
+
+* Updated ArangoDB Starter to v0.18.6-preview-2.
+
 * Fix a potential race in collectRebalanceInformation.
 
 
