@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated ArangoDB Starter to v0.19.2-preview-1.
+
 * Fixed OASIS-25823: when late materialization was used together with skipping
   over documents or the `fullCount` operation, it was possible for AQL queries
   to fail with errors such as `bad_function_call`.
