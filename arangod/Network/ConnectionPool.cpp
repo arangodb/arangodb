@@ -123,6 +123,7 @@ void ConnectionPool::drainConnections() {
   TRI_ASSERT(_totalConnectionsInPool.load() == n);
   _totalConnectionsInPool -= n;
   _connections.clear();
+  _loop.stop();
 }
 
 /// @brief shutdown all connections
