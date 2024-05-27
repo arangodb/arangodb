@@ -1,6 +1,12 @@
 v3.11.10 (XXXX-XX-XX)
 ---------------------
 
+* Fix file counting in hotbackup upload in case of errors in remote-to-remote
+  copies. Also prevent spurious rclone errors in S3.
+
+* Use posix_spawn instead of fork/exec for subprocesses. This solves a
+  performance issue during hotbackup upload.
+
 * Added new REST API endpoint HTTP DELETE `/_admin/log/level` to reset all log
   levels to their startup values. The log levels will be reset to their factory
   defaults unless they were overridden via a configuration file or command-line
