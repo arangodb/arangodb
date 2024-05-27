@@ -1,4 +1,4 @@
-v3.11.7.5 (xxxx-xx-xx)
+v3.11.7.5 (XXXX-XX-XX)
 ----------------------
 
 * Fix file counting in hotbackup upload in case of errors in remote-to-remote
@@ -6,6 +6,8 @@ v3.11.7.5 (xxxx-xx-xx)
 
 * Use posix_spawn instead of fork/exec for subprocesses. This solves a
   performance issue during hotbackup upload.
+
+* Detach threads in getResponsibleServers if they wait for more than 1s.
 
 
 v3.11.7.4 (2024-05-10)
