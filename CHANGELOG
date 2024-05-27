@@ -2,7 +2,7 @@ devel
 -----
 
 * Added ENTRIES function, that takes an object and produces a list of key-value
-  pairs.
+  pairs. The order of pairs is unspecified.
 
 * Prevent spurious rclone errors in S3.
 

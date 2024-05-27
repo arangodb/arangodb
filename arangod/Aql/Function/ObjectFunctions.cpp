@@ -798,7 +798,7 @@ AqlValue functions::Entries(ExpressionContext* expressionContext,
   transaction::BuilderLeaser builder(trx);
   builder->openArray();
 
-  for (auto [key, value] : VPackObjectIterator(objectSlice)) {
+  for (auto [key, value] : VPackObjectIterator(objectSlice, true)) {
     VPackArrayBuilder pair(builder.get(), true);
     builder->add(key);
     builder->add(value);
