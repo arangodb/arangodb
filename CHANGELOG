@@ -1,14 +1,14 @@
 v3.11.10 (XXXX-XX-XX)
 ---------------------
 
+* Use posix_spawn instead of fork/exec for subprocesses. This solves a
+  performance issue during hotbackup upload.
+
 * Fix a potential race in collectRebalanceInformation.
 
 
 v3.11.9 (2024-05-18)
 --------------------
-
-* Use posix_spawn instead of fork/exec for subprocesses. This solves a
-  performance issue during hotbackup upload.
 
 * Fixed the listDatabases API: Directly after adding a new empty DBServer, or
   after restoring a Hotbackup the listDatabases() would return an empty list of
