@@ -1,4 +1,4 @@
-v3.11.7.5 (XXXX-XX-XX)
+v3.11.7.5 (2024-05-27)
 ----------------------
 
 * Fix file counting in hotbackup upload in case of errors in remote-to-remote
