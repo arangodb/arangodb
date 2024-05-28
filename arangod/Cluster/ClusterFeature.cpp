@@ -220,13 +220,15 @@ communicate with external software / drivers:
 All specifications of endpoints apply.)");
 
   options
-      ->addOption("--cluster.write-concern",
-                  "The global default write concern used for writes to new "
-                  "collections.",
-                  new UInt32Parameter(&_writeConcern),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnCoordinator))
+      ->addOption(
+          "--cluster.write-concern",
+          "The global default write concern used for writes to new "
+          "collections.",
+          new UInt32Parameter(&_writeConcern, /*base*/ 1, /*minValue*/ 1,
+                              /*maxValue*/ kMaxReplicationFactor),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnCoordinator))
       .setLongDescription(R"(This value is used as the default write concern
 for databases, which in turn is used as the default for collections.
 
@@ -236,7 +238,9 @@ Coordinators.)");
   options
       ->addOption("--cluster.system-replication-factor",
                   "The default replication factor for system collections.",
-                  new UInt32Parameter(&_systemReplicationFactor),
+                  new UInt32Parameter(&_systemReplicationFactor, /*base*/ 1,
+                                      /*minValue*/ 1,
+                                      /*maxValue*/ kMaxReplicationFactor),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator))
@@ -246,7 +250,9 @@ the same value on all Coordinators.)");
   options
       ->addOption("--cluster.default-replication-factor",
                   "The default replication factor for non-system collections.",
-                  new UInt32Parameter(&_defaultReplicationFactor),
+                  new UInt32Parameter(&_defaultReplicationFactor, /*base*/ 1,
+                                      /*minValue*/ 1,
+                                      /*maxValue*/ kMaxReplicationFactor),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator))
@@ -266,7 +272,8 @@ Coordinators.)");
       ->addOption("--cluster.min-replication-factor",
                   "The minimum replication factor for new collections.",
                   new UInt32Parameter(&_minReplicationFactor, /*base*/ 1,
-                                      /*minValue*/ 1),
+                                      /*minValue*/ 1,
+                                      /*maxValue*/ kMaxReplicationFactor),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator))
@@ -283,7 +290,8 @@ Coordinators.)");
                   "(0 = unrestricted).",
                   // 10 is a hard-coded max value for the replication factor
                   new UInt32Parameter(&_maxReplicationFactor, /*base*/ 1,
-                                      /*minValue*/ 0, /*maxValue*/ 10),
+                                      /*minValue*/ 0,
+                                      /*maxValue*/ kMaxReplicationFactor),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator))
@@ -471,50 +479,21 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     }
   }
 
-  if (_defaultReplicationFactor == 0) {
-    // default replication factor must not be 0
-    LOG_TOPIC("fc8a9", FATAL, arangodb::Logger::CLUSTER)
-        << "Invalid value for `--cluster.default-replication-factor`. The "
-           "value must be at least 1";
-    FATAL_ERROR_EXIT();
-  }
-
-  if (_systemReplicationFactor == 0) {
-    // default replication factor must not be 0
-    LOG_TOPIC("46935", FATAL, arangodb::Logger::CLUSTER)
-        << "Invalid value for `--cluster.system-replication-factor`. The value "
-           "must be at least 1";
-    FATAL_ERROR_EXIT();
-  }
-
-  if (_defaultReplicationFactor > 0 && _maxReplicationFactor > 0 &&
-      _defaultReplicationFactor > _maxReplicationFactor) {
+  if (_defaultReplicationFactor > _maxReplicationFactor ||
+      _defaultReplicationFactor < _minReplicationFactor) {
     LOG_TOPIC("5af7e", FATAL, arangodb::Logger::CLUSTER)
         << "Invalid value for `--cluster.default-replication-factor`. Must not "
-           "be higher than `--cluster.max-replication-factor`";
+           "be lower than `--cluster.min-replication-factor` or higher than "
+           "`--cluster.max-replication-factor`";
     FATAL_ERROR_EXIT();
   }
 
-  if (_defaultReplicationFactor > 0 &&
-      _defaultReplicationFactor < _minReplicationFactor) {
-    LOG_TOPIC("b9aea", FATAL, arangodb::Logger::CLUSTER)
-        << "Invalid value for `--cluster.default-replication-factor`. Must not "
-           "be lower than `--cluster.min-replication-factor`";
-    FATAL_ERROR_EXIT();
-  }
-
-  if (_systemReplicationFactor > 0 && _maxReplicationFactor > 0 &&
-      _systemReplicationFactor > _maxReplicationFactor) {
+  if (_systemReplicationFactor > _maxReplicationFactor ||
+      _systemReplicationFactor < _minReplicationFactor) {
     LOG_TOPIC("6cf0c", FATAL, arangodb::Logger::CLUSTER)
         << "Invalid value for `--cluster.system-replication-factor`. Must not "
-           "be higher than `--cluster.max-replication-factor`";
-    FATAL_ERROR_EXIT();
-  }
-  if (_systemReplicationFactor > 0 &&
-      _systemReplicationFactor < _minReplicationFactor) {
-    LOG_TOPIC("dfc38", FATAL, arangodb::Logger::CLUSTER)
-        << "Invalid value for `--cluster.system-replication-factor`. Must not "
-           "be lower than `--cluster.min-replication-factor`";
+           "be lower than `--cluster.min-replication-factor` or higher than "
+           "`--cluster.max-replication-factor`";
     FATAL_ERROR_EXIT();
   }
 
@@ -655,13 +634,16 @@ void ClusterFeature::prepare() {
 
   reportRole(_requestedRole);
 
-  network::ConnectionPool::Config config(_metrics);
+  network::ConnectionPool::Config config;
   config.numIOThreads = 2u;
   config.maxOpenConnections = 2;
   config.idleConnectionMilli = 10000;
   config.verifyHosts = false;
   config.clusterInfo = &clusterInfo();
   config.name = "AgencyComm";
+
+  config.metrics = network::ConnectionPool::Metrics::fromMetricsFeature(
+      _metrics, config.name);
 
   _asyncAgencyCommPool = std::make_unique<network::ConnectionPool>(config);
 
@@ -672,12 +654,12 @@ void ClusterFeature::prepare() {
   AsyncAgencyCommManager::INSTANCE->setSkipScheduler(true);
   AsyncAgencyCommManager::INSTANCE->pool(_asyncAgencyCommPool.get());
 
-  for (const auto& _agencyEndpoint : _agencyEndpoints) {
-    std::string const unified = Endpoint::unifiedForm(_agencyEndpoint);
+  for (auto const& agencyEndpoint : _agencyEndpoints) {
+    std::string unified = Endpoint::unifiedForm(agencyEndpoint);
 
     if (unified.empty()) {
       LOG_TOPIC("1b759", FATAL, arangodb::Logger::CLUSTER)
-          << "invalid endpoint '" << _agencyEndpoint
+          << "invalid endpoint '" << agencyEndpoint
           << "' specified for --cluster.agency-endpoint";
       FATAL_ERROR_EXIT();
     }
@@ -986,7 +968,7 @@ void ClusterFeature::stop() {
     shutdown();
 
     // We try to actively cancel all open requests that may still be in the
-    // Agency We cannot react to them anymore.
+    // Agency. We cannot react to them anymore.
     _asyncAgencyCommPool->shutdownConnections();
   }
 }
@@ -994,6 +976,9 @@ void ClusterFeature::stop() {
 void ClusterFeature::unprepare() {
   if (_enableCluster) {
     _clusterInfo->unprepare();
+    if (_asyncAgencyCommPool) {
+      _asyncAgencyCommPool->drainConnections();
+    }
   }
 }
 
@@ -1024,6 +1009,10 @@ void ClusterFeature::shutdown() try {
   // must make sure that the HeartbeatThread is fully stopped before
   // we destroy the AgencyCallbackRegistry.
   _heartbeatThread.reset();
+
+  if (_asyncAgencyCommPool) {
+    _asyncAgencyCommPool->drainConnections();
+  }
 } catch (...) {
   // this is called from the dtor. not much we can do here except logging
   LOG_TOPIC("9f538", WARN, Logger::CLUSTER)

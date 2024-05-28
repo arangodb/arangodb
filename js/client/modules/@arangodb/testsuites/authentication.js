@@ -33,6 +33,7 @@ const functionsDocumentation = {
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const tr = require('@arangodb/testutils/testrunner');
 const trs = require('@arangodb/testutils/testrunners');
 const im = require('@arangodb/testutils/instance-manager');
 const yaml = require('js-yaml');
@@ -61,11 +62,14 @@ function authenticationClient (options) {
 
   testCases = tu.splitBuckets(options, testCases);
 
-  return new trs.runInArangoshRunner(options, 'authentication', Object.assign(
-    {},
-    tu.testServerAuthInfo, {
-      'cluster.create-waits-for-sync-replication': false
-    }), false).run(testCases);
+  return new trs.runInArangoshRunner(
+    options,
+    'authentication',
+    Object.assign({},
+                  tu.testServerAuthInfo, {
+                    'cluster.create-waits-for-sync-replication': false
+                  }),
+    tr.sutFilters.checkUsers).run(testCases);
 }
 
 // //////////////////////////////////////////////////////////////////////////////

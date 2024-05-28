@@ -32,6 +32,7 @@ const yaml = require('js-yaml');
 
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const tr = require('@arangodb/testutils/testrunner');
 const trs = require('@arangodb/testutils/testrunners');
 
 const toArgv = require('internal').toArgv;
@@ -75,12 +76,13 @@ function restart (options) {
     clonedOpts.coordinators = 2;
   }
   let testCases = tu.scanTestPaths(testPaths.restart, clonedOpts);
-  global.obj = new broadcastInstance(clonedOpts, 'restart', Object.assign(
+  global.obj = new broadcastInstance(
+    clonedOpts, 'restart', Object.assign(
     {},
     tu.testServerAuthInfo, {
       'server.authentication': false
     }),
-                                               false, false);
+    tr.sutFilters.checkUsers.concat(tr.sutFilters.checkCollections));
   let rc = global.obj.run(testCases);
   options.cleanup = options.cleanup && clonedOpts.cleanup;
   return rc;

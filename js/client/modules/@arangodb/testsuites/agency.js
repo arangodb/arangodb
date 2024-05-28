@@ -31,6 +31,7 @@ const functionsDocumentation = {
 };
 
 const tu = require('@arangodb/testutils/test-utils');
+const tr = require('@arangodb/testutils/testrunner');
 const trs = require('@arangodb/testutils/testrunners');
 
 const testPaths = {
@@ -49,7 +50,10 @@ function agency (options) {
 
   options.agency = true;
   options.cluster = false;
-  let results = new trs.runInArangoshRunner(options,  'agency', {}, false, false).run(testCases);
+  let results = new trs.runInArangoshRunner(
+    options,  'agency', {},
+    (tr.sutFilters.checkUsers.concat(tr.sutFilters.checkCollections)).concat(tr.sutFilters.checkDBs))
+      .run(testCases);
 
   options.agency = saveAgency;
   options.cluster = saveCluster;

@@ -34,6 +34,7 @@ const tu = require('@arangodb/testutils/test-utils');
 const yaml = require('js-yaml');
 const internal = require('internal');
 const crashUtils = require('@arangodb/testutils/crash-utils');
+const {sanHandler} = require('@arangodb/testutils/san-file-handler');
 const crypto = require('@arangodb/crypto');
 const ArangoError = require('@arangodb').ArangoError;
 const debugGetFailurePoints = require('@arangodb/test-helper').debugGetFailurePoints;
@@ -368,12 +369,23 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
   }
 
   // V8 executeExternalAndWait thinks that timeout is in ms, so *1000
+  
+  let sh = new sanHandler(cmd.replace(/.*\//, ''), options.sanOptions, options.isSan, options.extremeVerbosity);
+  sh.detectLogfiles(instanceInfo.rootDir, instanceInfo.rootDir);
+  sh.setSanOptions();
+
   let res = executeExternalAndWait(cmd, args, false, timeout * 1000, coverageEnvironment());
+  
   instanceInfo.pid = res.pid;
   instanceInfo.exitStatus = res;
+  sh.resetSanOptions();
   const deltaTime = time() - startTime;
-
   let errorMessage = ' - ';
+  if (sh.fetchSanFileAfterExit(res.pid)) {
+    serverCrashedLocal = true;
+    res.status = false;
+    errorMessage += " Sanitizer indicated issues  - ";
+  }
 
   if (coreCheck &&
       instanceInfo.exitStatus.hasOwnProperty('signal') &&

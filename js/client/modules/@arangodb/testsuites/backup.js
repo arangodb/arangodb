@@ -36,6 +36,7 @@ const _ = require('lodash');
 const pu = require('@arangodb/testutils/process-utils');
 const ct = require('@arangodb/testutils/client-tools');
 const tu = require('@arangodb/testutils/test-utils');
+const tr = require('@arangodb/testutils/testrunner');
 const trs = require('@arangodb/testutils/testrunners');
 const im = require('@arangodb/testutils/instance-manager');
 
@@ -76,8 +77,8 @@ var dumpPath;
 
 
 class backupTestRunner extends trs.runInArangoshRunner {
-  constructor(options, testname, useAuth, user, restoreDir, checkUsers=true) {
-    super(options, testname, {}, checkUsers, false);
+  constructor(options, testname, useAuth, user, restoreDir, checkUsers=[]) {
+    super(options, testname, {}, tr.sutFilters.checkCollections.concat(checkUsers));
     this.user = user;
     this.useAuth = useAuth;
     this.dumpPath = undefined;
@@ -236,7 +237,7 @@ const BackupNoAuthSysTests = (options) => {
 
   return new backupTestRunner(options,
                               'BackupNoAuthSysTests',
-                              false,
+                              tr.sutFilters.checkUsers,
                               {},
                               syssys).run(
                                 testPaths.BackupNoAuthSysTests);
@@ -250,7 +251,7 @@ const BackupNoAuthNoSysTests = (options) => {
   log('Test dump without authentication, restore _system excl system collections');
   return new backupTestRunner(options,
                               'BackupNoAuthSysTests',
-                              false,
+                              tr.sutFilters.checkUsers,
                               {},
                               sysNoSys).run(
                                 testPaths.BackupNoAuthNoSysTests);
@@ -264,7 +265,7 @@ const BackupAuthSysTests = (options) => {
   log('Test dump with authentication, restore _system incl system collections');
   return new backupTestRunner(options,
                               'BackupAuthSysTests',
-                              true,
+                              [],
                               asRoot,
                               syssys).run(
                                 testPaths.BackupAuthSysTests);
@@ -278,7 +279,7 @@ const BackupAuthNoSysTests = (options) => {
   log('Test dump with authentication, restore _system excl system collections');
   return new backupTestRunner(options,
                               'BackupAuthNoSysTests',
-                              true,
+                              [],
                               asRoot,
                               sysNoSys).run(
                                 testPaths.BackupAuthNoSysTests);

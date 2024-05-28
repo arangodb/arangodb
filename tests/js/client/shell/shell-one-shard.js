@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertTrue, assertEqual, assertNotEqual, assertMatch, assertNull, fail */
+/*global arango, assertTrue, assertEqual, assertNotEqual, assertMatch, assertNull, fail */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -39,11 +39,34 @@ const replication2Enabled = require('internal').db._version(true).details['repli
 
 let {
   getMaxReplicationFactor,
-  getMinReplicationFactor
+  getMinReplicationFactor,
+  agency,
 } = require("@arangodb/test-helper");
 
 const maxReplicationFactor = getMaxReplicationFactor();
 const minReplicationFactor = getMinReplicationFactor(); 
+        
+function assertNoDatabasesInPlan () {
+  if (!isCluster) {
+    return;
+  }
+  const prefix = arango.POST("/_admin/execute", `return global.ArangoAgency.prefix()`);
+  const paths = [
+      "Plan/Databases/",
+    ].map(p => `${prefix}/${p}`);
+  let result = agency.call("read", [ paths ]);
+  assertTrue(Array.isArray(result), result);
+  assertEqual(1, result.length);
+  result = result[0];
+  
+  let parts = paths[0].split("/").filter((p) => p.trim() !== "");
+  parts.forEach((part) => {
+    assertTrue(result.hasOwnProperty(part), { result, part });
+    result = result[part];
+  });
+  let keys = Object.keys(result);
+  assertEqual(["_system"], keys, result);
+}
 
 function getEndpointsByType(type) {
   const isType = (d) => (d.instanceRole === type);
@@ -546,7 +569,7 @@ function OneShardPropertiesSuite () {
     },
 
     testSatelliteDB : function () {
-      assertTrue(db._createDatabase(dn, { replicationFactor : "satellite"}));
+      assertTrue(db._createDatabase(dn, { replicationFactor : "satellite" }));
       db._useDatabase(dn);
       let props = db._properties();
       if (!isCluster) {
@@ -561,15 +584,44 @@ function OneShardPropertiesSuite () {
         }
       }
     },
+
+    testSatelliteDBWithTooHighWriteConcern : function () {
+      if (isEnterprise && isCluster) {
+        try {
+          db._createDatabase(dn, { replicationFactor : "satellite", sharding: "single", writeConcern: 2 });
+          fail();
+        } catch (err) {
+          assertEqual(ERRORS.ERROR_FAILED.code, err.errorNum);
+        }
+
+        assertNoDatabasesInPlan();
+      }
+    },
     
+    testSatelliteDBWithOneShard : function () {
+      if (isEnterprise && isCluster) {
+        try {
+          db._createDatabase(dn, { replicationFactor : "satellite", sharding: "single" });
+          fail();
+        } catch (err) {
+          assertEqual(ERRORS.ERROR_FAILED.code, err.errorNum);
+        }
+        
+        assertNoDatabasesInPlan();
+      }
+    },
+
     testValuesBelowMinReplicationFactor : function () {
       let min = minReplicationFactor;
-      if (min > 0) {
+      if (min > 1) {
         try {
           db._createDatabase(dn, { replicationFactor : min - 1 });
+          fail();
         } catch (err) {
           assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
         }
+        
+        assertNoDatabasesInPlan();
       }
     },
 
@@ -578,9 +630,12 @@ function OneShardPropertiesSuite () {
       if (max > 0) {
         try {
           db._createDatabase(dn, { replicationFactor : max + 1 });
+          fail();
         } catch (err) {
           assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
         }
+        
+        assertNoDatabasesInPlan();
       }
     },
   

@@ -553,6 +553,39 @@ function projectionsPlansTestSuite () {
       });
     },
     
+    testMaterializeMaxProjections : function () {
+      if (!internal.debugCanUseFailAt()) {
+        // cant execute this test as failure points are not available here
+        return;
+      }
+
+      internal.debugSetFailAt('batch-materialize-no-estimation');
+      c.ensureIndex({ type: "persistent", fields: ["value1"] });
+      let queries = [
+        [`FOR doc IN ${cn} FILTER doc.value1 == 93 RETURN [doc.a, doc.b]`, 'persistent', [], false, ["a", "b"] ],
+        [`FOR doc IN ${cn} FILTER doc.value1 == 93 RETURN [doc.a, doc.b, doc.c]`, 'persistent', [], false, ["a", "b", "c"] ],
+        [`FOR doc IN ${cn} OPTIONS { maxProjections: 3 } FILTER doc.value1 == 93 RETURN [doc.a, doc.b, doc.c]`, 'persistent', [], false, ["a", "b", "c"] ],
+        [`FOR doc IN ${cn} OPTIONS { maxProjections: 2 } FILTER doc.value1 == 93 RETURN [doc.a, doc.b]`, 'persistent', [], false, ["a", "b"] ],
+        [`FOR doc IN ${cn} OPTIONS { maxProjections: 1 } FILTER doc.value1 == 93 RETURN [doc.a, doc.b]`, 'persistent', [], false, [] ],
+        [`FOR doc IN ${cn} OPTIONS { maxProjections: 1 } FILTER doc.value1 == 93 RETURN [doc.a]`, 'persistent', [], false, ["a"] ],
+      ];
+
+      queries.forEach(function(query) {
+        let plan = db._createStatement({query: query[0], options: { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }}).explain().plan;
+        let nodes = plan.nodes.filter(function(node) { return node.type === 'IndexNode' || node.type === 'MaterializeNode'; });
+        assertEqual(2, nodes.length, query);
+        assertEqual("IndexNode", nodes[0].type);
+        assertEqual("MaterializeNode", nodes[1].type);
+
+        assertEqual(1, nodes[0].indexes.length, query);
+        assertEqual(query[1], nodes[0].indexes[0].type, query);
+        assertEqual(normalize(query[2]), normalize(nodes[0].projections), query);
+        assertEqual(query[3], nodes[0].indexCoversProjections, query);
+        assertEqual("late materialized", nodes[0].strategy, query);
+        assertEqual(normalize(query[4]), normalize(nodes[1].projections), query);
+      });
+    },
+    
     testSparseIndex : function () {
       c.ensureIndex({ type: "persistent", fields: ["value1"], sparse: true });
       let queries = [
