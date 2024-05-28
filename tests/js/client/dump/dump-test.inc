@@ -1563,6 +1563,40 @@
         assertEqual(graph.orphanCollections.length, 0);
       },
 
+      testSmartGraph3_11_compat: function () {
+        if (!isEnterprise) {
+          return;
+        }
+        const smartGraphName = "UnitTestDumpSmartGraphCompat";
+        const graphsColl = getCollection('_graphs');
+        assertTrue(!!graphsColl.exists(smartGraphName));
+
+        const graphDoc = graphsColl.document(smartGraphName);
+        // This is the requirement to test if the compat cid has effect
+        // We test this here as the setup for this graph should fake an
+        // old version graph, so we can test that the values existence
+        // does not have negative impact on the restore.
+        assertTrue(graphDoc.hasOwnProperty('initialCid'));
+        // Now let us try to modify the GraphRelations
+        const newRelationName = `${smartGraphName}NewEdge`;
+        const newVertexName = `${smartGraphName}NewVertex`;
+        const newRelation = gm._relation(newRelationName,
+          "UnitTestDumpSmartVerticesCompat",
+          newVertexName
+        );
+        // New collections do not yet exist, that would be forbidden.
+        assertEqual(db._collections().filter(c => c.name() === newRelationName).length, 0);
+        assertEqual(db._collections().filter(c => c.name() === newVertexName).length, 0);
+        const graph = gm._graph(smartGraphName);
+        graph._extendEdgeDefinitions(newRelation);
+        // New collections are added
+        assertEqual(db._collections().filter(c => c.name() === newRelationName).length, 1);
+        assertEqual(db._collections().filter(c => c.name() === newVertexName).length, 1);
+        // New collections are smart
+        assertTrue(db[newRelationName].properties().isSmart);
+        assertTrue(db[newVertexName].properties().isSmart);
+      },
+
       testEmptyEnterpriseGraph: function () {
         if (!isEnterprise) {
           return;

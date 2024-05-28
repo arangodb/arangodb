@@ -39,33 +39,23 @@
 #include "Aql/WalkerWorker.h"
 #include "Basics/VelocyPackHelper.h"
 #include "RestServer/TemporaryStorageFeature.h"
-#include "Transaction/Context.h"
-
-namespace {
-std::string const ConstrainedHeap = "constrained-heap";
-std::string const Standard = "standard";
-}  // namespace
 
 using namespace arangodb::basics;
 using namespace arangodb::aql;
 
-std::string const& SortNode::sorterTypeName(SorterType type) {
-  switch (type) {
-    case SorterType::Standard:
-      return ::Standard;
-    case SorterType::ConstrainedHeap:
-      return ::ConstrainedHeap;
-    default:
-      return ::Standard;
-  }
-}
-
-SortNode::SortNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
-                   SortElementVector const& elements, bool stable)
-    : ExecutionNode(plan, base),
-      _reinsertInCluster(true),
-      _elements(elements),
+SortNode::SortNode(ExecutionPlan* plan, ExecutionNodeId id,
+                   SortElementVector elements, bool stable)
+    : ExecutionNode(plan, id),
+      _elements(std::move(elements)),
       _stable(stable),
+      _reinsertInCluster(true) {}
+
+SortNode::SortNode(ExecutionPlan* plan, arangodb::velocypack::Slice base,
+                   SortElementVector elements, bool stable)
+    : ExecutionNode(plan, base),
+      _elements(std::move(elements)),
+      _stable(stable),
+      _reinsertInCluster(true),
       _limit(VelocyPackHelper::getNumericValue<size_t>(base, "limit", 0)) {}
 
 /// @brief doToVelocyPack, for SortNode
@@ -178,6 +168,13 @@ SortInformation SortNode::getSortInformation() const {
   return result;
 }
 
+/// @brief clone ExecutionNode recursively
+ExecutionNode* SortNode::clone(ExecutionPlan* plan,
+                               bool withDependencies) const {
+  return cloneHelper(std::make_unique<SortNode>(plan, _id, _elements, _stable),
+                     withDependencies);
+}
+
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> SortNode::createBlock(
     ExecutionEngine& engine) const {
@@ -206,7 +203,7 @@ std::unique_ptr<ExecutionBlock> SortNode::createBlock(
       &engine.getQuery().vpackOptions(), engine.getQuery().resourceMonitor(),
       engine.getQuery().queryOptions().spillOverThresholdNumRows,
       engine.getQuery().queryOptions().spillOverThresholdMemoryUsage, _stable);
-  if (sorterType() == SorterType::Standard) {
+  if (sorterType() == SorterType::kStandard) {
     return std::make_unique<ExecutionBlockImpl<SortExecutor>>(
         &engine, this, std::move(registerInfos), std::move(executorInfos));
   } else {
@@ -239,9 +236,26 @@ void SortNode::replaceVariables(
   }
 }
 
-SortNode::SorterType SortNode::sorterType() const {
-  return (!isStable() && _limit > 0) ? SorterType::ConstrainedHeap
-                                     : SorterType::Standard;
+/// @brief getVariablesUsedHere, modifying the set in-place
+void SortNode::getVariablesUsedHere(VarSet& vars) const {
+  for (auto& p : _elements) {
+    vars.emplace(p.var);
+  }
+}
+
+SortNode::SorterType SortNode::sorterType() const noexcept {
+  return (!isStable() && _limit > 0) ? SorterType::kConstrainedHeap
+                                     : SorterType::kStandard;
 }
 
 size_t SortNode::getMemoryUsedBytes() const { return sizeof(*this); }
+
+std::string_view SortNode::sorterTypeName(SorterType type) noexcept {
+  switch (type) {
+    case SorterType::kConstrainedHeap:
+      return "constrained-heap";
+    case SorterType::kStandard:
+    default:
+      return "standard";
+  }
+}

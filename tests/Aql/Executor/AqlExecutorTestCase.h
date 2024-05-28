@@ -30,6 +30,7 @@
 
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
+#include "Aql/ExecutionNode/MutexNode.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 
@@ -82,6 +83,11 @@ class AqlExecutorTestCase : public ::testing::Test {
       -> ExecutionNode*;
 
   auto generateScatterNodeDummy() -> ScatterNode*;
+
+  auto generateMutexNodeDummy() -> MutexNode*;
+
+  auto generateDistributeConsumerNode(std::string distributeId)
+      -> DistributeConsumerNode*;
 
   template<std::size_t inputColumns = 1, std::size_t outputColumns = 1>
   auto makeExecutorTestHelper()

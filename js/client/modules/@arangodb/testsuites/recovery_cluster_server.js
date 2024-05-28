@@ -28,13 +28,13 @@
 const functionsDocumentation = {
   'recovery_cluster_server': 'run recovery tests for cluster'
 };
-const optionsDocumentation = [
-];
 
 const fs = require('fs');
 const internal = require('internal');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const trs = require('@arangodb/testutils/testrunners');
+const ct = require('@arangodb/testutils/client-tools');
 const im = require('@arangodb/testutils/instance-manager');
 const inst = require('@arangodb/testutils/instance');
 const tmpDirMmgr = require('@arangodb/testutils/tmpDirManager').tmpDirManager;
@@ -176,7 +176,7 @@ function runArangodRecovery (params, useEncryption) {
     }
   }
   params.instanceManager.reconnect();
-  let agentArgs = pu.makeArgs.arangosh(params.options);
+  let agentArgs = ct.makeArgs.arangosh(params.options);
   agentArgs['server.endpoint'] = params.instanceManager.findEndpoint();
   if (params.args['log.level']) {
     agentArgs['log.level'] = params.args['log.level'];
@@ -302,7 +302,7 @@ function recovery_cluster_server (options) {
       params.options.disableMonitor = localOptions.disableMonitor;
       params.setup = false;
       try {
-        tu.writeTestResult(params.temp_path, {
+        trs.writeTestResult(params.temp_path, {
           failed: 1,
           status: false, 
           message: "unable to run recovery test " + test,
@@ -325,7 +325,7 @@ function recovery_cluster_server (options) {
         return results;
       }
 
-      results[test] = tu.readTestResult(
+      results[test] = trs.readTestResult(
         params.temp_path,
         {
           status: false
@@ -371,6 +371,5 @@ function recovery_cluster_server (options) {
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['recovery_cluster_server'] = recovery_cluster_server;
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };

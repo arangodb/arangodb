@@ -994,13 +994,14 @@ CollectNode* ExecutionPlan::createAnonymousCollect(
       GroupVarInfo{out, previous->outVariable()}};
   std::vector<AggregateVarInfo> const aggregateVariables{};
 
-  auto en = createNode<CollectNode>(
-      this, nextId(), CollectOptions(), groupVariables, aggregateVariables,
-      nullptr, nullptr, std::vector<std::pair<Variable const*, std::string>>{},
-      _ast->variables()->variables(false), true);
+  CollectOptions options;
+  options.fixMethod(CollectOptions::CollectMethod::kDistinct);
 
-  en->aggregationMethod(CollectOptions::CollectMethod::DISTINCT);
-  en->specialized();
+  auto en = createNode<CollectNode>(
+      this, nextId(), std::move(options), std::move(groupVariables),
+      std::move(aggregateVariables), nullptr, nullptr,
+      std::vector<std::pair<Variable const*, std::string>>{},
+      _ast->variables()->variables(false));
 
   return en;
 }
@@ -1135,7 +1136,7 @@ CollectOptions ExecutionPlan::createCollectOptions(AstNode const* node) {
           if (value->isStringValue()) {
             options.method =
                 CollectOptions::methodFromString(value->getStringView());
-            if (options.method != CollectOptions::CollectMethod::UNDEFINED) {
+            if (options.method != CollectOptions::CollectMethod::kUndefined) {
               handled = true;
             }
           }
@@ -1848,7 +1849,7 @@ ExecutionNode* ExecutionPlan::fromNodeCollect(ExecutionNode* previous,
   auto en = createNode<CollectNode>(this, nextId(), options, groupVariables,
                                     aggregateVars, expressionVariable,
                                     outVariable, keepVariables,
-                                    _ast->variables()->variables(false), false);
+                                    _ast->variables()->variables(false));
 
   return addDependency(previous, en);
 }
@@ -2963,11 +2964,12 @@ struct Shower final
 
   static LoggerStreamBase& logNode(LoggerStreamBase& log,
                                    ExecutionNode const& node) {
-    return log << "[" << node.id() << "]" << detailedNodeType(node);
+    return log << "[" << node.id() << "] " << node.getTypeString()
+               << nodeDetails(node);
   }
 
-  static std::string detailedNodeType(ExecutionNode const& node) {
-    std::string result = node.getTypeString();
+  static std::string nodeDetails(ExecutionNode const& node) {
+    std::string result;
 
     switch (node.getType()) {
       case ExecutionNode::CALCULATION: {

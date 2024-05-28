@@ -1,0 +1,11 @@
+﻿# © 2016 and later: Unicode, Inc. and others.
+# License & terms of use: http://www.unicode.org/copyright.html#License
+#
+# File: es_419_am.txt
+# Generated from CLDR
+#
+
+::es-es_FONIPA;
+::es_FONIPA-es_419_FONIPA;
+::am_FONIPA-am;
+

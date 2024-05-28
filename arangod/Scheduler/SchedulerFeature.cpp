@@ -244,19 +244,12 @@ return HTTP 503 instead of HTTP 200 when their availability API is probed.)");
       new UInt64Parameter(&_fifo1Size),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
-  options
-      ->addOption("--server.max-number-detached-threads",
-                  "The maximum number of detached scheduler threads.",
-                  new UInt64Parameter(&_nrMaximalDetachedThreads),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Default,
-                      arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(31200)
-      .setLongDescription(
-          R"(If a scheduler thread performs a potentially long running operation like waiting for a lock, it can detach itself from the scheduler. This allows a new scheduler thread to be started and avoids blocking all threads with long-running operations, thereby avoiding deadlock situations. The default should normally be OK.)");
-
   // obsolete options
   options->addObsoleteOption("--server.threads", "number of threads", true);
+
+  options->addObsoleteOption(
+      "--server.max-number-detached-threads",
+      "The maximum number of detached scheduler threads.", true);
 
   // renamed options
   options->addOldOption("scheduler.threads", "server.maximal-threads");
@@ -337,8 +330,7 @@ void SchedulerFeature::prepare() {
   auto sched = std::make_unique<SupervisedScheduler>(
       server(), _nrMinimalThreads, _nrMaximalThreads, _queueSize, _fifo1Size,
       _fifo2Size, _fifo3Size, ongoingLowPriorityLimit,
-      _unavailabilityQueueFillGrade, _nrMaximalDetachedThreads,
-      _metricsFeature);
+      _unavailabilityQueueFillGrade, _metricsFeature);
 
   SCHEDULER = sched.get();
 

@@ -201,7 +201,7 @@ auto FollowerStateManager<S>::GuardedData::maybeScheduleApplyEntries(
                 });
       } else {
         promise.setException(replicated_log::ParticipantResignedException(
-            TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE));
+            TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED));
       }
     });
 
@@ -387,7 +387,7 @@ auto FollowerStateManager<S>::resign() && noexcept
 
   auto tryResult = futures::Try<LogIndex>(
       std::make_exception_ptr(replicated_log::ParticipantResignedException(
-          TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE)));
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED)));
   _guardedData.getLockedGuard()->_waitQueue.resolveAllWith(
       std::move(tryResult), [&scheduler = *_scheduler]<typename F>(F&& f) {
         static_assert(noexcept(std::decay_t<decltype(f)>(std::forward<F>(f))));

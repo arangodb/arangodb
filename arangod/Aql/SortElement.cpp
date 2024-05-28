@@ -25,6 +25,8 @@
 
 #include "Aql/Variable.h"
 
+#include <absl/strings/str_cat.h>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
@@ -36,10 +38,10 @@ SortElement::SortElement(Variable const* v, bool asc,
     : var(v), ascending(asc), attributePath(std::move(path)) {}
 
 std::string SortElement::toString() const {
-  std::string result("$");
-  result += std::to_string(var->id);
+  std::string result = absl::StrCat("$", var->id);
   for (auto const& it : attributePath) {
-    result += "." + it;
+    absl::StrAppend(&result, ".", it);
   }
+  absl::StrAppend(&result, ascending ? " ASC" : " DESC");
   return result;
 }

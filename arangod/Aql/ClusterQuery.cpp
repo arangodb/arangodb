@@ -251,7 +251,9 @@ futures::Future<Result> ClusterQuery::finalizeClusterQuery(
 
   for (auto& engine : _snippets) {  // make sure all snippets are unused
     engine->sharedState()->invalidate();
-    engine->collectExecutionStats(_execStats);
+    executionStatsGuard().doUnderLock([&](auto& executionStats) {
+      engine->collectExecutionStats(executionStats);
+    });
   }
 
   // Use async API, commit on followers sends a request
@@ -271,10 +273,14 @@ futures::Future<Result> ClusterQuery::finalizeClusterQuery(
         << elapsedSince(_startTime) << " Query::finalizeSnippets post commit()"
         << " this: " << (uintptr_t)this;
 
-    _execStats.requests += _numRequests.load(std::memory_order_relaxed);
-    _execStats.setPeakMemoryUsage(_resourceMonitor.peak());
-    _execStats.setExecutionTime(elapsedSince(_startTime));
-    _execStats.setIntermediateCommits(_trx->state()->numIntermediateCommits());
+    executionStatsGuard().doUnderLock([&](auto& executionStats) {
+      executionStats.requests += _numRequests.load(std::memory_order_relaxed);
+      executionStats.setPeakMemoryUsage(_resourceMonitor.peak());
+      executionStats.setExecutionTime(elapsedSince(_startTime));
+      executionStats.setIntermediateCommits(
+          _trx->state()->numIntermediateCommits());
+    });
+
     _shutdownState.store(ShutdownState::Done);
 
     unregisterQueryInTransactionState();

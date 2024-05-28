@@ -1393,8 +1393,8 @@ struct InsertProcessor : ModifyingProcessorBase<InsertProcessor> {
       basics::VelocyPackHelper::sanitizeNonClientTypes(
           _newDocumentBuilder->slice(), VPackSlice::noneSlice(),
           *_replicationData,
-          _methods.transactionContextPtr()->getVPackOptions(), true, true,
-          false);
+          *_methods.transactionContextPtr()->getVPackOptions(),
+          /*allowUnindexed*/ false);
     }
 
     return res;
@@ -1592,8 +1592,8 @@ struct ModifyProcessor : ModifyingProcessorBase<ModifyProcessor> {
       basics::VelocyPackHelper::sanitizeNonClientTypes(
           _newDocumentBuilder->slice(), VPackSlice::noneSlice(),
           *_replicationData,
-          _methods.transactionContextPtr()->getVPackOptions(), true, true,
-          false);
+          *_methods.transactionContextPtr()->getVPackOptions(),
+          /*allowUnindexed*/ false);
     }
 
     return res;
@@ -2128,7 +2128,10 @@ futures::Future<Result> transaction::Methods::documentFastPath(
             vocbase().server().getFeature<ClusterFeature>().clusterInfo();
         auto shards = ci.getShardList(std::to_string(collection->id().id()));
         if (shards != nullptr && shards->size() == 1) {
-          TRI_ASSERT(vocbase().isOneShard());
+          // Unfortunately we cannot do this assertion
+          // on the _systemDatabase. The DBServer does
+          // never set the oneShard flag there.
+          TRI_ASSERT(vocbase().isSystem() || vocbase().isOneShard());
           return std::string{(*shards)[0]};
         }
       }

@@ -23,11 +23,12 @@
 
 #include "ClusteringMutableProperties.h"
 
-#include "Basics/StaticStrings.h"
 #include "Basics/Result.h"
+#include "Basics/StaticStrings.h"
+#include "Inspection/VPack.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
 
-#include "Inspection/VPack.h"
+#include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
 
 using namespace arangodb;
@@ -107,17 +108,17 @@ ClusteringMutableProperties::validateDatabaseConfiguration(
       if (config.maxReplicationFactor > 0 &&
           replicationFactor.value() > config.maxReplicationFactor) {
         return {TRI_ERROR_BAD_PARAMETER,
-                std::string("replicationFactor must not be higher than "
-                            "maximum allowed replicationFactor (") +
-                    std::to_string(config.maxReplicationFactor) + ")"};
+                absl::StrCat("replicationFactor must not be higher than "
+                             "maximum allowed replicationFactor (",
+                             config.maxReplicationFactor, ")")};
       }
 
       if (!isSatellite() &&
           replicationFactor.value() < config.minReplicationFactor) {
         return {TRI_ERROR_BAD_PARAMETER,
-                std::string("replicationFactor must not be lower than "
-                            "minimum allowed replicationFactor (") +
-                    std::to_string(config.minReplicationFactor) + ")"};
+                absl::StrCat("replicationFactor must not be lower than "
+                             "minimum allowed replicationFactor (",
+                             config.minReplicationFactor, ")")};
       }
     }
 
@@ -141,14 +142,14 @@ ClusteringMutableProperties::validateDatabaseConfiguration(
 
   if (config.isOneShardDB && isSatellite()) {
     return {TRI_ERROR_BAD_PARAMETER,
-            "Collection in a 'oneShardDatabase' cannot be a "
+            "Collection in a OneShard database cannot have replicationFactor "
             "'satellite'"};
   }
 #ifndef USE_ENTERPRISE
   if (isSatellite()) {
     return {TRI_ERROR_ONLY_ENTERPRISE,
-            "'satellite' collections only allowed in enterprise edition"};
+            "'satellite' collections only allowed in Enterprise Edition"};
   }
 #endif
-  return {TRI_ERROR_NO_ERROR};
+  return {};
 }

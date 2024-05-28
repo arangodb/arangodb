@@ -121,10 +121,13 @@ auto EvenDistribution::planShardsOnServers(
   size_t serversToPick = std::min(
       _replicationFactor, static_cast<uint64_t>(availableServers.size()));
 
+  TRI_ASSERT(availableServers.size() > 0);
+  TRI_ASSERT(_replicationFactor > 0);
   size_t k = availableServers.size() /
              std::gcd(serversToPick, availableServers.size());
   size_t offset = 0;
   for (uint64_t i = 0; i < _numberOfShards; ++i) {
+    TRI_ASSERT(k != 0);
     if (i % k == 0) {
       offset += 1;
     }

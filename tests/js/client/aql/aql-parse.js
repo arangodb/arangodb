@@ -25,11 +25,11 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
-var jsunity = require("jsunity");
-var helper = require("@arangodb/aql-helper");
-var getParseResults = helper.getParseResults;
-var assertParseError = helper.assertParseError;
+const internal = require("internal");
+const jsunity = require("jsunity");
+const helper = require("@arangodb/aql-helper");
+const getParseResults = helper.getParseResults;
+const assertParseError = helper.assertParseError;
 const db = require('internal').db;
 
 function ahuacatlParseTestSuite () {

@@ -36,6 +36,7 @@
 #include "Basics/StringUtils.h"
 
 #include <optional>
+#include <string_view>
 #include <vector>
 
 using namespace arangodb;
@@ -122,7 +123,7 @@ struct ExecutionNodeMock {
     _regsToClear = std::move(toClear);
   }
 
-  auto getTypeString() const -> std::string const& {
+  auto getTypeString() const -> std::string_view {
     return ExecutionNode::getTypeString(_type);
   }
 

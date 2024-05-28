@@ -167,11 +167,10 @@ Result RocksDBTrxBaseMethods::addOperation(
 
   if (_memoryTracker.memoryUsage() > _state->options().maxTransactionSize) {
     // we hit the transaction size limit
-    return {
-        TRI_ERROR_RESOURCE_LIMIT,
-        absl::StrCat(
-            "aborting transaction because maximal transaction size limit of ",
-            _state->options().maxTransactionSize, " bytes is reached")};
+    return {TRI_ERROR_RESOURCE_LIMIT,
+            absl::StrCat("Maximal transaction size limit of ",
+                         _state->options().maxTransactionSize,
+                         " bytes is reached")};
   }
 
   switch (operationType) {
