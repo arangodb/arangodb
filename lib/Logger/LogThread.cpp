@@ -22,20 +22,26 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LogThread.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/debugging.h"
 #include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
 
 using namespace arangodb;
 
-LogThread::LogThread(application_features::ApplicationServer& server,
-                     std::string const& name, uint32_t maxQueuedLogMessages)
-    : Thread(server, name),
+LogThread::LogThread(std::string const& name, uint32_t maxQueuedLogMessages)
+    : Thread(name),
       _messages(64),
       _maxQueuedLogMessages(maxQueuedLogMessages) {}
 
 LogThread::~LogThread() {
   Logger::_active = false;
+
+  // make sure there are no memory leaks on uncontrolled shutdown
+  MessageEnvelope env{nullptr, nullptr};
+  while (_messages.pop(env)) {
+    delete env.msg;
+  }
 
   shutdown();
 }
@@ -48,18 +54,35 @@ bool LogThread::log(LogGroup& group, std::unique_ptr<LogMessage>& message) {
     return true;
   }
 
-  bool const isDirectLogLevel =
+  bool isDirectLogLevel =
       (message->_level == LogLevel::FATAL || message->_level == LogLevel::ERR ||
        message->_level == LogLevel::WARN);
 
   auto numMessages =
       _pendingMessages.fetch_add(1, std::memory_order_relaxed) + 1;
-  if (numMessages >= _maxQueuedLogMessages ||
-      !_messages.push({&group, message.get()})) {
-    /* roll back the update */
+
+  auto rollback = scopeGuard([&]() noexcept {
+    // roll back the counter update
     _pendingMessages.fetch_sub(1, std::memory_order_relaxed);
+
+    // and inform logger that we dropped a message
+    // the callback function is noexcept, too.
+    Logger::onDroppedMessage();
+  });
+
+  if (numMessages >= _maxQueuedLogMessages && !isDirectLogLevel) {
+    // log queue is full, and the message is not important enough
+    // to push it anyway. this will execute the rollback.
     return false;
   }
+
+  if (!_messages.push({&group, message.get()})) {
+    // unable to push message onto the queue.
+    // this will also execute the rollback.
+    return false;
+  }
+
+  rollback.cancel();
 
   // only release message if adding to the queue succeeded
   // otherwise we would leak here

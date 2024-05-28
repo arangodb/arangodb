@@ -1,5 +1,5 @@
 ################################################################################
-## define variables
+## global definitions
 ################################################################################
 
 add_compile_warnings_flags()
@@ -9,6 +9,13 @@ if (USE_GOOGLE_TESTS)
 else()
   add_definitions("-DTEST_VIRTUAL=")
 endif()
+
+# add necessary defines for ICU. this will suffix all included ICU functions
+# and the ICU namespace with _64_64
+add_definitions("-DU_HAVE_LIB_SUFFIX=1")
+add_definitions("-DU_LIB_SUFFIX_C_NAME=_64")
+# also make sure that the correct ICU directory appears early in the list of include files
+include_directories(BEFORE SYSTEM ${ICU64_INCLUDE_DIR})
 
 ################################################################################
 ## arangod executable
@@ -44,6 +51,7 @@ add_dependencies(${BIN_ARANGOD} zlibstatic)
 if (NOT USE_PRECOMPILED_V8)
   add_dependencies(${BIN_ARANGOD} v8_build)
 endif ()
+add_dependencies(${BIN_ARANGOD} iculegacy_build)
 if (USE_JEMALLOC)
   add_dependencies(${BIN_ARANGOD} jemalloc_build)
 endif ()

@@ -30,9 +30,7 @@
 #include <memory>
 #include <string_view>
 
-namespace arangodb {
-
-namespace aql {
+namespace arangodb::aql {
 
 /// cache for parsed regexes, not thread safe
 class AqlFunctionsInternalCache final {
@@ -48,13 +46,13 @@ class AqlFunctionsInternalCache final {
 
   void clear() noexcept;
 
-  icu::RegexMatcher* buildRegexMatcher(std::string_view expr,
-                                       bool caseInsensitive);
-  icu::RegexMatcher* buildLikeMatcher(std::string_view expr,
-                                      bool caseInsensitive);
-  icu::RegexMatcher* buildSplitMatcher(AqlValue const& splitExpression,
-                                       velocypack::Options const* opts,
-                                       bool& isEmptyExpression);
+  icu_64_64::RegexMatcher* buildRegexMatcher(std::string_view expr,
+                                             bool caseInsensitive);
+  icu_64_64::RegexMatcher* buildLikeMatcher(std::string_view expr,
+                                            bool caseInsensitive);
+  icu_64_64::RegexMatcher* buildSplitMatcher(AqlValue const& splitExpression,
+                                             velocypack::Options const* opts,
+                                             bool& isEmptyExpression);
 
   /// @brief return validators -- This is currently only used for JSONSchema
   /// validation.
@@ -76,9 +74,9 @@ class AqlFunctionsInternalCache final {
  private:
   /// @brief get matcher from cache, or insert a new matcher for the specified
   /// pattern
-  icu::RegexMatcher* fromCache(
+  icu_64_64::RegexMatcher* fromCache(
       std::string const& pattern,
-      std::unordered_map<std::string, std::unique_ptr<icu::RegexMatcher>>&
+      std::unordered_map<std::string, std::unique_ptr<icu_64_64::RegexMatcher>>&
           cache);
 
   static void buildRegexPattern(std::string& out, std::string_view expr,
@@ -88,10 +86,10 @@ class AqlFunctionsInternalCache final {
 
  private:
   /// @brief cache for compiled regexes (REGEX function)
-  std::unordered_map<std::string, std::unique_ptr<icu::RegexMatcher>>
+  std::unordered_map<std::string, std::unique_ptr<icu_64_64::RegexMatcher>>
       _regexCache;
   /// @brief cache for compiled regexes (LIKE function)
-  std::unordered_map<std::string, std::unique_ptr<icu::RegexMatcher>>
+  std::unordered_map<std::string, std::unique_ptr<icu_64_64::RegexMatcher>>
       _likeCache;
   /// @brief cache for validators -- This is currently only used for JSONSchema
   /// validation.
@@ -101,5 +99,4 @@ class AqlFunctionsInternalCache final {
   std::string _temp;
 };
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql

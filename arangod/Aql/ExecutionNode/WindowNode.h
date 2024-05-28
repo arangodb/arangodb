@@ -101,8 +101,8 @@ class WindowNode : public ExecutionNode {
              Variable const* rangeVariable,
              std::vector<AggregateVarInfo> const& aggregateVariables);
 
-  WindowNode(ExecutionPlan*, arangodb::velocypack::Slice const& base,
-             WindowBounds&& b, Variable const* rangeVariable,
+  WindowNode(ExecutionPlan*, arangodb::velocypack::Slice base, WindowBounds&& b,
+             Variable const* rangeVariable,
              std::vector<AggregateVarInfo> const& aggregateVariables);
 
   ~WindowNode() override;

@@ -127,6 +127,11 @@ export const ServicesTable = () => {
       <ReactTable<ServiceDescription>
         table={tableInstance}
         emptyStateMessage="No services found"
+        onRowSelect={row => {
+          window.location.hash = `#service/${encodeURIComponent(
+            row.original.mount
+          )}`;
+        }}
       />
     </Stack>
   );

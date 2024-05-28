@@ -33,6 +33,7 @@
 #include "Mocks/StorageEngineMock.h"
 
 #include "Aql/QueryRegistry.h"
+#include "Auth/UserManager.h"
 #include "Basics/StaticStrings.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "RestHandler/RestUsersHandler.h"

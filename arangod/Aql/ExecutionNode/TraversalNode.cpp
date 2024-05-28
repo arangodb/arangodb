@@ -72,7 +72,7 @@ TraversalNode::TraversalEdgeConditionBuilder::TraversalEdgeConditionBuilder(
       _tn(tn) {}
 
 TraversalNode::TraversalEdgeConditionBuilder::TraversalEdgeConditionBuilder(
-    TraversalNode const* tn, arangodb::velocypack::Slice const& condition)
+    TraversalNode const* tn, arangodb::velocypack::Slice condition)
     : EdgeConditionBuilder(tn->_plan->getAst()->createNode(condition),
                            tn->_plan->getAst()->query().resourceMonitor()),
       _tn(tn) {}
@@ -186,7 +186,7 @@ TraversalNode::TraversalNode(
 }
 
 TraversalNode::TraversalNode(ExecutionPlan* plan,
-                             arangodb::velocypack::Slice const& base)
+                             arangodb::velocypack::Slice base)
     : GraphNode(plan, base),
       _pathOutVariable(nullptr),
       _inVariable(nullptr),

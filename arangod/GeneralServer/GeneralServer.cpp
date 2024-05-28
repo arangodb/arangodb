@@ -104,6 +104,7 @@ void GeneralServer::startListening(EndpointList& list) {
         << "trying to bind to endpoint '" << specification << "' for requests";
 
     // distribute endpoints across all io contexts
+    TRI_ASSERT(!_contexts.empty());
     IoContext& ioContext = _contexts[i++ % _contexts.size()];
     bool ok = openEndpoint(ioContext, &ep);
 

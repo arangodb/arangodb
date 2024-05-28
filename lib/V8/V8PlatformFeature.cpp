@@ -24,8 +24,12 @@
 #include "V8PlatformFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/ArangoGlobalContext.h"
+#include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
+#include "Basics/directories.h"
+#include "Basics/exitcodes.h"
 #include "Basics/files.h"
 #include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
@@ -36,6 +40,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "V8/v8-globals.h"
 
+#include <absl/strings/str_cat.h>
 #include <libplatform/libplatform.h>
 
 #include <cstdlib>
@@ -139,6 +144,8 @@ void fatalCallback(char const* location, char const* message) {
 
 }  // namespace
 
+std::string const V8PlatformFeature::fn("icudtl.dat");
+
 void V8PlatformFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
   options->addSection("javascript", "JavaScript engine and execution");
@@ -193,7 +200,26 @@ void V8PlatformFeature::validateOptions(
 }
 
 void V8PlatformFeature::start() {
-  v8::V8::InitializeICU();
+  // get path to ICU datafile
+  std::string path = determineICUDataPath();
+
+  if (!TRI_IsRegularFile(path.c_str())) {
+    std::string msg = absl::StrCat(
+        "failed to initialize ICU library. Could not locate '", path,
+        "'. Please make sure it is available. "
+        "The environment variable ICU_DATA");
+    std::string icupath;
+    if (TRI_GETENV("ICU_DATA", icupath)) {
+      absl::StrAppend(&msg, "='", icupath, "'");
+    }
+    absl::StrAppend(&msg, " should point to the directory containing '", fn,
+                    "'");
+
+    LOG_TOPIC("0de77", FATAL, arangodb::Logger::FIXME) << msg;
+    FATAL_ERROR_EXIT_CODE(TRI_EXIT_ICU_INITIALIZATION_FAILED);
+  }
+
+  v8::V8::InitializeICU(path.c_str());
 
   auto numberOfThreads = [&]() -> int {
     std::string basename = TRI_Basename(server().options()->progname());
@@ -279,4 +305,48 @@ void V8PlatformFeature::disposeIsolate(v8::Isolate* isolate) {
   }
   // because Isolate::Dispose() will delete isolate!
   isolate->Dispose();
+}
+
+std::string V8PlatformFeature::determineICUDataPath() {
+  std::string path;
+
+  if (TRI_GETENV("ICU_DATA", path)) {
+    path = FileUtils::buildFilename(path, fn);
+  }
+  if (path.empty() || !TRI_IsRegularFile(path.c_str())) {
+    if (!path.empty()) {
+      LOG_TOPIC("581d1", WARN, arangodb::Logger::FIXME)
+          << "failed to locate '" << fn << "' at '" << path << "'";
+    }
+
+    auto context = ArangoGlobalContext::CONTEXT;
+    std::string binaryExecutionPath = context->getBinaryPath();
+    std::string binaryName = context->binaryName();
+    std::string bpfn = FileUtils::buildFilename(binaryExecutionPath, fn);
+
+    if (TRI_IsRegularFile(fn.c_str())) {
+      path = fn;
+    } else if (TRI_IsRegularFile(bpfn.c_str())) {
+      path = bpfn;
+    } else {
+      std::string argv0 =
+          FileUtils::buildFilename(binaryExecutionPath, binaryName);
+      path = TRI_LocateInstallDirectory(argv0.c_str(), _binaryPath);
+      path = FileUtils::buildFilename(path, ICU_DESTINATION_DIRECTORY, fn);
+
+      if (!TRI_IsRegularFile(path.c_str())) {
+        // Try whether we have an absolute install prefix:
+        path = FileUtils::buildFilename(ICU_DESTINATION_DIRECTORY, fn);
+      }
+    }
+
+    if (TRI_IsRegularFile(path.c_str())) {
+      std::string icu_path = path.substr(0, path.length() - fn.length());
+      FileUtils::makePathAbsolute(icu_path);
+      FileUtils::normalizePath(icu_path);
+      setenv("ICU_DATA", icu_path.c_str(), 1);
+    }
+  }
+
+  return path;
 }

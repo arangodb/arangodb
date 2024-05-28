@@ -112,6 +112,12 @@ struct Options {
   /// `ensureSnapshot`. This allows us to lock the used keys before the
   /// snapshot is acquired in order to avoid write-write conflict.
   bool delaySnapshot = false;
+
+  /// @brief if set to true, skips the fast, unordered lock round and always
+  /// uses the sequential, ordered lock round.
+  /// if set to false, the fast lock round may be tried, depending on the
+  /// context of the transaction.
+  bool skipFastLockRound = false;
 };
 
 struct AllowImplicitCollectionsSwitcher {

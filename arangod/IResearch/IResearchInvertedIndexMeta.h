@@ -77,7 +77,7 @@ class IResearchInvertedIndexSort final : public IResearchSortBase {
 
  private:
   irs::type_info::type_id _sortCompression{getDefaultCompression()};
-  icu::Locale _locale;
+  icu_64_64::Locale _locale;
 #ifdef USE_ENTERPRISE
   bool _cache{false};
 #endif

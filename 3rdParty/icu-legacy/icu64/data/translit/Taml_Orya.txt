@@ -1,0 +1,13 @@
+﻿# © 2016 and later: Unicode, Inc. and others.
+# License & terms of use: http://www.unicode.org/copyright.html#License
+#
+# File: Taml_Orya.txt
+# Generated from CLDR
+#
+
+::[\u0BE6\u0B82-ஃஅ-ஊஎ-ஐஒ-கங-சஜஞ-டண-தந-பம-வஷ-ஹா-ூெ-ைொ-\u0BCDௗ௧-௲ஶ];
+::NFD;
+::Tamil-InterIndic;
+::InterIndic-Oriya;
+::NFC;
+
