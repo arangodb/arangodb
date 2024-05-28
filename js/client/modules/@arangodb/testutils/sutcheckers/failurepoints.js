@@ -1,5 +1,5 @@
 /* jshint strict: false, sub: true */
-/* global */
+/* global print db arango */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -22,48 +22,28 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Julia Puget
+// / @author Wilfried Goesgens
 // //////////////////////////////////////////////////////////////////////////////
-
-const functionsDocumentation = {
-  'shell_fuzzer': 'shell client fuzzer tests'
-};
-
-const _ = require('lodash');
-const tu = require('@arangodb/testutils/test-utils');
-const trs = require('@arangodb/testutils/testrunners');
-const versionHas = require("@arangodb/test-helper").versionHas;
-
-const testPaths = {
-  'shell_fuzzer': [tu.pathForTesting('client/fuzz')]
-};
-
-
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief TEST: shell_fuzzer
+// / @brief checks that no failure points were left engaged on the SUT. 
 // //////////////////////////////////////////////////////////////////////////////
-
-function shellFuzzer(options) {
-  if (!versionHas('failure-tests')) {
-    return {
-      recovery: {
-        status: false,
-        message: 'failure-tests not enabled. please recompile with -DUSE_FAILURE_TESTS=On'
-      },
-      status: false
-    };
+exports.checker = class {
+  constructor(runner) {
+    this.runner = runner;
+    this.name = 'failurepoints';
   }
-
-  let testCases = tu.scanTestPaths(testPaths.shell_fuzzer, options);
-
-  testCases = tu.splitBuckets(options, testCases);
-  let rc = new trs.runLocalInArangoshRunner(options, 'shell_fuzzer').run(testCases);
-  return rc;
-}
-
-exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
-  Object.assign(allTestPaths, testPaths);
-  testFns['shell_fuzzer'] = shellFuzzer;
-
-  tu.CopyIntoObject(fnDocs, functionsDocumentation);
+  setUp(te) { return true; }
+  runCheck(te) {
+    let failurePoints = this.runner.instanceManager.checkServerFailurePoints();
+    if (failurePoints.length > 0) {
+      this.runner.setResult(te, true, {
+        status: false,
+        message: 'Cleanup of failure points missing - found failure points engaged: ' +
+          JSON.stringify(failurePoints)
+      });
+      return false;
+    }
+    return true;
+  }
 };
+

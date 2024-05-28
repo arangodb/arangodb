@@ -1,5 +1,5 @@
 /* jshint strict: false, sub: true */
-/* global */
+/* global print db arango */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -22,48 +22,39 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Julia Puget
+// / @author Wilfried Goesgens
 // //////////////////////////////////////////////////////////////////////////////
-
-const functionsDocumentation = {
-  'shell_fuzzer': 'shell client fuzzer tests'
-};
-
-const _ = require('lodash');
-const tu = require('@arangodb/testutils/test-utils');
-const trs = require('@arangodb/testutils/testrunners');
-const versionHas = require("@arangodb/test-helper").versionHas;
-
-const testPaths = {
-  'shell_fuzzer': [tu.pathForTesting('client/fuzz')]
-};
-
-
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief TEST: shell_fuzzer
+// / @brief checks that no new databases were left on the SUT. 
 // //////////////////////////////////////////////////////////////////////////////
-
-function shellFuzzer(options) {
-  if (!versionHas('failure-tests')) {
-    return {
-      recovery: {
-        status: false,
-        message: 'failure-tests not enabled. please recompile with -DUSE_FAILURE_TESTS=On'
-      },
-      status: false
-    };
+exports.checker = class {
+  constructor(runner) {
+    this.runner = runner;
+    this.name = 'databases';
   }
-
-  let testCases = tu.scanTestPaths(testPaths.shell_fuzzer, options);
-
-  testCases = tu.splitBuckets(options, testCases);
-  let rc = new trs.runLocalInArangoshRunner(options, 'shell_fuzzer').run(testCases);
-  return rc;
-}
-
-exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
-  Object.assign(allTestPaths, testPaths);
-  testFns['shell_fuzzer'] = shellFuzzer;
-
-  tu.CopyIntoObject(fnDocs, functionsDocumentation);
+  setUp(te) { return true;}
+  runCheck(te) {
+    // TODO: we are currently filtering out the UnitTestDB here because it is 
+    // created and not cleaned up by a lot of the `authentication` tests. This
+    // should be fixed eventually
+    try {
+      db._useDatabase('_system');
+      let databasesAfter = db._databases().filter((name) => name !== 'UnitTestDB');
+      if (databasesAfter.length !== 1 || databasesAfter[0] !== '_system') {
+        this.runner.setResult(te, false, {
+          status: false,
+          message: 'Cleanup missing - test left over databases: [ ' + JSON.stringify(databasesAfter)
+        });
+        return false;
+      }
+      return true;
+    } catch (x) {
+      this.runner.setResult(te, false, {
+        status: false,
+        message: 'failed to fetch the databases list: ' + x.message
+      });
+    }
+    return false;
+  }
 };
+
