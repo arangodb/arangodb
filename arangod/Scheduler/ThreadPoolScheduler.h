@@ -21,6 +21,7 @@
 
 #include "Scheduler.h"
 #include "SimpleThreadPool.h"
+#include "LockfreeThreadPool.h"
 #include "WorkStealingThreadPool.h"
 #include "SchedulerMetrics.h"
 
@@ -51,10 +52,11 @@ struct ThreadPoolScheduler final : Scheduler {
   bool isStopping() override { return _stopping; }
 
  private:
+  using ThreadPool = WorkStealingThreadPool;
   std::shared_ptr<SchedulerMetrics> _metrics;
   std::atomic<bool> _stopping = false;
   std::atomic<uint64_t> _lastLowPriorityDequeueTime = 0;
-  std::vector<std::unique_ptr<WorkStealingThreadPool>> _threadPools;
+  std::vector<std::unique_ptr<ThreadPool>> _threadPools;
 };
 
 }  // namespace arangodb

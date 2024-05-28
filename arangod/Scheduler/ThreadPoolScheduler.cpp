@@ -100,25 +100,25 @@ ThreadPoolScheduler::ThreadPoolScheduler(
   // the different priorities, so we want to compensate that a bit.
   poolMetrics.queueLength = _metrics->_metricsQueueLengths[0];
   poolMetrics.dequeueTimes = _metrics->_metricsDequeueTimes[0];
-  _threadPools.emplace_back(std::make_unique<WorkStealingThreadPool>(
+  _threadPools.emplace_back(std::make_unique<ThreadPool>(
       "SchedMaintenance", std::max<std::size_t>(std::ceil(maxThreads * 0.1), 2),
       poolMetrics));
 
   poolMetrics.queueLength = _metrics->_metricsQueueLengths[1];
   poolMetrics.dequeueTimes = _metrics->_metricsDequeueTimes[1];
-  _threadPools.emplace_back(std::make_unique<WorkStealingThreadPool>(
+  _threadPools.emplace_back(std::make_unique<ThreadPool>(
       "SchedHigh", std::max<std::size_t>(std::ceil(maxThreads * 0.4), 8),
       poolMetrics));
 
   poolMetrics.queueLength = _metrics->_metricsQueueLengths[2];
   poolMetrics.dequeueTimes = _metrics->_metricsDequeueTimes[2];
-  _threadPools.emplace_back(std::make_unique<WorkStealingThreadPool>(
+  _threadPools.emplace_back(std::make_unique<ThreadPool>(
       "SchedMedium", std::max<std::size_t>(std::ceil(maxThreads * 0.4), 8),
       poolMetrics));
 
   poolMetrics.queueLength = _metrics->_metricsQueueLengths[3];
   poolMetrics.dequeueTimes = _metrics->_metricsDequeueTimes[3];
-  _threadPools.emplace_back(std::make_unique<WorkStealingThreadPool>(
+  _threadPools.emplace_back(std::make_unique<ThreadPool>(
       "SchedLow", std::max<std::size_t>(std::ceil(maxThreads * 0.6), 16),
       poolMetrics));
 }
