@@ -399,6 +399,8 @@ AqlValue Flatten(arangodb::aql::ExpressionContext*, AstNode const&,
                  VPackFunctionParametersView);
 AqlValue Zip(arangodb::aql::ExpressionContext*, AstNode const&,
              VPackFunctionParametersView);
+AqlValue Entries(arangodb::aql::ExpressionContext*, AstNode const&,
+                 VPackFunctionParametersView);
 AqlValue JsonStringify(arangodb::aql::ExpressionContext*, AstNode const&,
                        VPackFunctionParametersView);
 AqlValue JsonParse(arangodb::aql::ExpressionContext*, AstNode const&,
