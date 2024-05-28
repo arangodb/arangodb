@@ -75,15 +75,15 @@ class FlushFeatureTest
     features.emplace_back(
         server.addFeature<arangodb::metrics::MetricsFeature>(
             arangodb::LazyApplicationFeatureReference<
-                arangodb::QueryRegistryFeature>::fromServer(server),
+                arangodb::QueryRegistryFeature>(server),
             arangodb::LazyApplicationFeatureReference<
-                arangodb::StatisticsFeature>::fromServer(server),
+                arangodb::StatisticsFeature>(nullptr),
             arangodb::LazyApplicationFeatureReference<
-                arangodb::EngineSelectorFeature>::fromServer(server),
+                arangodb::EngineSelectorFeature>(server),
             arangodb::LazyApplicationFeatureReference<
-                arangodb::metrics::ClusterMetricsFeature>::fromServer(server),
-            arangodb::LazyApplicationFeatureReference<
-                arangodb::ClusterFeature>::fromServer(server)),
+                arangodb::metrics::ClusterMetricsFeature>(nullptr),
+            arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
+                nullptr)),
         false);
     features.emplace_back(server.addFeature<arangodb::AuthenticationFeature>(),
                           false);  // required for ClusterFeature::prepare()

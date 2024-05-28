@@ -49,13 +49,11 @@ using namespace arangodb;
 TEST(RocksDBTransactionManager, test_non_overlapping) {
   ArangodServer server{nullptr, nullptr};
   server.addFeature<metrics::MetricsFeature>(
-      LazyApplicationFeatureReference<QueryRegistryFeature>::fromServer(server),
-      LazyApplicationFeatureReference<StatisticsFeature>::fromServer(server),
-      LazyApplicationFeatureReference<EngineSelectorFeature>::fromServer(
-          server),
-      LazyApplicationFeatureReference<
-          metrics::ClusterMetricsFeature>::fromServer(server),
-      LazyApplicationFeatureReference<ClusterFeature>::fromServer(server));
+      LazyApplicationFeatureReference<QueryRegistryFeature>(nullptr),
+      LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
+      LazyApplicationFeatureReference<EngineSelectorFeature>(nullptr),
+      LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(nullptr),
+      LazyApplicationFeatureReference<ClusterFeature>(nullptr));
   transaction::ManagerFeature feature(server);
   transaction::Manager tm(feature);
 
@@ -78,13 +76,11 @@ TEST(RocksDBTransactionManager, test_overlapping) {
   auto trxId = static_cast<TransactionId>(1);
   ArangodServer server{nullptr, nullptr};
   server.addFeature<metrics::MetricsFeature>(
-      LazyApplicationFeatureReference<QueryRegistryFeature>::fromServer(server),
-      LazyApplicationFeatureReference<StatisticsFeature>::fromServer(server),
-      LazyApplicationFeatureReference<EngineSelectorFeature>::fromServer(
-          server),
-      LazyApplicationFeatureReference<
-          metrics::ClusterMetricsFeature>::fromServer(server),
-      LazyApplicationFeatureReference<ClusterFeature>::fromServer(server));
+      LazyApplicationFeatureReference<QueryRegistryFeature>(nullptr),
+      LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
+      LazyApplicationFeatureReference<EngineSelectorFeature>(nullptr),
+      LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(nullptr),
+      LazyApplicationFeatureReference<ClusterFeature>(nullptr));
   transaction::ManagerFeature feature(server);
   transaction::Manager tm(feature);
 

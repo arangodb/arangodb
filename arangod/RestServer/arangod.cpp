@@ -117,16 +117,12 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         [](auto& server, TypeTag<metrics::MetricsFeature>) {
           return std::make_unique<metrics::MetricsFeature>(
               server,
-              LazyApplicationFeatureReference<QueryRegistryFeature>::fromServer(
+              LazyApplicationFeatureReference<QueryRegistryFeature>(server),
+              LazyApplicationFeatureReference<StatisticsFeature>(server),
+              LazyApplicationFeatureReference<EngineSelectorFeature>(server),
+              LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(
                   server),
-              LazyApplicationFeatureReference<StatisticsFeature>::fromServer(
-                  server),
-              LazyApplicationFeatureReference<
-                  EngineSelectorFeature>::fromServer(server),
-              LazyApplicationFeatureReference<
-                  metrics::ClusterMetricsFeature>::fromServer(server),
-              LazyApplicationFeatureReference<ClusterFeature>::fromServer(
-                  server));
+              LazyApplicationFeatureReference<ClusterFeature>(server));
         },
         [](auto& server, TypeTag<NetworkFeature>) {
           auto& metrics =

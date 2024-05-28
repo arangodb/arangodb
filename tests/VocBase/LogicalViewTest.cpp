@@ -129,22 +129,22 @@ class LogicalViewTest
     features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(),
                           false);
     features.emplace_back(
+        server.addFeature<arangodb::metrics::MetricsFeature>(
+            arangodb::LazyApplicationFeatureReference<
+                arangodb::QueryRegistryFeature>(server),
+            arangodb::LazyApplicationFeatureReference<
+                arangodb::StatisticsFeature>(nullptr),
+            arangodb::LazyApplicationFeatureReference<
+                arangodb::EngineSelectorFeature>(nullptr),
+            arangodb::LazyApplicationFeatureReference<
+                arangodb::metrics::ClusterMetricsFeature>(nullptr),
+            arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
+                nullptr)),
+        false);
+    features.emplace_back(
         server.addFeature<arangodb::QueryRegistryFeature>(
             server.template getFeature<arangodb::metrics::MetricsFeature>()),
         false);  // required for TRI_vocbase_t
-    features.emplace_back(
-        server.addFeature<arangodb::metrics::MetricsFeature>(
-            arangodb::LazyApplicationFeatureReference<
-                arangodb::QueryRegistryFeature>::fromServer(server),
-            arangodb::LazyApplicationFeatureReference<
-                arangodb::StatisticsFeature>::fromServer(server),
-            arangodb::LazyApplicationFeatureReference<
-                arangodb::EngineSelectorFeature>::fromServer(server),
-            arangodb::LazyApplicationFeatureReference<
-                arangodb::metrics::ClusterMetricsFeature>::fromServer(server),
-            arangodb::LazyApplicationFeatureReference<
-                arangodb::ClusterFeature>::fromServer(server)),
-        false);
     features.emplace_back(server.addFeature<arangodb::ViewTypesFeature>(),
                           false);  // required for LogicalView::create(...)
 

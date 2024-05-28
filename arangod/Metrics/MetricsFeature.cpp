@@ -389,11 +389,11 @@ void MetricsFeature::batchRemove(std::string_view name,
 }
 
 void MetricsFeature::prepare() {
-  _queryRegistryFeature = &_lazyQueryRegistryFeatureRef.get();
-  _statisticsFeature = &_lazyStatisticsFeatureRef.get();
-  _engineSelectorFeature = &_lazyEngineSelectorFeatureRef.get();
-  _clusterMetricsFeature = &_lazyClusterMetricsFeatureRef.get();
-  _clusterFeature = &_lazyClusterFeatureRef.get();
+  _queryRegistryFeature = std::move(_lazyQueryRegistryFeatureRef).get();
+  _statisticsFeature = std::move(_lazyStatisticsFeatureRef).get();
+  _engineSelectorFeature = std::move(_lazyEngineSelectorFeatureRef).get();
+  _clusterMetricsFeature = std::move(_lazyClusterMetricsFeatureRef).get();
+  _clusterFeature = std::move(_lazyClusterFeatureRef).get();
 }
 
 }  // namespace arangodb::metrics

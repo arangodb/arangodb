@@ -525,14 +525,14 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
     auto& selector = as.addFeature<arangodb::EngineSelectorFeature>();
     auto& metrics = as.addFeature<arangodb::metrics::MetricsFeature>(
         arangodb::LazyApplicationFeatureReference<
-            arangodb::QueryRegistryFeature>::fromServer(as),
-        arangodb::LazyApplicationFeatureReference<
-            arangodb::StatisticsFeature>::fromServer(as),
+            arangodb::QueryRegistryFeature>(nullptr),
+        arangodb::LazyApplicationFeatureReference<arangodb::StatisticsFeature>(
+            nullptr),
         selector,
         arangodb::LazyApplicationFeatureReference<
-            arangodb::metrics::ClusterMetricsFeature>::fromServer(as),
-        arangodb::LazyApplicationFeatureReference<
-            arangodb::ClusterFeature>::fromServer(as));
+            arangodb::metrics::ClusterMetricsFeature>(nullptr),
+        arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
+            nullptr));
 
     // need to construct this after adding the MetricsFeature to the application
     // server

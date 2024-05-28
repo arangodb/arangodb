@@ -82,14 +82,11 @@ class PhysicalCollectionTest
     features.emplace_back(selector);
     selector.setEngineTesting(&engine);
     features.emplace_back(server.addFeature<metrics::MetricsFeature>(
-        LazyApplicationFeatureReference<QueryRegistryFeature>::fromServer(
-            server),
-        LazyApplicationFeatureReference<StatisticsFeature>::fromServer(server),
-        LazyApplicationFeatureReference<EngineSelectorFeature>::fromServer(
-            server),
-        LazyApplicationFeatureReference<
-            metrics::ClusterMetricsFeature>::fromServer(server),
-        LazyApplicationFeatureReference<ClusterFeature>::fromServer(server)));
+        LazyApplicationFeatureReference<QueryRegistryFeature>(server),
+        LazyApplicationFeatureReference<StatisticsFeature>(nullptr), selector,
+        LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(
+            nullptr),
+        LazyApplicationFeatureReference<ClusterFeature>(nullptr)));
     features.emplace_back(server.addFeature<QueryRegistryFeature>(
         server.template getFeature<
             metrics::MetricsFeature>()));  // required for TRI_vocbase_t

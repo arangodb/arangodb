@@ -28,29 +28,24 @@
 #include "Metrics/Metric.h"
 #include "Metrics/MetricsFeature.h"
 #include "MetricsFeatureTest.h"
-#include "Cluster/ClusterFeature.h"
-#include "Metrics/ClusterMetricsFeature.h"
-#include "Statistics/StatisticsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 
 using namespace arangodb;
+
+std::shared_ptr<arangodb::options::ProgramOptions> opts =
+    std::make_shared<arangodb::options::ProgramOptions>(
+        "metrics_feature_test", std::string(), std::string(), "path");
+ArangodServer server = ArangodServer(opts, nullptr);
+metrics::MetricsFeature feature = metrics::MetricsFeature(
+    server, LazyApplicationFeatureReference<QueryRegistryFeature>(server),
+    LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
+    LazyApplicationFeatureReference<EngineSelectorFeature>(nullptr),
+    LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(nullptr),
+    LazyApplicationFeatureReference<ClusterFeature>(nullptr));
 
 class MetricsFeatureTest : public ::testing::Test {
  protected:
   MetricsFeatureTest() {}
-
-  std::shared_ptr<arangodb::options::ProgramOptions> opts =
-      std::make_shared<arangodb::options::ProgramOptions>(
-          "metrics_feature_test", std::string(), std::string(), "path");
-  ArangodServer server = ArangodServer(opts, nullptr);
-  metrics::MetricsFeature feature = metrics::MetricsFeature(
-      server,
-      LazyApplicationFeatureReference<QueryRegistryFeature>::fromServer(server),
-      server.template getFeature<arangodb::StatisticsFeature>(),
-      server.template getFeature<arangodb::EngineSelectorFeature>(),
-      server.template getFeature<arangodb::metrics::ClusterMetricsFeature>(),
-      server.template getFeature<arangodb::ClusterFeature>());
 };
 
 metrics::Metric* thisMetric;

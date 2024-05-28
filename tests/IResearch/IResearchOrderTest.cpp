@@ -53,6 +53,7 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "Statistics/StatisticsFeature.h"
+#include "Statistics/StatisticsWorker.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -286,15 +287,14 @@ class IResearchOrderTest
     features.emplace_back(
         server.addFeature<arangodb::metrics::MetricsFeature>(
             arangodb::LazyApplicationFeatureReference<
-                arangodb::QueryRegistryFeature>::fromServer(server),
+                arangodb::QueryRegistryFeature>(server),
             arangodb::LazyApplicationFeatureReference<
-                arangodb::StatisticsFeature>::fromServer(server),
+                arangodb::StatisticsFeature>(nullptr),
+            selector,
             arangodb::LazyApplicationFeatureReference<
-                arangodb::EngineSelectorFeature>::fromServer(server),
-            arangodb::LazyApplicationFeatureReference<
-                arangodb::metrics::ClusterMetricsFeature>::fromServer(server),
-            arangodb::LazyApplicationFeatureReference<
-                arangodb::ClusterFeature>::fromServer(server)),
+                arangodb::metrics::ClusterMetricsFeature>(nullptr),
+            arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
+                nullptr)),
         false);
     features.emplace_back(server.addFeature<arangodb::AqlFeature>(), true);
     features.emplace_back(

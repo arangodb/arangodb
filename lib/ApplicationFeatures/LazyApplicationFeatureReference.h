@@ -30,78 +30,87 @@
 
 namespace arangodb {
 
-// This is a workaround so we can work with explicit dependencies (in order to
+// This is a workaround, so we can work with explicit dependencies (in order to
 // avoid passing around ArangodServer and using getFeature calls) in face of
 // circular dependencies.
 // We should try to remove circular deps as well whenever possible, but we can't
 // solve all problems at once. :)
 // We also might want to change how this works (internally, and from the
 // construction-site) later: Instead of having a callback that holds a reference
-// to an ArangodServer - which we want to get rid of - we can have the
-// construction site hold some kind of reference to this, and put in the
-// feature-pointer when it's available.
+// to an ArangodServer (see LazyApplicationFeatureReference(Server&)) - which we
+// want to get rid of - we can have the construction site hold some kind of
+// reference to this, and put in the feature-pointer when it's available.
+//
+// @brief It holds a factory function, which is called *only once* on the first
+// get() call, and returns a pointer to the corresponding feature. It's
+// destroyed after that.
 template<typename FeatureT>
 // removed, so we can work with incomplete types
 // requires std::derived_from<FeatureT,
 // application_features::ApplicationFeature>
 struct LazyApplicationFeatureReference {
-  // get() should not be called before prepare() (probably exactly once during
-  // prepare)
-  auto get() noexcept -> FeatureT&;
+  // get() must be called only once
+  [[nodiscard]] auto get() && noexcept -> FeatureT*;
 
   using Factory = fu2::unique_function<FeatureT*() noexcept>;
 
   explicit LazyApplicationFeatureReference(Factory factory);
   LazyApplicationFeatureReference(FeatureT& feature);
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  // for tests only
+  explicit LazyApplicationFeatureReference(std::nullptr_t);
+#endif
   // convenience constructor, should probably be removed/replaced later (see
   // comment above).
   template<typename Server>
   requires requires(Server& server) {
     { server.template getFeature<FeatureT>() } -> std::same_as<FeatureT&>;
   }
-  static auto fromServer(Server& server) noexcept
-      -> LazyApplicationFeatureReference {
-    return LazyApplicationFeatureReference<FeatureT>([&server]() noexcept {
-      return &server.template getFeature<FeatureT>();
-    });
-  }
-
- private:
-  void ensureInitialization() noexcept;
+  explicit LazyApplicationFeatureReference(Server& server)
+      : _factory([&server]() noexcept {
+          return &server.template getFeature<FeatureT>();
+        }) {}
 
  private:
   Factory _factory;
-  FeatureT* _feature = nullptr;
 };
 
-// TODO move these into the .cpp file, and instantiate the class for all
-//      ArangodFeatures. Then move the includes that are no longer needed in the
-//      header into the .cpp file.
 template<typename FeatureT>
 LazyApplicationFeatureReference<FeatureT>::LazyApplicationFeatureReference(
-    LazyApplicationFeatureReference::Factory factory)
-    : _factory(std::move(factory)) {}
-
-template<typename FeatureT>
-LazyApplicationFeatureReference<FeatureT>::LazyApplicationFeatureReference(
-    FeatureT& feature)
-    : _feature(&feature) {}
-
-template<typename FeatureT>
-auto LazyApplicationFeatureReference<FeatureT>::get() noexcept -> FeatureT& {
-  ensureInitialization();
-  return *_feature;
+    Factory factory)
+    : _factory(std::move(factory)) {
+  ADB_PROD_ASSERT(_factory != nullptr)
+      << "No factory provided for LazyApplicationFeatureReference of "
+      << typeid(FeatureT).name();
 }
 
 template<typename FeatureT>
-void LazyApplicationFeatureReference<
-    FeatureT>::ensureInitialization() noexcept {
-  if (_feature == nullptr) {
-    _feature = std::move(_factory)();
-    _factory = nullptr;
-  }
-  ADB_PROD_ASSERT(_feature != nullptr)
+LazyApplicationFeatureReference<FeatureT>::LazyApplicationFeatureReference(
+    FeatureT& featureRef)
+    : _factory([featurePointer = &featureRef]() noexcept {
+        return featurePointer;
+      }) {}
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+template<typename FeatureT>
+LazyApplicationFeatureReference<FeatureT>::LazyApplicationFeatureReference(
+    std::nullptr_t)
+    : _factory([]() noexcept { return nullptr; }) {}
+#endif
+
+template<typename FeatureT>
+auto LazyApplicationFeatureReference<FeatureT>::get() && noexcept -> FeatureT* {
+  ADB_PROD_ASSERT(_factory != nullptr)
+      << std::source_location::current().function_name()
+      << " uninitialized factory: probably called twice";
+  auto feature = std::move(_factory)();
+  _factory = nullptr;
+#ifndef ARANGODB_USE_GOOGLE_TESTS
+  // Only the tests are allowed to return a nullptr reference
+  TRI_ASSERT(feature != nullptr)
       << "Feature reference initialization failed: " << typeid(FeatureT).name();
+#endif
+  return feature;
 }
 
 }  // namespace arangodb
