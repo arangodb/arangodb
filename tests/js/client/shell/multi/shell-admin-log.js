@@ -4,13 +4,14 @@
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
-// / Copyright 2018 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -18,7 +19,7 @@
 // / See the License for the specific language governing permissions and
 // / limitations under the License.
 // /
-// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Jan Steemann
 // //////////////////////////////////////////////////////////////////////////////
@@ -63,7 +64,7 @@ function adminLogSuite() {
     setUp: function () {
       arango.DELETE("/_admin/log");
     },
-
+    
     testPutAdminSetAllLevels: function () {
       let previous = arango.GET("/_admin/log/level");
       try {
@@ -412,6 +413,46 @@ function adminLogSuite() {
       assertTrue(Array.isArray(res.messages));
       assertEqual(0, res.messages.length);
       assertEqual(50, res.total);
+    },
+
+    testResetLogLevels: function () {
+      let res = arango.PUT("/_admin/log/level", {"trx": "trace", "requests": "debug"});
+      assertEqual(res.trx, "TRACE");
+      assertEqual(res.requests, "DEBUG");
+      const newValue = arango.GET("/_admin/log/level");
+      assertEqual(newValue.trx, "TRACE");
+      assertEqual(newValue.requests, "DEBUG");
+      // restore old values
+      const restored = arango.DELETE("/_admin/log/level");
+      assertEqual(oldLogLevels.trx, restored.trx);
+      assertEqual(oldLogLevels.requests, restored.requests);
+      // now read the restored value
+      const newOld = arango.GET("/_admin/log/level");
+      assertEqual(oldLogLevels.trx, newOld.trx);
+      assertEqual(oldLogLevels.requests, newOld.requests);
+    },
+    
+    testResetLogLevelsOtherServer: function () {
+      if (dbservers.length === 0) {
+        return;
+      }
+      const server = dbservers[0];
+      const url = helper.getEndpointById(server);
+      const old = request.get(`${url}/_admin/log/level`);
+      // change the value via coordinator
+      let res = arango.PUT(`/_admin/log/level?serverId=${server}`, {"trx": "trace", "requests": "debug"});
+      assertEqual(res.trx, "TRACE");
+      assertEqual(res.requests, "DEBUG");
+      // read directly from dbserver
+      const newValue = request.get(`${url}/_admin/log/level`);
+      assertEqual(newValue.json.trx, "TRACE");
+      assertEqual(newValue.json.requests, "DEBUG");
+      // restore old values
+      request.delete(`${url}/_admin/log/level`);
+      // now read the restored value
+      const newOld = arango.GET(`/_admin/log/level?serverId=${server}`);
+      assertEqual(old.json.trx, newOld.trx);
+      assertEqual(old.json.requests, newOld.requests);
     },
 
   };

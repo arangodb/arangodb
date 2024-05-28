@@ -11,7 +11,7 @@ import {
   ModalHeader
 } from "../../../components/modal";
 import { getCurrentDB } from "../../../utils/arangoClient";
-import { useReinitializeForm } from "../useReinitializeForm";
+import { notifySuccess } from "../../../utils/notifications";
 import { AddAnalyzerForm } from "./AddAnalyzerForm";
 import { AnalyzerJSONForm } from "./AnalyzerJSONForm";
 import { CopyAnalyzerDropdown } from "./CopyAnalyzerDropdown";
@@ -35,9 +35,7 @@ export const AddAnalyzerModal = ({
     const currentDB = getCurrentDB();
     try {
       await currentDB.analyzer(values.name).create(values);
-      window.arangoHelper.arangoNotification(
-        `The analyzer: ${values.name} was successfully created`
-      );
+      notifySuccess(`The analyzer: ${values.name} was successfully created`);
       mutate("/analyzers");
       onClose();
     } catch (error: any) {
@@ -83,7 +81,6 @@ const AddAnalyzerModalInner = ({
   isSubmitting: boolean;
 }) => {
   const [showJSONForm, setShowJSONForm] = React.useState(false);
-  useReinitializeForm();
   return (
     <Form>
       <ModalHeader fontSize="sm" fontWeight="normal">

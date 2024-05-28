@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -34,7 +34,6 @@
 #include "Agency/RestAgencyPrivHandler.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
 #include "Aql/RestAqlHandler.h"
-#include "Basics/NumberOfCores.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
@@ -53,8 +52,7 @@
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/MetricsFeature.h"
-#include "Pregel/REST/RestControlPregelHandler.h"
-#include "Pregel/REST/RestPregelHandler.h"
+#include "Network/NetworkFeature.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -117,6 +115,7 @@
 #include "RestHandler/RestTransactionHandler.h"
 #include "RestHandler/RestTtlHandler.h"
 #include "RestHandler/RestUploadHandler.h"
+#include "RestHandler/RestUsageMetricsHandler.h"
 #include "RestHandler/RestUsersHandler.h"
 #include "RestHandler/RestVersionHandler.h"
 #include "RestHandler/RestViewHandler.h"
@@ -146,8 +145,6 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-constexpr uint64_t const maxIoThreads = 64;
-
 struct RequestBodySizeScale {
   static metrics::LogScale<uint64_t> scale() { return {2, 64, 65536, 10}; }
 };
@@ -156,18 +153,15 @@ DECLARE_HISTOGRAM(arangodb_request_body_size_http1, RequestBodySizeScale,
                   "Body size of HTTP/1.1 requests");
 DECLARE_HISTOGRAM(arangodb_request_body_size_http2, RequestBodySizeScale,
                   "Body size of HTTP/2 requests");
-DECLARE_HISTOGRAM(arangodb_request_body_size_vst, RequestBodySizeScale,
-                  "Body size of VST requests");
 DECLARE_COUNTER(arangodb_http1_connections_total,
                 "Total number of HTTP/1.1 connections");
 DECLARE_COUNTER(arangodb_http2_connections_total,
                 "Total number of HTTP/2 connections");
-DECLARE_COUNTER(arangodb_vst_connections_total,
-                "Total number of VST connections");
 DECLARE_GAUGE(arangodb_requests_memory_usage, std::uint64_t,
               "Memory consumed by incoming requests");
 
-GeneralServerFeature::GeneralServerFeature(Server& server)
+GeneralServerFeature::GeneralServerFeature(Server& server,
+                                           metrics::MetricsFeature& metrics)
     : ArangodFeature{server, *this},
       _currentRequestsSize(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_requests_memory_usage{})),
@@ -189,19 +183,11 @@ GeneralServerFeature::GeneralServerFeature(Server& server)
       _redirectRootTo("/_admin/aardvark/index.html"),
       _supportInfoApiPolicy("admin"),
       _optionsApiPolicy("jwt"),
-      _numIoThreads(0),
-      _requestBodySizeHttp1(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_request_body_size_http1{})),
-      _requestBodySizeHttp2(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_request_body_size_http2{})),
-      _requestBodySizeVst(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_request_body_size_vst{})),
-      _http1Connections(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_http1_connections_total{})),
-      _http2Connections(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_http2_connections_total{})),
-      _vstConnections(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_vst_connections_total{})) {
+      _numIoThreads(NetworkFeature::defaultIOThreads()),
+      _requestBodySizeHttp1(metrics.add(arangodb_request_body_size_http1{})),
+      _requestBodySizeHttp2(metrics.add(arangodb_request_body_size_http2{})),
+      _http1Connections(metrics.add(arangodb_http1_connections_total{})),
+      _http2Connections(metrics.add(arangodb_http2_connections_total{})) {
   static_assert(
       Server::isCreatedAfter<GeneralServerFeature, metrics::MetricsFeature>());
 
@@ -212,13 +198,6 @@ GeneralServerFeature::GeneralServerFeature(Server& server)
   startsAfter<SslServerFeature>();
   startsAfter<SchedulerFeature>();
   startsAfter<UpgradeFeature>();
-
-  _numIoThreads =
-      (std::max)(static_cast<uint64_t>(1),
-                 static_cast<uint64_t>(NumberOfCores::getValue() / 4));
-  if (_numIoThreads > maxIoThreads) {
-    _numIoThreads = maxIoThreads;
-  }
 }
 
 void GeneralServerFeature::collectOptions(
@@ -267,7 +246,7 @@ batch processing.)");
 
   options->addOption(
       "--server.io-threads", "The number of threads used to handle I/O.",
-      new UInt64Parameter(&_numIoThreads),
+      new UInt64Parameter(&_numIoThreads, /*base*/ 1, /*minValue*/ 1),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Dynamic));
 
   options
@@ -429,16 +408,6 @@ void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
                          return basics::StringUtils::trim(value).empty();
                        }),
         _accessControlAllowOrigins.end());
-  }
-
-  // we need at least one io thread and context
-  if (_numIoThreads == 0) {
-    LOG_TOPIC("1ade3", WARN, Logger::FIXME) << "Need at least one io-context";
-    _numIoThreads = 1;
-  } else if (_numIoThreads > maxIoThreads) {
-    LOG_TOPIC("80dcf", WARN, Logger::FIXME)
-        << "io-contexts are limited to " << maxIoThreads;
-    _numIoThreads = maxIoThreads;
   }
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
@@ -685,10 +654,6 @@ void GeneralServerFeature::defineRemainingHandlers(
   f.addPrefixHandler(RestVocbaseBaseHandler::BATCH_PATH,
                      RestHandlerCreator<RestBatchHandler>::createNoData);
 
-  f.addPrefixHandler(
-      RestVocbaseBaseHandler::CONTROL_PREGEL_PATH,
-      RestHandlerCreator<RestControlPregelHandler>::createNoData);
-
   auto queryRegistry = QueryRegistryFeature::registry();
   f.addPrefixHandler(
       RestVocbaseBaseHandler::CURSOR_PATH,
@@ -806,9 +771,6 @@ void GeneralServerFeature::defineRemainingHandlers(
 
   f.addPrefixHandler("/_api/query-cache",
                      RestHandlerCreator<RestQueryCacheHandler>::createNoData);
-
-  f.addPrefixHandler("/_api/pregel",
-                     RestHandlerCreator<RestPregelHandler>::createNoData);
 
   f.addPrefixHandler("/_api/wal",
                      RestHandlerCreator<RestWalAccessHandler>::createNoData);
@@ -955,6 +917,10 @@ void GeneralServerFeature::defineRemainingHandlers(
   f.addPrefixHandler(
       "/_admin/metrics",
       RestHandlerCreator<arangodb::RestMetricsHandler>::createNoData);
+
+  f.addPrefixHandler(
+      "/_admin/usage-metrics",
+      RestHandlerCreator<arangodb::RestUsageMetricsHandler>::createNoData);
 
   f.addHandler(
       "/_admin/statistics-description",

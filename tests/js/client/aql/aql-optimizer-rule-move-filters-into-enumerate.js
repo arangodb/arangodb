@@ -1,32 +1,29 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
 /*global assertEqual, assertNotEqual */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for optimizer rules
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Jan Steemann
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 let jsunity = require("jsunity");
 let {db, isCluster} = require("internal");
@@ -41,9 +38,11 @@ function optimizerRuleTestSuite () {
     setUpAll : function () {
       db._drop(cn);
       let c = db._create(cn, { numberOfShards: 2 });
+      let docs = [];
       for (let i = 0; i < 2000; ++i) {
-        c.insert({ _key: "test" + i, value1: i, value2: i });
+        docs.push({ _key: "test" + i, value1: i, value2: i });
       }
+      c.insert(docs);
       c.ensureIndex({ type: "persistent", fields: ["value1"] });
     },
     
@@ -333,9 +332,11 @@ function optimizerRuleIndexesTestSuite () {
     setUpAll : function () {
       db._drop(cn);
       let c = db._create(cn, { numberOfShards: 2 });
+      let docs = [];
       for (let i = 0; i < 2000; ++i) {
-        c.insert({ _key: "test" + i, value1: i, value2: i, value3: i });
+        docs.push({ _key: "test" + i, value1: i, value2: i, value3: i });
       }
+      c.insert(docs);
       c.ensureIndex({ type: "persistent", fields: ["value1", "value2"] });
     },
     
@@ -368,7 +369,7 @@ function optimizerRuleIndexesTestSuite () {
       queries.forEach(function(query) {
         let result = db._createStatement({query: query[0], bindVars: null, options: { optimizer: { rules: ["-use-index-for-sort"] } }}).explain();
         assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
-        assertNotEqual(-1, result.plan.rules.indexOf(lateRuleName), query);
+        assertNotEqual(-1, result.plan.rules.indexOf("push-down-late-materialization"), query);
         assertEqual(0, result.plan.nodes.filter(function(n) { return n.type === 'FilterNode'; }).length);
         result = db._query(query[0], null, { optimizer: { rules: ["-use-index-for-sort"] } }).toArray().length;
         assertEqual(query[1], result, query);

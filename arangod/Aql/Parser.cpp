@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,13 +23,14 @@
 
 #include "Parser.h"
 
-#include "Basics/Common.h"
-#include "Basics/ScopeGuard.h"
+#include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/QueryContext.h"
 #include "Aql/QueryResult.h"
 #include "Aql/QueryString.h"
+#include "Basics/ScopeGuard.h"
+#include "Basics/debugging.h"
 
 #include <absl/strings/str_cat.h>
 
@@ -48,7 +49,7 @@ Parser::Parser(QueryContext& query, Ast& ast, QueryString& qs)
       _remainingLength(0),
       _offset(0),
       _marker(nullptr),
-      _stack() {
+      _lazyConditions(ast) {
   _stack.reserve(4);
 
   _queryStringStart = _queryString.data();
@@ -58,6 +59,16 @@ Parser::Parser(QueryContext& query, Ast& ast, QueryString& qs)
 
 /// @brief destroy the parser
 Parser::~Parser() = default;
+
+LazyConditions const& Parser::lazyConditions() const { return _lazyConditions; }
+LazyConditions& Parser::lazyConditions() { return _lazyConditions; }
+
+/// @brief fill the output buffer with a fragment of the query
+void Parser::fillBuffer(char* result, size_t length) {
+  memcpy(result, _buffer, length);
+  _buffer += length;
+  _remainingLength -= length;
+}
 
 /// @brief set data for write queries
 bool Parser::configureWriteQuery(AstNode const* collectionNode,
@@ -233,8 +244,7 @@ void* Parser::popStack() {
 }
 
 /// @brief peek at a temporary value from the parser's stack
-void* Parser::peekStack() {
+void* Parser::peekStack() const {
   TRI_ASSERT(!_stack.empty());
-
   return _stack.back();
 }

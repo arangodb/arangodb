@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -54,7 +54,16 @@ struct BlackHoleState {
 };
 
 struct BlackHoleLogEntry {
-  std::string value;
+  [[nodiscard]] static auto createFromString(std::string_view payload)
+      -> BlackHoleLogEntry {
+    return BlackHoleLogEntry{.value = LogPayload::createFromString(payload)};
+  }
+
+  [[nodiscard]] static auto createFromSlice(velocypack::Slice slice)
+      -> BlackHoleLogEntry {
+    return BlackHoleLogEntry{.value = LogPayload::createFromSlice(slice)};
+  }
+  LogPayload value;
 };
 
 struct BlackHoleLeaderState
@@ -66,6 +75,7 @@ struct BlackHoleLeaderState
       -> std::unique_ptr<BlackHoleCore> override;
 
   auto release(LogIndex) const -> futures::Future<Result>;
+  auto insert(LogPayload payload, bool waitForSync = false) -> LogIndex;
 
  protected:
   auto recoverEntries(std::unique_ptr<EntryIterator> ptr)

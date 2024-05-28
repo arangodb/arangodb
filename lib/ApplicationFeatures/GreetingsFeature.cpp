@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -33,9 +33,22 @@
 
 namespace arangodb {
 
+char const* LGPLNotice =
+    "This executable uses the GNU C library (glibc), which is licensed under "
+    "the GNU Lesser General Public License (LGPL), see "
+    "https://www.gnu.org/copyleft/lesser.html and "
+    "https://www.gnu.org/licenses/gpl.html";
+
+void logLGPLNotice(void) {
+#ifdef __GLIBC__
+  LOG_TOPIC("11111", INFO, arangodb::Logger::FIXME) << LGPLNotice;
+#endif
+}
+
 void GreetingsFeature::prepare() {
   LOG_TOPIC("e52b0", INFO, arangodb::Logger::FIXME)
-      << "" << rest::Version::getVerboseVersionString();
+      << rest::Version::getVerboseVersionString();
+  logLGPLNotice();
 
   // building in maintainer mode or enabling unit test code will incur runtime
   // overhead, so warn users about this

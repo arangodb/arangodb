@@ -1,35 +1,35 @@
 # -*- mode: CMAKE; -*-
 
+################################################################################
+## global definitions
+################################################################################
+
 add_compile_warnings_flags()
+
+if (USE_GOOGLE_TESTS)
+  add_definitions("-DTEST_VIRTUAL=virtual")
+else()
+  add_definitions("-DTEST_VIRTUAL=")
+endif()
+
+# used by 3rdParty/date, but must be set here because we include some headers
+# of the date library from here
+add_definitions("-DHAS_REMOTE_API=0")
+
+# pass informational string with compiler optimization flags in as a define
+# the value of the define is picked up by some code that prints out build info.
+add_definitions("-DARCHITECTURE_OPTIMIZATIONS=\"${ARCHITECTURE_OPTIMIZATIONS}\"")
+
+# add necessary defines for ICU. this will suffix all included ICU functions
+# and the ICU namespace with _64_64
+add_definitions("-DU_HAVE_LIB_SUFFIX=1")
+add_definitions("-DU_LIB_SUFFIX_C_NAME=_64")
+# also make sure that the correct ICU directory appears early in the list of include files
+include_directories(BEFORE SYSTEM ${ICU64_INCLUDE_DIR})
 
 ################################################################################
 ## LIB_ARANGO
 ################################################################################
-
-if (MSVC)
-  set(LIB_ARANGO_MSVC
-    Basics/win-utils.cpp
-    Zip/iowin32.cpp
-  )
-else ()
-  set(LIB_ARANGO_POSIX
-    Endpoint/EndpointUnixDomain.cpp
-    Endpoint/EndpointSrv.cpp
-  )
-endif ()
-
-set(LIB_ARANGO_LINENOISE
-  Utilities/LinenoiseShell.cpp
-  Utilities/LineEditor.cpp
-  Utilities/ShellBase.cpp
-)
-
-set(LIB_ARANGO_DATE
-  ${PROJECT_SOURCE_DIR}/3rdParty/date/src/tz.cpp
-)
-add_definitions("-DHAS_REMOTE_API=0")
-
-add_definitions("-DARCHITECTURE_OPTIMIZATIONS=\"${ARCHITECTURE_OPTIMIZATIONS}\"")
 
 add_library(arango_static_strings STATIC
   Basics/StaticStrings.cpp
@@ -75,6 +75,8 @@ add_library(arango_lightweight STATIC
         Basics/signals.cpp
         Basics/SourceLocation.cpp
         Basics/system-functions.cpp
+        Basics/terminal-utils-posix.cpp
+        Basics/threads-posix.cpp
         Basics/tri-strings.cpp
         Containers/ImmerMemoryPolicy.h
         Logger/Escaper.cpp
@@ -99,18 +101,6 @@ add_library(arango_lightweight STATIC
         Random/RandomGenerator.cpp
 )
 
-if (MSVC)
-  target_sources(arango_lightweight PRIVATE
-          Basics/terminal-utils-win32.cpp
-          Basics/threads-win32.cpp
-          )
-else ()
-  target_sources(arango_lightweight PRIVATE
-          Basics/terminal-utils-posix.cpp
-          Basics/threads-posix.cpp
-          )
-endif ()
-
 target_include_directories(arango_lightweight PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 # some auto-generated headers live here, like "Basics/build.h"
 target_include_directories(arango_lightweight PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
@@ -122,6 +112,7 @@ target_include_directories(arango_lightweight PUBLIC
 # dependent stuff is built
 add_dependencies(arango_lightweight errorfiles)
 add_dependencies(arango_lightweight exitcodefiles)
+add_dependencies(arango_lightweight iculegacy_build)
 
 target_link_libraries(arango_lightweight
   PUBLIC velocypack
@@ -143,12 +134,7 @@ if (USE_ENTERPRISE)
 endif()
 
 add_library(arango STATIC
-  ${LIB_ARANGO_APPLE}
-  ${LIB_ARANGO_MSVC}
-  ${LIB_ARANGO_POSIX}
-  ${LIB_ARANGO_LINENOISE}
-  ${LIB_ARANGO_DATE}
-  ${LIB_ASM_SOURCES}
+  ${PROJECT_SOURCE_DIR}/3rdParty/date/src/tz.cpp
   ApplicationFeatures/ApplicationFeaturePhase.cpp
   ApplicationFeatures/BumpFileDescriptorsFeature.cpp
   ApplicationFeatures/CommunicationFeaturePhase.cpp
@@ -173,8 +159,6 @@ add_library(arango STATIC
   Basics/GlobalSerialization.cpp
   Basics/HybridLogicalClock.cpp
   Basics/IndexIter.h
-  Basics/LdapUrlParser.cpp
-  Basics/LocalTaskQueue.cpp
   Basics/Nonce.cpp
   Basics/NumberUtils.cpp
   Basics/ReadWriteSpinLock.cpp
@@ -199,6 +183,8 @@ add_library(arango STATIC
   Endpoint/EndpointIpV4.cpp
   Endpoint/EndpointIpV6.cpp
   Endpoint/EndpointList.cpp
+  Endpoint/EndpointSrv.cpp
+  Endpoint/EndpointUnixDomain.cpp
   Maskings/AttributeMasking.cpp
   Maskings/Collection.cpp
   Maskings/MaskingFunction.cpp
@@ -215,8 +201,6 @@ add_library(arango STATIC
   Rest/HttpResponse.cpp
   Rest/PathMatch.h
   Rest/Version.cpp
-  Rest/VstRequest.cpp
-  Rest/VstResponse.cpp
   SimpleHttpClient/ClientConnection.cpp
   SimpleHttpClient/ConnectionCache.cpp
   SimpleHttpClient/GeneralClientConnection.cpp
@@ -227,8 +211,11 @@ add_library(arango STATIC
   Ssl/SslFeature.cpp
   Ssl/SslInterface.cpp
   Ssl/ssl-helper.cpp
+  Utilities/LinenoiseShell.cpp
+  Utilities/LineEditor.cpp
   Utilities/NameValidator.cpp
   Utilities/ScriptLoader.cpp
+  Utilities/ShellBase.cpp
   Zip/ioapi.cpp
   Zip/unzip.cpp
   Zip/zip.cpp
@@ -243,10 +230,11 @@ target_link_libraries(arango
          arango_static_strings
          arango_crashhandler
          velocypack
+         fuerte
          linenoise-ng
          date_interface
          ${SYSTEM_LIBRARIES}
-         ${ICU_LIBS}
+         ${ICU64_LIBS}
          absl::crc32c
          absl::flat_hash_set
          absl::flat_hash_map
@@ -270,7 +258,7 @@ target_include_directories(arango PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
 target_include_directories(arango PUBLIC ${BUILD_DIR})
 
 target_include_directories(arango SYSTEM PUBLIC ${OPENSSL_INCLUDE_DIR})
-target_include_directories(arango SYSTEM PUBLIC ${ICU_INCLUDE_DIR})
+target_include_directories(arango SYSTEM PUBLIC ${Lz4_INCLUDE_DIR})
 
 target_link_libraries(arango PUBLIC rocksdb_interface)
 target_link_libraries(arango PUBLIC zlib_interface)
@@ -279,11 +267,13 @@ if (USE_V8)
 endif()
 
 add_dependencies(arango v8_build)
+add_dependencies(arango iculegacy_build)
 
 add_dependencies(arango snappy)
 target_link_libraries(arango PUBLIC snappy)
 
-set(SNAPPY_INCLUDE_DIR "${SNAPPY_SOURCE_DIR};${SNAPPY_BUILD_DIR}" CACHE PATH "relation to snappy")
+add_dependencies(arango lz4_static)
+target_link_libraries(arango PUBLIC lz4_static)
 
 if (USE_LIBUNWIND)
   target_link_libraries(arango PUBLIC ${LIBUNWIND_LIB})

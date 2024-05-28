@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -30,7 +30,6 @@
 
 #include <v8.h>
 
-#include "Aql/OptimizerRulesFeature.h"
 #include "gtest/gtest.h"
 
 #include "analysis/analyzers.hpp"
@@ -42,9 +41,10 @@
 #include "IResearch/common.h"
 #include "Mocks/LogLevels.h"
 
-#include "V8/V8SecurityFeature.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
+#include "Aql/OptimizerRulesFeature.h"
 #include "Aql/QueryRegistry.h"
+#include "Auth/UserManager.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchCommon.h"
@@ -55,6 +55,7 @@
 #include "RestServer/SystemDatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/ExecContext.h"
+#include "V8/V8SecurityFeature.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
@@ -64,7 +65,6 @@
 #include "VocBase/Methods/Collections.h"
 
 #if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
 #include "Enterprise/Encryption/EncryptionFeature.h"
 #endif
 
@@ -199,11 +199,13 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
 
   struct ExecContext : public arangodb::ExecContext {
     ExecContext()
-        : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+        : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                arangodb::ExecContext::Type::Default, "", "",
                                 arangodb::auth::Level::NONE,
                                 arangodb::auth::Level::NONE, false) {}
-  } execContext;
-  arangodb::ExecContextScope execContextScope(&execContext);
+  };
+  auto execContext = std::make_shared<ExecContext>();
+  arangodb::ExecContextScope execContextScope(execContext);
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
   auto* userManager = authFeature.userManager();
 
@@ -252,9 +254,7 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
     user.grantDatabase(
         vocbase.name(),
@@ -277,9 +277,7 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
     user.grantDatabase(
         vocbase.name(),
@@ -310,9 +308,7 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
     user.grantDatabase(
         vocbase.name(),
@@ -335,9 +331,7 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
     user.grantDatabase(
         vocbase.name(),
@@ -368,9 +362,7 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
     user.grantDatabase(
         vocbase.name(),
@@ -395,9 +387,7 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
     user.grantDatabase(
         vocbase.name(),
@@ -428,9 +418,7 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
     user.grantDatabase(
         vocbase.name(),
@@ -456,9 +444,7 @@ TEST_F(V8AnalyzerTest, test_instance_accessors) {
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
     user.grantDatabase(
         vocbase.name(),
@@ -524,11 +510,13 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
 
   struct ExecContext : public arangodb::ExecContext {
     ExecContext()
-        : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+        : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                arangodb::ExecContext::Type::Default, "", "",
                                 arangodb::auth::Level::NONE,
                                 arangodb::auth::Level::NONE, false) {}
-  } execContext;
-  arangodb::ExecContextScope execContextScope(&execContext);
+  };
+  auto execContext = std::make_shared<ExecContext>();
+  arangodb::ExecContextScope execContextScope(execContext);
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
   auto* userManager = authFeature.userManager();
 
@@ -571,9 +559,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
 
     // for system collections
@@ -610,9 +596,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
     user.grantDatabase(
         vocbase.name(),
@@ -648,9 +632,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
 
     // for system collections User::collectionAuthLevel(...) returns
@@ -686,9 +668,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
     user.grantDatabase(
         vocbase.name(),
@@ -723,9 +703,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
     user.grantDatabase(
         vocbase.name(),
@@ -760,9 +738,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
     user.grantDatabase(
         vocbase.name(),
@@ -797,9 +773,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
     user.grantDatabase(
         vocbase.name(),
@@ -840,9 +814,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
     user.grantDatabase(
         vocbase.name(),
@@ -876,9 +848,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
         TRI_V8_ASCII_STRING(isolate, "{\"abc\":1}")};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
     user.grantDatabase(
         vocbase.name(),
@@ -917,9 +887,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
         TRI_V8_ASCII_STRING(isolate, "{\"abc\":1}")};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
     user.grantDatabase(
         vocbase.name(),
@@ -957,9 +925,7 @@ TEST_F(V8AnalyzerTest, test_manager_create) {
         TRI_V8_ASCII_STRING(isolate, "{\"abc\":1}")};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
     user.grantDatabase(
         vocbase.name(),
@@ -1032,11 +998,13 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
                    .ok()));
   struct ExecContext : public arangodb::ExecContext {
     ExecContext()
-        : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+        : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                arangodb::ExecContext::Type::Default, "", "",
                                 arangodb::auth::Level::NONE,
                                 arangodb::auth::Level::NONE, false) {}
-  } execContext;
-  arangodb::ExecContextScope execContextScope(&execContext);
+  };
+  auto execContext = std::make_shared<ExecContext>();
+  arangodb::ExecContextScope execContextScope(execContext);
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
   auto* userManager = authFeature.userManager();
 
@@ -1082,9 +1050,7 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
     user.grantDatabase(
         vocbase.name(),
@@ -1117,9 +1083,7 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
     user.grantDatabase(
         vocbase.name(),
@@ -1154,9 +1118,7 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
     user.grantDatabase(
         vocbase.name(),
@@ -1180,9 +1142,7 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
     user.grantDatabase(
         vocbase.name(),
@@ -1216,9 +1176,7 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
     user.grantDatabase(
         vocbase.name(),
@@ -1251,9 +1209,7 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
     user.grantDatabase(
         arangodb::StaticStrings::SystemDatabase,
@@ -1289,9 +1245,7 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
     user.grantDatabase(
         vocbase.name(),
@@ -1325,9 +1279,7 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
     user.grantDatabase(
         vocbase.name(),
@@ -1351,9 +1303,7 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
     user.grantDatabase(
         vocbase.name(),
@@ -1388,9 +1338,7 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
     v8::TryCatch tryCatch(isolate);
     arangodb::velocypack::Builder response;
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
     user.grantDatabase(
         "unknownVocbase",
@@ -1421,9 +1369,7 @@ TEST_F(V8AnalyzerTest, test_manager_get) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
     user.grantDatabase(
         vocbase.name(),
@@ -1488,11 +1434,13 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
 
   struct ExecContext : public arangodb::ExecContext {
     ExecContext()
-        : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+        : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                arangodb::ExecContext::Type::Default, "", "",
                                 arangodb::auth::Level::NONE,
                                 arangodb::auth::Level::NONE, false) {}
-  } execContext;
-  arangodb::ExecContextScope execContextScope(&execContext);
+  };
+  auto execContext = std::make_shared<ExecContext>();
+  arangodb::ExecContextScope execContextScope(execContext);
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
   auto* userManager = authFeature.userManager();
 
@@ -1532,9 +1480,7 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
     user.grantDatabase(
         systemDBVocbase.name(),
@@ -1580,9 +1526,7 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
     user.grantDatabase(
         systemDBVocbase.name(),
@@ -1623,9 +1567,7 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
     v8g->_vocbase = &testDBVocbase;
     std::vector<v8::Local<v8::Value>> args = {};
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
     user.grantDatabase(
         arangodb::StaticStrings::SystemDatabase,
@@ -1684,9 +1626,7 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
     user.grantDatabase(
         arangodb::StaticStrings::SystemDatabase,
@@ -1737,9 +1677,7 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
     user.grantDatabase(
         arangodb::StaticStrings::SystemDatabase,
@@ -1790,9 +1728,7 @@ TEST_F(V8AnalyzerTest, test_manager_list) {
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
     user.grantDatabase(
         arangodb::StaticStrings::SystemDatabase,
@@ -1898,11 +1834,13 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
   }
   struct ExecContext : public arangodb::ExecContext {
     ExecContext()
-        : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+        : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                arangodb::ExecContext::Type::Default, "", "",
                                 arangodb::auth::Level::NONE,
                                 arangodb::auth::Level::NONE, false) {}
-  } execContext;
-  arangodb::ExecContextScope execContextScope(&execContext);
+  };
+  auto execContext = std::make_shared<ExecContext>();
+  arangodb::ExecContextScope execContextScope(execContext);
   auto& authFeature = server.getFeature<arangodb::AuthenticationFeature>();
   auto* userManager = authFeature.userManager();
 
@@ -1943,9 +1881,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
     std::vector<v8::Local<v8::Value>> args = {};
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
 
     // for system collections User::collectionAuthLevel(...) returns database
@@ -1981,9 +1917,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
     user.grantDatabase(
         systemDBVocbase.name(),
@@ -2019,9 +1953,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
     user.grantDatabase(
         systemDBVocbase.name(),
@@ -2069,9 +2001,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
     ASSERT_FALSE(!inUseAnalyzer);
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
     user.grantDatabase(
         systemDBVocbase.name(),
@@ -2119,9 +2049,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
     ASSERT_FALSE(!inUseAnalyzer);
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
     user.grantDatabase(
         systemDBVocbase.name(),
@@ -2152,9 +2080,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
     user.grantDatabase(
         systemDBVocbase.name(),
@@ -2185,9 +2111,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
     user.grantDatabase(
         systemDBVocbase.name(),
@@ -2220,9 +2144,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
     user.grantDatabase(
         systemDBVocbase.name(),
@@ -2267,9 +2189,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
     user.grantDatabase(
         testDBVocbase.name(),
@@ -2299,9 +2219,7 @@ TEST_F(V8AnalyzerTest, test_manager_remove) {
     };
 
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
 
     // for system collections User::collectionAuthLevel(...) returns

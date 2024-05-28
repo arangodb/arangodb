@@ -1,28 +1,29 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
 /*global assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull, assertMatch, fail */
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Jan Steemann
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 const internal = require("internal");
 const db = require("@arangodb").db;
@@ -1597,7 +1598,7 @@ function ahuacatlModifySuite () {
       const query = `LET x = true ? (INSERT {value: 1} INTO ${cn}) : (INSERT {value: 2} INTO ${cn2}) RETURN x`;
       db._query(query);
       assertEqual([1], c1.toArray().map(o => o.value));
-      assertEqual([2], c2.toArray().map(o => o.value));
+      assertEqual([], c2.toArray().map(o => o.value));
     },
 
     // Complementary test to testTernaryEvaluateBothTrue, with a constant `false`
@@ -1608,7 +1609,7 @@ function ahuacatlModifySuite () {
 
       const query = `LET x = false ? (INSERT {value: 1} INTO ${cn}) : (INSERT {value: 2} INTO ${cn2}) RETURN x`;
       db._query(query);
-      assertEqual([1], c1.toArray().map(o => o.value));
+      assertEqual([], c1.toArray().map(o => o.value));
       assertEqual([2], c2.toArray().map(o => o.value));
     },
 
@@ -1622,8 +1623,17 @@ function ahuacatlModifySuite () {
 
       for (let i = 0; i < 10; ++i) {
         db._query(query);
-        assertEqual([1], c1.toArray().map(o => o.value));
-        assertEqual([2], c2.toArray().map(o => o.value));
+        let q1 = c1.toArray().map(o => o.value);
+        let q2 = c2.toArray().map(o => o.value);
+        assertTrue(q1.length === 1 || q2.length === 1, {q1, q2});
+        assertNotEqual(q1.length, q2.length, {q1, q2});
+        if (q1.length) {
+          assertEqual([1], c1.toArray().map(o => o.value));
+          assertEqual([], c2.toArray().map(o => o.value));
+        } else {
+          assertEqual([], c1.toArray().map(o => o.value));
+          assertEqual([2], c2.toArray().map(o => o.value));
+        }
         c1.truncate({ compact: false });
         c2.truncate({ compact: false });
       }

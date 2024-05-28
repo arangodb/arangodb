@@ -5,14 +5,14 @@
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
-// / Copyright 2016 ArangoDB GmbH, Cologne, Germany
-// / Copyright 2014 triagens GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -36,6 +36,7 @@ const optionsDocumentation = [
 const fs = require('fs');
 const _ = require('lodash');
 const pu = require('@arangodb/testutils/process-utils');
+const ct = require('@arangodb/testutils/client-tools');
 const tu = require('@arangodb/testutils/test-utils');
 const im = require('@arangodb/testutils/instance-manager');
 
@@ -123,7 +124,7 @@ class backupTestRunner extends tu.runInArangoshRunner {
       path = this.instanceManager.rootDir;
 
       _.defaults(asRoot, options);
-      let dump = pu.run.arangoDumpRestore(asRoot, this.instanceManager,
+      let dump = ct.run.arangoDumpRestore(asRoot, this.instanceManager,
                                           'dump', '_system', path, syssys,
                                           true, options.coreCheck);
       if (dump.status === false || !this.healthCheck()) {
@@ -135,7 +136,7 @@ class backupTestRunner extends tu.runInArangoshRunner {
 
       log('Create dump _system excl system collections');
 
-      dump = pu.run.arangoDumpRestore(asRoot, this.instanceManager, 'dump', '_system',
+      dump = ct.run.arangoDumpRestore(asRoot, this.instanceManager, 'dump', '_system',
                                       path, sysNoSys, false, options.coreCheck);
       if (dump.status === false || !this.healthCheck()) {
         log('Dump failed: ' + JSON.stringify(dump));
@@ -197,7 +198,7 @@ class backupTestRunner extends tu.runInArangoshRunner {
   // / set up the test according to the testcase.
   // //////////////////////////////////////////////////////////////////////////////
   postStart(){
-    let restore = pu.run.arangoDumpRestore(this.user,
+    let restore = ct.run.arangoDumpRestore(this.user,
                                            this.instanceManager,
                                            'restore',
                                            '_system',

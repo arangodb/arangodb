@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -104,10 +104,8 @@ std::shared_ptr<Index> IResearchRocksDBInvertedIndexFactory::instantiate(
     });
 
     auto initRes = index->init(
-        definition, pathExists, [this]() -> irs::directory_attributes {
-          auto& selector = _server.getFeature<EngineSelectorFeature>();
-          TRI_ASSERT(selector.isRocksDB());
-          auto& engine = selector.engine<RocksDBEngine>();
+        definition, pathExists, [&collection]() -> irs::directory_attributes {
+          auto& engine = collection.vocbase().engine<RocksDBEngine>();
           auto* encryption = engine.encryptionProvider();
           if (encryption) {
             return irs::directory_attributes{
@@ -207,10 +205,7 @@ IResearchRocksDBInvertedIndex::IResearchRocksDBInvertedIndex(
                    /*useCache*/ false,
                    /*cacheManager*/ nullptr,
                    /*engine*/
-                   collection.vocbase()
-                       .server()
-                       .getFeature<EngineSelectorFeature>()
-                       .engine<RocksDBEngine>()},
+                   collection.vocbase().engine<RocksDBEngine>()},
       IResearchInvertedIndex{collection.vocbase().server(), collection} {}
 
 namespace {
@@ -221,7 +216,7 @@ T getMetric(IResearchRocksDBInvertedIndex const& index) {
   metric.addLabel("db", index.getDbName());
   metric.addLabel("index", index.name());
   metric.addLabel("collection", index.getCollectionName());
-  metric.addLabel("indexId", std::to_string(index.id().id()));
+  metric.addLabel("index_id", std::to_string(index.id().id()));
   metric.addLabel("shard", index.getShardName());
   return metric;
 }
@@ -231,7 +226,7 @@ std::string getLabels(IResearchRocksDBInvertedIndex const& index) {
       "db=\"", index.getDbName(), "\","
       "index=\"", index.name(), "\","
       "collection=\"", index.getCollectionName(), "\","
-      "indexId=\"", index.id().id(), "\","
+      "index_id=\"", index.id().id(), "\","
       "shard=\"", index.getShardName(), "\"");  // clang-format on
 }
 

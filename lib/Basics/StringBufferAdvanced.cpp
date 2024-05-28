@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -69,6 +69,22 @@ ErrorCode arangodb::basics::StringBuffer::gzipCompress(bool onlyIfSmaller) {
   return code;
 }
 
+ErrorCode arangodb::basics::StringBuffer::lz4Compress(bool onlyIfSmaller) {
+  arangodb::basics::StringBuffer compressed;
+
+  ErrorCode code = arangodb::encoding::lz4Compress(
+      reinterpret_cast<uint8_t const*>(data()), size(), compressed);
+
+  if (code == TRI_ERROR_NO_ERROR) {
+    if (onlyIfSmaller && compressed.size() >= size()) {
+      code = TRI_ERROR_DISABLED;
+    } else {
+      swap(&compressed);
+    }
+  }
+  return code;
+}
+
 /// @brief uncompress the buffer into StringBuffer out, using zlib-inflate
 ErrorCode arangodb::basics::StringBuffer::zlibInflate(
     arangodb::basics::StringBuffer& out, size_t skip) {
@@ -99,6 +115,22 @@ ErrorCode arangodb::basics::StringBuffer::gzipUncompress(
   }
 
   return arangodb::encoding::gzipUncompress(p, length, out);
+}
+
+/// @brief uncompress the buffer into StringBuffer out, using lz4 uncompress
+ErrorCode arangodb::basics::StringBuffer::lz4Uncompress(
+    arangodb::basics::StringBuffer& out, size_t skip) {
+  uint8_t const* p = reinterpret_cast<uint8_t const*>(data());
+  size_t length = size();
+
+  if (length < skip) {
+    length = 0;
+  } else {
+    p += skip;
+    length -= skip;
+  }
+
+  return arangodb::encoding::lz4Uncompress(p, length, out);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

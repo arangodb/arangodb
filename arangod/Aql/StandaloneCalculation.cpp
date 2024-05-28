@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,6 +28,7 @@
 #include "Aql/AqlTransaction.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Expression.h"
+#include "Aql/LazyConditions.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRule.h"
 #include "Aql/Parser.h"
@@ -270,6 +271,14 @@ Result StandaloneCalculation::validateQuery(
     TRI_ASSERT(ast);
     auto qs = arangodb::aql::QueryString(queryString);
     Parser parser(queryContext, *ast, qs);
+    if (isComputedValue) {
+      // force the condition of the ternary operator (condition ? truePart :
+      // falsePart) to be always inlined and not be extracted into its own LET
+      // node. if we don't set this boolean flag here, then a ternary operator
+      // could create additional LET nodes, which is not supported inside
+      // computed values.
+      parser.lazyConditions().pushForceInline();
+    }
     parser.parse();
     ast->validateAndOptimize(
         queryContext.trxForOptimization(),

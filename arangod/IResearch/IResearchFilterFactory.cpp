@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,12 +25,6 @@
 #include "Basics/DownCast.h"
 
 #include <frozen/map.h>
-
-// otherwise define conflict between 3rdParty\date\include\date\date.h and
-// 3rdParty\iresearch\core\shared.hpp
-#if defined(_MSC_VER)
-#include "date/date.h"
-#endif
 
 #include "Aql/Functions.h"
 #include "IResearch/IResearchFilterFactory.h"
@@ -105,7 +99,7 @@ Result fromFuncMinHashMatch(char const* funcName, irs::boolean_filter* filter,
 irs::ColumnAcceptor makeColumnAcceptor(bool) noexcept;
 
 #ifndef USE_ENTERPRISE
-irs::filter::ptr makeAll(std::string_view) {
+irs::AllDocsProvider::Ptr makeAll(std::string_view) {
   return std::make_unique<irs::all>();
 }
 std::string_view makeAllColumn(QueryContext const&) noexcept { return {}; }
@@ -1102,7 +1096,7 @@ buildBinaryArrayComparisonPreFilter(irs::boolean_filter*& filter,
 
     if (arraySize < static_cast<size_t>(atLeastCount)) {
       if (filter) {
-        append<irs::empty>(*filter, filterCtx);
+        append<irs::Empty>(*filter, filterCtx);
       }
       return {Result{}, aql::NODE_TYPE_ROOT, 1};
     } else if (static_cast<size_t>(atLeastCount) == arraySize) {
@@ -1120,7 +1114,7 @@ buildBinaryArrayComparisonPreFilter(irs::boolean_filter*& filter,
     switch (quantifierType) {
       case aql::Quantifier::Type::kAny:
         if (filter) {
-          append<irs::empty>(*filter, filterCtx);
+          append<irs::Empty>(*filter, filterCtx);
         }
         break;
       case aql::Quantifier::Type::kAll:
@@ -1132,7 +1126,7 @@ buildBinaryArrayComparisonPreFilter(irs::boolean_filter*& filter,
       case aql::Quantifier::Type::kAtLeast:
         if (filter) {
           if (atLeastCount > 0) {
-            append<irs::empty>(*filter, filterCtx);
+            append<irs::Empty>(*filter, filterCtx);
           } else {
             append<irs::all>(*filter, filterCtx);
           }
@@ -1766,7 +1760,7 @@ Result fromInArray(irs::boolean_filter* filter, FilterContext const& filterCtx,
         // not in [] means 'all'
         append<irs::all>(*filter, filterCtx).boost(filterCtx.boost);
       } else {
-        append<irs::empty>(*filter, filterCtx);
+        append<irs::Empty>(*filter, filterCtx);
       }
     }
 
@@ -1929,7 +1923,7 @@ Result fromIn(irs::boolean_filter* filter, FilterContext const& filterCtx,
           // not in [] means 'all'
           append<irs::all>(*filter, filterCtx).boost(filterCtx.boost);
         } else {
-          append<irs::empty>(*filter, filterCtx);
+          append<irs::Empty>(*filter, filterCtx);
         }
 
         // nothing to do more
@@ -2927,40 +2921,8 @@ Result fromFuncPhraseLevenshteinMatch(
 
   if (filter) {
     auto* phrase = filter->mutable_options();
-
-    auto const& ctx = filterCtx.query;
-
-    if (0 != opts.max_terms) {
-      TRI_ASSERT(ctx.index);
-
-      struct top_term_visitor final : irs::filter_visitor {
-        explicit top_term_visitor(size_t size) : collector(size) {}
-
-        virtual void prepare(const irs::SubReader& segment,
-                             const irs::term_reader& field,
-                             const irs::seek_term_iterator& terms) override {
-          collector.prepare(segment, field, terms);
-        }
-
-        virtual void visit(irs::score_t boost) override {
-          collector.visit(boost);
-        }
-
-        irs::top_terms_collector<irs::top_term<irs::score_t>> collector;
-      } collector(opts.max_terms);
-
-      irs::visit(*ctx.index, filter->field(),
-                 irs::by_edit_distance::visitor(opts), collector);
-
-      auto& terms = phrase->push_back<irs::by_terms_options>(firstOffset).terms;
-      collector.collector.visit(
-          [&terms](const irs::top_term<irs::score_t>& term) {
-            terms.emplace(term.term, term.key);
-          });
-    } else {
-      phrase->push_back<irs::by_edit_distance_filter_options>(std::move(opts),
-                                                              firstOffset);
-    }
+    phrase->push_back<irs::by_edit_distance_options>(std::move(opts),
+                                                     firstOffset);
   }
   return {};
 }
@@ -3029,6 +2991,7 @@ Result fromFuncPhraseTerms(char const* funcName, size_t funcArgumentPosition,
     auto& opts = filter->mutable_options()->push_back<irs::by_terms_options>(
         firstOffset);
     opts.terms = std::move(terms);
+    TRI_ASSERT(opts.min_match != 0);  // AllDocsProvider needed in such case
   }
   return {};
 }
@@ -3860,8 +3823,7 @@ Result fromFuncLike(char const* funcName, irs::boolean_filter* filter,
       auto& wildcardFilter = append<wildcard::Filter>(*filter, filterCtx);
       wildcardFilter.boost(filterCtx.boost);
       *wildcardFilter.mutable_field() = std::move(name);
-      *wildcardFilter.mutable_options() = {pattern, *analyzer._pool,
-                                           filterCtx.query.ctx};
+      *wildcardFilter.mutable_options() = {pattern, *analyzer._pool, ctx.ctx};
     } else {
       auto& wildcardFilter = append<irs::by_wildcard>(*filter, filterCtx);
       wildcardFilter.boost(filterCtx.boost);
@@ -4182,7 +4144,7 @@ Result fromExpression(irs::boolean_filter* filter,
   if (result) {
     append<irs::all>(*filter, filterCtx).boost(filterCtx.boost);
   } else {
-    append<irs::empty>(*filter, filterCtx);
+    append<irs::Empty>(*filter, filterCtx);
   }
 
   return {};

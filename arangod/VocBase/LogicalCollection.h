@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,7 +24,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Containers/FlatHashMap.h"
 #include "Cluster/Utils/ShardID.h"
@@ -286,13 +285,6 @@ class LogicalCollection : public LogicalDataSource {
                                                 ReadOwnWrites readOwnWrites);
   std::unique_ptr<IndexIterator> getAnyIterator(transaction::Methods* trx);
 
-  /// @brief return all indexes of the collection
-  std::vector<std::shared_ptr<Index>> getIndexes() const;
-
-  void getIndexesVPack(
-      velocypack::Builder&,
-      std::function<bool(Index const*, uint8_t&)> const& filter) const;
-
   /// @brief a method to skip certain documents in AQL write operations,
   /// this is only used in the Enterprise Edition for SmartGraphs
   virtual bool skipForAqlWrite(velocypack::Slice document,
@@ -333,10 +325,14 @@ class LogicalCollection : public LogicalDataSource {
 
   // SECTION: Indexes
 
+  using Replication2Callback =
+      fu2::unique_function<futures::Future<ResultT<replication2::LogIndex>>()>;
+
   /// @brief Create a new Index based on VelocyPack description
   virtual futures::Future<std::shared_ptr<Index>> createIndex(
       velocypack::Slice, bool&,
-      std::shared_ptr<std::function<arangodb::Result(double)>> = nullptr);
+      std::shared_ptr<std::function<arangodb::Result(double)>> = nullptr,
+      Replication2Callback replicationCb = nullptr);
 
   /// @brief Find index by definition
   std::shared_ptr<Index> lookupIndex(velocypack::Slice) const;
@@ -411,11 +407,6 @@ class LogicalCollection : public LogicalDataSource {
   void setInternalValidatorTypes(uint64_t type);
 
   uint64_t getInternalValidatorTypes() const noexcept;
-
-#ifdef USE_ENTERPRISE
-  static void addEnterpriseShardingStrategy(VPackBuilder& builder,
-                                            VPackSlice collectionProperties);
-#endif
 
   auto groupID() const noexcept
       -> arangodb::replication2::agency::CollectionGroupId;

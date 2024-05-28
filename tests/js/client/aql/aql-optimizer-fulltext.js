@@ -1,89 +1,59 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
 /*global assertEqual, assertFalse, assertTrue, assertNotEqual */
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for optimizer rules
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Simon Grätzer
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
-const expect = require('chai').expect;
-var internal = require("internal");
-var jsunity = require("jsunity");
-var helper = require("@arangodb/aql-helper");
-var isEqual = helper.isEqual;
-var findExecutionNodes = helper.findExecutionNodes;
-var db = require('internal').db;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+const internal = require("internal");
+const jsunity = require("jsunity");
+const helper = require("@arangodb/aql-helper");
+const findExecutionNodes = helper.findExecutionNodes;
+const db = require('internal').db;
 
 function optimizerRuleTestSuite() {
+  const ruleName = "fulltextindex";
+  const colName = "UnitTestsAqlOptimizer" + ruleName.replace(/-/g, "_");
 
-  var ruleName = "fulltextindex";
-  var colName = "UnitTestsAqlOptimizer" + ruleName.replace(/-/g, "_");
-
-  var sortArray = function (l, r) {
-    if (l[0] !== r[0]) {
-      return l[0] < r[0] ? -1 : 1;
-    }
-    if (l[1] !== r[1]) {
-      return l[1] < r[1] ? -1 : 1;
-    }
-    return 0;
-  };
-  var hasNoFilterNode = function (plan,query) {
+  const hasNoFilterNode = function (plan,query) {
     assertEqual(findExecutionNodes(plan, "FilterNode").length, 0, query + " Has no FilterNode");
   };
-  var hasNoIndexNode = function (plan,query) {
-    assertEqual(findExecutionNodes(plan, "IndexNode").length, 0, query + " Has IndexNode, but should not have one");
-  };
-  var hasIndexNode = function (plan,query) {
-    var rn = findExecutionNodes(plan,"IndexNode");
+  const hasIndexNode = function (plan,query) {
+    let rn = findExecutionNodes(plan,"IndexNode");
     assertEqual(rn.length, 1, query + " Has no IndexNode, but should have one");
     assertEqual(rn[0].indexes.length, 1);
-    var indexType = rn[0].indexes[0].type;
+    let indexType = rn[0].indexes[0].type;
     assertTrue(indexType === "fulltext", indexType + " wrong type");
-  };
-  var isNodeType = function(node, type, query) {
-    assertEqual(node.type, type, query.string + " check whether this node is of type " + type);
   };
 
   let fulltext;
+
   return {
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief set up
-    ////////////////////////////////////////////////////////////////////////////////
-
     setUp : function () {
-      var loopto = 10;
-
       internal.db._drop(colName);
       fulltext = internal.db._create(colName);
       fulltext.ensureIndex({type:"fulltext", fields:["t1"]});
       fulltext.ensureIndex({type:"fulltext", fields:["t2"], minLength: 4});
       fulltext.ensureIndex({type:"fulltext", fields:["t3.e.x"]});
-      var texts = [
+      const texts = [
         "Flötenkröten tröten böse wörter nörgelnd",
         "Krötenbrote grölen stoßen GROßE Römermöter",
         "Löwenschützer möchten mächtige Müller ködern",
@@ -93,14 +63,10 @@ function optimizerRuleTestSuite() {
         "Loewenschuetzer moechten maechtige Mueller koedern",
         "Moechten boese wichte wenig mueller melken?"
       ];
-      for (var i = 0; i < texts.length; ++i) {
+      for (let i = 0; i < texts.length; ++i) {
         fulltext.save({ id : (i + 1), t1 :texts[i], t2:texts[i], t3:{e:{x:texts[i]}}});
       }
     },
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief tear down
-    ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
       internal.db._drop(colName);
@@ -179,12 +145,8 @@ function optimizerRuleTestSuite() {
       assertEqual(r2.toArray(), r, "Invalid fulltext result");
     }
 
-  }; // test dictionary (return)
-} // optimizerRuleTestSuite
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+  };
+} 
 
 jsunity.run(optimizerRuleTestSuite);
 

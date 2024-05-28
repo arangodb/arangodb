@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -36,6 +36,7 @@
 #include "Aql/RegisterInfos.h"
 #include "Logger/LogContext.h"
 
+#include <atomic>
 #include <condition_variable>
 #include <memory>
 #include <mutex>
@@ -270,7 +271,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   [[nodiscard]] QueryContext const& getQuery() const;
 
-  [[nodiscard]] auto executor() noexcept -> Executor&;
+  [[nodiscard]] auto executor() -> Executor&;
 
   [[nodiscard]] auto fetcher() noexcept -> Fetcher&;
 
@@ -360,14 +361,18 @@ class ExecutionBlockImpl final : public ExecutionBlock {
    * consumed.
    */
   struct PrefetchTask {
-    enum class State { Pending, InProgress, Finished, Consumed };
+    enum class Status { Pending, InProgress, Finished, Consumed };
     using PrefetchResult =
         std::tuple<ExecutionState, SkipResult, typename Fetcher::DataRange>;
 
+    explicit PrefetchTask(ExecutionBlockImpl& block, AqlCallStack const& stack)
+        : _block(block), _stack(stack) {}
+
     bool isConsumed() const noexcept;
     bool tryClaim() noexcept;
+    bool tryClaimOrAbandon() noexcept;
     void waitFor() const noexcept;
-    void reset() noexcept;
+    bool rearmForNextCall(AqlCallStack const& stack);
     void discard(bool isFinished) noexcept;
     // note: this will throw if the PrefetchTask ran into an exception
     // during execution.
@@ -375,16 +380,26 @@ class ExecutionBlockImpl final : public ExecutionBlock {
     void wakeupWaiter() noexcept;
     void setFailure(Result&& result);
 
-    void execute(ExecutionBlockImpl& block, AqlCallStack& stack);
+    void execute();
 
    private:
-    std::atomic<State> _state{State::Pending};
+    void updateStatus(Status status, std::memory_order memoryOrder) noexcept;
+    struct State {
+      Status status;
+      bool abandoned;
+    };
+    std::atomic<State> _state{{Status::Pending, false}};
+    static_assert(decltype(_state)::is_always_lock_free == true);
+
     std::mutex mutable _lock;
     std::condition_variable mutable _bell;
     std::optional<PrefetchResult> _result;
     // _firstFailure contains the first error that happened in the prefetch
     // task and it will not be resetted.
     Result _firstFailure;
+
+    ExecutionBlockImpl& _block;
+    AqlCallStack _stack;
   };
 
   /**
@@ -432,7 +447,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
       LogContext logContext;
     };
 
-    void run(ExecContext const& execContext);
+    void run(std::shared_ptr<ExecContext const> execContext);
     std::atomic<State> _state{State::Waiting};
     Params* _params;
     ExecutionBlockImpl& _block;

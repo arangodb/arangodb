@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -46,8 +46,11 @@ static std::string const upgradeVersionKey = "ClusterUpgradeVersion";
 static std::string const upgradeExecutedByKey = "ClusterUpgradeExecutedBy";
 }  // namespace
 
-ClusterUpgradeFeature::ClusterUpgradeFeature(Server& server)
-    : ArangodFeature{server, *this}, _upgradeMode("auto") {
+ClusterUpgradeFeature::ClusterUpgradeFeature(Server& server,
+                                             DatabaseFeature& databaseFeature)
+    : ArangodFeature{server, *this},
+      _upgradeMode("auto"),
+      _databaseFeature(databaseFeature) {
   startsAfter<application_features::FinalFeaturePhase>();
 }
 
@@ -71,20 +74,19 @@ void ClusterUpgradeFeature::collectOptions(
 
 void ClusterUpgradeFeature::validateOptions(
     std::shared_ptr<ProgramOptions> options) {
-  auto& databaseFeature = server().getFeature<arangodb::DatabaseFeature>();
   if (_upgradeMode == "force") {
     // always perform an upgrade, regardless of the value of
     // `--database.auto-upgrade`. after the upgrade, shut down the server
-    databaseFeature.enableUpgrade();
+    _databaseFeature.enableUpgrade();
   } else if (_upgradeMode == "disable") {
     // never perform an upgrade, regardless of the value of
     // `--database.auto-upgrade`. don't shut down the server
-    databaseFeature.disableUpgrade();
+    _databaseFeature.disableUpgrade();
   } else if (_upgradeMode == "online") {
     // perform an upgrade, but stay online and don't shut down the server.
     // disabling the upgrade functionality in the database feature is required
     // for this.
-    databaseFeature.disableUpgrade();
+    _databaseFeature.disableUpgrade();
   }
 }
 
@@ -95,9 +97,8 @@ void ClusterUpgradeFeature::start() {
 
   // this feature is doing something meaning only in a coordinator, and only
   // if the server was started with the option `--database.auto-upgrade true`.
-  auto& databaseFeature = server().getFeature<arangodb::DatabaseFeature>();
   if (_upgradeMode == "disable" ||
-      (!databaseFeature.upgrade() &&
+      (!_databaseFeature.upgrade() &&
        (_upgradeMode != "online" && _upgradeMode != "force"))) {
     return;
   }
@@ -243,10 +244,8 @@ bool ClusterUpgradeFeature::upgradeCoordinator() {
       << "starting coordinator upgrade";
 
   bool success = true;
-  DatabaseFeature& databaseFeature = server().getFeature<DatabaseFeature>();
-
-  for (auto& name : databaseFeature.getDatabaseNames()) {
-    auto vocbase = databaseFeature.useDatabase(name);
+  for (auto& name : _databaseFeature.getDatabaseNames()) {
+    auto vocbase = _databaseFeature.useDatabase(name);
 
     if (vocbase == nullptr) {
       // probably deleted in the meantime... so we can ignore it here

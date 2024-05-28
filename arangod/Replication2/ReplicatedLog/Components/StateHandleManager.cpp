@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -40,6 +40,11 @@ StateHandleManager::GuardedData::GuardedData(
 auto StateHandleManager::resign() noexcept
     -> std::unique_ptr<IReplicatedStateHandle> {
   auto guard = guardedData.getLockedGuard();
+  // This resign method is the one that will set the stateHandle to null.
+  // It is only called from one place, where we hold a lock und which we also
+  // deletes the owning struct.
+  // Hence we cannot have a double resign method.
+  TRI_ASSERT(guard->stateHandle != nullptr);
   // TODO assert same methods
   std::ignore = guard->stateHandle->resignCurrentState();
   return std::move(guard->stateHandle);
@@ -69,16 +74,32 @@ StateHandleManager::StateHandleManager(
 void StateHandleManager::becomeFollower(
     std::unique_ptr<IReplicatedLogFollowerMethods> ptr) {
   auto guard = guardedData.getLockedGuard();
+  // The stateHandle is initialized as non-null, it can be reset
+  // to null via resign. As becomeFollower is part of the
+  // single threaded setup process, no one could have called
+  // resign.
+  TRI_ASSERT(guard->stateHandle != nullptr)
+      << "We did hand out references to StateHandleManager before completing "
+         "the setup";
   guard->stateHandle->becomeFollower(std::move(ptr));
 }
 
 void StateHandleManager::acquireSnapshot(const ParticipantId& leader,
                                          std::uint64_t version) noexcept {
-  auto guard = guardedData.getLockedGuard();
-  // TODO is the correct log index required here?
-  guard->stateHandle->acquireSnapshot(leader, LogIndex{0}, version);
+  if (auto guard = guardedData.getLockedGuard(); guard->stateHandle) {
+    // TODO is the correct log index required here?
+    guard->stateHandle->acquireSnapshot(leader, LogIndex{0}, version);
+  }
 }
 
 auto StateHandleManager::getInternalStatus() const -> replicated_state::Status {
-  return guardedData.getLockedGuard()->stateHandle->getInternalStatus();
+  auto guard = guardedData.getLockedGuard();
+  if (guard->stateHandle == nullptr) {
+    // We can only have a nullptr here if we have resigned,
+    // also this stateHandleManager is only used in the follower
+    // So we can directly return FollowerResigned here.
+    return {replicated_state::Status::Follower{
+        replicated_state::Status::Follower::Resigned{}}};
+  }
+  return guard->stateHandle->getInternalStatus();
 }

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -128,7 +128,6 @@ class DaemonFeature;
 class SupervisorFeature;
 class WindowsServiceFeature;
 class AuditFeature;
-class LdapFeature;
 class LicenseFeature;
 class RCloneFeature;
 class HotBackupFeature;
@@ -150,11 +149,6 @@ class AqlFunctionFeature;
 class OptimizerRulesFeature;
 
 }  // namespace aql
-namespace pregel {
-
-class PregelFeature;
-
-}  // namespace pregel
 namespace iresearch {
 
 class IResearchAnalyzerFeature;
@@ -212,13 +206,13 @@ using ArangodFeaturesList = TypeList<
     CacheManagerFeature,
     CheckVersionFeature,
     ClusterFeature,
+    DatabaseFeature,
     ClusterUpgradeFeature,
     ConfigFeature,
 #ifdef USE_V8
     ConsoleFeature,
 #endif
     CpuUsageFeature,
-    DatabaseFeature,
     DatabasePathFeature,
     DumpLimitsFeature,
     HttpEndpointProvider,
@@ -281,13 +275,9 @@ using ArangodFeaturesList = TypeList<
     ViewTypesFeature,
     aql::AqlFunctionFeature,
     aql::OptimizerRulesFeature,
-    pregel::PregelFeature,
     RocksDBIndexCacheRefillFeature,
     RocksDBOptionFeature,
     RocksDBRecoveryManager,
-#ifdef _WIN32
-    WindowsServiceFeature,
-#endif
 #ifdef TRI_HAVE_GETRLIMIT
     FileDescriptorsFeature,
 #endif
@@ -297,7 +287,6 @@ using ArangodFeaturesList = TypeList<
 #endif
 #ifdef USE_ENTERPRISE
     AuditFeature,
-    LdapFeature,
     LicenseFeature,
     RCloneFeature,
     HotBackupFeature,

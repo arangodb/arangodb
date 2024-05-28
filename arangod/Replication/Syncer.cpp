@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,7 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Syncer.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/UserManager.h"
 #include "Basics/Exceptions.h"
 #include "Basics/RocksDBUtils.h"
 #include "Basics/StaticStrings.h"
@@ -502,7 +504,7 @@ bool Syncer::JobSynchronizer::hasJobInFlight() const noexcept {
  * case, we use the syncer ID with a server specific tick.
  *
  * Otherwise, we're doing some other kind of asynchronous replication (e.g.
- * active failover or dc2dc). In that case, the server specific tick would not
+ * dc2dc). In that case, the server specific tick would not
  * be unique among clients, and the server ID will be used instead.
  *
  * The server distinguishes between syncer and server IDs, which is why we don't

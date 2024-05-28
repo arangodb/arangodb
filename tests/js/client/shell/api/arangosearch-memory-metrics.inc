@@ -1,28 +1,30 @@
 /*jshint globalstrict:false, strict:false */
 /*global assertEqual, assertNotEqual, assertTrue */
 
-////////////////////////////////////////////////////////////////////////////////
-///
-/// Copyright 2023 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License")
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Valery Mironov
 /// @author Andrei Lobov
 /// @author Alexey Bakharew
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 (function () {
 
   'use strict';
@@ -30,7 +32,6 @@
   const arangodb = require("@arangodb");
   const db = arangodb.db;
   const { getCompleteMetricsValues } = require('@arangodb/test-helper');
-  const isWindows = (require("internal").platform.substr(0, 3) === 'win');
   const collectionName = "test";
   const viewName = "testView";
 
@@ -44,7 +45,7 @@
     generateAndInsert.factor++;
 
     let docs = [];
-    for (let i = 0; i < 1000 * generateAndInsert.factor; i++) {
+    for (let i = 0; i < 600 * generateAndInsert.factor; i++) {
       let custom_field = "field_" + generateAndInsert.counter;
       let d = {
         'stringValue': "" + generateAndInsert.counter, 
@@ -99,7 +100,7 @@
           generateAndInsert(collectionName);
           db._query(`for d in ${viewName} OPTIONS {waitForSync: true} LIMIT 1 RETURN 1 `);
           writers_curr = getCompleteMetricsValues("arangodb_search_writers_memory_usage");
-          assertTrue(writers_prev < writers_curr);
+          assertTrue(writers_prev < writers_curr, `new writers value (${writers_curr}) is equal or less old writers value (${writers_prev})`);
           writers_prev = writers_curr;
         }
         db._view(viewName).properties({commitIntervalMsec: 100});
@@ -121,7 +122,7 @@
 
           assertEqual(scheduler_memory, num_worker_threads * 4 * 1000000, {scheduler_memory, num_worker_threads});
 
-          if (readers > 0 && consolidations > 0 && descriptors > 0 && (isWindows || mapped > 0)) {
+          if (readers > 0 && consolidations > 0 && descriptors > 0 && mapped > 0) {
             break;
           }
           require("internal").sleep(0.25);
@@ -130,9 +131,7 @@
         assertTrue(readers > 0);
         assertTrue(consolidations > 0);
         assertTrue(descriptors > 0);
-        if (!isWindows) {
-          assertTrue(mapped > 0);
-        }
+        assertTrue(mapped > 0);
 
         {
           db._view(viewName).properties({commitIntervalMsec: 0});
@@ -154,7 +153,7 @@
             "arangodb_scheduler_num_worker_threads"
           ]);
 
-          if (readers === 0 && consolidations === 0 && descriptors === 0 && (isWindows || mapped === 0)) {
+          if (readers === 0 && consolidations === 0 && descriptors === 0 && mapped === 0) {
             break;
           }
           require("internal").sleep(0.25);

@@ -5,14 +5,14 @@
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
-// / Copyright 2022 ArangoDB GmbH, Cologne, Germany
-// / Copyright 2014 triagens GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -44,6 +44,7 @@ const _ = require('lodash');
 const fs = require('fs');
 const toArgv = require('internal').toArgv;
 const pu = require('@arangodb/testutils/process-utils');
+const ct = require('@arangodb/testutils/client-tools');
 const tu = require('@arangodb/testutils/test-utils');
 const im = require('@arangodb/testutils/instance-manager');
 const inst = require('@arangodb/testutils/instance');
@@ -108,7 +109,7 @@ function makeDataWrapper (options) {
         count += 1;
         if (this.options.cluster) {
           if (count === 2) {
-            pu.run.rtaWaitShardsInSync(this.options, this.instanceManager);
+            ct.run.rtaWaitShardsInSync(this.options, this.instanceManager);
           }
 
           if (count === 3) {
@@ -129,7 +130,7 @@ function makeDataWrapper (options) {
         }
         let logFile = fs.join(fs.getTempPath(), `rta_out_${count}.log`);
         require('internal').env.INSTANCEINFO = JSON.stringify(this.instanceManager.getStructure());
-        let rc = pu.run.rtaMakedata(this.options, this.instanceManager, testCount, messages[count-1], logFile, moreargv);
+        let rc = ct.run.rtaMakedata(this.options, this.instanceManager, testCount, messages[count-1], logFile, moreargv);
         if (!rc.status) {
           let rx = new RegExp(/\\n/g);
           res.message += file + ':\n' + fs.read(logFile).replace(rx, '\n');

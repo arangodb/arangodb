@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,6 +26,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/BumpFileDescriptorsFeature.h"
+#include "ApplicationFeatures/GreetingsFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/Result.h"
@@ -165,7 +166,7 @@ uint64_t getReplicationFactor(arangodb::RestoreFeature::Options const& options,
 
 /// @brief return the target replication factor for the specified collection
 uint64_t getWriteConcern(arangodb::RestoreFeature::Options const& options,
-                         arangodb::velocypack::Slice const& slice) {
+                         arangodb::velocypack::Slice slice) {
   uint64_t result = 1;
 
   arangodb::velocypack::Slice s =
@@ -180,21 +181,17 @@ uint64_t getWriteConcern(arangodb::RestoreFeature::Options const& options,
     return result;
   }
 
-  if (!options.writeConcern.empty()) {
-    std::string const name = s.copyString();
-
-    for (auto const& it : options.writeConcern) {
-      auto parts = arangodb::basics::StringUtils::split(it, '=');
-      if (parts.size() == 1) {
-        result = arangodb::basics::StringUtils::uint64(parts[0]);
-      }
-      if (parts.size() != 2 || parts[0] != name) {
-        // somehow invalid or different collection
-        continue;
-      }
-      result = arangodb::basics::StringUtils::uint64(parts[1]);
-      break;
+  for (auto const& it : options.writeConcern) {
+    auto parts = arangodb::basics::StringUtils::split(it, '=');
+    if (parts.size() == 1) {
+      result = arangodb::basics::StringUtils::uint64(parts[0]);
     }
+    if (parts.size() != 2 || parts[0] != s.stringView()) {
+      // somehow invalid or different collection
+      continue;
+    }
+    result = arangodb::basics::StringUtils::uint64(parts[1]);
+    break;
   }
 
   return result;
@@ -216,21 +213,25 @@ uint64_t getNumberOfShards(arangodb::RestoreFeature::Options const& options,
     return result;
   }
 
-  for (auto const& it : options.numberOfShards) {
-    auto parts = arangodb::basics::StringUtils::split(it, '=');
-    if (parts.size() == 1) {
-      // this is the default value, e.g. `--numberOfShards 2`
-      result = arangodb::basics::StringUtils::uint64(parts[0]);
-    }
+  if (!options.numberOfShards.empty()) {
+    std::string const name = s.copyString();
 
-    // look if we have a more specific value, e.g. `--numberOfShards
-    // myCollection=3`
-    if (parts.size() != 2 || parts[0] != s.stringView()) {
-      // somehow invalid or different collection
-      continue;
+    for (auto const& it : options.numberOfShards) {
+      auto parts = arangodb::basics::StringUtils::split(it, '=');
+      if (parts.size() == 1) {
+        // this is the default value, e.g. `--numberOfShards 2`
+        result = arangodb::basics::StringUtils::uint64(parts[0]);
+      }
+
+      // look if we have a more specific value, e.g. `--numberOfShards
+      // myCollection=3`
+      if (parts.size() != 2 || parts[0] != name) {
+        // somehow invalid or different collection
+        continue;
+      }
+      result = arangodb::basics::StringUtils::uint64(parts[1]);
+      break;
     }
-    result = arangodb::basics::StringUtils::uint64(parts[1]);
-    break;
   }
 
   return result;
@@ -453,7 +454,7 @@ arangodb::Result checkDumpDatabase(arangodb::ArangoRestoreServer& server,
 /// @brief Send the command to recreate a collection
 arangodb::Result sendRestoreCollection(
     arangodb::httpclient::SimpleHttpClient& httpClient,
-    arangodb::RestoreFeature::Options const& options, VPackSlice const& slice,
+    arangodb::RestoreFeature::Options const& options, VPackSlice slice,
     std::string const& name) {
   using arangodb::Logger;
   using arangodb::httpclient::SimpleHttpResult;
@@ -560,7 +561,7 @@ arangodb::Result recreateCollection(
 /// @brief Restore the data for a given view
 arangodb::Result restoreView(arangodb::httpclient::SimpleHttpClient& httpClient,
                              arangodb::RestoreFeature::Options const& options,
-                             VPackSlice const& viewDefinition) {
+                             VPackSlice viewDefinition) {
   using arangodb::httpclient::SimpleHttpResult;
 
   std::string url = absl::StrCat("/_api/replication/restore-view?overwrite=",
@@ -969,7 +970,8 @@ arangodb::Result processInputDirectory(
               << "sent " << stats.totalBatches << " data batch(es) of "
               << formatSize(stats.totalSent) << " total size"
               << ", queued jobs: " << std::get<0>(queueStats)
-              << ", workers: " << std::get<1>(queueStats);
+              << ", total workers: " << std::get<1>(queueStats)
+              << ", idle workers: " << std::get<2>(queueStats);
           start = now;
         }
 
@@ -1536,6 +1538,7 @@ Result RestoreFeature::RestoreMainJob::restoreData(
   }
 
   TRI_ASSERT(datafile);
+
   // check if we are dealing with compressed file(s)
   bool const isCompressed = datafile->path().ends_with(".gz");
   // check if we are dealing with multiple files (created via `--split-file
@@ -2149,6 +2152,7 @@ void RestoreFeature::validateOptions(
 }
 
 void RestoreFeature::prepare() {
+  logLGPLNotice();
   if (!_options.inputPath.empty() &&
       _options.inputPath.back() == TRI_DIR_SEPARATOR_CHAR) {
     // trim trailing slash from path because it may cause problems on ...

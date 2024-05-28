@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -205,7 +205,7 @@ SupervisedScheduler::SupervisedScheduler(
     ArangodServer& server, uint64_t minThreads, uint64_t maxThreads,
     uint64_t maxQueueSize, uint64_t fifo1Size, uint64_t fifo2Size,
     uint64_t fifo3Size, uint64_t ongoingLowPriorityLimit,
-    double unavailabilityQueueFillGrade, uint64_t maxNumberDetachedThreads)
+    double unavailabilityQueueFillGrade, metrics::MetricsFeature& metrics)
     : Scheduler(server),
       _nf(server.getFeature<NetworkFeature>()),
       _sharedPRNG(server.getFeature<SharedPRNGFeature>()),
@@ -219,63 +219,47 @@ SupervisedScheduler::SupervisedScheduler(
       _maxNumWorkers(maxThreads),
       _maxFifoSizes{maxQueueSize, fifo1Size, fifo2Size, fifo3Size},
       _ongoingLowPriorityLimit(ongoingLowPriorityLimit),
-      _maxNumberDetachedThreads(maxNumberDetachedThreads),
       _unavailabilityQueueFillGrade(unavailabilityQueueFillGrade),
       _numWorking(0),
       _numAwake(0),
       _numDetached(0),
-      _metricsQueueLength(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_scheduler_queue_length{})),
-      _metricsJobsDoneTotal(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_scheduler_jobs_done_total{})),
+      _metricsQueueLength(metrics.add(arangodb_scheduler_queue_length{})),
+      _metricsJobsDoneTotal(metrics.add(arangodb_scheduler_jobs_done_total{})),
       _metricsJobsSubmittedTotal(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_scheduler_jobs_submitted_total{})),
+          metrics.add(arangodb_scheduler_jobs_submitted_total{})),
       _metricsJobsDequeuedTotal(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_scheduler_jobs_dequeued_total{})),
-      _metricsNumAwakeThreads(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_scheduler_num_awake_threads{})),
+          metrics.add(arangodb_scheduler_jobs_dequeued_total{})),
+      _metricsNumAwakeThreads(
+          metrics.add(arangodb_scheduler_num_awake_threads{})),
       _metricsNumWorkingThreads(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_scheduler_num_working_threads{})),
-      _metricsNumWorkerThreads(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_scheduler_num_worker_threads{})),
+          metrics.add(arangodb_scheduler_num_working_threads{})),
+      _metricsNumWorkerThreads(
+          metrics.add(arangodb_scheduler_num_worker_threads{})),
       _metricsNumDetachedThreads(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_scheduler_num_detached_threads{})),
+          metrics.add(arangodb_scheduler_num_detached_threads{})),
       _metricsStackMemoryWorkerThreads(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_scheduler_stack_memory_usage{})),
-      _schedulerQueueMemory(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_scheduler_queue_memory_usage{})),
+          metrics.add(arangodb_scheduler_stack_memory_usage{})),
+      _schedulerQueueMemory(
+          metrics.add(arangodb_scheduler_queue_memory_usage{})),
       _metricsHandlerTasksCreated(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_scheduler_handler_tasks_created_total{})),
-      _metricsThreadsStarted(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_scheduler_threads_started_total{})),
-      _metricsThreadsStopped(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_scheduler_threads_stopped_total{})),
-      _metricsQueueFull(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_scheduler_queue_full_failures_total{})),
+          metrics.add(arangodb_scheduler_handler_tasks_created_total{})),
+      _metricsThreadsStarted(
+          metrics.add(arangodb_scheduler_threads_started_total{})),
+      _metricsThreadsStopped(
+          metrics.add(arangodb_scheduler_threads_stopped_total{})),
+      _metricsQueueFull(
+          metrics.add(arangodb_scheduler_queue_full_failures_total{})),
       _metricsQueueTimeViolations(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_scheduler_queue_time_violations_total{})),
+          metrics.add(arangodb_scheduler_queue_time_violations_total{})),
       _ongoingLowPriorityGauge(
-          _server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_scheduler_ongoing_low_prio{})),
+          metrics.add(arangodb_scheduler_ongoing_low_prio{})),
       _metricsLastLowPriorityDequeueTime(
-          _server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_scheduler_low_prio_queue_last_dequeue_time{})),
+          metrics.add(arangodb_scheduler_low_prio_queue_last_dequeue_time{})),
       _metricsQueueLengths{
-          _server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_scheduler_maintenance_prio_queue_length{}),
-          _server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_scheduler_high_prio_queue_length{}),
-          _server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_scheduler_medium_prio_queue_length{}),
-          _server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_scheduler_low_prio_queue_length{})} {
+          metrics.add(arangodb_scheduler_maintenance_prio_queue_length{}),
+          metrics.add(arangodb_scheduler_high_prio_queue_length{}),
+          metrics.add(arangodb_scheduler_medium_prio_queue_length{}),
+          metrics.add(arangodb_scheduler_low_prio_queue_length{})} {
   _queues[0].queue.reserve(maxQueueSize);
   _queues[1].queue.reserve(fifo1Size);
   _queues[2].queue.reserve(fifo2Size);
@@ -283,7 +267,16 @@ SupervisedScheduler::SupervisedScheduler(
   TRI_ASSERT(fifo3Size > 0);
 }
 
-SupervisedScheduler::~SupervisedScheduler() = default;
+SupervisedScheduler::~SupervisedScheduler() {
+  // make sure we are freeing all items from all queues here if we
+  // are in an uncontrolled shutdown
+  for (size_t i = 0; i < NumberOfQueues; ++i) {
+    WorkItemBase* res = nullptr;
+    while (_queues[i].queue.pop(res)) {
+      delete res;
+    }
+  }
+}
 
 void SupervisedScheduler::trackQueueItemSize(std::int64_t x) noexcept {
   _schedulerQueueMemory += x;
@@ -505,52 +498,6 @@ void SupervisedScheduler::shutdown() {
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
   }
-}
-
-Result SupervisedScheduler::detachThread(uint64_t* detachedThreads,
-                                         uint64_t* maximumDetachedThreads) {
-  std::lock_guard<std::mutex> guard(_mutex);
-  if (detachedThreads != nullptr) {
-    *detachedThreads = _numDetached;
-  }
-  if (maximumDetachedThreads != nullptr) {
-    *maximumDetachedThreads = _maxNumberDetachedThreads;
-  }
-  // First see if we have already reached the limit:
-  if (_numDetached >= _maxNumberDetachedThreads) {
-    return Result(TRI_ERROR_TOO_MANY_DETACHED_THREADS);
-  }
-
-  // Now we have access to the _workerStates and _detachedWorkerStates
-  // Let's first find ourselves in the _workerStates:
-  uint64_t myNumber = Thread::currentThreadNumber();
-  auto it = std::find_if(
-      _workerStates.begin(), _workerStates.end(),
-      [&](auto const& v) { return v->_thread->threadNumber() == myNumber; });
-  if (it == _workerStates.end()) {
-    return Result(TRI_ERROR_INTERNAL,
-                  "scheduler thread for detaching not found");
-  }
-  std::shared_ptr<WorkerState> state = std::move(*it);
-  _workerStates.erase(it);
-  // Since the thread is effectively taken out of the pool, decrease the
-  // number of workers.
-  --_numWorkers;
-  state->_stop = true;  // We will be stopped after the current task is done
-                        // We know that we are working, so we do not
-                        // have to wake the thread.
-  ++_metricsThreadsStopped;
-  try {
-    _detachedWorkerStates.push_back(std::move(state));
-    ++_numDetached;
-  } catch (std::exception const&) {
-    // Ignore error here, the thread itself still holds a copy of the
-    // shared_ptr, so cleanup is guaranteed.
-    // But we do not want to throw here.
-    // Note that we do not count the detached thread in `_numDetached` in
-    // this case! This is intentional!
-  }
-  return {};
 }
 
 constexpr uint64_t approxWorkerStackSize = 4'000'000;  // 4 MB
@@ -1143,6 +1090,7 @@ double SupervisedScheduler::approximateQueueFillGrade() const {
   uint64_t const maxLength = _maxFifoSizes[3];
   uint64_t const qLength =
       std::min<uint64_t>(maxLength, _metricsQueueLength.load());
+  TRI_ASSERT(maxLength > 0);
   return static_cast<double>(qLength) / static_cast<double>(maxLength);
 }
 

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,9 +23,7 @@
 
 #include "ConnectionPool.h"
 
-#include <fuerte/loop.h>
-#include <fuerte/types.h>
-
+#include "Auth/TokenCache.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "Containers/SmallVector.h"
@@ -40,24 +38,10 @@
 #include "Metrics/MetricsFeature.h"
 
 #include <fuerte/connection.h>
+#include <fuerte/loop.h>
+#include <fuerte/types.h>
+
 #include <memory>
-
-DECLARE_GAUGE(arangodb_connection_pool_connections_current, uint64_t,
-              "Current number of connections in pool");
-DECLARE_COUNTER(arangodb_connection_pool_leases_successful_total,
-                "Total number of successful connection leases");
-DECLARE_COUNTER(arangodb_connection_pool_leases_failed_total,
-                "Total number of failed connection leases");
-DECLARE_COUNTER(arangodb_connection_pool_connections_created_total,
-                "Total number of connections created");
-
-struct LeaseTimeScale {
-  static arangodb::metrics::LogScale<float> scale() {
-    return {2.f, 0.f, 1000.f, 10};
-  }
-};
-DECLARE_HISTOGRAM(arangodb_connection_pool_lease_time_hist, LeaseTimeScale,
-                  "Time to lease a connection from pool [ms]");
 
 namespace arangodb {
 namespace network {
@@ -80,25 +64,18 @@ struct ConnectionPool::Bucket {
 };
 
 struct ConnectionPool::Impl {
+  Impl(Impl const& other) = delete;
+  Impl& operator=(Impl const& other) = delete;
+
   explicit Impl(ConnectionPool::Config const& config, ConnectionPool& pool)
       : _config(config),
         _pool(pool),
         _loop(config.numIOThreads, config.name),
-        _totalConnectionsInPool(_config.metricsFeature.add(
-            arangodb_connection_pool_connections_current{}.withLabel(
-                "pool", _config.name))),
-        _successSelect(_config.metricsFeature.add(
-            arangodb_connection_pool_leases_successful_total{}.withLabel(
-                "pool", config.name))),
-        _noSuccessSelect(_config.metricsFeature.add(
-            arangodb_connection_pool_leases_failed_total{}.withLabel(
-                "pool", config.name))),
-        _connectionsCreated(_config.metricsFeature.add(
-            arangodb_connection_pool_connections_created_total{}.withLabel(
-                "pool", config.name))),
-        _leaseHistMSec(_config.metricsFeature.add(
-            arangodb_connection_pool_lease_time_hist{}.withLabel(
-                "pool", config.name))) {
+        _totalConnectionsInPool(*_config.metrics.totalConnectionsInPool),
+        _successSelect(*_config.metrics.successSelect),
+        _noSuccessSelect(*_config.metrics.noSuccessSelect),
+        _connectionsCreated(*_config.metrics.connectionsCreated),
+        _leaseHistMSec(*_config.metrics.leaseHistMSec) {
     TRI_ASSERT(config.numIOThreads > 0);
   }
 
@@ -259,7 +236,6 @@ struct ConnectionPool::Impl {
 
       std::size_t limit = 0;
       switch (_config.protocol) {
-        case fuerte::ProtocolType::Vst:
         case fuerte::ProtocolType::Http2:
           limit = 4;
           break;
@@ -351,7 +327,10 @@ struct ConnectionPool::Impl {
 ConnectionPool::ConnectionPool(ConnectionPool::Config const& config)
     : _impl(std::make_unique<Impl>(config, *this)) {}
 
-ConnectionPool::~ConnectionPool() { shutdownConnections(); }
+ConnectionPool::~ConnectionPool() {
+  shutdownConnections();
+  drainConnections();
+}
 
 /// @brief request a connection for a specific endpoint
 /// note: it is the callers responsibility to ensure the endpoint
@@ -389,10 +368,6 @@ ConnectionPool::Config const& ConnectionPool::config() const {
   return _impl->_config;
 }
 
-fuerte::EventLoopService& ConnectionPool::eventLoopService() {
-  return _impl->_loop;
-}
-
 ConnectionPool::Context::Context(std::shared_ptr<fuerte::Connection> c,
                                  std::chrono::steady_clock::time_point t,
                                  std::size_t l)
@@ -420,6 +395,63 @@ fuerte::Connection* ConnectionPtr::operator->() const {
 
 fuerte::Connection* ConnectionPtr::get() const {
   return _context->fuerte.get();
+}
+
+DECLARE_GAUGE(arangodb_connection_pool_connections_current, uint64_t,
+              "Current number of connections in pool");
+DECLARE_COUNTER(arangodb_connection_pool_leases_successful_total,
+                "Total number of successful connection leases");
+DECLARE_COUNTER(arangodb_connection_pool_leases_failed_total,
+                "Total number of failed connection leases");
+DECLARE_COUNTER(arangodb_connection_pool_connections_created_total,
+                "Total number of connections created");
+
+struct LeaseTimeScale {
+  static arangodb::metrics::LogScale<float> scale() {
+    return {2.f, 0.f, 1000.f, 10};
+  }
+};
+DECLARE_HISTOGRAM(arangodb_connection_pool_lease_time_hist, LeaseTimeScale,
+                  "Time to lease a connection from pool [ms]");
+
+namespace {
+template<typename Gen>
+ConnectionPool::Metrics createMetrics(Gen&& g, std::string_view name) {
+  ConnectionPool::Metrics m;
+  m.totalConnectionsInPool =
+      g(arangodb_connection_pool_connections_current{}.withLabel("pool", name));
+  m.successSelect =
+      g(arangodb_connection_pool_leases_successful_total{}.withLabel("pool",
+                                                                     name));
+  m.noSuccessSelect =
+      g(arangodb_connection_pool_leases_failed_total{}.withLabel("pool", name));
+  m.connectionsCreated =
+      g(arangodb_connection_pool_connections_created_total{}.withLabel("pool",
+                                                                       name));
+  m.leaseHistMSec =
+      g(arangodb_connection_pool_lease_time_hist{}.withLabel("pool", name));
+  return m;
+}
+
+}  // namespace
+
+ConnectionPool::Metrics ConnectionPool::Metrics::fromMetricsFeature(
+    metrics::MetricsFeature& metricsFeature, std::string_view name) {
+  return createMetrics(
+      [&](auto&& builder) { return &metricsFeature.add(std::move(builder)); },
+      name);
+}
+
+ConnectionPool::Metrics ConnectionPool::Metrics::createStub(
+    std::string_view name) {
+  return createMetrics(
+      [&]<typename Builder>(Builder&& builder) {
+        static std::vector<std::shared_ptr<typename Builder::MetricT>> metrics;
+        auto ptr = std::dynamic_pointer_cast<typename Builder::MetricT>(
+            Builder{}.build());
+        return metrics.emplace_back(ptr).get();
+      },
+      name);
 }
 
 }  // namespace network

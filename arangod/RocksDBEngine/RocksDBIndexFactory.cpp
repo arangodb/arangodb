@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -255,8 +255,8 @@ struct SecondaryIndexFactory : public DefaultIndexFactory {
 };
 
 struct MdiIndexFactory : public DefaultIndexFactory {
-  explicit MdiIndexFactory(ArangodServer& server)
-      : DefaultIndexFactory(server, Index::TRI_IDX_TYPE_MDI_INDEX) {}
+  explicit MdiIndexFactory(ArangodServer& server, Index::IndexType type)
+      : DefaultIndexFactory(server, type) {}
 
   std::shared_ptr<arangodb::Index> instantiate(
       arangodb::LogicalCollection& collection,
@@ -275,9 +275,8 @@ struct MdiIndexFactory : public DefaultIndexFactory {
       velocypack::Builder& normalized, velocypack::Slice definition,
       bool isCreation, TRI_vocbase_t const& /*vocbase*/) const override {
     TRI_ASSERT(normalized.isOpenObject());
-    normalized.add(arangodb::StaticStrings::IndexType,
-                   arangodb::velocypack::Value(arangodb::Index::oldtypeName(
-                       Index::TRI_IDX_TYPE_MDI_INDEX)));
+    normalized.add(StaticStrings::IndexType,
+                   velocypack::Value(Index::oldtypeName(_type)));
 
     if (isCreation && !ServerState::instance()->isCoordinator() &&
         !definition.hasKey(StaticStrings::ObjectId)) {
@@ -426,7 +425,10 @@ RocksDBIndexFactory::RocksDBIndexFactory(ArangodServer& server)
   static const TtlIndexFactory ttlIndexFactory(server,
                                                Index::TRI_IDX_TYPE_TTL_INDEX);
   static const PrimaryIndexFactory primaryIndexFactory(server);
-  static const MdiIndexFactory mdiIndexFactory(server);
+  static const MdiIndexFactory zkdIndexFactory(server,
+                                               Index::TRI_IDX_TYPE_ZKD_INDEX);
+  static const MdiIndexFactory mdiIndexFactory(server,
+                                               Index::TRI_IDX_TYPE_MDI_INDEX);
   static const iresearch::IResearchRocksDBInvertedIndexFactory
       iresearchInvertedIndexFactory(server);
   static const MdiPrefixedIndexFactory mdiPrefixedIndexFactory(server);
@@ -442,7 +444,7 @@ RocksDBIndexFactory::RocksDBIndexFactory(ArangodServer& server)
   emplace("rocksdb", persistentIndexFactory);
   emplace("skiplist", skiplistIndexFactory);
   emplace("ttl", ttlIndexFactory);
-  emplace("zkd", mdiIndexFactory);
+  emplace("zkd", zkdIndexFactory);
   emplace("mdi", mdiIndexFactory);
   emplace("mdi-prefixed", mdiPrefixedIndexFactory);
   emplace(arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE.data(),

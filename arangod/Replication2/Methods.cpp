@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -48,6 +48,7 @@
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/StateMachines/BlackHole/BlackHoleStateMachine.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
 #include "Agency/AgencyPaths.h"
@@ -61,6 +62,63 @@
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
+
+void ReplicatedLogMethods::AllLogsStatus::toVelocyPack(
+    velocypack::Builder& b) const {
+  VPackObjectBuilder ob(&b);
+
+  b.add(VPackValue("globalStatus"));
+  globalStatus.toVelocyPack(b);
+
+  if (snapshots.fail()) {
+    b.add(VPackValue("snapshots"));
+    velocypack::serialize(b, snapshots.result());
+  } else if (snapshots->get("result").isObject() &&
+             snapshots->get("result").hasKey("snapshots")) {
+    b.add(VPackValue("snapshots"));
+    b.add(snapshots->get("result")["snapshots"]);
+  }
+
+  if (shards.fail()) {
+    b.add(VPackValue("shards"));
+    velocypack::serialize(b, shards.result());
+  } else if (shards->get("result").isArray()) {
+    b.add(VPackValue("shards"));
+    b.add(shards->get("result"));
+  }
+}
+
+void ReplicatedLogMethods::CollectionStatus::toVelocyPack(
+    velocypack::Builder& b) const {
+  VPackObjectBuilder ob(&b);
+
+  b.add(VPackValue("groupId"));
+  b.add(VPackValue(groupId.id()));
+
+  b.add(VPackValue("allCollectionsInGroup"));
+  {
+    VPackArrayBuilder ab(&b);
+    for (auto const& collection : allCollectionsInGroup) {
+      b.add(VPackValue(collection));
+    }
+  }
+
+  b.add(VPackValue("collectionShards"));
+  {
+    VPackArrayBuilder ab(&b);
+    for (auto const& shard : collectionShards) {
+      b.add(VPackValue(shard.id()));
+    }
+  }
+
+  {
+    VPackObjectBuilder ob2(&b, "logs");
+    for (auto const& [logId, logStatus] : logs) {
+      b.add(VPackValue(to_string(logId)));
+      logStatus.toVelocyPack(b);
+    }
+  }
+}
 
 namespace {
 struct ReplicatedLogMethodsDBServer final
@@ -110,6 +168,11 @@ struct ReplicatedLogMethodsDBServer final
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
+  [[noreturn]] auto getCollectionStatus(CollectionID cid) const
+      -> futures::Future<CollectionStatus> override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
   auto getStatus(LogId id) const -> futures::Future<GenericLogStatus> override {
     return getLocalStatus(id).thenValue(
         [](LogStatus&& status) { return GenericLogStatus(std::move(status)); });
@@ -140,7 +203,7 @@ struct ReplicatedLogMethodsDBServer final
       -> futures::Future<std::unique_ptr<LogIterator>> override {
     auto participant = vocbase.getReplicatedLogById(id)->getParticipant();
     auto status = participant->getQuickStatus();
-    auto logStats = status.local.value();
+    auto logStats = status.local;
     auto stop = logStats.spearHead.index + 1;
     auto start = stop.saturatedDecrement(limit);
     return participant->getInternalLogIterator(LogRange(start, stop));
@@ -150,7 +213,7 @@ struct ReplicatedLogMethodsDBServer final
       -> futures::Future<std::unique_ptr<LogIterator>> override {
     auto participant = vocbase.getReplicatedLogById(id)->getParticipant();
     auto status = participant->getQuickStatus();
-    auto logStats = status.local.value();
+    auto logStats = status.local;
     auto start = logStats.firstIndex;
     auto bounds = LogRange(start, start + limit);
     return participant->getInternalLogIterator(bounds);
@@ -169,44 +232,113 @@ struct ReplicatedLogMethodsDBServer final
   auto insert(LogId id, LogPayload payload, bool waitForSync) const
       -> futures::Future<
           std::pair<LogIndex, replicated_log::WaitForResult>> override {
+    auto stateBase = vocbase.getReplicatedStateById(id);
     auto log = std::dynamic_pointer_cast<replicated_log::LogLeader>(
         vocbase.getReplicatedLogLeaderById(id));
-    auto idx = log->insert(std::move(payload), waitForSync);
-    return log->waitFor(idx).thenValue([idx](auto&& result) {
-      return std::make_pair(idx, std::forward<decltype(result)>(result));
-    });
+    if (!stateBase.ok()) {
+      THROW_ARANGO_EXCEPTION(std::move(stateBase).result());
+    }
+    if (auto state =
+            std::dynamic_pointer_cast<replicated_state::ReplicatedState<
+                replicated_state::black_hole::BlackHoleState>>(stateBase.get());
+        state != nullptr) {
+      if (auto leaderState = state->getLeader(); leaderState != nullptr) {
+        auto idx = leaderState->insert(std::move(payload), waitForSync);
+        return log->waitFor(idx).thenValue([idx](auto&& result) {
+          return std::make_pair(idx, std::forward<decltype(result)>(result));
+        });
+      } else {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_HTTP_FORBIDDEN,
+            fmt::format("/insert API is only allowed on leaders; while "
+                        "trying to insert into state machine {} on {}.",
+                        id, ServerState::instance()->getId()));
+      }
+    } else {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_HTTP_FORBIDDEN,
+          fmt::format(
+              "/insert API is only allowed for state machines of the "
+              "`black-hole` type. The requested state {} is of type {}.",
+              id, stateBase.get()->type()));
+    }
   }
 
   auto insert(LogId id, TypedLogIterator<LogPayload>& iter,
               bool waitForSync) const
       -> futures::Future<std::pair<std::vector<LogIndex>,
                                    replicated_log::WaitForResult>> override {
+    auto stateBase = vocbase.getReplicatedStateById(id);
     auto log = std::dynamic_pointer_cast<replicated_log::LogLeader>(
         vocbase.getReplicatedLogLeaderById(id));
-    auto indexes = std::vector<LogIndex>{};
-    while (auto payload = iter.next()) {
-      auto idx = log->insert(std::move(*payload), waitForSync);
-      indexes.push_back(idx);
+    if (!stateBase.ok()) {
+      THROW_ARANGO_EXCEPTION(std::move(stateBase).result());
     }
-    if (indexes.empty()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "multi insert list must not be empty");
-    }
+    if (auto state =
+            std::dynamic_pointer_cast<replicated_state::ReplicatedState<
+                replicated_state::black_hole::BlackHoleState>>(stateBase.get());
+        state != nullptr) {
+      if (auto leaderState = state->getLeader(); leaderState != nullptr) {
+        auto indexes = std::vector<LogIndex>{};
+        while (auto payload = iter.next()) {
+          auto idx = leaderState->insert(std::move(*payload), waitForSync);
+          indexes.push_back(idx);
+        }
+        if (indexes.empty()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                         "multi insert list must not be empty");
+        }
 
-    auto lastIndex = indexes.back();
-    return log->waitFor(lastIndex).thenValue(
-        [indexes = std::move(indexes)](auto&& result) mutable {
-          return std::make_pair(std::move(indexes),
-                                std::forward<decltype(result)>(result));
-        });
+        auto lastIndex = indexes.back();
+        return log->waitFor(lastIndex).thenValue(
+            [indexes = std::move(indexes)](auto&& result) mutable {
+              return std::make_pair(std::move(indexes),
+                                    std::forward<decltype(result)>(result));
+            });
+      } else {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_HTTP_FORBIDDEN,
+            fmt::format("/insert API is only allowed on leaders; while "
+                        "trying to insert into state machine {} on {}.",
+                        id, ServerState::instance()->getId()));
+      }
+    } else {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_HTTP_FORBIDDEN,
+          fmt::format(
+              "/insert API is only allowed for state machines of the "
+              "`black-hole` type. The requested state {} is of type {}.",
+              id, stateBase.get()->type()));
+    }
   }
 
   auto insertWithoutCommit(LogId id, LogPayload payload, bool waitForSync) const
       -> futures::Future<LogIndex> override {
-    auto log = std::dynamic_pointer_cast<replicated_log::LogLeader>(
-        vocbase.getReplicatedLogLeaderById(id));
-    auto idx = log->insert(std::move(payload), waitForSync);
-    return {idx};
+    auto stateBase = vocbase.getReplicatedStateById(id);
+    if (!stateBase.ok()) {
+      THROW_ARANGO_EXCEPTION(std::move(stateBase).result());
+    }
+    if (auto state =
+            std::dynamic_pointer_cast<replicated_state::ReplicatedState<
+                replicated_state::black_hole::BlackHoleState>>(stateBase.get());
+        state != nullptr) {
+      if (auto leaderState = state->getLeader(); leaderState != nullptr) {
+        return leaderState->insert(std::move(payload), waitForSync);
+      } else {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_HTTP_FORBIDDEN,
+            fmt::format("/insert API is only allowed on leaders; while "
+                        "trying to insert into state machine {} on {}.",
+                        id, ServerState::instance()->getId()));
+      }
+    } else {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_HTTP_FORBIDDEN,
+          fmt::format(
+              "/insert API is only allowed for state machines of the "
+              "`black-hole` type. The requested state {} is of type {}.",
+              id, stateBase.get()->type()));
+    }
   }
 
   auto compact(LogId id) const
@@ -489,6 +621,126 @@ struct ReplicatedLogMethodsCoordinator final
     return getGlobalStatus(id, GlobalStatus::SpecificationSource::kRemoteAgency)
         .thenValue([](GlobalStatus&& status) {
           return GenericLogStatus(std::move(status));
+        });
+  }
+
+  auto getCollectionStatus(CollectionID cid) const
+      -> futures::Future<CollectionStatus> override {
+    // Identify the collection
+    auto col = clusterInfo.getCollectionNT(vocbaseName, cid);
+    if (!col) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+          fmt::format("Collection {} not found", cid));
+    }
+
+    // Find the shards corresponding to the collection
+    auto shardMap = col->shardIds();
+    if (!shardMap) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+          fmt::format("Shards of collection {} not found", cid));
+    }
+    std::vector<ShardID> shards;
+    shards.reserve(shardMap->size());
+    for (auto const& shard : *shardMap) {
+      shards.emplace_back(shard.first);
+    }
+
+    // Get the collection group
+    // This will help identify the replicated logs
+    auto group = clusterInfo.getCollectionGroupById(col->groupID());
+    if (!group) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+          fmt::format("Collection group {} not found", col->groupID().id()));
+    }
+
+    // Get all the leaders of these logs
+    std::map<LogId, ParticipantId> logLeaders;
+    for (auto const& sheaf : group->shardSheaves) {
+      auto leader = clusterInfo.getReplicatedLogLeader(sheaf.replicatedLog);
+      if (leader.ok()) {
+        logLeaders.emplace(sheaf.replicatedLog, std::move(leader).get());
+      }
+    }
+
+    // Get ongoing snapshot status of all replicated logs that have a leader
+    auto snapshotStatusFut = std::invoke([&] {
+      std::vector<futures::Future<ResultT<velocypack::SharedSlice>>> status;
+      status.reserve(logLeaders.size());
+      for (auto const& [logId, leader] : logLeaders) {
+        auto path = basics::StringUtils::joinT("/", "_api/document-state",
+                                               logId, "snapshot/status");
+        status.emplace_back(queryParticipantPath(leader, std::move(path)));
+      }
+      return futures::collectAll(status);
+    });
+
+    auto shardsStatusFut = std::invoke([&] {
+      std::vector<futures::Future<ResultT<velocypack::SharedSlice>>> status;
+      status.reserve(logLeaders.size());
+      for (auto const& [logId, leader] : logLeaders) {
+        auto path = basics::StringUtils::joinT("/", "_api/document-state",
+                                               logId, "shards");
+        status.emplace_back(queryParticipantPath(leader, std::move(path)));
+      }
+      return futures::collectAll(status);
+    });
+
+    // Get global status of replicated logs
+    auto globalStatusFut = std::invoke([&] {
+      std::vector<futures::Future<GlobalStatus>> status;
+      status.reserve(group->shardSheaves.size());
+      for (auto const& sheaf : group->shardSheaves) {
+        status.emplace_back(
+            getGlobalStatus(sheaf.replicatedLog,
+                            GlobalStatus::SpecificationSource::kLocalCache));
+      }
+      return futures::collectAll(status);
+    });
+
+    // Gather a list of all collections in the group
+    std::vector<CollectionID> collectionsInGroup;
+    collectionsInGroup.reserve(group->collections.size());
+    for (auto const& c : group->collections) {
+      auto collection = clusterInfo.getCollectionNT(vocbaseName, c.first);
+      if (collection) {
+        collectionsInGroup.emplace_back(collection->name());
+      } else {
+        collectionsInGroup.emplace_back(c.first);
+      }
+    }
+
+    return futures::collect(std::move(globalStatusFut),
+                            std::move(snapshotStatusFut),
+                            std::move(shardsStatusFut))
+        .thenValue([group = std::move(group), col = std::move(col),
+                    collectionsInGroup = std::move(collectionsInGroup),
+                    shards = std::move(shards),
+                    logLeaders =
+                        std::move(logLeaders)](auto&& tupleResult) mutable {
+          std::unordered_map<LogId, AllLogsStatus> logs;
+          auto& [globalStatuses, snapshotStatuses, shardsStatuses] =
+              tupleResult;
+          for (std::size_t idx{0}; idx < group->shardSheaves.size(); ++idx) {
+            auto logId = group->shardSheaves[idx].replicatedLog;
+            AllLogsStatus status;
+            status.globalStatus = std::move(globalStatuses[idx].get());
+            if (auto leader = logLeaders.find(logId);
+                leader != logLeaders.end()) {
+              auto dist = std::distance(logLeaders.begin(), leader);
+              status.snapshots = std::move(snapshotStatuses[dist].get());
+              status.shards = std::move(shardsStatuses[dist].get());
+            } else {
+              status.snapshots = status.shards =
+                  Result{TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
+                         "Could not find replicated log leader"};
+            }
+            logs.emplace(logId, std::move(status));
+          }
+          return CollectionStatus{col->groupID(), std::move(collectionsInGroup),
+                                  std::move(shards), std::move(logs)};
         });
   }
 
@@ -800,7 +1052,7 @@ struct ReplicatedLogMethodsCoordinator final
     auto leader = clusterInfo.getReplicatedLogLeader(id);
     if (leader.fail()) {
       if (leader.is(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED)) {
-        throw ParticipantResignedException(leader.result(), ADB_HERE);
+        throw ParticipantResignedException(leader.result());
       } else {
         THROW_ARANGO_EXCEPTION(leader.result());
       }
@@ -924,6 +1176,34 @@ struct ReplicatedLogMethodsCoordinator final
                         response.slice().get("result"))};
           }
           return status;
+        });
+  }
+
+  auto queryParticipantPath(ParticipantId const& participant,
+                            std::string path) const
+      -> futures::Future<ResultT<velocypack::SharedSlice>> {
+    network::RequestOptions opts;
+    opts.database = vocbaseName;
+    opts.timeout = std::chrono::seconds{10};
+    return network::sendRequest(pool, "server:" + participant,
+                                fuerte::RestVerb::Get, std::move(path), {},
+                                opts)
+        .then([](futures::Try<network::Response>&& tryResult) mutable
+              -> ResultT<velocypack::SharedSlice> {
+          auto result = basics::catchToResultT(
+              [&] { return std::move(tryResult.get()); });
+
+          if (result.fail()) {
+            return result.result();
+          }
+
+          auto& response = result.get();
+          if (response.combinedResult().ok()) {
+            VPackBuilder b(response.stealResponse()->stealPayload());
+            return b.sharedSlice();
+          }
+
+          return response.combinedResult();
         });
   }
 

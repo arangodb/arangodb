@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -44,10 +44,6 @@
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/vocbase.h"
 
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
-
 namespace {
 struct TestView : public arangodb::LogicalView {
   static constexpr auto typeInfo() noexcept {
@@ -60,7 +56,7 @@ struct TestView : public arangodb::LogicalView {
 
   TestView(TRI_vocbase_t& vocbase,
            arangodb::velocypack::Slice const& definition)
-      : arangodb::LogicalView(*this, vocbase, definition) {}
+      : arangodb::LogicalView(*this, vocbase, definition, false) {}
   arangodb::Result appendVPackImpl(arangodb::velocypack::Builder& build,
                                    Serialization, bool) const override {
     build.add("properties", _properties.slice());
@@ -129,16 +125,12 @@ class LogicalViewTest
                           false);
     features.emplace_back(
         server.addFeature<arangodb::metrics::MetricsFeature>(), false);
-    features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(),
-                          false);  // required for TRI_vocbase_t
+    features.emplace_back(
+        server.addFeature<arangodb::QueryRegistryFeature>(
+            server.template getFeature<arangodb::metrics::MetricsFeature>()),
+        false);  // required for TRI_vocbase_t
     features.emplace_back(server.addFeature<arangodb::ViewTypesFeature>(),
                           false);  // required for LogicalView::create(...)
-
-#if USE_ENTERPRISE
-    features.emplace_back(
-        server.addFeature<arangodb::LdapFeature>(),
-        false);  // required for AuthenticationFeature with USE_ENTERPRISE
-#endif
 
     for (auto& f : features) {
       f.first.prepare();
@@ -188,11 +180,13 @@ TEST_F(LogicalViewTest, test_auth) {
     auto logicalView = vocbase.createView(viewJson->slice(), false);
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "",
                                   "testVocbase", arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE, false) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     EXPECT_FALSE(logicalView->canUse(arangodb::auth::Level::RO));
   }
 
@@ -202,11 +196,13 @@ TEST_F(LogicalViewTest, test_auth) {
     auto logicalView = vocbase.createView(viewJson->slice(), false);
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "",
                                   "testVocbase", arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::RO, false) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     EXPECT_TRUE(logicalView->canUse(arangodb::auth::Level::RO));
     EXPECT_FALSE(logicalView->canUse(arangodb::auth::Level::RW));
   }
@@ -218,11 +214,13 @@ TEST_F(LogicalViewTest, test_auth) {
     auto logicalView = vocbase.createView(viewJson->slice(), false);
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "",
                                   "testVocbase", arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::RW, false) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     EXPECT_TRUE(logicalView->canUse(arangodb::auth::Level::RO));
     EXPECT_TRUE(logicalView->canUse(arangodb::auth::Level::RW));
   }

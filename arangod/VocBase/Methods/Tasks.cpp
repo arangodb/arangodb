@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -309,12 +309,12 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
 
     // get the permissions to be used by this task
     bool allowContinue = true;
-    std::shared_ptr<ExecContext> execContext;
+    std::shared_ptr<ExecContext const> execContext;
 
     if (!_user.empty()) {  // not superuser
       auto& dbname = _dbGuard->database().name();
 
-      execContext.reset(ExecContext::create(_user, dbname).release());
+      execContext = ExecContext::create(_user, dbname);
       allowContinue = execContext->canUseDatabase(dbname, auth::Level::RW);
     }
 
@@ -327,9 +327,9 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
     // now do the work:
     SchedulerFeature::SCHEDULER->queue(
         RequestLane::INTERNAL_LOW, [self, this, execContext] {
-          ExecContextScope scope(_user.empty() ? &ExecContext::superuser()
-                                               : execContext.get());
-          work(execContext.get());
+          ExecContextScope scope(
+              _user.empty() ? ExecContext::superuserAsShared() : execContext);
+          work();
 
           if (_periodic.load() && !_dbGuard->database().server().isStopping()) {
             // requeue the task
@@ -426,7 +426,7 @@ void Task::toVelocyPack(VPackBuilder& builder) const {
   builder.add("database", VPackValue(_dbGuard->database().name()));
 }
 
-void Task::work(ExecContext const* exec) {
+void Task::work() {
   JavaScriptSecurityContext securityContext =
       _allowUseDatabase
           ? JavaScriptSecurityContext::

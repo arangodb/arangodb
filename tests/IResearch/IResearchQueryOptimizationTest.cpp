@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,7 +27,6 @@
 #include <velocypack/Iterator.h>
 
 #include "Aql/AqlFunctionFeature.h"
-#include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
@@ -47,11 +46,16 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
+
 #include "search/boolean_filter.hpp"
 #include "search/levenshtein_filter.hpp"
 #include "search/prefix_filter.hpp"
 #include "search/range_filter.hpp"
 #include "search/term_filter.hpp"
+
+namespace arangodb::aql {
+class ExecutionNode;
+}
 
 namespace arangodb::tests {
 namespace {
@@ -170,7 +174,7 @@ class QueryTestMulti
             arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
             arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
         [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
-           arangodb::aql::VPackFunctionParametersView params) {
+           arangodb::aql::functions::VPackFunctionParametersView params) {
           TRI_ASSERT(!params.empty());
           return params[0];
         }});
@@ -186,7 +190,7 @@ class QueryTestMulti
             arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
             arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
         [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
-           arangodb::aql::VPackFunctionParametersView params) {
+           arangodb::aql::functions::VPackFunctionParametersView params) {
           TRI_ASSERT(!params.empty());
           return params[0];
         }});
@@ -13609,7 +13613,7 @@ TEST_P(QueryOptimization, mergeLevenshteinStartsWith) {
   // make it empty with prefix
   {
     irs::Or expected;
-    expected.add<irs::And>().add<irs::empty>();
+    expected.add<irs::And>().add<irs::Empty>();
     assertFilterOptimized(
         vocbase(),
         "FOR d IN testView SEARCH STARTS_WITH(d.name, 'foobar12345')"
@@ -13620,7 +13624,7 @@ TEST_P(QueryOptimization, mergeLevenshteinStartsWith) {
   // make it empty
   {
     irs::Or expected;
-    expected.add<irs::And>().add<irs::empty>();
+    expected.add<irs::And>().add<irs::Empty>();
     assertFilterOptimized(
         vocbase(),
         "FOR d IN testView SEARCH STARTS_WITH(d.name, 'foobar12345')"

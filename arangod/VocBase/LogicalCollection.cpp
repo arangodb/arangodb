@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,14 +27,14 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Basics/DownCast.h"
-#include "Basics/ReadLocker.h"
+#include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Cluster/ClusterCollectionMethods.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
-#include "Cluster/ClusterCollectionMethods.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
@@ -57,7 +57,6 @@
 #include "VocBase/Properties/UserInputCollectionProperties.h"
 #include "VocBase/Validators.h"
 #include "velocypack/Builder.h"
-#include "VocBase/Properties/UserInputCollectionProperties.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Sharding/ShardingStrategyEE.h"
@@ -157,10 +156,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
           info, StaticStrings::WaitForSyncString, false)),
       _syncByRevision(determineSyncByRevision()),
       _countCache(/*ttl*/ system() ? 900.0 : 180.0),
-      _physical(vocbase.server()
-                    .getFeature<EngineSelectorFeature>()
-                    .engine()
-                    .createPhysicalCollection(*this, info)) {
+      _physical(vocbase.engine().createPhysicalCollection(*this, info)) {
 
   TRI_IF_FAILURE("disableRevisionsAsDocumentIds") {
     _usesRevisionsAsDocumentIds = false;
@@ -211,7 +207,9 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
 
   if (ServerState::instance()->isDBServer() ||
       !ServerState::instance()->isRunningInCluster()) {
-    _followers = std::make_unique<FollowerInfo>(this);
+    if (!isAStub) {
+      _followers = std::make_unique<FollowerInfo>(this);
+    }
   }
 
   TRI_ASSERT(_physical != nullptr);
@@ -366,6 +364,20 @@ size_t LogicalCollection::replicationFactor() const noexcept {
 }
 
 size_t LogicalCollection::writeConcern() const noexcept {
+  if (_groupId.has_value() && ServerState::instance()->isDBServer()) {
+    TRI_ASSERT(replicationVersion() == replication::Version::TWO)
+        << "Set a groupId although we are not in Replication Two";
+    auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+
+    auto const& group = ci.getCollectionGroupById(
+        replication2::agency::CollectionGroupId{_groupId.value()});
+    if (group) {
+      return group->attributes.mutableAttributes.writeConcern;
+    }
+    // If we cannot find a group this means the shard is dropped
+    // while we are still in this method. Let's just take the
+    // value at creation then.
+  }
   TRI_ASSERT(_sharding != nullptr);
   return _sharding->writeConcern();
 }
@@ -551,18 +563,6 @@ bool LogicalCollection::determineSyncByRevision() const {
   return false;
 }
 
-std::vector<std::shared_ptr<Index>> LogicalCollection::getIndexes() const {
-  return getPhysical()->getIndexes();
-}
-
-void LogicalCollection::getIndexesVPack(
-    VPackBuilder& result,
-    std::function<bool(Index const*,
-                       std::underlying_type<Index::Serialize>::type&)> const&
-        filter) const {
-  getPhysical()->getIndexesVPack(result, filter);
-}
-
 bool LogicalCollection::allowUserKeys() const noexcept {
   return _allowUserKeys;
 }
@@ -600,10 +600,8 @@ Result LogicalCollection::rename(std::string&& newName) {
 
   // Okay we can finally rename safely
   try {
-    StorageEngine& engine =
-        vocbase().server().getFeature<EngineSelectorFeature>().engine();
     name(std::move(newName));
-    engine.changeCollection(vocbase(), *this);
+    vocbase().engine().changeCollection(vocbase(), *this);
     ++_v8CacheVersion;
   } catch (basics::Exception const& ex) {
     // Engine Rename somehow failed. Reset to old name
@@ -636,18 +634,19 @@ Result LogicalCollection::drop() {
 void LogicalCollection::toVelocyPackForInventory(VPackBuilder& result) const {
   result.openObject();
   result.add(VPackValue(StaticStrings::Indexes));
-  getIndexesVPack(result, [](arangodb::Index const* idx,
-                             decltype(Index::makeFlags())& flags) {
-    // we have to exclude the primary and edge index for dump / restore
-    switch (idx->type()) {
-      case Index::TRI_IDX_TYPE_PRIMARY_INDEX:
-      case Index::TRI_IDX_TYPE_EDGE_INDEX:
-        return false;
-      default:
-        flags = Index::makeFlags(Index::Serialize::Inventory);
-        return !idx->isHidden();
-    }
-  });
+  getPhysical()->getIndexesVPack(
+      result,
+      [](arangodb::Index const* idx, decltype(Index::makeFlags())& flags) {
+        // we have to exclude the primary and edge index for dump / restore
+        switch (idx->type()) {
+          case Index::TRI_IDX_TYPE_PRIMARY_INDEX:
+          case Index::TRI_IDX_TYPE_EDGE_INDEX:
+            return false;
+          default:
+            flags = Index::makeFlags(Index::Serialize::Inventory);
+            return !idx->isHidden();
+        }
+      });
   result.add("parameters", VPackValue(VPackValueType::Object));
   toVelocyPackIgnore(
       result,
@@ -697,7 +696,7 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
   }
 
   result.add(VPackValue(StaticStrings::Indexes));
-  getIndexesVPack(result, [](Index const* idx, uint8_t& flags) {
+  getPhysical()->getIndexesVPack(result, [](Index const* idx, uint8_t& flags) {
     // we have to exclude the primary and the edge index here, because otherwise
     // at least the MMFiles engine will try to create it
     // AND exclude hidden indexes
@@ -777,7 +776,7 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
     }
     return false;
   };
-  getIndexesVPack(build, filter);
+  getPhysical()->getIndexesVPack(build, filter);
 
   // Schema
   build.add(VPackValue(StaticStrings::Schema));
@@ -804,6 +803,16 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
               VPackValue(std::to_string(planId().id())));
   }
 
+  std::shared_ptr<replication2::agency::CollectionGroupPlanSpecification const>
+      group;
+  if (_groupId.has_value()) {
+    TRI_ASSERT(replicationVersion() == replication::Version::TWO)
+        << "Set a groupId although we are not in Replication Two";
+    auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+    group = ci.getCollectionGroupById(
+        replication2::agency::CollectionGroupId{_groupId.value()});
+  }
+  bool isReplicationTWO = group != nullptr;
 #ifdef USE_ENTERPRISE
   if (isSmart() && type() == TRI_COL_TYPE_EDGE &&
       ServerState::instance()->isRunningInCluster()) {
@@ -816,25 +825,54 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
     }
     edgeCollection->shardMapToVelocyPack(build);
     bool includeShardsEntry = false;
-    _sharding->toVelocyPack(build, ctx != Serialization::List,
+    _sharding->toVelocyPack(build, isReplicationTWO, ctx != Serialization::List,
                             includeShardsEntry);
   } else {
-    _sharding->toVelocyPack(build, ctx != Serialization::List);
+    _sharding->toVelocyPack(build, isReplicationTWO,
+                            ctx != Serialization::List);
   }
 #else
-  _sharding->toVelocyPack(build, ctx != Serialization::List);
+  _sharding->toVelocyPack(build, isReplicationTWO, ctx != Serialization::List);
 #endif
-
-  includeVelocyPackEnterprise(build);
-  TRI_ASSERT(build.isOpenObject());
-
-  if (replicationVersion() == replication::Version::TWO &&
-      _groupId.has_value()) {
+  if (group) {
     build.add("groupId", VPackValue(_groupId.value()));
     if (_replicatedStateId) {
       build.add("replicatedStateId", VPackValue(*_replicatedStateId));
     }
+    // For replication1 the _sharding is responsible.
+    // For TWO the group contains those attributes
+
+    // Future TODO: It would be nice if we could use a "serializeInPlace"
+    // method Which does serialization but not the open/close object.
+    TRI_ASSERT(!build.hasKey(StaticStrings::ReplicationFactor))
+        << "replicationFactor already serialized from _sharding";
+    TRI_ASSERT(!build.hasKey(StaticStrings::WriteConcern))
+        << "writeConcern already serialized from _sharding";
+    TRI_ASSERT(!build.hasKey(StaticStrings::MinReplicationFactor))
+        << "minReplicationFactor already serialized from _sharding";
+    if (group->attributes.mutableAttributes.replicationFactor == 0) {
+      build.add(StaticStrings::ReplicationFactor,
+                VPackValue(StaticStrings::Satellite));
+      // For Backwards Compatibility, WriteConcern should return 0 here for
+      // satellites
+      build.add(StaticStrings::WriteConcern, VPackValue(0));
+      // minReplicationFactor deprecated in 3.6
+      build.add(StaticStrings::MinReplicationFactor, VPackValue(0));
+
+    } else {
+      build.add(
+          StaticStrings::ReplicationFactor,
+          VPackValue(group->attributes.mutableAttributes.replicationFactor));
+      build.add(StaticStrings::WriteConcern,
+                VPackValue(group->attributes.mutableAttributes.writeConcern));
+      // minReplicationFactor deprecated in 3.6
+      build.add(StaticStrings::MinReplicationFactor,
+                VPackValue(group->attributes.mutableAttributes.writeConcern));
+    }
   }
+
+  includeVelocyPackEnterprise(build);
+  TRI_ASSERT(build.isOpenObject());
   // We leave the object open
   return {};
 }
@@ -888,8 +926,6 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
     return Result(TRI_ERROR_INTERNAL,
                   "failed to find a storage engine while updating collection");
   }
-  auto& engine =
-      vocbase().server().getFeature<EngineSelectorFeature>().engine();
 
   std::lock_guard guard{_infoLock};  // prevent simultaneous updates
 
@@ -904,7 +940,7 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
   }
 
   size_t replicationFactor = _sharding->replicationFactor();
-  size_t writeConcern = _sharding->writeConcern();
+  size_t writeConcern = this->writeConcern();
   VPackSlice replicationFactorSlice =
       slice.get(StaticStrings::ReplicationFactor);
 
@@ -1004,20 +1040,8 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
       if ((ServerState::instance()->isCoordinator() ||
            (ServerState::instance()->isSingleServer() &&
             (isSatellite() || isSmart()))) &&
-          writeConcern != _sharding->writeConcern()) {  // check if changed
-        if (!_sharding->distributeShardsLike().empty()) {
-          CollectionNameResolver resolver(vocbase());
-          std::string name = resolver.getCollectionNameCluster(DataSourceId{
-              basics::StringUtils::uint64(_sharding->distributeShardsLike())});
-          if (name.empty()) {
-            name = _sharding->distributeShardsLike();
-          }
-          return Result(
-              TRI_ERROR_FORBIDDEN,
-              absl::StrCat("Cannot change writeConcern, please change the "
-                           "writeConcern of the prototype collection '",
-                           name, "'"));
-        } else if (_type == TRI_COL_TYPE_EDGE && isSmart()) {
+          writeConcern != this->writeConcern()) {  // check if changed
+        if (_type == TRI_COL_TYPE_EDGE && isSmart()) {
           return Result(TRI_ERROR_NOT_IMPLEMENTED,
                         "Changing writeConcern "
                         "not supported for SmartGraph edge collections");
@@ -1086,12 +1110,8 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
                                                                 *this);
   }
 
-  engine.changeCollection(vocbase(), *this);
-
-  auto& df = vocbase().server().getFeature<DatabaseFeature>();
-  if (df.versionTracker() != nullptr) {
-    df.versionTracker()->track("change collection");
-  }
+  vocbase().engine().changeCollection(vocbase(), *this);
+  vocbase().versionTracker().track("change collection");
 
   return {};
 }
@@ -1119,14 +1139,13 @@ std::shared_ptr<Index> LogicalCollection::lookupIndex(VPackSlice info) const {
 
 futures::Future<std::shared_ptr<Index>> LogicalCollection::createIndex(
     VPackSlice info, bool& created,
-    std::shared_ptr<std::function<arangodb::Result(double)>> progress) {
+    std::shared_ptr<std::function<arangodb::Result(double)>> progress,
+    Replication2Callback replicationCb) {
   auto idx = co_await _physical->createIndex(info, /*restore*/ false, created,
-                                             std::move(progress));
+                                             std::move(progress),
+                                             std::move(replicationCb));
   if (idx) {
-    auto& df = vocbase().server().getFeature<DatabaseFeature>();
-    if (df.versionTracker() != nullptr) {
-      df.versionTracker()->track("create index");
-    }
+    vocbase().versionTracker().track("create index");
   }
   co_return idx;
 }
@@ -1140,10 +1159,7 @@ Result LogicalCollection::dropIndex(IndexId iid) {
   Result res = _physical->dropIndex(iid);
 
   if (res.ok()) {
-    auto& df = vocbase().server().getFeature<DatabaseFeature>();
-    if (df.versionTracker() != nullptr) {
-      df.versionTracker()->track("drop index");
-    }
+    vocbase().versionTracker().track("drop index");
   }
 
   return res;
@@ -1155,10 +1171,7 @@ Result LogicalCollection::dropIndex(IndexId iid) {
 void LogicalCollection::persistPhysicalCollection() {
   // Coordinators are not allowed to have local collections!
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-
-  StorageEngine& engine =
-      vocbase().server().getFeature<EngineSelectorFeature>().engine();
-  engine.createCollection(vocbase(), *this);
+  vocbase().engine().createCollection(vocbase(), *this);
 }
 
 basics::ReadWriteLock& LogicalCollection::statusLock() noexcept {

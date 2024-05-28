@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2020-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -29,21 +30,21 @@
 
 #include "Aql/AqlCallStack.h"
 #include "Aql/AqlItemBlock.h"
-#include "Aql/CountCollectExecutor.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
-#include "Aql/FilterExecutor.h"
-#include "Aql/IdExecutor.h"
-#include "Aql/ModificationExecutor.h"
-#include "Aql/ModificationExecutorInfos.h"
+#include "Aql/Executor/CountCollectExecutor.h"
+#include "Aql/Executor/FilterExecutor.h"
+#include "Aql/Executor/IdExecutor.h"
+#include "Aql/Executor/ModificationExecutor.h"
+#include "Aql/Executor/ModificationExecutorInfos.h"
+#include "Aql/Executor/SortExecutor.h"
+#include "Aql/Executor/UnsortedGatherExecutor.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/SimpleModifier.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/SkipResult.h"
-#include "Aql/SortExecutor.h"
 #include "Aql/SortRegister.h"
-#include "Aql/UnsortedGatherExecutor.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "RestServer/TemporaryStorageFeature.h"

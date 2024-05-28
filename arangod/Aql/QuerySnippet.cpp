@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,23 +23,29 @@
 
 #include "QuerySnippet.h"
 
-#include "Aql/ClusterNodes.h"
 #include "Aql/Collection.h"
-#include "Aql/CollectionAccessingNode.h"
-#include "Aql/DistributeConsumerNode.h"
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/CollectionAccessingNode.h"
+#include "Aql/ExecutionNode/DistributeConsumerNode.h"
+#include "Aql/ExecutionNode/DistributeNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
+#include "Aql/ExecutionNode/GatherNode.h"
+#include "Aql/ExecutionNode/GraphNode.h"
+#include "Aql/ExecutionNode/IResearchViewNode.h"
+#include "Aql/ExecutionNode/JoinNode.h"
+#include "Aql/ExecutionNode/RemoteNode.h"
+#include "Aql/ExecutionNode/ScatterNode.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/GraphNode.h"
-#include "Aql/IResearchViewNode.h"
-#include "Aql/JoinNode.h"
 #include "Aql/ShardLocking.h"
 #include "Aql/WalkerWorker.h"
+#include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Aql/LocalGraphNode.h"
 #endif
+
+#include <map>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -49,17 +55,12 @@ namespace {
 DistributeConsumerNode* createConsumerNode(
     ExecutionPlan* plan, ScatterNode* internalScatter,
     std::string_view const distributeId) {
-  auto uniq_consumer = std::make_unique<DistributeConsumerNode>(
+  auto consumer = plan->createNode<DistributeConsumerNode>(
       plan, plan->nextId(), std::string(distributeId));
-  auto consumer = uniq_consumer.get();
-  TRI_ASSERT(consumer != nullptr);
-  // Hand over responsibility to plan, s.t. it can clean up if one of the below
-  // fails
-  plan->registerNode(uniq_consumer.release());
   consumer->setIsInSplicedSubquery(internalScatter->isInSplicedSubquery());
   consumer->addDependency(internalScatter);
   consumer->cloneRegisterPlan(internalScatter);
-  internalScatter->addClient(consumer);
+  internalScatter->addClient(*consumer);
   return consumer;
 }
 
@@ -190,6 +191,9 @@ void CloneWorker::setUsedShardsOnClone(ExecutionNode* node,
       if (joinNode != nullptr) {
         // found a JoinNode, now add the `i` th shard for used collections
         for (auto& idx : joinNode->getIndexInfos()) {
+          if (idx.usedAsSatellite) {
+            continue;
+          }
           auto const& shards = permuter->second.at(idx.collection->name());
           idx.usedShard = *std::next(shards.begin(), _shardId);
         }
@@ -328,7 +332,8 @@ void QuerySnippet::addNode(ExecutionNode* node) {
       break;
     }
     case ExecutionNode::JOIN: {
-      _expansions.emplace_back(node, false, false);
+      _expansions.emplace_back(
+          node, true, /* handled in separately in prepareFirstBranch */ false);
       break;
     }
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
@@ -420,7 +425,7 @@ void QuerySnippet::serializeIntoBuilder(
     _remoteNode->setDistributeId(server);
     // Wire up this server to the global scatter
     TRI_ASSERT(_globalScatter != nullptr);
-    _globalScatter->addClient(_remoteNode);
+    _globalScatter->addClient(*_remoteNode);
 
     // For serialization remove the dependency of Remote
 
@@ -654,7 +659,9 @@ auto QuerySnippet::prepareFirstBranch(
         }
 
         idx.usedShard = *myExp.begin();
-        myExpFinal.insert({idx.collection->name(), std::move(myExp)});
+        if (myExp.size() > 1) {
+          myExpFinal.insert({idx.collection->name(), std::move(myExp)});
+        }
       }
 
     } else if (exp.node->getType() == ExecutionNode::ENUMERATE_IRESEARCH_VIEW) {
@@ -888,11 +895,6 @@ auto QuerySnippet::prepareFirstBranch(
       }
     }
     if (exp.doExpand) {
-      auto collectionAccessingNode =
-          dynamic_cast<CollectionAccessingNode*>(exp.node);
-      TRI_ASSERT(collectionAccessingNode != nullptr);
-      TRI_ASSERT(!collectionAccessingNode->isUsedAsSatellite());
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       size_t numberOfShardsToPermutate = 0;
       // set the max loop index (note this will essentially be done only once)

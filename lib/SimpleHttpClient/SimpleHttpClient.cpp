@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -909,6 +909,8 @@ void SimpleHttpClient::processBody() {
     _readBuffer.zlibInflate(_result->getBody(), _readBufferOffset);
   } else if (_result->getEncodingType() == rest::EncodingType::GZIP) {
     _readBuffer.gzipUncompress(_result->getBody(), _readBufferOffset);
+  } else if (_result->getEncodingType() == rest::EncodingType::LZ4) {
+    _readBuffer.lz4Uncompress(_result->getBody(), _readBufferOffset);
   } else {
     // body is not compressed
     // Note that if we are here, then
@@ -1030,6 +1032,8 @@ void SimpleHttpClient::processChunkedBody() {
       _readBuffer.zlibInflate(_result->getBody(), _readBufferOffset);
     } else if (_result->getEncodingType() == rest::EncodingType::GZIP) {
       _readBuffer.gzipUncompress(_result->getBody(), _readBufferOffset);
+    } else if (_result->getEncodingType() == rest::EncodingType::LZ4) {
+      _readBuffer.lz4Uncompress(_result->getBody(), _readBufferOffset);
     } else {
       _result->getBody().appendText(_readBuffer.c_str() + _readBufferOffset,
                                     static_cast<size_t>(_nextChunkedSize));

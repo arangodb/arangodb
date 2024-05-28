@@ -1,14 +1,14 @@
-///////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -51,6 +51,7 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/KeyGenerator.h"
@@ -59,10 +60,6 @@
 
 using namespace std::chrono_literals;
 namespace fs = std::filesystem;
-
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
 
 REGISTER_COMPRESSION(irs::compression::mock::test_compressor,
                      &irs::compression::mock::test_compressor::compressor,
@@ -254,7 +251,7 @@ TEST_F(IResearchLinkTest, test_defaults) {
     EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
     EXPECT_TRUE((logicalCollection->dropIndex(link->id()).ok() &&
-                 logicalCollection->getIndexes().empty()));
+                 logicalCollection->getPhysical()->getReadyIndexes().empty()));
   }
 
   // valid link creation (explicit version)
@@ -332,7 +329,7 @@ TEST_F(IResearchLinkTest, test_defaults) {
     EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
     EXPECT_TRUE((logicalCollection->dropIndex(link->id()).ok() &&
-                 logicalCollection->getIndexes().empty()));
+                 logicalCollection->getPhysical()->getReadyIndexes().empty()));
   }
 
   // ensure jSON is still valid after unload()
@@ -1711,10 +1708,19 @@ TEST_F(IResearchLinkTest, test_maintenance_disabled_at_creation) {
     ASSERT_TRUE(created);
     ASSERT_NE(nullptr, link);
 
+    // 1st - tasks active(), 2nd - tasks pending(), 3rd - threads()
     ASSERT_EQ(std::make_tuple(size_t(1), size_t(0), size_t(1)),
               feature.stats(ThreadGroup::_0));
-    ASSERT_EQ(std::make_tuple(size_t(1), size_t(0), size_t(1)),
-              feature.stats(ThreadGroup::_1));
+
+    std::tuple<size_t, size_t, size_t> stats;
+    do {
+      stats = feature.stats(ThreadGroup::_1);
+      if (std::get<0>(stats) == 1) {
+        break;
+      }
+      // spin
+    } while (true);
+    ASSERT_EQ(std::make_tuple(size_t(1), size_t(0), size_t(1)), stats);
   }
 
   ASSERT_TRUE(link->drop().ok());
@@ -2322,7 +2328,7 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
     label += "db=\"" + l->getDbName() + "\",";
     label += "view=\"" + l->getViewId() + "\",";
     label += "collection=\"" + l->getCollectionName() + "\",";
-    label += "indexId=\"" + std::to_string(_link->id().id()) + "\",";
+    label += "index_id=\"" + std::to_string(_link->id().id()) + "\",";
     label += "shard=\"" + l->getShardName() + "\"";
     return label;
   }
@@ -2532,22 +2538,22 @@ TEST_F(IResearchLinkMetricsTest, WriteAndMetrics1) {
     auto expectedData = fmt::format(  // clang-format off
 R"(# HELP arangodb_search_num_docs Number of documents
 # TYPE arangodb_search_num_docs gauge
-arangodb_search_num_docs{{db="testVocbase",view="h3039/42",collection="{0}",indexId="{1}",shard=""}}3
+arangodb_search_num_docs{{db="testVocbase",view="h3039/42",collection="{0}",index_id="{1}",shard=""}}3
 # HELP arangodb_search_num_live_docs Number of live documents
 # TYPE arangodb_search_num_live_docs gauge
-arangodb_search_num_live_docs{{db="testVocbase",view="h3039/42",collection="{0}",indexId="{1}",shard=""}}3
+arangodb_search_num_live_docs{{db="testVocbase",view="h3039/42",collection="{0}",index_id="{1}",shard=""}}3
 # HELP arangodb_search_num_primary_docs Number of primary documents
 # TYPE arangodb_search_num_primary_docs gauge
-arangodb_search_num_primary_docs{{db="testVocbase",view="h3039/42",collection="{0}",indexId="{1}",shard=""}}3
+arangodb_search_num_primary_docs{{db="testVocbase",view="h3039/42",collection="{0}",index_id="{1}",shard=""}}3
 # HELP arangodb_search_num_segments Number of segments
 # TYPE arangodb_search_num_segments gauge
-arangodb_search_num_segments{{db="testVocbase",view="h3039/42",collection="{0}",indexId="{1}",shard=""}}3
+arangodb_search_num_segments{{db="testVocbase",view="h3039/42",collection="{0}",index_id="{1}",shard=""}}3
 # HELP arangodb_search_num_files Number of files
 # TYPE arangodb_search_num_files gauge
-arangodb_search_num_files{{db="testVocbase",view="h3039/42",collection="{0}",indexId="{1}",shard=""}}16
+arangodb_search_num_files{{db="testVocbase",view="h3039/42",collection="{0}",index_id="{1}",shard=""}}16
 # HELP arangodb_search_index_size Size of the index in bytes
 # TYPE arangodb_search_index_size gauge
-arangodb_search_index_size{{db="testVocbase",view="h3039/42",collection="{0}",indexId="{1}",shard=""}}2054
+arangodb_search_index_size{{db="testVocbase",view="h3039/42",collection="{0}",index_id="{1}",shard=""}}2054
 )"
     , cid, _link->id().id());  // clang-format on
     std::string actual;
@@ -2611,22 +2617,22 @@ TEST_F(IResearchLinkMetricsTest, WriteAndMetrics2) {
     auto expectedData = fmt::format(  // clang-format off
 R"(# HELP arangodb_search_num_docs Number of documents
 # TYPE arangodb_search_num_docs gauge
-arangodb_search_num_docs{{db="testVocbase",view="h3039/42",collection="{0}",indexId="{1}",shard=""}}3
+arangodb_search_num_docs{{db="testVocbase",view="h3039/42",collection="{0}",index_id="{1}",shard=""}}3
 # HELP arangodb_search_num_live_docs Number of live documents
 # TYPE arangodb_search_num_live_docs gauge
-arangodb_search_num_live_docs{{db="testVocbase",view="h3039/42",collection="{0}",indexId="{1}",shard=""}}3
+arangodb_search_num_live_docs{{db="testVocbase",view="h3039/42",collection="{0}",index_id="{1}",shard=""}}3
 # HELP arangodb_search_num_primary_docs Number of primary documents
 # TYPE arangodb_search_num_primary_docs gauge
-arangodb_search_num_primary_docs{{db="testVocbase",view="h3039/42",collection="{0}",indexId="{1}",shard=""}}3
+arangodb_search_num_primary_docs{{db="testVocbase",view="h3039/42",collection="{0}",index_id="{1}",shard=""}}3
 # HELP arangodb_search_num_segments Number of segments
 # TYPE arangodb_search_num_segments gauge
-arangodb_search_num_segments{{db="testVocbase",view="h3039/42",collection="{0}",indexId="{1}",shard=""}}2
+arangodb_search_num_segments{{db="testVocbase",view="h3039/42",collection="{0}",index_id="{1}",shard=""}}2
 # HELP arangodb_search_num_files Number of files
 # TYPE arangodb_search_num_files gauge
-arangodb_search_num_files{{db="testVocbase",view="h3039/42",collection="{0}",indexId="{1}",shard=""}}11
+arangodb_search_num_files{{db="testVocbase",view="h3039/42",collection="{0}",index_id="{1}",shard=""}}11
 # HELP arangodb_search_index_size Size of the index in bytes
 # TYPE arangodb_search_index_size gauge
-arangodb_search_index_size{{db="testVocbase",view="h3039/42",collection="{0}",indexId="{1}",shard=""}}1513
+arangodb_search_index_size{{db="testVocbase",view="h3039/42",collection="{0}",index_id="{1}",shard=""}}1513
 )"
     , cid, _link->id().id());  // clang-format on
     std::string actual;
@@ -2653,22 +2659,22 @@ arangodb_search_index_size{{db="testVocbase",view="h3039/42",collection="{0}",in
     auto expectedData = fmt::format(  // clang-format off
 R"(# HELP arangodb_search_num_docs Number of documents
 # TYPE arangodb_search_num_docs gauge
-arangodb_search_num_docs{{db="testVocbase",view="h3039/42",collection="{0}",indexId="{1}",shard=""}}3
+arangodb_search_num_docs{{db="testVocbase",view="h3039/42",collection="{0}",index_id="{1}",shard=""}}3
 # HELP arangodb_search_num_live_docs Number of live documents
 # TYPE arangodb_search_num_live_docs gauge
-arangodb_search_num_live_docs{{db="testVocbase",view="h3039/42",collection="{0}",indexId="{1}",shard=""}}2
+arangodb_search_num_live_docs{{db="testVocbase",view="h3039/42",collection="{0}",index_id="{1}",shard=""}}2
 # HELP arangodb_search_num_primary_docs Number of primary documents
 # TYPE arangodb_search_num_primary_docs gauge
-arangodb_search_num_primary_docs{{db="testVocbase",view="h3039/42",collection="{0}",indexId="{1}",shard=""}}3
+arangodb_search_num_primary_docs{{db="testVocbase",view="h3039/42",collection="{0}",index_id="{1}",shard=""}}3
 # HELP arangodb_search_num_segments Number of segments
 # TYPE arangodb_search_num_segments gauge
-arangodb_search_num_segments{{db="testVocbase",view="h3039/42",collection="{0}",indexId="{1}",shard=""}}2
+arangodb_search_num_segments{{db="testVocbase",view="h3039/42",collection="{0}",index_id="{1}",shard=""}}2
 # HELP arangodb_search_num_files Number of files
 # TYPE arangodb_search_num_files gauge
-arangodb_search_num_files{{db="testVocbase",view="h3039/42",collection="{0}",indexId="{1}",shard=""}}12
+arangodb_search_num_files{{db="testVocbase",view="h3039/42",collection="{0}",index_id="{1}",shard=""}}12
 # HELP arangodb_search_index_size Size of the index in bytes
 # TYPE arangodb_search_index_size gauge
-arangodb_search_index_size{{db="testVocbase",view="h3039/42",collection="{0}",indexId="{1}",shard=""}}1561
+arangodb_search_index_size{{db="testVocbase",view="h3039/42",collection="{0}",index_id="{1}",shard=""}}1561
 )"
     , cid, _link->id().id());  // clang-format on
     std::string actual;
@@ -2694,22 +2700,22 @@ TEST_F(IResearchLinkMetricsTest, LinkAndMetics) {
     auto expectedData = fmt::format(  // clang-format off
 R"(# HELP arangodb_search_num_docs Number of documents
 # TYPE arangodb_search_num_docs gauge
-arangodb_search_num_docs{{db="testVocbase",view="h3039/42",collection="{0}",indexId="{1}",shard=""}}1
+arangodb_search_num_docs{{db="testVocbase",view="h3039/42",collection="{0}",index_id="{1}",shard=""}}1
 # HELP arangodb_search_num_live_docs Number of live documents
 # TYPE arangodb_search_num_live_docs gauge
-arangodb_search_num_live_docs{{db="testVocbase",view="h3039/42",collection="{0}",indexId="{1}",shard=""}}1
+arangodb_search_num_live_docs{{db="testVocbase",view="h3039/42",collection="{0}",index_id="{1}",shard=""}}1
 # HELP arangodb_search_num_primary_docs Number of primary documents
 # TYPE arangodb_search_num_primary_docs gauge
-arangodb_search_num_primary_docs{{db="testVocbase",view="h3039/42",collection="{0}",indexId="{1}",shard=""}}1
+arangodb_search_num_primary_docs{{db="testVocbase",view="h3039/42",collection="{0}",index_id="{1}",shard=""}}1
 # HELP arangodb_search_num_segments Number of segments
 # TYPE arangodb_search_num_segments gauge
-arangodb_search_num_segments{{db="testVocbase",view="h3039/42",collection="{0}",indexId="{1}",shard=""}}1
+arangodb_search_num_segments{{db="testVocbase",view="h3039/42",collection="{0}",index_id="{1}",shard=""}}1
 # HELP arangodb_search_num_files Number of files
 # TYPE arangodb_search_num_files gauge
-arangodb_search_num_files{{db="testVocbase",view="h3039/42",collection="{0}",indexId="{1}",shard=""}}6
+arangodb_search_num_files{{db="testVocbase",view="h3039/42",collection="{0}",index_id="{1}",shard=""}}6
 # HELP arangodb_search_index_size Size of the index in bytes
 # TYPE arangodb_search_index_size gauge
-arangodb_search_index_size{{db="testVocbase",view="h3039/42",collection="{0}",indexId="{1}",shard=""}}681
+arangodb_search_index_size{{db="testVocbase",view="h3039/42",collection="{0}",index_id="{1}",shard=""}}681
 )"
     , cid, _link->id().id());  // clang-format on
     std::string actual;
@@ -2724,22 +2730,22 @@ arangodb_search_index_size{{db="testVocbase",view="h3039/42",collection="{0}",in
     auto expectedData = fmt::format(  // clang-format off
 R"(# HELP arangodb_search_num_docs Number of documents
 # TYPE arangodb_search_num_docs gauge
-arangodb_search_num_docs{{db="testVocbase",view="h3039/42",collection="{0}",indexId="{1}",shard=""}}3
+arangodb_search_num_docs{{db="testVocbase",view="h3039/42",collection="{0}",index_id="{1}",shard=""}}3
 # HELP arangodb_search_num_live_docs Number of live documents
 # TYPE arangodb_search_num_live_docs gauge
-arangodb_search_num_live_docs{{db="testVocbase",view="h3039/42",collection="{0}",indexId="{1}",shard=""}}3
+arangodb_search_num_live_docs{{db="testVocbase",view="h3039/42",collection="{0}",index_id="{1}",shard=""}}3
 # HELP arangodb_search_num_primary_docs Number of primary documents
 # TYPE arangodb_search_num_primary_docs gauge
-arangodb_search_num_primary_docs{{db="testVocbase",view="h3039/42",collection="{0}",indexId="{1}",shard=""}}3
+arangodb_search_num_primary_docs{{db="testVocbase",view="h3039/42",collection="{0}",index_id="{1}",shard=""}}3
 # HELP arangodb_search_num_segments Number of segments
 # TYPE arangodb_search_num_segments gauge
-arangodb_search_num_segments{{db="testVocbase",view="h3039/42",collection="{0}",indexId="{1}",shard=""}}2
+arangodb_search_num_segments{{db="testVocbase",view="h3039/42",collection="{0}",index_id="{1}",shard=""}}2
 # HELP arangodb_search_num_files Number of files
 # TYPE arangodb_search_num_files gauge
-arangodb_search_num_files{{db="testVocbase",view="h3039/42",collection="{0}",indexId="{1}",shard=""}}11
+arangodb_search_num_files{{db="testVocbase",view="h3039/42",collection="{0}",index_id="{1}",shard=""}}11
 # HELP arangodb_search_index_size Size of the index in bytes
 # TYPE arangodb_search_index_size gauge
-arangodb_search_index_size{{db="testVocbase",view="h3039/42",collection="{0}",indexId="{1}",shard=""}}1513
+arangodb_search_index_size{{db="testVocbase",view="h3039/42",collection="{0}",index_id="{1}",shard=""}}1513
 )"
     , cid, _link->id().id());  // clang-format on
     std::string actual;

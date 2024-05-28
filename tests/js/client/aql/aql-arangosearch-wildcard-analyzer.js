@@ -1,27 +1,28 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
 /*global fail, assertEqual, assertNotEqual, assertTrue */
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2023 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Valery Mironov
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 let arangodb = require("@arangodb");
 let analyzers = require("@arangodb/analyzers");
@@ -52,13 +53,17 @@ function ArangoSearchWildcardAnalyzer(hasPos) {
       internal.debugSetFailAt("wildcard::Filter::dissallowMatcher");
     }
     let c = db._query("FOR d in c FILTER d.s LIKE '" + pattern + "' RETURN d.s").toArray().sort();
-    let w = db._query("FOR d in v SEARCH ANALYZER(d.s LIKE '" + pattern + "', 'w') RETURN d.s").toArray().sort();
-    let i = db._query("FOR d in v SEARCH ANALYZER(d.s LIKE '" + pattern + "', 'identity') RETURN d.s").toArray().sort();
+    let i = db._query("FOR d in v1 SEARCH ANALYZER(d.s LIKE '" + pattern + "', 'identity') RETURN d.s").toArray().sort();
+    let w1 = db._query("FOR d in v1 SEARCH ANALYZER(d.s LIKE '" + pattern + "', 'w') RETURN d.s").toArray().sort();
+    let w2 = db._query("FOR d in v2 SEARCH d.s LIKE '" + pattern + "' RETURN d.s").toArray().sort();
+    let ii = db._query("FOR d in c OPTIONS { indexHint: 'i', forceIndexHint: true } FILTER d.s LIKE '" + pattern + "' RETURN d.s").toArray().sort();
     if (!ignoreCollection) {
-      assertEqual(c, w);
+      assertEqual(c, i);
     }
-    assertEqual(w, i);
-    return w;
+    assertEqual(i, w1);
+    assertEqual(i, w2);
+    assertEqual(i, ii);
+    return i;
   };
 
   return {
@@ -85,8 +90,10 @@ function ArangoSearchWildcardAnalyzer(hasPos) {
       c.insert({s:   "f"});
       c.insert({s: "abcdef qwerty"});
       c.insert({s: "qwerty abcdef"});
-      db._createView("v", "arangosearch",
+      db._createView("v1", "arangosearch",
           { links: { c: { fields: {s: {}}, analyzers: ["w", "identity"] } } });
+      c.ensureIndex({name: "i", type: "inverted", fields: ["s"], analyzer: "w"});
+      db._createView("v2", "search-alias", { indexes: [ { collection: "c", index: "i" } ] });
     },
 
     tearDownAll : function () { 

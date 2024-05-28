@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -1469,7 +1469,7 @@ RestStatus RestAdminClusterHandler::handleCollectionShardDistribution() {
 RestStatus RestAdminClusterHandler::handleGetMaintenance() {
   if (AsyncAgencyCommManager::INSTANCE == nullptr) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "only allowed on single server with active failover");
+                  "not allowed on single servers");
     return RestStatus::DONE;
   }
 
@@ -1502,7 +1502,7 @@ RestStatus RestAdminClusterHandler::handleGetDBServerMaintenance(
     std::string const& serverId) {
   if (AsyncAgencyCommManager::INSTANCE == nullptr) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "only allowed on single server with active failover");
+                  "not allowed on single servers");
     return RestStatus::DONE;
   }
 
@@ -1759,7 +1759,7 @@ RestStatus RestAdminClusterHandler::setDBServerMaintenance(
 RestStatus RestAdminClusterHandler::handlePutMaintenance() {
   if (AsyncAgencyCommManager::INSTANCE == nullptr) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "only allowed on single server with active failover");
+                  "not allowed on single servers");
     return RestStatus::DONE;
   }
 
@@ -1850,7 +1850,7 @@ RestStatus RestAdminClusterHandler::handleMaintenance() {
 
   if (AsyncAgencyCommManager::INSTANCE == nullptr) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "only allowed on single server with active failover");
+                  "not allowed on single servers");
     return RestStatus::DONE;
   }
 
@@ -1896,7 +1896,7 @@ RestStatus RestAdminClusterHandler::handleDBServerMaintenance(
 RestStatus RestAdminClusterHandler::handleGetNumberOfServers() {
   if (AsyncAgencyCommManager::INSTANCE == nullptr) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "only allowed on single server with active failover");
+                  "not allowed on single servers");
     return RestStatus::DONE;
   }
 
@@ -1961,7 +1961,7 @@ RestStatus RestAdminClusterHandler::handlePutNumberOfServers() {
 
   if (AsyncAgencyCommManager::INSTANCE == nullptr) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "only allowed on single server with active failover");
+                  "not allowed on single servers");
     return RestStatus::DONE;
   }
 
@@ -2118,7 +2118,7 @@ RestStatus RestAdminClusterHandler::handleHealth() {
 
   if (AsyncAgencyCommManager::INSTANCE == nullptr) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "only allowed on single server with active failover");
+                  "not allowed on single servers");
     return RestStatus::DONE;
   }
 
@@ -2641,11 +2641,11 @@ RestStatus RestAdminClusterHandler::handleRebalancePlan() {
 
   auto p = collectRebalanceInformation(options->databasesExcluded,
                                        options->excludeSystemCollections);
+  p.setPiFactor(options->piFactor);
   auto const imbalanceLeaderBefore = p.computeLeaderImbalance();
   auto const imbalanceShardsBefore = p.computeShardImbalance();
 
   moves.reserve(options->maximumNumberOfMoves);
-  p.setPiFactor(options->piFactor);
   p.optimize(options->leaderChanges, options->moveFollowers,
              options->moveLeaders, options->maximumNumberOfMoves, moves);
 
@@ -2863,13 +2863,15 @@ RestAdminClusterHandler::collectRebalanceInformation(
         collectionRef.weight = 1.0;
         distributeShardsLikeCounter[collectionRef.name].index = index;
 
-        for (auto const& shard : *collection->shardIds()) {
+        auto shardIds = collection->shardIds();
+        for (auto const& shard : *shardIds) {
           auto shardIndex =
               static_cast<decltype(collectionRef.shards)::value_type>(
                   p.shards.size());
           collectionRef.shards.push_back(shardIndex);
           auto& shardRef = p.shards.emplace_back();
           shardRef.name = shard.first;
+          TRI_ASSERT(!shard.second.empty());
           shardRef.leader = getDBServerIndex(shard.second[0]);
           shardRef.id = shardIndex;
           shardRef.collectionId = index;

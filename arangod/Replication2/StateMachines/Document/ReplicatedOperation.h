@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2023-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -42,6 +43,7 @@ struct ReplicatedOperation {
     TransactionId tid;
     ShardID shard;
     velocypack::SharedSlice payload;
+    std::string userName;
 
     struct Options {
       // Automatically refill in-memory cache entries after
@@ -57,7 +59,8 @@ struct ReplicatedOperation {
 
     explicit DocumentOperation(TransactionId tid, ShardID shard,
                                velocypack::SharedSlice payload,
-                               std::optional<Options> options);
+                               std::optional<Options> options,
+                               std::string_view userName);
 
     friend auto operator==(DocumentOperation const& a,
                            DocumentOperation const& b) -> bool {
@@ -93,6 +96,7 @@ struct ReplicatedOperation {
   struct Truncate {
     TransactionId tid;
     ShardID shard;
+    std::string userName;
 
     friend auto operator==(Truncate const&, Truncate const&) -> bool = default;
   };
@@ -151,12 +155,10 @@ struct ReplicatedOperation {
 
   struct DropIndex {
     ShardID shard;
-    velocypack::SharedSlice index;
+    IndexId indexId;
 
-    friend auto operator==(DropIndex const& lhs, DropIndex const& rhs) -> bool {
-      return lhs.shard == rhs.shard &&
-             lhs.index.binaryEquals(rhs.index.slice());
-    }
+    friend auto operator==(DropIndex const& lhs, DropIndex const& rhs)
+        -> bool = default;
   };
 
   struct Insert : DocumentOperation {};
@@ -184,7 +186,8 @@ struct ReplicatedOperation {
       -> ReplicatedOperation;
   static auto buildAbortOperation(TransactionId tid) noexcept
       -> ReplicatedOperation;
-  static auto buildTruncateOperation(TransactionId tid, ShardID shard) noexcept
+  static auto buildTruncateOperation(TransactionId tid, ShardID shard,
+                                     std::string_view userName) noexcept
       -> ReplicatedOperation;
   static auto buildCreateShardOperation(
       ShardID shard, TRI_col_type_e collectionType,
@@ -198,12 +201,11 @@ struct ReplicatedOperation {
       ShardID shard, velocypack::SharedSlice properties,
       std::shared_ptr<methods::Indexes::ProgressTracker> progress =
           nullptr) noexcept -> ReplicatedOperation;
-  static auto buildDropIndexOperation(ShardID shard,
-                                      velocypack::SharedSlice index) noexcept
+  static auto buildDropIndexOperation(ShardID shard, IndexId indexId) noexcept
       -> ReplicatedOperation;
   static auto buildDocumentOperation(
       TRI_voc_document_operation_e const& op, TransactionId tid, ShardID shard,
-      velocypack::SharedSlice payload,
+      velocypack::SharedSlice payload, std::string_view userName,
       std::optional<DocumentOperation::Options> options = std::nullopt) noexcept
       -> ReplicatedOperation;
 

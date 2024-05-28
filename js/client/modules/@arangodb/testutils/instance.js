@@ -5,14 +5,14 @@
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
-// / Copyright 2016 ArangoDB GmbH, Cologne, Germany
-// / Copyright 2014 triagens GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -33,6 +33,7 @@ const rp = require('@arangodb/testutils/result-processing');
 const yaml = require('js-yaml');
 const internal = require('internal');
 const crashUtils = require('@arangodb/testutils/crash-utils');
+const {sanHandler} = require('@arangodb/testutils/san-file-handler');
 const crypto = require('@arangodb/crypto');
 const ArangoError = require('@arangodb').ArangoError;
 const debugGetFailurePoints = require('@arangodb/test-helper').debugGetFailurePoints;
@@ -41,7 +42,6 @@ const debugGetFailurePoints = require('@arangodb/test-helper').debugGetFailurePo
 const {
   toArgv,
   executeExternal,
-  executeExternalAndWait,
   killExternal,
   statusExternal,
   statisticsExternal,
@@ -72,13 +72,6 @@ const termSignal = 15;
 let tcpdump;
 
 let PORTMANAGER;
-
-var regex = /[^\u0000-\u00ff]/; // Small performance gain from pre-compiling the regex
-function containsDoubleByte(str) {
-    if (!str.length) return false;
-    if (str.charCodeAt(0) > 255) return true;
-    return regex.test(str);
-}
 
 function getSockStatFile(pid) {
   try {
@@ -224,9 +217,7 @@ class instance {
     }
     this.JWT = null;
     this.jwtFiles = null;
-
-    this.sanOptions = _.clone(this.options.sanOptions);
-    this.sanFiles = [];
+    this.sanHandler = new sanHandler('arangod', this.options.sanOptions, this.options.isSan, this.options.extremeVerbosity);
 
     this._makeArgsArangod();
 
@@ -362,7 +353,9 @@ class instance {
       'temp.intermediate-results-path': fs.join(this.rootDir, 'temp-rocksdb-dir'),
       'log.file': this.logFile
     });
-
+    if (this.options.forceOneShard) {
+      this.args['cluster.force-one-shard'] = true;
+    }
     if (require("@arangodb/test-helper").isEnterprise()) {
       this.args['arangosearch.columns-cache-limit'] = '100000';
     }
@@ -388,7 +381,9 @@ class instance {
     }
 
 
-    this.args['database.default-replication-version'] = this.options.replicationVersion;
+    if (this.options.hasOwnProperty("replicationVersion")) {
+      this.args['database.default-replication-version'] = this.options.replicationVersion;
+    }
 
     for (const [key, value] of Object.entries(this.options.extraArgs)) {
       let splitkey = key.split('.');
@@ -423,7 +418,7 @@ class instance {
         'agency.my-address': this.protocol + '://127.0.0.1:' + this.port,
         // Sometimes for unknown reason the agency startup is too slow.
         // With this log level we might have a chance to see what is going on.
-        'log.level': "agency=debug",
+        'log.level': "agency=info",
       });
       if (!this.args.hasOwnProperty("agency.supervision-grace-period")) {
         this.args['agency.supervision-grace-period'] = '10.0';
@@ -458,23 +453,13 @@ class instance {
         'foxx.force-update-on-startup': true
       });
       if (!this.args.hasOwnProperty('cluster.default-replication-factor')) {
-        this.args['cluster.default-replication-factor'] = (platform.substr(0, 3) === 'win') ? '1':'2';
+        this.args['cluster.default-replication-factor'] = '2';
       }
     }
     if (this.args.hasOwnProperty('server.jwt-secret')) {
       this.JWT = this.args['server.jwt-secret'];
     }
-    if (this.options.isSan) {
-      let rootDir = this.rootDir;
-      if (containsDoubleByte(rootDir)) {
-        rootDir = this.topLevelTmpDir;
-      }
-      for (const [key, value] of Object.entries(this.sanOptions)) {
-        let oneLogFile = fs.join(rootDir, key.toLowerCase().split('_')[0] + '.log');
-        this.sanOptions[key]['log_path'] = oneLogFile;
-        this.sanFiles.push(oneLogFile);
-      }
-    }
+    this.sanHandler.detectLogfiles(this.rootDir, this.topLevelTmpDir);
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -545,7 +530,7 @@ class instance {
 
   cleanup() {
     if ((this.pid !== null) && (this.exitStatus === null)) {
-      print(RED + "killing instance (again?) to make sure we can delete its files!" + RESET);
+      print(RED + Date() + "killing instance (again?) to make sure we can delete its files!" + RESET);
       this.terminateInstance();
     }
     if (this.options.extremeVerbosity) {
@@ -686,20 +671,9 @@ class instance {
     if (this.options.extremeVerbosity) {
       print(Date() + ' starting process ' + cmd + ' with arguments: ' + JSON.stringify(argv));
     }
-    let backup = {};
-    if (this.options.isSan) {
-      for (const [key, value] of Object.entries(this.sanOptions)) {
-        let oneSet = "";
-        for (const [keyOne, valueOne] of Object.entries(value)) {
-          if (oneSet.length > 0) {
-            oneSet += ":";
-          }
-          oneSet += `${keyOne}=${valueOne}`;
-        }
-        backup[key] = process.env[key];
-        process.env[key] = oneSet;
-      }
-    }
+
+    this.sanHandler.setSanOptions();
+
     if ((this.useableMemory === undefined) && (this.options.memory !== undefined)){
       throw new Error(`${this.name} don't have planned memory though its configured!`);
     }
@@ -711,11 +685,8 @@ class instance {
     }
     process.env['ARANGODB_SERVER_DIR'] = this.rootDir;
     let ret = executeExternal(cmd, argv, false, pu.coverageEnvironment());
-    if (this.options.isSan) {
-      for (const [key, value] of Object.entries(backup)) {
-        process.env[key] = value;
-      }
-    }
+    
+    this.sanHandler.resetSanOptions();
     if (this.useableMemory !== 0) {
       delete process.env['ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY'];
     }
@@ -740,7 +711,7 @@ class instance {
 
     if (crashUtils.isEnabledWindowsMonitor(this.options, this, this.pid, pu.ARANGOD_BIN)) {
       if (!crashUtils.runProcdump(this.options, this, this.coreDirectory, this.pid)) {
-        print('Killing ' + pu.ARANGOD_BIN + ' - ' + JSON.stringify(this.args));
+        print(Date() + 'Killing ' + pu.ARANGOD_BIN + ' - ' + JSON.stringify(this.args));
         let res = killExternal(this.pid);
         this.pid = res.pid;
         this.exitStatus = res;
@@ -772,7 +743,7 @@ class instance {
     }
     if (crashUtils.isEnabledWindowsMonitor(this.options, this, this.pid, pu.ARANGOD_BIN)) {
       if (!crashUtils.runProcdump(this.options, this, this.coreDirectory, this.pid)) {
-        print('Killing ' + pu.ARANGOD_BIN + ' - ' + JSON.stringify(this.args));
+        print(Date() + 'Killing ' + pu.ARANGOD_BIN + ' - ' + JSON.stringify(this.args));
         let res = killExternal(this.pid);
         this.pid = res.pid;
         this.exitStatus = res;
@@ -785,25 +756,6 @@ class instance {
       internal.addPidToMonitor(this.pid);
     }
   };
-
-  fetchSanFileAfterExit() {
-    if (this.options.isSan) {
-      this.sanFiles.forEach(fileName => {
-        let fn = `${fileName}.arangod.${this.pid}`;
-        if (this.options.extremeVerbosity) {
-          print(`checking for ${fn}: ${fs.exists(fn)}`);
-        }
-        if (fs.exists(fn)) {
-          let content = fs.read(fn);
-          if (content.length > 10) {
-            crashUtils.GDB_OUTPUT += `Report of '${this.name}' in ${fn} contains: \n`;
-            crashUtils.GDB_OUTPUT += content;
-            this.serverCrashedLocal = true;
-          }
-        }
-      });
-    }
-  }
   waitForExitAfterDebugKill() {
     // Crashutils debugger kills our instance, but we neet to get
     // testing.js sapwned-PID-monitoring adjusted.
@@ -819,7 +771,7 @@ class instance {
     } catch(ex) {
       print(ex);
     }
-    this.fetchSanFileAfterExit();
+    this.serverCrashedLocal = this.serverCrashedLocal || this.sanHandler.fetchSanFileAfterExit(this.pid);
     this.pid = null;
     print('done');
   }
@@ -830,10 +782,10 @@ class instance {
     }
     this.exitStatus = statusExternal(this.pid, true);
     if (this.exitStatus.status !== 'TERMINATED') {
-      this.fetchSanFileAfterExit();
+      this.serverCrashedLocal = this.serverCrashedLocal || this.sanHandler.fetchSanFileAfterExit(this.pid);
       throw new Error(this.name + " didn't exit in a regular way: " + JSON.stringify(this.exitStatus));
     }
-    this.fetchSanFileAfterExit();
+    this.serverCrashedLocal = this.serverCrashedLocal || this.sanHandler.fetchSanFileAfterExit(this.pid);
     this.exitStatus = null;
     this.pid = null;
   }
@@ -905,11 +857,7 @@ class instance {
 
       if (res.hasOwnProperty('signal') &&
           ((res.signal === 11) ||
-           (res.signal === 6) ||
-           // Windows sometimes has random numbers in signal...
-           (platform.substr(0, 3) === 'win')
-          )
-         ) {
+           (res.signal === 6))) {
         msg = 'health Check Signal(' + res.signal + ') ';
         this.analyzeServerCrash(msg);
         this.serverCrashedLocal = true;
@@ -1032,13 +980,13 @@ class instance {
     if ((this.exitStatus === null) ||
         (this.exitStatus.status === 'RUNNING')) {
       if (forceTerminate) {
-        let sockStat = this.getSockStat("Force killing - sockstat before: ");
+        let sockStat = this.getSockStat(Date() + "Force killing - sockstat before: ");
         this.killWithCoreDump('shutdown timeout; instance forcefully KILLED because of fatal timeout in testrun ' + sockStat);
         this.pid = null;
       } else if (this.options.useKillExternal) {
         let sockStat = this.getSockStat("Shutdown by kill - sockstat before: ");
         this.exitStatus = killExternal(this.pid);
-        this.fetchSanFileAfterExit();
+        this.serverCrashedLocal = this.serverCrashedLocal || this.sanHandler.fetchSanFileAfterExit(this.pid);
         this.pid = null;
         print(sockStat);
       } else if (this.protocol === 'unix') {
@@ -1060,7 +1008,7 @@ class instance {
           print(Date() + ' Wrong shutdown response: ' + JSON.stringify(reply) + "' " + sockStat + " continuing with hard kill!");
           this.shutdownArangod(true);
         } else {
-          this.fetchSanFileAfterExit();
+          this.serverCrashedLocal = this.serverCrashedLocal || this.sanHandler.fetchSanFileAfterExit(this.pid);
           if (!this.options.noStartStopLogs) {
             print(sockStat);
           }
@@ -1088,7 +1036,7 @@ class instance {
           this.shutdownArangod(true);
         }
         else {
-          this.fetchSanFileAfterExit();
+          this.serverCrashedLocal = this.serverCrashedLocal || this.sanHandler.fetchSanFileAfterExit(this.pid);
           if (!this.options.noStartStopLogs) {
             print(sockStat);
           }

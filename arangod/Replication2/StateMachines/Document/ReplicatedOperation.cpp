@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2023-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -30,8 +31,12 @@ namespace arangodb::replication2::replicated_state::document {
 
 ReplicatedOperation::DocumentOperation::DocumentOperation(
     TransactionId tid, ShardID shard, velocypack::SharedSlice payload,
-    std::optional<Options> options)
-    : tid{tid}, shard{shard}, payload{std::move(payload)}, options(options) {}
+    std::optional<Options> options, std::string_view userName)
+    : tid{tid},
+      shard{shard},
+      payload{std::move(payload)},
+      userName{userName},
+      options(options) {}
 
 template<typename... Args>
 ReplicatedOperation::ReplicatedOperation(std::in_place_t,
@@ -63,10 +68,11 @@ auto ReplicatedOperation::buildAbortOperation(TransactionId tid) noexcept
   return ReplicatedOperation{std::in_place, Abort{tid}};
 }
 
-auto ReplicatedOperation::buildTruncateOperation(TransactionId tid,
-                                                 ShardID shard) noexcept
+auto ReplicatedOperation::buildTruncateOperation(
+    TransactionId tid, ShardID shard, std::string_view userName) noexcept
     -> ReplicatedOperation {
-  return ReplicatedOperation{std::in_place, Truncate{tid, shard}};
+  return ReplicatedOperation{std::in_place,
+                             Truncate{tid, shard, std::string{userName}}};
 }
 
 auto ReplicatedOperation::buildCreateShardOperation(
@@ -98,18 +104,19 @@ auto ReplicatedOperation::buildCreateIndexOperation(
                                  CreateIndex::Parameters{std::move(progress)}}};
 }
 
-auto ReplicatedOperation::buildDropIndexOperation(
-    ShardID shard, velocypack::SharedSlice index) noexcept
+auto ReplicatedOperation::buildDropIndexOperation(ShardID shard,
+                                                  IndexId indexId) noexcept
     -> ReplicatedOperation {
-  return ReplicatedOperation{std::in_place, DropIndex{shard, std::move(index)}};
+  return ReplicatedOperation{std::in_place, DropIndex{shard, indexId}};
 }
 
 auto ReplicatedOperation::buildDocumentOperation(
     TRI_voc_document_operation_e const& op, TransactionId tid, ShardID shard,
-    velocypack::SharedSlice payload,
+    velocypack::SharedSlice payload, std::string_view userName,
     std::optional<DocumentOperation::Options> options) noexcept
     -> ReplicatedOperation {
-  auto documentOp = DocumentOperation(tid, shard, std::move(payload), options);
+  auto documentOp =
+      DocumentOperation(tid, shard, std::move(payload), options, userName);
   switch (op) {
     case TRI_VOC_DOCUMENT_OPERATION_INSERT:
       return ReplicatedOperation{std::in_place, Insert{std::move(documentOp)}};

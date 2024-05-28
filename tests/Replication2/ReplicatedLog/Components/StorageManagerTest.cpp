@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -53,10 +54,7 @@ struct StorageManagerTest : ::testing::Test {
   std::shared_ptr<test::SyncScheduler> scheduler =
       std::make_shared<test::SyncScheduler>();
   storage::test::FakeStorageEngineMethodsContext methods{
-      objectId,
-      logId,
-      executor,
-      {LogIndex{1}, LogIndex{100}},
+      objectId, logId, executor, LogRange{LogIndex{1}, LogIndex{100}},
       storage::PersistedStateInfo{
           .stateId = logId,
           .snapshot = {.status = SnapshotStatus::kFailed,

@@ -5,14 +5,14 @@
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
-// / Copyright 2016 ArangoDB GmbH, Cologne, Germany
-// / Copyright 2014 triagens GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -32,6 +32,7 @@ const yaml = require('js-yaml');
 
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const ct = require('@arangodb/testutils/client-tools');
 const internal = require('internal');
 const toArgv = internal.toArgv;
 const executeScript = internal.executeScript;
@@ -105,7 +106,7 @@ function arangosh (options) {
 
     ////////////////////////////////////////////////////////////////////////////////
     // run command from a .js file
-    let args = pu.makeArgs.arangosh(options);
+    let args = ct.makeArgs.arangosh(options);
     args['javascript.execute-string'] = command;
     args['log.level'] = 'error';
 
@@ -150,7 +151,7 @@ function arangosh (options) {
 
     fs.write(execFile, command);
     section += '_file';
-    let args2 = pu.makeArgs.arangosh(options);
+    let args2 = ct.makeArgs.arangosh(options);
     args2['javascript.execute'] = execFile;
     args2['log.level'] = 'error';
 
@@ -261,7 +262,7 @@ function arangosh (options) {
   print('pipe through external arangosh');
   print('--------------------------------------------------------------------------------');
   let section = "testArangoshPipeThrough";
-  let args = pu.makeArgs.arangosh(options);
+  let args = ct.makeArgs.arangosh(options);
   args['javascript.execute-string'] = "print(require('internal').pollStdin())";
 
   const startTime = time();
@@ -273,9 +274,6 @@ function arangosh (options) {
   let output = fs.readPipe(res.pid);
   // Arangosh will output a \n on its own, so we will get back 2:
   let searchstring = "bla\n\n";
-  if (platform.substr(0, 3) === 'win') {
-    searchstring = "bla\r\n\r\n";
-  }
   let success = output === searchstring;
 
   let rc = statusExternal(res.pid, true);
@@ -305,7 +303,7 @@ function arangosh (options) {
   ret[section]['duration'] = time() - startTime;
   print((failSuccess ? GREEN : RED) + 'Status: ' + (failSuccess ? 'SUCCESS' : 'FAIL') + RESET);
   
-  if (platform.substr(0, 3) !== 'win') {
+  {
     var echoSuccess = true;
     var deltaTime2 = 0;
     var execFile = fs.getTempFile();
@@ -344,7 +342,7 @@ function arangosh (options) {
   }
 
   // test shebang execution with arangosh
-  if (!options.skipShebang && platform.substr(0, 3) !== 'win') {
+  if (!options.skipShebang) {
     var shebangSuccess = true;
     var deltaTime3 = 0;
     var shebangFile = fs.getTempFile();

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,7 +24,10 @@
 #pragma once
 
 #include <atomic>
+#include <cstdint>
 #include <mutex>
+#include <string>
+#include <string_view>
 
 #include <fuerte/requests.h>
 
@@ -52,8 +55,9 @@ class NetworkFeature final : public ArangodFeature {
 
   static constexpr std::string_view name() noexcept { return "Network"; }
 
-  explicit NetworkFeature(Server& server);
-  NetworkFeature(Server& server, network::ConnectionPool::Config);
+  NetworkFeature(Server& server, metrics::MetricsFeature& metrics,
+                 network::ConnectionPool::Config);
+  ~NetworkFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
@@ -62,6 +66,8 @@ class NetworkFeature final : public ArangodFeature {
   void beginShutdown() override;
   void stop() override;
   void unprepare() override;
+
+  void cancelRetryRequests() noexcept;
 
   bool prepared() const noexcept;
 
@@ -88,6 +94,8 @@ class NetworkFeature final : public ArangodFeature {
   void retryRequest(std::shared_ptr<network::RetryableRequest>, RequestLane,
                     std::chrono::steady_clock::duration);
 
+  static uint64_t defaultIOThreads();
+
  protected:
   void prepareRequest(network::ConnectionPool const& pool,
                       std::unique_ptr<fuerte::Request>& req);
@@ -96,6 +104,10 @@ class NetworkFeature final : public ArangodFeature {
                      std::unique_ptr<fuerte::Response>& res);
 
  private:
+  void injectAcceptEncodingHeader(fuerte::Request& req) const;
+  bool compressRequestBody(network::RequestOptions const& opts,
+                           fuerte::Request& req) const;
+
   // configuration
   std::string _protocol;
   uint64_t _maxOpenConnections;
@@ -134,6 +146,13 @@ class NetworkFeature final : public ArangodFeature {
   metrics::Histogram<metrics::FixScale<double>>& _dequeueDurations;
   metrics::Histogram<metrics::FixScale<double>>& _sendDurations;
   metrics::Histogram<metrics::FixScale<double>>& _responseDurations;
+
+  uint64_t _compressRequestThreshold;
+
+  enum class CompressionType { kNone, kDeflate, kGzip, kLz4, kAuto };
+  CompressionType _compressionType;
+  std::string _compressionTypeLabel;
+  metrics::MetricsFeature& _metrics;
 };
 
 }  // namespace arangodb

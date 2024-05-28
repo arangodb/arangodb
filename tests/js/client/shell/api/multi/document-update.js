@@ -2,18 +2,16 @@
 /* global db, fail, arango, assertTrue, assertFalse, assertEqual, assertNotUndefined, assertNotEqual */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief 
-// /
-// /
 // / DISCLAIMER
 // /
-// / Copyright 2018 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,7 +21,7 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author 
+// / @author Wilfried Goesgens
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
@@ -82,19 +80,11 @@ function error_handlingSuite () {
       let body = "{}";
       let doc = arango.PUT_RAW(cmd, body);
 
-      if (arango.protocol() === 'vst') {
-        assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code, doc);
-        assertTrue(doc.parsedBody['error']);
-        assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
-        assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
-        assertEqual(doc.headers['content-type'], contentType);
-      } else {
-        assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-        assertTrue(doc.parsedBody['error']);
-        assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code);
-        assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-        assertEqual(doc.headers['content-type'], contentType);
-      }
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertTrue(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertEqual(doc.headers['content-type'], contentType);
 
       assertEqual(db[cn].count(), 0);
     },

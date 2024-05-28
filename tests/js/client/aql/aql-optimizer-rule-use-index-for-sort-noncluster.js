@@ -1,32 +1,29 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
 /*global assertEqual, assertFalse, assertTrue, assertNotEqual */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for optimizer rules
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Jan Steemann
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
 var db = internal.db;
@@ -53,9 +50,11 @@ function optimizerRuleTestSuite() {
     setUp : function () {
       internal.db._drop(colName);
       c = internal.db._create(colName, {numberOfShards: 5});
+      let docs = [];
       for (let i = 0; i < 2000; ++i) {
-        c.insert({ value: i });
+        docs.push({ value: i });
       }
+      c.insert(docs);
       c.ensureIndex({ type: "skiplist", fields: [ "value" ] });
     },
 
@@ -97,9 +96,11 @@ function optimizerRuleTestSuite() {
     
     testSortAscKeepGatherNonUnique : function () {
       // add the same values again
+      let docs = [];
       for (let i = 0; i < 2000; ++i) {
-        c.insert({ value: i });
+        docs.push({ value: i });
       }
+      c.insert(docs);
       let query = "FOR doc IN " + colName + " SORT doc.value ASC RETURN doc";
       let plan = db._createStatement(query).explain().plan;
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
@@ -153,9 +154,11 @@ function optimizerRuleTestSuite() {
     
     testCollectHashKeepGatherNonUnique : function () {
       // add the same values again
+      let docs = [];
       for (let i = 0; i < 2000; ++i) {
-        c.insert({ value: i });
+        docs.push({ value: i });
       }
+      c.insert(docs);
       let query = "FOR doc IN " + colName + " COLLECT value = doc.value WITH COUNT INTO l OPTIONS { method: 'hash' } RETURN { value, l }";
       let plan = db._createStatement(query).explain().plan;
       let nodes = plan.nodes.filter(function(n) { return n.type === 'CollectNode'; });
@@ -176,9 +179,11 @@ function optimizerRuleTestSuite() {
     
     testCollectSortedKeepGatherNonUnique : function () {
       // add the same values again
+      let docs = [];
       for (let i = 0; i < 2000; ++i) {
-        c.insert({ value: i });
+        docs.push({ value: i });
       }
+      c.insert(docs);
       let query = "FOR doc IN " + colName + " COLLECT value = doc.value WITH COUNT INTO l OPTIONS { method: 'sorted' } RETURN { value, l }";
       let plan = db._createStatement(query).explain().plan;
       let nodes = plan.nodes.filter(function(n) { return n.type === 'CollectNode'; });

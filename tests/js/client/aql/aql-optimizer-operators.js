@@ -1,41 +1,38 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
 /*global assertEqual, assertNotEqual */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for static operator optimizations
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Jan Steemann
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
+const jsunity = require("jsunity");
 const db = require('internal').db;
 
 function optimizerOperatorsTestSuite () {
-  var testCombinations = function(queries, bind) {
+  const testCombinations = function(queries, bind) {
     queries.forEach(function(query) {
       bind.forEach(function(bind) {
-        var result = db._query(query, { data: bind[0] }).toArray()[0];
+        let result = db._query(query, { data: bind[0] }).toArray()[0];
         assertEqual(bind[1], result, { query, bind });
       });
     });
@@ -44,12 +41,12 @@ function optimizerOperatorsTestSuite () {
   return {
 
     testOrLhsDynamicRhsFalse : function() {
-      var queries = [ 
+      const queries = [ 
         "RETURN @data.value || 0",
         "RETURN NOOPT(@data.value || 0)"
       ];
 
-      var bind = [
+      const bind = [
         [ {}, 0 ],
         [ { val: 1 }, 0 ],
         [ { value: null }, 0 ],
@@ -64,12 +61,12 @@ function optimizerOperatorsTestSuite () {
     },
     
     testOrLhsDynamicRhsTrue : function() {
-      var queries = [ 
+      const queries = [ 
         "RETURN @data.value || 1",
         "RETURN NOOPT(@data.value || 1)"
       ];
 
-      var bind = [
+      const bind = [
         [ {}, 1 ],
         [ { val: 1 }, 1 ],
         [ { value: null }, 1 ],
@@ -84,12 +81,12 @@ function optimizerOperatorsTestSuite () {
     },
     
     testOrRhsDynamicLhsFalse : function() {
-      var queries = [ 
+      const queries = [ 
         "RETURN 0 || @data.value",
         "RETURN NOOPT(0 || @data.value)"
       ];
 
-      var bind = [
+      const bind = [
         [ {}, null ],
         [ { val: 1 }, null ],
         [ { value: null }, null ],
@@ -104,12 +101,12 @@ function optimizerOperatorsTestSuite () {
     },
     
     testOrRhsDynamicLhsTrue : function() {
-      var queries = [ 
+      const queries = [ 
         "RETURN 1 || @data.value",
         "RETURN NOOPT(1 || @data.value)"
       ];
 
-      var bind = [
+      const bind = [
         [ {}, 1 ],
         [ { val: 1 }, 1 ],
         [ { value: null }, 1 ],
@@ -124,12 +121,12 @@ function optimizerOperatorsTestSuite () {
     },
 
     testAndLhsDynamicRhsFalse : function() {
-      var queries = [ 
+      const queries = [ 
         "RETURN @data.value && 0",
         "RETURN NOOPT(@data.value && 0)"
       ];
 
-      var bind = [
+      const bind = [
         [ {}, null ],
         [ { val: 1 }, null ],
         [ { value: false }, false ],
@@ -143,12 +140,12 @@ function optimizerOperatorsTestSuite () {
     },
 
     testAndLhsDynamicRhsTrue : function() {
-      var queries = [ 
+      const queries = [ 
         "RETURN @data.value && 1",
         "RETURN NOOPT(@data.value && 1)"
       ];
 
-      var bind = [
+      const bind = [
         [ {}, null ],
         [ { val: 1 }, null ],
         [ { value: false }, false ],
@@ -162,12 +159,12 @@ function optimizerOperatorsTestSuite () {
     },
 
     testNot : function() {
-      var queries = [ 
+      const queries = [ 
         "RETURN !@data.value",
         "RETURN NOOPT(!@data.value)"
       ];
 
-      var bind = [
+      const bind = [
         [ {}, true ],
         [ { val: 1 }, true ],
         [ { value: null }, true ],
@@ -187,4 +184,3 @@ function optimizerOperatorsTestSuite () {
 jsunity.run(optimizerOperatorsTestSuite);
 
 return jsunity.done();
-

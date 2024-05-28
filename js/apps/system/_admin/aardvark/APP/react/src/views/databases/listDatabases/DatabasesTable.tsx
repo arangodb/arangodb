@@ -2,11 +2,11 @@ import { Link, Stack } from "@chakra-ui/react";
 import { createColumnHelper } from "@tanstack/react-table";
 import React from "react";
 import { Link as RouterLink, useHistory } from "react-router-dom";
-import { FiltersList } from "../../../components/table/FiltersList";
 import { ReactTable } from "../../../components/table/ReactTable";
+import { TableControl } from "../../../components/table/TableControl";
 import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
-import { useDatabasesContext } from "../DatabasesContext";
 import { DatabaseDescription } from "../Database.types";
+import { useDatabasesContext } from "../DatabasesContext";
 
 const columnHelper = createColumnHelper<DatabaseDescription>();
 
@@ -41,20 +41,22 @@ export const DatabasesTable = () => {
   const tableInstance = useSortableReactTable<DatabaseDescription>({
     data: databases || [],
     columns: TABLE_COLUMNS,
-    initialSorting: [
+    defaultSorting: [
       {
         id: "name",
         desc: false
       }
     ],
-    initialFilters: []
+    defaultFilters: [],
+    storageKey: "databases"
   });
   const history = useHistory();
   return (
     <Stack>
-      <FiltersList<DatabaseDescription>
+      <TableControl<DatabaseDescription>
         columns={TABLE_COLUMNS}
         table={tableInstance}
+        showColumnSelector={false}
       />
       <ReactTable<DatabaseDescription>
         table={tableInstance}

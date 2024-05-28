@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -1137,8 +1137,8 @@ futures::Future<OperationResult> figuresOnCoordinator(
   for (auto const& p : *shards) {
     auto future = network::sendRequestRetry(
         pool, "shard:" + p.first, fuerte::RestVerb::Get,
-        "/_api/collection/" + p.first + "/figures", VPackBuffer<uint8_t>(),
-        reqOpts);
+        absl::StrCat("/_api/collection/", std::string{p.first}, "/figures"),
+        VPackBuffer<uint8_t>(), reqOpts);
     futures.emplace_back(std::move(future));
   }
 
@@ -1213,6 +1213,8 @@ futures::Future<OperationResult> countOnCoordinator(
     reqOpts.timeout = network::Timeout(10.0);
   }
 
+  network::addUserParameter(reqOpts, trx.username());
+
   std::vector<Future<network::Response>> futures;
   futures.reserve(shardIds->size());
 
@@ -1228,8 +1230,8 @@ futures::Future<OperationResult> countOnCoordinator(
 
     futures.emplace_back(network::sendRequestRetry(
         pool, "shard:" + p.first, fuerte::RestVerb::Get,
-        "/_api/collection/" + p.first + "/count", VPackBuffer<uint8_t>(),
-        reqOpts, std::move(headers)));
+        absl::StrCat("/_api/collection/", std::string{p.first}, "/count"),
+        VPackBuffer<uint8_t>(), reqOpts, std::move(headers)));
   }
 
   auto cb = [options](std::vector<Try<network::Response>>&& results) mutable
@@ -1552,11 +1554,17 @@ futures::Future<OperationResult> insertDocumentOnCoordinator(
                         ? "true"
                         : "false");
     }
+    if (!options.versionAttribute.empty()) {
+      reqOpts.param(StaticStrings::VersionAttributeString,
+                    options.versionAttribute);
+    }
     if (options.isOverwriteModeSet()) {
       reqOpts.parameters.insert_or_assign(
           StaticStrings::OverwriteMode,
           OperationOptions::stringifyOverwriteMode(options.overwriteMode));
     }
+
+    network::addUserParameter(reqOpts, trx.username());
 
     // Now prepare the requests:
     auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
@@ -1703,6 +1711,8 @@ futures::Future<OperationResult> removeDocumentOnCoordinator(
                       ? "true"
                       : "false");
   }
+
+  network::addUserParameter(reqOpts, trx.username());
 
   bool const isManaged =
       trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
@@ -1880,6 +1890,7 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
   reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
   reqOpts.param(StaticStrings::Compact,
                 (options.truncateCompact ? "true" : "false"));
+  network::addUserParameter(reqOpts, trx.username());
 
   std::vector<Future<network::Response>> futures;
   futures.reserve(shardIds->size());
@@ -1900,8 +1911,8 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
     addTransactionHeaderForShard(trx, *shardIds, /*shard*/ p.first, headers);
     auto future = network::sendRequestRetry(
         pool, "shard:" + p.first, fuerte::RestVerb::Put,
-        "/_api/collection/" + p.first + "/truncate", std::move(buffer), reqOpts,
-        std::move(headers));
+        absl::StrCat("/_api/collection/", std::string{p.first}, "/truncate"),
+        std::move(buffer), reqOpts, std::move(headers));
     futures.emplace_back(std::move(future));
   }
 
@@ -1974,6 +1985,8 @@ Future<OperationResult> getDocumentOnCoordinator(
                   options.silent ? "true" : "false");
     reqOpts.param("onlyget", "true");
   }
+
+  network::addUserParameter(reqOpts, trx.username());
 
   if (canUseFastPath) {
     // All shard keys are known in all documents.
@@ -2117,8 +2130,8 @@ Future<OperationResult> getDocumentOnCoordinator(
 
       futures.emplace_back(network::sendRequestRetry(
           pool, "shard:" + shard, restVerb,
-          "/_api/document/" + shard + "/" +
-              StringUtils::urlEncode(key.data(), key.size()),
+          absl::StrCat("/_api/document/", std::string{shard}, "/",
+                       StringUtils::urlEncode(key.data(), key.size())),
           VPackBuffer<uint8_t>(), reqOpts, std::move(headers)));
     }
   } else {
@@ -2136,7 +2149,8 @@ Future<OperationResult> getDocumentOnCoordinator(
       }
 
       futures.emplace_back(network::sendRequestRetry(
-          pool, "shard:" + shard, restVerb, "/_api/document/" + shard,
+          pool, "shard:" + shard, restVerb,
+          absl::StrCat("/_api/document/", std::string{shard}),
           /*cannot move*/ buffer, reqOpts, std::move(headers)));
     }
   }
@@ -2198,8 +2212,7 @@ Result fetchEdgesFromEngines(
   for (auto const& engine : *engines) {
     futures.emplace_back(network::sendRequestRetry(
         pool, "server:" + engine.first, fuerte::RestVerb::Put,
-        ::edgeUrl + StringUtils::itoa(engine.second), leased->bufferRef(),
-        reqOpts));
+        absl::StrCat(::edgeUrl, engine.second), leased->bufferRef(), reqOpts));
   }
 
   for (Future<network::Response>& f : futures) {
@@ -2296,8 +2309,7 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
   for (auto const& engine : *engines) {
     futures.emplace_back(network::sendRequestRetry(
         pool, "server:" + engine.first, fuerte::RestVerb::Put,
-        ::edgeUrl + StringUtils::itoa(engine.second), leased->bufferRef(),
-        reqOpts));
+        absl::StrCat(::edgeUrl, engine.second), leased->bufferRef(), reqOpts));
   }
 
   for (Future<network::Response>& f : futures) {
@@ -2391,7 +2403,7 @@ void fetchVerticesFromEngines(
   for (auto const& engine : *engines) {
     futures.emplace_back(network::sendRequestRetry(
         pool, "server:" + engine.first, fuerte::RestVerb::Put,
-        ::vertexUrl + StringUtils::itoa(engine.second), leased->bufferRef(),
+        absl::StrCat(::vertexUrl, engine.second), leased->bufferRef(),
         reqOpts));
   }
 
@@ -2532,6 +2544,10 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
                       ? "true"
                       : "false");
   }
+  if (!options.versionAttribute.empty()) {
+    reqOpts.param(StaticStrings::VersionAttributeString,
+                  options.versionAttribute);
+  }
 
   fuerte::RestVerb restVerb;
   if (isPatch) {
@@ -2550,6 +2566,8 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
   if (options.returnOld) {
     reqOpts.param(StaticStrings::ReturnOldString, "true");
   }
+
+  network::addUserParameter(reqOpts, trx.username());
 
   bool isManaged =
       trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
@@ -2783,7 +2801,7 @@ Result recalculateCountsOnAllDBServers(ClusterFeature& feature,
   return {};
 }
 
-/// @brief compact the database on all DB servers
+/// @brief compact the entire dataset on all DB servers
 Result compactOnAllDBServers(ClusterFeature& feature, bool changeLevel,
                              bool compactBottomMostLevel) {
   ClusterInfo& ci = feature.clusterInfo();
@@ -2803,12 +2821,59 @@ Result compactOnAllDBServers(ClusterFeature& feature, bool changeLevel,
   futures.reserve(DBservers.size());
 
   VPackBufferUInt8 buffer;
-  VPackSlice const s = VPackSlice::emptyObjectSlice();
+  VPackSlice s = VPackSlice::emptyObjectSlice();
   buffer.append(s.start(), s.byteSize());
   for (std::string const& server : DBservers) {
     futures.emplace_back(network::sendRequestRetry(
         pool, "server:" + server, fuerte::RestVerb::Put, "/_admin/compact",
         buffer, reqOpts));
+  }
+
+  for (Future<network::Response>& f : futures) {
+    Result res = f.get().combinedResult();
+    if (res.fail()) {
+      return res;
+    }
+  }
+  return {};
+}
+
+/// @brief compact the data of a single collection on all DB servers
+Result compactOnAllDBServers(ClusterFeature& feature, std::string const& dbname,
+                             std::string const& collname) {
+  ClusterInfo& ci = feature.clusterInfo();
+
+  // First determine the collection ID from the name:
+  auto collinfo = ci.getCollectionNT(dbname, collname);
+  if (collinfo == nullptr) {
+    return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+  }
+
+  auto* pool = feature.server().getFeature<NetworkFeature>().pool();
+
+  std::string const baseUrl = "/_api/collection/";
+
+  VPackBuffer<uint8_t> body;
+  VPackBuilder builder(body);
+  builder.add(VPackSlice::emptyObjectSlice());
+
+  network::Headers headers;
+  network::RequestOptions options;
+  options.database = dbname;
+  options.timeout = network::Timeout(3600.0);
+
+  // now we notify all leader and follower shards
+  std::shared_ptr<ShardMap> shardList = collinfo->shardIds();
+  std::vector<network::FutureRes> futures;
+  for (auto const& shard : *shardList) {
+    for (ServerID const& serverId : shard.second) {
+      std::string uri =
+          absl::StrCat(baseUrl, std::string{shard.first}, "/compact");
+      auto f = network::sendRequestRetry(pool, "server:" + serverId,
+                                         fuerte::RestVerb::Put, std::move(uri),
+                                         body, options, headers);
+      futures.emplace_back(std::move(f));
+    }
   }
 
   for (Future<network::Response>& f : futures) {
@@ -3103,9 +3168,9 @@ arangodb::Result controlMaintenanceFeature(
     if (r.fail()) {
       return arangodb::Result(
           network::fuerteToArangoErrorCode(r),
-          std::string("Communication error while executing " + command +
-                      " maintenance on ") +
-              r.destination + ": " + r.combinedResult().errorMessage());
+          absl::StrCat("Communication error while executing ", command,
+                       " maintenance on ", r.destination, ": ",
+                       r.combinedResult().errorMessage()));
     }
 
     VPackSlice resSlice = r.slice();
@@ -3114,16 +3179,17 @@ arangodb::Result controlMaintenanceFeature(
       // Response has invalid format
       return arangodb::Result(
           TRI_ERROR_HTTP_CORRUPTED_JSON,
-          std::string("result of executing " + command +
-                      " request to maintenance feature on ") +
-              r.destination + " is invalid");
+          absl::StrCat("result of executing ", command,
+                       " request to maintenance feature on ", r.destination,
+                       " is invalid"));
     }
 
     if (resSlice.get(StaticStrings::Error).getBoolean()) {
-      return arangodb::Result(TRI_ERROR_HOT_BACKUP_INTERNAL,
-                              std::string("failed to execute " + command +
-                                          " on maintenance feature for ") +
-                                  backupId + " on server " + r.destination);
+      return arangodb::Result(
+          TRI_ERROR_HOT_BACKUP_INTERNAL,
+          absl::StrCat("failed to execute ", command,
+                       " on maintenance feature for ", backupId, " on server ",
+                       r.destination));
     }
 
     LOG_TOPIC("d7e7c", DEBUG, Logger::BACKUP)
@@ -3169,16 +3235,16 @@ arangodb::Result restoreOnDBServers(network::ConnectionPool* pool,
       // oh-oh cluster is in a bad state
       return arangodb::Result(
           network::fuerteToArangoErrorCode(r),
-          std::string("Communication error list backups on ") + r.destination +
-              ": " + r.combinedResult().errorMessage());
+          absl::StrCat("Communication error list backups on ", r.destination,
+                       ": ", r.combinedResult().errorMessage()));
     }
 
     VPackSlice resSlice = r.slice();
     if (!resSlice.isObject()) {
       // Response has invalid format
       return arangodb::Result(TRI_ERROR_HTTP_CORRUPTED_JSON,
-                              std::string("result to restore request ") +
-                                  r.destination + "not an object");
+                              absl::StrCat("result to restore request ",
+                                           r.destination, "not an object"));
     }
 
     if (!resSlice.hasKey(StaticStrings::Error) ||
@@ -3394,7 +3460,11 @@ arangodb::Result hotRestoreCoordinator(ClusterFeature& feature,
   result = (matches.empty()) ? ci.agencyReplan(plan.slice())
                              : ci.agencyReplan(newPlan.slice());
   if (!result.ok()) {
-    result = controlMaintenanceFeature(pool, "proceed", backupId, dbServers);
+    // We ignore the result of the Proceed here.
+    // In case one of the servers does not proceed now, it will automatically
+    // reactivate maintenance after 30s.
+    std::ignore =
+        controlMaintenanceFeature(pool, "proceed", backupId, dbServers);
     events::RestoreHotbackup(backupId, result.errorNumber());
     return result;
   }
@@ -3481,9 +3551,7 @@ arangodb::Result lockServersTrxCommit(network::ConnectionPool* pool,
                                       std::vector<ServerID> const& servers,
                                       double lockWait,
                                       std::vector<ServerID>& lockedServers) {
-  using namespace std::chrono;
-
-  // Make sure all db servers have the backup with backup Id
+  // Make sure all servers have the backup with backup Id
 
   std::string const url = apiStr + "lock";
 
@@ -3525,27 +3593,29 @@ arangodb::Result lockServersTrxCommit(network::ConnectionPool* pool,
       if (finalRes.errorNumber() == TRI_ERROR_LOCAL_LOCK_FAILED) {
         c = TRI_ERROR_LOCAL_LOCK_FAILED;
       }
-      finalRes = arangodb::Result(
-          c, StringUtils::concatT(finalRes.errorMessage(), ", ", m));
+      finalRes =
+          arangodb::Result(c, absl::StrCat(finalRes.errorMessage(), ", ", m));
     }
   };
   for (Future<network::Response>& f : futures) {
     network::Response const& r = f.get();
 
     if (r.fail()) {
-      reportError(TRI_ERROR_LOCAL_LOCK_FAILED,
-                  std::string("Communication error locking transactions on ") +
-                      r.destination + ": " + r.combinedResult().errorMessage());
+      reportError(
+          TRI_ERROR_LOCAL_LOCK_FAILED,
+          absl::StrCat("Communication error locking transactions on ",
+                       r.destination, ": ", r.combinedResult().errorMessage()));
       continue;
     }
     VPackSlice slc = r.slice();
 
     if (!slc.isObject() || !slc.hasKey(StaticStrings::Error) ||
         !slc.get(StaticStrings::Error).isBoolean()) {
-      reportError(TRI_ERROR_LOCAL_LOCK_FAILED,
-                  std::string("invalid response from ") + r.destination +
-                      " when trying to freeze transactions for hot backup " +
-                      backupId + ": " + slc.toJson());
+      reportError(
+          TRI_ERROR_LOCAL_LOCK_FAILED,
+          absl::StrCat("invalid response from ", r.destination,
+                       " when trying to freeze transactions for hot backup ",
+                       backupId, ": ", slc.toJson()));
       continue;
     }
 
@@ -3559,19 +3629,21 @@ arangodb::Result lockServersTrxCommit(network::ConnectionPool* pool,
         reportError(err, slc.get(StaticStrings::ErrorMessage).copyString());
         continue;
       }
-      reportError(TRI_ERROR_LOCAL_LOCK_FAILED,
-                  std::string("lock was denied from ") + r.destination +
-                      " when trying to check for lockId for hot backup " +
-                      backupId + ": " + slc.toJson());
+      reportError(
+          TRI_ERROR_LOCAL_LOCK_FAILED,
+          absl::StrCat("lock was denied from ", r.destination,
+                       " when trying to check for lockId for hot backup ",
+                       backupId, ": ", slc.toJson()));
       continue;
     }
 
     if (!slc.hasKey(lockPath) || !slc.get(lockPath).isNumber() ||
         !slc.hasKey("result") || !slc.get("result").isObject()) {
-      reportError(TRI_ERROR_LOCAL_LOCK_FAILED,
-                  std::string("invalid response from ") + r.destination +
-                      " when trying to check for lockId for hot backup " +
-                      backupId + ": " + slc.toJson());
+      reportError(
+          TRI_ERROR_LOCAL_LOCK_FAILED,
+          absl::StrCat("invalid response from ", r.destination,
+                       " when trying to check for lockId for hot backup ",
+                       backupId, ": ", slc.toJson()));
       continue;
     }
 
@@ -3582,10 +3654,11 @@ arangodb::Result lockServersTrxCommit(network::ConnectionPool* pool,
           << "acquired lock from " << r.destination << " for backupId "
           << backupId << " with lockId " << lockId;
     } catch (std::exception const& e) {
-      reportError(TRI_ERROR_LOCAL_LOCK_FAILED,
-                  std::string("invalid response from ") + r.destination +
-                      " when trying to get lockId for hot backup " + backupId +
-                      ": " + slc.toJson() + ", msg: " + e.what());
+      reportError(
+          TRI_ERROR_LOCAL_LOCK_FAILED,
+          absl::StrCat("invalid response from ", r.destination,
+                       " when trying to get lockId for hot backup ", backupId,
+                       ": ", slc.toJson(), ", msg: ", e.what()));
       continue;
     }
 
@@ -3595,7 +3668,11 @@ arangodb::Result lockServersTrxCommit(network::ConnectionPool* pool,
 
   if (finalRes.ok()) {
     LOG_TOPIC("c1869", DEBUG, Logger::BACKUP)
-        << "acquired transaction locks on all db servers";
+        << "acquired transaction locks on all coordinators";
+  } else {
+    LOG_TOPIC("8226a", DEBUG, Logger::BACKUP)
+        << "unable to acquire transaction locks on all coordinators: "
+        << finalRes.errorMessage();
   }
 
   return finalRes;
@@ -3604,9 +3681,11 @@ arangodb::Result lockServersTrxCommit(network::ConnectionPool* pool,
 arangodb::Result unlockServersTrxCommit(
     network::ConnectionPool* pool, std::string const& backupId,
     std::vector<ServerID> const& lockedServers) {
-  using namespace std::chrono;
+  LOG_TOPIC("2ba8f", DEBUG, Logger::BACKUP)
+      << "best effort attempt to kill all locks on coordinators "
+      << lockedServers;
 
-  // Make sure all db servers have the backup with backup Id
+  // Make sure all servers have the backup with backup Id
 
   std::string const url = apiStr + "unlock";
 
@@ -3628,12 +3707,23 @@ arangodb::Result unlockServersTrxCommit(
         pool, "server:" + server, fuerte::RestVerb::Post, url, body, reqOpts));
   }
 
-  std::ignore = futures::collectAll(futures).get();
+  auto responses = futures::collectAll(std::move(futures)).get();
 
-  LOG_TOPIC("2ba8f", DEBUG, Logger::BACKUP)
-      << "best try to kill all locks on db servers";
+  Result res;
+  for (auto const& tryRes : responses) {
+    network::Response const& r = tryRes.get();
+    if (r.combinedResult().fail() && res.ok()) {
+      res = r.combinedResult();
+    }
+  }
 
-  return arangodb::Result();
+  LOG_TOPIC("48510", DEBUG, Logger::BACKUP)
+      << "killing all locks on coordinators resulted in: "
+      << res.errorMessage();
+
+  // return value is ignored by callers, but we'll return our status
+  // anyway.
+  return res;
 }
 
 std::vector<std::string> idPath{"result", "id"};
@@ -3896,15 +3986,16 @@ arangodb::Result hotbackupAsyncLockCoordinatorsTransactions(
     if (r.fail()) {
       return arangodb::Result(
           TRI_ERROR_LOCAL_LOCK_FAILED,
-          std::string("Communication error locking transactions on ") +
-              r.destination + ": " + r.combinedResult().errorMessage());
+          absl::StrCat("Communication error locking transactions on ",
+                       r.destination, ": ", r.combinedResult().errorMessage()));
     }
 
     if (r.statusCode() != 202) {
       return arangodb::Result(
           TRI_ERROR_LOCAL_LOCK_FAILED,
-          std::string("lock was denied from ") + r.destination +
-              " when trying to check for lockId for hot backup " + backupId);
+          absl::StrCat("lock was denied from ", r.destination,
+                       " when trying to check for lockId for hot backup ",
+                       backupId));
     }
 
     bool hasJobID;
@@ -3950,8 +4041,8 @@ arangodb::Result hotbackupWaitForLockCoordinatorsTransactions(
     if (r.fail()) {
       return arangodb::Result(
           TRI_ERROR_LOCAL_LOCK_FAILED,
-          std::string("Communication error locking transactions on ") +
-              r.destination + ": " + r.combinedResult().errorMessage());
+          absl::StrCat("Communication error locking transactions on ",
+                       r.destination, ": ", r.combinedResult().errorMessage()));
     }
     // continue on 204 No Content
     if (r.statusCode() == 204) {
@@ -4560,7 +4651,7 @@ arangodb::Result getEngineStatsFromDBServers(ClusterFeature& feature,
   }
   report.close();
 
-  return Result();
+  return {};
 }
 
 }  // namespace arangodb

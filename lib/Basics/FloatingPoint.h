@@ -36,8 +36,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
-
 #include <float.h>
 #include <limits>
 
@@ -85,13 +83,8 @@ class TypeWithSize<4> {
 template<>
 class TypeWithSize<8> {
  public:
-#ifdef _WIN32
-  typedef __int64 Int;
-  typedef unsigned __int64 UInt;
-#else
   typedef long long Int;            // NOLINT
   typedef unsigned long long UInt;  // NOLINT
-#endif
 };
 
 // This template class represents an IEEE floating-point number

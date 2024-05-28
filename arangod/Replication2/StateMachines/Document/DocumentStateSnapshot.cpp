@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -333,9 +333,11 @@ auto Snapshot::generateBatch(state::Ongoing const&) -> ResultT<SnapshotBatch> {
                                        << shard->name();
 
     auto tid = TransactionId::createFollower();
+    // During SnapshotTransfer, we do not want to account the operation to a
+    // specific user, so we set an empty userName.
     operations.emplace_back(ReplicatedOperation::buildDocumentOperation(
         TRI_VOC_DOCUMENT_OPERATION_INSERT, tid, maybeShardID.get(),
-        std::move(payload)));
+        std::move(payload), StaticStrings::Empty));
     operations.emplace_back(ReplicatedOperation::buildCommitOperation(tid));
 
     auto readerHasMore = reader->hasMore();
@@ -396,9 +398,11 @@ auto Snapshot::generateDocumentBatch(ShardID shardId,
   std::vector<ReplicatedOperation> batch;
   batch.reserve(2);
   auto tid = TransactionId::createFollower();
+  // During SnapshotTransfer, we do not want to account the operation to a
+  // specific user, so we set an empty userName.
   batch.emplace_back(ReplicatedOperation::buildDocumentOperation(
       TRI_VOC_DOCUMENT_OPERATION_INSERT, tid, std::move(shardId),
-      std::move(slice)));
+      std::move(slice), StaticStrings::Empty));
   batch.emplace_back(ReplicatedOperation::buildCommitOperation(tid));
   return batch;
 }

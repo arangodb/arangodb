@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -328,8 +328,15 @@ RocksDBReplicationContext::bindCollectionIncremental(TRI_vocbase_t& vocbase,
         << logical->guid();
   }
 
-  // we should have a valid iterator if there are documents in here
-  TRI_ASSERT(numberDocuments == 0 || cIter->hasMore());
+  // we should have a valid iterator if there are documents in here.
+  // note that we can only assume this if we took the number of documents and
+  // the snapshot under the exclusive lock. otherwise the number of documents
+  // and the actual number of documents in the snapshot may differ.
+  TRI_ASSERT(documentCountAdjustmentTicket == 0 || numberDocuments == 0 ||
+             cIter->hasMore())
+      << "numDocs: " << numberDocuments << ", hasMore: " << cIter->hasMore()
+      << ", ticket: " << documentCountAdjustmentTicket
+      << ", shard: " << logical->name();
   co_return std::make_tuple(Result{}, cid, numberDocuments);
 }
 
@@ -1224,11 +1231,8 @@ void RocksDBReplicationContext::CollectionIterator::setSorted(bool sorted) {
 
     TRI_ASSERT(_upperLimit.size() > 0);
     _readOptions.iterate_upper_bound = &_upperLimit;
-    iter.reset(vocbase.server()
-                   .getFeature<EngineSelectorFeature>()
-                   .engine<RocksDBEngine>()
-                   .db()
-                   ->NewIterator(_readOptions, cf));
+    iter.reset(
+        vocbase.engine<RocksDBEngine>().db()->NewIterator(_readOptions, cf));
     TRI_ASSERT(iter);
     iter->Seek(_bounds.start());
     currentTick = 1;

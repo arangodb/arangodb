@@ -1,32 +1,29 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
 /*global assertEqual, assertNotEqual, assertTrue, assertFalse */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for COLLECT w/ COUNT
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Jan Steemann
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
@@ -104,17 +101,20 @@ function optimizerCollectMethodsTestSuite () {
     testNumberOfPlans : function () {
       c.ensureIndex({ type: "persistent", fields: [ "value" ] }); 
       const queries = [
-        "FOR j IN " + c.name() + " COLLECT value = j RETURN value",
-        "FOR j IN " + c.name() + " COLLECT value = j WITH COUNT INTO l RETURN [ value, l ]",
-        "FOR j IN " + c.name() + " COLLECT value = j INTO g RETURN g",
-        "FOR j IN " + c.name() + " COLLECT value = j INTO g = j.haxe RETURN g",
-        "FOR j IN " + c.name() + " COLLECT value = j INTO g RETURN [ value, g ]",
-        "FOR j IN " + c.name() + " COLLECT value = j INTO g KEEP j RETURN g"
+        [ "FOR j IN " + c.name() + " COLLECT value = j RETURN value", 2 ],
+        [ "FOR j IN " + c.name() + " COLLECT value = j WITH COUNT INTO l RETURN [ value, l ]", 2 ],
+        [ "FOR j IN " + c.name() + " COLLECT value = j INTO g RETURN g", 2 ],
+        [ "FOR j IN " + c.name() + " COLLECT value = j INTO g = j.haxe RETURN g", 2 ],
+        [ "FOR j IN " + c.name() + " COLLECT value = j INTO g RETURN [ value, g ]", 2 ],
+        [ "FOR j IN " + c.name() + " COLLECT value = j INTO g KEEP j RETURN g", 2 ],
+        [ "FOR j IN [1,2,3] COLLECT value = j RETURN value", 1 ],
+        [ "FOR i IN [1,2,3] FOR j IN [1,2,3] COLLECT value = j RETURN value", 2 ],
+        [ "LET x1 = (FOR j IN [1,2,3] COLLECT value = j RETURN value) LET x2 = (FOR j IN [1,2,3] COLLECT value = j RETURN value) RETURN [x1, x2]", 1 ],
       ];
       
       queries.forEach(function(query) {
-        let plans = db._createStatement({query: query, bindVars: null, options: { allPlans: true, optimizer: { rules: [ "-all" ] }}}).explain().plans;
-        assertEqual(2, plans.length);
+        let plans = db._createStatement({query: query[0], bindVars: null, options: { allPlans: true, optimizer: { rules: [ "-all" ] }}}).explain().plans;
+        assertEqual(query[1], plans.length, query);
       });
     },
 

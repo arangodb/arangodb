@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -66,7 +66,7 @@ void AqlFunctionFeature::prepare() {
 
 void AqlFunctionFeature::add(Function const& func) {
   TRI_ASSERT(func.name == basics::StringUtils::toupper(func.name));
-  TRI_ASSERT(_functionNames.find(func.name) == _functionNames.end());
+  TRI_ASSERT(!_functionNames.contains(func.name));
   // add function to the map
   _functionNames.try_emplace(func.name, func);
 }
@@ -96,9 +96,7 @@ void AqlFunctionFeature::toVelocyPack(VPackBuilder& builder) const {
 }
 
 bool AqlFunctionFeature::exists(std::string const& name) const {
-  auto it = _functionNames.find(name);
-
-  return it != _functionNames.end();
+  return _functionNames.contains(name);
 }
 
 Function const* AqlFunctionFeature::byName(std::string const& name) const {
@@ -117,7 +115,9 @@ Function const* AqlFunctionFeature::byName(std::string const& name) const {
 // ------------------------------------------------------
 //
 // . = argument of any type (except collection)
-// c = collection name, will be converted into list with documents
+// b = argument of any type. if it is a bind parameter it
+//     will be marked as a required bind parameter that will
+//     be expanded early in the query processing pipeline
 // h = collection name, will be converted into string
 // , = next argument
 // | = separates mandatory from optional arguments
@@ -554,10 +554,6 @@ void AqlFunctionFeature::addMiscFunctions() {
        &functions::CheckDocument});  // not deterministic and not cacheable
   add({"COLLECTION_COUNT", ".h", Function::makeFlags(FF::CanReadDocuments),
        &functions::CollectionCount});  // not deterministic and not cacheable
-  add({"PREGEL_RESULT", ".|.",
-       Function::makeFlags(FF::CanReadDocuments, FF::CanRunOnDBServerCluster,
-                           FF::CanRunOnDBServerOneShard),
-       &functions::PregelResult});  // not deterministic and not cacheable
   add({"ASSERT", ".,.",
        Function::makeFlags(FF::CanRunOnDBServerCluster,
                            FF::CanRunOnDBServerOneShard, FF::CanUseInAnalyzer),

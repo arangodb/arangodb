@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -78,10 +78,6 @@
 #endif
 #include "VocBase/Methods/Collections.h"
 
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
-
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
 static const VPackSlice systemDatabaseArgs = systemDatabaseBuilder.slice();
 
@@ -116,7 +112,7 @@ class IResearchFilterInTest
             arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
             arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
         [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
-           arangodb::aql::VPackFunctionParametersView params) {
+           arangodb::aql::functions::VPackFunctionParametersView params) {
           TRI_ASSERT(!params.empty());
           return params[0];
         }});
@@ -132,7 +128,7 @@ class IResearchFilterInTest
             arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
             arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
         [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
-           arangodb::aql::VPackFunctionParametersView params) {
+           arangodb::aql::functions::VPackFunctionParametersView params) {
           TRI_ASSERT(!params.empty());
           return params[0];
         }});
@@ -645,7 +641,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
   // empty array
   {
     irs::Or expected;
-    expected.add<irs::empty>();
+    expected.add<irs::Empty>();
 
     assertFilterSuccess(
         vocbase(),
@@ -1599,7 +1595,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
         auto begin = root.begin();
 
         // 1st filter
-        { EXPECT_EQ(irs::empty(), **begin); }
+        { EXPECT_EQ(irs::Empty(), **begin); }
 
         // 2nd filter
         {
@@ -1713,7 +1709,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
         auto begin = root.begin();
 
         // 1st filter
-        { EXPECT_EQ(irs::empty(), **begin); }
+        { EXPECT_EQ(irs::Empty(), **begin); }
 
         // 2nd filter
         {
@@ -2012,7 +2008,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
   // false expression
   {
     irs::Or expected;
-    expected.add<irs::empty>();
+    expected.add<irs::Empty>();
 
     assertFilterSuccess(vocbase(),
                         "FOR d IN myView FILTER [] in [1,2,3] RETURN d",
@@ -3297,7 +3293,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
   // false expression
   {
     irs::Or expected;
-    expected.add<irs::empty>();
+    expected.add<irs::Empty>();
 
     assertFilterSuccess(vocbase(), "FOR d IN myView FILTER [] in 4..5 RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
@@ -4933,7 +4929,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         auto begin = orNode->begin();
 
         // 1st filter
-        { EXPECT_EQ(irs::empty(), **begin); }
+        { EXPECT_EQ(irs::Empty(), **begin); }
 
         // 2nd filter
         {
@@ -5054,7 +5050,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         auto begin = orNode->begin();
 
         // 1st filter
-        { EXPECT_EQ(irs::empty(), **begin); }
+        { EXPECT_EQ(irs::Empty(), **begin); }
 
         // 2nd filter
         {
@@ -5222,7 +5218,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
   // false expression
   {
     irs::Or expected;
-    expected.add<irs::empty>();
+    expected.add<irs::Empty>();
 
     assertFilterSuccess(vocbase(),
                         "FOR d IN myView FILTER 4 not in [1,2,3,4] RETURN d",
@@ -6526,7 +6522,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
   // false expression
   {
     irs::Or expected;
-    expected.add<irs::empty>();
+    expected.add<irs::Empty>();
 
     assertFilterSuccess(vocbase(),
                         "FOR d IN myView FILTER 4 not in 4..5 RETURN d",

@@ -1,37 +1,28 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
 /*global assertEqual */
 
-////////////////////////////////////////////////////////////////////////////////
-///
-/// Fuzzing tests for nested subquery execution. Generates random nested subqueries
-/// and then runs spliced subqueries against "old style" subqueries and compares
-/// results.
-///
-/// DISCLAIMER
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Markus Pfeiffer
-////////////////////////////////////////////////////////////////////////////////
-///
-/// This test runs randomly generated queries, but prints the code that is
-/// executed to run the test, so if you find yourself in the unfortunate situation
-/// that you have to debug a failing instance of this test, just copy and paste
-/// the line that preceded the crash/failure into arangosh or an arangod console
-/// and you should reproduce what happened in the random run.
-///
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const ct = require("@arangodb/test-generators/subquery-chaos-test");
@@ -72,10 +63,6 @@ const randomModificationDepth = () => {
   // 30% depth 3
   return 3;
 };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite for cross-collection queries
-////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlSubqueryChaos() {
   /// Some queries that caused errors before. We don't have the seeds
@@ -152,16 +139,6 @@ function ahuacatlSubqueryChaos() {
     },
   };
   return {
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief set up
-    ////////////////////////////////////////////////////////////////////////////////
-    setUp: function () {},
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief tear down
-    ////////////////////////////////////////////////////////////////////////////////
-    tearDown: function () {},
-
     testSpecificQueries: function () {
       for (const [key, value] of Object.entries(specificQueries)) {
         ct.testQuery(value, {});
@@ -169,7 +146,7 @@ function ahuacatlSubqueryChaos() {
     },
 
     testSomeSubqueryChaos: function () {
-      for (var i = 0; i < numberOfQueriesGenerated; i++) {
+      for (let i = 0; i < numberOfQueriesGenerated; i++) {
         ct.testQueryWithSeed({
           numberSubqueries: randomDepth(),
           seed: Math.trunc(Math.random() * 10000),
@@ -180,7 +157,7 @@ function ahuacatlSubqueryChaos() {
     },
 
     testSomeSubqueryModificationChaos: function () {
-      for (var i = 0; i < numberOfQueriesGenerated; i++) {
+      for (let i = 0; i < numberOfQueriesGenerated; i++) {
         ct.testModifyingQueryWithSeed({
           numberSubqueries: randomModificationDepth(),
           seed: Math.trunc(Math.random() * 10000),
@@ -191,10 +168,6 @@ function ahuacatlSubqueryChaos() {
     },
   };
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ahuacatlSubqueryChaos);
 

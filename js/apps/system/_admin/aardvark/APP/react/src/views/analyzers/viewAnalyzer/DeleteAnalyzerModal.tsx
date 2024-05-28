@@ -1,9 +1,12 @@
 import {
+  Box,
   Button,
+  Checkbox,
   ModalBody,
   ModalFooter,
   ModalHeader,
-  Stack
+  Stack,
+  Text
 } from "@chakra-ui/react";
 import { AnalyzerDescription } from "arangojs/analyzer";
 import React from "react";
@@ -21,11 +24,12 @@ export const DeleteAnalyzerModal = ({
   onSuccess: () => void;
 }) => {
   const [isLoading, setIsLoading] = React.useState(false);
+  const [shouldForceDelete, setShouldForceDelete] = React.useState(false);
   const onDelete = async () => {
     const currentDB = getCurrentDB();
     setIsLoading(true);
     try {
-      await currentDB.analyzer(analyzer.name).drop();
+      await currentDB.analyzer(analyzer.name).drop(shouldForceDelete);
       mutate("/analyzers");
       setIsLoading(false);
       onSuccess();
@@ -39,8 +43,27 @@ export const DeleteAnalyzerModal = ({
   };
   return (
     <Modal isOpen onClose={onClose}>
-      <ModalHeader>Delete Analyzer</ModalHeader>
-      <ModalBody>Are you sure you want to delete {analyzer.name}?</ModalBody>
+      <ModalHeader>Delete Analyzer: "{analyzer.name}"?</ModalHeader>
+      <ModalBody>
+        <Text>
+          This analyzer might be in use. Deleting it will impact the Views using
+          it. Clicking on the "Delete" button will only delete the analyzer if
+          it is not in use.
+        </Text>
+        <Text>
+          If you want to delete it anyway, check the "Force delete" checkbox
+          below.
+        </Text>
+        <Box marginTop="2">
+          <Checkbox
+            size="sm"
+            isChecked={shouldForceDelete}
+            onChange={e => setShouldForceDelete(e.target.checked)}
+          >
+            Force delete
+          </Checkbox>
+        </Box>
+      </ModalBody>
       <ModalFooter>
         <Stack direction="row">
           <Button

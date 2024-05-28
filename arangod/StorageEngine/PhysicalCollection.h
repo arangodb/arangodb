@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -126,8 +126,13 @@ class PhysicalCollection {
   /// @brief Find index by name
   std::shared_ptr<Index> lookupIndex(std::string_view idxName) const;
 
-  /// @brief get list of all indexes
-  std::vector<std::shared_ptr<Index>> getIndexes() const;
+  /// @brief get list of all indexes. this includes in-progress indexes and thus
+  /// should be used with care
+  std::vector<std::shared_ptr<Index>> getAllIndexes() const;
+
+  /// @brief get a list of "ready" indexes, that means all indexes which are
+  /// not "in progress" anymore
+  std::vector<std::shared_ptr<Index>> getReadyIndexes() const;
 
   /// @brief get a snapshot of all indexes of the collection, with the read
   /// lock on the list of indexes being held while the snapshot is active
@@ -145,11 +150,15 @@ class PhysicalCollection {
   virtual futures::Future<OperationResult> figures(
       bool details, OperationOptions const& options);
 
+  using Replication2Callback =
+      fu2::unique_function<futures::Future<ResultT<replication2::LogIndex>>()>;
+
   /// @brief create or restore an index
   /// @param restore utilize specified ID, assume index has to be created
   virtual futures::Future<std::shared_ptr<Index>> createIndex(
       velocypack::Slice info, bool restore, bool& created,
-      std::shared_ptr<std::function<arangodb::Result(double)>> = nullptr) = 0;
+      std::shared_ptr<std::function<arangodb::Result(double)>> = nullptr,
+      Replication2Callback replicationCb = nullptr) = 0;
 
   virtual Result dropIndex(IndexId iid);
 
@@ -197,6 +206,7 @@ class PhysicalCollection {
     bool readCache = true;
     bool fillCache = true;
     bool readOwnWrites = false;
+    bool countBytes = false;
   };
 
   virtual Result lookup(transaction::Methods* trx, std::string_view key,

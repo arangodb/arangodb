@@ -5,14 +5,14 @@
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
-// / Copyright 2016 ArangoDB GmbH, Cologne, Germany
-// / Copyright 2014 triagens GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,7 +27,6 @@
 
 const functionsDocumentation = {
   'authentication': 'authentication tests',
-  'authentication_server': 'authentication server tests',
   'authentication_parameters': 'authentication parameters tests'
 };
 const optionsDocumentation = [
@@ -51,7 +50,6 @@ const download = require('internal').download;
 
 const testPaths = {
   'authentication': [tu.pathForTesting('client/authentication')],
-  'authentication_server': [tu.pathForTesting('server/authentication')],
   'authentication_parameters': []
 };
 
@@ -76,29 +74,6 @@ function authenticationClient (options) {
   testCases = tu.splitBuckets(options, testCases);
 
   return new tu.runInArangoshRunner(options, 'authentication', Object.assign(
-    {},
-    tu.testServerAuthInfo, {
-      'cluster.create-waits-for-sync-replication': false
-    }), false).run(testCases);
-}
-
-function authenticationServer (options) {
-  let testCases = tu.scanTestPaths(testPaths.authentication_server, options);
-
-  testCases = tu.splitBuckets(options, testCases);
-
-  if ((testCases.length === 0) || (options.skipAuthentication === true)) {
-    print('skipping Authentication tests!');
-    return {
-      authentication: {
-        status: true,
-        skipped: true
-      }
-    };
-  }
-
-  print(CYAN + 'Server Authentication tests...' + RESET);
-  return new tu.runOnArangodRunner(options, 'authentication_server', Object.assign(
     {},
     tu.testServerAuthInfo, {
       'cluster.create-waits-for-sync-replication': false
@@ -269,7 +244,6 @@ function authenticationParameters (options) {
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['authentication'] = authenticationClient;
-  testFns['authentication_server'] = authenticationServer;
   testFns['authentication_parameters'] = authenticationParameters;
 
   opts['skipAuthentication'] = false;

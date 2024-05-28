@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -174,23 +174,8 @@ RestStatus RestAdminExecuteHandler::execute() {
         }
 
         _response->setResponseCode(rest::ResponseCode::SERVER_ERROR);
-        switch (_response->transportType()) {
-          case Endpoint::TransportType::HTTP: {
-            _response->setContentType(rest::ContentType::TEXT);
-            _response->addRawPayload(errorMessage);
-            break;
-          }
-          case Endpoint::TransportType::VST: {
-            VPackBuffer<uint8_t> buffer;
-            VPackBuilder builder(buffer);
-            builder.add(VPackValuePair(
-                reinterpret_cast<uint8_t const*>(errorMessage.data()),
-                errorMessage.size()));
-            _response->setContentType(rest::ContentType::VPACK);
-            _response->setPayload(std::move(buffer));
-            break;
-          }
-        }
+        _response->setContentType(rest::ContentType::TEXT);
+        _response->addRawPayload(errorMessage);
       } else {
         // all good!
         bool returnAsJSON = _request->parsedValue("returnAsJSON", false);

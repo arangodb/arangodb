@@ -1,32 +1,29 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertTrue, assertEqual, assertNotEqual, assertMatch, assertNull, fail */
+/*global arango, assertTrue, assertEqual, assertNotEqual, assertMatch, assertNull, fail */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test the collection interface
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Jan Christoph Uhde
 /// @author Copyright 2019, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
@@ -42,11 +39,34 @@ const replication2Enabled = require('internal').db._version(true).details['repli
 
 let {
   getMaxReplicationFactor,
-  getMinReplicationFactor
+  getMinReplicationFactor,
+  agency,
 } = require("@arangodb/test-helper");
 
 const maxReplicationFactor = getMaxReplicationFactor();
 const minReplicationFactor = getMinReplicationFactor(); 
+        
+function assertNoDatabasesInPlan () {
+  if (!isCluster) {
+    return;
+  }
+  const prefix = arango.POST("/_admin/execute", `return global.ArangoAgency.prefix()`);
+  const paths = [
+      "Plan/Databases/",
+    ].map(p => `${prefix}/${p}`);
+  let result = agency.call("read", [ paths ]);
+  assertTrue(Array.isArray(result), result);
+  assertEqual(1, result.length);
+  result = result[0];
+  
+  let parts = paths[0].split("/").filter((p) => p.trim() !== "");
+  parts.forEach((part) => {
+    assertTrue(result.hasOwnProperty(part), { result, part });
+    result = result[part];
+  });
+  let keys = Object.keys(result);
+  assertEqual(["_system"], keys, result);
+}
 
 function getEndpointsByType(type) {
   const isType = (d) => (d.instanceRole === type);
@@ -549,7 +569,7 @@ function OneShardPropertiesSuite () {
     },
 
     testSatelliteDB : function () {
-      assertTrue(db._createDatabase(dn, { replicationFactor : "satellite"}));
+      assertTrue(db._createDatabase(dn, { replicationFactor : "satellite" }));
       db._useDatabase(dn);
       let props = db._properties();
       if (!isCluster) {
@@ -564,15 +584,44 @@ function OneShardPropertiesSuite () {
         }
       }
     },
+
+    testSatelliteDBWithTooHighWriteConcern : function () {
+      if (isEnterprise && isCluster) {
+        try {
+          db._createDatabase(dn, { replicationFactor : "satellite", sharding: "single", writeConcern: 2 });
+          fail();
+        } catch (err) {
+          assertEqual(ERRORS.ERROR_FAILED.code, err.errorNum);
+        }
+
+        assertNoDatabasesInPlan();
+      }
+    },
     
+    testSatelliteDBWithOneShard : function () {
+      if (isEnterprise && isCluster) {
+        try {
+          db._createDatabase(dn, { replicationFactor : "satellite", sharding: "single" });
+          fail();
+        } catch (err) {
+          assertEqual(ERRORS.ERROR_FAILED.code, err.errorNum);
+        }
+        
+        assertNoDatabasesInPlan();
+      }
+    },
+
     testValuesBelowMinReplicationFactor : function () {
       let min = minReplicationFactor;
-      if (min > 0) {
+      if (min > 1) {
         try {
           db._createDatabase(dn, { replicationFactor : min - 1 });
+          fail();
         } catch (err) {
           assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
         }
+        
+        assertNoDatabasesInPlan();
       }
     },
 
@@ -581,9 +630,12 @@ function OneShardPropertiesSuite () {
       if (max > 0) {
         try {
           db._createDatabase(dn, { replicationFactor : max + 1 });
+          fail();
         } catch (err) {
           assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
         }
+        
+        assertNoDatabasesInPlan();
       }
     },
   

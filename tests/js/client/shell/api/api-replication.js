@@ -1,36 +1,34 @@
 /*jshint globalstrict:false, strict:false */
 /*global assertTrue, assertEqual, assertFalse, assertNotEqual */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test the authentication
-///
-/// DISCLAIMER
-///
-/// Copyright 2023-2023 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Copyright 2023, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const {arango, db} = require("@arangodb");
 const isCluster = require('internal').isCluster();
 const isEnterprise = require("internal").isEnterprise();
 const _ = require("lodash");
-const isWindows = (require("internal").platform.substr(0, 3) === 'win');
 
 const {
   ERROR_HTTP_BAD_PARAMETER,
@@ -133,12 +131,10 @@ const getDefaultProps = () => {
         "allowUserKeys": true,
         "type": "traditional"
       },
-      /* On windows we start with a replicationFactor of 1 */
-      "replicationFactor": isWindows ? 1 : 2,
+      "replicationFactor": 2,
       "minReplicationFactor": 1,
       "writeConcern": 1,
-      /* Is this a reasonable default?, We have a new collection */
-      "shardingStrategy": isEnterprise ? "enterprise-compat" : "community-compat",
+      "shardingStrategy": "hash",
       "cacheEnabled": false,
       "computedValues": null,
       "syncByRevision": true,
@@ -1094,53 +1090,6 @@ function RestoreCollectionsSuite() {
       } finally {
         // Should be noop
         db._drop(collname);
-      }
-    },
-
-    testRestoreSystemCollection: function () {
-      const systemName = "_pregel_queries";
-      const idBeforeRestore = getCollectionId(systemName);
-      const propsBeforeRestore = db._collection(systemName).properties();
-      const res = tryRestore({name: systemName, isSystem: true});
-      const idAfterRestore = getCollectionId(systemName);
-      assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-      // We do not want to change any properties
-      validateProperties(propsBeforeRestore, systemName, 2);
-      assertEqual(idBeforeRestore, idAfterRestore, `Did drop the collection, not just truncated`);
-    },
-
-    testRestoreSystemCollectionOverwrite: function () {
-      const systemName = "_pregel_queries";
-      const idBeforeRestore = getCollectionId(systemName);
-      const propsBeforeRestore = db._collection(systemName).properties();
-      // since we are really dropping and recreating the collection, the globallyUniqueId will actually change
-      delete propsBeforeRestore.globallyUniqueId;
-      const res = tryRestore({name: systemName, isSystem: true}, { overwrite: true });
-      const idAfterRestore = getCollectionId(systemName);
-      assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-      // We do not want to change any of the other properties
-      validateProperties(propsBeforeRestore, systemName, 2);
-      assertNotEqual(idBeforeRestore, idAfterRestore, `Did truncate the collection, not drop it`);
-    },
-
-    testRestoreSystemCollectionInUserDBOverwrite: function () {
-      db._createDatabase("UnitTestDB");
-      try {
-        db._useDatabase("UnitTestDB");
-        const systemName = "_pregel_queries";
-        const idBeforeRestore = getCollectionId(systemName);
-        const propsBeforeRestore = db._collection(systemName).properties();
-        // since we are really dropping and recreating the collection, the globallyUniqueId will actually change
-        delete propsBeforeRestore.globallyUniqueId;
-        const res = tryRestore({name: systemName, isSystem: true}, { overwrite: true });
-        const idAfterRestore = getCollectionId(systemName);
-        assertTrue(res.result, `Result: ${JSON.stringify(res)}`);
-        // We do not want to change any of the other properties
-        validateProperties(propsBeforeRestore, systemName, 2);
-        assertNotEqual(idBeforeRestore, idAfterRestore, `Did truncate the collection, not drop it`);
-      } finally {
-        db._useDatabase("_system");
-        db._dropDatabase("UnitTestDB");
       }
     },
 

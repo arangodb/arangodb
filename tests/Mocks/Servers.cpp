@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -42,6 +42,7 @@
 #include "Cluster/ActionDescription.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/CreateCollection.h"
 #include "Cluster/CreateDatabase.h"
 #include "Cluster/DropDatabase.h"
@@ -71,6 +72,8 @@
 #include "Mocks/StorageEngineMock.h"
 #include "Network/NetworkFeature.h"
 #include "Replication/ReplicationFeature.h"
+#include "Replication2/ReplicatedLog/ReplicatedLogFeature.h"
+#include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 #include "Rest/Version.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
@@ -103,7 +106,6 @@
 
 #if USE_ENTERPRISE
 #include "Enterprise/Encryption/EncryptionFeature.h"
-#include "Enterprise/Ldap/LdapFeature.h"
 #include "Enterprise/License/LicenseFeature.h"
 #include "Enterprise/StorageEngine/HotBackupFeature.h"
 #endif
@@ -159,7 +161,6 @@ static void SetupDatabaseFeaturePhase(MockServer& server) {
 
 #if USE_ENTERPRISE
   // required for AuthenticationFeature with USE_ENTERPRISE
-  server.addFeature<LdapFeature>(false);
   server.addFeature<LicenseFeature>(false);
   server.addFeature<EncryptionFeature>(false);
 #endif
@@ -169,6 +170,9 @@ static void SetupClusterFeaturePhase(MockServer& server) {
   SetupDatabaseFeaturePhase(server);
   server.addFeature<ClusterFeaturePhase>(false);
   server.addFeature<ClusterFeature>(false);
+  // set default replication factor to 1 for tests. otherwise the default value
+  // is 0, which will lead to follow up errors if it is not corrected later.
+  server.getFeature<ClusterFeature>().defaultReplicationFactor(1);
 
   // fake the exit code with which unresolved futures are returned on
   // shutdown. if we don't do this lots of places in ClusterInfo will
@@ -187,7 +191,8 @@ static void SetupV8Phase(MockServer& server) {
   SetupCommunicationFeaturePhase(server);
 #ifdef USE_V8
   server.addFeature<V8FeaturePhase>(false);
-  server.addFeature<V8DealerFeature>(false);
+  server.addFeature<V8DealerFeature>(
+      false, server.template getFeature<arangodb::metrics::MetricsFeature>());
   server.addFeature<V8SecurityFeature>(false);
 #endif
 }
@@ -195,7 +200,8 @@ static void SetupV8Phase(MockServer& server) {
 static void SetupAqlPhase(MockServer& server) {
   SetupV8Phase(server);
   server.addFeature<AqlFeaturePhase>(false);
-  server.addFeature<QueryRegistryFeature>(false);
+  server.addFeature<QueryRegistryFeature>(
+      false, server.template getFeature<arangodb::metrics::MetricsFeature>());
   server.addFeature<TemporaryStorageFeature>(false);
 
   server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(true);
@@ -388,7 +394,11 @@ MockMetricsServer::MockMetricsServer(bool start) : MockServer() {
 MockV8Server::MockV8Server(bool start) : MockServer() {
   // setup required application features
   SetupV8Phase(*this);
-  addFeature<NetworkFeature>(false);
+  addFeature<NetworkFeature>(
+      false, _server.getFeature<metrics::MetricsFeature>(),
+      network::ConnectionPool::Config{
+          .metrics = network::ConnectionPool::Metrics::fromMetricsFeature(
+              _server.getFeature<metrics::MetricsFeature>(), "mock")});
 
   if (start) {
     MockV8Server::startFeatures();
@@ -460,8 +470,13 @@ std::shared_ptr<aql::Query> MockAqlServer::createFakeQuery(
 
 MockRestServer::MockRestServer(bool start) : MockServer() {
   SetupV8Phase(*this);
-  addFeature<QueryRegistryFeature>(false);
-  addFeature<NetworkFeature>(false);
+  addFeature<QueryRegistryFeature>(
+      false, getFeature<arangodb::metrics::MetricsFeature>());
+  addFeature<NetworkFeature>(
+      false, _server.getFeature<metrics::MetricsFeature>(),
+      network::ConnectionPool::Config{
+          .metrics = network::ConnectionPool::Metrics::fromMetricsFeature(
+              _server.getFeature<metrics::MetricsFeature>(), "mock")});
   if (start) {
     MockRestServer::startFeatures();
   }
@@ -480,22 +495,21 @@ AgencyCache::applyTestTransaction(velocypack::Slice trxs) {
     res = std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t>{
         _readDB.applyTransactions(trxs, AgentInterface::WriteMode{true, true}),
         _commitIndex};  // apply logs
-  }
-  {
-    std::lock_guard g(_callbacksLock);
-    for (auto const& trx : VPackArrayIterator(trxs)) {
-      handleCallbacksNoLock(trx[0], uniq, toCall, pc, cc);
-    }
     {
-      std::lock_guard g(_storeLock);
-      for (auto const& i : pc) {
-        _planChanges.emplace(_commitIndex, i);
-      }
-      for (auto const& i : cc) {
-        _currentChanges.emplace(_commitIndex, i);
+      std::lock_guard g(_callbacksLock);
+      for (auto const& trx : VPackArrayIterator(trxs)) {
+        handleCallbacksNoLock(trx[0], uniq, toCall, pc, cc);
       }
     }
+    for (auto const& i : pc) {
+      _planChanges.emplace(_commitIndex, i);
+    }
+    for (auto const& i : cc) {
+      _currentChanges.emplace(_commitIndex, i);
+    }
   }
+
+  triggerWaiting(_commitIndex);
   invokeCallbacks(toCall);
   return res;
 }
@@ -516,13 +530,17 @@ MockClusterServer::MockClusterServer(bool useAgencyMockPool,
 
   addFeature<UpgradeFeature>(false, &_dummy, std::vector<size_t>{});
   addFeature<ServerSecurityFeature>(false);
+  addFeature<replication2::replicated_state::ReplicatedStateAppFeature>(false);
+  addFeature<ReplicatedLogFeature>(false);
 
-  network::ConnectionPool::Config config(
-      _server.getFeature<metrics::MetricsFeature>());
+  network::ConnectionPool::Config config;
+  config.metrics = network::ConnectionPool::Metrics::fromMetricsFeature(
+      _server.getFeature<metrics::MetricsFeature>(), "network-mock");
   config.numIOThreads = 1;
   config.maxOpenConnections = 8;
   config.verifyHosts = false;
-  addFeature<NetworkFeature>(true, config);
+  addFeature<NetworkFeature>(
+      true, _server.getFeature<metrics::MetricsFeature>(), config);
 }
 
 MockClusterServer::~MockClusterServer() {
@@ -532,12 +550,13 @@ MockClusterServer::~MockClusterServer() {
 void MockClusterServer::startFeatures() {
   MockServer::startFeatures();
 
-  network::ConnectionPool::Config poolConfig(
-      _server.getFeature<metrics::MetricsFeature>());
+  network::ConnectionPool::Config poolConfig;
   poolConfig.clusterInfo = &getFeature<ClusterFeature>().clusterInfo();
   poolConfig.numIOThreads = 1;
   poolConfig.maxOpenConnections = 3;
   poolConfig.verifyHosts = false;
+  poolConfig.metrics = network::ConnectionPool::Metrics::fromMetricsFeature(
+      _server.getFeature<metrics::MetricsFeature>(), "mock");
 
   if (_useAgencyMockPool) {
     _pool = std::make_unique<AsyncAgencyStorePoolMock>(_server, poolConfig);
@@ -989,6 +1008,10 @@ network::ConnectionPool* MockCoordinator::getPool() { return _pool.get(); }
 
 MockRestAqlServer::MockRestAqlServer() {
   SetupAqlPhase(*this);
-  addFeature<NetworkFeature>(false);
+  addFeature<NetworkFeature>(
+      false, _server.getFeature<metrics::MetricsFeature>(),
+      network::ConnectionPool::Config{
+          .metrics = network::ConnectionPool::Metrics::fromMetricsFeature(
+              _server.getFeature<metrics::MetricsFeature>(), "mock")});
   MockRestAqlServer::startFeatures();
 }

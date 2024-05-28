@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -341,6 +341,7 @@ void HttpResponse::addPayloadInternal(uint8_t const* data, size_t length,
   if (!options) {
     options = &velocypack::Options::Defaults;
   }
+  TRI_ASSERT(options != nullptr);
 
   if (_contentType == rest::ContentType::VPACK) {
     // the input (data) may contain multiple velocypack values, written
@@ -361,14 +362,12 @@ void HttpResponse::addPayloadInternal(uint8_t const* data, size_t length,
       // will contain sanitized data
       VPackBuffer<uint8_t> tmpBuffer;
       if (resolveExternals) {
-        bool resolveExt =
-            VelocyPackHelper::hasNonClientTypes(currentData, true, true);
+        bool resolveExt = VelocyPackHelper::hasNonClientTypes(currentData);
         if (resolveExt) {                  // resolve
           tmpBuffer.reserve(inputLength);  // reserve space already
           VPackBuilder builder(tmpBuffer, options);
           VelocyPackHelper::sanitizeNonClientTypes(
-              currentData, VPackSlice::noneSlice(), builder, options, true,
-              true);
+              currentData, VPackSlice::noneSlice(), builder, *options);
           currentData = VPackSlice(tmpBuffer.data());
           outputLength = currentData.byteSize();
         }
@@ -436,4 +435,8 @@ ErrorCode HttpResponse::zlibDeflate(bool onlyIfSmaller) {
 
 ErrorCode HttpResponse::gzipCompress(bool onlyIfSmaller) {
   return _body->gzipCompress(onlyIfSmaller);
+}
+
+ErrorCode HttpResponse::lz4Compress(bool onlyIfSmaller) {
+  return _body->lz4Compress(onlyIfSmaller);
 }

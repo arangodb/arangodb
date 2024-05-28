@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -60,6 +60,18 @@ RestCursorHandler::RestCursorHandler(
 
 RestCursorHandler::~RestCursorHandler() { releaseCursor(); }
 
+RequestLane RestCursorHandler::lane() const {
+  if (_request->requestType() != rest::RequestType::POST ||
+      !_request->suffixes().empty()) {
+    // continuing an existing query or cleaning up its resources
+    // gets higher priority than starting new queries
+    return RequestLane::CONTINUATION;
+  }
+
+  // low priority for starting new queries
+  return RequestLane::CLIENT_AQL;
+}
+
 RestStatus RestCursorHandler::execute() {
   // extract the sub-request type
   rest::RequestType const type = _request->requestType();
@@ -90,6 +102,11 @@ RestStatus RestCursorHandler::continueExecute() {
     return RestStatus::DONE;
   }
 
+  if (!_response->isResponseEmpty()) {
+    // an exception occurred in one of the suspension points
+    return RestStatus::DONE;
+  }
+
   // extract the sub-request type
   rest::RequestType const type = _request->requestType();
 
@@ -115,7 +132,8 @@ RestStatus RestCursorHandler::continueExecute() {
   }
 
   // Other parts of the query cannot be paused
-  TRI_ASSERT(false);
+  TRI_ASSERT(false) << requestToString(type) << " " << _request->fullUrl()
+                    << " " << _request->parameters();
   return RestStatus::DONE;
 }
 

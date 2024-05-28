@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -96,16 +96,6 @@ Result FileDescriptors::adjustTo(FileDescriptors::ValueType value) {
         recommended = current.hard;
       }
 
-#ifdef __APPLE__
-      // For MacOs there is an upper bound on open file-handles
-      // in addition to the user defined hard limit.
-      // The bad news is that the user-defined hard limit can be larger
-      // than the upper bound, in this case the below setting of soft limit
-      // to hard limit will always fail. With the below line we only set
-      // to at most the upper bound given by the System (OPEN_MAX).
-      recommended = std::min(static_cast<FileDescriptors::ValueType>(OPEN_MAX),
-                             recommended);
-#endif
       if (current.soft < recommended) {
         LOG_TOPIC("2940e", DEBUG, Logger::SYSCALL)
             << "soft limit " << current.soft
@@ -158,17 +148,11 @@ FileDescriptors::ValueType FileDescriptors::recommendedMinimum() {
     return requiredMinimum;
   }
 
-#ifdef __APPLE__
-  // some MacOS versions disallow raising file descriptor limits higher than
-  // this 🙄
-  return 8192;
-#else
-  // on Linux, we will also use 8192 for now. this should be low enough so
+  // on Linux, we will use 8192 for now. this should be low enough so
   // that it doesn't cause too much trouble when upgrading. however, this is
   // not a high enough value to operate with larger amounts of data! it is a
   // MINIMUM!
   return 8192;
-#endif
 }
 
 bool FileDescriptors::isUnlimited(FileDescriptors::ValueType value) {

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -86,6 +86,10 @@ bool ChecksumHelper::isBlobFile(std::string_view fileName) noexcept {
   return fileName.ends_with(".blob");
 }
 
+bool ChecksumHelper::isHashFile(std::string_view fileName) noexcept {
+  return fileName.ends_with(".hash");
+}
+
 bool ChecksumHelper::writeShaFile(std::string const& fileName,
                                   std::string const& checksum) {
   TRI_ASSERT(isSstFile(fileName) || isBlobFile(fileName));
@@ -154,8 +158,7 @@ void ChecksumHelper::checkMissingShaFiles() {
 
               // check file extension
               auto isInteresting = [](std::string_view name) noexcept -> bool {
-                return name.ends_with(".sst") || name.ends_with(".blob") ||
-                       name.ends_with(".hash");
+                return isSstFile(name) || isBlobFile(name) || isHashFile(name);
               };
 
               if (!isInteresting(lhs) || !isInteresting(rhs)) {
@@ -163,17 +166,17 @@ void ChecksumHelper::checkMissingShaFiles() {
                 return lhs < rhs;
               }
 
-              if (lhs.ends_with(".hash")) {
+              if (isHashFile(lhs)) {
                 // cannot have 2 hash files for the same prefix
-                TRI_ASSERT(!rhs.ends_with(".hash"));
+                TRI_ASSERT(!isHashFile(rhs));
 
                 // prefixes of lhs and rhs are identical - .hash files should be
                 // sorted first (before .sst or .blob files)
                 return true;
               }
-              if (rhs.ends_with(".hash")) {
+              if (isHashFile(rhs)) {
                 // cannot have 2 hash files for the same prefix
-                TRI_ASSERT(!lhs.ends_with(".hash"));
+                TRI_ASSERT(!isHashFile(lhs));
 
                 // prefixes of lhs and rhs are identical - .hash files should be
                 // sorted first (before .sst or .blob files)
@@ -184,6 +187,9 @@ void ChecksumHelper::checkMissingShaFiles() {
               // and .sst files. everything else does not matter
               return lhs < rhs;
             });
+
+  // input files for which we need to produce hash files
+  std::vector<std::string> toProduce;
 
   for (auto it = fileList.begin(); it != fileList.end(); ++it) {
     if (it->size() < 5) {
@@ -229,7 +235,16 @@ void ChecksumHelper::checkMissingShaFiles() {
     } else if (isSstFile(*it) || isBlobFile(*it)) {
       // we have a .sst or .blob file which was not preceeded by a .hash file.
       // this means we need to recalculate the sha hash for it!
-      std::string tempPath = basics::FileUtils::buildFilename(_rootPath, *it);
+      toProduce.emplace_back(basics::FileUtils::buildFilename(_rootPath, *it));
+    }
+  }
+
+  if (!toProduce.empty()) {
+    LOG_TOPIC("ff71d", INFO, arangodb::Logger::ENGINES)
+        << "calculating SHA256 checksums for " << toProduce.size()
+        << " RocksDB .sst file(s)";
+    size_t produced = 0;
+    for (auto const& tempPath : toProduce) {
       LOG_TOPIC("d6c86", DEBUG, arangodb::Logger::ENGINES)
           << "checkMissingShaFiles: Computing checksum for " << tempPath;
       auto checksumCalc = ChecksumCalculator();
@@ -241,6 +256,29 @@ void ChecksumHelper::checkMissingShaFiles() {
         checksumCalc.computeFinalChecksum();
         writeShaFile(tempPath, checksumCalc.getChecksum());
       }
+
+      produced++;
+      // progress reporting - we are only interested in very rough progress
+      // so that we don't spam that startup log too much. we intentionally
+      // report only every 100 .sst files, so in most restart situations
+      // there will be no progress reporting. progress reporting will become
+      // visible however if there are 100s or 1000s of hashes to compute.
+      // this situation should only happen when upgrading from Community
+      // Edition to Enterprise Edition or so.
+      if (produced != toProduce.size() && (produced % 100 == 0)) {
+        int progress =
+            static_cast<int>(static_cast<double>(produced) /
+                             static_cast<double>(toProduce.size()) * 100.0);
+        LOG_TOPIC("cf86b", INFO, arangodb::Logger::ENGINES)
+            << "calculated " << produced << "/" << toProduce.size()
+            << " checksums (" << progress << "% of files)...";
+      }
+    }
+
+    if (toProduce.size() >= 10) {
+      // only report end if there was some noteworthy amount of work to do
+      LOG_TOPIC("96bbd", INFO, arangodb::Logger::ENGINES)
+          << "finished calculating SHA256 checksums for RocksDB .sst files";
     }
   }
 }

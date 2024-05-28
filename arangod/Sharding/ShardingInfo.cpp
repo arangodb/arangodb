@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,6 +28,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Containers/SmallVector.h"
 #include "Logger/LogMacros.h"
@@ -168,6 +169,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info,
         for (auto const& serverSlice : VPackArrayIterator(shardSlice.value)) {
           servers.push_back(serverSlice.copyString());
         }
+        TRI_ASSERT(_shardIds != nullptr);
         _shardIds->try_emplace(shard, servers);
       }
     }
@@ -322,13 +324,16 @@ LogicalCollection* ShardingInfo::collection() const noexcept {
   return _collection;
 }
 
-void ShardingInfo::toVelocyPack(VPackBuilder& result, bool translateCids,
+void ShardingInfo::toVelocyPack(VPackBuilder& result,
+                                bool ignoreCollectionGroupAttributes,
+                                bool translateCids,
                                 bool includeShardsEntry) const {
   result.add(StaticStrings::NumberOfShards, VPackValue(_numberOfShards));
 
   if (includeShardsEntry) {
     result.add(VPackValue("shards"));
     result.openObject();
+    TRI_ASSERT(_shardIds != nullptr);
     auto tmpShards = _shardIds;
 
     for (auto const& shards : *tmpShards) {
@@ -345,17 +350,20 @@ void ShardingInfo::toVelocyPack(VPackBuilder& result, bool translateCids,
     result.close();  // shards
   }
 
-  if (isSatellite()) {
-    result.add(StaticStrings::ReplicationFactor,
-               VPackValue(StaticStrings::Satellite));
-  } else {
-    result.add(StaticStrings::ReplicationFactor,
-               VPackValue(_replicationFactor));
+  if (!ignoreCollectionGroupAttributes) {
+    // For replication Two this class is not responsible for the following
+    // attributes.
+    if (isSatellite()) {
+      result.add(StaticStrings::ReplicationFactor,
+                 VPackValue(StaticStrings::Satellite));
+    } else {
+      result.add(StaticStrings::ReplicationFactor,
+                 VPackValue(_replicationFactor));
+    }
+    // minReplicationFactor deprecated in 3.6
+    result.add(StaticStrings::WriteConcern, VPackValue(_writeConcern));
+    result.add(StaticStrings::MinReplicationFactor, VPackValue(_writeConcern));
   }
-
-  // minReplicationFactor deprecated in 3.6
-  result.add(StaticStrings::WriteConcern, VPackValue(_writeConcern));
-  result.add(StaticStrings::MinReplicationFactor, VPackValue(_writeConcern));
 
   if (!_distributeShardsLike.empty()) {
     if (ServerState::instance()->isCoordinator()) {
@@ -472,10 +480,14 @@ std::vector<std::string> const& ShardingInfo::shardKeys() const noexcept {
   return _shardKeys;
 }
 
-std::shared_ptr<ShardMap> ShardingInfo::shardIds() const { return _shardIds; }
+std::shared_ptr<ShardMap> ShardingInfo::shardIds() const {
+  TRI_ASSERT(_shardIds != nullptr);
+  return _shardIds;
+}
 
 std::set<ShardID> ShardingInfo::shardListAsShardID() const {
   std::set<ShardID> result;
+  TRI_ASSERT(_shardIds != nullptr);
   for (auto const& mapElement : *_shardIds) {
     result.emplace(mapElement.first);
   }
@@ -489,6 +501,7 @@ std::shared_ptr<ShardMap> ShardingInfo::shardIds(
     return _shardIds;
   }
 
+  TRI_ASSERT(_shardIds != nullptr);
   std::shared_ptr<ShardMap> copy = _shardIds;
   auto result = std::make_shared<ShardMap>();
 
@@ -503,6 +516,7 @@ std::shared_ptr<ShardMap> ShardingInfo::shardIds(
 }
 
 void ShardingInfo::setShardMap(std::shared_ptr<ShardMap> const& map) {
+  TRI_ASSERT(map != nullptr);
   _shardIds = map;
   _numberOfShards = map->size();
 }

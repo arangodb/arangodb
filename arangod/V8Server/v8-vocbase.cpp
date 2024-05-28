@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -41,8 +41,8 @@
 #include "Agency/State.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
-#include "Aql/ClusterQuery.h"
 #include "Aql/ExpressionContext.h"
+#include "Aql/Query.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryExecutionState.h"
 #include "Aql/QueryList.h"
@@ -87,7 +87,6 @@
 #include "V8Server/v8-externals.h"
 #include "V8Server/v8-general-graph.h"
 #include "V8Server/v8-replicated-logs.h"
-#include "V8Server/v8-pregel.h"
 #include "V8Server/v8-replication.h"
 #include "V8Server/v8-statistics.h"
 #include "V8Server/v8-users.h"
@@ -98,10 +97,6 @@
 #include "VocBase/Methods/Databases.h"
 #include "VocBase/Methods/Queries.h"
 #include "VocBase/Methods/Transactions.h"
-
-#ifdef USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -198,7 +193,7 @@ static void JS_Transactions(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (arangodb::ExecContext::isAuthEnabled()) {
     user = ExecContext::current().user();
   }
-  mgr->toVelocyPack(builder, vocbase.name(), user, fanout);
+  mgr->toVelocyPack(builder, vocbase.name(), user, fanout, /*details*/ false);
 
   builder.close();
 
@@ -316,7 +311,8 @@ static void JS_GetIcuTimezones(
 
   UErrorCode status = U_ZERO_ERROR;
 
-  icu::StringEnumeration* timeZones = icu::TimeZone::createEnumeration();
+  icu_64_64::StringEnumeration* timeZones =
+      icu_64_64::TimeZone::createEnumeration();
   if (timeZones) {
     int32_t idsCount = timeZones->count(status);
 
@@ -352,10 +348,11 @@ static void JS_GetIcuLocales(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Handle<v8::Array> result = v8::Array::New(isolate);
 
   int32_t count = 0;
-  const icu::Locale* locales = icu::Locale::getAvailableLocales(count);
+  const icu_64_64::Locale* locales =
+      icu_64_64::Locale::getAvailableLocales(count);
   if (locales) {
     for (int32_t i = 0; i < count; ++i) {
-      const icu::Locale* l = locales + i;
+      const icu_64_64::Locale* l = locales + i;
       char const* str = l->getBaseName();
 
       result
@@ -388,7 +385,7 @@ static void JS_FormatDatetime(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::String::Value pattern(
       isolate, args[1]->ToString(context).FromMaybe(v8::Handle<v8::String>()));
 
-  icu::TimeZone* tz = nullptr;
+  icu_64_64::TimeZone* tz = nullptr;
   if (args.Length() > 2) {
     v8::String::Value value(isolate, args[2]->ToString(context).FromMaybe(
                                          v8::Handle<v8::String>()));
@@ -399,27 +396,29 @@ static void JS_FormatDatetime(v8::FunctionCallbackInfo<v8::Value> const& args) {
     // compilers.
     // ..........................................................................
 
-    icu::UnicodeString ts((const UChar*)*value, value.length());
-    tz = icu::TimeZone::createTimeZone(ts);
+    icu_64_64::UnicodeString ts((const UChar*)*value, value.length());
+    tz = icu_64_64::TimeZone::createTimeZone(ts);
   } else {
-    tz = icu::TimeZone::createDefault();
+    tz = icu_64_64::TimeZone::createDefault();
   }
 
-  icu::Locale locale;
+  icu_64_64::Locale locale;
   if (args.Length() > 3) {
     std::string name = TRI_ObjectToString(isolate, args[3]);
-    locale = icu::Locale::createFromName(name.c_str());
+    locale = icu_64_64::Locale::createFromName(name.c_str());
   } else {
     // use language of default collator
     std::string name = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
-    locale = icu::Locale::createFromName(name.c_str());
+    locale = icu_64_64::Locale::createFromName(name.c_str());
   }
 
-  icu::UnicodeString formattedString;
+  icu_64_64::UnicodeString formattedString;
   UErrorCode status = U_ZERO_ERROR;
-  icu::UnicodeString aPattern((const UChar*)*pattern, pattern.length());
-  icu::DateFormatSymbols* ds = new icu::DateFormatSymbols(locale, status);
-  icu::SimpleDateFormat* s = new icu::SimpleDateFormat(aPattern, ds, status);
+  icu_64_64::UnicodeString aPattern((const UChar*)*pattern, pattern.length());
+  icu_64_64::DateFormatSymbols* ds =
+      new icu_64_64::DateFormatSymbols(locale, status);
+  icu_64_64::SimpleDateFormat* s =
+      new icu_64_64::SimpleDateFormat(aPattern, ds, status);
   s->setTimeZone(*tz);
   s->format((UDate)(datetime * 1000), formattedString);
 
@@ -452,7 +451,7 @@ static void JS_ParseDatetime(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::String::Value pattern(
       isolate, args[1]->ToString(context).FromMaybe(v8::Handle<v8::String>()));
 
-  icu::TimeZone* tz = nullptr;
+  icu_64_64::TimeZone* tz = nullptr;
   if (args.Length() > 2) {
     v8::String::Value value(isolate, args[2]->ToString(context).FromMaybe(
                                          v8::Handle<v8::String>()));
@@ -463,28 +462,30 @@ static void JS_ParseDatetime(v8::FunctionCallbackInfo<v8::Value> const& args) {
     // compilers.
     // ..........................................................................
 
-    icu::UnicodeString ts((const UChar*)*value, value.length());
-    tz = icu::TimeZone::createTimeZone(ts);
+    icu_64_64::UnicodeString ts((const UChar*)*value, value.length());
+    tz = icu_64_64::TimeZone::createTimeZone(ts);
   } else {
-    tz = icu::TimeZone::createDefault();
+    tz = icu_64_64::TimeZone::createDefault();
   }
 
-  icu::Locale locale;
+  icu_64_64::Locale locale;
   if (args.Length() > 3) {
     std::string name = TRI_ObjectToString(isolate, args[3]);
-    locale = icu::Locale::createFromName(name.c_str());
+    locale = icu_64_64::Locale::createFromName(name.c_str());
   } else {
     // use language of default collator
     std::string name = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
-    locale = icu::Locale::createFromName(name.c_str());
+    locale = icu_64_64::Locale::createFromName(name.c_str());
   }
 
-  icu::UnicodeString formattedString((const UChar*)*datetimeString,
-                                     datetimeString.length());
+  icu_64_64::UnicodeString formattedString((const UChar*)*datetimeString,
+                                           datetimeString.length());
   UErrorCode status = U_ZERO_ERROR;
-  icu::UnicodeString aPattern((const UChar*)*pattern, pattern.length());
-  icu::DateFormatSymbols* ds = new icu::DateFormatSymbols(locale, status);
-  icu::SimpleDateFormat* s = new icu::SimpleDateFormat(aPattern, ds, status);
+  icu_64_64::UnicodeString aPattern((const UChar*)*pattern, pattern.length());
+  icu_64_64::DateFormatSymbols* ds =
+      new icu_64_64::DateFormatSymbols(locale, status);
+  icu_64_64::SimpleDateFormat* s =
+      new icu_64_64::SimpleDateFormat(aPattern, ds, status);
   s->setTimeZone(*tz);
 
   UDate udate = s->parse(formattedString, status);
@@ -767,18 +768,10 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8ToVPack(isolate, options, args[1], false);
   }
 
-  arangodb::aql::QueryId queryId;
-  if (ServerState::instance()->isCoordinator()) {
-    queryId =
-        vocbase.server().getFeature<ClusterFeature>().clusterInfo().uniqid();
-  } else {
-    queryId = TRI_NewServerSpecificTick();
-  }
-
   auto origin = transaction::OperationOriginAQL{"executing query from JSON"};
-  auto query = arangodb::aql::ClusterQuery::create(
-      queryId, transaction::V8Context::create(vocbase, origin, true),
-      aql::QueryOptions(options.slice()));
+  auto query = aql::Query::create(
+      transaction::V8Context::create(vocbase, origin, true), aql::QueryString{},
+      /*bindParameters*/ nullptr, aql::QueryOptions(options.slice()));
 
   VPackSlice collections = queryBuilder.slice().get("collections");
   VPackSlice variables = queryBuilder.slice().get("variables");
@@ -799,10 +792,9 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_ASSERT(!ServerState::instance()->isDBServer());
   VPackBuilder ignoreResponse;
-  query->prepareClusterQuery(VPackSlice::emptyObjectSlice(), collections,
-                             variables, snippetBuilder.slice(),
-                             VPackSlice::noneSlice(), ignoreResponse,
-                             analyzersRevision, false /* fastPath */);
+  query->prepareFromVelocyPack(
+      /*querySlice*/ VPackSlice::emptyObjectSlice(), collections, variables,
+      /*snippets*/ snippetBuilder.slice(), analyzersRevision);
 
   aql::QueryResult queryResult = query->executeSync();
 
@@ -1880,23 +1872,6 @@ static void JS_AuthenticationEnabled(
   TRI_V8_TRY_CATCH_END
 }
 
-static void JS_LdapEnabled(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-#ifdef USE_ENTERPRISE
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
-  TRI_ASSERT(v8g->server().hasFeature<LdapFeature>());
-  auto& ldap = v8g->server().getFeature<LdapFeature>();
-  TRI_V8_RETURN(v8::Boolean::New(isolate, ldap.isEnabled()));
-#else
-  // LDAP only enabled in Enterprise Edition
-  TRI_V8_RETURN(v8::False(isolate));
-#endif
-
-  TRI_V8_TRY_CATCH_END
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief decode a _rev time stamp
 ////////////////////////////////////////////////////////////////////////////////
@@ -2192,7 +2167,6 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_InitV8IndexArangoDB(isolate, ArangoNS);
 
   TRI_InitV8Collections(context, &vocbase, v8g, isolate, ArangoNS);
-  TRI_InitV8Pregel(isolate, ArangoNS);
   TRI_InitV8Views(*v8g, isolate);
   TRI_InitV8ReplicatedLogs(v8g, isolate);
   TRI_InitV8Users(context, &vocbase, v8g, isolate);
@@ -2279,10 +2253,6 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "AUTHENTICATION_ENABLED"),
       JS_AuthenticationEnabled, true);
-
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "LDAP_ENABLED"),
-                               JS_LdapEnabled, true);
 
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "TRUSTED_PROXIES"),

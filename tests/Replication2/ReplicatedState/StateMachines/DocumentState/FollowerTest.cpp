@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2023-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -258,7 +259,7 @@ TEST_F(DocumentStateFollowerTest,
   std::vector<DocumentLogEntry> entries;
   entries.emplace_back(ReplicatedOperation::buildDocumentOperation(
       TRI_VOC_DOCUMENT_OPERATION_INSERT, TransactionId{6}, shardId,
-      velocypack::SharedSlice()));
+      velocypack::SharedSlice(), "root"));
   auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
   ASSERT_DEATH_CORE_FREE(
       std::ignore = follower->applyEntries(std::move(entryIterator)).get(), "");
@@ -471,10 +472,10 @@ TEST_F(DocumentStateFollowerTest,
   std::vector<DocumentLogEntry> entries;
   entries.emplace_back(ReplicatedOperation::buildDocumentOperation(
       TRI_VOC_DOCUMENT_OPERATION_INSERT, TransactionId{6}, ShardID{1},
-      velocypack::SharedSlice()));
+      velocypack::SharedSlice(), "root"));
   entries.emplace_back(ReplicatedOperation::buildDocumentOperation(
       TRI_VOC_DOCUMENT_OPERATION_INSERT, TransactionId{10}, ShardID{2},
-      velocypack::SharedSlice()));
+      velocypack::SharedSlice(), "root"));
   auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
   res = follower->applyEntries(std::move(entryIterator));
   ASSERT_TRUE(res.get().ok());

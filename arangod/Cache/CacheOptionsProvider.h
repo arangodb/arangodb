@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -45,13 +45,15 @@ struct CacheOptions {
   std::uint64_t rebalancingInterval = 2'000'000ULL;  // 2s
   // maximum memory usage for spare hash tables kept around by the cache.
   std::uint64_t maxSpareAllocation = 67'108'864ULL;  // 64MB
+  // maximum size of an individual cache value entry (excluding key size)
+  std::uint64_t maxCacheValueSize = 4'194'304;  // 4MB
   // used internally and by tasks. this multiplier is used with the
   // cache's memory limit, and if exceeded, triggers a shrinking of the
   // least frequently accessed kCachesToShrinkRatio caches.
   // it is set to 56% of the configured memory limit by default only because
   // of compatibility reasons. the value was set to 0.7 * 0.8 of the memory
   // limit, i.e. 0.56.
-  double highwaterMultiplier = 0.95;
+  double highwaterMultiplier = 0.56;
   // whether or not we want recent hit rates. if this is turned off,
   // we only get global hit rates over the entire lifetime of a cache
   bool enableWindowedStats = true;

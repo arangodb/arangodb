@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -60,7 +60,7 @@ GeneralRequest::GeneralRequest(ConnectionInfo const& connectionInfo,
                                uint64_t mid)
     : _connectionInfo(connectionInfo),
       _messageId(mid),
-      _requestContext(nullptr),
+      _requestContext(),
       _tokenExpiry(0.0),
       _memoryUsage(0),
       _authenticationMethod(rest::AuthenticationMethod::NONE),
@@ -68,15 +68,7 @@ GeneralRequest::GeneralRequest(ConnectionInfo const& connectionInfo,
       _contentType(ContentType::UNSET),
       _contentTypeResponse(ContentType::UNSET),
       _acceptEncoding(EncodingType::UNSET),
-      _isRequestContextOwner(false),
       _authenticated(false) {}
-
-GeneralRequest::~GeneralRequest() {
-  // only delete if we are the owner of the context
-  if (_requestContext != nullptr && _isRequestContextOwner) {
-    delete _requestContext;
-  }
-}
 
 std::string_view GeneralRequest::translateMethod(RequestType method) {
   switch (method) {
@@ -167,21 +159,11 @@ rest::RequestType GeneralRequest::findRequestType(char const* ptr,
   return RequestType::ILLEGAL;
 }
 
-void GeneralRequest::setRequestContext(RequestContext* requestContext,
-                                       bool isRequestContextOwner) {
+void GeneralRequest::setRequestContext(
+    std::shared_ptr<RequestContext> requestContext) {
   TRI_ASSERT(requestContext != nullptr);
 
-  if (_requestContext) {
-    // if we have a shared context, we should not have got here
-    TRI_ASSERT(isRequestContextOwner);
-
-    // delete any previous context
-    TRI_ASSERT(false);
-    delete _requestContext;
-  }
-
-  _requestContext = requestContext;
-  _isRequestContextOwner = isRequestContextOwner;
+  _requestContext = std::move(requestContext);
 }
 
 void GeneralRequest::setPayload(velocypack::Buffer<uint8_t> buffer) {

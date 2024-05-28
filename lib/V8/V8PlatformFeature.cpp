@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,19 +21,16 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <stdlib.h>
-#include <string.h>
-#include <limits>
-#include <type_traits>
-#include <utility>
-
-#include <libplatform/libplatform.h>
-
 #include "V8PlatformFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/ArangoGlobalContext.h"
+#include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
+#include "Basics/directories.h"
+#include "Basics/exitcodes.h"
+#include "Basics/files.h"
 #include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -43,6 +40,15 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "V8/v8-globals.h"
 
+#include <absl/strings/str_cat.h>
+#include <libplatform/libplatform.h>
+
+#include <cstdlib>
+#include <cstring>
+#include <limits>
+#include <type_traits>
+#include <utility>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
@@ -50,10 +56,6 @@ using namespace arangodb::options;
 namespace {
 void gcPrologueCallback(v8::Isolate* isolate, v8::GCType /*type*/,
                         v8::GCCallbackFlags /*flags*/) {
-  // if (type != v8::kGCTypeMarkSweepCompact) {
-  //   return;
-  // }
-
   v8::HeapStatistics h;
   isolate->GetHeapStatistics(&h);
 
@@ -120,7 +122,6 @@ void gcEpilogueCallback(v8::Isolate* isolate, v8::GCType type,
 // this callback is executed by V8 when it runs out of memory.
 // after the callback returns, V8 will call std::abort() and
 // terminate the entire process
-#ifdef V8_UPGRADE
 void oomCallback(char const* location, v8::OOMDetails const& details) {
   LOG_TOPIC("cfa4b", FATAL, arangodb::Logger::V8)
       << "out of " << (details.is_heap_oom ? "heap " : "") << "memory in V8 ("
@@ -128,18 +129,6 @@ void oomCallback(char const* location, v8::OOMDetails const& details) {
       << (details.detail == nullptr ? "" : details.detail);
   FATAL_ERROR_EXIT();
 }
-#else
-static void oomCallback(char const* location, bool isHeapOOM) {
-  if (isHeapOOM) {
-    LOG_TOPIC("fd5c4", FATAL, arangodb::Logger::V8)
-        << "out of heap hemory in V8 (" << location << ")";
-  } else {
-    LOG_TOPIC("5d980", FATAL, arangodb::Logger::V8)
-        << "out of memory in V8 (" << location << ")";
-  }
-  FATAL_ERROR_EXIT();
-}
-#endif
 
 // this callback is executed by V8 when it encounters a fatal error.
 // after the callback returns, V8 will call std::abort() and
@@ -154,6 +143,8 @@ void fatalCallback(char const* location, char const* message) {
 }
 
 }  // namespace
+
+std::string const V8PlatformFeature::fn("icudtl.dat");
 
 void V8PlatformFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
@@ -209,9 +200,42 @@ void V8PlatformFeature::validateOptions(
 }
 
 void V8PlatformFeature::start() {
-  v8::V8::InitializeICU();
+  // get path to ICU datafile
+  std::string path = determineICUDataPath();
 
-  _platform = v8::platform::NewDefaultPlatform();
+  if (!TRI_IsRegularFile(path.c_str())) {
+    std::string msg = absl::StrCat(
+        "failed to initialize ICU library. Could not locate '", path,
+        "'. Please make sure it is available. "
+        "The environment variable ICU_DATA");
+    std::string icupath;
+    if (TRI_GETENV("ICU_DATA", icupath)) {
+      absl::StrAppend(&msg, "='", icupath, "'");
+    }
+    absl::StrAppend(&msg, " should point to the directory containing '", fn,
+                    "'");
+
+    LOG_TOPIC("0de77", FATAL, arangodb::Logger::FIXME) << msg;
+    FATAL_ERROR_EXIT_CODE(TRI_EXIT_ICU_INITIALIZATION_FAILED);
+  }
+
+  v8::V8::InitializeICU(path.c_str());
+
+  auto numberOfThreads = [&]() -> int {
+    std::string basename = TRI_Basename(server().options()->progname());
+    bool isArangosh = basename == "arangosh" || basename == "arangosh.exe";
+    if (isArangosh) {
+      // arangosh is single-threaded
+      return 1;
+    }
+    // let v8 figure out the optimal number of threads
+    return -1;
+  };
+
+  // note: we must set the number of threads upon creation of the V8
+  // platform to make sure V8 does not create the threads lazily upon
+  // the first usage. doing so would create lots of TSan warnings.
+  _platform = v8::platform::NewDefaultPlatform(numberOfThreads());
   v8::V8::InitializePlatform(_platform.get());
 
   // explicit option --javascript.v8-options used
@@ -234,11 +258,7 @@ void V8PlatformFeature::start() {
 
 void V8PlatformFeature::unprepare() {
   v8::V8::Dispose();
-#ifdef V8_UPGRADE
   v8::V8::DisposePlatform();
-#else
-  v8::V8::ShutdownPlatform();
-#endif
   _platform.reset();
   _allocator.reset();
 }
@@ -285,4 +305,48 @@ void V8PlatformFeature::disposeIsolate(v8::Isolate* isolate) {
   }
   // because Isolate::Dispose() will delete isolate!
   isolate->Dispose();
+}
+
+std::string V8PlatformFeature::determineICUDataPath() {
+  std::string path;
+
+  if (TRI_GETENV("ICU_DATA", path)) {
+    path = FileUtils::buildFilename(path, fn);
+  }
+  if (path.empty() || !TRI_IsRegularFile(path.c_str())) {
+    if (!path.empty()) {
+      LOG_TOPIC("581d1", WARN, arangodb::Logger::FIXME)
+          << "failed to locate '" << fn << "' at '" << path << "'";
+    }
+
+    auto context = ArangoGlobalContext::CONTEXT;
+    std::string binaryExecutionPath = context->getBinaryPath();
+    std::string binaryName = context->binaryName();
+    std::string bpfn = FileUtils::buildFilename(binaryExecutionPath, fn);
+
+    if (TRI_IsRegularFile(fn.c_str())) {
+      path = fn;
+    } else if (TRI_IsRegularFile(bpfn.c_str())) {
+      path = bpfn;
+    } else {
+      std::string argv0 =
+          FileUtils::buildFilename(binaryExecutionPath, binaryName);
+      path = TRI_LocateInstallDirectory(argv0.c_str(), _binaryPath);
+      path = FileUtils::buildFilename(path, ICU_DESTINATION_DIRECTORY, fn);
+
+      if (!TRI_IsRegularFile(path.c_str())) {
+        // Try whether we have an absolute install prefix:
+        path = FileUtils::buildFilename(ICU_DESTINATION_DIRECTORY, fn);
+      }
+    }
+
+    if (TRI_IsRegularFile(path.c_str())) {
+      std::string icu_path = path.substr(0, path.length() - fn.length());
+      FileUtils::makePathAbsolute(icu_path);
+      FileUtils::normalizePath(icu_path);
+      setenv("ICU_DATA", icu_path.c_str(), 1);
+    }
+  }
+
+  return path;
 }

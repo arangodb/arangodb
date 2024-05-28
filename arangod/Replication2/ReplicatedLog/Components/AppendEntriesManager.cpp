@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -54,7 +54,7 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
   Guarded<GuardedData>::mutex_guard_type guard = guarded.getLockedGuard();
   if (guard->resigned) {
     throw ParticipantResignedException(
-        TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE);
+        TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
   }
   auto requestGuard = guard->requestInFlight.acquire();
   if (not requestGuard) {
@@ -111,7 +111,7 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
       guard = self->guarded.getLockedGuard();
       if (guard->resigned) {
         throw ParticipantResignedException(
-            TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE);
+            TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
       }
       if (result.fail()) {
         LOG_CTX("0982a", ERR, lctx) << "failed to persist: " << result;
@@ -135,7 +135,7 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
       guard = self->guarded.getLockedGuard();
       if (guard->resigned) {
         throw ParticipantResignedException(
-            TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE);
+            TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
       }
       if (result.fail()) {
         LOG_CTX("7cb3d", ERR, lctx)

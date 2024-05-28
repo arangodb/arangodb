@@ -5,10 +5,7 @@ window.UserConfig = Backbone.Model.extend({
     queries: []
   },
 
-  ldapEnabled: false,
-
-  initialize: function (options) {
-    this.ldapEnabled = options.ldapEnabled;
+  initialize: function () {
     this.getUser();
   },
 
@@ -16,21 +13,7 @@ window.UserConfig = Backbone.Model.extend({
 
   fetch: function (options) {
     options = _.extend({parse: true}, options);
-    var model = this;
-    var success = options.success;
-
-    if (this.ldapEnabled) {
-      this.getLocalConfig();
-      options.success = (function (resp) {
-        // if success function available, call it
-        if (success) {
-          success.call(options.context, model, resp, options);
-        }
-      })();
-    } else {
-      // if ldap is not enabled -> call Backbone's fetch method
-      return Backbone.Collection.prototype.fetch.call(this, options);
-    }
+    return Backbone.Collection.prototype.fetch.call(this, options);
   },
 
   getConfigPath: function () {
@@ -149,55 +132,47 @@ window.UserConfig = Backbone.Model.extend({
     const storeToDB = (dataFromDB) => {
       const dataObjectToStore = mergeDatabaseDataWithLocalChanges(dataFromDB, keyName, keyValue);
 
-      if (this.ldapEnabled) {
-        this.setLocalItem(keyName, dataObjectToStore, callback);
-      } else {
-        // url PUT /_api/user/<username>/config/<key>
-        var self = this;
+      // url PUT /_api/user/<username>/config/<key>
+      var self = this;
 
-        $.ajax({
-          type: 'PUT',
-          cache: false,
-          url: arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(this.username) + '/config/' + encodeURIComponent(keyName)),
-          contentType: 'application/json',
-          processData: false,
-          data: JSON.stringify({value: dataObjectToStore}),
-          async: true,
-          success: function () {
-            self.set(keyName, dataObjectToStore);
-
-            if (callback) {
-              callback(dataObjectToStore);
-            }
-          },
-          error: function () {
-            arangoHelper.arangoError('User configuration', 'Could not update user configuration for key: ' + keyName);
-          }
-        });
-      }
-    };
-  },
-
-  getItem: function (keyName, callback) {
-    if (this.ldapEnabled) {
-      this.getLocalItem(keyName, callback);
-    } else {
-      // url GET /_api/user/<username>/config/<key>
       $.ajax({
-        type: 'GET',
+        type: 'PUT',
         cache: false,
         url: arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(this.username) + '/config/' + encodeURIComponent(keyName)),
         contentType: 'application/json',
         processData: false,
+        data: JSON.stringify({value: dataObjectToStore}),
         async: true,
-        success: function (keyValue) {
-          callback(keyValue);
+        success: function () {
+          self.set(keyName, dataObjectToStore);
+
+          if (callback) {
+            callback(dataObjectToStore);
+          }
         },
         error: function () {
-          arangoHelper.arangoError('User configuration', 'Could not fetch user configuration for key: ' + keyName);
+          arangoHelper.arangoError('User configuration', 'Could not update user configuration for key: ' + keyName);
         }
       });
-    }
+    };
+  },
+
+  getItem: function (keyName, callback) {
+    // url GET /_api/user/<username>/config/<key>
+    $.ajax({
+      type: 'GET',
+      cache: false,
+      url: arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(this.username) + '/config/' + encodeURIComponent(keyName)),
+      contentType: 'application/json',
+      processData: false,
+      async: true,
+      success: function (keyValue) {
+        callback(keyValue);
+      },
+      error: function () {
+        arangoHelper.arangoError('User configuration', 'Could not fetch user configuration for key: ' + keyName);
+      }
+    });
   }
 
 });

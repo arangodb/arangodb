@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -60,10 +60,11 @@ auto rewriteStatusErrorMessage(inspection::Status const& status) -> Result {
     return Result{TRI_ERROR_VALIDATION_BAD_PARAMETER, status.error()};
   }
 
-  return Result{
-      TRI_ERROR_BAD_PARAMETER,
-      status.error() +
-          (status.path().empty() ? "" : " on attribute " + status.path())};
+  return Result{TRI_ERROR_BAD_PARAMETER,
+                status.error() + (status.path().empty()
+                                      ? ""
+                                      : fmt::format(" (on attribute \"{}\")",
+                                                    status.path()))};
 }
 
 auto rewriteStatusErrorMessageForRestore(inspection::Status const& status)
@@ -96,10 +97,11 @@ auto rewriteStatusErrorMessageForRestore(inspection::Status const& status)
     return Result{TRI_ERROR_VALIDATION_BAD_PARAMETER, status.error()};
   }
 
-  return Result{
-      TRI_ERROR_BAD_PARAMETER,
-      status.error() +
-          (status.path().empty() ? "" : " on attribute " + status.path())};
+  return Result{TRI_ERROR_BAD_PARAMETER,
+                status.error() + (status.path().empty()
+                                      ? ""
+                                      : fmt::format(" (on attribute \"{}\")",
+                                                    status.path()))};
 }
 
 auto handleShards(std::string_view, VPackSlice value, VPackSlice fullBody,
@@ -171,9 +173,9 @@ bool isEdgeCollection(VPackSlice fullBody) {
 #endif
 
 static std::unordered_set<std::string_view> knownSystemCollections = {
-    "_analyzers", "_appbundles", "_apps",         "_aqlfunctions",
-    "_frontend",  "_graphs",     "_jobs",         "_pregel_queries",
-    "_queues",    "_statistics", "_statistics15", "_statisticsRaw"};
+    "_analyzers",  "_appbundles",   "_apps",         "_aqlfunctions",
+    "_frontend",   "_graphs",       "_jobs",         "_queues",
+    "_statistics", "_statistics15", "_statisticsRaw"};
 
 bool isKnownSystemCollection(std::string_view name) {
   return knownSystemCollections.contains(name);
@@ -777,11 +779,7 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromRestoreAPIBody(
         if (!col.shardingStrategy.has_value() &&
             !col.distributeShardsLike.has_value() &&
             config.defaultDistributeShardsLike.empty()) {
-#if USE_ENTERPRISE
-          col.shardingStrategy = "enterprise-compat";
-#else
-          col.shardingStrategy = "community-compat";
-#endif
+          col.shardingStrategy = "hash";
         }
       });
   if (res.fail()) {
@@ -804,9 +802,16 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromRestoreAPIBody(
           if (!col.shardingStrategy.has_value() &&
               !col.distributeShardsLike.has_value() &&
               config.defaultDistributeShardsLike.empty()) {
+            const bool isSmart =
 #if USE_ENTERPRISE
-            if (col.getType() == TRI_COL_TYPE_DOCUMENT) {
-              if (col.isSmart) {
+                col.isSmart;
+#else
+                false;
+#endif
+            if (!isSmart) {
+              col.shardingStrategy = "hash";
+            } else {
+              if (col.getType() == TRI_COL_TYPE_DOCUMENT) {
                 if (col.smartGraphAttribute.has_value()) {
                   // SmartGraphs need  to have shardingStrategy "hash"
                   col.shardingStrategy = "hash";
@@ -816,19 +821,10 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromRestoreAPIBody(
                   col.shardingStrategy = "enterprise-hex-smart-vertex";
                 }
               } else {
-                col.shardingStrategy = "enterprise-compat";
-              }
-            } else {
-              if (col.isSmart) {
                 // Smart Edge Collections always have hash-smart-edge sharding
                 col.shardingStrategy = "enterprise-hash-smart-edge";
-              } else {
-                col.shardingStrategy = "enterprise-compat";
               }
             }
-#else
-            col.shardingStrategy = "community-compat";
-#endif
           }
         });
     if (res.fail() && res.is(TRI_ERROR_ONLY_ENTERPRISE)) {

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,7 +27,6 @@
 #include "Aql/AqlValue.h"
 #include "Aql/Ast.h"
 #include "Aql/AttributeAccessor.h"
-#include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Function.h"
@@ -88,7 +87,7 @@ Expression::Expression(Ast* ast, AstNode* node)
 }
 
 /// @brief create an expression from VPack
-Expression::Expression(Ast* ast, arangodb::velocypack::Slice const& slice)
+Expression::Expression(Ast* ast, arangodb::velocypack::Slice slice)
     : Expression(ast, ast->createNode(slice.get("expression"))) {
   TRI_ASSERT(_type != UNPROCESSED);
 }
@@ -726,7 +725,7 @@ AqlValue Expression::executeSimpleExpressionObject(ExpressionContext& ctx,
       VPackSlice slice = materializer.slice(result);
 
       buffer->clear();
-      functions::Stringify(&vopts, adapter, slice);
+      functions::stringify(&vopts, adapter, slice);
 
       if (mustCheckUniqueness) {
         // prevent duplicate keys from being used
@@ -1922,6 +1921,7 @@ AqlValue Expression::executeSimpleExpressionArithmetic(ExpressionContext& ctx,
       result = l * r;
       break;
     case NODE_TYPE_OPERATOR_BINARY_DIV:
+      TRI_ASSERT(r != 0.0);
       result = l / r;
       break;
     case NODE_TYPE_OPERATOR_BINARY_MOD:

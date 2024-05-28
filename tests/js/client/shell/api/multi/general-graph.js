@@ -2,18 +2,16 @@
 /* global db, fail, arango, assertTrue, assertFalse, assertEqual, assertNotUndefined, assertNotEqual, assertMatch */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief 
-// /
-// /
 // / DISCLAIMER
 // /
-// / Copyright 2018 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,7 +21,7 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author 
+// / @author Wilfried Goesgens
 // //////////////////////////////////////////////////////////////////////////////
 
 'use strict';
@@ -341,24 +339,6 @@ function check_creation_of_graphSuite() {
       let edge_definition = [first_def];
       create_graph(sync, graph_name, edge_definition);
       additional_vertex_collection(sync, graph_name, product_collection);
-      const doc = delete_vertex_collection(sync, graph_name, product_collection);
-
-      assertEqual(doc.code, 202);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 202);
-      assertEqual(doc.parsedBody['graph']['name'], graph_name);
-      assertEqual(doc.parsedBody['graph']['_rev'], doc.headers['etag']);
-      assertEqual(doc.parsedBody['graph']['edgeDefinitions'], edge_definition);
-      assertEqual(doc.parsedBody['graph']['orphanCollections'], []);
-    },
-
-    test_can_delete_an_already_removed_orphan_collection: function () {
-      let edge_definition = [];
-      create_graph(sync, graph_name, edge_definition);
-      additional_vertex_collection(sync, graph_name, product_collection);
-      db._drop(product_collection);
-      assertFalse(db._collection(product_collection));
-
       const doc = delete_vertex_collection(sync, graph_name, product_collection);
 
       assertEqual(doc.code, 202);
@@ -854,7 +834,7 @@ function check_edge_operationSuite() {
       assertTrue(doc.parsedBody['error']);
       assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
       assertMatch(/.*referenced _from collection 'MISSING' is not part of the graph.*/, doc.parsedBody['errorMessage'], doc);
-      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED.code);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_PART_OF_THE_GRAPH.code);
     },
 
     test_can_not_create_edge_with_unknown__to_vertex_collection: function () {
@@ -864,31 +844,7 @@ function check_edge_operationSuite() {
       assertTrue(doc.parsedBody['error']);
       assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
       assertMatch(/.*referenced _to collection 'MISSING' is not part of the graph.*/, doc.parsedBody['errorMessage'], doc);
-      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED.code);
-    },
-
-    test_should_not_replace_an_edge_in_case_the_collection_does_not_exist: function () {
-      let v1 = create_vertex(sync, graph_name, user_collection, {});
-      v1 = v1.parsedBody['vertex']['_id'];
-      let v2 = create_vertex(sync, graph_name, user_collection, {});
-      v2 = v2.parsedBody['vertex']['_id'];
-      assertEdgeCollectionNotKnown(replace_edge(sync, graph_name, unknown_collection, unknown_key, {
-        "_from": `${v1}/1`,
-        "_to": `${v2}/2`
-      }));
-
-      // We will now forcefully drop the edge collection manually. It is still part of the graph definition,
-      // but got removed from the database. Therefore, the error must be a 404 in comparison to the check
-      // above in "assertEdgeCollectionNotKnown".
-      db._drop(friend_collection);
-      const doc = replace_edge(sync, graph_name, friend_collection, unknown_key, {
-        "_from": `${v1}/1`,
-        "_to": `${v2}/2`
-      });
-      assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
-      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
-      assertMatch(/.*collection or view not found.*/, doc.parsedBody['errorMessage'], doc);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_PART_OF_THE_GRAPH.code);
     },
 
     test_can_get_an_edge: function () {
@@ -1343,7 +1299,7 @@ const assertVertexCollectionNotKnown = (response) => {
   assertTrue(response.parsedBody.error);
   assertEqual(
     response.parsedBody.errorNum,
-    internal.errors.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED.code
+    internal.errors.ERROR_GRAPH_COLLECTION_NOT_PART_OF_THE_GRAPH.code
   );
 };
 
@@ -1467,7 +1423,7 @@ function check_error_codeSuite() {
       assertEqual(response.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
       assertTrue(response.parsedBody.error);
       assertEqual(response.parsedBody.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
-      assertEqual(response.parsedBody.errorNum, internal.errors.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED.code);
+      assertEqual(response.parsedBody.errorNum, internal.errors.ERROR_GRAPH_COLLECTION_NOT_PART_OF_THE_GRAPH.code);
     },
 
     test_get_vertex_unknown: function () {

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -60,20 +60,7 @@ namespace arangodb {
 struct DeferredAction;
 }  // namespace arangodb
 
-#if (_MSC_VER >= 1)
-// suppress warnings:
-#pragma warning(push)
-// conversion from 'size_t' to 'immer::detail::rbts::count_t', possible loss of
-// data
-#pragma warning(disable : 4267)
-// result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift
-// intended?)
-#pragma warning(disable : 4334)
-#endif
 #include <immer/flex_vector.hpp>
-#if (_MSC_VER >= 1)
-#pragma warning(pop)
-#endif
 
 namespace arangodb::futures {
 template<typename T>
@@ -107,22 +94,6 @@ class LogLeader : public std::enable_shared_from_this<LogLeader>,
       std::shared_ptr<IScheduler> scheduler,
       std::shared_ptr<IRebootIdCache> rebootIdCache)
       -> std::shared_ptr<LogLeader>;
-
-  auto insert(LogPayload payload, bool waitForSync = false) -> LogIndex;
-
-  // As opposed to the above insert methods, this one does not trigger the async
-  // replication automatically, i.e. does not call triggerAsyncReplication after
-  // the insert into the in-memory log. This is necessary for testing. It should
-  // not be necessary in production code. It might seem useful for batching, but
-  // in that case, it'd be even better to add an insert function taking a batch.
-  //
-  // This method will however not prevent the resulting log entry from being
-  // replicated, if async replication is running in the background already, or
-  // if it is triggered by someone else.
-  struct DoNotTriggerAsyncReplication {};
-  static constexpr DoNotTriggerAsyncReplication doNotTriggerAsyncReplication{};
-  auto insert(LogPayload payload, bool waitForSync,
-              DoNotTriggerAsyncReplication) -> LogIndex;
 
   [[nodiscard]] auto waitFor(LogIndex) -> WaitForFuture override;
 

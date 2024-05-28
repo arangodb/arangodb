@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -35,7 +35,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Containers/FlatHashSet.h"
 #include "Metrics/Fwd.h"
@@ -162,8 +161,8 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   static constexpr std::string_view name() noexcept { return "RocksDBEngine"; }
 
   // create the storage engine
-  explicit RocksDBEngine(Server& server,
-                         RocksDBOptionsProvider const& optionsProvider);
+  RocksDBEngine(Server& server, RocksDBOptionsProvider const& optionsProvider,
+                metrics::MetricsFeature& metrics);
   ~RocksDBEngine();
 
   // inherited from ApplicationFeature
@@ -381,10 +380,6 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   void pruneWalFiles();
 
   double pruneWaitTimeInitial() const { return _pruneWaitTimeInitial; }
-  bool useEdgeCache() const { return _useEdgeCache; }
-
-  // whether or not to issue range delete markers in the write-ahead log
-  bool useRangeDeleteInWal() const noexcept { return _useRangeDeleteInWal; }
 
   // management methods for synchronizing with external persistent stores
   TRI_voc_tick_t currentTick() const override;
@@ -577,6 +572,8 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   RocksDBOptionsProvider const& _optionsProvider;
 
+  metrics::MetricsFeature& _metrics;
+
   /// single rocksdb database used in this storage engine
   rocksdb::TransactionDB* _db;
   /// default read options
@@ -668,17 +665,11 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   /// @brief activate rocksdb's debug logging
   bool _debugLogging;
 
-  /// @brief whether or not the in-memory cache for edges is used
-  bool _useEdgeCache;
-
   /// @brief whether or not to verify the sst files present in the db path
   bool _verifySst;
 
   /// @brief activate generation of SHA256 files for .sst and .blob files
   bool _createShaFiles;
-
-  // whether or not to issue range delete markers in the write-ahead log
-  bool _useRangeDeleteInWal;
 
   /// @brief whether or not the last health check was successful.
   /// this is used to determine when to execute the potentially expensive

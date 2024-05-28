@@ -1,28 +1,29 @@
 /*jshint globalstrict:false, strict:false */
 /* global getOptions, assertEqual, assertTrue, fail, arango */
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB Inc, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Jan Steemann
 /// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 if (getOptions === true) {
   return {
@@ -106,6 +107,32 @@ function testSuite() {
       } finally {
         trx.abort();
       }
+    },
+
+    testTransactionAboveLimitCommit: function(testName) {
+      // 1KB limit is quite low
+      // We're testing that the transaction is not aborted when the limit is reached.
+      // Rather, the commit should succeed.
+      let trx = db._createTransaction({ collections: { write: [cn] }, maxTransactionSize: 1024 });
+      let c = trx.collection(cn);
+      let docCount = 0;
+      const maxDocs = 10;
+      while (docCount < maxDocs) {
+        try {
+          // The insertion takes place inside a loop, because we are particularly interested in
+          // the iteration where the limit is reached. We are expecting a failure after a certain document count.
+          c.insert({_key: `${testName}-${docCount}`, value: docCount});
+        } catch (err) {
+          assertEqual(errors.ERROR_RESOURCE_LIMIT.code, err.errorNum);
+          break;
+        }
+        ++docCount;
+      }
+      assertTrue(docCount > 0, "We didn't insert anything, better check maxTransactionSize!");
+      assertTrue(docCount < maxDocs, "We actually inserted everything, better check maxTransactionSize!");
+      trx.commit();
+      c = db._collection(cn);
+      assertEqual(docCount, c.count(), `expected ${docCount} documents in collection ${cn} but got ${c.count()}`);
     },
     
     testAQLTransactionAboveLimit: function() {

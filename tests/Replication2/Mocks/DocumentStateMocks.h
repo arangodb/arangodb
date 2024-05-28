@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -48,7 +49,7 @@ struct MockDocumentStateTransactionHandler;
 struct MockDocumentStateSnapshotHandler;
 
 struct MockTransactionManager : transaction::IManager {
-  MOCK_METHOD(Result, abortManagedTrx,
+  MOCK_METHOD(futures::Future<Result>, abortManagedTrx,
               (TransactionId, std::string const& database), (override));
 };
 
@@ -185,7 +186,8 @@ struct MockDocumentStateHandlersFactory
   MOCK_METHOD(
       std::shared_ptr<replicated_state::document::IDocumentStateTransaction>,
       createTransaction,
-      (TRI_vocbase_t&, TransactionId, ShardID const&, AccessMode::Type),
+      (TRI_vocbase_t&, TransactionId, ShardID const&, AccessMode::Type,
+       std::string_view),
       (override));
   MOCK_METHOD(
       std::shared_ptr<replicated_state::document::IDocumentStateNetworkHandler>,
@@ -269,10 +271,11 @@ struct MockMaintenanceActionExecutor
               (noexcept, override));
   MOCK_METHOD(Result, executeCreateIndex,
               (std::shared_ptr<LogicalCollection>, velocypack::SharedSlice,
-               std::shared_ptr<methods::Indexes::ProgressTracker>),
+               std::shared_ptr<methods::Indexes::ProgressTracker>,
+               LogicalCollection::Replication2Callback),
               (noexcept, override));
   MOCK_METHOD(Result, executeDropIndex,
-              (std::shared_ptr<LogicalCollection>, velocypack::SharedSlice),
+              (std::shared_ptr<LogicalCollection>, IndexId),
               (noexcept, override));
   MOCK_METHOD(Result, addDirty, (), (noexcept, override));
 };
@@ -288,10 +291,10 @@ struct MockDocumentStateShardHandler
   MOCK_METHOD(Result, dropShard, (ShardID const&), (noexcept, override));
   MOCK_METHOD(Result, ensureIndex,
               (ShardID, velocypack::SharedSlice properties,
-               std::shared_ptr<methods::Indexes::ProgressTracker>),
+               std::shared_ptr<methods::Indexes::ProgressTracker>,
+               LogicalCollection::Replication2Callback),
               (noexcept, override));
-  MOCK_METHOD(Result, dropIndex, (ShardID, velocypack::SharedSlice),
-              (noexcept, override));
+  MOCK_METHOD(Result, dropIndex, (ShardID, IndexId), (noexcept, override));
   MOCK_METHOD(Result, dropAllShards, (), (noexcept, override));
   MOCK_METHOD(std::vector<std::shared_ptr<LogicalCollection>>,
               getAvailableShards, (), (noexcept, override));

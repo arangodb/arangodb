@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -266,10 +266,12 @@ RocksDBFilePurgeEnabler::RocksDBFilePurgeEnabler(
 
 // create the storage engine
 RocksDBEngine::RocksDBEngine(Server& server,
-                             RocksDBOptionsProvider const& optionsProvider)
+                             RocksDBOptionsProvider const& optionsProvider,
+                             metrics::MetricsFeature& metrics)
     : StorageEngine(server, kEngineName, name(), Server::id<RocksDBEngine>(),
                     std::make_unique<RocksDBIndexFactory>(server)),
       _optionsProvider(optionsProvider),
+      _metrics(metrics),
       _db(nullptr),
       _walAccess(std::make_unique<RocksDBWalAccess>(*this)),
       _maxTransactionSize(transaction::Options::defaultMaxTransactionSize),
@@ -289,14 +291,12 @@ RocksDBEngine::RocksDBEngine(Server& server,
       _useThrottle(true),
       _useReleasedTick(false),
       _debugLogging(false),
-      _useEdgeCache(true),
       _verifySst(false),
 #ifdef USE_ENTERPRISE
       _createShaFiles(true),
 #else
       _createShaFiles(false),
 #endif
-      _useRangeDeleteInWal(true),
       _lastHealthCheckSuccessful(false),
       _dbExisted(false),
       _runningRebuilds(0),
@@ -305,57 +305,39 @@ RocksDBEngine::RocksDBEngine(Server& server,
       _autoFlushMinWalFiles(20),
       _forceLittleEndianKeys(false),
       _metricsIndexEstimatorMemoryUsage(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_index_estimates_memory_usage{})),
+          metrics.add(arangodb_index_estimates_memory_usage{})),
       _metricsWalReleasedTickFlush(
-          server.getFeature<metrics::MetricsFeature>().add(
-              rocksdb_wal_released_tick_flush{})),
+          metrics.add(rocksdb_wal_released_tick_flush{})),
       _metricsWalSequenceLowerBound(
-          server.getFeature<metrics::MetricsFeature>().add(
-              rocksdb_wal_sequence_lower_bound{})),
-      _metricsLiveWalFiles(server.getFeature<metrics::MetricsFeature>().add(
-          rocksdb_live_wal_files{})),
-      _metricsArchivedWalFiles(server.getFeature<metrics::MetricsFeature>().add(
-          rocksdb_archived_wal_files{})),
-      _metricsLiveWalFilesSize(server.getFeature<metrics::MetricsFeature>().add(
-          rocksdb_live_wal_files_size{})),
+          metrics.add(rocksdb_wal_sequence_lower_bound{})),
+      _metricsLiveWalFiles(metrics.add(rocksdb_live_wal_files{})),
+      _metricsArchivedWalFiles(metrics.add(rocksdb_archived_wal_files{})),
+      _metricsLiveWalFilesSize(metrics.add(rocksdb_live_wal_files_size{})),
       _metricsArchivedWalFilesSize(
-          server.getFeature<metrics::MetricsFeature>().add(
-              rocksdb_archived_wal_files_size{})),
-      _metricsPrunableWalFiles(server.getFeature<metrics::MetricsFeature>().add(
-          rocksdb_prunable_wal_files{})),
-      _metricsWalPruningActive(server.getFeature<metrics::MetricsFeature>().add(
-          rocksdb_wal_pruning_active{})),
-      _metricsTreeMemoryUsage(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_revision_tree_memory_usage{})),
+          metrics.add(rocksdb_archived_wal_files_size{})),
+      _metricsPrunableWalFiles(metrics.add(rocksdb_prunable_wal_files{})),
+      _metricsWalPruningActive(metrics.add(rocksdb_wal_pruning_active{})),
+      _metricsTreeMemoryUsage(
+          metrics.add(arangodb_revision_tree_memory_usage{})),
       _metricsTreeBufferedMemoryUsage(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_revision_tree_buffered_memory_usage{})),
+          metrics.add(arangodb_revision_tree_buffered_memory_usage{})),
       _metricsTreeRebuildsSuccess(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_revision_tree_rebuilds_success_total{})),
+          metrics.add(arangodb_revision_tree_rebuilds_success_total{})),
       _metricsTreeRebuildsFailure(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_revision_tree_rebuilds_failure_total{})),
-      _metricsTreeHibernations(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_revision_tree_hibernations_total{})),
+          metrics.add(arangodb_revision_tree_rebuilds_failure_total{})),
+      _metricsTreeHibernations(
+          metrics.add(arangodb_revision_tree_hibernations_total{})),
       _metricsTreeResurrections(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_revision_tree_resurrections_total{})),
-      _metricsEdgeCacheEntriesSizeInitial(
-          server.getFeature<metrics::MetricsFeature>().add(
-              rocksdb_cache_edge_inserts_uncompressed_entries_size_total{})),
-      _metricsEdgeCacheEntriesSizeEffective(
-          server.getFeature<metrics::MetricsFeature>().add(
-              rocksdb_cache_edge_inserts_effective_entries_size_total{})),
-      _metricsEdgeCacheInserts(server.getFeature<metrics::MetricsFeature>().add(
-          rocksdb_cache_edge_inserts_total{})),
+          metrics.add(arangodb_revision_tree_resurrections_total{})),
+      _metricsEdgeCacheEntriesSizeInitial(metrics.add(
+          rocksdb_cache_edge_inserts_uncompressed_entries_size_total{})),
+      _metricsEdgeCacheEntriesSizeEffective(metrics.add(
+          rocksdb_cache_edge_inserts_effective_entries_size_total{})),
+      _metricsEdgeCacheInserts(metrics.add(rocksdb_cache_edge_inserts_total{})),
       _metricsEdgeCacheCompressedInserts(
-          server.getFeature<metrics::MetricsFeature>().add(
-              rocksdb_cache_edge_compressed_inserts_total{})),
+          metrics.add(rocksdb_cache_edge_compressed_inserts_total{})),
       _metricsEdgeCacheEmptyInserts(
-          server.getFeature<metrics::MetricsFeature>().add(
-              rocksdb_cache_edge_empty_inserts_total{})) {
+          metrics.add(rocksdb_cache_edge_empty_inserts_total{})) {
   startsAfter<BasicFeaturePhaseServer>();
   // inherits order from StorageEngine but requires "RocksDBOption" that is
   // used to configure this engine
@@ -516,9 +498,7 @@ RAM than this threshold value are aborted automatically with error 32
           "The interval for automatic, non-requested disk syncs (in "
           "milliseconds, 0 = turn automatic syncing off)",
           new UInt64Parameter(&_syncInterval),
-          arangodb::options::makeFlags(arangodb::options::Flags::OsLinux,
-                                       arangodb::options::Flags::OsMac,
-                                       arangodb::options::Flags::OnDBServer,
+          arangodb::options::makeFlags(arangodb::options::Flags::OnDBServer,
                                        arangodb::options::Flags::OnSingle))
       .setLongDescription(R"(Automatic synchronization of data from RocksDB's
 write-ahead logs to disk is only performed for not-yet synchronized data, and
@@ -676,34 +656,10 @@ on the write rate.)");
                          arangodb::options::Flags::Enterprise));
 #endif
 
-  options
-      ->addOption("--rocksdb.use-range-delete-in-wal",
-                  "Enable range delete markers in the write-ahead log (WAL). "
-                  "Potentially incompatible with older arangosync versions.",
-                  new BooleanParameter(&_useRangeDeleteInWal),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnDBServer,
-                      arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30903)
-      .setLongDescription(
-          R"(Controls whether the collection truncate operation
-in the cluster can use RangeDelete operations in RocksDB. Using RangeDeletes is
-fast and reduces the algorithmic complexity of the truncate operation to O(1),
-compared to O(n) for when this option is turned off (with n being the number of
-documents in the collection/shard).
-
-Previous versions of ArangoDB used RangeDeletes only on a single server, but
-never in a cluster. 
-
-The default value for this option is `true`, and you should only change this
-value in case of emergency. This option is only honored in the cluster.
-Single server and Active Failover deployments do not use RangeDeletes regardless
-of the value of this option.
-
-Note that it is not guaranteed that all truncate operations use a RangeDelete
-operation. For collections containing a low number of documents, the O(n)
-truncate method may still be used.)");
+  // range deletes are now always enabled
+  options->addObsoleteOption(
+      "--rocksdb.use-range-delete-in-wal",
+      "Enable range delete markers in the write-ahead log (WAL).", false);
 
   options
       ->addOption("--rocksdb.debug-logging",
@@ -722,16 +678,9 @@ RocksDB's actions into the logfile written by ArangoDB (if the
 This option is turned off by default, but you can enable it for debugging
 RocksDB internals and performance.)");
 
-  options
-      ->addOption("--rocksdb.edge-cache",
-                  "Whether to use the in-memory cache for edges",
-                  new BooleanParameter(&_useEdgeCache),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnDBServer,
-                      arangodb::options::Flags::OnSingle,
-                      arangodb::options::Flags::Uncommon))
-      .setDeprecatedIn(31000);
+  options->addObsoleteOption("--rocksdb.edge-cache",
+                             "Whether to use the in-memory cache for edges",
+                             false);
 
   options
       ->addOption("--rocksdb.verify-sst",
@@ -913,13 +862,16 @@ void RocksDBEngine::prepare() {
 void RocksDBEngine::verifySstFiles(rocksdb::Options const& options) const {
   TRI_ASSERT(!_path.empty());
 
+  LOG_TOPIC("e210d", INFO, arangodb::Logger::STARTUP)
+      << "verifying RocksDB .sst files in path '" << _path << "'";
+
   rocksdb::SstFileReader sstReader(options);
   for (auto const& fileName : TRI_FullTreeDirectory(_path.c_str())) {
     if (!fileName.ends_with(".sst")) {
       continue;
     }
     std::string filename = basics::FileUtils::buildFilename(_path, fileName);
-    rocksdb::Status res = sstReader.Open(fileName);
+    rocksdb::Status res = sstReader.Open(filename);
     if (res.ok()) {
       res = sstReader.VerifyChecksum();
     }
@@ -931,7 +883,15 @@ void RocksDBEngine::verifySstFiles(rocksdb::Options const& options) const {
       FATAL_ERROR_EXIT_CODE(TRI_EXIT_SST_FILE_CHECK);
     }
   }
-  exit(EXIT_SUCCESS);
+
+  LOG_TOPIC("02224", INFO, arangodb::Logger::STARTUP)
+      << "verification of RocksDB .sst files in path '" << _path
+      << "' completed successfully";
+  Logger::flush();
+  // exit with status code = 0, without leaking
+  int exitCode = static_cast<int>(TRI_ERROR_NO_ERROR);
+  TRI_EXIT_FUNCTION(exitCode, nullptr);
+  exit(exitCode);
 }
 
 namespace {
@@ -1263,8 +1223,7 @@ void RocksDBEngine::start() {
   _settingsManager = std::make_unique<RocksDBSettingsManager>(*this);
   _replicationManager = std::make_unique<RocksDBReplicationManager>(*this);
   _dumpManager = std::make_unique<RocksDBDumpManager>(
-      *this, server().getFeature<metrics::MetricsFeature>(),
-      server().getFeature<DumpLimitsFeature>().limits());
+      *this, _metrics, server().getFeature<DumpLimitsFeature>().limits());
   _walManager = std::make_shared<replication2::storage::wal::WalManager>(
       databasePathFeature.subdirectoryName("replicated-logs"));
 
@@ -1280,9 +1239,12 @@ void RocksDBEngine::start() {
     Scheduler* _scheduler;
   };
 
-  _logMetrics = std::make_shared<RocksDBAsyncLogWriteBatcherMetricsImpl>(
-      &server().getFeature<metrics::MetricsFeature>());
+  _logMetrics =
+      std::make_shared<RocksDBAsyncLogWriteBatcherMetricsImpl>(&_metrics);
 
+#ifndef USE_CUSTOM_WAL
+  // When using the custom WAL implementation, we don't need to register a
+  // RocksDB sync listener.
   auto logPersistor =
       std::make_shared<replication2::storage::rocksdb::AsyncLogWriteBatcher>(
           RocksDBColumnFamilyManager::get(
@@ -1297,8 +1259,9 @@ void RocksDBEngine::start() {
     LOG_TOPIC("0a5df", WARN, Logger::REPLICATION2)
         << "In replication2 databases, setting waitForSync to false will not "
            "work correctly without a syncer thread. See the "
-           "--rocksdbsync-interval option.";
+           "--rocksdb.sync-interval option.";
   }
+#endif
 
   _settingsManager->retrieveInitialValues();
 
@@ -1313,11 +1276,6 @@ void RocksDBEngine::start() {
 
   if (!systemDatabaseExists()) {
     addSystemDatabase();
-  }
-
-  if (!useEdgeCache()) {
-    LOG_TOPIC("46557", INFO, Logger::ENGINES)
-        << "in-memory cache for edges is disabled";
   }
 
   // to populate initial health check data
@@ -2173,7 +2131,7 @@ Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
   removeCollectionMapping(rcoll->objectId());
 
   // delete indexes, RocksDBIndex::drop() has its own check
-  auto indexes = rcoll->getIndexes();
+  auto indexes = rcoll->getAllIndexes();
   TRI_ASSERT(!indexes.empty());
 
   for (auto const& idx : indexes) {
@@ -3061,6 +3019,11 @@ void RocksDBEngine::addSystemDatabase() {
   builder.add(StaticStrings::DatabaseName,
               VPackValue(StaticStrings::SystemDatabase));
   builder.add("deleted", VPackValue(false));
+  // Also store the ReplicationVersion when creating the Database
+  auto& df = server().getFeature<DatabaseFeature>();
+  builder.add(
+      StaticStrings::ReplicationVersion,
+      VPackValue(replication::versionToString(df.defaultReplicationVersion())));
   builder.close();
 
   RocksDBLogValue log = RocksDBLogValue::DatabaseCreate(id);
@@ -3075,7 +3038,7 @@ void RocksDBEngine::addSystemDatabase() {
 /// @brief open an existing database. internal function
 std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
     CreateDatabaseInfo&& info, bool wasCleanShutdown, bool isUpgrade) {
-  auto vocbase = std::make_unique<TRI_vocbase_t>(std::move(info));
+  auto vocbase = createDatabase(std::move(info));
 
   LOG_TOPIC("26c21", TRACE, arangodb::Logger::ENGINES)
       << "opening views and collections metadata in database '"
@@ -3157,6 +3120,13 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
 
   // replicated states should be loaded before their respective shards
   if (vocbase->replicationVersion() == replication::Version::TWO) {
+    if (syncThread() == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_ILLEGAL_OPTION,
+          "Automatic syncing must be enabled for replication "
+          "version 2. Please make sure the --rocksdb.sync-interval "
+          "option is set to a value greater than 0.");
+    }
     try {
       loadReplicatedStates(*vocbase);
     } catch (std::exception const& ex) {

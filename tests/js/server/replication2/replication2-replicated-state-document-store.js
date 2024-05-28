@@ -2,27 +2,28 @@
 /*global assertTrue, assertFalse, assertEqual, assertNotNull, print*/
 'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2021 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License")
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Alexandru Petenchea
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
 const arangodb = require("@arangodb");
@@ -236,7 +237,29 @@ const replicatedStateDocumentStoreSuiteReplication2 = function () {
           JSON.stringify(allEntries.filter(entry => !entry.hasOwnProperty("payload") ||
               entry.hasOwnProperty("payload") && entry.payload.operation.type !== "Insert"
               && entry.payload.operation.type !== "Commit")));
-    }
+    },
+
+    testFollowersAppliedIndex: function(testName) {
+      for (let i = 0; i < 10; ++i) {
+        collection.insert({_key: `${testName}-${i}`});
+      }
+
+      for (const log of logs) {
+        lh.waitFor(() => {
+          const status = log.status();
+          const leader = Object.values(status.participants).find(({response:{role}}) => role === 'leader');
+          const followers = Object.entries(status.participants).filter(([_,{response:{role}}]) => role === 'follower');
+          const commitIndex = leader.response.local.commitIndex;
+          for (const [id, follower] of followers) {
+            const appliedIndex = follower.response.local.appliedIndex;
+            if (appliedIndex !== commitIndex) {
+              return Error(`Applied index ${appliedIndex} of follower ${id} has not reached the commit index ${commitIndex}.`);
+            }
+          }
+          return true;
+        });
+      }
+    },
   };
 };
 
@@ -354,6 +377,7 @@ const replicatedStateFollowerSuite = function (dbParams) {
   let shardId = null;
   let shards = null;
   let shardsToLogs = null;
+  /** @type {Array<ArangoReplicatedLog>} */
   let logs = null;
 
   const {setUpAll, tearDownAll, setUpAnd, tearDownAnd} =
@@ -448,7 +472,7 @@ const replicatedStateFollowerSuite = function (dbParams) {
       dh.checkFollowersValue(servers, database, shardId, shardsToLogs[shardId], `${testName}-foo`, `${testName}-bar`, isReplication2);
       collection.truncate();
       dh.checkFollowersValue(servers, database, shardId, shardsToLogs[shardId], `${testName}-foo`, null, isReplication2);
-    }
+    },
   };
 };
 

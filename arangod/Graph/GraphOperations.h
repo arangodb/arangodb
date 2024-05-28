@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -45,6 +45,8 @@ class Methods;
 class RevisionId;
 namespace graph {
 // TODO rename to GraphMethods
+
+enum class VertexValidationOrigin { DEFAULT, FROM_ATTRIBUTE, TO_ATTRIBUTE };
 
 class GraphOperations {
  private:
@@ -227,8 +229,15 @@ class GraphOperations {
       VPackSlice document, bool waitForSync, bool returnNew);
 
   Result checkEdgeCollectionAvailability(std::string const& edgeCollectionName);
+
+  /// @brief Validates the given vertex collection name and checks if it is
+  /// available or not. The enum VertexValidationOrigin is used to
+  /// differentiate between the origin of the vertex collection name.
+  /// If it set to either FROM_ATTRIBUTE or TO_ATTRIBUTE, the vertex collection
+  /// name is coming from an edge.
   Result checkVertexCollectionAvailability(
-      std::string const& vertexCollectionName);
+      std::string const& vertexCollectionName,
+      VertexValidationOrigin origin = VertexValidationOrigin::DEFAULT);
 
   bool hasROPermissionsFor(std::string const& collection) const;
   bool hasRWPermissionsFor(std::string const& collection) const;

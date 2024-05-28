@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2022-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -120,10 +121,13 @@ auto EvenDistribution::planShardsOnServers(
   size_t serversToPick = std::min(
       _replicationFactor, static_cast<uint64_t>(availableServers.size()));
 
+  TRI_ASSERT(availableServers.size() > 0);
+  TRI_ASSERT(_replicationFactor > 0);
   size_t k = availableServers.size() /
              std::gcd(serversToPick, availableServers.size());
   size_t offset = 0;
   for (uint64_t i = 0; i < _numberOfShards; ++i) {
+    TRI_ASSERT(k != 0);
     if (i % k == 0) {
       offset += 1;
     }

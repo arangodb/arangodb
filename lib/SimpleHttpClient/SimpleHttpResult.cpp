@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -74,33 +74,6 @@ StringBuffer& SimpleHttpResult::getBody() { return _resultBody; }
 StringBuffer const& SimpleHttpResult::getBody() const { return _resultBody; }
 
 std::shared_ptr<VPackBuilder> SimpleHttpResult::getBodyVelocyPack() const {
-#if 0
-  std::string uncompressed;
-  std::string_view data(_resultBody.c_str(), _resultBody.length());
-
-  // transparently handle compression
-  bool found = false;
-  std::string encoding = getHeaderField(StaticStrings::ContentEncoding, found);
-  if (found) {
-    if (encoding == StaticStrings::EncodingGzip) {
-      auto res = encoding::gzipUncompress(
-          reinterpret_cast<uint8_t const*>(data.data()), data.size(),
-          uncompressed);
-      if (res != TRI_ERROR_NO_ERROR) {
-        THROW_ARANGO_EXCEPTION(res);
-      }
-      data = uncompressed;
-    } else if (encoding == StaticStrings::EncodingDeflate) {
-      auto res =
-          encoding::zlibInflate(reinterpret_cast<uint8_t const*>(data.data()),
-                                data.size(), uncompressed);
-      if (res != TRI_ERROR_NO_ERROR) {
-        THROW_ARANGO_EXCEPTION(res);
-      }
-      data = uncompressed;
-    }
-  }
-#endif
   std::string_view data(_resultBody.c_str(), _resultBody.length());
   VPackParser parser(&VelocyPackHelper::looseRequestValidationOptions);
   parser.parse(data);
@@ -181,6 +154,9 @@ void SimpleHttpResult::addHeaderField(char const* key, size_t keyLength,
     } else if (std::string_view(value, valueLength) ==
                StaticStrings::EncodingGzip) {
       _encodingType = rest::EncodingType::GZIP;
+    } else if (std::string_view(value, valueLength) ==
+               StaticStrings::EncodingArangoLz4) {
+      _encodingType = rest::EncodingType::LZ4;
     }
   } else if (keyString == StaticStrings::TransferEncoding &&
              std::string_view(value, valueLength) == StaticStrings::Chunked) {

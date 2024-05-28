@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -266,7 +266,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     return result;
   }
 
-  AgencyCache::databases_t plan = clusterInfo.getPlan(planIndex, dirty);
+  auto plan = clusterInfo.getPlan(planIndex, dirty);
 
   auto serverId = arangodb::ServerState::instance()->getId();
 
@@ -301,8 +301,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
     VPackObjectBuilder o(&rb);
 
-    AgencyCache::databases_t current =
-        clusterInfo.getCurrent(currentIndex, dirty);
+    auto current = clusterInfo.getCurrent(currentIndex, dirty);
 
     auto startTimePhaseOne = std::chrono::steady_clock::now();
     LOG_TOPIC("19aaf", TRACE, Logger::MAINTENANCE)

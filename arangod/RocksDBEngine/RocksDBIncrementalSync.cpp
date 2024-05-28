@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -440,7 +440,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
   // determine number of unique indexes. we may need it later
   std::size_t numUniqueIndexes = [&]() {
     std::size_t numUnique = 0;
-    for (auto const& idx : coll->getIndexes()) {
+    for (auto const& idx : coll->getPhysical()->getReadyIndexes()) {
       numUnique += idx->unique() ? 1 : 0;
     }
     return numUnique;
@@ -1034,10 +1034,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
         // patch the document counter of the collection and the transaction
         int64_t diff = static_cast<int64_t>(numberDocumentsAfterSync) -
                        static_cast<int64_t>(numberDocumentsDueToCounter);
-        RocksDBEngine& engine = col->vocbase()
-                                    .server()
-                                    .getFeature<EngineSelectorFeature>()
-                                    .engine<RocksDBEngine>();
+        RocksDBEngine& engine = col->vocbase().engine<RocksDBEngine>();
         auto seq = engine.db()->GetLatestSequenceNumber();
         static_cast<RocksDBCollection*>(
             trx->documentCollection()->getPhysical())

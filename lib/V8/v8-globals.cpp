@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -150,6 +150,9 @@ TRI_v8_global_t::TRI_v8_global_t(
   UrlKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "url"));
   UserKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "user"));
   ValueKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "value"));
+  VersionAttributeKey.Reset(
+      isolate, TRI_V8_ASCII_STD_STRING(
+                   isolate, arangodb::StaticStrings::VersionAttributeString));
   VersionKeyHidden.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "*version"));
   WaitForSyncKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "waitForSync"));
   CompactKey.Reset(isolate, TRI_V8_ASCII_STD_STRING(

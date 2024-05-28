@@ -1,32 +1,29 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
 /*global assertTrue, assertFalse, assertEqual, assertNotEqual */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for constrained sort arangosearch rule
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2022 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Andrei Lobov
 /// @author Copyright 2022, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 (function() {
   var db = require("@arangodb").db;
   const isCluster = require("internal").isCluster();
@@ -111,7 +108,7 @@
         let cats = "cat";
         let j = 0;
         let sort = 0;
-        for (let i = 0; i < 5000; ++i) {
+        for (let i = 0; i < 2500; ++i) {
           data.push({field1:i, field2: "A" + i % 1000, field3: "B" + i % 100, strval: cats, idx:i, storedVal: longValue + i,
           compound: {val:sort},
           obj: {ps:sort, a: {a1: 30}, b: {b1: 31}, c: i, d: {d1: 33}, e: {e1: 34}, f: j, g: 36, h: 37, j: 38}});
@@ -150,12 +147,12 @@
         assertEqual(-1, plan.rules.indexOf(ruleName));
       },
       testNotAppliedDueToNonDetermCalc() {
-        let query = "FOR d IN " + vn + " SEARCH d.a.a1 == 0  LET a = NOOPT(d.b.b1) SORT BM25(d) LIMIT 10 RETURN {dD:d, aA:a}";
+        let query = "FOR d IN " + vn + " SEARCH d.a.a1 == 0 LET a = NOOPT(d.b.b1) SORT BM25(d) LIMIT 10 RETURN {dD:d, aA:a}";
         let plan = db._createStatement(query).explain().plan;
         assertEqual(-1, plan.rules.indexOf(ruleName));
       },
       testNotAppliedDueToNonDetermCalc2() {
-        let query = "FOR d IN " + vn + " SEARCH d.a.a1 == 0  SORT BM25(d) LET a = NOOPT(d.b.b1) LIMIT 10 RETURN {dD:d, aA:a}";
+        let query = "FOR d IN " + vn + " SEARCH d.a.a1 == 0 SORT BM25(d) LET a = NOOPT(d.b.b1) LIMIT 10 RETURN {dD:d, aA:a}";
         let plan = db._createStatement(query).explain().plan;
         assertEqual(-1, plan.rules.indexOf(ruleName));
       },
@@ -207,26 +204,26 @@
       },
       testApplyWithFullCount() {
           let query = "FOR d IN " + vn + " SEARCH d.field2 >= 'A3' SORT BM25(d) " +
-                      " DESC LIMIT 1000, 300 COLLECT WITH COUNT INTO c  RETURN c ";
+                      " DESC LIMIT 1000, 300 COLLECT WITH COUNT INTO c RETURN c ";
           let plan = db._createStatement(query).explain().plan;
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
           let result = db._query(query, {}, {fullCount:true});
           let res = result.toArray();
           assertEqual(1, res.length);
           assertEqual(300, res[0]);
-          assertEqual(6216, result.getExtra().stats.fullCount);
-          assertEqual(6216, result.getExtra().stats.scannedIndex);
+          assertEqual(2885, result.getExtra().stats.fullCount);
+          assertEqual(2885, result.getExtra().stats.scannedIndex);
       },
       testApplyWithNoFullCount() {
           let query = "FOR d IN " + vn + " SEARCH d.field2 >= 'A3' SORT BM25(d) " +
-                      " DESC LIMIT 1000, 300 COLLECT WITH COUNT INTO c  RETURN c ";
+                      " DESC LIMIT 1000, 300 COLLECT WITH COUNT INTO c RETURN c ";
           let plan = db._createStatement(query).explain().plan;
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
           let result = db._query(query, {}, {fullCount:false});
           let res = result.toArray();
           assertEqual(1, res.length);
           assertEqual(300, res[0]);
-          assertEqual(6216, result.getExtra().stats.scannedIndex);
+          assertEqual(2885, result.getExtra().stats.scannedIndex);
       },
       testApplyWithFullCountDocs() {
           let query = "FOR d IN " + vn + " SEARCH d.field2 >= 'A3' SORT BM25(d) " +
@@ -235,8 +232,8 @@
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
           let result = db._query(query, {}, {fullCount:true});
           assertEqual(300, result.toArray().length);
-          assertEqual(6216, result.getExtra().stats.fullCount);
-          assertEqual(6216, result.getExtra().stats.scannedIndex);
+          assertEqual(2885, result.getExtra().stats.fullCount);
+          assertEqual(2885, result.getExtra().stats.scannedIndex);
       },
       testApplyWithNoFullCountDocs() {
           let query = "FOR d IN " + vn + " SEARCH d.field2 >= 'A3' SORT BM25(d) " +
@@ -245,7 +242,7 @@
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
           let result = db._query(query, {}, {fullCount:false});
           assertEqual(300, result.toArray().length);
-          assertEqual(6216, result.getExtra().stats.scannedIndex);
+          assertEqual(2885, result.getExtra().stats.scannedIndex);
       },
       testApplyWithFullCountDocsNoOffset() {
           let query = "FOR d IN " + vn + " SEARCH d.field2 >= 'A3' SORT BM25(d) " +
@@ -254,8 +251,8 @@
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
           let result = db._query(query, {}, {fullCount:true});
           assertEqual(1500, result.toArray().length);
-          assertEqual(6216, result.getExtra().stats.fullCount);
-          assertEqual(6216, result.getExtra().stats.scannedIndex);
+          assertEqual(2885, result.getExtra().stats.fullCount);
+          assertEqual(2885, result.getExtra().stats.scannedIndex);
       },
       testApplyWithNoFullCountDocsNoOffset() {
           let query = "FOR d IN " + vn + " SEARCH d.field2 >= 'A3' SORT BM25(d) " +
@@ -264,34 +261,34 @@
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
           let result = db._query(query, {}, {fullCount:false});
           assertEqual(1500, result.toArray().length);
-          assertEqual(6216, result.getExtra().stats.scannedIndex);
+          assertEqual(2885, result.getExtra().stats.scannedIndex);
       },
       testAppliedWithNonDetermAfter() {
-        let query = "FOR d IN " + vn + " SEARCH d.field2 >= 'A3'  SORT BM25(d) LIMIT 10 LET a = NOOPT(d.b.b1) RETURN {dD:d, aA:a}";
+        let query = "FOR d IN " + vn + " SEARCH d.field2 >= 'A3' SORT BM25(d) LIMIT 10 LET a = NOOPT(d.b.b1) RETURN {dD:d, aA:a}";
         let plan = db._createStatement(query).explain().plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
         let result = db._query(query, {}, {fullCount:true});
         assertEqual(10, result.toArray().length);
-        assertEqual(6216, result.getExtra().stats.scannedIndex);
-        assertEqual(6216, result.getExtra().stats.fullCount);
+        assertEqual(2885, result.getExtra().stats.scannedIndex);
+        assertEqual(2885, result.getExtra().stats.fullCount);
       },
       testAppliedDeterministicUsedBetweenSort() {
-        let query = "FOR d IN " + vn + " SEARCH d.field2 < 'A3'  SORT BM25(d) LET a = UPPER(d.b.b1) LIMIT 10 RETURN {dD:d, aA:a}";
+        let query = "FOR d IN " + vn + " SEARCH d.field2 < 'A3' SORT BM25(d) LET a = UPPER(d.b.b1) LIMIT 10 RETURN {dD:d, aA:a}";
         let plan = db._createStatement(query).explain().plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName), {}, {optimizer:{rules:['-move-calculations-down']}});
         let result = db._query(query, {}, {fullCount:true, optimizer:{rules:['-move-calculations-down']}});
         assertEqual(10, result.toArray().length);
-        assertEqual(3784, result.getExtra().stats.scannedIndex);
-        assertEqual(3784, result.getExtra().stats.fullCount);
+        assertEqual(2115, result.getExtra().stats.scannedIndex);
+        assertEqual(2115, result.getExtra().stats.fullCount);
       },
       testAppliedDeterministicUsedBeforeSort() {
-        let query = "FOR d IN " + vn + " SEARCH d.field2 < 'A3' LET a = UPPER(d.b.b1) SORT BM25(d)  LIMIT 10 RETURN {dD:d, aA:a}";
+        let query = "FOR d IN " + vn + " SEARCH d.field2 < 'A3' LET a = UPPER(d.b.b1) SORT BM25(d) LIMIT 10 RETURN {dD:d, aA:a}";
         let plan = db._createStatement(query).explain().plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName), {}, {optimizer:{rules:['-move-calculations-down']}});
         let result = db._query(query, {}, {fullCount:true, optimizer:{rules:['-move-calculations-down']}});
         assertEqual(10, result.toArray().length);
-        assertEqual(3784, result.getExtra().stats.scannedIndex);
-        assertEqual(3784, result.getExtra().stats.fullCount);
+        assertEqual(2115, result.getExtra().stats.scannedIndex);
+        assertEqual(2115, result.getExtra().stats.fullCount);
       },
       testAppliedDeterministicUsedBeforeSortTwoSorts() {
         let query = "FOR d IN " + vn + " SEARCH d.field2 < 'A3' LET a = UPPER(d.b.b1) SORT BM25(d) ASC "
@@ -300,8 +297,8 @@
         assertNotEqual(-1, plan.rules.indexOf(ruleName), {}, {optimizer:{rules:['-move-calculations-down']}});
         let result = db._query(query, {}, {fullCount:true, optimizer:{rules:['-move-calculations-down']}});
         assertEqual(10, result.toArray().length);
-        assertEqual(3784, result.getExtra().stats.scannedIndex);
-        assertEqual(3784, result.getExtra().stats.fullCount);
+        assertEqual(2115, result.getExtra().stats.scannedIndex);
+        assertEqual(2115, result.getExtra().stats.fullCount);
       },
       testAppliedMultiSorts() {
         let query = "FOR d IN " + vn + " SEARCH d.field2 < 'A3' LET a = TFIDF(d) LET b = BM25(d) LET t = a + b SORT b ASC, a DESC "
@@ -310,8 +307,8 @@
         assertNotEqual(-1, plan.rules.indexOf(ruleName), {}, {optimizer:{rules:['-move-calculations-down']}});
         let result = db._query(query, {}, {fullCount:true, optimizer:{rules:['-move-calculations-down']}});
         assertEqual(10, result.toArray().length);
-        assertEqual(3784, result.getExtra().stats.scannedIndex);
-        assertEqual(3784, result.getExtra().stats.fullCount);
+        assertEqual(2115, result.getExtra().stats.scannedIndex);
+        assertEqual(2115, result.getExtra().stats.fullCount);
       },
       testAppliedSort() {
         let query = "FOR d IN " + vn + " SEARCH ANALYZER(d.strval == 'cat', 'text_en') SORT TFIDF(d) DESC LIMIT 10, 10 "
@@ -321,7 +318,7 @@
         let result = db._query(query);
         let res = result.toArray();
         assertEqual(10, res.length);
-        let expectedIdx = 4994;
+        let expectedIdx = 2494;
         for (let i = 0; i < 10; ++i) {
           assertEqual(res[i].idx, expectedIdx);
           if (i % 2 === 1) {
@@ -465,7 +462,7 @@
         let result = db._query(query);
         let res = result.toArray();
         assertEqual(10, res.length);
-        let expectedIdx = 9989;
+        let expectedIdx = 4989;
         for (let i = 0; i < 10; ++i) {
           assertEqual(res[i].dv, expectedIdx);
           expectedIdx = expectedIdx - 1;
@@ -479,7 +476,7 @@
         let result = db._query(query);
         let res = result.toArray();
         assertEqual(10, res.length);
-        let expectedIdx = 9989;
+        let expectedIdx = 4989;
         for (let i = 0; i < 10; ++i) {
           assertEqual(res[i].stored, expectedIdx);
           expectedIdx = expectedIdx - 1;

@@ -2,31 +2,32 @@
 /* global */
 'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License")
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Manuel Pöter
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
-  'chaos': 'chaos tests'
+  'chaos': 'chaos tests',
+  'deadlock': 'deadlock tests'
 };
 const optionsDocumentation = [];
 
@@ -35,11 +36,12 @@ const tu = require('@arangodb/testutils/test-utils');
 
 const testPaths = {
   'chaos': [ tu.pathForTesting('client/chaos') ],
+  'deadlock': [ tu.pathForTesting('client/chaos') ], // intentionally same path as chaos
 };
 
 function chaos (options) {
   let testCasesWithConfigs = {};
-  let testCases = tu.scanTestPaths(testPaths.chaos, options);
+  let testCases = tu.scanTestPaths(testPaths.chaos, options).filter((c) => c.includes("test-module-chaos"));
   
   // The chaos test suite is parameterized and each configuration runs 5min.
   // For the nightly tests we want to run a large number of possible parameter
@@ -72,7 +74,7 @@ function chaos (options) {
     }
     return testCase;
   });
-  
+ 
   testCases = tu.splitBuckets(options, testCases);
   
   class chaosRunner extends tu.runLocalInArangoshRunner {
@@ -99,9 +101,15 @@ function chaos (options) {
   return new chaosRunner(options, 'chaos', {}).run(testCases);
 }
 
+function deadlock (options) {
+  let testCases = tu.scanTestPaths(testPaths.deadlock, options).filter((c) => c.includes("test-deadlock"));
+  return new tu.runLocalInArangoshRunner(options, 'deadlock', {}).run(testCases);
+}
+
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['chaos'] = chaos;
+  testFns['deadlock'] = deadlock;
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
 };

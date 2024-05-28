@@ -1,5 +1,4 @@
 add_executable(fuertetest
-  VstTest.cpp
   ConnectionBasicTest.cpp
   ConnectionConcurrentTest.cpp
   ConnectionFailuresTest.cpp
@@ -9,10 +8,10 @@ add_executable(fuertetest
 )
 
 target_link_libraries(fuertetest
+    arango
     fuerte
     gtest
     boost_boost
-    ${MSVC_LIBS}
     ${OPENSSL_LIBRARIES}
     ${CMAKE_THREAD_LIBS_INIT}
 )

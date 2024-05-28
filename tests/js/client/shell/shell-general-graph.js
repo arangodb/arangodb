@@ -1,32 +1,29 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertFalse, fail */
+/*global assertEqual, assertTrue, assertFalse, assertMatch, fail */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test the general-graph class
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2014 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Florian Bartels, Michael Hackstein
 /// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
@@ -94,18 +91,6 @@ function GeneralGraphCreationSuite() {
     },
 
     tearDown: function () {
-      db._drop("UnitTestsGraphRenamed1");
-      db._drop("UnitTestsGraphRenamed2");
-      db._drop("UnitTestsGraphRenamed3");
-      db._drop(ec1);
-      db._drop(ec2);
-      db._drop(ec3);
-      db._drop(vc1);
-      db._drop(vc2);
-      db._drop(vc3);
-      db._drop(vc4);
-      db._drop(vc5);
-      db._drop(vc6);
       try {
         graph._drop(gN1, true);
       } catch (ignore) {
@@ -119,6 +104,51 @@ function GeneralGraphCreationSuite() {
       }
       if (db._collection("_graphs").exists(gn2)) {
         db._collection("_graphs").remove(gn2);
+      }
+      db._drop("UnitTestsGraphRenamed1");
+      db._drop("UnitTestsGraphRenamed2");
+      db._drop("UnitTestsGraphRenamed3");
+      db._drop(ec1);
+      db._drop(ec2);
+      db._drop(ec3);
+      db._drop(vc1);
+      db._drop(vc2);
+      db._drop(vc3);
+      db._drop(vc4);
+      db._drop(vc5);
+      db._drop(vc6);
+    },
+    
+    testDropVertexCollectionFromGraph: function () {
+      graph._create(gN1, edgeDef, null);
+      try {
+        db._drop(vn1);
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_GRAPH_MUST_NOT_DROP_COLLECTION.code, err.errorNum);
+        assertMatch(/vertex collection/, err.errorMessage);
+      }
+    },
+    
+    testDropEdgeCollectionFromGraph: function () {
+      graph._create(gN1, edgeDef, null);
+      try {
+        db._drop(rn);
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_GRAPH_MUST_NOT_DROP_COLLECTION.code, err.errorNum);
+        assertMatch(/edge collection/, err.errorMessage);
+      }
+    },
+    
+    testDropOrphanCollectionFromGraph: function () {
+      graph._create(gN1, edgeDef, [vc6]);
+      try {
+        db._drop(vc6);
+        fail();
+      } catch (err) {
+        assertEqual(ERRORS.ERROR_GRAPH_MUST_NOT_DROP_COLLECTION.code, err.errorNum);
+        assertMatch(/orphan collection/, err.errorMessage);
       }
     },
     
@@ -1691,6 +1721,10 @@ function GeneralGraphCommonNeighborsSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp: function () {
+      try {
+        db._collection("_graphs").remove("_graphs/bla3");
+      } catch (ignore) {
+      }
       db._drop(v1ColName);
       db._drop(v2ColName);
       db._drop(eColName);
@@ -1723,10 +1757,6 @@ function GeneralGraphCommonNeighborsSuite() {
       makeEdge(v3, v5, edge1);
       makeEdge(v3, v8, edge1);
 
-      try {
-        db._collection("_graphs").remove("_graphs/bla3");
-      } catch (ignore) {
-      }
       testGraph = graph._create(
         "bla3",
         graph._edgeDefinitions(
@@ -1743,13 +1773,13 @@ function GeneralGraphCommonNeighborsSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
-      db._drop(v1ColName);
-      db._drop(v2ColName);
-      db._drop(eColName);
       try {
         db._collection("_graphs").remove("_graphs/bla3");
       } catch (ignore) {
       }
+      db._drop(v1ColName);
+      db._drop(v2ColName);
+      db._drop(eColName);
     },
 
     testNeighborsAnyV3: function () {

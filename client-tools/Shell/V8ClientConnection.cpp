@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,7 +27,6 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
 #include "Basics/EncodingUtils.h"
-#include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 #include "Basics/VelocyPackHelper.h"
@@ -55,7 +54,6 @@
 #endif
 
 #include <absl/strings/str_cat.h>
-#include <boost/algorithm/string.hpp>
 #include <fuerte/connection.h>
 #include <fuerte/jwt.h>
 #include <fuerte/requests.h>
@@ -114,8 +112,7 @@ V8ClientConnection::V8ClientConnection(ArangoshServer& server,
       static_cast<int64_t>(1000.0 * _client.connectionTimeout())));
   _builder.onFailure([this](fu::Error err, std::string const& msg) {
     // care only about connection errors
-    if (err == fu::Error::CouldNotConnect ||
-        err == fu::Error::VstUnauthorized || err == fu::Error::ProtocolError) {
+    if (err == fu::Error::CouldNotConnect || err == fu::Error::ProtocolError) {
       std::unique_lock<std::recursive_mutex> guard(_lock, std::try_to_lock);
       if (guard && !_setCustomError) {
         _lastHttpReturnCode = 503;
@@ -344,8 +341,6 @@ std::string V8ClientConnection::protocol() const {
       return "http";
     case fuerte::ProtocolType::Http2:
       return "http2";
-    case fuerte::ProtocolType::Vst:
-      return "vst";
     default:
       return "unknown";
   }
@@ -2383,8 +2378,7 @@ bool setRequestBody(fu::Request& request, v8::Isolate* isolate,
       return false;
     }
     if (compressRequestThreshold == 0) {
-      // opted out of compression (also used to opt out of compression for
-      // VST requests)
+      // opted out of compression
       return false;
     }
     if (request.header.meta().contains(StaticStrings::ContentEncoding)) {
@@ -2663,7 +2657,6 @@ v8::Local<v8::Value> V8ClientConnection::requestData(
     std::unordered_map<std::string, std::string> const& headerFields,
     bool isFile) {
   bool retry = true;
-  bool const isVst = _builder.protocolType() == fu::ProtocolType::Vst;
 
 again:
   auto req = std::make_unique<fu::Request>();
@@ -2671,7 +2664,7 @@ again:
                    _requestTimeout, headerFields, _client.compressTransfer());
 
   if (!setRequestBody(*req, isolate, body, _vpackOptions, _forceJson, isFile,
-                      _client.compressTransfer() && !isVst
+                      _client.compressTransfer()
                           ? _client.compressRequestThreshold()
                           : 0)) {
     return v8::Undefined(isolate);
@@ -2740,7 +2733,6 @@ v8::Local<v8::Value> V8ClientConnection::requestDataRaw(
     v8::Local<v8::Value> const& body,
     std::unordered_map<std::string, std::string> const& headerFields) {
   bool retry = true;
-  bool const isVst = _builder.protocolType() == fu::ProtocolType::Vst;
 
 again:
   auto req = std::make_unique<fu::Request>();
@@ -2749,7 +2741,7 @@ again:
 
   if (!setRequestBody(*req, isolate, body, _vpackOptions, _forceJson,
                       /*isFile*/ false,
-                      _client.compressTransfer() && !isVst
+                      _client.compressTransfer()
                           ? _client.compressRequestThreshold()
                           : 0)) {
     return v8::Undefined(isolate);
@@ -2823,15 +2815,6 @@ again:
         .FromMaybe(false);
   }
 
-  if (isVst && method != fu::RestVerb::Head) {
-    // VST only adds a content-length header in case of head, since else its
-    // part of the protocol.
-    headers
-        ->Set(context, TRI_V8_STD_STRING(isolate, StaticStrings::ContentLength),
-              TRI_V8_STD_STRING(isolate, std::to_string(payloadSize)))
-        .FromMaybe(false);
-  }
-  // and returns
   return result;
 }
 

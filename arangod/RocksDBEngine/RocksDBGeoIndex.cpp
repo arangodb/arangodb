@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,6 +28,7 @@
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
 #include "Aql/SortCondition.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "GeoIndex/Covering.h"
 #include "GeoIndex/Near.h"
@@ -282,7 +283,9 @@ class RDBNearIterator final : public IndexIterator {
           };
           auto* physical = _collection->getPhysical();
           // geo index never needs to observe own writes
-          if (!physical->lookup(_trx, gdoc.token, callback, {}).ok()) {
+          if (!physical
+                   ->lookup(_trx, gdoc.token, callback, {.countBytes = true})
+                   .ok()) {
             return false;  // ignore document
           }
           return result;
@@ -314,7 +317,9 @@ class RDBNearIterator final : public IndexIterator {
             };
             auto* physical = _collection->getPhysical();
             // geo index never needs to observe own writes
-            if (!physical->lookup(_trx, gdoc.token, callback, {}).ok()) {
+            if (!physical
+                     ->lookup(_trx, gdoc.token, callback, {.countBytes = true})
+                     .ok()) {
               return false;
             }
             if (!result) {
@@ -493,7 +498,8 @@ class RDBCoveringIterator final : public IndexIterator {
           };
           auto* physical = _collection->getPhysical();
           // geo index never needs to observe own writes
-          if (!physical->lookup(_trx, docid, callback, {}).ok()) {
+          if (!physical->lookup(_trx, docid, callback, {.countBytes = true})
+                   .ok()) {
             return false;  // ignore document
           }
           return result;
@@ -525,7 +531,8 @@ class RDBCoveringIterator final : public IndexIterator {
             };
             auto* physical = _collection->getPhysical();
             // geo index never needs to observe own writes
-            if (!physical->lookup(_trx, docid, callback, {}).ok()) {
+            if (!physical->lookup(_trx, docid, callback, {.countBytes = true})
+                     .ok()) {
               return false;
             }
             if (!result) {
@@ -632,10 +639,7 @@ RocksDBGeoIndex::RocksDBGeoIndex(IndexId iid, LogicalCollection& collection,
                    /*useCache*/ false,
                    /*cacheManager*/ nullptr,
                    /*engine*/
-                   collection.vocbase()
-                       .server()
-                       .getFeature<EngineSelectorFeature>()
-                       .engine<RocksDBEngine>()),
+                   collection.vocbase().engine<RocksDBEngine>()),
       geo_index::Index(info, _fields),
       _typeName(typeName) {
   TRI_ASSERT(iid.isSet());

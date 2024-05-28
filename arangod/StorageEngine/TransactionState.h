@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/RecursiveLocker.h"
 #include "Basics/Result.h"
@@ -35,6 +34,7 @@
 #include "Containers/FlatHashSet.h"
 #include "Containers/SmallVector.h"
 #include "Futures/Future.h"
+#include "Metrics/MetricsFeature.h"
 #include "Transaction/Hints.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/Options.h"
@@ -47,6 +47,8 @@
 #include <atomic>
 #include <cstdint>
 #include <memory>
+#include <mutex>
+#include <shared_mutex>
 #include <string>
 #include <string_view>
 #include <variant>
@@ -67,11 +69,8 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+class CollectionNameResolver;
 struct ResourceMonitor;
-
-namespace aql {
-class QueryContext;
-}
 
 namespace transaction {
 class CounterGuard;
@@ -298,32 +297,24 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   void setExclusiveAccessType();
 
   /// @brief whether or not a transaction is read-only
-  [[nodiscard]] bool isReadOnlyTransaction() const noexcept {
-    return _type == AccessMode::Type::READ;
-  }
+  [[nodiscard]] bool isReadOnlyTransaction() const noexcept;
 
   /// @brief whether or not a transaction is a follower transaction
-  [[nodiscard]] bool isFollowerTransaction() const noexcept {
-    return hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
-  }
+  [[nodiscard]] bool isFollowerTransaction() const noexcept;
 
   /// @brief servers already contacted
   [[nodiscard]] containers::FlatHashSet<ServerID> const& knownServers()
-      const noexcept {
-    return _knownServers;
-  }
+      const noexcept;
 
-  [[nodiscard]] bool knowsServer(std::string_view uuid) const noexcept {
-    return _knownServers.contains(uuid);
-  }
+  [[nodiscard]] bool knowsServer(std::string_view uuid) const noexcept;
 
   /// @brief add a server to the known set
-  void addKnownServer(std::string_view uuid) { _knownServers.emplace(uuid); }
+  void addKnownServer(std::string_view uuid);
 
   /// @brief remove a server from the known set
-  void removeKnownServer(std::string_view uuid) { _knownServers.erase(uuid); }
+  void removeKnownServer(std::string_view uuid);
 
-  void clearKnownServers() { _knownServers.clear(); }
+  void clearKnownServers();
 
   void chooseReplicas(containers::FlatHashSet<ShardID> const& shards);
 
@@ -362,6 +353,27 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   void coordinatorRerollTransactionId();
 
   std::shared_ptr<transaction::CounterGuard> counterGuard();
+
+  /// @brief set name of user who originated the transaction. will
+  /// only be set if no user has been registered with the transaction yet.
+  /// this user name is informational only and can be used for logging,
+  /// metrics etc. it should not be used for permission checks.
+  void setUsername(std::string const& name);
+
+  /// @brief return name of user who originated the transaction. may be
+  /// empty. this user name is informational only and can be used for logging,
+  /// metrics etc. it should not be used for permission checks.
+  std::string_view username() const noexcept;
+
+  void trackShardRequest(CollectionNameResolver const& resolver,
+                         std::string_view database, std::string_view shard,
+                         std::string_view user, AccessMode::Type accessMode,
+                         std::string_view context) noexcept;
+
+  void trackShardUsage(CollectionNameResolver const& resolver,
+                       std::string_view database, std::string_view shard,
+                       std::string_view user, AccessMode::Type accessMode,
+                       std::string_view context, size_t nBytes) noexcept;
 
  protected:
   virtual std::unique_ptr<TransactionCollection> createTransactionCollection(
@@ -419,6 +431,8 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
 
   [[nodiscard]] auto findCollectionOrPos(DataSourceId cid) const
       -> std::variant<CollectionNotFound, CollectionFound>;
+
+  void publishShardMetrics(CollectionNameResolver const& resolver);
 
  protected:
   TRI_vocbase_t& _vocbase;  /// @brief vocbase for this transaction
@@ -479,6 +493,25 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   QueryAnalyzerRevisions _analyzersRevision;
 
   transaction::OperationOrigin const _operationOrigin;
+
+  metrics::MetricsFeature::UsageTrackingMode _usageTrackingMode;
+
+  /// @brief name of user who originated the transaction. may be empty.
+  /// this user name is informational only and can be used for logging,
+  /// metrics etc.
+  /// it should not be used for permission checks.
+  std::shared_mutex mutable _usernameLock;
+  std::string _username;
+
+  // protects _shardsBytesWritten and _shardsBytesRead
+  std::mutex mutable _shardsMetricsMutex;
+  // map from collection name (shard name) to number of bytes written
+  containers::FlatHashMap<std::string, size_t> _shardBytesWritten;
+  // map from collection name (shard name) to number of bytes read
+  containers::FlatHashMap<std::string, size_t> _shardBytesRead;
+  // number of times the metrics have been increased since the metrics
+  // were last published
+  size_t _shardBytesUnpublishedEvents = 0;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   std::shared_ptr<transaction::HistoryEntry> _historyEntry;

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -99,10 +99,6 @@ class HttpResponse : public GeneralResponse {
     return _body->reserve(size);
   }
 
-  arangodb::Endpoint::TransportType transportType() override final {
-    return arangodb::Endpoint::TransportType::HTTP;
-  }
-
   std::unique_ptr<basics::StringBuffer> stealBody() {
     std::unique_ptr<basics::StringBuffer> body(std::move(_body));
     return body;
@@ -115,6 +111,10 @@ class HttpResponse : public GeneralResponse {
   // the body must already be set. gzip compression is then run on the existing
   // body
   ErrorCode gzipCompress(bool onlyIfSmaller) override;
+
+  // the body must already be set. lz4 compression is then run on the existing
+  // body
+  ErrorCode lz4Compress(bool onlyIfSmaller) override;
 
   void addPayloadInternal(uint8_t const* data, size_t length,
                           velocypack::Options const* options,

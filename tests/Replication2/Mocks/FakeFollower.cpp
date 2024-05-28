@@ -1,13 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2021-2021 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -65,11 +66,12 @@ auto FakeFollower::getQuickStatus() const -> replicated_log::QuickLogStatus {
   return replicated_log::QuickLogStatus{
       .role = replicated_log::ParticipantRole::kFollower,
       .term = term,
-      .local = {{
-          .spearHead = guard->log.getLastTermIndexPair(),
-          .commitIndex = guard->commitIndex,
-          .firstIndex = guard->log.getFirstIndex(),
-      }},
+      .local =
+          {
+              .spearHead = guard->log.getLastTermIndexPair(),
+              .commitIndex = guard->commitIndex,
+              .firstIndex = guard->log.getFirstIndex(),
+          },
       .leadershipEstablished = guard->commitIndex > kBaseIndex,
   };
 }
@@ -115,7 +117,7 @@ void FakeFollower::updateCommitIndex(LogIndex index) {
 void FakeFollower::resign() & {
   auto const exPtr =
       std::make_exception_ptr(replicated_log::ParticipantResignedException(
-          TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE));
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED));
   waitForQueue.resolveAll(futures::Try<replicated_log::WaitForResult>(exPtr));
   waitForLeaderAckedQueue.resolveAll(
       futures::Try<replicated_log::WaitForResult>(exPtr));

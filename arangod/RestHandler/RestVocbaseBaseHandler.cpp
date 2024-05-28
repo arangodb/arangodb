@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -89,13 +89,6 @@ std::string const RestVocbaseBaseHandler::BATCH_PATH = "/_api/batch";
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string const RestVocbaseBaseHandler::COLLECTION_PATH = "/_api/collection";
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief control pregel path
-////////////////////////////////////////////////////////////////////////////////
-
-std::string const RestVocbaseBaseHandler::CONTROL_PREGEL_PATH =
-    "/_api/control_pregel";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cursor path
@@ -220,7 +213,7 @@ RestVocbaseBaseHandler::RestVocbaseBaseHandler(ArangodServer& server,
                                                GeneralRequest* request,
                                                GeneralResponse* response)
     : RestBaseHandler(server, request, response),
-      _context(*static_cast<VocbaseContext*>(request->requestContext())),
+      _context(static_cast<VocbaseContext&>(*request->requestContext())),
       _vocbase(_context.vocbase()),
       _scopeVocbaseValues(
           LogContext::makeValue()
@@ -579,8 +572,9 @@ RestVocbaseBaseHandler::createTransaction(
     OperationOptions const& opOptions,
     transaction::OperationOrigin operationOrigin,
     transaction::Options&& trxOpts) const {
-  bool isFollower = !opOptions.isSynchronousReplicationFrom.empty() &&
-                    ServerState::instance()->isDBServer();
+  bool const isDBServer = ServerState::instance()->isDBServer();
+  bool isFollower =
+      !opOptions.isSynchronousReplicationFrom.empty() && isDBServer;
 
   bool found = false;
   std::string const& value =
@@ -594,6 +588,10 @@ RestVocbaseBaseHandler::createTransaction(
         collectionName, type, std::move(trxOpts));
     if (isFollower) {
       tmp->addHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
+    }
+    if (isDBServer) {
+      // set username from request
+      tmp->setUsername(_request->value(StaticStrings::UserString));
     }
     co_return tmp;
   }
@@ -645,12 +643,11 @@ RestVocbaseBaseHandler::createTransaction(
   // lock on the context for the entire duration of the query. if this is the
   // case, then the query already has the lock, and it is ok if we lease the
   // context here without acquiring it again.
-  bool isSideUser =
-      (ServerState::instance()->isDBServer() && AccessMode::isRead(type) &&
-       !_request->header(StaticStrings::AqlDocumentCall).empty());
+  bool isSideUser = (isDBServer && AccessMode::isRead(type) &&
+                     !_request->header(StaticStrings::AqlDocumentCall).empty());
 
   std::shared_ptr<transaction::Context> ctx =
-      mgr->leaseManagedTrx(tid, type, isSideUser);
+      co_await mgr->leaseManagedTrx(tid, type, isSideUser);
 
   if (!ctx) {
     LOG_TOPIC("e94ea", DEBUG, Logger::TRANSACTIONS)
@@ -677,6 +674,10 @@ RestVocbaseBaseHandler::createTransaction(
       }
     }
     trx = std::make_unique<transaction::Methods>(std::move(ctx));
+  }
+  if (isDBServer) {
+    // set username from request
+    trx->setUsername(_request->value(StaticStrings::UserString));
   }
   co_return trx;
 }
@@ -742,7 +743,7 @@ RestVocbaseBaseHandler::createTransactionContext(
     }
   }
 
-  auto ctx = mgr->leaseManagedTrx(tid, mode, /*isSideUser*/ false);
+  auto ctx = co_await mgr->leaseManagedTrx(tid, mode, /*isSideUser*/ false);
   if (!ctx) {
     LOG_TOPIC("2cfed", DEBUG, Logger::TRANSACTIONS)
         << "Transaction with id '" << tid << "' not found";

@@ -4,8 +4,8 @@ import { CellContext, createColumnHelper } from "@tanstack/react-table";
 import { GraphInfo } from "arangojs/graph";
 import React from "react";
 import { Link as RouterLink } from "react-router-dom";
-import { FiltersList } from "../../../components/table/FiltersList";
 import { ReactTable } from "../../../components/table/ReactTable";
+import { TableControl } from "../../../components/table/TableControl";
 import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
 import { EditGraphModal } from "./EditGraphModal";
 import { detectGraphType } from "./graphListHelpers";
@@ -69,7 +69,14 @@ const ActionCell = ({ info }: { info: CellContext<GraphInfo, any> }) => {
         onClose={onClose}
         graph={info.cell.row.original}
       />
-      <Button onClick={onOpen} size="xs">
+      <Button
+        onClick={e => {
+          e.stopPropagation();
+          e.preventDefault();
+          onOpen();
+        }}
+        size="xs"
+      >
         <EditIcon />
       </Button>
     </>
@@ -81,21 +88,30 @@ export const GraphsTable = () => {
   const tableInstance = useSortableReactTable<GraphInfo>({
     data: graphs || [],
     columns: TABLE_COLUMNS,
-    initialSorting: [
+    defaultSorting: [
       {
         id: "name",
         desc: false
       }
-    ]
+    ],
+    storageKey: "graphs"
   });
 
   return (
     <>
       <Stack>
-        <FiltersList<GraphInfo> columns={TABLE_COLUMNS} table={tableInstance} />
+        <TableControl<GraphInfo>
+          table={tableInstance}
+          columns={TABLE_COLUMNS}
+        />
         <ReactTable<GraphInfo>
           table={tableInstance}
           emptyStateMessage="No graphs found"
+          onRowSelect={row => {
+            window.location.hash = `#graphs-v2/${encodeURIComponent(
+              row.original.name
+            )}`;
+          }}
         />
       </Stack>
     </>

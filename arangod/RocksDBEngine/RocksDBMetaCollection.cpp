@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/RecursiveLocker.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/hashes.h"
@@ -76,10 +77,7 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
                                              velocypack::Slice info)
     : PhysicalCollection(collection),
       _exclusiveLock(_schedulerWrapper),
-      _engine(collection.vocbase()
-                  .server()
-                  .getFeature<EngineSelectorFeature>()
-                  .engine<RocksDBEngine>()),
+      _engine(collection.vocbase().engine<RocksDBEngine>()),
       _objectId(basics::VelocyPackHelper::stringUInt64(
           info, StaticStrings::ObjectId)),
       _revisionTreeApplied(0),
@@ -476,31 +474,39 @@ RocksDBMetaCollection::computeRevisionTree(uint64_t batchId) {
 
 Result RocksDBMetaCollection::takeCareOfRevisionTreePersistence(
     LogicalCollection& coll, RocksDBEngine& engine, rocksdb::WriteBatch& batch,
-    rocksdb::ColumnFamilyHandle* const cf, rocksdb::SequenceNumber maxCommitSeq,
-    bool force, std::string const& context, std::string& scratch,
+    rocksdb::ColumnFamilyHandle* const cf,
+    rocksdb::SequenceNumber wantedMaxCommitSeq, bool force,
+    std::string const& context, std::string& scratch,
     rocksdb::SequenceNumber& appliedSeq) {
-  TRI_ASSERT(coll.useSyncByRevision());
+  TRI_ASSERT(coll.useSyncByRevision() || coll.deleted());
 
   // might lower `appliedSeq`!
 
   // Get lock on revision tree:
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
-  if (maxCommitSeq < _revisionTreeApplied) {
+  auto correctedMaxCommitSeq = wantedMaxCommitSeq;
+  if (correctedMaxCommitSeq < _revisionTreeApplied) {
     // this function is called indirectly from RocksDBSettingsManager::sync
     // which passes in a seq nr that it has previously obtained, but it can
     // happen that in the meantime the tree has been moved forward or a tree
     // was rebuilt and _revisionTreeApplied is now greater than the seq nr
     // we get passed in. In this case we have to bump the seq nr forward,
     // because we cannot generate a tree from the past.
-    maxCommitSeq = _revisionTreeApplied;
+    correctedMaxCommitSeq = _revisionTreeApplied;
   }
 
-  maxCommitSeq = _meta.committableSeq(maxCommitSeq);
+  auto maxCommitableSeq = _meta.committableSeq(correctedMaxCommitSeq);
+  TRI_ASSERT(maxCommitableSeq <= correctedMaxCommitSeq);
+  auto maxCommitSeq = maxCommitableSeq;
   if ((force || needToPersistRevisionTree(maxCommitSeq, guard)) &&
       _revisionTreeCanBeSerialized) {
     rocksdb::SequenceNumber seq = maxCommitSeq;
 
-    TRI_ASSERT(maxCommitSeq >= _revisionTreeApplied);
+    TRI_ASSERT(maxCommitSeq >= _revisionTreeApplied)
+        << "maxCommitSeq = " << maxCommitSeq
+        << ", _revisionTreeApplied = " << _revisionTreeApplied
+        << ", wantedMaxCommitSeq = " << wantedMaxCommitSeq
+        << ", correctedMaxCommitSeq = " << correctedMaxCommitSeq;
 
     scratch.clear();
 
@@ -512,10 +518,7 @@ Result RocksDBMetaCollection::takeCareOfRevisionTreePersistence(
           << ": caught exception during revision tree serialization: "
           << ex.what();
 
-      auto& engine = _logicalCollection.vocbase()
-                         .server()
-                         .getFeature<EngineSelectorFeature>()
-                         .engine<RocksDBEngine>();
+      auto& engine = _logicalCollection.vocbase().engine<RocksDBEngine>();
       auto* db = engine.db();
 
       rocksdb::WriteOptions wo;
@@ -747,6 +750,10 @@ rocksdb::SequenceNumber RocksDBMetaCollection::serializeRevisionTree(
     std::string& output, rocksdb::SequenceNumber commitSeq, bool force,
     std::unique_lock<std::mutex> const& lock) {
   TRI_ASSERT(lock.owns_lock());
+  if (_logicalCollection.deleted()) {
+    return commitSeq;
+  }
+
   TRI_ASSERT(_logicalCollection.useSyncByRevision());
 
   if (!_revisionTree && !haveBufferedOperations(lock)) {  // empty collection
@@ -968,14 +975,6 @@ futures::Future<Result> RocksDBMetaCollection::rebuildRevisionTree() {
           std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
     }
 
-    {
-      // we may still have some buffered updates, so let's remove them.
-      std::unique_lock<std::mutex> guard(_revisionTreeLock);
-      removeBufferedUpdatesUpTo(blockerSeq - 1);
-
-      _revisionTreeApplied = blockerSeq - 1;
-    }
-
     // unlock the collection again
     lockGuard.fire();
 
@@ -1013,10 +1012,6 @@ futures::Future<Result> RocksDBMetaCollection::rebuildRevisionTree() {
     // wait until all blockers before the snapshot have been removed
     while (true) {
       std::unique_lock<std::mutex> guard(_revisionTreeLock);
-
-      if (_revisionTreeApplied < beginSeq) {
-        _revisionTreeApplied = beginSeq;
-      }
 
       TRI_IF_FAILURE("rebuildRevisionTree::sleep") {
         if (RandomGenerator::interval(uint32_t(2000)) > 1750) {
@@ -1086,10 +1081,7 @@ void RocksDBMetaCollection::rebuildRevisionTree(
           ->GetComparator();
   rocksdb::Slice const end = documentBounds.end();
 
-  auto& engine = _logicalCollection.vocbase()
-                     .server()
-                     .getFeature<EngineSelectorFeature>()
-                     .engine<RocksDBEngine>();
+  auto& engine = _logicalCollection.vocbase().engine<RocksDBEngine>();
   auto* db = engine.db();
 
   std::vector<std::uint64_t> revisions;
@@ -1709,6 +1701,19 @@ void RocksDBMetaCollection::unlockWrite() noexcept { _exclusiveLock.unlock(); }
 
 /// @brief read locks a collection, with a timeout
 futures::Future<ErrorCode> RocksDBMetaCollection::lockRead(double timeout) {
+  TRI_IF_FAILURE("assertLockTimeoutLow") {
+    if (_logicalCollection.vocbase().name() == "UnitTestsLockTimeout") {
+      // In the test we expect that fast path locking is done with 2s timeout.
+      TRI_ASSERT(timeout < 10);
+    }
+  }
+  TRI_IF_FAILURE("assertLockTimeoutHigh") {
+    if (_logicalCollection.vocbase().name() == "UnitTestsLockTimeout") {
+      // In the test we expect that an lazy locking happens on the follower
+      // with the default timeout of more than 2 seconds:
+      TRI_ASSERT(timeout > 10);
+    }
+  }
   return doLock(timeout, AccessMode::Type::READ);
 }
 
@@ -1837,10 +1842,7 @@ RocksDBMetaCollection::RevisionTreeAccessor::RevisionTreeAccessor(
   TRI_ASSERT(_depth == revisionTreeDepth);
   TRI_ASSERT(_tree != nullptr);
 
-  auto& engine = _logicalCollection.vocbase()
-                     .server()
-                     .getFeature<EngineSelectorFeature>()
-                     .engine<RocksDBEngine>();
+  auto& engine = _logicalCollection.vocbase().engine<RocksDBEngine>();
   engine.trackRevisionTreeMemoryIncrease(_tree->memoryUsage());
 }
 
@@ -1848,10 +1850,7 @@ RocksDBMetaCollection::RevisionTreeAccessor::~RevisionTreeAccessor() {
   TRI_ASSERT((_tree == nullptr && !_compressed.empty()) ||
              (_tree != nullptr && _compressed.empty()));
 
-  auto& engine = _logicalCollection.vocbase()
-                     .server()
-                     .getFeature<EngineSelectorFeature>()
-                     .engine<RocksDBEngine>();
+  auto& engine = _logicalCollection.vocbase().engine<RocksDBEngine>();
   if (_tree != nullptr) {
     engine.trackRevisionTreeMemoryDecrease(_tree->memoryUsage());
   } else if (!_compressed.empty()) {
@@ -1937,10 +1936,7 @@ void RocksDBMetaCollection::RevisionTreeAccessor::corrupt(uint64_t count,
   // not _remove_ data
   _tree->corrupt(count, hash);
 
-  RocksDBEngine& engine = _logicalCollection.vocbase()
-                              .server()
-                              .getFeature<EngineSelectorFeature>()
-                              .engine<RocksDBEngine>();
+  RocksDBEngine& engine = _logicalCollection.vocbase().engine<RocksDBEngine>();
   engine.trackRevisionTreeMemoryIncrease(_tree->memoryUsage() - oldMemoryUsage);
 }
 #endif
@@ -2015,10 +2011,8 @@ void RocksDBMetaCollection::RevisionTreeAccessor::hibernate(bool force) {
   if (_compressed.size() * 2 < _tree->memoryUsage()) {
     // compression ratio ok.
     // remove tree from memory. now we only have _compressed
-    RocksDBEngine& engine = _logicalCollection.vocbase()
-                                .server()
-                                .getFeature<EngineSelectorFeature>()
-                                .engine<RocksDBEngine>();
+    RocksDBEngine& engine =
+        _logicalCollection.vocbase().engine<RocksDBEngine>();
     engine.trackRevisionTreeHibernation();
     engine.trackRevisionTreeMemoryIncrease(_compressed.size());
     engine.trackRevisionTreeMemoryDecrease(oldMemoryUsage);
@@ -2069,10 +2063,8 @@ void RocksDBMetaCollection::RevisionTreeAccessor::ensureTree() const {
                                      "unable to uncompress tree");
     }
 
-    RocksDBEngine& engine = _logicalCollection.vocbase()
-                                .server()
-                                .getFeature<EngineSelectorFeature>()
-                                .engine<RocksDBEngine>();
+    RocksDBEngine& engine =
+        _logicalCollection.vocbase().engine<RocksDBEngine>();
     engine.trackRevisionTreeResurrection();
     engine.trackRevisionTreeMemoryIncrease(_tree->memoryUsage());
     engine.trackRevisionTreeMemoryDecrease(_compressed.size());

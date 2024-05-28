@@ -5,14 +5,14 @@
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
-// / Copyright 2016 ArangoDB GmbH, Cologne, Germany
-// / Copyright 2014 triagens GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -398,17 +398,11 @@ class instanceManager {
     }
     this.options.cleanup = false;
     let device = 'lo';
-    if (platform.substr(0, 3) === 'win') {
-      device = '1';
-    }
     if (this.options.sniffDevice !== undefined) {
       device = this.options.sniffDevice;
     }
 
     let prog = 'tcpdump';
-    if (platform.substr(0, 3) === 'win') {
-      prog = 'c:/Program Files/Wireshark/tshark.exe';
-    }
     if (this.options.sniffProgram !== undefined) {
       prog = this.options.sniffProgram;
     }
@@ -1242,16 +1236,33 @@ class instanceManager {
         }
         let url = arangod.url;
         if (arangod.isRole(instanceRole.coordinator) && arangod.args["javascript.enabled"] !== "false") {
-          url += '/_admin/aardvark/index.html';
+          url += '/_api/foxx';
           httpOptions.method = 'GET';
         } else {
           url += '/_api/version';
           httpOptions.method = 'POST';
         }
         const reply = download(url, '', httpOptions);
+        if (!this.options.noStartStopLogs) {
+          print(`Server reply to ${url}: ${JSON.stringify(reply)}`);
+        }
         if (!reply.error && reply.code === 200) {
           arangod.upAndRunning = true;
           return true;
+        }
+        try {
+          if (reply.code === 403) {
+            let parsedBody = JSON.parse(reply.body);
+            if (parsedBody.errorNum === internal.errors.ERROR_SERVICE_API_DISABLED.code) {
+              if (!this.options.noStartStopLogs) {
+                print("service API disabled, continuing.");
+              }
+              arangod.upAndRunning = true;
+              return true;
+            }
+          }
+        } catch (e) {
+          print(RED + Date() + " failed to parse server reply: " + JSON.stringify(reply));
         }
 
         if (arangod.pid !== null && !arangod.checkArangoAlive()) {
@@ -1357,16 +1368,10 @@ class instanceManager {
     }
     return true;
   }
-  /// make arangosh use HTTP, VST or HTTP2 according to option
+  /// make arangosh use HTTP, HTTP2 according to option
   findEndpoint() {
     let endpoint = this.endpoint;
-    if (this.options.vst) {
-      if (this.options.protocol === 'ssl') {
-        endpoint = endpoint.replace(/.*\/\//, 'vst+ssl://');
-      } else {
-        endpoint = endpoint.replace(/.*\/\//, 'vst://');
-      }
-    } else if (this.options.http2) {
+    if (this.options.http2) {
       if (this.options.protocol === 'ssl') {
         endpoint = endpoint.replace(/.*\/\//, 'h2+ssl://');
       } else {

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,6 +27,7 @@
 #include "Cluster/ActionDescription.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/ClusterMethods.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/MaintenanceStrings.h"
 #include "Cluster/ServerDefaults.h"
@@ -65,6 +66,19 @@ RestCollectionHandler::RestCollectionHandler(ArangodServer& server,
                                              GeneralRequest* request,
                                              GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
+
+RequestLane RestCollectionHandler::lane() const {
+  if (_request->requestType() == rest::RequestType::GET) {
+    auto const& suffixes = _request->suffixes();
+    if (suffixes.size() >= 2 &&
+        (suffixes[1] == "shards" || suffixes[1] == "responsibleShard")) {
+      // these request types are non-blocking, so we can give them high priority
+      return RequestLane::CLUSTER_ADMIN;
+    }
+  }
+
+  return RequestLane::CLIENT_SLOW;
+}
 
 RestStatus RestCollectionHandler::execute() {
   switch (_request->requestType()) {
@@ -452,7 +466,19 @@ futures::Future<RestStatus> RestCollectionHandler::handleCommandPut() {
                              /*showCount*/ CountType::None);
     co_return standardResponse();
   } else if (sub == "compact") {
-    coll->compact();
+    if (ServerState::instance()->isCoordinator()) {
+      auto& feature = server().getFeature<ClusterFeature>();
+      // while this call is technically blocking, the requests to the
+      // DB servers only schedule the compactions, but they do not
+      // block until they are completed.
+      auto res = compactOnAllDBServers(feature, _vocbase.name(), name);
+      if (res.fail()) {
+        generateError(res);
+        co_return RestStatus::DONE;
+      }
+    } else {
+      coll->compact();
+    }
 
     collectionRepresentation(name, /*showProperties*/ false,
                              /*showFigures*/ FiguresType::None,
@@ -528,13 +554,21 @@ futures::Future<RestStatus> RestCollectionHandler::handleCommandPut() {
       // their own write ops to follower C one after the after, then C will
       // first see only shards from A and then only from B).
       res.reset(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
-                std::string("Transaction with id '") +
-                    std::to_string(_activeTrx->tid().id()) +
-                    "' does not contain collection '" + coll->name() +
-                    "' with the required access mode.");
+                absl::StrCat("Transaction with id '", _activeTrx->tid().id(),
+                             "' does not contain collection '", coll->name(),
+                             "' with the required access mode."));
       generateError(res);
       _activeTrx.reset();
       co_return RestStatus::DONE;
+    }
+
+    // track request only on leader
+    if (opts.isSynchronousReplicationFrom.empty() &&
+        ServerState::instance()->isDBServer()) {
+      _activeTrx->state()->trackShardRequest(
+          *_activeTrx->resolver(), _vocbase.name(), coll->name(),
+          _request->value(StaticStrings::UserString), AccessMode::Type::WRITE,
+          "truncate");
     }
 
     OperationResult opres =
@@ -674,7 +708,9 @@ void RestCollectionHandler::handleCommandDelete() {
     VPackObjectBuilder obj(&_builder, true);
 
     obj->add("id", VPackValue(std::to_string(coll->id().id())));
-    res = methods::Collections::drop(*coll, allowDropSystem);
+    CollectionDropOptions dropOptions{.allowDropSystem = allowDropSystem,
+                                      .allowDropGraphCollection = false};
+    res = methods::Collections::drop(*coll, dropOptions);
   }
 
   if (res.fail()) {
@@ -806,9 +842,10 @@ RestCollectionHandler::collectionRepresentationAsync(
 
 RestStatus RestCollectionHandler::standardResponse() {
   generateOk(rest::ResponseCode::OK, _builder);
-  _response->setHeaderNC(StaticStrings::Location,
-                         "/_db/" + StringUtils::urlEncode(_vocbase.name()) +
-                             _request->requestPath());
+  _response->setHeaderNC(
+      StaticStrings::Location,
+      absl::StrCat("/_db/", StringUtils::urlEncode(_vocbase.name()),
+                   _request->requestPath()));
   return RestStatus::DONE;
 }
 

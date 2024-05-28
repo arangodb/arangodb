@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,15 +20,6 @@
 ///
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef _WIN32
-#include <locale.h>
-#include <string.h>
-#include <tchar.h>
-#include <fcntl.h>
-#include <io.h>
-#include <unicode/locid.h>
-#endif
 
 #include "ShellConsoleFeature.h"
 
@@ -48,10 +39,6 @@
 #include "ProgramOptions/Section.h"
 #include "Shell/ClientFeature.h"
 
-#if _WIN32
-#include "Basics/win-utils.h"
-#endif
-
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
 #endif
@@ -62,21 +49,10 @@
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
-#ifdef _WIN32
-static const int FOREGROUND_WHITE =
-    FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE;
-static const int BACKGROUND_WHITE =
-    BACKGROUND_RED | BACKGROUND_GREEN | BACKGROUND_BLUE;
-static const int INTENSITY = FOREGROUND_INTENSITY | BACKGROUND_INTENSITY;
-#endif
-
 namespace arangodb {
 
 ShellConsoleFeature::ShellConsoleFeature(Server& server)
     : ArangoshFeature(server, *this),
-#ifdef _WIN32
-      _cygwinShell(false),
-#endif
       _quiet(false),
       _colors(true),
       _useHistory(true),
@@ -97,18 +73,6 @@ ShellConsoleFeature::ShellConsoleFeature(Server& server)
   if (!_supportsColors) {
     _colors = false;
   }
-
-#if _WIN32
-  CONSOLE_SCREEN_BUFFER_INFO info;
-  GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &info);
-
-  _defaultAttribute = info.wAttributes & INTENSITY;
-  _defaultColor = info.wAttributes & FOREGROUND_WHITE;
-  _defaultBackground = info.wAttributes & BACKGROUND_WHITE;
-
-  _consoleAttribute = _defaultAttribute;
-  _consoleColor = _defaultColor | _defaultBackground;
-#endif
 }
 
 void ShellConsoleFeature::collectOptions(
@@ -154,144 +118,9 @@ void ShellConsoleFeature::collectOptions(
       new StringParameter(&_prompt));
 }
 
-void ShellConsoleFeature::prepare() {
-#if _WIN32
-  if (_is_cyg_tty(STDOUT_FILENO) || getenv("SHELL") != nullptr) {
-    _cygwinShell = true;
-  }
-#endif
-}
-
 void ShellConsoleFeature::start() { openLog(); }
 
 void ShellConsoleFeature::unprepare() { closeLog(); }
-
-#ifdef _WIN32
-static void _newLine() { fprintf(stdout, "\n"); }
-
-void ShellConsoleFeature::_print2(std::string const& s) {
-  size_t sLen = s.size();
-
-  if (sLen == 0) {
-    return;
-  }
-
-  LPWSTR wBuf = new WCHAR[sLen + 1];
-  int wLen = MultiByteToWideChar(CP_UTF8, 0, s.c_str(), (int)sLen, wBuf,
-                                 (int)((sizeof(WCHAR)) * (sLen + 1)));
-
-  if (wLen) {
-    auto handle = GetStdHandle(STD_OUTPUT_HANDLE);
-    SetConsoleTextAttribute(handle, _consoleAttribute | _consoleColor);
-
-    DWORD n;
-    WriteConsoleW(handle, wBuf, (DWORD)wLen, &n, NULL);
-  } else {
-    fprintf(stdout, "window error: '%d' \r\n", GetLastError());
-    fprintf(stdout, "%s\r\n", s.c_str());
-  }
-
-  if (wBuf) {
-    delete[] wBuf;
-  }
-}
-
-void ShellConsoleFeature::_print(std::string const& s) {
-  auto pos = s.find_first_of("\x1b");
-
-  if (pos == std::string::npos) {
-    _print2(s);
-  } else {
-    std::vector<std::string> lines = StringUtils::split(s, '\x1b');
-
-    int i = 0;
-
-    for (auto line : lines) {
-      size_t pos = 0;
-
-      if (i++ != 0 && !line.empty()) {
-        char c = line[0];
-
-        if (c == '[') {
-          int code = 0;
-
-          for (++pos; pos < line.size(); ++pos) {
-            c = line[pos];
-
-            if ('0' <= c && c <= '9') {
-              code = code * 10 + (c - '0');
-            } else if (c == 'm' || c == ';') {
-              switch (code) {
-                case 0:
-                  _consoleAttribute = _defaultAttribute;
-                  _consoleColor = _defaultColor | _defaultBackground;
-                  break;
-
-                case 1:  // BOLD
-                case 5:  // BLINK
-                  _consoleAttribute =
-                      (_defaultAttribute ^ FOREGROUND_INTENSITY) & INTENSITY;
-                  break;
-
-                case 30:
-                  _consoleColor = BACKGROUND_WHITE;
-                  break;
-
-                case 31:
-                  _consoleColor = FOREGROUND_RED | _defaultBackground;
-                  break;
-
-                case 32:
-                  _consoleColor = FOREGROUND_GREEN | _defaultBackground;
-                  break;
-
-                case 33:
-                  _consoleColor =
-                      FOREGROUND_RED | FOREGROUND_GREEN | _defaultBackground;
-                  break;
-
-                case 34:
-                  _consoleColor = FOREGROUND_BLUE | _defaultBackground;
-                  break;
-
-                case 35:
-                  _consoleColor =
-                      FOREGROUND_BLUE | FOREGROUND_RED | _defaultBackground;
-                  break;
-
-                case 36:
-                  _consoleColor =
-                      FOREGROUND_BLUE | FOREGROUND_GREEN | _defaultBackground;
-                  break;
-
-                case 37:
-                  _consoleColor = FOREGROUND_GREEN | FOREGROUND_RED |
-                                  FOREGROUND_BLUE | _defaultBackground;
-                  break;
-              }
-
-              code = 0;
-            }
-
-            if (c == 'm') {
-              ++pos;
-              break;
-            }
-          }
-        }
-      }
-
-      if (line.size() > pos) {
-        _print2(line.substr(pos));
-      }
-    }
-  }
-
-  auto handle = GetStdHandle(STD_OUTPUT_HANDLE);
-  SetConsoleTextAttribute(handle, _consoleAttribute | _consoleColor);
-}
-
-#endif
 
 // prints a string to stdout, without a newline
 void ShellConsoleFeature::printContinuous(std::string const& s) {
@@ -331,16 +160,7 @@ std::string ShellConsoleFeature::readPassword() {
 
   std::string password;
 
-#ifdef _WIN32
-  std::wstring wpassword;
-  _setmode(_fileno(stdin), _O_U16TEXT);
-  std::getline(std::wcin, wpassword);
-  icu::UnicodeString pw(wpassword.c_str(),
-                        static_cast<int32_t>(wpassword.length()));
-  pw.toUTF8String<std::string>(password);
-#else
   std::getline(std::cin, password);
-#endif
   return password;
 }
 
@@ -536,7 +356,6 @@ ShellConsoleFeature::Prompt ShellConsoleFeature::buildPrompt(
 }
 
 void ShellConsoleFeature::startPager() {
-#ifndef _WIN32
   if (!_pager || _pagerCommand.empty() || _pagerCommand == "stdout" ||
       _pagerCommand == "-") {
     _toPager = stdout;
@@ -550,16 +369,13 @@ void ShellConsoleFeature::startPager() {
       _pager = false;
     }
   }
-#endif
 }
 
 void ShellConsoleFeature::stopPager() {
-#ifndef _WIN32
   if (_toPager != stdout) {
     pclose(_toPager);
     _toPager = stdout;
   }
-#endif
 }
 
 }  // namespace arangodb

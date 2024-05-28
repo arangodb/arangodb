@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -60,23 +60,6 @@ Exception::Exception(ErrorCode code, std::string_view errorMessage,
 Exception::Exception(ErrorCode code, const char* errorMessage,
                      SourceLocation location)
     : Exception(code, std::string{errorMessage}, location) {}
-
-Exception::Exception(ErrorCode code, char const* file, int line)
-    : Exception(code, SourceLocation(file, line)) {}
-Exception::Exception(arangodb::Result const& result, char const* file, int line)
-    : Exception(result, SourceLocation(file, line)) {}
-Exception::Exception(arangodb::Result&& result, char const* file,
-                     int line) noexcept
-    : Exception(std::move(result), SourceLocation(file, line)) {}
-Exception::Exception(ErrorCode code, std::string_view errorMessage,
-                     char const* file, int line)
-    : Exception(code, errorMessage, SourceLocation(file, line)) {}
-Exception::Exception(ErrorCode code, std::string&& errorMessage,
-                     char const* file, int line) noexcept
-    : Exception(code, std::move(errorMessage), SourceLocation(file, line)) {}
-Exception::Exception(ErrorCode code, char const* errorMessage, char const* file,
-                     int line)
-    : Exception(code, errorMessage, SourceLocation(file, line)) {}
 
 /// @brief returns the error message
 std::string const& Exception::message() const noexcept { return _errorMessage; }

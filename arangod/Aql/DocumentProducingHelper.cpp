@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,8 +25,8 @@
 
 #include "Aql/AqlValue.h"
 #include "Aql/DocumentExpressionContext.h"
-#include "Aql/EnumerateCollectionExecutor.h"
-#include "Aql/IndexExecutor.h"
+#include "Aql/Executor/EnumerateCollectionExecutor.h"
+#include "Aql/Executor/IndexExecutor.h"
 #include "Aql/LateMaterializedExpressionContext.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Projections.h"
@@ -300,7 +300,7 @@ DocumentProducingFunctionContext::DocumentProducingFunctionContext(
       _expressionContext = std::make_unique<LateMaterializedExpressionContext>(
           _trx, _query, _aqlFunctionsInternalCache,
           infos.getFilterVarsToRegister(), _inputRow,
-          infos.getOutNonMaterializedIndVars().second);
+          infos.getFilterCoveringVars());
     } else {
       TRI_ASSERT(_outputVariable != nullptr);
       if (_filterProjections.usesCoveringIndex()) {
@@ -680,7 +680,8 @@ IndexIterator::CoveringCallback aql::getCallback(
         };
         context.getPhysical().lookup(
             context.getTrxPtr(), token, cb,
-            {.readOwnWrites = static_cast<bool>(context.getReadOwnWrites())});
+            {.readOwnWrites = static_cast<bool>(context.getReadOwnWrites()),
+             .countBytes = true});
       } else {
         OutputAqlItemRow& output = context.getOutputRow();
         InputAqlItemRow const& input = context.getInputRow();

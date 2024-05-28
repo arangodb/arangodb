@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -61,7 +61,7 @@ LoggerStreamBase& LoggerStreamBase::operator<<(
   try {
     std::ostringstream tmp;
     tmp << std::setprecision(value._precision) << std::fixed << value._value;
-    _out << tmp.str();
+    _out << tmp.view();
   } catch (...) {
     // ignore any errors here. logging should not have side effects
   }
@@ -109,14 +109,13 @@ LoggerStream::~LoggerStream() {
 #endif
 
   try {
-    // TODO: with c++20, we can get a view on the stream's underlying buffer,
-    // without copying it
-    Logger::log(_logid, _function, _file, _line, _level, _topicId, _out.str());
+    // get a view on the stream's underlying buffer, without copying it
+    Logger::log(_logid, _function, _file, _line, _level, _topicId, _out.view());
   } catch (...) {
     try {
       // logging the error may fail as well, and we should never throw in the
       // dtor
-      std::cerr << "failed to log: " << _out.str() << std::endl;
+      std::cerr << "failed to log: " << _out.view() << std::endl;
     } catch (...) {
     }
   }

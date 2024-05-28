@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -70,7 +70,8 @@ struct IDocumentStateHandlersFactory {
       -> std::unique_ptr<IDocumentStateTransactionHandler> = 0;
   virtual auto createTransaction(TRI_vocbase_t& vocbase, TransactionId tid,
                                  ShardID const& shard,
-                                 AccessMode::Type accessType)
+                                 AccessMode::Type accessType,
+                                 std::string_view userName)
       -> std::shared_ptr<IDocumentStateTransaction> = 0;
   virtual auto createNetworkHandler(GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateNetworkHandler> = 0;
@@ -99,7 +100,8 @@ class DocumentStateHandlersFactory
       std::shared_ptr<IDocumentStateShardHandler> shardHandler)
       -> std::unique_ptr<IDocumentStateTransactionHandler> override;
   auto createTransaction(TRI_vocbase_t& vocbase, TransactionId tid,
-                         ShardID const& shard, AccessMode::Type accessType)
+                         ShardID const& shard, AccessMode::Type accessType,
+                         std::string_view userName)
       -> std::shared_ptr<IDocumentStateTransaction> override;
   auto createNetworkHandler(GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateNetworkHandler> override;

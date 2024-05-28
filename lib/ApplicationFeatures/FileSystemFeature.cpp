@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -35,14 +35,11 @@ namespace arangodb {
 
 void FileSystemFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
-#ifdef __linux__
-  // option is only available on Linux
   options
       ->addOption("--use-splice-syscall",
                   "Use the splice() syscall for file copying (may not be "
                   "supported on all filesystems).",
-                  new BooleanParameter(&_useSplice),
-                  options::makeFlags(Flags::DefaultNoOs, Flags::OsLinux))
+                  new BooleanParameter(&_useSplice), options::makeFlags())
       .setIntroducedIn(30904)
       .setLongDescription(R"(While the syscall is generally available since
 Linux 2.6.x, it is also required that the underlying filesystem supports the
@@ -52,13 +49,8 @@ splice operation. This is not true for some encrypted filesystems
 You can set the `--use-splice-syscall` startup option to `false` to use a less
 efficient, but more portable file copying method instead, which should work on
 all filesystems.)");
-#endif
 }
 
-void FileSystemFeature::prepare() {
-#ifdef __linux__
-  TRI_SetCanUseSplice(_useSplice);
-#endif
-}
+void FileSystemFeature::prepare() { TRI_SetCanUseSplice(_useSplice); }
 
 }  // namespace arangodb

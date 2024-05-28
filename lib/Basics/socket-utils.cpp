@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -45,31 +45,6 @@
 
 int TRI_closesocket(TRI_socket_t s) {
   int res = 0;
-#ifdef _WIN32
-  if (s.fileHandle != TRI_INVALID_SOCKET) {
-    res = shutdown(s.fileHandle, SD_SEND);
-
-    if (res != 0) {
-      // Windows complains about shutting down a socket that was not bound
-      // so we will not print out the error here
-      // LOG_TOPIC("52a7b", WARN, arangodb::Logger::FIXME) << "socket shutdown
-      // error: "
-      // << WSAGetLastError();
-    } else {
-      char buf[256];
-      int len;
-      do {
-        len = TRI_readsocket(s, buf, sizeof(buf), 0);
-      } while (len > 0);
-    }
-    res = closesocket(s.fileHandle);
-
-    if (res != 0) {
-      LOG_TOPIC("f8bf5", WARN, arangodb::Logger::FIXME)
-          << "socket close error: " << WSAGetLastError();
-    }
-  }
-#else
   if (s.fileDescriptor != TRI_INVALID_SOCKET) {
     res = close(s.fileDescriptor);
 
@@ -79,31 +54,18 @@ int TRI_closesocket(TRI_socket_t s) {
           << "socket close error: " << myerrno << ": " << strerror(myerrno);
     }
   }
-#endif
-
   return res;
 }
 
 int TRI_readsocket(TRI_socket_t s, void* buffer, size_t numBytesToRead,
                    int flags) {
-  int res;
-#ifdef _WIN32
-  res = recv(s.fileHandle, (char*)(buffer), (int)(numBytesToRead), flags);
-#else
-  res = read(s.fileDescriptor, buffer, numBytesToRead);
-#endif
+  int res = read(s.fileDescriptor, buffer, numBytesToRead);
   return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets close-on-exit for a socket
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_HAVE_WIN32_CLOSE_ON_EXEC
-
-bool TRI_SetCloseOnExecSocket(TRI_socket_t s) { return true; }
-
-#else
 
 bool TRI_SetCloseOnExecSocket(TRI_socket_t s) {
   long flags = fcntl(s.fileDescriptor, F_GETFD, 0);
@@ -121,21 +83,9 @@ bool TRI_SetCloseOnExecSocket(TRI_socket_t s) {
   return true;
 }
 
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets non-blocking mode for a socket
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_HAVE_WIN32_NON_BLOCKING
-
-bool TRI_SetNonBlockingSocket(TRI_socket_t s) {
-  DWORD ul = 1;
-  int res = ioctlsocket(s.fileHandle, FIONBIO, &ul);
-  return (res == 0);
-}
-
-#else
 
 bool TRI_SetNonBlockingSocket(TRI_socket_t s) {
   long flags = fcntl(s.fileDescriptor, F_GETFL, 0);
@@ -152,8 +102,6 @@ bool TRI_SetNonBlockingSocket(TRI_socket_t s) {
 
   return true;
 }
-
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief translates for IPv4 address
@@ -354,22 +302,6 @@ ErrorCode TRI_InetPton6(char const* src, unsigned char* dst) {
   return TRI_ERROR_NO_ERROR;
 }
 
-#ifdef _WIN32
-bool TRI_setsockopttimeout(TRI_socket_t s, double timeout) {
-  DWORD to = (DWORD)timeout * 1000;
-
-  if (TRI_setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, (char const*)&to,
-                     sizeof(to)) != 0) {
-    return false;
-  }
-
-  if (TRI_setsockopt(s, SOL_SOCKET, SO_SNDTIMEO, (char const*)&to,
-                     sizeof(to)) != 0) {
-    return false;
-  }
-  return true;
-}
-#else
 bool TRI_setsockopttimeout(TRI_socket_t s, double timeout) {
   struct timeval tv;
 
@@ -387,4 +319,3 @@ bool TRI_setsockopttimeout(TRI_socket_t s, double timeout) {
   }
   return true;
 }
-#endif

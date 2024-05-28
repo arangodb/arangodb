@@ -2,29 +2,29 @@
 /* global print, arango */
 'use strict';
 
-// /////////////////////////////////////////////////////////////////////////////
-// DISCLAIMER
-//
-// Copyright 2016-2019 ArangoDB GmbH, Cologne, Germany
-// Copyright 2014 triagens GmbH, Cologne, Germany
-//
-// Licensed under the Apache License, Version 2.0 (the "License")
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//      http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
-// Copyright holder is ArangoDB GmbH, Cologne, Germany
-//
-// @author Max Neunhoeffer
-// @author Wilfried Goesgens
-// @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Max Neunhoeffer
+// / @author Wilfried Goesgens
+// / @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
@@ -47,6 +47,7 @@ const optionsDocumentation = [
 ];
 
 const pu = require('@arangodb/testutils/process-utils');
+const ct = require('@arangodb/testutils/client-tools');
 const tu = require('@arangodb/testutils/test-utils');
 const im = require('@arangodb/testutils/instance-manager');
 const fs = require('fs');
@@ -68,25 +69,25 @@ const encryptionKey = '01234567890123456789012345678901';
 const encryptionKeySha256 = "861009ec4d599fab1f40abc76e6f89880cff5833c79c548c99f9045f191cd90b";
 
 let timeoutFactor = 1;
-if (versionHas('asan') || versionHas('tsan') || (platform.substr(0, 3) === 'win')) {
+if (versionHas('asan') || versionHas('tsan')) {
   timeoutFactor = 8;
 } else if (versionHas('coverage')) {
     timeoutFactor = 16;
 }
 
 const testPaths = {
-  'dump': [tu.pathForTesting('server/dump')],
-  'dump_mixed_cluster_single': [tu.pathForTesting('server/dump')],
-  'dump_mixed_single_cluster': [tu.pathForTesting('server/dump')],
-  'dump_authentication': [tu.pathForTesting('server/dump')],
-  'dump_jwt': [tu.pathForTesting('server/dump')],
-  'dump_encrypted': [tu.pathForTesting('server/dump')],
-  'dump_maskings': [tu.pathForTesting('server/dump')],
-  'dump_multiple': [tu.pathForTesting('server/dump')],
-  'dump_with_crashes': [tu.pathForTesting('server/dump')],
-  'dump_with_crashes_parallel': [tu.pathForTesting('server/dump')],
-  'dump_parallel': [tu.pathForTesting('server/dump')],
-  'hot_backup': [tu.pathForTesting('server/dump')]
+  'dump': [tu.pathForTesting('client/dump')],
+  'dump_mixed_cluster_single': [tu.pathForTesting('client/dump')],
+  'dump_mixed_single_cluster': [tu.pathForTesting('client/dump')],
+  'dump_authentication': [tu.pathForTesting('client/dump')],
+  'dump_jwt': [tu.pathForTesting('client/dump')],
+  'dump_encrypted': [tu.pathForTesting('client/dump')],
+  'dump_maskings': [tu.pathForTesting('client/dump')],
+  'dump_multiple': [tu.pathForTesting('client/dump')],
+  'dump_with_crashes': [tu.pathForTesting('client/dump')],
+  'dump_with_crashes_parallel': [tu.pathForTesting('client/dump')],
+  'dump_parallel': [tu.pathForTesting('client/dump')],
+  'hot_backup': [tu.pathForTesting('client/dump')]
 };
 
 class DumpRestoreHelper extends tu.runInArangoshRunner {
@@ -179,7 +180,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
   bindInstanceInfo(options) {
     if (!this.dumpConfig) {
       // the dump config will only be configured for the first instance.
-      this.dumpConfig = pu.createBaseConfig('dump', this.dumpOptions, this.instanceManager);
+      this.dumpConfig = ct.createBaseConfig('dump', this.dumpOptions, this.instanceManager);
       this.dumpConfig.setOutputDirectory('dump');
       this.dumpConfig.setIncludeSystem(true);
       if (this.dumpOptions.hasOwnProperty("maskings")) {
@@ -208,7 +209,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
     }
 
     if (!this.restoreConfig) {
-      this.restoreConfig = pu.createBaseConfig('restore', this.restoreOptions, this.instanceManager);
+      this.restoreConfig = ct.createBaseConfig('restore', this.restoreOptions, this.instanceManager);
       this.restoreConfig.setInputDirectory('dump', true);
       this.restoreConfig.setIncludeSystem(true);
     } else {
@@ -216,7 +217,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
     }
     
     if (!this.restoreOldConfig) {
-      this.restoreOldConfig = pu.createBaseConfig('restore', this.restoreOptions, this.instanceManager);
+      this.restoreOldConfig = ct.createBaseConfig('restore', this.restoreOptions, this.instanceManager);
       this.restoreOldConfig.setInputDirectory('dump', true);
       this.restoreOldConfig.setIncludeSystem(true);
       this.restoreOldConfig.setRootDir(pu.TOP_DIR);
@@ -237,9 +238,9 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
       this.restoreOldConfig.setJwtFile(keyFile);
     }
     this.setOptions();
-    this.arangorestore = pu.run.arangoDumpRestoreWithConfig.bind(this, this.restoreConfig, this.restoreOptions, this.instanceManager.rootDir, this.firstRunOptions.coreCheck);
-    this.arangorestoreOld = pu.run.arangoDumpRestoreWithConfig.bind(this, this.restoreOldConfig, this.restoreOptions, this.instanceManager.rootDir, this.firstRunOptions.coreCheck);
-    this.arangodump = pu.run.arangoDumpRestoreWithConfig.bind(this, this.dumpConfig, this.dumpOptions, this.instanceManager.rootDir, this.firstRunOptions.coreCheck);
+    this.arangorestore = ct.run.arangoDumpRestoreWithConfig.bind(this, this.restoreConfig, this.restoreOptions, this.instanceManager.rootDir, this.firstRunOptions.coreCheck);
+    this.arangorestoreOld = ct.run.arangoDumpRestoreWithConfig.bind(this, this.restoreOldConfig, this.restoreOptions, this.instanceManager.rootDir, this.firstRunOptions.coreCheck);
+    this.arangodump = ct.run.arangoDumpRestoreWithConfig.bind(this, this.dumpConfig, this.dumpOptions, this.instanceManager.rootDir, this.firstRunOptions.coreCheck);
     this.fn = this.afterServerStart(this.instanceManager);
   }
   setOptions() {
@@ -326,8 +327,8 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
 
   adjustRestoreToDump() {
     this.restoreOptions = this.dumpOptions;
-    this.restoreConfig = pu.createBaseConfig('restore', this.dumpOptions, this.instanceManager);
-    this.arangorestore = pu.run.arangoDumpRestoreWithConfig.bind(this, this.restoreConfig, this.restoreOptions, this.instanceManager.rootDir, this.firstRunOptions.coreCheck);
+    this.restoreConfig = ct.createBaseConfig('restore', this.dumpOptions, this.instanceManager);
+    this.arangorestore = ct.run.arangoDumpRestoreWithConfig.bind(this, this.restoreConfig, this.restoreOptions, this.instanceManager.rootDir, this.firstRunOptions.coreCheck);
   }
 
   isAlive() {
@@ -489,7 +490,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
     this.print('Foxx Apps with full restore to ' + database);
     this.restoreConfig.setDatabase(database);
     this.restoreConfig.setIncludeSystem(true);
-    this.restoreConfig.setInputDirectory('dump', true);
+    this.restoreConfig.setInputDirectory('UnitTestsDumpSrc', true);
     this.results.restoreFoxxComplete = this.arangorestore();
     return this.validate(this.results.restoreFoxxComplete);
   }
@@ -574,7 +575,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
     let cmds = {
       "label": "testHotBackup"
     };
-    this.results.createHotBackup = pu.run.arangoBackup(this.firstRunOptions, this.instanceManager, "create", cmds, this.instanceManager.rootDir, true);
+    this.results.createHotBackup = ct.run.arangoBackup(this.firstRunOptions, this.instanceManager, "create", cmds, this.instanceManager.rootDir, true);
     this.print("done creating backup");
     return this.results.createHotBackup.status;
   }
@@ -606,7 +607,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
       "identifier": backupName,
       "max-wait-for-restart": 100.0
     };
-    this.results.restoreHotBackup = pu.run.arangoBackup(this.firstRunOptions, this.instanceManager, "restore", cmds, this.instanceManager.rootDir, true);
+    this.results.restoreHotBackup = ct.run.arangoBackup(this.firstRunOptions, this.instanceManager, "restore", cmds, this.instanceManager.rootDir, true);
     this.print("done restoring backup");
     return true;
   }
@@ -618,7 +619,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
   runRtaMakedata() {
     let res = {};
     let logFile = fs.join(fs.getTempPath(), `rta_out_makedata.log`);
-    let rc = pu.run.rtaMakedata(this.options, this.instanceManager, 0, "creating test data", logFile, this.rtaArgs);
+    let rc = ct.run.rtaMakedata(this.options, this.instanceManager, 0, "creating test data", logFile, this.rtaArgs);
     if (!rc.status) {
       let rx = new RegExp(/\\n/g);
       this.results.RtaMakedata = {
@@ -705,7 +706,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
   runRtaCheckData() {
     let res = {};
     let logFile = fs.join(fs.getTempPath(), `rta_out_checkdata.log`);
-    let rc = pu.run.rtaMakedata(this.secondRunOptions, this.instanceManager, 1, "checking test data", logFile, this.rtaArgs);
+    let rc = ct.run.rtaMakedata(this.secondRunOptions, this.instanceManager, 1, "checking test data", logFile, this.rtaArgs);
     if (!rc.status) {
       let rx = new RegExp(/\\n/g);
       this.results.RtaCheckdata = {
@@ -719,7 +720,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
       this.results.RtaCheckdata = {
         status: true
       };
-      return false;
+      return true;
     }
   }
 };
@@ -800,7 +801,7 @@ function dump_backend_two_instances (firstRunOptions, secondRunOptions, serverAu
 
     if (tstFiles.hasOwnProperty("dumpCheckGraph")) {
       const notCluster = getClusterStrings(secondRunOptions).notCluster;
-      const restoreDir = tu.makePathUnix(tu.pathForTesting('server/dump/dump' + notCluster));
+      const restoreDir = tu.makePathUnix(tu.pathForTesting('client/dump/dump' + notCluster));
       const oldTestFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCheckGraph));
       if (!helper.restoreOld(restoreDir) ||
           !helper.testRestoreOld(oldTestFile)) {
@@ -956,6 +957,7 @@ function dumpWithCrashes (options) {
 function dumpWithCrashesNonParallel (options) {
   let dumpOptions = {
     dbServers: 3,
+    allDatabases: true,
     deactivateCompression: true,
     activateFailurePoint: true,
     threads: 1,
@@ -1212,7 +1214,7 @@ function hotBackup (options) {
 
     if (tstFiles.hasOwnProperty("dumpCheckGraph")) {
       const notCluster = getClusterStrings(options).notCluster;
-      const restoreDir = tu.makePathUnix(tu.pathForTesting('server/dump/dump' + notCluster));
+      const restoreDir = tu.makePathUnix(tu.pathForTesting('client/dump/dump' + notCluster));
       const oldTestFile = tu.makePathUnix(fs.join(testPaths[which][0], tstFiles.dumpCheckGraph));
       if (!helper.restoreOld(restoreDir) ||
           !helper.testRestoreOld(oldTestFile)) {

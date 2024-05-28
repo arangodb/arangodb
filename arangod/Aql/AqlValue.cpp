@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -800,7 +800,8 @@ v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate,
 }
 #endif
 
-void AqlValue::toVelocyPack(VPackOptions const* options, VPackBuilder& builder,
+void AqlValue::toVelocyPack(velocypack::Options const* options,
+                            velocypack::Builder& builder,
                             bool allowUnindexed) const {
   auto t = type();
   switch (t) {
@@ -831,7 +832,7 @@ void AqlValue::toVelocyPack(VPackOptions const* options, VPackBuilder& builder,
   }
 }
 
-AqlValue AqlValue::materialize(VPackOptions const* options,
+AqlValue AqlValue::materialize(velocypack::Options const* options,
                                bool& hasCopied) const {
   auto t = type();
   switch (t) {

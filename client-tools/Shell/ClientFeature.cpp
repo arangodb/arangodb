@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -63,7 +63,7 @@ ClientFeature::ClientFeature(ApplicationServer& server,
     : HttpEndpointProvider(server, registration, name()),
       _comm{comm},
       _console{},
-      _endpoints{Endpoint::defaultEndpoint(Endpoint::TransportType::HTTP)},
+      _endpoints{Endpoint::defaultEndpoint()},
       _maxNumEndpoints(maxNumEndpoints),
       _databaseName(StaticStrings::SystemDatabase),
       _username("root"),
@@ -73,10 +73,6 @@ ClientFeature::ClientFeature(ApplicationServer& server,
       _compressRequestThreshold(0),
       _sslProtocol(TLS_V12),
       _retries(DEFAULT_RETRIES),
-#if _WIN32
-      _codePage(65001),  // default to UTF8
-      _originalCodePage(UINT16_MAX),
-#endif
       _allowJwtSecret(allowJwtSecret),
       _authentication(true),
       _askJwtSecret(false),
@@ -111,8 +107,8 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   if (isArangosh) {
     endpointHelp =
         "The endpoint to connect to. Use 'none' to start without a server. "
-        "Use http+ssl:// or vst+ssl:// as schema to connect to an SSL-secured "
-        "server endpoint, otherwise http+tcp://, vst+tcp:// or unix://.";
+        "Use http+ssl:// as schema to connect to an SSL-secured "
+        "server endpoint, otherwise http+tcp:// or unix://.";
   } else {
     endpointHelp =
         "The endpoint to connect to. Use 'none' to start without a server. "
@@ -129,11 +125,15 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 arangosh without connecting to a server.)");
   }
 
-  options->addOption("--server.password",
-                     "The password to use when connecting. If not specified "
-                     "and authentication is required, the user is prompted for "
-                     "a password",
-                     new StringParameter(&_password));
+  options->addOption(
+      "--server.password",
+      "The password to use when connecting. If not specified and "
+      "authentication is required, you are prompted for a password.\n"
+      "In startup options, you can wrap the names of environment variables "
+      "in at signs to use their value, like @ARANGO_PASSWORD@. This helps to "
+      "expose the password less, like to the process list. "
+      "Literal @ need to be escaped as @@.",
+      new StringParameter(&_password));
 
   if (isArangosh) {
     // this option is only available in arangosh
@@ -190,15 +190,6 @@ arangosh without connecting to a server.)");
   options->addOption("--ssl.protocol", availableSslProtocolsDescription(),
                      new DiscreteValuesParameter<UInt64Parameter>(
                          &_sslProtocol, sslProtocols));
-#if _WIN32
-  options->addOption(
-      "--console.code-page", "Windows code page to use; defaults to UTF-8.",
-      new UInt16Parameter(&_codePage),
-      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
-                                   arangodb::options::Flags::OsWindows,
-                                   arangodb::options::Flags::Uncommon));
-#endif
-
   options
       ->addOption(
           "--compress-transfer",
@@ -311,8 +302,7 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     std::for_each(
         _endpoints.begin(), _endpoints.end(), [](auto const& endpoint) {
           if (!endpoint.empty() && (endpoint != "none") &&
-              (endpoint !=
-               Endpoint::defaultEndpoint(Endpoint::TransportType::HTTP))) {
+              (endpoint != Endpoint::defaultEndpoint())) {
             std::unique_ptr<Endpoint> ep(Endpoint::clientFactory(endpoint));
             if (ep != nullptr && ep->isBroadcastBind()) {
               LOG_TOPIC("701fb", FATAL, arangodb::Logger::FIXME)
@@ -471,23 +461,6 @@ std::vector<std::string> ClientFeature::httpEndpoints() {
                   }
                 });
   return httpEndpoints;
-}
-
-void ClientFeature::start() {
-#if _WIN32
-  _originalCodePage = GetConsoleOutputCP();
-  if (IsValidCodePage(_codePage)) {
-    SetConsoleOutputCP(_codePage);
-  }
-#endif
-}
-
-void ClientFeature::stop() {
-#if _WIN32
-  if (IsValidCodePage(_originalCodePage)) {
-    SetConsoleOutputCP(_originalCodePage);
-  }
-#endif
 }
 
 std::string ClientFeature::databaseName() const {

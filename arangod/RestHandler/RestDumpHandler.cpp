@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -50,9 +50,14 @@ using namespace arangodb::rest;
 RestDumpHandler::RestDumpHandler(ArangodServer& server, GeneralRequest* request,
                                  GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response),
-      _engine(
-          server.getFeature<EngineSelectorFeature>().engine<RocksDBEngine>()),
-      _clusterInfo(server.getFeature<ClusterFeature>().clusterInfo()) {}
+      _clusterInfo(server.getFeature<ClusterFeature>().clusterInfo()) {
+  if (ServerState::instance()->isDBServer() ||
+      ServerState::instance()->isSingleServer()) {
+    _dumpManager = server.getFeature<EngineSelectorFeature>()
+                       .engine<RocksDBEngine>()
+                       .dumpManager();
+  }
+}
 
 // main function that dispatches the different routes and commands
 RestStatus RestDumpHandler::execute() {
@@ -157,15 +162,13 @@ void RestDumpHandler::handleCommandDumpStart() {
 
   auto useVPack = _request->parsedValue("useVPack", false);
 
-  auto* manager = _engine.dumpManager();
-
   // adjust permissions in single server case, so that the behavior
   // is identical to non-parallel dumps
   ExecContextSuperuserScope escope(ExecContext::current().isAdminUser() &&
                                    ServerState::instance()->isSingleServer());
 
   auto guard =
-      manager->createContext(std::move(opts), user, database, useVPack);
+      _dumpManager->createContext(std::move(opts), user, database, useVPack);
 
   resetResponse(rest::ResponseCode::CREATED);
   _response->setHeaderNC(StaticStrings::DumpId, guard->id());
@@ -190,10 +193,9 @@ void RestDumpHandler::handleCommandDumpNext() {
 
   auto lastBatch = _request->parsedValue<uint64_t>("lastBatch");
 
-  auto* manager = _engine.dumpManager();
-  // find() will throw in case the context cannot be found or the user does not
-  // match.
-  auto context = manager->find(id, database, user);
+  // find() will throw in case the context cannot be found or the user does
+  // not match.
+  auto context = _dumpManager->find(id, database, user);
   // immediately prolong lifetime of context, so it doesn't get invalidated
   // while we are using it.
   context->extendLifetime();
@@ -233,9 +235,8 @@ void RestDumpHandler::handleCommandDumpFinished() {
   auto database = _request->databaseName();
   auto user = getAuthorizedUser();
 
-  auto* manager = _engine.dumpManager();
   // will throw if dump context is not found or cannot be accessed
-  manager->remove(id, database, user);
+  _dumpManager->remove(id, database, user);
 
   generateOk(rest::ResponseCode::OK, VPackSlice::noneSlice());
 }

@@ -5,14 +5,14 @@
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
-// / Copyright 2016 ArangoDB GmbH, Cologne, Germany
-// / Copyright 2014 triagens GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -46,7 +46,7 @@ const toArgv = internal.toArgv;
 const isEnterprise = require("@arangodb/test-helper").isEnterprise;
 
 const testPaths = {
-  'export': [tu.pathForTesting('server/export')] // we have to be fuzzy...
+  'export': [tu.pathForTesting('client/export')] // we have to be fuzzy...
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -107,7 +107,7 @@ class exportRunner extends tu.runInArangoshRunner {
 
     let results = {failed: 0};
 
-    results.setup = this.runOneTest(tu.makePathUnix(tu.pathForTesting('server/export/export-setup.js')));
+    results.setup = this.runOneTest(tu.makePathUnix(tu.pathForTesting('client/export/export-setup.js')));
     results.setup.failed = 0;
     if (!this.instanceManager.checkInstanceAlive() || results.setup.status !== true) {
       results.setup.failed = 1;

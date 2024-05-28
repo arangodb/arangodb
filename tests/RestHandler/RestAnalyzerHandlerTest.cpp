@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -37,6 +37,7 @@
 #include "Mocks/StorageEngineMock.h"
 
 #include "Aql/QueryRegistry.h"
+#include "Auth/UserManager.h"
 #include "Basics/VelocyPackHelper.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
@@ -51,10 +52,6 @@
 #endif
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
-
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
 
 #define ASSERT_ARANGO_OK(x) \
   { ASSERT_TRUE(x.ok()) << x.errorMessage(); }
@@ -115,11 +112,13 @@ class RestAnalyzerHandlerTest
 
   struct ExecContext : public arangodb::ExecContext {
     ExecContext()
-        : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+        : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                arangodb::ExecContext::Type::Default, "", "",
                                 arangodb::auth::Level::NONE,
                                 arangodb::auth::Level::NONE, false) {}
-  } execContext;
-  arangodb::ExecContextScope execContextScope;  // (&execContext);
+  };
+  std::shared_ptr<ExecContext> execContext;
+  arangodb::ExecContextScope execContextScope;  // (execContext);
 
   RestAnalyzerHandlerTest()
       : server(),
@@ -129,8 +128,8 @@ class RestAnalyzerHandlerTest
         dbFeature(server.getFeature<arangodb::DatabaseFeature>()),
         authFeature(server.getFeature<arangodb::AuthenticationFeature>()),
         userManager(authFeature.userManager()),
-        execContext(),
-        execContextScope(&execContext) {
+        execContext(std::make_shared<ExecContext>()),
+        execContextScope(execContext) {
     grantOnDb(arangodb::StaticStrings::SystemDatabase,
               arangodb::auth::Level::RW);
 
@@ -209,9 +208,7 @@ class RestAnalyzerHandlerTest
   void grantOnDb(std::string const& dbName,
                  arangodb::auth::Level const& level) {
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
 
     // for system collections User::collectionAuthLevel(...) returns database
@@ -227,9 +224,7 @@ class RestAnalyzerHandlerTest
       std::vector<std::pair<std::string const&, arangodb::auth::Level const&>>
           grants) {
     arangodb::auth::UserMap userMap;
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      ""s, ""s, arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser(""s, ""s))
                      .first->second;
 
     for (auto& g : grants) {

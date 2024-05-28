@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -73,7 +73,10 @@ struct IndexFactoryMock : arangodb::IndexFactory {
   IndexFactoryMock(arangodb::ArangodServer& server, bool injectClusterIndexes)
       : IndexFactory(server) {
     if (injectClusterIndexes) {
-      arangodb::ClusterIndexFactory::linkIndexFactories(server, *this);
+      arangodb::ClusterIndexFactory::linkIndexFactories(
+          server, *this,
+          server.getFeature<arangodb::EngineSelectorFeature>()
+              .engine<arangodb::ClusterEngine>());
     }
   }
 
@@ -444,7 +447,8 @@ std::unique_ptr<TRI_vocbase_t> StorageEngineMock::openDatabase(
   auto new_info = info;
   new_info.setId(++vocbaseCount);
 
-  return std::make_unique<TRI_vocbase_t>(std::move(new_info));
+  return std::make_unique<TRI_vocbase_t>(std::move(new_info), _versionTracker,
+                                         true);
 }
 
 TRI_voc_tick_t StorageEngineMock::releasedTick() const {

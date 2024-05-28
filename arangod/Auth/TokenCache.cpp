@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,10 +26,13 @@
 
 #include "Agency/AgencyComm.h"
 #include "Auth/Handler.h"
+#include "Auth/UserManager.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/debugging.h"
+#include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -52,6 +55,10 @@ namespace {
 constexpr std::string_view hs256String("HS256");
 constexpr std::string_view jwtString("JWT");
 }  // namespace
+
+bool auth::TokenCache::Entry::expired() const noexcept {
+  return _expiry != 0 && _expiry < TRI_microtime();
+}
 
 auth::TokenCache::TokenCache(auth::UserManager* um, double timeout)
     : _userManager(um), _jwtCache(16384), _authTimeout(timeout) {}
@@ -82,12 +89,17 @@ void auth::TokenCache::setJwtSecret(std::string jwtSecret) {
 
 #endif
 
+std::string const& auth::TokenCache::jwtToken() const noexcept {
+  TRI_ASSERT(!_jwtSuperToken.empty());
+  return _jwtSuperToken;
+}
+
 std::string auth::TokenCache::jwtSecret() const {
   READ_LOCKER(writeLocker, _jwtSecretLock);
   return _jwtActiveSecret;  // intentional copy
 }
 
-// public called from {H2,Http,Vst}CommTask.cpp
+// public called from {H2,Http}CommTask.cpp
 // should only lock if required, otherwise we will serialize all
 // requests whether we need to or not
 auth::TokenCache::Entry auth::TokenCache::checkAuthentication(
@@ -138,12 +150,7 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(
       auth::TokenCache::Entry res = it->second;
       // and now give up on the read-lock
       guard.unlock();
-
-      // LDAP rights might need to be refreshed
-      if (!_userManager->refreshUser(res.username())) {
-        return res;
-      }
-      // fallthrough intentional here
+      return res;
     }
   }
 
@@ -197,10 +204,6 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(
         LOG_TOPIC("65e15", TRACE, Logger::AUTHENTICATION)
             << "JWT Token expired";
         return auth::TokenCache::Entry::Unauthenticated();
-      }
-      if (_userManager != nullptr) {
-        // LDAP rights might need to be refreshed
-        _userManager->refreshUser(entry->username());
       }
       return *entry;
     }

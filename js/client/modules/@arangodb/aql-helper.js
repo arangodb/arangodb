@@ -3,19 +3,16 @@
   AQL_EXECUTEJSON */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief aql test helper functions
-// /
-// / @file
-// /
 // / DISCLAIMER
 // /
-// / Copyright 2011-2012 triagens GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,18 +20,14 @@
 // / See the License for the specific language governing permissions and
 // / limitations under the License.
 // /
-// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Jan Steemann
 // / @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief normalize a single row result
-// //////////////////////////////////////////////////////////////////////////////
-
-let isEqual = require("@arangodb/test-helper-common").isEqual;
-var db = require("@arangodb").db;
+const isEqual = require("@arangodb/test-helper-common").isEqual;
+const db = require("@arangodb").db;
 
 exports.isEqual = isEqual;
 
@@ -81,16 +74,12 @@ function normalizeRow (row, recursive) {
 }
 
 function executeQuery(query, bindVars = null, options = {}) {
-  let stmt = db._createStatement({query, bindVars: bindVars, count: true});
+  let stmt = db._createStatement({query, bindVars, count: true});
   return stmt.execute();
 };
 
 function executeJson (plan, options = {}) {
-  let command = `
-        let data = ${JSON.stringify(plan)};
-        let opts = ${JSON.stringify(options)};
-        return AQL_EXECUTEJSON(data, opts);
-      `;
+  let command = `return AQL_EXECUTEJSON(${JSON.stringify(plan)}, ${JSON.stringify(options)});`;
   return arango.POST("/_admin/execute", command);
 };
 

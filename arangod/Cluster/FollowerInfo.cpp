@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -27,6 +27,7 @@
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/MaintenanceStrings.h"
@@ -39,6 +40,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/VocbaseMetrics.h"
 
 using namespace arangodb;
 namespace StringUtils = arangodb::basics::StringUtils;
@@ -121,9 +123,13 @@ FollowerInfo::FollowerInfo(arangodb::LogicalCollection* d)
     : _followers(std::make_shared<std::vector<ServerID>>()),
       _failoverCandidates(std::make_shared<std::vector<ServerID>>()),
       _docColl(d),
-      _theLeader(""),
       _theLeaderTouched(false),
-      _canWrite(_docColl->replicationFactor() <= 1) {
+      _canWrite(_docColl->replicationFactor() <= 1),
+      _writeConcernReached(
+          metrics::InstrumentedBool::Metrics{
+              .false_counter =
+                  d->vocbase().metrics().shards_read_only_by_write_concern},
+          _docColl->replicationFactor() <= 1) {
   // On replicationfactor 1 we do not have any failover servers to maintain.
   // This should also disable satellite tracking.
 }
@@ -156,6 +162,7 @@ Result FollowerInfo::add(ServerID const& sid) {
     v = std::make_shared<std::vector<ServerID>>(*_followers);
     v->push_back(sid);  // add a single entry
     _followers = v;     // will cast to std::vector<ServerID> const
+    _writeConcernReached = _followers->size() + 1 >= _docColl->writeConcern();
     {
       // insertIntoCandidates
       if (std::find(_failoverCandidates->begin(), _failoverCandidates->end(),
@@ -192,10 +199,7 @@ Result FollowerInfo::add(ServerID const& sid) {
 
 FollowerInfo::WriteState FollowerInfo::allowedToWrite() {
   {
-    auto& engine = _docColl->vocbase()
-                       .server()
-                       .getFeature<EngineSelectorFeature>()
-                       .engine();
+    auto& engine = _docColl->vocbase().engine();
     if (engine.inRecovery()) {
       return WriteState::ALLOWED;
     }
@@ -207,10 +211,15 @@ FollowerInfo::WriteState FollowerInfo::allowedToWrite() {
       // Invariant, we can only WRITE if we do not have other failover
       // candidates
       READ_LOCKER(readLockerData, _dataLock);
-      TRI_ASSERT(_followers->size() == _failoverCandidates->size());
+      TRI_ASSERT(_followers->size() == _failoverCandidates->size())
+          << "followers = " << *_followers
+          << " failover-candidates = " << *_failoverCandidates;
       // Our follower list only contains followers, numFollowers + leader
       // needs to be at least writeConcern.
-      TRI_ASSERT(_followers->size() + 1 >= _docColl->writeConcern());
+      TRI_ASSERT(_followers->size() + 1 >= _docColl->writeConcern())
+          << "followers.size() = " << _followers->size()
+          << " write-concern = " << _docColl->writeConcern();
+      TRI_ASSERT(_writeConcernReached);
 #endif
       return WriteState::ALLOWED;
     }
@@ -321,6 +330,7 @@ Result FollowerInfo::remove(ServerID const& sid) {
 
   Result agencyRes = persistInAgency(true);
   if (agencyRes.ok()) {
+    _writeConcernReached = _followers->size() + 1 >= _docColl->writeConcern();
     // +1 for the leader (me)
     if (_followers->size() + 1 < _docColl->writeConcern()) {
       _canWrite = false;
@@ -362,6 +372,7 @@ void FollowerInfo::clear() {
   _followers = std::make_shared<std::vector<ServerID>>();
   _failoverCandidates = std::make_shared<std::vector<ServerID>>();
   _canWrite = false;
+  _writeConcernReached = _followers->size() + 1 >= _docColl->writeConcern();
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -450,8 +461,8 @@ void FollowerInfo::takeOverLeadership(
     _followers = std::move(emptyFollowers);
   }
 
-  // We disallow writes until the first write.
   _canWrite = false;
+  _writeConcernReached = _followers->size() + 1 >= _docColl->writeConcern();
   // Take over leadership
   _theLeader.clear();
   _theLeaderTouched = true;
@@ -685,4 +696,14 @@ uint64_t FollowerInfo::getFollowingTermId(ServerID const& s) const noexcept {
     return 1;
   }
   return it->second;
+}
+
+void FollowerInfo::setTheLeader(const std::string& who) {
+  // Empty leader => we are now new leader.
+  // This needs to be handled with takeOverLeadership
+  TRI_ASSERT(!who.empty());
+  WRITE_LOCKER(writeLocker, _dataLock);
+  _theLeader = who;
+  _theLeaderTouched = true;
+  _writeConcernReached = true;
 }

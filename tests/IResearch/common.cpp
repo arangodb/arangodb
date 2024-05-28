@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,11 +25,11 @@
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
+#include "Aql/ExecutionBlock.h"
+#include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionNode/IResearchViewNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExpressionContext.h"
-#include "Aql/ExecutionEngine.h"
-#include "Aql/ExecutionBlock.h"
-#include "Aql/IResearchViewNode.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
@@ -201,7 +201,7 @@ std::ostream& operator<<(std::ostream& os, by_ngram_similarity const& filter) {
   return os;
 }
 
-std::ostream& operator<<(std::ostream& os, empty const&) {
+std::ostream& operator<<(std::ostream& os, Empty const&) {
   os << "EMPTY[]";
   return os;
 }
@@ -277,10 +277,10 @@ std::ostream& operator<<(std::ostream& os, filter const& filter) {
     return os << static_cast<by_prefix const&>(filter);
   } else if (type == irs::type<ByNestedFilter>::id()) {
     return os << static_cast<ByNestedFilter const&>(filter);
-  } else if (type == irs::type<irs::by_column_existence>::id()) {
+  } else if (type == irs::type<by_column_existence>::id()) {
     return os << static_cast<by_column_existence const&>(filter);
-  } else if (type == irs::type<empty>::id()) {
-    return os << static_cast<empty const&>(filter);
+  } else if (type == irs::type<Empty>::id()) {
+    return os << static_cast<Empty const&>(filter);
   } else if (type == irs::type<arangodb::iresearch::ByExpression>::id()) {
     return os << "ByExpression";
   } else {
@@ -520,11 +520,7 @@ void v8Init() {
     }
     ~V8Init() {
       v8::V8::Dispose();
-#ifdef V8_UPGRADE
       v8::V8::DisposePlatform();
-#else
-      v8::V8::ShutdownPlatform();
-#endif
     }
 
    private:
@@ -890,13 +886,13 @@ void assertExpressionFilter(
                     .ok());
     EXPECT_EQ(expected, actual) << to_string(expected) << "\n"
                                 << to_string(actual);
-    EXPECT_EQ(boost, (*actual.begin())->boost());
+    EXPECT_EQ(boost, (*actual.begin())->BoostImpl());
   }
 }
 
 static bool assertFilterBoostImpl(irs::filter const& expected,
                                   irs::filter const& actual) {
-  if (expected.boost() != actual.boost()) {
+  if (expected.BoostImpl() != actual.BoostImpl()) {
     return false;
   }
   auto* expectedBooleanFilter =

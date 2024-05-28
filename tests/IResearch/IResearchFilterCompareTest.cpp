@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -77,10 +77,6 @@
 #endif
 #include "VocBase/Methods/Collections.h"
 
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
-
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
 static const VPackSlice systemDatabaseArgs = systemDatabaseBuilder.slice();
 
@@ -115,7 +111,7 @@ class IResearchFilterCompareTest
             arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
             arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
         [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
-           arangodb::aql::VPackFunctionParametersView params) {
+           arangodb::aql::functions::VPackFunctionParametersView params) {
           TRI_ASSERT(!params.empty());
           return params[0];
         }});
@@ -131,7 +127,7 @@ class IResearchFilterCompareTest
             arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
             arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
         [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
-           arangodb::aql::VPackFunctionParametersView params) {
+           arangodb::aql::functions::VPackFunctionParametersView params) {
           TRI_ASSERT(!params.empty());
           return params[0];
         }});
@@ -618,7 +614,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
   // expression
   {
     irs::Or expected;
-    expected.add<irs::empty>();
+    expected.add<irs::Empty>();
 
     assertFilterSuccess(vocbase(), "FOR d IN myView FILTER 1 == true RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
@@ -1394,7 +1390,7 @@ TEST_F(IResearchFilterCompareTest, BinaryEq) {
     ctx.vars.emplace("k", arangodb::aql::AqlValue(obj->slice()));
 
     irs::Or expected;
-    expected.add<irs::empty>();
+    expected.add<irs::Empty>();
 
     assertFilterSuccess(
         vocbase(), "LET k={} FOR d IN collection FILTER k.a == '1' RETURN d",
@@ -3790,7 +3786,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGE) {
     ctx.vars.emplace("k", arangodb::aql::AqlValue(obj->slice()));
 
     irs::Or expected;
-    expected.add<irs::empty>();
+    expected.add<irs::Empty>();
 
     assertFilterSuccess(
         vocbase(), "LET k='' FOR d IN collection FILTER k.a >= '1' RETURN d",
@@ -4973,7 +4969,7 @@ TEST_F(IResearchFilterCompareTest, BinaryGT) {
     ctx.vars.emplace("k", arangodb::aql::AqlValue(obj->slice()));
 
     irs::Or expected;
-    expected.add<irs::empty>();
+    expected.add<irs::Empty>();
 
     assertFilterSuccess(
         vocbase(), "LET k={} FOR d IN collection FILTER k.a > '1' RETURN d",
@@ -6135,7 +6131,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLE) {
   // array in expression
   {
     irs::Or expected;
-    expected.add<irs::empty>();
+    expected.add<irs::Empty>();
 
     assertFilterSuccess(vocbase(),
                         "FOR d IN collection FILTER [] <= '1' RETURN d",
@@ -7288,7 +7284,7 @@ TEST_F(IResearchFilterCompareTest, BinaryLT) {
   // array in expression
   {
     irs::Or expected;
-    expected.add<irs::empty>();
+    expected.add<irs::Empty>();
 
     assertFilterSuccess(vocbase(),
                         "FOR d IN collection FILTER [] < '1' RETURN d",

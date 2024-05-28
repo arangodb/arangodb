@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -220,4 +220,26 @@ bool ReadWriteLock::isLockedRead() const noexcept {
 
 bool ReadWriteLock::isLockedWrite() const noexcept {
   return _state.load(std::memory_order_relaxed) & WRITE_LOCK;
+}
+
+std::string ReadWriteLock::stringifyLockState() const {
+  std::string result;
+
+  auto append = [&result](std::string msg) {
+    if (!result.empty()) {
+      result.append(", ");
+    }
+    result.append(msg);
+  };
+
+  auto state = _state.load(std::memory_order_relaxed);
+  auto readers = (state & READER_MASK) >> 32;
+  auto writers = (state & QUEUED_WRITER_MASK) >> 1;
+  append(std::to_string(readers).append(" active reader(s)"));
+  append(std::to_string(writers).append(" queued writer(s)"));
+  if (state & WRITE_LOCK) {
+    append("write-locked");
+  }
+
+  return result;
 }

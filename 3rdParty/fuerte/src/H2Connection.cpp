@@ -353,7 +353,7 @@ void H2Connection<SocketType::Tcp>::readSwitchingProtocolsResponse() {
       this->_proto.socket, this->_receiveBuffer, "\r\n\r\n",
       [self](asio_ns::error_code const& ec, size_t nread) {
         auto& me = static_cast<H2Connection<SocketType::Tcp>&>(*self);
-        me._proto.timer.cancel();
+        me.cancelTimer();
         if (ec) {
           me.shutdownConnection(Error::ReadError,
                                 "error reading upgrade response");
@@ -428,7 +428,7 @@ void H2Connection<SocketType::Tcp>::sendHttp1UpgradeRequest() {
       });
 }
 
-// socket connection is up (with optional SSL), now initiate the VST protocol.
+// socket connection is up (with optional SSL), now initiate the H2 protocol.
 template <>
 void H2Connection<SocketType::Ssl>::finishConnect() {
   FUERTE_LOG_HTTPTRACE << "finishInitialization (h2)\n";

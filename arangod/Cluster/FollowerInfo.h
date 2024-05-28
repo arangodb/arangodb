@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -30,6 +30,7 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/WriteLocker.h"
 #include "Cluster/ClusterTypes.h"
+#include "Metrics/InstrumentedBool.h"
 
 namespace arangodb {
 
@@ -83,6 +84,7 @@ class FollowerInfo {
   bool _theLeaderTouched;
   // flag if we have enough insnc followers and can pass through writes
   bool _canWrite;
+  metrics::InstrumentedBool _writeConcernReached;
 
  public:
   explicit FollowerInfo(arangodb::LogicalCollection* d);
@@ -192,14 +194,7 @@ class FollowerInfo {
   /// @brief set leadership
   //////////////////////////////////////////////////////////////////////////////
 
-  void setTheLeader(std::string const& who) {
-    // Empty leader => we are now new leader.
-    // This needs to be handled with takeOverLeadership
-    TRI_ASSERT(!who.empty());
-    WRITE_LOCKER(writeLocker, _dataLock);
-    _theLeader = who;
-    _theLeaderTouched = true;
-  }
+  void setTheLeader(std::string const& who);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the leader

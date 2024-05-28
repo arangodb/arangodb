@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,33 +24,42 @@
 #include "ExecutionEngine.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Aql/AqlItemBlockManager.h"
+#include "Aql/Ast.h"
+#include "Aql/AsyncPrefetchSlotsManager.h"
 #include "Aql/BlocksWithClients.h"
 #include "Aql/Collection.h"
-#include "Aql/AqlItemBlockManager.h"
 #include "Aql/EngineInfoContainerCoordinator.h"
 #include "Aql/EngineInfoContainerDBServerServerBased.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionBlockImpl.tpp"
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
+#include "Aql/ExecutionNode/GatherNode.h"
+#include "Aql/ExecutionNode/GraphNode.h"
+#include "Aql/ExecutionNode/LimitNode.h"
+#include "Aql/ExecutionNode/RemoteNode.h"
+#include "Aql/ExecutionNode/ReturnNode.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/GraphNode.h"
-#include "Aql/IdExecutor.h"
+#include "Aql/Executor/IdExecutor.h"
+#include "Aql/Executor/RemoteExecutor.h"
+#include "Aql/Executor/ReturnExecutor.h"
 #include "Aql/OptimizerRule.h"
 #include "Aql/QueryContext.h"
-#include "Aql/RemoteExecutor.h"
-#include "Aql/ReturnExecutor.h"
-#include "Aql/SkipResult.h"
 #include "Aql/SharedQueryState.h"
+#include "Aql/SkipResult.h"
 #include "Basics/ScopeGuard.h"
-#include "Containers/FlatHashMap.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/RebootTracker.h"
 #include "Cluster/ServerState.h"
+#include "Containers/FlatHashMap.h"
 #include "Futures/Utilities.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "VocBase/Methods/Queries.h"
+
+#include <absl/strings/str_cat.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -247,7 +256,12 @@ ExecutionEngine::ExecutionEngine(EngineId eId, QueryContext& query,
       _blocks(),
       _root(nullptr),
       _resultRegister(RegisterId::maxRegisterId),
-      _initializeCursorCalled(false) {
+      _initializeCursorCalled(false),
+      _asyncPrefetchSlotsManager(query.vocbase()
+                                     .server()
+                                     .getFeature<QueryRegistryFeature>()
+                                     .asyncPrefetchSlotsManager()),
+      _asyncPrefetchSlotsReservation(_asyncPrefetchSlotsManager, 0) {
   TRI_ASSERT(_sharedState != nullptr);
   _blocks.reserve(8);
 }
@@ -259,14 +273,24 @@ ExecutionEngine::~ExecutionEngine() {
   }
 }
 
+void ExecutionEngine::leaseAsyncPrefetchSlots(size_t value) {
+  _asyncPrefetchSlotsReservation = _asyncPrefetchSlotsManager.leaseSlots(value);
+}
+
+size_t ExecutionEngine::asyncPrefetchSlotsLeased() const noexcept {
+  return _asyncPrefetchSlotsReservation.value();
+}
+
 struct SingleServerQueryInstanciator final
     : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
   ExecutionEngine& engine;
   ExecutionBlock* root{};
   containers::FlatHashMap<ExecutionNode*, ExecutionBlock*> cache;
+  size_t asyncPrefetchSlotsLeft;
 
   explicit SingleServerQueryInstanciator(ExecutionEngine& engine) noexcept
-      : engine(engine) {}
+      : engine(engine),
+        asyncPrefetchSlotsLeft(engine.asyncPrefetchSlotsLeased()) {}
 
   void after(ExecutionNode* en) override {
     if (en->getType() == ExecutionNode::TRAVERSAL ||
@@ -298,6 +322,13 @@ struct SingleServerQueryInstanciator final
     }
 
     if (block == nullptr) {
+      if (en->isAsyncPrefetchEnabled()) {
+        if (asyncPrefetchSlotsLeft > 0) {
+          --asyncPrefetchSlotsLeft;
+        } else {
+          en->setIsAsyncPrefetchEnabled(false);
+        }
+      }
       block = engine.addBlock(en->createBlock(engine));
       TRI_ASSERT(block != nullptr);
       // We have visited this node earlier, so we got its dependencies
@@ -568,9 +599,6 @@ struct DistributedQueryInstanciator final
 
       for (auto const& [server, queryId, rebootId] : srvrQryId) {
         TRI_ASSERT(!server.starts_with("server:"));
-        std::string comment = std::string("AQL query from coordinator ") +
-                              ServerState::instance()->getId();
-
         std::function<void(void)> f = [srvr = server, id = _query.id(),
                                        vn = _query.vocbase().name(), &df]() {
           LOG_TOPIC("d2554", INFO, Logger::QUERIES)
@@ -586,7 +614,9 @@ struct DistributedQueryInstanciator final
         };
 
         engine->rebootTrackers().emplace_back(ci.rebootTracker().callMeOnChange(
-            {server, rebootId}, std::move(f), std::move(comment)));
+            {server, rebootId}, std::move(f),
+            absl::StrCat("AQL query from coordinator ",
+                         ServerState::instance()->getId())));
       }
     }
 
@@ -595,12 +625,14 @@ struct DistributedQueryInstanciator final
     for (auto const& [server, queryId, rebootId] : srvrQryId) {
       if (queryId == 0) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_INTERNAL, std::string("no query ID known for ") + server);
+            TRI_ERROR_INTERNAL, absl::StrCat("no query ID known for ", server));
       }
     }
 
     TRI_ASSERT(snippets[0]->engineId() == 0);
-    _query.executionStats().setAliases(std::move(nodeAliases));
+    _query.executionStatsGuard().doUnderLock([&](auto& executionStats) {
+      executionStats.setAliases(std::move(nodeAliases));
+    });
 
     return res;
   }
@@ -658,10 +690,10 @@ auto ExecutionEngine::executeForClient(AqlCallStack const& stack,
 
   auto rootBlock = dynamic_cast<BlocksWithClients*>(root());
   if (rootBlock == nullptr) {
-    using namespace std::string_literals;
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL_AQL,
-        "unexpected node type "s + root()->getPlanNode()->getTypeString());
+        absl::StrCat("unexpected node type ",
+                     root()->getPlanNode()->getTypeString()));
   }
 
   auto const res = rootBlock->executeForClient(stack, clientId);
@@ -739,10 +771,23 @@ void ExecutionEngine::instantiateFromPlan(Query& query, ExecutionPlan& plan,
         std::make_unique<ExecutionEngine>(eId, query, mgr, query.sharedState());
 
 #ifdef USE_ENTERPRISE
-    for (auto const& pair : aliases) {
-      query.executionStats().addAlias(pair.first, pair.second);
-    }
+    query.executionStatsGuard().doUnderLock([&](auto& executionStats) {
+      for (auto const& pair : aliases) {
+        executionStats.addAlias(pair.first, pair.second);
+      }
+    });
 #endif
+
+    // lease "slots" for async prefetching operations for the current query.
+    // we are tracking per server node how many slots we have already handed
+    // out, so that a server does not overcommit on the number of actually
+    // used async prefetching slots.
+    // limiting the number of async prefetching slots helps to keep the number
+    // of queued operations at bay, especially when large queries come in
+    // that would use large amounts of async prefetching slots.
+    // the QueryRegistryFeature keeps an overview of how many slots have been
+    // leased by the currently running queries.
+    retEngine->leaseAsyncPrefetchSlots(plan.asyncPrefetchNodes());
 
     SingleServerQueryInstanciator inst(*retEngine);
     plan.root()->walk(inst);

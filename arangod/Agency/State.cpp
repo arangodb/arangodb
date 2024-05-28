@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -66,19 +66,17 @@ DECLARE_GAUGE(arangodb_agency_client_lookup_table_size, uint64_t,
               "Current number of entries in agency client id lookup table");
 
 /// Constructor:
-State::State(ArangodServer& server)
-    : _server(server),
-      _agent(nullptr),
+State::State(metrics::MetricsFeature& metrics)
+    : _agent(nullptr),
       _vocbase(nullptr),
       _ready(false),
       _collectionsLoaded(false),
       _nextCompactionAfter(0),
       _lastCompactionAt(0),
       _cur(0),
-      _log_size(_server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_agency_log_size_bytes{})),
-      _clientIdLookupCount(_server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_agency_client_lookup_table_size{})) {}
+      _log_size(metrics.add(arangodb_agency_log_size_bytes{})),
+      _clientIdLookupCount(
+          metrics.add(arangodb_agency_client_lookup_table_size{})) {}
 
 /// Default dtor
 State::~State() = default;

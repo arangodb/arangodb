@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -38,7 +38,7 @@ class VocbaseContext;
 
 struct GeneralRequestMock : public arangodb::GeneralRequest {
   int64_t _contentLength;
-  std::unique_ptr<arangodb::VocbaseContext>
+  std::shared_ptr<arangodb::VocbaseContext>
       _context;  // VocbaseContext required for use with RestVocbaseBaseHandler
   arangodb::velocypack::Builder _payload;  // request body
 
@@ -53,7 +53,6 @@ struct GeneralRequestMock : public arangodb::GeneralRequest {
   arangodb::velocypack::Slice payload(bool strictValidation = true) override;
   void setPayload(arangodb::velocypack::Buffer<uint8_t> buffer) override;
   void setData(arangodb::velocypack::Slice slice);
-  arangodb::Endpoint::TransportType transportType() override;
   std::unordered_map<std::string, std::string>& values() { return _values; }
 };
 
@@ -74,7 +73,6 @@ struct GeneralResponseMock : public arangodb::GeneralResponse {
       bool resolveExternals = true) override;
   virtual void addRawPayload(std::string_view payload) override;
   virtual void reset(arangodb::ResponseCode code) override;
-  virtual arangodb::Endpoint::TransportType transportType() override;
   void setAllowCompression(
       arangodb::rest::ResponseCompressionType rct) noexcept override {}
   arangodb::rest::ResponseCompressionType compressionAllowed()
@@ -84,4 +82,5 @@ struct GeneralResponseMock : public arangodb::GeneralResponse {
   virtual size_t bodySize() const override { return _payload.size(); }
   virtual ErrorCode zlibDeflate(bool onlyIfSmaller) override;
   virtual ErrorCode gzipCompress(bool onlyIfSmaller) override;
+  virtual ErrorCode lz4Compress(bool onlyIfSmaller) override;
 };

@@ -3,28 +3,28 @@
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
-// DISCLAIMER
-//
-// Copyright 2010-2013 triAGENS GmbH, Cologne, Germany
-// Copyright 2016 ArangoDB GmbH, Cologne, Germany
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-//
-// Copyright holder is ArangoDB GmbH, Cologne, Germany
-//
-// @author Michael Hackstein
-// @author Heiko Kernbach
-// @author Alan Plum
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Michael Hackstein
+// / @author Heiko Kernbach
+// / @author Alan Plum
 // //////////////////////////////////////////////////////////////////////////////
 
 const joi = require('joi');
@@ -70,12 +70,8 @@ router.get('/config.js', function (req, res) {
   const scriptName = req.get('x-script-name');
   const basePath = req.trustProxy && scriptName || '';
   const isEnterprise = internal.isEnterprise();
-  let ldapEnabled = false;
-  if (isEnterprise) {
-    if (internal.ldapEnabled()) {
-      ldapEnabled = true;
-    }
-  }
+  // hard-coded to false since 3.12
+  const ldapEnabled = false;
   res.send(
     `var frontendConfig = ${JSON.stringify({
       basePath: basePath,
@@ -447,7 +443,6 @@ authRouter.get('/job', function (req, res) {
 //    0: No active replication found.
 //    1: Replication per Database found.
 //    2: Replication per Server found.
-//    3: Active-Failover replication found.
 authRouter.get('/replication/mode', function (req, res) {
   // this method is only allowed from within the _system database
   if (req.database !== '_system') {
@@ -470,11 +465,7 @@ authRouter.get('/replication/mode', function (req, res) {
 
   let mode = 0;
   let role = null;
-  // active failover
-  if (endpoints.statusCode === 200 && endpoints.json.endpoints.length) {
-    mode = 3;
-    role = 'leader';
-  } else {
+  {
     // check if global applier (ga) is running
     // if that is true, this node is replicating from another arangodb instance
     // (all databases)

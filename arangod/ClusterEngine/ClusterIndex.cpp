@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,7 +21,6 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
@@ -29,11 +28,8 @@
 #include "Cluster/ClusterFeature.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "ClusterIndex.h"
-#include "Futures/Utilities.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
-#include "Logger/LogMacros.h"
-#include "Network/NetworkFeature.h"
 #include "RocksDBEngine/RocksDBMultiDimIndex.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBVPackIndex.h"
@@ -89,7 +85,8 @@ ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
           _fields,
           Index::parseFields(info.get(StaticStrings::IndexStoredValues),
                              /*allowEmpty*/ true, /*allowExpansion*/ false));
-    } else if (_indexType == TRI_IDX_TYPE_MDI_INDEX) {
+    } else if (_indexType == TRI_IDX_TYPE_MDI_INDEX ||
+               _indexType == TRI_IDX_TYPE_ZKD_INDEX) {
       _coveredFields =
           Index::parseFields(info.get(StaticStrings::IndexStoredValues),
                              /*allowEmpty*/ true, /*allowExpansion*/ false);
@@ -115,7 +112,8 @@ ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
         _estimates = s.getBoolean();
       }
     } else if (_indexType == TRI_IDX_TYPE_TTL_INDEX ||
-               _indexType == TRI_IDX_TYPE_MDI_INDEX) {
+               _indexType == TRI_IDX_TYPE_MDI_INDEX ||
+               _indexType == TRI_IDX_TYPE_ZKD_INDEX) {
       _estimates = false;
     }
   }
@@ -141,8 +139,11 @@ void ClusterIndex::toVelocyPack(
       _indexType == Index::TRI_IDX_TYPE_SKIPLIST_INDEX ||
       _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX ||
       _indexType == Index::TRI_IDX_TYPE_MDI_PREFIXED_INDEX ||
-      _indexType == Index::TRI_IDX_TYPE_MDI_INDEX) {
-    TRI_ASSERT(_indexType != TRI_IDX_TYPE_MDI_INDEX || !_estimates || _unique)
+      _indexType == Index::TRI_IDX_TYPE_MDI_INDEX ||
+      _indexType == Index::TRI_IDX_TYPE_ZKD_INDEX) {
+    TRI_ASSERT((_indexType != TRI_IDX_TYPE_MDI_INDEX &&
+                _indexType != TRI_IDX_TYPE_ZKD_INDEX) ||
+               !_estimates || _unique)
         << oldtypeName(_indexType) << std::boolalpha
         << " estimates = " << _estimates << " unique = " << _unique;
     builder.add(StaticStrings::IndexEstimates, VPackValue(_estimates));
@@ -162,66 +163,6 @@ void ClusterIndex::toVelocyPack(
     }
 
     builder.close();
-  }
-
-  if (inProgress()) {
-    double progress = 0;
-    double success = 0;
-    auto const shards = _collection.shardIds();
-    auto const body = VPackBuffer<uint8_t>();
-    auto* pool =
-        _collection.vocbase().server().getFeature<NetworkFeature>().pool();
-    std::vector<Future<network::Response>> futures;
-    futures.reserve(shards->size());
-    std::string const prefix = "/_api/index/";
-    network::RequestOptions reqOpts;
-    reqOpts.param("withHidden", "true");
-    // best effort. only displaying progress
-    reqOpts.timeout = network::Timeout(10.0);
-    for (auto const& shard : *shards) {
-      std::string const url =
-          prefix + shard.first + "/" + std::to_string(_iid.id());
-      futures.emplace_back(
-          network::sendRequestRetry(pool, "shard:" + shard.first,
-                                    fuerte::RestVerb::Get, url, body, reqOpts));
-    }
-    for (Future<network::Response>& f : futures) {
-      network::Response const& r = f.get();
-
-      // Only best effort accounting. If something breaks here, we just
-      // ignore the output. Account for what we can and move on.
-      if (r.fail()) {
-        LOG_TOPIC("afde4", INFO, Logger::CLUSTER)
-            << "Communication error while collecting figures for collection "
-            << _collection.name() << " from " << r.destination;
-        continue;
-      }
-      VPackSlice resSlice = r.slice();
-      if (!resSlice.isObject() ||
-          !resSlice.get(StaticStrings::Error).isBoolean()) {
-        LOG_TOPIC("aabe4", INFO, Logger::CLUSTER)
-            << "Result of collecting figures for collection "
-            << _collection.name() << " from " << r.destination << " is invalid";
-        continue;
-      }
-      if (resSlice.get(StaticStrings::Error).getBoolean()) {
-        LOG_TOPIC("a4bea", INFO, Logger::CLUSTER)
-            << "Failed to collect figures for collection " << _collection.name()
-            << " from " << r.destination;
-        continue;
-      }
-      if (resSlice.get("progress").isNumber()) {
-        progress += resSlice.get("progress").getNumber<double>();
-        success++;
-      } else {
-        LOG_TOPIC("aeab4", INFO, Logger::CLUSTER)
-            << "No progress entry on index " << _iid.id() << "  from "
-            << r.destination << ": " << resSlice.toJson();
-      }
-    }
-    if (success) {
-      builder.add("progress", VPackValue(progress / success));
-    }
   }
 
   for (auto pair : VPackObjectIterator(_info.slice())) {
@@ -251,7 +192,9 @@ bool ClusterIndex::hasSelectivityEstimate() const {
              _indexType == Index::TRI_IDX_TYPE_SKIPLIST_INDEX ||
              _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX ||
              _indexType == Index::TRI_IDX_TYPE_MDI_PREFIXED_INDEX ||
-             (_indexType == Index::TRI_IDX_TYPE_MDI_INDEX && _unique)));
+             ((_indexType == Index::TRI_IDX_TYPE_MDI_INDEX ||
+               _indexType == Index::TRI_IDX_TYPE_ZKD_INDEX) &&
+              _unique)));
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   } else if (_engineType == ClusterEngineType::MockEngine) {
     return false;
@@ -326,10 +269,7 @@ void ClusterIndex::updateProperties(velocypack::Slice slice) {
 
 bool ClusterIndex::matchesDefinition(VPackSlice const& info) const {
   // TODO implement faster version of this
-  auto& engine = _collection.vocbase()
-                     .server()
-                     .getFeature<EngineSelectorFeature>()
-                     .engine();
+  auto& engine = _collection.vocbase().engine();
   return Index::Compare(engine, _info.slice(), info,
                         _collection.vocbase().name());
 }
@@ -388,6 +328,7 @@ Index::FilterCosts ClusterIndex::supportsFilterCondition(
                                             itemsInIndex);
     }
 
+    case TRI_IDX_TYPE_ZKD_INDEX:
     case TRI_IDX_TYPE_MDI_INDEX:
     case TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
       return mdi::supportsFilterCondition(this, allIndexes, node, reference,
@@ -435,6 +376,7 @@ Index::SortCosts ClusterIndex::supportsSortCondition(
       break;
     }
 
+    case TRI_IDX_TYPE_ZKD_INDEX:
     case TRI_IDX_TYPE_MDI_INDEX:
     case TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
       // Sorting not supported
@@ -490,6 +432,7 @@ aql::AstNode* ClusterIndex::specializeCondition(
                                                               reference);
     }
 
+    case TRI_IDX_TYPE_ZKD_INDEX:
     case TRI_IDX_TYPE_MDI_INDEX:
     case TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
       return mdi::specializeCondition(this, node, reference);
@@ -520,6 +463,7 @@ ClusterIndex::coveredFields() const {
     case TRI_IDX_TYPE_FULLTEXT_INDEX:
     case TRI_IDX_TYPE_TTL_INDEX:
     case TRI_IDX_TYPE_IRESEARCH_LINK:
+    case TRI_IDX_TYPE_ZKD_INDEX:
     case TRI_IDX_TYPE_MDI_INDEX:
     case TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
     case TRI_IDX_TYPE_NO_ACCESS_INDEX: {
@@ -528,33 +472,6 @@ ClusterIndex::coveredFields() const {
     default:
       return _fields;
   }
-}
-
-bool ClusterIndex::inProgress() const {
-  // If agency entry "isBuilding".
-  try {
-    auto const& vocbase = _collection.vocbase();
-    auto const& dbname = vocbase.name();
-    auto const cid = std::to_string(_collection.id().id());
-    auto const& agencyCache =
-        vocbase.server().getFeature<ClusterFeature>().agencyCache();
-    auto [acb, idx] =
-        agencyCache.read(std::vector<std::string>{AgencyCommHelper::path(
-            "Plan/Collections/" + basics::StringUtils::urlEncode(dbname) + "/" +
-            cid + "/indexes")});
-    auto slc = acb->slice()[0].get(std::vector<std::string>{
-        "arango", "Plan", "Collections", vocbase.name()});
-    if (slc.hasKey(std::vector<std::string>{cid, "indexes"})) {
-      slc = slc.get(std::vector<std::string>{cid, "indexes"});
-      for (auto const& index : VPackArrayIterator(slc)) {
-        if (index.get("id").stringView() == std::to_string(_iid.id())) {
-          return index.hasKey(StaticStrings::IndexIsBuilding);
-        }
-      }
-    }
-  } catch (...) {
-  }
-  return false;
 }
 
 bool ClusterIndex::supportsStreamInterface(

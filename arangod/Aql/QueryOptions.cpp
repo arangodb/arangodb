@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,6 +26,7 @@
 #include "Aql/QueryCache.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/debugging.h"
 #include "Cluster/ServerState.h"
 
 #include <velocypack/Builder.h>
@@ -36,13 +37,7 @@ using namespace arangodb::aql;
 
 size_t QueryOptions::defaultMemoryLimit = 0U;
 size_t QueryOptions::defaultMaxNumberOfPlans = 128U;
-#ifdef __APPLE__
-// On OSX the default stack size for worker threads (non-main thread) is 512kb
-// which is rather low, so we have to use a lower default
-size_t QueryOptions::defaultMaxNodesPerCallstack = 150U;
-#else
 size_t QueryOptions::defaultMaxNodesPerCallstack = 250U;
-#endif
 size_t QueryOptions::defaultSpillOverThresholdNumRows = 5000000ULL;
 size_t QueryOptions::defaultSpillOverThresholdMemoryUsage =
     134217728ULL;                                                // 128 MB
@@ -62,8 +57,11 @@ QueryOptions::QueryOptions()
           QueryOptions::defaultSpillOverThresholdMemoryUsage),
       maxDNFConditionMembers(QueryOptions::defaultMaxDNFConditionMembers),
       maxRuntime(0.0),
+#ifdef USE_ENTERPRISE
       satelliteSyncWait(std::chrono::seconds(60)),
-      ttl(QueryOptions::defaultTtl),  // get global default ttl
+#endif
+      // get global default ttl
+      ttl(QueryOptions::defaultTtl),
       profile(ProfileLevel::None),
       traversalProfile(TraversalProfileLevel::None),
       allPlans(false),
@@ -72,34 +70,28 @@ QueryOptions::QueryOptions()
       stream(false),
       retriable(false),
       silent(false),
-      failOnWarning(
-          QueryOptions::defaultFailOnWarning),  // use global "failOnWarning"
-                                                // value
+      // use global "failOnWarning" value
+      failOnWarning(QueryOptions::defaultFailOnWarning),
       cache(false),
       fullCount(false),
       count(false),
       skipAudit(false),
-      explainRegisters(ExplainRegisterPlan::No) {
+      explainRegisters(ExplainRegisterPlan::No),
+      desiredJoinStrategy(JoinStrategyType::kDefault) {
   // now set some default values from server configuration options
-  {
-    // use global memory limit value
-    uint64_t globalLimit = QueryOptions::defaultMemoryLimit;
-    if (globalLimit > 0) {
-      memoryLimit = globalLimit;
-    }
+  // use global memory limit value
+  if (uint64_t globalLimit = QueryOptions::defaultMemoryLimit;
+      globalLimit > 0) {
+    memoryLimit = globalLimit;
   }
 
-  {
-    // use global max runtime value
-    double globalLimit = QueryOptions::defaultMaxRuntime;
-    if (globalLimit > 0.0) {
-      maxRuntime = globalLimit;
-    }
+  // use global max runtime value
+  if (double globalLimit = QueryOptions::defaultMaxRuntime; globalLimit > 0.0) {
+    maxRuntime = globalLimit;
   }
 
   // "cache" only defaults to true if query cache is turned on
-  auto queryCacheMode = QueryCache::instance()->mode();
-  cache = (queryCacheMode == CACHE_ALWAYS_ON);
+  cache = (QueryCache::instance()->mode() == CACHE_ALWAYS_ON);
 
   TRI_ASSERT(maxNumberOfPlans > 0);
 }
@@ -164,10 +156,12 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
     maxRuntime = value.getNumber<double>();
   }
 
+#ifdef USE_ENTERPRISE
   if (VPackSlice value = slice.get("satelliteSyncWait"); value.isNumber()) {
     satelliteSyncWait =
         std::chrono::duration<double>(value.getNumber<double>());
   }
+#endif
 
   if (VPackSlice value = slice.get("ttl"); value.isNumber()) {
     ttl = value.getNumber<double>();
@@ -235,7 +229,7 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
   if (VPackSlice value = slice.get(StaticStrings::JoinStrategyType);
       value.isString()) {
     if (value.stringView() == "generic") {
-      desiredJoinStrategy = JoinStrategyType::GENERIC;
+      desiredJoinStrategy = JoinStrategyType::kGeneric;
     }
   }
 
@@ -288,7 +282,9 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder,
               VPackValue(spillOverThresholdMemoryUsage));
   builder.add("maxDNFConditionMembers", VPackValue(maxDNFConditionMembers));
   builder.add("maxRuntime", VPackValue(maxRuntime));
+#ifdef USE_ENTERPRISE
   builder.add("satelliteSyncWait", VPackValue(satelliteSyncWait.count()));
+#endif
   builder.add("ttl", VPackValue(ttl));
   builder.add("profile", VPackValue(static_cast<uint32_t>(profile)));
   builder.add(StaticStrings::GraphTraversalProfileLevel,
@@ -303,6 +299,14 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder,
   builder.add("cache", VPackValue(cache));
   builder.add("fullCount", VPackValue(fullCount));
   builder.add("count", VPackValue(count));
+
+  if (desiredJoinStrategy == JoinStrategyType::kGeneric) {
+    builder.add(StaticStrings::JoinStrategyType, VPackValue("generic"));
+  } else {
+    TRI_ASSERT(desiredJoinStrategy == JoinStrategyType::kDefault);
+    builder.add(StaticStrings::JoinStrategyType, VPackValue("default"));
+  }
+
   if (!forceOneShardAttributeValue.empty()) {
     builder.add(StaticStrings::ForceOneShardAttributeValue,
                 VPackValue(forceOneShardAttributeValue));
@@ -312,8 +316,6 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder,
   // the end user cannot override this setting anyway.
 
   builder.add("optimizer", VPackValue(VPackValueType::Object));
-  // hard-coded since 3.8, option will be removed in the future
-  builder.add("inspectSimplePlans", VPackValue(true));
   if (!optimizerRules.empty() || disableOptimizerRules) {
     builder.add("rules", VPackValue(VPackValueType::Array));
     if (disableOptimizerRules) {

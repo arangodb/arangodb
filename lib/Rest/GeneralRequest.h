@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -38,7 +38,6 @@
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
 
-#include "Basics/Common.h"
 #include "Endpoint/ConnectionInfo.h"
 #include "Endpoint/Endpoint.h"
 #include "Rest/CommonDefines.h"
@@ -59,7 +58,7 @@ class GeneralRequest {
 
   explicit GeneralRequest(ConnectionInfo const& connectionInfo, uint64_t mid);
 
-  virtual ~GeneralRequest();
+  virtual ~GeneralRequest() = default;
 
   // translate an RequestType enum value into an "HTTP method string"
   static std::string_view translateMethod(RequestType);
@@ -90,11 +89,12 @@ class GeneralRequest {
   void setUser(std::string user);
 
   /// @brief the request context depends on the application
-  RequestContext* requestContext() const { return _requestContext; }
+  std::shared_ptr<RequestContext> requestContext() const {
+    return _requestContext;
+  }
 
-  /// @brief set request context and whether this requests is allowed
-  ///        to delete it
-  void setRequestContext(RequestContext*, bool);
+  /// @brief set request context
+  void setRequestContext(std::shared_ptr<RequestContext>);
 
   RequestType requestType() const { return _type; }
 
@@ -137,8 +137,6 @@ class GeneralRequest {
   std::vector<std::string> decodedSuffixes() const;
 
   uint64_t messageId() const { return _messageId; }
-
-  virtual Endpoint::TransportType transportType() = 0;
 
   // get value from headers map. The key must be lowercase.
   std::string const& header(std::string const& key) const;
@@ -241,7 +239,7 @@ class GeneralRequest {
   uint64_t const _messageId;
 
   // request context (might contain vocbase)
-  RequestContext* _requestContext;
+  std::shared_ptr<RequestContext> _requestContext;
 
   double _tokenExpiry;
 
@@ -254,7 +252,6 @@ class GeneralRequest {
   ContentType _contentType;  // UNSET, VPACK, JSON
   ContentType _contentTypeResponse;
   EncodingType _acceptEncoding;
-  bool _isRequestContextOwner;
   bool _authenticated;
 };
 }  // namespace arangodb

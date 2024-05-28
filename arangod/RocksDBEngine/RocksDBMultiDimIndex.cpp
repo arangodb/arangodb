@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,19 +26,20 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Variable.h"
+#include "Basics/StaticStrings.h"
+#include "ClusterEngine/ClusterIndex.h"
 #include "Containers/Enumerate.h"
 #include "Containers/FlatHashSet.h"
-#include "Transaction/Helpers.h"
+#include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 #include "Zkd/ZkdHelper.h"
-#include "Logger/LogMacros.h"
-#include "ClusterEngine/ClusterIndex.h"
 
 using namespace arangodb;
 
@@ -863,10 +864,7 @@ RocksDBMdiIndexBase::RocksDBMdiIndexBase(IndexId iid, LogicalCollection& coll,
                    /*useCache*/ false,
                    /*cacheManager*/ nullptr,
                    /*engine*/
-                   coll.vocbase()
-                       .server()
-                       .getFeature<EngineSelectorFeature>()
-                       .engine<RocksDBEngine>()),
+                   coll.vocbase().engine<RocksDBEngine>()),
       _storedValues(
           Index::parseFields(info.get(StaticStrings::IndexStoredValues),
                              /*allowEmpty*/ true, /*allowExpansion*/ false)),
@@ -874,7 +872,12 @@ RocksDBMdiIndexBase::RocksDBMdiIndexBase(IndexId iid, LogicalCollection& coll,
           Index::parseFields(info.get(StaticStrings::IndexPrefixFields),
                              /*allowEmpty*/ true,
                              /*allowExpansion*/ false)),
-      _coveredFields(Index::mergeFields(_prefixFields, _storedValues)) {}
+      _coveredFields(Index::mergeFields(_prefixFields, _storedValues)),
+      _type(Index::type(info.get(StaticStrings::IndexType).stringView())) {
+  TRI_ASSERT(_type == TRI_IDX_TYPE_ZKD_INDEX ||
+             _type == TRI_IDX_TYPE_MDI_INDEX ||
+             _type == TRI_IDX_TYPE_MDI_PREFIXED_INDEX);
+}
 
 void RocksDBMdiIndexBase::toVelocyPack(
     velocypack::Builder& builder,
@@ -986,9 +989,7 @@ void RocksDBMdiIndex::recalculateEstimates() {
   TRI_ASSERT(_estimator != nullptr);
   _estimator->clear();
 
-  auto& selector =
-      _collection.vocbase().server().getFeature<EngineSelectorFeature>();
-  auto& engine = selector.engine<RocksDBEngine>();
+  auto& engine = _collection.vocbase().engine<RocksDBEngine>();
   rocksdb::TransactionDB* db = engine.db();
   rocksdb::SequenceNumber seq = db->GetLatestSequenceNumber();
 
@@ -1023,10 +1024,7 @@ aql::AstNode* RocksDBMdiIndexBase::specializeCondition(
   return mdi::specializeCondition(this, condition, reference);
 }
 
-Index::IndexType RocksDBMdiIndexBase::type() const {
-  return isPrefixed() ? TRI_IDX_TYPE_MDI_PREFIXED_INDEX
-                      : TRI_IDX_TYPE_MDI_INDEX;
-}
+Index::IndexType RocksDBMdiIndexBase::type() const { return _type; }
 
 char const* RocksDBMdiIndexBase::typeName() const {
   return Index::oldtypeName(type());
@@ -1070,8 +1068,6 @@ RocksDBMdiIndex::RocksDBMdiIndex(IndexId iid, LogicalCollection& coll,
     // And only on single servers and DBServers
     _estimator = std::make_unique<RocksDBCuckooIndexEstimatorType>(
         &coll.vocbase()
-             .server()
-             .getFeature<EngineSelectorFeature>()
              .engine<RocksDBEngine>()
              .indexEstimatorMemoryUsageMetric(),
         RocksDBIndex::ESTIMATOR_SIZE);

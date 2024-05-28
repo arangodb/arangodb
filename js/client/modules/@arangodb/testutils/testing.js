@@ -2,29 +2,29 @@
 /* global print, arango */
 'use strict';
 
-// /////////////////////////////////////////////////////////////////////////////
-// DISCLAIMER
-// 
-// Copyright 2016-2018 ArangoDB GmbH, Cologne, Germany
-// Copyright 2014 triagens GmbH, Cologne, Germany
-// 
-// Licensed under the Apache License, Version 2.0 (the "License")
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-// 
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-// 
-// Copyright holder is ArangoDB GmbH, Cologne, Germany
-// 
-// @author Max Neunhoeffer
-// @author Wilfried Goesgnes
-// /////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Max Neunhoeffer
+// / @author Wilfried Goesgnes
+// //////////////////////////////////////////////////////////////////////////////
 
 const _ = require('lodash');
 const fs = require('fs');
@@ -84,8 +84,8 @@ let optionsDocumentation = [
   '   - `server`: server_url (e.g. tcp://127.0.0.1:8529) for external server',
   '   - `serverRoot`: directory where data/ points into the db server. Use in',
   '                   conjunction with `server`.',
-  '   - `cluster`: if set to true the tests are run with the coordinator',
-  '     of a small local cluster',
+  '   - `cluster`: if set to true the tests are run with a cluster',
+  '   - `forceOneShard`: if set to true the tests are run with a OneShard (EE only) cluster, requires cluster option to be set to true',
   '   - `replicationVersion`: if set, define the default replication version. (Currently we have "1" and "2")',
   '   - `arangosearch`: if set to true enable the ArangoSearch-related tests',
   '   - `minPort`: minimum port number to use',
@@ -181,10 +181,10 @@ const optionsDefaults = {
   'agencySupervision': true,
   'bindBroadcast': false,
   'build': '',
-  'buildType': (platform.substr(0, 3) === 'win') ? 'RelWithDebInfo':'',
+  'buildType': '',
   'cleanup': true,
   'cluster': false,
-  'replicationVersion': '1',
+  'forceOneShard': false,
   'concurrency': 3,
   'configDir': 'etc/testing',
   'coordinators': 1,
@@ -487,7 +487,7 @@ function translateTestList(cases, options) {
       }
     }
   }
-  // Expand meta tests like ldap, all
+  // Expand meta tests like "all"
   caselist = (function() {
     let flattened = [];
     for (let n = 0; n < caselist.length; ++n) {
@@ -606,6 +606,11 @@ function unitTest (cases, options) {
 
   // testsuites may register more defaults...
   _.defaults(options, optionsDefaults);
+  if (options.forceOneShard) {
+    if (!options.cluster) {
+      throw new Error("need cluster enabled");
+    }
+  }
   if (options.memprof) {
     process.env['MALLOC_CONF'] = 'prof:true';
   }
@@ -623,9 +628,6 @@ function unitTest (cases, options) {
   }
   if (options.isSan) {
     ['ASAN_OPTIONS',
-     'LSAN_OPTIONS',
-     'UBSAN_OPTIONS',
-     'ASAN_OPTIONS',
      'LSAN_OPTIONS',
      'UBSAN_OPTIONS',
      'TSAN_OPTIONS'].forEach(sanOpt => {
@@ -670,6 +672,15 @@ function unitTest (cases, options) {
   }
 }
 
+function dumpCompletions() {
+  loadTestSuites();
+  const result = {};
+  result.options = Object.keys(optionsDefaults).map(o => '--' + o).sort();
+  result.suites = allTests.concat('auto', 'find').sort();
+  print(JSON.stringify(result));
+  return 0;
+}
+
 // /////////////////////////////////////////////////////////////////////////////
 // exports
 // /////////////////////////////////////////////////////////////////////////////
@@ -677,3 +688,4 @@ exports.optionsDefaults = optionsDefaults;
 exports.unitTest = unitTest;
 
 exports.testFuncs = testFuncs;
+exports.dumpCompletions = dumpCompletions;
