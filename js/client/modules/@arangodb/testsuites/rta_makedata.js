@@ -159,5 +159,7 @@ function makeDataWrapper (options) {
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['rta_makedata'] = makeDataWrapper;
-  tu.CopyIntoObject(fnDocs, functionsDocumentation);
+  tu.CopyIntoObject(fnDocs, {
+    'rta_makedata': 'Release Testautomation Makedata / Checkdata framework'
+  });
 };
