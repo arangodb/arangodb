@@ -98,7 +98,7 @@ class sanHandler {
         print(`checking for ${fn}: ${fs.exists(fn)}`);
         let t = fn.split(fs.pathSeparator);
         t.pop();
-        t = fs.join(t);
+        t = t.join(fs.pathSeparator);
         print("Files in ", t);
         for (let f of fs.list(t)) {
           print(f);
