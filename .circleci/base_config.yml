@@ -417,7 +417,12 @@ jobs:
               export TSAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/tsan.log:detect_deadlocks=true:second_deadlock_stack=1:suppressions=tsan_arangodb_suppressions.txt:print_suppressions=0"
               export SAN_MODE=tsan
             fi
-            export PROMTOOL_PATH=`which promtool`
+
+            # check if promtool is available and if so set the environment variable to enable the according tests
+            if command -v promtool &> /dev/null; then
+              export PROMTOOL_PATH=`command -v promtool`
+            fi
+
             export TIMELIMIT=<< parameters.timeLimit >>
             # Note: we need the leading space for extraArgs to avoid a parsing issue in argparse
             python3 -u scripts/test/test_launch_controller.py << parameters.suites >> \
