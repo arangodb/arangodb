@@ -126,4 +126,7 @@ ThreadPoolScheduler::ThreadPoolScheduler(
 void ThreadPoolScheduler::shutdown() {
   _stopping = true;
   Scheduler::shutdown();
+  for (auto& pool : _threadPools) {
+    pool->shutdown();
+  }
 }
