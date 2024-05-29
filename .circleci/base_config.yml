@@ -305,7 +305,7 @@ jobs:
                 name: get aux binaries
                 command: |
                   set -x
-                  STARTER_REV=$(grep -Po "STARTER_REV \"\Kv\d+\.\d+\.\d+" VERSIONS)
+                  STARTER_REV=$(grep -Po "STARTER_REV \"\Kv\d+\.\d+\.\d+[a-z0-9-]*" VERSIONS)
                   RCLONE_VERSION=$(grep -Po "RCLONE_VERSION \"\K\d+\.\d+\.\d+" VERSIONS)
                   arch="<<parameters.arch>>"
                   if test "$arch" == "x64"; then
