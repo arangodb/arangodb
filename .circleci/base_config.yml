@@ -294,6 +294,26 @@ jobs:
             echo "Building targets: $TARGETS"
             cmake --build --preset << parameters.preset >> --parallel 8 --target $TARGETS
       - when:
+          condition:
+            or:
+              -  not:
+                  equal: [ << pipeline.parameters.ui >>, ""]
+              - << pipeline.parameters.create-docker-images >>
+          steps:
+            - run:
+                root: .
+                name: get aux binaries
+                command: |
+                  ls -la
+                  STARTER_REV=$(grep -Po "STARTER_REV \"\Kv\d+\.\d+\.\d+" VERSIONS)
+                  RCLONE_VERSION=$(grep -Po "RCLONE_VERSION \"\Kv\d+\.\d+\.\d+" VERSIONS)
+                  curl -s -L -o build/bin/arangodb "https://github.com/arangodb-helper/arangodb/releases/download/$STARTER_REV/arangodb-linux-<< parameters.arch >>"
+                  chmod a+x build/bin/arangodb
+                  if [ << parameters.enterprise >> = true ]; then
+                    curl -s -L -o build/bin/rclone-arangodb "https://github.com/arangodb/oskar/raw/master/rclone/$RCLONE_VERSION/rclone-arangodb-linux-<< parameters.arch >>"
+                    chmod a+x build/bin/rclone-arangodb
+                  fi
+      - when:
           condition: << pipeline.parameters.create-docker-images >>
           steps:
             - run:
@@ -325,26 +345,6 @@ jobs:
           command: sccache -s
       - store_artifacts:
           path: /tmp/sccache.log
-      - when:
-          condition:
-            or:
-              -  not:
-                  equal: [ << pipeline.parameters.ui >>, ""]
-              - << pipeline.parameters.create-docker-images >>
-          steps:
-            - run:
-                root: .
-                name: get aux binaries
-                command: |
-                  ls -la
-                  STARTER_REV=$(grep -Po "STARTER_REV \"\Kv\d+\.\d+\.\d+" VERSIONS)
-                  RCLONE_VERSION=$(grep -Po "RCLONE_VERSION \"\Kv\d+\.\d+\.\d+" VERSIONS)
-                  curl -s -L -o build/bin/arangodb "https://github.com/arangodb-helper/arangodb/releases/download/$STARTER_REV/arangodb-linux-<< parameters.arch >>"
-                  chmod a+x build/bin/arangodb
-                  if [ << parameters.enterprise >> = true ]; then
-                    curl -s -L -o build/bin/rclone-arangodb "https://github.com/arangodb/oskar/raw/master/rclone/$RCLONE_VERSION/rclone-arangodb-linux-<< parameters.arch >>"
-                    chmod a+x build/bin/rclone-arangodb
-                  fi
       - when:
           condition: << parameters.publish-artifacts >>
           steps:
