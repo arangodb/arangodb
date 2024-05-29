@@ -539,7 +539,7 @@ def add_x64_enterprise_workflow(workflows, tests, args):
 
 def add_aarch64_community_workflow(workflows, tests, args):
     # for normal PR runs we run only aarch64 enterprise
-    if args.nightly:
+    if args.nightly and args.ui == "":
         add_workflow(
             workflows,
             tests,
@@ -549,12 +549,13 @@ def add_aarch64_community_workflow(workflows, tests, args):
 
 
 def add_aarch64_enterprise_workflow(workflows, tests, args):
-    add_workflow(
-        workflows,
-        tests,
-        BuildConfig("aarch64", True, args.sanitizer, args.nightly),
-        args,
-    )
+    if args.ui == "":
+        add_workflow(
+            workflows,
+            tests,
+            BuildConfig("aarch64", True, args.sanitizer, args.nightly),
+            args,
+        )
 
 
 def generate_jobs(config, args, tests):
