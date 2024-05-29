@@ -1,5 +1,5 @@
 /* jshint strict: false, sub: true */
-/* global */
+/* global print db arango */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -22,48 +22,42 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Julia Puget
+// / @author Wilfried Goesgens
 // //////////////////////////////////////////////////////////////////////////////
 
-const functionsDocumentation = {
-  'shell_fuzzer': 'shell client fuzzer tests'
-};
-
-const _ = require('lodash');
-const tu = require('@arangodb/testutils/test-utils');
-const trs = require('@arangodb/testutils/testrunners');
-const versionHas = require("@arangodb/test-helper").versionHas;
-
-const testPaths = {
-  'shell_fuzzer': [tu.pathForTesting('client/fuzz')]
-};
-
-
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief TEST: shell_fuzzer
+// / @brief checks that no new graphs were left on the SUT. 
 // //////////////////////////////////////////////////////////////////////////////
-
-function shellFuzzer(options) {
-  if (!versionHas('failure-tests')) {
-    return {
-      recovery: {
-        status: false,
-        message: 'failure-tests not enabled. please recompile with -DUSE_FAILURE_TESTS=On'
-      },
-      status: false
-    };
+exports.checker = class {
+  constructor(runner) {
+    this.runner = runner;
+    this.name = 'graphs';
+    this.graphCount = 0;
   }
-
-  let testCases = tu.scanTestPaths(testPaths.shell_fuzzer, options);
-
-  testCases = tu.splitBuckets(options, testCases);
-  let rc = new trs.runLocalInArangoshRunner(options, 'shell_fuzzer').run(testCases);
-  return rc;
-}
-
-exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
-  Object.assign(allTestPaths, testPaths);
-  testFns['shell_fuzzer'] = shellFuzzer;
-
-  tu.CopyIntoObject(fnDocs, functionsDocumentation);
+  setUp(te) {
+    this.graphCount = db._collection('_graphs').count();
+    return true;
+  }
+  runCheck(te) {
+    let graphs;
+    try {
+      graphs = db._collection('_graphs');
+    } catch (x) {
+      this.runner.setResult(te, false, {
+        status: false,
+        message: 'failed to fetch the graphs: ' + x.message
+      });
+      return false;
+    }
+    if (graphs && graphs.count() !== this.graphCount) {
+      this.runner.setResult(te, false, {
+        status: false,
+        message: 'Cleanup of graphs missing - found graph definitions: ' +
+          JSON.stringify(graphs.toArray())
+      });
+      this.graphCount = graphs.count();
+      return false;
+    }
+    return true;
+  }
 };

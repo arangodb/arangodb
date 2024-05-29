@@ -53,10 +53,6 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 const functionsDocumentation = {
   'arangosh': 'arangosh exit codes tests',
 };
-const optionsDocumentation = [
-  '   - `skipShebang`: if set, the shebang tests are skipped.'
-];
-
 const testPaths = {
   'arangosh': [],
 };
@@ -342,55 +338,49 @@ function arangosh (options) {
   }
 
   // test shebang execution with arangosh
-  if (!options.skipShebang) {
-    var shebangSuccess = true;
-    var deltaTime3 = 0;
-    var shebangFile = fs.getTempFile();
+  var shebangSuccess = true;
+  var deltaTime3 = 0;
+  var shebangFile = fs.getTempFile();
 
-    print('\n--------------------------------------------------------------------------------');
-    print('Starting arangosh via shebang script');
-    print('--------------------------------------------------------------------------------');
+  print('\n--------------------------------------------------------------------------------');
+  print('Starting arangosh via shebang script');
+  print('--------------------------------------------------------------------------------');
 
-    if (options.verbose) {
-      print(CYAN + 'shebang script: ' + shebangFile + RESET);
-    }
-
-    fs.write(shebangFile,
-      '#!' + fs.makeAbsolute(pu.ARANGOSH_BIN) + ' --javascript.execute \n' +
-      'print("hello world");\n');
-
-    executeExternalAndWait('sh', ['-c', 'chmod a+x ' + shebangFile]);
-
-    const startTime3 = time();
-    let rc = executeExternalAndWait('sh', ['-c', shebangFile]);
-    deltaTime3 = time() - startTime3;
-
-    if (options.verbose) {
-      print(CYAN + 'execute returned: ' + RESET, rc);
-    }
-
-    shebangSuccess = (rc.hasOwnProperty('exit') && rc.exit === 0);
-
-    if (!shebangSuccess) {
-      ret.failed += 1;
-      ret.testArangoshShebang.failed = 1;
-      ret.testArangoshShebang['message'] =
-        'didn\'t get expected return code (0): \n' +
-        yaml.safeDump(rc);
-    } else {
-      ret.testArangoshShebang.failed = 0;
-    }
-    fs.remove(shebangFile);
-
-    ++ret.testArangoshShebang['total'];
-    ret.testArangoshShebang['status'] = shebangSuccess;
-    ret.testArangoshShebang['duration'] = deltaTime3;
-    print((shebangSuccess ? GREEN : RED) + 'Status: ' + (shebangSuccess ? 'SUCCESS' : 'FAIL') + RESET);
-  } else {
-    ret.testArangoshShebang['skipped'] = true;
-    ret.testArangoshShebang.failed = 0;
+  if (options.verbose) {
+    print(CYAN + 'shebang script: ' + shebangFile + RESET);
   }
 
+  fs.write(shebangFile,
+           '#!' + fs.makeAbsolute(pu.ARANGOSH_BIN) + ' --javascript.execute \n' +
+           'print("hello world");\n');
+
+  executeExternalAndWait('sh', ['-c', 'chmod a+x ' + shebangFile]);
+
+  const startTime3 = time();
+  rc = executeExternalAndWait('sh', ['-c', shebangFile]);
+  deltaTime3 = time() - startTime3;
+
+  if (options.verbose) {
+    print(CYAN + 'execute returned: ' + RESET, rc);
+  }
+
+  shebangSuccess = (rc.hasOwnProperty('exit') && rc.exit === 0);
+
+  if (!shebangSuccess) {
+    ret.failed += 1;
+    ret.testArangoshShebang.failed = 1;
+    ret.testArangoshShebang['message'] =
+      'didn\'t get expected return code (0): \n' +
+      yaml.safeDump(rc);
+  } else {
+    ret.testArangoshShebang.failed = 0;
+  }
+  fs.remove(shebangFile);
+
+  ++ret.testArangoshShebang['total'];
+  ret.testArangoshShebang['status'] = shebangSuccess;
+  ret.testArangoshShebang['duration'] = deltaTime3;
+  print((shebangSuccess ? GREEN : RED) + 'Status: ' + (shebangSuccess ? 'SUCCESS' : 'FAIL') + RESET);
   print();
   return ret;
 }
@@ -398,8 +388,6 @@ function arangosh (options) {
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['arangosh'] = arangosh;
-  opts['skipShebang'] = false;
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };
