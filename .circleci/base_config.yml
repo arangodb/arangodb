@@ -300,6 +300,10 @@ jobs:
                   mkdir install
                   # Note: ATM this will rebuild the frontend
                   DESTDIR=`pwd`/install cmake --build --preset << parameters.preset >> --parallel 8 --target install
+                  cp build/bin/arangodb ./install/usr/bin/
+                  if [ << parameters.enterprise >> = true ]; then
+                    cp build/bin/rclone-arangodb ./install/usr/bin/
+                  fi
                   strip ./install/usr/bin/arango*
                   strip ./install/usr/sbin/arangod
                   tar -czf install.tar.gz -C install ./
@@ -319,17 +323,26 @@ jobs:
           command: sccache -s
       - store_artifacts:
           path: /tmp/sccache.log
-      - run:
-          root: .
-          name: get aux binaries
-          command: |
-            ls -la
-            curl -s -L -o build/bin/arangodb "https://github.com/arangodb-helper/arangodb/releases/download/v0.18.3/arangodb-linux-amd64"
-            chmod a+x build/bin/arangodb
-            if [ << parameters.enterprise >> = true ]; then
-              curl -s -L -o build/bin/rclone-arangodb "https://github.com/arangodb/oskar/raw/master/rclone/v1.65.2/rclone-arangodb-linux-amd64"
-              chmod a+x build/bin/rclone-arangodb
-            fi
+      - when:
+          condition:
+            or:
+              -  not:
+                  equal: [ << pipeline.parameters.ui >>, ""]
+              - << pipeline.parameters.create-docker-images >>
+          steps:
+            -run:
+                root: .
+                name: get aux binaries
+                command: |
+                  ls -la
+                  STARTER_REV=$(grep -Po "STARTER_REV \"\Kv\d+\.\d+\.\d+" VERSIONS)
+                  RCLONE_VERSION=$(grep -Po "RCLONE_VERSION \"\Kv\d+\.\d+\.\d+" VERSIONS)
+                  curl -s -L -o build/bin/arangodb "https://github.com/arangodb-helper/arangodb/releases/download/$STARTER_REV/arangodb-linux-<< parameters.arch >>"
+                  chmod a+x build/bin/arangodb
+                  if [ << parameters.enterprise >> = true ]; then
+                    curl -s -L -o build/bin/rclone-arangodb "https://github.com/arangodb/oskar/raw/master/rclone/$RCLONE_VERSION/rclone-arangodb-linux-<< parameters.arch >>"
+                    chmod a+x build/bin/rclone-arangodb
+                  fi
       - when:
           condition: << parameters.publish-artifacts >>
           steps:
@@ -383,13 +396,9 @@ jobs:
       - run:
           name: Create Docker Image
           command: |
-            STARTER_REV=$(grep -Po "STARTER_REV \"\Kv\d+\.\d+\.\d+" VERSIONS)
             cd scripts/docker/deploy
             mkdir install
             tar -xzf ../../../install.tar.gz -C install
-            curl -s -L -o "install/usr/bin/arangodb" "https://github.com/arangodb-helper/arangodb/releases/download/$STARTER_REV/arangodb-linux-<< parameters.arch >>"
-            # TODO
-            #  - download rclone
             docker build --platform linux/<< parameters.arch >> --build-arg arch=<< parameters.arch >> -t << parameters.tag >> --file deploy-alpine.dockerfile .
             echo "Pushing image << parameters.tag >>"
             docker push << parameters.tag >>
