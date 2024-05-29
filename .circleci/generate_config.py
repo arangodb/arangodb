@@ -389,7 +389,7 @@ def add_rta_test_jobs_to_workflow(args, workflow, build_config, build_job):
                    #"CL",
                    ]
     if args.ui_deployments:
-        deployments = argsui_deployments.split(',')
+        deployments = args.ui_deployments.split(',')
 
     for deployment in deployments:
         for test_suite in ui_testsuites:
