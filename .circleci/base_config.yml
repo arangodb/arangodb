@@ -304,15 +304,17 @@ jobs:
                 root: .
                 name: get aux binaries
                 command: |
-                  ls -la
                   set -x
-                  echo foo
                   STARTER_REV=$(grep -Po "STARTER_REV \"\Kv\d+\.\d+\.\d+" VERSIONS)
                   RCLONE_VERSION=$(grep -Po "RCLONE_VERSION \"\K\d+\.\d+\.\d+" VERSIONS)
-                  curl -s -L -o build/bin/arangodb "https://github.com/arangodb-helper/arangodb/releases/download/$STARTER_REV/arangodb-linux-<< parameters.arch >>"
+                  arch="<<parameters.arch>>"
+                  if test "$arch" == "x64"; then
+                    arch="amd64"
+                  fi
+                  curl -s -L -o build/bin/arangodb "https://github.com/arangodb-helper/arangodb/releases/download/$STARTER_REV/arangodb-linux-$arch"
                   chmod a+x build/bin/arangodb
                   if [ << parameters.enterprise >> = true ]; then
-                    curl -s -L -o build/bin/rclone-arangodb "https://github.com/arangodb/oskar/raw/master/rclone/v$RCLONE_VERSION/rclone-arangodb-linux-<< parameters.arch >>"
+                    curl -s -L -o build/bin/rclone-arangodb "https://github.com/arangodb/oskar/raw/master/rclone/v$RCLONE_VERSION/rclone-arangodb-linux-$arch"
                     chmod a+x build/bin/rclone-arangodb
                   fi
       - when:
