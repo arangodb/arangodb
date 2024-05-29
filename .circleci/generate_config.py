@@ -393,8 +393,11 @@ def add_rta_test_jobs_to_workflow(args, workflow, build_config, build_job):
 
 
 def add_test_jobs_to_workflow(args, workflow, tests, build_config, build_job, repl2):
-    if build_config.arch == "x64" and build_config.enterprise and args.ui != "":
-        add_rta_test_jobs_to_workflow(args, workflow, build_config, build_job)
+    if build_config.arch == "x64" and args.ui != "":
+        if build_config.enterprise:
+            add_rta_test_jobs_to_workflow(args, workflow, build_config, build_job)
+        elif args.ui == "community"
+            add_rta_test_jobs_to_workflow(args, workflow, build_config, build_job)
         if args.ui == "only":
             return
     if build_config.enterprise:
