@@ -37,11 +37,11 @@ using namespace arangodb::aql;
 
 AqlCallStack::AqlCallStack(AqlCallStack::Empty) {}
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-// only used in tests
 AqlCallStack::AqlCallStack(AqlCallList call) : _operations{{std::move(call)}} {}
 
 // only used in tests
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
 AqlCallStack::AqlCallStack(AqlCallStack const& other, AqlCallList call)
     : _operations{other._operations} {
   // We can only use this constructor on relevant levels
