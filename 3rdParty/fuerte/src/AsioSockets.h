@@ -122,6 +122,14 @@ struct Socket<SocketType::Tcp> {
         FUERTE_ASSERT(socket.is_open() == false);
         ec = asio_ns::error::operation_aborted;
       }
+      if (!ec) {
+        // set TCP_NODELAY option on socket to disable Nagle's algorithm.
+        socket.set_option(asio_ns::ip::tcp::no_delay(true), ec);
+        if (ec) {
+          FUERTE_LOG_ERROR << "error setting no_delay option on socket: " << ec.message() << "\n";
+          FUERTE_ASSERT(false);
+        }
+      }
       done(ec);
     }, [this]() {
       return canceled;
@@ -209,8 +217,9 @@ struct Socket<fuerte::SocketType::Ssl> {
             return;
           }
 
+          // Perform SSL handshake and verify the remote host's certificate.
           try {
-            // Perform SSL handshake and verify the remote host's certificate.
+            // set TCP_NODELAY option on socket to disable Nagle's algorithm.
             socket.next_layer().set_option(asio_ns::ip::tcp::no_delay(true));
 
             // Set SNI Hostname (many hosts need this to handshake successfully)
@@ -347,7 +356,7 @@ struct Socket<fuerte::SocketType::Unix> {
       done(asio_ns::error::operation_aborted);
       return;
     }
-
+        
     asio_ns::local::stream_protocol::endpoint ep(config._host);
     socket.async_connect(ep, std::forward<F>(done));
   }
