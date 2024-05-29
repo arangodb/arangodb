@@ -323,12 +323,14 @@ static void StartExternalProcessPosixSpawn(
       external->_status = TRI_EXT_TERMINATED;
       external->_exitStatus = 1;
       LOG_TOPIC("e3a2c", ERR, arangodb::Logger::FIXME)
-          << "spawn failed: executable not found";
+          << "spawn failed: executable '" << external->_executable
+          << "' not found";
     } else {
       external->_status = TRI_EXT_FORK_FAILED;
 
       LOG_TOPIC("e3a2b", ERR, arangodb::Logger::FIXME)
-          << "spawn failed: " << strerror(errnoCopy);
+          << "spawning of executable '" << external->_executable
+          << "' failed: " << strerror(errnoCopy);
     }
     if (usePipes) {
       close(pipe_server_to_child[0]);
@@ -341,7 +343,8 @@ static void StartExternalProcessPosixSpawn(
   }
 
   LOG_TOPIC("ac58b", DEBUG, arangodb::Logger::FIXME)
-      << "spawn succeeded, child pid: " << external->_pid;
+      << "spawning executable '" << external->_executable
+      << "' succeeded, child pid: " << external->_pid;
 
   if (usePipes) {
     close(pipe_server_to_child[0]);

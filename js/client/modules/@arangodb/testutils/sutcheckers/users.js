@@ -1,5 +1,5 @@
 /* jshint strict: false, sub: true */
-/* global */
+/* global print db arango */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -22,48 +22,49 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-// / @author Julia Puget
+// / @author Wilfried Goesgens
 // //////////////////////////////////////////////////////////////////////////////
 
-const functionsDocumentation = {
-  'shell_fuzzer': 'shell client fuzzer tests'
-};
-
-const _ = require('lodash');
-const tu = require('@arangodb/testutils/test-utils');
-const trs = require('@arangodb/testutils/testrunners');
-const versionHas = require("@arangodb/test-helper").versionHas;
-
-const testPaths = {
-  'shell_fuzzer': [tu.pathForTesting('client/fuzz')]
-};
-
+const userManager = require("@arangodb/users");
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief TEST: shell_fuzzer
+// / @brief checks no new users were left on the SUT by tests
 // //////////////////////////////////////////////////////////////////////////////
-
-function shellFuzzer(options) {
-  if (!versionHas('failure-tests')) {
-    return {
-      recovery: {
-        status: false,
-        message: 'failure-tests not enabled. please recompile with -DUSE_FAILURE_TESTS=On'
-      },
-      status: false
-    };
+exports.checker = class {
+  constructor(runner) {
+    this.runner = runner;
+    this.name = 'users';
+    this.usersCount = 0;
   }
-
-  let testCases = tu.scanTestPaths(testPaths.shell_fuzzer, options);
-
-  testCases = tu.splitBuckets(options, testCases);
-  let rc = new trs.runLocalInArangoshRunner(options, 'shell_fuzzer').run(testCases);
-  return rc;
-}
-
-exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
-  Object.assign(allTestPaths, testPaths);
-  testFns['shell_fuzzer'] = shellFuzzer;
-
-  tu.CopyIntoObject(fnDocs, functionsDocumentation);
+  setUp (te) {
+    try {
+      this.usersCount = userManager.all().length;
+    } catch (x) {
+      this.runner.setResult(te, true, {
+        status: false,
+        message: 'failed to fetch the users on the system before the test: ' + x.message
+      });
+      return false;
+    }
+    return true;
+  }
+  runCheck(te) {
+    try {
+      if (userManager.all().length !== this.usersCount) {
+        this.runner.setResult(te, false, {
+          status: false,
+          message: 'Cleanup of users missing - found users left over: ' +
+            JSON.stringify(userManager.all())
+        });
+        return false;
+      }
+    } catch (x) {
+      this.runner.setResult(te, true, {
+        status: false,
+        message: 'failed to fetch the users on the system after the test: ' + x.message
+      });
+      return false;
+    }
+    return true;
+  }
 };

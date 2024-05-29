@@ -185,137 +185,190 @@ RestStatus RestIndexHandler::getIndexes() {
     }
     bool withHidden = _request->parsedValue("withHidden", false);
 
-    VPackBuilder indexes;
-    Result res =
-        methods::Indexes::getAll(*coll, flags, withHidden, indexes).get();
-    if (!res.ok()) {
-      generateError(rest::ResponseCode::BAD, res.errorNumber(),
-                    res.errorMessage());
-      return RestStatus::DONE;
-    }
-
-    TRI_ASSERT(indexes.slice().isArray());
+    // result container
     VPackBuilder tmp;
     tmp.openObject();
     tmp.add(StaticStrings::Error, VPackValue(false));
     tmp.add(StaticStrings::Code,
             VPackValue(static_cast<int>(ResponseCode::OK)));
 
-    if (ServerState::instance()->isCoordinator() && withHidden) {
-      tmp.add(VPackValue("indexes"));
-      VPackArrayBuilder guard(&tmp);
-      for (auto i : VPackArrayIterator(indexes.slice())) {
-        tmp.add(i);
+    if (!ServerState::instance()->isCoordinator() || !withHidden) {
+      // simple case: no in-progress indexes to return
+      VPackBuilder indexes;
+      Result res =
+          methods::Indexes::getAll(*coll, flags, withHidden, indexes).get();
+      if (!res.ok()) {
+        generateError(rest::ResponseCode::BAD, res.errorNumber(),
+                      res.errorMessage());
+        return RestStatus::DONE;
       }
+
+      TRI_ASSERT(indexes.slice().isArray());
+
+      tmp.add("indexes", indexes.slice());
+      tmp.add("identifiers", VPackValue(VPackValueType::Object));
+      for (auto index : VPackArrayIterator(indexes.slice())) {
+        VPackSlice id = index.get("id");
+        tmp.add(id.stringView(), index);
+      }
+    } else {
+      // more complicated case: we need to also return all indexes that
+      // are still in the making
+      TRI_ASSERT(ServerState::instance()->isCoordinator());
+
+      // first fetch list of planned indexes. this includes all indexes,
+      // even the in-progress indexes
       std::string ap = absl::StrCat("Plan/Collections/", _vocbase.name(), "/",
                                     coll->planId().id(), "/indexes");
       auto& ac = _vocbase.server().getFeature<ClusterFeature>().agencyCache();
       // we need to wait for the latest commit index here, because otherwise
-      // we may not see all indexes that were declared ready by the supervision.
+      // we may not see all indexes that were declared ready by the
+      // supervision.
       ac.waitForLatestCommitIndex().get();
 
       auto [plannedIndexes, idx] = ac.get(ap);
 
-      try {  // this is a best effort progress display.
-        for (auto pi : VPackArrayIterator(plannedIndexes->slice())) {
-          if (pi.get(StaticStrings::IndexIsBuilding).isTrue()) {
-            VPackObjectBuilder o(&tmp);
-            for (auto source :
-                 VPackObjectIterator(pi, /* useSequentialIterator */ true)) {
-              tmp.add(source.key.stringView(), source.value);
-            }
-            std::string_view iid = pi.get("id").stringView();
-            double progress = 0;
-            auto const shards = coll->shardIds();
-            auto const body = VPackBuffer<uint8_t>();
-            auto* pool =
-                coll->vocbase().server().getFeature<NetworkFeature>().pool();
-            std::vector<Future<network::Response>> futures;
-            futures.reserve(shards->size());
-            std::string const prefix = "/_api/index/";
-            network::RequestOptions reqOpts;
-            reqOpts.param("withHidden", withHidden ? "true" : "false");
-            reqOpts.database = _vocbase.name();
-            // best effort. only displaying progress
-            reqOpts.timeout = network::Timeout(10.0);
-            for (auto const& shard : *shards) {
-              std::string const url =
-                  absl::StrCat(prefix, "s", shard.first.id(), "/", iid);
-              futures.emplace_back(network::sendRequestRetry(
-                  pool, absl::StrCat("shard:s", shard.first.id()),
-                  fuerte::RestVerb::Get, url, body, reqOpts));
-            }
-            for (Future<network::Response>& f : futures) {
-              network::Response const& r = f.get();
+      // now fetch list of ready indexes
+      VPackBuilder indexes;
+      Result res =
+          methods::Indexes::getAll(*coll, flags, withHidden, indexes).get();
+      if (!res.ok()) {
+        generateError(rest::ResponseCode::BAD, res.errorNumber(),
+                      res.errorMessage());
+        return RestStatus::DONE;
+      }
 
-              // Only best effort accounting. If something breaks here, we
-              // just ignore the output. Account for what we can and move
-              // on.
-              if (r.fail()) {
-                LOG_TOPIC("afde4", INFO, Logger::CLUSTER)
-                    << "Communication error while fetching index data "
-                       "for collection "
-                    << coll->name() << " from " << r.destination;
-                continue;
-              }
-              VPackSlice resSlice = r.slice();
-              if (!resSlice.isObject() ||
-                  !resSlice.get(StaticStrings::Error).isBoolean()) {
-                LOG_TOPIC("aabe4", INFO, Logger::CLUSTER)
-                    << "Result of collecting index data for collection "
-                    << coll->name() << " from " << r.destination
-                    << " is invalid";
-                continue;
-              }
-              if (resSlice.get(StaticStrings::Error).isTrue()) {
-                // this can happen when the DB-Servers have not yet
-                // started the creation of the index on a shard, for
-                // example if the number of maintenance threads is low.
-                auto errorNum = TRI_ERROR_NO_ERROR;
-                if (VPackSlice errorNumSlice =
-                        resSlice.get(StaticStrings::ErrorNum);
-                    errorNumSlice.isNumber()) {
-                  errorNum = ::ErrorCode{errorNumSlice.getNumber<int>()};
-                }
-                // do not log an expected error such as "index not found",
-                if (errorNum != TRI_ERROR_ARANGO_INDEX_NOT_FOUND) {
-                  LOG_TOPIC("a4bea", INFO, Logger::CLUSTER)
-                      << "Failed to collect index data for collection "
-                      << coll->name() << " from " << r.destination << ": "
-                      << resSlice.toJson();
-                }
-                continue;
-              }
-              if (resSlice.get("progress").isNumber()) {
-                progress += resSlice.get("progress").getNumber<double>();
-              } else {
-                // Obviously, the index is already ready there.
-                progress += 100.0;
-                LOG_TOPIC("aeab4", DEBUG, Logger::CLUSTER)
-                    << "No progress entry on index " << iid << " from "
-                    << r.destination << ": " << resSlice.toJson()
-                    << " index already finished.";
-              }
+      TRI_ASSERT(indexes.slice().isArray());
+
+      // all indexes we already reported
+      containers::FlatHashSet<std::string> covered;
+
+      tmp.add(VPackValue("indexes"));
+
+      {
+        VPackArrayBuilder guard(&tmp);
+        // first return all ready indexes
+        for (auto pi : VPackArrayIterator(indexes.slice())) {
+          std::string_view iid = pi.get("id").stringView();
+          tmp.add(pi);
+
+          // note this index as already covered
+          covered.emplace(iid);
+        }
+        // now return all in-progress indexes, if any
+        for (auto pi : VPackArrayIterator(plannedIndexes->slice())) {
+          std::string_view iid = pi.get("id").stringView();
+          // avoid reporting an index twice
+          if (covered.contains(iid) ||
+              !pi.get(StaticStrings::IndexIsBuilding).isTrue()) {
+            continue;
+          }
+
+          VPackObjectBuilder o(&tmp);
+          for (auto source :
+               VPackObjectIterator(pi, /* useSequentialIterator */ true)) {
+            tmp.add(source.key.stringView(), source.value);
+          }
+
+          double progress = 0;
+          auto const shards = coll->shardIds();
+          auto const body = VPackBuffer<uint8_t>();
+          auto* pool =
+              coll->vocbase().server().getFeature<NetworkFeature>().pool();
+          std::vector<Future<network::Response>> futures;
+          futures.reserve(shards->size());
+          std::string const prefix = "/_api/index/";
+          network::RequestOptions reqOpts;
+          reqOpts.param("withHidden", withHidden ? "true" : "false");
+          reqOpts.database = _vocbase.name();
+          // best effort. only displaying progress
+          reqOpts.timeout = network::Timeout(10.0);
+          for (auto const& shard : *shards) {
+            std::string url =
+                absl::StrCat(prefix, "s", shard.first.id(), "/", iid);
+            futures.emplace_back(network::sendRequestRetry(
+                pool, "shard:" + shard.first, fuerte::RestVerb::Get, url, body,
+                reqOpts));
+          }
+          for (Future<network::Response>& f : futures) {
+            network::Response const& r = f.get();
+
+            // Only best effort accounting. If something breaks here, we
+            // just ignore the output. Account for what we can and move
+            // on.
+            if (r.fail()) {
+              LOG_TOPIC("afde4", INFO, Logger::CLUSTER)
+                  << "Communication error while fetching index data "
+                     "for collection "
+                  << coll->name() << " from " << r.destination;
+              continue;
             }
-            if (progress != 0 && shards->size() > 0) {
-              // Don't show progress 0, this is in particular relevant
-              // when isBackground is false, in which case no progress
-              // is reported by design.
-              tmp.add("progress", VPackValue(progress / shards->size()));
+            VPackSlice resSlice = r.slice();
+            if (!resSlice.isObject() ||
+                !resSlice.get(StaticStrings::Error).isBoolean()) {
+              LOG_TOPIC("aabe4", INFO, Logger::CLUSTER)
+                  << "Result of collecting index data for collection "
+                  << coll->name() << " from " << r.destination << " is invalid";
+              continue;
+            }
+            if (resSlice.get(StaticStrings::Error).getBoolean()) {
+              // this can happen when the DB-Servers have not yet
+              // started the creation of the index on a shard, for
+              // example if the number of maintenance threads is low.
+              auto errorNum = TRI_ERROR_NO_ERROR;
+              if (VPackSlice errorNumSlice =
+                      resSlice.get(StaticStrings::ErrorNum);
+                  errorNumSlice.isNumber()) {
+                errorNum = ::ErrorCode{errorNumSlice.getNumber<int>()};
+              }
+              // do not log an expected error such as "index not found",
+              if (errorNum != TRI_ERROR_ARANGO_INDEX_NOT_FOUND) {
+                LOG_TOPIC("a4bea", INFO, Logger::CLUSTER)
+                    << "Failed to collect index data for collection "
+                    << coll->name() << " from " << r.destination << ": "
+                    << resSlice.toJson();
+              }
+              continue;
+            }
+            if (resSlice.get("progress").isNumber()) {
+              progress += resSlice.get("progress").getNumber<double>();
+            } else {
+              // Obviously, the index is already ready there.
+              progress += 100.0;
+              LOG_TOPIC("aeab4", DEBUG, Logger::CLUSTER)
+                  << "No progress entry on index " << iid << " from "
+                  << r.destination << ": " << resSlice.toJson()
+                  << " index already finished.";
             }
           }
+          if (progress != 0 && shards->size() != 0) {
+            // Don't show progress 0, this is in particular relevant
+            // when isBackground is false, in which case no progress
+            // is reported by design.
+            tmp.add("progress", VPackValue(progress / shards->size()));
+          }
         }
-      } catch (...) {
-      }  // best effort only
-    } else {
-      tmp.add("indexes", indexes.slice());
+      }
+
+      // also report all indexes in the "identifiers" attribute.
+      // TODO: this is redundant and unncessarily complicates the API return
+      // value. this attribute should be deprecated and removed
+      tmp.add("identifiers", VPackValue(VPackValueType::Object));
+      for (auto pi : VPackArrayIterator(indexes.slice())) {
+        std::string_view iid = pi.get("id").stringView();
+        tmp.add(iid, pi);
+      }
+      for (auto pi : VPackArrayIterator(plannedIndexes->slice())) {
+        std::string_view iid = pi.get("id").stringView();
+        // avoid reporting an index twice
+        if (covered.contains(iid) ||
+            !pi.get(StaticStrings::IndexIsBuilding).isTrue()) {
+          continue;
+        }
+        tmp.add(iid, pi);
+      }
     }
 
-    tmp.add("identifiers", VPackValue(VPackValueType::Object));
-    for (auto index : VPackArrayIterator(indexes.slice())) {
-      VPackSlice id = index.get("id");
-      tmp.add(id.stringView(), index);
-    }
     tmp.close();
     tmp.close();
     generateResult(rest::ResponseCode::OK, tmp.slice());

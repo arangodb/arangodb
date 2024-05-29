@@ -5,6 +5,12 @@ devel
   is reported to the agency. This limits traffic from DB servers to the agency
   during hot backup uploads and downloads.
 
+* Pass all relevant compiler optimization flags down to relevant CMake sub
+  projects which are built using configure/make.
+
+* Added ENTRIES function, that takes an object and produces a list of key-value
+  pairs. The order of pairs is unspecified.
+
 * Prevent spurious rclone errors in S3.
 
 * Use posix_spawn instead of fork/exec for subprocesses. This solves a
