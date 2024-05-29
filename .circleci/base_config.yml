@@ -305,7 +305,7 @@ jobs:
                 name: get aux binaries
                 command: |
                   ls -la
-                  set +X
+                  set -x
                   echo foo
                   STARTER_REV=$(grep -Po "STARTER_REV \"\Kv\d+\.\d+\.\d+" VERSIONS)
                   RCLONE_VERSION=$(grep -Po "RCLONE_VERSION \"\Kv\d+\.\d+\.\d+" VERSIONS)
