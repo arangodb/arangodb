@@ -23,10 +23,10 @@
 #include "LeaseManagerRestHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Network/NetworkFeature.h"
 #include "Cluster/LeaseManager/AbortLeaseInformation.h"
 #include "Cluster/LeaseManager/AbortLeaseInformationInspector.h"
 #include "Cluster/LeaseManager/LeaseManager.h"
+#include "Cluster/LeaseManager/LeaseManagerFeature.h"
 #include "Cluster/LeaseManager/LeasesReport.h"
 #include "Cluster/LeaseManager/LeasesReportInspectors.h"
 #include "Inspection/VPack.h"
@@ -38,7 +38,8 @@ using namespace arangodb::cluster;
 
 namespace {
 
-auto parseGetType(std::string_view parameter) -> ResultT<LeaseManager::GetType> {
+auto parseGetType(std::string_view parameter)
+    -> ResultT<LeaseManager::GetType> {
   if (parameter.empty() || parameter == "local") {
     return LeaseManager::GetType::LOCAL;
   } else if (parameter == "all") {
@@ -59,8 +60,9 @@ auto parseGetType(std::string_view parameter) -> ResultT<LeaseManager::GetType> 
 
 LeaseManagerRestHandler::LeaseManagerRestHandler(ArangodServer& server,
                                                  GeneralRequest* request,
-                                                 GeneralResponse* response)
-    : RestBaseHandler(server, request, response) {}
+                                                 GeneralResponse* response,
+                                                 LeaseManager* leaseManager)
+    : RestBaseHandler(server, request, response), _leaseManager(*leaseManager) {}
 
 RestStatus LeaseManagerRestHandler::execute() {
   switch (request()->requestType()) {
@@ -76,18 +78,16 @@ RestStatus LeaseManagerRestHandler::execute() {
         return RestStatus::DONE;
       }
       auto info = velocypack::deserialize<AbortLeaseInformation>(body);
+      LOG_DEVEL << "Aborting leases for server: " << body.toJson();
       return executeDelete(std::move(info));
     }
     default:
       generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_HTTP_NOT_FOUND);
       return RestStatus::DONE;
   }
-
 }
 
 RestStatus LeaseManagerRestHandler::executeGet() {
-  auto& networkFeature = server().getFeature<NetworkFeature>();
-  auto& leaseManager = networkFeature.leaseManager();
   auto getType = parseGetType(request()->value("type"));
   if (getType.fail()) {
     generateError(getType.result());
@@ -100,16 +100,14 @@ RestStatus LeaseManagerRestHandler::executeGet() {
       forServer = std::move(serverValue);
     }
   }
-  auto report = leaseManager.reportLeases(getType.get(), forServer);
+  auto report = _leaseManager.reportLeases(getType.get(), forServer);
   auto builder = velocypack::serialize(report);
   generateOk(rest::ResponseCode::OK, builder.slice());
   return RestStatus::DONE;
 }
 
 RestStatus LeaseManagerRestHandler::executeDelete(AbortLeaseInformation info) {
-  auto& networkFeature = server().getFeature<NetworkFeature>();
-  auto& leaseManager = networkFeature.leaseManager();
-  leaseManager.abortLeasesForServer(std::move(info));
+  _leaseManager.abortLeasesForServer(std::move(info));
   // This API can only return 200, leases are guaranteed to be aborted.
   generateOk(rest::ResponseCode::OK, VPackSlice::noneSlice());
   return RestStatus::DONE;

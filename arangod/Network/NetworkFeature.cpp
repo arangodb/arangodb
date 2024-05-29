@@ -33,7 +33,6 @@
 #include "Basics/debugging.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
-#include "Cluster/LeaseManager/LeaseManagerNetworkHandler.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Network/ConnectionPool.h"
 #include "Network/Methods.h"
@@ -338,19 +337,6 @@ void NetworkFeature::prepare() {
     }
   };
 
-  if (ci != nullptr){
-    // Allocate the LeaseManager.
-    // This must be done after the NetworkFeature has been started.
-    TRI_ASSERT(pool() != nullptr) << "Issue with startup ordering of features.";
-    TRI_ASSERT(ci != nullptr) << "Issue with startup ordering of features.";
-    ADB_PROD_ASSERT(SchedulerFeature::SCHEDULER != nullptr) << "Startup ordering issue, Scheduler not yet initialized";
-    _leaseManager = std::make_unique<cluster::LeaseManager>(
-        ci->rebootTracker(),
-        std::make_unique<cluster::LeaseManagerNetworkHandler>(pool(),
-                                                              ci),
-        *SchedulerFeature::SCHEDULER);
-  }
-
   _prepared = true;
 }
 
@@ -402,13 +388,6 @@ void NetworkFeature::unprepare() {
 
 network::ConnectionPool* NetworkFeature::pool() const noexcept {
   return _poolPtr.load(std::memory_order_relaxed);
-}
-
-cluster::LeaseManager& NetworkFeature::leaseManager() {
-  if (!_leaseManager) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
-  }
-  return *_leaseManager;
 }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS

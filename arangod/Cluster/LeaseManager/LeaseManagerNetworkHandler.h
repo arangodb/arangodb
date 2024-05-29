@@ -58,7 +58,7 @@ struct ILeaseManagerNetworkHandler {
 };
 
 struct LeaseManagerNetworkHandler : ILeaseManagerNetworkHandler {
-  LeaseManagerNetworkHandler(network::ConnectionPool* pool, ClusterInfo* ci);
+  LeaseManagerNetworkHandler(network::ConnectionPool* pool, ClusterInfo& ci);
 
   auto abortIds(ServerID const& server, std::vector<LeaseId> const& leasedFrom,
                 std::vector<LeaseId> const& leasedTo) const noexcept
@@ -74,7 +74,7 @@ struct LeaseManagerNetworkHandler : ILeaseManagerNetworkHandler {
 
  private:
   network::ConnectionPool* _pool;
-  ClusterInfo* _clusterInfo;
+  ClusterInfo& _clusterInfo;
 };
 }  // namespace cluster
 }  // namespace arangodb

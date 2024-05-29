@@ -39,7 +39,7 @@ using namespace arangodb::cluster;
 
 namespace {
 
-auto collectLeaseReportForPeerServer(ClusterInfo* ci,
+auto collectLeaseReportForPeerServer(ClusterInfo& ci,
                                      network::ConnectionPool* pool,
                                      ServerID const& onlyShowServer) noexcept
     -> futures::Future<ManyServersLeasesReport> {
@@ -54,8 +54,8 @@ auto collectLeaseReportForPeerServer(ClusterInfo* ci,
   }
   // We will only collect leases of servers of the other type.
   auto serverList = ServerState::instance()->isCoordinator()
-                        ? ci->getCurrentDBServers()
-                        : ci->getCurrentCoordinators();
+                        ? ci.getCurrentDBServers()
+                        : ci.getCurrentCoordinators();
   std::vector<futures::Future<ManyServersLeasesReport>> futures;
   for (auto const& server : serverList) {
     auto f =
@@ -103,7 +103,7 @@ auto collectLeaseReportForPeerServer(ClusterInfo* ci,
 
 LeaseManagerNetworkHandler::LeaseManagerNetworkHandler(
     network::ConnectionPool* pool,
-    ClusterInfo* ci)
+    ClusterInfo& ci)
     : _pool{pool}, _clusterInfo{ci} {}
 
 auto LeaseManagerNetworkHandler::abortIds(

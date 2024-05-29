@@ -22,28 +22,36 @@
 
 #pragma once
 
-#include "RestHandler/RestBaseHandler.h"
+#include <memory>
 
-namespace arangodb::cluster {
+#include "Cluster/LeaseManager/LeaseManager.h"
+#include "RestServer/arangod.h"
 
-struct LeaseManager;
+namespace arangodb {
 
-struct AbortLeaseInformation;
+class SchedulerFeature;
 
-struct LeaseManagerRestHandler : public RestBaseHandler {
-  explicit LeaseManagerRestHandler(ArangodServer&, GeneralRequest*,
-                                   GeneralResponse*,
-                                   LeaseManager* leaseManager);
+namespace cluster {
 
-  char const* name() const override final { return "RestLeaseManagerHandler"; }
-  RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
-  RestStatus execute() override;
+class LeaseManagerFeature final : public ArangodFeature {
+ public:
 
+  LeaseManagerFeature(Server& server,
+                      ClusterFeature& clusterFeature,
+                      NetworkFeature& networkFeature,
+                      SchedulerFeature& schedulerFeature);
+
+  void prepare() override;
+
+  cluster::LeaseManager& leaseManager();
 
  private:
-  RestStatus executeGet();
-  RestStatus executeDelete(AbortLeaseInformation info);
+  std::unique_ptr<cluster::LeaseManager> _leaseManager;
 
-  LeaseManager& _leaseManager;
+  ClusterFeature& _clusterFeature;
+  NetworkFeature& _networkFeature;
+  SchedulerFeature& _schedulerFeature;
 };
-}  // namespace arangodb::cluster
+
+}
+}

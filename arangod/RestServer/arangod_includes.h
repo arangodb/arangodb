@@ -58,6 +58,7 @@
 #include "Cache/CacheOptionsFeature.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterUpgradeFeature.h"
+#include "Cluster/LeaseManager/LeaseManagerFeature.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/ReplicationTimeoutFeature.h"
 #include "Cluster/ServerState.h"

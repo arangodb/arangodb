@@ -43,6 +43,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/LeaseManager/LeaseId.h"
+#include "Cluster/LeaseManager/LeaseManagerFeature.h"
 #include "Cluster/RebootTracker.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngine.h"
@@ -50,7 +51,6 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LogStructuredParamsAllowList.h"
-#include "Network/NetworkFeature.h"
 #include "Random/RandomGenerator.h"
 #include "Rest/GeneralRequest.h"
 #include "Transaction/Context.h"
@@ -390,7 +390,7 @@ futures::Future<futures::Unit> RestAqlHandler::setupClusterQuery() {
 
       LOG_DEVEL << "Register Query: " << q->id() << " with lease " << leaseId.id() << " using colls: " << q->collectionNames();
       auto res =
-          server().getFeature<NetworkFeature>().leaseManager().handoutLease(
+          server().getFeature<cluster::LeaseManagerFeature>().leaseManager().handoutLease(
               PeerState{.serverId = coordinatorId, .rebootId = rebootId}, leaseId,
               [query = std::weak_ptr(q)]() noexcept -> std::string {
                 if (auto q = query.lock(); q) {

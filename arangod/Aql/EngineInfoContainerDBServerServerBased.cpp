@@ -33,6 +33,7 @@
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterTrxMethods.h"
+#include "Cluster/LeaseManager/LeaseManagerFeature.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
@@ -396,7 +397,9 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
       _query.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
 
   // TODO: This can throw. Is this a problem here?
-  auto& leaseManager = nf.leaseManager();
+  cluster::LeaseManagerFeature& lmgrFeature =
+      _query.vocbase().server().getFeature<cluster::LeaseManagerFeature>();
+  auto& leaseManager = lmgrFeature.leaseManager();
 
   auto rebootIds = clusterInfo.rebootIds();
   /// cluster global query id, under which the query will be registered

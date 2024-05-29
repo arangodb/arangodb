@@ -41,7 +41,6 @@
 #include "Mocks/Servers.h"
 #include "PreparedResponseConnectionPool.h"
 
-
 // TODO: This has to be removed
 #include "Inspection/VPack.h"
 
@@ -76,11 +75,14 @@ class LeaseManagerTest : public ::testing::Test,
             128, 0.0,
             mockApplicationServer.server()
                 .template getFeature<arangodb::metrics::MetricsFeature>())),
-        rebootTracker(scheduler.get()) {}
+        rebootTracker(scheduler.get()),
+        oldId{ServerState::instance()->getId()} {}
 
   MockRestServer mockApplicationServer;
   std::unique_ptr<SupervisedScheduler> scheduler;
   RebootTracker rebootTracker;
+  ServerID const myId{"CRDN_TEST_1"};
+  ServerID const oldId;
 
   static ServerID const serverA;
   static ServerID const serverB;
@@ -93,6 +95,7 @@ class LeaseManagerTest : public ::testing::Test,
 
   void SetUp() override {
     scheduler->start();
+    ServerState::instance()->setId(myId);
     state = containers::FlatHashMap<ServerID, ServerHealthState>{
         {serverA, ServerHealthState{.rebootId = RebootId{1},
                                     .status = ServerHealth::kGood}},
@@ -115,6 +118,7 @@ class LeaseManagerTest : public ::testing::Test,
      * address: 0xf))
      */
     scheduler->shutdown();
+    ServerState::instance()->setId(oldId);
   }
 
   bool schedulerEmpty() const {
@@ -180,6 +184,9 @@ class LeaseManagerTest : public ::testing::Test,
                                          PeerState const& leaseIsFor,
                                          LeaseId const& leaseId) {
     ASSERT_TRUE(leasesVPack.isObject());
+    ASSERT_TRUE(leasesVPack.hasKey(myId));
+    leasesVPack = leasesVPack.get(myId);
+    ASSERT_TRUE(leasesVPack.isObject());
     ASSERT_TRUE(leasesVPack.hasKey("leasedFromRemote"));
     leasesVPack = leasesVPack.get("leasedFromRemote");
     ASSERT_TRUE(leasesVPack.isObject());
@@ -188,7 +195,17 @@ class LeaseManagerTest : public ::testing::Test,
         << peerStateToJSONKey(leaseIsFor)
         << " full list: " << leasesVPack.toJson();
     auto leaseList = leasesVPack.get(peerStateToJSONKey(leaseIsFor));
-    EXPECT_TRUE(leaseList.hasKey(basics::StringUtils::itoa(leaseId.id())))
+    ASSERT_TRUE(leaseList.isArray());
+    bool foundEntry = false;
+    for (auto const& it : VPackArrayIterator(leaseList)) {
+      ASSERT_TRUE(it.isString());
+      auto view = it.stringView();
+      if (view.starts_with(basics::StringUtils::itoa(leaseId.id()) + " -> ")) {
+        foundEntry = true;
+        break;
+      }
+    }
+    EXPECT_TRUE(foundEntry)
         << "LeaseManager should have an entry for the lease " << leaseId
         << " full list: " << leaseList.toJson();
   }
@@ -205,12 +222,25 @@ class LeaseManagerTest : public ::testing::Test,
                                                PeerState const& leaseIsFor,
                                                LeaseId const& leaseId) {
     ASSERT_TRUE(leasesVPack.isObject());
+    ASSERT_TRUE(leasesVPack.hasKey(myId));
+    leasesVPack = leasesVPack.get(myId);
+    ASSERT_TRUE(leasesVPack.isObject());
     ASSERT_TRUE(leasesVPack.hasKey("leasedFromRemote"));
     leasesVPack = leasesVPack.get("leasedFromRemote");
     ASSERT_TRUE(leasesVPack.isObject());
     if (auto leaseList = leasesVPack.get(peerStateToJSONKey(leaseIsFor));
         !leaseList.isNone()) {
-      EXPECT_FALSE(leaseList.hasKey(basics::StringUtils::itoa(leaseId.id())))
+      ASSERT_TRUE(leaseList.isArray());
+      bool foundEntry = false;
+      for (auto const& it : VPackArrayIterator(leaseList)) {
+        ASSERT_TRUE(it.isString());
+        auto view = it.stringView();
+        if (view.starts_with(basics::StringUtils::itoa(leaseId.id()) + " -> ")) {
+          foundEntry = true;
+          break;
+        }
+      }
+      EXPECT_FALSE(foundEntry)
           << "LeaseManager should not have an entry for the lease " << leaseId
           << " full list: " << leaseList.toJson();
     }
@@ -231,6 +261,9 @@ class LeaseManagerTest : public ::testing::Test,
                                        PeerState const& leaseIsTo,
                                        LeaseId const& leaseId) {
     ASSERT_TRUE(leasesVPack.isObject());
+    ASSERT_TRUE(leasesVPack.hasKey(myId));
+    leasesVPack = leasesVPack.get(myId);
+    ASSERT_TRUE(leasesVPack.isObject());
     ASSERT_TRUE(leasesVPack.hasKey("leasedToRemote"));
     leasesVPack = leasesVPack.get("leasedToRemote");
     ASSERT_TRUE(leasesVPack.isObject());
@@ -239,7 +272,17 @@ class LeaseManagerTest : public ::testing::Test,
         << peerStateToJSONKey(leaseIsTo)
         << " full list: " << leasesVPack.toJson();
     auto leaseList = leasesVPack.get(peerStateToJSONKey(leaseIsTo));
-    EXPECT_TRUE(leaseList.hasKey(basics::StringUtils::itoa(leaseId.id())))
+    ASSERT_TRUE(leaseList.isArray());
+    bool foundEntry = false;
+    for (auto const& it : VPackArrayIterator(leaseList)) {
+      ASSERT_TRUE(it.isString());
+      auto view = it.stringView();
+      if (view.starts_with(basics::StringUtils::itoa(leaseId.id()) + " -> ")) {
+        foundEntry = true;
+        break;
+      }
+    }
+    EXPECT_TRUE(foundEntry)
         << "LeaseManager should have an entry for the lease " << leaseId
         << " full list: " << leaseList.toJson();
   }
@@ -256,12 +299,25 @@ class LeaseManagerTest : public ::testing::Test,
                                              PeerState const& leaseIsTo,
                                              LeaseId const& leaseId) {
     ASSERT_TRUE(leasesVPack.isObject());
+    ASSERT_TRUE(leasesVPack.hasKey(myId));
+    leasesVPack = leasesVPack.get(myId);
+    ASSERT_TRUE(leasesVPack.isObject());
     ASSERT_TRUE(leasesVPack.hasKey("leasedToRemote"));
     leasesVPack = leasesVPack.get("leasedToRemote");
     ASSERT_TRUE(leasesVPack.isObject());
     if (auto leaseList = leasesVPack.get(peerStateToJSONKey(leaseIsTo));
         !leaseList.isNone()) {
-      EXPECT_FALSE(leaseList.hasKey(basics::StringUtils::itoa(leaseId.id())))
+      ASSERT_TRUE(leaseList.isArray());
+      bool foundEntry = false;
+      for (auto const& it : VPackArrayIterator(leaseList)) {
+        ASSERT_TRUE(it.isString());
+        auto view = it.stringView();
+        if (view.starts_with(basics::StringUtils::itoa(leaseId.id()) + " -> ")) {
+          foundEntry = true;
+          break;
+        }
+      }
+      EXPECT_FALSE(foundEntry)
           << "LeaseManager should not have an entry for the lease " << leaseId
           << " full list: " << leaseList.toJson();
     }
