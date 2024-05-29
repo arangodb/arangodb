@@ -389,6 +389,10 @@ def add_rta_test_jobs_to_workflow(workflow, build_config, build_job):
 
 
 def add_test_jobs_to_workflow(args, workflow, tests, build_config, build_job, repl2):
+    if build_config.arch == "x64" and build_config.enterprise and args.ui != "":
+        add_rta_test_jobs_to_workflow(workflow, build_config, build_job)
+        if args.ui == "only":
+            return
     if build_config.enterprise:
         workflow["jobs"].append(
             {
@@ -402,8 +406,6 @@ def add_test_jobs_to_workflow(args, workflow, tests, build_config, build_job, re
     add_test_definition_jobs_to_workflow(
         workflow, tests, build_config, build_job, repl2
     )
-    if build_config.arch == "x64" and args.ui != "":
-        add_rta_test_jobs_to_workflow(workflow, build_config, build_job)
 
 
 def add_cppcheck_job(workflow, build_job):
