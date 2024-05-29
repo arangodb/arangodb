@@ -510,6 +510,8 @@ def add_workflow(workflows, tests, build_config, args):
 
 
 def add_x64_community_workflow(workflows, tests, args):
+    if args.ui != "" and args.ui != "community":
+        return
     if args.sanitizer != "" and args.nightly:
         # for nightly sanitizer runs we skip community and only test enterprise
         return
