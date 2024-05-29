@@ -1,6 +1,45 @@
 devel
 -----
 
+* Reduce frequency in which progress of hot backup upload / download progress
+  is reported to the agency. This limits traffic from DB servers to the agency
+  during hot backup uploads and downloads.
+
+* Pass all relevant compiler optimization flags down to relevant CMake sub
+  projects which are built using configure/make.
+
+* Added ENTRIES function, that takes an object and produces a list of key-value
+  pairs. The order of pairs is unspecified.
+
+* Prevent spurious rclone errors in S3.
+
+* Use posix_spawn instead of fork/exec for subprocesses. This solves a
+  performance issue during hotbackup upload.
+
+* Added new REST API endpoint HTTP DELETE `/_admin/log/level` to reset all log
+  levels to their startup values. The log levels will be reset to their factory
+  defaults unless they were overridden via a configuration file or command-line
+  options. In this case, the log levels will be reset to the value they were
+  configured to at startup.
+  All modifications to the log levels since the instance startup will be lost
+  when calling this API.
+
+  This API is useful for tools that temporarily change log levels but do not
+  want to fetch and remember the previous log levels settings. Such tools can
+  now simply call the new API to restore the original log levels.
+
+* Updated ArangoDB Starter to v0.19.2-preview-1.
+
+* Fixed OASIS-25823: when late materialization was used together with skipping
+  over documents or the `fullCount` operation, it was possible for AQL queries
+  to fail with errors such as `bad_function_call`.
+
+* Fixed the listDatabases API: Directly after adding a new empty DBServer, or
+  after restoring a Hotbackup the listDatabases() would return an empty list of
+  existing databases, which goes back to normal quickly. This bug only effected
+  the APIs exposing the list of database names, all databases in fact still
+  exist and are fully functional.
+
 * Fix a potential race in collectRebalanceInformation.
 
 * FE-447: fix query spotlight search, make it case-insensitive.
@@ -13,15 +52,15 @@ devel
 * Fix connection retry attempts for cluster-internal TLS connections that ran
   into the 15 seconds timeout during the connection establishing attempt.
   In this case, the low-level socket was repurposed, but not reset properly.
-  This could leave the connection in an improper state and lead to callbacks
-  for some requests to not being called as expected.
+  This could leave the connection in an improper state and lead to callbacks for
+  some requests to not being called as expected.
   The connection timeout was also increased from 15 seconds to 60 seconds.
 
 * FE-448: auto-repair collection document JSON on save.
 
 * Improved the time required to create a new Collection in a database with
-  hundreds of collections. This also improves times for indexes and dropping
-  of collections.
+  hundreds of collections. This also improves times for indexes and dropping of
+  collections.
 
 * Added startup option `--cache.max-cache-value-size` to limit the maximum size
   of individual values stored in the in-memory cache used for

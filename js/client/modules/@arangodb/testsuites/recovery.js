@@ -29,13 +29,12 @@ const functionsDocumentation = {
   'recovery': 'run recovery tests',
   'recovery_cluster': 'run recovery cluster tests'
 };
-const optionsDocumentation = [
-];
 
 const fs = require('fs');
 const internal = require('internal');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const trs = require('@arangodb/testutils/testrunners');
 const ct = require('@arangodb/testutils/client-tools');
 const im = require('@arangodb/testutils/instance-manager');
 const inst = require('@arangodb/testutils/instance');
@@ -303,7 +302,7 @@ function _recovery (options, recoveryTests) {
       params.options.disableMonitor = localOptions.disableMonitor;
       params.setup = false;
       try {
-        tu.writeTestResult(params.temp_path, {
+        trs.writeTestResult(params.temp_path, {
           failed: 1,
           status: false, 
           message: "unable to run recovery test " + test,
@@ -326,7 +325,7 @@ function _recovery (options, recoveryTests) {
         return results;
       }
 
-      results[test] = tu.readTestResult(
+      results[test] = trs.readTestResult(
         params.temp_path,
         {
           status: false
@@ -387,6 +386,5 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['recovery'] = recovery;
   testFns['recovery_cluster'] = recovery_cluster;
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };

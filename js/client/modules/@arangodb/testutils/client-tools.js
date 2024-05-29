@@ -27,6 +27,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require('internal');
+const tu = require('@arangodb/testutils/test-utils');
 const pu = require('@arangodb/testutils/process-utils');
 const fs = require('fs');
 
@@ -338,7 +339,7 @@ function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, mor
     args = Object.assign(args, addArgs);
   }
   let argv = toArgv(args);
-  argv = argv.concat(['--'],
+  argv = argv.concat(['--', options.makedataDB],
                      moreargv, [
                        '--minReplicationFactor', '2',
                        '--progress', 'true',
@@ -508,3 +509,18 @@ exports.run = {
   rtaMakedata: rtaMakedata
 };
 
+exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
+  tu.CopyIntoObject(optionsDefaults, {
+    'rtasource': fs.makeAbsolute(fs.join('.', '3rdParty', 'rta-makedata')),
+    'rtaNegFilter': '',
+    'makedataDB': "_system"
+  });
+
+  tu.CopyIntoList(optionsDocumentation, [
+    ' Client tools options:',
+    '   - `makedataDB`: Database to run makedata with, defaults to _system',
+    '   - `rtasource`: source directory of rta-makedata if not 3rdparty.',
+    '   - `rtaNegFilter`: inverse logic to --test.',
+    ''
+  ]);
+};
