@@ -33,6 +33,15 @@ parameters:
   sanitizer:
     type: string
     default: ""
+  ui:
+    type: string
+    default: ""
+  ui-deployment:
+    type: string
+    default: ""
+  ui-testsuites:
+    type: string
+    default: ""
   c-compiler:
     type: string
     default: "clang"
