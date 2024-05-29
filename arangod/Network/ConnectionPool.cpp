@@ -68,6 +68,7 @@ using namespace arangodb::fuerte::v1;
 ConnectionPool::ConnectionPool(ConnectionPool::Config const& config)
     : _config(config),
       _loop(config.numIOThreads, config.name),
+      _stopped(false),
       _totalConnectionsInPool(_config.metricsFeature.add(
           arangodb_connection_pool_connections_current{}.withLabel(
               "pool", _config.name))),
@@ -88,7 +89,7 @@ ConnectionPool::ConnectionPool(ConnectionPool::Config const& config)
 
 ConnectionPool::~ConnectionPool() {
   shutdownConnections();
-  drainConnections();
+  stop();
 }
 
 /// @brief request a connection for a specific endpoint
@@ -97,6 +98,10 @@ ConnectionPool::~ConnectionPool() {
 network::ConnectionPtr ConnectionPool::leaseConnection(
     std::string const& endpoint, bool& isFromPool) {
   READ_LOCKER(guard, _lock);
+  if (_stopped) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SHUTTING_DOWN,
+                                   "connection pool already stopped");
+  }
   auto it = _connections.find(endpoint);
   if (it == _connections.end()) {
     guard.unlock();
@@ -107,6 +112,16 @@ network::ConnectionPtr ConnectionPool::leaseConnection(
     return selectConnection(endpoint, *it2->second, isFromPool);
   }
   return selectConnection(endpoint, *it->second, isFromPool);
+}
+
+/// @brief stops the connection pool (also calls drainConnections)
+void ConnectionPool::stop() {
+  {
+    WRITE_LOCKER(guard, _lock);
+    _stopped = true;
+  }
+  drainConnections();
+  _loop.stop();
 }
 
 /// @brief drain all connections
@@ -123,7 +138,6 @@ void ConnectionPool::drainConnections() {
   TRI_ASSERT(_totalConnectionsInPool.load() == n);
   _totalConnectionsInPool -= n;
   _connections.clear();
-  _loop.stop();
 }
 
 /// @brief shutdown all connections

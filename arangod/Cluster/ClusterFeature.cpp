@@ -92,6 +92,11 @@ ClusterFeature::~ClusterFeature() {
     // which ClusterFeature::stop() isn't called (e.g. during testing or if
     // something goes very wrong at startup)
     shutdownAgencyCache();
+
+    if (_asyncAgencyCommPool) {
+      _asyncAgencyCommPool->drainConnections();
+      _asyncAgencyCommPool->stop();
+    }
   }
   // must make sure that the HeartbeatThread is fully stopped before
   // we destroy the AgencyCallbackRegistry.
@@ -1025,6 +1030,7 @@ void ClusterFeature::unprepare() {
   _clusterInfo->cleanup();
   if (_asyncAgencyCommPool) {
     _asyncAgencyCommPool->drainConnections();
+    _asyncAgencyCommPool->stop();
   }
 }
 
