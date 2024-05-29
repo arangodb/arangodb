@@ -365,7 +365,7 @@ def add_test_definition_jobs_to_workflow(
             jobs.append(create_test_job(test, False, build_config, build_job))
 
 
-def add_rta_test_jobs_to_workflow(workflow, build_config, build_job):
+def add_rta_test_jobs_to_workflow(args, workflow, build_config, build_job):
     jobs = workflow["jobs"]
     ui_testsuites = [
         "UserPageTestSuite",
@@ -380,9 +380,13 @@ def add_rta_test_jobs_to_workflow(workflow, build_config, build_job):
         "SupportTestSuite",
         "ServiceTestSuite",
     ]
-    deployments = ['SG',
+    if args.uitestsuites != "":
+        ui_testsuites = args.uitests.split(',')
+    deployments = ['SG'
                    #"CL",
                    ]
+    if args.deployments:
+        deployments = args.deployments.split(',')
     for deployment in deployments:
         for test_suite in ui_testsuites:
             jobs.append(create_rta_test_job(build_config, build_job, deployment, test_suite))
@@ -390,7 +394,7 @@ def add_rta_test_jobs_to_workflow(workflow, build_config, build_job):
 
 def add_test_jobs_to_workflow(args, workflow, tests, build_config, build_job, repl2):
     if build_config.arch == "x64" and build_config.enterprise and args.ui != "":
-        add_rta_test_jobs_to_workflow(workflow, build_config, build_job)
+        add_rta_test_jobs_to_workflow(args, workflow, build_config, build_job)
         if args.ui == "only":
             return
     if build_config.enterprise:
