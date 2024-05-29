@@ -388,21 +388,21 @@ def add_rta_test_jobs_to_workflow(workflow, build_config, build_job):
             jobs.append(create_rta_test_job(build_config, build_job, deployment, test_suite))
 
 
-def add_test_jobs_to_workflow(workflow, tests, build_config, build_job, repl2):
-    # if build_config.enterprise:
-    #     workflow["jobs"].append(
-    #         {
-    #             "run-hotbackup-tests": {
-    #                 "name": f"run-hotbackup-tests-{build_config.arch}",
-    #                 "size": get_test_size("medium", build_config, True),
-    #                 "requires": [build_job],
-    #             }
-    #         }
-    #     )
-    # add_test_definition_jobs_to_workflow(
-    #     workflow, tests, build_config, build_job, repl2
-    # )
-    if build_config.arch == "x64":
+def add_test_jobs_to_workflow(args, workflow, tests, build_config, build_job, repl2):
+    if build_config.enterprise:
+        workflow["jobs"].append(
+            {
+                "run-hotbackup-tests": {
+                    "name": f"run-hotbackup-tests-{build_config.arch}",
+                    "size": get_test_size("medium", build_config, True),
+                    "requires": [build_job],
+                }
+            }
+        )
+    add_test_definition_jobs_to_workflow(
+        workflow, tests, build_config, build_job, repl2
+    )
+    if build_config.arch == "x64" and args.ui != "":
         add_rta_test_jobs_to_workflow(workflow, build_config, build_job)
 
 
@@ -474,7 +474,7 @@ def add_build_job(workflow, build_config, overrides=None):
     return name
 
 
-def add_workflow(workflows, tests, build_config, args):
+def add_workflow(args, workflows, tests, build_config, args):
     repl2 = args.replication_two
     suffix = "nightly" if build_config.isNightly else "pr"
     if build_config.sanitizer != "":
@@ -491,7 +491,7 @@ def add_workflow(workflows, tests, build_config, args):
     add_create_docker_image_job(workflow, build_config, build_job, args)
 
     tests = filter_tests(args, tests, build_config.enterprise, build_config.isNightly)
-    add_test_jobs_to_workflow(workflow, tests, build_config, build_job, repl2)
+    add_test_jobs_to_workflow(args, workflow, tests, build_config, build_job, repl2)
     return workflow
 
 
@@ -500,6 +500,7 @@ def add_x64_community_workflow(workflows, tests, args):
         # for nightly sanitizer runs we skip community and only test enterprise
         return
     add_workflow(
+        args,
         workflows,
         tests,
         BuildConfig("x64", False, args.sanitizer, args.nightly),
@@ -509,7 +510,7 @@ def add_x64_community_workflow(workflows, tests, args):
 
 def add_x64_enterprise_workflow(workflows, tests, args):
     build_config = BuildConfig("x64", True, args.sanitizer, args.nightly)
-    workflow = add_workflow(workflows, tests, build_config, args)
+    workflow = add_workflow(args, workflows, tests, build_config, args)
     if args.sanitizer == "":
         add_build_job(
             workflow,
@@ -527,6 +528,7 @@ def add_aarch64_community_workflow(workflows, tests, args):
     # for normal PR runs we run only aarch64 enterprise
     if args.nightly:
         add_workflow(
+            args,
             workflows,
             tests,
             BuildConfig("aarch64", False, args.sanitizer, args.nightly),
@@ -536,6 +538,7 @@ def add_aarch64_community_workflow(workflows, tests, args):
 
 def add_aarch64_enterprise_workflow(workflows, tests, args):
     add_workflow(
+        args,
         workflows,
         tests,
         BuildConfig("aarch64", True, args.sanitizer, args.nightly),
