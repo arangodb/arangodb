@@ -145,7 +145,6 @@ NetworkFeature::NetworkFeature(Server& server, metrics::MetricsFeature& metrics,
 NetworkFeature::~NetworkFeature() {
   cancelRetryRequests();
   if (_pool) {
-    _pool->drainConnections();
     _pool->stop();
   }
 }
@@ -376,7 +375,6 @@ void NetworkFeature::stop() {
 void NetworkFeature::unprepare() {
   cancelRetryRequests();
   if (_pool) {
-    _pool->drainConnections();
     _pool->stop();
   }
 }

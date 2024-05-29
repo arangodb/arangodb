@@ -88,7 +88,7 @@ class ConnectionPool final {
   /// is always the same, we do not do any post-processing
   ConnectionPtr leaseConnection(std::string const& endpoint, bool& isFromPool);
 
-  /// @brief stops the connection pool
+  /// @brief stops the connection pool (also calls drainConnections)
   void stop();
 
   /// @brief shutdown all connections

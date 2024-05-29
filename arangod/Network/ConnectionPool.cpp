@@ -351,7 +351,6 @@ ConnectionPool::ConnectionPool(ConnectionPool::Config const& config)
 
 ConnectionPool::~ConnectionPool() {
   shutdownConnections();
-  drainConnections();
   stop();
 }
 
@@ -363,7 +362,7 @@ network::ConnectionPtr ConnectionPool::leaseConnection(
   return _impl->leaseConnection(endpoint, isFromPool);
 }
 
-/// @brief stop the connection pool
+/// @brief stops the connection pool (also calls drainConnections)
 void ConnectionPool::stop() { _impl->stop(); }
 
 /// @brief drain all connections
