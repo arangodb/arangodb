@@ -23,15 +23,6 @@
 
 #pragma once
 
-#include <fuerte/message.h>
-
-#include <deque>
-#include <memory>
-#include <mutex>
-
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-
 #include "Agency/AgencyComm.h"
 #include "Agency/AgencyCommon.h"
 #include "Agency/PathComponent.h"
@@ -40,6 +31,15 @@
 #include "Futures/Future.h"
 #include "Network/Methods.h"
 #include "Network/Utils.h"
+
+#include <fuerte/message.h>
+#include <fuerte/types.h>
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+
+#include <deque>
+#include <memory>
+#include <mutex>
 
 namespace arangodb {
 
