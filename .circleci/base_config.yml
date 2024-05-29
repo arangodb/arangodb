@@ -330,7 +330,7 @@ jobs:
                   equal: [ << pipeline.parameters.ui >>, ""]
               - << pipeline.parameters.create-docker-images >>
           steps:
-            -run:
+            - run:
                 root: .
                 name: get aux binaries
                 command: |
