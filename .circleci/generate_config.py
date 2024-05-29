@@ -479,6 +479,7 @@ def add_build_job(workflow, build_config, overrides=None):
         "name": name,
         "preset": preset,
         "enterprise": build_config.enterprise,
+        "arch": build_config.arch
     }
     if build_config.arch == "aarch64":
         params["s3-prefix"] = "aarch64"

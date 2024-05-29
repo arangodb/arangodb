@@ -242,6 +242,8 @@ jobs:
       s3-prefix:
         type: string
         default: ""
+      arch:
+          type: string
     docker:
       - image: << pipeline.parameters.build-docker-image >>
     resource_class: << parameters.resource-class >>
