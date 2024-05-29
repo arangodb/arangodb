@@ -383,13 +383,14 @@ def add_rta_test_jobs_to_workflow(args, workflow, build_config, build_job):
         "SupportTestSuite",
         "ServiceTestSuite",
     ]
-    if args['ui-testuites'] != "":
-        ui_testsuites = args['ui-testuites]'.split(',')
+    if args.ui_testsuites != "":
+        ui_testsuites = args.ui_testsuites.split(',')
     deployments = ['SG'
                    #"CL",
                    ]
-    if args['ui-deployments']:
-        deployments = args['ui-deployments'].split(',')
+    if args.ui_deployments:
+        deployments = argsui_deployments.split(',')
+
     for deployment in deployments:
         for test_suite in ui_testsuites:
             jobs.append(create_rta_test_job(build_config, build_job, deployment, test_suite))
@@ -399,7 +400,7 @@ def add_test_jobs_to_workflow(args, workflow, tests, build_config, build_job, re
     if build_config.arch == "x64" and args.ui != "":
         if build_config.enterprise:
             add_rta_test_jobs_to_workflow(args, workflow, build_config, build_job)
-        elif args.ui == "community"
+        elif args.ui == "community":
             add_rta_test_jobs_to_workflow(args, workflow, build_config, build_job)
         if args.ui == "only":
             return
@@ -486,7 +487,7 @@ def add_build_job(workflow, build_config, overrides=None):
     return name
 
 
-def add_workflow(args, workflows, tests, build_config, args):
+def add_workflow(workflows, tests, build_config, args):
     repl2 = args.replication_two
     suffix = "nightly" if build_config.isNightly else "pr"
     if build_config.sanitizer != "":
@@ -512,7 +513,6 @@ def add_x64_community_workflow(workflows, tests, args):
         # for nightly sanitizer runs we skip community and only test enterprise
         return
     add_workflow(
-        args,
         workflows,
         tests,
         BuildConfig("x64", False, args.sanitizer, args.nightly),
@@ -522,7 +522,7 @@ def add_x64_community_workflow(workflows, tests, args):
 
 def add_x64_enterprise_workflow(workflows, tests, args):
     build_config = BuildConfig("x64", True, args.sanitizer, args.nightly)
-    workflow = add_workflow(args, workflows, tests, build_config, args)
+    workflow = add_workflow(workflows, tests, build_config, args)
     if args.sanitizer == "":
         add_build_job(
             workflow,
@@ -540,7 +540,6 @@ def add_aarch64_community_workflow(workflows, tests, args):
     # for normal PR runs we run only aarch64 enterprise
     if args.nightly:
         add_workflow(
-            args,
             workflows,
             tests,
             BuildConfig("aarch64", False, args.sanitizer, args.nightly),
@@ -550,7 +549,6 @@ def add_aarch64_community_workflow(workflows, tests, args):
 
 def add_aarch64_enterprise_workflow(workflows, tests, args):
     add_workflow(
-        args,
         workflows,
         tests,
         BuildConfig("aarch64", True, args.sanitizer, args.nightly),
@@ -577,7 +575,6 @@ def main():
             raise Exception(
                 f"Invalid sanitizer {args.sanitizer} - must be either empty, 'tsan' or 'alubsan'"
             )
-        print(args)
         tests = read_definitions(args.definitions)
         # if args.validate_only:
         #    return  # nothing left to do
