@@ -72,6 +72,9 @@ def parse_arguments():
     )
     parser.add_argument("-o", "--output", type=str, help="filename of the output")
     parser.add_argument("-s", "--sanitizer", type=str, help="sanitizer to use")
+    parser.add_argument("--ui", type=str, help="which test of UI job to run")
+    parser.add_argument("--ui-testsuites", type=str, help="which test of UI job to run")
+    parser.add_argument("--ui-deployments", type=str, help="which deployments [CL, SG, ...] to run")
     parser.add_argument(
         "--validate-only",
         help="validates the test definition file",
@@ -380,13 +383,13 @@ def add_rta_test_jobs_to_workflow(args, workflow, build_config, build_job):
         "SupportTestSuite",
         "ServiceTestSuite",
     ]
-    if args.uitestsuites != "":
-        ui_testsuites = args.uitests.split(',')
+    if args['ui-testuites'] != "":
+        ui_testsuites = args['ui-testuites]'.split(',')
     deployments = ['SG'
                    #"CL",
                    ]
-    if args.deployments:
-        deployments = args.deployments.split(',')
+    if args['ui-deployments']:
+        deployments = args['ui-deployments'].split(',')
     for deployment in deployments:
         for test_suite in ui_testsuites:
             jobs.append(create_rta_test_job(build_config, build_job, deployment, test_suite))
@@ -574,6 +577,7 @@ def main():
             raise Exception(
                 f"Invalid sanitizer {args.sanitizer} - must be either empty, 'tsan' or 'alubsan'"
             )
+        print(args)
         tests = read_definitions(args.definitions)
         # if args.validate_only:
         #    return  # nothing left to do
