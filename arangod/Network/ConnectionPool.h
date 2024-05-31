@@ -87,6 +87,9 @@ class ConnectionPool final {
   /// user is responsible for correctly shutting it down
   fuerte::EventLoopService& eventLoopService() { return _loop; }
 
+  /// @brief stops the connection pool (also calls drainConnections)
+  void stop();
+
   /// @brief shutdown all connections
   void drainConnections();
 
@@ -134,10 +137,17 @@ class ConnectionPool final {
   Config const _config;
 
   mutable basics::ReadWriteLock _lock;
+  /// @brief map from endpoint to a bucket with connections to the endpoint.
+  /// protected by _lock.
   std::unordered_map<std::string, std::unique_ptr<Bucket>> _connections;
 
   /// @brief contains fuerte asio::io_context
   fuerte::EventLoopService _loop;
+
+  /// @brief whether or not the connection pool was already stopped. if set
+  /// to true, calling leaseConnection will throw an exception. protected
+  /// by _lock.
+  bool _stopped;
 
   metrics::Gauge<uint64_t>& _totalConnectionsInPool;
   metrics::Counter& _successSelect;
