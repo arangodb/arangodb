@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-310: Query editor in web UI can now be resized vertically.
+
 * FE-443: Fix inconsistent tooltip padding in Create Index dialog.
 
 * Fix potentially hanging threads during index creation if starting one of the
