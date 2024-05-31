@@ -55,11 +55,21 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 
 namespace {
+std::string click(std::chrono::steady_clock::time_point tp) {
+  auto now_ms = std::chrono::time_point_cast<std::chrono::milliseconds>(tp);
+  auto epoch = now_ms.time_since_epoch();
+  auto value = std::chrono::duration_cast<std::chrono::milliseconds>(epoch);
+  std::ostringstream os;
+  os << value;
+  return os.str();
+}
 
 class RetryThread : public ServerThread<ArangodServer> {
  public:
   explicit RetryThread(ArangodServer& server)
-      : ServerThread<ArangodServer>(server, "NetworkRetry") {}
+      : ServerThread<ArangodServer>(server, "NetworkRetry"),
+        _nextRetryTime(std::chrono::steady_clock::now() +
+                       std::chrono::milliseconds(10'000)) {}
 
   ~RetryThread() {
     shutdown();
@@ -103,16 +113,27 @@ class RetryThread : public ServerThread<ArangodServer> {
       return;
     }
 
+    bool mustNotify = (retryTime < _nextRetryTime);
+    if (mustNotify) {
+      _nextRetryTime = retryTime;
+    }
+
     _retryRequests.push(RetryItem{retryTime, std::move(req)});
     guard.unlock();
 
     cancelGuard.cancel();
 
-    if (retryTime <
-        std::chrono::steady_clock::now() + std::chrono::milliseconds(100)) {
-      // notify retry thread
+    if (!mustNotify) {
+      // retry time is already in the past?
+      mustNotify = retryTime <= std::chrono::steady_clock::now();
+    }
+
+    // notify retry thread about the new item
+    if (mustNotify) {
       _cv.notify_one();
     }
+    LOG_DEVEL << "PUSHED RETRY REQUEST WITH RETRYTIME " << click(retryTime)
+              << ", MUSTNOTIFY: " << mustNotify;
   }
 
  protected:
@@ -121,10 +142,17 @@ class RetryThread : public ServerThread<ArangodServer> {
       try {
         std::unique_lock<std::mutex> guard(_mutex);
 
+        _nextRetryTime = std::chrono::steady_clock::now() +
+                         std::chrono::milliseconds(10'000);
+
         while (!_retryRequests.empty()) {
           auto& top = _retryRequests.top();
-          if (top.retryTime > std::chrono::steady_clock::now()) {
+          auto now = std::chrono::steady_clock::now();
+          LOG_DEVEL << "TOP RETRY TIME IS " << click(top.retryTime)
+                    << ", NOW IS " << click(now);
+          if (top.retryTime > now) {
             // next retry operation is in the future...
+            _nextRetryTime = top.retryTime;
             break;
           }
 
@@ -132,8 +160,15 @@ class RetryThread : public ServerThread<ArangodServer> {
           TRI_ASSERT(req);
           _retryRequests.pop();
 
+          if (!_retryRequests.empty()) {
+            _nextRetryTime = _retryRequests.top().retryTime;
+          } else {
+            _nextRetryTime = now + std::chrono::milliseconds(10'000);
+          }
+
           guard.unlock();
 
+          LOG_DEVEL << "EXECUTING RETRY REQUEST";
           try {
             if (!isStopping()) {
               req->retry();
@@ -150,7 +185,8 @@ class RetryThread : public ServerThread<ArangodServer> {
           guard.lock();
         }
 
-        _cv.wait_for(guard, std::chrono::milliseconds(100));
+        LOG_DEVEL << "SLEEPING UNTIL " << click(_nextRetryTime);
+        _cv.wait_until(guard, _nextRetryTime);
       } catch (std::exception const& ex) {
         LOG_TOPIC("2b2e9", WARN, Logger::COMMUNICATION)
             << "network retry thread caught exception: " << ex.what();
@@ -180,6 +216,7 @@ class RetryThread : public ServerThread<ArangodServer> {
   std::condition_variable _cv;
   std::priority_queue<RetryItem, std::vector<RetryItem>, RetryItemComparator>
       _retryRequests;
+  std::chrono::steady_clock::time_point _nextRetryTime{};
 };
 
 void queueGarbageCollection(std::mutex& mutex,
