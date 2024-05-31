@@ -1,6 +1,8 @@
 v3.11.10 (XXXX-XX-XX)
 ---------------------
 
+* Move network retry requests to a dedicated thread.
+
 * Reduce frequency in which progress of hot backup upload / download progress
   is reported to the agency. This limits traffic from DB servers to the agency
   during hot backup uploads and downloads.
