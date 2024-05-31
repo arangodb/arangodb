@@ -23,11 +23,10 @@
 
 #include "NetworkFeature.h"
 
-#include <fuerte/connection.h>
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FunctionUtils.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/Thread.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Cluster/ClusterFeature.h"
@@ -44,7 +43,145 @@
 #include "Metrics/MetricsFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 
+#include <fuerte/connection.h>
+
+#include <chrono>
+#include <condition_variable>
+#include <queue>
+#include <vector>
+
+using namespace arangodb;
+using namespace arangodb::basics;
+using namespace arangodb::options;
+
 namespace {
+
+class RetryThread : public ServerThread<ArangodServer> {
+ public:
+  explicit RetryThread(ArangodServer& server)
+      : ServerThread<ArangodServer>(server, "NetworkRetry") {}
+
+  ~RetryThread() {
+    shutdown();
+    cancelAll();
+  }
+
+  void beginShutdown() override {
+    Thread::beginShutdown();
+
+    _mutex.lock();
+    _mutex.unlock();
+    // notify retry thread
+    _cv.notify_one();
+  }
+
+  void cancelAll() noexcept {
+    std::unique_lock<std::mutex> guard(_mutex);
+
+    while (!_retryRequests.empty()) {
+      auto& top = _retryRequests.top();
+      auto req = std::move(top.req);
+      TRI_ASSERT(req);
+      _retryRequests.pop();
+      try {
+        req->cancel();
+      } catch (std::exception const& ex) {
+        // does not matter
+      }
+    }
+  }
+
+  void push(std::shared_ptr<network::RetryableRequest> req,
+            std::chrono::steady_clock::time_point retryTime) {
+    TRI_ASSERT(req);
+
+    auto cancelGuard = scopeGuard([req]() noexcept { req->cancel(); });
+
+    std::unique_lock<std::mutex> guard(_mutex);
+
+    if (isStopping()) {
+      return;
+    }
+
+    _retryRequests.push(RetryItem{retryTime, std::move(req)});
+    guard.unlock();
+
+    cancelGuard.cancel();
+
+    if (retryTime <
+        std::chrono::steady_clock::now() + std::chrono::milliseconds(100)) {
+      // notify retry thread
+      _cv.notify_one();
+    }
+  }
+
+ protected:
+  void run() override {
+    while (!isStopping()) {
+      try {
+        std::unique_lock<std::mutex> guard(_mutex);
+
+        while (!_retryRequests.empty()) {
+          auto& top = _retryRequests.top();
+          if (top.retryTime > std::chrono::steady_clock::now()) {
+            // next retry operation is in the future...
+            break;
+          }
+
+          auto req = std::move(top.req);
+          TRI_ASSERT(req);
+          _retryRequests.pop();
+
+          guard.unlock();
+
+          try {
+            if (!isStopping()) {
+              req->retry();
+            } else {
+              req->cancel();
+            }
+          } catch (std::exception const& ex) {
+            LOG_TOPIC("aa476", WARN, Logger::COMMUNICATION)
+                << "network retry thread caught exception while "
+                   "retrying/canceling request: "
+                << ex.what();
+          }
+
+          guard.lock();
+        }
+
+        _cv.wait_for(guard, std::chrono::milliseconds(100));
+      } catch (std::exception const& ex) {
+        LOG_TOPIC("2b2e9", WARN, Logger::COMMUNICATION)
+            << "network retry thread caught exception: " << ex.what();
+      }
+    }
+
+    // cancel all outstanding requests
+    cancelAll();
+  }
+
+ private:
+  struct RetryItem {
+    std::chrono::steady_clock::time_point retryTime;
+    std::shared_ptr<network::RetryableRequest> req;
+  };
+
+  // comparator for _retryRequests priority queue:
+  // the item with the lowest retryTime timestamp sits at the top and
+  // will be pulled from the queue first
+  struct RetryItemComparator {
+    bool operator()(RetryItem const& lhs, RetryItem const& rhs) const noexcept {
+      return lhs.retryTime < rhs.retryTime;
+    }
+  };
+
+  std::mutex _mutex;
+  std::condition_variable _cv;
+  std::priority_queue<RetryItem, std::vector<RetryItem>, RetryItemComparator>
+      _retryRequests;
+};
+
 void queueGarbageCollection(std::mutex& mutex,
                             arangodb::Scheduler::WorkHandle& workItem,
                             std::function<void(bool)>& gcfunc,
@@ -58,9 +195,6 @@ constexpr double CongestionRatio = 0.5;
 constexpr std::uint64_t MaxAllowedInFlight = 65536;
 constexpr std::uint64_t MinAllowedInFlight = 64;
 }  // namespace
-
-using namespace arangodb::basics;
-using namespace arangodb::options;
 
 namespace arangodb {
 
@@ -145,7 +279,11 @@ NetworkFeature::NetworkFeature(Server& server,
   startsAfter<EngineSelectorFeature>();
 }
 
-NetworkFeature::~NetworkFeature() { cancelRetryRequests(); }
+NetworkFeature::~NetworkFeature() {
+  if (_retryThread) {
+    _retryThread->beginShutdown();
+  }
+}
 
 void NetworkFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
@@ -290,6 +428,13 @@ void NetworkFeature::prepare() {
 }
 
 void NetworkFeature::start() {
+  _retryThread = std::make_unique<RetryThread>(server());
+  if (!_retryThread->start()) {
+    LOG_TOPIC("9b1a2", FATAL, arangodb::Logger::COMMUNICATION)
+        << "unable to start network request retry thread";
+    FATAL_ERROR_EXIT();
+  }
+
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   if (scheduler != nullptr) {  // is nullptr in unit tests
     auto off = std::chrono::seconds(1);
@@ -316,16 +461,15 @@ void NetworkFeature::unprepare() {
   if (_pool) {
     _pool->drainConnections();
   }
+  if (_retryThread) {
+    _retryThread->beginShutdown();
+    _retryThread.reset();
+  }
 }
 
 void NetworkFeature::cancelRetryRequests() noexcept try {
   std::lock_guard<std::mutex> guard(_workItemMutex);
   _workItem.reset();
-  for (auto const& [req, item] : _retryRequests) {
-    TRI_ASSERT(item != nullptr);
-    item->cancel();
-  }
-  _retryRequests.clear();
 } catch (std::exception const& ex) {
   LOG_TOPIC("2b843", WARN, Logger::COMMUNICATION)
       << "caught exception while canceling retry requests: " << ex.what();
@@ -492,54 +636,13 @@ void NetworkFeature::finishRequest(network::ConnectionPool const& pool,
 void NetworkFeature::retryRequest(
     std::shared_ptr<network::RetryableRequest> req, RequestLane lane,
     std::chrono::steady_clock::duration duration) {
-  auto cb = [this, weak = std::weak_ptr(req)](bool cancelled) {
-    std::unique_lock guard(_workItemMutex);
-    if (auto self = weak.lock(); self) {
-      _retryRequests.erase(self);
-      guard.unlock();  // resuming the request does not access _retryRequests
-      if (cancelled) {
-        self->cancel();
-      } else {
-        self->retry();
-      }
-    }
-  };
-
-  // we need the mutex during `queueDelayed` because the lambda might be
-  // executed faster than we can add the work item to the _retryRequests map.
-  std::unique_lock guard(_workItemMutex);
-
-  // this will automatically cancel the request when we leave this
-  // method, unless we are canceling this scopeGuard explicitly.
-  auto cancelGuard = scopeGuard([req]() noexcept {
-    if (req) {
-      req->cancel();
-    }
-  });
-
-  if (server().isStopping()) {
-    // with trigger cancelGuard - cancels request
+  if (!req) {
     return;
   }
 
-  auto item = SchedulerFeature::SCHEDULER->queueDelayed(
-      "retry-requests", lane, duration, std::move(cb));
-
-  if (item != nullptr) {
-    try {
-      TRI_IF_FAILURE("NetworkFeature::retryRequestFail") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
-
-      _retryRequests.emplace(std::move(req), std::move(item));
-      // the request successfully made it into _retryRequests.
-      // now abandon the automatic cancelation.
-      cancelGuard.cancel();
-    } catch (...) {
-    }
-  }
-  // if we get here and haven't canceled cancelGuard,
-  // the request will be automatically canceled
+  TRI_ASSERT(_retryThread);
+  static_cast<RetryThread&>(*_retryThread)
+      .push(std::move(req), std::chrono::steady_clock::now() + duration);
 }
 
 }  // namespace arangodb
