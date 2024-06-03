@@ -180,11 +180,12 @@ class RetryThread : public ServerThread<ArangodServer> {
             _nextRetryTime = now + kDefaultSleepTime;
           }
 
-          guard.unlock();
-
           if (isStopping()) {
             break;
           }
+
+          guard.unlock();
+
           try {
             // the actual retry action is carried out here.
             // note: there is a small opportunity of a race here, if
@@ -205,7 +206,11 @@ class RetryThread : public ServerThread<ArangodServer> {
         }
 
         // nothing (more) to do
-        _cv.wait_until(guard, _nextRetryTime);
+        TRI_ASSERT(guard.owns_lock());
+
+        if (!isStopping()) {
+          _cv.wait_until(guard, _nextRetryTime);
+        }
       } catch (std::exception const& ex) {
         LOG_TOPIC("2b2e9", WARN, Logger::COMMUNICATION)
             << "network retry thread caught exception: " << ex.what();
@@ -704,15 +709,23 @@ void NetworkFeature::finishRequest(network::ConnectionPool const& pool,
 }
 
 void NetworkFeature::retryRequest(
-    std::shared_ptr<network::RetryableRequest> req, RequestLane lane,
+    std::shared_ptr<network::RetryableRequest> req, RequestLane /*lane*/,
     std::chrono::steady_clock::duration duration) {
   if (!req) {
     return;
   }
 
-  TRI_ASSERT(_retryThread);
-  static_cast<RetryThread&>(*_retryThread)
-      .push(std::move(req), std::chrono::steady_clock::now() + duration);
+  if (server().isStopping()) {
+    try {
+      req->cancel();
+    } catch (...) {
+      // does not matter if we are stopping anyway
+    }
+  } else {
+    TRI_ASSERT(_retryThread);
+    static_cast<RetryThread&>(*_retryThread)
+        .push(std::move(req), std::chrono::steady_clock::now() + duration);
+  }
 }
 
 }  // namespace arangodb
