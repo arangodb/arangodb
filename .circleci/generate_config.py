@@ -368,7 +368,7 @@ def add_test_definition_jobs_to_workflow(
             jobs.append(create_test_job(test, False, build_config, build_job))
 
 
-def add_rta_test_jobs_to_workflow(args, workflow, build_config, build_job):
+def add_rta_ui_test_jobs_to_workflow(args, workflow, build_config, build_job):
     jobs = workflow["jobs"]
     ui_testsuites = [
         "UserPageTestSuite",
@@ -397,11 +397,11 @@ def add_rta_test_jobs_to_workflow(args, workflow, build_config, build_job):
 
 
 def add_test_jobs_to_workflow(args, workflow, tests, build_config, build_job, repl2):
-    if build_config.arch == "x64" and args.ui != "":
+    if build_config.arch == "x64" and args.ui != "" and args.ui != "off":
         if build_config.enterprise:
-            add_rta_test_jobs_to_workflow(args, workflow, build_config, build_job)
+            add_rta_ui_test_jobs_to_workflow(args, workflow, build_config, build_job)
         elif args.ui == "community":
-            add_rta_test_jobs_to_workflow(args, workflow, build_config, build_job)
+            add_rta_ui_test_jobs_to_workflow(args, workflow, build_config, build_job)
         if args.ui == "only":
             return
     if build_config.enterprise:
