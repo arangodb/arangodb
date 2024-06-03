@@ -371,6 +371,7 @@ futures::Future<futures::Unit> RestAqlHandler::setupClusterQuery() {
         << " for query with id " << q->id();
     auto& clusterFeature = _server.getFeature<ClusterFeature>();
     auto& clusterInfo = clusterFeature.clusterInfo();
+    // TODO: This rGuard will be erased, it is superseeded by the LeaseManager
     rGuard = clusterInfo.rebootTracker().callMeOnChange(
         {coordinatorId, rebootId},
         [/*queryRegistry = _queryRegistry, */ vocbaseName = _vocbase.name(),

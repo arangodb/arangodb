@@ -41,9 +41,13 @@ LeaseManagerFeature::LeaseManagerFeature(Server& server,
       _clusterFeature(clusterFeature),
       _networkFeature(networkFeature),
       _schedulerFeature(schedulerFeature) {
+  setOptional(true);
   startsAfter<ClusterFeature>();
   startsAfter<NetworkFeature>();
   startsAfter<SchedulerFeature>();
+  onlyEnabledWith<ClusterFeature>();
+  onlyEnabledWith<NetworkFeature>();
+  onlyEnabledWith<SchedulerFeature>();
 }
 
 void LeaseManagerFeature::prepare() {
