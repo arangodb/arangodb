@@ -6257,8 +6257,8 @@ ClusterInfo::getResponsibleServerReplication1(std::string_view shardID) {
     }
 
     LOG_TOPIC("b1dc5", INFO, Logger::CLUSTER)
-        << "getResponsibleServerReplication1: found resigned leader, "
-        << "waiting for half a second...";
+        << "getResponsibleServerReplication1: found resigned leader for shard "
+        << shardID << ", waiting for half a second...";
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
     if (++detachCounter == 2) {
@@ -6272,7 +6272,8 @@ ClusterInfo::getResponsibleServerReplication1(std::string_view shardID) {
             << currentNumberDetached
             << ", maximal number of detached threads: " << maximumNumberDetached
             << "), will continue to wait for resigned leader in scheduler "
-               "thread, this can potentially lead to blockages!";
+               "thread for shard "
+            << shardID << ", this can potentially lead to blockages!";
       }
     }
   }
