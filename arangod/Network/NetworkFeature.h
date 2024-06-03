@@ -68,8 +68,6 @@ class NetworkFeature final : public ArangodFeature {
   void stop() override;
   void unprepare() override;
 
-  void cancelRetryRequests() noexcept;
-
   bool prepared() const noexcept;
 
   /// @brief global connection pool
@@ -103,6 +101,8 @@ class NetworkFeature final : public ArangodFeature {
                      std::unique_ptr<fuerte::Response>& res);
 
  private:
+  void cancelGarbageCollection() noexcept;
+
   // configuration
   std::string _protocol;
   uint64_t _maxOpenConnections;

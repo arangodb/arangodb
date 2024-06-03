@@ -516,7 +516,10 @@ void NetworkFeature::start() {
 }
 
 void NetworkFeature::beginShutdown() {
-  cancelRetryRequests();
+  cancelGarbageCollection();
+  if (_retryThread) {
+    _retryThread->beginShutdown();
+  }
   _poolPtr.store(nullptr, std::memory_order_relaxed);
   if (_pool) {  // first cancel all connections
     _pool->shutdownConnections();
@@ -524,15 +527,19 @@ void NetworkFeature::beginShutdown() {
 }
 
 void NetworkFeature::stop() {
-  cancelRetryRequests();
+  cancelGarbageCollection();
   if (_pool) {
     _pool->shutdownConnections();
     _pool->drainConnections();
   }
+  if (_retryThread) {
+    _retryThread->beginShutdown();
+    _retryThread.reset();
+  }
 }
 
 void NetworkFeature::unprepare() {
-  cancelRetryRequests();
+  cancelGarbageCollection();
   if (_pool) {
     _pool->stop();
   }
@@ -542,7 +549,7 @@ void NetworkFeature::unprepare() {
   }
 }
 
-void NetworkFeature::cancelRetryRequests() noexcept try {
+void NetworkFeature::cancelGarbageCollection() noexcept try {
   std::lock_guard<std::mutex> guard(_workItemMutex);
   _workItem.reset();
 } catch (std::exception const& ex) {
