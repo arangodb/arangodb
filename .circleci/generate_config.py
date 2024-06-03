@@ -485,14 +485,12 @@ def add_x64_enterprise_workflow(workflows, tests, args):
 
 
 def add_aarch64_community_workflow(workflows, tests, args):
-    # for normal PR runs we run only aarch64 enterprise
-    if args.nightly:
-        add_workflow(
-            workflows,
-            tests,
-            BuildConfig("aarch64", False, args.sanitizer, args.nightly),
-            args,
-        )
+    add_workflow(
+        workflows,
+        tests,
+        BuildConfig("aarch64", False, args.sanitizer, args.nightly),
+        args,
+    )
 
 
 def add_aarch64_enterprise_workflow(workflows, tests, args):
