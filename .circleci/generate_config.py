@@ -72,7 +72,7 @@ def parse_arguments():
     )
     parser.add_argument("-o", "--output", type=str, help="filename of the output")
     parser.add_argument("-s", "--sanitizer", type=str, help="sanitizer to use")
-    parser.add_argument("--ui", type=str, help="which test of UI job to run")
+    parser.add_argument("--ui", type=str, help="whether to run UI test [off|on|only|community]")
     parser.add_argument("--ui-testsuites", type=str, help="which test of UI job to run")
     parser.add_argument("--ui-deployments", type=str, help="which deployments [CL, SG, ...] to run")
     parser.add_argument(
