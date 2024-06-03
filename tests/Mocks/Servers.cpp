@@ -395,7 +395,7 @@ MockV8Server::MockV8Server(bool start) : MockServer() {
   // setup required application features
   SetupV8Phase(*this);
   addFeature<NetworkFeature>(
-      false, _server.getFeature<metrics::MetricsFeature>(),
+      true, _server.getFeature<metrics::MetricsFeature>(),
       network::ConnectionPool::Config{
           .metrics = network::ConnectionPool::Metrics::fromMetricsFeature(
               _server.getFeature<metrics::MetricsFeature>(), "mock")});
@@ -473,7 +473,7 @@ MockRestServer::MockRestServer(bool start) : MockServer() {
   addFeature<QueryRegistryFeature>(
       false, getFeature<arangodb::metrics::MetricsFeature>());
   addFeature<NetworkFeature>(
-      false, _server.getFeature<metrics::MetricsFeature>(),
+      true, _server.getFeature<metrics::MetricsFeature>(),
       network::ConnectionPool::Config{
           .metrics = network::ConnectionPool::Metrics::fromMetricsFeature(
               _server.getFeature<metrics::MetricsFeature>(), "mock")});
@@ -1009,7 +1009,7 @@ network::ConnectionPool* MockCoordinator::getPool() { return _pool.get(); }
 MockRestAqlServer::MockRestAqlServer() {
   SetupAqlPhase(*this);
   addFeature<NetworkFeature>(
-      false, _server.getFeature<metrics::MetricsFeature>(),
+      true, _server.getFeature<metrics::MetricsFeature>(),
       network::ConnectionPool::Config{
           .metrics = network::ConnectionPool::Metrics::fromMetricsFeature(
               _server.getFeature<metrics::MetricsFeature>(), "mock")});
