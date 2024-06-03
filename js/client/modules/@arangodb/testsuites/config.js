@@ -28,12 +28,10 @@
 const functionsDocumentation = {
   'config': 'checks the config file parsing'
 };
-const optionsDocumentation = [
-  '   - `skipConfig`: omit the noisy configuration tests'
-];
 
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
+const tu = require('@arangodb/testutils/test-utils');
 const yaml = require('js-yaml');
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
@@ -55,16 +53,6 @@ const testPaths = {
 // //////////////////////////////////////////////////////////////////////////////
 
 function config (options) {
-  if (options.skipConfig) {
-    return {
-      config: {
-        failed: 0,
-        status: true,
-        skipped: true
-      }
-    };
-  }
-
   let results = {
     failed: 0,
     absolute: {
@@ -174,6 +162,5 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['config'] = config;
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };

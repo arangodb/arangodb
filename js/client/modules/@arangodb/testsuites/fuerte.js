@@ -28,12 +28,10 @@
 const functionsDocumentation = {
   'fuerte': 'fuerte gtest test suites'
 };
-const optionsDocumentation = [
-  '   - `skipFuerte`: if set to true the fuerte tests are skipped'
-];
 
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
+const tu = require('@arangodb/testutils/test-utils');
 const im = require('@arangodb/testutils/instance-manager');
 const {getGTestResults} = require('@arangodb/testutils/result-processing');
 
@@ -66,9 +64,6 @@ function gtestRunner(options) {
   let testResultJsonFile = fs.join(rootDir, 'testResults.json');
 
   const run = locateGTest('fuertetest');
-  if (options.skipFuerte) {
-    return results;
-  }
 
   if (run === '') {
     results.failed += 1;
@@ -81,11 +76,10 @@ function gtestRunner(options) {
   }
 
   // start server
-  print('Starting server...');
+  print('Starting ' + options.protocol + ' server...');
 
-  let instanceManager = new im.instanceManager('tcp', options, {
+  let instanceManager = new im.instanceManager(options.protocol, options, {
     "http.keep-alive-timeout": "10",
-    "log.level": "requests=INFO"
   }, 'fuerte');
   instanceManager.prepareInstance();
   instanceManager.launchTcpDump("");
@@ -134,8 +128,5 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['fuerte'] = gtestRunner;
 
-  opts['skipFuerte'] = false;
-
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };

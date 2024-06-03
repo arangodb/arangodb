@@ -59,7 +59,8 @@ gtest_iresearch priority=1000 parallelity=3 size=medium single
 gtest_arangodb priority=1000 parallelity=3 size=large single
 
 # Fuerte tests are executed in single env
-fuerte priority=500 single
+fuerte priority=500 single suffix=http
+fuerte priority=500 single suffix=ssl-http -- --protocol ssl
 
 rta_makedata single
 

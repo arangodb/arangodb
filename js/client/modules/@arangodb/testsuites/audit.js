@@ -37,6 +37,7 @@ const optionsDocumentation = [
 const _ = require('lodash');
 const fs = require('fs');
 const tu = require('@arangodb/testutils/test-utils');
+const trs = require('@arangodb/testutils/testrunners');
 const base64Encode = require('internal').base64Encode;
 const isEnterprise = require("@arangodb/test-helper").isEnterprise;
 
@@ -52,7 +53,7 @@ const testPaths = {
   audit_client: [tu.pathForTesting('common/audit'), tu.pathForTesting('client/audit')]
 };
 
-class runBasicOnArangod extends tu.runOnArangodRunner{
+class runBasicOnArangod extends trs.runOnArangodRunner{
   preRun() {
     // we force to use auth basic, since tests expect it!
     this.instanceManager.httpAuthOptions =  {
@@ -94,7 +95,7 @@ function auditLog(onServer) {
     if (onServer) {
       return new runBasicOnArangod(options, 'audit', serverOptions).run(testCases);
     } else {
-      return new tu.runInArangoshRunner(options, 'audit', serverOptions).run(testCases);
+      return new trs.runInArangoshRunner(options, 'audit', serverOptions).run(testCases);
     }
   };
 }
@@ -107,6 +108,6 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   // only enable them in Enterprise Edition
   opts['skipAudit'] = !isEnterprise();
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
+  tu.CopyIntoList(optionsDoc, optionsDocumentation);
 };

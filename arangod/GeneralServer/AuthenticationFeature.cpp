@@ -26,6 +26,8 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/Common.h"
 #include "Auth/Handler.h"
+#include "Auth/TokenCache.h"
+#include "Auth/UserManager.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
@@ -44,7 +46,7 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-AuthenticationFeature* AuthenticationFeature::INSTANCE = nullptr;
+std::atomic<AuthenticationFeature*> AuthenticationFeature::INSTANCE = nullptr;
 
 AuthenticationFeature::AuthenticationFeature(Server& server)
     : ArangodFeature{server, *this},
@@ -59,6 +61,8 @@ AuthenticationFeature::AuthenticationFeature(Server& server)
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
 }
+
+AuthenticationFeature::~AuthenticationFeature() = default;
 
 void AuthenticationFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
@@ -220,9 +224,9 @@ void AuthenticationFeature::validateOptions(
     }
   }
   if (!_jwtSecretProgramOption.empty()) {
-    if (_jwtSecretProgramOption.length() > _maxSecretLength) {
+    if (_jwtSecretProgramOption.length() > kMaxSecretLength) {
       LOG_TOPIC("9abfc", FATAL, arangodb::Logger::STARTUP)
-          << "Given JWT secret too long. Max length is " << _maxSecretLength;
+          << "Given JWT secret too long. Max length is " << kMaxSecretLength;
       FATAL_ERROR_EXIT();
     }
   }
@@ -259,7 +263,7 @@ void AuthenticationFeature::prepare() {
     LOG_TOPIC("43396", INFO, Logger::AUTHENTICATION)
         << "Jwt secret not specified, generating...";
     uint16_t m = 254;
-    for (size_t i = 0; i < _maxSecretLength; i++) {
+    for (size_t i = 0; i < kMaxSecretLength; i++) {
       _jwtSecretProgramOption +=
           static_cast<char>(1 + RandomGenerator::interval(m));
     }
@@ -271,7 +275,7 @@ void AuthenticationFeature::prepare() {
   _authCache->setJwtSecret(_jwtSecretProgramOption);
 #endif
 
-  INSTANCE = this;
+  INSTANCE.store(this, std::memory_order_release);
 }
 
 void AuthenticationFeature::start() {
@@ -292,7 +296,37 @@ void AuthenticationFeature::start() {
   LOG_TOPIC("3844e", INFO, arangodb::Logger::AUTHENTICATION) << out.str();
 }
 
-void AuthenticationFeature::unprepare() { INSTANCE = nullptr; }
+void AuthenticationFeature::unprepare() {
+  INSTANCE.store(nullptr, std::memory_order_relaxed);
+}
+
+AuthenticationFeature* AuthenticationFeature::instance() noexcept {
+  return INSTANCE.load(std::memory_order_acquire);
+}
+
+bool AuthenticationFeature::isActive() const noexcept {
+  return _active && isEnabled();
+}
+
+bool AuthenticationFeature::authenticationUnixSockets() const noexcept {
+  return _authenticationUnixSockets;
+}
+
+bool AuthenticationFeature::authenticationSystemOnly() const noexcept {
+  return _authenticationSystemOnly;
+}
+
+/// @return Cache to deal with authentication tokens
+auth::TokenCache& AuthenticationFeature::tokenCache() const noexcept {
+  TRI_ASSERT(_authCache);
+  return *_authCache.get();
+}
+
+/// @brief user manager may be null on DBServers and Agency
+/// @return user manager singleton
+auth::UserManager* AuthenticationFeature::userManager() const noexcept {
+  return _userManager.get();
+}
 
 bool AuthenticationFeature::hasUserdefinedJwt() const {
   std::lock_guard<std::mutex> guard(_jwtSecretsLock);
@@ -382,7 +416,7 @@ Result AuthenticationFeature::loadJwtSecretFolder() try {
   std::string activeSecret = slurpy(list[0]);
 
   const std::string msg = "Given JWT secret too long. Max length is 64";
-  if (activeSecret.length() > _maxSecretLength) {
+  if (activeSecret.length() > kMaxSecretLength) {
     return Result(TRI_ERROR_BAD_PARAMETER, msg);
   }
 
@@ -392,7 +426,7 @@ Result AuthenticationFeature::loadJwtSecretFolder() try {
     list.erase(list.begin());
     for (auto const& file : list) {
       std::string secret = slurpy(file);
-      if (secret.length() > _maxSecretLength) {
+      if (secret.length() > kMaxSecretLength) {
         return Result(TRI_ERROR_BAD_PARAMETER, msg);
       }
       if (!secret.empty()) {  // ignore

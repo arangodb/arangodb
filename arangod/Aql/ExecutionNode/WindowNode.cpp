@@ -330,8 +330,7 @@ WindowNode::WindowNode(ExecutionPlan* plan, ExecutionNodeId id,
       _rangeVariable(rangeVariable),
       _aggregateVariables(aggregateVariables) {}
 
-WindowNode::WindowNode(ExecutionPlan* plan,
-                       arangodb::velocypack::Slice const& base,
+WindowNode::WindowNode(ExecutionPlan* plan, arangodb::velocypack::Slice base,
                        WindowBounds&& b, Variable const* rangeVariable,
                        std::vector<AggregateVarInfo> const& aggregateVariables)
     : ExecutionNode(plan, base),

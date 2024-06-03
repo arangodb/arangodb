@@ -555,6 +555,7 @@ class AutoIncrementKeyGenerator final : public KeyGenerator {
       if (lastValue < _offset) {
         keyValue = _offset;
       } else {
+        TRI_ASSERT(_increment > 0);
         keyValue =
             lastValue + _increment - ((lastValue - _offset) % _increment);
       }

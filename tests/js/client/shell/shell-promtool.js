@@ -38,7 +38,9 @@ let promtoolPath = internal.env[PATH];
 if (!promtoolPath) {
   promtoolPath = '.';
 }
-promtoolPath = fs.join(promtoolPath, 'promtool' + pu.executableExt);
+if (fs.isDirectory(promtoolPath)) {
+  promtoolPath = fs.join(promtoolPath, 'promtool' + pu.executableExt);
+}
 
 function promtoolSuite () {
   'use strict';
