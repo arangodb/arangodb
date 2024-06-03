@@ -174,10 +174,6 @@ std::vector<bool> EngineInfoContainerDBServerServerBased::buildEngineInfo(
       infoBuilder.add("qs",
                       VPackValue(q->queryString().extract(/*maxLength*/ 1024)));
     }
-
-    if (q->queryString().string().find("peter") != std::string::npos) {
-      infoBuilder.add("return503", VPackValue(true));
-    }
   }
 
   infoBuilder.add(StaticStrings::AttrCoordinatorRebootId,

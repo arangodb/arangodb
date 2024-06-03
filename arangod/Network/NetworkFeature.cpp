@@ -55,21 +55,20 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 
 namespace {
-std::string click(std::chrono::steady_clock::time_point tp) {
-  auto now_ms = std::chrono::time_point_cast<std::chrono::milliseconds>(tp);
-  auto epoch = now_ms.time_since_epoch();
-  auto value = std::chrono::duration_cast<std::chrono::milliseconds>(epoch);
-  std::ostringstream os;
-  os << value;
-  return os.str();
-}
-
+// executes network request retry operations in a separate thread,
+// so that they do not have be executed via the scheduler.
+// the reason to execute them from a dedicated thread is that a
+// dedicated thread will always have capacity to execute, whereas
+// pushing retry operations to the scheduler needs to use the correct
+// priority lanes and also could be blocked by scheduler threads
+// not pulling any more new tasks due to overload/overwhelm.
 class RetryThread : public ServerThread<ArangodServer> {
+  static constexpr auto kDefaultSleepTime = std::chrono::milliseconds(10'000);
+
  public:
   explicit RetryThread(ArangodServer& server)
       : ServerThread<ArangodServer>(server, "NetworkRetry"),
-        _nextRetryTime(std::chrono::steady_clock::now() +
-                       std::chrono::milliseconds(10'000)) {}
+        _nextRetryTime(std::chrono::steady_clock::now() + kDefaultSleepTime) {}
 
   ~RetryThread() {
     shutdown();
@@ -88,6 +87,7 @@ class RetryThread : public ServerThread<ArangodServer> {
   void cancelAll() noexcept {
     std::unique_lock<std::mutex> guard(_mutex);
 
+    // pop everything from the queue until it is empty.
     while (!_retryRequests.empty()) {
       auto& top = _retryRequests.top();
       auto req = std::move(top.req);
@@ -132,8 +132,6 @@ class RetryThread : public ServerThread<ArangodServer> {
     if (mustNotify) {
       _cv.notify_one();
     }
-    LOG_DEVEL << "PUSHED RETRY REQUEST WITH RETRYTIME " << click(retryTime)
-              << ", MUSTNOTIFY: " << mustNotify;
   }
 
  protected:
@@ -142,14 +140,14 @@ class RetryThread : public ServerThread<ArangodServer> {
       try {
         std::unique_lock<std::mutex> guard(_mutex);
 
-        _nextRetryTime = std::chrono::steady_clock::now() +
-                         std::chrono::milliseconds(10'000);
+        // by default, sleep an arbitrary amount of 10 seconds.
+        // note that this value may be reduced if we have an
+        // element in the queue that is due earlier.
+        _nextRetryTime = std::chrono::steady_clock::now() + kDefaultSleepTime;
 
         while (!_retryRequests.empty()) {
           auto& top = _retryRequests.top();
           auto now = std::chrono::steady_clock::now();
-          LOG_DEVEL << "TOP RETRY TIME IS " << click(top.retryTime)
-                    << ", NOW IS " << click(now);
           if (top.retryTime > now) {
             // next retry operation is in the future...
             _nextRetryTime = top.retryTime;
@@ -163,13 +161,15 @@ class RetryThread : public ServerThread<ArangodServer> {
           if (!_retryRequests.empty()) {
             _nextRetryTime = _retryRequests.top().retryTime;
           } else {
-            _nextRetryTime = now + std::chrono::milliseconds(10'000);
+            _nextRetryTime = now + kDefaultSleepTime;
           }
 
           guard.unlock();
 
-          LOG_DEVEL << "EXECUTING RETRY REQUEST";
           try {
+            // the actual retry action is carried out here.
+            // note: if we are shutting down already, we don't retry but
+            // cancel every request right away.
             if (!isStopping()) {
               req->retry();
             } else {
@@ -185,7 +185,7 @@ class RetryThread : public ServerThread<ArangodServer> {
           guard.lock();
         }
 
-        LOG_DEVEL << "SLEEPING UNTIL " << click(_nextRetryTime);
+        // nothing (more) to do
         _cv.wait_until(guard, _nextRetryTime);
       } catch (std::exception const& ex) {
         LOG_TOPIC("2b2e9", WARN, Logger::COMMUNICATION)
@@ -208,7 +208,16 @@ class RetryThread : public ServerThread<ArangodServer> {
   // will be pulled from the queue first
   struct RetryItemComparator {
     bool operator()(RetryItem const& lhs, RetryItem const& rhs) const noexcept {
-      return lhs.retryTime < rhs.retryTime;
+      if (lhs.retryTime > rhs.retryTime) {
+        // priority_queue: elements with higher times need to return true for
+        // the comparator.
+        return true;
+      }
+      if (lhs.retryTime == rhs.retryTime) {
+        // equal retry time. use pointer values to define order.
+        return lhs.req.get() < rhs.req.get();
+      }
+      return false;
     }
   };
 

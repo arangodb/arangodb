@@ -368,12 +368,6 @@ void RestAqlHandler::setupClusterQuery() {
     }
   }
 
-  if (auto return503 = querySlice.get("return503"); return503.isTrue()) {
-    generateError(rest::ResponseCode::SERVICE_UNAVAILABLE,
-                  TRI_ERROR_SHUTTING_DOWN, "intentionally returning HTTP 503");
-    return;
-  }
-
   _queryRegistry->insertQuery(std::move(q), ttl, qs, std::move(rGuard));
 
   generateResult(rest::ResponseCode::OK, std::move(buffer));
