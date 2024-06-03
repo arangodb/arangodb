@@ -978,6 +978,7 @@ void ClusterFeature::unprepare() {
     _clusterInfo->unprepare();
     if (_asyncAgencyCommPool) {
       _asyncAgencyCommPool->drainConnections();
+      _asyncAgencyCommPool->stop();
     }
   }
 }
@@ -1012,6 +1013,7 @@ void ClusterFeature::shutdown() try {
 
   if (_asyncAgencyCommPool) {
     _asyncAgencyCommPool->drainConnections();
+    _asyncAgencyCommPool->stop();
   }
 } catch (...) {
   // this is called from the dtor. not much we can do here except logging
