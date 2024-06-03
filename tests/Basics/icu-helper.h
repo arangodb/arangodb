@@ -24,13 +24,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
-
-#include <string>
-
 struct IcuInitializer {
-  static void setup(char const* path);
   static void reinit();
-
-  static std::string icuData;
 };

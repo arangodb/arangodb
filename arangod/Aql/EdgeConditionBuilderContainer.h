@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Aql/AstNode.h"
 #include "Aql/EdgeConditionBuilder.h"
 #include "Aql/Variable.h"
 #include "Aql/VariableGenerator.h"

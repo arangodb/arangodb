@@ -22,8 +22,6 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
-
 #include "gtest/gtest.h"
 
 #include "Basics/Utf8Helper.h"
@@ -31,8 +29,6 @@
 #include "Basics/fasthash.h"
 #include "Basics/files.h"
 #include "Basics/hashes.h"
-
-#include "icu-helper.h"
 
 #include <absl/crc/crc32c.h>
 
@@ -42,10 +38,6 @@
 
 class CHashesTest : public ::testing::Test {
  protected:
-  CHashesTest() {
-    IcuInitializer::setup("./3rdParty/V8/v8/third_party/icu/common/icudtl.dat");
-  }
-
   uint32_t testCrc32(std::string_view buffer) {
     auto all_crc = static_cast<uint32_t>(absl::ComputeCrc32c(buffer));
 

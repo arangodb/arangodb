@@ -33,7 +33,10 @@
 #include "VocBase/Methods/Version.h"
 #include "VocBase/vocbase.h"
 
+#include <absl/strings/str_cat.h>
+#include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
 
 namespace {
 
@@ -67,7 +70,7 @@ UpgradeResult Upgrade::clusterBootstrap(TRI_vocbase_t& system) {
 
 /// corresponding to local-database.js
 UpgradeResult Upgrade::createDB(TRI_vocbase_t& vocbase,
-                                arangodb::velocypack::Slice const& users) {
+                                velocypack::Slice users) {
   TRI_ASSERT(users.isArray());
 
   uint32_t clusterFlag = 0;
@@ -198,9 +201,10 @@ UpgradeResult Upgrade::startup(TRI_vocbase_t& vocbase, bool isUpgrade,
     case VersionResult::NO_SERVER_VERSION: {
       LOG_TOPIC("bb6ba", DEBUG, Logger::STARTUP)
           << "Error reading version file";
-      std::string msg =
-          std::string("error during ") + (isUpgrade ? "upgrade" : "startup");
-      return UpgradeResult(TRI_ERROR_INTERNAL, msg, vinfo.status);
+      return UpgradeResult(
+          TRI_ERROR_INTERNAL,
+          absl::StrCat("error during ", (isUpgrade ? "upgrade" : "startup")),
+          vinfo.status);
     }
     case VersionResult::NO_VERSION_FILE:
       LOG_TOPIC("9ce49", DEBUG, Logger::STARTUP) << "No VERSION file found";
@@ -212,7 +216,7 @@ UpgradeResult Upgrade::startup(TRI_vocbase_t& vocbase, bool isUpgrade,
   // should not do anything on VERSION_MATCH, and init the database
   // with all tasks if they were not executed yet. Tasks not listed
   // in the "tasks" attribute will be executed automatically
-  VPackSlice const params = VPackSlice::emptyObjectSlice();
+  VPackSlice params = VPackSlice::emptyObjectSlice();
   return runTasks(vocbase, vinfo, params, clusterFlag, dbflag);
 }
 
@@ -222,7 +226,7 @@ UpgradeResult methods::Upgrade::startupCoordinator(TRI_vocbase_t& vocbase) {
   // this will return a hard-coded version result
   VersionResult vinfo = Version::check(&vocbase);
 
-  VPackSlice const params = VPackSlice::emptyObjectSlice();
+  VPackSlice params = VPackSlice::emptyObjectSlice();
   return runTasks(vocbase, vinfo, params, Flags::CLUSTER_COORDINATOR_GLOBAL,
                   Flags::DATABASE_UPGRADE);
 }
@@ -257,6 +261,13 @@ void methods::Upgrade::registerTasks(arangodb::UpgradeFeature& upgradeFeature) {
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_DB_SERVER_LOCAL,
           /*database*/ DATABASE_UPGRADE | DATABASE_EXISTING,
           &UpgradeTasks::renameReplicationApplierStateFiles);
+  addTask(upgradeFeature, "dropPregelQueriesCollection",
+          "drop _pregel_queries collection",
+          /*system*/ Upgrade::Flags::DATABASE_ALL,
+          /*cluster*/ Upgrade::Flags::CLUSTER_COORDINATOR_GLOBAL |
+              Upgrade::Flags::CLUSTER_NONE,
+          /*database*/ DATABASE_UPGRADE | DATABASE_EXISTING,
+          &UpgradeTasks::dropPregelQueriesCollection);
 
   // IResearch related upgrade tasks:
   // NOTE: db-servers do not have a dedicated collection for storing analyzers,
@@ -270,15 +281,17 @@ void methods::Upgrade::registerTasks(arangodb::UpgradeFeature& upgradeFeature) {
               | Upgrade::Flags::DATABASE_UPGRADE,
           &UpgradeTasks::dropLegacyAnalyzersCollection  // action
   );
+
 #ifdef USE_ENTERPRISE
   registerTasksEE(upgradeFeature);
 #endif
 }
 
-UpgradeResult methods::Upgrade::runTasks(
-    TRI_vocbase_t& vocbase, VersionResult& vinfo,
-    arangodb::velocypack::Slice const& params, uint32_t clusterFlag,
-    uint32_t dbFlag) {
+UpgradeResult methods::Upgrade::runTasks(TRI_vocbase_t& vocbase,
+                                         VersionResult& vinfo,
+                                         velocypack::Slice params,
+                                         uint32_t clusterFlag,
+                                         uint32_t dbFlag) {
   auto& upgradeFeature =
       vocbase.server().getFeature<arangodb::UpgradeFeature>();
   auto& tasks = upgradeFeature._tasks;
@@ -339,13 +352,14 @@ UpgradeResult methods::Upgrade::runTasks(
     LOG_TOPIC("15144", DEBUG, Logger::STARTUP)
         << "Upgrade: executing " << t.name;
     try {
-      bool ranTask = t.action(vocbase, params);
-      if (!ranTask) {
+      Result res = t.action(vocbase, params);
+      if (res.fail()) {
         std::string msg =
-            "executing " + t.name + " (" + t.description + ") failed.";
+            absl::StrCat("executing ", t.name, " (", t.description,
+                         ") failed: ", res.errorMessage());
         LOG_TOPIC("0a886", ERR, Logger::STARTUP)
             << msg << " aborting upgrade procedure.";
-        return UpgradeResult(TRI_ERROR_INTERNAL, msg, vinfo.status);
+        return UpgradeResult(res.errorNumber(), std::move(msg), vinfo.status);
       }
     } catch (std::exception const& e) {
       LOG_TOPIC("022fe", ERR, Logger::STARTUP)

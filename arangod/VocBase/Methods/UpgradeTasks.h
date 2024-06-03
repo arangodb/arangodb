@@ -23,27 +23,29 @@
 
 #pragma once
 
+#include "Basics/Result.h"
+
 #include <velocypack/Slice.h>
 
 struct TRI_vocbase_t;
 
-namespace arangodb {
-namespace methods {
+namespace arangodb::methods {
 
 /// Code to create and initialize databases
 /// Replaces upgrade-database.js for good
 struct UpgradeTasks {
-  static bool createSystemCollectionsAndIndices(TRI_vocbase_t& vocbase,
-                                                velocypack::Slice const& slice);
-  static bool createStatisticsCollectionsAndIndices(
-      TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
-  static bool addDefaultUserOther(TRI_vocbase_t& vocbase,
-                                  velocypack::Slice const& slice);
-  static bool renameReplicationApplierStateFiles(
-      TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
-  static bool dropLegacyAnalyzersCollection(TRI_vocbase_t& vocbase,
-                                            velocypack::Slice const& slice);
+  static Result createSystemCollectionsAndIndices(TRI_vocbase_t& vocbase,
+                                                  velocypack::Slice slice);
+  static Result createStatisticsCollectionsAndIndices(TRI_vocbase_t& vocbase,
+                                                      velocypack::Slice slice);
+  static Result addDefaultUserOther(TRI_vocbase_t& vocbase,
+                                    velocypack::Slice slice);
+  static Result renameReplicationApplierStateFiles(TRI_vocbase_t& vocbase,
+                                                   velocypack::Slice slice);
+  static Result dropLegacyAnalyzersCollection(TRI_vocbase_t& vocbase,
+                                              velocypack::Slice slice);
+  static Result dropPregelQueriesCollection(TRI_vocbase_t& vocbase,
+                                            velocypack::Slice slice);
 };
 
-}  // namespace methods
-}  // namespace arangodb
+}  // namespace arangodb::methods

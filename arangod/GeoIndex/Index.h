@@ -23,20 +23,22 @@
 
 #pragma once
 
+#include "Basics/AttributeNameParser.h"
+#include "Basics/Result.h"
+#include "Geo/GeoParams.h"
+
 #include <s2/s2cell_id.h>
 #include <s2/s2latlng.h>
 
-#include "Basics/Result.h"
-#include "Geo/GeoParams.h"
+#include <cstdint>
+#include <string>
+#include <vector>
 
 namespace arangodb {
 namespace aql {
 struct AstNode;
 struct Variable;
 }  // namespace aql
-namespace basics {
-struct AttributeName;
-}
 namespace velocypack {
 class Slice;
 }

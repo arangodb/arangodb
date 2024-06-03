@@ -24,7 +24,6 @@
 #pragma once
 
 #include "Aql/types.h"
-#include "Containers/HashSet.h"
 #include "Basics/ResourceUsage.h"
 
 #include <cstdint>
@@ -73,10 +72,10 @@ class Expression {
   Expression() = delete;
 
   /// @brief constructor, using an AST start node
-  Expression(Ast*, AstNode*);
+  Expression(Ast* ast, AstNode* node);
 
   /// @brief constructor, using VPack
-  Expression(Ast*, arangodb::velocypack::Slice const&);
+  Expression(Ast* ast, arangodb::velocypack::Slice slice);
 
   ~Expression();
 

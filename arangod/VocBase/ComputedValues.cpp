@@ -27,7 +27,7 @@
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/Expression.h"
-#include "Aql/ExpressionContext.h"
+#include "Aql/LazyConditions.h"
 #include "Aql/Parser.h"
 #include "Aql/QueryContext.h"
 #include "Aql/QueryString.h"
@@ -115,17 +115,17 @@ std::string ComputedValuesExpressionContext::buildLogMessage(
   return error;
 }
 
-icu::RegexMatcher* ComputedValuesExpressionContext::buildRegexMatcher(
+icu_64_64::RegexMatcher* ComputedValuesExpressionContext::buildRegexMatcher(
     std::string_view expr, bool caseInsensitive) {
   return _aqlFunctionsInternalCache.buildRegexMatcher(expr, caseInsensitive);
 }
 
-icu::RegexMatcher* ComputedValuesExpressionContext::buildLikeMatcher(
+icu_64_64::RegexMatcher* ComputedValuesExpressionContext::buildLikeMatcher(
     std::string_view expr, bool caseInsensitive) {
   return _aqlFunctionsInternalCache.buildLikeMatcher(expr, caseInsensitive);
 }
 
-icu::RegexMatcher* ComputedValuesExpressionContext::buildSplitMatcher(
+icu_64_64::RegexMatcher* ComputedValuesExpressionContext::buildSplitMatcher(
     aql::AqlValue splitExpression, velocypack::Options const* opts,
     bool& isEmptyExpression) {
   return _aqlFunctionsInternalCache.buildSplitMatcher(splitExpression, opts,
@@ -185,7 +185,7 @@ ComputedValues::ComputedValue::ComputedValue(
   // falsePart) to be always inlined and not be extracted into its own LET node.
   // if we don't set this boolean flag here, then a ternary operator could
   // create additional LET nodes, which is not supported inside computed values.
-  parser.setForceInlineTernary();
+  parser.lazyConditions().pushForceInline();
   // will throw if there is any error, but the expression should have been
   // validated before
   parser.parse();

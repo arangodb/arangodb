@@ -30,14 +30,14 @@ const functionsDocumentation = {
 };
 const optionsDocumentation = [
   '   - `skipArangoBenchNonConnKeepAlive`: if set to true benchmark do not use keep-alive',
-  '   - `skipArangoBench`: if set to true benchmark tests are skipped',
-  '',
   '   - `benchargs`: additional commandline arguments to arangobench'
 ];
 
 const fs = require('fs');
 const _ = require('lodash');
 const pu = require('@arangodb/testutils/process-utils');
+const tu = require('@arangodb/testutils/test-utils');
+const ct = require('@arangodb/testutils/client-tools');
 const im = require('@arangodb/testutils/instance-manager');
 const internal = require('internal');
 
@@ -193,16 +193,6 @@ const benchTodos = [
 ];
 
 function arangobench (options) {
-  if (options.skipArangoBench === true) {
-    print('skipping Benchmark tests!');
-    return {
-      arangobench: {
-        status: true,
-        skipped: true
-      }
-    };
-  }
-
   print(CYAN + 'arangobench tests...' + RESET);
   let instanceManager = new im.instanceManager('tcp', options, {}, 'arangobench');
   instanceManager.prepareInstance();
@@ -254,7 +244,7 @@ function arangobench (options) {
         args = Object.assign(args, options.benchargs);
       }
 
-      let oneResult = pu.run.arangoBenchmark(options, instanceManager, args, instanceManager.rootDir, options.coreCheck);
+      let oneResult = ct.run.arangoBenchmark(options, instanceManager, args, instanceManager.rootDir, options.coreCheck);
       const expectFailure = (benchTodo.hasOwnProperty('expected-failure') && benchTodo['expected-failure']);
 
       continueTesting = instanceManager.checkInstanceAlive();
@@ -318,9 +308,8 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['arangobench'] = arangobench;
 
-  opts['skipArangoBench'] = false;
   opts['skipArangoBenchNonConnKeepAlive'] = true;
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
+  tu.CopyIntoList(optionsDoc, optionsDocumentation);
 };

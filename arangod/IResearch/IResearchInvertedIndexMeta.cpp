@@ -992,7 +992,7 @@ bool IResearchInvertedIndexSort::fromVelocyPack(velocypack::Slice slice,
     }
     // intentional string copy here as createCanonical expects null-terminated
     // string and string_view has no such guarantees
-    _locale = icu::Locale::createCanonical(
+    _locale = icu_64_64::Locale::createCanonical(
         std::string{localeSlice.stringView()}.c_str());
     if (_locale.isBogus()) {
       error = kLocaleFieldName;

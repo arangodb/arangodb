@@ -42,6 +42,7 @@
 #include "Cluster/ActionDescription.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/CreateCollection.h"
 #include "Cluster/CreateDatabase.h"
 #include "Cluster/DropDatabase.h"
@@ -169,6 +170,9 @@ static void SetupClusterFeaturePhase(MockServer& server) {
   SetupDatabaseFeaturePhase(server);
   server.addFeature<ClusterFeaturePhase>(false);
   server.addFeature<ClusterFeature>(false);
+  // set default replication factor to 1 for tests. otherwise the default value
+  // is 0, which will lead to follow up errors if it is not corrected later.
+  server.getFeature<ClusterFeature>().defaultReplicationFactor(1);
 
   // fake the exit code with which unresolved futures are returned on
   // shutdown. if we don't do this lots of places in ClusterInfo will
@@ -392,8 +396,9 @@ MockV8Server::MockV8Server(bool start) : MockServer() {
   SetupV8Phase(*this);
   addFeature<NetworkFeature>(
       false, _server.getFeature<metrics::MetricsFeature>(),
-      network::ConnectionPool::Config(
-          _server.getFeature<metrics::MetricsFeature>()));
+      network::ConnectionPool::Config{
+          .metrics = network::ConnectionPool::Metrics::fromMetricsFeature(
+              _server.getFeature<metrics::MetricsFeature>(), "mock")});
 
   if (start) {
     MockV8Server::startFeatures();
@@ -469,8 +474,9 @@ MockRestServer::MockRestServer(bool start) : MockServer() {
       false, getFeature<arangodb::metrics::MetricsFeature>());
   addFeature<NetworkFeature>(
       false, _server.getFeature<metrics::MetricsFeature>(),
-      network::ConnectionPool::Config(
-          _server.getFeature<metrics::MetricsFeature>()));
+      network::ConnectionPool::Config{
+          .metrics = network::ConnectionPool::Metrics::fromMetricsFeature(
+              _server.getFeature<metrics::MetricsFeature>(), "mock")});
   if (start) {
     MockRestServer::startFeatures();
   }
@@ -489,22 +495,21 @@ AgencyCache::applyTestTransaction(velocypack::Slice trxs) {
     res = std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t>{
         _readDB.applyTransactions(trxs, AgentInterface::WriteMode{true, true}),
         _commitIndex};  // apply logs
-  }
-  {
-    std::lock_guard g(_callbacksLock);
-    for (auto const& trx : VPackArrayIterator(trxs)) {
-      handleCallbacksNoLock(trx[0], uniq, toCall, pc, cc);
-    }
     {
-      std::lock_guard g(_storeLock);
-      for (auto const& i : pc) {
-        _planChanges.emplace(_commitIndex, i);
-      }
-      for (auto const& i : cc) {
-        _currentChanges.emplace(_commitIndex, i);
+      std::lock_guard g(_callbacksLock);
+      for (auto const& trx : VPackArrayIterator(trxs)) {
+        handleCallbacksNoLock(trx[0], uniq, toCall, pc, cc);
       }
     }
+    for (auto const& i : pc) {
+      _planChanges.emplace(_commitIndex, i);
+    }
+    for (auto const& i : cc) {
+      _currentChanges.emplace(_commitIndex, i);
+    }
   }
+
+  triggerWaiting(_commitIndex);
   invokeCallbacks(toCall);
   return res;
 }
@@ -528,8 +533,9 @@ MockClusterServer::MockClusterServer(bool useAgencyMockPool,
   addFeature<replication2::replicated_state::ReplicatedStateAppFeature>(false);
   addFeature<ReplicatedLogFeature>(false);
 
-  network::ConnectionPool::Config config(
-      _server.getFeature<metrics::MetricsFeature>());
+  network::ConnectionPool::Config config;
+  config.metrics = network::ConnectionPool::Metrics::fromMetricsFeature(
+      _server.getFeature<metrics::MetricsFeature>(), "network-mock");
   config.numIOThreads = 1;
   config.maxOpenConnections = 8;
   config.verifyHosts = false;
@@ -544,12 +550,13 @@ MockClusterServer::~MockClusterServer() {
 void MockClusterServer::startFeatures() {
   MockServer::startFeatures();
 
-  network::ConnectionPool::Config poolConfig(
-      _server.getFeature<metrics::MetricsFeature>());
+  network::ConnectionPool::Config poolConfig;
   poolConfig.clusterInfo = &getFeature<ClusterFeature>().clusterInfo();
   poolConfig.numIOThreads = 1;
   poolConfig.maxOpenConnections = 3;
   poolConfig.verifyHosts = false;
+  poolConfig.metrics = network::ConnectionPool::Metrics::fromMetricsFeature(
+      _server.getFeature<metrics::MetricsFeature>(), "mock");
 
   if (_useAgencyMockPool) {
     _pool = std::make_unique<AsyncAgencyStorePoolMock>(_server, poolConfig);
@@ -1003,7 +1010,8 @@ MockRestAqlServer::MockRestAqlServer() {
   SetupAqlPhase(*this);
   addFeature<NetworkFeature>(
       false, _server.getFeature<metrics::MetricsFeature>(),
-      network::ConnectionPool::Config(
-          _server.getFeature<metrics::MetricsFeature>()));
+      network::ConnectionPool::Config{
+          .metrics = network::ConnectionPool::Metrics::fromMetricsFeature(
+              _server.getFeature<metrics::MetricsFeature>(), "mock")});
   MockRestAqlServer::startFeatures();
 }

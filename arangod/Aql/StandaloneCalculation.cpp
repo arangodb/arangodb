@@ -28,6 +28,7 @@
 #include "Aql/AqlTransaction.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Expression.h"
+#include "Aql/LazyConditions.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRule.h"
 #include "Aql/Parser.h"
@@ -276,7 +277,7 @@ Result StandaloneCalculation::validateQuery(
       // node. if we don't set this boolean flag here, then a ternary operator
       // could create additional LET nodes, which is not supported inside
       // computed values.
-      parser.setForceInlineTernary();
+      parser.lazyConditions().pushForceInline();
     }
     parser.parse();
     ast->validateAndOptimize(

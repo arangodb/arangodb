@@ -26,6 +26,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlFunctionFeature.h"
+#include "Aql/Ast.h"
 #include "Aql/CalculationNodeVarFinder.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
@@ -183,8 +184,8 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode,
   if (!addView(*view, query)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_QUERY_PARSE,
-        "failed to process all collections linked with the view '" +
-            view->name() + "'");
+        absl::StrCat("failed to process all collections linked with the view '",
+                     view->name(), "'"));
   }
 
   // build search condition
@@ -247,8 +248,8 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode,
     if (filterCreated.fail()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           filterCreated.errorNumber(),
-          StringUtils::concatT("unsupported SEARCH condition: ",
-                               filterCreated.errorMessage()));
+          absl::StrCat("unsupported SEARCH condition: ",
+                       filterCreated.errorMessage()));
     }
   }
 
@@ -454,7 +455,7 @@ bool optimizeScoreSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
   // all sort elements are covered by view's scorers / stored values
   viewNode.setHeapSort(std::move(heapSort),
                        limitNode->offset() + limitNode->limit());
-  sortNode->_reinsertInCluster = false;
+  sortNode->dontReinsertInCluster();
   if (!ServerState::instance()->isCoordinator()) {
     // in cluster node will be unlinked later by 'distributeSortToClusterRule'
     plan->unlinkNode(sortNode);
@@ -586,7 +587,7 @@ bool optimizeSort(IResearchViewNode& viewNode, ExecutionPlan* plan) {
     assert(!primarySort.empty());
     viewNode.setSort(primarySort, sortElements.size());
 
-    sortNode->_reinsertInCluster = false;
+    sortNode->dontReinsertInCluster();
     if (!ServerState::instance()->isCoordinator()) {
       // in cluster node will be unlinked later by
       // 'distributeSortToClusterRule'
@@ -1160,7 +1161,7 @@ void immutableSearchCondition(Optimizer* opt,
     uint32_t count = 0;
     while (true) {
       auto const type = condition->type;
-      if (!Ast::IsOrOperatorType(type) && !Ast::IsAndOperatorType(type)) {
+      if (!Ast::isOrOperatorType(type) && !Ast::isAndOperatorType(type)) {
         break;
       }
       auto const numMembers = condition->numMembers();

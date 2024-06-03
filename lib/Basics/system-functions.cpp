@@ -26,27 +26,13 @@
 #include "system-functions.h"
 
 #include <chrono>
+#include <string>
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
 #endif
 
 using namespace arangodb;
 using namespace arangodb::utilities;
-
-#ifdef ARANGODB_MISSING_MEMRCHR
-void* memrchr(void const* block, int c, size_t size) {
-  if (size) {
-    unsigned char const* p = static_cast<unsigned char const*>(block);
-
-    for (p += size - 1; size; p--, size--) {
-      if (*p == c) {
-        return (void*)p;
-      }
-    }
-  }
-  return nullptr;
-}
-#endif
 
 void TRI_localtime(time_t tt, struct tm* tb) {
 #ifdef ARANGODB_HAVE_LOCALTIME_R

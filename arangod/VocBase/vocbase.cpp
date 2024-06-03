@@ -43,7 +43,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/Exceptions.tpp"
 #include "Basics/Locking.h"
-#include "Basics/NumberUtils.h"
 #include "Basics/DownCast.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/RecursiveLocker.h"
@@ -1461,9 +1460,22 @@ ShardingPrototype TRI_vocbase_t::shardingPrototype() const {
 }
 
 std::string const& TRI_vocbase_t::shardingPrototypeName() const {
-  return _info.shardingPrototype() == ShardingPrototype::Users
-             ? StaticStrings::UsersCollection
-             : StaticStrings::GraphCollection;
+  switch (_info.shardingPrototype()) {
+    case ShardingPrototype::Users:
+      // Specifically set defaults should win
+      return StaticStrings::UsersCollection;
+    case ShardingPrototype::Graphs:
+      // Specifically set defaults should win
+      return StaticStrings::GraphCollection;
+    case ShardingPrototype::Undefined:
+      if (isSystem()) {
+        // The sharding Prototype for system databases is always the users
+        return StaticStrings::UsersCollection;
+      } else {
+        // All others should follow _graphs
+        return StaticStrings::GraphCollection;
+      }
+  }
 }
 
 std::vector<std::shared_ptr<LogicalView>> TRI_vocbase_t::views() const {
@@ -1655,8 +1667,8 @@ void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
                 auto c = resolver.getCollection(name);
                 if (c == nullptr) {
                   return Result{TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
-                                "Collection not found: " + name +
-                                    " in database " + this->name()};
+                                absl::StrCat("Collection not found: ", name,
+                                             " in database ", this->name())};
                 }
                 return c->getCollectionProperties();
               }};
@@ -1669,8 +1681,8 @@ void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
                 auto c = resolver.getCollection(name);
                 if (c == nullptr) {
                   return Result{TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
-                                "Collection not found: " + name +
-                                    " in database " + this->name()};
+                                absl::StrCat("Collection not found: ", name,
+                                             " in database ", this->name())};
                 }
                 return c->getCollectionProperties();
               }};
@@ -1686,7 +1698,6 @@ void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
   config.enforceReplicationFactor = true;
   config.defaultNumberOfShards = 1;
   config.defaultReplicationFactor = replicationFactor();
-
   config.defaultWriteConcern = writeConcern();
 
   config.isOneShardDB = cl.forceOneShard() || isOneShard();

@@ -162,24 +162,17 @@ void RegisterPlanWalkerT<T>::after(T* en) {
       VarSet varsUsedHere;
       en->getVariablesUsedHere(varsUsedHere);
       for (auto const& v : varsUsedHere) {
-        auto it = varsUsedLater.find(v);
-
-        if (it == varsUsedLater.end()) {
-          auto it2 = plan->varInfo.find(v->id);
-
-          if (it2 == plan->varInfo.end()) {
-            // report an error here to prevent crashing
-            THROW_ARANGO_EXCEPTION_MESSAGE(
-                TRI_ERROR_INTERNAL,
-                absl::StrCat("missing variable ",
-                             ((!v->name.empty() && v->name[0] >= '0' &&
-                               v->name[0] <= '9')
-                                  ? "#"
-                                  : ""),
-                             v->name, " (id ", v->id, ") for node #",
-                             en->id().id(), " (", en->getTypeString(),
-                             ") while planning registers"));
-          }
+        if (!varsUsedLater.contains(v) && !plan->varInfo.contains(v->id)) {
+          // report an error here to prevent crashing
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_INTERNAL,
+              absl::StrCat(
+                  "missing variable ",
+                  ((!v->name.empty() && v->name[0] >= '0' && v->name[0] <= '9')
+                       ? "#"
+                       : ""),
+                  v->name, " (id ", v->id, ") for node #", en->id().id(), " (",
+                  en->getTypeString(), ") while planning registers"));
         }
       }
     }

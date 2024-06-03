@@ -177,6 +177,18 @@ try to free up memory by evicting the oldest entries.)")
               arangodb::options::Flags::OnDBServer,
               arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31200);
+
+  options
+      ->addOption("--cache.max-cache-value-size",
+                  "The maximum payload size of an individual cache value "
+                  "(excluding the size of the key).",
+                  new UInt64Parameter(&_options.maxCacheValueSize),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::Uncommon,
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31202);
 }
 
 void CacheOptionsFeature::validateOptions(
@@ -193,6 +205,16 @@ void CacheOptionsFeature::validateOptions(
         << "invalid values for `--cache.ideal-lower-fill-ratio' and "
            "`--cache.ideal-upper-fill-ratio`";
     FATAL_ERROR_EXIT();
+  }
+
+  if (_options.maxCacheValueSize == 0 && _options.cacheSize > 0) {
+    _options.cacheSize = 0;
+    LOG_TOPIC("9b1ae", WARN, arangodb::Logger::FIXME)
+        << "`--cache.max-value-size` was set to 0 via configuration, which "
+           "will "
+           "effectively disable caching in many cases. Please consider "
+           "adjusting the value or turn the cache off explicitly by setting "
+           "`--cache.size` to 0.";
   }
 }
 

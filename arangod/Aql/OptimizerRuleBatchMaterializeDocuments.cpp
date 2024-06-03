@@ -21,6 +21,7 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionEngine.h"
@@ -135,6 +136,7 @@ void arangodb::aql::batchMaterializeDocumentsRule(
 
     plan->insertAfter(indexNode, materialized);
 
+    materialized->setMaxProjections(indexNode->maxProjections());
     if (!indexNode->projections().empty()) {
       TRI_ASSERT(!indexNode->projections().usesCoveringIndex());
       TRI_ASSERT(!indexNode->projections().hasOutputRegisters());

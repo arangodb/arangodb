@@ -25,6 +25,7 @@
 #include "OptimizerRules.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Aql/Ast.h"
 #include "Aql/Aggregator.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AstHelper.h"
@@ -67,6 +68,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/Function.h"
+#include "Aql/IndexHint.h"
 #include "Aql/IndexStreamIterator.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerUtils.h"
@@ -94,10 +96,10 @@
 #include "Transaction/Methods.h"
 #include "VocBase/Methods/Collections.h"
 
+#include <absl/strings/str_cat.h>
+
 #include <span>
 #include <tuple>
-
-#include <absl/strings/str_cat.h>
 
 namespace {
 
@@ -1810,7 +1812,8 @@ void arangodb::aql::moveCalculationsDownRule(
         continue;
       }
       variable = nn->outVariable();
-    } else if (n->getType() == EN::SUBQUERY) {
+    } else {
+      TRI_ASSERT(n->getType() == EN::SUBQUERY);
       auto nn = ExecutionNode::castTo<SubqueryNode*>(n);
       if (!nn->isDeterministic() || nn->isModificationNode()) {
         // we will only move subqueries down that are deterministic and are not
@@ -1830,61 +1833,62 @@ void arangodb::aql::moveCalculationsDownRule(
       stack.pop_back();
 
       auto const currentType = current->getType();
-      bool tryToPushIntoSubquery = false;
 
-      if (currentType == EN::SUBQUERY && !current->isVarUsedLater(variable)) {
+      usedHere.clear();
+      current->getVariablesUsedHere(usedHere);
+
+      bool varUsedHere = std::find(usedHere.begin(), usedHere.end(),
+                                   variable) != usedHere.end();
+
+      if (n->getType() == EN::CALCULATION && currentType == EN::SUBQUERY &&
+          varUsedHere && !current->isVarUsedLater(variable)) {
+        // move calculations into subqueries if they are required by the
+        // subquery and not used later
         current = ExecutionNode::castTo<SubqueryNode*>(current)->getSubquery();
         while (current->hasDependency()) {
           current = current->getFirstDependency();
         }
-        tryToPushIntoSubquery = true;
+        lastNode = current;
       } else {
-        usedHere.clear();
-        current->getVariablesUsedHere(usedHere);
-
-        bool const done = std::find(usedHere.begin(), usedHere.end(),
-                                    variable) != usedHere.end();
-
-        if (done) {
+        if (varUsedHere) {
           // the node we're looking at needs the variable we're setting.
           // can't push further!
           break;
         }
-      }
 
-      if (tryToPushIntoSubquery) {
-        lastNode = current;
-      } else if (currentType == EN::FILTER || currentType == EN::SORT ||
-                 currentType == EN::LIMIT || currentType == EN::SUBQUERY ||
-                 currentType == EN::SINGLETON) {
-        // we found something interesting that justifies moving our node down
-        if (currentType == EN::LIMIT &&
-            arangodb::ServerState::instance()->isCoordinator()) {
-          // in a cluster, we do not want to move the calculations as far down
-          // as possible, because this will mean we may need to transfer a lot
-          // more data between DB servers and the coordinator
+        if (currentType == EN::FILTER || currentType == EN::SORT ||
+            currentType == EN::LIMIT || currentType == EN::SINGLETON ||
+            // do not move a subquery past another unrelated subquery
+            (currentType == EN::SUBQUERY && n->getType() != EN::SUBQUERY)) {
+          // we found something interesting that justifies moving our node down
+          if (currentType == EN::LIMIT &&
+              arangodb::ServerState::instance()->isCoordinator()) {
+            // in a cluster, we do not want to move the calculations as far down
+            // as possible, because this will mean we may need to transfer a lot
+            // more data between DB servers and the coordinator
 
-          // assume first that we want to move the node past the LIMIT
+            // assume first that we want to move the node past the LIMIT
 
-          // however, if our calculation uses any data from a
-          // collection/index/view, it probably makes sense to not move it,
-          // because the result set may be huge
-          if (::accessesCollectionVariable(plan.get(), n, vars)) {
-            break;
+            // however, if our calculation uses any data from a
+            // collection/index/view, it probably makes sense to not move it,
+            // because the result set may be huge
+            if (::accessesCollectionVariable(plan.get(), n, vars)) {
+              break;
+            }
           }
-        }
 
-        lastNode = current;
-      } else if (currentType == EN::INDEX ||
-                 currentType == EN::ENUMERATE_COLLECTION ||
-                 currentType == EN::ENUMERATE_IRESEARCH_VIEW ||
-                 currentType == EN::ENUMERATE_LIST ||
-                 currentType == EN::TRAVERSAL ||
-                 currentType == EN::SHORTEST_PATH ||
-                 currentType == EN::ENUMERATE_PATHS ||
-                 currentType == EN::COLLECT || currentType == EN::NORESULTS) {
-        // we will not push further down than such nodes
-        break;
+          lastNode = current;
+        } else if (currentType == EN::INDEX ||
+                   currentType == EN::ENUMERATE_COLLECTION ||
+                   currentType == EN::ENUMERATE_IRESEARCH_VIEW ||
+                   currentType == EN::ENUMERATE_LIST ||
+                   currentType == EN::TRAVERSAL ||
+                   currentType == EN::SHORTEST_PATH ||
+                   currentType == EN::ENUMERATE_PATHS ||
+                   currentType == EN::COLLECT || currentType == EN::NORESULTS) {
+          // we will not push further down than such nodes
+          break;
+        }
       }
 
       if (!current->hasParent()) {
@@ -1929,8 +1933,9 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
   for (auto const& n : nodes) {
     auto collectNode = ExecutionNode::castTo<CollectNode*>(n);
 
-    if (collectNode->isSpecialized()) {
-      // already specialized this node
+    if (collectNode->isFixedMethod()) {
+      // already determined the COLLECT variant of this node.
+      // it doesn't need to set again.
       continue;
     }
 
@@ -1939,56 +1944,69 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
     // test if we can use an alternative version of COLLECT with a hash table
     bool const canUseHashAggregation =
         (!groupVariables.empty() && collectNode->getOptions().canUseMethod(
-                                        CollectOptions::CollectMethod::HASH));
+                                        CollectOptions::CollectMethod::kHash));
 
-    if (canUseHashAggregation && !opt->runOnlyRequiredRules(1)) {
-      if (collectNode->getOptions().shouldUseMethod(
-              CollectOptions::CollectMethod::HASH)) {
+    if (canUseHashAggregation) {
+      bool preferHashCollect = collectNode->getOptions().shouldUseMethod(
+          CollectOptions::CollectMethod::kHash);
+
+      if (ExecutionNode const* loop = collectNode->getLoop();
+          loop != nullptr && loop->getLoop() == nullptr &&
+          (loop->getType() == EN::ENUMERATE_LIST ||
+           loop->getType() == EN::TRAVERSAL ||
+           loop->getType() == EN::ENUMERATE_PATHS ||
+           loop->getType() == EN::SHORTEST_PATH)) {
+        // if the COLLECT is contained inside a single loop, and the loop is an
+        // enumeration over an array (in contrast to an enumeration over a
+        // collection/view, then prefer the hashed collect variant. this is
+        // because the loop output is unlikely to be sorted in any way.
+        preferHashCollect = true;
+      }
+
+      if (preferHashCollect) {
         // user has explicitly asked for hash method
         // specialize existing the CollectNode so it will become a
         // HashedCollectBlock later. additionally, add a SortNode BEHIND the
-        // CollectNode (to sort the final result)
-        collectNode->aggregationMethod(CollectOptions::CollectMethod::HASH);
-        collectNode->specialized();
+        // CollectNode (to sort the final result).
+        // this is an in-place modification of the plan.
+        // we don't need to create an additional plan for this.
+        collectNode->aggregationMethod(CollectOptions::CollectMethod::kHash);
 
-        if (!collectNode->isDistinctCommand()) {
-          // add the post-SORT
-          SortElementVector sortElements;
-          for (auto const& v : collectNode->groupVariables()) {
-            sortElements.emplace_back(v.outVar, true);
-          }
-
-          auto sortNode = plan->createNode<SortNode>(plan.get(), plan->nextId(),
-                                                     sortElements, false);
-
-          TRI_ASSERT(collectNode->hasParent());
-          auto parent = collectNode->getFirstParent();
-          TRI_ASSERT(parent != nullptr);
-
-          sortNode->addDependency(collectNode);
-          parent->replaceDependency(collectNode, sortNode);
+        // add the post-SORT
+        SortElementVector sortElements;
+        for (auto const& v : collectNode->groupVariables()) {
+          sortElements.emplace_back(v.outVar, true);
         }
+
+        auto sortNode = plan->createNode<SortNode>(plan.get(), plan->nextId(),
+                                                   sortElements, false);
+
+        TRI_ASSERT(collectNode->hasParent());
+        auto parent = collectNode->getFirstParent();
+        TRI_ASSERT(parent != nullptr);
+
+        sortNode->addDependency(collectNode);
+        parent->replaceDependency(collectNode, sortNode);
 
         modified = true;
         continue;
       }
 
-      // create a new plan with the adjusted COLLECT node
-      std::unique_ptr<ExecutionPlan> newPlan(plan->clone());
+      // are we allowed to generate additional plans?
+      if (!opt->runOnlyRequiredRules()) {
+        // create an additional plan with the adjusted COLLECT node
+        std::unique_ptr<ExecutionPlan> newPlan(plan->clone());
 
-      // use the cloned COLLECT node
-      auto newCollectNode = ExecutionNode::castTo<CollectNode*>(
-          newPlan->getNodeById(collectNode->id()));
-      TRI_ASSERT(newCollectNode != nullptr);
+        // use the cloned COLLECT node
+        auto newCollectNode = ExecutionNode::castTo<CollectNode*>(
+            newPlan->getNodeById(collectNode->id()));
+        TRI_ASSERT(newCollectNode != nullptr);
 
-      // specialize the CollectNode so it will become a HashedCollectBlock
-      // later
-      // additionally, add a SortNode BEHIND the CollectNode (to sort the
-      // final result)
-      newCollectNode->aggregationMethod(CollectOptions::CollectMethod::HASH);
-      newCollectNode->specialized();
+        // specialize the CollectNode so it will become a HashedCollectBlock
+        // later. additionally, add a SortNode BEHIND the CollectNode (to sort
+        // the final result).
+        newCollectNode->aggregationMethod(CollectOptions::CollectMethod::kHash);
 
-      if (!collectNode->isDistinctCommand()) {
         // add the post-SORT
         SortElementVector sortElements;
         for (auto const& v : newCollectNode->groupVariables()) {
@@ -1996,7 +2014,7 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
         }
 
         auto sortNode = newPlan->createNode<SortNode>(
-            newPlan.get(), newPlan->nextId(), sortElements, false);
+            newPlan.get(), newPlan->nextId(), std::move(sortElements), false);
 
         TRI_ASSERT(newCollectNode->hasParent());
         auto parent = newCollectNode->getFirstParent();
@@ -2004,15 +2022,15 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
 
         sortNode->addDependency(newCollectNode);
         parent->replaceDependency(newCollectNode, sortNode);
-      }
 
-      if (nodes.size() > 1) {
-        // this will tell the optimizer to optimize the cloned plan with this
-        // specific rule again
-        opt->addPlanAndRerun(std::move(newPlan), rule, true);
-      } else {
-        // no need to run this specific rule again on the cloned plan
-        opt->addPlan(std::move(newPlan), rule, true);
+        if (nodes.size() > 1) {
+          // this will tell the optimizer to optimize the cloned plan with this
+          // specific rule again
+          opt->addPlanAndRerun(std::move(newPlan), rule, true);
+        } else {
+          // no need to run this specific rule again on the cloned plan
+          opt->addPlan(std::move(newPlan), rule, true);
+        }
       }
     } else if (groupVariables.empty() &&
                collectNode->hasOutVariable() == false &&
@@ -2020,20 +2038,13 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
                collectNode->aggregateVariables()[0].type == "LENGTH") {
       // we have no groups and only a single aggregator of type LENGTH, so we
       // can use the specialized count executor
-      collectNode->aggregationMethod(CollectOptions::CollectMethod::COUNT);
-      collectNode->specialized();
+      collectNode->aggregationMethod(CollectOptions::CollectMethod::kCount);
       modified = true;
       continue;
     }
 
-    // mark node as specialized, so we do not process it again
-    collectNode->specialized();
-
-    // finally, adjust the original plan and create a sorted version of COLLECT
-
-    // specialize the CollectNode so it will become a SortedCollectBlock
-    // later
-    collectNode->aggregationMethod(CollectOptions::CollectMethod::SORTED);
+    // finally, adjust the original plan and create a sorted version of COLLECT.
+    collectNode->aggregationMethod(CollectOptions::CollectMethod::kSorted);
 
     // insert a SortNode IN FRONT OF the CollectNode
     if (!groupVariables.empty()) {
@@ -2043,7 +2054,7 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
       }
 
       auto sortNode = plan->createNode<SortNode>(plan.get(), plan->nextId(),
-                                                 sortElements, true);
+                                                 std::move(sortElements), true);
 
       TRI_ASSERT(collectNode->hasDependency());
       auto dep = collectNode->getFirstDependency();
@@ -3599,7 +3610,7 @@ void arangodb::aql::interchangeAdjacentEnumerationsRule(
     do {
       // check if we already have enough plans (plus the one plan that we will
       // add at the end of this function)
-      if (opt->runOnlyRequiredRules(1)) {
+      if (opt->runOnlyRequiredRules()) {
         // have enough plans. stop permutations
         break;
       }
@@ -4035,7 +4046,7 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan,
       TRI_ASSERT(false);
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL,
-          "Cannot distribute " + node->getTypeString() + ".");
+          absl::StrCat("Cannot distribute ", node->getTypeString(), "."));
     }
   }
 
@@ -4473,7 +4484,7 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
           bool removeGatherNodeSort = false;
 
           if (collectNode->aggregationMethod() ==
-              CollectOptions::CollectMethod::COUNT) {
+              CollectOptions::CollectMethod::kCount) {
             TRI_ASSERT(collectNode->aggregateVariables().size() == 1);
             TRI_ASSERT(collectNode->hasOutVariable() == false);
             // clone a COLLECT AGGREGATE var=LENGTH(_) operation from the
@@ -4491,24 +4502,23 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
                 plan.get(), plan->nextId(), collectNode->getOptions(),
                 collectNode->groupVariables(), aggregateVariables, nullptr,
                 nullptr, std::vector<std::pair<Variable const*, std::string>>{},
-                collectNode->variableMap(), false);
+                collectNode->variableMap());
 
             dbCollectNode->addDependency(previous);
             target->replaceDependency(previous, dbCollectNode);
 
             dbCollectNode->aggregationMethod(collectNode->aggregationMethod());
-            dbCollectNode->specialized();
 
             // re-use the existing CollectNode on the coordinator to aggregate
             // the counts of the DB servers
             collectNode->aggregateVariables()[0].type = "SUM";
             collectNode->aggregateVariables()[0].inVar = outVariable;
             collectNode->aggregationMethod(
-                CollectOptions::CollectMethod::SORTED);
+                CollectOptions::CollectMethod::kSorted);
 
             removeGatherNodeSort = true;
           } else if (collectNode->aggregationMethod() ==
-                     CollectOptions::CollectMethod::DISTINCT) {
+                     CollectOptions::CollectMethod::kDistinct) {
             // clone a COLLECT DISTINCT operation from the coordinator to the
             // DB server(s), and leave an aggregate COLLECT node on the
             // coordinator for total aggregation
@@ -4525,13 +4535,12 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
                 plan.get(), plan->nextId(), collectNode->getOptions(),
                 groupVariables, collectNode->aggregateVariables(), nullptr,
                 nullptr, std::vector<std::pair<Variable const*, std::string>>{},
-                collectNode->variableMap(), true);
+                collectNode->variableMap());
 
             dbCollectNode->addDependency(previous);
             target->replaceDependency(previous, dbCollectNode);
 
             dbCollectNode->aggregationMethod(collectNode->aggregationMethod());
-            dbCollectNode->specialized();
 
             // will set the input of the coordinator's collect node to the new
             // variable produced on the DB servers
@@ -4584,13 +4593,12 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
                 plan.get(), plan->nextId(), collectNode->getOptions(), outVars,
                 dbServerAggVars, nullptr, nullptr,
                 std::vector<std::pair<Variable const*, std::string>>{},
-                collectNode->variableMap(), false);
+                collectNode->variableMap());
 
             dbCollectNode->addDependency(previous);
             target->replaceDependency(previous, dbCollectNode);
 
             dbCollectNode->aggregationMethod(collectNode->aggregationMethod());
-            dbCollectNode->specialized();
 
             std::vector<GroupVarInfo> copy;
             size_t i = 0;
@@ -4610,7 +4618,7 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
             }
 
             removeGatherNodeSort = (dbCollectNode->aggregationMethod() !=
-                                    CollectOptions::CollectMethod::SORTED);
+                                    CollectOptions::CollectMethod::kSorted);
 
             // in case we need to keep the sortedness of the GatherNode,
             // we may need to replace some variable references in it due
@@ -4863,7 +4871,7 @@ void arangodb::aql::distributeSortToClusterRule(
           // then unlink the filter/calculator from the plan
           plan->unlinkNode(inspectNode);
           // and re-insert into plan in front of the remoteNode
-          if (thisSortNode->_reinsertInCluster) {
+          if (thisSortNode->reinsertInCluster()) {
             // let's look for the best place for that SORT.
             // We could skip over several calculations if
             // they are not needed for our sort. So we could calculate
@@ -5900,19 +5908,19 @@ struct RemoveRedundantOr {
       if (hasRedundantConditionWalker(rhs) &&
           !hasRedundantConditionWalker(lhs) && lhs->isConstant()) {
         if (!isComparisonSet) {
-          comparison = Ast::ReverseOperator(type);
+          comparison = Ast::reverseOperator(type);
           bestValue = lhs;
           isComparisonSet = true;
           return true;
         }
 
-        int lowhigh = isCompatibleBound(Ast::ReverseOperator(type), lhs);
+        int lowhigh = isCompatibleBound(Ast::reverseOperator(type), lhs);
         if (lowhigh == 0) {
           return false;
         }
 
         if (compareBounds(type, lhs, lowhigh)) {
-          comparison = Ast::ReverseOperator(type);
+          comparison = Ast::reverseOperator(type);
           bestValue = lhs;
         }
         return true;
@@ -7257,10 +7265,10 @@ static bool applyGeoOptimization(ExecutionPlan* plan, LimitNode* ln,
   for (std::pair<ExecutionNode*, Expression*> pair : info.exesToModify) {
     AstNode* root = pair.second->nodeForModification();
     auto pre = [&](AstNode const* node) -> bool {
-      return node == root || Ast::IsAndOperatorType(node->type);
+      return node == root || Ast::isAndOperatorType(node->type);
     };
     auto visitor = [&](AstNode* node) -> AstNode* {
-      if (Ast::IsAndOperatorType(node->type)) {
+      if (Ast::isAndOperatorType(node->type)) {
         std::vector<AstNode*> keep;  // always shallow copy node
         for (std::size_t i = 0; i < node->numMembers(); i++) {
           AstNode* child = node->getMemberUnchecked(i);
@@ -7438,12 +7446,13 @@ static bool isAllowedIntermediateSortLimitNode(ExecutionNode* node) {
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
       break;
   }
-  THROW_ARANGO_EXCEPTION_FORMAT(
+  THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL_AQL,
-      "Unhandled node type '%s' in sort-limit optimizer rule. Please report "
-      "this error. Try turning off the sort-limit rule to get your query "
-      "working.",
-      node->getTypeString().c_str());
+      absl::StrCat(
+          "Unhandled node type '", node->getTypeString(),
+          "' in sort-limit optimizer rule. Please report "
+          "this error. Try turning off the sort-limit rule to get your query "
+          "working."));
 }
 
 void arangodb::aql::sortLimitRule(Optimizer* opt,
@@ -8794,8 +8803,8 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
       default: {
         TRI_ASSERT(false);
         THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_INTERNAL,
-            "Cannot distribute " + targetNode->getTypeString() + ".");
+            TRI_ERROR_INTERNAL, absl::StrCat("Cannot distribute ",
+                                             targetNode->getTypeString(), "."));
       }
     }
     TRI_ASSERT(inputVariable != nullptr);
@@ -9023,7 +9032,7 @@ void arangodb::aql::optimizeProjections(Optimizer* opt,
                                  /*expectedAttribute*/ "",
                                  /*excludeStartNodeFilterCondition*/ true,
                                  attributes)) {
-        if (attributes.size() <= DocumentProducingNode::kMaxProjections) {
+        if (attributes.size() <= matNode->maxProjections()) {
           matNode->projections() = Projections(std::move(attributes));
         }
       }

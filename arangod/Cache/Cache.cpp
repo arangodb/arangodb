@@ -21,13 +21,6 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <algorithm>
-#include <chrono>
-#include <cmath>
-#include <cstdint>
-#include <limits>
-#include <thread>
-
 #include "Cache/Cache.h"
 
 #include "Basics/ScopeGuard.h"
@@ -42,6 +35,13 @@
 #include "Cache/Table.h"
 #include "Cache/TransactionalCache.h"
 #include "RestServer/SharedPRNGFeature.h"
+
+#include <algorithm>
+#include <chrono>
+#include <cmath>
+#include <cstdint>
+#include <limits>
+#include <thread>
 
 namespace arangodb::cache {
 
@@ -126,6 +126,11 @@ void Cache::adjustGlobalAllocation(std::int64_t value, bool force) noexcept {
       } while (true);
     }
   }
+}
+
+std::uint64_t Cache::maxCacheValueSize() const noexcept {
+  TRI_ASSERT(_manager != nullptr);
+  return _manager->maxCacheValueSize();
 }
 
 std::uint64_t Cache::size() const noexcept {

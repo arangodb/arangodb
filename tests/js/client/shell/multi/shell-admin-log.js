@@ -64,7 +64,7 @@ function adminLogSuite() {
     setUp: function () {
       arango.DELETE("/_admin/log");
     },
-
+    
     testPutAdminSetAllLevels: function () {
       let previous = arango.GET("/_admin/log/level");
       try {
@@ -413,6 +413,46 @@ function adminLogSuite() {
       assertTrue(Array.isArray(res.messages));
       assertEqual(0, res.messages.length);
       assertEqual(50, res.total);
+    },
+
+    testResetLogLevels: function () {
+      let res = arango.PUT("/_admin/log/level", {"trx": "trace", "requests": "debug"});
+      assertEqual(res.trx, "TRACE");
+      assertEqual(res.requests, "DEBUG");
+      const newValue = arango.GET("/_admin/log/level");
+      assertEqual(newValue.trx, "TRACE");
+      assertEqual(newValue.requests, "DEBUG");
+      // restore old values
+      const restored = arango.DELETE("/_admin/log/level");
+      assertEqual(oldLogLevels.trx, restored.trx);
+      assertEqual(oldLogLevels.requests, restored.requests);
+      // now read the restored value
+      const newOld = arango.GET("/_admin/log/level");
+      assertEqual(oldLogLevels.trx, newOld.trx);
+      assertEqual(oldLogLevels.requests, newOld.requests);
+    },
+    
+    testResetLogLevelsOtherServer: function () {
+      if (dbservers.length === 0) {
+        return;
+      }
+      const server = dbservers[0];
+      const url = helper.getEndpointById(server);
+      const old = request.get(`${url}/_admin/log/level`);
+      // change the value via coordinator
+      let res = arango.PUT(`/_admin/log/level?serverId=${server}`, {"trx": "trace", "requests": "debug"});
+      assertEqual(res.trx, "TRACE");
+      assertEqual(res.requests, "DEBUG");
+      // read directly from dbserver
+      const newValue = request.get(`${url}/_admin/log/level`);
+      assertEqual(newValue.json.trx, "TRACE");
+      assertEqual(newValue.json.requests, "DEBUG");
+      // restore old values
+      request.delete(`${url}/_admin/log/level`);
+      // now read the restored value
+      const newOld = arango.GET(`/_admin/log/level?serverId=${server}`);
+      assertEqual(old.json.trx, newOld.trx);
+      assertEqual(old.json.requests, newOld.requests);
     },
 
   };

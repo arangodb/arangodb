@@ -29,8 +29,6 @@
 #include "Aql/RegisterInfos.h"
 #include "Basics/Result.h"
 
-#include <fuerte/message.h>
-
 #include <memory>
 #include <mutex>
 #include <string>
@@ -38,8 +36,9 @@
 
 namespace arangodb::fuerte {
 inline namespace v1 {
+class Response;
 enum class RestVerb;
-}
+}  // namespace v1
 }  // namespace arangodb::fuerte
 
 namespace arangodb::aql {
@@ -64,7 +63,7 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
                      std::string const& distributeId,
                      std::string const& queryId);
 
-  ~ExecutionBlockImpl() override = default;
+  ~ExecutionBlockImpl() override;
 
   std::pair<ExecutionState, Result> initializeCursor(
       InputAqlItemRow const& input) override;
@@ -96,9 +95,10 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
 
   /// @brief internal method to send a request. Will register a callback to be
   /// reactivated
-  arangodb::Result sendAsyncRequest(fuerte::RestVerb type,
-                                    std::string const& urlPart,
-                                    velocypack::Buffer<uint8_t>&& body);
+  arangodb::Result sendAsyncRequest(
+      fuerte::RestVerb type, std::string const& urlPart,
+      velocypack::Buffer<uint8_t>&& body,
+      std::unique_lock<std::mutex>&& communicationGuard);
 
   // _communicationMutex *must* be locked for this!
   unsigned generateRequestTicket();

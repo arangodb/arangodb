@@ -85,11 +85,6 @@ bool Scheduler::start() {
   return _cronThread->start();
 }
 
-Result Scheduler::detachThread(uint64_t* detachedThreads,
-                               uint64_t* maximumDetachedThreads) {
-  return {};
-}
-
 void Scheduler::schedulerJobMemoryAccounting(std::int64_t x) noexcept {
   if (SchedulerFeature::SCHEDULER) {
     SchedulerFeature::SCHEDULER->trackQueueItemSize(x);

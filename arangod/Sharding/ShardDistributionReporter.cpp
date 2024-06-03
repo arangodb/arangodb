@@ -445,7 +445,7 @@ void ShardDistributionReporter::helperDistributionForDatabase(
               auto responses = futures::collectAll(futures).get();
               for (futures::Try<network::Response> const& response :
                    responses) {
-                if (!response.hasValue() || response.get().fail()) {
+                if (!response.hasValue()) {
                   // We do not care for errors of any kind.
                   // We can continue here because all other requests will be
                   // handled by the accumulated timeout
@@ -456,16 +456,27 @@ void ShardDistributionReporter::helperDistributionForDatabase(
                 VPackSlice slice = res.slice();
                 if (!slice.isObject()) {
                   LOG_TOPIC("fcbb3", WARN, arangodb::Logger::CLUSTER)
-                      << "Received invalid response for count. Shard "
+                      << "Received invalid response for shard count. Shard "
                       << "distribution inaccurate: " << slice.toJson();
                   continue;
                 }
 
                 VPackSlice answer = slice.get("count");
                 if (!answer.isNumber()) {
-                  LOG_TOPIC("8d7b0", WARN, arangodb::Logger::CLUSTER)
-                      << "Received invalid response for count. Shard "
-                      << "distribution inaccurate: " << slice.toJson();
+                  if (Result r = res.combinedResult(); r.fail()) {
+                    if (r.isNot(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) &&
+                        r.isNot(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) &&
+                        r.isNot(TRI_ERROR_SHUTTING_DOWN) &&
+                        r.isNot(TRI_ERROR_INTERNAL)) {
+                      // we got an error that we didnt expect.
+                      // note: the collection/shard may not be present initially
+                      // when the follower shard is being created.
+                      // an internal error is returned during tests
+                      LOG_TOPIC("8d7b0", WARN, arangodb::Logger::CLUSTER)
+                          << "Received invalid response for shard count. Shard "
+                          << "distribution inaccurate: " << slice.toJson();
+                    }
+                  }
                   continue;
                 }
 

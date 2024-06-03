@@ -33,6 +33,7 @@ const internal = require('internal');
 const inspect = internal.inspect;
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
+const tu = require('@arangodb/testutils/test-utils');
 const cu = require('@arangodb/testutils/crash-utils');
 const AsciiTable = require('ascii-table');
 const yaml = require('js-yaml');
@@ -1148,4 +1149,23 @@ exports.analyze = {
   locateShortServerLife: locateShortServerLife,
   locateLongSetupTeardown: locateLongSetupTeardown,
   yaml: yamlDumpResults
+};
+exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
+  tu.CopyIntoObject(optionsDefaults, {
+    'testOutputDirectory': 'out',
+    'testXmlOutputDirectory': 'outXml',
+    'writeXmlReport': false,
+    'testFailureText': 'testfailures.txt',
+    'crashAnalysisText': 'testfailures.txt',
+  });
+
+  tu.CopyIntoList(optionsDocumentation, [
+    ' Test result reporting Options:',
+    '   - `testFailureText`: filename of the testsummary file',
+    '   - `crashAnalysisText`: output of debugger in case of crash',
+    '   - `testOutputDirectory`: set the output directory for testresults, defaults to `out`',
+    '   - `writeXmlReport`:  Write junit xml report files',
+    '   - `testXmlOutputDirectory`: set the output directory for xml testresults, defaults to `out`',
+    ''
+  ]);
 };

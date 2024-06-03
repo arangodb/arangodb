@@ -113,6 +113,16 @@ function CursorSyncAuthSuite () {
       userModule.grantCollection(users[0].username, '_system', cns[1], 'ro');
       userModule.grantCollection(users[1].username, '_system', cns[1], 'none');
 
+      // note: the wait time here is arbitrary. some wait time is
+      // necessary because we are creating the database and collection
+      // via one coordinator, but we will be querying it from a different
+      // coordinator in this test.
+      // the 2 seconds should normally be enough for the second coordinator
+      // to catch up and acknowledge the new database and collections.
+      // if we don't wait enough here, it is not guaranteed that the 
+      // second coordinator is already aware of the new database or
+      // collections, which can make the tests in here fail with spurious
+      // "database not found" or "collection or view not found" errors.
       require("internal").wait(2);
     },
 
@@ -137,30 +147,30 @@ function CursorSyncAuthSuite () {
       };
       let result = sendRequest(users[0], 'POST', url, query, true);
 
-      assertFalse(result === undefined || result === {});
-      assertFalse(result.error);
-      assertEqual(result.code, 201);
-      assertTrue(result.hasMore);
-      assertEqual(result.count, 4);
-      assertEqual(result.result.length, 2);
+      assertFalse(result === undefined || result === {}, result);
+      assertFalse(result.error, result);
+      assertEqual(result.code, 201, result);
+      assertTrue(result.hasMore, result);
+      assertEqual(result.count, 4, result);
+      assertEqual(result.result.length, 2, result);
 
       const cursorId = result.id;
       url = `${baseCursorUrl}/${cursorId}`;
       result = sendRequest(users[0], 'PUT', url, {}, false);
 
-      assertFalse(result === undefined || result === {});
-      assertFalse(result.error);
-      assertEqual(result.code, 200);
-      assertFalse(result.hasMore);
-      assertEqual(result.count, 4);
-      assertEqual(result.result.length, 2);
+      assertFalse(result === undefined || result === {}, result);
+      assertFalse(result.error, result);
+      assertEqual(result.code, 200, result);
+      assertFalse(result.hasMore, result);
+      assertEqual(result.count, 4, result);
+      assertEqual(result.result.length, 2, result);
 
       url = `${baseCursorUrl}/${cursorId}`;
       result = sendRequest(users[0], 'PUT', url, {}, false);
 
-      assertFalse(result === undefined || result === {});
-      assertTrue(result.error);
-      assertEqual(result.code, 404);
+      assertFalse(result === undefined || result === {}, result);
+      assertTrue(result.error, result);
+      assertEqual(result.code, 404, result);
     },
     
     testCursorForwardingSameUserBasicPost: function() {
@@ -175,30 +185,30 @@ function CursorSyncAuthSuite () {
       };
       let result = sendRequest(users[0], 'POST', url, query, true);
 
-      assertFalse(result === undefined || result === {});
-      assertFalse(result.error);
-      assertEqual(result.code, 201);
-      assertTrue(result.hasMore);
-      assertEqual(result.count, 4);
-      assertEqual(result.result.length, 2);
+      assertFalse(result === undefined || result === {}, result);
+      assertFalse(result.error, result);
+      assertEqual(result.code, 201, result);
+      assertTrue(result.hasMore, result);
+      assertEqual(result.count, 4, result);
+      assertEqual(result.result.length, 2, result);
 
       const cursorId = result.id;
       url = `${baseCursorUrl}/${cursorId}`;
       result = sendRequest(users[0], 'POST', url, {}, false);
 
-      assertFalse(result === undefined || result === {});
-      assertFalse(result.error);
-      assertEqual(result.code, 200);
-      assertFalse(result.hasMore);
-      assertEqual(result.count, 4);
-      assertEqual(result.result.length, 2);
+      assertFalse(result === undefined || result === {}, result);
+      assertFalse(result.error, result);
+      assertEqual(result.code, 200, result);
+      assertFalse(result.hasMore, result);
+      assertEqual(result.count, 4, result);
+      assertEqual(result.result.length, 2, result);
 
       url = `${baseCursorUrl}/${cursorId}`;
       result = sendRequest(users[0], 'POST', url, {}, false);
 
-      assertFalse(result === undefined || result === {});
-      assertTrue(result.error);
-      assertEqual(result.code, 404);
+      assertFalse(result === undefined || result === {}, result);
+      assertTrue(result.error, result);
+      assertEqual(result.code, 404, result);
     },
 
     testCursorForwardingSameUserDeletionPut: function() {
@@ -213,27 +223,27 @@ function CursorSyncAuthSuite () {
       };
       let result = sendRequest(users[0], 'POST', url, query, true);
 
-      assertFalse(result === undefined || result === {});
-      assertFalse(result.error);
-      assertEqual(result.code, 201);
-      assertTrue(result.hasMore);
-      assertEqual(result.count, 4);
-      assertEqual(result.result.length, 2);
+      assertFalse(result === undefined || result === {}, result);
+      assertFalse(result.error, result);
+      assertEqual(result.code, 201, result);
+      assertTrue(result.hasMore, result);
+      assertEqual(result.count, 4, result);
+      assertEqual(result.result.length, 2, result);
 
       const cursorId = result.id;
       url = `${baseCursorUrl}/${cursorId}`;
       result = sendRequest(users[0], 'DELETE', url, {}, false);
 
-      assertFalse(result === undefined || result === {});
-      assertFalse(result.error);
-      assertEqual(result.code, 202);
+      assertFalse(result === undefined || result === {}, result);
+      assertFalse(result.error, result);
+      assertEqual(result.code, 202, result);
 
       url = `${baseCursorUrl}/${cursorId}`;
       result = sendRequest(users[0], 'PUT', url, {}, false);
 
-      assertFalse(result === undefined || result === {});
-      assertTrue(result.error);
-      assertEqual(result.code, 404);
+      assertFalse(result === undefined || result === {}, result);
+      assertTrue(result.error, result);
+      assertEqual(result.code, 404, result);
     },
     
     testCursorForwardingSameUserDeletionPost: function() {
@@ -248,27 +258,27 @@ function CursorSyncAuthSuite () {
       };
       let result = sendRequest(users[0], 'POST', url, query, true);
 
-      assertFalse(result === undefined || result === {});
-      assertFalse(result.error);
-      assertEqual(result.code, 201);
-      assertTrue(result.hasMore);
-      assertEqual(result.count, 4);
-      assertEqual(result.result.length, 2);
+      assertFalse(result === undefined || result === {}, result);
+      assertFalse(result.error, result);
+      assertEqual(result.code, 201, result);
+      assertTrue(result.hasMore, result);
+      assertEqual(result.count, 4, result);
+      assertEqual(result.result.length, 2, result);
 
       const cursorId = result.id;
       url = `${baseCursorUrl}/${cursorId}`;
       result = sendRequest(users[0], 'DELETE', url, {}, false);
 
-      assertFalse(result === undefined || result === {});
-      assertFalse(result.error);
-      assertEqual(result.code, 202);
+      assertFalse(result === undefined || result === {}, result);
+      assertFalse(result.error, result);
+      assertEqual(result.code, 202, result);
 
       url = `${baseCursorUrl}/${cursorId}`;
       result = sendRequest(users[0], 'POST', url, {}, false);
 
-      assertFalse(result === undefined || result === {});
-      assertTrue(result.error);
-      assertEqual(result.code, 404);
+      assertFalse(result === undefined || result === {}, result);
+      assertTrue(result.error, result);
+      assertEqual(result.code, 404, result);
     },
 
     testCursorForwardingDifferentUserPut: function() {
@@ -283,27 +293,27 @@ function CursorSyncAuthSuite () {
       };
       let result = sendRequest(users[0], 'POST', url, query, true);
 
-      assertFalse(result === undefined || result === {});
-      assertFalse(result.error);
-      assertEqual(result.code, 201);
-      assertTrue(result.hasMore);
-      assertEqual(result.count, 4);
-      assertEqual(result.result.length, 2);
+      assertFalse(result === undefined || result === {}, result);
+      assertFalse(result.error, result);
+      assertEqual(result.code, 201, result);
+      assertTrue(result.hasMore, result);
+      assertEqual(result.count, 4, result);
+      assertEqual(result.result.length, 2, result);
 
       const cursorId = result.id;
       url = `${baseCursorUrl}/${cursorId}`;
       result = sendRequest(users[1], 'PUT', url, {}, false);
 
-      assertFalse(result === undefined || result === {});
-      assertTrue(result.error);
-      assertEqual(result.code, 404);
+      assertFalse(result === undefined || result === {}, result);
+      assertTrue(result.error, result);
+      assertEqual(result.code, 404, result);
 
       url = `${baseCursorUrl}/${cursorId}`;
       result = sendRequest(users[0], 'DELETE', url, {}, false);
 
-      assertFalse(result === undefined || result === {});
-      assertFalse(result.error);
-      assertEqual(result.code, 202);
+      assertFalse(result === undefined || result === {}, result);
+      assertFalse(result.error, result);
+      assertEqual(result.code, 202, result);
     },
     
     testCursorForwardingDifferentUserPost: function() {
@@ -318,27 +328,27 @@ function CursorSyncAuthSuite () {
       };
       let result = sendRequest(users[0], 'POST', url, query, true);
 
-      assertFalse(result === undefined || result === {});
-      assertFalse(result.error);
-      assertEqual(result.code, 201);
-      assertTrue(result.hasMore);
-      assertEqual(result.count, 4);
-      assertEqual(result.result.length, 2);
+      assertFalse(result === undefined || result === {}, result);
+      assertFalse(result.error, result);
+      assertEqual(result.code, 201, result);
+      assertTrue(result.hasMore, result);
+      assertEqual(result.count, 4, result);
+      assertEqual(result.result.length, 2, result);
 
       const cursorId = result.id;
       url = `${baseCursorUrl}/${cursorId}`;
       result = sendRequest(users[1], 'POST', url, {}, false);
 
-      assertFalse(result === undefined || result === {});
-      assertTrue(result.error);
-      assertEqual(result.code, 404);
+      assertFalse(result === undefined || result === {}, result);
+      assertTrue(result.error, result);
+      assertEqual(result.code, 404, result);
 
       url = `${baseCursorUrl}/${cursorId}`;
       result = sendRequest(users[0], 'DELETE', url, {}, false);
 
-      assertFalse(result === undefined || result === {});
-      assertFalse(result.error);
-      assertEqual(result.code, 202);
+      assertFalse(result === undefined || result === {}, result);
+      assertFalse(result.error, result);
+      assertEqual(result.code, 202, result);
     },
 
     testCursorForwardingDifferentUserDelete: function() {
@@ -353,27 +363,27 @@ function CursorSyncAuthSuite () {
       };
       let result = sendRequest(users[0], 'POST', url, query, true);
 
-      assertFalse(result === undefined || result === {});
-      assertFalse(result.error);
-      assertEqual(result.code, 201);
-      assertTrue(result.hasMore);
-      assertEqual(result.count, 4);
-      assertEqual(result.result.length, 2);
+      assertFalse(result === undefined || result === {}, result);
+      assertFalse(result.error, result);
+      assertEqual(result.code, 201, result);
+      assertTrue(result.hasMore, result);
+      assertEqual(result.count, 4, result);
+      assertEqual(result.result.length, 2, result);
 
       const cursorId = result.id;
       url = `${baseCursorUrl}/${cursorId}`;
       result = sendRequest(users[1], 'DELETE', url, {}, false);
 
-      assertFalse(result === undefined || result === {});
-      assertTrue(result.error);
-      assertEqual(result.code, 404);
+      assertFalse(result === undefined || result === {}, result);
+      assertTrue(result.error, result);
+      assertEqual(result.code, 404, result);
 
       url = `${baseCursorUrl}/${cursorId}`;
       result = sendRequest(users[0], 'DELETE', url, {}, false);
 
-      assertFalse(result === undefined || result === {});
-      assertFalse(result.error);
-      assertEqual(result.code, 202);
+      assertFalse(result === undefined || result === {}, result);
+      assertFalse(result.error, result);
+      assertEqual(result.code, 202, result);
     },
 
   };
