@@ -71,8 +71,6 @@ class NetworkFeature final : public ArangodFeature {
   void stop() override;
   void unprepare() override;
 
-  void cancelRetryRequests() noexcept;
-
   bool prepared() const noexcept;
 
   /// @brief global connection pool
@@ -108,6 +106,7 @@ class NetworkFeature final : public ArangodFeature {
                      std::unique_ptr<fuerte::Response>& res);
 
  private:
+  void cancelGarbageCollection() noexcept;
   void injectAcceptEncodingHeader(fuerte::Request& req) const;
   bool compressRequestBody(network::RequestOptions const& opts,
                            fuerte::Request& req) const;
