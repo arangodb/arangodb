@@ -50,7 +50,6 @@ struct LeasesReport;
 struct ManyServersLeasesReport;
 
 struct LeaseManager {
-
   enum GetType { LOCAL, ALL, MINE, FOR_SERVER };
 
   // Note: The Following two share the same properties.
@@ -96,6 +95,7 @@ struct LeaseManager {
   struct LeaseToRemoteGuard {
     LeaseToRemoteGuard(PeerState peer, LeaseId id, LeaseManager* mgr)
         : _peerState(std::move(peer)), _id{id}, _manager(mgr) {}
+
    public:
     ~LeaseToRemoteGuard();
 
@@ -139,32 +139,35 @@ struct LeaseManager {
     std::unordered_set<LeaseId> _list;
   };
 
-  LeaseManager(RebootTracker& rebootTracker, std::unique_ptr<ILeaseManagerNetworkHandler> networkHandler, Scheduler& scheduler);
+  LeaseManager(RebootTracker& rebootTracker,
+               std::unique_ptr<ILeaseManagerNetworkHandler> networkHandler,
+               Scheduler& scheduler);
 
   template<typename F>
-  [[nodiscard]] auto requireLease(PeerState const& requestFrom, std::function<std::string()> details, F&& onLeaseLost)
-      -> LeaseFromRemoteGuard {
+  [[nodiscard]] auto requireLease(PeerState const& requestFrom,
+                                  std::function<std::string()> details,
+                                  F&& onLeaseLost) -> LeaseFromRemoteGuard {
     static_assert(std::is_nothrow_invocable_r_v<void, F>,
                   "The abort method of a leaser must be noexcept");
     return requireLeaseInternal(
-        requestFrom,
-        std::move(details),
+        requestFrom, std::move(details),
         std::make_unique<LeaseEntry_Impl<F>>(std::forward<F>(onLeaseLost)));
   }
 
   template<typename F>
   [[nodiscard]] auto handoutLease(PeerState const& requestedBy, LeaseId leaseId,
                                   std::function<std::string()> details,
-                                  F&& onLeaseLost) -> ResultT<LeaseToRemoteGuard> {
+                                  F&& onLeaseLost)
+      -> ResultT<LeaseToRemoteGuard> {
     static_assert(std::is_nothrow_invocable_r_v<void, F>,
                   "The abort method of a leaser must be noexcept");
     return handoutLeaseInternal(
-        requestedBy, leaseId,
-        std::move(details),
+        requestedBy, leaseId, std::move(details),
         std::make_unique<LeaseEntry_Impl<F>>(std::forward<F>(onLeaseLost)));
   }
 
-  auto reportLeases(GetType getType, std::optional<ServerID> forServer) const -> ManyServersLeasesReport;
+  auto reportLeases(GetType getType, std::optional<ServerID> forServer) const
+      -> ManyServersLeasesReport;
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   // Get Access to the NetworkHandler for Mocking
@@ -187,13 +190,17 @@ struct LeaseManager {
 
   auto sendAbortRequestsForAbandonedLeases() noexcept -> void;
 
-  auto returnLeaseFromRemote(PeerState const& peerState, LeaseId const& leaseId) noexcept -> void;
+  auto returnLeaseFromRemote(PeerState const& peerState,
+                             LeaseId const& leaseId) noexcept -> void;
 
-  auto cancelLeaseFromRemote(PeerState const& peerState, LeaseId const& leaseId) noexcept -> void;
+  auto cancelLeaseFromRemote(PeerState const& peerState,
+                             LeaseId const& leaseId) noexcept -> void;
 
-  auto returnLeaseToRemote(PeerState const& peerState, LeaseId const& leaseId) noexcept -> void;
+  auto returnLeaseToRemote(PeerState const& peerState,
+                           LeaseId const& leaseId) noexcept -> void;
 
-  auto cancelLeaseToRemote(PeerState const& peerState, LeaseId const& leaseId) noexcept -> void;
+  auto cancelLeaseToRemote(PeerState const& peerState,
+                           LeaseId const& leaseId) noexcept -> void;
 
   auto prepareLocalReport(std::optional<ServerID> onlyForServer) const noexcept
       -> LeasesReport;
@@ -203,9 +210,10 @@ struct LeaseManager {
   std::unique_ptr<ILeaseManagerNetworkHandler> _networkHandler;
   Scheduler& _scheduler;
 
-  // NOTE: The two lists of leases are using more or less the same implementation
-  // We only added this differentiation, so we can easier inspect if the local server
-  // was provider or consumer of the lease, and avoid confusion or misuse of the API.
+  // NOTE: The two lists of leases are using more or less the same
+  // implementation We only added this differentiation, so we can easier inspect
+  // if the local server was provider or consumer of the lease, and avoid
+  // confusion or misuse of the API.
   struct OpenLeases {
     std::unordered_map<PeerState, LeaseListOfPeer> list;
   };
@@ -214,20 +222,21 @@ struct LeaseManager {
   struct OpenHandouts {
     std::unordered_map<PeerState, LeaseListOfPeer> list;
 
-    // We keep a list of all LeaseIds for a server that were aborted before they exist.
-    // Most likely this will stay empty most of the time, but it is important to
-    // protect against the race.
+    // We keep a list of all LeaseIds for a server that were aborted before they
+    // exist. Most likely this will stay empty most of the time, but it is
+    // important to protect against the race.
     std::unordered_map<PeerState, GraveyardOfPeer> graveyard;
 
-    void registerTombstone(PeerState const& server, LeaseId id, LeaseManager& mgr);
+    void registerTombstone(PeerState const& server, LeaseId id,
+                           LeaseManager& mgr);
   };
   Guarded<OpenHandouts> _leasedToRemotePeers;
 
   // NOTE: We do not use the RebootID here.
-  // We guarantee that the LeaseId is unique to our Local ServerID/RebootID combination
-  // Hence we can safely abort all LeaseIds for a given ServerID, regardless if the server
-  // has rebooted or not. This is also important if the Server was just disconnected and
-  // got injected a new RebootID.
+  // We guarantee that the LeaseId is unique to our Local ServerID/RebootID
+  // combination Hence we can safely abort all LeaseIds for a given ServerID,
+  // regardless if the server has rebooted or not. This is also important if the
+  // Server was just disconnected and got injected a new RebootID.
   struct LeasesToAbort {
     struct LeasePair {
       std::vector<LeaseId> leasedFrom;

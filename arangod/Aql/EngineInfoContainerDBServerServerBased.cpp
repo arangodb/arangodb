@@ -304,8 +304,8 @@ bool EngineInfoContainerDBServerServerBased::isNotSatelliteLeader(
 //   the DBServers will clean up their snippets after a TTL.
 Result EngineInfoContainerDBServerServerBased::buildEngines(
     std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
-    std::shared_ptr<QueryAborter> queryAborter,
-    MapRemoteToSnippet& snippetIds, aql::ServerQueryIdList& serverToQueryId,
+    std::shared_ptr<QueryAborter> queryAborter, MapRemoteToSnippet& snippetIds,
+    aql::ServerQueryIdList& serverToQueryId,
     std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases) {
   TRI_ASSERT(serverToQueryId.empty());
 
@@ -342,8 +342,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
         }
       });
 
-  NetworkFeature& nf =
-      _query.vocbase().server().getFeature<NetworkFeature>();
+  NetworkFeature& nf = _query.vocbase().server().getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
   if (pool == nullptr) {
     // nullptr only happens on controlled shutdown
@@ -420,7 +419,10 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   for (ServerID const& server : dbServers) {
     auto const& alive = rebootIds.find(server);
     if (alive == rebootIds.end()) {
-      return {TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE, fmt::format("The required server {} is not known to this coordinator", server)};
+      return {
+          TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
+          fmt::format("The required server {} is not known to this coordinator",
+                      server)};
     }
 
     PeerState peerState{.serverId = server, .rebootId = alive->second.rebootId};

@@ -431,8 +431,8 @@ Result GraphManager::applyOnAllGraphs(
   options.skipAudit = true;
 
   auto queryFuture = arangodb::aql::runStandaloneAqlQuery(
-      _vocbase, _operationOrigin, aql::QueryString(queryStr),
-      nullptr, std::move(options));
+      _vocbase, _operationOrigin, aql::QueryString(queryStr), nullptr,
+      std::move(options));
   auto queryResult = std::move(queryFuture.get());
 
   if (queryResult.result.fail()) {

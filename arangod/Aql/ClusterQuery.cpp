@@ -204,7 +204,8 @@ void ClusterQuery::prepareFromVelocyPack(
     auto plan = ExecutionPlan::instantiateFromVelocyPack(_ast.get(), snippet);
     TRI_ASSERT(plan != nullptr);
 
-    ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters, queryAborter);
+    ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters,
+                                         queryAborter);
     _plans.push_back(std::move(plan));
   };
 

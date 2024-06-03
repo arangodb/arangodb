@@ -203,8 +203,7 @@ Cursor* CursorRepository::createQueryStream(
   }
 
   auto cursor = std::make_unique<aql::QueryStreamCursor>(
-      std::move(q), batchSize, ttl, isRetriable, operationOrigin,
-      aborter);
+      std::move(q), batchSize, ttl, isRetriable, operationOrigin, aborter);
   cursor->use();
 
   return addCursor(std::move(cursor));

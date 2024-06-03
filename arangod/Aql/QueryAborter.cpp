@@ -37,11 +37,12 @@ void QueryAborter::abort() noexcept {
     if (auto q = _query.lock(); q != nullptr) {
       // Query is not yet garbage collected, we can use it
       LOG_DEVEL << "Query is still live " << q->id() << " now aborting it";
-      q->sharedState()->executeAndWakeup([q] () noexcept {
+      q->sharedState()->executeAndWakeup([q]() noexcept {
         try {
           q->kill();
         } catch (...) {
-          LOG_DEVEL << "Threw an error when trying to kill a query to abort it.";
+          LOG_DEVEL
+              << "Threw an error when trying to kill a query to abort it.";
         }
         return true;
       });
@@ -49,6 +50,4 @@ void QueryAborter::abort() noexcept {
   }
 }
 
-bool QueryAborter::wasAborted() const noexcept {
-  return _wasAborted.load();
-}
+bool QueryAborter::wasAborted() const noexcept { return _wasAborted.load(); }

@@ -142,7 +142,8 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   void prepareQuery(std::shared_ptr<QueryAborter> queryAborter);
 
   /// @brief execute an AQL query
-  ExecutionState execute(std::shared_ptr<QueryAborter> aborter, QueryResult& res);
+  ExecutionState execute(std::shared_ptr<QueryAborter> aborter,
+                         QueryResult& res);
 
   /// @brief execute an AQL query and block this thread in case we
   ///        need to wait.
@@ -151,7 +152,8 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 #ifdef USE_V8
   /// @brief execute an AQL query
   /// may only be called with an active V8 handle scope
-  QueryResultV8 executeV8(v8::Isolate* isolate, std::shared_ptr<QueryAborter> aborter);
+  QueryResultV8 executeV8(v8::Isolate* isolate,
+                          std::shared_ptr<QueryAborter> aborter);
 #endif
 
   /// @brief Enter finalization phase and do cleanup.

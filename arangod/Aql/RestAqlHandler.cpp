@@ -356,8 +356,7 @@ futures::Future<futures::Unit> RestAqlHandler::setupClusterQuery() {
   q->prepareFromVelocyPack(querySlice, collectionBuilder.slice(),
                            variablesSlice, snippetsSlice, traverserSlice,
                            _request->value(StaticStrings::UserString),
-                           answerBuilder, analyzersRevision, fastPath,
-                           aborter);
+                           answerBuilder, analyzersRevision, fastPath, aborter);
 
   answerBuilder.close();  // result
   answerBuilder.close();
@@ -388,29 +387,36 @@ futures::Future<futures::Unit> RestAqlHandler::setupClusterQuery() {
     if (auto leaseSlice = querySlice.get("leaseId"); leaseSlice.isNumber()) {
       cluster::LeaseId leaseId{leaseSlice.getNumber<uint64_t>()};
 
-      LOG_DEVEL << "Register Query: " << q->id() << " with lease " << leaseId.id() << " using colls: " << q->collectionNames();
+      LOG_DEVEL << "Register Query: " << q->id() << " with lease "
+                << leaseId.id() << " using colls: " << q->collectionNames();
       auto res =
-          server().getFeature<cluster::LeaseManagerFeature>().leaseManager().handoutLease(
-              PeerState{.serverId = coordinatorId, .rebootId = rebootId}, leaseId,
-              [query = std::weak_ptr(q)]() noexcept -> std::string {
-                if (auto q = query.lock(); q) {
-                  return fmt::format(
-                      "Query {} of transaction {} in database {} query: '{}'",
-                      q->id(), q->transactionId().id(), q->vocbase().name(),
-                      q->queryString().string());
-                }
-                return fmt::format("Already aborted query.");
-              },
-              [queryRegistry = _queryRegistry, vocbaseName = _vocbase.name(),
-               queryId = q->id()]() noexcept {
-                LOG_DEVEL << "EXPECTO ABORTUM!! " << queryId;
-                queryRegistry->destroyQuery(queryId,
-                                            TRI_ERROR_TRANSACTION_ABORTED);
-                LOG_TOPIC("42511", DEBUG, Logger::AQL)
-                    << "Query snippet destroyed as consequence of "
-                       "RebootTracker for coordinator, db="
-                    << vocbaseName << " queryId=" << queryId;
-              });
+          server()
+              .getFeature<cluster::LeaseManagerFeature>()
+              .leaseManager()
+              .handoutLease(
+                  PeerState{.serverId = coordinatorId, .rebootId = rebootId},
+                  leaseId,
+                  [query = std::weak_ptr(q)]() noexcept -> std::string {
+                    if (auto q = query.lock(); q) {
+                      return fmt::format(
+                          "Query {} of transaction {} in database {} query: "
+                          "'{}'",
+                          q->id(), q->transactionId().id(), q->vocbase().name(),
+                          q->queryString().string());
+                    }
+                    return fmt::format("Already aborted query.");
+                  },
+                  [queryRegistry = _queryRegistry,
+                   vocbaseName = _vocbase.name(),
+                   queryId = q->id()]() noexcept {
+                    LOG_DEVEL << "EXPECTO ABORTUM!! " << queryId;
+                    queryRegistry->destroyQuery(queryId,
+                                                TRI_ERROR_TRANSACTION_ABORTED);
+                    LOG_TOPIC("42511", DEBUG, Logger::AQL)
+                        << "Query snippet destroyed as consequence of "
+                           "RebootTracker for coordinator, db="
+                        << vocbaseName << " queryId=" << queryId;
+                  });
       if (res.fail()) {
         generateError(res.result());
         co_return;

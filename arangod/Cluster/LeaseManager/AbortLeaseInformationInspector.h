@@ -33,4 +33,4 @@ auto inspect(Inspector& f, AbortLeaseInformation& x) {
                             f.field("leasedTo", x.leasedTo));
 }
 
-}
+}  // namespace arangodb::cluster

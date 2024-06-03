@@ -176,7 +176,8 @@ void StatisticsWorker::collectGarbage(std::string const& name,
   options.cache = false;
   options.skipAudit = true;
   auto queryFuture = arangodb::aql::runStandaloneAqlQuery(
-      _vocbase, origin, aql::QueryString(::garbageCollectionQuery), _bindVars, std::move(options));
+      _vocbase, origin, aql::QueryString(::garbageCollectionQuery), _bindVars,
+      std::move(options));
   auto queryResult = std::move(queryFuture.get());
 
   if (queryResult.result.fail()) {

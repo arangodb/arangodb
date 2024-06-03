@@ -120,7 +120,8 @@ class QueryContext {
     _numRequests.fetch_add(i, std::memory_order_relaxed);
   }
 
-  void addLeaseFromRemoteGuard(cluster::LeaseManager::LeaseFromRemoteGuard&& guard);
+  void addLeaseFromRemoteGuard(
+      cluster::LeaseManager::LeaseFromRemoteGuard&& guard);
   void addLeaseToRemoteGuard(cluster::LeaseManager::LeaseToRemoteGuard&& guard);
 
   virtual QueryOptions const& queryOptions() const = 0;

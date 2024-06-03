@@ -35,4 +35,4 @@ struct AbortLeaseInformation {
   std::vector<LeaseId> leasedTo;
 };
 
-}
+}  // namespace arangodb::cluster

@@ -36,8 +36,7 @@ using namespace arangodb::cluster;
 LeaseManager::LeaseFromRemoteGuard::LeaseFromRemoteGuard(PeerState peer,
                                                          LeaseId id,
                                                          LeaseManager* mgr)
-    : _peerState(std::move(peer)), _id{id}, _manager(mgr) {
-}
+    : _peerState(std::move(peer)), _id{id}, _manager(mgr) {}
 
 LeaseManager::LeaseFromRemoteGuard::~LeaseFromRemoteGuard() {
   if (_manager != nullptr) {
@@ -53,7 +52,6 @@ auto LeaseManager::LeaseFromRemoteGuard::cancel() const noexcept -> void {
   }
 }
 
-
 LeaseManager::LeaseToRemoteGuard::~LeaseToRemoteGuard() {
   if (_manager != nullptr) {
     _manager->returnLeaseToRemote(_peerState, _id);
@@ -68,10 +66,13 @@ auto LeaseManager::LeaseToRemoteGuard::cancel() const noexcept -> void {
   }
 }
 
-void LeaseManager::OpenHandouts::registerTombstone(PeerState const& server, LeaseId id, LeaseManager& mgr) {
+void LeaseManager::OpenHandouts::registerTombstone(PeerState const& server,
+                                                   LeaseId id,
+                                                   LeaseManager& mgr) {
   if (auto tombIt = graveyard.find(server); tombIt == graveyard.end()) {
     // Server not yet in Graveyard, add it.
-    // Note: If the server already rebooted callMeOnChange will be triggered directly.
+    // Note: If the server already rebooted callMeOnChange will be triggered
+    // directly.
     auto undertaker = mgr._rebootTracker.callMeOnChange(
         server,
         [&, server = server]() {
@@ -82,9 +83,8 @@ void LeaseManager::OpenHandouts::registerTombstone(PeerState const& server, Leas
         },
         "Let the undertaker clear the graveyard.");
     auto tombIt2 = graveyard.emplace(
-        server,
-        GraveyardOfPeer{._serverAbortCallback{std::move(undertaker)},
-                        ._list{id}});
+        server, GraveyardOfPeer{._serverAbortCallback{std::move(undertaker)},
+                                ._list{id}});
     TRI_ASSERT(tombIt2.second) << "Failed to register new peer state";
   } else {
     // Just add the ID to the graveyard.
@@ -109,9 +109,9 @@ auto LeaseManager::requireLeaseInternal(PeerState const& requestFrom,
                                         std::function<std::string()> details,
                                         std::unique_ptr<LeaseEntry> leaseEntry)
     -> LeaseFromRemoteGuard {
-  // NOTE: In theory _nextLeaseId can overflow here, but that should never be a problem.
-  // if we ever reach that point without restarting the server, it is highly unlikely that
-  // we still have handed out low number leases.
+  // NOTE: In theory _nextLeaseId can overflow here, but that should never be a
+  // problem. if we ever reach that point without restarting the server, it is
+  // highly unlikely that we still have handed out low number leases.
 
   auto id = LeaseId{_lastUsedLeaseId++};
   _leasedFromRemotePeers.doUnderLock([&](auto& guarded) {
@@ -229,7 +229,6 @@ auto LeaseManager::handoutLeaseInternal(PeerState const& requestedBy,
 auto LeaseManager::reportLeases(GetType type,
                                 std::optional<ServerID> forServer) const
     -> ManyServersLeasesReport {
-
   TRI_ASSERT(forServer.has_value() || type != FOR_SERVER)
       << "We can only filter for a Server, if we use the FOR_SERVER type";
   switch (type) {
@@ -261,14 +260,17 @@ auto LeaseManager::reportLeases(GetType type,
   ADB_PROD_ASSERT(false) << "Reached unreachable code";
 }
 
-auto LeaseManager::returnLeaseFromRemote(PeerState const& peerState, LeaseId const& leaseId) noexcept -> void {
+auto LeaseManager::returnLeaseFromRemote(PeerState const& peerState,
+                                         LeaseId const& leaseId) noexcept
+    -> void {
   bool addLeaseToAbort = false;
   _leasedFromRemotePeers.doUnderLock([&](auto& guard) {
     auto& list = guard.list;
     if (auto it = list.find(peerState); it != list.end()) {
       // The lease may already be removed, e.g. by RebootTracker.
       // So we do not really care if it is removed from this list here or not.
-      if (auto lease = it->second._mapping.find(leaseId); lease != it->second._mapping.end()) {
+      if (auto lease = it->second._mapping.find(leaseId);
+          lease != it->second._mapping.end()) {
         // We should abort the Guard here.
         // We returned our lease no need to tell us to abort;
         lease->second->entry->abort();
@@ -298,13 +300,16 @@ auto LeaseManager::returnLeaseFromRemote(PeerState const& peerState, LeaseId con
   sendAbortRequestsForAbandonedLeases();
 }
 
-auto LeaseManager::cancelLeaseFromRemote(PeerState const& peerState, LeaseId const& leaseId) noexcept -> void {
+auto LeaseManager::cancelLeaseFromRemote(PeerState const& peerState,
+                                         LeaseId const& leaseId) noexcept
+    -> void {
   _leasedFromRemotePeers.doUnderLock([&](auto& guard) {
     auto& list = guard.list;
     if (auto it = list.find(peerState); it != list.end()) {
       // The lease may already be removed, e.g. by RebootTracker.
       // So we do not really care if it is removed from this list here or not.
-      if (auto it2 = it->second._mapping.find(leaseId); it2 != it->second._mapping.end()) {
+      if (auto it2 = it->second._mapping.find(leaseId);
+          it2 != it->second._mapping.end()) {
         it2->second->entry->abort();
         // Now delete the lease from the list.
         // To avoid calling remote about abortion.
@@ -315,14 +320,17 @@ auto LeaseManager::cancelLeaseFromRemote(PeerState const& peerState, LeaseId con
   });
 }
 
-auto LeaseManager::returnLeaseToRemote(PeerState const& peerState, LeaseId const& leaseId) noexcept -> void {
+auto LeaseManager::returnLeaseToRemote(PeerState const& peerState,
+                                       LeaseId const& leaseId) noexcept
+    -> void {
   bool addLeaseToAbort = false;
   _leasedToRemotePeers.doUnderLock([&](auto& guard) {
     auto& list = guard.list;
     if (auto it = list.find(peerState); it != list.end()) {
       // The lease may already be removed, e.g. by RebootTracker.
       // So we do not really care if it is removed from this list here or not.
-      if (auto lease = it->second._mapping.find(leaseId); lease != it->second._mapping.end()) {
+      if (auto lease = it->second._mapping.find(leaseId);
+          lease != it->second._mapping.end()) {
         // We should abort the Guard here.
         // We returned our lease no need to tell us to abort;
         lease->second->entry->abort();
@@ -352,13 +360,16 @@ auto LeaseManager::returnLeaseToRemote(PeerState const& peerState, LeaseId const
   sendAbortRequestsForAbandonedLeases();
 }
 
-auto LeaseManager::cancelLeaseToRemote(PeerState const& peerState, LeaseId const& leaseId) noexcept -> void {
+auto LeaseManager::cancelLeaseToRemote(PeerState const& peerState,
+                                       LeaseId const& leaseId) noexcept
+    -> void {
   _leasedToRemotePeers.doUnderLock([&](auto& guard) {
     auto& list = guard.list;
     if (auto it = list.find(peerState); it != list.end()) {
       // The lease may already be removed, e.g. by RebootTracker.
       // So we do not really care if it is removed from this list here or not.
-      if (auto it2 = it->second._mapping.find(leaseId); it2 != it->second._mapping.end()) {
+      if (auto it2 = it->second._mapping.find(leaseId);
+          it2 != it->second._mapping.end()) {
         it2->second->entry->abort();
         // Now delete the lease from the list.
         // To avoid calling remote about abortion.
@@ -377,30 +388,33 @@ auto LeaseManager::sendAbortRequestsForAbandonedLeases() noexcept -> void {
   _leasesToAbort.doUnderLock(
       [&](auto& guarded) { std::swap(guarded.abortList, abortList); });
   for (auto const& [serverId, leasePair] : abortList) {
-    // NOTE: We intentionally copy the leaseIds list here, as we probably need to
-    // add it again locally it in case of an error.
+    // NOTE: We intentionally copy the leaseIds list here, as we probably need
+    // to add it again locally it in case of an error.
     futures.emplace_back(
-        _networkHandler->abortIds(serverId, leasePair.leasedFrom, leasePair.leasedTo)
+        _networkHandler
+            ->abortIds(serverId, leasePair.leasedFrom, leasePair.leasedTo)
             .thenValue([&](Result res) {
               if (!res.ok()) {
-        // TODO: Abort if server is permanently gone!
-        // TODO: Log?
-        // We failed to send the abort request, we should try again later.
-        // So let us push the leases back into the list.
-        _leasesToAbort.doUnderLock([&](auto& guarded) {
-          auto& insertPair = guarded.abortList[serverId];
-          insertPair.leasedFrom.insert(insertPair.leasedFrom.end(),
-                                       leasePair.leasedFrom.begin(),
-                                       leasePair.leasedFrom.end());
-          insertPair.leasedTo.insert(insertPair.leasedTo.end(),
-                                     leasePair.leasedTo.begin(),
-                                     leasePair.leasedTo.end());
-        });
-      }
-      // else: We successfully aborted the open IDs. Forget about them now.
-    }));
+                // TODO: Abort if server is permanently gone!
+                // TODO: Log?
+                // We failed to send the abort request, we should try again
+                // later. So let us push the leases back into the list.
+                _leasesToAbort.doUnderLock([&](auto& guarded) {
+                  auto& insertPair = guarded.abortList[serverId];
+                  insertPair.leasedFrom.insert(insertPair.leasedFrom.end(),
+                                               leasePair.leasedFrom.begin(),
+                                               leasePair.leasedFrom.end());
+                  insertPair.leasedTo.insert(insertPair.leasedTo.end(),
+                                             leasePair.leasedTo.begin(),
+                                             leasePair.leasedTo.end());
+                });
+              }
+              // else: We successfully aborted the open IDs. Forget about them
+              // now.
+            }));
   }
-  // Wait on futures outside the lock, as the futures themselves will lock the guarded structure.
+  // Wait on futures outside the lock, as the futures themselves will lock the
+  // guarded structure.
   futures::collectAll(futures.begin(), futures.end()).get();
 }
 
@@ -411,12 +425,16 @@ auto LeaseManager::abortLeasesForServer(AbortLeaseInformation info) noexcept
     if (it != list.list.end()) {
       for (auto const& id : info.leasedTo) {
         // Try to erase the ID from the list.
-        // Do not put the ID on the abort list, the remote server just told us to remove it.
+        // Do not put the ID on the abort list, the remote server just told us
+        // to remove it.
         auto entry = it->second._mapping.find(id);
         if (entry != it->second._mapping.end()) {
-          _scheduler.queue(RequestLane::CLUSTER_INTERNAL, [lease = std::move(entry->second->entry)]() {
-            // This Callback is okay to be empty, we only need the lease to go out of scope and call the destructor.
-          });
+          _scheduler.queue(RequestLane::CLUSTER_INTERNAL,
+                           [lease = std::move(entry->second->entry)]() {
+                             // This Callback is okay to be empty, we only need
+                             // the lease to go out of scope and call the
+                             // destructor.
+                           });
           it->second._mapping.erase(entry);
         } else {
           // Rare case: Element Aborted that does not yet exist.
@@ -438,12 +456,16 @@ auto LeaseManager::abortLeasesForServer(AbortLeaseInformation info) noexcept
     if (it != list.list.end()) {
       for (auto const& id : info.leasedFrom) {
         // Try to erase the ID from the list.
-        // Do not put the ID on the abort list, the remote server just told us to remove it.
+        // Do not put the ID on the abort list, the remote server just told us
+        // to remove it.
         auto entry = it->second._mapping.find(id);
         if (entry != it->second._mapping.end()) {
-          _scheduler.queue(RequestLane::CLUSTER_INTERNAL, [lease = std::move(entry->second->entry)]() {
-            // This Callback is okay to be empty, we only need the lease to go out of scope and call the destructor.
-          });
+          _scheduler.queue(RequestLane::CLUSTER_INTERNAL,
+                           [lease = std::move(entry->second->entry)]() {
+                             // This Callback is okay to be empty, we only need
+                             // the lease to go out of scope and call the
+                             // destructor.
+                           });
           it->second._mapping.erase(entry);
         }
         // NOTE: We do not need tombstone handling here.
@@ -453,7 +475,8 @@ auto LeaseManager::abortLeasesForServer(AbortLeaseInformation info) noexcept
   });
 }
 
-auto LeaseManager::prepareLocalReport(std::optional<ServerID> onlyForServer) const noexcept -> LeasesReport {
+auto LeaseManager::prepareLocalReport(
+    std::optional<ServerID> onlyForServer) const noexcept -> LeasesReport {
   LeasesReport report;
   {
     _leasedFromRemotePeers.doUnderLock([&report](auto& guarded) {
@@ -463,9 +486,11 @@ auto LeaseManager::prepareLocalReport(std::optional<ServerID> onlyForServer) con
           entries.emplace_back(
               fmt::format("{} -> {}", id.id(), entry->details()));
         }
-        std::string peerString = fmt::format("{}:{}", peerState.serverId,
-                                             basics::StringUtils::itoa(peerState.rebootId.value()));
-        report.leasesFromRemote.emplace(std::move(peerString), std::move(entries));
+        std::string peerString =
+            fmt::format("{}:{}", peerState.serverId,
+                        basics::StringUtils::itoa(peerState.rebootId.value()));
+        report.leasesFromRemote.emplace(std::move(peerString),
+                                        std::move(entries));
       }
     });
   }
@@ -477,9 +502,11 @@ auto LeaseManager::prepareLocalReport(std::optional<ServerID> onlyForServer) con
           entries.emplace_back(
               fmt::format("{} -> {}", id.id(), entry->details()));
         }
-        std::string peerString = fmt::format("{}:{}", peerState.serverId,
-                                             basics::StringUtils::itoa(peerState.rebootId.value()));
-        report.leasesToRemote.emplace(std::move(peerString), std::move(entries));
+        std::string peerString =
+            fmt::format("{}:{}", peerState.serverId,
+                        basics::StringUtils::itoa(peerState.rebootId.value()));
+        report.leasesToRemote.emplace(std::move(peerString),
+                                      std::move(entries));
       }
     });
   }

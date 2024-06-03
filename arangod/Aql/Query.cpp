@@ -523,7 +523,8 @@ void Query::prepareQuery(std::shared_ptr<QueryAborter> queryAborter) {
 
     // simon: assumption is _queryString is empty for DBServer snippets
     bool const planRegisters = !_queryString.empty();
-    ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters, queryAborter);
+    ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters,
+                                         queryAborter);
 
     _plans.push_back(std::move(plan));
 
@@ -884,7 +885,8 @@ QueryResult Query::executeSync(std::shared_ptr<QueryAborter> aborter) {
 
 #ifdef USE_V8
 // execute an AQL query: may only be called with an active V8 handle scope
-QueryResultV8 Query::executeV8(v8::Isolate* isolate, std::shared_ptr<QueryAborter> aborter) {
+QueryResultV8 Query::executeV8(v8::Isolate* isolate,
+                               std::shared_ptr<QueryAborter> aborter) {
   LOG_TOPIC("6cac7", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime) << " Query::executeV8"
       << " this: " << (uintptr_t)this;
@@ -2126,7 +2128,8 @@ void Query::prepareFromVelocyPack(
     auto plan = ExecutionPlan::instantiateFromVelocyPack(_ast.get(), snippet);
     TRI_ASSERT(plan != nullptr);
 
-    ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters, queryAborter);
+    ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters,
+                                         queryAborter);
     _plans.push_back(std::move(plan));
   };
 

@@ -40,4 +40,3 @@ struct QueryAborter {
   std::atomic<bool> _wasAborted{false};
 };
 }  // namespace arangodb::aql
-

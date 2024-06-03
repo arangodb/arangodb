@@ -27,7 +27,7 @@
 namespace arangodb::cluster {
 
 struct LeaseEntry {
-  virtual  ~LeaseEntry() = default;
+  virtual ~LeaseEntry() = default;
   // These are on purpose named differently then ScopeGuard
   // methods to avoid name confusions.
   virtual auto invoke() noexcept -> void = 0;
@@ -46,4 +46,4 @@ template<class Inspector>
 auto inspect(Inspector& f, LeaseEntry& x) {
   return f.object(x).fields();
 }
-}
+}  // namespace arangodb::cluster

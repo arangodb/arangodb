@@ -62,7 +62,8 @@ LeaseManagerRestHandler::LeaseManagerRestHandler(ArangodServer& server,
                                                  GeneralRequest* request,
                                                  GeneralResponse* response,
                                                  LeaseManager* leaseManager)
-    : RestBaseHandler(server, request, response), _leaseManager(*leaseManager) {}
+    : RestBaseHandler(server, request, response),
+      _leaseManager(*leaseManager) {}
 
 RestStatus LeaseManagerRestHandler::execute() {
   switch (request()->requestType()) {

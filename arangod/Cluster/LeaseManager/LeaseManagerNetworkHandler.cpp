@@ -102,8 +102,7 @@ auto collectLeaseReportForPeerServer(ClusterInfo& ci,
 }  // namespace
 
 LeaseManagerNetworkHandler::LeaseManagerNetworkHandler(
-    network::ConnectionPool* pool,
-    ClusterInfo& ci)
+    network::ConnectionPool* pool, ClusterInfo& ci)
     : _pool{pool}, _clusterInfo{ci} {}
 
 auto LeaseManagerNetworkHandler::abortIds(
@@ -140,7 +139,6 @@ auto LeaseManagerNetworkHandler::abortIds(
   });
 }
 
-
 auto LeaseManagerNetworkHandler::collectFullLeaseReport() const noexcept
     -> futures::Future<ManyServersLeasesReport> {
   co_return co_await collectLeaseReportForPeerServer(_clusterInfo, _pool, "");
@@ -149,5 +147,6 @@ auto LeaseManagerNetworkHandler::collectFullLeaseReport() const noexcept
 auto LeaseManagerNetworkHandler::collectLeaseReportForServer(
     ServerID const& onlyShowServer) const noexcept
     -> futures::Future<ManyServersLeasesReport> {
-  co_return co_await collectLeaseReportForPeerServer(_clusterInfo, _pool, onlyShowServer);
+  co_return co_await collectLeaseReportForPeerServer(_clusterInfo, _pool,
+                                                     onlyShowServer);
 }

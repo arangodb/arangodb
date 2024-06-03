@@ -626,8 +626,7 @@ Result visitAnalyzers(TRI_vocbase_t& vocbase,
   }
 
   auto queryFuture = arangodb::aql::runStandaloneAqlQuery(
-      vocbase, operationOrigin, aql::QueryString(queryString),
-      nullptr);
+      vocbase, operationOrigin, aql::QueryString(queryString), nullptr);
   auto result = std::move(queryFuture.get());
 
   if (TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == result.result.errorNumber()) {

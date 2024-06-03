@@ -35,9 +35,7 @@ namespace cluster {
 
 class LeaseManagerFeature final : public ArangodFeature {
  public:
-
-  LeaseManagerFeature(Server& server,
-                      ClusterFeature& clusterFeature,
+  LeaseManagerFeature(Server& server, ClusterFeature& clusterFeature,
                       NetworkFeature& networkFeature,
                       SchedulerFeature& schedulerFeature);
 
@@ -53,5 +51,5 @@ class LeaseManagerFeature final : public ArangodFeature {
   SchedulerFeature& _schedulerFeature;
 };
 
-}
-}
+}  // namespace cluster
+}  // namespace arangodb

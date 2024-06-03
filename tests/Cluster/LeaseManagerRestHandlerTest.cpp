@@ -58,7 +58,6 @@ struct MockLeaseManagerNetworkHandler : public ILeaseManagerNetworkHandler {
 }  // namespace
 
 class LeaseManagerRestHandlerTest : public ::testing::Test {
-
   struct LeaseResponse {
     VPackSlice leasedFromRemote;
     VPackSlice leasedToRemote;
@@ -155,15 +154,19 @@ class LeaseManagerRestHandlerTest : public ::testing::Test {
     EXPECT_FALSE(response.get("error").getBool());
 
     auto result = response.get("result");
-    EXPECT_TRUE(result.isObject()) << "Did not respond with a result entry of type object";
+    EXPECT_TRUE(result.isObject())
+        << "Did not respond with a result entry of type object";
     EXPECT_TRUE(result.hasKey(myId));
     result = result.get(myId);
-    EXPECT_TRUE(result.isObject()) << "Did not respond with a result entry of type object for this server";
+    EXPECT_TRUE(result.isObject())
+        << "Did not respond with a result entry of type object for this server";
 
     auto leasedFromRemote = result.get("leasedFromRemote");
-    EXPECT_TRUE(leasedFromRemote.isObject()) << "Did not respond with a leasedFromRemote entry of type object";
+    EXPECT_TRUE(leasedFromRemote.isObject())
+        << "Did not respond with a leasedFromRemote entry of type object";
     auto leasedToRemote = result.get("leasedToRemote");
-    EXPECT_TRUE(leasedToRemote.isObject()) << "Did not respond with a leasedToRemote entry of type object";
+    EXPECT_TRUE(leasedToRemote.isObject())
+        << "Did not respond with a leasedToRemote entry of type object";
     return {.leasedFromRemote = leasedFromRemote,
             .leasedToRemote = leasedToRemote};
   }
@@ -172,8 +175,9 @@ class LeaseManagerRestHandlerTest : public ::testing::Test {
     ASSERT_TRUE(response.isObject()) << "Did not respond with an object";
     EXPECT_EQ(basics::VelocyPackHelper::getNumericValue(response, "code", 42),
               TRI_ERROR_HTTP_NOT_FOUND.value());
-    EXPECT_EQ(basics::VelocyPackHelper::getNumericValue(response, "errorNum", 42),
-              TRI_ERROR_HTTP_NOT_FOUND.value());
+    EXPECT_EQ(
+        basics::VelocyPackHelper::getNumericValue(response, "errorNum", 42),
+        TRI_ERROR_HTTP_NOT_FOUND.value());
     EXPECT_TRUE(response.hasKey("errorMessage"));
     EXPECT_TRUE(response.get("errorMessage").isString());
     EXPECT_TRUE(response.hasKey("error"));
@@ -216,8 +220,10 @@ TEST_F(LeaseManagerRestHandlerTest, test_get_request) {
   EXPECT_EQ(resp->responseCode(), ResponseCode::OK);
   auto response = resp->_payload.slice();
   auto result = extractResultBody(response);
-  EXPECT_TRUE(result.leasedToRemote.isEmptyObject()) << "Leased to Remote is not empty";
-  EXPECT_TRUE(result.leasedFromRemote.isEmptyObject()) << "Leased From Remote is not empty";
+  EXPECT_TRUE(result.leasedToRemote.isEmptyObject())
+      << "Leased to Remote is not empty";
+  EXPECT_TRUE(result.leasedFromRemote.isEmptyObject())
+      << "Leased From Remote is not empty";
 }
 
 TEST_F(LeaseManagerRestHandlerTest, test_get_request_including_leases) {
@@ -258,13 +264,15 @@ TEST_F(LeaseManagerRestHandlerTest, test_get_request_including_leases) {
         << "Leased to Remote is not empty";
     EXPECT_FALSE(result.leasedFromRemote.isEmptyObject())
         << "Leased From Remote is empty";
-    EXPECT_TRUE(result.leasedFromRemote.hasKey(peerStateToJSONKey(leaseIsForA)));
+    EXPECT_TRUE(
+        result.leasedFromRemote.hasKey(peerStateToJSONKey(leaseIsForA)));
     {
       auto forA = result.leasedFromRemote.get(peerStateToJSONKey(leaseIsForA));
       EXPECT_TRUE(forA.isArray());
       EXPECT_EQ(forA.length(), 1);
     }
-    EXPECT_TRUE(result.leasedFromRemote.hasKey(peerStateToJSONKey(leaseIsForB)));
+    EXPECT_TRUE(
+        result.leasedFromRemote.hasKey(peerStateToJSONKey(leaseIsForB)));
     {
       auto forB = result.leasedFromRemote.get(peerStateToJSONKey(leaseIsForB));
       EXPECT_TRUE(forB.isArray());
@@ -273,7 +281,8 @@ TEST_F(LeaseManagerRestHandlerTest, test_get_request_including_leases) {
   }
 }
 
-TEST_F(LeaseManagerRestHandlerTest, test_get_request_including_leases_some_removed) {
+TEST_F(LeaseManagerRestHandlerTest,
+       test_get_request_including_leases_some_removed) {
   auto& vocbase = server.getSystemDatabase();
   auto fakeRequest = std::make_unique<GeneralRequestMock>(vocbase);
   auto fakeResponse = std::make_unique<GeneralResponseMock>();
@@ -314,13 +323,15 @@ TEST_F(LeaseManagerRestHandlerTest, test_get_request_including_leases_some_remov
         << "Leased to Remote is not empty";
     EXPECT_FALSE(result.leasedFromRemote.isEmptyObject())
         << "Leased From Remote is empty";
-    EXPECT_TRUE(result.leasedFromRemote.hasKey(peerStateToJSONKey(leaseIsForA)));
+    EXPECT_TRUE(
+        result.leasedFromRemote.hasKey(peerStateToJSONKey(leaseIsForA)));
     {
       auto forA = result.leasedFromRemote.get(peerStateToJSONKey(leaseIsForA));
       EXPECT_TRUE(forA.isArray());
       EXPECT_EQ(forA.length(), 0);
     }
-    EXPECT_TRUE(result.leasedFromRemote.hasKey(peerStateToJSONKey(leaseIsForB)));
+    EXPECT_TRUE(
+        result.leasedFromRemote.hasKey(peerStateToJSONKey(leaseIsForB)));
     {
       auto forB = result.leasedFromRemote.get(peerStateToJSONKey(leaseIsForB));
       EXPECT_TRUE(forB.isArray());
@@ -374,20 +385,17 @@ TEST_F(LeaseManagerRestHandlerTest, test_delete_request) {
 
   // Create some leases we can destroy
   auto leaseIsForA = getPeerState(serverA);
-  auto leaseGuardA =
-      leaseManager.requireLease(leaseIsForA, ::emptyPrint, [&calledOnAbortForA]() noexcept {
-        calledOnAbortForA = true;
-      });
+  auto leaseGuardA = leaseManager.requireLease(
+      leaseIsForA, ::emptyPrint,
+      [&calledOnAbortForA]() noexcept { calledOnAbortForA = true; });
 
   auto leaseIsForB = getPeerState(serverB);
-  auto leaseGuardB1 =
-      leaseManager.requireLease(leaseIsForB, ::emptyPrint, [&calledOnAbortForB1]() noexcept {
-        calledOnAbortForB1 = true;
-      });
-  auto leaseGuardB2 =
-      leaseManager.requireLease(leaseIsForB, ::emptyPrint, [&calledOnAbortForB2]() noexcept {
-        calledOnAbortForB2 = true;
-      });
+  auto leaseGuardB1 = leaseManager.requireLease(
+      leaseIsForB, ::emptyPrint,
+      [&calledOnAbortForB1]() noexcept { calledOnAbortForB1 = true; });
+  auto leaseGuardB2 = leaseManager.requireLease(
+      leaseIsForB, ::emptyPrint,
+      [&calledOnAbortForB2]() noexcept { calledOnAbortForB2 = true; });
   {
     ScopeGuard freeAllTheLeases{[&]() noexcept {
       // Make sure we cancel the leases before they go
@@ -430,7 +438,8 @@ TEST_F(LeaseManagerRestHandlerTest, test_delete_request) {
     EXPECT_TRUE(response.isObject());
     EXPECT_EQ(basics::VelocyPackHelper::getNumericValue(response, "code", 1337),
               static_cast<int>(rest::ResponseCode::OK));
-    EXPECT_FALSE(basics::VelocyPackHelper::getBooleanValue(response, "error", true));
+    EXPECT_FALSE(
+        basics::VelocyPackHelper::getBooleanValue(response, "error", true));
   }
 }
 
@@ -438,7 +447,6 @@ TEST_F(LeaseManagerRestHandlerTest, test_delete_request_malformed) {
   auto leaseManager = buildManager();
 
   {
-
     auto& vocbase = server.getSystemDatabase();
     auto fakeRequest = std::make_unique<GeneralRequestMock>(vocbase);
     VPackBuilder malformedInput;

@@ -33,6 +33,6 @@ class LeaseId : public arangodb::basics::Identifier {
 
 static_assert(sizeof(LeaseId) == sizeof(LeaseId::BaseType),
               "invalid size of LeaseId");
-}
+}  // namespace arangodb::cluster
 
 DECLARE_HASH_FOR_IDENTIFIER(arangodb::cluster::LeaseId)

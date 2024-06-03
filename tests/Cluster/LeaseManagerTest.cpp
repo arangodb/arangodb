@@ -235,7 +235,8 @@ class LeaseManagerTest : public ::testing::Test,
       for (auto const& it : VPackArrayIterator(leaseList)) {
         ASSERT_TRUE(it.isString());
         auto view = it.stringView();
-        if (view.starts_with(basics::StringUtils::itoa(leaseId.id()) + " -> ")) {
+        if (view.starts_with(basics::StringUtils::itoa(leaseId.id()) +
+                             " -> ")) {
           foundEntry = true;
           break;
         }
@@ -312,7 +313,8 @@ class LeaseManagerTest : public ::testing::Test,
       for (auto const& it : VPackArrayIterator(leaseList)) {
         ASSERT_TRUE(it.isString());
         auto view = it.stringView();
-        if (view.starts_with(basics::StringUtils::itoa(leaseId.id()) + " -> ")) {
+        if (view.starts_with(basics::StringUtils::itoa(leaseId.id()) +
+                             " -> ")) {
           foundEntry = true;
           break;
         }

@@ -123,10 +123,8 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         [](auto& server, TypeTag<cluster::LeaseManagerFeature>) {
           auto& schedulerFeature =
               server.template getFeature<SchedulerFeature>();
-          auto& clusterFeature =
-              server.template getFeature<ClusterFeature>();
-          auto& networkFeature =
-              server.template getFeature<NetworkFeature>();
+          auto& clusterFeature = server.template getFeature<ClusterFeature>();
+          auto& networkFeature = server.template getFeature<NetworkFeature>();
           return std::make_unique<cluster::LeaseManagerFeature>(
               server, clusterFeature, networkFeature, schedulerFeature);
         },

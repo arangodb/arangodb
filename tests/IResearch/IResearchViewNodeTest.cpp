@@ -2038,7 +2038,8 @@ TEST_F(IResearchViewNodeTest, clone) {
           arangodb::transaction::StandaloneContext::create(
               vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(std::string_view("RETURN 1")));
-      auto otherQueryAborter = std::make_shared<arangodb::aql::QueryAborter>(otherQuery);
+      auto otherQueryAborter =
+          std::make_shared<arangodb::aql::QueryAborter>(otherQuery);
       otherQuery->prepareQuery(otherQueryAborter);
 
       node.plan()->nextId();
@@ -2125,7 +2126,8 @@ TEST_F(IResearchViewNodeTest, clone) {
           arangodb::transaction::StandaloneContext::create(
               vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(std::string_view("RETURN 1")));
-      auto otherQueryAborter = std::make_shared<arangodb::aql::QueryAborter>(otherQuery);
+      auto otherQueryAborter =
+          std::make_shared<arangodb::aql::QueryAborter>(otherQuery);
       otherQuery->prepareQuery(otherQueryAborter);
 
       node.plan()->nextId();
@@ -2205,7 +2207,8 @@ TEST_F(IResearchViewNodeTest, clone) {
           arangodb::transaction::StandaloneContext::create(
               vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(std::string_view("RETURN 1")));
-      auto otherQueryAborter = std::make_shared<arangodb::aql::QueryAborter>(otherQuery);
+      auto otherQueryAborter =
+          std::make_shared<arangodb::aql::QueryAborter>(otherQuery);
       otherQuery->prepareQuery(otherQueryAborter);
 
       node.plan()->nextId();
@@ -2429,7 +2432,8 @@ TEST_F(IResearchViewNodeTest, clone) {
           arangodb::transaction::StandaloneContext::create(
               vocbase, arangodb::transaction::OperationOriginTestCase{}),
           arangodb::aql::QueryString(std::string_view("RETURN 1")));
-      auto otherQueryAborter = std::make_shared<arangodb::aql::QueryAborter>(otherQuery);
+      auto otherQueryAborter =
+          std::make_shared<arangodb::aql::QueryAborter>(otherQuery);
       otherQuery->prepareQuery(otherQueryAborter);
 
       node.plan()->nextId();
@@ -2462,8 +2466,8 @@ TEST_F(IResearchViewNodeTest, serialize) {
       arangodb::aql::QueryString(
           std::string_view("let variable = 1 let variable100 = 3 "
                            "let variable101 = 2 RETURN 1")));
- auto aborter = std::make_shared<arangodb::aql::QueryAborter>(query);
-query->prepareQuery(aborter);
+  auto aborter = std::make_shared<arangodb::aql::QueryAborter>(query);
+  query->prepareQuery(aborter);
 
   arangodb::aql::Variable const outVariable("variable", 0, false,
                                             resourceMonitor);
@@ -2984,7 +2988,8 @@ query->prepareQuery(aborter);
         "\"name\": \"d\",\"id\": 0 }]}]}}] "
         " }");
 
-    auto scoresAborter = std::make_shared<arangodb::aql::QueryAborter>(queryScores);
+    auto scoresAborter =
+        std::make_shared<arangodb::aql::QueryAborter>(queryScores);
     queryScores->prepareQuery(scoresAborter);
     arangodb::aql::Variable const outVariable("variable", 0, false,
                                               resourceMonitor);
@@ -3055,8 +3060,8 @@ TEST_F(IResearchViewNodeTest, serializeSortedView) {
       arangodb::aql::QueryString(
           std::string_view("let variable = 1 let variable100 = 3 "
                            "let variable101 = 2 RETURN 1")));
- auto aborter = std::make_shared<arangodb::aql::QueryAborter>(query);
-query->prepareQuery(aborter);
+  auto aborter = std::make_shared<arangodb::aql::QueryAborter>(query);
+  query->prepareQuery(aborter);
 
   arangodb::aql::Variable const outVariable("variable", 0, false,
                                             resourceMonitor);
@@ -3367,15 +3372,15 @@ TEST_F(IResearchViewNodeTest, collections) {
 
   // register collections with the query
   query->collections().add(std::to_string(collection0->id().id()),
-                          arangodb::AccessMode::Type::READ,
-                          arangodb::aql::Collection::Hint::None);
+                           arangodb::AccessMode::Type::READ,
+                           arangodb::aql::Collection::Hint::None);
   query->collections().add(std::to_string(collection1->id().id()),
-                          arangodb::AccessMode::Type::READ,
-                          arangodb::aql::Collection::Hint::None);
+                           arangodb::AccessMode::Type::READ,
+                           arangodb::aql::Collection::Hint::None);
 
   // prepare query
- auto aborter = std::make_shared<arangodb::aql::QueryAborter>(query);
-query->prepareQuery(aborter);
+  auto aborter = std::make_shared<arangodb::aql::QueryAborter>(query);
+  query->prepareQuery(aborter);
 
   arangodb::aql::Variable const outVariable("variable", 0, false,
                                             resourceMonitor);
@@ -3458,8 +3463,8 @@ TEST_F(IResearchViewNodeTest, createBlockSingleServer) {
   // dummy query
   auto ctx = arangodb::transaction::StandaloneContext::create(
       vocbase, arangodb::transaction::OperationOriginTestCase{});
-  auto query = std::make_shared<MockQuery>(ctx,
-                  arangodb::aql::QueryString(std::string_view("RETURN 1")));
+  auto query = std::make_shared<MockQuery>(
+      ctx, arangodb::aql::QueryString(std::string_view("RETURN 1")));
   query->initForTests();
   // auto aborter = std::make_shared<arangodb::aql::QueryAborter>(query);
   // query->prepareQuery(aborter);
@@ -3622,8 +3627,8 @@ TEST_F(IResearchViewNodeTest, createBlockCoordinatorLateMaterialize) {
       arangodb::transaction::StandaloneContext::create(
           vocbase, arangodb::transaction::OperationOriginTestCase{}),
       arangodb::aql::QueryString(std::string_view("RETURN 1")));
- auto aborter = std::make_shared<arangodb::aql::QueryAborter>(query);
-query->prepareQuery(aborter);
+  auto aborter = std::make_shared<arangodb::aql::QueryAborter>(query);
+  query->prepareQuery(aborter);
 
   // dummy engine
   arangodb::aql::ExecutionEngine engine(0, *query, query->itemBlockManager());

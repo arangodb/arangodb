@@ -126,8 +126,6 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(ArangodServer& server) {
   auto origin =
       transaction::OperationOriginInternal{"querying all users from database"};
 
-
-
   LOG_TOPIC("f3eec", DEBUG, arangodb::Logger::AUTHENTICATION)
       << "starting to load authentication and authorization information";
 
@@ -137,7 +135,8 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(ArangodServer& server) {
   options.maxRuntime = 30;
   options.skipAudit = true;
   auto queryFuture = arangodb::aql::runStandaloneAqlQuery(
-      *vocbase, origin, aql::QueryString(queryStr), nullptr, std::move(options));
+      *vocbase, origin, aql::QueryString(queryStr), nullptr,
+      std::move(options));
   auto queryResult = std::move(queryFuture.get());
 
   if (queryResult.result.fail()) {

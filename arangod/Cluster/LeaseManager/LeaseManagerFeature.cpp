@@ -31,8 +31,6 @@
 #include "Network/NetworkFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 
-
-
 using namespace arangodb::cluster;
 
 LeaseManagerFeature::LeaseManagerFeature(Server& server,
@@ -53,8 +51,12 @@ void LeaseManagerFeature::prepare() {
   // We have an issue with startup ordering
   auto& ci = _clusterFeature.clusterInfo();
   auto pool = _networkFeature.pool();
-  ADB_PROD_ASSERT(pool != nullptr) << "Issue with startup ordering of features: NetworkFeature not yet started.";
-  ADB_PROD_ASSERT(SchedulerFeature::SCHEDULER != nullptr) << "Issue with startup ordering of features: SchedulerFeature not yet started.";
+  ADB_PROD_ASSERT(pool != nullptr)
+      << "Issue with startup ordering of features: NetworkFeature not yet "
+         "started.";
+  ADB_PROD_ASSERT(SchedulerFeature::SCHEDULER != nullptr)
+      << "Issue with startup ordering of features: SchedulerFeature not yet "
+         "started.";
 
   // Allocate the LeaseManager.
   // This must be done after the NetworkFeature has been prepared.

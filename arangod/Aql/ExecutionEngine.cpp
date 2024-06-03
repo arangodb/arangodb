@@ -565,8 +565,8 @@ struct DistributedQueryInstanciator final
     SnippetList& snippets = _query.snippets();
 
     std::map<ExecutionNodeId, ExecutionNodeId> nodeAliases;
-    Result res = _dbserverParts.buildEngines(_nodesById, queryAborter, snippetIds, srvrQryId,
-                                             nodeAliases);
+    Result res = _dbserverParts.buildEngines(
+        _nodesById, queryAborter, snippetIds, srvrQryId, nodeAliases);
     if (res.fail()) {
       return res;
     }

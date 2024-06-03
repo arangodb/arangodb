@@ -39,7 +39,6 @@ struct LeaseManagerRestHandler : public RestBaseHandler {
   RequestLane lane() const override final { return RequestLane::CLIENT_FAST; }
   RestStatus execute() override;
 
-
  private:
   RestStatus executeGet();
   RestStatus executeDelete(AbortLeaseInformation info);

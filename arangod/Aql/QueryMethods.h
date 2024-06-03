@@ -45,11 +45,11 @@ namespace aql {
 
 class QueryString;
 struct QueryResult;
-[[nodiscard]] auto runStandaloneAqlQuery(TRI_vocbase_t& vocbase, transaction::OperationOrigin origin,
-                           QueryString query,
-                           std::shared_ptr<velocypack::Builder> bindVars,
-                           QueryOptions options = {},
-                           Scheduler* scheduler = SchedulerFeature::SCHEDULER)
+[[nodiscard]] auto runStandaloneAqlQuery(
+    TRI_vocbase_t& vocbase, transaction::OperationOrigin origin,
+    QueryString query, std::shared_ptr<velocypack::Builder> bindVars,
+    QueryOptions options = {},
+    Scheduler* scheduler = SchedulerFeature::SCHEDULER)
     -> futures::Future<QueryResult>;
 }  // namespace aql
 }  // namespace arangodb

@@ -86,7 +86,7 @@ aql::QueryResultV8 AqlQuery(v8::Isolate* isolate,
   return queryResult;
 }
 
-}
+}  // namespace
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up edges for given direction

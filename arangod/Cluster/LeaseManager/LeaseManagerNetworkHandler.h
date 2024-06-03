@@ -52,9 +52,8 @@ struct ILeaseManagerNetworkHandler {
   virtual auto collectFullLeaseReport() const noexcept
       -> futures::Future<ManyServersLeasesReport> = 0;
 
-  virtual auto collectLeaseReportForServer(
-      ServerID const& onlyShowServer) const noexcept
-      -> futures::Future<ManyServersLeasesReport> = 0;
+  virtual auto collectLeaseReportForServer(ServerID const& onlyShowServer)
+      const noexcept -> futures::Future<ManyServersLeasesReport> = 0;
 };
 
 struct LeaseManagerNetworkHandler : ILeaseManagerNetworkHandler {
@@ -64,13 +63,11 @@ struct LeaseManagerNetworkHandler : ILeaseManagerNetworkHandler {
                 std::vector<LeaseId> const& leasedTo) const noexcept
       -> futures::Future<Result> override;
 
-
   auto collectFullLeaseReport() const noexcept
       -> futures::Future<ManyServersLeasesReport> override;
 
-  auto collectLeaseReportForServer(
-      ServerID const& onlyShowServer) const noexcept
-      -> futures::Future<ManyServersLeasesReport> override;
+  auto collectLeaseReportForServer(ServerID const& onlyShowServer)
+      const noexcept -> futures::Future<ManyServersLeasesReport> override;
 
  private:
   network::ConnectionPool* _pool;
