@@ -73,7 +73,7 @@ if [ "$1" = 'arangod' ]; then
 
         if [ ! -z "${ARANGO_ROOT_PASSWORD+x}" ]; then
             echo "Initializing root user...Hang on..."
-            ARANGODB_DEFAULT_ROOT_PASSWORD="$ARANGO_ROOT_PASSWORD" /usr/sbin/arango-init-database -c "$@" /tmp/arangod.conf --server.rest-server false --log.level error --database.init-database true || true
+            ARANGODB_DEFAULT_ROOT_PASSWORD="$ARANGO_ROOT_PASSWORD" /usr/sbin/arango-init-database -c /tmp/arangod.conf --server.rest-server false --log.level error --database.init-database true || true
             export ARANGO_ROOT_PASSWORD
 
             if [ ! -z "${ARANGO_ROOT_PASSWORD}" ]; then
