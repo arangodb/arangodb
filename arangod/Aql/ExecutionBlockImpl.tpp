@@ -1563,7 +1563,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
         // calling _lastRange.skipAllShadowRowsOfDepth() in the following, it is
         // applied to our input.
         // For SQS nodes, this needs to be adjusted; in principle we'd just need
-        //   depthToSkip += offset;
+        //   depthToSkip += inputDepthOffset;
         // , except depthToSkip is unsigned, and we would get integer
         // underflows. So it's passed to skipAllShadowRowsOfDepth() instead.
         // Note that SubqueryEnd nodes do *not* need this adjustment, as an
@@ -1571,6 +1571,11 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
         // ExecutionContext is constructed at the beginning of
         // executeWithoutTrace, so input and call-stack already align at this
         // point.
+        // However, inversely, because SubqueryEnd nodes push another call for
+        // the stack to match their input depth, the stack size is off-by-one
+        // compared to their output depth, which is i.a. the size of _skipped.
+        // Therefore, outputDepthOffset needs to be passed to didSkipSubquery(),
+        // as inputDepthOffset is passed to skipAllShadowRowsOfDepth().
         constexpr static int inputDepthOffset = ([]() consteval->int {
           if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
             return -1;
@@ -1598,10 +1603,10 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
             // `execute` API.
             auto reportedSkip =
                 std::min_element(std::begin(skipped), std::end(skipped));
-            _skipped.didSkipSubquery(*reportedSkip, depthToSkip,
-                                     outputDepthOffset);
+            _skipped.didSkipSubquery<outputDepthOffset>(*reportedSkip,
+                                                        depthToSkip);
           } else {
-            _skipped.didSkipSubquery(skipped, depthToSkip, outputDepthOffset);
+            _skipped.didSkipSubquery<outputDepthOffset>(skipped, depthToSkip);
           }
         }
         if (_lastRange.hasShadowRow()) {
