@@ -94,8 +94,11 @@ class RetryThread : public ServerThread<ArangodServer> {
       TRI_ASSERT(req);
       _retryRequests.pop();
       try {
+        // canceling a request can throw in case a concurrent
+        // thread has already resolved or canceled the request.
+        // in this case, simply ignore the exception.
         req->cancel();
-      } catch (std::exception const& ex) {
+      } catch (...) {
         // does not matter
       }
     }
@@ -105,7 +108,20 @@ class RetryThread : public ServerThread<ArangodServer> {
             std::chrono::steady_clock::time_point retryTime) {
     TRI_ASSERT(req);
 
-    auto cancelGuard = scopeGuard([req]() noexcept { req->cancel(); });
+    auto cancelGuard = scopeGuard([req]() noexcept {
+      try {
+        // canceling a request can throw in case a concurrent
+        // thread has already resolved or canceled the request.
+        // in this case, simply ignore the exception.
+        req->cancel();
+      } catch (...) {
+        // does not matter
+      }
+    });
+
+    TRI_IF_FAILURE("NetworkFeature::retryRequestFail") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
 
     std::unique_lock<std::mutex> guard(_mutex);
 
@@ -166,14 +182,17 @@ class RetryThread : public ServerThread<ArangodServer> {
 
           guard.unlock();
 
+          if (isStopping()) {
+            break;
+          }
           try {
             // the actual retry action is carried out here.
-            // note: if we are shutting down already, we don't retry but
-            // cancel every request right away.
-            if (!isStopping()) {
+            // note: there is a small opportunity of a race here, if
+            // a concurrent request sets resolves the request's
+            // promise. this will lead to an exception here, which
+            // we can ignore.
+            if (!req->isDone()) {
               req->retry();
-            } else {
-              req->cancel();
             }
           } catch (std::exception const& ex) {
             LOG_TOPIC("aa476", WARN, Logger::COMMUNICATION)

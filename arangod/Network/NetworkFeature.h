@@ -42,6 +42,7 @@ struct RequestOptions;
 
 struct RetryableRequest {
   virtual ~RetryableRequest() = default;
+  virtual bool isDone() const = 0;
   virtual void retry() = 0;
   virtual void cancel() = 0;
 };
