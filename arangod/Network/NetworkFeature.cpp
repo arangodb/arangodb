@@ -346,7 +346,7 @@ NetworkFeature::~NetworkFeature() {
     _retryThread->beginShutdown();
   }
   if (_pool) {
-    _pool->drainConnections();
+    _pool->stop();
   }
 }
 
@@ -583,7 +583,7 @@ void NetworkFeature::stop() {
 void NetworkFeature::unprepare() {
   cancelRetryRequests();
   if (_pool) {
-    _pool->drainConnections();
+    _pool->stop();
   }
   if (_retryThread) {
     _retryThread->beginShutdown();
