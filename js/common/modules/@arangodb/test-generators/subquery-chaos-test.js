@@ -26,6 +26,7 @@
 const db = require("@arangodb").db;
 const _ = require("lodash");
 const {md5} = require("@arangodb/crypto");
+const arango = require("@arangodb").arango;
 
 const batchSize = 10;
 

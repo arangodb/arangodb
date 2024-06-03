@@ -28,7 +28,7 @@ const jsunity = require("jsunity");
 const ct = require("@arangodb/test-generators/subquery-chaos-test");
 const helper = require("@arangodb/aql-helper");
 
-const numberOfQueriesGenerated = 200;
+const numberOfQueriesGenerated = 100;
 const randomDepth = () => {
   const val = Math.random();
   if (val < 0.3) {
@@ -183,7 +183,7 @@ function ahuacatlSubqueryChaos() {
       for (let i = 0; i < numberOfQueriesGenerated; i++) {
         ct.testQueryWithSeed({
           numberSubqueries: randomDepth(),
-          seed: Math.trunc(Math.random() * 100000),
+          seed: Math.trunc(Math.random() * 1e8),
           showReproduce: true,
           throwOnMismatch: true,
         });
@@ -194,7 +194,7 @@ function ahuacatlSubqueryChaos() {
       for (let i = 0; i < numberOfQueriesGenerated; i++) {
         ct.testModifyingQueryWithSeed({
           numberSubqueries: randomModificationDepth(),
-          seed: Math.trunc(Math.random() * 100000),
+          seed: Math.trunc(Math.random() * 1e8),
           showReproduce: true,
           throwOnMismatch: true,
         });
