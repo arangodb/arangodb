@@ -1571,8 +1571,15 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
         // ExecutionContext is constructed at the beginning of
         // executeWithoutTrace, so input and call-stack already align at this
         // point.
-        constexpr static int depthOffset = ([]() consteval->int {
+        constexpr static int inputDepthOffset = ([]() consteval->int {
           if constexpr (std::is_same_v<Executor, SubqueryStartExecutor>) {
+            return -1;
+          } else {
+            return 0;
+          }
+        })();
+        constexpr static int outputDepthOffset = ([]() consteval->int {
+          if constexpr (std::is_same_v<Executor, SubqueryEndExecutor>) {
             return -1;
           } else {
             return 0;
@@ -1580,7 +1587,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
         })();
 
         auto skipped =
-            _lastRange.template skipAllShadowRowsOfDepth<depthOffset>(
+            _lastRange.template skipAllShadowRowsOfDepth<inputDepthOffset>(
                 depthToSkip);
         if (shadowCall.needsFullCount()) {
           if constexpr (std::is_same_v<DataRange,
@@ -1591,9 +1598,10 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
             // `execute` API.
             auto reportedSkip =
                 std::min_element(std::begin(skipped), std::end(skipped));
-            _skipped.didSkipSubquery(*reportedSkip, depthToSkip);
+            _skipped.didSkipSubquery(*reportedSkip, depthToSkip,
+                                     outputDepthOffset);
           } else {
-            _skipped.didSkipSubquery(skipped, depthToSkip);
+            _skipped.didSkipSubquery(skipped, depthToSkip, outputDepthOffset);
           }
         }
         if (_lastRange.hasShadowRow()) {

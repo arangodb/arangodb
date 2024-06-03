@@ -40,10 +40,11 @@ auto SkipResult::didSkip(size_t skipped) -> void {
   _skipped.back() += skipped;
 }
 
-auto SkipResult::didSkipSubquery(size_t skipped, size_t depth) -> void {
+auto SkipResult::didSkipSubquery(size_t skipped, size_t depth, int offset)
+    -> void {
   TRI_ASSERT(!_skipped.empty());
-  TRI_ASSERT(_skipped.size() > depth + 1);
-  size_t index = _skipped.size() - depth - 2;
+  TRI_ASSERT(_skipped.size() > depth + 1 + offset);
+  size_t index = _skipped.size() - depth - 2 - offset;
   size_t& localSkip = _skipped.at(index);
   localSkip += skipped;
 }

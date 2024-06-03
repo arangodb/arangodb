@@ -304,7 +304,8 @@ function runQuery(query, queryOptions, testOptions) {
   }
 
   /* Run query */
-  const result = db._createStatement({query: query.queryString, batchSize, options: queryOptions}).execute();
+  const result = db._createStatement({query: query.queryString, batchSize, options: queryOptions})
+    .execute();
 
   if (testOptions.enableLogging) {
     arango.PUT("/_admin/log/level", { queries: oldLogLevel });

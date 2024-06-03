@@ -137,7 +137,8 @@ function ahuacatlSubqueryChaos() {
            RETURN {fv0, sq1, sq7}`,
       collectionNames: [],
     },
-    // this is a simplified version of the two seeded queries below
+    // Regression tests for BTS-1813 (q5, q6, q7)
+    // q5 is a simplified version of the two seeded queries q6, q7 below
     q5: {
       queryString: `FOR v IN 1..2
         LET sq1 = (UPSERT { value: 0 } INSERT { value: 0 } UPDATE {updated: true} IN col
@@ -145,11 +146,11 @@ function ahuacatlSubqueryChaos() {
           RETURN cnt)
         LIMIT 1
         RETURN sq1`,
-      collectionNames: ["col"]
+      collectionNames: ["col"],
     },
     q6: {
       modifying: true,
-      numberSubqueries: 2, 
+      numberSubqueries: 2,
       seed: 2226,
       showReproduce: true,
     },
@@ -158,7 +159,7 @@ function ahuacatlSubqueryChaos() {
       numberSubqueries: 2,
       seed: 3581,
       showReproduce: true,
-    }
+    },
   };
   return {
     testSpecificQueries: function () {
@@ -169,7 +170,7 @@ function ahuacatlSubqueryChaos() {
         } else if (value.hasOwnProperty("seed")) {
           if (value.modifying) {
             ct.testModifyingQueryWithSeed(value);
-        } else {
+          } else {
             ct.testQueryWithSeed(value);
           }
         } else {

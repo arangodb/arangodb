@@ -55,7 +55,7 @@ class SkipResult {
 
   auto didSkip(size_t skipped) -> void;
 
-  auto didSkipSubquery(size_t skipped, size_t depth) -> void;
+  auto didSkipSubquery(size_t skipped, size_t depth, int offset = 0) -> void;
 
   auto getSkipOnSubqueryLevel(size_t depth) const -> size_t;
 
