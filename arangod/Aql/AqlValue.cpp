@@ -800,7 +800,8 @@ v8::Handle<v8::Value> AqlValue::toV8(v8::Isolate* isolate,
 }
 #endif
 
-void AqlValue::toVelocyPack(VPackOptions const* options, VPackBuilder& builder,
+void AqlValue::toVelocyPack(velocypack::Options const* options,
+                            velocypack::Builder& builder,
                             bool allowUnindexed) const {
   auto t = type();
   switch (t) {
@@ -831,7 +832,7 @@ void AqlValue::toVelocyPack(VPackOptions const* options, VPackBuilder& builder,
   }
 }
 
-AqlValue AqlValue::materialize(VPackOptions const* options,
+AqlValue AqlValue::materialize(velocypack::Options const* options,
                                bool& hasCopied) const {
   auto t = type();
   switch (t) {

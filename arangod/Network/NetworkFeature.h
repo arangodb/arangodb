@@ -58,6 +58,7 @@ class NetworkFeature final : public ArangodFeature {
 
   NetworkFeature(Server& server, metrics::MetricsFeature& metrics,
                  network::ConnectionPool::Config);
+  ~NetworkFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
@@ -66,6 +67,8 @@ class NetworkFeature final : public ArangodFeature {
   void beginShutdown() override;
   void stop() override;
   void unprepare() override;
+
+  void cancelRetryRequests() noexcept;
 
   bool prepared() const noexcept;
 
@@ -91,6 +94,8 @@ class NetworkFeature final : public ArangodFeature {
 
   void retryRequest(std::shared_ptr<network::RetryableRequest>, RequestLane,
                     std::chrono::steady_clock::duration);
+
+  static uint64_t defaultIOThreads();
 
  protected:
   void prepareRequest(network::ConnectionPool const& pool,
@@ -148,6 +153,7 @@ class NetworkFeature final : public ArangodFeature {
   enum class CompressionType { kNone, kDeflate, kGzip, kLz4, kAuto };
   CompressionType _compressionType;
   std::string _compressionTypeLabel;
+  metrics::MetricsFeature& _metrics;
 };
 
 }  // namespace arangodb

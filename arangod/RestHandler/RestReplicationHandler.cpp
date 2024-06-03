@@ -28,6 +28,7 @@
 #include "Aql/QueryMethods.h"
 #include "Aql/QueryResult.h"
 #include "Aql/QueryString.h"
+#include "Auth/UserManager.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/RocksDBUtils.h"

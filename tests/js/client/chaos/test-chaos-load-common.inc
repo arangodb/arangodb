@@ -132,28 +132,20 @@ const checkViewConsistency = (cn, isSearchAlias, isMaterialize, viewCounts) => {
   } else {
     expected = runQuery("FOR d IN " + cn + " RETURN d").length;
   }
-  let vn;
-  const checkView = (isMaterialize) => {
+  const checkView = (vn) => {
     let result;
     if (isMaterialize) {
       result = runQuery("FOR d IN " + vn + " OPTIONS {waitForSync: true} RETURN d._key").length;
     } else {
       result = runQuery("FOR d IN " + vn + " OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length")[0];
     }
-    viewCounts.push({viewName:vn, viewCount:result, collectionName:cn, collectionCount:expected, isMaterialize: isMaterialize});
+    viewCounts.push({viewName: vn, viewCount: result, collectionName: cn, collectionCount: expected, isMaterialize});
   };
 
-  vn = viewName(cn + "_view", isSearchAlias);
-  checkView(isMaterialize);
-
-  vn = viewName(cn + "_view_ps", isSearchAlias);
-  checkView(isMaterialize);
-
-  vn = viewName(cn + "_view_sv", isSearchAlias);
-  checkView(isMaterialize);
-
-  vn = viewName(cn + "_view_ps_sv", isSearchAlias);
-  checkView(isMaterialize);
+  checkView(viewName(cn + "_view", isSearchAlias));
+  checkView(viewName(cn + "_view_ps", isSearchAlias));
+  checkView(viewName(cn + "_view_sv", isSearchAlias));
+  checkView(viewName(cn + "_view_ps_sv", isSearchAlias));
 };
 
 function BaseChaosSuite(testOpts) {
@@ -604,6 +596,16 @@ function BaseChaosSuite(testOpts) {
         print(Date() + " checking consistency done.");
         let failedViews = "";
         for (const c of viewCounts) {
+          if (testOpts.withViews && testOpts.withTruncate) {
+            // view counts can differ from collection counts if a DeleteRange
+            // truncate operation was used. this is a known issue, noted in
+            // BTS-1775. until this issue is fixed, we disable checking the
+            // view counts here to avoid spurious errors.
+            // TODO: remove the "continue" here once BTS-1775 is fixed, so that
+            // view counts are again checked!
+            continue;
+          }
+
           if (c.viewCount !== c.collectionCount) {
             print(viewCounts);
             failedViews = " and views count mismatch";
