@@ -81,17 +81,12 @@ void AgencyCallback::refetchAndUpdate(bool needToAcquireMutex,
     return;
   }
 
-  VPackSlice result;
-  std::shared_ptr<VPackBuilder> builder;
-  consensus::index_t idx = 0;
-  AgencyCommResult tmp;
-
   LOG_TOPIC("a6344", TRACE, Logger::CLUSTER)
       << "Refetching and update for " << AgencyCommHelper::path(key);
 
-  std::tie(builder, idx) =
+  auto [builder, idx] =
       _agencyCache.read(std::vector{AgencyCommHelper::path(key)});
-  result = builder->slice();
+  auto result = builder->slice();
   if (!result.isArray()) {
     if (!_server.isStopping()) {
       // only log errors if we are not already shutting down...
