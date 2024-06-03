@@ -23,20 +23,23 @@
 
 #pragma once
 
+#include "Metrics/Fwd.h"
+#include "Network/ConnectionPool.h"
+#include "RestServer/arangod.h"
+#include "Scheduler/Scheduler.h"
+
+#include <fuerte/requests.h>
+
 #include <atomic>
 #include <cstdint>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <string_view>
 
-#include <fuerte/requests.h>
-
-#include "Network/ConnectionPool.h"
-#include "Metrics/Fwd.h"
-#include "RestServer/arangod.h"
-#include "Scheduler/Scheduler.h"
-
 namespace arangodb {
+class Thread;
+
 namespace network {
 struct RequestOptions;
 
@@ -127,9 +130,7 @@ class NetworkFeature final : public ArangodFeature {
   std::mutex _workItemMutex;
   Scheduler::WorkHandle _workItem;
 
-  std::unordered_map<std::shared_ptr<network::RetryableRequest>,
-                     Scheduler::WorkHandle>
-      _retryRequests;
+  std::unique_ptr<Thread> _retryThread;
 
   /// @brief number of cluster-internal forwarded requests
   /// (from one coordinator to another, in case load-balancing
