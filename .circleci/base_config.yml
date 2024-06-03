@@ -545,9 +545,6 @@ jobs:
           no_output_timeout: 20m
           command: |
             pwd
-            ls -la
-            ls -la work
-            echo TODO
             export SOURCE=nightlypublic
             export RTA_EDITION=<< parameters.enterprise >>
             mkdir -p  work/release-test-automation/allure-results work/release-test-automation/allure-config
@@ -567,8 +564,6 @@ jobs:
       - run:
           name: Copy test results
           when: always
-          command: |
-            echo TODO
       - store_artifacts:
           destination: << parameters.suiteName >>
           path: ./work/release-test-automation/test_dir

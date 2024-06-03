@@ -510,7 +510,7 @@ def add_workflow(workflows, tests, build_config, args):
 
 
 def add_x64_community_workflow(workflows, tests, args):
-    if args.ui != "" and args.ui != "community":
+    if args.ui != "" and args.ui != "community" and args.ui != "off":
         return
     if args.sanitizer != "" and args.nightly:
         # for nightly sanitizer runs we skip community and only test enterprise
@@ -541,7 +541,7 @@ def add_x64_enterprise_workflow(workflows, tests, args):
 
 def add_aarch64_community_workflow(workflows, tests, args):
     # for normal PR runs we run only aarch64 enterprise
-    if args.nightly and args.ui == "":
+    if args.nightly and (args.ui == "" or args.ui == "off"):
         add_workflow(
             workflows,
             tests,
@@ -551,7 +551,7 @@ def add_aarch64_community_workflow(workflows, tests, args):
 
 
 def add_aarch64_enterprise_workflow(workflows, tests, args):
-    if args.ui == "":
+    if args.ui == "" or args.ui == "off":
         add_workflow(
             workflows,
             tests,
