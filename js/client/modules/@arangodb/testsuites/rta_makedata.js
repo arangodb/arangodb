@@ -28,10 +28,6 @@
 const functionsDocumentation = {
   'rta_makedata': 'Release Testautomation Makedata / Checkdata framework'
 };
-const optionsDocumentation = [
-  '   - `rtasource`: directory of the release test automation',
-  '   - `makedata_args`: list of arguments ala --makedata_args:bigDoc true'
-];
 
 const internal = require('internal');
 
@@ -164,6 +160,5 @@ function makeDataWrapper (options) {
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['rta_makedata'] = makeDataWrapper;
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };

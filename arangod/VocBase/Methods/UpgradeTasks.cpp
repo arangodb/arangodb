@@ -25,6 +25,7 @@
 
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/UserManager.h"
 #include "Basics/DownCast.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"

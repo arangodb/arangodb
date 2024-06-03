@@ -84,7 +84,7 @@ class GraphNode : public ExecutionNode {
             AstNode const* direction, AstNode const* graph,
             std::unique_ptr<graph::BaseOptions> options);
 
-  GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
+  GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice base);
 
   /// @brief Internal constructor to clone the node.
   GraphNode(ExecutionPlan* plan, ExecutionNodeId id, TRI_vocbase_t* vocbase,

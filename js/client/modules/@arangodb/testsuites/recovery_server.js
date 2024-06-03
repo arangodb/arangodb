@@ -28,12 +28,11 @@
 const functionsDocumentation = {
   'recovery_server': 'run recovery server tests'
 };
-const optionsDocumentation = [
-];
 
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const trs = require('@arangodb/testutils/testrunners');
 const inst = require('@arangodb/testutils/instance');
 const _ = require('lodash');
 const tmpDirMmgr = require('@arangodb/testutils/tmpDirManager').tmpDirManager;
@@ -242,7 +241,7 @@ function recovery_server (options) {
         params.options.disableMonitor = options.disableMonitor;
         params.setup = false;
         try {
-          tu.writeTestResult(params.instance.args['temp.path'], {
+          trs.writeTestResult(params.instance.args['temp.path'], {
             failed: 1,
             status: false, 
             message: "unable to run recovery_server test " + test,
@@ -251,7 +250,7 @@ function recovery_server (options) {
         } catch (er) {}
         runArangodRecovery(params, useEncryption, exitSuccessOk, exitFailOk);
 
-        results[test] = tu.readTestResult(
+        results[test] = trs.readTestResult(
           params.instance.args['temp.path'],
           {
             status: false
@@ -318,6 +317,5 @@ function recovery_server (options) {
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['recovery_server'] = recovery_server;
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };

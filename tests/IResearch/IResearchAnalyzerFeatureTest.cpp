@@ -22,7 +22,6 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <Agency/AsyncAgencyComm.h>
 #include "gtest/gtest.h"
 
 #include "analysis/analyzers.hpp"
@@ -37,6 +36,7 @@
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
 
+#include "Agency/AsyncAgencyComm.h"
 #include "Agency/Store.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
@@ -45,6 +45,7 @@
 #include "Aql/Function.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/QueryRegistry.h"
+#include "Auth/UserManager.h"
 #include "Basics/files.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
@@ -2535,8 +2536,10 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
       .agencyCache()
       .applyTestTransaction(bogus.slice());
 
-  arangodb::network::ConnectionPool::Config poolConfig(
-      server.server().getFeature<arangodb::metrics::MetricsFeature>());
+  arangodb::network::ConnectionPool::Config poolConfig;
+  poolConfig.metrics =
+      arangodb::network::ConnectionPool::Metrics::fromMetricsFeature(
+          server.getFeature<arangodb::metrics::MetricsFeature>(), "mock-foo");
   poolConfig.clusterInfo =
       &server.getFeature<arangodb::ClusterFeature>().clusterInfo();
   poolConfig.numIOThreads = 1;
@@ -2659,7 +2662,11 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
             newServer));
     auto& cluster = newServer.addFeature<arangodb::ClusterFeature>();
     auto& networkFeature = newServer.addFeature<arangodb::NetworkFeature>(
-        metrics, arangodb::network::ConnectionPool::Config(metrics));
+        metrics,
+        arangodb::network::ConnectionPool::Config{
+            .metrics =
+                arangodb::network::ConnectionPool::Metrics::fromMetricsFeature(
+                    metrics, "mock")});
     auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();
     auto& selector = newServer.addFeature<arangodb::EngineSelectorFeature>();
     StorageEngineMock engine(newServer);
@@ -2758,8 +2765,10 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     auto& cluster = newServer.addFeature<arangodb::ClusterFeature>();
     auto& networkFeature = newServer.addFeature<arangodb::NetworkFeature>(
         metrics,
-        arangodb::network::ConnectionPool::Config(
-            newServer.getFeature<arangodb::metrics::MetricsFeature>()));
+        arangodb::network::ConnectionPool::Config{
+            .metrics =
+                arangodb::network::ConnectionPool::Metrics::fromMetricsFeature(
+                    metrics, "mock")});
     auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();
     auto& selector = newServer.addFeature<arangodb::EngineSelectorFeature>();
     StorageEngineMock engine(newServer);
