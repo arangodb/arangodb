@@ -43,6 +43,7 @@
 #include "Aql/QueryRegistry.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/SortCondition.h"
+#include "Auth/UserManager.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"

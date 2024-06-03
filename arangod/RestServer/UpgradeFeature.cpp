@@ -24,6 +24,7 @@
 #include "UpgradeFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/UserManager.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/application-exit.h"

@@ -19,34 +19,13 @@
 ///
 /// @author Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
 
-// Please leave the following debug code in for the next time we have to
-// debug fuerte.
-#if 0
-#include <iostream>
-#include <sstream>
-#include <string_view>
-
-extern void LogHackWriter(std::string_view p);
-
-class LogHack {
-  std::stringstream _s;
- public:
-  LogHack() {};
-  ~LogHack() { LogHackWriter(_s.str()); };
-  template<typename T> LogHack& operator<<(T const& o) { _s << o; return *this; }
-  typedef std::basic_ostream<char, std::char_traits<char> > CoutType;
-  typedef CoutType& (*StandardEndLine)(CoutType&);
-  LogHack& operator<<(StandardEndLine manip) { return *this; }
-};
-#endif
-
-#ifndef ARANGO_CXX_DRIVER_FUERTE_LOGGER
-#define ARANGO_CXX_DRIVER_FUERTE_LOGGER 1
-
+// note setting any of the following defines to 1 will make fuerte log the
+// specific messages to the ArangoDB logger!
 #ifndef ENABLE_FUERTE_LOG_ERROR
-#define ENABLE_FUERTE_LOG_ERROR 1
+#define ENABLE_FUERTE_LOG_ERROR 0
 #endif
 
 #ifndef ENABLE_FUERTE_LOG_DEBUG
@@ -61,37 +40,56 @@ class LogHack {
 #define ENABLE_FUERTE_LOG_HTTPTRACE 0
 #endif
 
-#if defined(ENABLE_FUERTE_LOG_TRACE) || defined(ENABLE_FUERTE_LOG_DEBUG) || \
-    defined(ENABLE_FUERTE_LOG_ERROR)
 #include <iostream>
+
+#if ENABLE_FUERTE_LOG_ERROR > 0 || ENABLE_FUERTE_LOG_DEBUG > 0 || ENABLE_FUERTE_LOG_TRACE > 0 || ENABLE_FUERTE_LOG_HTTPTRACE > 0
+#include <sstream>
+#include <string_view>
+
+// this extern is defined in LoggerFeature.cpp, and connects fuerte to the ArangoDB logger.
+// to make it work, it is necessary to also enable the LogHackWriter definition in
+// LoggerFeature.cpp, which is normally not compiled into the executable.
+extern void LogHackWriter(std::string_view p);
+
+class LogHack {
+  std::stringstream _s;
+ public:
+  LogHack() {}
+  ~LogHack() { LogHackWriter(_s.view()); }
+
+  typedef std::basic_ostream<char, std::char_traits<char> > CoutType;
+  typedef CoutType& (*StandardEndLine)(CoutType&);
+  LogHack& operator<<(StandardEndLine manip) { return *this; }
+
+  template<typename T> LogHack& operator<<(T const& o) try { 
+    _s << o; 
+    return *this; 
+  } catch (...) {
+    return *this; 
+  }
+};
 #endif
 
 #if ENABLE_FUERTE_LOG_ERROR > 0
-#define FUERTE_LOG_ERROR std::cout
+#define FUERTE_LOG_ERROR LogHack{}
 #else
-#define FUERTE_LOG_ERROR \
-  if (0) std::cout
+#define FUERTE_LOG_ERROR if (0) std::cout
 #endif
 
 #if ENABLE_FUERTE_LOG_DEBUG > 0
-#define FUERTE_LOG_DEBUG std::cout
+#define FUERTE_LOG_DEBUG LogHack{}
 #else
-#define FUERTE_LOG_DEBUG \
-  if (0) std::cout
+#define FUERTE_LOG_DEBUG if (0) std::cout
 #endif
 
 #if ENABLE_FUERTE_LOG_TRACE > 0
-#define FUERTE_LOG_TRACE std::cout
+#define FUERTE_LOG_TRACE LogHack{}
 #else
-#define FUERTE_LOG_TRACE \
-  if (0) std::cout
+#define FUERTE_LOG_TRACE if (0) std::cout
 #endif
 
 #if ENABLE_FUERTE_LOG_HTTPTRACE > 0
-#define FUERTE_LOG_HTTPTRACE std::cout << "[http] "
+#define FUERTE_LOG_HTTPTRACE LogHack{} << "[http] "
 #else
-#define FUERTE_LOG_HTTPTRACE \
-  if (0) std::cout
-#endif
-
+#define FUERTE_LOG_HTTPTRACE if (0) std::cout
 #endif
