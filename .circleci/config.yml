@@ -41,7 +41,7 @@ parameters:
     default: "" # should be empty, "tsan" or "alubsan"
   ui:
     type: string
-    default: ""
+    default: "off"
   ui-deployment:
     type: string
     default: ""
