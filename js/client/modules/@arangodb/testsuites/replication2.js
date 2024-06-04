@@ -32,6 +32,7 @@ const optionsDocumentation = [];
 
 const _ = require('lodash');
 const tu = require('@arangodb/testutils/test-utils');
+const trs = require('@arangodb/testutils/testrunners');
 
 const testPaths = {
   'replication2_client': [tu.pathForTesting('client/replication2')],
@@ -48,7 +49,7 @@ function replication2Client(options) {
   const opts = _.clone(options);
   opts.dbServers = Math.max(opts.dbServers, 3);
   opts.enableAliveMonitor = false;
-  return new tu.runLocalInArangoshRunner(opts, 'replication2_client').run(testCases);
+  return new trs.runLocalInArangoshRunner(opts, 'replication2_client').run(testCases);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -64,7 +65,7 @@ function replication2Server(options) {
   opts.dbServers = Math.max(opts.dbServers, 6);
   opts.agencySize = 1;
   opts.enableAliveMonitor = false;
-  return new tu.runOnArangodRunner(opts, 'replication2_server', {
+  return new trs.runOnArangodRunner(opts, 'replication2_server', {
     'javascript.allow-external-process-control': 'true',
     'javascript.allow-port-testing': 'true',
     'javascript.allow-admin-execute': 'true',
@@ -78,11 +79,5 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns.replication2_client = replication2Client;
   testFns.replication2_server = replication2Server;
-  for (const [key, value] of Object.entries(functionsDocumentation)) {
-    fnDocs[key] = value;
-  }
-
-  for (let i = 0; i < optionsDocumentation.length; i++) {
-    optionsDoc.push(optionsDocumentation[i]);
-  }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };

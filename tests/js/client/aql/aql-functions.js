@@ -2558,6 +2558,37 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test entries
+////////////////////////////////////////////////////////////////////////////////
+
+    testEntries: function () {
+      const values = [
+        {a:1},
+        {a:2, b:3},
+        {a:2, b:"foo"},
+        {b:"foo"},
+      ];
+
+      values.forEach(function (value) {
+        const actual = getQueryResults("RETURN ENTRIES(" + JSON.stringify(value) + ")");
+        assertEqual(Object.entries(value), actual[0], value);
+      });
+    },
+
+    testEntriesInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN ENTRIES()");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN ENTRIES({}, 1)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN ENTRIES({}, 1, 2)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ENTRIES([ ])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ENTRIES(null)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ENTRIES(true)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ENTRIES(0)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ENTRIES(1)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ENTRIES(\"\")");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test matches
 ////////////////////////////////////////////////////////////////////////////////
     

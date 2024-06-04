@@ -396,6 +396,7 @@ void AqlFunctionFeature::addDocumentFunctions() {
   add({"KEEP_RECURSIVE", ".,.|+", flags, &functions::KeepRecursive});
   add({"TRANSLATE", ".,.|.", flags, &functions::Translate});
   add({"ZIP", ".,.", flags, &functions::Zip});
+  add({"ENTRIES", ".", flags, &functions::Entries});
   add({"JSON_STRINGIFY", ".", flags, &functions::JsonStringify});
   add({"JSON_PARSE", ".", flags, &functions::JsonParse});
 

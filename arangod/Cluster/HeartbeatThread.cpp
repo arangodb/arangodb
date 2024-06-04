@@ -24,6 +24,7 @@
 #include "HeartbeatThread.h"
 
 #include "Agency/AsyncAgencyComm.h"
+#include "Auth/UserManager.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
@@ -735,10 +736,8 @@ void HeartbeatThread::handleUserVersionChange(VPackSlice userVersion) {
     } catch (...) {
     }
 
-    if (version > 0) {
-      if (af.isActive() && af.userManager() != nullptr) {
-        af.userManager()->setGlobalVersion(version);
-      }
+    if (version > 0 && af.isActive() && af.userManager() != nullptr) {
+      af.userManager()->setGlobalVersion(version);
     }
   }
 }

@@ -113,6 +113,10 @@ std::atomic<bool> Logger::_active(false);
 std::atomic<LogLevel> Logger::_level(LogLevel::INFO);
 std::function<void()> Logger::_onDroppedMessage;
 
+// default log levels, captured once at startup. these can be used
+// to reset the log levels back to defaults.
+std::vector<std::pair<std::string, LogLevel>> Logger::_defaultLogLevelTopics{};
+
 std::unordered_set<std::string> Logger::_structuredLogParams({});
 arangodb::basics::ReadWriteLock Logger::_structuredParamsLock;
 LogTimeFormats::TimeFormat Logger::_timeFormat(
@@ -164,6 +168,11 @@ std::unordered_set<std::string> Logger::structuredLogParams() {
 
 std::vector<std::pair<std::string, LogLevel>> Logger::logLevelTopics() {
   return LogTopic::logLevelTopics();
+}
+
+std::vector<std::pair<std::string, LogLevel>> const&
+Logger::defaultLogLevelTopics() {
+  return _defaultLogLevelTopics;
 }
 
 void Logger::setShowIds(bool show) { _showIds = show; }
@@ -883,17 +892,18 @@ void Logger::append(LogGroup& group, std::unique_ptr<LogMessage> msg,
 /// @brief initializes the logging component
 ////////////////////////////////////////////////////////////////////////////////
 
-void Logger::initialize(application_features::ApplicationServer& server,
-                        bool threaded, uint32_t maxQueuedLogMessages) {
+void Logger::initialize(bool threaded, uint32_t maxQueuedLogMessages) {
   if (_active.exchange(true, std::memory_order_acquire)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "Logger already initialized");
   }
 
+  _defaultLogLevelTopics = logLevelTopics();
+
   // logging is now active
   if (threaded) {
-    auto loggingThread = std::make_unique<LogThread>(
-        server, std::string(logThreadName), maxQueuedLogMessages);
+    auto loggingThread = std::make_unique<LogThread>(std::string(logThreadName),
+                                                     maxQueuedLogMessages);
     if (!loggingThread->start()) {
       LOG_TOPIC("28bd9", FATAL, arangodb::Logger::FIXME)
           << "could not start logging thread";
