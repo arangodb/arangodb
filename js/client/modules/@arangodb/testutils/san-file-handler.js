@@ -39,7 +39,7 @@ function containsDoubleByte(str) {
 class sanHandler {
   constructor(binaryName, sanOptions, isSan, extremeVerbosity) {
     this.binaryName = binaryName;
-    this.sanOptions = _.clone(sanOptions);
+    this.sanOptions = _.cloneDeep(sanOptions);
     this.enabled = isSan;
     this.extremeVerbosity = extremeVerbosity;
     this.sanitizerLogPaths = {};
@@ -51,7 +51,9 @@ class sanHandler {
         rootDir = tmpDir;
       }
       for (const [key, value] of Object.entries(this.sanOptions)) {
-        let oneLogFile = fs.join(rootDir, key.toLowerCase().split('_')[0] + '.log');
+        // ASAN/LSAN/UBSAN cannot use different logfiles, so we need to use the same name for all
+        let logName = key == "TSAN_OPTIONS" ? "tsan.log" : "alubsan.log";
+        let oneLogFile = fs.join(rootDir, logName);
         // we need the log files to contain the exe name, otherwise our code to pick them up won't find them
         this.sanOptions[key]['log_exe_name'] = "true";
         const origPath = this.sanOptions[key]['log_path'];
@@ -62,7 +64,6 @@ class sanHandler {
   }
   setSanOptions() {
     if (this.enabled) {
-      print("Using sanOptions ", this.sanOptions);
       for (const [key, value] of Object.entries(this.sanOptions)) {
         let oneSet = "";
         for (const [keyOne, valueOne] of Object.entries(value)) {
@@ -90,21 +91,28 @@ class sanHandler {
       return false;
     }
     let ret = false;
+    let processedFiles = new Set();
+    let suffix = `.${this.binaryName}.${pid}`;
     for (const [key, value] of Object.entries(this.sanitizerLogPaths)) {
-      print("processing ", value);
+      if (processedFiles.has(value.local)) {
+        // we don't want to process the same file twice
+        continue;
+      }
+      processedFiles.add(value.local);
       const { upstream, local } = value;
-      let fn = `${local}.${this.binaryname}.${pid}`;
+      let fn = `${local}${suffix}`;
       if (this.extremeVerbosity) {
         print(`checking for ${fn}: ${fs.exists(fn)}`);
       }
       if (fs.exists(fn)) {
         let content = fs.read(fn);
         if (upstream) {
-          print("found file ", fn, " - writing file ", `${upstream}.${this.binaryName}.${this.pid}`);
-          fs.write(`${upstream}.${this.binaryName}.${this.pid}`, content);
+          let outFn = `${upstream}${suffix}`;
+          print("found file ", fn, " - writing file ", outFn);
+          fs.write(outFn, content);
         }
         if (content.length > 10) {
-          crashUtils.GDB_OUTPUT += `Report of '${this.name}' in ${fn} contains: \n`;
+          crashUtils.GDB_OUTPUT += `Report of '${this.binaryName}' in ${fn} contains: \n`;
           crashUtils.GDB_OUTPUT += content;
           ret = true;
         }
