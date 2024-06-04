@@ -880,7 +880,7 @@ Result TailingSyncer::truncateCollection(
 
     OperationOptions opts(ExecContext::current());
     OperationResult opRes =
-        trx.count(col->name(), transaction::CountType::Normal, opts);
+        trx.count(col->name(), transaction::CountType::kNormal, opts);
     if (opRes.ok() && opRes.slice().isNumber()) {
       count = opRes.slice().getNumber<uint64_t>();
     }

@@ -1220,12 +1220,12 @@ futures::Future<OperationResult> countOnCoordinator(
 
   auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
   for (auto const& p : *shardIds) {
-    network::Headers headers;
     if (p.second.empty()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
     }
     // extract leader
     std::string const& leader = p.second[0];
+    network::Headers headers;
     ClusterTrxMethods::addTransactionHeader(trx, leader, headers);
 
     futures.emplace_back(network::sendRequestRetry(

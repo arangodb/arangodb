@@ -59,6 +59,7 @@
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/ReplicatedRocksDBTransactionCollection.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
@@ -70,12 +71,15 @@
 #include "Transaction/IndexesSnapshot.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/Options.h"
 #include "Transaction/ReplicatedContext.h"
+#include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/ComputedValues.h"
 #include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/KeyGenerator.h"
@@ -2998,7 +3002,6 @@ futures::Future<OperationResult> transaction::Methods::countCoordinator(
 
   return countCoordinatorHelper(colptr, collectionName, type, options, api);
 }
-
 #endif
 
 futures::Future<OperationResult> transaction::Methods::countCoordinatorHelper(
@@ -3008,72 +3011,99 @@ futures::Future<OperationResult> transaction::Methods::countCoordinatorHelper(
   TRI_ASSERT(collinfo != nullptr);
   auto& cache = collinfo->countCache();
 
-  uint64_t documents = CountCache::NotPopulated;
-  if (type == transaction::CountType::ForceCache) {
-    // always return from the cache, regardless what's in it
-    documents = cache.get();
-  } else if (type == transaction::CountType::TryCache) {
+  if (type == transaction::CountType::kTryCache) {
     // fetch current cache value
-    documents = cache.get();
-    // bump the cache expiry value if required. this will only
-    // modify the cache's expiry timestamp if the cache value is
-    // already expired. when called concurrently, only one thread
-    // will succeed and return true from bumpExpiry.
-    bool bumped = cache.bumpExpiry();
-    if (bumped) {
-      // our thread bumped the expiry date. now set the count
-      // value to unknown so that we refresh the cache value from
-      // this thread.
-      documents = CountCache::NotPopulated;
-    }
-    // if bumped is false here, it means that either the cache value
-    // was not expired, or that is was expired, but another concurrent
-    // thread updated the expiry value concurrently. in this case we
-    // will return the stale cache value if the cache value was ever
-    // populated. otherwise we need to update the cache ourselves.
-  }
+    uint64_t documents = cache.get();
 
-  if (documents == CountCache::NotPopulated) {
-    // no cache hit, a cache refresh operation, or detailed results requested.
-    // note that it is still possible for multiple concurrent threads to
-    // fetch the count values from DB servers even for the same collection.
-    // this is possible if detailed requests are requested
-    // (CountType::Detailed), or the cache value has never been populated.
-    return arangodb::countOnCoordinator(*this, collectionName, options, api)
-        .thenValue(
-            [&cache, type, options](OperationResult&& res) -> OperationResult {
-              if (res.fail()) {
-                return std::move(res);
+    if (documents != CountCache::kNotPopulated) {
+      // cache was previously set to some value, but cache value may
+      // have been expired.
+
+      // bump the cache expiry value if required. this will only
+      // modify the cache's expiry timestamp if the cache value is
+      // already expired. when called concurrently, only one thread
+      // will succeed and return true from bumpExpiry.
+      bool bumped = cache.bumpExpiry();
+      if (bumped && SchedulerFeature::SCHEDULER != nullptr) {
+        // our thread bumped the expiry date. we need to schedule the refresh
+        // ourselves.
+        DatabaseFeature& databaseFeature =
+            vocbase().server().getFeature<DatabaseFeature>();
+        SchedulerFeature::SCHEDULER->queue(
+            RequestLane::CLIENT_SLOW,
+            [&databaseFeature, databaseName = collinfo->vocbase().name(),
+             collectionName]() {
+              // it is possible that the target database does not exist anymore
+              // when the callback is scheduled for execution
+              auto vocbase = databaseFeature.useDatabase(databaseName);
+              if (vocbase == nullptr) {
+                return;
               }
 
-              // reassemble counts from vpack
-              std::vector<std::pair<std::string, uint64_t>> counts;
-              TRI_ASSERT(res.slice().isArray());
-              for (VPackSlice count : VPackArrayIterator(res.slice())) {
-                TRI_ASSERT(count.isArray());
-                TRI_ASSERT(count[0].isString());
-                TRI_ASSERT(count[1].isNumber());
-                std::string key = count[0].copyString();
-                uint64_t value = count[1].getNumericValue<uint64_t>();
-                counts.emplace_back(std::move(key), value);
-              }
+              // start a new transaction
+              auto origin = transaction::OperationOriginInternal{
+                  "refreshing document count cache"};
+              transaction::StandaloneContext ctx(*vocbase, origin);
+              SingleCollectionTransaction trx(
+                  std::shared_ptr<transaction::Context>(
+                      std::shared_ptr<transaction::Context>(), &ctx),
+                  collectionName, AccessMode::Type::READ);
 
-              uint64_t total = 0;
-              OperationResult opRes =
-                  buildCountResult(options, counts, type, total);
-              cache.store(total);
-              return opRes;
+              Result res = trx.begin();
+              if (res.ok()) {
+                OperationOptions options(ExecContext::current());
+                OperationResult opResult = trx.count(
+                    collectionName, transaction::CountType::kNormal, options);
+                if (opResult.result.ok()) {
+                  VPackSlice s = opResult.slice();
+                  TRI_ASSERT(s.isNumber());
+                  if (trx.documentCollection() != nullptr) {
+                    trx.documentCollection()->countCache().store(
+                        s.getNumber<uint64_t>());
+                  }
+                }
+              }
             });
+      }
+
+      // if bumped is false here, it means that either the cache value
+      // was not expired, or that is was expired, but another concurrent
+      // thread updated the expiry value concurrently. in this case we
+      // will return the stale cache value if the cache value was ever
+      // populated. otherwise we need to update the cache ourselves.
+      VPackBuilder resultBuilder;
+      resultBuilder.add(VPackValue(documents));
+      return OperationResult(Result(), resultBuilder.steal(), options);
+    }
+    // fallthrough intentional
   }
 
-  // cache hit!
-  TRI_ASSERT(documents != CountCache::NotPopulated);
-  TRI_ASSERT(type != transaction::CountType::Detailed);
+  // need to query count values from DB server(s), from within the currently
+  // running transaction.
+  return arangodb::countOnCoordinator(*this, collectionName, options, api)
+      .thenValue([&cache, type,
+                  options](OperationResult&& res) -> OperationResult {
+        if (res.fail()) {
+          return std::move(res);
+        }
 
-  // return number from cache
-  VPackBuilder resultBuilder;
-  resultBuilder.add(VPackValue(documents));
-  return OperationResult(Result(), resultBuilder.steal(), options);
+        // reassemble counts from vpack
+        std::vector<std::pair<std::string, uint64_t>> counts;
+        TRI_ASSERT(res.slice().isArray());
+        for (VPackSlice count : VPackArrayIterator(res.slice())) {
+          TRI_ASSERT(count.isArray());
+          TRI_ASSERT(count[0].isString());
+          TRI_ASSERT(count[1].isNumber());
+          std::string key = count[0].copyString();
+          uint64_t value = count[1].getNumericValue<uint64_t>();
+          counts.emplace_back(std::move(key), value);
+        }
+
+        uint64_t total = 0;
+        OperationResult opRes = buildCountResult(options, counts, type, total);
+        cache.store(total);
+        return opRes;
+      });
 }
 
 /// @brief count the number of documents in a collection
@@ -3987,10 +4017,10 @@ futures::Future<OperationResult> Methods::countInternal(
     return countCoordinator(collectionName, type, options, api);
   }
 
-  if (type == CountType::Detailed) {
+  if (type == CountType::kDetailed) {
     // we are a single-server... we cannot provide detailed per-shard counts,
     // so just downgrade the request to a normal request
-    type = CountType::Normal;
+    type = CountType::kNormal;
   }
 
   return futures::makeFuture(countLocal(collectionName, type, options));
