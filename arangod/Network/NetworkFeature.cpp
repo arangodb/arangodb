@@ -64,7 +64,7 @@ namespace {
 // priority lanes and also could be blocked by scheduler threads
 // not pulling any more new tasks due to overload/overwhelm.
 class RetryThread : public ServerThread<ArangodServer> {
-  static constexpr auto kDefaultSleepTime = std::chrono::milliseconds(10'000);
+  static constexpr auto kDefaultSleepTime = std::chrono::seconds(10);
 
  public:
   explicit RetryThread(ArangodServer& server)
@@ -182,6 +182,11 @@ class RetryThread : public ServerThread<ArangodServer> {
           }
 
           if (isStopping()) {
+            try {
+              req->cancel();
+            } catch (...) {
+              // ignore error during cancelation
+            }
             break;
           }
 
