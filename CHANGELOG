@@ -1,6 +1,8 @@
 v3.11.10 (XXXX-XX-XX)
 ---------------------
 
+* Switch production compiler to clang++ (16.0.6) and runtime to glibc.
+
 * Fixed BTS-1813: Fixed an AQL error that could lead to range-check exceptions
   in certain queries with subqueries.
 
