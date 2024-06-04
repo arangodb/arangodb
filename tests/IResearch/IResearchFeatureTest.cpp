@@ -2346,7 +2346,8 @@ class IResearchFeatureTestCoordinator
   }
 
   void agencyCreateDatabase(std::string const& name) {
-    TemplateSpecializer ts(name);
+    TemplateSpecializer ts(
+        name, [&]() -> std::uint64_t { return server.genUniqId(); });
     std::string st = ts.specialize(plan_dbs_string);
     agencyTrx("/arango/Plan/Databases/" + name, st);
     st = ts.specialize(plan_colls_string);

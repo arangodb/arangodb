@@ -39,8 +39,6 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 
-class ApplicationServer;
-
 namespace velocypack {
 class Builder;
 class Slice;

@@ -1670,7 +1670,7 @@ RestAdminClusterHandler::waitForDBServerMaintenance(std::string const& serverId,
       true, true);
   auto& cf = server().getFeature<ClusterFeature>();
 
-  if (auto result = cf.agencyCallbackRegistry()->registerCallback(cb, true);
+  if (auto result = cf.agencyCallbackRegistry()->registerCallback(cb);
       result.fail()) {
     return {};
   }
@@ -2871,6 +2871,7 @@ RestAdminClusterHandler::collectRebalanceInformation(
           collectionRef.shards.push_back(shardIndex);
           auto& shardRef = p.shards.emplace_back();
           shardRef.name = shard.first;
+          TRI_ASSERT(!shard.second.empty());
           shardRef.leader = getDBServerIndex(shard.second[0]);
           shardRef.id = shardIndex;
           shardRef.collectionId = index;

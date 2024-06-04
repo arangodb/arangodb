@@ -83,6 +83,7 @@
 #include "Sharding/ShardingInfo.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
+#include "Transaction/CountCache.h"
 #include "Utils/Events.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
@@ -365,6 +366,19 @@ void doQueueLinkDrop(IndexId id, std::string const& collection,
   };
   scheduler->queue(RequestLane::INTERNAL_LOW, dropTask);
 }
+
+inline arangodb::AgencyOperation SetOldEntry(
+    std::string const& key, std::vector<std::string_view> const& path,
+    VPackSlice plan) {
+  VPackSlice newEntry = plan.get(path);
+  if (newEntry.isNone()) {
+    // This is a countermeasure to protect against non-existing paths. If we
+    // get anything else original plan is already broken.
+    newEntry = VPackSlice::emptyObjectSlice();
+  }
+  return {key, AgencyValueOperationType::SET, newEntry};
+}
+
 }  // namespace
 }  // namespace arangodb
 
@@ -719,40 +733,16 @@ std::vector<DatabaseID> ClusterInfo::databases() {
     }
   }
 
-  if (!_currentProt.isValid) {
-    Result r = waitForCurrent(1).get();
-    if (r.fail()) {
-      THROW_ARANGO_EXCEPTION(r);
-    }
-  }
-
-  if (!_dbServersProt.isValid) {
-    loadCurrentDBServers();
-  }
-
-  // From now on we know that all data has been valid once, so no need
-  // to check the isValid flags again under the lock.
-
-  size_t expectedSize;
-  {
-    READ_LOCKER(readLocker, _dbServersProt.lock);
-    expectedSize = _dbServers.size();
-  }
-
+  // The _plannedDatabases map contains all Databases that
+  // are planned to exist, and that do not have the "isBuilding"
+  // flag set. Hence those databases have been successfully created
+  // and should be listed.
   std::vector<DatabaseID> result;
   {
     READ_LOCKER(readLockerPlanned, _planProt.lock);
-    READ_LOCKER(readLockerCurrent, _currentProt.lock);
     // _plannedDatabases is a map-type<DatabaseID, VPackSlice>
     for (auto const& it : _plannedDatabases) {
-      // _currentDatabases is:
-      //   a map-type<DatabaseID, a map-type<ServerID, VPackSlice>>
-      if (auto it2 = _currentDatabases.find(it.first);
-          it2 != _currentDatabases.end()) {
-        if (it2->second->size() >= expectedSize) {
-          result.emplace_back(it.first);
-        }
-      }
+      result.emplace_back(it.first);
     }
   }
 
@@ -767,12 +757,16 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
     TRI_vocbase_t& vocbase, uint64_t planVersion, bool cleanupLinks) const {
   std::shared_ptr<LogicalCollection> collection;
   uint64_t hash = 0;
+  uint64_t countCache = transaction::CountCache::NotPopulated;
 
   if (!isBuilding && existingCollections != _plannedCollections.end()) {
     // check if we already know this collection from a previous run...
     if (auto existing = existingCollections->second->find(collectionId);
         existing != existingCollections->second->end()) {
       CollectionWithHash const& previous = existing->second;
+      // note the cached count result of the previous collection
+      countCache = previous.collection->countCache().get();
+
       // compare the hash values of what is in the cache with the hash of the
       // collection a hash value of 0 means that the collection must not be read
       // from the cache, potentially because it contains a link to a view (which
@@ -804,6 +798,13 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
     // changed
     collection = vocbase.createCollectionObject(data, /*isAStub*/ true);
     TRI_ASSERT(collection != nullptr);
+
+    if (countCache != transaction::CountCache::NotPopulated) {
+      // carry forward the count cache value from the previous collection, if
+      // set. this way we avoid that the count value will be refetched via
+      // HTTP requests instantly after the collection object is used next.
+      collection->countCache().store(countCache);
+    }
     if (!isBuilding) {
       auto indexes = collection->getPhysical()->getAllIndexes();
       // if the collection has a link to a view, there are dependencies between
@@ -4630,8 +4631,8 @@ ClusterInfo::getResponsibleServer(ShardID shardID) {
     }
 
     LOG_TOPIC("b1dc5", INFO, Logger::CLUSTER)
-        << "getResponsibleServerReplication1: found resigned leader, "
-        << "waiting for half a second...";
+        << "getResponsibleServerReplication1: found resigned leader for shard "
+        << shardID << ", waiting for half a second...";
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
 
@@ -5289,25 +5290,23 @@ Result ClusterInfo::agencyPlan(std::shared_ptr<VPackBuilder> const& body) {
 }
 
 Result ClusterInfo::agencyReplan(VPackSlice const plan) {
+  TRI_IF_FAILURE("ClusterInfo::failReplanAgency") { return TRI_ERROR_DEBUG; }
+  // Apply only Collections and DBServers
   auto trxOperations = std::vector<AgencyOperation>{
       {"Current/Collections", AgencyValueOperationType::SET,
        VPackSlice::emptyObjectSlice()},
-      {"Plan/Collections", AgencyValueOperationType::SET,
-       plan.get({"arango", "Plan", "Collections"})},
+      SetOldEntry("Plan/Collections", {"arango", "Plan", "Collections"}, plan),
       {"Current/Databases", AgencyValueOperationType::SET,
        VPackSlice::emptyObjectSlice()},
-      {"Plan/Databases", AgencyValueOperationType::SET,
-       plan.get({"arango", "Plan", "Databases"})},
+      SetOldEntry("Plan/Databases", {"arango", "Plan", "Databases"}, plan),
       {"Current/Views", AgencyValueOperationType::SET,
        VPackSlice::emptyObjectSlice()},
       {"Current/CollectionGroups", AgencyValueOperationType::SET,
        VPackSlice::emptyObjectSlice()},
       {"Current/ReplicatedLogs", AgencyValueOperationType::SET,
        VPackSlice::emptyObjectSlice()},
-      {"Plan/Analyzers", AgencyValueOperationType::SET,
-       plan.get({"arango", "Plan", "Analyzers"})},
-      {"Plan/Views", AgencyValueOperationType::SET,
-       plan.get({"arango", "Plan", "Views"})},
+      SetOldEntry("Plan/Analyzers", {"arango", "Plan", "Analyzers"}, plan),
+      SetOldEntry("Plan/Views", {"arango", "Plan", "Views"}, plan),
       {"Current/Version", AgencySimpleOperationType::INCREMENT_OP},
       {"Plan/Version", AgencySimpleOperationType::INCREMENT_OP},
       {"Sync/UserVersion", AgencySimpleOperationType::INCREMENT_OP},
@@ -5356,7 +5355,14 @@ Result ClusterInfo::agencyReplan(VPackSlice const plan) {
   Result rr;
   if (VPackSlice resultsSlice = r.slice().get("results");
       resultsSlice.length() > 0) {
-    rr = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
+    auto raftIndex = resultsSlice[0].getNumber<uint64_t>();
+    if (raftIndex == 0) {
+      // This means the above request was actually illegal
+      return {TRI_ERROR_HOT_BACKUP_INTERNAL,
+              "Failed to restore agency plan from Hotbackup. Please contact "
+              "ArangoDB support immediately."};
+    }
+    rr = waitForPlan(raftIndex).get();
   }
 
   return rr;

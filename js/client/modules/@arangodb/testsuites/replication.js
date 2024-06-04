@@ -44,6 +44,7 @@ const optionsDocumentation = [
 const _ = require('lodash');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const trs = require('@arangodb/testutils/testrunners');
 const ct = require('@arangodb/testutils/client-tools');
 
 const testPaths = {
@@ -72,7 +73,7 @@ function shellReplication (options) {
   };
   _.defaults(opts, options);
 
-  return new tu.runOnArangodRunner(opts, 'shell_replication').run(testCases);
+  return new trs.runOnArangodRunner(opts, 'shell_replication').run(testCases);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -90,7 +91,7 @@ function shellClientReplicationApi (options) {
   _.defaults(opts, options);
   opts.forceJson = true;
 
-  let ret = new tu.runLocalInArangoshRunner(opts, 'shell_replication_api').run(testCases);
+  let ret = new trs.runLocalInArangoshRunner(opts, 'shell_replication_api').run(testCases);
   if (!options.forceJson) {
     arango.forceJson(false);
   }
@@ -98,7 +99,7 @@ function shellClientReplicationApi (options) {
 }
 
 
-class replicationRunner extends tu.runInArangoshRunner {
+class replicationRunner extends trs.runInArangoshRunner {
   constructor(options, testname, serverOptions, startReplication=false) {
     super(options, testname, serverOptions);
     this.options.singles = 2;
@@ -225,6 +226,6 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   testFns['replication_static'] = replicationStatic;
   testFns['replication_sync'] = replicationSync;
   testFns['http_replication'] = shellClientReplicationApi;
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
+  tu.CopyIntoList(optionsDoc, optionsDocumentation);
 };

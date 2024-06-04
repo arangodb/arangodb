@@ -774,4 +774,39 @@ AqlValue functions::Zip(ExpressionContext* expressionContext, AstNode const&,
   return AqlValue(builder->slice(), builder->size());
 }
 
+AqlValue functions::Entries(ExpressionContext* expressionContext,
+                            AstNode const&,
+                            VPackFunctionParametersView parameters) {
+  // cppcheck-suppress variableScope
+  static char const* AFN = "ENTRIES";
+
+  AqlValue const& object =
+      aql::functions::extractFunctionParameterValue(parameters, 0);
+
+  if (!object.isObject()) {
+    registerWarning(expressionContext, AFN,
+                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  transaction::Methods* trx = &expressionContext->trx();
+  auto* vopts = &trx->vpackOptions();
+
+  AqlValueMaterializer objectMaterializer(vopts);
+  VPackSlice objectSlice = objectMaterializer.slice(object);
+
+  transaction::BuilderLeaser builder(trx);
+  builder->openArray();
+
+  for (auto [key, value] : VPackObjectIterator(objectSlice, true)) {
+    VPackArrayBuilder pair(builder.get(), true);
+    builder->add(key);
+    builder->add(value);
+  }
+
+  builder->close();
+
+  return AqlValue(builder->slice(), builder->size());
+}
+
 }  // namespace arangodb::aql
