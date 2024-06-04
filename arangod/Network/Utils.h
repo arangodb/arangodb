@@ -50,9 +50,6 @@ class NetworkFeature;
 namespace network {
 struct RequestOptions;
 
-Headers addAuthorizationHeader(
-    std::unordered_map<std::string, std::string> const& originalHeaders);
-
 /// @brief resolve 'shard:' or 'server:' url to actual endpoint
 futures::Future<ErrorCode> resolveDestination(NetworkFeature const&,
                                               DestinationId const& dest,

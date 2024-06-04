@@ -441,9 +441,9 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
   if (buildingTransaction.fail()) {
     return buildingTransaction.result();
   }
+  auto& agencyCache = server.getFeature<ClusterFeature>().agencyCache();
   auto callbackInfos = writer.prepareCurrentWatcher(
-      databaseName, waitForSyncReplication,
-      server.getFeature<ClusterFeature>().agencyCache());
+      databaseName, waitForSyncReplication, agencyCache);
 
   std::vector<std::pair<std::shared_ptr<AgencyCallback>, std::string>>
       callbackList;
@@ -490,8 +490,24 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
     return r;
   }
 
-  return waitForCurrentToCatchUp(server, callbackInfos, callbackList,
-                                 pollInterval);
+  if (auto r = waitForCurrentToCatchUp(server, callbackInfos, callbackList,
+                                       pollInterval);
+      r.fail()) {
+    return r;
+  }
+  // get current raft index; this is at least as high as the one we just waited
+  // for in waitForCurrentToCatchUp
+  auto const index = agencyCache.index();
+  // wait for cluster info to catch up
+  auto futCurrent = ci.waitForCurrent(index);
+  auto futPlan = ci.waitForPlan(index);
+  if (auto r = futCurrent.get(); r.fail()) {
+    return r;
+  }
+  if (auto r = futPlan.get(); r.fail()) {
+    return r;
+  }
+  return {};
 }
 
 template<replication::Version ReplicationVersion>

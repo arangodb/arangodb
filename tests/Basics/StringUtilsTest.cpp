@@ -32,24 +32,13 @@
 #include "Basics/Utf8Helper.h"
 #include "Basics/files.h"
 
-#include "icu-helper.h"
-
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace std;
 
 using namespace std::literals::string_literals;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 setup / tear-down
-// -----------------------------------------------------------------------------
-
-class StringUtilsTest : public ::testing::Test {
- protected:
-  StringUtilsTest() {
-    IcuInitializer::setup("./3rdParty/V8/v8/third_party/icu/common/icudtl.dat");
-  }
-};
+class StringUtilsTest : public ::testing::Test {};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite

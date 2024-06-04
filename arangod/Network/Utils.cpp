@@ -42,21 +42,6 @@
 
 namespace arangodb::network {
 
-Headers addAuthorizationHeader(
-    std::unordered_map<std::string, std::string> const& originalHeaders) {
-  auto auth = AuthenticationFeature::instance();
-
-  network::Headers headers;
-  if (auth != nullptr && auth->isActive()) {
-    headers.try_emplace(StaticStrings::Authorization,
-                        "bearer " + auth->tokenCache().jwtToken());
-  }
-  for (auto const& header : originalHeaders) {
-    headers.try_emplace(header.first, header.second);
-  }
-  return headers;
-}
-
 futures::Future<ErrorCode> resolveDestination(NetworkFeature const& feature,
                                               DestinationId const& dest,
                                               network::EndpointSpec& spec) {
@@ -103,7 +88,7 @@ futures::Future<ErrorCode> resolveDestination(ClusterInfo& ci,
     if (maybeServer.fail()) {
       LOG_TOPIC("60ee8", ERR, Logger::CLUSTER)
           << "cannot find responsible server for shard '" << spec.shardId
-          << "'";
+          << "': " << maybeServer.errorMessage();
       co_return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
     }
 

@@ -120,6 +120,7 @@ uint64_t defaultMemoryLimit(uint64_t available, double reserveFraction,
   // minimum reserve memory is 256MB
   reserve = std::max<uint64_t>(reserve, static_cast<uint64_t>(256) << 20);
 
+  TRI_ASSERT(available > 0);
   double f = double(1.0) - (double(reserve) / double(available));
   double dyn = (double(available) * f * percentage);
   if (dyn < 0.0) {
@@ -248,6 +249,10 @@ void QueryRegistryFeature::collectOptions(
   options->addOldOption("database.query-cache-max-results",
                         "query.cache-entries");
   options->addOldOption("database.disable-query-tracking", "query.tracking");
+
+  // option obsoleted since 3.12.1, because the APIs are turned on by default.
+  options->addObsoleteOption("query.enable-debug-apis",
+                             "Whether to enable query debug APIs.", false);
 
   options
       ->addOption("--query.global-memory-limit",

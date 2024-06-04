@@ -345,8 +345,7 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
             isTelemetricsReq ? "/_admin/telemetrics" : "/_admin/support-info";
         auto f = network::sendRequestRetry(pool, "server:" + server.first,
                                            fuerte::RestVerb::Get, reqUrl,
-                                           VPackBuffer<uint8_t>{}, options,
-                                           network::addAuthorizationHeader({}));
+                                           VPackBuffer<uint8_t>{}, options);
         futures.emplace_back(std::move(f));
       }
 

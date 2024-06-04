@@ -45,6 +45,8 @@ using namespace arangodb::options;
 
 DECLARE_COUNTER(arangodb_logger_warnings_total, "Number of warnings logged.");
 DECLARE_COUNTER(arangodb_logger_errors_total, "Number of errors logged.");
+DECLARE_COUNTER(arangodb_logger_messages_dropped_total,
+                "Number of log messages dropped.");
 
 namespace arangodb {
 
@@ -162,7 +164,9 @@ class LogAppenderMetricsCounter final : public LogAppender {
   LogAppenderMetricsCounter(metrics::MetricsFeature& metrics)
       : LogAppender(),
         _warningsCounter(metrics.add(arangodb_logger_warnings_total{})),
-        _errorsCounter(metrics.add(arangodb_logger_errors_total{})) {}
+        _errorsCounter(metrics.add(arangodb_logger_errors_total{})),
+        _droppedMessagesCounter(
+            metrics.add(arangodb_logger_messages_dropped_total{})) {}
 
   void logMessage(LogMessage const& message) override {
     // only handle WARN and ERR log messages
@@ -173,11 +177,14 @@ class LogAppenderMetricsCounter final : public LogAppender {
     }
   }
 
+  void trackDroppedMessage() noexcept { ++_droppedMessagesCounter; }
+
   std::string details() const override { return std::string(); }
 
  private:
   metrics::Counter& _warningsCounter;
   metrics::Counter& _errorsCounter;
+  metrics::Counter& _droppedMessagesCounter;
 };
 
 LogBufferFeature::LogBufferFeature(Server& server)
@@ -187,10 +194,15 @@ LogBufferFeature::LogBufferFeature(Server& server)
   setOptional(true);
   startsAfter<LoggerFeature>();
 
-  LogAppender::addGlobalAppender(
-      Logger::defaultLogGroup(),
-      std::make_shared<LogAppenderMetricsCounter>(
-          server.getFeature<metrics::MetricsFeature>()));
+  _metricsCounter = std::make_shared<LogAppenderMetricsCounter>(
+      server.getFeature<metrics::MetricsFeature>());
+
+  LogAppender::addGlobalAppender(Logger::defaultLogGroup(), _metricsCounter);
+
+  Logger::setOnDroppedMessage([mc = _metricsCounter]() noexcept {
+    std::static_pointer_cast<LogAppenderMetricsCounter>(mc)
+        ->trackDroppedMessage();
+  });
 }
 
 void LogBufferFeature::collectOptions(

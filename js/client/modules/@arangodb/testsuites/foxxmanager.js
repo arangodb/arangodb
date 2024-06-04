@@ -33,6 +33,8 @@ const optionsDocumentation = [
 ];
 
 const pu = require('@arangodb/testutils/process-utils');
+const tu = require('@arangodb/testutils/test-utils');
+const ct = require('@arangodb/testutils/client-tools');
 const im = require('@arangodb/testutils/instance-manager');
 const fs = require('fs');
 
@@ -61,12 +63,12 @@ function foxxManager (options) {
 
   let results = {};
 
-  results.update = pu.run.arangoshCmd(options, instanceManager, {
+  results.update = ct.run.arangoshCmd(options, instanceManager, {
     'configuration': fs.join(pu.CONFIG_DIR, 'foxx-manager.conf')
   }, ['update'], options.coreCheck);
 
   if (results.update.status === true || options.force) {
-    results.search = pu.run.arangoshCmd(options, instanceManager, {
+    results.search = ct.run.arangoshCmd(options, instanceManager, {
       'configuration': fs.join(pu.CONFIG_DIR, 'foxx-manager.conf')
     }, ['search', 'itzpapalotl'], options.coreCheck);
   }
@@ -81,6 +83,6 @@ function foxxManager (options) {
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['foxx_manager'] = foxxManager;
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
+  tu.CopyIntoList(optionsDoc, optionsDocumentation);
 };

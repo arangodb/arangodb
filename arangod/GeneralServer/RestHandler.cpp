@@ -24,6 +24,7 @@
 #include "RestHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/TokenCache.h"
 #include "Basics/RecursiveLocker.h"
 #include "Basics/debugging.h"
 #include "Basics/dtrace-wrapper.h"
@@ -781,3 +782,9 @@ void RestHandler::resetResponse(rest::ResponseCode code) {
   TRI_ASSERT(_response != nullptr);
   _response->reset(code);
 }
+
+futures::Future<futures::Unit> RestHandler::executeAsync() {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+}
+
+RestStatus RestHandler::execute() { return waitForFuture(executeAsync()); }

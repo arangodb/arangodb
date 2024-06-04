@@ -22,16 +22,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
+#include "Mocks/Servers.h"
 
 #include "Metrics/MetricsFeature.h"
+#include "Metrics/Gauge.h"
 #include "Network/ConnectionPool.h"
 
 #include <fuerte/connection.h>
 #include <fuerte/requests.h>
 
-#include "Mocks/Servers.h"
-
-#include "Metrics/Gauge.h"
+#include <atomic>
 
 using namespace arangodb;
 using namespace arangodb::network;
@@ -67,15 +67,81 @@ struct NetworkConnectionPoolTest : public ::testing::Test {
       "arangodb_connection_pool_connections_current", "pool=\"\""};
 };
 
+TEST_F(NetworkConnectionPoolTest, prune_while_in_flight) {
+  ConnectionPool::Config config;
+  config.metrics = ConnectionPool::Metrics::fromMetricsFeature(
+      server.getFeature<metrics::MetricsFeature>(), "");
+  config.numIOThreads = 1;
+  config.maxOpenConnections = 3;
+  config.idleConnectionMilli = 5;  // extra small for testing
+  config.verifyHosts = false;
+  config.protocol = fuerte::ProtocolType::Http;
+
+  ConnectionPool pool(config);
+
+  std::atomic<bool> done1 = false;
+  std::atomic<bool> done2 = false;
+
+  auto waiter = [&done1, &done2](fuerte::Error,
+                                 std::unique_ptr<fuerte::Request> req,
+                                 std::unique_ptr<fuerte::Response> res) {
+    done2.store(true);
+    done2.notify_one();
+
+    done1.wait(false);
+  };
+
+  {
+    bool isFromPool;
+    auto conn1 = pool.leaseConnection("tcp://example.org:80", isFromPool);
+    ASSERT_EQ(pool.numOpenConnections(), 1);
+    EXPECT_EQ(extractCurrentMetric(), 1ull);
+    conn1->sendRequest(fuerte::createRequest(fuerte::RestVerb::Get,
+                                             fuerte::ContentType::Unset),
+                       waiter);
+
+    auto conn2 = pool.leaseConnection("tcp://example.com:80", isFromPool);
+    ASSERT_NE(conn1.get(), conn2.get());
+    ASSERT_EQ(pool.numOpenConnections(), 2);
+    EXPECT_EQ(extractCurrentMetric(), 2ull);
+  }
+  ASSERT_EQ(pool.numOpenConnections(), 2);
+  EXPECT_EQ(extractCurrentMetric(), 2ull);
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(30));
+  ASSERT_EQ(pool.numOpenConnections(), 2);
+  EXPECT_EQ(extractCurrentMetric(), 2ull);
+
+  pool.pruneConnections();
+
+  ASSERT_EQ(pool.numOpenConnections(), 1);
+  EXPECT_EQ(extractCurrentMetric(), 1ull);
+
+  // wake up blocked connection
+  done1.store(true);
+  done1.notify_one();
+
+  done2.wait(false);
+
+  // let it wake up and finish
+  std::this_thread::sleep_for(std::chrono::milliseconds(150));
+
+  pool.pruneConnections();
+
+  ASSERT_EQ(pool.numOpenConnections(), 0);
+  EXPECT_EQ(extractCurrentMetric(), 0ull);
+}
+
 TEST_F(NetworkConnectionPoolTest, acquire_endpoint) {
-  ConnectionPool::Config config(metrics());
+  ConnectionPool::Config config;
+  config.metrics = ConnectionPool::Metrics::fromMetricsFeature(
+      server.getFeature<metrics::MetricsFeature>(), "");
   config.numIOThreads = 1;
   config.maxOpenConnections = 3;
   config.idleConnectionMilli = 10;  // extra small for testing
   config.verifyHosts = false;
   config.protocol = fuerte::ProtocolType::Http;
   ConnectionPool pool(config);
-  std::this_thread::sleep_for(std::chrono::seconds(1));
 
   bool isFromPool;
   auto conn = pool.leaseConnection("tcp://example.org:80", isFromPool);
@@ -89,7 +155,9 @@ TEST_F(NetworkConnectionPoolTest, acquire_endpoint) {
 }
 
 TEST_F(NetworkConnectionPoolTest, acquire_multiple_endpoint) {
-  ConnectionPool::Config config(metrics());
+  ConnectionPool::Config config;
+  config.metrics = ConnectionPool::Metrics::fromMetricsFeature(
+      server.getFeature<metrics::MetricsFeature>(), "");
   config.numIOThreads = 1;
   config.maxOpenConnections = 3;
   config.idleConnectionMilli = 10;  // extra small for testing
@@ -97,7 +165,6 @@ TEST_F(NetworkConnectionPoolTest, acquire_multiple_endpoint) {
   config.protocol = fuerte::ProtocolType::Http;
 
   ConnectionPool pool(config);
-  std::this_thread::sleep_for(std::chrono::seconds(1));
 
   bool isFromPool;
   auto conn1 = pool.leaseConnection("tcp://example.org:80", isFromPool);
@@ -120,7 +187,9 @@ TEST_F(NetworkConnectionPoolTest, acquire_multiple_endpoint) {
 }
 
 TEST_F(NetworkConnectionPoolTest, release_multiple_endpoints_one) {
-  ConnectionPool::Config config(server.getFeature<metrics::MetricsFeature>());
+  ConnectionPool::Config config;
+  config.metrics = ConnectionPool::Metrics::fromMetricsFeature(
+      server.getFeature<metrics::MetricsFeature>(), "");
   config.numIOThreads = 1;
   config.maxOpenConnections = 3;
   config.idleConnectionMilli = 5;  // extra small for testing
@@ -146,15 +215,26 @@ TEST_F(NetworkConnectionPoolTest, release_multiple_endpoints_one) {
   ASSERT_EQ(pool.numOpenConnections(), 2);
   EXPECT_EQ(extractCurrentMetric(), 2ull);
 
-  std::this_thread::sleep_for(std::chrono::milliseconds(15));
-  pool.pruneConnections();
+  std::this_thread::sleep_for(std::chrono::milliseconds(5));
+  // number of connections should go down quickly, as we are calling
+  // pruneConnections() and the TTL for connections is just 5 ms
+  int tries = 0;
+  while (++tries < 1'000) {
+    if (pool.numOpenConnections() == 0) {
+      break;
+    }
+    pool.pruneConnections();
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
 
-  ASSERT_EQ(pool.numOpenConnections(), 1);  // keep one busy connection
-  EXPECT_EQ(extractCurrentMetric(), 1ull);
+  ASSERT_EQ(pool.numOpenConnections(), 0);
+  EXPECT_EQ(extractCurrentMetric(), 0ull);
 }
 
 TEST_F(NetworkConnectionPoolTest, release_multiple_endpoints_two) {
-  ConnectionPool::Config config(metrics());
+  ConnectionPool::Config config;
+  config.metrics = ConnectionPool::Metrics::fromMetricsFeature(
+      server.getFeature<metrics::MetricsFeature>(), "");
   config.numIOThreads = 1;
   config.maxOpenConnections = 3;
   config.idleConnectionMilli = 10;  // extra small for testing
@@ -162,7 +242,6 @@ TEST_F(NetworkConnectionPoolTest, release_multiple_endpoints_two) {
   config.protocol = fuerte::ProtocolType::Http;
 
   ConnectionPool pool(config);
-  std::this_thread::sleep_for(std::chrono::seconds(1));
 
   bool isFromPool;
   {
@@ -183,15 +262,27 @@ TEST_F(NetworkConnectionPoolTest, release_multiple_endpoints_two) {
 
   std::this_thread::sleep_for(std::chrono::milliseconds(21));
   // this will only expire conn2 (conn1 is still in use)
-  pool.pruneConnections();
-  ASSERT_EQ(pool.numOpenConnections(), 1);
-  EXPECT_EQ(extractCurrentMetric(), 1ull);
+
+  // number of connections should go down quickly, as we are calling
+  // pruneConnections() and the TTL for connections is just 5 ms
+  int tries = 0;
+  while (++tries < 1'000) {
+    if (pool.numOpenConnections() == 0) {
+      break;
+    }
+    pool.pruneConnections();
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+
+  ASSERT_EQ(pool.numOpenConnections(), 0);
+  EXPECT_EQ(extractCurrentMetric(), 0ull);
 
   pool.drainConnections();
 
   // Drain needs to erase all connections
   ASSERT_EQ(pool.numOpenConnections(), 0);
   EXPECT_EQ(extractCurrentMetric(), 0ull);
+
   {
     auto conn1 = pool.leaseConnection("tcp://example.org:80", isFromPool);
     ASSERT_EQ(pool.numOpenConnections(), 1);
@@ -234,17 +325,63 @@ TEST_F(NetworkConnectionPoolTest, release_multiple_endpoints_two) {
   EXPECT_EQ(extractCurrentMetric(), 2ull);
 
   std::this_thread::sleep_for(std::chrono::milliseconds(21));
-  pool.pruneConnections();
-  ASSERT_EQ(pool.numOpenConnections(), 2);
-  EXPECT_EQ(extractCurrentMetric(), 2ull);
+
+  tries = 0;
+  while (++tries < 1'000) {
+    if (pool.numOpenConnections() == 0) {
+      break;
+    }
+    pool.pruneConnections();
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+
+  ASSERT_EQ(pool.numOpenConnections(), 0);
+  EXPECT_EQ(extractCurrentMetric(), 0ull);
 
   pool.drainConnections();
   ASSERT_EQ(pool.numOpenConnections(), 0);
   EXPECT_EQ(extractCurrentMetric(), 0ull);
 }
 
+TEST_F(NetworkConnectionPoolTest, force_drain) {
+  ConnectionPool::Config config;
+  config.metrics = ConnectionPool::Metrics::fromMetricsFeature(
+      server.getFeature<metrics::MetricsFeature>(), "");
+  config.numIOThreads = 1;
+  config.maxOpenConnections = 3;
+  config.idleConnectionMilli = 10;  // extra small for testing
+  config.verifyHosts = false;
+  config.protocol = fuerte::ProtocolType::Http;
+
+  ConnectionPool pool(config);
+
+  bool isFromPool;
+  {
+    auto conn1 = pool.leaseConnection("tcp://example.org:80", isFromPool);
+    ASSERT_EQ(pool.numOpenConnections(), 1);
+    EXPECT_EQ(extractCurrentMetric(), 1ull);
+    conn1->sendRequest(fuerte::createRequest(fuerte::RestVerb::Get,
+                                             fuerte::ContentType::Unset),
+                       doNothing);
+
+    auto conn2 = pool.leaseConnection("tcp://example.com:80", isFromPool);
+    conn2->sendRequest(fuerte::createRequest(fuerte::RestVerb::Get,
+                                             fuerte::ContentType::Unset),
+                       doNothing);
+    ASSERT_NE(conn1.get(), conn2.get());
+    ASSERT_EQ(pool.numOpenConnections(), 2);
+    EXPECT_EQ(extractCurrentMetric(), 2ull);
+  }
+  ASSERT_EQ(pool.numOpenConnections(), 2);
+  EXPECT_EQ(extractCurrentMetric(), 2ull);
+
+  pool.drainConnections();
+  EXPECT_EQ(extractCurrentMetric(), 0ull);
+}
+
 TEST_F(NetworkConnectionPoolTest, checking_min_and_max_connections) {
-  ConnectionPool::Config config(metrics());
+  ConnectionPool::Config config;
+  config.metrics = ConnectionPool::Metrics::fromMetricsFeature(metrics(), "");
   config.numIOThreads = 1;
   config.maxOpenConnections = 2;
   config.idleConnectionMilli = 10;  // extra small for testing
@@ -252,7 +389,6 @@ TEST_F(NetworkConnectionPoolTest, checking_min_and_max_connections) {
   config.protocol = fuerte::ProtocolType::Http;
 
   ConnectionPool pool(config);
-  std::this_thread::sleep_for(std::chrono::seconds(1));
 
   bool isFromPool;
   {
@@ -285,10 +421,18 @@ TEST_F(NetworkConnectionPoolTest, checking_min_and_max_connections) {
   // 21ms > 2 * 10ms
   std::this_thread::sleep_for(std::chrono::milliseconds(21));
 
-  // this will only expire conn3 (conn1 and conn2 are still in use)
-  pool.pruneConnections();
-  ASSERT_EQ(pool.numOpenConnections(), 2);
-  EXPECT_EQ(extractCurrentMetric(), 2ull);
+  int tries = 0;
+  while (++tries < 1'000) {
+    if (pool.numOpenConnections() == 0) {
+      break;
+    }
+    pool.pruneConnections();
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+
+  ASSERT_EQ(pool.numOpenConnections(), 0);
+  EXPECT_EQ(extractCurrentMetric(), 0ull);
 
   pool.drainConnections();
   ASSERT_EQ(pool.numOpenConnections(), 0);
@@ -328,9 +472,18 @@ TEST_F(NetworkConnectionPoolTest, checking_min_and_max_connections) {
   // 21ms > 2 * 10ms
   std::this_thread::sleep_for(std::chrono::milliseconds(21));
 
-  pool.pruneConnections();
-  ASSERT_EQ(pool.numOpenConnections(), 3);
-  EXPECT_EQ(extractCurrentMetric(), 3ull);
+  tries = 0;
+  while (++tries < 1'000) {
+    if (pool.numOpenConnections() == 0) {
+      break;
+    }
+    pool.pruneConnections();
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+
+  ASSERT_EQ(pool.numOpenConnections(), 0);
+  EXPECT_EQ(extractCurrentMetric(), 0ull);
 
   pool.drainConnections();
   ASSERT_EQ(pool.numOpenConnections(), 0);
@@ -338,7 +491,9 @@ TEST_F(NetworkConnectionPoolTest, checking_min_and_max_connections) {
 }
 
 TEST_F(NetworkConnectionPoolTest, checking_expiration) {
-  ConnectionPool::Config config(server.getFeature<metrics::MetricsFeature>());
+  ConnectionPool::Config config;
+  config.metrics = ConnectionPool::Metrics::fromMetricsFeature(
+      server.getFeature<metrics::MetricsFeature>(), "");
   config.numIOThreads = 1;
   config.maxOpenConnections = 2;
   config.idleConnectionMilli = 10;  // extra small for testing
@@ -346,7 +501,6 @@ TEST_F(NetworkConnectionPoolTest, checking_expiration) {
   config.protocol = fuerte::ProtocolType::Http;
 
   ConnectionPool pool(config);
-  std::this_thread::sleep_for(std::chrono::seconds(1));
 
   bool isFromPool;
   {
@@ -421,7 +575,9 @@ TEST_F(NetworkConnectionPoolTest, checking_expiration) {
 }
 
 TEST_F(NetworkConnectionPoolTest, checking_expiration_multiple_endpints) {
-  ConnectionPool::Config config(server.getFeature<metrics::MetricsFeature>());
+  ConnectionPool::Config config;
+  config.metrics = ConnectionPool::Metrics::fromMetricsFeature(
+      server.getFeature<metrics::MetricsFeature>(), "");
   config.numIOThreads = 1;
   config.maxOpenConnections = 2;
   config.idleConnectionMilli = 10;  // extra small for testing
@@ -429,7 +585,6 @@ TEST_F(NetworkConnectionPoolTest, checking_expiration_multiple_endpints) {
   config.protocol = fuerte::ProtocolType::Http;
 
   ConnectionPool pool(config);
-  std::this_thread::sleep_for(std::chrono::seconds(1));
 
   bool isFromPool;
   {
@@ -573,7 +728,9 @@ TEST_F(NetworkConnectionPoolTest, checking_expiration_multiple_endpints) {
 }
 
 TEST_F(NetworkConnectionPoolTest, test_cancel_endpoint_all) {
-  ConnectionPool::Config config(server.getFeature<metrics::MetricsFeature>());
+  ConnectionPool::Config config;
+  config.metrics = ConnectionPool::Metrics::fromMetricsFeature(
+      server.getFeature<metrics::MetricsFeature>(), "");
   config.numIOThreads = 1;
   config.maxOpenConnections = 2;
   config.idleConnectionMilli = 10;  // extra small for testing
@@ -611,7 +768,9 @@ TEST_F(NetworkConnectionPoolTest, test_cancel_endpoint_all) {
 TEST_F(NetworkConnectionPoolTest, test_cancel_endpoint_some) {
   std::string endpointA = "tcp://example.org:80";
   std::string endpointB = "tcp://example.org:800";
-  ConnectionPool::Config config(server.getFeature<metrics::MetricsFeature>());
+  ConnectionPool::Config config;
+  config.metrics = ConnectionPool::Metrics::fromMetricsFeature(
+      server.getFeature<metrics::MetricsFeature>(), "");
   config.numIOThreads = 1;
   config.maxOpenConnections = 2;
   config.idleConnectionMilli = 10;  // extra small for testing

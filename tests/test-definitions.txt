@@ -59,7 +59,8 @@ gtest_iresearch priority=1000 parallelity=3 size=medium single
 gtest_arangodb priority=1000 parallelity=3 size=large single
 
 # Fuerte tests are executed in single env
-fuerte priority=500 single
+fuerte priority=500 single suffix=http
+fuerte priority=500 single suffix=ssl-http -- --protocol ssl
 
 rta_makedata single
 
@@ -97,6 +98,7 @@ shell_client_transaction priority=500 cluster parallelity=5 size=small buckets=5
 shell_client_replication2_recovery priority=500 size=medium cluster -- --dumpAgencyOnError true
 
 rta_makedata sniff cluster 
+rta_makedata sniff enterprise cluster name=rta_makedata_force_oneshard --  --forceOneShard true
 
 # Common Tests
 

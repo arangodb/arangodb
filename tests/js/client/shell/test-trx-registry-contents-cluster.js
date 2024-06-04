@@ -29,6 +29,8 @@ const jsunity = require('jsunity');
 const arangodb = require('@arangodb');
 const db = arangodb.db;
 
+const start = (new Date()).toISOString();
+
 function RegistrySuite() { 
   const cn = "UnitTests";
 
@@ -57,7 +59,7 @@ function RegistrySuite() {
     assertEqual(0, tx.sideUsers);
     assertEqual("undefined", tx.finalStatus);
     assertEqual(60, tx.timeToLive);
-    assertTrue(tx.expiryTime * 1000 > Date.now());
+    assertTrue(tx.expiryTime > start, {tx, start});
     assertEqual("root", tx.user);
     assertEqual(db._name(), tx.database);
     assertMatch(/^CRDN-/, tx.server);
@@ -79,7 +81,7 @@ function RegistrySuite() {
     assertEqual(0, tx.sideUsers);
     assertEqual("undefined", tx.finalStatus);
     assertEqual(300, tx.timeToLive);
-    assertTrue(tx.expiryTime * 1000 > Date.now());
+    assertTrue(tx.expiryTime > start, {tx, start});
     assertEqual(db._name(), tx.database);
     assertMatch(/^PRMR-/, tx.server);
   };

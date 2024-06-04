@@ -32,7 +32,6 @@ namespace fuerte {
 inline namespace v1 {
 class Connection;
 class ConnectionBuilder;
-class EventLoopService;
 }  // namespace v1
 }  // namespace fuerte
 class ClusterInfo;
@@ -52,8 +51,21 @@ class ConnectionPool final {
   friend class ConnectionPtr;
 
  public:
+  struct Metrics {
+    metrics::Gauge<uint64_t>* totalConnectionsInPool;
+    metrics::Counter* successSelect;
+    metrics::Counter* noSuccessSelect;
+    metrics::Counter* connectionsCreated;
+
+    metrics::Histogram<metrics::LogScale<float>>* leaseHistMSec;
+
+    static Metrics fromMetricsFeature(metrics::MetricsFeature& feature,
+                                      std::string_view name);
+    static Metrics createStub(std::string_view name);
+  };
+
   struct Config {
-    metrics::MetricsFeature& metricsFeature;
+    Metrics metrics;
     // note: clusterInfo can remain a nullptr in unit tests
     ClusterInfo* clusterInfo = nullptr;
     uint64_t maxOpenConnections = 1024;     /// max number of connections
@@ -63,12 +75,11 @@ class ConnectionPool final {
     fuerte::ProtocolType protocol = fuerte::ProtocolType::Http;
     // name must remain valid for the lifetime of the Config object.
     char const* name = "";
-
-    Config(metrics::MetricsFeature& metricsFeature)
-        : metricsFeature(metricsFeature) {}
   };
 
- public:
+  ConnectionPool(ConnectionPool const& other) = delete;
+  ConnectionPool& operator=(ConnectionPool const& other) = delete;
+
   explicit ConnectionPool(ConnectionPool::Config const& config);
   TEST_VIRTUAL ~ConnectionPool();
 
@@ -77,9 +88,8 @@ class ConnectionPool final {
   /// is always the same, we do not do any post-processing
   ConnectionPtr leaseConnection(std::string const& endpoint, bool& isFromPool);
 
-  /// @brief event loop service to create a connection seperately
-  /// user is responsible for correctly shutting it down
-  fuerte::EventLoopService& eventLoopService();
+  /// @brief stops the connection pool (also calls drainConnections)
+  void stop();
 
   /// @brief shutdown all connections
   void drainConnections();

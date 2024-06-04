@@ -10,10 +10,10 @@ parameters:
     default: ""
   build-docker-image:
     type: string
-    default: "arangodb/ubuntubuildarangodb-devel:3"
+    default: "arangodb/ubuntubuildarangodb-devel:4"
   test-docker-image:
     type: string
-    default: public.ecr.aws/b0b8h2r4/test-ubuntu:23.10-fc8ee57e
+    default: public.ecr.aws/b0b8h2r4/test-ubuntu:23.10-5b6113b7
   # Unused here, but it will be forwarded from config and will cause errors if not defined
   enterprise-branch:
     type: string
@@ -417,8 +417,14 @@ jobs:
               export TSAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/tsan.log:detect_deadlocks=true:second_deadlock_stack=1:suppressions=tsan_arangodb_suppressions.txt:print_suppressions=0"
               export SAN_MODE=tsan
             fi
-            # Note: we need the leading space for extraArgs to avoid a parsing issue in argparse
+
+            # check if promtool is available and if so set the environment variable to enable the according tests
+            if command -v promtool &> /dev/null; then
+              export PROMTOOL_PATH=`command -v promtool`
+            fi
+
             export TIMELIMIT=<< parameters.timeLimit >>
+            # Note: we need the leading space for extraArgs to avoid a parsing issue in argparse
             python3 -u scripts/test/test_launch_controller.py << parameters.suites >> \
               --testBuckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX \
               --cluster << parameters.cluster >> \

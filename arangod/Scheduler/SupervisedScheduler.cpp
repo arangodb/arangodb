@@ -267,7 +267,16 @@ SupervisedScheduler::SupervisedScheduler(
   TRI_ASSERT(fifo3Size > 0);
 }
 
-SupervisedScheduler::~SupervisedScheduler() = default;
+SupervisedScheduler::~SupervisedScheduler() {
+  // make sure we are freeing all items from all queues here if we
+  // are in an uncontrolled shutdown
+  for (size_t i = 0; i < NumberOfQueues; ++i) {
+    WorkItemBase* res = nullptr;
+    while (_queues[i].queue.pop(res)) {
+      delete res;
+    }
+  }
+}
 
 void SupervisedScheduler::trackQueueItemSize(std::int64_t x) noexcept {
   _schedulerQueueMemory += x;
@@ -1081,6 +1090,7 @@ double SupervisedScheduler::approximateQueueFillGrade() const {
   uint64_t const maxLength = _maxFifoSizes[3];
   uint64_t const qLength =
       std::min<uint64_t>(maxLength, _metricsQueueLength.load());
+  TRI_ASSERT(maxLength > 0);
   return static_cast<double>(qLength) / static_cast<double>(maxLength);
 }
 

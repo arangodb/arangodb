@@ -42,12 +42,11 @@ const functionsDocumentation = {
   'hot_backup': 'hotbackup tests'
 };
 
-const optionsDocumentation = [
-  '   - `skipEncrypted` : if set to true the encryption tests are skipped'
-];
-
 const pu = require('@arangodb/testutils/process-utils');
+const ct = require('@arangodb/testutils/client-tools');
 const tu = require('@arangodb/testutils/test-utils');
+const tr = require('@arangodb/testutils/testrunner');
+const trs = require('@arangodb/testutils/testrunners');
 const im = require('@arangodb/testutils/instance-manager');
 const fs = require('fs');
 const _ = require('lodash');
@@ -89,9 +88,9 @@ const testPaths = {
   'hot_backup': [tu.pathForTesting('client/dump')]
 };
 
-class DumpRestoreHelper extends tu.runInArangoshRunner {
+class DumpRestoreHelper extends trs.runInArangoshRunner {
   constructor(firstRunOptions, secondRunOptions, serverOptions, clientAuth, dumpOptions, restoreOptions, which, afterServerStart, rtaArgs) {
-    super(firstRunOptions, which, serverOptions, false);
+    super(firstRunOptions, which, serverOptions, tr.sutFilters.checkUsers);
     this.serverOptions = serverOptions;
     this.firstRunOptions = firstRunOptions;
     this.secondRunOptions = secondRunOptions;
@@ -179,7 +178,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
   bindInstanceInfo(options) {
     if (!this.dumpConfig) {
       // the dump config will only be configured for the first instance.
-      this.dumpConfig = pu.createBaseConfig('dump', this.dumpOptions, this.instanceManager);
+      this.dumpConfig = ct.createBaseConfig('dump', this.dumpOptions, this.instanceManager);
       this.dumpConfig.setOutputDirectory('dump');
       this.dumpConfig.setIncludeSystem(true);
       if (this.dumpOptions.hasOwnProperty("maskings")) {
@@ -208,7 +207,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
     }
 
     if (!this.restoreConfig) {
-      this.restoreConfig = pu.createBaseConfig('restore', this.restoreOptions, this.instanceManager);
+      this.restoreConfig = ct.createBaseConfig('restore', this.restoreOptions, this.instanceManager);
       this.restoreConfig.setInputDirectory('dump', true);
       this.restoreConfig.setIncludeSystem(true);
     } else {
@@ -216,7 +215,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
     }
     
     if (!this.restoreOldConfig) {
-      this.restoreOldConfig = pu.createBaseConfig('restore', this.restoreOptions, this.instanceManager);
+      this.restoreOldConfig = ct.createBaseConfig('restore', this.restoreOptions, this.instanceManager);
       this.restoreOldConfig.setInputDirectory('dump', true);
       this.restoreOldConfig.setIncludeSystem(true);
       this.restoreOldConfig.setRootDir(pu.TOP_DIR);
@@ -237,9 +236,9 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
       this.restoreOldConfig.setJwtFile(keyFile);
     }
     this.setOptions();
-    this.arangorestore = pu.run.arangoDumpRestoreWithConfig.bind(this, this.restoreConfig, this.restoreOptions, this.instanceManager.rootDir, this.firstRunOptions.coreCheck);
-    this.arangorestoreOld = pu.run.arangoDumpRestoreWithConfig.bind(this, this.restoreOldConfig, this.restoreOptions, this.instanceManager.rootDir, this.firstRunOptions.coreCheck);
-    this.arangodump = pu.run.arangoDumpRestoreWithConfig.bind(this, this.dumpConfig, this.dumpOptions, this.instanceManager.rootDir, this.firstRunOptions.coreCheck);
+    this.arangorestore = ct.run.arangoDumpRestoreWithConfig.bind(this, this.restoreConfig, this.restoreOptions, this.instanceManager.rootDir, this.firstRunOptions.coreCheck);
+    this.arangorestoreOld = ct.run.arangoDumpRestoreWithConfig.bind(this, this.restoreOldConfig, this.restoreOptions, this.instanceManager.rootDir, this.firstRunOptions.coreCheck);
+    this.arangodump = ct.run.arangoDumpRestoreWithConfig.bind(this, this.dumpConfig, this.dumpOptions, this.instanceManager.rootDir, this.firstRunOptions.coreCheck);
     this.fn = this.afterServerStart(this.instanceManager);
   }
   setOptions() {
@@ -326,8 +325,8 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
 
   adjustRestoreToDump() {
     this.restoreOptions = this.dumpOptions;
-    this.restoreConfig = pu.createBaseConfig('restore', this.dumpOptions, this.instanceManager);
-    this.arangorestore = pu.run.arangoDumpRestoreWithConfig.bind(this, this.restoreConfig, this.restoreOptions, this.instanceManager.rootDir, this.firstRunOptions.coreCheck);
+    this.restoreConfig = ct.createBaseConfig('restore', this.dumpOptions, this.instanceManager);
+    this.arangorestore = ct.run.arangoDumpRestoreWithConfig.bind(this, this.restoreConfig, this.restoreOptions, this.instanceManager.rootDir, this.firstRunOptions.coreCheck);
   }
 
   isAlive() {
@@ -574,7 +573,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
     let cmds = {
       "label": "testHotBackup"
     };
-    this.results.createHotBackup = pu.run.arangoBackup(this.firstRunOptions, this.instanceManager, "create", cmds, this.instanceManager.rootDir, true);
+    this.results.createHotBackup = ct.run.arangoBackup(this.firstRunOptions, this.instanceManager, "create", cmds, this.instanceManager.rootDir, true);
     this.print("done creating backup");
     return this.results.createHotBackup.status;
   }
@@ -606,7 +605,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
       "identifier": backupName,
       "max-wait-for-restart": 100.0
     };
-    this.results.restoreHotBackup = pu.run.arangoBackup(this.firstRunOptions, this.instanceManager, "restore", cmds, this.instanceManager.rootDir, true);
+    this.results.restoreHotBackup = ct.run.arangoBackup(this.firstRunOptions, this.instanceManager, "restore", cmds, this.instanceManager.rootDir, true);
     this.print("done restoring backup");
     return true;
   }
@@ -618,7 +617,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
   runRtaMakedata() {
     let res = {};
     let logFile = fs.join(fs.getTempPath(), `rta_out_makedata.log`);
-    let rc = pu.run.rtaMakedata(this.options, this.instanceManager, 0, "creating test data", logFile, this.rtaArgs);
+    let rc = ct.run.rtaMakedata(this.options, this.instanceManager, 0, "creating test data", logFile, this.rtaArgs);
     if (!rc.status) {
       let rx = new RegExp(/\\n/g);
       this.results.RtaMakedata = {
@@ -705,7 +704,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
   runRtaCheckData() {
     let res = {};
     let logFile = fs.join(fs.getTempPath(), `rta_out_checkdata.log`);
-    let rc = pu.run.rtaMakedata(this.secondRunOptions, this.instanceManager, 1, "checking test data", logFile, this.rtaArgs);
+    let rc = ct.run.rtaMakedata(this.secondRunOptions, this.instanceManager, 1, "checking test data", logFile, this.rtaArgs);
     if (!rc.status) {
       let rx = new RegExp(/\\n/g);
       this.results.RtaCheckdata = {
@@ -1262,6 +1261,5 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   testFns['dump_non_parallel'] = dumpNonParallel;
   testFns['hot_backup'] = hotBackup;
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };

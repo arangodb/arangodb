@@ -55,10 +55,9 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 
 // Please leave this code in for the next time we have to debug fuerte.
+// change to `#if 1` in order to make fuerte logging work.
 #if 0
-void LogHackWriter(char const* p) {
-  LOG_DEVEL << p;
-}
+void LogHackWriter(std::string_view msg) { LOG_DEVEL << msg; }
 #endif
 
 namespace arangodb {
@@ -162,6 +161,7 @@ available:
 
 - `database`: The name of the database.
 - `username`: The name of the user.
+- `queryid`: The ID of the AQL query (on DB-Servers only).
 - `url`: The endpoint path.
 
 The format to enable or disable a parameter is `<parameter>=<bool>`, or

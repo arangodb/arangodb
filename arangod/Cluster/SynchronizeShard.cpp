@@ -26,6 +26,7 @@
 
 #include "Agency/AgencyStrings.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/TokenCache.h"
 #include "Basics/GlobalSerialization.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"

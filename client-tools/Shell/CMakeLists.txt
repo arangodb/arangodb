@@ -60,6 +60,9 @@ if (USE_V8)
   install_config(${BIN_ARANGOSH})
 
   add_dependencies(${BIN_ARANGOSH} zlibstatic)
+  
+  # use ICU 64 for the client tools
+  add_dependencies(${BIN_ARANGOSH} iculegacy_build)
 
   if (NOT USE_PRECOMPILED_V8)
     add_dependencies(${BIN_ARANGOSH} v8_build)

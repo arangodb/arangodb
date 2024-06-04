@@ -48,6 +48,11 @@ const fetchRevisionTree = (serverUrl, shardId) => {
   return JSON.parse(result.body);
 };
 
+const compareTree = function (left, right) {
+  const attributes = ["version", "maxDepth", "count", "hash", "initialRangeMin"];
+  return _.every(attributes, (attr) => left[attr] === right[attr]);
+};
+
 const checkCollectionConsistency = (cn) => {
   const c = db._collection(cn);
   const servers = getDBServers();
@@ -79,7 +84,7 @@ const checkCollectionConsistency = (cn) => {
           failed = true;
         }
 
-        if (!_.isEqual(leaderTree, followerTree)) {
+        if (!compareTree(leaderTree.computed, followerTree.computed)) {
           console.error(`Leader and follower have different trees for shard ${shard}`);
           console.error("Leader: ", leaderTree);
           console.error("Follower: ", followerTree);

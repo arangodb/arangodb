@@ -28,12 +28,10 @@
 const functionsDocumentation = {
   'readOnly': 'read only tests'
 };
-const optionsDocumentation = [
-  '   - `skipReadOnly` : if set to true the read only tests are skipped'
-];
 
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const ct = require('@arangodb/testutils/client-tools');
 const im = require('@arangodb/testutils/instance-manager');
 const request = require('@arangodb/request');
 
@@ -54,19 +52,6 @@ const testPaths = {
 
 function readOnly (options) {
   const results = { failed: 0 };
-
-  if (options.skipReadOnly === true) {
-    print('skipping readOnly tests!');
-    return {
-      failed: 0,
-      readOnly: {
-        failed: 0,
-        status: true,
-        skipped: true
-      }
-    };
-  } // if
-
   if (options.cluster) {
     print('skipping readOnly tests on cluster!');
     return {
@@ -175,7 +160,7 @@ function readOnly (options) {
     return bodies;
   };
 
-  let res = pu.run.arangoshCmd(options, instanceManager, {}, [
+  let res = ct.run.arangoshCmd(options, instanceManager, {}, [
     '--javascript.execute-string',
     `const users = require('@arangodb/users');
     users.save('test', '', true);
@@ -232,6 +217,5 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['readOnly'] = readOnly;
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };

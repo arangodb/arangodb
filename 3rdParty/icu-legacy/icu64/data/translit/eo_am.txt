@@ -1,0 +1,10 @@
+﻿# © 2016 and later: Unicode, Inc. and others.
+# License & terms of use: http://www.unicode.org/copyright.html#License
+#
+# File: eo_am.txt
+# Generated from CLDR
+#
+
+::eo-eo_FONIPA;
+::am_FONIPA-am;
+

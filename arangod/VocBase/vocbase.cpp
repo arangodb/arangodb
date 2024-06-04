@@ -1667,8 +1667,8 @@ void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
                 auto c = resolver.getCollection(name);
                 if (c == nullptr) {
                   return Result{TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
-                                "Collection not found: " + name +
-                                    " in database " + this->name()};
+                                absl::StrCat("Collection not found: ", name,
+                                             " in database ", this->name())};
                 }
                 return c->getCollectionProperties();
               }};
@@ -1681,8 +1681,8 @@ void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
                 auto c = resolver.getCollection(name);
                 if (c == nullptr) {
                   return Result{TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
-                                "Collection not found: " + name +
-                                    " in database " + this->name()};
+                                absl::StrCat("Collection not found: ", name,
+                                             " in database ", this->name())};
                 }
                 return c->getCollectionProperties();
               }};
@@ -1698,7 +1698,6 @@ void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
   config.enforceReplicationFactor = true;
   config.defaultNumberOfShards = 1;
   config.defaultReplicationFactor = replicationFactor();
-
   config.defaultWriteConcern = writeConcern();
 
   config.isOneShardDB = cl.forceOneShard() || isOneShard();
