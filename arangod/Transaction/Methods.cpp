@@ -3574,8 +3574,7 @@ Future<Result> Methods::replicateOperations(
           }
 
           bool followerRefused =
-              (r.errorNumber() ==
-               TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
+              r.is(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
           didRefuse = didRefuse || followerRefused;
 
           replicationFailureReason =
