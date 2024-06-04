@@ -544,6 +544,7 @@ class instance {
     }
   }
   terminateInstance() {
+    internal.removePidFromMonitor(this.pid);
     if (!this.hasOwnProperty('exitStatus')) {
       this.exitStatus = killExternal(this.pid, termSignal);
     }
@@ -707,7 +708,7 @@ class instance {
     } catch(ex) {
       print(ex);
     }
-    this.serverCrashedLocal = this.serverCrashedLocal || this.sanHandler.fetchSanFileAfterExit(this.pid);
+    this.serverCrashedLocal = this.serverCrashedLocal || this.processSanitizerReports();
     this.pid = null;
     print('done');
   }
@@ -718,10 +719,10 @@ class instance {
     }
     this.exitStatus = statusExternal(this.pid, true);
     if (this.exitStatus.status !== 'TERMINATED') {
-      this.serverCrashedLocal = this.serverCrashedLocal || this.sanHandler.fetchSanFileAfterExit(this.pid);
+      this.serverCrashedLocal = this.serverCrashedLocal || this.processSanitizerReports();
       throw new Error(this.name + " didn't exit in a regular way: " + JSON.stringify(this.exitStatus));
     }
-    this.serverCrashedLocal = this.serverCrashedLocal || this.sanHandler.fetchSanFileAfterExit(this.pid);
+    this.serverCrashedLocal = this.serverCrashedLocal || this.processSanitizerReports();
     this.exitStatus = null;
     this.pid = null;
   }
@@ -921,7 +922,7 @@ class instance {
       } else if (this.options.useKillExternal) {
         let sockStat = this.getSockStat("Shutdown by kill - sockstat before: ");
         this.exitStatus = killExternal(this.pid);
-        this.serverCrashedLocal = this.serverCrashedLocal || this.sanHandler.fetchSanFileAfterExit(this.pid);
+        this.serverCrashedLocal = this.serverCrashedLocal || this.processSanitizerReports();
         this.pid = null;
         print(sockStat);
       } else if (this.protocol === 'unix') {
@@ -943,7 +944,7 @@ class instance {
           print(Date() + ' Wrong shutdown response: ' + JSON.stringify(reply) + "' " + sockStat + " continuing with hard kill!");
           this.shutdownArangod(true);
         } else {
-          this.serverCrashedLocal = this.serverCrashedLocal || this.sanHandler.fetchSanFileAfterExit(this.pid);
+          this.serverCrashedLocal = this.serverCrashedLocal || this.processSanitizerReports();
           if (!this.options.noStartStopLogs) {
             print(sockStat);
           }
@@ -971,7 +972,7 @@ class instance {
           this.shutdownArangod(true);
         }
         else {
-          this.serverCrashedLocal = this.serverCrashedLocal || this.sanHandler.fetchSanFileAfterExit(this.pid);
+          this.serverCrashedLocal = this.serverCrashedLocal || this.processSanitizerReports();
           if (!this.options.noStartStopLogs) {
             print(sockStat);
           }
@@ -1146,6 +1147,10 @@ class instance {
       print(metricsReply);
     }
     this.memProfCounter ++;
+  }
+
+  processSanitizerReports() {
+    return this.sanHandler.fetchSanFileAfterExit(this.pid);
   }
 }
 

@@ -36,6 +36,8 @@ function containsDoubleByte(str) {
     return regex.test(str);
 }
 
+let NUM_SANITIZER_REPORTS = 0;
+
 class sanHandler {
   constructor(binaryName, sanOptions, isSan, extremeVerbosity) {
     this.binaryName = binaryName;
@@ -52,7 +54,7 @@ class sanHandler {
       }
       for (const [key, value] of Object.entries(this.sanOptions)) {
         // ASAN/LSAN/UBSAN cannot use different logfiles, so we need to use the same name for all
-        let logName = key == "TSAN_OPTIONS" ? "tsan.log" : "alubsan.log";
+        let logName = key === "TSAN_OPTIONS" ? "tsan.log" : "alubsan.log";
         let oneLogFile = fs.join(rootDir, logName);
         // we need the log files to contain the exe name, otherwise our code to pick them up won't find them
         this.sanOptions[key]['log_exe_name'] = "true";
@@ -105,6 +107,7 @@ class sanHandler {
         print(`checking for ${fn}: ${fs.exists(fn)}`);
       }
       if (fs.exists(fn)) {
+        ++NUM_SANITIZER_REPORTS;
         let content = fs.read(fn);
         if (upstream) {
           let outFn = `${upstream}${suffix}`;
@@ -124,3 +127,4 @@ class sanHandler {
 }
 
 exports.sanHandler = sanHandler;
+exports.getNumSanitizerReports = () => NUM_SANITIZER_REPORTS;

@@ -334,6 +334,16 @@ class instanceManager {
       this.launchFinalize(startTime);
       return true;
     } catch (e) {
+      // disable watchdog
+      internal.SetGlobalExecutionDeadlineTo(0.0);
+      this.arangods.forEach(arangod => {
+        try {
+          arangod.terminateInstance();
+          arangod.processSanitizerReports();
+        } catch(e) {
+          print("Error processing sanitizer reports: ", e, e.stack);
+        }
+      });
       print(e, e.stack);
       return false;
     }
