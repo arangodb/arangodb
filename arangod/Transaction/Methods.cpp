@@ -3029,6 +3029,7 @@ futures::Future<OperationResult> transaction::Methods::countCoordinatorHelper(
         // ourselves.
         DatabaseFeature& databaseFeature =
             vocbase().server().getFeature<DatabaseFeature>();
+        // post a refresh operation onto the scheduler, with LOW priority
         SchedulerFeature::SCHEDULER->queue(
             RequestLane::CLIENT_SLOW,
             [&databaseFeature, databaseName = collinfo->vocbase().name(),
@@ -3036,33 +3037,47 @@ futures::Future<OperationResult> transaction::Methods::countCoordinatorHelper(
               // it is possible that the target database does not exist anymore
               // when the callback is scheduled for execution
               auto vocbase = databaseFeature.useDatabase(databaseName);
-              if (vocbase == nullptr) {
+              if (vocbase == nullptr || vocbase->server().isStopping()) {
                 return;
               }
+
+              LOG_TOPIC("01d9a", TRACE, Logger::FIXME)
+                  << "refreshing count cache value for collection '"
+                  << databaseName << "/" << collectionName << "'";
 
               // start a new transaction
               auto origin = transaction::OperationOriginInternal{
                   "refreshing document count cache"};
-              transaction::StandaloneContext ctx(*vocbase, origin);
-              SingleCollectionTransaction trx(
-                  std::shared_ptr<transaction::Context>(
-                      std::shared_ptr<transaction::Context>(), &ctx),
+              auto trx = std::make_shared<SingleCollectionTransaction>(
+                  transaction::StandaloneContext::create(*vocbase, origin),
                   collectionName, AccessMode::Type::READ);
 
-              Result res = trx.begin();
-              if (res.ok()) {
-                OperationOptions options(ExecContext::current());
-                OperationResult opResult = trx.count(
-                    collectionName, transaction::CountType::kNormal, options);
-                if (opResult.result.ok()) {
-                  VPackSlice s = opResult.slice();
-                  TRI_ASSERT(s.isNumber());
-                  if (trx.documentCollection() != nullptr) {
-                    trx.documentCollection()->countCache().store(
-                        s.getNumber<uint64_t>());
-                  }
-                }
-              }
+              // the following is all best effort only. if something fails, we
+              // can ignore it, because the cache will eventually be refreshed
+              [[maybe_unused]] auto f = trx->beginAsync().thenValue(
+                  [trx, collectionName =
+                            std::move(collectionName)](Result&& res) -> void {
+                    if (res.fail()) {
+                      return;
+                    }
+                    OperationOptions options(ExecContext::current());
+                    [[maybe_unused]] auto f =
+                        trx->countAsync(collectionName,
+                                        transaction::CountType::kNormal,
+                                        options)
+                            .thenValue([trx](
+                                           OperationResult&& opResult) -> void {
+                              if (opResult.result.fail()) {
+                                return;
+                              }
+                              VPackSlice s = opResult.slice();
+                              TRI_ASSERT(s.isNumber());
+                              if (trx->documentCollection() != nullptr) {
+                                trx->documentCollection()->countCache().store(
+                                    s.getNumber<uint64_t>());
+                              }
+                            });
+                  });
             });
       }
 
