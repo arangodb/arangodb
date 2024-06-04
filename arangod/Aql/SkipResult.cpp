@@ -41,10 +41,8 @@ auto SkipResult::didSkip(size_t skipped) -> void {
 }
 
 template<int depthOffset>
-requires(depthOffset == 0 ||
-         depthOffset == -1) auto SkipResult::didSkipSubquery(size_t skipped,
-                                                             size_t depth)
-    -> void {
+requires(depthOffset == 0 || depthOffset == -1)  //
+    auto SkipResult::didSkipSubquery(size_t skipped, size_t depth) -> void {
   TRI_ASSERT(!_skipped.empty());
   TRI_ASSERT(_skipped.size() > depth + 1 + depthOffset);
   size_t index = _skipped.size() - depth - 2 - depthOffset;
