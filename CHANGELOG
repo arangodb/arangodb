@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed BTS-1813: Fixed an AQL error that could lead to range-check exceptions
+  in certain queries with subqueries.
+
 * Move network retry requests to a dedicated thread.
 
 * Reduce frequency in which progress of hot backup upload / download progress
