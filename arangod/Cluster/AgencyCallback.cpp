@@ -204,8 +204,8 @@ bool AgencyCallback::executeByCallbackOrTimeout(double maxTimeout) {
     // the timeout to occur
     std::unique_lock lock{_cv.mutex, std::adopt_lock};
     auto const cv_status = _cv.cv.wait_for(
-        lock, std::chrono::microseconds{
-                  static_cast<uint64_t>(maxTimeout * 1000000.0)});
+        lock,
+        std::chrono::microseconds{static_cast<uint64_t>(maxTimeout * 1e6)});
     std::ignore = lock.release();
     if (cv_status == std::cv_status::timeout) {
       LOG_TOPIC("1514e", DEBUG, Logger::CLUSTER)
