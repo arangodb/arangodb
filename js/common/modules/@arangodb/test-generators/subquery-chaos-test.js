@@ -50,6 +50,7 @@
 ///
 const db = require("@arangodb").db;
 const _ = require("lodash");
+const arango = require("@arangodb").arango;
 
 // This is a seedable RandomNumberGenerator
 // it is not operfect for Random numbers,
@@ -320,12 +321,23 @@ function runQuery(query, queryOptions, testOptions) {
     db._query(`FOR i IN 1..10 INSERT { value: i } INTO ${cn}`);
   }
 
+  queryOptions = { ...(testOptions.queryOptions || {}), ...queryOptions };
   if (testOptions.explainQuery) {
     db._explain(query.queryString, {}, queryOptions);
   }
 
+  let oldLogLevel;
+  if (testOptions.enableLogging) {
+    oldLogLevel = arango.GET("/_admin/log/level").queries;
+    arango.PUT("/_admin/log/level", { queries: "trace" });
+  }
+
   /* Run query with all optimizations */
   const result = db._query(query.queryString, {}, queryOptions).toArray();
+
+  if (testOptions.enableLogging) {
+    arango.PUT("/_admin/log/level", { queries: oldLogLevel });
+  }
 
   for (const cn of query.collectionNames) {
     db._drop(cn);
