@@ -145,14 +145,17 @@ bool ReadWriteSpinLock::lockWrite(std::size_t maxAttempts) noexcept {
 }
 
 bool ReadWriteSpinLock::tryLockRead() noexcept {
-  // order_relaxed is an optimization, cmpxchg will synchronize side-effects
   auto state = _state.load(std::memory_order_relaxed);
-  // try to acquire read lock as long as no writers are active or queued
-  while ((state & ~::ReaderMask) == 0) {
-    if (_state.compare_exchange_weak(state, state + ::ReaderIncrement,
-                                     std::memory_order_acquire)) {
+  if ((state & ~::ReaderMask) == 0) {
+    // if no one holds the write lock (and no writers are queued), we simply go
+    // ahead and optimistically increment the reader count
+    auto old = _state.fetch_add(::ReaderIncrement, std::memory_order_acquire);
+    // if there are still no writers, we got the lock! \o/
+    if ((old & ~::ReaderMask) == 0) {
       return true;
     }
+    // otherwise we have to revert our change
+    _state.fetch_sub(::ReaderIncrement, std::memory_order_relaxed);
   }
   return false;
 }
