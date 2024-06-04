@@ -156,6 +156,8 @@ class Histogram : public Metric {
     result.append(std::to_string(_sum.load(std::memory_order_relaxed))) += '\n';
   }
 
+  void toVPack(velocypack::Builder& builder) const override {}
+
   std::ostream& print(std::ostream& o) const {
     o << name() << " scale: " << _scale;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

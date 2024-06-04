@@ -41,6 +41,7 @@ set(FUNCTION2_INCLUDE_DIR "${PROJECT_SOURCE_DIR}/3rdParty/iresearch/external/fun
 add_library(arango_lightweight STATIC
         ApplicationFeatures/ApplicationFeature.cpp
         ApplicationFeatures/ApplicationServer.cpp
+        ApplicationFeatures/LazyApplicationFeatureReference.h
         ApplicationFeatures/ShellColorsFeature.cpp
         Basics/ArangoGlobalContext.cpp
         Basics/CleanupFunctions.cpp
