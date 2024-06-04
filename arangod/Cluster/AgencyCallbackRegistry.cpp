@@ -41,9 +41,9 @@
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
 #include "Random/RandomGenerator.h"
+#include "RestServer/DatabaseFeature.h"
 
 #include <absl/strings/str_cat.h>
-#include <velocypack/Slice.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -54,19 +54,23 @@ DECLARE_GAUGE(arangodb_agency_callback_number, uint64_t,
               "Current number of agency callbacks registered");
 
 AgencyCallbackRegistry::AgencyCallbackRegistry(
-    ArangodServer& server, std::string const& callbackBasePath)
-    : _agency(server),
+    ApplicationServer& server, ClusterFeature& clusterFeature,
+    EngineSelectorFeature& engineSelectorFeature,
+    DatabaseFeature& databaseFeature, metrics::MetricsFeature& metrics,
+    std::string const& callbackBasePath)
+    : _server(server),
+      _clusterFeature(clusterFeature),
+      _agencyComm(server, clusterFeature, engineSelectorFeature,
+                  databaseFeature),
       _callbackBasePath(callbackBasePath),
       _totalCallbacksRegistered(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_agency_callback_registered_total{})),
-      _callbacksCount(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_agency_callback_number{})) {}
+          metrics.add(arangodb_agency_callback_registered_total{})),
+      _callbacksCount(metrics.add(arangodb_agency_callback_number{})) {}
 
 AgencyCallbackRegistry::~AgencyCallbackRegistry() = default;
 
 Result AgencyCallbackRegistry::registerCallback(
-    std::shared_ptr<AgencyCallback> cb, bool local) {
+    std::shared_ptr<AgencyCallback> cb) {
   uint64_t id;
   while (true) {
     id = RandomGenerator::interval(std::numeric_limits<uint64_t>::max());
@@ -79,13 +83,7 @@ Result AgencyCallbackRegistry::registerCallback(
 
   Result res;
   try {
-    if (local) {
-      auto& cache = _agency.server().getFeature<ClusterFeature>().agencyCache();
-      res = cache.registerCallback(cb->key, id);
-    } else {
-      res = _agency.registerCallback(cb->key, getEndpointUrl(id)).asResult();
-      cb->local(false);
-    }
+    res = _clusterFeature.agencyCache().registerCallback(cb->key, id);
     if (res.ok()) {
       _callbacksCount += 1;
       ++_totalCallbacksRegistered;
@@ -103,8 +101,8 @@ Result AgencyCallbackRegistry::registerCallback(
 
   TRI_ASSERT(res.fail());
   res.reset(res.errorNumber(),
-            StringUtils::concatT("registering ", (local ? "local " : ""),
-                                 "callback failed: ", res.errorMessage()));
+            StringUtils::concatT("registering local callback failed: ",
+                                 res.errorMessage()));
   LOG_TOPIC("b88f4", WARN, Logger::CLUSTER) << res.errorMessage();
 
   {
@@ -161,13 +159,8 @@ bool AgencyCallbackRegistry::unregisterCallback(
     // don't want to be vulnerable to priority inversion.
 
     if (found) {
-      if (cb->local()) {
-        auto& cache =
-            _agency.server().getFeature<ClusterFeature>().agencyCache();
-        cache.unregisterCallback(cb->key, id);
-      } else {
-        _agency.unregisterCallback(cb->key, getEndpointUrl(id));
-      }
+      _clusterFeature.agencyCache().unregisterCallback(cb->key, id);
+
       _callbacksCount -= 1;
     }
   }
