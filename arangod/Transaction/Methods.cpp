@@ -644,7 +644,7 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
         _replicationType, _followers);
 
     if (res.fail()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+      THROW_ARANGO_EXCEPTION(res);
     }
 
     _excludeAllFromReplication =
@@ -3226,6 +3226,16 @@ Future<Result> Methods::replicateOperations(
 
   network::RequestOptions reqOpts;
   reqOpts.database = vocbase().name();
+  // use a HIGH priority lane to execute the callback when the
+  // response arrives. we must not skip the scheduler entirely here
+  // because the callback may execute an intermediate commit in
+  // RocksDB or carry out agency communication in case a follower
+  // needs to be dropped. the HIGH priority is justified here
+  // because the callback must make progress: the callback can
+  // unblock other block threads on the leader that synchronously
+  // wait for this future to be resolved.
+  reqOpts.continuationLane = RequestLane::CLUSTER_INTERNAL;
+
   reqOpts.param(StaticStrings::IsRestoreString, "true");
 
   // index cache refilling...
@@ -3267,8 +3277,7 @@ Future<Result> Methods::replicateOperations(
   network::addUserParameter(reqOpts, username());
 
   std::string url = absl::StrCat(
-      "/_api/document/",
-      arangodb::basics::StringUtils::urlEncode(collection->name()));
+      "/_api/document/", basics::StringUtils::urlEncode(collection->name()));
 
   std::string_view opName = "unknown";
   arangodb::fuerte::RestVerb requestType = arangodb::fuerte::RestVerb::Illegal;
