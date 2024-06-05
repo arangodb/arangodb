@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated ArangoDB Starter to v0.19.2-preview-3.
+
 * Fixed MDS-1230: added missing variable replacement for inline filters of
   EnumerateListNodes.
 
@@ -35,8 +37,6 @@ devel
   This API is useful for tools that temporarily change log levels but do not
   want to fetch and remember the previous log levels settings. Such tools can
   now simply call the new API to restore the original log levels.
-
-* Updated ArangoDB Starter to v0.19.2-preview-1.
 
 * Fixed OASIS-25823: when late materialization was used together with skipping
   over documents or the `fullCount` operation, it was possible for AQL queries
