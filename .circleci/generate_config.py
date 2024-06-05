@@ -386,7 +386,7 @@ def add_rta_ui_test_jobs_to_workflow(args, workflow, build_config, build_job):
     if args.ui_testsuites != "":
         ui_testsuites = args.ui_testsuites.split(',')
     deployments = [
-        'SG'
+        'SG',
         "CL",
     ]
     if args.ui_deployments:
