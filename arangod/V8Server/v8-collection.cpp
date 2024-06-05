@@ -2470,8 +2470,8 @@ static void JS_CountVocbaseCol(
   OperationOptions options(ExecContext::current());
   OperationResult opResult =
       trx.count(collectionName,
-                details ? transaction::CountType::Detailed
-                        : transaction::CountType::Normal,
+                details ? transaction::CountType::kDetailed
+                        : transaction::CountType::kNormal,
                 options);
   res = trx.finish(opResult.result);
 
