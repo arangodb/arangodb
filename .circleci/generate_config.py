@@ -496,7 +496,7 @@ def add_workflow(workflows, tests, build_config, args):
         ui = True
         if args.ui == "only":
             suffix = "only-ui_test" + suffix
-        else
+        else:
             suffix = "with-ui_test" + suffix
     else:
         ui = False
