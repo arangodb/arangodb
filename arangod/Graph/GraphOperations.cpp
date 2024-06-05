@@ -461,7 +461,7 @@ futures::Future<OperationResult> GraphOperations::eraseOrphanCollection(
   bool collectionExists = true;
   Result res = checkVertexCollectionAvailability(collectionName);
   if (res.fail()) {
-    if (res.errorNumber() == TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST) {
+    if (res.is(TRI_ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST)) {
       // in this case, we are allowed just to drop it out of the definition
       collectionExists = false;
     } else {

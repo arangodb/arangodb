@@ -476,8 +476,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
                                          conflictingDocumentKey);
     TRI_ASSERT(!r.is(TRI_ERROR_ARANGO_TRY_AGAIN));
 
-    if (r.errorNumber() == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED &&
-        isSystem) {
+    if (r.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) && isSystem) {
       // ignore unique constraint violations for system collections
       r.reset();
     }
@@ -553,8 +552,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
       continue;
     }
 
-    if (res.errorNumber() == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED &&
-        isSystem) {
+    if (res.is(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) && isSystem) {
       // ignore unique constraint violations for system collections
       res.reset();
     }
