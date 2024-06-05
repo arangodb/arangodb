@@ -40,13 +40,18 @@ auto SkipResult::didSkip(size_t skipped) -> void {
   _skipped.back() += skipped;
 }
 
-auto SkipResult::didSkipSubquery(size_t skipped, size_t depth) -> void {
+template<int depthOffset>
+requires(depthOffset == 0 || depthOffset == -1)  //
+    auto SkipResult::didSkipSubquery(size_t skipped, size_t depth) -> void {
   TRI_ASSERT(!_skipped.empty());
-  TRI_ASSERT(_skipped.size() > depth + 1);
-  size_t index = _skipped.size() - depth - 2;
+  TRI_ASSERT(_skipped.size() > depth + 1 + depthOffset);
+  size_t index = _skipped.size() - depth - 2 - depthOffset;
   size_t& localSkip = _skipped.at(index);
   localSkip += skipped;
 }
+
+template auto SkipResult::didSkipSubquery<-1>(size_t, size_t) -> void;
+template auto SkipResult::didSkipSubquery<0>(size_t, size_t) -> void;
 
 auto SkipResult::getSkipOnSubqueryLevel(size_t depth) const -> size_t {
   TRI_ASSERT(!_skipped.empty());

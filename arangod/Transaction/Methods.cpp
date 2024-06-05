@@ -2893,11 +2893,32 @@ futures::Future<OperationResult> transaction::Methods::countCoordinatorHelper(
     // always return from the cache, regardless what's in it
     documents = cache.get();
   } else if (type == transaction::CountType::TryCache) {
-    documents = cache.getWithTtl();
+    // fetch current cache value
+    documents = cache.get();
+    // bump the cache expiry value if required. this will only
+    // modify the cache's expiry timestamp if the cache value is
+    // already expired. when called concurrently, only one thread
+    // will succeed and return true from bumpExpiry.
+    bool bumped = cache.bumpExpiry();
+    if (bumped) {
+      // our thread bumped the expiry date. now set the count
+      // value to unknown so that we refresh the cache value from
+      // this thread.
+      documents = CountCache::NotPopulated;
+    }
+    // if bumped is false here, it means that either the cache value
+    // was not expired, or that is was expired, but another concurrent
+    // thread updated the expiry value concurrently. in this case we
+    // will return the stale cache value if the cache value was ever
+    // populated. otherwise we need to update the cache ourselves.
   }
 
   if (documents == CountCache::NotPopulated) {
-    // no cache hit, or detailed results requested
+    // no cache hit, a cache refresh operation, or detailed results requested.
+    // note that it is still possible for multiple concurrent threads to
+    // fetch the count values from DB servers even for the same collection.
+    // this is possible if detailed requests are requested
+    // (CountType::Detailed), or the cache value has never been populated.
     return arangodb::countOnCoordinator(*this, collectionName, options, api)
         .thenValue(
             [&cache, type, options](OperationResult&& res) -> OperationResult {
