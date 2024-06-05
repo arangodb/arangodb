@@ -383,48 +383,48 @@ bool IsServerIdLessThan::operator()(ServerID const& lhs,
 
 /// @brief begin a transaction on all leaders
 Future<Result> beginTransactionOnLeaders(
-    TransactionState& state, ClusterTrxMethods::SortedServersSet const& leaders,
-    transaction::MethodsApi api) {
-  TRI_ASSERT(state.isCoordinator());
-  TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
+    std::shared_ptr<TransactionState> state,
+    ClusterTrxMethods::SortedServersSet leaders, transaction::MethodsApi api) {
+  TRI_ASSERT(state->isCoordinator());
+  TRI_ASSERT(!state->hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
   Result res;
   if (leaders.empty()) {
     co_return res;
   }
 
-  // If !state.knownServers.empty() => We have already locked something.
+  // If !state->knownServers.empty() => We have already locked something.
   //   We cannot revert fastPath locking and continue over slowpath. (Trx may be
   //   used)
   bool canRevertToSlowPath =
-      state.hasHint(transaction::Hints::Hint::ALLOW_FAST_LOCK_ROUND_CLUSTER) &&
-      state.knownServers().empty();
+      state->hasHint(transaction::Hints::Hint::ALLOW_FAST_LOCK_ROUND_CLUSTER) &&
+      state->knownServers().empty();
 
-  double oldLockTimeout = state.options().lockTimeout;
+  double oldLockTimeout = state->options().lockTimeout;
   {
     if (canRevertToSlowPath) {
       // We first try to do a fast lock, if we cannot get this
       // There is a potential dead lock situation
       // and we revert to a slow locking to be on the safe side.
-      state.options().lockTimeout = kFastPathLockTimeout;
+      state->options().lockTimeout = kFastPathLockTimeout;
 
       // Run fastPath
       std::vector<Future<network::Response>> requests;
       for (ServerID const& leader : leaders) {
-        if (state.knowsServer(leader)) {
+        if (state->knowsServer(leader)) {
           continue;  // already sent a begin transaction there
         }
-        TRI_ASSERT(state.options().lockTimeout <= kFastPathLockTimeout);
-        requests.emplace_back(::beginTransactionRequest(state, leader, api));
+        TRI_ASSERT(state->options().lockTimeout <= kFastPathLockTimeout);
+        requests.emplace_back(::beginTransactionRequest(*state, leader, api));
       }
 
       // use original lock timeout here
-      state.options().lockTimeout = oldLockTimeout;
+      state->options().lockTimeout = oldLockTimeout;
 
       if (requests.empty()) {
         co_return res;
       }
 
-      TransactionId const tid = state.id().child();
+      TransactionId const tid = state->id().child();
 
       auto responses = co_await futures::collectAll(requests);
 
@@ -447,7 +447,8 @@ Future<Result> beginTransactionOnLeaders(
             fastPathResult = res1;
           }
         } else {
-          state.addKnownServer(resp.serverId());  // add server id to known list
+          state->addKnownServer(
+              resp.serverId());  // add server id to known list
         }
       }
 
@@ -463,9 +464,9 @@ Future<Result> beginTransactionOnLeaders(
       TRI_ASSERT(fastPathResult.is(TRI_ERROR_LOCK_TIMEOUT));
 
       // abortTransaction on knownServers() and wait for them
-      if (!state.knownServers().empty()) {
+      if (!state->knownServers().empty()) {
         Result resetRes = co_await commitAbortTransaction(
-            &state, transaction::Status::ABORTED, api);
+            state.get(), transaction::Status::ABORTED, api);
         if (resetRes.fail()) {
           // return here if cleanup failed - this needs to be a success
           co_return resetRes;
@@ -473,11 +474,11 @@ Future<Result> beginTransactionOnLeaders(
       }
 
       // the following call also clears _knownServers (!)
-      state.coordinatorRerollTransactionId();
+      state->coordinatorRerollTransactionId();
     }
 
     // Entering slow path
-    TRI_ASSERT(state.options().lockTimeout == oldLockTimeout);
+    TRI_ASSERT(state->options().lockTimeout == oldLockTimeout);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // Make sure we always maintain the correct ordering of servers
@@ -494,11 +495,11 @@ Future<Result> beginTransactionOnLeaders(
 #endif
 
       auto const resolvedResponse =
-          co_await ::beginTransactionRequest(state, leader, api);
+          co_await ::beginTransactionRequest(*state, leader, api);
       if (resolvedResponse.fail()) {
         co_return resolvedResponse.combinedResult();
       }
-      state.addKnownServer(leader);  // add server id to known list
+      state->addKnownServer(leader);  // add server id to known list
     }
   }
 
