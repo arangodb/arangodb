@@ -54,7 +54,7 @@ if [ "$1" = 'arangod' ]; then
             else
                 echo "WARNING: password file '$ARANGO_ROOT_PASSWORD_FILE' does not exist"
             fi
-	fi
+	    fi
         # Please note that the +x in the following line is for the case
         # that ARANGO_ROOT_PASSWORD is set but to an empty value, please
         # do not remove!
@@ -85,8 +85,7 @@ if [ "$1" = 'arangod' ]; then
 
         echo "Initializing database...Hang on..."
 
-        echo "$@"
-        $NUMACTL arangod --icu-language DE --config /tmp/arangod.conf \
+        $NUMACTL arangod "$@" --config /tmp/arangod.conf \
                 --server.endpoint tcp://127.0.0.1:$ARANGO_INIT_PORT \
                 --server.authentication false \
 		--log.file /tmp/init-log \
