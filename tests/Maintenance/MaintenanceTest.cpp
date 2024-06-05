@@ -45,6 +45,11 @@
 #include "RocksDBEngine/RocksDBOptionFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
+#include "Cluster/ClusterFeature.h"
+#include "Metrics/ClusterMetricsFeature.h"
+#include "Statistics/StatisticsFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 
 #include <velocypack/Iterator.h>
 
@@ -514,17 +519,25 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
         localNodes{{dbsIds[shortNames[0]], createNode(dbs0Str)},
                    {dbsIds[shortNames[1]], createNode(dbs1Str)},
                    {dbsIds[shortNames[2]], createNode(dbs2Str)}} {
-    as.addFeature<arangodb::metrics::MetricsFeature>();
     as.addFeature<arangodb::RocksDBOptionFeature>();
     as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(
         std::false_type{});
     auto& selector = as.addFeature<arangodb::EngineSelectorFeature>();
+    auto& metrics = as.addFeature<arangodb::metrics::MetricsFeature>(
+        arangodb::LazyApplicationFeatureReference<
+            arangodb::QueryRegistryFeature>(nullptr),
+        arangodb::LazyApplicationFeatureReference<arangodb::StatisticsFeature>(
+            nullptr),
+        selector,
+        arangodb::LazyApplicationFeatureReference<
+            arangodb::metrics::ClusterMetricsFeature>(nullptr),
+        arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
+            nullptr));
 
     // need to construct this after adding the MetricsFeature to the application
     // server
     engine = std::make_unique<arangodb::RocksDBEngine>(
-        as, as.template getFeature<arangodb::RocksDBOptionFeature>(),
-        as.template getFeature<arangodb::metrics::MetricsFeature>());
+        as, as.template getFeature<arangodb::RocksDBOptionFeature>(), metrics);
     selector.setEngineTesting(engine.get());
   }
 
