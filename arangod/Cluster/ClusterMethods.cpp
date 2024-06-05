@@ -198,7 +198,7 @@ Future<Result> beginTransactionOnAllLeaders(transaction::Methods& trx,
       }
     }
   }
-  return ClusterTrxMethods::beginTransactionOnLeaders(stateShrdPtr(),
+  return ClusterTrxMethods::beginTransactionOnLeaders(trx.stateShrdPtr(),
                                                       std::move(servers), api);
 }
 
