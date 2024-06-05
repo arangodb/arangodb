@@ -1,6 +1,8 @@
 devel
 -----
 
+* Upgrade OpenSSL to 3.3.1.
+
 * Updated ArangoDB Starter to v0.19.2-preview-3.
 
 * Fixed MDS-1230: added missing variable replacement for inline filters of
