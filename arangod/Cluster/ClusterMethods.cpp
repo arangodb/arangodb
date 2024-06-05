@@ -169,7 +169,8 @@ Future<Result> beginTransactionOnSomeLeaders(TransactionState& state,
       }
     }
   }
-  return ClusterTrxMethods::beginTransactionOnLeaders(state, servers, api);
+  return ClusterTrxMethods::beginTransactionOnLeaders(state.shared_from_this(),
+                                                      std::move(servers), api);
 }
 
 // begin transaction on shard leaders
@@ -197,8 +198,8 @@ Future<Result> beginTransactionOnAllLeaders(transaction::Methods& trx,
       }
     }
   }
-  return ClusterTrxMethods::beginTransactionOnLeaders(*trx.state(), servers,
-                                                      api);
+  return ClusterTrxMethods::beginTransactionOnLeaders(trx.stateShrdPtr(),
+                                                      std::move(servers), api);
 }
 
 /// @brief add the correct header for the shard
