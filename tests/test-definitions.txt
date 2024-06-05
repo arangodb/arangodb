@@ -124,8 +124,8 @@ dump_parallel single size=medium -- --dumpAgencyOnError true
 dump_maskings  single enterprise size=medium -- --dumpAgencyOnError true
 dump_encrypted single enterprise size=medium -- --dumpAgencyOnError true
 
-dump cluster parallelity=4 size=medium -- --dumpAgencyOnError true
-dump_authentication cluster parallelity=4 size=medium -- --dumpAgencyOnError true
+dump cluster parallelity=5 size=medium -- --dumpAgencyOnError true
+dump_authentication cluster parallelity=5 size=medium -- --dumpAgencyOnError true
 dump_jwt cluster parallelity=4 size=medium -- --dumpAgencyOnError true
 dump_multiple cluster parallelity=4 size=medium -- --dumpAgencyOnError true
 dump_parallel cluster parallelity=4 size=medium -- --dumpAgencyOnError true

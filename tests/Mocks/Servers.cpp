@@ -380,7 +380,7 @@ MockMetricsServer::MockMetricsServer(bool start) : MockServer() {
 MockV8Server::MockV8Server(bool start) : MockServer() {
   // setup required application features
   SetupV8Phase(*this);
-  addFeature<NetworkFeature>(false);
+  addFeature<NetworkFeature>(true);
 
   if (start) {
     MockV8Server::startFeatures();
@@ -455,7 +455,7 @@ std::shared_ptr<aql::Query> MockAqlServer::createFakeQuery(
 MockRestServer::MockRestServer(bool start) : MockServer() {
   SetupV8Phase(*this);
   addFeature<QueryRegistryFeature>(false);
-  addFeature<NetworkFeature>(false);
+  addFeature<NetworkFeature>(true);
   if (start) {
     MockRestServer::startFeatures();
   }
@@ -985,6 +985,6 @@ network::ConnectionPool* MockCoordinator::getPool() { return _pool.get(); }
 
 MockRestAqlServer::MockRestAqlServer() {
   SetupAqlPhase(*this);
-  addFeature<NetworkFeature>(false);
+  addFeature<NetworkFeature>(true);
   MockRestAqlServer::startFeatures();
 }
