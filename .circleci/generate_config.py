@@ -339,7 +339,7 @@ def create_test_job(test, cluster, build_config, build_job, replication_version=
 def create_rta_test_job(build_config, build_job, deployment_mode, filter_statement):
     edition = "ee" if build_config.enterprise else "ce"
     job = {
-        "name": f"test-{filter_statement}-{edition}-{deployment_mode}-RTA",
+        "name": f"test-{filter_statement}-{edition}-{deployment_mode}-UI",
         "suiteName": filter_statement,
         "deployment": deployment_mode,
         "browser": "Remote_CHROME",
@@ -385,9 +385,10 @@ def add_rta_ui_test_jobs_to_workflow(args, workflow, build_config, build_job):
     ]
     if args.ui_testsuites != "":
         ui_testsuites = args.ui_testsuites.split(',')
-    deployments = ['SG'
-                   #"CL",
-                   ]
+    deployments = [
+        'SG'
+        "CL",
+    ]
     if args.ui_deployments:
         deployments = args.ui_deployments.split(',')
 
@@ -491,6 +492,15 @@ def add_build_job(workflow, build_config, overrides=None):
 def add_workflow(workflows, tests, build_config, args):
     repl2 = args.replication_two
     suffix = "nightly" if build_config.isNightly else "pr"
+    if args.ui != "" and args.ui != "off":
+        ui = True
+        if args.ui == "only":
+            suffix = "only-ui_test" + suffix
+        else
+            suffix = "with-ui_test" + suffix
+    else:
+        ui = False
+        suffix = "no-ui_test" + suffix
     if build_config.sanitizer != "":
         suffix += "-" + build_config.sanitizer
     if args.replication_two:
@@ -500,7 +510,7 @@ def add_workflow(workflows, tests, build_config, args):
     workflows[name] = {"jobs": []}
     workflow = workflows[name]
     build_job = add_build_job(workflow, build_config)
-    if build_config.arch == "x64":
+    if build_config.arch == "x64" and not ui:
         add_cppcheck_job(workflow, build_job)
     add_create_docker_image_job(workflow, build_config, build_job, args)
 
@@ -526,7 +536,7 @@ def add_x64_community_workflow(workflows, tests, args):
 def add_x64_enterprise_workflow(workflows, tests, args):
     build_config = BuildConfig("x64", True, args.sanitizer, args.nightly)
     workflow = add_workflow(workflows, tests, build_config, args)
-    if args.sanitizer == "":
+    if args.sanitizer == "" and (args.ui == "off" or args.ui == ""):
         add_build_job(
             workflow,
             build_config,
