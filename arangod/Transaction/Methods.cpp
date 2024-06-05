@@ -3041,43 +3041,41 @@ futures::Future<OperationResult> transaction::Methods::countCoordinatorHelper(
                 return;
               }
 
-              LOG_TOPIC("01d9a", TRACE, Logger::FIXME)
-                  << "refreshing count cache value for collection '"
-                  << databaseName << "/" << collectionName << "'";
+              auto coro = [](VocbasePtr vocbase, std::string collectionName)
+                  -> futures::Future<futures::Unit> {
+                LOG_TOPIC("01d9a", TRACE, Logger::FIXME)
+                    << "refreshing count cache value for collection '"
+                    << vocbase->name() << "/" << collectionName << "'";
 
-              // start a new transaction
-              auto origin = transaction::OperationOriginInternal{
-                  "refreshing document count cache"};
-              auto trx = std::make_shared<SingleCollectionTransaction>(
-                  transaction::StandaloneContext::create(*vocbase, origin),
-                  collectionName, AccessMode::Type::READ);
+                // start a new transaction
+                auto origin = transaction::OperationOriginInternal{
+                    "refreshing document count cache"};
+                auto trx = std::make_shared<SingleCollectionTransaction>(
+                    transaction::StandaloneContext::create(*vocbase, origin),
+                    collectionName, AccessMode::Type::READ);
 
-              // the following is all best effort only. if something fails, we
-              // can ignore it, because the cache will eventually be refreshed
-              [[maybe_unused]] auto f = trx->beginAsync().thenValue(
-                  [trx, collectionName =
-                            std::move(collectionName)](Result&& res) -> void {
-                    if (res.fail()) {
-                      return;
-                    }
-                    OperationOptions options(ExecContext::current());
-                    [[maybe_unused]] auto f =
-                        trx->countAsync(collectionName,
-                                        transaction::CountType::kNormal,
-                                        options)
-                            .thenValue([trx](
-                                           OperationResult&& opResult) -> void {
-                              if (opResult.result.fail()) {
-                                return;
-                              }
-                              VPackSlice s = opResult.slice();
-                              TRI_ASSERT(s.isNumber());
-                              if (trx->documentCollection() != nullptr) {
-                                trx->documentCollection()->countCache().store(
-                                    s.getNumber<uint64_t>());
-                              }
-                            });
-                  });
+                // the following is all best effort only. if something fails, we
+                // can ignore it, because the cache will eventually be refreshed
+                auto res = co_await trx->beginAsync();
+                if (res.fail()) {
+                  co_return;
+                }
+                OperationOptions options(ExecContext::current());
+                auto opResult = co_await trx->countAsync(
+                    collectionName, transaction::CountType::kNormal, options);
+                if (opResult.result.fail()) {
+                  co_return;
+                }
+                VPackSlice s = opResult.slice();
+                TRI_ASSERT(s.isNumber());
+                if (trx->documentCollection() != nullptr) {
+                  trx->documentCollection()->countCache().store(
+                      s.getNumber<uint64_t>());
+                }
+              };
+
+              coro(std::move(vocbase), std::move(collectionName))
+                  .thenFinal([](auto&&) {});
             });
       }
 
@@ -3265,9 +3263,9 @@ Result transaction::Methods::addCollection(DataSourceId cid,
 
   if (_mainTransaction && status != transaction::Status::CREATED) {
     // transaction already started?
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_TRANSACTION_INTERNAL,
-        "cannot add collection to a previously started top-level transaction");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_INTERNAL,
+                                   "cannot add collection to a previously "
+                                   "started top-level transaction");
   }
 
   if (cid.empty()) {
@@ -3440,8 +3438,8 @@ Future<Result> Methods::replicateOperations(
         replication2::replicated_state::document::ReplicationOptions{
             .waitForSync = options.waitForSync});
 
-    // Should finish immediately, because we are not waiting the operation to be
-    // committed in the replicated log
+    // Should finish immediately, because we are not waiting the operation to
+    // be committed in the replicated log
     TRI_ASSERT(replicationFut.isReady());
 
     auto replicationRes = replicationFut.get();
@@ -3699,9 +3697,9 @@ Future<Result> Methods::replicateOperations(
 
             // Note: it is safe here to exit the loop early. We are losing the
             // leadership here. No matter what happens next, the Current entry
-            // in the agency is rewritten and thus replication is restarted from
-            // the new leader. There is no need to keep trying to drop followers
-            // at this point.
+            // in the agency is rewritten and thus replication is restarted
+            // from the new leader. There is no need to keep trying to drop
+            // followers at this point.
 
             if (res.is(TRI_ERROR_CLUSTER_NOT_LEADER)) {
               // In this case, we know that we are not or no longer
@@ -3966,7 +3964,8 @@ Future<OperationResult> Methods::replaceInternal(
                           TRI_VOC_DOCUMENT_OPERATION_REPLACE, api);
   } else {
     OperationOptions optionsCopy = options;
-    f = modifyLocal(collectionName, newValue, optionsCopy, /*isUpdate*/ false);
+    f = modifyLocal(collectionName, newValue, optionsCopy,
+                    /*isUpdate*/ false);
   }
   return addTracking(std::move(f), [=, this](OperationResult&& opRes) {
     events::ReplaceDocument(vocbase().name(), collectionName, newValue,
