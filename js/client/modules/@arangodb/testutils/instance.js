@@ -548,6 +548,7 @@ class instance {
     if (!this.hasOwnProperty('exitStatus')) {
       this.exitStatus = killExternal(this.pid, termSignal);
     }
+    this.processSanitizerReports();
   }
 
   readImportantLogLines (logPath) {
@@ -693,13 +694,22 @@ class instance {
       internal.addPidToMonitor(this.pid);
     }
   };
+
+  status(waitForExit) {
+    let ret = statusExternal(this.pid, waitForExit);
+    if (ret.status !== 'RUNNING') {
+      this.processSanitizerReports();
+    }
+    return ret;
+  }
+
   waitForExitAfterDebugKill() {
     // Crashutils debugger kills our instance, but we neet to get
     // testing.js sapwned-PID-monitoring adjusted.
     print("waiting for exit - " + this.pid);
     try {
       let ret = statusExternal(this.pid, false);
-      // OK, something has gone wrong, process still alive. anounce and force kill:
+      // OK, something has gone wrong, process still alive. announce and force kill:
       if (ret.status !== "ABORTED") {
         print(RED+`was expecting the process ${this.pid} to be gone, but ${JSON.stringify(ret)}` + RESET);
         killExternal(this.pid, abortSignal);
@@ -708,10 +718,11 @@ class instance {
     } catch(ex) {
       print(ex);
     }
-    this.serverCrashedLocal = this.serverCrashedLocal || this.processSanitizerReports();
+    this.processSanitizerReports();
     this.pid = null;
     print('done');
   }
+
   waitForExit() {
     if (this.pid === null) {
       this.exitStatus = null;
@@ -719,10 +730,10 @@ class instance {
     }
     this.exitStatus = statusExternal(this.pid, true);
     if (this.exitStatus.status !== 'TERMINATED') {
-      this.serverCrashedLocal = this.serverCrashedLocal || this.processSanitizerReports();
+      this.processSanitizerReports();
       throw new Error(this.name + " didn't exit in a regular way: " + JSON.stringify(this.exitStatus));
     }
-    this.serverCrashedLocal = this.serverCrashedLocal || this.processSanitizerReports();
+    this.processSanitizerReports();
     this.exitStatus = null;
     this.pid = null;
   }
@@ -806,6 +817,10 @@ class instance {
       }
     }
     return running;
+  }
+
+  isRunning() {
+    return (this.exitStatus !== null) && (this.exitStatus.status === 'RUNNING')
   }
 
   connect() {
@@ -922,7 +937,7 @@ class instance {
       } else if (this.options.useKillExternal) {
         let sockStat = this.getSockStat("Shutdown by kill - sockstat before: ");
         this.exitStatus = killExternal(this.pid);
-        this.serverCrashedLocal = this.serverCrashedLocal || this.processSanitizerReports();
+        this.processSanitizerReports();
         this.pid = null;
         print(sockStat);
       } else if (this.protocol === 'unix') {
@@ -944,7 +959,7 @@ class instance {
           print(Date() + ' Wrong shutdown response: ' + JSON.stringify(reply) + "' " + sockStat + " continuing with hard kill!");
           this.shutdownArangod(true);
         } else {
-          this.serverCrashedLocal = this.serverCrashedLocal || this.processSanitizerReports();
+          this.processSanitizerReports();
           if (!this.options.noStartStopLogs) {
             print(sockStat);
           }
@@ -971,11 +986,8 @@ class instance {
           print(Date() + ' Wrong shutdown response: ' + JSON.stringify(reply) + "' " + sockStat + " continuing with hard kill!");
           this.shutdownArangod(true);
         }
-        else {
-          this.serverCrashedLocal = this.serverCrashedLocal || this.processSanitizerReports();
-          if (!this.options.noStartStopLogs) {
-            print(sockStat);
-          }
+        else if (!this.options.noStartStopLogs) {
+          print(sockStat);
         }
         if (this.options.extremeVerbosity) {
           print(Date() + ' Shutdown response: ' + JSON.stringify(reply));
@@ -1150,7 +1162,8 @@ class instance {
   }
 
   processSanitizerReports() {
-    return this.sanHandler.fetchSanFileAfterExit(this.pid);
+    print((new Error()).stack);
+    this.serverCrashedLocal = this.serverCrashedLocal || this.sanHandler.fetchSanFileAfterExit(this.pid);
   }
 }
 

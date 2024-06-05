@@ -37,6 +37,7 @@ function containsDoubleByte(str) {
 }
 
 let NUM_SANITIZER_REPORTS = 0;
+let processedFiles = new Set();
 
 class sanHandler {
   constructor(binaryName, sanOptions, isSan, extremeVerbosity) {
@@ -93,7 +94,6 @@ class sanHandler {
       return false;
     }
     let ret = false;
-    let processedFiles = new Set();
     let suffix = `.${this.binaryName}.${pid}`;
     for (const [key, value] of Object.entries(this.sanitizerLogPaths)) {
       if (processedFiles.has(value.local)) {

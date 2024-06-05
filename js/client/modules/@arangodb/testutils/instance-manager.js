@@ -339,9 +339,8 @@ class instanceManager {
       this.arangods.forEach(arangod => {
         try {
           arangod.terminateInstance();
-          arangod.processSanitizerReports();
         } catch(e) {
-          print("Error processing sanitizer reports: ", e, e.stack);
+          print("Error cleaning up: ", e, e.stack);
         }
       });
       print(e, e.stack);
@@ -1011,10 +1010,10 @@ class instanceManager {
           }
           return true;
         }
-        if ((arangod.exitStatus !== null) && (arangod.exitStatus.status === 'RUNNING')) {
-          arangod.exitStatus = statusExternal(arangod.pid, false);
+        if (arangod.isRunning()) {
+          arangod.exitStatus = arangod.status(false);
         }
-        if ((arangod.exitStatus !== null) && (arangod.exitStatus.status === 'RUNNING')) {
+        if (arangod.isRunning()) {
           let localTimeout = timeout;
           if (arangod.isAgent()) {
             localTimeout = localTimeout + 60;
@@ -1417,7 +1416,7 @@ class instanceManager {
               break;
             } catch (e) {
               this.arangods.forEach( arangod => {
-                let status = statusExternal(arangod.pid, false);
+                let status = arangod.status(false);
                 if (status.status !== "RUNNING") {
                   throw new Error(`Arangod ${arangod.pid} exited instantly! ` + JSON.stringify(status));
                 }
