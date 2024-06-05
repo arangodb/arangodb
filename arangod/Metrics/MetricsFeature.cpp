@@ -32,6 +32,7 @@
 #include "Agency/Node.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
 #include "Containers/FlatHashSet.h"
 #include "Logger/LoggerFeature.h"
@@ -46,17 +47,39 @@
 
 namespace arangodb::metrics {
 
-MetricsFeature::MetricsFeature(Server& server)
-    : ArangodFeature{server, *this},
+template<typename Server>
+MetricsFeature::MetricsFeature(
+    Server& server,
+    LazyApplicationFeatureReference<QueryRegistryFeature>
+        lazyQueryRegistryFeatureRef,
+    LazyApplicationFeatureReference<StatisticsFeature> lazyStatisticsFeatureRef,
+    LazyApplicationFeatureReference<EngineSelectorFeature>
+        lazyEngineSelectorFeatureRef,
+    LazyApplicationFeatureReference<ClusterMetricsFeature>
+        lazyClusterMetricsFeatureRef,
+    LazyApplicationFeatureReference<ClusterFeature> lazyClusterFeatureRef)
+    : ApplicationFeature{server, *this},
+      _lazyQueryRegistryFeatureRef(std::move(lazyQueryRegistryFeatureRef)),
+      _lazyStatisticsFeatureRef(std::move(lazyStatisticsFeatureRef)),
+      _lazyEngineSelectorFeatureRef(std::move(lazyEngineSelectorFeatureRef)),
+      _lazyClusterMetricsFeatureRef(std::move(lazyClusterMetricsFeatureRef)),
+      _lazyClusterFeatureRef(std::move(lazyClusterFeatureRef)),
       _export{true},
       _exportReadWriteMetrics{false},
       _ensureWhitespace{true},
       _usageTrackingModeString{"disabled"},
       _usageTrackingMode{UsageTrackingMode::kDisabled} {
   setOptional(false);
-  startsAfter<LoggerFeature>();
-  startsBefore<application_features::GreetingsFeaturePhase>();
+  startsAfter<LoggerFeature, Server>();
+  startsBefore<application_features::GreetingsFeaturePhase, Server>();
 }
+
+template MetricsFeature::MetricsFeature(
+    ArangodServer&, LazyApplicationFeatureReference<QueryRegistryFeature>,
+    LazyApplicationFeatureReference<StatisticsFeature>,
+    LazyApplicationFeatureReference<EngineSelectorFeature>,
+    LazyApplicationFeatureReference<ClusterMetricsFeature>,
+    LazyApplicationFeatureReference<ClusterFeature>);
 
 void MetricsFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
@@ -208,8 +231,7 @@ void MetricsFeature::toPrometheus(std::string& result,
     // QueryRegistryFeature only provides standard metrics.
     // update only necessary if these metrics should be included
     // in the output
-    auto& q = server().getFeature<QueryRegistryFeature>();
-    q.updateMetrics();
+    _queryRegistryFeature->updateMetrics();
   }
 
   bool hasGlobals = false;
@@ -245,21 +267,21 @@ void MetricsFeature::toPrometheus(std::string& result,
 
   if (metricsParts.includeStandardMetrics()) {
     // StatisticsFeature only provides standard metrics
-    auto& sf = server().getFeature<StatisticsFeature>();
     auto time = std::chrono::duration<double, std::milli>(
         std::chrono::system_clock::now().time_since_epoch());
-    sf.toPrometheus(result, time.count(), _globals, _ensureWhitespace);
+    _statisticsFeature->toPrometheus(result, time.count(), _globals,
+                                     _ensureWhitespace);
 
     // Storage engine only provides standard metrics
-    auto& es = server().getFeature<EngineSelectorFeature>().engine();
+    auto& es = _engineSelectorFeature->engine();
     if (es.typeName() == RocksDBEngine::kEngineName) {
       es.toPrometheus(result, _globals, _ensureWhitespace);
     }
 
     // ClusterMetricsFeature only provides standard metrics
-    auto& cm = server().getFeature<ClusterMetricsFeature>();
-    if (hasGlobals && cm.isEnabled() && mode != CollectMode::Local) {
-      cm.toPrometheus(result, _globals, _ensureWhitespace);
+    if (hasGlobals && _clusterMetricsFeature->isEnabled() &&
+        mode != CollectMode::Local) {
+      _clusterMetricsFeature->toPrometheus(result, _globals, _ensureWhitespace);
     }
 
     // agency node metrics only provide standard metrics
@@ -292,13 +314,14 @@ void MetricsFeature::toVPack(velocypack::Builder& builder,
     TRI_ASSERT(i.second);
     auto const name = i.second->name();
     if (kCoordinatorMetrics.count(name)) {
-      i.second->toVPack(builder, server());
+      i.second->toVPack(builder);
     }
   }
+  auto& ci = _clusterFeature->clusterInfo();
   for (auto const& [name, batch] : _batch) {
     TRI_ASSERT(batch);
     if (kCoordinatorBatch.count(name)) {
-      batch->toVPack(builder, server());
+      batch->toVPack(builder, ci);
     }
   }
   lock.unlock();
@@ -363,6 +386,14 @@ void MetricsFeature::batchRemove(std::string_view name,
   if (it->second->remove(labels) == 0) {
     _batch.erase(name);
   }
+}
+
+void MetricsFeature::prepare() {
+  _queryRegistryFeature = std::move(_lazyQueryRegistryFeatureRef).get();
+  _statisticsFeature = std::move(_lazyStatisticsFeatureRef).get();
+  _engineSelectorFeature = std::move(_lazyEngineSelectorFeatureRef).get();
+  _clusterMetricsFeature = std::move(_lazyClusterMetricsFeatureRef).get();
+  _clusterFeature = std::move(_lazyClusterFeatureRef).get();
 }
 
 }  // namespace arangodb::metrics

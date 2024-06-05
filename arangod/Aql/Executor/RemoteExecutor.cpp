@@ -49,6 +49,7 @@
 #include "Transaction/Methods.h"
 
 #include <fuerte/connection.h>
+#include <fuerte/message.h>
 #include <fuerte/requests.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -84,6 +85,8 @@ ExecutionBlockImpl<RemoteExecutor>::ExecutionBlockImpl(
              (!arangodb::ServerState::instance()->isCoordinator() &&
               !distributeId.empty()));
 }
+
+ExecutionBlockImpl<RemoteExecutor>::~ExecutionBlockImpl() = default;
 
 std::pair<ExecutionState, Result> ExecutionBlockImpl<
     RemoteExecutor>::initializeCursor(InputAqlItemRow const& input) {

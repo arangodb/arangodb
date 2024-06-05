@@ -40,7 +40,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
-#include "debugging.h"
+#include "Basics/debugging.h"
 #include "Containers/FlatHashSet.h"
 #include "Containers/SmallVector.h"
 #include "Indexes/Index.h"

@@ -58,10 +58,9 @@ class Batch final : public IBatch {
     }
   }
 
-  void toVPack(velocypack::Builder& builder,
-               ArangodServer& server) const final {
+  void toVPack(velocypack::Builder& builder, ClusterInfo& ci) const final {
     for (auto& [labels, metric] : _metrics) {
-      if (T::skip(server, labels)) {
+      if (T::skip(ci, labels)) {
         continue;
       }
       auto const coordinatorLabels = T::coordinatorLabels(labels);

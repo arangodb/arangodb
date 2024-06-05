@@ -54,6 +54,8 @@ class Counter final : public Metric {
 
   std::ostream& print(std::ostream& output) const;
 
+  void toVPack(velocypack::Builder& builder) const override {}
+
  private:
   mutable CounterType _c;
   mutable BufferType _b;
