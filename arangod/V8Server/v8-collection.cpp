@@ -1096,7 +1096,7 @@ static void JS_FiguresVocbaseCol(
   }
 
   OperationOptions options(ExecContext::current());
-  auto opRes = collection->figures(details, options).get();
+  auto opRes = collection->figures(details, options).waitAndGet();
 
   if (trx.finish(opRes.result).ok()) {
     TRI_V8_RETURN(TRI_VPackToV8(isolate, opRes.slice()));
@@ -1275,7 +1275,7 @@ static void JS_PropertiesVocbaseCol(
 
       auto res = methods::Collections::updateProperties(
                      *consoleColl, builder.slice(), options)
-                     .get();
+                     .waitAndGet();
       if (res.fail() && ServerState::instance()->isCoordinator()) {
         TRI_V8_THROW_EXCEPTION(res);
       }
@@ -1292,7 +1292,7 @@ static void JS_PropertiesVocbaseCol(
   if (coll) {
     VPackObjectBuilder object(&builder, true);
     methods::Collections::Context ctxt(coll);
-    Result res = methods::Collections::properties(ctxt, builder).get();
+    Result res = methods::Collections::properties(ctxt, builder).waitAndGet();
 
     if (res.fail()) {
       TRI_V8_THROW_EXCEPTION(res);
@@ -1728,7 +1728,7 @@ static void JS_RevisionVocbaseCol(
   std::shared_ptr<LogicalCollection> coll(collection, NonDeleter());
   methods::Collections::Context ctxt(coll);
   OperationOptions options(ExecContext::current());
-  auto res = methods::Collections::revisionId(ctxt, options).get();
+  auto res = methods::Collections::revisionId(ctxt, options).waitAndGet();
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res.result);
@@ -2509,7 +2509,7 @@ static void JS_WarmupVocbaseCol(
 
   auto res =
       arangodb::methods::Collections::warmup(collection->vocbase(), *collection)
-          .get();
+          .waitAndGet();
 
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);

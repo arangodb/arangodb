@@ -1922,7 +1922,7 @@ futures::Future<Result> transaction::Methods::beginAsync() {
 auto Methods::commit() noexcept -> Result {
   return commitInternal(MethodsApi::Synchronous)
       .then(basics::tryToResult)
-      .get();
+      .waitAndGet();
 }
 
 /// @brief commit / finish the transaction
@@ -1931,7 +1931,9 @@ auto transaction::Methods::commitAsync() noexcept -> Future<Result> {
 }
 
 auto Methods::abort() noexcept -> Result {
-  return abortInternal(MethodsApi::Synchronous).then(basics::tryToResult).get();
+  return abortInternal(MethodsApi::Synchronous)
+      .then(basics::tryToResult)
+      .waitAndGet();
 }
 
 /// @brief abort the transaction
@@ -1942,7 +1944,7 @@ auto transaction::Methods::abortAsync() noexcept -> Future<Result> {
 auto Methods::finish(Result const& res) noexcept -> Result {
   return finishInternal(res, MethodsApi::Synchronous)
       .then(basics::tryToResult)
-      .get();
+      .waitAndGet();
 }
 
 /// @brief finish a transaction (commit or abort), based on the previous state
@@ -2113,7 +2115,7 @@ futures::Future<Result> transaction::Methods::documentFastPath(
   if (_state->isCoordinator()) {
     OperationResult opRes = documentCoordinator(collectionName, value, options,
                                                 MethodsApi::Synchronous)
-                                .get();
+                                .waitAndGet();
     if (!opRes.fail()) {
       result.add(opRes.slice());
     }
@@ -2211,7 +2213,7 @@ OperationResult Methods::document(std::string const& collectionName,
                                   OperationOptions const& options) {
   return documentInternal(collectionName, value, options,
                           MethodsApi::Synchronous)
-      .get();
+      .waitAndGet();
 }
 
 /// @brief return one or multiple documents from a collection
@@ -2261,7 +2263,7 @@ OperationResult Methods::insert(std::string const& collectionName,
                                 VPackSlice value,
                                 OperationOptions const& options) {
   return insertInternal(collectionName, value, options, MethodsApi::Synchronous)
-      .get();
+      .waitAndGet();
 }
 
 /// @brief create one or multiple documents in a collection
@@ -2555,7 +2557,7 @@ OperationResult Methods::update(std::string const& collectionName,
                                 OperationOptions const& options) {
   return updateInternal(collectionName, updateValue, options,
                         MethodsApi::Synchronous)
-      .get();
+      .waitAndGet();
 }
 
 /// @brief update/patch one or multiple documents in a collection
@@ -2600,7 +2602,7 @@ OperationResult Methods::replace(std::string const& collectionName,
                                  OperationOptions const& options) {
   return replaceInternal(collectionName, replaceValue, options,
                          MethodsApi::Synchronous)
-      .get();
+      .waitAndGet();
 }
 
 /// @brief replace one or multiple documents in a collection
@@ -2631,7 +2633,7 @@ OperationResult Methods::remove(std::string const& collectionName,
                                 VPackSlice value,
                                 OperationOptions const& options) {
   return removeInternal(collectionName, value, options, MethodsApi::Synchronous)
-      .get();
+      .waitAndGet();
 }
 
 /// @brief remove one or multiple documents in a collection
@@ -2744,7 +2746,7 @@ futures::Future<OperationResult> transaction::Methods::allLocal(
 OperationResult Methods::truncate(std::string const& collectionName,
                                   OperationOptions const& options) {
   return truncateInternal(collectionName, options, MethodsApi::Synchronous)
-      .get();
+      .waitAndGet();
 }
 
 /// @brief remove all documents in a collection
@@ -2974,7 +2976,7 @@ OperationResult Methods::count(std::string const& collectionName,
                                CountType type,
                                OperationOptions const& options) {
   return countInternal(collectionName, type, options, MethodsApi::Synchronous)
-      .get();
+      .waitAndGet();
 }
 
 /// @brief count the number of documents in a collection
@@ -3081,7 +3083,8 @@ OperationResult transaction::Methods::countLocal(
     std::string const& collectionName, transaction::CountType /*type*/,
     OperationOptions const& options) {
   DataSourceId cid =
-      addCollectionAtRuntime(collectionName, AccessMode::Type::READ).get();
+      addCollectionAtRuntime(collectionName, AccessMode::Type::READ)
+          .waitAndGet();
   TransactionCollection* trxColl = trxCollection(cid);
   if (trxColl == nullptr) {
     return OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options);
@@ -3150,7 +3153,8 @@ std::unique_ptr<IndexIterator> transaction::Methods::indexScan(
   }
 
   DataSourceId cid =
-      addCollectionAtRuntime(collectionName, AccessMode::Type::READ).get();
+      addCollectionAtRuntime(collectionName, AccessMode::Type::READ)
+          .waitAndGet();
   TransactionCollection* trxColl = trxCollection(cid);
   if (trxColl == nullptr) {
     throwCollectionNotFound(collectionName);
@@ -3234,8 +3238,8 @@ Result transaction::Methods::addCollection(DataSourceId cid,
 
   auto addCollectionCallback = [this, &collectionName, type,
                                 lockUsage](DataSourceId cid) -> void {
-    auto res =
-        _state->addCollection(cid, collectionName, type, lockUsage).get();
+    auto res = _state->addCollection(cid, collectionName, type, lockUsage)
+                   .waitAndGet();
 
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
@@ -3399,7 +3403,7 @@ Future<Result> Methods::replicateOperations(
     // committed in the replicated log
     TRI_ASSERT(replicationFut.isReady());
 
-    auto replicationRes = replicationFut.get();
+    auto replicationRes = replicationFut.waitAndGet();
     if (replicationRes.fail()) {
       return replicationRes.result();
     }
@@ -4006,7 +4010,7 @@ Result Methods::triggerIntermediateCommit() {
   return _state->triggerIntermediateCommit();
 }
 
-Result Methods::begin() { return beginAsync().get(); }
+Result Methods::begin() { return beginAsync().waitAndGet(); }
 
 #ifndef USE_ENTERPRISE
 ErrorCode Methods::validateSmartJoinAttribute(LogicalCollection const&,

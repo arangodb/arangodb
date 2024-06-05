@@ -352,7 +352,7 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
       VPackBuilder dbInfoBuilder;
       if (!futures.empty()) {
         dbInfoBuilder.openObject();
-        auto responses = futures::collectAll(futures).get();
+        auto responses = futures::collectAll(futures).waitAndGet();
         for (auto const& it : responses) {
           auto& resp = it.get();
           auto res = resp.combinedResult();

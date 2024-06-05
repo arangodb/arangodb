@@ -1375,7 +1375,7 @@ futures::Future<Result> Collections::checksum(LogicalCollection& collection,
     OperationOptions options(ExecContext::current());
     auto res = checksumOnCoordinator(feature, collection.vocbase().name(), cid,
                                      options, withRevisions, withData)
-                   .get();
+                   .waitAndGet();
     if (res.ok()) {
       revId = RevisionId::fromSlice(res.slice().get("revision"));
       checksum = res.slice().get("checksum").getUInt();

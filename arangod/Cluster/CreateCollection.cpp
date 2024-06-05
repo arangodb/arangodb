@@ -309,7 +309,7 @@ Result CreateCollection::createCollectionReplication2(
             // created.
             return leaderState
                 ->createShard(shard, collectionType, std::move(properties))
-                .get();
+                .waitAndGet();
           }));
     } else {
       res.reset(

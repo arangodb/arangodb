@@ -470,7 +470,7 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
 
     trx->addCollectionAtRuntime(coll->id(), coll->name(),
                                 AccessMode::Type::EXCLUSIVE)
-        .get();
+        .waitAndGet();
     std::string conflictingDocumentKey;
     Result r = applyCollectionDumpMarker(*trx, coll.get(), type, applySlice,
                                          conflictingDocumentKey);
