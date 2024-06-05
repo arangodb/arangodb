@@ -495,12 +495,12 @@ def add_workflow(workflows, tests, build_config, args):
     if args.ui != "" and args.ui != "off":
         ui = True
         if args.ui == "only":
-            suffix = "only-ui_test" + suffix
+            suffix = "only-ui_test-" + suffix
         else:
-            suffix = "with-ui_test" + suffix
+            suffix = "with-ui_test-" + suffix
     else:
         ui = False
-        suffix = "no-ui_test" + suffix
+        suffix = "no-ui_test-" + suffix
     if build_config.sanitizer != "":
         suffix += "-" + build_config.sanitizer
     if args.replication_two:
