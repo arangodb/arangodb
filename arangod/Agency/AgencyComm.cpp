@@ -657,10 +657,20 @@ network::Timeout AgencyCommHelper::defaultTimeout() {
 std::string const AgencyComm::AGENCY_URL_PREFIX = "/_api/agency";
 
 AgencyComm::AgencyComm(ArangodServer& server)
+    : AgencyComm(server, server.getFeature<ClusterFeature>(),
+                 server.getFeature<EngineSelectorFeature>(),
+                 server.getFeature<DatabaseFeature>()) {}
+
+AgencyComm::AgencyComm(ApplicationServer& server,
+                       ClusterFeature& clusterFeature,
+                       EngineSelectorFeature& engineSelectorFeature,
+                       DatabaseFeature& databaseFeature)
     : _server(server),
+      _clusterFeature(clusterFeature),
+      _engineSelectorFeature(engineSelectorFeature),
+      _databaseFeature(databaseFeature),
       _agency_comm_request_time_ms(
-          _server.getFeature<arangodb::ClusterFeature>()
-              .agency_comm_request_time_ms()) {}
+          _clusterFeature.agency_comm_request_time_ms()) {}
 
 AgencyCommResult AgencyComm::sendServerState(double timeout) {
   // construct JSON value { "status": "...", "time": "...", "healthy": ... }
@@ -676,8 +686,7 @@ AgencyCommResult AgencyComm::sendServerState(double timeout) {
 
     if (ServerState::instance()->isDBServer()) {
       // use storage engine health self-assessment and send it to agency too
-      arangodb::HealthData hd =
-          _server.getFeature<EngineSelectorFeature>().engine().healthCheck();
+      arangodb::HealthData hd = _engineSelectorFeature.engine().healthCheck();
       hd.toVelocyPack(builder, /*withDetails*/ false);
     }
 
@@ -911,7 +920,7 @@ uint64_t AgencyComm::uniqid(uint64_t count, double timeout) {
   uint64_t oldValue = 0;
 
   while (!writeResult.successful()) {
-    if (server().isStopping()) {
+    if (_server.isStopping()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
     }
 
@@ -1035,8 +1044,6 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(
 
   return result;
 }
-
-ArangodServer& AgencyComm::server() { return _server; }
 
 bool AgencyComm::ensureStructureInitialized() {
   LOG_TOPIC("748e2", TRACE, Logger::AGENCYCOMM)
@@ -1316,12 +1323,11 @@ bool AgencyComm::tryInitializeStructure() {
           builder.add(StaticStrings::DatabaseId, VPackValue("1"));
           builder.add(StaticStrings::ReplicationVersion,
                       arangodb::replication::versionToString(
-                          _server.getFeature<DatabaseFeature>()
-                              .defaultReplicationVersion()));
+                          _databaseFeature.defaultReplicationVersion()));
           // We need to also take care of the `cluster.force-one-shard` option
           // here. If set, the entire cluster is forced to be a OneShard
           // deployment.
-          if (_server.getFeature<ClusterFeature>().forceOneShard()) {
+          if (_clusterFeature.forceOneShard()) {
             builder.add(StaticStrings::Sharding,
                         VPackValue(StaticStrings::ShardingSingle));
           }

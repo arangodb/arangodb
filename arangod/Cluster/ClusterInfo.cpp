@@ -83,6 +83,7 @@
 #include "Sharding/ShardingInfo.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
+#include "Transaction/CountCache.h"
 #include "Utils/Events.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
@@ -756,12 +757,16 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
     TRI_vocbase_t& vocbase, uint64_t planVersion, bool cleanupLinks) const {
   std::shared_ptr<LogicalCollection> collection;
   uint64_t hash = 0;
+  uint64_t countCache = transaction::CountCache::NotPopulated;
 
   if (!isBuilding && existingCollections != _plannedCollections.end()) {
     // check if we already know this collection from a previous run...
     if (auto existing = existingCollections->second->find(collectionId);
         existing != existingCollections->second->end()) {
       CollectionWithHash const& previous = existing->second;
+      // note the cached count result of the previous collection
+      countCache = previous.collection->countCache().get();
+
       // compare the hash values of what is in the cache with the hash of the
       // collection a hash value of 0 means that the collection must not be read
       // from the cache, potentially because it contains a link to a view (which
@@ -793,6 +798,13 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
     // changed
     collection = vocbase.createCollectionObject(data, /*isAStub*/ true);
     TRI_ASSERT(collection != nullptr);
+
+    if (countCache != transaction::CountCache::NotPopulated) {
+      // carry forward the count cache value from the previous collection, if
+      // set. this way we avoid that the count value will be refetched via
+      // HTTP requests instantly after the collection object is used next.
+      collection->countCache().store(countCache);
+    }
     if (!isBuilding) {
       auto indexes = collection->getPhysical()->getAllIndexes();
       // if the collection has a link to a view, there are dependencies between
@@ -4619,8 +4631,8 @@ ClusterInfo::getResponsibleServer(ShardID shardID) {
     }
 
     LOG_TOPIC("b1dc5", INFO, Logger::CLUSTER)
-        << "getResponsibleServerReplication1: found resigned leader, "
-        << "waiting for half a second...";
+        << "getResponsibleServerReplication1: found resigned leader for shard "
+        << shardID << ", waiting for half a second...";
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
 

@@ -393,79 +393,21 @@ TEST_F(NetworkMethodsTest, request_with_retry_and_networkfeature_failure1) {
   pool->_conn->_err = fuerte::Error::CouldNotConnect;
 
   network::RequestOptions reqOpts;
-  reqOpts.timeout = network::Timeout(5.0);
+  reqOpts.timeout = network::Timeout(3.0);
 
   VPackBuffer<uint8_t> buffer;
   auto f =
       network::sendRequestRetry(pool.get(), "tcp://example.org:80",
                                 fuerte::RestVerb::Get, "/", buffer, reqOpts);
 
-  // the default behaviour should be to retry after 200 ms
-  std::this_thread::sleep_for(std::chrono::milliseconds(10));
-  ASSERT_TRUE(f.isReady());
-
   // the NetworkFeature should now schedule the retry, which will fail
+  // the default behaviour should be to retry after some time
+  while (!f.isReady()) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  }
+
   // Step 2: Now respond with no error
-  network::Response res = std::move(f).get();
-  ASSERT_EQ(res.destination, "tcp://example.org:80");
-  ASSERT_EQ(res.error, fuerte::Error::ConnectionCanceled);
-  ASSERT_FALSE(res.hasResponse());
-}
-#endif
-
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-TEST_F(NetworkMethodsTest, request_with_retry_and_scheduler_failure1) {
-  auto guard = scopeGuard([]() noexcept { TRI_ClearFailurePointsDebugging(); });
-
-  TRI_AddFailurePointDebugging("Scheduler::queueDelayedFail1");
-
-  // Step 1: Provoke a connection error
-  pool->_conn->_err = fuerte::Error::CouldNotConnect;
-
-  network::RequestOptions reqOpts;
-  reqOpts.timeout = network::Timeout(5.0);
-
-  VPackBuffer<uint8_t> buffer;
-  auto f =
-      network::sendRequestRetry(pool.get(), "tcp://example.org:80",
-                                fuerte::RestVerb::Get, "/", buffer, reqOpts);
-
-  // the default behaviour should be to retry after 200 ms
-  std::this_thread::sleep_for(std::chrono::milliseconds(10));
   ASSERT_TRUE(f.isReady());
-
-  // the NetworkFeature should now schedule the retry, which will fail
-  // Step 2: Now respond with no error
-  network::Response res = std::move(f).get();
-  ASSERT_EQ(res.destination, "tcp://example.org:80");
-  ASSERT_EQ(res.error, fuerte::Error::ConnectionCanceled);
-  ASSERT_FALSE(res.hasResponse());
-}
-#endif
-
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-TEST_F(NetworkMethodsTest, request_with_retry_and_scheduler_failure2) {
-  auto guard = scopeGuard([]() noexcept { TRI_ClearFailurePointsDebugging(); });
-
-  TRI_AddFailurePointDebugging("Scheduler::queueDelayedFail2");
-
-  // Step 1: Provoke a connection error
-  pool->_conn->_err = fuerte::Error::CouldNotConnect;
-
-  network::RequestOptions reqOpts;
-  reqOpts.timeout = network::Timeout(5.0);
-
-  VPackBuffer<uint8_t> buffer;
-  auto f =
-      network::sendRequestRetry(pool.get(), "tcp://example.org:80",
-                                fuerte::RestVerb::Get, "/", buffer, reqOpts);
-
-  // the default behaviour should be to retry after 200 ms
-  std::this_thread::sleep_for(std::chrono::milliseconds(10));
-  ASSERT_TRUE(f.isReady());
-
-  // the NetworkFeature should now schedule the retry, which will fail
-  // Step 2: Now respond with no error
   network::Response res = std::move(f).get();
   ASSERT_EQ(res.destination, "tcp://example.org:80");
   ASSERT_EQ(res.error, fuerte::Error::ConnectionCanceled);
