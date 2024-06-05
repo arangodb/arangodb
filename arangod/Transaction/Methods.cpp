@@ -3075,7 +3075,9 @@ futures::Future<OperationResult> transaction::Methods::countCoordinatorHelper(
               };
 
               coro(std::move(vocbase), std::move(collectionName))
-                  .thenFinal([](auto&&) {});
+                  .thenFinal([](auto&&) {
+                    // weglächeln (ignore possible errors)
+                  });
             });
       }
 
