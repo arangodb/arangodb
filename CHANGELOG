@@ -1,6 +1,8 @@
 devel
 -----
 
+* Avoid dropping of followers in case a leader resigns and then comes back.
+
 * Updated ArangoDB Starter to v0.19.2-preview-3.
 
 * Fixed MDS-1230: added missing variable replacement for inline filters of
