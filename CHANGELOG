@@ -1,6 +1,8 @@
 v3.11.10 (XXXX-XX-XX)
 ---------------------
 
+* Avoid dropping of followers in case a leader resigns and then comes back.
+
 * Move network retry requests to a dedicated thread.
 
 * Fixed BTS-1813: Fixed an AQL error that could lead to range-check exceptions
