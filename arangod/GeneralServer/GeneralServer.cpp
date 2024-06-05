@@ -97,11 +97,6 @@ void GeneralServer::unregisterTask(CommTask* task) {
 }
 
 void GeneralServer::startListening(EndpointList& list) {
-  auto* p = new int();
-  delete p;
-  *p = 42;
-  LOG_DEVEL << p;
-
   unsigned int i = 0;
 
   list.apply([&i, this](std::string const& specification, Endpoint& ep) {
