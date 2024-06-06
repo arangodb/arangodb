@@ -410,7 +410,7 @@ OperationResult buildCountResult(
   total = 0;
   VPackBuilder resultBuilder;
 
-  if (type == CountType::Detailed) {
+  if (type == CountType::kDetailed) {
     resultBuilder.openObject();
     for (auto const& it : count) {
       total += it.second;

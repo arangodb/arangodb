@@ -664,7 +664,7 @@ Result Syncer::applyCollectionDumpMarker(transaction::Methods& trx,
       Result res = ::applyCollectionDumpMarkerInternal(
           _state, trx, coll, type, slice, conflictingDocumentKey);
 
-      if (res.errorNumber() != TRI_ERROR_LOCK_TIMEOUT) {
+      if (res.isNot(TRI_ERROR_LOCK_TIMEOUT)) {
         return res;
       }
 

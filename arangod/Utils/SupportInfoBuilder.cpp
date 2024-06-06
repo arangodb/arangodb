@@ -620,7 +620,7 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
             OperationOptions options(ExecContext::current());
 
             OperationResult opResult =
-                trx.count(collName, transaction::CountType::Normal, options);
+                trx.count(collName, transaction::CountType::kNormal, options);
             std::ignore = trx.finish(opResult.result);
             if (opResult.fail()) {
               LOG_TOPIC("8ae00", WARN, Logger::STATISTICS)

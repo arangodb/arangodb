@@ -757,7 +757,7 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
     TRI_vocbase_t& vocbase, uint64_t planVersion, bool cleanupLinks) const {
   std::shared_ptr<LogicalCollection> collection;
   uint64_t hash = 0;
-  uint64_t countCache = transaction::CountCache::NotPopulated;
+  uint64_t countCache = transaction::CountCache::kNotPopulated;
 
   if (!isBuilding && existingCollections != _plannedCollections.end()) {
     // check if we already know this collection from a previous run...
@@ -799,7 +799,7 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
     collection = vocbase.createCollectionObject(data, /*isAStub*/ true);
     TRI_ASSERT(collection != nullptr);
 
-    if (countCache != transaction::CountCache::NotPopulated) {
+    if (countCache != transaction::CountCache::kNotPopulated) {
       // carry forward the count cache value from the previous collection, if
       // set. this way we avoid that the count value will be refetched via
       // HTTP requests instantly after the collection object is used next.

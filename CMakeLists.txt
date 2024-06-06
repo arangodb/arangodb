@@ -238,7 +238,7 @@ configure_file(
 )
 
 option(ARANGODB_BUILD_DATE "Specific build date set from the outside (leave empty to auto-generate)" "")
-if (ARANGODB_BUILD_DATE STREQUAL "")
+if (ARANGODB_BUILD_DATE STREQUAL "" OR ARANGODB_BUILD_DATE STREQUAL "OFF")
   if (NOT EXISTS "${CMAKE_CURRENT_BINARY_DIR}/lib/Basics/build-date.h")
     # auto-generate build date
     string(TIMESTAMP ARANGODB_BUILD_DATE "%Y-%m-%d %H:%M:%S")

@@ -817,8 +817,8 @@ RestCollectionHandler::collectionRepresentationAsync(
     TRI_ASSERT(trx != nullptr);
     opRes = co_await trx->countAsync(coll->name(),
                                      showCount == CountType::Detailed
-                                         ? transaction::CountType::Detailed
-                                         : transaction::CountType::Normal,
+                                         ? transaction::CountType::kDetailed
+                                         : transaction::CountType::kNormal,
                                      options);
   }
 

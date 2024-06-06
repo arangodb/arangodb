@@ -195,7 +195,7 @@ bool CreateCollection::first() {
       // asynchronous creation of shards. In this case, we do not report an
       // error and do not increase the version number of the shard in
       // `setState` below.
-      if (res.errorNumber() == TRI_ERROR_ARANGO_DUPLICATE_NAME) {
+      if (res.is(TRI_ERROR_ARANGO_DUPLICATE_NAME)) {
         LOG_TOPIC("9db9c", DEBUG, Logger::MAINTENANCE)
             << "local collection " << database << "/" << shard
             << " already found, ignoring...";

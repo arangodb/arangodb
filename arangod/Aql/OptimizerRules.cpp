@@ -3011,7 +3011,7 @@ struct SortToIndexNode final
       TRI_ASSERT(coll != nullptr);
       size_t numDocs =
           coll->count(&_plan->getAst()->query().trxForOptimization(),
-                      transaction::CountType::TryCache);
+                      transaction::CountType::kTryCache);
 
       bool canBeUsed = arangodb::aql::utils::getIndexForSortCondition(
           *coll, &sortCondition, outVariable, numDocs,
