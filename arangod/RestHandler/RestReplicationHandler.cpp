@@ -2707,6 +2707,11 @@ void RestReplicationHandler::handleCommandSetTheLeader() {
     if (followingTermId.isNumber() && !leaderId.empty() &&
         currentLeaderCopy !=
             maintenance::ResignShardLeadership::LeaderNotYetKnownString) {
+      Result res = checkPlanLeaderDirect(col, leaderId);
+      if (res.fail()) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
+
       newLeader =
           absl::StrCat(leaderId, "_", followingTermId.getNumber<uint64_t>());
     }
@@ -2717,7 +2722,12 @@ void RestReplicationHandler::handleCommandSetTheLeader() {
         << "setting leader for shard '" << _vocbase.name() << "/"
         << shard.stringView() << "' from " << currentLeaderCopy << " to "
         << newLeader;
-    col->followers()->setTheLeader(newLeader);
+    if (!col->followers()->setTheLeaderConditional(currentLeaderCopy,
+                                                   newLeader)) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                    "leader changed concurrently during leader change attempt");
+      return;
+    }
   }
 
   VPackBuilder b;
