@@ -67,7 +67,7 @@ RUN curl -L https://github.com/mozilla/sccache/releases/download/v0.3.1/sccache-
 
 COPY ./tools/* /tools/
 
-RUN [ "/tools/install.sh", "3.2", "1" ]
+RUN [ "/tools/install.sh", "3.3", "1" ]
 
 COPY ./scripts /scripts
 
