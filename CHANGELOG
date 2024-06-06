@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed MDS-1229 (bad_function_call with batch materialization).
+
 * Make the `beginAsync()` operation for transactions fully async also in the
   coordinator case, where it could previously block.
 
