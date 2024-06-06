@@ -1,6 +1,8 @@
 v3.11.10 (XXXX-XX-XX)
 ---------------------
 
+* Upgrade bundled version of libunwind from v1.5 to v1.7.2.
+
 * Reduce the possibility of cache stampedes during collection count cache 
   refilling.
     
