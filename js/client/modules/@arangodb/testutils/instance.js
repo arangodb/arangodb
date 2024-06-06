@@ -1162,7 +1162,6 @@ class instance {
   }
 
   processSanitizerReports() {
-    print((new Error()).stack);
     this.serverCrashedLocal = this.serverCrashedLocal || this.sanHandler.fetchSanFileAfterExit(this.pid);
   }
 }
