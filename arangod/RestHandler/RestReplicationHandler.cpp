@@ -2395,7 +2395,7 @@ RestReplicationHandler::handleCommandAddFollower() {
     if (res.ok()) {
       OperationOptions options(_context);
       auto countRes =
-          trx.count(col->name(), transaction::CountType::Normal, options);
+          trx.count(col->name(), transaction::CountType::kNormal, options);
 
       if (countRes.ok()) {
         VPackSlice nrSlice = countRes.slice();

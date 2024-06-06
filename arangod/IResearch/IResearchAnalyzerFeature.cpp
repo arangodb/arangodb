@@ -2279,7 +2279,7 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
     };
     auto const res = visitAnalyzers(*vocbase, visitor, operationOrigin);
     if (!res.ok()) {
-      if (res.errorNumber() == TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
+      if (res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
         // collection not found, cleanup any analyzers for 'database'
         if (itr != _lastLoad.end()) {
           cleanupAnalyzers(database);

@@ -88,8 +88,8 @@ CollectionReader::CollectionReader(
 
   OperationOptions countOptions(ExecContext::current());
   OperationResult countResult =
-      trx.countAsync(_logicalCollection->name(), transaction::CountType::Normal,
-                     countOptions)
+      trx.countAsync(_logicalCollection->name(),
+                     transaction::CountType::kNormal, countOptions)
           .get();
   if (countResult.ok()) {
     _totalDocs = countResult.slice().getNumber<uint64_t>();

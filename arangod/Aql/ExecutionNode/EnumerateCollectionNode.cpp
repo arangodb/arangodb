@@ -238,7 +238,7 @@ CostEstimate EnumerateCollectionNode::estimateCost() const {
   TRI_ASSERT(!_dependencies.empty());
   CostEstimate estimate = _dependencies.at(0)->getCost();
   auto estimatedNrItems =
-      collection()->count(&trx, transaction::CountType::TryCache);
+      collection()->count(&trx, transaction::CountType::kTryCache);
   if (_random) {
     // we retrieve at most one random document from the collection.
     // so the estimate is at most 1
