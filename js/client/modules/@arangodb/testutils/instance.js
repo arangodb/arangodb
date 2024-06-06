@@ -742,6 +742,7 @@ class instance {
     if (unAuthOK === undefined) {
       unAuthOK = false;
     }
+    this.processSanitizerReports();
     const startTime = time();
     this.exitStatus = null;
     this.pid = null;
@@ -764,6 +765,7 @@ class instance {
       sleep(0.5);
       if (!this.checkArangoAlive()) {
         print("instance gone! " + this.name);
+        this.processSanitizerReports();
         this.pid = null;
         throw new Error("restart failed! " + this.name);
       }
@@ -813,6 +815,7 @@ class instance {
         pu.serverCrashed = true;
         this.message += msg;
         print(Date() + msg + ' - ' + JSON.stringify(this.getStructure()));
+        this.processSanitizerReports();
         this.pid = null;
       }
     }
@@ -882,6 +885,7 @@ class instance {
       print(agencyReply);
     }
   }
+
   killWithCoreDump (message) {
     let pid = this.pid;
     if (this.options.enableAliveMonitor) {
@@ -893,12 +897,14 @@ class instance {
       this.pid = pid;
       print(`${RED}${Date()} instance already gone? ${this.name} ${JSON.stringify(this.exitStatus)}${RESET}`);
       this.analyzeServerCrash(`instance ${this.name} during force terminate server already dead? ${JSON.stringify(this.exitStatus)}`);
+      this.processSanitizerReports();
       this.pid = null;
     } else {
       print(`${RED}${Date()} attempting to generate crashdump of: ${this.name} ${JSON.stringify(this.exitStatus)}${RESET}`);
       crashUtils.generateCrashDump(pu.ARANGOD_BIN, this, this.options, message);
     }
   }
+
   aggregateDebugger () {
     crashUtils.aggregateDebugger(this, this.options);
     print("unlisting our instance");
@@ -933,6 +939,7 @@ class instance {
       if (forceTerminate) {
         let sockStat = this.getSockStat(Date() + "Force killing - sockstat before: ");
         this.killWithCoreDump('shutdown timeout; instance forcefully KILLED because of fatal timeout in testrun ' + sockStat);
+        this.processSanitizerReports();
         this.pid = null;
       } else if (this.options.useKillExternal) {
         let sockStat = this.getSockStat("Shutdown by kill - sockstat before: ");
@@ -1088,6 +1095,7 @@ class instance {
     if (this.pid !== null) {
       this.exitStatus = statusExternal(this.pid, false);
       if (this.exitStatus.status !== 'RUNNING') {
+        this.processSanitizerReports();
         this.pid = null;
       }
     }
