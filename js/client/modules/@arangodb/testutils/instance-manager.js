@@ -1086,7 +1086,7 @@ class instanceManager {
     this.arangods.forEach(arangod => {
       arangod.readAssertLogLines(this.expectAsserts);
       if (arangod.exitStatus && arangod.exitStatus.exit !== 0) {
-        print(RED + `arangod "${arangod.instanceRole}" with pid ${arangod.pid} exited with exit code ${arangod.exitStatus?.exit}` + RESET);
+        print(RED + `arangod "${arangod.instanceRole}" with pid ${arangod.pid} exited with exit code ${arangod.exitStatus.exit}` + RESET);
         shutdownSuccess = false;
       }
     });
