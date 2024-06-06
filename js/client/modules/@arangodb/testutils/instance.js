@@ -189,7 +189,22 @@ class instance {
     this.instanceRole = instanceRole;
     this.rootDir = rootDir;
     this.protocol = protocol;
-    this.args = _.clone(addArgs);
+
+    this.args = {};
+    for (const [key, value] of Object.entries(addArgs)) {
+      if (key.search('extraArgs') >= 0) {
+        let splitkey = key.split('.');
+        if (splitkey.length !== 2) {
+          if (splitkey[1] === this.instanceRole) {
+            this.args[splitkey.slice(2).join('.')] = value;
+          }
+        } else {
+          this.args[key] = value;
+        }
+      } else {
+        this.args[key] = value;
+      }
+    }
     this.authHeaders = authHeaders;
     this.restKeyFile = restKeyFile;
     this.agencyConfig = agencyConfig;

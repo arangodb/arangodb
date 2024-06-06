@@ -3,7 +3,7 @@ v3.11.10 (XXXX-XX-XX)
 
 * Updated OpenSSL to 3.3.1 and OpenLDAP to 2.6.8.
 
-* Switch production compiler to clang++ (16.0.6) and runtime to glibc.
+* Switch production compiler to clang++ (16.0.6) and runtime to glibc (2.39.0).
 
 * Reduce the possibility of cache stampedes during collection count cache 
   refilling.
