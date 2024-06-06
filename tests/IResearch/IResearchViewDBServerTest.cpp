@@ -146,7 +146,7 @@ TEST_F(IResearchViewDBServerTest, test_drop) {
     // ensure we have shard view in vocbase
     bool created;
     auto index =
-        logicalCollection->createIndex(linkJson->slice(), created).get();
+        logicalCollection->createIndex(linkJson->slice(), created).waitAndGet();
     ASSERT_FALSE(!index);
     auto link =
         std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
@@ -190,7 +190,7 @@ TEST_F(IResearchViewDBServerTest, test_drop) {
     // ensure we have shard view in vocbase
     bool created;
     auto index =
-        logicalCollection->createIndex(linkJson->slice(), created).get();
+        logicalCollection->createIndex(linkJson->slice(), created).waitAndGet();
     ASSERT_FALSE(!index);
     auto link =
         std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
@@ -239,7 +239,8 @@ TEST_F(IResearchViewDBServerTest, test_drop_cid) {
 
   // ensure we have shard view in vocbase
   bool created;
-  auto index = logicalCollection->createIndex(linkJson->slice(), created).get();
+  auto index =
+      logicalCollection->createIndex(linkJson->slice(), created).waitAndGet();
   ASSERT_FALSE(!index);
   auto link =
       std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(index);
@@ -320,7 +321,8 @@ TEST_F(IResearchViewDBServerTest, test_ensure) {
   EXPECT_NE(nullptr, impl);
 
   bool created;
-  auto index = logicalCollection->createIndex(linkJson->slice(), created).get();
+  auto index =
+      logicalCollection->createIndex(linkJson->slice(), created).waitAndGet();
   ASSERT_FALSE(!index);
   auto link =
       std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(index);
@@ -462,7 +464,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
 
     bool created;
     auto index =
-        logicalCollection->createIndex(linkJson->slice(), created).get();
+        logicalCollection->createIndex(linkJson->slice(), created).waitAndGet();
     ASSERT_FALSE(!index);
     auto link =
         std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
@@ -510,7 +512,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
 
     bool created;
     auto index =
-        logicalCollection->createIndex(linkJson->slice(), created).get();
+        logicalCollection->createIndex(linkJson->slice(), created).waitAndGet();
     ASSERT_FALSE(!index);
     auto link =
         std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
@@ -1044,7 +1046,8 @@ TEST_F(IResearchViewDBServerTest, test_transaction_snapshot) {
   ASSERT_NE(nullptr, viewImpl);
 
   bool created;
-  auto index = logicalCollection->createIndex(linkJson->slice(), created).get();
+  auto index =
+      logicalCollection->createIndex(linkJson->slice(), created).waitAndGet();
   ASSERT_FALSE(!index);
   auto link =
       std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(index);
@@ -1488,7 +1491,7 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
 
     bool created;
     auto index =
-        logicalCollection->createIndex(linkJson->slice(), created).get();
+        logicalCollection->createIndex(linkJson->slice(), created).waitAndGet();
     ASSERT_FALSE(!index);
     auto link =
         std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(
@@ -1643,8 +1646,8 @@ TEST_F(IResearchViewDBServerTest, test_updateProperties) {
     EXPECT_NE(nullptr, impl);
 
     bool created;
-    auto index =
-        logicalCollection1->createIndex(linkJson->slice(), created).get();
+    auto index = logicalCollection1->createIndex(linkJson->slice(), created)
+                     .waitAndGet();
     ASSERT_FALSE(!index);
     auto link =
         std::dynamic_pointer_cast<arangodb::iresearch::IResearchLinkMock>(

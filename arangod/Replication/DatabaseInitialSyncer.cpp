@@ -160,7 +160,7 @@ Result removeRevisions(transaction::Methods& trx, LogicalCollection& collection,
       auto fut =
           trx.state()->performIntermediateCommitIfRequired(collection.id());
       TRI_ASSERT(fut.isReady());
-      res = fut.get();
+      res = fut.waitAndGet();
     }
 
     stats.waitedForRemovals += TRI_microtime() - t;
@@ -329,7 +329,7 @@ Result fetchRevisions(NetworkFeature& netFeature, transaction::Methods& trx,
       TRI_ASSERT(futures.size() == shoppingLists.size());
       auto& f = futures.front();
       double tWait = TRI_microtime();
-      auto& val = f.get();
+      auto& val = f.waitAndGet();
       stats.waitedForDocs += TRI_microtime() - tWait;
       Result res = val.combinedResult();
       if (res.fail()) {
@@ -495,7 +495,7 @@ Result fetchRevisions(NetworkFeature& netFeature, transaction::Methods& trx,
       auto fut =
           trx.state()->performIntermediateCommitIfRequired(collection.id());
       TRI_ASSERT(fut.isReady());
-      res = fut.get();
+      res = fut.waitAndGet();
 
       if (res.fail()) {
         return res;

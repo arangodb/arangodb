@@ -636,7 +636,7 @@ Result RestAqlHandler::findEngine(std::string const& idString) {
 
       auto fut = _queryRegistry->finishQuery(queryId, errorCode);
       TRI_ASSERT(fut.isReady());
-      auto query = fut.get();
+      auto query = fut.waitAndGet();
       if (query != nullptr) {
         auto f = query->finalizeClusterQuery(errorCode);
         // Wait for query to be fully finalized, as a finish call would do.

@@ -86,7 +86,7 @@ TEST_F(FollowerCommitManagerTest, wait_for_update_commit_index) {
   EXPECT_EQ(resolveIndex, LogIndex{12});
 
   ASSERT_TRUE(f.isReady());
-  auto index = f.get().currentCommitIndex;
+  auto index = f.waitAndGet().currentCommitIndex;
   EXPECT_EQ(index, LogIndex{12});
 }
 
@@ -110,7 +110,7 @@ TEST_F(FollowerCommitManagerTest, wait_for_iterator_update_commit_index) {
   EXPECT_EQ(resolveIndex, LogIndex{25});
 
   ASSERT_TRUE(f.isReady());
-  auto iter = std::move(f).get();
+  auto iter = std::move(f).waitAndGet();
   EXPECT_EQ(iter->range(),
             (LogRange{LogIndex{12},
                       LogIndex{26}}));  // contains the interval [12, 25]
@@ -153,7 +153,7 @@ TEST_F(FollowerCommitManagerTest,
   action.fire();
   EXPECT_EQ(resolveIndex, LogIndex{44});
   ASSERT_TRUE(f.isReady());
-  auto iter = std::move(f).get();
+  auto iter = std::move(f).waitAndGet();
   EXPECT_EQ(iter->range(),
             (LogRange{LogIndex{12},
                       LogIndex{45}}));  // contains the interval [12, 45]
@@ -170,7 +170,7 @@ TEST_F(FollowerCommitManagerTest, wait_for_already_resolved) {
   auto f = commit->waitFor(LogIndex{12});
 
   ASSERT_TRUE(f.isReady());
-  EXPECT_EQ(f.get().currentCommitIndex,
+  EXPECT_EQ(f.waitAndGet().currentCommitIndex,
             LogIndex{30});  // contains the interval [12, 45]
 }
 
@@ -192,7 +192,7 @@ TEST_F(FollowerCommitManagerTest, wait_for_iterator_already_resolved) {
   auto f = commit->waitForIterator(LogIndex{12});
 
   ASSERT_TRUE(f.isReady());
-  auto iter = std::move(f).get();
+  auto iter = std::move(f).waitAndGet();
   EXPECT_EQ(iter->range(),
             (LogRange{LogIndex{12},
                       LogIndex{31}}));  // contains the interval [12, 30]

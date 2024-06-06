@@ -91,7 +91,7 @@ arangodb::Result recreateGeoIndex(TRI_vocbase_t& vocbase,
   bool created = false;
   auto newIndex = collection.getPhysical()
                       ->createIndex(newDesc.slice(), /*restore*/ true, created)
-                      .get();
+                      .waitAndGet();
 
   if (!created) {
     res.reset(TRI_ERROR_INTERNAL);
@@ -358,7 +358,7 @@ Result createIndex(
   }
   return methods::Indexes::createIndex(*(*colIt), type, fields, unique, sparse,
                                        false /*estimates*/)
-      .get();
+      .waitAndGet();
 }
 
 Result createSystemStatisticsIndices(

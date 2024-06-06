@@ -528,7 +528,7 @@ CostEstimate IndexNode::estimateCost() const {
   // estimate for the number of documents in the collection. may be
   // outdated...
   size_t const itemsInCollection =
-      collection()->count(&trx, transaction::CountType::TryCache);
+      collection()->count(&trx, transaction::CountType::kTryCache);
   size_t totalItems = 0;
   double totalCost = 0.0;
 

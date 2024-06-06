@@ -239,24 +239,24 @@ class [[nodiscard]] Future {
 
   // template <bool x = std::is_copy_constructible<T>::value,
   //          std::enable_if_t<x,int> = 0>
-  T& get() & {
+  T& waitAndGet() & {
     wait();
     return result().get();
   }
 
   /// waits and moves the result out
-  T get() && {
+  T waitAndGet() && {
     wait();
     return Future<T>(std::move(*this)).result().get();
   }
 
   /// Blocks until the future is fulfilled. Returns the Try of the result
-  Try<T>& getTry() & {
+  Try<T>& waitAndGetTry() & {
     wait();
     return getStateTryChecked();
   }
 
-  Try<T>&& getTry() && {
+  Try<T>&& waitAndGetTry() && {
     wait();
     return std::move(getStateTryChecked());
   }

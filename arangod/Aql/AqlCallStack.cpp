@@ -39,6 +39,9 @@ AqlCallStack::AqlCallStack(AqlCallStack::Empty) {}
 
 AqlCallStack::AqlCallStack(AqlCallList call) : _operations{{std::move(call)}} {}
 
+// only used in tests
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
 AqlCallStack::AqlCallStack(AqlCallStack const& other, AqlCallList call)
     : _operations{other._operations} {
   // We can only use this constructor on relevant levels
@@ -48,6 +51,7 @@ AqlCallStack::AqlCallStack(AqlCallStack const& other, AqlCallList call)
   validateNoCallHasSkippedRows();
 #endif
 }
+#endif
 
 AqlCallStack::AqlCallStack(std::vector<AqlCallList>&& operations) noexcept
     : _operations(std::move(operations)) {
@@ -210,7 +214,7 @@ auto AqlCallStack::getCallAtDepth(size_t depth) const -> AqlCall const& {
   // depth 0 is back of vector
   TRI_ASSERT(_operations.size() > depth);
   // Take the depth-most from top of the vector.
-  auto& callList = _operations.at(_operations.size() - 1 - depth);
+  auto const& callList = _operations.at(_operations.size() - 1 - depth);
   return callList.peekNextCall();
 }
 

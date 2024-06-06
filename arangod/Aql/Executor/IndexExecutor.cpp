@@ -450,8 +450,7 @@ IndexExecutor::CursorReader::CursorReader(
                                                WithProjectionsCoveredByIndex{},
                                            context);
     } else if (_strategy == IndexNode::Strategy::kCoveringFilterScanOnly ||
-               _strategy == IndexNode::Strategy::kCoveringFilterOnly ||
-               _strategy == IndexNode::Strategy::kLateMaterialized) {
+               _strategy == IndexNode::Strategy::kCoveringFilterOnly) {
       _coveringSkipper =
           checkUniqueness ? ::getCallback<true, true, /*produceResult*/ false>(
                                 DocumentProducingCallbackVariant::
@@ -461,6 +460,29 @@ IndexExecutor::CursorReader::CursorReader(
                                 DocumentProducingCallbackVariant::
                                     WithFilterCoveredByIndex{},
                                 context);
+    } else if (_strategy == IndexNode::Strategy::kLateMaterialized) {
+      if (_infos.getFilter() != nullptr) {
+        _coveringSkipper =
+            checkUniqueness
+                ? ::getCallback<true, true, /*produceResult*/ false>(
+                      DocumentProducingCallbackVariant::
+                          WithFilterCoveredByIndex{},
+                      context)
+                : ::getCallback<false, true, /*produceResult*/ false>(
+                      DocumentProducingCallbackVariant::
+                          WithFilterCoveredByIndex{},
+                      context);
+      } else {
+        _coveringSkipper =
+            checkUniqueness
+                ? ::getCallback<true, true>(DocumentProducingCallbackVariant::
+                                                WithProjectionsCoveredByIndex{},
+                                            context)
+                : ::getCallback<false, true>(
+                      DocumentProducingCallbackVariant::
+                          WithProjectionsCoveredByIndex{},
+                      context);
+      }
     }
   } else {
     _documentSkipper = checkUniqueness

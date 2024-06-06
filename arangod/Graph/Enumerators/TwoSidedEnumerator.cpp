@@ -181,7 +181,7 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   if (!looseEnds.empty()) {
     // Will throw all network errors here
     futures::Future<std::vector<Step*>> futureEnds = _provider.fetch(looseEnds);
-    futureEnds.get();
+    futureEnds.waitAndGet();
     // Notes for the future:
     // Vertices are now fetched. Thnink about other less-blocking and batch-wise
     // fetching (e.g. re-fetch at some later point).
@@ -205,7 +205,7 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
     futures::Future<std::vector<Step*>> futureEnds = _provider.fetch(looseEnds);
 
     // Will throw all network errors here
-    auto&& preparedEnds = futureEnds.get();
+    auto&& preparedEnds = futureEnds.waitAndGet();
 
     TRI_ASSERT(preparedEnds.size() != 0);
     TRI_ASSERT(_queue.hasProcessableElement());
@@ -223,7 +223,7 @@ auto TwoSidedEnumerator<QueueType, PathStoreType, ProviderType, PathValidator>::
       // needs to be addressed.
       if (!n.isProcessable()) {
         auto futureEnds = _provider.fetch({&n});
-        futureEnds.get();
+        futureEnds.waitAndGet();
       }
     }
     auto valid = _validator.validatePath(n);
