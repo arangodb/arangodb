@@ -1,7 +1,7 @@
 devel
 -----
 
-* Upgrade OpenSSL to 3.3.1.
+* Upgrade OpenSSL to 3.3.1 and used glibc build runtime to 2.39.0.
 
 * Avoid dropping of followers in case a leader resigns and then comes back.
 
