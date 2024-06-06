@@ -820,7 +820,7 @@ class instance {
   }
 
   isRunning() {
-    return (this.exitStatus !== null) && (this.exitStatus.status === 'RUNNING')
+    return (this.exitStatus !== null) && (this.exitStatus.status === 'RUNNING');
   }
 
   connect() {
