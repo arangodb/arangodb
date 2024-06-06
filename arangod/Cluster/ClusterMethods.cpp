@@ -169,7 +169,8 @@ Future<Result> beginTransactionOnSomeLeaders(TransactionState& state,
       }
     }
   }
-  return ClusterTrxMethods::beginTransactionOnLeaders(state, servers, api);
+  return ClusterTrxMethods::beginTransactionOnLeaders(state.shared_from_this(),
+                                                      std::move(servers), api);
 }
 
 // begin transaction on shard leaders
@@ -197,8 +198,8 @@ Future<Result> beginTransactionOnAllLeaders(transaction::Methods& trx,
       }
     }
   }
-  return ClusterTrxMethods::beginTransactionOnLeaders(*trx.state(), servers,
-                                                      api);
+  return ClusterTrxMethods::beginTransactionOnLeaders(trx.stateShrdPtr(),
+                                                      std::move(servers), api);
 }
 
 /// @brief add the correct header for the shard
@@ -1220,12 +1221,12 @@ futures::Future<OperationResult> countOnCoordinator(
 
   auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
   for (auto const& p : *shardIds) {
-    network::Headers headers;
     if (p.second.empty()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
     }
     // extract leader
     std::string const& leader = p.second[0];
+    network::Headers headers;
     ClusterTrxMethods::addTransactionHeader(trx, leader, headers);
 
     futures.emplace_back(network::sendRequestRetry(
@@ -3590,7 +3591,7 @@ arangodb::Result lockServersTrxCommit(network::ConnectionPool* pool,
       // If we see at least one TRI_ERROR_LOCAL_LOCK_FAILED it is a failure
       // if all errors are TRI_ERROR_LOCK_TIMEOUT, then we report this and
       // this will lead to a retry:
-      if (finalRes.errorNumber() == TRI_ERROR_LOCAL_LOCK_FAILED) {
+      if (finalRes.is(TRI_ERROR_LOCAL_LOCK_FAILED)) {
         c = TRI_ERROR_LOCAL_LOCK_FAILED;
       }
       finalRes =

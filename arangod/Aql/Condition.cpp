@@ -722,7 +722,7 @@ std::pair<bool, bool> Condition::findIndexes(
     itemsInIndex = 1024;
   } else {
     // estimate for the number of documents in the index. may be outdated...
-    itemsInIndex = coll.count(&trx, transaction::CountType::TryCache);
+    itemsInIndex = coll.count(&trx, transaction::CountType::kTryCache);
   }
   if (_root == nullptr) {
     size_t dummy;
