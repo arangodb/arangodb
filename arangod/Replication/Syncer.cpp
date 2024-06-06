@@ -918,7 +918,7 @@ void Syncer::createIndexInternal(velocypack::Slice idxDef,
 
   if (idx == nullptr) {
     bool created = false;
-    idx = physical->createIndex(idxDef, /*restore*/ true, created).get();
+    idx = physical->createIndex(idxDef, /*restore*/ true, created).waitAndGet();
   }
   TRI_ASSERT(idx != nullptr);
 }

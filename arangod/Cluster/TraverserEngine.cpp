@@ -207,8 +207,8 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder,
       return true;
     };
     for (auto const& shard : shards->second) {
-      Result res =
-          _trx->documentFastPathLocal(std::string{shard}, vertex, cb).get();
+      Result res = _trx->documentFastPathLocal(std::string{shard}, vertex, cb)
+                       .waitAndGet();
       if (res.ok()) {
         break;
       }

@@ -1877,7 +1877,8 @@ Result RestReplicationHandler::processRestoreIndexes(
       std::shared_ptr<arangodb::Index> idx;
       try {
         bool created = false;
-        idx = physical->createIndex(idxDef, /*restore*/ true, created).get();
+        idx = physical->createIndex(idxDef, /*restore*/ true, created)
+                  .waitAndGet();
       } catch (basics::Exception const& e) {
         if (e.code() == TRI_ERROR_NOT_IMPLEMENTED) {
           continue;
@@ -2479,7 +2480,8 @@ RestReplicationHandler::handleCommandAddFollower() {
     transaction::Manager* mgr = transaction::ManagerFeature::manager();
     TRI_ASSERT(mgr != nullptr);
     auto trxCtxtLease =
-        mgr->leaseManagedTrx(readLockId, AccessMode::Type::READ, true).get();
+        mgr->leaseManagedTrx(readLockId, AccessMode::Type::READ, true)
+            .waitAndGet();
     if (trxCtxtLease) {
       transaction::Methods trx{trxCtxtLease};
       if (!trx.isLocked(col.get(), AccessMode::Type::EXCLUSIVE)) {
@@ -3538,7 +3540,7 @@ futures::Future<Result> RestReplicationHandler::createBlockingTransaction(
   // make sure if it is aborted if something goes wrong.
   auto transactionAborter = scopeGuard([mgr, id, vn]() noexcept {
     try {
-      mgr->abortManagedTrx(id, vn).get();
+      mgr->abortManagedTrx(id, vn).waitAndGet();
     } catch (...) {
     }
   });
@@ -3554,7 +3556,7 @@ futures::Future<Result> RestReplicationHandler::createBlockingTransaction(
           // Code does not matter, read only access, so we can roll back.
           transaction::Manager* mgr = transaction::ManagerFeature::manager();
           if (mgr) {
-            mgr->abortManagedTrx(id, vn).get();
+            mgr->abortManagedTrx(id, vn).waitAndGet();
           }
         } catch (...) {
           // All errors that show up here can only be
@@ -3626,7 +3628,7 @@ ResultT<bool> RestReplicationHandler::cancelBlockingTransaction(
   if (res.ok()) {
     transaction::Manager* mgr = transaction::ManagerFeature::manager();
     if (mgr) {
-      auto isAborted = mgr->abortManagedTrx(id, _vocbase.name()).get();
+      auto isAborted = mgr->abortManagedTrx(id, _vocbase.name()).waitAndGet();
       if (isAborted.ok()) {  // lock was held
         return ResultT<bool>::success(true);
       }

@@ -85,7 +85,7 @@ auto MaintenanceActionExecutor::executeModifyCollection(
         OperationOptions options(ExecContext::current());
         return methods::Collections::updateProperties(*col, properties.slice(),
                                                       options)
-            .get();
+            .waitAndGet();
       });
 
   if (res.fail()) {
@@ -116,7 +116,7 @@ auto MaintenanceActionExecutor::executeCreateIndex(
     return methods::Indexes::ensureIndex(*col, properties.slice(), true, output,
                                          std::move(progress),
                                          std::move(callback))
-        .get();
+        .waitAndGet();
   });
 
   if (res.ok()) {
@@ -135,8 +135,9 @@ auto MaintenanceActionExecutor::executeCreateIndex(
 auto MaintenanceActionExecutor::executeDropIndex(
     std::shared_ptr<LogicalCollection> col, IndexId indexId) noexcept
     -> Result {
-  auto res = basics::catchToResult(
-      [&] { return methods::Indexes::dropDBServer(*col, indexId).get(); });
+  auto res = basics::catchToResult([&] {
+    return methods::Indexes::dropDBServer(*col, indexId).waitAndGet();
+  });
 
   LOG_CTX("e155f", DEBUG, _loggerContext)
       << "Dropping local index " << indexId << " of " << _vocbase.name() << "/"

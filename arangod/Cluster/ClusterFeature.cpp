@@ -754,7 +754,7 @@ void ClusterFeature::start() {
   // empty agency. There are also other measures that guard against such a
   // outcome. But there is also no point continuing with a first agency poll.
   if (role != ServerState::ROLE_AGENT && role != ServerState::ROLE_UNDEFINED) {
-    _agencyCache->waitFor(1).get();
+    _agencyCache->waitFor(1).waitAndGet();
     LOG_TOPIC("13eab", DEBUG, Logger::CLUSTER)
         << "Agency cache is ready. Starting cluster cache syncers";
   }
@@ -1285,7 +1285,7 @@ void ClusterFeature::runConnectivityCheck() {
     if (this->server().isStopping()) {
       break;
     }
-    network::Response const& r = f.get();
+    network::Response const& r = f.waitAndGet();
     TRI_ASSERT(r.destination.starts_with("server:"));
 
     if (r.ok()) {

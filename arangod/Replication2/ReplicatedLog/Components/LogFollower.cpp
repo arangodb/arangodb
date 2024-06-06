@@ -293,7 +293,7 @@ auto LogFollowerImpl::getInternalLogIterator(
 
 auto LogFollowerImpl::compact() -> ResultT<CompactionResult> {
   // TODO clean up CompacionResult vs ICompactionManager::CompactResult
-  auto result = guarded.getLockedGuard()->compaction->compact().get();
+  auto result = guarded.getLockedGuard()->compaction->compact().waitAndGet();
   if (result.error) {
     return Result{result.error->errorNumber(), result.error->errorMessage()};
   }
