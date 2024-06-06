@@ -507,11 +507,6 @@ void GeneralServerFeature::unprepare() {
   }
   _servers.clear();
   _jobManager.reset();
-
-  auto* p = new int();
-  delete p;
-  *p = 42;
-  LOG_DEVEL << p;
 }
 
 double GeneralServerFeature::keepAliveTimeout() const noexcept {
