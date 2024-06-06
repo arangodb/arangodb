@@ -635,7 +635,7 @@ void DatabaseFeature::recoveryDone() {
   // TODO(MBkkt) use single wait with early termination
   // when it would be available
   for (auto& future : futures) {
-    auto result = std::move(future).get();
+    auto result = std::move(future).waitAndGet();
     if (!result.ok()) {
       LOG_TOPIC("772a7", ERR, Logger::FIXME)
           << "recovery failure due to error from callback, error '"

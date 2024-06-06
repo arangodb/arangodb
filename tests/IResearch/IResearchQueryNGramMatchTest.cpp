@@ -1241,7 +1241,7 @@ class QueryNGramMatchSearch : public QueryNGramMatch {
         version(), toString(analyzer)));
     auto collection = vocbase.lookupCollection("testCollection0");
     ASSERT_TRUE(collection);
-    collection->createIndex(createJson->slice(), created).get();
+    collection->createIndex(createJson->slice(), created).waitAndGet();
     ASSERT_TRUE(created);
 
     // add view

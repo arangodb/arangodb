@@ -1240,7 +1240,7 @@ void replicated_log::LogLeader::updateReleaseIndex(LogIndex doneWithIdx) {
 }
 
 auto replicated_log::LogLeader::compact() -> ResultT<CompactionResult> {
-  auto result = _compactionManager->compact().get();
+  auto result = _compactionManager->compact().waitAndGet();
   if (result.error) {
     return Result{result.error->errorNumber(), result.error->errorMessage()};
   }
@@ -1645,7 +1645,7 @@ auto replicated_log::LogLeader::LocalFollower::release(LogIndex stop) const
   LOG_CTX("23745", DEBUG, _logContext)
       << "local follower releasing with stop at " << stop;
   auto trx = _storageManager->transaction();
-  auto res = trx->removeFront(stop).get();
+  auto res = trx->removeFront(stop).waitAndGet();
   LOG_CTX_IF("2aba1", WARN, _logContext, res.fail())
       << "local follower failed to release log entries: " << res.errorMessage();
   return res;

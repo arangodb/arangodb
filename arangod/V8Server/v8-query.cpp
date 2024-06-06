@@ -320,7 +320,7 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   OperationOptions options(ExecContext::current());
-  OperationResult cursor = trx.any(collectionName, options).get();
+  OperationResult cursor = trx.any(collectionName, options).waitAndGet();
 
   res = trx.finish(cursor.result);
 
@@ -375,7 +375,7 @@ static void JS_ChecksumCollection(
 
   Result r = methods::Collections::checksum(*col, withRevisions, withData,
                                             checksum, revId)
-                 .get();
+                 .waitAndGet();
 
   if (!r.ok()) {
     TRI_V8_THROW_EXCEPTION(r);

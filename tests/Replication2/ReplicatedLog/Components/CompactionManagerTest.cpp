@@ -209,7 +209,7 @@ TEST_F(CompactionManagerTest, manual_compaction_call_nothing_to_compact_ok) {
 
   auto cf = compactionManager->compact();
   ASSERT_TRUE(cf.isReady());
-  auto result = cf.get();
+  auto result = cf.waitAndGet();
   EXPECT_EQ(result.error, std::nullopt);
   EXPECT_TRUE(result.compactedRange.empty());
 }
@@ -270,7 +270,7 @@ TEST_F(CompactionManagerTest, manual_compaction_call_ok) {
   removeFrontPromise->setValue(Result{});
 
   ASSERT_TRUE(cf.isReady());
-  auto result = cf.get();
+  auto result = cf.waitAndGet();
   EXPECT_EQ(result.error, std::nullopt);
   EXPECT_EQ(result.compactedRange, (LogRange{LogIndex{20}, LogIndex{40}}));
 }

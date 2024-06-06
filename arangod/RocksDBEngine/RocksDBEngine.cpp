@@ -1504,7 +1504,7 @@ void RocksDBEngine::getCollectionInfo(TRI_vocbase_t& vocbase, DataSourceId cid,
                key.string(), &value);
   auto result = rocksutils::convertStatus(res);
 
-  if (result.errorNumber() != TRI_ERROR_NO_ERROR) {
+  if (result.fail()) {
     THROW_ARANGO_EXCEPTION(result);
   }
 
@@ -1867,7 +1867,7 @@ void RocksDBEngine::processTreeRebuilds() {
               Result res =
                   static_cast<RocksDBCollection*>(collection->getPhysical())
                       ->rebuildRevisionTree()
-                      .get();
+                      .waitAndGet();
               if (res.ok()) {
                 ++_metricsTreeRebuildsSuccess;
                 LOG_TOPIC("2f997", INFO, Logger::ENGINES)
@@ -2069,7 +2069,7 @@ Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
   bool const prefixSameAsStart = true;
   bool const useRangeDelete = rcoll->meta().numberDocuments() >= 32 * 1024;
 
-  auto resLock = rcoll->lockWrite().get();  // technically not necessary
+  auto resLock = rcoll->lockWrite().waitAndGet();  // technically not necessary
   if (resLock != TRI_ERROR_NO_ERROR) {
     return resLock;
   }
@@ -4024,7 +4024,7 @@ bool RocksDBEngine::checkExistingDB(
   if (!status.ok()) {
     // check if we have found the database directory or not
     Result res = rocksutils::convertStatus(status);
-    if (res.errorNumber() != TRI_ERROR_ARANGO_IO_ERROR) {
+    if (res.isNot(TRI_ERROR_ARANGO_IO_ERROR)) {
       // not an I/O error. so we better report the error and abort here
       LOG_TOPIC("74b7f", FATAL, arangodb::Logger::STARTUP)
           << "unable to initialize RocksDB engine: " << res.errorMessage();

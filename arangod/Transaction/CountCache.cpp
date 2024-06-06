@@ -30,7 +30,7 @@ using namespace arangodb;
 using namespace arangodb::transaction;
 
 CountCache::CountCache(double ttl) noexcept
-    : count(CountCache::NotPopulated), expireStamp(0.0), ttl(ttl) {}
+    : count(CountCache::kNotPopulated), expireStamp(0.0), ttl(ttl) {}
 
 uint64_t CountCache::get() const noexcept {
   return count.load(std::memory_order_relaxed);
@@ -45,7 +45,7 @@ uint64_t CountCache::getWithTtl() const noexcept {
     // not yet expired
     return get();
   }
-  return CountCache::NotPopulated;
+  return CountCache::kNotPopulated;
 }
 
 bool CountCache::bumpExpiry() noexcept {
@@ -65,7 +65,7 @@ bool CountCache::bumpExpiry() noexcept {
 }
 
 void CountCache::store(uint64_t value) noexcept {
-  TRI_ASSERT(value != CountCache::NotPopulated);
+  TRI_ASSERT(value != CountCache::kNotPopulated);
   count.store(value, std::memory_order_relaxed);
   // (2) - this release-store synchronizes with the acquire-load (1)
   expireStamp.store(getTime() + ttl, std::memory_order_release);
