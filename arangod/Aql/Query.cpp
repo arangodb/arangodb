@@ -1710,11 +1710,12 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
   options.database = query.vocbase().name();
   options.timeout = network::Timeout(120.0);  // Picked arbitrarily
   options.continuationLane = RequestLane::CLUSTER_INTERNAL;
-  // Most coordinator AQL code might be executed on the MEDIUM prio lane,
-  // since it comes from a continuation. Therefore, to avoid deadlock, we
-  // must use a lane which has priority HIGH. We do not want to skip the
-  // scheduler, since the cleanup code acquires locks and does some
-  // non-trivial work.
+  // We definitely want to skip the scheduler here, because normally
+  // the thread that orders the query shutdown is blocked and waits
+  // synchronously until the shutdown requests have been responded to.
+  // we thus must guarantee progress here, even in case all
+  // scheduler threads are otherwise blocked.
+  options.skipScheduler = true;
 
   VPackBuffer<uint8_t> body;
   VPackBuilder builder(body);
@@ -1841,8 +1842,8 @@ ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
       _shutdownState.store(ShutdownState::None, std::memory_order_relaxed);
     });
     futures::Future<Result> commitResult = _trx->commitAsync();
-    if (commitResult.get().fail()) {
-      THROW_ARANGO_EXCEPTION(std::move(commitResult).get());
+    if (commitResult.waitAndGet().fail()) {
+      THROW_ARANGO_EXCEPTION(std::move(commitResult).waitAndGet());
     }
     TRI_IF_FAILURE("Query::finalize_before_done") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);

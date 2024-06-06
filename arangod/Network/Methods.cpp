@@ -641,6 +641,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState>,
   }
 
  public:
+  bool isDone() const override { return _promise.isFulfilled(); }
   void retry() override { startRequest(); }
   void cancel() override {
     _promise.setValue(Response{std::move(_destination),
@@ -682,11 +683,10 @@ FutureRes sendRequestRetry(ConnectionPool* pool, DestinationId destination,
         << " " << path << "'";
 
     auto rs = std::make_shared<RequestsState>(
-        pool, std::move(destination), type, std::move(path), std::move(payload),
-        std::move(headers), options);
+        pool, std::string{destination}, type, std::move(path),
+        std::move(payload), std::move(headers), options);
     rs->startRequest();  // will auto reference itself
     return rs->future();
-
   } catch (std::exception const& e) {
     LOG_TOPIC("6d723", DEBUG, Logger::COMMUNICATION)
         << "failed to send request: " << e.what();
@@ -695,8 +695,8 @@ FutureRes sendRequestRetry(ConnectionPool* pool, DestinationId destination,
         << "failed to send request.";
   }
 
-  return futures::makeFuture(
-      Response{std::string(), Error::ConnectionCanceled, nullptr, nullptr});
+  return futures::makeFuture(Response{
+      std::move(destination), Error::ConnectionCanceled, nullptr, nullptr});
 }
 
 }  // namespace network

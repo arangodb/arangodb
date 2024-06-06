@@ -35,9 +35,9 @@ struct SpeedyCountCache : public transaction::CountCache {
   explicit SpeedyCountCache(double ttl)
       : CountCache(ttl), _time(TRI_microtime()) {}
 
-  double getTime() const override { return _time; }
+  double getTime() const noexcept override { return _time; }
 
-  void advanceTime(double value) { _time += value; }
+  void advanceTime(double value) noexcept { _time += value; }
 
   double _time;
 };
@@ -45,8 +45,8 @@ struct SpeedyCountCache : public transaction::CountCache {
 TEST(TransactionCountCacheTest, testExpireShort) {
   SpeedyCountCache cache(0.5);
 
-  EXPECT_EQ(transaction::CountCache::NotPopulated, cache.get());
-  EXPECT_EQ(transaction::CountCache::NotPopulated, cache.getWithTtl());
+  EXPECT_EQ(transaction::CountCache::kNotPopulated, cache.get());
+  EXPECT_EQ(transaction::CountCache::kNotPopulated, cache.getWithTtl());
 
   cache.store(0);
   EXPECT_EQ(0, cache.get());
@@ -59,7 +59,7 @@ TEST(TransactionCountCacheTest, testExpireShort) {
   cache.advanceTime(0.550);
 
   EXPECT_EQ(555, cache.get());
-  EXPECT_EQ(transaction::CountCache::NotPopulated, cache.getWithTtl());
+  EXPECT_EQ(transaction::CountCache::kNotPopulated, cache.getWithTtl());
 
   cache.store(21111234);
   EXPECT_EQ(21111234, cache.get());
@@ -72,14 +72,14 @@ TEST(TransactionCountCacheTest, testExpireShort) {
   cache.advanceTime(0.550);
 
   EXPECT_EQ(0, cache.get());
-  EXPECT_EQ(transaction::CountCache::NotPopulated, cache.getWithTtl());
+  EXPECT_EQ(transaction::CountCache::kNotPopulated, cache.getWithTtl());
 }
 
 TEST(TransactionCountCacheTest, testExpireMedium) {
   SpeedyCountCache cache(1.5);
 
-  EXPECT_EQ(transaction::CountCache::NotPopulated, cache.get());
-  EXPECT_EQ(transaction::CountCache::NotPopulated, cache.getWithTtl());
+  EXPECT_EQ(transaction::CountCache::kNotPopulated, cache.get());
+  EXPECT_EQ(transaction::CountCache::kNotPopulated, cache.getWithTtl());
 
   cache.store(0);
   EXPECT_EQ(0, cache.get());
@@ -102,7 +102,7 @@ TEST(TransactionCountCacheTest, testExpireMedium) {
   cache.advanceTime(1.100);
 
   EXPECT_EQ(555, cache.get());
-  EXPECT_EQ(transaction::CountCache::NotPopulated, cache.getWithTtl());
+  EXPECT_EQ(transaction::CountCache::kNotPopulated, cache.getWithTtl());
 
   cache.store(21111234);
 
@@ -117,14 +117,14 @@ TEST(TransactionCountCacheTest, testExpireMedium) {
   cache.advanceTime(1.350);
 
   EXPECT_EQ(21111234, cache.get());
-  EXPECT_EQ(transaction::CountCache::NotPopulated, cache.getWithTtl());
+  EXPECT_EQ(transaction::CountCache::kNotPopulated, cache.getWithTtl());
 }
 
 TEST(TransactionCountCacheTest, testExpireLong) {
   SpeedyCountCache cache(60.0);
 
-  EXPECT_EQ(transaction::CountCache::NotPopulated, cache.get());
-  EXPECT_EQ(transaction::CountCache::NotPopulated, cache.getWithTtl());
+  EXPECT_EQ(transaction::CountCache::kNotPopulated, cache.get());
+  EXPECT_EQ(transaction::CountCache::kNotPopulated, cache.getWithTtl());
 
   cache.store(0);
   EXPECT_EQ(0, cache.get());
@@ -160,5 +160,60 @@ TEST(TransactionCountCacheTest, testExpireLong) {
 
   cache.advanceTime(5.01);
   EXPECT_EQ(888, cache.get());
-  EXPECT_EQ(transaction::CountCache::NotPopulated, cache.getWithTtl());
+  EXPECT_EQ(transaction::CountCache::kNotPopulated, cache.getWithTtl());
+}
+
+TEST(TransactionCountCacheTest, testBumpExpiry) {
+  SpeedyCountCache cache(10.0);
+
+  EXPECT_EQ(transaction::CountCache::kNotPopulated, cache.get());
+  EXPECT_EQ(transaction::CountCache::kNotPopulated, cache.getWithTtl());
+
+  cache.store(0);
+  EXPECT_EQ(0, cache.get());
+  EXPECT_EQ(0, cache.getWithTtl());
+  EXPECT_FALSE(cache.isExpired());
+
+  cache.storeWithoutTtlBump(1);
+  EXPECT_FALSE(cache.bumpExpiry());
+  EXPECT_FALSE(cache.bumpExpiry());
+  EXPECT_EQ(1, cache.get());
+  EXPECT_EQ(1, cache.getWithTtl());
+  EXPECT_FALSE(cache.isExpired());
+
+  cache.advanceTime(9.9);
+  cache.storeWithoutTtlBump(2);
+
+  EXPECT_FALSE(cache.bumpExpiry());
+  EXPECT_EQ(2, cache.get());
+  EXPECT_EQ(2, cache.getWithTtl());
+  EXPECT_FALSE(cache.isExpired());
+
+  cache.advanceTime(0.101);
+  EXPECT_EQ(2, cache.get());
+  EXPECT_EQ(transaction::CountCache::kNotPopulated, cache.getWithTtl());
+  EXPECT_TRUE(cache.isExpired());
+
+  EXPECT_TRUE(cache.bumpExpiry());
+  EXPECT_FALSE(cache.bumpExpiry());
+  EXPECT_EQ(2, cache.get());
+  EXPECT_EQ(2, cache.getWithTtl());
+  EXPECT_FALSE(cache.isExpired());
+
+  cache.advanceTime(5.0);
+  cache.storeWithoutTtlBump(3);
+
+  EXPECT_FALSE(cache.bumpExpiry());
+  EXPECT_EQ(3, cache.get());
+  EXPECT_EQ(3, cache.getWithTtl());
+
+  cache.advanceTime(5.0);
+  EXPECT_FALSE(cache.bumpExpiry());
+  EXPECT_FALSE(cache.isExpired());
+
+  cache.advanceTime(0.0001);
+  EXPECT_TRUE(cache.isExpired());
+  EXPECT_TRUE(cache.bumpExpiry());
+  EXPECT_FALSE(cache.bumpExpiry());
+  EXPECT_FALSE(cache.isExpired());
 }

@@ -463,12 +463,12 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
             // we see was LOCK_TIMEOUT.
             return res;
           });
-  if (fastPathResult.get().fail()) {
-    if (fastPathResult.get().isNot(TRI_ERROR_LOCK_TIMEOUT)) {
+  if (fastPathResult.waitAndGet().fail()) {
+    if (fastPathResult.waitAndGet().isNot(TRI_ERROR_LOCK_TIMEOUT)) {
       // we got an error. this will trigger the cleanupGuard!
       // set the proper error reason.
-      cleanupReason = fastPathResult.get().errorNumber();
-      return fastPathResult.get();
+      cleanupReason = fastPathResult.waitAndGet().errorNumber();
+      return fastPathResult.waitAndGet();
     }
 
     // if we ever get here, the initial fast lock request has failed
@@ -480,13 +480,13 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     // we got a lock timeout response for the fast path locking...
     {
       // in case of fast path failure, we need to cleanup engines
-      auto requests = cleanupEngines(fastPathResult.get().errorNumber(),
+      auto requests = cleanupEngines(fastPathResult.waitAndGet().errorNumber(),
                                      _query.vocbase().name(), serverToQueryId);
       // Wait for all cleanup requests to complete.
       // So we know that all Transactions are aborted.
       Result res;
       for (auto& tryRes : requests) {
-        network::Response const& response = tryRes.get();
+        network::Response const& response = tryRes.waitAndGet();
         if (response.fail()) {
           // note first error, but continue iterating over all results
           LOG_TOPIC("2d319", DEBUG, Logger::AQL)
@@ -573,11 +573,11 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
           std::move(didCreateEngine), snippetIds, serverToQueryId,
           serverToQueryIdLock, pool, options, false /* fastPath */);
       _query.incHttpRequests(unsigned(1));
-      if (request.get().fail()) {
+      if (request.waitAndGet().fail()) {
         // this will trigger the cleanupGuard.
         // set the proper error reason
-        cleanupReason = request.get().errorNumber();
-        return request.get();
+        cleanupReason = request.waitAndGet().errorNumber();
+        return request.waitAndGet();
       }
     }
   }

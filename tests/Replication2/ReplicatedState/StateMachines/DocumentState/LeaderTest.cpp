@@ -124,7 +124,7 @@ TEST_F(DocumentStateLeaderTest,
                              TransactionId{tid}.asFollowerTransactionId(),
                              shardId, velocypack::SharedSlice(), "root"),
                          ReplicationOptions{})
-                     .get();
+                     .waitAndGet();
       EXPECT_TRUE(res.ok()) << res.result();
     }
   }
@@ -137,7 +137,7 @@ TEST_F(DocumentStateLeaderTest,
                        ReplicatedOperation::buildAbortOperation(
                            TransactionId{5}.asFollowerTransactionId()),
                        ReplicationOptions{})
-                   .get();
+                   .waitAndGet();
     EXPECT_TRUE(res.ok()) << res.result();
     leaderState->release(TransactionId{5}.asFollowerTransactionId(), res.get());
 
@@ -146,7 +146,7 @@ TEST_F(DocumentStateLeaderTest,
                   ReplicatedOperation::buildCommitOperation(
                       TransactionId{9}.asFollowerTransactionId()),
                   ReplicationOptions{})
-              .get();
+              .waitAndGet();
     EXPECT_TRUE(res.ok()) << res.result();
     leaderState->release(TransactionId{9}.asFollowerTransactionId(), res.get());
   }
@@ -370,7 +370,7 @@ TEST_F(DocumentStateLeaderTest, leader_create_modify_and_drop_shard) {
 
   auto res =
       leaderState->createShard(shardId, TRI_COL_TYPE_DOCUMENT, properties)
-          .get();
+          .waitAndGet();
   EXPECT_TRUE(res.ok()) << res;
 
   Mock::VerifyAndClearExpectations(stream.get());
@@ -407,7 +407,7 @@ TEST_F(DocumentStateLeaderTest, leader_create_modify_and_drop_shard) {
 
   res =
       leaderState->modifyShard(shardId, collectionId, velocypack::SharedSlice())
-          .get();
+          .waitAndGet();
   EXPECT_TRUE(res.ok()) << res;
 
   Mock::VerifyAndClearExpectations(stream.get());

@@ -28,14 +28,20 @@
 #include "Metrics/Metric.h"
 #include "Metrics/MetricsFeature.h"
 #include "MetricsFeatureTest.h"
+#include "RestServer/QueryRegistryFeature.h"
 
 using namespace arangodb;
 
-auto opts = std::make_shared<arangodb::options::ProgramOptions>(
-    "metrics_feature_test", std::string(), std::string(), "path");
-
-ArangodServer server(opts, nullptr);
-metrics::MetricsFeature feature(server);
+std::shared_ptr<arangodb::options::ProgramOptions> opts =
+    std::make_shared<arangodb::options::ProgramOptions>(
+        "metrics_feature_test", std::string(), std::string(), "path");
+ArangodServer server = ArangodServer(opts, nullptr);
+metrics::MetricsFeature feature = metrics::MetricsFeature(
+    server, LazyApplicationFeatureReference<QueryRegistryFeature>(server),
+    LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
+    LazyApplicationFeatureReference<EngineSelectorFeature>(nullptr),
+    LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(nullptr),
+    LazyApplicationFeatureReference<ClusterFeature>(nullptr));
 
 class MetricsFeatureTest : public ::testing::Test {
  protected:
