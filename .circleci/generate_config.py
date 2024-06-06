@@ -72,6 +72,9 @@ def parse_arguments():
     )
     parser.add_argument("-o", "--output", type=str, help="filename of the output")
     parser.add_argument("-s", "--sanitizer", type=str, help="sanitizer to use")
+    parser.add_argument("--ui", type=str, help="whether to run UI test [off|on|only|community]")
+    parser.add_argument("--ui-testsuites", type=str, help="which test of UI job to run")
+    parser.add_argument("--ui-deployments", type=str, help="which deployments [CL, SG, ...] to run")
     parser.add_argument(
         "--validate-only",
         help="validates the test definition file",
@@ -333,6 +336,20 @@ def create_test_job(test, cluster, build_config, build_job, replication_version=
     return {"run-linux-tests": job}
 
 
+def create_rta_test_job(build_config, build_job, deployment_mode, filter_statement):
+    edition = "ee" if build_config.enterprise else "ce"
+    job = {
+        "name": f"test-{filter_statement}-{edition}-{deployment_mode}-UI",
+        "suiteName": filter_statement,
+        "deployment": deployment_mode,
+        "browser": "Remote_CHROME",
+        "enterprise": "EP" if build_config.enterprise else "C",
+        "filterStatement": f"--ui-include-test-suite {filter_statement}",
+        "requires": [build_job],
+    }
+    return {"run-rta-tests": job}
+
+
 def add_test_definition_jobs_to_workflow(
     workflow, tests, build_config, build_job, repl2
 ):
@@ -351,7 +368,43 @@ def add_test_definition_jobs_to_workflow(
             jobs.append(create_test_job(test, False, build_config, build_job))
 
 
-def add_test_jobs_to_workflow(workflow, tests, build_config, build_job, repl2):
+def add_rta_ui_test_jobs_to_workflow(args, workflow, build_config, build_job):
+    jobs = workflow["jobs"]
+    ui_testsuites = [
+        "UserPageTestSuite",
+        "CollectionsTestSuite",
+        "ViewsTestSuite",
+        "GraphTestSuite",
+        "QueryTestSuite",
+        "AnalyzersTestSuite",
+        "DatabaseTestSuite",
+        "LogInTestSuite",
+        "DashboardTestSuite",
+        "SupportTestSuite",
+        "ServiceTestSuite",
+    ]
+    if args.ui_testsuites != "":
+        ui_testsuites = args.ui_testsuites.split(',')
+    deployments = [
+        'SG',
+        "CL",
+    ]
+    if args.ui_deployments:
+        deployments = args.ui_deployments.split(',')
+
+    for deployment in deployments:
+        for test_suite in ui_testsuites:
+            jobs.append(create_rta_test_job(build_config, build_job, deployment, test_suite))
+
+
+def add_test_jobs_to_workflow(args, workflow, tests, build_config, build_job, repl2):
+    if build_config.arch == "x64" and args.ui != "" and args.ui != "off":
+        if build_config.enterprise:
+            add_rta_ui_test_jobs_to_workflow(args, workflow, build_config, build_job)
+        elif args.ui == "community":
+            add_rta_ui_test_jobs_to_workflow(args, workflow, build_config, build_job)
+        if args.ui == "only":
+            return
     if build_config.enterprise:
         workflow["jobs"].append(
             {
@@ -427,6 +480,7 @@ def add_build_job(workflow, build_config, overrides=None):
         "name": name,
         "preset": preset,
         "enterprise": build_config.enterprise,
+        "arch": build_config.arch
     }
     if build_config.arch == "aarch64":
         params["s3-prefix"] = "aarch64"
@@ -438,6 +492,15 @@ def add_build_job(workflow, build_config, overrides=None):
 def add_workflow(workflows, tests, build_config, args):
     repl2 = args.replication_two
     suffix = "nightly" if build_config.isNightly else "pr"
+    if args.ui != "" and args.ui != "off":
+        ui = True
+        if args.ui == "only":
+            suffix = "only_ui_tests-" + suffix
+        else:
+            suffix = "with_ui_tests-" + suffix
+    else:
+        ui = False
+        suffix = "no_ui_tests-" + suffix
     if build_config.sanitizer != "":
         suffix += "-" + build_config.sanitizer
     if args.replication_two:
@@ -447,16 +510,18 @@ def add_workflow(workflows, tests, build_config, args):
     workflows[name] = {"jobs": []}
     workflow = workflows[name]
     build_job = add_build_job(workflow, build_config)
-    if build_config.arch == "x64":
+    if build_config.arch == "x64" and not ui:
         add_cppcheck_job(workflow, build_job)
     add_create_docker_image_job(workflow, build_config, build_job, args)
 
     tests = filter_tests(args, tests, build_config.enterprise, build_config.isNightly)
-    add_test_jobs_to_workflow(workflow, tests, build_config, build_job, repl2)
+    add_test_jobs_to_workflow(args, workflow, tests, build_config, build_job, repl2)
     return workflow
 
 
 def add_x64_community_workflow(workflows, tests, args):
+    if args.ui != "" and args.ui != "community" and args.ui != "off":
+        return
     if args.sanitizer != "" and args.nightly:
         # for nightly sanitizer runs we skip community and only test enterprise
         return
@@ -471,7 +536,7 @@ def add_x64_community_workflow(workflows, tests, args):
 def add_x64_enterprise_workflow(workflows, tests, args):
     build_config = BuildConfig("x64", True, args.sanitizer, args.nightly)
     workflow = add_workflow(workflows, tests, build_config, args)
-    if args.sanitizer == "":
+    if args.sanitizer == "" and (args.ui == "off" or args.ui == ""):
         add_build_job(
             workflow,
             build_config,
@@ -486,7 +551,7 @@ def add_x64_enterprise_workflow(workflows, tests, args):
 
 def add_aarch64_community_workflow(workflows, tests, args):
     # for normal PR runs we run only aarch64 enterprise
-    if args.nightly:
+    if args.nightly and (args.ui == "" or args.ui == "off"):
         add_workflow(
             workflows,
             tests,
@@ -496,12 +561,13 @@ def add_aarch64_community_workflow(workflows, tests, args):
 
 
 def add_aarch64_enterprise_workflow(workflows, tests, args):
-    add_workflow(
-        workflows,
-        tests,
-        BuildConfig("aarch64", True, args.sanitizer, args.nightly),
-        args,
-    )
+    if args.ui == "" or args.ui == "off":
+        add_workflow(
+            workflows,
+            tests,
+            BuildConfig("aarch64", True, args.sanitizer, args.nightly),
+            args,
+        )
 
 
 def generate_jobs(config, args, tests):
