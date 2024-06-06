@@ -1332,7 +1332,9 @@ bool MerkleTree<Hasher, BranchingBits>::modifyLocal(Node& node,
   node.hash ^= value;
 
   TRI_ASSERT(node.count > 0 || node.hash == 0)
-      << "node count: " << node.count << ", hash: " << node.hash;
+      << "node count: " << node.count << ", hash: " << node.hash
+      << ", count: " << count << ", value: " << value
+      << ", isInsert: " << isInsert;
   return true;
 }
 

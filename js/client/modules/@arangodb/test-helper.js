@@ -391,7 +391,7 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
   
   assertFalse(db[cn].exists("stop"));
   let clients = [];
-  debug("starting " + tests.length + " test clients");
+  debug(`starting ${tests.length} test clients`);
   try {
     tests.forEach(function (test) {
       let key = test[0];
@@ -402,8 +402,9 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
       clients.push(client);
     });
 
-    debug("running test for " + duration + " s...");
+    debug(`running test with ${tests.length} clients for ${duration} s...`);
 
+    let reportCounter = 0;
     for (let count = 0; count < duration; count ++) {
       internal.sleep(1);
       clients.forEach(function (client) {
@@ -427,10 +428,14 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
           }
         });
       }
+
+      if (++reportCounter % 15 === 0) {
+        debug(`  ...${reportCounter} s into the test...`);
+      }
     }
 
     // clear failure points
-    debug("clearing failure points");
+    debug("clearing all potential failure points");
     exports.clearAllFailurePoints();
   
     debug("stopping all test clients");
@@ -482,9 +487,9 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
       const logfile = client.file + '.log';
       if (client.failed) {
         if (fs.exists(logfile) && fs.readFileSync(logfile).toString() !== '') {
-          debug("test client with pid " + client.pid + " has failed and wrote logfile '" + logfile + ": " + fs.readFileSync(logfile).toString());
+          debug(`test client with pid ${client.pid} has failed and wrote logfile '${logfile}: ${fs.readFileSync(logfile).toString()}`);
         } else {
-          debug("test client with pid " + client.pid + " has failed and did not write a logfile");
+          debug(`test client with pid ${client.pid} has failed and did not write a logfile`);
         }
       }
       try {
@@ -498,7 +503,7 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
         try {
           let status = internal.statusExternal(client.pid).status;
           if (status === 'RUNNING') {
-            debug("forcefully killing test client with pid " + client.pid);
+            debug(`forcefully killing test client with pid ${client.pid}`);
             internal.killExternal(client.pid, 9 /*SIGKILL*/);
           }
         } catch (err) { }
