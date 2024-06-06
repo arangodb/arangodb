@@ -197,7 +197,7 @@ void ClusterProvider<StepImpl>::fetchVerticesFromEngines(
   }
 
   for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+    network::Response const& r = f.waitAndGet();
 
     if (r.fail()) {
       THROW_ARANGO_EXCEPTION(network::fuerteToArangoErrorCode(r));
@@ -284,7 +284,7 @@ void ClusterProvider<StepImpl>::destroyEngines() {
                    "/_internal/traverser/" +
                        arangodb::basics::StringUtils::itoa(engine.second),
                    VPackBuffer<uint8_t>(), options)
-                   .get();
+                   .waitAndGet();
 
     if (res.error != fuerte::Error::NoError) {
       // Note If there was an error on server side we do not have
@@ -353,7 +353,7 @@ Result ClusterProvider<StepImpl>::fetchEdgesFromEngines(Step* step) {
 
   std::vector<std::pair<EdgeType, VertexType>> connectedEdges;
   for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+    network::Response const& r = f.waitAndGet();
 
     if (r.fail()) {
       return network::fuerteToArangoErrorCode(r);

@@ -135,7 +135,7 @@ class IResearchInvertedIndexIteratorTestBase
                                                    &storedFields, &sortedFields,
                                                    "unique_name");
     bool created = false;
-    _inverted = _collection->createIndex(builder.slice(), created).get();
+    _inverted = _collection->createIndex(builder.slice(), created).waitAndGet();
     EXPECT_TRUE(created);
     EXPECT_TRUE(_inverted);
     _index = dynamic_cast<arangodb::iresearch::IResearchInvertedIndex*>(
@@ -163,7 +163,7 @@ class IResearchInvertedIndexIteratorTestBase
         EXPECT_TRUE(res);
         ++doc;
       }
-      EXPECT_TRUE(trx.commitAsync().get().ok());
+      EXPECT_TRUE(trx.commitAsync().waitAndGet().ok());
       EXPECT_TRUE(_index->commit(true).ok());
     }
     // second transaction to have more than one segment in the index
@@ -184,7 +184,7 @@ class IResearchInvertedIndexIteratorTestBase
       EXPECT_TRUE(res);
       ++doc;
     }
-    EXPECT_TRUE(trx.commitAsync().get().ok());
+    EXPECT_TRUE(trx.commitAsync().waitAndGet().ok());
     EXPECT_TRUE(_index->commit(true).ok());
   }
 

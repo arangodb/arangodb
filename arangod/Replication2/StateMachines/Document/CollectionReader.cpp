@@ -47,7 +47,7 @@ auto SnapshotTransaction::options() -> transaction::Options {
 void SnapshotTransaction::addCollection(LogicalCollection const& collection) {
   transaction::Methods::addCollectionAtRuntime(
       collection.id(), collection.name(), AccessMode::Type::READ)
-      .get();
+      .waitAndGet();
 }
 
 DatabaseSnapshot::DatabaseSnapshot(TRI_vocbase_t& vocbase)
@@ -88,9 +88,9 @@ CollectionReader::CollectionReader(
 
   OperationOptions countOptions(ExecContext::current());
   OperationResult countResult =
-      trx.countAsync(_logicalCollection->name(), transaction::CountType::Normal,
-                     countOptions)
-          .get();
+      trx.countAsync(_logicalCollection->name(),
+                     transaction::CountType::kNormal, countOptions)
+          .waitAndGet();
   if (countResult.ok()) {
     _totalDocs = countResult.slice().getNumber<uint64_t>();
   } else {

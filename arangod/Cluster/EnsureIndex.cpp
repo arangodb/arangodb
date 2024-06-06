@@ -177,7 +177,7 @@ bool EnsureIndex::first() {
       auto index = VPackBuilder();
       auto res = methods::Indexes::ensureIndex(*col, body.slice(), true, index,
                                                std::move(lambda))
-                     .get();
+                     .waitAndGet();
       if (res.ok()) {
         indexCreationLogging(index.slice());
         setProgress(100.);
@@ -267,6 +267,6 @@ auto EnsureIndex::ensureIndexReplication2(
                                 progress = std::move(progress)]() mutable {
     return coll->getDocumentStateLeader()
         ->createIndex(shard, indexInfo, std::move(progress))
-        .get();
+        .waitAndGet();
   });
 }

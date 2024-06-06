@@ -1,6 +1,40 @@
 devel
 -----
 
+* Avoid dropping of followers in case a leader resigns and then comes back.
+
+* Fixed MDS-1229 (bad_function_call with batch materialization).
+
+* Make the `beginAsync()` operation for transactions fully async also in the
+  coordinator case, where it could previously block.
+
+* Optimize performance of in-memory cache lookups under contention.
+
+* Reduce the possibility of cache stampedes during collection count cache
+  refilling. Additionally, do not block or delay a foreground operation with
+  refilling the collection count cache value from the DB-Servers. Instead the
+  refilling is executed eventually via the scheduler in the background.
+
+* Move resolution of replication callbacks on leader DB-Servers to the
+  scheduler's HIGH prio lane. The HIGH lane is justified here because the
+  callback resolution must make progress, as it can unblock another thread
+  waiting in an AQL write query for the replication to return.
+
+* Skip the scheduler for AQL query shutdown on coordinators.
+  During query shutdown, we definitely want to skip the scheduler, as in some
+  cases the thread that orders the query shutdown can be blocked and needs to
+  wait synchronously until the shutdown requests have been responded to.
+
+* Updated ArangoDB Starter to v0.19.2-preview-3.
+
+* Fixed MDS-1230: added missing variable replacement for inline filters of
+  EnumerateListNodes.
+
+* Fixed BTS-1813: Fixed an AQL error that could lead to range-check exceptions
+  in certain queries with subqueries.
+
+* Move network retry requests to a dedicated thread.
+
 * Reduce frequency in which progress of hot backup upload / download progress
   is reported to the agency. This limits traffic from DB servers to the agency
   during hot backup uploads and downloads.
@@ -27,8 +61,6 @@ devel
   This API is useful for tools that temporarily change log levels but do not
   want to fetch and remember the previous log levels settings. Such tools can
   now simply call the new API to restore the original log levels.
-
-* Updated ArangoDB Starter to v0.19.2-preview-1.
 
 * Fixed OASIS-25823: when late materialization was used together with skipping
   over documents or the `fullCount` operation, it was possible for AQL queries

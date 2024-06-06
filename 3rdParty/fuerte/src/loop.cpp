@@ -20,9 +20,10 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <fuerte/FuerteLogger.h>
 #include <fuerte/loop.h>
 #include <fuerte/types.h>
+
+#include "debugging.h"
 
 #include <memory>
 
@@ -55,6 +56,13 @@ EventLoopService::EventLoopService(unsigned int threadCount, char const* name)
 }
 
 EventLoopService::~EventLoopService() { stop(); }
+  
+// io_service returns a reference to the boost io_service.
+std::shared_ptr<asio_ns::io_context>& EventLoopService::nextIOContext() {
+  FUERTE_ASSERT(!_ioContexts.empty());
+  return _ioContexts[_lastUsed.fetch_add(1, std::memory_order_relaxed) %
+                     _ioContexts.size()];
+}
 
 asio_ns::ssl::context& EventLoopService::sslContext() {
   std::lock_guard<std::mutex> guard(_sslContextMutex);
@@ -81,6 +89,9 @@ void EventLoopService::stop() {
       t.join();
     }
   });
+  _threads.clear();
+  _ioContexts.clear();
+  _guards.clear();
 }
 
 }}}  // namespace arangodb::fuerte::v1
