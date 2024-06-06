@@ -39,6 +39,15 @@ parameters:
   sanitizer:
     type: string
     default: "" # should be empty, "tsan" or "alubsan"
+  ui:
+    type: string
+    default: "off"
+  ui-deployment:
+    type: string
+    default: ""
+  ui-testsuites:
+    type: string
+    default: ""
 
 # our defined job, and its steps
 jobs:
@@ -156,6 +165,9 @@ jobs:
             else
               pip install pyyaml
               python3 ".circleci/generate_config.py" --sanitizer "<< pipeline.parameters.sanitizer >>" \
+                --ui "<< pipeline.parameters.ui >>" \
+                --ui-deployment "<< pipeline.parameters.ui-deployment >>" \
+                --ui-testsuites "<< pipeline.parameters.ui-testsuites >>" \
                 <<# pipeline.parameters.nightly >> --nightly <</ pipeline.parameters.nightly >> \
                 <<# pipeline.parameters.create-docker-images >> --create-docker-images <</ pipeline.parameters.create-docker-images >> \
                 <<# pipeline.parameters.replication-two >> -rt <</ pipeline.parameters.replication-two >> \

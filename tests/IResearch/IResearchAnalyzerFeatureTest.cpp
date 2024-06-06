@@ -1613,7 +1613,7 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
     builder.close();
     res = arangodb::methods::Indexes::ensureIndex(*logicalCollection,
                                                   builder.slice(), true, tmp)
-              .get();
+              .waitAndGet();
     EXPECT_TRUE(res.ok());
   }
 }
@@ -2306,7 +2306,8 @@ TEST_F(IResearchAnalyzerFeatureTest,
         arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE((trx.begin().ok()));
     auto queryResult =
-        trx.all(arangodb::tests::AnalyzerCollectionName, 0, 2, options).get();
+        trx.all(arangodb::tests::AnalyzerCollectionName, 0, 2, options)
+            .waitAndGet();
     EXPECT_TRUE((true == queryResult.ok()));
     auto slice = arangodb::velocypack::Slice(queryResult.buffer->data());
     EXPECT_TRUE(slice.isArray());

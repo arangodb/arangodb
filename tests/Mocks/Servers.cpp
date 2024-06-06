@@ -943,7 +943,7 @@ void MockDBServer::createShard(std::string const& dbName,
       bool created = false;
       auto const idx = velocypack::Parser::fromJson(
           R"({"id":"1","type":"edge","name":"edge_from","fields":["_from"],"unique":false,"sparse":false})");
-      col->createIndex(idx->slice(), created).get();
+      col->createIndex(idx->slice(), created).waitAndGet();
       TRI_ASSERT(created);
     }
 
@@ -951,7 +951,7 @@ void MockDBServer::createShard(std::string const& dbName,
       bool created = false;
       auto const idx = velocypack::Parser::fromJson(
           R"({"id":"2","type":"edge","name":"edge_to","fields":["_to"],"unique":false,"sparse":false})");
-      col->createIndex(idx->slice(), created).get();
+      col->createIndex(idx->slice(), created).waitAndGet();
       TRI_ASSERT(created);
     }
   }

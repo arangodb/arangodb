@@ -704,7 +704,7 @@ Result ClusterInfo::createCollectionsCoordinator(
           if (VPackSlice resultsSlice = res.slice().get("results");
               resultsSlice.length() > 0) {
             [[maybe_unused]] Result r =
-                waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
+                waitForPlan(resultsSlice[0].getNumber<uint64_t>()).waitAndGet();
           }
           return;
         } else if (res.httpCode() == rest::ResponseCode::PRECONDITION_FAILED) {
@@ -796,7 +796,8 @@ Result ClusterInfo::createCollectionsCoordinator(
 
       if (VPackSlice resultsSlice = res.slice().get("results");
           resultsSlice.length() > 0) {
-        Result r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
+        Result r =
+            waitForPlan(resultsSlice[0].getNumber<uint64_t>()).waitAndGet();
         if (r.fail()) {
           return r;
         }
@@ -845,7 +846,7 @@ Result ClusterInfo::createCollectionsCoordinator(
         (replicationVersion == replication::Version::ONE ||
          replicatedStatesWait.isReady())) {
       if (replicationVersion == replication::Version::TWO) {
-        auto result = replicatedStatesWait.get();
+        auto result = replicatedStatesWait.waitAndGet();
         if (result.fail()) {
           LOG_TOPIC("ce2be", WARN, Logger::CLUSTER)
               << "Failed createCollectionsCoordinator for " << infos.size()
@@ -899,7 +900,8 @@ Result ClusterInfo::createCollectionsCoordinator(
         deleteCollectionGuard.cancel();
         if (VPackSlice resultsSlice = res.slice().get("results");
             resultsSlice.length() > 0) {
-          Result r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
+          Result r =
+              waitForPlan(resultsSlice[0].getNumber<uint64_t>()).waitAndGet();
           if (r.fail()) {
             return r;
           }
