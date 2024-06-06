@@ -32,6 +32,7 @@ const yaml = require('js-yaml');
 
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const ct = require('@arangodb/testutils/client-tools');
 const internal = require('internal');
 const toArgv = internal.toArgv;
 const executeScript = internal.executeScript;
@@ -52,10 +53,6 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 const functionsDocumentation = {
   'arangosh': 'arangosh exit codes tests',
 };
-const optionsDocumentation = [
-  '   - `skipShebang`: if set, the shebang tests are skipped.'
-];
-
 const testPaths = {
   'arangosh': [],
 };
@@ -105,7 +102,7 @@ function arangosh (options) {
 
     ////////////////////////////////////////////////////////////////////////////////
     // run command from a .js file
-    let args = pu.makeArgs.arangosh(options);
+    let args = ct.makeArgs.arangosh(options);
     args['javascript.execute-string'] = command;
     args['log.level'] = 'error';
 
@@ -261,7 +258,7 @@ function arangosh (options) {
   print('pipe through external arangosh');
   print('--------------------------------------------------------------------------------');
   let section = "testArangoshPipeThrough";
-  let args = pu.makeArgs.arangosh(options);
+  let args = ct.makeArgs.arangosh(options);
   args['javascript.execute-string'] = "print(require('internal').pollStdin())";
 
   const startTime = time();
@@ -400,8 +397,6 @@ function arangosh (options) {
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['arangosh'] = arangosh;
-  opts['skipShebang'] = false;
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };

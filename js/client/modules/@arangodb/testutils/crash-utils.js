@@ -28,6 +28,8 @@
 const fs = require('fs');
 const yaml = require('js-yaml');
 const internal = require('internal');
+const tu = require('@arangodb/testutils/test-utils');
+const versionHas = require("@arangodb/test-helper").versionHas;
 const {
   executeExternal,
   executeExternalAndWait,
@@ -833,3 +835,21 @@ exports.stopProcdump = stopProcdump;
 exports.isEnabledWindowsMonitor = isEnabledWindowsMonitor;
 exports.calculateMonitorValues = calculateMonitorValues;
 Object.defineProperty(exports, 'GDB_OUTPUT', { get: () => GDB_OUTPUT, set: (value) => { GDB_OUTPUT = value; }});
+exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
+  const isSan = versionHas('asan') || versionHas('tsan');
+  tu.CopyIntoObject(optionsDefaults, {
+    'coreCheck': false,
+    'coreAbort': false,
+    'coreDirectory': '/var/tmp',
+    'coreGen': !isSan,
+  });
+
+  tu.CopyIntoList(optionsDocumentation, [
+    ' Crash analysis related:',
+    '   - `coreGen`: whether debuggers should generate a coredump after getting stacktraces',
+    '   - `coreAbort`: if we should use sigAbrt in order to terminate process instead of GDB attaching',
+    '   - `coreCheck`: if set to true, we will attempt to locate a coredump to ',
+    '                  produce a backtrace in the event of a crash',
+    '',
+  ]);
+};
