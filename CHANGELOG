@@ -1,6 +1,8 @@
 devel
 -----
 
+* Avoid dropping of followers in case a leader resigns and then comes back.
+
 * Fixed MDS-1229 (bad_function_call with batch materialization).
 
 * Make the `beginAsync()` operation for transactions fully async also in the
