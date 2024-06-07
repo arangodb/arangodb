@@ -125,6 +125,16 @@ _Enterprise Edition only_
 * License Name: MIT License
 * License Id: MIT
 
+#### glibc
+
+* Name: glibc
+* Version: 2.39.0
+* Date: 2024-01-31
+* Project Home: https://www.gnu.org/software/libc
+* License: https://www.gnu.org/licenses/lgpl-3.0.html
+* License Name: GNU Lesser General Public License
+* License Id: LGPL-3.0
+
 ### Google V8
 
 * Name: V8
@@ -411,15 +421,6 @@ _Enterprise Edition only_
 * Date: 2021-06-26 22:27:35 -0700
 * Project Home: https://github.com/nodejs/llhttp
 * License: https://raw.githubusercontent.com/nodejs/llhttp/main/LICENSE-MIT
-* License Name: MIT License
-* License Id: MIT
-
-### libmusl
-
-* Name: libmusl
-* Version: Alpine 3.13
-* Project Home: https://git.musl-libc.org/
-* License: https://git.musl-libc.org/cgit/musl/tree/COPYRIGHT
 * License Name: MIT License
 * License Id: MIT
 
