@@ -203,19 +203,19 @@ ExecutionState SimpleModifier<ModifierCompletion, Enable>::transact(
   // we choose a random timeout for the detaching. But first we spin a
   // while to avoid delays:
   if (!result.isReady()) {
-    auto const spinTime = std::chrono::microseconds(10'000);
+    auto const spinTime = std::chrono::milliseconds(10);
     auto start = std::chrono::steady_clock::now();
     while (!result.isReady() &&
            std::chrono::steady_clock::now() - start < spinTime) {
       basics::cpu_relax();
     }
     if (!result.isReady()) {
-      auto const detachTime = std::chrono::microseconds(
-          RandomGenerator::interval(uint32_t(100)) * 100'000);
+      auto const detachTime = std::chrono::milliseconds(
+          1000 + RandomGenerator::interval(uint32_t(100)) * 100);
       auto start = std::chrono::steady_clock::now();
       while (!result.isReady() &&
              std::chrono::steady_clock::now() - start < detachTime) {
-        std::this_thread::sleep_for(std::chrono::microseconds(1'000));
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
       }
       if (!result.isReady()) {
         LOG_TOPIC("afe32", INFO, Logger::THREADS)
