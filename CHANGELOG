@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated ArangoDB Starter to v0.19.2.
+
 * Avoid dropping of followers in case a leader resigns and then comes back.
 
 * Fixed MDS-1229 (bad_function_call with batch materialization).
@@ -24,8 +26,6 @@ devel
   During query shutdown, we definitely want to skip the scheduler, as in some
   cases the thread that orders the query shutdown can be blocked and needs to
   wait synchronously until the shutdown requests have been responded to.
-
-* Updated ArangoDB Starter to v0.19.2-preview-3.
 
 * Fixed MDS-1230: added missing variable replacement for inline filters of
   EnumerateListNodes.
