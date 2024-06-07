@@ -5,6 +5,8 @@ v3.11.10 (XXXX-XX-XX)
 
 * Switch production compiler to clang++ (16.0.6) and runtime to glibc (2.39.0).
 
+* Updated ArangoDB Starter to v0.18.6.
+
 * Sort out a thread blockage on AQL write waiting for replication.
 
 * Reduce the possibility of cache stampedes during collection count cache 
@@ -21,8 +23,6 @@ v3.11.10 (XXXX-XX-XX)
   wait synchronously until the shutdown requests have been responded to. 
 
 * Avoid dropping of followers in case a leader resigns and then comes back.
-
-* Updated ArangoDB Starter to v0.18.6-preview-4.
 
 * Move network retry requests to a dedicated thread.
 
