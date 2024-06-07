@@ -41,6 +41,12 @@ if (isEnterprise) {
   egm = require("@arangodb/enterprise-graph");
 }
 
+function getNoShards(defaultNo) {
+  if (db._properties().sharding === "single") {
+    return 1;
+  }
+  return defaultNo;
+}
 
 function cleanup() {
   'use strict';
@@ -181,7 +187,7 @@ function createExtendedName() {
 
 function createMultiShard() {
   // more than one shard:
-  let c = db._create("UnitTestsDumpShards", {numberOfShards: 9});
+  let c = db._create("UnitTestsDumpShards", {numberOfShards: getNoShards(9)});
   let l = [];
   for (let i = 0; i < 1000; ++i) {
     l.push({_key: String(7 + (i * 42)), value: i, more: {value: [i, i]}});
@@ -232,12 +238,13 @@ function createAutoIncKeyGen() {
 
 function createPaddedKeyGen() {
   db._useDatabase("UnitTestsDumpSrc");
+
   let c = db._create("UnitTestsDumpKeygenPadded", {
     keyOptions: {
       type: "padded",
       allowUserKeys: false
     },
-    numberOfShards: 2 // single will ignore this...
+    numberOfShards: getNoShards(2)
   });
 
   let docs = [];
@@ -257,7 +264,7 @@ function createUUIDKeyGen() {
       type: "uuid",
       allowUserKeys: false
     },
-    numberOfShards: 2 // single will ignore this...
+    numberOfShards: getNoShards(2)
   });
   let docs = [];
   for (let i = 0; i < 1000; ++i) {
@@ -444,7 +451,7 @@ function createInvertedIndex() {
   let collection_documents_0 = db._create("collection_documents_0", {
     replicationFactor: 2,
     writeConcern: 1,
-    numberOfShards: 2});
+    numberOfShards: getNoShards(2)});
 
   // create indexes
   let index = db.collection_documents_0.ensureIndex(
@@ -525,8 +532,8 @@ function createInvertedIndex() {
 }
 
 function createReplicationFactors() {
-  db._create("UnitTestsDumpReplicationFactor1", {replicationFactor: 2, numberOfShards: 7});
-  db._create("UnitTestsDumpReplicationFactor2", {replicationFactor: 2, numberOfShards: 6});
+  db._create("UnitTestsDumpReplicationFactor1", {replicationFactor: 2, numberOfShards: getNoShards(7)});
+  db._create("UnitTestsDumpReplicationFactor2", {replicationFactor: 2, numberOfShards: getNoShards(6)});
 }
 
 function createJobs() {
@@ -635,7 +642,7 @@ function createEmptyGraph(kind, options) {
  */
 function createEmptySmartGraph() {
   createEmptyGraph("SmartGraph", {
-    numberOfShards: 5,
+    numberOfShards: getNoShards(5),
     replicationFactor: 2,
     smartGraphAttribute: "value"
   });
@@ -647,7 +654,7 @@ function createEmptySmartGraph() {
  */
 function createEmptyEnterpriseGraph() {
   createEmptyGraph("EnterpriseGraph", {
-    numberOfShards: 5,
+    numberOfShards: getNoShards(5),
     replicationFactor: 2,
     isSmart: true
   });
@@ -659,7 +666,7 @@ function createEmptyEnterpriseGraph() {
  */
 function createEmptySatelliteGraph() {
   createEmptyGraph("Satellite", {
-    numberOfShards: 5,
+    numberOfShards: getNoShards(5),
     replicationFactor: 'satellite'
   });
 }
@@ -670,7 +677,7 @@ function createEmptySatelliteGraph() {
  */
 function createEmptyDisjointGraph() {
   createEmptyGraph("Disjoint", {
-    numberOfShards: 5,
+    numberOfShards: getNoShards(5),
     replicationFactor: 2,
     smartGraphAttribute: "value",
     isDisjoint: true
@@ -702,7 +709,7 @@ function createSmartGraph() {
   assertCollectionsAreNew([edges, vertices, orphans]);
 
   sgm._create(smartGraphName, [sgm._relation(edges, vertices, vertices)],
-    [orphans], {numberOfShards: 5, smartGraphAttribute: "value"});
+    [orphans], {numberOfShards: getNoShards(5), smartGraphAttribute: "value"});
 
   let vDocs = [];
   for (let i = 0; i < 100; ++i) {
@@ -745,7 +752,7 @@ function createSmartGraph3_11_compat() {
   assertCollectionsAreNew([edges, vertices, orphans]);
 
   sgm._create(smartGraphName, [sgm._relation(edges, vertices, vertices)],
-    [orphans], {numberOfShards: 5, smartGraphAttribute: "value"});
+              [orphans], {numberOfShards: getNoShards(5), smartGraphAttribute: "value"});
     /* This code fakes previous behaviour */
   const leader = db._collection(vertices).properties().distributeShardsLike || vertices;
   const cid = db._collection(leader)._id;
@@ -777,7 +784,7 @@ function createEnterpriseGraph() {
   assertCollectionsAreNew([edges, vertices, orphans]);
 
   egm._create(enterpriseGraphName, [sgm._relation(edges, vertices, vertices)],
-    [orphans], {numberOfShards: 5, isSmart: true});
+    [orphans], {numberOfShards: getNoShards(5), isSmart: true});
 
   let vDocs = [];
   for (let i = 0; i < 100; ++i) {
@@ -1162,7 +1169,7 @@ function createGraphWithoutData(names, options = undefined, kind) {
   // set default options if not given as a parameter
   if (options === undefined) {
     options = {
-      numberOfShards: 5,
+      numberOfShards: getNoShards(5),
       replicationFactor: 2
     };
     if (graphKind !== "EnterpriseGraph") {
@@ -1172,7 +1179,9 @@ function createGraphWithoutData(names, options = undefined, kind) {
     }
   } else {
     if (options.numberOfShards === undefined) {
-      options.numberOfShards = 5;
+      options.numberOfShards = getNoShards(5);
+    } else {
+      options.numberOfShards = getNoShards(options.numberOfShards);
     }
     if (options.smartGraphAttribute === undefined) {
       if (graphKind !== "EnterpriseGraph") {
@@ -1319,7 +1328,7 @@ function createSatelliteCollections() {
  *        Creates a SatelliteGraph
  */
 function createSatelliteGraphs() {
-  if (!isEnterprise) {
+  if (!isEnterprise || (db._properties().sharding === "single")) {
     return;
   }
 

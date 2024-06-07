@@ -23,17 +23,14 @@
 
 #pragma once
 
+#include "Aql/Projections.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/ResultT.h"
 #include "Basics/StringHeap.h"
 #include "Basics/MemoryTypes/MemoryTypes.h"
-#include "Aql/Projections.h"
+#include "Containers/FlatHashSet.h"
 
 #include <velocypack/HashedStringRef.h>
-
-#include <map>
-#include <unordered_set>
-#include <unordered_map>
 
 namespace arangodb {
 
@@ -177,7 +174,8 @@ class RefactoredTraverserCache {
   /// @brief Set of all strings persisted in the stringHeap. So we can save some
   ///        memory by not storing them twice.
   //////////////////////////////////////////////////////////////////////////////
-  std::unordered_set<arangodb::velocypack::HashedStringRef> _persistedStrings;
+  containers::FlatHashSet<arangodb::velocypack::HashedStringRef>
+      _persistedStrings;
 
  private:
   MonitoredCollectionToShardMap const& _collectionToShardMap;

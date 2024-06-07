@@ -708,7 +708,6 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase,
   if (!s.ok()) {
     auto converted = convertStatus(s, rocksutils::StatusHint::wal);
     TRI_ASSERT(s.IsNotFound() || converted.fail());
-    TRI_ASSERT(s.IsNotFound() || converted.errorNumber() != TRI_ERROR_NO_ERROR);
     if (s.IsNotFound()) {
       // specified from-tick not yet available in DB
       return {TRI_ERROR_NO_ERROR, 0};

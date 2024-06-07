@@ -76,7 +76,7 @@ bool DropDatabase::first() {
 
     auto res = Databases::drop(ExecContext::current(), vocbase, database);
     result(res);
-    if (!res.ok() && res.errorNumber() != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) {
+    if (res.fail() && res.isNot(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)) {
       LOG_TOPIC("f46b7", ERR, Logger::AGENCY)
           << "DropDatabase: dropping database " << database
           << " failed: " << res.errorMessage();

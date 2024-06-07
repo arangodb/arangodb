@@ -24,33 +24,31 @@
 #pragma once
 
 #include <atomic>
+#include <cstdint>
 #include <limits>
 
-namespace arangodb {
-namespace transaction {
+namespace arangodb::transaction {
 
 enum class CountType {
   // actual and accurate result. always returns the collection's actual count
   // value
-  Normal,
+  kNormal,
   // potentially return a cached result, if the cache value has not yet expired
   // may return an outdated value, but may save querying the collection
-  TryCache,
-  // always return cached result. will always return a stale result, but will
-  // never query the collection's actual count
-  ForceCache,
+  kTryCache,
   // per-shard detailed results. will always query the actual counts
-  Detailed
+  kDetailed
 };
 
 /// @brief a simple cache for the "number of documents in a collection" value
 /// the cache is initially populated with a count value of UINT64_MAX
 /// this indicates that no count value has been queried/stored yet
 struct CountCache {
-  static constexpr uint64_t NotPopulated = std::numeric_limits<uint64_t>::max();
+  static constexpr uint64_t kNotPopulated =
+      std::numeric_limits<uint64_t>::max();
 
   /// @brief construct a cache with the specified TTL value
-  explicit CountCache(double ttl);
+  explicit CountCache(double ttl) noexcept;
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   virtual ~CountCache() = default;
@@ -58,18 +56,31 @@ struct CountCache {
 
   /// @brief get current value from cache, regardless if expired or not.
   /// will return whatever has been stored. if nothing was stored yet, will
-  /// return NotPopulated.
-  uint64_t get() const;
+  /// return kNotPopulated.
+  uint64_t get() const noexcept;
 
-  /// @brief get current value from cache if not yet expired
-  /// if expired or never populated, returns NotPopulated
-  uint64_t getWithTtl() const;
+  /// @brief get current value from cache if not yet expired.
+  /// if expired or never populated, returns kNotPopulated.
+  uint64_t getWithTtl() const noexcept;
 
   /// @brief stores value in the cache and bumps the TTL into the future
-  void store(uint64_t value);
+  void store(uint64_t value) noexcept;
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  void storeWithoutTtlBump(uint64_t value) noexcept;
+
+  bool isExpired() const noexcept;
+#endif
+
+  /// @brief bump expiry timestamp if necessary. returns true if timestamp
+  /// was changed. return false otherwise.
+  /// this method is useful so that multiple concurrent threads can call it
+  /// and at most one of gets the "true" value back and update the cache's
+  /// value.
+  bool bumpExpiry() noexcept;
 
  protected:
-  TEST_VIRTUAL double getTime() const;
+  TEST_VIRTUAL double getTime() const noexcept;
 
  private:
   std::atomic<uint64_t> count;
@@ -77,5 +88,4 @@ struct CountCache {
   double const ttl;
 };
 
-}  // namespace transaction
-}  // namespace arangodb
+}  // namespace arangodb::transaction

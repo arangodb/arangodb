@@ -351,8 +351,8 @@ function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, mor
   if (options.forceOneShard) {
     argv = argv.concat(['--singleShard', 'true']);
   }
-  if (options.hasOwnProperty('makedata_args')) {
-    argv = argv.concat(toArgv(options['makedata_args']));
+  if (options.hasOwnProperty('makedataArgs')) {
+    argv = argv.concat(toArgv(options['makedataArgs']));
   }
   print('\n' + (new Date()).toISOString() + GREEN + " [============] Makedata : Trying " +
         args['javascript.execute'] + '\n ' + msg + ' ... ', RESET);
@@ -512,6 +512,7 @@ exports.run = {
 exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
   tu.CopyIntoObject(optionsDefaults, {
     'rtasource': fs.makeAbsolute(fs.join('.', '3rdParty', 'rta-makedata')),
+    'makedataArgs': undefined,
     'rtaNegFilter': '',
     'makedataDB': "_system"
   });
@@ -521,6 +522,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
     '   - `makedataDB`: Database to run makedata with, defaults to _system',
     '   - `rtasource`: source directory of rta-makedata if not 3rdparty.',
     '   - `rtaNegFilter`: inverse logic to --test.',
+    '   - `makedataArgs`: list of arguments ala --makedataArgs:bigDoc true',
     ''
   ]);
 };

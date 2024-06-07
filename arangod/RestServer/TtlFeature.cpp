@@ -490,7 +490,7 @@ class TtlThread final : public ServerThread<ArangodServer> {
               auto f = network::sendRequestRetry(
                   pool, "server:" + coordinator, fuerte::RestVerb::Delete, url,
                   std::move(*queryResult.data->steal()), reqOptions);
-              auto& val = f.get();
+              auto& val = f.waitAndGet();
               Result res = val.combinedResult();
 
               if (res.fail()) {

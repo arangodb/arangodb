@@ -752,7 +752,7 @@ RestStatus RestHandler::waitForFuture(futures::Future<futures::Unit>&& f) {
 RestStatus RestHandler::waitForFuture(futures::Future<RestStatus>&& f) {
   if (f.isReady()) {             // fast-path out
     f.result().throwIfFailed();  // just throw the error upwards
-    return f.get();
+    return f.waitAndGet();
   }
   TRI_ASSERT(_executionCounter == 0);
   _executionCounter = 2;

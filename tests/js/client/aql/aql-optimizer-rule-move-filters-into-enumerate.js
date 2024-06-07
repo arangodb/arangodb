@@ -462,6 +462,42 @@ function optimizerRuleListTestSuite () {
         });
       });
     },
+
+    testRegressionMDS1230: function () {
+      // MDS-1230: subquery was inlined, and then the "FILTER d" was moved into the
+      // "FOR d" EnumerateListNode. This made the execution plan look like this
+      // (still correct):
+      //  Id   NodeType                  Par   Est.   Comment
+      //   1   SingletonNode                      1   * ROOT
+      //   2   EnumerateCollectionNode     ✓      0     - FOR t IN _analyzers   /* full collection scan (projections: `field`)  */
+      //   4   CalculationNode             ✓      0       - LET #9 = t.`field`   /* attribute expression */   /* collections used: t : _analyzers */
+      //   5   EnumerateListNode           ✓      0       - FOR #8 IN #9   /* list iteration */   FILTER #9[#8]   /* early pruning */
+      //   6   CalculationNode             ✓      0         - LET d = #9[#8]   /* simple expression */
+      //  11   ReturnNode                         0         - RETURN d
+      // Then projections were added for "t.field", which replace variable #9 with a new one.
+      // The bug was that the usage of variable #9 in EnumerateListNode 5's FILTER condition was
+      // not correctly replaced.
+      const query = `FOR t IN _analyzers FOR d IN (LET o = t.field FOR k IN o RETURN o[k]) FILTER d RETURN d`;
+
+      let result = db._createStatement(query).explain();
+      assertEqual(0, result.plan.nodes.filter(function(n) { return n.type === 'FilterNode'; }).length);
+      
+      let collections = result.plan.nodes.filter(function(n) { return n.type === 'EnumerateCollectionNode'; });
+      assertEqual(1, collections.length);
+      let projections = collections[0].projections;
+      assertEqual(1, projections.length);
+      assertEqual(["field"], projections[0].path);
+      let projectionVar = projections[0].variable.id;
+      
+      let lists = result.plan.nodes.filter(function(n) { return n.type === 'EnumerateListNode'; });
+      assertEqual(1, lists.length);
+      let filter = lists[0].filter;
+
+      assertEqual("indexed access", filter.type);
+      assertEqual(2, filter.subNodes.length);
+      assertEqual("reference", filter.subNodes[0].type);
+      assertEqual(projectionVar, filter.subNodes[0].id);
+    },
     
   };
 }

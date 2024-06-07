@@ -217,7 +217,7 @@ static Result getLockIdFromLeader(network::ConnectionPool* pool,
   auto response =
       network::sendRequest(pool, endpoint, fuerte::RestVerb::Get,
                            REPL_HOLD_READ_LOCK, VPackBuffer<uint8_t>(), options)
-          .get();
+          .waitAndGet();
   auto res = response.combinedResult();
 
   if (res.ok()) {
@@ -242,7 +242,7 @@ static Result getLockIdFromLeader(network::ConnectionPool* pool,
 Result collectionReCount(LogicalCollection& collection, uint64_t& c) {
   Result res;
   try {
-    c = collection.getPhysical()->recalculateCounts().get();
+    c = collection.getPhysical()->recalculateCounts().waitAndGet();
   } catch (basics::Exception const& e) {
     res.reset(e.code(), e.message());
   }
@@ -342,7 +342,7 @@ static Result addShardFollower(network::ConnectionPool* pool,
     auto response = network::sendRequest(pool, endpoint, fuerte::RestVerb::Put,
                                          REPL_ADD_FOLLOWER,
                                          std::move(*body.steal()), options)
-                        .get();
+                        .waitAndGet();
     auto result = response.combinedResult();
 
     if (result.fail()) {
@@ -398,7 +398,7 @@ static Result cancelLockOnLeader(network::ConnectionPool* pool,
   auto response = network::sendRequest(pool, endpoint, fuerte::RestVerb::Delete,
                                        REPL_HOLD_READ_LOCK,
                                        std::move(*body.steal()), options)
-                      .get();
+                      .waitAndGet();
 
   auto res = response.combinedResult();
   if (res.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND)) {
@@ -433,7 +433,7 @@ arangodb::Result SynchronizeShard::collectionCountOnLeader(
       network::sendRequest(pool, leaderEndpoint, fuerte::RestVerb::Get,
                            "/_api/collection/" + getShard() + "/count",
                            VPackBuffer<uint8_t>(), options, std::move(headers))
-          .get();
+          .waitAndGet();
   auto res = response.combinedResult();
   if (res.fail()) {
     docCountOnLeader = 0;
@@ -510,7 +510,7 @@ Result SynchronizeShard::requestExclusiveLockOnLeader(
 
   auto response = network::sendRequest(pool, endpoint, fuerte::RestVerb::Post,
                                        REPL_HOLD_READ_LOCK, *buf, options)
-                      .get();
+                      .waitAndGet();
 
   auto res = response.combinedResult();
 
@@ -552,7 +552,7 @@ Result SynchronizeShard::requestExclusiveLockOnLeader(
     auto cancelResponse =
         network::sendRequest(pool, endpoint, fuerte::RestVerb::Delete,
                              REPL_HOLD_READ_LOCK, *buf, options)
-            .get();
+            .waitAndGet();
     auto cancelRes = cancelResponse.combinedResult();
     if (cancelRes.fail() && cancelRes.isNot(TRI_ERROR_HTTP_NOT_FOUND)) {
       // don't warn if the lock wasn't successfully created on the
@@ -781,7 +781,7 @@ bool SynchronizeShard::first() {
 
       Result res = static_cast<RocksDBCollection*>(collection->getPhysical())
                        ->rebuildRevisionTree()
-                       .get();
+                       .waitAndGet();
 
       if (res.ok()) {
         LOG_TOPIC("02969", INFO, Logger::MAINTENANCE)
@@ -852,7 +852,7 @@ bool SynchronizeShard::first() {
       auto future = network::sendRequest(pool, ep, fuerte::RestVerb::Post, url,
                                          std::move(buffer), reqOpts);
 
-      network::Response const& r = future.get();
+      network::Response const& r = future.waitAndGet();
       Result res = r.combinedResult();
       if (res.ok()) {
         LOG_TOPIC("ddcc1", INFO, Logger::MAINTENANCE)
@@ -1569,7 +1569,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
       auto future = network::sendRequest(pool, ep, fuerte::RestVerb::Put, url,
                                          std::move(buffer), options);
 
-      network::Response const& r = future.get();
+      network::Response const& r = future.waitAndGet();
 
       Result result = r.combinedResult();
 
