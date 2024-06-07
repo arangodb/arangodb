@@ -217,9 +217,9 @@ class ConfigBuilder {
       this.config['--compress-output'] = false;
     }
   }
-  setUseParallelDump(value = true) {
+  setUseExperimentalParallelDump() {
     if (this.type === 'dump') {
-      this.config['parallel-dump'] = value;
+      this.config['use-experimental-dump'] = true;
     }
   }
   setUseSplitFiles(value = false) {

@@ -196,7 +196,7 @@ class DumpRestoreHelper extends trs.runInArangoshRunner {
     if (this.dumpOptions.hasOwnProperty("threads")) {
       this.dumpConfig.setThreads(this.dumpOptions.threads);
     }
-    this.dumpConfig.setUseParallelDump(this.dumpOptions.useParallelDump);
+    this.dumpConfig.setUseExperimentalParallelDump(this.dumpOptions.useParallelDump);
     this.dumpConfig.setUseSplitFiles(this.dumpOptions.splitFiles);
     if (this.dumpOptions.jwtSecret) {
       this.keyDir = fs.join(fs.getTempPath(), 'jwtSecrets');
