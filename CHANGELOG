@@ -5,6 +5,8 @@ v3.11.10 (XXXX-XX-XX)
 
 * Switch production compiler to clang++ (16.0.6) and runtime to glibc (2.39.0).
 
+* Sort out a thread blockage on AQL write waiting for replication.
+
 * Reduce the possibility of cache stampedes during collection count cache 
   refilling.
     
