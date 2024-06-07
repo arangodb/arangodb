@@ -36,7 +36,7 @@ struct ThreadPoolScheduler final : Scheduler {
   void trackBeginOngoingLowPriorityTask() noexcept override;
   void trackEndOngoingLowPriorityTask() noexcept override;
   void trackQueueTimeViolation() override;
-  void trackQueueItemSize(std::int64_t int64) noexcept override;
+  void trackQueueItemSize(std::int64_t x) noexcept override;
   uint64_t getLastLowPriorityDequeueTime() const noexcept override;
   void setLastLowPriorityDequeueTime(uint64_t time) noexcept override;
   std::pair<uint64_t, uint64_t> getNumberLowPrioOngoingAndQueued()

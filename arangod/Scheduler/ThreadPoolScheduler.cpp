@@ -39,15 +39,21 @@ void ThreadPoolScheduler::toVelocyPack(velocypack::Builder& b) const {
 Scheduler::QueueStatistics ThreadPoolScheduler::queueStatistics() const {
   return QueueStatistics();
 }
-void ThreadPoolScheduler::trackCreateHandlerTask() noexcept {}
+void ThreadPoolScheduler::trackCreateHandlerTask() noexcept {
+  ++_metrics->_metricsHandlerTasksCreated;
+}
 void ThreadPoolScheduler::trackBeginOngoingLowPriorityTask() noexcept {
   _metrics->_ongoingLowPriorityGauge += 1;
 }
 void ThreadPoolScheduler::trackEndOngoingLowPriorityTask() noexcept {
   _metrics->_ongoingLowPriorityGauge -= 1;
 }
-void ThreadPoolScheduler::trackQueueTimeViolation() {}
-void ThreadPoolScheduler::trackQueueItemSize(std::int64_t) noexcept {}
+void ThreadPoolScheduler::trackQueueTimeViolation() {
+  ++_metrics->_metricsQueueTimeViolations;
+}
+void ThreadPoolScheduler::trackQueueItemSize(std::int64_t x) noexcept {
+  _metrics->_schedulerQueueMemory += x;
+}
 
 uint64_t ThreadPoolScheduler::getLastLowPriorityDequeueTime() const noexcept {
   return _lastLowPriorityDequeueTime.load(std::memory_order::relaxed);
