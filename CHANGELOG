@@ -1,6 +1,8 @@
 devel
 -----
 
+* Upgrade OpenSSL to 3.3.1 and used glibc build runtime to 2.39.0.
+
 * Updated ArangoDB Starter to v0.19.2.
 
 * Avoid dropping of followers in case a leader resigns and then comes back.
