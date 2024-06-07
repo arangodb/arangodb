@@ -118,7 +118,7 @@ auto OneSidedEnumerator<Configuration>::computeNeighbourhoodOfNextVertex()
         _provider.fetchVertices(looseEnds);
 
     // Will throw all network errors here
-    std::vector<Step*> preparedEnds = std::move(futureEnds.get());
+    std::vector<Step*> preparedEnds = std::move(futureEnds.waitAndGet());
     TRI_ASSERT(preparedEnds.size() != 0);
     TRI_ASSERT(_queue.firstIsVertexFetched());
   }
@@ -331,7 +331,7 @@ auto OneSidedEnumerator<Configuration>::fetchResults() -> void {
         // Will throw all network errors here
         futures::Future<std::vector<Step*>> futureEnds =
             _provider.fetchVertices(looseEnds);
-        futureEnds.get();
+        futureEnds.waitAndGet();
         // Notes for the future:
         // Vertices are now fetched. Think about other less-blocking and
         // batch-wise fetching (e.g. re-fetch at some later point).

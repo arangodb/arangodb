@@ -102,7 +102,7 @@ struct LogPersistorTest : ::testing::Test {
 
     auto res =
         persistor->insert(log.getLogIterator(), LogPersistor::WriteOptions{})
-            .get();
+            .waitAndGet();
     ASSERT_TRUE(res.ok());
     EXPECT_EQ(res.get(), 5);
   }
@@ -227,7 +227,7 @@ TEST_F(LogPersistorTest, insert_normal_payload) {
 
   auto res =
       persistor->insert(log.getLogIterator(), LogPersistor::WriteOptions{})
-          .get();
+          .waitAndGet();
   ASSERT_TRUE(res.ok());
   EXPECT_EQ(res.get(), 100);
 
@@ -245,7 +245,7 @@ TEST_F(LogPersistorTest, insert_meta_payload) {
 
   auto res =
       persistor->insert(log.getLogIterator(), LogPersistor::WriteOptions{})
-          .get();
+          .waitAndGet();
   ASSERT_TRUE(res.ok());
   EXPECT_EQ(res.get(), 100);
 
@@ -301,7 +301,7 @@ TEST_F(LogPersistorTest,
 TEST_F(LogPersistorTest, removeBack) {
   insertEntries();
 
-  auto res = persistor->removeBack(LogIndex{3}, {}).get();
+  auto res = persistor->removeBack(LogIndex{3}, {}).waitAndGet();
   ASSERT_TRUE(res.ok()) << res.errorMessage();
 
   auto iter =
@@ -330,14 +330,14 @@ TEST_F(LogPersistorTest, removeBack) {
     });
     auto res =
         persistor->insert(log.getLogIterator(), LogPersistor::WriteOptions{})
-            .get();
+            .waitAndGet();
     ASSERT_TRUE(res.ok()) << res.errorMessage();
     EXPECT_EQ(res.get(), 3);
   }
 }
 
 TEST_F(LogPersistorTest, removeBack_fails_no_matching_entry_found) {
-  auto res = persistor->removeBack(LogIndex{2}, {}).get();
+  auto res = persistor->removeBack(LogIndex{2}, {}).waitAndGet();
   ASSERT_TRUE(res.fail());
   EXPECT_EQ("log file in-memory file is empty", res.errorMessage());
 }
@@ -349,7 +349,7 @@ TEST_F(LogPersistorTest, removeBack_fails_if_log_file_corrupt) {
   TRI_ASSERT(buffer.size() > sizeof(header));
   std::memcpy(buffer.data(), &header, sizeof(header));
 
-  auto res = persistor->removeBack(LogIndex{2}, {}).get();
+  auto res = persistor->removeBack(LogIndex{2}, {}).waitAndGet();
   ASSERT_TRUE(res.fail());
 }
 
@@ -362,19 +362,19 @@ TEST_F(LogPersistorTest, removeBack_fails_if_start_index_too_small) {
     });
     auto res =
         persistor->insert(log.getLogIterator(), LogPersistor::WriteOptions{})
-            .get();
+            .waitAndGet();
     ASSERT_TRUE(res.ok());
     EXPECT_EQ(res.get(), 6);
   }
 
-  auto res = persistor->removeBack(LogIndex{2}, {}).get();
+  auto res = persistor->removeBack(LogIndex{2}, {}).waitAndGet();
   ASSERT_TRUE(res.fail());
 }
 
 TEST_F(LogPersistorTest, removeBack_fails_if_start_index_too_large) {
   insertEntries();
 
-  auto res = persistor->removeBack(LogIndex{8}, {}).get();
+  auto res = persistor->removeBack(LogIndex{8}, {}).waitAndGet();
   ASSERT_TRUE(res.fail());
   EXPECT_EQ(
       "found index (5) lower than start index (7) while searching backwards",

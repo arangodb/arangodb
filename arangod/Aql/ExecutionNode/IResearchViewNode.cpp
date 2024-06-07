@@ -1769,7 +1769,7 @@ aql::CostEstimate IResearchViewNode::estimateCost() const {
     if (collection) {
       // FIXME better to gather count for multiple collections at once
       estimatedNrItems +=
-          collection->count(&trx, transaction::CountType::TryCache);
+          collection->count(&trx, transaction::CountType::kTryCache);
     } else {
       LOG_TOPIC("ee276", WARN, iresearch::TOPIC)
           << "collection with id '" << cidStr.Piece()

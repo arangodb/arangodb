@@ -327,7 +327,7 @@ ResultT<std::unique_ptr<Graph>> GraphManager::lookupGraphByName(
   res = trx.finish(result.result);
 
   if (result.fail()) {
-    if (result.errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+    if (result.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
       std::string msg = basics::Exception::FillExceptionString(
           TRI_ERROR_GRAPH_NOT_FOUND, name.c_str());
       return Result{TRI_ERROR_GRAPH_NOT_FOUND, std::move(msg)};
