@@ -28,11 +28,11 @@
 const functionsDocumentation = {
   'export': 'export formats tests'
 };
-const optionsDocumentation = [];
 
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const trs = require('@arangodb/testutils/testrunners');
 const im = require('@arangodb/testutils/instance-manager');
 const xmldom = require('@xmldom/xmldom');
 const zlib = require('zlib');
@@ -52,7 +52,7 @@ const testPaths = {
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief TEST: export
 // //////////////////////////////////////////////////////////////////////////////
-class exportRunner extends tu.runInArangoshRunner {
+class exportRunner extends trs.runInArangoshRunner {
   constructor(options, testname, ...optionalArgs) {
     super(options, testname, ...optionalArgs);
     this.info = "runExport";
@@ -708,6 +708,5 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['export'] = exportTest;
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };

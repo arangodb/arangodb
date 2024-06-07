@@ -2,31 +2,31 @@
 /* global print */
 'use strict';
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Andrei Lobov
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
-  'recovery_cluster': 'run recovery tests for cluster'
+  'recovery_cluster_server': 'run recovery tests for cluster'
 };
 
 const fs = require('fs');
@@ -50,7 +50,7 @@ const BLUE = require('internal').COLORS.COLOR_BLUE;
 const termSignal = 15;
 
 const testPaths = {
-  'recovery_cluster': [tu.pathForTesting('server/recovery')]
+  'recovery_cluster_server': [tu.pathForTesting('server/recovery')]
 };
 
 /// ensure that we have enough db servers in cluster tests
@@ -64,7 +64,7 @@ function ensureServers(options, numServers) {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief TEST: recovery_cluster
+// / @brief TEST: recovery_cluster_server
 // //////////////////////////////////////////////////////////////////////////////
 
 function runArangodRecovery (params, useEncryption) {
@@ -151,7 +151,7 @@ function runArangodRecovery (params, useEncryption) {
     params.instanceManager = new im.instanceManager(params.options.protocol,
                                                     params.options,
                                                     params.args,
-                                                    fs.join('recovery_cluster',
+                                                    fs.join('recovery_cluster_server',
                                                             params.count.toString()));
     params.instanceManager.prepareInstance();
     params.instanceManager.launchTcpDump("");
@@ -243,10 +243,10 @@ function runArangodRecovery (params, useEncryption) {
   };
 }
 
-function recovery (options) {
+function recovery_cluster_server (options) {
   if (!versionHas('failure-tests') || !versionHas('maintainer-mode')) {
     return {
-      recovery: {
+      recovery_cluster_server: {
         status: false,
         message: 'failure-tests not enabled. please recompile with -DUSE_FAILURE_TESTS=On and -DUSE_MAINTAINER_MODE=On'
       },
@@ -262,7 +262,7 @@ function recovery (options) {
   };
   let useEncryption = isEnterprise();
 
-  let recoveryTests = tu.scanTestPaths(testPaths.recovery_cluster, localOptions,
+  let recoveryTests = tu.scanTestPaths(testPaths.recovery_cluster_server, localOptions,
                                        // At the moment only view-tests supported by cluster recovery tests:
                                        function(testname) { return testname.search('search') >= 0; }
                                       );
@@ -270,7 +270,7 @@ function recovery (options) {
   recoveryTests = tu.splitBuckets(localOptions, recoveryTests);
 
   let count = 0;
-  let tmpMgr = new tmpDirMmgr('recovery_cluster', localOptions);
+  let tmpMgr = new tmpDirMmgr('recovery_cluster_server', localOptions);
 
   for (let i = 0; i < recoveryTests.length; ++i) {
     let test = recoveryTests[i];
@@ -282,7 +282,7 @@ function recovery (options) {
       print(BLUE + "running setup of test " + count + " - " + test + RESET);
       let params = {
         tempDir: tmpMgr.tempDir,
-        rootDir: fs.join(fs.getTempPath(), 'recovery_cluster', count.toString()),
+        rootDir: fs.join(fs.getTempPath(), 'recovery_cluster_server', count.toString()),
         options: _.cloneDeep(localOptions),
         script: test,
         setup: true,
@@ -302,7 +302,7 @@ function recovery (options) {
       params.options.disableMonitor = localOptions.disableMonitor;
       params.setup = false;
       try {
-        tu.writeTestResult(params.temp_path, {
+        trs.writeTestResult(params.temp_path, {
           failed: 1,
           status: false, 
           message: "unable to run recovery test " + test,
@@ -370,6 +370,6 @@ function recovery (options) {
 
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
-  testFns['recovery_cluster'] = recovery;
+  testFns['recovery_cluster_server'] = recovery_cluster_server;
   tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };

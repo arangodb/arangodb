@@ -30,11 +30,11 @@ const fs = require('fs');
 const functionsDocumentation = {
   'importing': 'import tests'
 };
-const optionsDocumentation = [
-];
 
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const trs = require('@arangodb/testutils/testrunners');
+const ct = require('@arangodb/testutils/client-tools');
 const im = require('@arangodb/testutils/instance-manager');
 const yaml = require('js-yaml');
 
@@ -435,7 +435,7 @@ const impTodos = [{
   create: undefined
 }];
 
-class importRunner extends tu.runInArangoshRunner {
+class importRunner extends trs.runInArangoshRunner {
   constructor(options, testname, ...optionalArgs) {
     super(options, testname, ...optionalArgs);
     this.info = "runImport";
@@ -472,10 +472,10 @@ class importRunner extends tu.runInArangoshRunner {
 
       for (let i = 0; i < impTodos.length; i++) {
         const impTodo = impTodos[i];
-        let cfg = pu.createBaseConfig('import', this.options, this.instanceManager);
+        let cfg = ct.createBaseConfig('import', this.options, this.instanceManager);
         cfg.setWhatToImport(impTodo);
         cfg.setEndpoint(this.instanceManager.endpoint);
-        result[impTodo.id] = pu.run.arangoImport(cfg, this.options, this.instanceManager.rootDir, this.options.coreCheck);
+        result[impTodo.id] = ct.run.arangoImport(cfg, this.options, this.instanceManager.rootDir, this.options.coreCheck);
         result[impTodo.id].failed = 0;
 
         if (impTodo.expectFailure) {
@@ -521,6 +521,5 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['importing'] = importing;
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };

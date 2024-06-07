@@ -5,14 +5,14 @@
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
-// / Copyright 2016 ArangoDB GmbH, Cologne, Germany
-// / Copyright 2014 triagens GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,7 +26,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
-  'recovery': 'run recovery tests'
+  'recovery_server': 'run recovery server tests'
 };
 
 const fs = require('fs');
@@ -45,11 +45,11 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 const BLUE = require('internal').COLORS.COLOR_BLUE;
 
 const testPaths = {
-  'recovery': [tu.pathForTesting('server/recovery')]
+  'recovery_server': [tu.pathForTesting('server/recovery')]
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief TEST: recovery
+// / @brief TEST: recovery_server
 // //////////////////////////////////////////////////////////////////////////////
 
 function runArangodRecovery (params, useEncryption, exitSuccessOk, exitFailOk) {
@@ -171,10 +171,10 @@ function runArangodRecovery (params, useEncryption, exitSuccessOk, exitFailOk) {
   };
 }
 
-function recovery (options) {
+function recovery_server (options) {
   if (!versionHas('failure-tests')) {
     return {
-      recovery: {
+      recovery_server: {
         status: false,
         message: 'failure-tests not enabled. please recompile with -DUSE_FAILURE_TESTS=On'
       },
@@ -188,7 +188,7 @@ function recovery (options) {
 
   let useEncryption = isEnterprise();
 
-  let recoveryTests = tu.scanTestPaths(testPaths.recovery, options);
+  let recoveryTests = tu.scanTestPaths(testPaths.recovery_server, options);
 
   recoveryTests = tu.splitBuckets(options, recoveryTests);
   let count = 0;
@@ -237,14 +237,14 @@ function recovery (options) {
         }
           
         ////////////////////////////////////////////////////////////////////////
-        print(BLUE + "running recovery #" + iteration + " of test " + count + " - " + test + RESET);
+        print(BLUE + "running recovery_server #" + iteration + " of test " + count + " - " + test + RESET);
         params.options.disableMonitor = options.disableMonitor;
         params.setup = false;
         try {
-          tu.writeTestResult(params.instance.args['temp.path'], {
+          trs.writeTestResult(params.instance.args['temp.path'], {
             failed: 1,
             status: false, 
-            message: "unable to run recovery test " + test,
+            message: "unable to run recovery_server test " + test,
             duration: -1
           });
         } catch (er) {}
@@ -268,7 +268,7 @@ function recovery (options) {
         // if so, we will run another round of this test!
         try {
           if (String(fs.readFileSync(stateFile)).length) {
-            print('Going into next iteration of recovery test');
+            print('Going into next iteration of recovery_server test');
             if (params.options.cleanup) {
               if (params.crashLogDir !== "") {
                 fs.removeDirectoryRecursive(params.crashLogDir, true);
@@ -316,6 +316,6 @@ function recovery (options) {
 
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
-  testFns['recovery'] = recovery;
+  testFns['recovery_server'] = recovery_server;
   tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };
