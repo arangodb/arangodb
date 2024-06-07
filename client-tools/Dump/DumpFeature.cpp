@@ -31,6 +31,7 @@
 #include <thread>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/GreetingsFeature.h"
 #include "Basics/Exceptions.h"
 #include "Basics/FileUtils.h"
 #include "Basics/NumberOfCores.h"
@@ -1303,6 +1304,8 @@ void DumpFeature::reportError(Result const& error) {
 ClientTaskQueue<DumpFeature::DumpJob>& DumpFeature::taskQueue() {
   return _clientTaskQueue;
 }
+
+void DumpFeature::prepare() { logLGPLNotice(); }
 
 void DumpFeature::start() {
   using arangodb::basics::StringUtils::formatSize;
