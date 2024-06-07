@@ -76,8 +76,8 @@ ThreadPoolScheduler::getNumberLowPrioOngoingAndQueued() const {
       remaining);
 }
 
+// queue fill grad tracking is currently not implemented for this scheduler
 double ThreadPoolScheduler::approximateQueueFillGrade() const { return 0; }
-
 double ThreadPoolScheduler::unavailabilityQueueFillGrade() const { return 0; }
 
 bool ThreadPoolScheduler::queueItem(RequestLane lane,
