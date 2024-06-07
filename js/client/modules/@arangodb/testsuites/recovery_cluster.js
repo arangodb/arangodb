@@ -33,6 +33,7 @@ const fs = require('fs');
 const internal = require('internal');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const trs = require('@arangodb/testutils/testrunners');
 const im = require('@arangodb/testutils/instance-manager');
 const inst = require('@arangodb/testutils/instance');
 const tmpDirMmgr = require('@arangodb/testutils/tmpDirManager').tmpDirManager;
@@ -323,7 +324,7 @@ function recovery (options) {
         return results;
       }
 
-      results[test] = tu.readTestResult(
+      results[test] = trs.readTestResult(
         params.temp_path,
         {
           status: false
