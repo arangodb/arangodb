@@ -92,7 +92,6 @@ const optionsDefaults = {
   'protocol': 'tcp',
   'replication': false,
   'activefailover': false,
-  'singles': 1,
   'setInterruptable': ! internal.isATTy(),
   'oneTestTimeout': (isInstrumented? 25 : 15) * 60,
   'isCov': isCoverage,
@@ -104,7 +103,6 @@ const optionsDefaults = {
   'vst': false,
   'http2': false,
   'disableMonitor': false,
-  'enableAliveMonitor': true,
   'failed': false,
   'optionsJson': null,
 };

@@ -93,7 +93,7 @@ function ensureCoordinators(options, numServers) {
 // / @brief TEST: shell_v8
 // //////////////////////////////////////////////////////////////////////////////
 
-class shellv8Runner extends tu.runLocalInArangoshRunner {
+class shellv8Runner extends trs.runLocalInArangoshRunner {
   constructor(options, testname, ...optionalArgs) {
     super(options, testname, ...optionalArgs);
     this.info = "shellv8Runner";
