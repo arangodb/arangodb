@@ -26,6 +26,7 @@
 #include "V8ShellFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/GreetingsFeature.h"
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "V8/V8SecurityFeature.h"
@@ -387,6 +388,7 @@ bool V8ShellFeature::printHello(V8ClientConnection* v8connection) {
         << "Copyright (c) ArangoDB GmbH";
 
       console.printLine(s.str());
+      console.printLine(LGPLNotice);
       console.printLine("");
 
       console.printWelcomeInfo();

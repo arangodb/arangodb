@@ -24,6 +24,7 @@
 #include "ImportFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/GreetingsFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/StringUtils.h"
@@ -338,6 +339,8 @@ void ImportFeature::validateOptions(
     }
   }
 }
+
+void ImportFeature::prepare() { logLGPLNotice(); }
 
 void ImportFeature::start() {
   ClientFeature& client =

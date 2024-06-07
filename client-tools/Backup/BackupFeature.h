@@ -44,6 +44,7 @@ class BackupFeature : public ArangoBackupFeature {
       std::shared_ptr<options::ProgramOptions>) override final;
   virtual void validateOptions(
       std::shared_ptr<options::ProgramOptions> options) override final;
+  virtual void prepare() override final;
   virtual void start() override final;
 
   /**

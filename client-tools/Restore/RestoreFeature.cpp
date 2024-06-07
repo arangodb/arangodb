@@ -37,6 +37,7 @@
 #include <unordered_set>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/GreetingsFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/Result.h"
@@ -2047,6 +2048,7 @@ void RestoreFeature::validateOptions(
 }
 
 void RestoreFeature::prepare() {
+  logLGPLNotice();
   if (!_options.inputPath.empty() &&
       _options.inputPath.back() == TRI_DIR_SEPARATOR_CHAR) {
     // trim trailing slash from path because it may cause problems on ...
