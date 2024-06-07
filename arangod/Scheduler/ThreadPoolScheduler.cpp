@@ -101,7 +101,7 @@ ThreadPoolScheduler::ThreadPoolScheduler(
   poolMetrics.queueLength = _metrics->_metricsQueueLengths[0];
   poolMetrics.dequeueTimes = _metrics->_metricsDequeueTimes[0];
   _threadPools.emplace_back(std::make_unique<ThreadPool>(
-      "SchedMaintenance", std::max<std::size_t>(std::ceil(maxThreads * 0.1), 2),
+      "SchedMaintnc", std::max<std::size_t>(std::ceil(maxThreads * 0.1), 2),
       poolMetrics));
 
   poolMetrics.queueLength = _metrics->_metricsQueueLengths[1];
