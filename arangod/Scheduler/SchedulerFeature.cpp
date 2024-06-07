@@ -251,7 +251,7 @@ return HTTP 503 instead of HTTP 200 when their availability API is probed.)");
           "--server.scheduler", "The scheduler type to use.",
           new DiscreteValuesParameter<StringParameter>(
               &_schedulerType,
-              std::unordered_set<std::string>{"supervised", "workstealing"}),
+              std::unordered_set<std::string>{"supervised", "threadpools"}),
           arangodb::options::makeFlags(arangodb::options::Flags::Uncommon))
       .setIntroducedIn(31210);
 
@@ -345,7 +345,7 @@ void SchedulerFeature::prepare() {
           _fifo1Size, _fifo2Size, _fifo3Size, ongoingLowPriorityLimit,
           _unavailabilityQueueFillGrade, metrics);
     } else {
-      TRI_ASSERT(_schedulerType == "workstealing");
+      TRI_ASSERT(_schedulerType == "threadpools");
       return std::make_unique<ThreadPoolScheduler>(server(), _nrMaximalThreads,
                                                    std::move(metrics));
     }
