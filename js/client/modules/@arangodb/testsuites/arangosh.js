@@ -147,7 +147,7 @@ function arangosh (options) {
 
     fs.write(execFile, command);
     section += '_file';
-    let args2 = pu.makeArgs.arangosh(options);
+    let args2 = ct.makeArgs.arangosh(options);
     args2['javascript.execute'] = execFile;
     args2['log.level'] = 'error';
 
