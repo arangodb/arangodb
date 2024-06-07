@@ -109,6 +109,16 @@ class Scheduler {
   // Returns the scheduler's server object
   ArangodServer& server() noexcept { return _server; }
 
+  struct WorkItemBase {
+    virtual ~WorkItemBase() { TRI_ASSERT(next == nullptr); }
+    virtual void invoke() = 0;
+
+    std::chrono::steady_clock::time_point enqueueTime;
+
+    // used by some schedulers to chain work items
+    WorkItemBase* next = nullptr;
+  };
+
   class DelayedWorkItem {
    public:
     ~DelayedWorkItem() {
@@ -171,11 +181,6 @@ class Scheduler {
 
  protected:
   ArangodServer& _server;
-
-  struct WorkItemBase {
-    virtual ~WorkItemBase() = default;
-    virtual void invoke() = 0;
-  };
 
   template<typename F>
   struct WorkItem final : WorkItemBase, F {
