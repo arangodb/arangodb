@@ -1544,12 +1544,12 @@ class instanceManager {
     
     this.printProcessInfo(startTime);
     internal.sleep(this.options.sleepBeforeStart);
+    internal.env.OPTIONS = JSON.stringify(this.options);
     if ((this.options.cluster || this.options.agency) &&
         !this.hasOwnProperty('clusterHealthMonitor') &&
         !this.options.disableClusterMonitor) {
       print("spawning cluster health inspector");
       internal.env.INSTANCEINFO = JSON.stringify(this.getStructure());
-      internal.env.OPTIONS = JSON.stringify(this.options);
       let tmp = internal.env.TEMP;
       internal.env.TMP = this.rootDir;
       internal.env.TEMP = this.rootDir;
