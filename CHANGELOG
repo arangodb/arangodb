@@ -1,6 +1,8 @@
 v3.11.10 (XXXX-XX-XX)
 ---------------------
 
+* Sort out a thread blockage on AQL write waiting for replication.
+
 * Reduce the possibility of cache stampedes during collection count cache 
   refilling.
     
