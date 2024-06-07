@@ -35,8 +35,11 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/application-exit.h"
+#include "Basics/cpu-relax.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
+#include "Random/RandomGenerator.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Collection.h>
@@ -192,8 +195,53 @@ ExecutionState SimpleModifier<ModifierCompletion, Enable>::transact(
   // operations blocking as in previous versions of ArangoDB.
   // TODO: fix this and make it truly non-blocking (requires to
   // fix some lifecycle issues for AQL queries first).
-  result.wait();
 
+  // If we simply wait, it can happen that we get into a blockage in which
+  // all threads wait in the same place here and none can make progress,
+  // since the scheduler is full. This means we must detach the thread
+  // after some time. To avoid that all are detaching at the same time,
+  // we choose a random timeout for the detaching. But first we spin a
+  // while to avoid delays:
+  if (!result.isReady()) {
+    auto const spinTime = std::chrono::milliseconds(10);
+    auto start = std::chrono::steady_clock::now();
+    while (!result.isReady() &&
+           std::chrono::steady_clock::now() - start < spinTime) {
+      basics::cpu_relax();
+    }
+    if (!result.isReady()) {
+      auto const detachTime = std::chrono::milliseconds(
+          1000 + RandomGenerator::interval(uint32_t(100)) * 100);
+      auto start = std::chrono::steady_clock::now();
+      while (!result.isReady() &&
+             std::chrono::steady_clock::now() - start < detachTime) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+      }
+      if (!result.isReady()) {
+        LOG_TOPIC("afe32", INFO, Logger::THREADS)
+            << "Did not get replication response within " << detachTime.count()
+            << " microseconds, detaching scheduler thread.";
+        uint64_t currentNumberDetached = 0;
+        uint64_t maximumNumberDetached = 0;
+        auto res = SchedulerFeature::SCHEDULER->detachThread(
+            &currentNumberDetached, &maximumNumberDetached);
+        if (res.is(TRI_ERROR_TOO_MANY_DETACHED_THREADS)) {
+          LOG_TOPIC("afe33", WARN, Logger::THREADS)
+              << "Could not detach scheduler thread (currently detached "
+                 "threads: "
+              << currentNumberDetached
+              << ", maximal number of detached threads: "
+              << maximumNumberDetached
+              << "), will continue to wait for replication in scheduler "
+                 "thread, this can potentially lead to blockages!";
+        }
+        result.wait();
+      }
+    }
+  }
+
+  // The following will always be true with this code, but we leave the
+  // asynchronous code below for the future.
   if (result.isReady()) {
     _results = std::move(result.get());
     return ExecutionState::DONE;
