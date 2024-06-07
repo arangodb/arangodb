@@ -460,7 +460,7 @@ class instance {
       let maxBuffer = ioraw.length;
       for (let j = 0; j < maxBuffer; j++) {
         if (ioraw[j] === 10) { // \n
-          const line = ioraw.asciiSlice(lineStart, j);
+          const line = ioraw.utf8Slice(lineStart, j);
           lineStart = j + 1;
           let x = line.split(":");
           processStats[x[0]] = parseInt(x[1]);
@@ -536,7 +536,7 @@ class instance {
 
       for (let j = 0; j < maxBuffer; j++) {
         if (buf[j] === 10) { // \n
-          const line = buf.asciiSlice(lineStart, j);
+          const line = buf.utf8Slice(lineStart, j);
           lineStart = j + 1;
 
           // scan for asserts from the crash dumper
@@ -574,7 +574,7 @@ class instance {
     
     for (let j = 0; j < maxBuffer; j++) {
       if (buf[j] === 10) { // \n
-        const line = buf.asciiSlice(lineStart, j);
+        const line = buf.utf8Slice(lineStart, j);
         lineStart = j + 1;
         
         // filter out regular INFO lines, and test related messages
@@ -912,8 +912,8 @@ class instance {
     if (this.pid === null) {
       this.pid = pid;
       print(`${RED}${Date()} instance already gone? ${this.name} ${JSON.stringify(this.exitStatus)}${RESET}`);
-      this.analyzeServerCrash(`instance ${this.name} during force terminate server already dead? ${JSON.stringify(this.exitStatus)}`);
       this.processSanitizerReports();
+      this.analyzeServerCrash(`instance ${this.name} during force terminate server already dead? ${JSON.stringify(this.exitStatus)}`);
       this.pid = null;
     } else {
       print(`${RED}${Date()} attempting to generate crashdump of: ${this.name} ${JSON.stringify(this.exitStatus)}${RESET}`);

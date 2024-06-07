@@ -175,7 +175,7 @@ class testRunner {
         let maxBuffer = buf.length;
         for (let j = 0; j < maxBuffer; j++) {
           if (buf[j] === 10) { // \n
-            const line = buf.asciiSlice(lineStart, j);
+            const line = buf.utf8Slice(lineStart, j);
             lineStart = j + 1;
             let val = JSON.parse(line);
             if (val.state === false) {

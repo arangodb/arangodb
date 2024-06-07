@@ -118,7 +118,7 @@ function readGdbFileFiltered(gdbOutputFile) {
     let moreMessages = [];
     for (let j = 0; j < maxBuffer; j++) {
       if (buf[j] === 10) { // \n
-        var line = buf.asciiSlice(lineStart, j);
+        var line = buf.utf8Slice(lineStart, j);
         lineStart = j + 1;
         if (line.search('Thread ') === 0 || (!inStack && line[0] === '#')) {
           inStack = true;
@@ -290,7 +290,7 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
     var matchVarTmp = /\/var\/tmp/;
     var matchSystemdCoredump = /.*systemd-coredump*/;
     var corePattern = fs.readBuffer(cpf);
-    var cp = corePattern.asciiSlice(0, corePattern.length);
+    var cp = corePattern.utf8Slice(0, corePattern.length);
 
     if (matchApport.exec(cp) !== null) {
       print(RED + 'apport handles corefiles on your system. Uninstall it if you want us to get corefiles for analysis.' + RESET);
