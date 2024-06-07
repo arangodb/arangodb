@@ -33,6 +33,7 @@ const yaml = require('js-yaml');
 
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const trs = require('@arangodb/testutils/testrunners');
 const im = require('@arangodb/testutils/instance-manager');
 
 const toArgv = internal.toArgv;
@@ -61,7 +62,7 @@ const testPaths = {
   'server_parameters': [tu.pathForTesting('client/server_parameters')]
 };
 
-class permissionsRunner extends tu.runLocalInArangoshRunner {
+class permissionsRunner extends trs.runLocalInArangoshRunner {
   constructor(options, testname, ...optionalArgs) {
     super(options, testname, ...optionalArgs);
     this.info = "permissionsRunner";
@@ -326,7 +327,7 @@ function server_secrets(options) {
     additionalArguments['ssl.server-name-indication']
       = "hans.arangodb.com=./etc/testing/tls.keyfile";
   }
-  let rc = new tu.runLocalInArangoshRunner(copyOptions, 'server_secrets', additionalArguments).run(testCases);
+  let rc = new trs.runLocalInArangoshRunner(copyOptions, 'server_secrets', additionalArguments).run(testCases);
   if (rc.status && options.cleanup) {
     fs.removeDirectoryRecursive(keyfileDir, true);
     fs.removeDirectoryRecursive(secretsDir, true);
@@ -340,5 +341,5 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   testFns['server_parameters'] = server_parameters;
   testFns['server_secrets'] = server_secrets;
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };

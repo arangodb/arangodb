@@ -27,16 +27,17 @@
 
 /* Modules: */
 const _ = require('lodash');
+const internal = require('internal');
 const fs = require('fs');
+const yaml = require('js-yaml');
 const pu = require('@arangodb/testutils/process-utils');
+const tu = require('@arangodb/testutils/test-utils');
 const rp = require('@arangodb/testutils/result-processing');
 const inst = require('@arangodb/testutils/instance');
-const yaml = require('js-yaml');
-const internal = require('internal');
 const crashUtils = require('@arangodb/testutils/crash-utils');
+const {versionHas, debugGetFailurePoints} = require("@arangodb/test-helper");
 const crypto = require('@arangodb/crypto');
-const ArangoError = require('@arangodb').ArangoError;
-const debugGetFailurePoints = require('@arangodb/test-helper').debugGetFailurePoints;
+const ArangoError = require('@arangodb').ArangoError;;
 const netstat = require('node-netstat');
 /* Functions: */
 const toArgv = internal.toArgv;
@@ -641,6 +642,33 @@ class instanceManager {
       ret [ arangod.name ] = statisticsReply.server.uptime;
     });
     return ret;
+  }
+
+  getFromPlan(path) {
+    let req = this.agencyConfig.agencyInstances[0].getAgent('/_api/agency/read', 'POST', `[["/arango/${path}"]]`);
+    if (req.code !== 200) {
+      throw new Error(`Failed to query agency [["/arango/${path}"]] : ${JSON.stringify(req)}`);
+    }
+    return JSON.parse(req["body"])[0];
+  }
+
+  removeServerFromAgency(serverId) {
+    // Make sure we remove the server
+    for (let i = 0; i < 10; ++i) {
+      const res = arango.POST_RAW("/_admin/cluster/removeServer", JSON.stringify(serverId));
+      if (res.code === 404 || res.code === 200) {
+        // Server is removed
+        return;
+      }
+      // Server could not be removed, give supervision some more time
+      // and then try again.
+      print("Wait for supervision to clear responsibilty of server");
+      require("internal").wait(0.2);
+    }
+    // If we reach this place the server could not be removed
+    // it is still responsible for shards, so a failover
+    // did not work out.
+    throw "Could not remove shutdown server";
   }
 
   _checkServersGOOD() {
@@ -1268,16 +1296,33 @@ class instanceManager {
         }
         let url = arangod.url;
         if (arangod.isRole(instanceRole.coordinator) && arangod.args["javascript.enabled"] !== "false") {
-          url += '/_admin/aardvark/index.html';
+          url += '/_api/foxx';
           httpOptions.method = 'GET';
         } else {
           url += '/_api/version';
           httpOptions.method = 'POST';
         }
         const reply = download(url, '', httpOptions);
+        if (!this.options.noStartStopLogs) {
+          print(`Server reply to ${url}: ${JSON.stringify(reply)}`);
+        }
         if (!reply.error && reply.code === 200) {
           arangod.upAndRunning = true;
           return true;
+        }
+        try {
+          if (reply.code === 403) {
+            let parsedBody = JSON.parse(reply.body);
+            if (parsedBody.errorNum === internal.errors.ERROR_SERVICE_API_DISABLED.code) {
+              if (!this.options.noStartStopLogs) {
+                print("service API disabled, continuing.");
+              }
+              arangod.upAndRunning = true;
+              return true;
+            }
+          }
+        } catch (e) {
+          print(RED + Date() + " failed to parse server reply: " + JSON.stringify(reply));
         }
 
         if (arangod.pid !== null && !arangod.checkArangoAlive()) {
@@ -1499,12 +1544,12 @@ class instanceManager {
     
     this.printProcessInfo(startTime);
     internal.sleep(this.options.sleepBeforeStart);
+    internal.env.OPTIONS = JSON.stringify(this.options);
     if ((this.options.cluster || this.options.agency) &&
         !this.hasOwnProperty('clusterHealthMonitor') &&
         !this.options.disableClusterMonitor) {
       print("spawning cluster health inspector");
       internal.env.INSTANCEINFO = JSON.stringify(this.getStructure());
-      internal.env.OPTIONS = JSON.stringify(this.options);
       let tmp = internal.env.TEMP;
       internal.env.TMP = this.rootDir;
       internal.env.TEMP = this.rootDir;
@@ -1598,3 +1643,132 @@ class instanceManager {
 }
 
 exports.instanceManager = instanceManager;
+exports.registerOptions = function(optionsDefaults, optionsDocumentation, optionHandlers) {
+  const isSan = versionHas('asan') || versionHas('tsan');
+  tu.CopyIntoObject(optionsDefaults, {
+    'memory': undefined,
+    'singles': 1, // internal only
+    'dumpAgencyOnError': true,
+    'agencySize': 3,
+    'agencyWaitForSync': false,
+    'agencySupervision': true,
+    'coordinators': 1,
+    'dbServers': 2,
+    'disableClusterMonitor': true,
+    'encryptionAtRest': false,
+    'extraArgs': {},
+    'cluster': false,
+    'forceOneShard': false,
+    'sniff': false,
+    'sniffAgency': true,
+    'sniffDBServers': true,
+    'sniffDevice': undefined,
+    'sniffProgram': undefined,
+    'sniffFilter': undefined,
+    'sanitizer': isSan,
+    'isSan': isSan,
+    'sanOptions': {},
+    'sleepBeforeStart' : 0,
+    'memprof': false,
+    'valgrind': false,
+    'valgrindFileBase': '',
+    'valgrindArgs': {},
+    'valgrindHosts': false,
+  });
+
+  tu.CopyIntoList(optionsDocumentation, [
+    ' SUT configuration properties:',
+    '   - `memory`: amount of Host memory to distribute amongst the arangods',
+    '   - `encryptionAtRest`: enable on disk encryption, enterprise only',
+    '   - `cluster`: if set to true the tests are run with a cluster',
+    '   - `forceOneShard`: if set to true the tests are run with a OneShard (EE only) cluster, requires cluster option to be set to true',
+    '   - `dbServers`: number of DB-Servers to use',
+    '   - `coordinators`: number coordinators to use',
+    '   - `agency`: if set to true agency tests are done',
+    '   - `agencySize`: number of agents in agency',
+    '   - `agencySupervision`: run supervision in agency',
+    '   - `extraArgs`: list of extra commandline arguments to add to arangod',
+    ' SUT monitoring',
+    '   - `sleepBeforeStart` : sleep at tcpdump info - use this to dump traffic or attach debugger',
+    '   - `dumpAgencyOnError`: if we should create an agency dump if an error occurs',
+    '   - `disableClusterMonitor`: if set to false, an arangosh is started that will send',
+    '                              keepalive requests to all cluster instances, and report on error',
+    ' SUT debugging',
+    '   - `server`: server_url (e.g. tcp://127.0.0.1:8529) for external server',
+    '   - `serverRoot`: directory where data/ points into the db server. Use in',
+    '                   conjunction with "server".',
+    '   - `memprof`: take snapshots (requries memprof enabled build)',
+    '   - `sanitizer`: if set the programs are run with enabled sanitizer',
+    '   - `isSan`: doubles oneTestTimeot value if set to true (for ASAN-related builds)',
+    '     and need longer timeouts',
+    ' SUT packet capturing:',
+    '   - `sniff`: if we should try to launch tcpdump / windump for a testrun',
+    '              false / true / sudo',
+    '   - `sniffDevice`: the device tcpdump / tshark should use',
+    '   - `sniffProgram`: specify your own programm',
+    '   - `sniffAgency`: when sniffing cluster, sniff agency traffic too? (true)',
+    '   - `sniffDBServers`: when sniffing cluster, sniff dbserver traffic too? (true)',
+    '   - `sniffFilter`: only launch tcpdump for tests matching this string',
+    ' SUT & valgrind:',
+    '   - `valgrind`: if set the programs are run with the valgrind',
+    '     memory checker; should point to the valgrind executable',
+    '   - `valgrindFileBase`: string to prepend to the report filename',
+    '   - `valgrindArgs`: commandline parameters to add to valgrind',
+    '   - valgrindHosts  - configure which clustercomponents to run using valgrind',
+    '        Coordinator - flag to run Coordinator with valgrind',
+    '        DBServer    - flag to run DBServers with valgrind',
+    ''
+  ]);
+  optionHandlers.push(function(options) {
+    if (options.forceOneShard) {
+      if (!options.cluster) {
+        throw new Error("need cluster enabled");
+      }
+    }
+    if (options.memprof) {
+      process.env['MALLOC_CONF'] = 'prof:true';
+    }
+    options.noStartStopLogs = !options.extremeVerbosity && options.noStartStopLogs;
+    if (options.encryptionAtRest && !pu.isEnterpriseClient) {
+      options.encryptionAtRest = false;
+    }
+    // fiddle in suppressions for sanitizers if not already set from an
+    // outside script. this can populate the environment variables
+    // - ASAN_OPTIONS
+    // - UBSAN_OPTIONS
+    // - LSAN_OPTIONS
+    // - TSAN_OPTIONS
+    // note: this code repeats existing logic that can be found in
+    // scripts/unittest as well. according to @dothebart it must be
+    // present in both code locations.
+  if (options.isSan) {
+    ['ASAN_OPTIONS',
+     'LSAN_OPTIONS',
+     'UBSAN_OPTIONS',
+     'TSAN_OPTIONS'].forEach(sanOpt => {
+       if (process.env.hasOwnProperty(sanOpt)) {
+         options.sanOptions[sanOpt] = {};
+         let opt = process.env[sanOpt];
+         opt.split(':').forEach(oneOpt => {
+           let pair = oneOpt.split('=');
+           if (pair.length === 2) {
+             options.sanOptions[sanOpt][pair[0]] = pair[1];
+           }
+         });
+       }
+     });
+  }
+
+    ["asan", "ubsan", "lsan", "tsan"].forEach((san) => {
+      let envName = san.toUpperCase() + "_OPTIONS";
+      let fileName = san + "_arangodb_suppressions.txt";
+      if (!process.env.hasOwnProperty(envName) &&
+          fs.exists(fileName)) {
+        process.env[envName] = `suppressions=${fs.join(fs.makeAbsolute(''), fileName)}`;
+        print('preparing ' + san + ' environment:', envName + '=' + process.env[envName]);
+      }
+    });
+
+    
+  });
+};

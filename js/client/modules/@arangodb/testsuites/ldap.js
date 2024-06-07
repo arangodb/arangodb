@@ -42,6 +42,7 @@ const optionsDocumentation = [
 
 const _ = require('lodash');
 const tu = require('@arangodb/testutils/test-utils');
+const trs = require('@arangodb/testutils/testrunners');
 const fs = require('fs');
 const request = require('@arangodb/request');
 const crypto = require('@arangodb/crypto');
@@ -226,7 +227,7 @@ function parseOptions(options, ldap2) {
   return toReturn;
 }
 
-class ldapTestRunner extends tu.runInArangoshRunner {
+class ldapTestRunner extends trs.runInArangoshRunner {
   postStart() {
     let baseUrl = function(e) {
       return e.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');

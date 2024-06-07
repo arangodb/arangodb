@@ -29,7 +29,9 @@
 const _ = require('lodash');
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
+const tu = require('@arangodb/testutils/test-utils');
 const rp = require('@arangodb/testutils/result-processing');
+const pm = require('@arangodb/testutils/portmanager');
 const yaml = require('js-yaml');
 const internal = require('internal');
 const crashUtils = require('@arangodb/testutils/crash-utils');
@@ -48,7 +50,6 @@ const {
   suspendExternal,
   continueExternal,
   base64Encode,
-  testPort,
   download,
   platform,
   time,
@@ -80,50 +81,6 @@ function getSockStatFile(pid) {
   return "";
 }
 
-class portManager {
-  // //////////////////////////////////////////////////////////////////////////////
-  // / @brief finds a free port
-  // //////////////////////////////////////////////////////////////////////////////
-  constructor(options) {
-    this.usedPorts = [];
-    this.minPort = options['minPort'];
-    this.maxPort = options['maxPort'];
-    if (typeof this.maxPort !== 'number') {
-      this.maxPort = 32768;
-    }
-
-    if (this.maxPort - this.minPort < 0) {
-      throw new Error('minPort ' + this.minPort + ' is smaller than maxPort ' + this.maxPort);
-    }
-  }
-  deregister(port) {
-    let deletePortIndex = this.usedPorts.indexOf(port);
-    if (deletePortIndex > -1) {
-      this.usedPorts.splice(deletePortIndex, 1);
-    }
-  }
-  findFreePort() {
-    let tries = 0;
-    while (true) {
-      const port = Math.floor(Math.random() * (this.maxPort - this.minPort)) + this.minPort;
-      tries++;
-      if (tries > 20) {
-        throw new Error('Couldn\'t find a port after ' + tries + ' tries. portrange of ' + this.minPort + ', ' + this.maxPort + ' too narrow?');
-      }
-      if (this.usedPorts.indexOf(port) >= 0) {
-        continue;
-      }
-      const free = testPort('tcp://0.0.0.0:' + port);
-
-      if (free) {
-        this.usedPorts.push(port);
-        return port;
-      }
-
-      wait(0.1, false);
-    }
-  }
-}
 
 const instanceType = {
   single: 'single',
@@ -180,11 +137,8 @@ class agencyConfig {
 class instance {
   // / protocol must be one of ["tcp", "ssl", "unix"]
   constructor(options, instanceRole, addArgs, authHeaders, protocol, rootDir, restKeyFile, agencyConfig, tmpDir, mem) {
-    if (! PORTMANAGER) {
-      PORTMANAGER = new portManager(options);
-    }
     this.id = null;
-    this.pm = PORTMANAGER;
+    this.pm = pm.getPortManager(options);
     this.options = options;
     this.instanceRole = instanceRole;
     this.rootDir = rootDir;
@@ -340,7 +294,7 @@ class instance {
     let endpoint;
     let bindEndpoint;
     if (!this.args.hasOwnProperty('server.endpoint')) {
-      this.port = PORTMANAGER.findFreePort(this.options.minPort, this.options.maxPort);
+      this.port = this.pm.findFreePort(this.options.minPort, this.options.maxPort);
       this.endpoint = this.protocol + '://127.0.0.1:' + this.port;
       bindEndpoint = this.endpoint;
       if (this.options.bindBroadcast) {
@@ -430,7 +384,7 @@ class instance {
         'agency.my-address': this.protocol + '://127.0.0.1:' + this.port,
         // Sometimes for unknown reason the agency startup is too slow.
         // With this log level we might have a chance to see what is going on.
-        'log.level': "agency=debug",
+        'log.level': "agency=info",
       });
       if (!this.args.hasOwnProperty("agency.supervision-grace-period")) {
         this.args['agency.supervision-grace-period'] = '10.0';
@@ -1252,3 +1206,24 @@ exports.instance = instance;
 exports.agencyConfig = agencyConfig;
 exports.instanceType = instanceType;
 exports.instanceRole = instanceRole;
+exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
+  tu.CopyIntoObject(optionsDefaults, {
+    'enableAliveMonitor': true,
+    'maxLogFileSize': 500 * 1024,
+    'skipLogAnalysis': true,
+    'bindBroadcast': false,
+    'getSockStat': false,
+    'rr': false,
+  });
+
+  tu.CopyIntoList(optionsDocumentation, [
+    ' SUT instance properties:',
+    '   - `enableAliveMonitor`: checks whether spawned arangods disapears or aborts during the tests.',
+    '   - `maxLogFileSize`: how big logs should be at max - 500k by default',
+    "   - `skipLogAnalysis`: don't try to crawl the server logs",
+    '   - `bindBroadcast`: whether to work with loopback or 0.0.0.0',
+    '   - `rr`: if set to true arangod instances are run with rr',
+    '   - `getSockStat`: on linux collect socket stats before shutdown',
+    '   - `replicationVersion`: if set, define the default replication version. (Currently we have "1" and "2")',
+  ]);
+};

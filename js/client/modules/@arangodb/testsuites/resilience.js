@@ -42,6 +42,7 @@ const optionsDocumentation = [
 ];
 
 const tu = require('@arangodb/testutils/test-utils');
+const trs = require('@arangodb/testutils/testrunners');
 const _ = require('lodash');
 
 const testPaths = {
@@ -81,7 +82,7 @@ var _resilience = function(path, enableAliveMonitor) {
     }
     let testCases = tu.scanTestPaths(testPaths[path], localOptions);
     testCases = tu.splitBuckets(options, testCases);
-    let rc = new tu.runOnArangodRunner(localOptions, suiteName, {
+    let rc = new trs.runOnArangodRunner(localOptions, suiteName, {
       'javascript.allow-external-process-control': 'true',
       'javascript.allow-port-testing': 'true',
       'javascript.allow-admin-execute': 'true',
@@ -114,7 +115,7 @@ function clientResilience (options) {
 
   let testCases = tu.scanTestPaths(testPaths.client_resilience, localOptions);
   testCases = tu.splitBuckets(options, testCases);
-  let rc = new tu.runInArangoshRunner(localOptions, 'client_resilience', {
+  let rc = new trs.runInArangoshRunner(localOptions, 'client_resilience', {
     'javascript.allow-external-process-control': 'true',
     'javascript.allow-port-testing': 'true',
     'javascript.allow-admin-execute': 'true',
@@ -143,7 +144,7 @@ function activeFailover (options) {
   localOptions.disableMonitor = true;
   localOptions.Agency = true;
   let testCases = tu.scanTestPaths(testPaths.active_failover, localOptions);
-  let rc = new tu.runLocalInArangoshRunner(localOptions, 'active_failover',  Object.assign({}, {
+  let rc = new trs.runLocalInArangoshRunner(localOptions, 'active_failover',  Object.assign({}, {
       'javascript.allow-external-process-control': 'true',
       'javascript.allow-port-testing': 'true',
       'javascript.allow-admin-execute': 'true',
@@ -165,6 +166,6 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   testFns['resilience_analyzers'] = resilienceAnalyzers;
   testFns['client_resilience'] = clientResilience;
   testFns['active_failover'] = activeFailover;
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
+  tu.CopyIntoList(optionsDoc, optionsDocumentation);
 };

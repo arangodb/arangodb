@@ -30,13 +30,12 @@ const functionsDocumentation = {
   'authentication_server': 'authentication server tests',
   'authentication_parameters': 'authentication parameters tests'
 };
-const optionsDocumentation = [
-  '   - `skipAuthentication : testing authentication and authentication_paramaters will be skipped.'
-];
 
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const tr = require('@arangodb/testutils/testrunner');
+const trs = require('@arangodb/testutils/testrunners');
 const im = require('@arangodb/testutils/instance-manager');
 const yaml = require('js-yaml');
 
@@ -60,26 +59,16 @@ const testPaths = {
 // //////////////////////////////////////////////////////////////////////////////
 
 function authenticationClient (options) {
-  if (options.skipAuthentication === true) {
-    print('skipping Authentication tests!');
-    return {
-      authentication: {
-        status: true,
-        skipped: true
-      }
-    };
-  }
-
   print(CYAN + 'Client Authentication tests...' + RESET);
   let testCases = tu.scanTestPaths(testPaths.authentication, options);
 
   testCases = tu.splitBuckets(options, testCases);
 
-  return new tu.runInArangoshRunner(options, 'authentication', Object.assign(
+  return new trs.runInArangoshRunner(options, 'authentication', Object.assign(
     {},
     tu.testServerAuthInfo, {
       'cluster.create-waits-for-sync-replication': false
-    }), false).run(testCases);
+    }), tr.sutFilters.checkUsers).run(testCases);
 }
 
 function authenticationServer (options) {
@@ -87,22 +76,13 @@ function authenticationServer (options) {
 
   testCases = tu.splitBuckets(options, testCases);
 
-  if ((testCases.length === 0) || (options.skipAuthentication === true)) {
-    print('skipping Authentication tests!');
-    return {
-      authentication: {
-        status: true,
-        skipped: true
-      }
-    };
-  }
 
   print(CYAN + 'Server Authentication tests...' + RESET);
-  return new tu.runOnArangodRunner(options, 'authentication_server', Object.assign(
+  return new trs.runOnArangodRunner(options, 'authentication_server', Object.assign(
     {},
     tu.testServerAuthInfo, {
       'cluster.create-waits-for-sync-replication': false
-    }), false).run(testCases);
+    }), tr.sutFilters.checkUsers).run(testCases);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -149,16 +129,6 @@ function checkBodyForJsonToParse (request) {
 }
 
 function authenticationParameters (options) {
-  if (options.skipAuthentication === true) {
-    print(CYAN + 'skipping Authentication with parameters tests!' + RESET);
-    return {
-      authentication_parameters: {
-        status: true,
-        skipped: true
-      }
-    };
-  }
-
   if (options.cluster) {
     print('skipping Authentication with parameters tests on cluster!');
     return {
@@ -272,8 +242,5 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   testFns['authentication_server'] = authenticationServer;
   testFns['authentication_parameters'] = authenticationParameters;
 
-  opts['skipAuthentication'] = false;
-
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };
