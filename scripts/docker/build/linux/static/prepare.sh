@@ -1,5 +1,5 @@
 #!/bin/sh
-sed -i.bu -e 's/^# deb-src/deb-src/' /etc/apt/sources.list
+sed -i -e 's/Types: deb/Types: deb deb-src/' /etc/apt/sources.list.d/ubuntu.sources
 apt-get update
 apt-get upgrade -y
 apt-get install -y dpkg-dev autoconf devscripts
