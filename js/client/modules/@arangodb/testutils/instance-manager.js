@@ -1275,6 +1275,7 @@ class instanceManager {
             if ((arangod.exitStatus === null) ||
                 (arangod.exitStatus.status === 'RUNNING')) {
               // arangod.killWithCoreDump();
+              arangod.processSanitizerReports();
               arangod.exitStatus = killExternal(arangod.pid, termSignal);
             }
             arangod.analyzeServerCrash('startup timeout; forcefully terminating ' + arangod.name + ' with pid: ' + arangod.pid);

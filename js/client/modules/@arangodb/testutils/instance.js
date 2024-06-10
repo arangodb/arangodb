@@ -738,6 +738,7 @@ class instance {
       // OK, something has gone wrong, process still alive. announce and force kill:
       if (ret.status !== "ABORTED") {
         print(RED+`was expecting the process ${this.pid} to be gone, but ${JSON.stringify(ret)}` + RESET);
+        this.processSanitizerReports();
         killExternal(this.pid, abortSignal);
         print(statusExternal(this.pid, true));
       }
