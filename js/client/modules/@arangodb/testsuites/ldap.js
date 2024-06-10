@@ -280,7 +280,7 @@ function authenticationLdapSearchModePrefixSuffix(options) {
   print(opts.ldapModeSearchPrefixSuffix.conf);
   return new ldapTestRunner(options, 'ldap',
                             opts.ldapModeSearchPrefixSuffix.conf,
-                            {}, trs.checkUsers
+                            trs.checkUsers
                            ).run(testCases);
 }
 
