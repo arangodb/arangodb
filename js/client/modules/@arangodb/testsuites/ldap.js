@@ -42,6 +42,7 @@ const optionsDocumentation = [
 
 const _ = require('lodash');
 const tu = require('@arangodb/testutils/test-utils');
+const tr = require('@arangodb/testutils/testrunner');
 const trs = require('@arangodb/testutils/testrunners');
 const fs = require('fs');
 const request = require('@arangodb/request');
@@ -280,7 +281,7 @@ function authenticationLdapSearchModePrefixSuffix(options) {
   print(opts.ldapModeSearchPrefixSuffix.conf);
   return new ldapTestRunner(options, 'ldap',
                             opts.ldapModeSearchPrefixSuffix.conf,
-                            trs.checkUsers
+                            tr.sutFilters.checkUsers
                            ).run(testCases);
 }
 
@@ -307,7 +308,7 @@ function authenticationLdapSearchMode(options) {
   print(opts.ldapModeSearch.conf);
   return new ldapTestRunner(options, 'ldap',
                             opts.ldapModeSearch.conf,
-                            trs.checkUsers
+                            tr.sutFilters.checkUsers
                            ).run(testCases);
 }
 
@@ -334,7 +335,7 @@ function authenticationLdapSearchModePlaceholder(options) {
   print(opts.ldapModeSearch.conf);
   return new ldapTestRunner(options, 'ldap',
                             opts.ldapModeSearchPlaceholder.conf,
-                            trs.checkUsers
+                            tr.sutFilters.checkUsers
                            ).run(testCases);
 }
 
@@ -361,7 +362,7 @@ function authenticationLdapRolesModePrefixSuffix(options) {
   print(opts.ldapModeRolesPrefixSuffix.conf);
   return new ldapTestRunner(options, 'ldap',
                             opts.ldapModeRolesPrefixSuffix.conf,
-                            trs.checkUsers
+                            tr.sutFilters.checkUsers
                            ).run(testCases);
 }
 
@@ -386,10 +387,10 @@ function authenticationLdapRolesMode(options) {
 
   print('Performing #5 Test: Role Mode');
   print(opts.ldapModeRoles.conf);
-  return new ldapTestRunner(options, 'ldap',
+   return new ldapTestRunner(options, 'ldap',
                             opts.ldapModeRoles.conf,
-                            trs.checkUsers
-                           ).run(testCases);
+                            tr.sutFilters.checkUsers
+                            ).run(testCases);
 }
 
 function authenticationLdapTwoLdap(options) {
@@ -417,7 +418,7 @@ function authenticationLdapTwoLdap(options) {
   print(opts.dualldap.conf);
   return new ldapTestRunner(options, 'ldap',
                             opts.dualldap.conf,
-                            trs.checkUsers
+                            tr.sutFilters.checkUsers
                            ).run(testCases);
 }
 
