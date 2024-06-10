@@ -1,6 +1,9 @@
 devel
 -----
 
+* FE-451: update graph UI defaults for edge direction, edge/collection 
+  labels & colors
+
 * Upgrade OpenSSL to 3.3.1 and used glibc build runtime to 2.39.0.
 
 * Updated ArangoDB Starter to v0.19.2.
