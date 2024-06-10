@@ -280,7 +280,7 @@ function authenticationLdapSearchModePrefixSuffix(options) {
   print(opts.ldapModeSearchPrefixSuffix.conf);
   return new ldapTestRunner(options, 'ldap',
                             opts.ldapModeSearchPrefixSuffix.conf,
-                            false
+                            {}, trs.checkUsers
                            ).run(testCases);
 }
 
@@ -307,7 +307,7 @@ function authenticationLdapSearchMode(options) {
   print(opts.ldapModeSearch.conf);
   return new ldapTestRunner(options, 'ldap',
                             opts.ldapModeSearch.conf,
-                            false
+                            {}, trs.checkUsers
                            ).run(testCases);
 }
 
@@ -334,7 +334,7 @@ function authenticationLdapSearchModePlaceholder(options) {
   print(opts.ldapModeSearch.conf);
   return new ldapTestRunner(options, 'ldap',
                             opts.ldapModeSearchPlaceholder.conf,
-                            false
+                            {}, trs.checkUsers
                            ).run(testCases);
 }
 
@@ -361,7 +361,7 @@ function authenticationLdapRolesModePrefixSuffix(options) {
   print(opts.ldapModeRolesPrefixSuffix.conf);
   return new ldapTestRunner(options, 'ldap',
                             opts.ldapModeRolesPrefixSuffix.conf,
-                            false
+                            {}, trs.checkUsers
                            ).run(testCases);
 }
 
@@ -388,7 +388,7 @@ function authenticationLdapRolesMode(options) {
   print(opts.ldapModeRoles.conf);
   return new ldapTestRunner(options, 'ldap',
                             opts.ldapModeRoles.conf,
-                            false
+                            {}, trs.checkUsers
                            ).run(testCases);
 }
 
@@ -417,7 +417,7 @@ function authenticationLdapTwoLdap(options) {
   print(opts.dualldap.conf);
   return new ldapTestRunner(options, 'ldap',
                             opts.dualldap.conf,
-                            false
+                            {}, trs.checkUsers
                            ).run(testCases);
 }
 
