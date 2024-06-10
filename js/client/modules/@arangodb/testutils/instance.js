@@ -133,6 +133,8 @@ class agencyConfig {
 }
 
 class instance {
+  #pid = null;
+
   // / protocol must be one of ["tcp", "ssl", "unix"]
   constructor(options, instanceRole, addArgs, authHeaders, protocol, rootDir, restKeyFile, agencyConfig, tmpDir, mem) {
     this.id = null;
@@ -191,11 +193,19 @@ class instance {
     this._makeArgsArangod();
 
     this.name = instanceRole + ' - ' + this.port;
-    this.pid = null;
     this.exitStatus = null;
     this.serverCrashedLocal = false;
     this.netstat = {'in':{}, 'out': {}};
   }
+
+  set pid(value) {
+    if (this.#pid !== null) {
+      this.processSanitizerReports();
+    }
+    this.#pid = value;
+  }
+
+  get pid() { return this.#pid; }
 
   getStructure() {
     return {
@@ -734,7 +744,6 @@ class instance {
     } catch(ex) {
       print(ex);
     }
-    this.processSanitizerReports();
     this.pid = null;
     print('done');
   }
@@ -749,7 +758,6 @@ class instance {
       this.processSanitizerReports();
       throw new Error(this.name + " didn't exit in a regular way: " + JSON.stringify(this.exitStatus));
     }
-    this.processSanitizerReports();
     this.exitStatus = null;
     this.pid = null;
   }
@@ -758,7 +766,6 @@ class instance {
     if (unAuthOK === undefined) {
       unAuthOK = false;
     }
-    this.processSanitizerReports();
     const startTime = time();
     this.exitStatus = null;
     this.pid = null;
@@ -781,7 +788,6 @@ class instance {
       sleep(0.5);
       if (!this.checkArangoAlive()) {
         print("instance gone! " + this.name);
-        this.processSanitizerReports();
         this.pid = null;
         throw new Error("restart failed! " + this.name);
       }
@@ -831,7 +837,6 @@ class instance {
         pu.serverCrashed = true;
         this.message += msg;
         print(Date() + msg + ' - ' + JSON.stringify(this.getStructure()));
-        this.processSanitizerReports();
         this.pid = null;
       }
     }
@@ -912,7 +917,6 @@ class instance {
     if (this.pid === null) {
       this.pid = pid;
       print(`${RED}${Date()} instance already gone? ${this.name} ${JSON.stringify(this.exitStatus)}${RESET}`);
-      this.processSanitizerReports();
       this.analyzeServerCrash(`instance ${this.name} during force terminate server already dead? ${JSON.stringify(this.exitStatus)}`);
       this.pid = null;
     } else {
@@ -955,12 +959,10 @@ class instance {
       if (forceTerminate) {
         let sockStat = this.getSockStat(Date() + "Force killing - sockstat before: ");
         this.killWithCoreDump('shutdown timeout; instance forcefully KILLED because of fatal timeout in testrun ' + sockStat);
-        this.processSanitizerReports();
         this.pid = null;
       } else if (this.options.useKillExternal) {
         let sockStat = this.getSockStat("Shutdown by kill - sockstat before: ");
         this.exitStatus = killExternal(this.pid);
-        this.processSanitizerReports();
         this.pid = null;
         print(sockStat);
       } else if (this.protocol === 'unix') {
@@ -1111,7 +1113,6 @@ class instance {
     if (this.pid !== null) {
       this.exitStatus = statusExternal(this.pid, false);
       if (this.exitStatus.status !== 'RUNNING') {
-        this.processSanitizerReports();
         this.pid = null;
       }
     }
