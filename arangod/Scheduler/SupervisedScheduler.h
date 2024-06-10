@@ -34,6 +34,7 @@
 
 #include "Metrics/Fwd.h"
 #include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerMetrics.h"
 
 namespace arangodb {
 class NetworkFeature;
@@ -48,7 +49,7 @@ class SupervisedScheduler final : public Scheduler {
                       uint64_t fifo1Size, uint64_t fifo2Size,
                       uint64_t fifo3Size, uint64_t ongoingLowPriorityLimit,
                       double unavailabilityQueueFillGrade,
-                      metrics::MetricsFeature& metrics);
+                      std::shared_ptr<SchedulerMetrics> metrics);
   ~SupervisedScheduler() final;
 
   bool start() override;
@@ -212,31 +213,7 @@ class SupervisedScheduler final : public Scheduler {
   std::condition_variable _conditionSupervisor;
   std::unique_ptr<SupervisedSchedulerManagerThread> _manager;
 
-  metrics::Gauge<uint64_t>& _metricsQueueLength;
-  metrics::Counter& _metricsJobsDoneTotal;
-  metrics::Counter& _metricsJobsSubmittedTotal;
-  metrics::Counter& _metricsJobsDequeuedTotal;
-  metrics::Gauge<uint64_t>& _metricsNumAwakeThreads;
-  metrics::Gauge<uint64_t>& _metricsNumWorkingThreads;
-  metrics::Gauge<uint64_t>& _metricsNumWorkerThreads;
-  metrics::Gauge<uint64_t>& _metricsNumDetachedThreads;
-  metrics::Gauge<uint64_t>& _metricsStackMemoryWorkerThreads;
-  metrics::Gauge<int64_t>& _schedulerQueueMemory;
-
-  metrics::Counter& _metricsHandlerTasksCreated;
-  metrics::Counter& _metricsThreadsStarted;
-  metrics::Counter& _metricsThreadsStopped;
-  metrics::Counter& _metricsQueueFull;
-  metrics::Counter& _metricsQueueTimeViolations;
-  metrics::Gauge<uint64_t>& _ongoingLowPriorityGauge;
-
-  /// @brief amount of time it took for the last low prio item to be dequeued
-  /// (time between queuing and dequeing) [ms].
-  /// this metric is only updated probabilistically
-  metrics::Gauge<uint64_t>& _metricsLastLowPriorityDequeueTime;
-
-  std::array<std::reference_wrapper<metrics::Gauge<uint64_t>>, NumberOfQueues>
-      _metricsQueueLengths;
+  std::shared_ptr<SchedulerMetrics> _metrics;
 };
 
 }  // namespace arangodb
