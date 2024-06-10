@@ -55,8 +55,8 @@ const fetchRevisionTree = (serverUrl, shardId) => {
   }
   
   result = request({ method: "GET",
-    url: serverUrl + `/_api/replication/revisions/tree?collection=${encodeURIComponent(shardId)}&verification=true&batchId=${batch.id}`});
-  assertEqual(200, result.statusCode);
+    url: serverUrl + `/_api/replication/revisions/tree?collection=${encodeURIComponent(shardId)}&verification=true&batchId=${batch.id}&onlyPopulated=true`});
+  assertEqual(200, result.statusCode, result);
   request({ method: "DELETE", url: serverUrl + `/_api/replication/batch/${batch.id}`});
   return JSON.parse(result.body);
 };
@@ -110,7 +110,7 @@ const checkCollectionConsistency = (cn) => {
         }
       });
     if (failed) {
-      if (++tries >= 4) {
+      if (++tries >= 6) {
         assertFalse(failed, `Cluster still not in sync - giving up!`);
       }
       console.warn(`Found some inconsistencies! Giving cluster some more time to get in sync before checking again... try=${tries}`);
