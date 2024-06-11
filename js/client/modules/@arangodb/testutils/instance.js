@@ -730,14 +730,17 @@ class instance {
   }
 
   waitForExitAfterDebugKill() {
+    if (this.pid === null) {
+      return;
+    }
     // Crashutils debugger kills our instance, but we neet to get
     // testing.js sapwned-PID-monitoring adjusted.
-    print("waiting for exit - " + this.pid);
+    print(this.name + " waiting for exit - " + this.pid);
     try {
       let ret = statusExternal(this.pid, false);
       // OK, something has gone wrong, process still alive. announce and force kill:
       if (ret.status !== "ABORTED") {
-        print(RED+`was expecting the process ${this.pid} to be gone, but ${JSON.stringify(ret)}` + RESET);
+        print(RED + `was expecting the ${this.name} process ${this.pid} to be gone, but ${JSON.stringify(ret)}` + RESET);
         this.processSanitizerReports();
         killExternal(this.pid, abortSignal);
         print(statusExternal(this.pid, true));

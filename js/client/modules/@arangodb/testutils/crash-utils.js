@@ -103,7 +103,7 @@ function filterStack(stack, filters) {
   return filtered;
 }
 
-function readGdbFileFiltered(gdbOutputFile) {
+function readGdbFileFiltered(gdbOutputFile, options) {
   try {
     const filters = JSON.parse(fs.read(
       fs.join(pu.JS_DIR,
@@ -145,9 +145,11 @@ function readGdbFileFiltered(gdbOutputFile) {
           }
           if (line.length === 0) {
             if (!filterStack(stack, filters)) {
-              print("did not filter this stack: ");
-              print(stack);
-              print(moreMessages);
+              if (options.extremeVerbosity === true) {
+                print("did not filter this stack: ");
+                print(stack);
+                print(moreMessages);
+              }
               moreMessages.forEach(line => {
                 GDB_OUTPUT += line.trim() + '\n';
               });
@@ -209,7 +211,7 @@ Crash analysis of: ` + JSON.stringify(instanceInfo.getStructure()) + '\n\n';
     print("Failed to generate GDB output file?");
     return "";
   }
-  readGdbFileFiltered(gdbOutputFile);
+  readGdbFileFiltered(gdbOutputFile, options);
   if (options.extremeVerbosity === true) {
     let thisDump = fs.read(gdbOutputFile);
     print(thisDump);
@@ -237,7 +239,7 @@ function generateCoreDumpGDB (instanceInfo, options, storeArangodPath, pid, gene
     }
   }
   let command = [
-    '--batch',
+    '--batch-silent',
     '-ex', 'set pagination off',
     '-ex', 'set confirm off',
     '-ex', `set logging file ${gdbOutputFile}`,
@@ -378,7 +380,9 @@ function generateCrashDump (binary, instanceInfo, options, checkStr) {
 }
 
 function aggregateDebugger(instanceInfo, options) {
-  print("collecting debugger info for: " + JSON.stringify(instanceInfo.getStructure()));
+  if (options.extremeVerbosity === true) {
+    print("collecting debugger info for: " + JSON.stringify(instanceInfo.getStructure()));
+  }
   if (!instanceInfo.hasOwnProperty('debuggerInfo')) {
     print("No debugger info persisted to " + JSON.stringify(instanceInfo.getStructure()));
     return false;
@@ -409,7 +413,7 @@ function aggregateDebugger(instanceInfo, options) {
 --------------------------------------------------------------------------------
 Crash analysis of: ` + JSON.stringify(instanceInfo.getStructure()) + '\n\n';
 
-  readGdbFileFiltered(instanceInfo.debuggerInfo.file);
+  readGdbFileFiltered(instanceInfo.debuggerInfo.file, options);
   return instanceInfo.debuggerInfo.hint;
 }
 
