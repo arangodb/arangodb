@@ -36,8 +36,7 @@ function containsDoubleByte(str) {
     return regex.test(str);
 }
 
-let NUM_SANITIZER_REPORTS = 0;
-let processedFiles = new Set();
+let foundReportFiles = new Set();
 
 class sanHandler {
   constructor(binaryName, sanOptions, isSan, extremeVerbosity) {
@@ -96,17 +95,17 @@ class sanHandler {
     let ret = false;
     let suffix = `.${this.binaryName}.${pid}`;
     for (const [key, value] of Object.entries(this.sanitizerLogPaths)) {
-      if (processedFiles.has(value.local)) {
+      const { upstream, local } = value;
+      let fn = `${local}${suffix}`;
+      if (foundReportFiles.has(fn)) {
         // we don't want to process the same file twice
         continue;
       }
-      const { upstream, local } = value;
-      let fn = `${local}${suffix}`;
       if (this.extremeVerbosity) {
         print(`checking for ${fn}: ${fs.exists(fn)}`);
       }
       if (fs.exists(fn)) {
-        ++NUM_SANITIZER_REPORTS;
+        foundReportFiles.add(fn);
         let content = fs.read(fn);
         if (upstream) {
           let outFn = `${upstream}${suffix}`;
@@ -126,4 +125,4 @@ class sanHandler {
 }
 
 exports.sanHandler = sanHandler;
-exports.getNumSanitizerReports = () => NUM_SANITIZER_REPORTS;
+exports.getNumSanitizerReports = () => foundReportFiles.size;
