@@ -845,7 +845,12 @@ class instance {
   }
 
   isRunning() {
-    return (this.exitStatus !== null) && (this.exitStatus.status === 'RUNNING');
+    check = () => (this.exitStatus !== null) && (this.exitStatus.status === 'RUNNING');
+    if (check()) {
+      this.exitStatus = this.status(false);
+      return check();
+    }
+    return false;
   }
 
   connect() {
@@ -931,7 +936,7 @@ class instance {
 
   aggregateDebugger () {
     crashUtils.aggregateDebugger(this, this.options);
-    print("unlisting our instance");
+    print(CYAN + Date() + this.name + ', url: ' + this.url + "unlisting our instance" + RESET);
     this.waitForExitAfterDebugKill();
   }
   // //////////////////////////////////////////////////////////////////////////////
@@ -939,6 +944,10 @@ class instance {
   // //////////////////////////////////////////////////////////////////////////////
 
   shutdownArangod (forceTerminate) {
+    if (this.pid == null) {
+      print(CYAN + Date() + this.name + ', url: ' + this.url + ' already dead, doing nothing' + RESET);
+      return;
+    }
     print(CYAN + Date() +' stopping ' + this.name + ', pid ' + this.pid + ', url: ' + this.url + ', force terminate: ' + forceTerminate + ' ' + this.protocol + RESET);
     if (forceTerminate === undefined) {
       forceTerminate = false;

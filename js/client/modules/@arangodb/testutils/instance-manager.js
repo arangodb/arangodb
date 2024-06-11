@@ -335,10 +335,13 @@ class instanceManager {
       return true;
     } catch (e) {
       // disable watchdog
-      internal.SetGlobalExecutionDeadlineTo(0.0);
+      let hasTimedOut = internal.SetGlobalExecutionDeadlineTo(0.0);
+      if (hasTimedOut) {
+        print(RED + Date() + ' Deadline reached! Forcefully shutting down!' + RESET);
+      }
       this.arangods.forEach(arangod => {
         try {
-          arangod.terminateInstance();
+          arangod.shutdownArangod(true);
         } catch(e) {
           print("Error cleaning up: ", e, e.stack);
         }
@@ -1009,9 +1012,6 @@ class instanceManager {
             print(Date() + " Commanded shut down: " + arangod.name);
           }
           return true;
-        }
-        if (arangod.isRunning()) {
-          arangod.exitStatus = arangod.status(false);
         }
         if (arangod.isRunning()) {
           let localTimeout = timeout;
