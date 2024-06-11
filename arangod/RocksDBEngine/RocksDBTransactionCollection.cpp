@@ -375,13 +375,18 @@ futures::Future<Result> RocksDBTransactionCollection::doLock(
     // acquired the lock ourselves
     res.reset(TRI_ERROR_LOCKED);
   } else if (res.is(TRI_ERROR_LOCK_TIMEOUT) && timeout >= 0.1) {
-    std::string message =
+    res.reset(
+        TRI_ERROR_LOCK_TIMEOUT,
         absl::StrCat("timed out after ", timeout, " s waiting for ",
                      AccessMode::typeString(type), "-lock on collection ",
                      _transaction->vocbase().name(), "/", _collection->name(),
-                     " on ", _transaction->actorName());
-    LOG_TOPIC("4512c", WARN, Logger::QUERIES) << message;
-    res.reset(TRI_ERROR_LOCK_TIMEOUT, std::move(message));
+                     " on ", _transaction->actorName()));
+    if (timeout <= 5.0) {
+      // low timeout, does not justify a warning message
+      LOG_TOPIC("2111a", DEBUG, Logger::QUERIES) << res.errorMessage();
+    } else {
+      LOG_TOPIC("4512c", WARN, Logger::QUERIES) << res.errorMessage();
+    }
 
     // increase counter for lock timeouts
     auto& stats = _transaction->statistics();
