@@ -909,6 +909,9 @@ class instance {
   }
 
   killWithCoreDump (message) {
+    if (this.pid == null) {
+      return;
+    }
     let pid = this.pid;
     if (this.options.enableAliveMonitor) {
       internal.removePidFromMonitor(this.pid);
@@ -1188,7 +1191,7 @@ class instance {
   }
 
   processSanitizerReports() {
-    this.serverCrashedLocal = this.serverCrashedLocal || this.sanHandler.fetchSanFileAfterExit(this.pid);
+    this.serverCrashedLocal |= this.sanHandler.fetchSanFileAfterExit(this.pid);
   }
 }
 

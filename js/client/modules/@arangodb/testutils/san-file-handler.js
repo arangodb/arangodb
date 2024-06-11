@@ -100,7 +100,6 @@ class sanHandler {
         // we don't want to process the same file twice
         continue;
       }
-      processedFiles.add(value.local);
       const { upstream, local } = value;
       let fn = `${local}${suffix}`;
       if (this.extremeVerbosity) {
