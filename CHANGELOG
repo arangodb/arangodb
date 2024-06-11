@@ -6,6 +6,9 @@ devel
 3.12.1 (XXXX-XX-XX)
 -------------------
 
+* Fix possible crashes or UB during some document operations on single- or
+  DBServers.
+
 * Upgrade OpenSSL to 3.3.1 and used glibc build runtime to 2.39.0.
 
 * Updated ArangoDB Starter to v0.19.2.
