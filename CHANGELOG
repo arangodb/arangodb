@@ -6,6 +6,14 @@ devel
 3.12.1 (XXXX-XX-XX)
 -------------------
 
+* Fix a potential data corruption in a collection's Merkle tree, in case
+  a write operation in a streaming transaction ran into the transaction's
+  maximum size limit and failed. If the error was ignored and the transaction
+  committed, the leftovers of the failed operation were not removed from
+  the collection's in-memory Merkle tree buffer and thus be committed as
+  well.
+  This could later cause issues with shards not getting properly in sync.
+
 * Upgrade OpenSSL to 3.3.1 and used glibc build runtime to 2.39.0.
 
 * Updated ArangoDB Starter to v0.19.2.

@@ -1981,7 +1981,6 @@ Result RocksDBCollection::modifyDocument(
 
   if (res.ok()) {
     TRI_ASSERT(newRevisionId == RevisionId::fromSlice(newDoc));
-    TRI_ASSERT(newRevisionId != oldRevisionId);
 
     res = savepoint.finish(newRevisionId);
     if (res.ok()) {
