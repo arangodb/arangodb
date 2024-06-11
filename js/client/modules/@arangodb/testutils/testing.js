@@ -77,7 +77,7 @@ let optionsDocumentation = [
   ''
 ];
 
-const isCoverage = versionHas('coverage');
+const isCoverage = versionHas('coverage')
 const isInstrumented = versionHas('asan') || versionHas('tsan') || versionHas('coverage');
 const optionsDefaults = {
   'cleanup': true,
