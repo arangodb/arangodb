@@ -9,6 +9,13 @@ function createDummyCollection(name) {
   };
 }
 
+function createDummyView(name) {
+  return {
+    isArangoView: true,
+    name: () => name
+  };
+}
+
 describe("aql", () => {
   it("supports simple parameters", () => {
     const values = [
@@ -60,6 +67,13 @@ describe("aql", () => {
     expect(Object.keys(query.bindVars)).to.eql(["@value0"]);
     expect(query.bindVars["@value0"]).to.equal("tomato");
   });
+  it("supports view parameters", () => {
+    const view = createDummyView("soup");
+    const query = aql`${view}`;
+    expect(query.query).to.equal("@@value0");
+    expect(Object.keys(query.bindVars)).to.eql(["@value0"]);
+    expect(query.bindVars["@value0"]).to.equal("soup");
+  });
   it("supports AQL literals", () => {
     const query = aql`FOR x IN whatever ${aql.literal(
       "FILTER x.blah"
@@ -81,14 +95,16 @@ describe("aql", () => {
   });
   it("supports nesting with bindVars", () => {
     const collection = createDummyCollection("paprika");
-    const query = aql`A ${collection} B ${aql`X ${collection} Y ${aql`J ${collection} K ${9} L`} Z`} C ${4}`;
+    const view = createDummyView("capsicum");
+    const query = aql`A ${collection} B ${aql`X ${collection} Y ${view} Z ${aql`J ${collection} K ${9} L`} M`} C ${4}`;
     expect(query.query).to.equal(
-      "A @@value0 B X @@value0 Y J @@value0 K @value1 L Z C @value2"
+      "A @@value0 B X @@value0 Y @@value1 Z J @@value0 K @value2 L M C @value3"
     );
     expect(query.bindVars).to.eql({
       "@value0": "paprika",
-      value1: 9,
-      value2: 4
+      "@value1": "capsicum",
+      value2: 9,
+      value3: 4
     });
   });
   it("supports arbitrary nesting", () => {

@@ -13,6 +13,15 @@ devel
   in-memory Merkle tree buffer and thus be committed as well.
   This could later cause issues with shards not getting properly in sync.
 
+* Fix the handling of View objects in AQL template strings of the JavaScript API
+  so that the behavior matches collection objects:
+
+      let view = db._view("myView");
+      aql`FOR doc IN ${view} RETURN doc`
+
+* FE-451: update graph UI defaults for edge direction, edge/collection labels &
+  colors.
+
 * Fix possible crashes or UB during some document operations on single- or
   DBServers.
 
