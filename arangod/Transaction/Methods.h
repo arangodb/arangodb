@@ -488,7 +488,7 @@ class Methods {
 
   futures::Future<OperationResult> allCoordinator(
       std::string const& collectionName, uint64_t skip, uint64_t limit,
-      OperationOptions& options);
+      OperationOptions const& options);
 
   futures::Future<OperationResult> allLocal(std::string const& collectionName,
                                             uint64_t skip, uint64_t limit,

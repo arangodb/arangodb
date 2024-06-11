@@ -2697,7 +2697,7 @@ futures::Future<OperationResult> transaction::Methods::all(
 /// @brief fetches all documents in a collection, coordinator
 futures::Future<OperationResult> transaction::Methods::allCoordinator(
     std::string const& collectionName, uint64_t skip, uint64_t limit,
-    OperationOptions& options) {
+    OperationOptions const& options) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
