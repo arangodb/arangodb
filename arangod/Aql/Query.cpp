@@ -1843,8 +1843,8 @@ ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
       _shutdownState.store(ShutdownState::None, std::memory_order_relaxed);
     });
     futures::Future<Result> commitResult = _trx->commitAsync();
-    if (commitResult.get().fail()) {
-      THROW_ARANGO_EXCEPTION(std::move(commitResult).get());
+    if (commitResult.waitAndGet().fail()) {
+      THROW_ARANGO_EXCEPTION(std::move(commitResult).waitAndGet());
     }
     TRI_IF_FAILURE("Query::finalize_before_done") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);

@@ -187,7 +187,7 @@ ExecutionState SimpleModifier<ModifierCompletion, Enable>::transact(
   auto result = _completion.transact(trx, _accumulator.closeAndGetContents());
 
   if (result.isReady()) {
-    _results = std::move(result.get());
+    _results = std::move(result.waitAndGet());
     return ExecutionState::DONE;
   }
 

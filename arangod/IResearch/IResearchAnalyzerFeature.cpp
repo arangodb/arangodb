@@ -581,7 +581,7 @@ Result visitAnalyzers(TRI_vocbase_t& vocbase,
           pool, "server:" + coord, fuerte::RestVerb::Post,
           RestVocbaseBaseHandler::CURSOR_PATH, buffer, reqOpts);
 
-      auto& response = f.get();
+      auto& response = f.waitAndGet();
 
       if (response.error == fuerte::Error::RequestTimeout) {
         // timeout, try another coordinator
@@ -1508,8 +1508,8 @@ Result IResearchAnalyzerFeature::removeAllAnalyzers(
 
     OperationOptions options;
     trx.truncateAsync(arangodb::StaticStrings::AnalyzersCollection, options)
-        .get();
-    res = trx.commitAsync().get();
+        .waitAndGet();
+    res = trx.commitAsync().waitAndGet();
     if (res.ok()) {
       invalidate(vocbase, operationOrigin);
     }
@@ -1540,7 +1540,7 @@ Result IResearchAnalyzerFeature::removeAllAnalyzers(
       if (queryResult.fail()) {
         return queryResult.result;
       }
-      res = trx.commitAsync().get();
+      res = trx.commitAsync().waitAndGet();
       if (!res.ok()) {
         return res;
       }
@@ -1564,8 +1564,8 @@ Result IResearchAnalyzerFeature::removeAllAnalyzers(
         truncateTrx
             .truncateAsync(arangodb::StaticStrings::AnalyzersCollection,
                            options)
-            .get();
-        res = truncateTrx.commitAsync().get();
+            .waitAndGet();
+        res = truncateTrx.commitAsync().waitAndGet();
       }
       if (res.fail()) {
         // failed cleanup is not critical problem. just log it

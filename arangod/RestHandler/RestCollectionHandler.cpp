@@ -618,7 +618,7 @@ futures::Future<RestStatus> RestCollectionHandler::handleCommandPut() {
 
     OperationOptions options(_context);
     res = methods::Collections::updateProperties(*coll, props.slice(), options)
-              .get();
+              .waitAndGet();
     if (res.fail()) {
       generateError(res);
       co_return RestStatus::DONE;
@@ -743,7 +743,7 @@ void RestCollectionHandler::collectionRepresentation(
     FiguresType showFigures, CountType showCount) {
   if (showProperties || showCount != CountType::None) {
     // Here we need a transaction
-    initializeTransaction(*coll).get();
+    initializeTransaction(*coll).waitAndGet();
     methods::Collections::Context ctxt(coll, _activeTrx.get());
 
     collectionRepresentation(ctxt, showProperties, showFigures, showCount);
@@ -759,7 +759,7 @@ void RestCollectionHandler::collectionRepresentation(
     methods::Collections::Context& ctxt, bool showProperties,
     FiguresType showFigures, CountType showCount) {
   collectionRepresentationAsync(ctxt, showProperties, showFigures, showCount)
-      .get();
+      .waitAndGet();
 }
 
 futures::Future<futures::Unit>

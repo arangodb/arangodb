@@ -123,7 +123,7 @@ auto waitForOperationRoundtrip(ClusterInfo& ci,
   if (agencyRaftIndex.fail()) {
     return agencyRaftIndex.result();
   }
-  return ci.waitForPlan(agencyRaftIndex.get()).get();
+  return ci.waitForPlan(agencyRaftIndex.get()).waitAndGet();
 }
 
 auto waitForCurrentToCatchUp(
@@ -247,61 +247,64 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
     if (res.successful()) {
       // Collections ordered
       // Prepare do undo if something fails now
-      auto undoCreationGuard = scopeGuard([&writer, &databaseName, &ci, &server,
-                                           &ac]() noexcept {
-        try {
-          auto undoTrx = writer.prepareUndoTransaction(databaseName);
+      auto undoCreationGuard =
+          scopeGuard([&writer, &databaseName, &ci, &server, &ac]() noexcept {
+            try {
+              auto undoTrx = writer.prepareUndoTransaction(databaseName);
 
-          // Retry loop to remove the collection
-          using namespace std::chrono;
-          using namespace std::chrono_literals;
-          auto const begin = steady_clock::now();
-          // After a shutdown, the supervision will clean the collections
-          // either due to the coordinator going into FAIL, or due to it
-          // changing its rebootId. Otherwise we must under no
-          // circumstance give up here, because noone else will clean this
-          // up.
-          while (!server.isStopping()) {
-            auto res = ac.sendTransactionWithFailover(undoTrx);
-            // If the collections were removed (res.ok()), we may abort.
-            // If we run into precondition failed, the collections were
-            // successfully created, so we're fine too.
-            if (res.successful()) {
-              if (VPackSlice resultsSlice = res.slice().get("results");
-                  resultsSlice.length() > 0) {
-                // Wait for updated plan to be loaded
-                [[maybe_unused]] Result r =
-                    ci.waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
+              // Retry loop to remove the collection
+              using namespace std::chrono;
+              using namespace std::chrono_literals;
+              auto const begin = steady_clock::now();
+              // After a shutdown, the supervision will clean the collections
+              // either due to the coordinator going into FAIL, or due to it
+              // changing its rebootId. Otherwise we must under no
+              // circumstance give up here, because noone else will clean this
+              // up.
+              while (!server.isStopping()) {
+                auto res = ac.sendTransactionWithFailover(undoTrx);
+                // If the collections were removed (res.ok()), we may abort.
+                // If we run into precondition failed, the collections were
+                // successfully created, so we're fine too.
+                if (res.successful()) {
+                  if (VPackSlice resultsSlice = res.slice().get("results");
+                      resultsSlice.length() > 0) {
+                    // Wait for updated plan to be loaded
+                    [[maybe_unused]] Result r =
+                        ci.waitForPlan(resultsSlice[0].getNumber<uint64_t>())
+                            .waitAndGet();
+                  }
+                  return;
+                } else if (res.httpCode() ==
+                           rest::ResponseCode::PRECONDITION_FAILED) {
+                  return;
+                }
+
+                // exponential backoff, just to be safe,
+                auto const durationSinceStart = steady_clock::now() - begin;
+                auto constexpr maxWaitTime = 2min;
+                auto const waitTime =
+                    std::min<std::common_type_t<decltype(durationSinceStart),
+                                                decltype(maxWaitTime)>>(
+                        durationSinceStart, maxWaitTime);
+                std::this_thread::sleep_for(waitTime);
               }
-              return;
-            } else if (res.httpCode() ==
-                       rest::ResponseCode::PRECONDITION_FAILED) {
-              return;
+
+            } catch (std::exception const& ex) {
+              LOG_TOPIC("57486", ERR, Logger::CLUSTER)
+                  << "Failed to delete collection during rollback: "
+                  << ex.what();
+            } catch (...) {
+              // Just we do not crash, no one knowingly throws non exceptions.
             }
-
-            // exponential backoff, just to be safe,
-            auto const durationSinceStart = steady_clock::now() - begin;
-            auto constexpr maxWaitTime = 2min;
-            auto const waitTime =
-                std::min<std::common_type_t<decltype(durationSinceStart),
-                                            decltype(maxWaitTime)>>(
-                    durationSinceStart, maxWaitTime);
-            std::this_thread::sleep_for(waitTime);
-          }
-
-        } catch (std::exception const& ex) {
-          LOG_TOPIC("57486", ERR, Logger::CLUSTER)
-              << "Failed to delete collection during rollback: " << ex.what();
-        } catch (...) {
-          // Just we do not crash, no one knowingly throws non exceptions.
-        }
-      });
+          });
 
       // Let us wait until we have locally seen the plan
       // TODO: Why? Can we just skip this?
       if (VPackSlice resultsSlice = res.slice().get("results");
           resultsSlice.length() > 0) {
-        Result r = ci.waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
+        Result r =
+            ci.waitForPlan(resultsSlice[0].getNumber<uint64_t>()).waitAndGet();
         if (r.fail()) {
           return r;
         }
@@ -362,7 +365,8 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
               // TODO: Why?
               if (resultsSlice = removeBuildingResult.slice().get("results");
                   resultsSlice.length() > 0) {
-                r = ci.waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
+                r = ci.waitForPlan(resultsSlice[0].getNumber<uint64_t>())
+                        .waitAndGet();
                 if (r.fail()) {
                   return r;
                 }
@@ -483,7 +487,7 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
       aac.withSkipScheduler(true)
           .sendWriteTransaction(120s, std::move(buildingTransaction.get()))
           .thenValue(::reactToPreconditionsCreate)
-          .get();
+          .waitAndGet();
 
   if (auto r = waitForOperationRoundtrip(ci, std::move(res)); r.fail()) {
     // TODO: TRIGGER_CLEANUP
@@ -501,10 +505,10 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
   // wait for cluster info to catch up
   auto futCurrent = ci.waitForCurrent(index);
   auto futPlan = ci.waitForPlan(index);
-  if (auto r = futCurrent.get(); r.fail()) {
+  if (auto r = futCurrent.waitAndGet(); r.fail()) {
     return r;
   }
-  if (auto r = futPlan.get(); r.fail()) {
+  if (auto r = futPlan.waitAndGet(); r.fail()) {
     return r;
   }
   return {};
@@ -904,7 +908,7 @@ ClusterCollectionMethods::createCollectionsOnCoordinator(
     using namespace std::chrono_literals;
     auto res = aac.sendWriteTransaction(120s, std::move(data))
                    .thenValue(::reactToPreconditions)
-                   .get();
+                   .waitAndGet();
 
     if (res.fail()) {
       return res.result();
@@ -934,7 +938,7 @@ ClusterCollectionMethods::createCollectionsOnCoordinator(
         });
     // WE do not really need the change to be appied.
     // We just have to wait for DBServers to apply it.
-    std::ignore = waitForSuccess.get();
+    std::ignore = waitForSuccess.waitAndGet();
     // Everything works as expected.
     return TRI_ERROR_NO_ERROR;
   } else {
@@ -996,7 +1000,7 @@ ClusterCollectionMethods::createCollectionsOnCoordinator(
     auto res = aac.withSkipScheduler(true)
                    .sendTransaction(120s, trans)
                    .thenValue(::reactToPreconditions)
-                   .get();
+                   .waitAndGet();
     return waitForOperationRoundtrip(ci, std::move(res));
   }
 }

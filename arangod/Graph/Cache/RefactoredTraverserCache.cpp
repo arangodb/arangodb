@@ -261,7 +261,7 @@ bool RefactoredTraverserCache::appendVertex(
                   shardId,
                   id.substr(collectionNameResult.get().second + 1).stringView(),
                   cb)
-              .get();
+              .waitAndGet();
       if (res.ok()) {
         return true;
       }

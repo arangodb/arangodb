@@ -72,9 +72,13 @@ def parse_arguments():
     )
     parser.add_argument("-o", "--output", type=str, help="filename of the output")
     parser.add_argument("-s", "--sanitizer", type=str, help="sanitizer to use")
-    parser.add_argument("--ui", type=str, help="whether to run UI test [off|on|only|community]")
+    parser.add_argument(
+        "--ui", type=str, help="whether to run UI test [off|on|only|community]"
+    )
     parser.add_argument("--ui-testsuites", type=str, help="which test of UI job to run")
-    parser.add_argument("--ui-deployments", type=str, help="which deployments [CL, SG, ...] to run")
+    parser.add_argument(
+        "--ui-deployments", type=str, help="which deployments [CL, SG, ...] to run"
+    )
     parser.add_argument(
         "--validate-only",
         help="validates the test definition file",
@@ -384,17 +388,19 @@ def add_rta_ui_test_jobs_to_workflow(args, workflow, build_config, build_job):
         "ServiceTestSuite",
     ]
     if args.ui_testsuites != "":
-        ui_testsuites = args.ui_testsuites.split(',')
+        ui_testsuites = args.ui_testsuites.split(",")
     deployments = [
-        'SG',
+        "SG",
         "CL",
     ]
     if args.ui_deployments:
-        deployments = args.ui_deployments.split(',')
+        deployments = args.ui_deployments.split(",")
 
     for deployment in deployments:
         for test_suite in ui_testsuites:
-            jobs.append(create_rta_test_job(build_config, build_job, deployment, test_suite))
+            jobs.append(
+                create_rta_test_job(build_config, build_job, deployment, test_suite)
+            )
 
 
 def add_test_jobs_to_workflow(args, workflow, tests, build_config, build_job, repl2):
@@ -480,7 +486,7 @@ def add_build_job(workflow, build_config, overrides=None):
         "name": name,
         "preset": preset,
         "enterprise": build_config.enterprise,
-        "arch": build_config.arch
+        "arch": build_config.arch,
     }
     if build_config.arch == "aarch64":
         params["s3-prefix"] = "aarch64"
@@ -550,8 +556,7 @@ def add_x64_enterprise_workflow(workflows, tests, args):
 
 
 def add_aarch64_community_workflow(workflows, tests, args):
-    # for normal PR runs we run only aarch64 enterprise
-    if args.nightly and (args.ui == "" or args.ui == "off"):
+    if args.ui == "" or args.ui == "off":
         add_workflow(
             workflows,
             tests,

@@ -473,8 +473,8 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
     return;
   }
 
-  if (res.hasValue() && res.get().fail()) {
-    auto& r = res.get();
+  if (res.hasValue() && res.waitAndGet().fail()) {
+    auto& r = res.waitAndGet();
     sendErrorResponse(GeneralResponse::responseCode(r.errorNumber()), respType,
                       messageId, r.errorNumber(), r.errorMessage());
     return;

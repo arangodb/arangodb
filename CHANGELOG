@@ -1,7 +1,38 @@
 devel
 -----
 
-* Updated ArangoDB Starter to v0.19.2-preview-3.
+
+
+3.12.1 (XXXX-XX-XX)
+-------------------
+
+* Upgrade OpenSSL to 3.3.1 and used glibc build runtime to 2.39.0.
+
+* Updated ArangoDB Starter to v0.19.2.
+
+* Avoid dropping of followers in case a leader resigns and then comes back.
+
+* Fixed MDS-1229 (bad_function_call with batch materialization).
+
+* Make the `beginAsync()` operation for transactions fully async also in the
+  coordinator case, where it could previously block.
+
+* Optimize performance of in-memory cache lookups under contention.
+
+* Reduce the possibility of cache stampedes during collection count cache
+  refilling. Additionally, do not block or delay a foreground operation with
+  refilling the collection count cache value from the DB-Servers. Instead the
+  refilling is executed eventually via the scheduler in the background.
+
+* Move resolution of replication callbacks on leader DB-Servers to the
+  scheduler's HIGH prio lane. The HIGH lane is justified here because the
+  callback resolution must make progress, as it can unblock another thread
+  waiting in an AQL write query for the replication to return.
+
+* Skip the scheduler for AQL query shutdown on coordinators.
+  During query shutdown, we definitely want to skip the scheduler, as in some
+  cases the thread that orders the query shutdown can be blocked and needs to
+  wait synchronously until the shutdown requests have been responded to.
 
 * Fixed MDS-1230: added missing variable replacement for inline filters of
   EnumerateListNodes.
@@ -11,8 +42,8 @@ devel
 
 * Move network retry requests to a dedicated thread.
 
-* Reduce frequency in which progress of hot backup upload / download progress
-  is reported to the agency. This limits traffic from DB servers to the agency
+* Reduce frequency in which progress of hot backup upload / download progress is
+  reported to the agency. This limits traffic from DB servers to the agency
   during hot backup uploads and downloads.
 
 * Pass all relevant compiler optimization flags down to relevant CMake sub
@@ -77,7 +108,7 @@ devel
   - persistent indexes with caching enabled
   - collections with document caches enabled
 
-  The startup option defaults to 4MB, meaning that no individual values larger 
+  The startup option defaults to 4MB, meaning that no individual values larger
   than 4MB will be stored in the in-memory cache in these areas.
 
   Limiting the size of cache values helps to avoid storing very large values in
@@ -89,33 +120,30 @@ devel
 
 * FE-432: allow row clicks on all UI tables.
 
-* FE-441: Fix collection unstable default sort in multi-shard collections UI
+* FE-441: Fix collection unstable default sort in multi-shard collections UI.
 
 * Changed default value of `--log.max-queued-entries` from 10000 to 16384.
 
-* Added metric `arangodb_logger_messages_dropped_total` to count the number
-  of log messages that were discarded by the logger if its log queue was full.
+* Added metric `arangodb_logger_messages_dropped_total` to count the number of
+  log messages that were discarded by the logger if its log queue was full.
 
 * Added option `skipFastLockRound` for transactions.
-  The option can be set in a streaming write transaction's options (i.e. 
+  The option can be set in a streaming write transaction's options (i.e.
   `{"skipFastLockRound":true}`) to disable the fast lock round inside the
-  transaction. The option defaults to `false, so the fast lock round is tried 
+  transaction. The option defaults to `false, so the fast lock round is tried
   where possible.
-  Disabling the fast lock round is normally not necessary, but it can make
-  sense when there are many concurrent streaming transactions queued that all
-  try to access the same collection and lock it exclusively. In this case,
-  the fast lock round actually makes things worse, because there will always
-  be some exclusive locks in the way. In this use case it will be better to
-  skip the fast lock round. Disabling the fast mode makes each actual locking 
-  operation take longer than when in fast mode, but it guarantees a 
-  deterministic locking order and thus avoids deadlocking and retrying that
-  is possible with the fast mode. Overall disabling the fast lock mode can be
-  faster in this case.
+  Disabling the fast lock round is normally not necessary, but it can make sense
+  when there are many concurrent streaming transactions queued that all try to
+  access the same collection and lock it exclusively. In this case, the fast
+  lock round actually makes things worse, because there will always be some
+  exclusive locks in the way. In this use case it will be better to skip the
+  fast lock round. Disabling the fast mode makes each actual locking operation
+  take longer than when in fast mode, but it guarantees a deterministic locking
+  order and thus avoids deadlocking and retrying that is possible with the fast
+  mode. Overall disabling the fast lock mode can be faster in this case.
   Setting this option is irrelevant for read-only transactions and will degrade
-  performance when there are no concurrent transactions that use exclusive
-  locks on the same collection.
-
-* Updated ArangoDB Starter to v0.19.1.
+  performance when there are no concurrent transactions that use exclusive locks
+  on the same collection.
 
 * Fixed SEARCH-485 (ES-2010): Search files disappeared during creation of
   HotBackup.
@@ -126,47 +154,47 @@ devel
   from 3.11, if it encounters persistent index values in an unexpected sort
   order. RocksDB's error message in this case was "Corruption: Compaction sees 
   out-of-order keys".
-  The out-of-order keys were caused by a changed sort order for some Unicode 
+  The out-of-order keys were caused by a changed sort order for some Unicode
   characters. The newer ICU 73 version that ArangoDB 3.12 bundles includes the
   most recent changes to the Unicode standard that have been accepted until
   recently.
   This leads to problems, because old versions of ArangoDB were using ICU
   version 64, which was based on an older version of the Unicode standard, and
-  ArangoDB versions from 3.12 onwards were using ICU 73, which implements a
-  very recent version of the Unicode standard.
-  For example, in the Unicode standard implemented by ICU 64, the ASCII 
-  apostrophe character \u0027 compares lower than the Unicode apostrophe 
+  ArangoDB versions from 3.12 onwards were using ICU 73, which implements a very
+  recent version of the Unicode standard.
+  For example, in the Unicode standard implemented by ICU 64, the ASCII
+  apostrophe character \u0027 compares lower than the Unicode apostrophe
   character \u2019. In ICU 73 both characters compare equal.
   The sort order for existing on-disk indexes however must not change, because
   RocksDB relies on the index files being sorted according to a non-changing
   sort order.
   ArangoDB from 3.12.0.2 onwards will thus bundle ICU versions 64 and 73, so
-  that indexes in RocksDB and Arangosearch views will continue to use ICU 
+  that indexes in RocksDB and Arangosearch views will continue to use ICU
   version 64 as they did in previous versions. The V8 engine relies on newer
   versions of ICU and thus will use ICU version 73.
 
-* Make AQL query optimizer create less query execution plan permutations when
-  a query contains multiple occurrences of COLLECT statements under certain
+* Make AQL query optimizer create less query execution plan permutations when a
+  query contains multiple occurrences of COLLECT statements under certain
   conditions:
   - COLLECT statements that are contained in a single loop that is driven by a
     traversal or an enumeration over an array now prefer the hashed collect
     variant.
   - if the hashed collect variant is explicitly requested via the `OPTIONS`
     clause of the COLLECT statement (i.e. COLLECT ... OPTIONS {method: "hash"})
-    then the hashed variant is now always used, even if the maximum number of 
-    query execution plans is already reached. Previously only the sorted
-    variant would be used despite the explicit `OPTIONS` hint.
+    then the hashed variant is now always used, even if the maximum number of
+    query execution plans is already reached. Previously only the sorted variant
+    would be used despite the explicit `OPTIONS` hint.
 
 * Fix an issue that can cause AQL related RestHandlers to wind up in a WAITING
   state and never get woken up. This implies that the associated query snippet
   and transaction cannot be released. If the query contains modification
-  operations, this also implies that the associated collection write lock is
-  not released and can therefore prevent other threads from acquiring the
-  exclusive lock (which is required by e.g., the replication).
+  operations, this also implies that the associated collection write lock is not
+  released and can therefore prevent other threads from acquiring the exclusive
+  lock (which is required by e.g., the replication).
 
 * Fix an issue that can cause some background load in parallel traversals while
   waiting for data from upstream.
-  For full details see https://github.com/arangodb/arangodb/pull/20768
+  For full details see https://github.com/arangodb/arangodb/pull/20768.
 
 * BTS-1848: Issue with Collection Names Containing Non-ASCII Characters in Web
   UI.
@@ -186,20 +214,20 @@ devel
 
   The following request priorities have changed:
   - cluster-internal requests for continuing already started AQL queries have
-    changed their priority from low to medium. This excludes requests that
-    setup AQL queries on DB servers, which still run with low priority.
-  - requests that include the transaction id header are now elevated to run
-    with medium priority if they originally ran with low priority. This
-    excludes requests that begin new transactions or AQL queries.
-  - requests to commit or abort an already running streaming transaction will
-    be elevated from low to medium priority.
+    changed their priority from low to medium. This excludes requests that setup
+    AQL queries on DB servers, which still run with low priority.
+  - requests that include the transaction id header are now elevated to run with
+    medium priority if they originally ran with low priority. This excludes
+    requests that begin new transactions or AQL queries.
+  - requests to commit or abort an already running streaming transaction will be
+    elevated from low to medium priority.
   - requests to HTTP GET `/_api/collection/<collection>/shards` and GET
     `/_api/collection/<collection>/reponsibleShard` are now running with high
-    priority instead of low. Such requests are only used for inspection and
-    have no dependencies.
-  - requests to push further an existing query cursor via the `/_api/cursor`
-    are now running with medium priority instead of low priority. Requests
-    to start new queries still run with low priority.
+    priority instead of low. Such requests are only used for inspection and have
+    no dependencies.
+  - requests to push further an existing query cursor via the `/_api/cursor` are
+    now running with medium priority instead of low priority. Requests to start
+    new queries still run with low priority.
   - follower requests that acquire the lock on the leader while the follower
     tries to get in sync are now running with low instead of medium priority.
 
@@ -207,33 +235,33 @@ devel
   This option is now obsolete because coroutines are used instead of blocking
   function calls.
 
-* Log an info message if a request was queued in the scheduler queue for 30 s
-  or longer.
+* Log an info message if a request was queued in the scheduler queue for 30s or
+  longer.
 
 * Add upgrade task to drop `_pregel_queries` system collections.
 
 * Fixed an upgrade issue on Agents. When agents are started with
   `--database.auto-upgrade true` and `--cluster.force-one-shard true`. The
-  upgrade procedure got into an incorrect state. Please note `--cluster.force-one-shard`
-  is not required on the Agent instances.
+  upgrade procedure got into an incorrect state. Please note
+  `--cluster.force-one-shard` is not required on the Agent instances.
 
 * Fix potential deadlocks in "fast lock round" when starting transactions in
   cluster. The "fast lock round" is used to send out transaction begin requests
   to multiple leaders concurrently, without caring about the order in which
   requests are send out. This can potentially lead to deadlock with other
   out-of-order requests. Thus the intention of the "fast lock round" is to use
-  a very low timeout for these requests, so that deadlocks would be detected
-  and rolled back quickly. However, there was a code path that triggered the
-  "fast lock round" with long request timeouts, which could lead to long
-  wait times until deadlocks were detected and rolled back.
+  a very low timeout for these requests, so that deadlocks would be detected and
+  rolled back quickly. However, there was a code path that triggered the "fast
+  lock round" with long request timeouts, which could lead to long wait times
+  until deadlocks were detected and rolled back.
 
 * EE-Only bug-fix MDS-1190: When using arangorestore to restore a SmartGraph,
   the restore process may generate new internal collection ids.
   These generated ids were not always updated in the restored SmartGraph schema.
-  If the ids diverge, the restored SmartGraph still works as expected, all data is there
-  and can be queried and modified. Only the schema of the restored SmartGraph
-  could not be changed anymore, e.g. no collections could be added to or removed
-  from the graph.
+  If the ids diverge, the restored SmartGraph still works as expected, all data
+  is there and can be queried and modified. Only the schema of the restored
+  SmartGraph could not be changed anymore, e.g. no collections could be added to
+  or removed from the graph.
   The SmartGraph schema handling now does not consider collection ids anymore,
   so that schemas can again be modified, even those of existing SmartGraphs that
   were originally affected by the issue.
@@ -247,29 +275,29 @@ devel
   are now unnecessary. This slightly simplifies the shard synchronization
   protocol.
 
-* Repair shard rebalancer if some server has no leaders of a collection
-  but followers. Previously, this server was then not always considered
-  for leader movements.
+* Repair shard rebalancer if some server has no leaders of a collection but
+  followers. Previously, this server was then not always considered for leader
+  movements.
 
 * Change the default log format. The option log.thread is now by default true.
   The option log.time-format is now by default `utc-datestring-micros`.
 
 * Guarantee conditional-only evaluation of the operands of the AQL ternary
-  operator and the logical AND and OR operators, if any of the operands
-  is a subquery.
+  operator and the logical AND and OR operators, if any of the operands is a
+  subquery.
 
   Given an AQL ternary condition such as
 
       condition ? truePart : falsePart
 
-  the `truePart` expression is now executed only if `condition` is truthy, 
-  and the `falsePart` is evaluated only if `condition` is falsy.
-  In previous versions of ArangoDB the `truePart` and `falsePart` operands 
-  of the ternary operator were evaluated eagerly and out-of-line if the 
-  operands were subqueries.
+  the `truePart` expression is now executed only if `condition` is truthy, and
+  the `falsePart` is evaluated only if `condition` is falsy.
+  In previous versions of ArangoDB the `truePart` and `falsePart` operands of
+  the ternary operator were evaluated eagerly and out-of-line if the operands
+  were subqueries.
 
-  The ternary operator's condition is now pulled out and made available under
-  a separate temporary variable. For example, the query
+  The ternary operator's condition is now pulled out and made available under a
+  separate temporary variable. For example, the query
 
       RETURN condition ? truePart : falsePart
 
@@ -278,8 +306,8 @@ devel
       LET tmp1 = condition
       RETURN tmp1 ? truePart : falsePart
 
-  In case the operands are subqueries and must be executed conditionally,
-  the query is evaluated as
+  In case the operands are subqueries and must be executed conditionally, the
+  query is evaluated as
 
       LET tmp1 = condition
       LET tmp2 = (
@@ -310,11 +338,11 @@ devel
   
   - `--query.max-total-async-prefetch-slots`: the maximum total number of slots
     available for asynchronous prefetching, across all AQL queries.
-  - `--query.max-query-async-prefetch-slots`: the maximum per-query number of 
+  - `--query.max-query-async-prefetch-slots`: the maximum per-query number of
     slots available for asynchronous prefetching inside any AQL query.
 
   That means the total number of concurrent prefetch operations across all AQL
-  queries can be limited using the first option, and the maximum number of 
+  queries can be limited using the first option, and the maximum number of
   prefetch operations in every single AQL query can be capped with the second
   option. These options prevent that running a lot of AQL queries with async
   prefetching fully congests the scheduler queue, and also they prevent large

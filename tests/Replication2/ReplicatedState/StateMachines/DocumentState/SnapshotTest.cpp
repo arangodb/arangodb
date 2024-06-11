@@ -110,7 +110,7 @@ TEST_F(DocumentStateSnapshotTest,
   // Default initialize a follower
   auto follower = createFollower();
   auto res = follower->acquireSnapshot("participantId");
-  EXPECT_TRUE(res.isReady() && res.get().ok());
+  EXPECT_TRUE(res.isReady() && res.waitAndGet().ok());
 
   // Acquire a new snapshot with a different set of shards
   const ShardID shardId1{123};
@@ -150,7 +150,7 @@ TEST_F(DocumentStateSnapshotTest,
       .Times(1);
 
   std::ignore = follower->acquireSnapshot("participantId");
-  EXPECT_TRUE(res.isReady() && res.get().ok());
+  EXPECT_TRUE(res.isReady() && res.waitAndGet().ok());
 
   Mock::VerifyAndClearExpectations(shardHandlerMock.get());
   Mock::VerifyAndClearExpectations(leaderInterfaceMock.get());

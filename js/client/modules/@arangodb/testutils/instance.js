@@ -141,7 +141,22 @@ class instance {
     this.instanceRole = instanceRole;
     this.rootDir = rootDir;
     this.protocol = protocol;
-    this.args = _.clone(addArgs);
+
+    this.args = {};
+    for (const [key, value] of Object.entries(addArgs)) {
+      if (key.search('extraArgs') >= 0) {
+        let splitkey = key.split('.');
+        if (splitkey.length !== 2) {
+          if (splitkey[1] === this.instanceRole) {
+            this.args[splitkey.slice(2).join('.')] = value;
+          }
+        } else {
+          this.args[key] = value;
+        }
+      } else {
+        this.args[key] = value;
+      }
+    }
     this.authHeaders = authHeaders;
     this.restKeyFile = restKeyFile;
     this.agencyConfig = agencyConfig;
@@ -592,6 +607,7 @@ class instance {
     if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret')) {
       this.JWT = moreArgs['server.jwt-secret'];
     }
+
     let cmd = pu.ARANGOD_BIN;
     let args = _.defaults(moreArgs, this.args);
     let argv = [];
@@ -893,7 +909,7 @@ class instance {
   // //////////////////////////////////////////////////////////////////////////////
 
   shutdownArangod (forceTerminate) {
-    print(CYAN + Date() +' stopping ' + this.name + ', url: ' + this.url + ', force terminate: ' + forceTerminate + ' ' + this.protocol + RESET);
+    print(CYAN + Date() +' stopping ' + this.name + ', pid ' + this.pid + ', url: ' + this.url + ', force terminate: ' + forceTerminate + ' ' + this.protocol + RESET);
     if (forceTerminate === undefined) {
       forceTerminate = false;
     }

@@ -1877,7 +1877,8 @@ Result RestReplicationHandler::processRestoreIndexes(
       std::shared_ptr<arangodb::Index> idx;
       try {
         bool created = false;
-        idx = physical->createIndex(idxDef, /*restore*/ true, created).get();
+        idx = physical->createIndex(idxDef, /*restore*/ true, created)
+                  .waitAndGet();
       } catch (basics::Exception const& e) {
         if (e.code() == TRI_ERROR_NOT_IMPLEMENTED) {
           continue;
@@ -2479,7 +2480,8 @@ RestReplicationHandler::handleCommandAddFollower() {
     transaction::Manager* mgr = transaction::ManagerFeature::manager();
     TRI_ASSERT(mgr != nullptr);
     auto trxCtxtLease =
-        mgr->leaseManagedTrx(readLockId, AccessMode::Type::READ, true).get();
+        mgr->leaseManagedTrx(readLockId, AccessMode::Type::READ, true)
+            .waitAndGet();
     if (trxCtxtLease) {
       transaction::Methods trx{trxCtxtLease};
       if (!trx.isLocked(col.get(), AccessMode::Type::EXCLUSIVE)) {
@@ -2627,7 +2629,7 @@ void RestReplicationHandler::handleCommandSetTheLeader() {
   TRI_ASSERT(ServerState::instance()->isDBServer());
 
   bool success = false;
-  VPackSlice const body = this->parseVPackBody(success);
+  VPackSlice body = this->parseVPackBody(success);
   if (!success) {
     // error already created
     return;
@@ -2638,10 +2640,11 @@ void RestReplicationHandler::handleCommandSetTheLeader() {
                   "and 'shard'");
     return;
   }
-  VPackSlice const leaderIdSlice = body.get("leaderId");
-  VPackSlice const oldLeaderIdSlice = body.get("oldLeaderId");
-  VPackSlice const shard = body.get("shard");
-  VPackSlice const followingTermId = body.get(StaticStrings::FollowingTermId);
+
+  VPackSlice leaderIdSlice = body.get("leaderId");
+  VPackSlice oldLeaderIdSlice = body.get("oldLeaderId");
+  VPackSlice shard = body.get("shard");
+  VPackSlice followingTermId = body.get(StaticStrings::FollowingTermId);
   // Note that we tolerate if followingTermId is not present or not a number
   // for upgrade scenarios. If the new leader does not send it, it will also
   // not send it in the option IsSynchronousReplication.
@@ -2662,9 +2665,10 @@ void RestReplicationHandler::handleCommandSetTheLeader() {
     return;
   }
 
-  std::string currentLeader = col->followers()->getLeader();
+  std::string const currentLeaderCopy = col->followers()->getLeader();
+  std::string currentLeader = currentLeaderCopy;
   if (currentLeader ==
-      arangodb::maintenance::ResignShardLeadership::LeaderNotYetKnownString) {
+      maintenance::ResignShardLeadership::LeaderNotYetKnownString) {
     // We have resigned, check that we are the old leader
     currentLeader = ServerState::instance()->getId();
   } else {
@@ -2675,7 +2679,10 @@ void RestReplicationHandler::handleCommandSetTheLeader() {
     }
   }
 
+  std::string newLeader;
+
   if (leaderId != currentLeader) {
+    // leader server id change (i.e. different server has taken over)
     Result res = checkPlanLeaderDirect(col, leaderId);
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
@@ -2691,11 +2698,37 @@ void RestReplicationHandler::handleCommandSetTheLeader() {
     }
 
     if (followingTermId.isNumber()) {
-      col->followers()->setTheLeader(
-          leaderId + "_" +
-          StringUtils::itoa(followingTermId.getNumber<uint64_t>()));
+      newLeader =
+          absl::StrCat(leaderId, "_", followingTermId.getNumber<uint64_t>());
     } else {
-      col->followers()->setTheLeader(leaderId);
+      newLeader = leaderId;
+    }
+  } else {
+    // no leader change, but maybe the session id for the same leader has
+    // changed
+    if (followingTermId.isNumber() && !leaderId.empty() &&
+        currentLeaderCopy !=
+            maintenance::ResignShardLeadership::LeaderNotYetKnownString) {
+      Result res = checkPlanLeaderDirect(col, leaderId);
+      if (res.fail()) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
+
+      newLeader =
+          absl::StrCat(leaderId, "_", followingTermId.getNumber<uint64_t>());
+    }
+  }
+
+  if (!newLeader.empty()) {
+    LOG_TOPIC("71b25", DEBUG, Logger::REPLICATION)
+        << "setting leader for shard '" << _vocbase.name() << "/"
+        << shard.stringView() << "' from " << currentLeaderCopy << " to "
+        << newLeader;
+    if (!col->followers()->setTheLeaderConditional(currentLeaderCopy,
+                                                   newLeader)) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                    "leader changed concurrently during leader change attempt");
+      return;
     }
   }
 
@@ -3507,7 +3540,7 @@ futures::Future<Result> RestReplicationHandler::createBlockingTransaction(
   // make sure if it is aborted if something goes wrong.
   auto transactionAborter = scopeGuard([mgr, id, vn]() noexcept {
     try {
-      mgr->abortManagedTrx(id, vn).get();
+      mgr->abortManagedTrx(id, vn).waitAndGet();
     } catch (...) {
     }
   });
@@ -3523,7 +3556,7 @@ futures::Future<Result> RestReplicationHandler::createBlockingTransaction(
           // Code does not matter, read only access, so we can roll back.
           transaction::Manager* mgr = transaction::ManagerFeature::manager();
           if (mgr) {
-            mgr->abortManagedTrx(id, vn).get();
+            mgr->abortManagedTrx(id, vn).waitAndGet();
           }
         } catch (...) {
           // All errors that show up here can only be
@@ -3595,7 +3628,7 @@ ResultT<bool> RestReplicationHandler::cancelBlockingTransaction(
   if (res.ok()) {
     transaction::Manager* mgr = transaction::ManagerFeature::manager();
     if (mgr) {
-      auto isAborted = mgr->abortManagedTrx(id, _vocbase.name()).get();
+      auto isAborted = mgr->abortManagedTrx(id, _vocbase.name()).waitAndGet();
       if (isAborted.ok()) {  // lock was held
         return ResultT<bool>::success(true);
       }

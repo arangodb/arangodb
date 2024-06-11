@@ -162,7 +162,7 @@ Result DropCollection::dropCollectionReplication2(
 
   auto res = basics::catchToResult([&]() {
     auto leader = coll->getDocumentStateLeader();
-    return leader->dropShard(shard).get();
+    return leader->dropShard(shard).waitAndGet();
   });
 
   if (res.is(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER) ||
