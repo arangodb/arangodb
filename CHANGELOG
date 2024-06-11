@@ -12,6 +12,9 @@ devel
       let view = db._view("myView");
       aql`FOR doc IN ${view} RETURN doc`
 
+* FE-451: update graph UI defaults for edge direction, edge/collection labels &
+  colors.
+
 * Fix possible crashes or UB during some document operations on single- or
   DBServers.
 
