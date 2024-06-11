@@ -2254,7 +2254,7 @@ Future<OperationResult> transaction::Methods::documentCoordinator(
 /// @brief read one or multiple documents in a collection, local
 Future<OperationResult> transaction::Methods::documentLocal(
     std::string const& collectionName, VPackSlice value,
-    OperationOptions const options) {
+    OperationOptions options) {
   auto res = co_await GetDocumentProcessor::create(*this, collectionName, value,
                                                    options);
   if (res.fail()) {
