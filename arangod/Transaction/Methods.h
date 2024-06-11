@@ -445,7 +445,7 @@ class Methods {
 
   Future<OperationResult> documentLocal(std::string const& collectionName,
                                         VPackSlice value,
-                                        OperationOptions const options);
+                                        OperationOptions options);
 
   Future<OperationResult> insertCoordinator(std::string const& collectionName,
                                             VPackSlice value,
