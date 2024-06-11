@@ -90,18 +90,22 @@ const checkCollectionConsistency = (cn) => {
           message = `Leader has inconsistent tree for shard ${shard}: ${JSON.stringify(leaderTree)}`;
           failed = true;
         }
-        
-        const followerTree = fetchRevisionTree(getServerUrl(follower), shard);
-        followerTree.computed.nodes = "<reduced>";
-        followerTree.stored.nodes = "<reduced>";
-        if (!followerTree.equal) {
-          message = `Follower has inconsistent tree for shard ${shard}: ${JSON.stringify(followerTree)}`;
-          failed = true;
-        }
+       
+        // note: with rf > 1, follower is always present. the code is generalized however so
+        // that the tests can easily be run with rf = 1 for debugging purposes.
+        if (follower) {
+          const followerTree = fetchRevisionTree(getServerUrl(follower), shard);
+          followerTree.computed.nodes = "<reduced>";
+          followerTree.stored.nodes = "<reduced>";
+          if (!followerTree.equal) {
+            message = `Follower has inconsistent tree for shard ${shard}: ${JSON.stringify(followerTree)}`;
+            failed = true;
+          }
 
-        if (!compareTree(leaderTree.computed, followerTree.computed)) {
-          message = `Leader and follower have different trees for shard ${shard}. Leader: ${JSON.stringify(leaderTree)}, Follower: ${JSON.stringify(followerTree)}`;
-          failed = true;
+          if (!compareTree(leaderTree.computed, followerTree.computed)) {
+            message = `Leader and follower have different trees for shard ${shard}. Leader: ${JSON.stringify(leaderTree)}, Follower: ${JSON.stringify(followerTree)}`;
+            failed = true;
+          }
         }
         
         if (failed) {

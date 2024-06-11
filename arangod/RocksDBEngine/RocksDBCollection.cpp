@@ -889,7 +889,7 @@ Result RocksDBCollection::truncateWithRemovals(transaction::Methods& trx,
       RocksDBColumnFamilyManager::get(
           RocksDBColumnFamilyManager::Family::Documents)
           ->GetComparator();
-  rocksdb::Slice const end = documentBounds.end();
+  rocksdb::Slice end = documentBounds.end();
 
   // avoid OOM error for truncate by committing earlier
   auto state = RocksDBTransactionState::toState(&trx);
@@ -948,10 +948,11 @@ Result RocksDBCollection::truncateWithRemovals(transaction::Methods& trx,
     return r.result;
   };
 
+  // TODO: decide if we need readOwnWrites here!
   auto iter = mthds->NewIterator(
       documentBounds.columnFamily(),
-      [&, readOwnWrites = state->hasHint(
-              transaction::Hints::Hint::GLOBAL_MANAGED)](ReadOptions& ro) {
+      [&, readOwnWrites = false /*state->hasHint(
+              transaction::Hints::Hint::GLOBAL_MANAGED)*/](ReadOptions& ro) {
         if (!mthds->iteratorMustCheckBounds(
                 readOwnWrites ? ReadOwnWrites::yes : ReadOwnWrites::no)) {
           ro.iterate_upper_bound = &end;
@@ -975,16 +976,15 @@ Result RocksDBCollection::truncateWithRemovals(transaction::Methods& trx,
 
     ++found;
     if (found == 1000) {
-      Result res = removeBufferedDocuments(keyBuffer, found);
-      if (res.fail()) {
+      if (Result res = removeBufferedDocuments(keyBuffer, found); res.fail()) {
         return res;
       }
+      TRI_ASSERT(found == 0);
     }
   }
 
   if (found > 0) {
-    Result res = removeBufferedDocuments(keyBuffer, found);
-    if (res.fail()) {
+    if (Result res = removeBufferedDocuments(keyBuffer, found); res.fail()) {
       return res;
     }
   }
@@ -1214,14 +1214,8 @@ Result RocksDBCollection::insert(transaction::Methods& trx,
   RocksDBSavePoint savepoint(_logicalCollection.id(), *state,
                              TRI_VOC_DOCUMENT_OPERATION_INSERT);
 
-  Result res = insertDocument(&trx, indexesSnapshot, savepoint, newDocumentId,
-                              newDocument, options, newRevisionId);
-
-  if (res.ok()) {
-    res = savepoint.finish(newRevisionId);
-  }
-
-  return res;
+  return insertDocument(&trx, indexesSnapshot, savepoint, newDocumentId,
+                        newDocument, options, newRevisionId);
 }
 
 Result RocksDBCollection::update(
@@ -1279,15 +1273,9 @@ Result RocksDBCollection::performUpdateOrReplace(
 
   RocksDBSavePoint savepoint(_logicalCollection.id(), *state, opType);
 
-  Result res = modifyDocument(
-      &trx, indexesSnapshot, savepoint, previousDocumentId, previousDocument,
-      newDocumentId, newDocument, previousRevisionId, newRevisionId, options);
-
-  if (res.ok()) {
-    res = savepoint.finish(newRevisionId);
-  }
-
-  return res;
+  return modifyDocument(&trx, indexesSnapshot, savepoint, previousDocumentId,
+                        previousDocument, newDocumentId, newDocument,
+                        previousRevisionId, newRevisionId, options);
 }
 
 Result RocksDBCollection::remove(transaction::Methods& trx,
@@ -1308,15 +1296,8 @@ Result RocksDBCollection::remove(transaction::Methods& trx,
   RocksDBSavePoint savepoint(_logicalCollection.id(), *state,
                              TRI_VOC_DOCUMENT_OPERATION_REMOVE);
 
-  Result res =
-      removeDocument(&trx, indexesSnapshot, savepoint, previousDocumentId,
-                     previousDocument, options, previousRevisionId);
-
-  if (res.ok()) {
-    res = savepoint.finish(_logicalCollection.newRevisionId());
-  }
-
-  return res;
+  return removeDocument(&trx, indexesSnapshot, savepoint, previousDocumentId,
+                        previousDocument, options, previousRevisionId);
 }
 
 bool RocksDBCollection::cacheEnabled() const noexcept {
@@ -1645,7 +1626,11 @@ Result RocksDBCollection::insertDocument(transaction::Methods* trx,
 
   if (res.ok()) {
     TRI_ASSERT(revisionId == RevisionId::fromSlice(doc));
-    state->trackInsert(_logicalCollection.id(), revisionId);
+
+    res = savepoint.finish(revisionId);
+    if (res.ok()) {
+      state->trackInsert(_logicalCollection.id(), revisionId);
+    }
   }
 
   return res;
@@ -1763,9 +1748,13 @@ Result RocksDBCollection::removeDocument(transaction::Methods* trx,
   }
 
   if (res.ok()) {
-    RocksDBTransactionState* state = RocksDBTransactionState::toState(trx);
     TRI_ASSERT(revisionId == RevisionId::fromSlice(doc));
-    state->trackRemove(_logicalCollection.id(), revisionId);
+
+    res = savepoint.finish(_logicalCollection.newRevisionId());
+    if (res.ok()) {
+      RocksDBTransactionState* state = RocksDBTransactionState::toState(trx);
+      state->trackRemove(_logicalCollection.id(), revisionId);
+    }
   }
 
   return res;
@@ -1992,8 +1981,13 @@ Result RocksDBCollection::modifyDocument(
 
   if (res.ok()) {
     TRI_ASSERT(newRevisionId == RevisionId::fromSlice(newDoc));
-    state->trackRemove(_logicalCollection.id(), oldRevisionId);
-    state->trackInsert(_logicalCollection.id(), newRevisionId);
+    TRI_ASSERT(newRevisionId != oldRevisionId);
+
+    res = savepoint.finish(newRevisionId);
+    if (res.ok()) {
+      state->trackRemove(_logicalCollection.id(), oldRevisionId);
+      state->trackInsert(_logicalCollection.id(), newRevisionId);
+    }
   }
 
   return res;

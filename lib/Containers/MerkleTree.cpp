@@ -1321,13 +1321,11 @@ void MerkleTree<Hasher, BranchingBits>::modify(
     if (ADB_UNLIKELY(!success && totalCount > 0)) {
       // roll back the changes we already made, using best effort
       TRI_ASSERT(!isInsert);
-      totalHash = 0;
       for (std::uint64_t i = 0; i < totalCount; ++i) {
         TRI_ASSERT(i < keys.size());
         std::uint64_t k = keys[i];
         [[maybe_unused]] bool rolledBack = modifyLocal(k, h.hash(k), !isInsert);
         TRI_ASSERT(rolledBack);
-        totalHash ^= value;
       }
       throw std::invalid_argument("Tried to remove key that is not present.");
     }
@@ -1359,7 +1357,8 @@ bool MerkleTree<Hasher, BranchingBits>::modifyLocal(Node& node,
   TRI_ASSERT(node.count > 0 || node.hash == 0)
       << "node count: " << node.count << ", hash: " << node.hash
       << ", count: " << count << ", value: " << value
-      << ", isInsert: " << isInsert;
+      << ", isInsert: " << isInsert
+      << ", isRoot: " << (&node == &(meta().summary));
   return true;
 }
 

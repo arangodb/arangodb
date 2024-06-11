@@ -234,8 +234,12 @@ void RocksDBTransactionCollection::commitCounts(TransactionId trxId,
     rcoll->meta().adjustNumberDocuments(commitSeq, _revision, adj);
   }
 
-  // update the revision tree
-  if (!_trackedOperations.empty()) {
+  bool const hasTrackedOps = !_trackedOperations.empty();
+  // update the revision tree. this is only relevant if the collection uses
+  // Merkle trees.
+  if (hasTrackedOps) {
+    TRI_ASSERT(hasOperations());
+    TRI_ASSERT(hasTrackedOps);
     rcoll->bufferUpdates(commitSeq, std::move(_trackedOperations.inserts),
                          std::move(_trackedOperations.removals));
   }
@@ -258,8 +262,7 @@ void RocksDBTransactionCollection::commitCounts(TransactionId trxId,
     }
   }
 
-  if (hasOperations() || !_trackedOperations.empty() ||
-      !_trackedIndexOperations.empty()) {
+  if (hasOperations() || hasTrackedOps || !_trackedIndexOperations.empty()) {
     rcoll->removeRevisionTreeBlocker(trxId);
   }
 
