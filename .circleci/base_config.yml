@@ -225,9 +225,9 @@ jobs:
           name: "Cancel other workflows"
           when: on_fail
           command: |
-            ## Get the IDs of currently running/on_hold workflows
+            ## Get the IDs of currently running/on_hold workflows, but exclude ourselves
             curl --header "Circle-Token: $CIRCLECI_TOKEN" --request GET "https://circleci.com/api/v2/pipeline/${CIRCLE_PIPELINE_ID}/workflow" | \
-                jq -r '.items[]|select(.status == "on_hold" or .status == "running") | .id' >> WF_to_cancel.txt
+                jq -r '.items[]|select(.id != "'${CIRCLE_WORKFLOW_ID}'" and (.status == "on_hold" or .status == "running")) | .id' >> WF_to_cancel.txt
 
             ## Cancel any currently running/on_hold workflow with the same name
             if [ -s WF_to_cancel.txt ]; then
