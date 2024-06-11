@@ -54,7 +54,6 @@ const testPaths = {
 
 function runArangodRecovery (params, agencyConfig) {
   let additionalParams= {
-    'log.foreground-tty': 'true',
     'javascript.enabled': 'true',
     'agency.activate': 'true',
     'agency.compaction-keep-size': '10000',

@@ -10,7 +10,7 @@ parameters:
     default: ""
   build-docker-image:
     type: string
-    default: "arangodb/ubuntubuildarangodb-devel:4"
+    default: "arangodb/ubuntubuildarangodb-devel:5"
   test-docker-image:
     type: string
     default: public.ecr.aws/b0b8h2r4/test-ubuntu:23.10-5b6113b7
@@ -33,6 +33,15 @@ parameters:
   sanitizer:
     type: string
     default: ""
+  ui:
+    type: string
+    default: "off"
+  ui-deployment:
+    type: string
+    default: ""
+  ui-testsuites:
+    type: string
+    default: ""
   c-compiler:
     type: string
     default: "clang"
@@ -42,7 +51,7 @@ parameters:
   # these are basically global constants
   build-targets:
     type: string
-    default: "arangod arangoimport arangoexport arangodump arangorestore arangobench frontend"
+    default: "arangod arangoimport arangoexport arangodump arangorestore arangobench frontend arangovpack"
   test-build-targets:
     type: string
     default: "arangodbtests fuertetest"
@@ -233,6 +242,8 @@ jobs:
       s3-prefix:
         type: string
         default: ""
+      arch:
+          type: string
     docker:
       - image: << pipeline.parameters.build-docker-image >>
     resource_class: << parameters.resource-class >>
@@ -283,6 +294,30 @@ jobs:
             echo "Building targets: $TARGETS"
             cmake --build --preset << parameters.preset >> --parallel 8 --target $TARGETS
       - when:
+          condition:
+            or:
+              -  not:
+                  equal: [ << pipeline.parameters.ui >>, ""]
+              - << pipeline.parameters.create-docker-images >>
+          steps:
+            - run:
+                root: .
+                name: get aux binaries
+                command: |
+                  set -x
+                  STARTER_REV=$(grep -Po "STARTER_REV \"\Kv\d+\.\d+\.\d+[a-z0-9-]*" VERSIONS)
+                  RCLONE_VERSION=$(grep -Po "RCLONE_VERSION \"\K\d+\.\d+\.\d+" VERSIONS)
+                  arch="<<parameters.arch>>"
+                  if test "$arch" == "x64"; then
+                    arch="amd64"
+                  fi
+                  curl -s -L -o build/bin/arangodb "https://github.com/arangodb-helper/arangodb/releases/download/$STARTER_REV/arangodb-linux-$arch"
+                  chmod a+x build/bin/arangodb
+                  if [ << parameters.enterprise >> = true ]; then
+                    curl -s -L -o build/bin/rclone-arangodb "https://github.com/arangodb/oskar/raw/master/rclone/v$RCLONE_VERSION/rclone-arangodb-linux-$arch"
+                    chmod a+x build/bin/rclone-arangodb
+                  fi
+      - when:
           condition: << pipeline.parameters.create-docker-images >>
           steps:
             - run:
@@ -291,6 +326,10 @@ jobs:
                   mkdir install
                   # Note: ATM this will rebuild the frontend
                   DESTDIR=`pwd`/install cmake --build --preset << parameters.preset >> --parallel 8 --target install
+                  cp build/bin/arangodb ./install/usr/bin/
+                  if [ << parameters.enterprise >> = true ]; then
+                    cp build/bin/rclone-arangodb ./install/usr/bin/
+                  fi
                   strip ./install/usr/bin/arango*
                   strip ./install/usr/sbin/arangod
                   tar -czf install.tar.gz -C install ./
@@ -319,6 +358,7 @@ jobs:
                 root: .
                 paths:
                   - VERSIONS
+                  - ARANGO-VERSION
                   - build/compile_commands.json
                   - CMakePresets.json
                   - install.tar.gz
@@ -362,13 +402,9 @@ jobs:
       - run:
           name: Create Docker Image
           command: |
-            STARTER_REV=$(grep -Po "STARTER_REV \"\Kv\d+\.\d+\.\d+" VERSIONS)
             cd scripts/docker/deploy
             mkdir install
             tar -xzf ../../../install.tar.gz -C install
-            curl -s -L -o "install/usr/bin/arangodb" "https://github.com/arangodb-helper/arangodb/releases/download/$STARTER_REV/arangodb-linux-<< parameters.arch >>"
-            # TODO
-            #  - download rclone
             docker build --platform linux/<< parameters.arch >> --build-arg arch=<< parameters.arch >> -t << parameters.tag >> --file deploy-alpine.dockerfile .
             echo "Pushing image << parameters.tag >>"
             docker push << parameters.tag >>
@@ -474,6 +510,65 @@ jobs:
       - store_artifacts:
           destination: hotbackup-test
           path: /tmp/test-workdir
+
+  run-rta-tests:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large
+    parameters:
+      suiteName:
+        type: string
+      enterprise:
+        type: string
+      deployment:
+        type: string
+      filterStatement:
+        type: string
+      browser:
+        type: string
+      # TODO add more parameters
+    steps:
+      - add_ssh_keys:
+          fingerprints:
+            - "f9:49:75:1a:ad:44:89:10:4b:3c:70:70:ba:d3:c3:ce"
+      - attach_workspace:
+          at: work/ArangoDB
+      - run:
+          name: Clone RTA
+          command: |
+            mkdir work/release-test-automation
+            cd work/release-test-automation
+            git clone git@github.com:arangodb/release-test-automation.git .
+            #git checkout circleci
+      - run:
+          name: Run << parameters.suiteName >> tests
+          no_output_timeout: 20m
+          command: |
+            pwd
+            export SOURCE=nightlypublic
+            export RTA_EDITION=<< parameters.enterprise >>
+            mkdir -p  work/release-test-automation/allure-results work/release-test-automation/allure-config
+            cd work/release-test-automation
+            bash -x ./jenkins/circleci_tar.sh \
+              --no-run-upgrade  \
+              --selenium << parameters.browser >> \
+              --starter-mode << parameters.deployment >> \
+              << parameters.filterStatement >>
+            exit_code=$?
+            docker run \
+             -v $(pwd)/allure-report:/allure-report \
+             -v $(pwd)/allure-results:/allure-results \
+             -v $(pwd)/allure-config:/allure-config \
+             smartcosmos/allure-commandline generate /allure-results -o /allure-report --clean
+             exit $(($exit_code + $(cat ./test_dir/status.json) ))
+      - store_artifacts:
+          destination: << parameters.suiteName >>
+          path: ./work/release-test-automation/test_dir
+      - store_artifacts:
+          destination: << parameters.suiteName >>
+          path: ./work/release-test-automation/allure-report
+      - store_test_results:
+          path: ./test-results/
 
   run-cppcheck:
     docker:

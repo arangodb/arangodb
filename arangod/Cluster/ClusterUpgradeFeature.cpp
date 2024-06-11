@@ -182,7 +182,8 @@ void ClusterUpgradeFeature::tryClusterUpgrade() {
   AgencyCommResult result = agency.sendTransactionWithFailover(transaction);
   if (result.successful()) {
     auto& cache = server().getFeature<ClusterFeature>().agencyCache();
-    cache.waitFor(result.slice().get("results")[0].getNumber<uint64_t>()).get();
+    cache.waitFor(result.slice().get("results")[0].getNumber<uint64_t>())
+        .waitAndGet();
 
     // we are responsible for the upgrade!
     LOG_TOPIC("15ac4", INFO, arangodb::Logger::CLUSTER)

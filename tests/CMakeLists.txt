@@ -268,11 +268,17 @@ set(ARANGODB_TESTS_SOURCES
 
 if (USE_V8)
   set(ARANGODB_TESTS_SOURCES ${ARANGODB_TESTS_SOURCES}
+    Scheduler/ThreadPoolTest.cpp
     V8Server/V8AnalyzersTest.cpp
     V8Server/V8UsersTest.cpp
     V8Server/V8ViewsTest.cpp)
 endif()
 
+if (USE_PERF_TESTS)
+  set(ARANGODB_TESTS_SOURCES ${ARANGODB_TESTS_SOURCES}
+    Scheduler/ThreadPoolPerfTest.cpp)
+endif()
+    
 if (LINUX)
   # add "-fno-var-tracking" to the compiler flags
   # this speeds up the compilation with optimizations and newer g++ versions

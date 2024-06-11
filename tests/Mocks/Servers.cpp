@@ -409,7 +409,7 @@ MockV8Server::MockV8Server(bool start) : MockServer() {
   // setup required application features
   SetupV8Phase(*this);
   addFeature<NetworkFeature>(
-      false, _server.getFeature<metrics::MetricsFeature>(),
+      true, _server.getFeature<metrics::MetricsFeature>(),
       network::ConnectionPool::Config{
           .metrics = network::ConnectionPool::Metrics::fromMetricsFeature(
               _server.getFeature<metrics::MetricsFeature>(), "mock")});
@@ -487,7 +487,7 @@ MockRestServer::MockRestServer(bool start) : MockServer() {
   addFeature<QueryRegistryFeature>(
       false, getFeature<arangodb::metrics::MetricsFeature>());
   addFeature<NetworkFeature>(
-      false, _server.getFeature<metrics::MetricsFeature>(),
+      true, _server.getFeature<metrics::MetricsFeature>(),
       network::ConnectionPool::Config{
           .metrics = network::ConnectionPool::Metrics::fromMetricsFeature(
               _server.getFeature<metrics::MetricsFeature>(), "mock")});
@@ -943,7 +943,7 @@ void MockDBServer::createShard(std::string const& dbName,
       bool created = false;
       auto const idx = velocypack::Parser::fromJson(
           R"({"id":"1","type":"edge","name":"edge_from","fields":["_from"],"unique":false,"sparse":false})");
-      col->createIndex(idx->slice(), created).get();
+      col->createIndex(idx->slice(), created).waitAndGet();
       TRI_ASSERT(created);
     }
 
@@ -951,7 +951,7 @@ void MockDBServer::createShard(std::string const& dbName,
       bool created = false;
       auto const idx = velocypack::Parser::fromJson(
           R"({"id":"2","type":"edge","name":"edge_to","fields":["_to"],"unique":false,"sparse":false})");
-      col->createIndex(idx->slice(), created).get();
+      col->createIndex(idx->slice(), created).waitAndGet();
       TRI_ASSERT(created);
     }
   }
@@ -1023,7 +1023,7 @@ network::ConnectionPool* MockCoordinator::getPool() { return _pool.get(); }
 MockRestAqlServer::MockRestAqlServer() {
   SetupAqlPhase(*this);
   addFeature<NetworkFeature>(
-      false, _server.getFeature<metrics::MetricsFeature>(),
+      true, _server.getFeature<metrics::MetricsFeature>(),
       network::ConnectionPool::Config{
           .metrics = network::ConnectionPool::Metrics::fromMetricsFeature(
               _server.getFeature<metrics::MetricsFeature>(), "mock")});

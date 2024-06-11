@@ -224,7 +224,7 @@ TEST_F(AsyncAgencyCommTest, send_with_failover) {
 
   auto result = AsyncAgencyComm(manager)
                     .sendReadTransaction(10s, R"=([["a"]])="_vpack)
-                    .get();
+                    .waitAndGet();
   ASSERT_EQ(result.error, fuerte::Error::NoError);
   ASSERT_EQ(result.slice().at(0).get("a").getNumber<int>(), 12);
 
@@ -252,7 +252,7 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_failover) {
 
   auto result = AsyncAgencyComm(manager)
                     .sendReadTransaction(10s, R"=([["a"]])="_vpack)
-                    .get();
+                    .waitAndGet();
   ASSERT_EQ(result.error, fuerte::Error::NoError);
   ASSERT_EQ(result.slice().at(0).get("a").getNumber<int>(), 12);
 
@@ -283,7 +283,7 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_timeout_redirect) {
 
   auto result = AsyncAgencyComm(manager)
                     .sendReadTransaction(10s, R"=([["a"]])="_vpack)
-                    .get();
+                    .waitAndGet();
   ASSERT_EQ(result.error, fuerte::Error::NoError);
   ASSERT_EQ(result.slice().at(0).get("a").getNumber<int>(), 12);
 
@@ -311,7 +311,7 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_redirect) {
 
   auto result = AsyncAgencyComm(manager)
                     .sendReadTransaction(10s, R"=([["a"]])="_vpack)
-                    .get();
+                    .waitAndGet();
   ASSERT_EQ(result.error, fuerte::Error::NoError);
   ASSERT_EQ(result.slice().at(0).get("a").getNumber<int>(), 12);
 
@@ -339,7 +339,7 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_redirect_new_endpoint) {
 
   auto result = AsyncAgencyComm(manager)
                     .sendReadTransaction(10s, R"=([["a"]])="_vpack)
-                    .get();
+                    .waitAndGet();
   ASSERT_EQ(result.error, fuerte::Error::NoError);
   ASSERT_EQ(result.slice().at(0).get("a").getNumber<int>(), 12);
 
@@ -364,7 +364,7 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_not_found) {
 
   auto result = AsyncAgencyComm(manager)
                     .sendReadTransaction(10s, R"=([["a"]])="_vpack)
-                    .get();
+                    .waitAndGet();
   ASSERT_EQ(result.error, fuerte::Error::NoError);
   ASSERT_EQ(result.statusCode(), fuerte::StatusNotFound);
 
@@ -390,7 +390,7 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_prec_failed) {
 
   auto result = AsyncAgencyComm(manager)
                     .sendReadTransaction(10s, R"=([["a"]])="_vpack)
-                    .get();
+                    .waitAndGet();
   ASSERT_EQ(result.error, fuerte::Error::NoError);
   ASSERT_EQ(result.statusCode(), fuerte::StatusPreconditionFailed);
 
@@ -425,7 +425,7 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_inquire_timeout_not_found) {
   auto result =
       AsyncAgencyComm(manager)
           .sendWriteTransaction(10s, R"=([[{"a":12}, {}, "cid-1"]])="_vpack)
-          .get();
+          .waitAndGet();
   ASSERT_EQ(result.error, fuerte::Error::NoError);
   ASSERT_EQ(result.statusCode(), fuerte::StatusOK);
   ASSERT_EQ(result.slice().get("results").at(0).getNumber<int>(), 15);
@@ -465,7 +465,7 @@ TEST_F(AsyncAgencyCommTest,
   auto result =
       AsyncAgencyComm(manager)
           .sendWriteTransaction(10s, R"=([[{"a":12}, {}, "cid-1"]])="_vpack)
-          .get();
+          .waitAndGet();
   ASSERT_EQ(result.error, fuerte::Error::NoError);
   ASSERT_EQ(result.statusCode(), fuerte::StatusOK);
   ASSERT_EQ(result.slice().get("results").at(0).getNumber<int>(), 15);
@@ -498,7 +498,7 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_inquire_timeout_found) {
   auto result =
       AsyncAgencyComm(manager)
           .sendWriteTransaction(10s, R"=([[{"a":12}, {}, "cid-1"]])="_vpack)
-          .get();
+          .waitAndGet();
   ASSERT_EQ(result.error, fuerte::Error::NoError);
   ASSERT_EQ(result.statusCode(), fuerte::StatusOK);
   ASSERT_EQ(result.slice().get("results").at(0).getNumber<int>(), 32);
@@ -538,7 +538,7 @@ TEST_F(AsyncAgencyCommTest,
   auto result =
       AsyncAgencyComm(manager)
           .sendWriteTransaction(10s, R"=([[{"a":12}, {}, "cid-1"]])="_vpack)
-          .get();
+          .waitAndGet();
   ASSERT_EQ(result.error, fuerte::Error::NoError);
   ASSERT_EQ(result.statusCode(), fuerte::StatusOK);
   ASSERT_EQ(result.slice().get("results").at(0).getNumber<int>(), 15);
@@ -578,7 +578,7 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_inquire_service_unavailable) {
   auto result =
       AsyncAgencyComm(manager)
           .sendWriteTransaction(10s, R"=([[{"a":12}, {}, "cid-1"]])="_vpack)
-          .get();
+          .waitAndGet();
   ASSERT_EQ(result.error, fuerte::Error::NoError);
   ASSERT_EQ(result.statusCode(), fuerte::StatusOK);
   ASSERT_EQ(result.slice().get("results").at(0).getNumber<int>(), 15);
@@ -611,7 +611,7 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_read_only_timeout_not_found) {
 
   auto result = AsyncAgencyComm(manager)
                     .sendReadTransaction(10s, R"=([["a"]])="_vpack)
-                    .get();
+                    .waitAndGet();
   ASSERT_EQ(result.error, fuerte::Error::NoError);
   ASSERT_EQ(result.statusCode(), fuerte::StatusNotFound);
 
@@ -636,7 +636,7 @@ TEST_F(AsyncAgencyCommTest, send_with_failover_write_no_cids_timeout) {
 
   auto result = AsyncAgencyComm(manager)
                     .sendWriteTransaction(10s, R"=([[{"a":12}, {}]])="_vpack)
-                    .get();
+                    .waitAndGet();
   ASSERT_EQ(result.error, fuerte::Error::RequestTimeout);
 
   compareEndpoints(manager.endpoints(),
@@ -661,7 +661,7 @@ TEST_F(AsyncAgencyCommTest, get_values) {
   auto result =
       AsyncAgencyComm(manager)
           .getValues(arangodb::cluster::paths::root()->arango()->plan())
-          .get();
+          .waitAndGet();
   ASSERT_EQ(result.error, fuerte::Error::NoError);
   ASSERT_EQ(result.statusCode(), fuerte::StatusOK);
   ASSERT_EQ(result.value().getNumber<int>(), 12);

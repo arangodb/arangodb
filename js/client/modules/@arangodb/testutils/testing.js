@@ -66,7 +66,6 @@ let optionsDocumentation = [
   '   - `cleanup`: if set to false the data files',
   '                and logs are not removed after termination of the test.',
   '',
-  '',
   '   - `verbose`: if set to true, be more verbose',
   '   - `noStartStopLogs`: if set to true, suppress startup and shutdown messages printed by process manager. Overridden by `extremeVerbosity`',
   '   - `extremeVerbosity`: if set to true, then there will be more test run',
@@ -444,7 +443,7 @@ function iterateTests(cases, options) {
       delete result.shutdown;
     }
 
-    status = rp.gatherStatus(result);
+    status = rp.gatherStatus(result) && shutdownSuccess;
     let failed = rp.gatherFailed(result);
     if (!status) {
       globalStatus = false;

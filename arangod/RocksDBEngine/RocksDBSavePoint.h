@@ -33,6 +33,9 @@ namespace arangodb {
 class RocksDBTransactionState;
 
 class RocksDBSavePoint {
+  RocksDBSavePoint(RocksDBSavePoint const& other) = delete;
+  RocksDBSavePoint& operator=(RocksDBSavePoint const& other) = delete;
+
  public:
   RocksDBSavePoint(DataSourceId collectionId, RocksDBTransactionState& state,
                    TRI_voc_document_operation_e operationType);
@@ -45,17 +48,18 @@ class RocksDBSavePoint {
   /// will be no rollback when the destructor is called
   [[nodiscard]] Result finish(RevisionId rid);
 
-  TRI_voc_document_operation_e operationType() const { return _operationType; }
+  TRI_voc_document_operation_e operationType() const noexcept {
+    return _operationType;
+  }
 
   /// @brief this is going to be called if at least one Put or Delete
   /// has made it into the underyling WBWI. if so, on rollback we must
   /// perform a full rebuild
-  void tainted() { _tainted = true; }
+  void tainted() noexcept { _tainted = true; }
 
  private:
   void rollback();
 
- private:
   RocksDBTransactionState& _state;
   RocksDBTransactionMethods& _rocksMethods;
   DataSourceId _collectionId;

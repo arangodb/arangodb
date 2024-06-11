@@ -38,7 +38,6 @@ const statusExternal = internal.statusExternal;
 /* Modules: */
 const _ = require('lodash');
 const fs = require('fs');
-const toArgv = require('internal').toArgv;
 const pu = require('@arangodb/testutils/process-utils');
 const ct = require('@arangodb/testutils/client-tools');
 const tu = require('@arangodb/testutils/test-utils');
@@ -160,5 +159,7 @@ function makeDataWrapper (options) {
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['rta_makedata'] = makeDataWrapper;
-  tu.CopyIntoObject(fnDocs, functionsDocumentation);
+  tu.CopyIntoObject(fnDocs, {
+    'rta_makedata': 'Release Testautomation Makedata / Checkdata framework'
+  });
 };

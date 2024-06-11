@@ -130,9 +130,9 @@ futures::Future<Result> ClusterTransactionState::beginTransaction(
     // if there is only one server we may defer the lazy locking
     // until the first actual operation (should save one request)
     if (leaders.size() > 1) {
-      res = ClusterTrxMethods::beginTransactionOnLeaders(
-                *this, leaders, transaction::MethodsApi::Synchronous)
-                .get();
+      res = co_await ClusterTrxMethods::beginTransactionOnLeaders(
+          shared_from_this(), std::move(leaders),
+          transaction::MethodsApi::Asynchronous);
       if (res.fail()) {  // something is wrong
         co_return res;
       }

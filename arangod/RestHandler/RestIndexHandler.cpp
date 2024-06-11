@@ -195,8 +195,8 @@ RestStatus RestIndexHandler::getIndexes() {
     if (!ServerState::instance()->isCoordinator() || !withHidden) {
       // simple case: no in-progress indexes to return
       VPackBuilder indexes;
-      Result res =
-          methods::Indexes::getAll(*coll, flags, withHidden, indexes).get();
+      Result res = methods::Indexes::getAll(*coll, flags, withHidden, indexes)
+                       .waitAndGet();
       if (!res.ok()) {
         generateError(rest::ResponseCode::BAD, res.errorNumber(),
                       res.errorMessage());
@@ -224,14 +224,14 @@ RestStatus RestIndexHandler::getIndexes() {
       // we need to wait for the latest commit index here, because otherwise
       // we may not see all indexes that were declared ready by the
       // supervision.
-      ac.waitForLatestCommitIndex().get();
+      ac.waitForLatestCommitIndex().waitAndGet();
 
       auto [plannedIndexes, idx] = ac.get(ap);
 
       // now fetch list of ready indexes
       VPackBuilder indexes;
-      Result res =
-          methods::Indexes::getAll(*coll, flags, withHidden, indexes).get();
+      Result res = methods::Indexes::getAll(*coll, flags, withHidden, indexes)
+                       .waitAndGet();
       if (!res.ok()) {
         generateError(rest::ResponseCode::BAD, res.errorNumber(),
                       res.errorMessage());
@@ -291,7 +291,7 @@ RestStatus RestIndexHandler::getIndexes() {
                 reqOpts));
           }
           for (Future<network::Response>& f : futures) {
-            network::Response const& r = f.get();
+            network::Response const& r = f.waitAndGet();
 
             // Only best effort accounting. If something breaks here, we
             // just ignore the output. Account for what we can and move
@@ -390,7 +390,8 @@ RestStatus RestIndexHandler::getIndexes() {
     tmp.add(VPackValue(cName + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
 
     VPackBuilder output;
-    Result res = methods::Indexes::getIndex(*coll, tmp.slice(), output).get();
+    Result res =
+        methods::Indexes::getIndex(*coll, tmp.slice(), output).waitAndGet();
     if (res.ok()) {
       VPackBuilder b;
       b.openObject();
@@ -548,7 +549,7 @@ RestStatus RestIndexHandler::createIndex() {
         _createInBackgroundData.result =
             methods::Indexes::ensureIndex(*collection, body.slice(), true,
                                           _createInBackgroundData.response)
-                .get();
+                .waitAndGet();
 
         if (_createInBackgroundData.result.ok()) {
           VPackSlice created =
@@ -612,7 +613,7 @@ RestStatus RestIndexHandler::dropIndex() {
         VPackValue(absl::StrCat(cName, TRI_INDEX_HANDLE_SEPARATOR_STR, iid)));
   }
 
-  Result res = methods::Indexes::drop(*coll, idBuilder.slice()).get();
+  Result res = methods::Indexes::drop(*coll, idBuilder.slice()).waitAndGet();
   if (res.ok()) {
     VPackBuilder b;
     b.openObject();
