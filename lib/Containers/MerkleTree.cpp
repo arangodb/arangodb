@@ -21,27 +21,6 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <algorithm>
-#include <cmath>
-#include <cstddef>
-#include <cstring>
-#include <functional>
-#include <limits>
-#include <memory>
-#include <mutex>
-#include <shared_mutex>
-#include <stdexcept>
-#include <string>
-#include <string_view>
-#include <utility>
-#include <vector>
-
-#include <snappy.h>
-
-#include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/Slice.h>
-
 #include "MerkleTree.h"
 
 #include "Basics/Endian.h"
@@ -56,6 +35,27 @@
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 #include "Random/RandomGenerator.h"
 #endif
+
+#include <snappy.h>
+
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
+
+#include <algorithm>
+#include <cmath>
+#include <cstddef>
+#include <cstring>
+#include <functional>
+#include <limits>
+#include <memory>
+#include <mutex>
+#include <shared_mutex>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
 
 // can turn this on for more aggressive and expensive consistency checks
 // #define PARANOID_TREE_CHECKS
@@ -618,6 +618,9 @@ void MerkleTree<Hasher, BranchingBits>::insert(
   }
 
   std::vector<std::uint64_t> sortedKeys = keys;
+  // we need to sort here so that we can easily determine the
+  // minimum and maximum key values. we need these values to do
+  // the bounds-check on the tree later.
   std::sort(sortedKeys.begin(), sortedKeys.end());
 
   std::uint64_t minKey = sortedKeys.front();
@@ -655,6 +658,9 @@ void MerkleTree<Hasher, BranchingBits>::remove(
   }
 
   std::vector<std::uint64_t> sortedKeys = keys;
+  // we need to sort here so that we can easily determine the
+  // minimum and maximum key values. we need these values to do
+  // the bounds-check on the tree later.
   std::sort(sortedKeys.begin(), sortedKeys.end());
 
   std::uint64_t minKey = sortedKeys.front();
@@ -662,12 +668,28 @@ void MerkleTree<Hasher, BranchingBits>::remove(
 
   std::unique_lock<std::shared_mutex> guard(_dataLock);
 
+  // we don't grow the tree automatically here, as remove operations
+  // are only expected for keys that have been added before.
   if (minKey < meta().rangeMin || maxKey >= meta().rangeMax) {
     throw std::out_of_range("Cannot remove, key out of current range.");
   }
 
   modify(sortedKeys, /*isInsert*/ false);
 }
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+template<typename Hasher, std::uint64_t const BranchingBits>
+void MerkleTree<Hasher, BranchingBits>::removeUnsorted(
+    std::vector<std::uint64_t> const& keys) {
+  if (keys.size() < 2) {
+    return remove(keys);
+  }
+
+  std::unique_lock<std::shared_mutex> guard(_dataLock);
+
+  modify(keys, /*isInsert*/ false);
+}
+#endif
 
 template<typename Hasher, std::uint64_t const BranchingBits>
 void MerkleTree<Hasher, BranchingBits>::clear() {
@@ -1274,7 +1296,7 @@ void MerkleTree<Hasher, BranchingBits>::modify(std::uint64_t key,
                                                bool isInsert) {
   // not thread-safe, shared-lock buffer from outside
   Hasher h;
-  std::uint64_t const value = h.hash(key);
+  std::uint64_t value = h.hash(key);
 
   // adjust bucket node
   bool success = modifyLocal(key, value, isInsert);
@@ -1296,13 +1318,14 @@ void MerkleTree<Hasher, BranchingBits>::modify(
   for (std::uint64_t key : keys) {
     std::uint64_t value = h.hash(key);
     bool success = modifyLocal(key, value, isInsert);
-    if (ADB_UNLIKELY(!success)) {
+    if (ADB_UNLIKELY(!success && totalCount > 0)) {
       // roll back the changes we already made, using best effort
-      for (std::uint64_t k : keys) {
-        if (k == key) {
-          break;
-        }
+      TRI_ASSERT(!isInsert);
+      for (std::uint64_t i = 0; i < totalCount; ++i) {
+        TRI_ASSERT(i < keys.size());
+        std::uint64_t k = keys[i];
         [[maybe_unused]] bool rolledBack = modifyLocal(k, h.hash(k), !isInsert);
+        TRI_ASSERT(rolledBack);
       }
       throw std::invalid_argument("Tried to remove key that is not present.");
     }
@@ -1332,7 +1355,10 @@ bool MerkleTree<Hasher, BranchingBits>::modifyLocal(Node& node,
   node.hash ^= value;
 
   TRI_ASSERT(node.count > 0 || node.hash == 0)
-      << "node count: " << node.count << ", hash: " << node.hash;
+      << "node count: " << node.count << ", hash: " << node.hash
+      << ", count: " << count << ", value: " << value
+      << ", isInsert: " << isInsert
+      << ", isRoot: " << (&node == &(meta().summary));
   return true;
 }
 
@@ -1342,6 +1368,7 @@ bool MerkleTree<Hasher, BranchingBits>::modifyLocal(std::uint64_t key,
                                                     bool isInsert) {
   // only use via modify
   std::uint64_t index = this->index(key);
+  TRI_ASSERT(&(this->node(index)) != &(meta().summary));
   return modifyLocal(this->node(index), 1, value, isInsert);
 }
 
