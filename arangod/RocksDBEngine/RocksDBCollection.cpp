@@ -948,11 +948,9 @@ Result RocksDBCollection::truncateWithRemovals(transaction::Methods& trx,
     return r.result;
   };
 
-  // TODO: decide if we need readOwnWrites here!
+  constexpr bool readOwnWrites = false;
   auto iter = mthds->NewIterator(
-      documentBounds.columnFamily(),
-      [&, readOwnWrites = false /*state->hasHint(
-              transaction::Hints::Hint::GLOBAL_MANAGED)*/](ReadOptions& ro) {
+      documentBounds.columnFamily(), [&, readOwnWrites](ReadOptions& ro) {
         if (!mthds->iteratorMustCheckBounds(
                 readOwnWrites ? ReadOwnWrites::yes : ReadOwnWrites::no)) {
           ro.iterate_upper_bound = &end;
