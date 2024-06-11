@@ -35,6 +35,7 @@ const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
 const cu = require('@arangodb/testutils/crash-utils');
+const { getNumSanitizerReports } = require('@arangodb/testutils/san-file-handler');
 const AsciiTable = require('ascii-table');
 const yaml = require('js-yaml');
 const _ = require('lodash');
@@ -546,6 +547,9 @@ function unitTestPrettyPrintResults (options, results) {
     onlyFailedMessages += failText + '\n';
     failText = RED + failText + RESET;
   }
+  if (getNumSanitizerReports() > 0) { 
+    failText += YELLOW + `\n\n+++ ${getNumSanitizerReports()} sanitizer report(s) found! +++\n` + RESET;
+  }
   if (cu.GDB_OUTPUT !== '' && options.crashAnalysisText === options.testFailureText) {
     // write more verbose failures to the testFailureText file
     onlyFailedMessages += '\n\n' + cu.GDB_OUTPUT;
@@ -1030,7 +1034,7 @@ function writeDefaultReports(options, testSuites) {
   }
   fs.write(fs.join(options.testOutputDirectory, testFailureText),
            "Incomplete testrun with these testsuites: '" + testSuites +
-           "'\nand these options: " + JSON.stringify(options, null, 2) + "\n");
+           "'\nand these options: " + JSON.stringify(options, null, 2) + "\n" + cu.GDB_OUTPUT);
 
 }
 
