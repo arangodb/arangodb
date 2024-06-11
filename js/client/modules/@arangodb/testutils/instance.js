@@ -845,7 +845,7 @@ class instance {
   }
 
   isRunning() {
-    check = () => (this.exitStatus !== null) && (this.exitStatus.status === 'RUNNING');
+    let check = () => (this.exitStatus !== null) && (this.exitStatus.status === 'RUNNING');
     if (check()) {
       this.exitStatus = this.status(false);
       return check();
