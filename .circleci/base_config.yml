@@ -215,7 +215,7 @@ jobs:
       - run:
           name: Install eslint
           command: |
-            apk add --no-cache npm
+            apk add --no-cache npm curl jq
             npm -g install eslint@8.46.0
       - run:
           name: Run eslint
