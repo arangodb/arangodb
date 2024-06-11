@@ -6,6 +6,12 @@ devel
 3.12.1 (XXXX-XX-XX)
 -------------------
 
+* Fix the handling of View objects in AQL template strings of the JavaScript API
+  so that the behavior matches collection objects:
+
+      let view = db._view("myView");
+      aql`FOR doc IN ${view} RETURN doc`
+
 * FE-451: update graph UI defaults for edge direction, edge/collection labels &
   colors.
 
