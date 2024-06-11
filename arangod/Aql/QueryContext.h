@@ -74,9 +74,16 @@ class QueryContext {
 
   virtual ~QueryContext();
 
-  ResourceMonitor& resourceMonitor() noexcept { return _resourceMonitor; }
+  ResourceMonitor& resourceMonitor() noexcept { return *_resourceMonitor; }
 
   ResourceMonitor const& resourceMonitor() const noexcept {
+    return *_resourceMonitor;
+  }
+  std::shared_ptr<ResourceMonitor> resourceMonitorAsSharedPtr() noexcept {
+    return _resourceMonitor;
+  }
+  std::shared_ptr<ResourceMonitor const> resourceMonitorAsSharedPtr()
+      const noexcept {
     return _resourceMonitor;
   }
 
@@ -162,7 +169,7 @@ class QueryContext {
 
  protected:
   /// @brief current resources and limits used by query
-  ResourceMonitor _resourceMonitor;
+  std::shared_ptr<ResourceMonitor> _resourceMonitor;
 
   TRI_voc_tick_t const _queryId;
 

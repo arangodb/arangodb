@@ -356,8 +356,9 @@ void RocksDBTrxBaseMethods::PopSavePoint() {
   }
 }
 
-void RocksDBTrxBaseMethods::beginQuery(ResourceMonitor* resourceMonitor,
-                                       bool /*isModificationQuery*/) {
+void RocksDBTrxBaseMethods::beginQuery(
+    std::shared_ptr<ResourceMonitor> resourceMonitor,
+    bool /*isModificationQuery*/) {
   _memoryTracker.beginQuery(resourceMonitor);
 }
 

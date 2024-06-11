@@ -294,8 +294,9 @@ bool RocksDBTrxMethods::iteratorMustCheckBounds(
           _readWriteBatch->GetWriteBatch()->GetDataSize() > 0);
 }
 
-void RocksDBTrxMethods::beginQuery(ResourceMonitor* resourceMonitor,
-                                   bool isModificationQuery) {
+void RocksDBTrxMethods::beginQuery(
+    std::shared_ptr<ResourceMonitor> resourceMonitor,
+    bool isModificationQuery) {
   // report to parent
   RocksDBTrxBaseMethods::beginQuery(resourceMonitor, isModificationQuery);
 

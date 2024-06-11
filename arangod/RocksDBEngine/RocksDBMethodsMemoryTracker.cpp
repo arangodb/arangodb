@@ -134,7 +134,8 @@ void RocksDBMethodsMemoryTracker::popSavePoint() noexcept {
   _savePoints.pop_back();
 }
 
-void RocksDBMethodsMemoryTracker::beginQuery(ResourceMonitor* resourceMonitor) {
+void RocksDBMethodsMemoryTracker::beginQuery(
+    std::shared_ptr<ResourceMonitor> resourceMonitor) {
   // note: resourceMonitor can be a nullptr if we are called from truncate
   if (_resourceMonitor == nullptr && resourceMonitor != nullptr) {
     TRI_ASSERT(_memoryUsageAtBeginQuery == 0);
