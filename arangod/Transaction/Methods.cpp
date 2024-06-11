@@ -1991,7 +1991,7 @@ OperationResult transaction::Methods::anyCoordinator(std::string const&,
 
 /// @brief fetches documents in a collection in random order, local
 futures::Future<OperationResult> transaction::Methods::anyLocal(
-    std::string const& collectionName, OperationOptions const options) {
+    std::string const& collectionName, OperationOptions options) {
   DataSourceId cid =
       co_await addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   TransactionCollection* trxColl = trxCollection(cid);
