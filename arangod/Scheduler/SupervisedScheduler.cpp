@@ -202,13 +202,6 @@ void SupervisedScheduler::trackQueueItemSize(std::int64_t x) noexcept {
 bool SupervisedScheduler::queueItem(RequestLane lane,
                                     std::unique_ptr<WorkItemBase> work,
                                     bool bounded) {
-  if (_sharedPRNG.rand() % 4096 == 0) {
-    auto* p = new int();
-    delete p;
-    *p = 42;
-    LOG_DEVEL << p;
-  }
-
   TRI_ASSERT(_acceptingNewJobs.load())
       << "Something tried to queue an item after the SchedulerFeature was "
          "stopped. This is a bug: If the feature uses the Scheduler, it must "
