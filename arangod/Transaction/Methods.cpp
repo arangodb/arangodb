@@ -3604,13 +3604,11 @@ Future<Result> Methods::replicateOperations(
   // we continue with the operation, since most likely, the follower was
   // simply dropped in the meantime.
   // In any case, we drop the follower here (just in case).
-  auto cb = [followerList, startTimeReplication, opName, collection, count,
-             vocbase = vocbase().getSharedPtr(), state = _state](
-                std::vector<futures::Try<network::Response>>&& responses)
+  auto cb = [=, this](std::vector<futures::Try<network::Response>>&& responses)
       -> futures::Future<Result> {
     auto duration = std::chrono::steady_clock::now() - startTimeReplication;
     auto& replMetrics =
-        vocbase->server().getFeature<ReplicationMetricsFeature>();
+        vocbase().server().getFeature<ReplicationMetricsFeature>();
     replMetrics.synchronousOpsTotal() += 1;
     replMetrics.synchronousTimeTotal() +=
         std::chrono::nanoseconds(duration).count();
@@ -3648,7 +3646,8 @@ Future<Result> Methods::replicateOperations(
           // follower, but simply return the error and abort our local
           // transaction.
           if (r.is(TRI_ERROR_TRANSACTION_ABORTED) &&
-              state->hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL)) {
+              this->state()->hasHint(
+                  transaction::Hints::Hint::FROM_TOPLEVEL_AQL)) {
             return r;
           }
 
@@ -3660,7 +3659,8 @@ Future<Result> Methods::replicateOperations(
               absl::StrCat("got error from follower: ", r.errorMessage());
 
           if (followerRefused) {
-            ++vocbase->server()
+            ++vocbase()
+                  .server()
                   .getFeature<arangodb::ClusterFeature>()
                   .followersRefusedCounter();
 
@@ -3680,7 +3680,7 @@ Future<Result> Methods::replicateOperations(
       }
 
       if (!replicationFailureReason.empty()) {
-        if (!vocbase->server().isStopping()) {
+        if (!vocbase().server().isStopping()) {
           LOG_TOPIC("12d8c", WARN, Logger::REPLICATION)
               << "synchronous replication of " << opName << " operation "
               << "(" << count << " doc(s)): "
@@ -3742,7 +3742,7 @@ Future<Result> Methods::replicateOperations(
       return Result{TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED};
     } else {
       // execute a deferred intermediate commit, if required.
-      return state->performIntermediateCommitIfRequired(collection->id());
+      return performIntermediateCommitIfRequired(collection->id());
     }
   };
   return futures::collectAll(std::move(futures)).thenValue(std::move(cb));

@@ -41,7 +41,6 @@
 #include "Containers/FlatHashMap.h"
 #include "Replication2/Version.h"
 #include "RestServer/arangod.h"
-#include "Utils/DatabaseGuard.h"
 #include "Utils/VersionTracker.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/TransactionId.h"
@@ -293,8 +292,6 @@ struct TRI_vocbase_t {
 
   /// @brief decrease the reference counter for a database
   void release() noexcept;
-
-  arangodb::VocbasePtr getSharedPtr() noexcept;
 
   /// @brief returns whether the database is dangling
   bool isDangling() const noexcept;
