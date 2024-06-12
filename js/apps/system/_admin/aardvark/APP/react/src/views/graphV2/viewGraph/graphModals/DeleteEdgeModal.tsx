@@ -1,11 +1,7 @@
 import { Button, HStack } from "@chakra-ui/react";
 import React from "react";
-import {
-  Modal,
-  ModalFooter,
-  ModalHeader
-} from "../../../../components/modal";
-import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
+import { Modal, ModalFooter, ModalHeader } from "../../../../components/modal";
+import { getCurrentDB } from "../../../../utils/arangoClient";
 import { SelectedActionType } from "../GraphAction.types";
 import { useGraph } from "../GraphContext";
 import { useEdgeData } from "./useEdgeData";
@@ -17,13 +13,9 @@ const useDeleteEdgeAction = (selectedAction?: SelectedActionType) => {
 
   const deleteEdge = (edgeId: string) => {
     const slashPos = edgeId.indexOf("/");
-    const data = {
-      keys: [edgeId.substring(slashPos + 1)],
-      collection: edgeId.substring(0, slashPos)
-    };
-
-    getApiRouteForCurrentDB()
-      .put("/simple/remove-by-keys", data)
+    getCurrentDB()
+      .collection(edgeId.substring(0, slashPos))
+      .remove(edgeId.substring(slashPos + 1))
       .then(() => {
         window.arangoHelper.arangoNotification(
           `The edge ${edgeId} was successfully deleted`

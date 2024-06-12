@@ -1,6 +1,6 @@
 import { omit } from "lodash";
 import { useEffect, useState } from "react";
-import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
+import { getCurrentDB } from "../../../utils/arangoClient";
 
 import useSWR from "swr";
 import { ViewPropertiesType } from "../View.types";
@@ -9,7 +9,7 @@ export function useFetchViewProperties(name: string) {
   const [view, setView] = useState<ViewPropertiesType | undefined>();
   const { data, error, isLoading } = useSWR(
     `/view/${name}/properties`,
-    path => getApiRouteForCurrentDB().get(path),
+    () => getCurrentDB().view(name).properties(),
     {
       revalidateOnFocus: false
     }
@@ -25,11 +25,7 @@ export function useFetchViewProperties(name: string) {
 
   useEffect(() => {
     if (data) {
-      const viewState = omit(
-        data.parsedBody,
-        "error",
-        "code"
-      ) as ViewPropertiesType;
+      const viewState = omit(data, "error", "code") as ViewPropertiesType;
       setView(viewState);
     }
   }, [data, name]);

@@ -1,30 +1,13 @@
-import { ArangojsResponse } from "arangojs/lib/request";
 import useSWR from "swr";
-import { getApiRouteForCurrentDB } from "../../../../utils/arangoClient";
-
-export type CollectionType = {
-  globallyUniqueId: string;
-  id: string;
-  name: string;
-  type: "search-alias" | "arangosearch";
-};
-interface CollectionsListResponse extends ArangojsResponse {
-  parsedBody: { result: Array<CollectionType> };
-}
+import { getCurrentDB } from "../../../../utils/arangoClient";
 
 export const useCollectionsList = () => {
-  const { data, ...rest } = useSWR<CollectionsListResponse>(
+  const { data: collectionsList, ...rest } = useSWR(
     ["/collection", "excludeSystem=true"],
-    (args: string[]) => {
-      const [path, qs] = args;
-      return getApiRouteForCurrentDB().get(
-        path,
-        new URLSearchParams(qs)
-      ) as any;
-    }
+    () => getCurrentDB().listCollections(true)
   );
   return {
-    collectionsList: data && data.parsedBody && data.parsedBody.result,
+    collectionsList,
     ...rest
   };
 };

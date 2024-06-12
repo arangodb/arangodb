@@ -1,5 +1,8 @@
 import { mutate } from "swr";
-import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
+import {
+  getApiRouteForCurrentDB,
+  getCurrentDB
+} from "../../../utils/arangoClient";
 import { encodeHelper } from "../../../utils/encodeHelper";
 import { ViewPropertiesType } from "../View.types";
 
@@ -53,18 +56,18 @@ const putRenameView = async ({
   name: string;
 }) => {
   let isError = false;
-  const route = getApiRouteForCurrentDB();
   // normalize again here because
   // this can change from the JSON form too
   const normalizedViewName = name.normalize();
   const encodedInitialViewName = encodeHelper(initialName).encoded;
-  const result = await route.put(`/view/${encodedInitialViewName}/rename`, {
-    name: normalizedViewName
-  });
-  if (result.parsedBody.error) {
+  try {
+    await getCurrentDB()
+      .view(encodedInitialViewName)
+      .rename(normalizedViewName);
+  } catch (e: any) {
     window.arangoHelper.arangoError(
       "Failure",
-      `Got unexpected server response: ${result.parsedBody.errorMessage}`
+      `Got unexpected server response: ${e.response.parsedBody.errorMessage}`
     );
     isError = true;
   }
