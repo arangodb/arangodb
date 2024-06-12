@@ -295,7 +295,7 @@ arangodb::cluster::CallbackGuard Manager::buildCallbackGuard(
           origin,
           [this, tid = state.id(), databaseName = state.vocbase().name()]() {
             // abort the transaction once the coordinator goes away
-            abortManagedTrx(tid, databaseName).get();
+            abortManagedTrx(tid, databaseName).waitAndGet();
           },
           "Transaction aborted since coordinator rebooted or failed.");
     }
@@ -1015,7 +1015,7 @@ void Manager::returnManagedTrx(TransactionId tid, bool isSideUser) noexcept {
 
   if (isSoftAborted) {
     TRI_ASSERT(!isSideUser);
-    abortManagedTrx(tid, "" /* any database */).get();
+    abortManagedTrx(tid, "" /* any database */).waitAndGet();
   }
 }
 
@@ -1185,14 +1185,18 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
         }
         return res;  // all good
       } else {
-        std::string msg("transaction was already ");
-        if (mtrx.wasExpired) {
-          msg.append("expired");
+        std::string_view operation;
+        if (status == transaction::Status::COMMITTED) {
+          operation = "commit";
         } else {
-          msg.append(statusString(mtrx.finalStatus));
+          operation = "abort";
         }
-        return res.reset(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
-                         std::move(msg));
+        return res.reset(
+            TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
+            absl::StrCat("while trying to ", operation, " transaction ",
+                         tid.id(), ": transaction was already ",
+                         (mtrx.wasExpired ? "expired"
+                                          : statusString(mtrx.finalStatus))));
       }
     }
     TRI_ASSERT(mtrx.type == MetaType::Managed);
@@ -1507,7 +1511,7 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
     }
 
     if (!futures.empty()) {
-      auto responses = futures::collectAll(futures).get();
+      auto responses = futures::collectAll(futures).waitAndGet();
       for (auto const& it : responses) {
         if (!it.hasValue()) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
@@ -1666,7 +1670,7 @@ Result Manager::abortAllManagedWriteTrx(std::string const& username,
     }
 
     for (auto& f : futures) {
-      network::Response const& resp = f.get();
+      network::Response const& resp = f.waitAndGet();
 
       if (resp.statusCode() != fuerte::StatusOK) {
         VPackSlice slice = resp.slice();

@@ -336,7 +336,7 @@ void RestVocbaseBaseHandler::generate20x(
 
 void RestVocbaseBaseHandler::generateConflictError(OperationResult const& opres,
                                                    bool precFailed) {
-  TRI_ASSERT(opres.errorNumber() == TRI_ERROR_ARANGO_CONFLICT);
+  TRI_ASSERT(opres.is(TRI_ERROR_ARANGO_CONFLICT));
   auto code =
       precFailed ? ResponseCode::PRECONDITION_FAILED : ResponseCode::CONFLICT;
   resetResponse(code);

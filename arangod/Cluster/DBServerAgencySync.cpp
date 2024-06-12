@@ -429,7 +429,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
               auto waitIndex = resultsSlice[0].getNumber<uint64_t>();
               LOG_TOPIC("cdc71", TRACE, Logger::MAINTENANCE)
                   << "waiting for local current version to update";
-              std::ignore = clusterInfo.waitForCurrent(waitIndex).get();
+              std::ignore = clusterInfo.waitForCurrent(waitIndex).waitAndGet();
               LOG_TOPIC("3f185", TRACE, Logger::MAINTENANCE)
                   << "current version updated";
             }

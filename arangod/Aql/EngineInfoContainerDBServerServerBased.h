@@ -175,7 +175,8 @@ class EngineInfoContainerDBServerServerBased {
   Result parseResponse(VPackSlice response, MapRemoteToSnippet& queryIds,
                        ServerID const& server,
                        std::vector<bool> const& didCreateEngine,
-                       QueryId& globalQueryId, RebootId& rebootId) const;
+                       QueryId& globalQueryId, RebootId& rebootId,
+                       bool fastPath) const;
 
  private:
   std::stack<std::shared_ptr<QuerySnippet>,

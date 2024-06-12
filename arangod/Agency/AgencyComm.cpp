@@ -1232,7 +1232,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
       result = comm.withSkipScheduler(true)
                    .sendWriteTransaction(std::chrono::duration<double>(timeout),
                                          std::move(buffer))
-                   .get();
+                   .waitAndGet();
     } else {
       LOG_TOPIC("4e44f", TRACE, Logger::AGENCYCOMM)
           << "sendWithFailover: "
@@ -1243,7 +1243,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
                                      std::chrono::duration<double>(timeout),
                                      AsyncAgencyComm::RequestType::READ,
                                      std::move(buffer))
-                   .get();
+                   .waitAndGet();
     }
   } else if (method == arangodb::rest::RequestType::GET) {
     LOG_TOPIC("4e448", TRACE, Logger::AGENCYCOMM)
@@ -1255,7 +1255,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
                                    std::chrono::duration<double>(timeout),
                                    AsyncAgencyComm::RequestType::CUSTOM,
                                    std::move(buffer))
-                 .get();
+                 .waitAndGet();
   } else {
     return AgencyCommResult{rest::ResponseCode::METHOD_NOT_ALLOWED,
                             "method not supported"};

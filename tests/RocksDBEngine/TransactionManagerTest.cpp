@@ -95,7 +95,7 @@ TEST(RocksDBTransactionManager, test_overlapping) {
   std::atomic<bool> done;
 
   auto getReadLock = [&]() -> void {
-    tm.commitManagedTrx(trxId, "foo").get();
+    tm.commitManagedTrx(trxId, "foo").waitAndGet();
     done = true;
   };
 
