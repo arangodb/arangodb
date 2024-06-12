@@ -157,3 +157,7 @@ communication_ssl full priority=1000 parallelity=2 single
 
 communication full priority=1000 parallelity=4 cluster
 communication_ssl full priority=1000 parallelity=4 cluster
+
+shell_api priority=500 single -- $EncryptionAtRest
+
+shell_api priority=500 cluster -- $EncryptionAtRest
