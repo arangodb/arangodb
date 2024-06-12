@@ -23,11 +23,12 @@ export const QueryEditorPane = () => {
   return (
     <Box background="white" height="100%">
       <Resizable
-        style={{ overflow: "hidden" }}
         defaultSize={{ width: "100%", height: "90%" }}
         minHeight={270}
         maxHeight="100%"
         enable={{ bottom: true }}
+        handleStyles={{ bottom: { zIndex: 1 } }}
+        handleComponent={{ bottom: <HandleComponent /> }}
       >
         <Flex height="100%" direction="column">
           <QueryEditorTopBar />
@@ -54,6 +55,55 @@ export const QueryEditorPane = () => {
         </Flex>
       </Resizable>
       <QueryResults />
+    </Box>
+  );
+};
+
+const HandleComponent = () => {
+  return (
+    <Box height="100%" width="100%" position="relative" role="group">
+      <Box
+        position="relative"
+        top="4px"
+        height="1px"
+        backgroundColor="gray.300"
+        _groupHover={{
+          backgroundColor: "blue.400"
+        }}
+        _groupActive={{
+          backgroundColor: "blue.600"
+        }}
+      />
+      <Box
+        height="2px"
+        borderRadius="sm"
+        margin="auto"
+        position="relative"
+        top="-2px"
+        backgroundColor="gray.300"
+        width="20px"
+        _groupHover={{
+          backgroundColor: "blue.400"
+        }}
+        _groupActive={{
+          backgroundColor: "blue.600"
+        }}
+      />
+      <Box
+        height="2px"
+        borderRadius="sm"
+        margin="auto"
+        position="relative"
+        top="5px"
+        backgroundColor="gray.300"
+        width="20px"
+        _groupHover={{
+          backgroundColor: "blue.400"
+        }}
+        _groupActive={{
+          backgroundColor: "blue.600"
+        }}
+      />
     </Box>
   );
 };
