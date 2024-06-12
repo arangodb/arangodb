@@ -1314,10 +1314,9 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(
   // pessimistic wait of roughly 1e9/day and repeat the call without a quick
   // option.
   std::string const baseUrl = replutils::ReplicationUrl + "/keys";
-  std::string url = baseUrl + "?collection=" + urlEncode(leaderColl) +
-                    "&to=" + std::to_string(maxTick) +
-                    "&serverId=" + _state.localServerIdString +
-                    "&batchId=" + std::to_string(_config.batch.id);
+  std::string url = absl::StrCat(
+      baseUrl, "?collection=", urlEncode(leaderColl), "&to=", maxTick,
+      "&serverId=", _state.localServerIdString, "&batchId=", _config.batch.id);
 
   std::string msg = "fetching collection keys for collection '" + coll->name() +
                     "' from " + url;
@@ -1362,9 +1361,9 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(
     if (!found) {
       ++stats.numFailedConnects;
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                    std::string("got invalid response from leader at ") +
-                        _config.leader.endpoint + url +
-                        ": could not find 'X-Arango-Async' header");
+                    absl::StrCat("got invalid response from leader at ",
+                                 _config.leader.endpoint, url,
+                                 ": could not find 'X-Arango-Async' header"));
     }
 
     double const startTime = TRI_microtime();
@@ -1397,8 +1396,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(
           ++stats.numFailedConnects;
           stats.waitedForInitial += waitTime;
           return Result(TRI_ERROR_REPLICATION_NO_RESPONSE,
-                        std::string("job not found on leader at ") +
-                            _config.leader.endpoint);
+                        absl::StrCat("job not found on leader at ",
+                                     _config.leader.endpoint));
         }
       }
 
@@ -1409,8 +1408,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(
         stats.waitedForInitial += waitTime;
         return Result(
             TRI_ERROR_REPLICATION_NO_RESPONSE,
-            std::string("timed out waiting for response from leader at ") +
-                _config.leader.endpoint);
+            absl::StrCat("timed out waiting for response from leader at ",
+                         _config.leader.endpoint));
       }
 
       if (isAborted()) {
@@ -1634,11 +1633,10 @@ void DatabaseInitialSyncer::fetchRevisionsChunk(
       isVPack = true;
     }
 
-    _config.progress.set(
-        std::string(
-            "fetching leader collection revision ranges for collection '") +
-        coll->name() + "', type: " + typeString + ", format: " +
-        (isVPack ? "vpack" : "json") + ", id: " + leaderColl + ", url: " + url);
+    _config.progress.set(absl::StrCat(
+        "fetching leader collection revision ranges for collection '",
+        coll->name(), "', type: ", typeString, ", format: ",
+        (isVPack ? "vpack" : "json"), ", id: ", leaderColl, ", url: ", url));
 
     double t = TRI_microtime();
 
@@ -1887,18 +1885,24 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
   TRI_IF_FAILURE("SyncerNoEncodeAsHLC") { encodeAsHLC = false; }
 
   // now lets get the actual ranges and handle the differences
+  VPackBuilder requestBuilder;
   {
-    VPackBuilder requestBuilder;
-    {
-      VPackArrayBuilder list(&requestBuilder);
-      for (auto const& pair : ranges) {
-        VPackArrayBuilder range(&requestBuilder);
-        // ok to use only HLC encoding here.
-        requestBuilder.add(VPackValue(RevisionId{pair.first}.toHLC()));
-        requestBuilder.add(VPackValue(RevisionId{pair.second}.toHLC()));
-      }
+    VPackArrayBuilder list(&requestBuilder);
+    for (auto const& pair : ranges) {
+      VPackArrayBuilder range(&requestBuilder);
+      // ok to use only HLC encoding here.
+      requestBuilder.add(VPackValue(RevisionId{pair.first}.toHLC()));
+      requestBuilder.add(VPackValue(RevisionId{pair.second}.toHLC()));
     }
+  }
+  std::string const requestPayload = requestBuilder.slice().toJson();
 
+  std::string const url = absl::StrCat(
+      baseUrl, "/", RestReplicationHandler::Ranges,
+      "?collection=", urlEncode(leaderColl),
+      "&serverId=", _state.localServerIdString, "&batchId=", _config.batch.id);
+
+  {
     std::unique_ptr<ReplicationIterator> iter =
         physical->getReplicationIterator(
             ReplicationIterator::Ordering::Revision, *trx);
@@ -1954,12 +1958,6 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
       return res;
     };
 
-    std::string const requestPayload = requestBuilder.slice().toJson();
-    std::string const url =
-        absl::StrCat(baseUrl, "/", RestReplicationHandler::Ranges,
-                     "?collection=", urlEncode(leaderColl),
-                     "&serverId=", _state.localServerIdString,
-                     "&batchId=", _config.batch.id);
     RevisionId requestResume{ranges[0].first};  // start with beginning
     RevisionId iterResume = requestResume;
     std::size_t chunk = 0;
