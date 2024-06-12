@@ -9,7 +9,7 @@ export type CollectionType = {
   type: "search-alias" | "arangosearch";
 };
 interface CollectionsListResponse extends ArangojsResponse {
-  body: { result: Array<CollectionType> };
+  parsedBody: { result: Array<CollectionType> };
 }
 
 export const useCollectionsList = () => {
@@ -17,8 +17,14 @@ export const useCollectionsList = () => {
     ["/collection", "excludeSystem=true"],
     (args: string[]) => {
       const [path, qs] = args;
-      return getApiRouteForCurrentDB().get(path, qs) as any;
+      return getApiRouteForCurrentDB().get(
+        path,
+        new URLSearchParams(qs)
+      ) as any;
     }
   );
-  return { collectionsList: data && data.body && data.body.result, ...rest };
+  return {
+    collectionsList: data && data.parsedBody && data.parsedBody.result,
+    ...rest
+  };
 };

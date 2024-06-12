@@ -36,7 +36,7 @@ export const useFetchShardStatistics = () => {
       const res = await getAdminRouteForCurrentDB().get(
         "cluster/shardStatistics"
       );
-      return res.body.result;
+      return res.parsedBody.result;
     }
   );
   const localStats = useSWR<Record<string, ShardStatistics>>(
@@ -46,7 +46,7 @@ export const useFetchShardStatistics = () => {
         "cluster/shardStatistics",
         { details: "true", DBserver: "all" }
       );
-      return res.body.result;
+      return res.parsedBody.result;
     }
   );
   const meta = {

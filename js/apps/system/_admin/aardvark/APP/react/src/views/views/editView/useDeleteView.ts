@@ -10,10 +10,10 @@ export const useDeleteView = ({ name }: { name: string }) => {
         `/view/${encodedViewName}`
       );
 
-      if (result.body.error) {
+      if (result.parsedBody.error) {
         window.arangoHelper.arangoError(
           "Failure",
-          `Got unexpected server response: ${result.body.errorMessage}`
+          `Got unexpected server response: ${result.parsedBody.errorMessage}`
         );
       } else {
         mutate("/view");

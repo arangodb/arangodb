@@ -11,10 +11,14 @@ export const fetchUserConfig = async () => {
   const data = await getRouteForDB(window.frontendConfig.db, "_api").get(
     `/user/${username}/config`
   );
-  return data.body.result?.['graphs-v2'];
+  return data.parsedBody.result?.["graphs-v2"];
 };
 
-export const useFetchAndSetupGraphParams = ({ graphName }: { graphName: string }) => {
+export const useFetchAndSetupGraphParams = ({
+  graphName
+}: {
+  graphName: string;
+}) => {
   const [urlParams, setUrlParams] = useState<UrlParametersType>(
     DEFAULT_URL_PARAMETERS
   );

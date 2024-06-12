@@ -41,8 +41,8 @@ export const useSyncQueryExecuteJob = ({
       asyncJobId?: string;
     }) => {
       const cursorResponse = await route.post(`/cursor/${cursorId}`);
-      if (cursorResponse.statusCode === 200) {
-        const { hasMore, result } = cursorResponse.body;
+      if (cursorResponse.status === 200) {
+        const { hasMore, result } = cursorResponse.parsedBody;
         const shouldFetchMore =
           hasMore && (queryLimit === "all" || queryResults.length < queryLimit);
         appendQueryResultById({
@@ -75,12 +75,17 @@ export const useSyncQueryExecuteJob = ({
     const checkJob = async () => {
       try {
         const jobResponse = await route.put(`/job/${asyncJobId}`);
-        if (jobResponse.statusCode === 204) {
+        if (jobResponse.status === 204) {
           // job is still running
           timer = window.setTimeout(checkJob, 2000);
-        } else if (jobResponse.statusCode === 201) {
+        } else if (jobResponse.status === 201) {
           // job is created
-          const { hasMore, result, id: cursorId, extra } = jobResponse.body;
+          const {
+            hasMore,
+            result,
+            id: cursorId,
+            extra
+          } = jobResponse.parsedBody;
           const { stats, profile, warnings } = extra || {};
           const shouldFetchMore =
             hasMore && (queryLimit === "all" || result.length < queryLimit);
@@ -110,7 +115,7 @@ export const useSyncQueryExecuteJob = ({
           }
         }
       } catch (e: any) {
-        const message = e.response?.body?.errorMessage || e.message;
+        const message = e.response?.parsedBody?.errorMessage || e.message;
         const positionError = detectPositionError(message);
         if (positionError) {
           const { text, position } = positionError;

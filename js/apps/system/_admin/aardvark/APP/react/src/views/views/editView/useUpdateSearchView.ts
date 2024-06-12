@@ -61,10 +61,10 @@ const putRenameView = async ({
   const result = await route.put(`/view/${encodedInitialViewName}/rename`, {
     name: normalizedViewName
   });
-  if (result.body.error) {
+  if (result.parsedBody.error) {
     window.arangoHelper.arangoError(
       "Failure",
-      `Got unexpected server response: ${result.body.errorMessage}`
+      `Got unexpected server response: ${result.parsedBody.errorMessage}`
     );
     isError = true;
   }
@@ -93,10 +93,10 @@ async function patchViewProperties({
       getProperties,
       initialView
     });
-    if (result.body.error) {
+    if (result.parsedBody.error) {
       window.arangoHelper.arangoError(
         "Failure",
-        `Got unexpected server response: ${result.body.errorMessage}`
+        `Got unexpected server response: ${result.parsedBody.errorMessage}`
       );
     } else {
       window.sessionStorage.removeItem(`${initialView.name}-changed`);
@@ -152,7 +152,7 @@ async function patchProperties({
       "x-arango-async": "store"
     }
   );
-  const asyncId = result.headers["x-arango-async-id"];
+  const asyncId = result.headers.get("x-arango-async-id");
   window.arangoHelper.addAardvarkJob({
     id: asyncId,
     type: "view",

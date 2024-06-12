@@ -123,9 +123,9 @@ const patchQueries = async ({
 }) => {
   let currentUser = window.App.currentUser;
   const frontendConfig = window.frontendConfig;
-  
+
   if (!frontendConfig.authenticationEnabled) {
-    currentUser = 'root';
+    currentUser = "root";
   }
 
   const currentDB = getCurrentDB();
@@ -142,7 +142,7 @@ const patchQueries = async ({
     onSuccess();
     mutate("/savedQueries");
   } catch (e: any) {
-    const message = e.message || e.response.body.errorMessage;
+    const message = e.message || e.response.parsedBody.errorMessage;
     window.arangoHelper.arangoError(`Could not save query. Error - ${message}`);
   }
 };

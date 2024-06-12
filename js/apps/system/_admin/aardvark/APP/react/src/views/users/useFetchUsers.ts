@@ -6,7 +6,7 @@ export const useFetchUsers = () => {
   const { data } = useSWR("/users", async () => {
     const route = getApiRouteForCurrentDB();
     const res = await route.get("user");
-    return res.body.result as DatabaseUserValues[];
+    return res.parsedBody.result as DatabaseUserValues[];
   });
   return { users: data };
 };

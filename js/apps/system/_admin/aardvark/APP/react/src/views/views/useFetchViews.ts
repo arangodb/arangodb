@@ -8,7 +8,7 @@ export interface LockableViewDescription extends ViewDescription {
   isLocked?: boolean;
 }
 interface ListViewsResponse extends ArangojsResponse {
-  body: { result: Array<LockableViewDescription> };
+  parsedBody: { result: Array<LockableViewDescription> };
 }
 
 export const useFetchViews = () => {
@@ -17,7 +17,7 @@ export const useFetchViews = () => {
       path
     ) as any as Promise<ListViewsResponse>;
   });
-  const result = data?.body?.result;
+  const result = data?.parsedBody?.result;
 
   const [views, setViews] = useState<LockableViewDescription[] | undefined>(
     result

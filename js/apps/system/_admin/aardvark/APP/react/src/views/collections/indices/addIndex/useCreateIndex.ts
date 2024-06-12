@@ -38,13 +38,15 @@ export const useCreateIndex = <
               ...values,
               name: values.name ? String(values.name)?.normalize() : undefined
             },
-            `collection=${encodedCollectionName}`,
+            {
+              collection: encodedCollectionName
+            },
             {
               "x-arango-async": "store"
             }
           );
-          const syncId = result.headers["x-arango-async-id"];
-          if (result.statusCode === 202 && syncId) {
+          const syncId = result.headers.get("x-arango-async-id");
+          if (result.status === 202 && syncId) {
             window.arangoHelper.addAardvarkJob({
               id: syncId,
               type: "index",
@@ -53,11 +55,11 @@ export const useCreateIndex = <
             });
             handleSuccess(onCloseForm);
           }
-          if (result.body.code === 201) {
+          if (result.parsedBody.code === 201) {
             handleSuccess(onCloseForm);
           }
         } catch (error: any) {
-          handleError(error.response.body);
+          handleError(error.response.parsedBody);
         }
       }
     );

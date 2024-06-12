@@ -15,7 +15,10 @@ type CollectionIndicesContextType = {
   collectionIndices: IndexWithFigures[] | undefined;
   collectionName: string;
   collectionId: string;
-  indexTypeOptions: { value: CollectionIndex["type"]; label: string }[];
+  indexTypeOptions: {
+    value: CollectionIndex["type"] | "fulltext";
+    label: string;
+  }[];
   onOpenForm: () => void;
   onCloseForm: () => void;
   isFormOpen: boolean;

@@ -27,12 +27,16 @@ export const DeleteDatabaseModal = ({
     setIsLoading(true);
     try {
       await currentDB.dropDatabase(database.name);
-      notifySuccess(`The database: "${database.name}" was successfully deleted`);
+      notifySuccess(
+        `The database: "${database.name}" was successfully deleted`
+      );
       mutate("/databases");
       setIsLoading(false);
       onSuccess();
     } catch (e: any) {
-      notifyError(`Could not delete database: ${e.response.body.errorMessage}`);
+      notifyError(
+        `Could not delete database: ${e.response.parsedBody.errorMessage}`
+      );
       setIsLoading(false);
     }
   };

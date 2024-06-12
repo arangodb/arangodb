@@ -36,7 +36,8 @@ export const DeleteGraphModal = ({
       onSuccess();
       return info;
     } catch (e: any) {
-      const errorMessage = e?.response?.body?.errorMessage || "Unknown error";
+      const errorMessage =
+        e?.response?.parsedBody?.errorMessage || "Unknown error";
       notifyError(`Could not delete graph: ${errorMessage}`);
     }
   };

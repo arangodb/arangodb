@@ -265,7 +265,7 @@ const useFetchQueryOptimizerRuleOptions = () => {
           method: "GET",
           path: "/_api/query/rules"
         },
-        res => res.body
+        res => res.parsedBody
       );
       const ruleOptions = response
         .filter((rule: OptimizerRule) => {

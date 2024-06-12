@@ -9,7 +9,7 @@ export type IndexType = {
   type: "inverted";
 };
 interface CollectionsListResponse extends ArangojsResponse {
-  body: { indexes: Array<IndexType> };
+  parsedBody: { indexes: Array<IndexType> };
 }
 
 export const useInvertedIndexList = (collection: string) => {
@@ -19,11 +19,14 @@ export const useInvertedIndexList = (collection: string) => {
     (args: string[]) => {
       const [path, qs] = args;
       if (collection) {
-        return getApiRouteForCurrentDB().get(path, qs) as any;
+        return getApiRouteForCurrentDB().get(
+          path,
+          new URLSearchParams(qs)
+        ) as any;
       }
     }
   );
-  const invertedIndexes = data?.body.indexes.filter(indexValue => {
+  const invertedIndexes = data?.parsedBody.indexes.filter(indexValue => {
     return indexValue.type === "inverted";
   });
   return { indexesList: invertedIndexes, ...rest };

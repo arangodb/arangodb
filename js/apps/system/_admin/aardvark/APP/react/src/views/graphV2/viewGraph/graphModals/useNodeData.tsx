@@ -21,7 +21,7 @@ export const useNodeData = ({
     const dbCollection = db.collection(collection);
     try {
       setIsLoading(true);
-      const [firstDoc] = await dbCollection.lookupByKeys([vertex]);
+      const firstDoc = await dbCollection.document(vertex);
       setNodeData(firstDoc);
       setIsLoading(false);
     } catch (error) {

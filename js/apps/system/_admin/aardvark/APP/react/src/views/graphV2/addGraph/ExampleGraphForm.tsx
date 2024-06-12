@@ -72,7 +72,8 @@ export const ExampleGraphForm = ({ onClose }: { onClose: () => void }) => {
       mutate("/graphs");
       onClose();
     } catch (e: any) {
-      const errorMessage = e?.response?.body?.errorMessage || "Unknown error";
+      const errorMessage =
+        e?.response?.parsedBody?.errorMessage || "Unknown error";
       notifyError(`Could not create graph: ${errorMessage}`);
     }
     setIsAnyLoading(false);

@@ -63,7 +63,7 @@ const postDeleteIndex = async ({
             "x-arango-async": "store"
           }
         );
-        const asyncId = result.headers["x-arango-async-id"] as string;
+        const asyncId = result.headers.get("x-arango-async-id") as string;
 
         if (asyncId) {
           handleSuccess({ onSuccess, id, asyncId, collectionId });

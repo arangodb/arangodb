@@ -8,7 +8,7 @@ const usePermissions = () => {
     }`,
     path => getApiRouteForCurrentDB().get(path)
   );
-  return data ? data.body.result : "none";
+  return data ? data.parsedBody.result : "none";
 };
 
 const userIsAdmin = (permission: string) =>

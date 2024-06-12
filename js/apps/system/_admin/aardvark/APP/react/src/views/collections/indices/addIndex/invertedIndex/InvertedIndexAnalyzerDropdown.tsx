@@ -21,7 +21,7 @@ export const InvertedIndexAnalyzerDropdown = ({
   const { data: analyzersResponse } = useSWR("/analyzer", path =>
     getApiRouteForCurrentDB().get(path)
   );
-  const analyzersList = analyzersResponse?.body.result as {
+  const analyzersList = analyzersResponse?.parsedBody.result as {
     name: string;
     features: string[];
   }[];

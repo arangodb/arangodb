@@ -20,7 +20,7 @@ export const useJobSync = ({
       window.arangoHelper.arangoError("Jobs", "Could not read pending jobs.");
     } else {
       const readJob = function (data: any, jobId: string) {
-        if (data.statusCode === 204) {
+        if (data.status === 204) {
           // job is still in queue or pending
           onQueue();
           return;
@@ -31,7 +31,7 @@ export const useJobSync = ({
       };
 
       const onJobError = (error: any, jobId: string) => {
-        const statusCode = error?.response?.body?.code;
+        const statusCode = error?.response?.parsedBody?.code;
         const message = error.message;
         window.arangoHelper.arangoError(
           `Something went wrong while creating the index ${

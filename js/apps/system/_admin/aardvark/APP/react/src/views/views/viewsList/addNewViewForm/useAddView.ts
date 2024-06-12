@@ -16,7 +16,7 @@ export const useAddView = () => {
         mutate("/view");
       })
       .catch(error => {
-        const errorMessage = error?.response?.body?.errorMessage;
+        const errorMessage = error?.response?.parsedBody?.errorMessage;
         if (errorMessage) {
           notifyError(`View creation failed: ${errorMessage}`);
         }

@@ -31,7 +31,7 @@ export const putUserConfig = async ({
     `/user/${username}/config/graphs-v2`,
     { value: finalConfig }
   );
-  return data.body;
+  return data.parsedBody;
 };
 export const useGraphSettingsHandlers = ({
   urlParams,

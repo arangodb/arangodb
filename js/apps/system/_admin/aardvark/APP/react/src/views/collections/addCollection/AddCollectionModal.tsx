@@ -136,15 +136,12 @@ export const AddCollectionModal = ({
       isSatellite,
       ...extra
     } = values;
-    const clusterOptions = window.App
-      .isCluster
+    const clusterOptions = window.App.isCluster
       ? distributeShardsLike
         ? { distributeShardsLike, ...extra }
         : {
             numberOfShards,
-            replicationFactor: isSatellite
-              ? "satellite"
-              : replicationFactor,
+            replicationFactor: isSatellite ? "satellite" : replicationFactor,
             smartJoinAttribute: smartJoinAttribute || undefined,
             writeConcern,
             ...extra
@@ -165,7 +162,7 @@ export const AddCollectionModal = ({
       mutate("/collections");
       onClose();
     } catch (error: any) {
-      const errorMessage = error?.response?.body?.errorMessage;
+      const errorMessage = error?.response?.parsedBody?.errorMessage;
       if (errorMessage) {
         window.arangoHelper.arangoError("Collection", errorMessage);
       }

@@ -16,7 +16,7 @@ export const CopyPropertiesDropdown = () => {
     getApiRouteForCurrentDB().get(path)
   );
 
-  const views = data?.body.result as ViewDescription[] | undefined;
+  const views = data?.parsedBody.result as ViewDescription[] | undefined;
   if (!views) {
     return null;
   }
@@ -39,7 +39,7 @@ const CopyPropertiesInner = ({ views }: { views: ViewDescription[] }) => {
     path => getApiRouteForCurrentDB().get(path)
   );
   const selectedView = omit(
-    fullViewData?.body,
+    fullViewData?.parsedBody,
     "error",
     "code"
   ) as SearchAliasViewPropertiesType;

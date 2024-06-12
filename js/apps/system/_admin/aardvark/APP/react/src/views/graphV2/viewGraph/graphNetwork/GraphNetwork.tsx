@@ -81,7 +81,7 @@ const GraphError = () => {
   if (!graphError) {
     return null;
   }
-  const errorMessage = graphError.response?.body.errorMessage;
+  const errorMessage = graphError.response?.parsedBody.errorMessage;
   return (
     <Box
       width="full"

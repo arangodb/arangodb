@@ -36,7 +36,7 @@ export const DeleteAnalyzerModal = ({
     } catch (e: any) {
       window.arangoHelper.arangoError(
         "Analyzer",
-        `Could not delete analyzer: ${e.response.body.errorMessage}`
+        `Could not delete analyzer: ${e.response.parsedBody.errorMessage}`
       );
       setIsLoading(false);
     }
