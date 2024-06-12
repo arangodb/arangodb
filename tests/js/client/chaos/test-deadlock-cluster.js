@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
-/* global fail, print, assertEqual, assertFalse */
+/* global fail, print, assertEqual, assertFalse, assertNotEqual */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -43,7 +43,7 @@ const fetchRevisionTree = (serverUrl, shardId) => {
   
   result = request({ method: "GET",
     url: serverUrl + `/_api/replication/revisions/tree?collection=${encodeURIComponent(shardId)}&verification=true&batchId=${batch.id}`});
-  assertEqual(200, result.statusCode);
+  assertEqual(200, result.statusCode, result);
   request({ method: "DELETE", url: serverUrl + `/_api/replication/batch/${batch.id}`});
   return JSON.parse(result.body);
 };
@@ -58,11 +58,13 @@ const checkCollectionConsistency = (cn) => {
   const servers = getDBServers();
   const shardInfo = c.shards(true);
   
-  let failed = false;
+  let failed;
+  let message;
   const getServerUrl = (serverId) => servers.filter((server) => server.id === serverId)[0].url;
   let tries = 0;
   do {
     failed = false;
+    message = "";
     Object.entries(shardInfo).forEach(
       ([shard, [leader, follower]]) => {
         const leaderTree = fetchRevisionTree(getServerUrl(leader), shard);
@@ -72,33 +74,40 @@ const checkCollectionConsistency = (cn) => {
         leaderTree.computed.nodes = "<reduced>";
         leaderTree.stored.nodes = "<reduced>";
         if (!leaderTree.equal) {
-          console.error(`Leader has inconsistent tree for shard ${shard}:`, leaderTree);
-          failed = true;
-        }
-        
-        const followerTree = fetchRevisionTree(getServerUrl(follower), shard);
-        followerTree.computed.nodes = "<reduced>";
-        followerTree.stored.nodes = "<reduced>";
-        if (!followerTree.equal) {
-          console.error(`Follower has inconsistent tree for shard ${shard}:`, followerTree);
+          message = `Leader has inconsistent tree for shard ${shard}: ${JSON.stringify(leaderTree)}`;
           failed = true;
         }
 
-        if (!compareTree(leaderTree.computed, followerTree.computed)) {
-          console.error(`Leader and follower have different trees for shard ${shard}`);
-          console.error("Leader: ", leaderTree);
-          console.error("Follower: ", followerTree);
-          failed = true;
+        // note: with rf > 1, follower is always present. the code is generalized however so
+        // that the tests can easily be run with rf = 1 for debugging purposes.
+        if (follower) {
+          const followerTree = fetchRevisionTree(getServerUrl(follower), shard);
+          followerTree.computed.nodes = "<reduced>";
+          followerTree.stored.nodes = "<reduced>";
+          if (!followerTree.equal) {
+            message = `Follower has inconsistent tree for shard ${shard}: ${JSON.stringify(followerTree)}`;
+            failed = true;
+          }
+
+          if (!compareTree(leaderTree.computed, followerTree.computed)) {
+            message = `Leader and follower have different trees for shard ${shard}. Leader: ${JSON.stringify(leaderTree)}, Follower: ${JSON.stringify(followerTree)}`;
+            failed = true;
+          }
+        }
+
+        if (failed) {
+          assertNotEqual("", message);
+          console.error(message);
         }
       });
     if (failed) {
-      if (++tries >= 3) {
-        assertFalse(failed, `Cluster still not in sync - giving up!`);
+      if (++tries >= 6) {
+        assertFalse(failed, `Cluster still not in sync - giving up! ${message}`);
       }
       console.warn(`Found some inconsistencies! Giving cluster some more time to get in sync before checking again... try=${tries}`);
       internal.sleep(10);
     }
-  } while(failed);
+  } while (failed);
 };
 
 function DeadlockSuite() { 
@@ -155,7 +164,7 @@ function DeadlockSuite() {
         const key = () => "testmann" + Math.floor(Math.random() * 100000000);
         const docs = () => {
           let result = [];
-          const max = 2000;
+          const max = 4000;
           let r = Math.floor(Math.random() * max) + 1;
           if (r > (max * 0.8)) {
             // we want ~20% of all requests to be single document operations
@@ -169,7 +178,7 @@ function DeadlockSuite() {
 
         let collectionName = testOpts.collection + Math.floor(Math.random() * testOpts.numCollections);
         let c = db._collection(collectionName);
-        const opts = (length, keepNull = false) => {
+        const opts = (keepNull = false) => {
           let result = {};
           const r = Math.random();
           if (r >= 0.75) {
@@ -182,6 +191,16 @@ function DeadlockSuite() {
 
           if (keepNull && Math.random() >= 0.5) {
             result.keepNull = true;
+          }
+          return result;
+        };
+        const queryOptions = (fullCount = false) => {
+          let result = {};
+          if (fullCount && Math.random() >= 0.5) {
+            result.fullCount = true;
+          }
+          if (Math.random() >= 0.5) {
+            result.maxRuntime = Math.random() * 10;
           }
           return result;
         };
@@ -220,42 +239,53 @@ function DeadlockSuite() {
               c.truncate();
             } else if (d >= 0.9) {
               let d = docs();
-              let o = opts(d.length);
-              log(`RUNNING AQL INSERT WITH ${d.length} DOCS. OPTIONS: ${JSON.stringify(o)}`);
-              query("FOR doc IN @docs INSERT doc INTO " + c.name(), {docs: d}, o);
+              let o = opts();
+              let qo = queryOptions();
+              log(`RUNNING AQL INSERT WITH ${d.length} DOCS. OPTIONS: ${JSON.stringify(o)}, QUERY OPTIONS: ${JSON.stringify(qo)}`);
+              query(`FOR doc IN @docs INSERT doc INTO ${c.name()} OPTIONS ${JSON.stringify(o)}`, {docs: d}, qo);
             } else if (d >= 0.8) {
               const limit = Math.floor(Math.random() * 200);
-              let o = opts(limit);
-              log(`RUNNING AQL REMOVE WITH LIMIT=${limit}. OPTIONS: ${JSON.stringify(o)}`);
-              query("FOR doc IN " + c.name() + " LIMIT @limit REMOVE doc IN " + c.name(), {limit}, o);
+              let o = opts();
+              let qo = queryOptions();
+              log(`RUNNING AQL REMOVE WITH LIMIT=${limit}. OPTIONS: ${JSON.stringify(o)}, QUERY OPTIONS: ${JSON.stringify(qo)}`);
+              query(`FOR doc IN ${c.name()} LIMIT @limit REMOVE doc IN ${c.name()}`, {limit}, qo);
             } else if (d >= 0.75) {
               const limit = Math.floor(Math.random() * 2000);
-              let o = opts(limit);
-              log(`RUNNING AQL REPLACE WITH LIMIT=${limit}. OPTIONS: ${JSON.stringify(o)}`);
-              // generate random attribute values for random attribures
-              query("FOR doc IN " + c.name() + " LIMIT @limit REPLACE doc WITH { pfihg: 434, fjgjg: RAND(), " + generateAttributes(3) + " } IN " + c.name(), {limit}, o);
+              let o = opts();
+              let qo = queryOptions();
+              log(`RUNNING AQL REPLACE WITH LIMIT=${limit}. OPTIONS: ${JSON.stringify(o)}, QUERY OPTIONS: ${JSON.stringify(qo)}`);
+              // generate random attribute values for random attributes
+              query(`FOR doc IN ${c.name()} LIMIT @limit REPLACE doc WITH { pfihg: 434, fjgjg: RAND(), ${generateAttributes(3)} } IN ${c.name()}`, {limit}, qo);
             } else if (d >= 0.70) {
               const limit = Math.floor(Math.random() * 2000);
-              let o = opts(limit, /*keepNull*/ true);
-              log(`RUNNING AQL UPDATE WITH LIMIT=${limit}. OPTIONS: ${JSON.stringify(o)}`);
-              // generate random attribute values for random attribures
-              query("FOR doc IN " + c.name() + " LIMIT @limit UPDATE doc WITH { pfihg: RAND(), " + generateAttributes(3) + " } IN " + c.name(), {limit}, o);
+              let o = opts(/*keepNull*/ true);
+              let qo = queryOptions();
+              log(`RUNNING AQL UPDATE WITH LIMIT=${limit}. OPTIONS: ${JSON.stringify(o)}, QUERY OPTIONS: ${JSON.stringify(qo)}`);
+              // generate random attribute values for random attributes
+              query(`FOR doc IN ${c.name()} LIMIT @limit UPDATE doc WITH { pfihg: RAND(), ${generateAttributes(3)} } IN ${c.name()} OPTIONS ${JSON.stringify(o)}`, {limit}, qo);
             } else if (d >= 0.68) {
               const limit = Math.floor(Math.random() * 10) + 1;
               log(`RUNNING DOCUMENT SINGLE LOOKUP QUERY WITH LIMIT=${limit}`);
-              query("FOR doc IN " + c.name() + " LIMIT @limit RETURN DOCUMENT(doc._id)", {limit});
+              query(`FOR doc IN ${c.name()} LIMIT @limit RETURN DOCUMENT(doc._id)`, {limit});
             } else if (d >= 0.66) {
               const limit = Math.floor(Math.random() * 10) + 1;
               log(`RUNNING DOCUMENT ARRAY LOOKUP QUERY WITH LIMIT=${limit}`);
-              query("LET keys = (FOR doc IN " + c.name() + " LIMIT @limit RETURN doc._id) RETURN DOCUMENT(keys)", {limit});
+              query(`LET keys = (FOR doc IN ${c.name()} LIMIT @limit RETURN doc._id) RETURN DOCUMENT(keys)`, {limit});
             } else if (d >= 0.65) {
               const limit = Math.floor(Math.random() * 10) + 1;
-              let o = opts(limit);
-              log(`RUNNING DOCUMENT LOOKUP AND WRITE QUERY WITH LIMIT=${limit}. OPTIONS: ${JSON.stringify(0)}`);
-              query("FOR doc IN " + c.name() + " LIMIT @limit LET d = DOCUMENT(doc._id) INSERT UNSET(doc, '_key') INTO " + c.name(), {limit}, o);
+              let o = opts();
+              let qo = queryOptions();
+              log(`RUNNING DOCUMENT LOOKUP AND WRITE QUERY WITH LIMIT=${limit}. OPTIONS: ${JSON.stringify(o)}, QUERY OPTIONS: ${JSON.stringify(qo)}`);
+              query(`FOR doc IN ${c.name()} LIMIT @limit LET d = DOCUMENT(doc._id) INSERT UNSET(doc, '_key') INTO ${c.name()} OPTIONS ${JSON.stringify(o)}`, {limit}, qo);
+            } else if (d >= 0.63) {
+              const skip = Math.floor(Math.random() * 100) + 1;
+              const limit = Math.floor(Math.random() * 100) + 1;
+              let qo = queryOptions(/*fullCount*/ true);
+              log(`RUNNING DOCUMENT LOOKUP WITH LIMIT ${skip},${limit}. QUERY OPTIONS: ${JSON.stringify(qo)}`);
+              query(`FOR doc IN ${c.name()} LIMIT @skip, @limit RETURN doc`, {skip, limit}, qo);
             } else if (d >= 0.25) {
               let d = docs();
-              let o = opts(d.length);
+              let o = Object.assign(opts(), queryOptions());
               log(`RUNNING INSERT WITH ${d.length} DOCS. OPTIONS: ${JSON.stringify(o)}`);
               d = d.length === 1 ? d[0] : d;
               c.insert(d, o);
@@ -267,8 +297,20 @@ function DeadlockSuite() {
             }
           } catch (err) {
             log(`executing previous command triggered exception ${err}`);
+            // none of the following errors are expected in this test:
             if (require("@arangodb").errors.ERROR_CLUSTER_TIMEOUT.code === err.errorNum ||
-                require("@arangodb").errors.ERROR_LOCK_TIMEOUT.code === err.errorNum) {
+                require("@arangodb").errors.ERROR_CLUSTER_BACKEND_UNAVAILABLE === err.errorNum ||
+                require("@arangodb").errors.ERROR_CLUSTER_CONNECTION_LOST === err.errorNum ||
+                require("@arangodb").errors.ERROR_LOCK_TIMEOUT.code === err.errorNum ||
+                require("@arangodb").errors.ERROR_QUERY_PARSE === err.errorNum ||
+                require("@arangodb").errors.ERROR_QUERY_EMPTY === err.errorNum ||
+                require("@arangodb").errors.ERROR_QUERY_COMPILE_TIME_OPTIONS === err.errorNum ||
+                require("@arangodb").errors.ERROR_QUERY_ACCESS_AFTER_MODIFICATION === err.errorNum ||
+                require("@arangodb").errors.ERROR_QUERY_BIND_PARAMETERS_INVALID === err.errorNum ||
+                require("@arangodb").errors.ERROR_QUERY_BIND_PARAMETER_MISSING === err.errorNum ||
+                require("@arangodb").errors.ERROR_QUERY_BIND_PARAMETER_UNDECLARED === err.errorNum ||
+                require("@arangodb").errors.ERROR_QUERY_BIND_PARAMETER_TYPE === err.errorNum ||
+                require("@arangodb").errors.ERROR_QUEUE_FULL === err.errorNum) {
               throw err;
             }
           }
@@ -312,13 +354,13 @@ function DeadlockSuite() {
       };
       code = `(${code.toString()})(${JSON.stringify(testOpts)});`;
       
-      const concurrency = 10;
+      const concurrency = 12;
       let tests = [];
       for (let i = 0; i < concurrency; ++i) {
         tests.push(["p" + i, code]);
       }
 
-      // run the suite for 3 minutes
+      // run the suite for a few minutes
       let client_ret = runParallelArangoshTests(tests, 3 * 60, coordination_cn);
       client_ret.forEach(client => { 
         if (client.failed) { 

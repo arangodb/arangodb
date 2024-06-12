@@ -443,7 +443,7 @@ function iterateTests(cases, options) {
       delete result.shutdown;
     }
 
-    status = rp.gatherStatus(result);
+    status = rp.gatherStatus(result) && shutdownSuccess;
     let failed = rp.gatherFailed(result);
     if (!status) {
       globalStatus = false;

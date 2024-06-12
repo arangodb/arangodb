@@ -1991,7 +1991,7 @@ OperationResult transaction::Methods::anyCoordinator(std::string const&,
 
 /// @brief fetches documents in a collection in random order, local
 futures::Future<OperationResult> transaction::Methods::anyLocal(
-    std::string const& collectionName, OperationOptions const& options) {
+    std::string const& collectionName, OperationOptions options) {
   DataSourceId cid =
       co_await addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   TransactionCollection* trxColl = trxCollection(cid);
@@ -2254,7 +2254,7 @@ Future<OperationResult> transaction::Methods::documentCoordinator(
 /// @brief read one or multiple documents in a collection, local
 Future<OperationResult> transaction::Methods::documentLocal(
     std::string const& collectionName, VPackSlice value,
-    OperationOptions const& options) {
+    OperationOptions options) {
   auto res = co_await GetDocumentProcessor::create(*this, collectionName, value,
                                                    options);
   if (res.fail()) {
@@ -2547,7 +2547,7 @@ Result transaction::Methods::determineReplication2TypeAndFollowers(
 /// if it fails, clean up after itself
 Future<OperationResult> transaction::Methods::insertLocal(
     std::string const& collectionName, VPackSlice value,
-    OperationOptions& options) {
+    OperationOptions options) {
   auto res =
       co_await InsertProcessor::create(*this, collectionName, value, options);
   if (res.fail()) {
@@ -2624,7 +2624,7 @@ Future<OperationResult> transaction::Methods::replaceAsync(
 /// if it fails, clean up after itself
 Future<OperationResult> transaction::Methods::modifyLocal(
     std::string const& collectionName, VPackSlice newValue,
-    OperationOptions& options, bool isUpdate) {
+    OperationOptions options, bool isUpdate) {
   auto res = co_await ModifyProcessor::create(*this, collectionName, newValue,
                                               options, isUpdate);
   if (res.fail()) {
@@ -2672,7 +2672,7 @@ Future<OperationResult> transaction::Methods::removeCoordinator(
 /// if it fails, clean up after itself
 Future<OperationResult> transaction::Methods::removeLocal(
     std::string const& collectionName, VPackSlice value,
-    OperationOptions& options) {
+    OperationOptions options) {
   auto res =
       co_await RemoveProcessor::create(*this, collectionName, value, options);
   if (res.fail()) {
@@ -2687,26 +2687,24 @@ futures::Future<OperationResult> transaction::Methods::all(
     OperationOptions const& options) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
-  OperationOptions optionsCopy = options;
-
   if (_state->isCoordinator()) {
-    co_return co_await allCoordinator(collectionName, skip, limit, optionsCopy);
+    co_return co_await allCoordinator(collectionName, skip, limit, options);
   }
 
-  co_return co_await allLocal(collectionName, skip, limit, optionsCopy);
+  co_return co_await allLocal(collectionName, skip, limit, options);
 }
 
 /// @brief fetches all documents in a collection, coordinator
 futures::Future<OperationResult> transaction::Methods::allCoordinator(
     std::string const& collectionName, uint64_t skip, uint64_t limit,
-    OperationOptions& options) {
+    OperationOptions const& options) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 /// @brief fetches all documents in a collection, local
 futures::Future<OperationResult> transaction::Methods::allLocal(
     std::string const& collectionName, uint64_t skip, uint64_t limit,
-    OperationOptions& options) {
+    OperationOptions options) {
   DataSourceId cid =
       co_await addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   TransactionCollection* trxColl = trxCollection(cid);
@@ -3909,8 +3907,7 @@ Future<OperationResult> Methods::insertInternal(
   if (_state->isCoordinator()) {
     f = insertCoordinator(collectionName, value, options, api);
   } else {
-    OperationOptions optionsCopy = options;
-    f = insertLocal(collectionName, value, optionsCopy);
+    f = insertLocal(collectionName, value, options);
   }
 
   return addTracking(std::move(f), [=, this](OperationResult&& opRes) {
@@ -3944,8 +3941,7 @@ Future<OperationResult> Methods::updateInternal(
     f = modifyCoordinator(collectionName, newValue, options,
                           TRI_VOC_DOCUMENT_OPERATION_UPDATE, api);
   } else {
-    OperationOptions optionsCopy = options;
-    f = modifyLocal(collectionName, newValue, optionsCopy, /*isUpdate*/ true);
+    f = modifyLocal(collectionName, newValue, options, /*isUpdate*/ true);
   }
   return addTracking(std::move(f), [=, this](OperationResult&& opRes) {
     events::ModifyDocument(vocbase().name(), collectionName, newValue,
@@ -3976,8 +3972,7 @@ Future<OperationResult> Methods::replaceInternal(
     f = modifyCoordinator(collectionName, newValue, options,
                           TRI_VOC_DOCUMENT_OPERATION_REPLACE, api);
   } else {
-    OperationOptions optionsCopy = options;
-    f = modifyLocal(collectionName, newValue, optionsCopy,
+    f = modifyLocal(collectionName, newValue, options,
                     /*isUpdate*/ false);
   }
   return addTracking(std::move(f), [=, this](OperationResult&& opRes) {
@@ -4008,8 +4003,7 @@ Future<OperationResult> Methods::removeInternal(
   if (_state->isCoordinator()) {
     f = removeCoordinator(collectionName, value, options, api);
   } else {
-    OperationOptions optionsCopy = options;
-    f = removeLocal(collectionName, value, optionsCopy);
+    f = removeLocal(collectionName, value, options);
   }
   return addTracking(std::move(f), [=, this](OperationResult&& opRes) {
     events::DeleteDocument(vocbase().name(), collectionName, value,

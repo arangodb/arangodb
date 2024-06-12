@@ -29,8 +29,9 @@
 #include "Logger/LogMacros.h"
 #include "SimpleHttpClient/SslClientConnection.h"
 
-namespace arangodb {
-namespace httpclient {
+#include <absl/strings/str_cat.h>
+
+namespace arangodb::httpclient {
 
 ConnectionLease::ConnectionLease()
     : _cache(nullptr), _preventRecycling(false) {}
@@ -50,13 +51,14 @@ ConnectionLease::~ConnectionLease() {
 ConnectionLease::ConnectionLease(ConnectionLease&& other) noexcept
     : _cache(other._cache),
       _connection(std::move(other._connection)),
-      _preventRecycling(other._preventRecycling) {}
+      _preventRecycling(
+          other._preventRecycling.load(std::memory_order_relaxed)) {}
 
 ConnectionLease& ConnectionLease::operator=(ConnectionLease&& other) noexcept {
   if (this != &other) {
     _cache = other._cache;
     _connection = std::move(other._connection);
-    _preventRecycling = other._preventRecycling;
+    _preventRecycling = other._preventRecycling.load(std::memory_order_relaxed);
   }
   return *this;
 }
@@ -64,7 +66,7 @@ ConnectionLease& ConnectionLease::operator=(ConnectionLease&& other) noexcept {
 void ConnectionLease::preventRecycling() noexcept {
   // this will prevent the connection from being inserted back into the
   // connection cache
-  _preventRecycling = true;
+  _preventRecycling.store(true);
 }
 
 ConnectionCache::ConnectionCache(
@@ -146,7 +148,7 @@ ConnectionLease ConnectionCache::acquire(std::string endpoint,
     if (ep == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER,
-          std::string("unable to create endpoint '") + endpoint + "'");
+          absl::StrCat("unable to create endpoint '", endpoint, "'"));
     }
 
     // the unique_ptr ep is modified by the factory function and takes over
@@ -195,5 +197,4 @@ void ConnectionCache::release(
   // no leaks will happen
 }
 
-}  // namespace httpclient
-}  // namespace arangodb
+}  // namespace arangodb::httpclient
