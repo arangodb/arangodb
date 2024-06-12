@@ -272,7 +272,13 @@ DatabaseFeature::DatabaseFeature(Server& server)
   startsAfter<metrics::MetricsFeature>();
 }
 
-DatabaseFeature::~DatabaseFeature() = default;
+DatabaseFeature::~DatabaseFeature() {
+  // must clean this up, as otherwise we would may destroying the
+  // calculation vocbase until the end of the entire program.
+  // this would not work as the dtor of TRI_vocbase_t may depend
+  // on other features, e.g. the maintenance feature
+  calculationVocbase.reset();
+}
 
 void DatabaseFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
