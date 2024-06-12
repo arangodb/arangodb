@@ -147,7 +147,7 @@ class SiteConfig:
         # base_source_dir = (definition_file / '..').resolve()
         # TODO - find a better solution
         base_source_dir = Path(".").resolve()
-        bin_dir = (base_source_dir / "build-clang-asan" / "bin").resolve()
+        bin_dir = (base_source_dir / "build" / "bin").resolve()
         socket_count = "was not allowed to see socket counts!"
         try:
             socket_count = str(get_socket_count())
