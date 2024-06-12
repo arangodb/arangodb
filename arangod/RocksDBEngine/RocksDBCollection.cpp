@@ -1117,14 +1117,8 @@ Result RocksDBCollection::insert(transaction::Methods& trx,
   RocksDBSavePoint savepoint(_logicalCollection.id(), *state,
                              TRI_VOC_DOCUMENT_OPERATION_INSERT);
 
-  Result res = insertDocument(&trx, indexesSnapshot, savepoint, newDocumentId,
-                              newDocument, options, newRevisionId);
-
-  if (res.ok()) {
-    res = savepoint.finish(newRevisionId);
-  }
-
-  return res;
+  return insertDocument(&trx, indexesSnapshot, savepoint, newDocumentId,
+                        newDocument, options, newRevisionId);
 }
 
 Result RocksDBCollection::update(
@@ -1182,15 +1176,9 @@ Result RocksDBCollection::performUpdateOrReplace(
 
   RocksDBSavePoint savepoint(_logicalCollection.id(), *state, opType);
 
-  Result res = modifyDocument(
-      &trx, indexesSnapshot, savepoint, previousDocumentId, previousDocument,
-      newDocumentId, newDocument, previousRevisionId, newRevisionId, options);
-
-  if (res.ok()) {
-    res = savepoint.finish(newRevisionId);
-  }
-
-  return res;
+  return modifyDocument(&trx, indexesSnapshot, savepoint, previousDocumentId,
+                        previousDocument, newDocumentId, newDocument,
+                        previousRevisionId, newRevisionId, options);
 }
 
 Result RocksDBCollection::remove(transaction::Methods& trx,
@@ -1211,15 +1199,8 @@ Result RocksDBCollection::remove(transaction::Methods& trx,
   RocksDBSavePoint savepoint(_logicalCollection.id(), *state,
                              TRI_VOC_DOCUMENT_OPERATION_REMOVE);
 
-  Result res =
-      removeDocument(&trx, indexesSnapshot, savepoint, previousDocumentId,
-                     previousDocument, options, previousRevisionId);
-
-  if (res.ok()) {
-    res = savepoint.finish(_logicalCollection.newRevisionId());
-  }
-
-  return res;
+  return removeDocument(&trx, indexesSnapshot, savepoint, previousDocumentId,
+                        previousDocument, options, previousRevisionId);
 }
 
 bool RocksDBCollection::hasDocuments() {
@@ -1501,7 +1482,11 @@ Result RocksDBCollection::insertDocument(transaction::Methods* trx,
 
   if (res.ok()) {
     TRI_ASSERT(revisionId == RevisionId::fromSlice(doc));
-    state->trackInsert(_logicalCollection.id(), revisionId);
+
+    res = savepoint.finish(revisionId);
+    if (res.ok()) {
+      state->trackInsert(_logicalCollection.id(), revisionId);
+    }
   }
 
   return res;
@@ -1606,9 +1591,13 @@ Result RocksDBCollection::removeDocument(transaction::Methods* trx,
   }
 
   if (res.ok()) {
-    RocksDBTransactionState* state = RocksDBTransactionState::toState(trx);
     TRI_ASSERT(revisionId == RevisionId::fromSlice(doc));
-    state->trackRemove(_logicalCollection.id(), revisionId);
+
+    res = savepoint.finish(_logicalCollection.newRevisionId());
+    if (res.ok()) {
+      RocksDBTransactionState* state = RocksDBTransactionState::toState(trx);
+      state->trackRemove(_logicalCollection.id(), revisionId);
+    }
   }
 
   return res;
@@ -1788,8 +1777,12 @@ Result RocksDBCollection::modifyDocument(
 
   if (res.ok()) {
     TRI_ASSERT(newRevisionId == RevisionId::fromSlice(newDoc));
-    state->trackRemove(_logicalCollection.id(), oldRevisionId);
-    state->trackInsert(_logicalCollection.id(), newRevisionId);
+
+    res = savepoint.finish(newRevisionId);
+    if (res.ok()) {
+      state->trackRemove(_logicalCollection.id(), oldRevisionId);
+      state->trackInsert(_logicalCollection.id(), newRevisionId);
+    }
   }
 
   return res;
