@@ -1,6 +1,7 @@
 devel
 -----
 
+* FE-310: Query editor in web UI can now be resized vertically.
 
 
 3.12.1 (XXXX-XX-XX)
@@ -55,6 +56,7 @@ devel
 
 * Fixed MDS-1230: added missing variable replacement for inline filters of
   EnumerateListNodes.
+>>>>>>> origin/devel
 
 * Fixed BTS-1813: Fixed an AQL error that could lead to range-check exceptions
   in certain queries with subqueries.
