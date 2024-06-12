@@ -1501,7 +1501,8 @@ void RocksDBMetaCollection::applyUpdates(
               << _logicalCollection.name() << ": " << ex.what();
           // it is pretty bad if this fails in real life, but we would trigger
           // this assertion during failure testing as well, so we cannot enable
-          // it TRI_ASSERT(false);
+          // it
+          TRI_ASSERT(false);
 
           // if an exception escapes from here, the same remove will be retried
           // next time.
