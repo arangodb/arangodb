@@ -40,14 +40,14 @@ const QueryViewWrapInner = () => {
     return <QueryFullGraphView />;
   }
   return (
-    <Box width="full" height="calc(100vh - 60px)" overflow="auto">
+    <Box width="full" height={`calc(100vh - ${navbarHeight}px)`} overflow="auto">
       <Tabs size="sm" height="full" isLazy>
         <TabList>
           <Tab>Editor</Tab>
           <Tab>Running Queries</Tab>
           <Tab>Slow Query History</Tab>
         </TabList>
-        <TabPanels height={`calc(100% - ${navbarHeight})`}>
+        <TabPanels height="calc(100% - 60px)">
           <TabPanel height="full">
             <QueryEditorPane />
           </TabPanel>
