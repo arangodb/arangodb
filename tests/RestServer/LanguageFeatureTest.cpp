@@ -51,8 +51,15 @@ void checkCollatorSettings(std::string_view language, bool isDefaultLanguage) {
     // get default collator for empty language
     expectedColl = icu::Collator::createInstance(status);
   } else {
-    icu::Locale locale(language.data());
-    expectedColl = icu::Collator::createInstance(locale, status);
+    icu::Locale canonicalLocale =
+        icu::Locale::createCanonical(std::string(language).c_str());
+    if (isDefaultLanguage) {
+      icu::Locale defaultLocale{canonicalLocale.getLanguage(),
+                                canonicalLocale.getCountry()};
+      expectedColl = icu::Collator::createInstance(defaultLocale, status);
+    } else {
+      expectedColl = icu::Collator::createInstance(canonicalLocale, status);
+    }
   }
 
   if (isDefaultLanguage) {

@@ -182,7 +182,8 @@ void LanguageCheckFeature::start() {
   using namespace arangodb::basics;
 
   auto& feature = server().getFeature<LanguageFeature>();
-  auto [currLang, currLangType] = feature.getLanguage();
+  auto [currLang, currLangType] =
+      feature.getLanguage();  // language that was provided by user
   auto collatorLang = feature.getCollatorLanguage();
 
   auto [prevLang, prevLangType] =
