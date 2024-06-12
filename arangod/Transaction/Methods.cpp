@@ -46,6 +46,7 @@
 #include "Cluster/ReplicationTimeoutFeature.h"
 #include "Cluster/ServerState.h"
 #include "Containers/FlatHashSet.h"
+#include "Futures/Future.h"
 #include "Futures/Utilities.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
@@ -3705,6 +3706,13 @@ Future<Result> Methods::replicateOperations(
   };
   return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
 }
+
+// For some reason, non-maintainer compilation fails with a linker error missing
+// this instantion.
+template struct std::coroutine_traits<
+    arangodb::futures::Future<arangodb::Result>,
+    arangodb::transaction::Methods&,
+    arangodb::transaction::MethodsApi>::promise_type;
 
 Future<Result> Methods::commitInternal(MethodsApi api) noexcept try {
   TRI_IF_FAILURE("TransactionCommitFail") { co_return Result(TRI_ERROR_DEBUG); }
