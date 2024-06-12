@@ -273,7 +273,7 @@ DatabaseFeature::DatabaseFeature(Server& server)
 }
 
 DatabaseFeature::~DatabaseFeature() {
-  // must clean this up, as otherwise we would may destroying the
+  // must clean this up, as otherwise we may delay destroying the
   // calculation vocbase until the end of the entire program.
   // this would not work as the dtor of TRI_vocbase_t may depend
   // on other features, e.g. the maintenance feature
