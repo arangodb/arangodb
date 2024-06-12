@@ -21,26 +21,23 @@ const NameCell = ({
   const finalId = id.slice(id.lastIndexOf("/") + 1); // remove the collection name from the id
   const collectionName = window.location.hash.split("#cIndices/")[1]; // get the collection name from the url
   // need to use href here instead of RouteLink due to a bug in react-router
-  return (
-    <Text color="gray.400">
-      <Link
-        href={`#cIndices/${collectionName}/${finalId}`}
-        textDecoration="underline"
-        color="blue.500"
-        _hover={{
-          color: "blue.600"
-        }}
-      >
-        {info.cell.getValue()}
-      </Link>
-      {typeof info.row.original.progress === "number" &&
-        info.row.original.progress < 100 && (
-          <>
-            <Spinner size="xs" marginLeft={1} />{" "}
-            {info.row.original.progress.toFixed(0)}%
-          </>
-        )}
+  return typeof info.row.original.progress === "number" &&
+    info.row.original.progress < 100 ? (
+    <Text>
+      {info.cell.getValue()} <Spinner size="xs" />{" "}
+      {info.row.original.progress.toFixed(0)}%
     </Text>
+  ) : (
+    <Link
+      href={`#cIndices/${collectionName}/${finalId}`}
+      textDecoration="underline"
+      color="blue.500"
+      _hover={{
+        color: "blue.600"
+      }}
+    >
+      {info.cell.getValue()}
+    </Link>
   );
 };
 const TABLE_COLUMNS = [
