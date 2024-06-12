@@ -21,7 +21,7 @@ export const useFetchCollectionIndices = (collectionName: string) => {
     async () => {
       const data = (await getApiRouteForCurrentDB().get(
         `/index/`,
-        `collection=${encodedCollectionName}&withStats=true`
+        `collection=${encodedCollectionName}&withStats=true&withHidden=true`
       )) as IndicesResponse;
       return data.body.indexes;
     }
