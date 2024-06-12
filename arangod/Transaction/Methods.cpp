@@ -2212,17 +2212,17 @@ Future<OperationResult> Methods::documentCoordinator(
   if (!value.isArray()) {
     std::string_view key(extractKeyPart(value));
     if (key.empty()) {
-      return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD, options);
+      co_return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD, options);
     }
   }
 
   auto colptr = resolver()->getCollectionStructCluster(collectionName);
   if (colptr == nullptr) {
-    return futures::makeFuture(
-        OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
+    co_return OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options);
   }
 
-  return getDocumentOnCoordinator(*this, *colptr, value, options, api);
+  co_return co_await getDocumentOnCoordinator(*this, *colptr, value, options,
+                                              api);
 }
 #endif
 
@@ -2264,10 +2264,10 @@ Future<OperationResult> Methods::insertCoordinator(
     OperationOptions options, MethodsApi api) {
   auto colptr = resolver()->getCollectionStructCluster(collectionName);
   if (colptr == nullptr) {
-    return futures::makeFuture(
-        OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
+    co_return OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options);
   }
-  return insertDocumentOnCoordinator(*this, *colptr, value, options, api);
+  co_return co_await insertDocumentOnCoordinator(*this, *colptr, value, options,
+                                                 api);
 }
 #endif
 
@@ -2560,19 +2560,18 @@ Future<OperationResult> Methods::modifyCoordinator(
   if (!newValue.isArray()) {
     std::string_view key(extractKeyPart(newValue));
     if (key.empty()) {
-      return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD, options);
+      co_return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD, options);
     }
   }
 
   auto colptr = resolver()->getCollectionStructCluster(collectionName);
   if (colptr == nullptr) {
-    return futures::makeFuture(
-        OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
+    co_return OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options);
   }
 
   const bool isPatch = (TRI_VOC_DOCUMENT_OPERATION_UPDATE == operation);
-  return modifyDocumentOnCoordinator(*this, *colptr, newValue, options, isPatch,
-                                     api);
+  co_return co_await modifyDocumentOnCoordinator(*this, *colptr, newValue,
+                                                 options, isPatch, api);
 }
 #endif
 
@@ -2635,10 +2634,10 @@ Future<OperationResult> Methods::removeCoordinator(
     OperationOptions options, MethodsApi api) {
   auto colptr = resolver()->getCollectionStructCluster(collectionName);
   if (colptr == nullptr) {
-    return futures::makeFuture(
-        OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
+    co_return OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options);
   }
-  return removeDocumentOnCoordinator(*this, *colptr, value, options, api);
+  co_return co_await removeDocumentOnCoordinator(*this, *colptr, value, options,
+                                                 api);
 }
 #endif
 
@@ -2736,7 +2735,8 @@ Future<OperationResult> Methods::truncateAsync(
 Future<OperationResult> Methods::truncateCoordinator(
     std::string const& collectionName, OperationOptions options,
     MethodsApi api) {
-  return truncateCollectionOnCoordinator(*this, collectionName, options, api);
+  co_return co_await truncateCollectionOnCoordinator(*this, collectionName,
+                                                     options, api);
 }
 #endif
 
@@ -2968,11 +2968,11 @@ futures::Future<OperationResult> Methods::countCoordinator(
   // First determine the collection ID from the name:
   auto colptr = resolver()->getCollectionStructCluster(collectionName);
   if (colptr == nullptr) {
-    return futures::makeFuture(
-        OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options));
+    co_return OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options);
   }
 
-  return countCoordinatorHelper(colptr, collectionName, type, options, api);
+  co_return co_await countCoordinatorHelper(colptr, collectionName, type,
+                                            options, api);
 }
 #endif
 
