@@ -46,7 +46,7 @@ export function CollectionIndexActionButtons({
     typeof collectionIndex.progress === "number" &&
     collectionIndex.progress < 100
   ) {
-    const label = "Index is still being created";
+    const label = "Index creation in progress";
     return (
       <Box padding="2">
         <Tooltip hasArrow label={label} placement="top">
