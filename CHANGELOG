@@ -56,7 +56,6 @@ devel
 
 * Fixed MDS-1230: added missing variable replacement for inline filters of
   EnumerateListNodes.
->>>>>>> origin/devel
 
 * Fixed BTS-1813: Fixed an AQL error that could lead to range-check exceptions
   in certain queries with subqueries.
