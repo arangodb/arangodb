@@ -21,7 +21,7 @@ export const QueryEditorPane = () => {
     );
   }
   return (
-    <Box background="white" height="calc(100vh - 300px)">
+    <Box background="white" height="100%">
       <Resizable
         style={{ overflow: "hidden" }}
         defaultSize={{ width: "100%", height: "90%" }}
