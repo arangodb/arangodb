@@ -276,22 +276,6 @@ function saveToJunitXML(options, results) {
   };
   let prefix = (options.cluster ? 'CL_' : '') + (pu.isEnterpriseClient ? 'EE_' : 'CE_');
 
-  if (results.hasOwnProperty('crashreport')) {
-    results['crash'] = {
-      crash_report: {
-        status: false,
-        failed: 1,
-        all: {
-          status: false,
-          failed: 1,
-          message: ((results.crashed)? "SUT crashed: \n": "SUT was aborted: \n") +results.crashreport
-        }
-      },
-      status: false,
-      failed: 1,
-    };
-  }
-
   const addOptionalDuration = (elem, test) => {
     if (test.hasOwnProperty('duration') && test.duration !== undefined) {
       // time is in seconds
@@ -1047,9 +1031,6 @@ function dumpAllResults(options, results) {
   let j;
 
   try {
-    if (cu.GDB_OUTPUT !== '') {
-      results['crashreport'] = cu.GDB_OUTPUT;
-    }
     j = JSON.stringify(results);
   } catch (err) {
     j = inspect(results);
