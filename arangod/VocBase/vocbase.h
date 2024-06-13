@@ -128,7 +128,8 @@ struct TRI_vocbase_t {
   explicit TRI_vocbase_t(arangodb::CreateDatabaseInfo&& info);
 
   // note: isInternal=true is currently only used for the special internal
-  // vocbase object that is used to execute IResearchAqlAnalyzer computations.
+  // vocbase object that is used to execute IResearchAqlAnalyzer computations,
+  // namely calculationVocbase.
   // all other vocbases do not set it.
   // the isInternal flag is necessary for a slightly different setup of the
   // internal vocbase object, which does not use the MetricsFeature, because
