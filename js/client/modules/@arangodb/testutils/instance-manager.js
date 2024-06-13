@@ -334,6 +334,18 @@ class instanceManager {
       this.launchFinalize(startTime);
       return true;
     } catch (e) {
+      // disable watchdog
+      let hasTimedOut = internal.SetGlobalExecutionDeadlineTo(0.0);
+      if (hasTimedOut) {
+        print(RED + Date() + ' Deadline reached! Forcefully shutting down!' + RESET);
+      }
+      this.arangods.forEach(arangod => {
+        try {
+          arangod.shutdownArangod(true);
+        } catch(e) {
+          print("Error cleaning up: ", e, e.stack);
+        }
+      });
       print(e, e.stack);
       return false;
     }
@@ -1001,10 +1013,7 @@ class instanceManager {
           }
           return true;
         }
-        if ((arangod.exitStatus !== null) && (arangod.exitStatus.status === 'RUNNING')) {
-          arangod.exitStatus = statusExternal(arangod.pid, false);
-        }
-        if ((arangod.exitStatus !== null) && (arangod.exitStatus.status === 'RUNNING')) {
+        if (arangod.isRunning()) {
           let localTimeout = timeout;
           if (arangod.isAgent()) {
             localTimeout = localTimeout + 60;
@@ -1076,6 +1085,10 @@ class instanceManager {
     }
     this.arangods.forEach(arangod => {
       arangod.readAssertLogLines(this.expectAsserts);
+      if (arangod.exitStatus && arangod.exitStatus.exit !== 0) {
+        print(RED + `arangod "${arangod.instanceRole}" with pid ${arangod.pid} exited with exit code ${arangod.exitStatus.exit}` + RESET);
+        shutdownSuccess = false;
+      }
     });
     this.cleanup = this.cleanup && shutdownSuccess;
     return shutdownSuccess;
@@ -1262,6 +1275,7 @@ class instanceManager {
             if ((arangod.exitStatus === null) ||
                 (arangod.exitStatus.status === 'RUNNING')) {
               // arangod.killWithCoreDump();
+              arangod.processSanitizerReports();
               arangod.exitStatus = killExternal(arangod.pid, termSignal);
             }
             arangod.analyzeServerCrash('startup timeout; forcefully terminating ' + arangod.name + ' with pid: ' + arangod.pid);
@@ -1407,7 +1421,7 @@ class instanceManager {
               break;
             } catch (e) {
               this.arangods.forEach( arangod => {
-                let status = statusExternal(arangod.pid, false);
+                let status = arangod.status(false);
                 if (status.status !== "RUNNING") {
                   throw new Error(`Arangod ${arangod.pid} exited instantly! ` + JSON.stringify(status));
                 }

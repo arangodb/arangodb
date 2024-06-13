@@ -163,7 +163,8 @@ std::unique_ptr<rocksdb::Iterator> RocksDBTrxMethods::NewIterator(
     // at least compile. But since checkIntermediateCommits is only defined in
     // maintainer mode, we have to wrap this assert in another ifdef.
     TRI_ASSERT(!opts.checkIntermediateCommits ||
-               !hasIntermediateCommitsEnabled());
+               !hasIntermediateCommitsEnabled() ||
+               _state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED));
 #endif
     iterator.reset(_rocksTransaction->GetIterator(opts, cf));
   } else {
@@ -259,7 +260,7 @@ Result RocksDBTrxMethods::triggerIntermediateCommit() {
   TRI_ASSERT(_iteratorReadSnapshot != nullptr ||
              _state->options().isFollowerTransaction);
   TRI_ASSERT(_readOptions.snapshot != nullptr);
-  return TRI_ERROR_NO_ERROR;
+  return {};
 }
 
 bool RocksDBTrxMethods::checkIntermediateCommit(uint64_t newSize) {

@@ -830,6 +830,12 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
 
 // handle query finalization for all engines
 RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
+  TRI_IF_FAILURE("Query::finishTimeout") {
+    // intentionally delay the request
+    std::this_thread::sleep_for(
+        std::chrono::milliseconds(RandomGenerator::interval(uint32_t(1000))));
+  }
+
   auto qid = arangodb::basics::StringUtils::uint64(idString);
   bool success = false;
   VPackSlice querySlice = this->parseVPackBody(success);

@@ -103,7 +103,7 @@ function filterStack(stack, filters) {
   return filtered;
 }
 
-function readGdbFileFiltered(gdbOutputFile) {
+function readGdbFileFiltered(gdbOutputFile, options) {
   try {
     const filters = JSON.parse(fs.read(
       fs.join(pu.JS_DIR,
@@ -118,7 +118,7 @@ function readGdbFileFiltered(gdbOutputFile) {
     let moreMessages = [];
     for (let j = 0; j < maxBuffer; j++) {
       if (buf[j] === 10) { // \n
-        var line = buf.asciiSlice(lineStart, j);
+        var line = buf.utf8Slice(lineStart, j);
         lineStart = j + 1;
         if (line.search('Thread ') === 0 || (!inStack && line[0] === '#')) {
           inStack = true;
@@ -145,9 +145,11 @@ function readGdbFileFiltered(gdbOutputFile) {
           }
           if (line.length === 0) {
             if (!filterStack(stack, filters)) {
-              print("did not filter this stack: ");
-              print(stack);
-              print(moreMessages);
+              if (options.extremeVerbosity === true) {
+                print("did not filter this stack: ");
+                print(stack);
+                print(moreMessages);
+              }
               moreMessages.forEach(line => {
                 GDB_OUTPUT += line.trim() + '\n';
               });
@@ -209,7 +211,7 @@ Crash analysis of: ` + JSON.stringify(instanceInfo.getStructure()) + '\n\n';
     print("Failed to generate GDB output file?");
     return "";
   }
-  readGdbFileFiltered(gdbOutputFile);
+  readGdbFileFiltered(gdbOutputFile, options);
   if (options.extremeVerbosity === true) {
     let thisDump = fs.read(gdbOutputFile);
     print(thisDump);
@@ -237,7 +239,7 @@ function generateCoreDumpGDB (instanceInfo, options, storeArangodPath, pid, gene
     }
   }
   let command = [
-    '--batch',
+    '--batch-silent',
     '-ex', 'set pagination off',
     '-ex', 'set confirm off',
     '-ex', `set logging file ${gdbOutputFile}`,
@@ -290,7 +292,7 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
     var matchVarTmp = /\/var\/tmp/;
     var matchSystemdCoredump = /.*systemd-coredump*/;
     var corePattern = fs.readBuffer(cpf);
-    var cp = corePattern.asciiSlice(0, corePattern.length);
+    var cp = corePattern.utf8Slice(0, corePattern.length);
 
     if (matchApport.exec(cp) !== null) {
       print(RED + 'apport handles corefiles on your system. Uninstall it if you want us to get corefiles for analysis.' + RESET);
@@ -378,7 +380,9 @@ function generateCrashDump (binary, instanceInfo, options, checkStr) {
 }
 
 function aggregateDebugger(instanceInfo, options) {
-  print("collecting debugger info for: " + JSON.stringify(instanceInfo.getStructure()));
+  if (options.extremeVerbosity === true) {
+    print("collecting debugger info for: " + JSON.stringify(instanceInfo.getStructure()));
+  }
   if (!instanceInfo.hasOwnProperty('debuggerInfo')) {
     print("No debugger info persisted to " + JSON.stringify(instanceInfo.getStructure()));
     return false;
@@ -409,7 +413,7 @@ function aggregateDebugger(instanceInfo, options) {
 --------------------------------------------------------------------------------
 Crash analysis of: ` + JSON.stringify(instanceInfo.getStructure()) + '\n\n';
 
-  readGdbFileFiltered(instanceInfo.debuggerInfo.file);
+  readGdbFileFiltered(instanceInfo.debuggerInfo.file, options);
   return instanceInfo.debuggerInfo.hint;
 }
 

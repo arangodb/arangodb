@@ -154,12 +154,14 @@ Result RocksDBMetadata::updateBlocker(TransactionId trxId,
     if (_blockers.end() == previous ||
         _blockersBySeq.end() ==
             _blockersBySeq.find(std::make_pair(previous->second, trxId))) {
-      res.reset(TRI_ERROR_INTERNAL);
+      TRI_ASSERT(false);
+      return res.reset(TRI_ERROR_INTERNAL);
     }
 
     auto removed =
         _blockersBySeq.erase(std::make_pair(previous->second, trxId));
     if (!removed) {
+      TRI_ASSERT(false);
       return res.reset(TRI_ERROR_INTERNAL);
     }
 
@@ -167,6 +169,7 @@ Result RocksDBMetadata::updateBlocker(TransactionId trxId,
     _blockers[trxId] = seq;
     auto crosslist = _blockersBySeq.emplace(seq, trxId);
     if (!crosslist.second) {
+      TRI_ASSERT(false);
       return res.reset(TRI_ERROR_INTERNAL);
     }
 

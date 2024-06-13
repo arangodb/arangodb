@@ -12,7 +12,7 @@ export const QueryResults = () => {
     return null;
   }
   return (
-    <Box paddingX="3">
+    <Box paddingX="3" paddingTop="5">
       <Flex width={"100%"} alignItems={"flex-end"}>
         <Button
           ml={"auto"}
