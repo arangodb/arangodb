@@ -41,7 +41,6 @@ const debugGetFailurePoints = require('@arangodb/test-helper').debugGetFailurePo
 
 /* Functions: */
 const toArgv = internal.toArgv;
-const executeExternal = internal.executeExternal;
 const executeExternalAndWait = internal.executeExternalAndWait;
 const killExternal = internal.killExternal;
 const statusExternal = internal.statusExternal;

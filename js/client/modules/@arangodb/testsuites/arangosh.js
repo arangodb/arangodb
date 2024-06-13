@@ -327,7 +327,7 @@ function arangosh (options) {
     executeExternalAndWait('sh', ['-c', 'chmod a+x ' + execFile]);
 
     const startTime2 = time();
-    let rc = executeExternalAndWait('sh', ['-c', execFile], sh.getSanOptions());
+    let rc = executeExternalAndWait('sh', ['-c', execFile], false, 0, sh.getSanOptions());
     sh.fetchSanFileAfterExit(rc.pid);
     deltaTime2 = time() - startTime2;
 
@@ -374,7 +374,7 @@ function arangosh (options) {
 
     const startTime3 = time();
     sh.detectLogfiles(tmpMgr.tempDir, tmpMgr.tempDir);
-    rc = executeExternalAndWait('sh', ['-c', shebangFile]);
+    rc = executeExternalAndWait('sh', ['-c', shebangFile], false, sh.getSanOptions());
     sh.fetchSanFileAfterExit(rc.pid);
     deltaTime3 = time() - startTime3;
 
