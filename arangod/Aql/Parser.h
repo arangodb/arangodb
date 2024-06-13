@@ -23,11 +23,14 @@
 
 #pragma once
 
-#include "Aql/Ast.h"
-#include "Basics/Common.h"
+#include "Aql/LazyConditions.h"
+#include "Basics/ErrorCode.h"
 
-namespace arangodb {
-namespace aql {
+#include <cstddef>
+#include <string_view>
+
+namespace arangodb::aql {
+class Ast;
 struct AstNode;
 class QueryContext;
 struct QueryResult;
@@ -35,18 +38,19 @@ class QueryString;
 
 /// @brief the parser
 class Parser {
-  Parser(Parser const&) = delete;
-
  public:
+  Parser(Parser const&) = delete;
+  Parser& operator=(Parser const&) = delete;
+
   /// @brief create the parser
   explicit Parser(QueryContext&, Ast&, QueryString&);
 
   /// @brief destroy the parser
   ~Parser();
 
-  /// @brief force ternary operator conditions to be always
-  /// inlined.
-  void setForceInlineTernary() noexcept;
+  /// @brief return a reference to the lazy conditions manager
+  LazyConditions const& lazyConditions() const;
+  LazyConditions& lazyConditions();
 
   /// @brief return the ast during parsing
   Ast* ast() { return &_ast; }
@@ -84,11 +88,7 @@ class Parser {
   void decreaseOffset(size_t offset) { _offset -= offset; }
 
   /// @brief fill the output buffer with a fragment of the query
-  void fillBuffer(char* result, size_t length) {
-    memcpy(result, _buffer, length);
-    _buffer += length;
-    _remainingLength -= length;
-  }
+  void fillBuffer(char* result, size_t length);
 
   /// @brief set data for write queries
   bool configureWriteQuery(AstNode const*, AstNode* optionNode);
@@ -137,20 +137,7 @@ class Parser {
   void* popStack();
 
   /// @brief peek at a temporary value from the parser's stack
-  void* peekStack();
-
-  /// @brief push a ternary condition onto the stack
-  void pushTernaryCondition(AstNode* node);
-
-  /// @brief pop a ternary condition from the stack
-  AstNode* popTernaryCondition();
-
-  /// @brief return a view of the current ternary conditions
-  std::vector<AstNode*> const& peekTernaryConditions();
-
-  /// @brief whether or not the ternary operator's condition must
-  /// always be inlined.
-  bool forceInlineTernary() const noexcept;
+  void* peekStack() const;
 
  private:
   /// @brief a pointer to the start of the query string
@@ -185,15 +172,10 @@ class Parser {
   /// @brief a stack of things, used temporarily during parsing
   std::vector<void*> _stack;
 
-  /// @brief stack of the ternary operator conditions currently active
-  std::vector<AstNode*> _ternaryConditions;
-
-  /// @brief whether or not the ternary operator's condition must
-  /// always be inlined.
-  bool _forceInlineTernary;
+  /// @brief stack for handling of lazy conditions
+  LazyConditions _lazyConditions;
 };
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql
 
 /// @brief forward for the parse function provided by the parser (.y)
 int Aqlparse(arangodb::aql::Parser*);

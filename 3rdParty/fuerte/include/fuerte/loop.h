@@ -27,9 +27,11 @@
 
 #include <fuerte/asio_ns.h>
 
+#include <memory>
 #include <mutex>
 #include <thread>
 #include <utility>
+#include <vector>
 
 // run / runWithWork / poll for Loop mapping to ioservice
 // free function run with threads / with thread group barrier and work
@@ -38,8 +40,7 @@ namespace arangodb { namespace fuerte { inline namespace v1 {
 
 // need partial rewrite so it can be better integrated in client applications
 
-typedef asio_ns::executor_work_guard<asio_ns::io_context::executor_type>
-    asio_work_guard;
+using asio_work_guard = asio_ns::executor_work_guard<asio_ns::io_context::executor_type>;
 
 /// @brief EventLoopService implements single-threaded event loops
 /// Idea is to shard connections across io context's to avoid
@@ -59,10 +60,7 @@ class EventLoopService {
   EventLoopService& operator=(EventLoopService const& other) = delete;
 
   // io_service returns a reference to the boost io_service.
-  std::shared_ptr<asio_ns::io_context>& nextIOContext() {
-    return _ioContexts[_lastUsed.fetch_add(1, std::memory_order_relaxed) %
-                       _ioContexts.size()];
-  }
+  std::shared_ptr<asio_ns::io_context>& nextIOContext();
 
   asio_ns::ssl::context& sslContext();
 

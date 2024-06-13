@@ -107,7 +107,8 @@ auto DocumentLeaderState::resign() && noexcept
   for (auto const& trx : activeTransactions) {
     auto tid = trx.first.asLeaderTransactionId();
     if (auto abortRes = basics::catchToResult([&]() {
-          return _transactionManager.abortManagedTrx(tid, gid.database);
+          return _transactionManager.abortManagedTrx(tid, gid.database)
+              .waitAndGet();
         });
         abortRes.fail()) {
       LOG_CTX("1b665", WARN, loggerContext)
@@ -262,7 +263,7 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
     // Should finish immediately, because we are not waiting the operation to be
     // committed in the replicated log
     TRI_ASSERT(abortAllReplicationFut.isReady()) << self->gid;
-    auto abortAllReplicationStatus = abortAllReplicationFut.get();
+    auto abortAllReplicationStatus = abortAllReplicationFut.waitAndGet();
     if (abortAllReplicationStatus.fail()) {
       // The replicatedOperation call from above may fail if the leader has
       // resigned from the perspective of the framework. We should not panic, as
@@ -289,8 +290,9 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
       // register tombstones in the trx managers for the leader trx id.
       auto tid = trxId.asLeaderTransactionId();
       if (auto abortRes = basics::catchToResult([&]() {
-            return self->_transactionManager.abortManagedTrx(
-                tid, self->gid.database);
+            return self->_transactionManager
+                .abortManagedTrx(tid, self->gid.database)
+                .waitAndGet();
           });
           abortRes.fail()) {
         LOG_CTX("462a9", DEBUG, self->loggerContext)

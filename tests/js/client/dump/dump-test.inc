@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen:4000 */
-/*global fail, assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull, assertTypeOf, assertUndefined, arango */
+/*global fail, assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull, assertTypeOf, assertUndefined, arango, print */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -37,12 +37,31 @@
   const arangosh = require('@arangodb/arangosh');
   const isCluster = internal.isCluster();
   const isEnterprise = internal.isEnterprise();
+  const instanceInfo = JSON.parse(require('internal').env.INSTANCEINFO);
   var db = internal.db;
+  const getNoShards = function (defaultNo) {
+    if (db._properties().sharding === "single") {
+      return 1;
+    }
+    return defaultNo;
+  };
+
+  const getDumpDir = () => {
+    let dumpDir = instanceInfo.rootDir;
+    if (fs.exists(fs.join(dumpDir, "UnitTestsDumpSrc"))) {
+      // when dumping multiple database the database name is one layer added:
+      dumpDir = fs.join(dumpDir, "UnitTestsDumpSrc");
+    } else {
+      // single database always ends up in "dump"
+      dumpDir = fs.join(dumpDir, "dump");
+    }
+    return dumpDir;
+  };
 
   function getCollection(name) {
     var c = db._collection(name);
     if (c === null) {
-      let allCols = db._collections();
+      let allCols = db._collections().map(c => c.name());
       assertNotEqual(c, null, `${name} not found, ${JSON.stringify(allCols)} are here`);
     }
     return c;
@@ -125,7 +144,6 @@
     const satelliteEdgeCollection2Name = "UnitTestDumpSatelliteEdgeCollection2";
     const gm = (isEnterprise) ? require("@arangodb/smart-graph") : {};
     const satgm = (isEnterprise) ? require("@arangodb/satellite-graph") : {};
-    const instanceInfo = JSON.parse(require('internal').env.INSTANCEINFO);
     const {map, zipObject} = require('lodash');
     const isServer = require("@arangodb").isServer;
     const request = require("@arangodb/request");
@@ -277,7 +295,7 @@
         assertEqual(properties.numberOfShards, 1);
         assertEqual(properties.replicationFactor, 'satellite');
         if (isCluster) {
-          assertEqual(properties.shardingStrategy, 'enterprise-compat');
+          assertEqual(properties.shardingStrategy, 'hash');
         }
       }
 
@@ -289,7 +307,7 @@
       assertEqual(properties.numberOfShards, 1);
       assertEqual(properties.replicationFactor, 'satellite');
       if (isCluster) {
-        assertEqual(properties.shardingStrategy, 'enterprise-compat');
+        assertEqual(properties.shardingStrategy, 'hash');
       }
     }
 
@@ -568,7 +586,7 @@
 
         assertEqual(2, c.type()); // document
         assertFalse(p.waitForSync);
-        assertEqual(9, p.numberOfShards);
+        assertEqual(getNoShards(9), p.numberOfShards);
 
         assertEqual(1,  c.getIndexes().length, `We found following indexes: ${JSON.stringify(c.getIndexes())}`); // just primary index
         assertEqual("primary", c.getIndexes()[0].type);
@@ -1056,13 +1074,13 @@
         let p = c.properties();
 
         assertEqual(2, p.replicationFactor);
-        assertEqual(7, p.numberOfShards);
+        assertEqual(getNoShards(7), p.numberOfShards);
 
         c = getCollection("UnitTestsDumpReplicationFactor2");
         p = c.properties();
 
         assertEqual(2, p.replicationFactor);
-        assertEqual(6, p.numberOfShards);
+        assertEqual(getNoShards(6), p.numberOfShards);
       },
 
       testSatelliteGraph: function () {
@@ -1163,11 +1181,7 @@
       },
 
       testHiddenCollectionsOmitted: function () {
-        let dumpDir = fs.join(instanceInfo.rootDir, 'dump');
-        if (fs.exists(fs.join(dumpDir, "UnitTestsDumpSrc"))) {
-          // when dumping multiple database the database name is one layer added:
-          dumpDir = fs.join(dumpDir, "UnitTestsDumpSrc");
-        }
+        const dumpDir = getDumpDir();
         const smartEdgeCollectionPath = fs.join(dumpDir, `${edges}.structure.json`);
         const localEdgeCollectionPath = fs.join(dumpDir, `_local_${edges}.structure.json`);
         const fromEdgeCollectionPath = fs.join(dumpDir, `_from_${edges}.structure.json`);
@@ -1180,13 +1194,9 @@
       },
 
       testShadowCollectionsOmitted: function () {
-        const encryption = fs.read(fs.join(instanceInfo.rootDir, 'dump', 'ENCRYPTION'));
+        const dumpDir = getDumpDir();
+        const encryption = fs.read(fs.join(dumpDir, 'ENCRYPTION'));
         if (encryption === '' || encryption === 'none') {
-          let dumpDir = fs.join(instanceInfo.rootDir, 'dump');
-          if (fs.exists(fs.join(dumpDir, "UnitTestsDumpSrc"))) {
-            // when dumping multiple database the database name is one layer added:
-            dumpDir = fs.join(dumpDir, "UnitTestsDumpSrc");
-          }
           const collStructure = JSON.parse(
             fs.read(fs.join(dumpDir, `${edges}.structure.json`))
           );
@@ -1202,7 +1212,7 @@
         let c = getCollection(vertices);
         let p = c.properties();
         assertEqual(2, c.type()); // Document
-        assertEqual(5, p.numberOfShards);
+        assertEqual(getNoShards(5), p.numberOfShards);
         assertTrue(p.isSmart, p);
         assertEqual(100, c.count());
         assertEqual("value", p.smartGraphAttribute);
@@ -1258,7 +1268,7 @@
         let c = getCollection(orphans);
         let p = c.properties();
         assertEqual(2, c.type()); // Document
-        assertEqual(5, p.numberOfShards);
+        assertEqual(getNoShards(5), p.numberOfShards);
         assertTrue(p.isSmart);
         assertEqual(100, c.count());
         assertEqual("value", p.smartGraphAttribute);
@@ -1315,7 +1325,7 @@
         let c = getCollection(edges);
         let p = c.properties();
         assertEqual(3, c.type()); // Edges
-        //assertEqual(5, p.numberOfShards);
+        //assertEqual(getNoShards(5), p.numberOfShards);
         assertTrue(p.isSmart);
         assertEqual(300, c.count());
       },
@@ -1447,6 +1457,10 @@
       },
 
       testSmartGraphSharding: function () {
+        if (db._properties().sharding === "single") {
+          print("Skipping testSmartGraphSharding for oneshard db");
+          return 0;
+        }
         const eCol = getCollection(edges);
         const eProp = eCol.properties();
         const vCol = getCollection(vertices);
@@ -1460,8 +1474,8 @@
         if (oProp.hasOwnProperty("distributeShardsLike")) {
           // The Vertex collection is selected as leading.
           assertFalse(Object.hasOwnProperty(vProp, "distributeShardsLike"));
-          assertEqual(vertices, eProp.distributeShardsLike);
-          assertEqual(vertices, oProp.distributeShardsLike);
+          assertEqual(vertices, eProp.distributeShardsLike, `Not equal: ${JSON.stringify(vertices)} !~= ${JSON.stringify(eProp)}`);
+          assertEqual(vertices, oProp.distributeShardsLike, `Not equal: ${JSON.stringify(vertices)} !~= ${JSON.stringify(eProp)}`);
         } else {
           // The orphan collection is selected as leading.
           assertFalse(Object.hasOwnProperty(oProp, "distributeShardsLike"));
@@ -1557,6 +1571,40 @@
         assertCommonSmartGraphProperties(graph);
         assertEqual(graph.edgeDefinitions.length, 0);
         assertEqual(graph.orphanCollections.length, 0);
+      },
+
+      testSmartGraph3_11_compat: function () {
+        if (!isEnterprise) {
+          return;
+        }
+        const smartGraphName = "UnitTestDumpSmartGraphCompat";
+        const graphsColl = getCollection('_graphs');
+        assertTrue(!!graphsColl.exists(smartGraphName));
+
+        const graphDoc = graphsColl.document(smartGraphName);
+        // This is the requirement to test if the compat cid has effect
+        // We test this here as the setup for this graph should fake an
+        // old version graph, so we can test that the values existence
+        // does not have negative impact on the restore.
+        assertTrue(graphDoc.hasOwnProperty('initialCid'));
+        // Now let us try to modify the GraphRelations
+        const newRelationName = `${smartGraphName}NewEdge`;
+        const newVertexName = `${smartGraphName}NewVertex`;
+        const newRelation = gm._relation(newRelationName,
+          "UnitTestDumpSmartVerticesCompat",
+          newVertexName
+        );
+        // New collections do not yet exist, that would be forbidden.
+        assertEqual(db._collections().filter(c => c.name() === newRelationName).length, 0);
+        assertEqual(db._collections().filter(c => c.name() === newVertexName).length, 0);
+        const graph = gm._graph(smartGraphName);
+        graph._extendEdgeDefinitions(newRelation);
+        // New collections are added
+        assertEqual(db._collections().filter(c => c.name() === newRelationName).length, 1);
+        assertEqual(db._collections().filter(c => c.name() === newVertexName).length, 1);
+        // New collections are smart
+        assertTrue(db[newRelationName].properties().isSmart);
+        assertTrue(db[newVertexName].properties().isSmart);
       },
 
       testEmptyEnterpriseGraph: function () {
@@ -1858,7 +1906,7 @@
           assertEqual(properties.numberOfShards, 1);
           assertEqual(properties.replicationFactor, 'satellite');
           if (isCluster) {
-            assertEqual(properties.shardingStrategy, 'enterprise-compat');
+            assertEqual(properties.shardingStrategy, 'hash');
           }
         }
 
@@ -1870,7 +1918,7 @@
         assertEqual(properties.numberOfShards, 1);
         assertEqual(properties.replicationFactor, 'satellite');
         if (isCluster) {
-          assertEqual(properties.shardingStrategy, 'enterprise-compat');
+          assertEqual(properties.shardingStrategy, 'hash');
         }
 
         // test data
@@ -1963,7 +2011,7 @@
         assertEqual(verticesSatProps.smartGraphAttribute, undefined);
         assertEqual(verticesSatProps.replicationFactor, 'satellite');
         if (isCluster) {
-          assertEqual(verticesSatCol.properties().shardingStrategy, 'enterprise-compat', `Failed for collection: "${verticesSatCol.name()}".`);
+          assertEqual(verticesSatCol.properties().shardingStrategy, 'hash', `Failed for collection: "${verticesSatCol.name()}".`);
         }
 
         // check properties of edge collections

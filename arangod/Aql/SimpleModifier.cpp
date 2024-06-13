@@ -30,7 +30,6 @@
 #include "Aql/Executor/ModificationExecutorHelpers.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/SharedQueryState.h"
-#include "Basics/Common.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
@@ -195,7 +194,7 @@ ExecutionState SimpleModifier<ModifierCompletion, Enable>::transact(
   result.wait();
 
   if (result.isReady()) {
-    _results = std::move(result.get());
+    _results = std::move(result.waitAndGet());
     return ExecutionState::DONE;
   }
 

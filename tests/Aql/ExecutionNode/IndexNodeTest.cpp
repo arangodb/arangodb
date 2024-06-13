@@ -102,7 +102,8 @@ TEST_F(IndexNodeTest, objectQuery) {
   auto indexJson = arangodb::velocypack::Parser::fromJson(
       "{\"type\": \"hash\", \"fields\": [\"obj.a\", \"obj.b\", \"obj.c\"]}");
   auto createdIndex = false;
-  auto index = collection->createIndex(indexJson->slice(), createdIndex).get();
+  auto index =
+      collection->createIndex(indexJson->slice(), createdIndex).waitAndGet();
   ASSERT_TRUE(createdIndex);
   ASSERT_FALSE(!index);
 
@@ -183,7 +184,8 @@ TEST_F(IndexNodeTest, expansionQuery) {
       "{\"type\": \"hash\", \"fields\": [\"tags.hop[*].foo.fo\", "
       "\"tags.hop[*].bar.br\", \"tags.hop[*].baz.bz\"]}");
   auto createdIndex = false;
-  auto index = collection->createIndex(indexJson->slice(), createdIndex).get();
+  auto index =
+      collection->createIndex(indexJson->slice(), createdIndex).waitAndGet();
   ASSERT_TRUE(createdIndex);
   ASSERT_FALSE(!index);
 
@@ -237,7 +239,8 @@ TEST_F(IndexNodeTest, expansionIndexAndNotExpansionDocumentQuery) {
       "{\"type\": \"hash\", \"fields\": [\"tags.hop[*].foo.fo\", "
       "\"tags.hop[*].bar.br\", \"tags.hop[*].baz.bz\"]}");
   auto createdIndex = false;
-  auto index = collection->createIndex(indexJson->slice(), createdIndex).get();
+  auto index =
+      collection->createIndex(indexJson->slice(), createdIndex).waitAndGet();
   ASSERT_TRUE(createdIndex);
   ASSERT_FALSE(!index);
 
@@ -279,7 +282,8 @@ TEST_F(IndexNodeTest, lastExpansionQuery) {
   auto indexJson = arangodb::velocypack::Parser::fromJson(
       "{\"type\": \"hash\", \"fields\": [\"tags[*]\"]}");
   auto createdIndex = false;
-  auto index = collection->createIndex(indexJson->slice(), createdIndex).get();
+  auto index =
+      collection->createIndex(indexJson->slice(), createdIndex).waitAndGet();
   ASSERT_TRUE(createdIndex);
   ASSERT_FALSE(!index);
 
@@ -341,7 +345,8 @@ TEST_F(IndexNodeTest, constructIndexNode) {
       "{\"type\": \"hash\", \"id\": 2086177, \"fields\": [\"obj.a\", "
       "\"obj.b\", \"obj.c\"]}");
   auto createdIndex = false;
-  auto index = collection->createIndex(indexJson->slice(), createdIndex).get();
+  auto index =
+      collection->createIndex(indexJson->slice(), createdIndex).waitAndGet();
   ASSERT_TRUE(createdIndex);
   ASSERT_FALSE(!index);
   // auto jsonDocument = arangodb::velocypack::Parser::fromJson("{\"obj\":
@@ -601,7 +606,8 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
       "{\"type\": \"hash\", \"id\": 2086177, \"fields\": [\"obj.a\", "
       "\"obj.b\", \"obj.c\"]}");
   auto createdIndex = false;
-  auto index = collection->createIndex(indexJson->slice(), createdIndex).get();
+  auto index =
+      collection->createIndex(indexJson->slice(), createdIndex).waitAndGet();
   ASSERT_TRUE(createdIndex);
   ASSERT_FALSE(!index);
 

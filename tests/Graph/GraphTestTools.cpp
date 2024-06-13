@@ -27,14 +27,17 @@
 #include "../Mocks/StorageEngineMock.h"
 
 #include "Aql/OptimizerRulesFeature.h"
+#include "Cluster/ClusterFeature.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "IResearch/common.h"
+#include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/MetricsFeature.h"
 #include "Random/RandomGenerator.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "Statistics/StatisticsFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/ManagerFeature.h"
 #include "GraphTestTools.h"
@@ -55,8 +58,15 @@ GraphTestSetup::GraphTestSetup() : server(nullptr, nullptr), engine(server) {
       arangodb::RandomGenerator::RandomType::MERSENNE);
 
   // setup required application features
-  features.emplace_back(server.addFeature<arangodb::metrics::MetricsFeature>(),
-                        false);
+  features.emplace_back(
+      server.addFeature<arangodb::metrics::MetricsFeature>(
+          LazyApplicationFeatureReference<QueryRegistryFeature>(server),
+          LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
+          LazyApplicationFeatureReference<EngineSelectorFeature>(server),
+          LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(
+              nullptr),
+          LazyApplicationFeatureReference<ClusterFeature>(nullptr)),
+      false);
   features.emplace_back(server.addFeature<arangodb::DatabasePathFeature>(),
                         false);
   features.emplace_back(

@@ -215,6 +215,13 @@ struct ExecutorTestHelper {
     return *this;
   }
 
+  auto setExecuteCallback(
+      WaitingExecutionBlockMock::ExecuteCallback executeCallback)
+      -> ExecutorTestHelper& {
+    _executeCallback = std::move(executeCallback);
+    return *this;
+  }
+
   auto expectOutput(
       std::array<RegisterId, outputColumns> const& regs,
       MatrixBuilder<outputColumns> const& out,
@@ -528,7 +535,8 @@ struct ExecutorTestHelper {
 
     return std::make_unique<WaitingExecutionBlockMock>(
         _query.rootEngine(), _dummyNode.get(), std::move(blockDeque),
-        _waitingBehaviour, _inputSubqueryDepth, _wakeupCallback);
+        _waitingBehaviour, _inputSubqueryDepth, _wakeupCallback,
+        _executeCallback);
   }
 
   // Default initialize with a fetchAll call.
@@ -546,6 +554,7 @@ struct ExecutorTestHelper {
   WaitingExecutionBlockMock::WaitingBehaviour _waitingBehaviour =
       WaitingExecutionBlockMock::NEVER;
   WaitingExecutionBlockMock::WakeupCallback _wakeupCallback{};
+  WaitingExecutionBlockMock::ExecuteCallback _executeCallback{};
   bool _unorderedOutput;
   bool _appendEmptyBlock;
   std::size_t _unorderedSkippedRows;

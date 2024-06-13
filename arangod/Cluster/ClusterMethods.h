@@ -25,7 +25,6 @@
 
 #include "Aql/FixedVarExpressionContext.h"
 #include "Aql/types.h"
-#include "Basics/Common.h"
 #include "Indexes/IndexIterator.h"
 #include "Futures/Future.h"
 #include "Network/types.h"

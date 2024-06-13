@@ -37,6 +37,7 @@
 #include "Mocks/StorageEngineMock.h"
 
 #include "Aql/QueryRegistry.h"
+#include "Auth/UserManager.h"
 #include "Basics/VelocyPackHelper.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
@@ -111,11 +112,13 @@ class RestAnalyzerHandlerTest
 
   struct ExecContext : public arangodb::ExecContext {
     ExecContext()
-        : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+        : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                arangodb::ExecContext::Type::Default, "", "",
                                 arangodb::auth::Level::NONE,
                                 arangodb::auth::Level::NONE, false) {}
-  } execContext;
-  arangodb::ExecContextScope execContextScope;  // (&execContext);
+  };
+  std::shared_ptr<ExecContext> execContext;
+  arangodb::ExecContextScope execContextScope;  // (execContext);
 
   RestAnalyzerHandlerTest()
       : server(),
@@ -125,8 +128,8 @@ class RestAnalyzerHandlerTest
         dbFeature(server.getFeature<arangodb::DatabaseFeature>()),
         authFeature(server.getFeature<arangodb::AuthenticationFeature>()),
         userManager(authFeature.userManager()),
-        execContext(),
-        execContextScope(&execContext) {
+        execContext(std::make_shared<ExecContext>()),
+        execContextScope(execContext) {
     grantOnDb(arangodb::StaticStrings::SystemDatabase,
               arangodb::auth::Level::RW);
 

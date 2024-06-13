@@ -615,7 +615,9 @@ RocksDBPrimaryIndex::RocksDBPrimaryIndex(LogicalCollection& collection,
           /*engine*/
           collection.vocbase().engine<RocksDBEngine>()),
       _coveredFields({{AttributeName(StaticStrings::KeyString, false)},
-                      {AttributeName(StaticStrings::IdString, false)}}) {
+                      {AttributeName(StaticStrings::IdString, false)}}),
+      _maxCacheValueSize(
+          _cacheManager == nullptr ? 0 : _cacheManager->maxCacheValueSize()) {
   TRI_ASSERT(_cf == RocksDBColumnFamilyManager::get(
                         RocksDBColumnFamilyManager::Family::PrimaryIndex));
   TRI_ASSERT(objectId() != 0);
@@ -688,7 +690,7 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
     return LocalDocumentId();
   }
 
-  if (cache != nullptr && !lockTimeout) {
+  if (cache != nullptr && !lockTimeout && val.size() <= _maxCacheValueSize) {
     // write entry back to cache
     cache::Cache::SimpleInserter<PrimaryIndexCacheType>{
         static_cast<PrimaryIndexCacheType&>(*cache), key->string().data(),

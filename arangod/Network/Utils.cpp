@@ -27,7 +27,6 @@
 #include "Agency/Agent.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Auth/TokenCache.h"
-#include "Basics/Common.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
@@ -43,24 +42,9 @@
 
 namespace arangodb::network {
 
-Headers addAuthorizationHeader(
-    std::unordered_map<std::string, std::string> const& originalHeaders) {
-  auto auth = AuthenticationFeature::instance();
-
-  network::Headers headers;
-  if (auth != nullptr && auth->isActive()) {
-    headers.try_emplace(StaticStrings::Authorization,
-                        "bearer " + auth->tokenCache().jwtToken());
-  }
-  for (auto const& header : originalHeaders) {
-    headers.try_emplace(header.first, header.second);
-  }
-  return headers;
-}
-
-ErrorCode resolveDestination(NetworkFeature const& feature,
-                             DestinationId const& dest,
-                             network::EndpointSpec& spec) {
+futures::Future<ErrorCode> resolveDestination(NetworkFeature const& feature,
+                                              DestinationId const& dest,
+                                              network::EndpointSpec& spec) {
   // Now look up the actual endpoint:
   if (!feature.server().hasFeature<ClusterFeature>()) {
     return TRI_ERROR_SHUTTING_DOWN;
@@ -69,18 +53,19 @@ ErrorCode resolveDestination(NetworkFeature const& feature,
   return resolveDestination(ci, dest, spec);
 }
 
-ErrorCode resolveDestination(ClusterInfo& ci, DestinationId const& dest,
-                             network::EndpointSpec& spec) {
+futures::Future<ErrorCode> resolveDestination(ClusterInfo& ci,
+                                              DestinationId const& dest,
+                                              network::EndpointSpec& spec) {
   using namespace arangodb;
 
   if (dest.starts_with("tcp://") || dest.starts_with("ssl://")) {
     spec.endpoint = dest;
-    return TRI_ERROR_NO_ERROR;  // all good
+    co_return TRI_ERROR_NO_ERROR;  // all good
   }
 
   if (dest.starts_with("http+tcp://") || dest.starts_with("http+ssl://")) {
     spec.endpoint = dest.substr(5);
-    return TRI_ERROR_NO_ERROR;
+    co_return TRI_ERROR_NO_ERROR;
   }
 
   // This sets result.shardId, result.serverId and result.endpoint,
@@ -91,30 +76,29 @@ ErrorCode resolveDestination(ClusterInfo& ci, DestinationId const& dest,
 
   if (dest.starts_with("shard:")) {
     spec.shardId = dest.substr(6);
-    {
-      auto maybeShard = ShardID::shardIdFromString(spec.shardId);
-      bool gotError = true;
-      if (maybeShard.ok()) {
-        auto resp = ci.getResponsibleServer(maybeShard.get());
-        if (!resp->empty()) {
-          spec.serverId = (*resp)[0];
-          gotError = false;
-        }
-      }
-
-      if (gotError) {
-        LOG_TOPIC("60ee8", ERR, Logger::CLUSTER)
-            << "cannot find responsible server for shard '" << spec.shardId
-            << "'";
-        return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
-      }
+    auto maybeShard = ShardID::shardIdFromString(spec.shardId);
+    if (maybeShard.fail()) {
+      LOG_TOPIC("005c4", ERR, Logger::COMMUNICATION)
+          << "Invalid shard id specified as destination `" << dest
+          << "`: " << maybeShard.errorMessage();
+      co_return maybeShard.errorNumber();
     }
+
+    auto maybeServer = co_await ci.getLeaderForShard(*maybeShard);
+    if (maybeServer.fail()) {
+      LOG_TOPIC("60ee8", ERR, Logger::CLUSTER)
+          << "cannot find responsible server for shard '" << spec.shardId
+          << "': " << maybeServer.errorMessage();
+      co_return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
+    }
+
+    spec.serverId = std::move(*maybeServer);
   } else if (dest.starts_with("server:")) {
     spec.serverId = dest.substr(7);
   } else {
     LOG_TOPIC("77a84", ERR, Logger::COMMUNICATION)
         << "did not understand destination '" << dest << "'";
-    return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
+    co_return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
   }
 
   spec.endpoint = ci.getServerEndpoint(spec.serverId);
@@ -124,9 +108,9 @@ ErrorCode resolveDestination(ClusterInfo& ci, DestinationId const& dest,
     }
     LOG_TOPIC("f29ef", ERR, Logger::COMMUNICATION)
         << "did not find endpoint of server '" << spec.serverId << "'";
-    return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
+    co_return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
   }
-  return TRI_ERROR_NO_ERROR;
+  co_return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief extract the error code form the body
@@ -167,11 +151,10 @@ Result resultFromBody(arangodb::velocypack::Slice slice,
                       ErrorCode defaultError) {
   // read the error number from the response and use it if present
   if (slice.isObject()) {
-    VPackSlice num = slice.get(StaticStrings::ErrorNum);
-    VPackSlice msg = slice.get(StaticStrings::ErrorMessage);
-    if (num.isNumber()) {
+    if (VPackSlice num = slice.get(StaticStrings::ErrorNum); num.isNumber()) {
       auto errorCode = ErrorCode{num.getNumericValue<int>()};
-      if (msg.isString()) {
+      if (VPackSlice msg = slice.get(StaticStrings::ErrorMessage);
+          msg.isString()) {
         // found an error number and an error message, so let's use it!
         return Result(errorCode, msg.copyString());
       }

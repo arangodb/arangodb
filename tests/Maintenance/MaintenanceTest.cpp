@@ -45,6 +45,11 @@
 #include "RocksDBEngine/RocksDBOptionFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
+#include "Cluster/ClusterFeature.h"
+#include "Metrics/ClusterMetricsFeature.h"
+#include "Statistics/StatisticsFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 
 #include <velocypack/Iterator.h>
 
@@ -514,17 +519,25 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
         localNodes{{dbsIds[shortNames[0]], createNode(dbs0Str)},
                    {dbsIds[shortNames[1]], createNode(dbs1Str)},
                    {dbsIds[shortNames[2]], createNode(dbs2Str)}} {
-    as.addFeature<arangodb::metrics::MetricsFeature>();
     as.addFeature<arangodb::RocksDBOptionFeature>();
     as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(
         std::false_type{});
     auto& selector = as.addFeature<arangodb::EngineSelectorFeature>();
+    auto& metrics = as.addFeature<arangodb::metrics::MetricsFeature>(
+        arangodb::LazyApplicationFeatureReference<
+            arangodb::QueryRegistryFeature>(nullptr),
+        arangodb::LazyApplicationFeatureReference<arangodb::StatisticsFeature>(
+            nullptr),
+        selector,
+        arangodb::LazyApplicationFeatureReference<
+            arangodb::metrics::ClusterMetricsFeature>(nullptr),
+        arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
+            nullptr));
 
     // need to construct this after adding the MetricsFeature to the application
     // server
     engine = std::make_unique<arangodb::RocksDBEngine>(
-        as, as.template getFeature<arangodb::RocksDBOptionFeature>(),
-        as.template getFeature<arangodb::metrics::MetricsFeature>());
+        as, as.template getFeature<arangodb::RocksDBOptionFeature>(), metrics);
     selector.setEngineTesting(engine.get());
   }
 
@@ -820,30 +833,29 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
 std::vector<std::string> PLAN_SECTIONS{ANALYZERS,       COLLECTIONS,
                                        DATABASES,       VIEWS,
                                        REPLICATED_LOGS, REPLICATED_STATES};
-containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>>
+containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder const>>
 planToChangeset(NodePtr const& plan) {
-  containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> ret;
+  containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder const>> ret;
   for (auto const& db : plan->get(DATABASES)->children()) {
-    VPackBuilder& dbbuilder =
-        *ret.try_emplace(db.first, std::make_shared<VPackBuilder>())
-             .first->second;
+    auto dbbuilder = std::make_shared<VPackBuilder>();
+    ret.try_emplace(db.first, dbbuilder);
 
     {
-      VPackArrayBuilder env(&dbbuilder);
+      VPackArrayBuilder env(dbbuilder.get());
       {
-        VPackObjectBuilder o(&dbbuilder);
-        dbbuilder.add(VPackValue(AgencyCommHelper::path()));
+        VPackObjectBuilder o(dbbuilder.get());
+        dbbuilder->add(VPackValue(AgencyCommHelper::path()));
         {
-          VPackObjectBuilder a(&dbbuilder);
-          dbbuilder.add(VPackValue(PLAN));
+          VPackObjectBuilder a(dbbuilder.get());
+          dbbuilder->add(VPackValue(PLAN));
           {
-            VPackObjectBuilder p(&dbbuilder);
+            VPackObjectBuilder p(dbbuilder.get());
             for (auto const& section : PLAN_SECTIONS) {
-              dbbuilder.add(VPackValue(section));
-              VPackObjectBuilder c(&dbbuilder);
+              dbbuilder->add(VPackValue(section));
+              VPackObjectBuilder c(dbbuilder.get());
               auto path = std::vector<std::string>{section, db.first};
               if (plan->has(path)) {
-                dbbuilder.add(db.first, plan->get(path)->toBuilder().slice());
+                dbbuilder->add(db.first, plan->get(path)->toBuilder().slice());
               }
             }
           }

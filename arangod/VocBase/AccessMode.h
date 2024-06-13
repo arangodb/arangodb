@@ -23,10 +23,9 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 
-#include <cstring>
+#include <string_view>
 
 namespace arangodb {
 
@@ -62,21 +61,21 @@ struct AccessMode {
   }
 
   /// @brief get the transaction type from a string
-  static Type fromString(char const* value) {
-    if (strcmp(value, "read") == 0) {
+  static Type fromString(std::string_view value) {
+    if (value == "read") {
       return Type::READ;
     }
-    if (strcmp(value, "write") == 0) {
+    if (value == "write") {
       return Type::WRITE;
     }
-    if (strcmp(value, "exclusive") == 0) {
+    if (value == "exclusive") {
       return Type::EXCLUSIVE;
     }
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid access type");
   }
 
   /// @brief return the type of the transaction as a string
-  static char const* typeString(Type value) {
+  static std::string_view typeString(Type value) {
     switch (value) {
       case Type::NONE:
         return "none";

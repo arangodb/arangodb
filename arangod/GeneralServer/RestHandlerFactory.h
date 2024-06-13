@@ -28,7 +28,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "Basics/Common.h"
 #include "RestServer/arangod.h"
 
 namespace arangodb {

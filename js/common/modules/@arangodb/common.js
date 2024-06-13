@@ -89,7 +89,7 @@ exports.aql = function aql(templateStrings, ...args) {
     const index = bindVals.indexOf(rawValue);
     const isKnown = index !== -1;
     let name = `value${isKnown ? index : bindVals.length}`;
-    if (rawValue && rawValue.isArangoCollection) {
+    if (rawValue && (rawValue.isArangoCollection || rawValue.isArangoView)) {
       name = `@${name}`;
       value = rawValue.name();
     }

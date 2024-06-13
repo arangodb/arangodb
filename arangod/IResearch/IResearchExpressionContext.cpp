@@ -49,17 +49,17 @@ void ViewExpressionContextBase::registerError(ErrorCode errorCode,
   _query->warnings().registerError(errorCode, msg);
 }
 
-icu::RegexMatcher* ViewExpressionContextBase::buildRegexMatcher(
+icu_64_64::RegexMatcher* ViewExpressionContextBase::buildRegexMatcher(
     std::string_view expr, bool caseInsensitive) {
   return _aqlFunctionsInternalCache->buildRegexMatcher(expr, caseInsensitive);
 }
 
-icu::RegexMatcher* ViewExpressionContextBase::buildLikeMatcher(
+icu_64_64::RegexMatcher* ViewExpressionContextBase::buildLikeMatcher(
     std::string_view expr, bool caseInsensitive) {
   return _aqlFunctionsInternalCache->buildLikeMatcher(expr, caseInsensitive);
 }
 
-icu::RegexMatcher* ViewExpressionContextBase::buildSplitMatcher(
+icu_64_64::RegexMatcher* ViewExpressionContextBase::buildSplitMatcher(
     AqlValue splitExpression, velocypack::Options const* opts,
     bool& isEmptyExpression) {
   return _aqlFunctionsInternalCache->buildSplitMatcher(splitExpression, opts,

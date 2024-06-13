@@ -38,12 +38,12 @@ const functionsDocumentation = {
   'shell_client_traffic': 'traffic metrics tests',
 };
 const optionsDocumentation = [
-  '   - `skipAql`: if set to true the AQL tests are skipped',
   '   - `skipGraph`: if set to true the graph tests are skipped'
 ];
 
 const _ = require('lodash');
 const tu = require('@arangodb/testutils/test-utils');
+const trs = require('@arangodb/testutils/testrunners');
 const fs = require('fs');
 const GREEN = require('internal').COLORS.COLOR_GREEN;
 const RED = require('internal').COLORS.COLOR_RED;
@@ -87,61 +87,10 @@ function ensureCoordinators(options, numServers) {
 // / @brief TEST: shell_v8
 // //////////////////////////////////////////////////////////////////////////////
 
-class shellv8Runner extends tu.runLocalInArangoshRunner {
-  constructor(options, testname, ...optionalArgs) {
-    super(options, testname, ...optionalArgs);
-    this.info = "shellv8Runner";
-  }
-
-  run(testcases) {
-    let obj = this;
-    let res = {failed: 0, status: true};
-    let filtered = {};
-    let rootDir = fs.join(fs.getTempPath(), 'shellv8Runner');
-    this.instanceManager = {
-      rootDir: rootDir,
-      endpoint: 'tcp://127.0.0.1:8888',
-      findEndpoint: function() {
-        return 'tcp://127.0.0.1:8888';
-      },
-      getStructure: function() {
-        return {
-          endpoint: 'tcp://127.0.0.1:8888',
-          rootDir: rootDir
-        };
-      }
-    };
-    let count = 0;
-    fs.makeDirectoryRecursive(rootDir);
-    testcases.forEach(function (file, i) {
-      if (tu.filterTestcaseByOptions(file, obj.options, filtered)) {
-        print('\n' + (new Date()).toISOString() + GREEN + " [============] RunInV8: Trying", file, '... ' + count, RESET);
-        res[file] = obj.runOneTest(file);
-        if (res[file].status === false) {
-          res.failed += 1;
-          res.status = false;
-        }
-      } else if (obj.options.extremeVerbosity) {
-        print('Skipped ' + file + ' because of ' + filtered.filter);
-      }
-      count += 1;
-    });
-    if (count === 0) {
-      res['ALLTESTS'] = {
-        status: true,
-        skipped: true
-      };
-      res.status = true;
-      print(RED + 'No testcase matched the filter.' + RESET);
-    }
-    return res;
-  }
-}
-
 function shellV8 (options) {
   let testCases = tu.scanTestPaths(testPaths.shell_v8, options);
   testCases = tu.splitBuckets(options, testCases);
-  let rc = new shellv8Runner(options, 'shell_v8', []).run(testCases);
+  let rc = new trs.shellv8Runner(options, 'shell_v8', []).run(testCases);
   return rc;
 }
 
@@ -162,7 +111,7 @@ function shellApiClient (options) {
   // we want this to ensure that in an overload situation we do not
   // get random failedLeader / failedFollower jobs during our tests.
   let moreOptions = { "agency.supervision-ok-threshold" : "15", "agency.supervision-grace-period" : "30" };
-  let rc = new tu.runLocalInArangoshRunner(opts, 'shell_api', moreOptions).run(testCases);
+  let rc = new trs.runLocalInArangoshRunner(opts, 'shell_api', moreOptions).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
 }
@@ -184,7 +133,7 @@ function shellApiMulti (options) {
   // we want this to ensure that in an overload situation we do not
   // get random failedLeader / failedFollower jobs during our tests.
   let moreOptions = { "agency.supervision-ok-threshold" : "15", "agency.supervision-grace-period" : "30" };
-  let rc = new tu.runLocalInArangoshRunner(opts, 'shell_api_multi', moreOptions).run(testCases);
+  let rc = new trs.runLocalInArangoshRunner(opts, 'shell_api_multi', moreOptions).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
 }
@@ -206,7 +155,7 @@ function shellClient (options) {
   // we want this to ensure that in an overload situation we do not
   // get random failedLeader / failedFollower jobs during our tests.
   let moreOptions = { "agency.supervision-ok-threshold" : "15", "agency.supervision-grace-period" : "30" };
-  let rc = new tu.runLocalInArangoshRunner(opts, 'shell_client', moreOptions).run(testCases);
+  let rc = new trs.runLocalInArangoshRunner(opts, 'shell_client', moreOptions).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
 }
@@ -228,7 +177,7 @@ function shellClientMulti (options) {
   // we want this to ensure that in an overload situation we do not
   // get random failedLeader / failedFollower jobs during our tests.
   let moreOptions = { "agency.supervision-ok-threshold" : "15", "agency.supervision-grace-period" : "30" };
-  let rc = new tu.runLocalInArangoshRunner(opts, 'shell_client_multi', moreOptions).run(testCases);
+  let rc = new trs.runLocalInArangoshRunner(opts, 'shell_client_multi', moreOptions).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
 }
@@ -243,7 +192,7 @@ function shellServerOnly (options) {
   testCases = tu.splitBuckets(options, testCases);
 
   let opts = ensureServers(options, 3);
-  let rc = new tu.runOnArangodRunner(opts, 'shell_server_only', {}).run(testCases);
+  let rc = new trs.runOnArangodRunner(opts, 'shell_server_only', {}).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
 }
@@ -255,29 +204,19 @@ function shellServerOnly (options) {
 function shellClientAql (options) {
   let testCases;
   let name = 'shell_client_aql';
-
-  if (!options.skipAql) {
-    testCases = tu.scanTestPaths(testPaths.shell_client_aql, options);
-    if (options.skipRanges) {
-      testCases = _.filter(testCases,
-                           function (p) { return p.indexOf('ranges-combined') === -1; });
-      name = 'shell_client_aql_skipranges';
-    }
-
-    testCases = tu.splitBuckets(options, testCases);
-
-    let opts = ensureServers(options, 3);
-    let rc = new tu.runLocalInArangoshRunner(opts, name, {}).run(testCases);
-    options.cleanup = options.cleanup && opts.cleanup;
-    return rc;
+  testCases = tu.scanTestPaths(testPaths.shell_client_aql, options);
+  if (options.skipRanges) {
+    testCases = _.filter(testCases,
+                         function (p) { return p.indexOf('ranges-combined') === -1; });
+    name = 'shell_client_aql_skipranges';
   }
 
-  return {
-    shell_client_aql: {
-      status: true,
-      skipped: true
-    }
-  };
+  testCases = tu.splitBuckets(options, testCases);
+
+  let opts = ensureServers(options, 3);
+  let rc = new trs.runLocalInArangoshRunner(opts, name, {}).run(testCases);
+  options.cleanup = options.cleanup && opts.cleanup;
+  return rc;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -291,7 +230,7 @@ function shellClientTraffic(options) {
   let opts = ensureServers(options, 3);
   opts['httpTrustedOrigin'] =  'http://was-erlauben-strunz.it';
 
-  let rc = new tu.runLocalInArangoshRunner(opts, 'shell_client_traffic', {}).run(testCases);
+  let rc = new trs.runLocalInArangoshRunner(opts, 'shell_client_traffic', {}).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
 }
@@ -311,7 +250,7 @@ function shellClientTransaction(options) {
     "agency.supervision-ok-threshold": "1.5",
     "agency.supervision-grace-period": "3.0",
   };
-  let rc = new tu.runLocalInArangoshRunner(opts, 'shell_client_transaction', moreOptions).run(testCases);
+  let rc = new trs.runLocalInArangoshRunner(opts, 'shell_client_transaction', moreOptions).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
 }
@@ -336,7 +275,7 @@ function shellClientReplication2Recovery(options) {
     "agency.supervision-ok-threshold": "1.5",
     "agency.supervision-grace-period": "3.0",
   };
-  let rc = new tu.runLocalInArangoshRunner(opts, 'shell_client_replication2_recovery', moreOptions).run(testCases);
+  let rc = new trs.runLocalInArangoshRunner(opts, 'shell_client_replication2_recovery', moreOptions).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
 }
@@ -357,6 +296,6 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   opts['skipAql'] = false;
   opts['skipRanges'] = true;
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
+  tu.CopyIntoList(optionsDoc, optionsDocumentation);
 };

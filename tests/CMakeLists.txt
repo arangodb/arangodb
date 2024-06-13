@@ -1,5 +1,18 @@
 add_compile_warnings_flags()
 
+if (USE_GOOGLE_TESTS)
+  add_definitions("-DTEST_VIRTUAL=virtual")
+else()
+  add_definitions("-DTEST_VIRTUAL=")
+endif()
+
+# add necessary defines for ICU. this will suffix all included ICU functions
+# and the ICU namespace with _64_64
+add_definitions("-DU_HAVE_LIB_SUFFIX=1")
+add_definitions("-DU_LIB_SUFFIX_C_NAME=_64")
+# also make sure that the correct ICU directory appears early in the list of include files
+include_directories(BEFORE SYSTEM ${ICU64_INCLUDE_DIR})
+
 # ----------------------------------------
 # Fuerte tests
 # ----------------------------------------
@@ -255,11 +268,17 @@ set(ARANGODB_TESTS_SOURCES
 
 if (USE_V8)
   set(ARANGODB_TESTS_SOURCES ${ARANGODB_TESTS_SOURCES}
+    Scheduler/ThreadPoolTest.cpp
     V8Server/V8AnalyzersTest.cpp
     V8Server/V8UsersTest.cpp
     V8Server/V8ViewsTest.cpp)
 endif()
 
+if (USE_PERF_TESTS)
+  set(ARANGODB_TESTS_SOURCES ${ARANGODB_TESTS_SOURCES}
+    Scheduler/ThreadPoolPerfTest.cpp)
+endif()
+    
 if (LINUX)
   # add "-fno-var-tracking" to the compiler flags
   # this speeds up the compilation with optimizations and newer g++ versions
@@ -334,6 +353,8 @@ endif ()
 if (USE_ENTERPRISE)
   target_link_libraries(arangodbtests arango_rclone)
 endif ()
+
+add_dependencies(arangodbtests iculegacy_build)
 
 if (USE_JEMALLOC)
   target_link_libraries(arangodbtests ${JEMALLOC_LIB})

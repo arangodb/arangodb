@@ -26,7 +26,6 @@
 #include <utility>
 #include <mutex>
 
-#include "Basics/Common.h"
 #include "Indexes/IndexIterator.h"
 #include "VocBase/voc-types.h"
 

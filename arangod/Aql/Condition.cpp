@@ -40,7 +40,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
-#include "debugging.h"
+#include "Basics/debugging.h"
 #include "Containers/FlatHashSet.h"
 #include "Containers/SmallVector.h"
 #include "Indexes/Index.h"
@@ -394,8 +394,8 @@ ConditionPart::ConditionPart(Variable const* variable,
     valueNode = operatorNode->getMember(1);
   } else {
     valueNode = operatorNode->getMember(0);
-    if (Ast::IsReversibleOperator(operatorType)) {
-      operatorType = Ast::ReverseOperator(operatorType);
+    if (Ast::isReversibleOperator(operatorType)) {
+      operatorType = Ast::reverseOperator(operatorType);
     }
   }
 
@@ -722,7 +722,7 @@ std::pair<bool, bool> Condition::findIndexes(
     itemsInIndex = 1024;
   } else {
     // estimate for the number of documents in the index. may be outdated...
-    itemsInIndex = coll.count(&trx, transaction::CountType::TryCache);
+    itemsInIndex = coll.count(&trx, transaction::CountType::kTryCache);
   }
   if (_root == nullptr) {
     size_t dummy;
@@ -1764,8 +1764,8 @@ bool Condition::canRemove(ExecutionPlan const* plan, ConditionPart const& me,
               // non-constant condition
               else {
                 auto opType = operand->type;
-                if (aql::Ast::IsReversibleOperator(opType)) {
-                  opType = aql::Ast::ReverseOperator(opType);
+                if (aql::Ast::isReversibleOperator(opType)) {
+                  opType = aql::Ast::reverseOperator(opType);
                 }
                 if (me.operatorType == opType &&
                     normalize(me.valueNode) == normalize(lhs)) {
@@ -1891,7 +1891,7 @@ AstNode* Condition::transformNodePreorder(
     auto old = node;
 
     // create a new n-ary node
-    node = _ast->createNode(Ast::NaryOperatorType(old->type));
+    node = _ast->createNode(Ast::naryOperatorType(old->type));
     _ast->resources().reserveChildNodes(node, 2);
     node->addMember(
         transformNodePreorder(old->getMember(0), conditionOptimization));

@@ -117,26 +117,11 @@ futures::Future<Result> ClusterTransactionState::beginTransaction(
 
     ClusterTrxMethods::SortedServersSet leaders{};
     allCollections([&](TransactionCollection& c) {
-      if (c.collection()->isSmartEdgeCollection()) {
-        CollectionNameResolver resolver{_vocbase};
-        for (auto const& real : c.collection()->realNames()) {
-          auto realCol = resolver.getCollection(real);
-          TRI_ASSERT(realCol != nullptr);
-          auto shardIds = realCol->shardIds();
-          for (auto const& pair : *shardIds) {
-            std::vector<arangodb::ServerID> const& servers = pair.second;
-            if (!servers.empty()) {
-              leaders.emplace(servers[0]);
-            }
-          }
-        }
-      } else {
-        auto shardIds = c.collection()->shardIds();
-        for (auto const& pair : *shardIds) {
-          std::vector<arangodb::ServerID> const& servers = pair.second;
-          if (!servers.empty()) {
-            leaders.emplace(servers[0]);
-          }
+      auto shardIds = c.collection()->shardIds();
+      for (auto const& pair : *shardIds) {
+        std::vector<arangodb::ServerID> const& servers = pair.second;
+        if (!servers.empty()) {
+          leaders.emplace(servers[0]);
         }
       }
       return true;  // continue
@@ -145,9 +130,9 @@ futures::Future<Result> ClusterTransactionState::beginTransaction(
     // if there is only one server we may defer the lazy locking
     // until the first actual operation (should save one request)
     if (leaders.size() > 1) {
-      res = ClusterTrxMethods::beginTransactionOnLeaders(
-                *this, leaders, transaction::MethodsApi::Synchronous)
-                .get();
+      res = co_await ClusterTrxMethods::beginTransactionOnLeaders(
+          shared_from_this(), std::move(leaders),
+          transaction::MethodsApi::Asynchronous);
       if (res.fail()) {  // something is wrong
         co_return res;
       }

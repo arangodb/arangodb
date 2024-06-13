@@ -173,7 +173,7 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     // simulate heartbeat thread (create index in current)
     {
       auto const value = arangodb::velocypack::Parser::fromJson(
-          "{ \"shard-id\": { \"indexes\" : [ { \"id\": \"42\" } ] } }");
+          R"({ "s123": { "indexes" : [ { "id": "42" } ] } })");
       EXPECT_TRUE(arangodb::AgencyComm(server.server())
                       .setValue(currentCollectionPath, value->slice(), 0.0)
                       .successful());
@@ -184,7 +184,7 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     EXPECT_TRUE(arangodb::methods::Indexes::ensureIndex(*logicalCollection,
                                                         linkJson->slice(), true,
                                                         outputDefinition)
-                    .get()
+                    .waitAndGet()
                     .ok());
 
     // get new version from plan
@@ -253,7 +253,7 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     // simulate heartbeat thread (drop index from current)
     {
       auto const value = arangodb::velocypack::Parser::fromJson(
-          "{ \"shard-id\": { \"indexes\" : [ ] } }");
+          R"({ "s123": { "indexes" : [ ] } })");
       EXPECT_TRUE(arangodb::AgencyComm(server.server())
                       .setValue(currentCollectionPath, value->slice(), 0.0)
                       .successful());
@@ -263,7 +263,7 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
         arangodb::velocypack::Parser::fromJson("{\"id\": \"42\"}");
     EXPECT_TRUE(
         arangodb::methods::Indexes::drop(*logicalCollection, indexArg->slice())
-            .get()
+            .waitAndGet()
             .ok());
 
     // get new version from plan
@@ -334,7 +334,7 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     // simulate heartbeat thread (create index in current)
     {
       auto const value = arangodb::velocypack::Parser::fromJson(
-          "{ \"shard-id\": { \"indexes\" : [ { \"id\": \"42\" } ] } }");
+          R"({ "s123": { "indexes" : [ { "id": "42" } ] } })");
       EXPECT_TRUE(arangodb::AgencyComm(server.server())
                       .setValue(currentCollectionPath, value->slice(), 0.0)
                       .successful());
@@ -345,7 +345,7 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     EXPECT_TRUE(arangodb::methods::Indexes::ensureIndex(*logicalCollection,
                                                         linkJson->slice(), true,
                                                         outputDefinition)
-                    .get()
+                    .waitAndGet()
                     .ok());
 
     // get new version from plan

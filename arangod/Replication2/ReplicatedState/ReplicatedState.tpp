@@ -69,7 +69,7 @@ auto IReplicatedFollowerState<S>::waitForApplied(LogIndex index)
   } else {
     WaitForAppliedFuture future(
         std::make_exception_ptr(replicated_log::ParticipantResignedException(
-            TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE)));
+            TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED)));
     return future;
   }
 }

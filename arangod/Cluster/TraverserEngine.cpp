@@ -53,7 +53,7 @@ static const std::string SHARDS = "shards";
 static const std::string TYPE = "type";
 
 #ifndef USE_ENTERPRISE
-/*static*/ std::unique_ptr<BaseEngine> BaseEngine::BuildEngine(
+/*static*/ std::unique_ptr<BaseEngine> BaseEngine::buildEngine(
     TRI_vocbase_t& vocbase, aql::QueryContext& query, VPackSlice info) {
   VPackSlice type = info.get(std::initializer_list<std::string_view>(
       {StaticStrings::GraphOptions, TYPE}));
@@ -207,8 +207,8 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder,
       return true;
     };
     for (auto const& shard : shards->second) {
-      Result res =
-          _trx->documentFastPathLocal(std::string{shard}, vertex, cb).get();
+      Result res = _trx->documentFastPathLocal(std::string{shard}, vertex, cb)
+                       .waitAndGet();
       if (res.ok()) {
         break;
       }

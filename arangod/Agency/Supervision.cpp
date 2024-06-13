@@ -202,7 +202,7 @@ std::string Supervision::_agencyPrefix = "/arango";
 
 Supervision::Supervision(ArangodServer& server,
                          metrics::MetricsFeature& metrics)
-    : arangodb::Thread(server, "Supervision"),
+    : arangodb::ServerThread<ArangodServer>(server, "Supervision"),
       _agent(nullptr),
       _snapshot(nullptr),
       _transient(Node::create()),
@@ -459,7 +459,8 @@ void handleOnStatusCoordinator(Agent* agent, Node const& snapshot,
         Job::addIncreaseRebootId(create, serverID);
 
         // if the current foxxmaster server failed => reset the value to ""
-        if (snapshot.hasAsString(foxxmaster).value() == serverID) {
+        if (auto fx = snapshot.hasAsString(foxxmaster);
+            fx && fx.value() == serverID) {
           create.add(foxxmaster, VPackValue(""));
         }
       }

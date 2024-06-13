@@ -22,7 +22,6 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
 #include "Basics/Utf8Helper.h"
 
 #include "gtest/gtest.h"
@@ -32,18 +31,7 @@
 #include "Basics/Utf8Helper.h"
 #include "Basics/directories.h"
 
-#include "icu-helper.h"
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 setup / tear-down
-// -----------------------------------------------------------------------------
-
-class CStringUtf8Test : public ::testing::Test {
- protected:
-  CStringUtf8Test() {
-    IcuInitializer::setup("./3rdParty/V8/v8/third_party/icu/common/icudtl.dat");
-  }
-};
+class CStringUtf8Test : public ::testing::Test {};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite

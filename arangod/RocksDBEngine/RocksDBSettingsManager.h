@@ -25,7 +25,6 @@
 #pragma once
 
 #include <rocksdb/types.h>
-#include "Basics/Common.h"
 #include "Basics/ResultT.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBTypes.h"

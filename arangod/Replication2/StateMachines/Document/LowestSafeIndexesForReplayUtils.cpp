@@ -21,6 +21,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "LowestSafeIndexesForReplayUtils.h"
+
+#include "Basics/MaintainerMode.h"
+
 namespace arangodb::replication2::replicated_state::document {
 
 namespace {

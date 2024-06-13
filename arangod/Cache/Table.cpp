@@ -309,6 +309,7 @@ void Table::setTypeSpecifics(BucketClearer clearer,
                              std::size_t slotsPerBucket) {
   _bucketClearer = clearer;
   _slotsTotal = _size * static_cast<std::uint64_t>(slotsPerBucket);
+  TRI_ASSERT(_slotsTotal > 0);
 }
 
 void Table::clear() {

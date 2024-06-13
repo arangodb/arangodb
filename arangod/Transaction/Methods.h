@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Indexes/IndexIterator.h"
 #include "Rest/CommonDefines.h"
 #include "Transaction/CountCache.h"
@@ -446,7 +445,7 @@ class Methods {
 
   Future<OperationResult> documentLocal(std::string const& collectionName,
                                         VPackSlice value,
-                                        OperationOptions const& options);
+                                        OperationOptions options);
 
   Future<OperationResult> insertCoordinator(std::string const& collectionName,
                                             VPackSlice value,
@@ -455,7 +454,7 @@ class Methods {
 
   Future<OperationResult> insertLocal(std::string const& collectionName,
                                       VPackSlice value,
-                                      OperationOptions& options);
+                                      OperationOptions options);
 
   Result determineReplication1TypeAndFollowers(
       LogicalCollection& collection, std::string_view operationName,
@@ -476,7 +475,7 @@ class Methods {
 
   Future<OperationResult> modifyLocal(std::string const& collectionName,
                                       VPackSlice newValue,
-                                      OperationOptions& options, bool isUpdate);
+                                      OperationOptions options, bool isUpdate);
 
   Future<OperationResult> removeCoordinator(std::string const& collectionName,
                                             VPackSlice value,
@@ -485,21 +484,21 @@ class Methods {
 
   Future<OperationResult> removeLocal(std::string const& collectionName,
                                       VPackSlice value,
-                                      OperationOptions& options);
+                                      OperationOptions options);
 
   futures::Future<OperationResult> allCoordinator(
       std::string const& collectionName, uint64_t skip, uint64_t limit,
-      OperationOptions& options);
+      OperationOptions const& options);
 
   futures::Future<OperationResult> allLocal(std::string const& collectionName,
                                             uint64_t skip, uint64_t limit,
-                                            OperationOptions& options);
+                                            OperationOptions options);
 
   OperationResult anyCoordinator(std::string const& collectionName,
                                  OperationOptions const& options);
 
   futures::Future<OperationResult> anyLocal(std::string const& collectionName,
-                                            OperationOptions const& options);
+                                            OperationOptions options);
 
   Future<OperationResult> truncateCoordinator(std::string const& collectionName,
                                               OperationOptions& options,

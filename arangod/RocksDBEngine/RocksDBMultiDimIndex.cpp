@@ -26,19 +26,20 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Variable.h"
+#include "Basics/StaticStrings.h"
+#include "ClusterEngine/ClusterIndex.h"
 #include "Containers/Enumerate.h"
 #include "Containers/FlatHashSet.h"
-#include "Transaction/Helpers.h"
+#include "Logger/LogMacros.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 #include "Zkd/ZkdHelper.h"
-#include "Logger/LogMacros.h"
-#include "ClusterEngine/ClusterIndex.h"
 
 using namespace arangodb;
 
@@ -719,8 +720,7 @@ Result RocksDBMdiIndex::insert(transaction::Methods& trx,
   {
     auto result = readDocumentKey(doc, _fields);
     if (result.fail()) {
-      if (result.errorNumber() == TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE &&
-          _sparse) {
+      if (result.is(TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE) && _sparse) {
         return {};
       }
       THROW_ARANGO_EXCEPTION(result.result());
@@ -736,7 +736,7 @@ Result RocksDBMdiIndex::insert(transaction::Methods& trx,
     auto result = extractAttributeValues(trx, _prefixFields, doc, !_sparse);
     if (result.fail()) {
       TRI_ASSERT(_sparse);
-      TRI_ASSERT(result.errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING);
+      TRI_ASSERT(result.is(TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING));
       return TRI_ERROR_NO_ERROR;
     }
     auto& prefixValues = result.get();
@@ -793,8 +793,7 @@ Result RocksDBMdiIndex::remove(transaction::Methods& trx,
   {
     auto result = readDocumentKey(doc, _fields);
     if (result.fail()) {
-      if (result.errorNumber() == TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE &&
-          _sparse) {
+      if (result.is(TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE) && _sparse) {
         return {};
       }
       THROW_ARANGO_EXCEPTION(result.result());
@@ -810,7 +809,7 @@ Result RocksDBMdiIndex::remove(transaction::Methods& trx,
     auto result = extractAttributeValues(trx, _prefixFields, doc, !_sparse);
     if (result.fail()) {
       TRI_ASSERT(_sparse);
-      TRI_ASSERT(result.errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING);
+      TRI_ASSERT(result.is(TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING));
       return TRI_ERROR_NO_ERROR;
     }
     auto& prefixValues = result.get();
@@ -1103,8 +1102,7 @@ Result RocksDBUniqueMdiIndex::insert(transaction::Methods& trx,
   {
     auto result = readDocumentKey(doc, _fields);
     if (result.fail()) {
-      if (result.errorNumber() == TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE &&
-          _sparse) {
+      if (result.is(TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE) && _sparse) {
         return {};
       }
       THROW_ARANGO_EXCEPTION(result.result());
@@ -1119,7 +1117,7 @@ Result RocksDBUniqueMdiIndex::insert(transaction::Methods& trx,
     auto result = extractAttributeValues(trx, _prefixFields, doc, !_sparse);
     if (result.fail()) {
       TRI_ASSERT(_sparse);
-      TRI_ASSERT(result.errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING);
+      TRI_ASSERT(result.is(TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING));
       return TRI_ERROR_NO_ERROR;
     }
     auto& prefixValues = result.get();
@@ -1162,8 +1160,7 @@ Result RocksDBUniqueMdiIndex::remove(transaction::Methods& trx,
   {
     auto result = readDocumentKey(doc, _fields);
     if (result.fail()) {
-      if (result.errorNumber() == TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE &&
-          _sparse) {
+      if (result.is(TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE) && _sparse) {
         return {};
       }
       THROW_ARANGO_EXCEPTION(result.result());
@@ -1178,7 +1175,7 @@ Result RocksDBUniqueMdiIndex::remove(transaction::Methods& trx,
     auto result = extractAttributeValues(trx, _prefixFields, doc, !_sparse);
     if (result.fail()) {
       TRI_ASSERT(_sparse);
-      TRI_ASSERT(result.errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING);
+      TRI_ASSERT(result.is(TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING));
       return TRI_ERROR_NO_ERROR;
     }
     auto& prefixValues = result.get();

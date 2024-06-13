@@ -26,20 +26,22 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
-  'chaos': 'chaos tests'
+  'chaos': 'chaos tests',
+  'deadlock': 'deadlock tests'
 };
-const optionsDocumentation = [];
 
 const _ = require('lodash');
 const tu = require('@arangodb/testutils/test-utils');
+const trs = require('@arangodb/testutils/testrunners');
 
 const testPaths = {
   'chaos': [ tu.pathForTesting('client/chaos') ],
+  'deadlock': [ tu.pathForTesting('client/chaos') ], // intentionally same path as chaos
 };
 
 function chaos (options) {
   let testCasesWithConfigs = {};
-  let testCases = tu.scanTestPaths(testPaths.chaos, options);
+  let testCases = tu.scanTestPaths(testPaths.chaos, options).filter((c) => c.includes("test-module-chaos"));
   
   // The chaos test suite is parameterized and each configuration runs 5min.
   // For the nightly tests we want to run a large number of possible parameter
@@ -72,10 +74,10 @@ function chaos (options) {
     }
     return testCase;
   });
-  
+ 
   testCases = tu.splitBuckets(options, testCases);
   
-  class chaosRunner extends tu.runLocalInArangoshRunner {
+  class chaosRunner extends trs.runLocalInArangoshRunner {
     preRun(test) {
       global.currentTestConfig = undefined;
       const configs = testCasesWithConfigs[test];
@@ -96,12 +98,18 @@ function chaos (options) {
     }
   };
 
-  return new chaosRunner(options, 'chaos', {}).run(testCases);
+  return new chaosRunner(options, 'chaos', {"--server.maximal-threads":"8"}).run(testCases);
+}
+
+function deadlock (options) {
+  let testCases = tu.scanTestPaths(testPaths.deadlock, options).filter((c) => c.includes("test-deadlock"));
+  // start with intentionally few threads, so that deadlocks become more likely
+  return new trs.runLocalInArangoshRunner(options, 'deadlock', {"--server.maximal-threads":"8"}).run(testCases);
 }
 
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['chaos'] = chaos;
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  testFns['deadlock'] = deadlock;
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };

@@ -46,7 +46,6 @@
 
 #include <iosfwd>
 #include "Aql/AqlValue.h"
-#include "Basics/Common.h"
 #include "Basics/debugging.h"
 #include "Containers/FlatHashMap.h"
 #include "Utils/OperationOptions.h"

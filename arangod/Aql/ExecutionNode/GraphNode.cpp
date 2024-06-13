@@ -361,8 +361,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
   }
 }
 
-GraphNode::GraphNode(ExecutionPlan* plan,
-                     arangodb::velocypack::Slice const& base)
+GraphNode::GraphNode(ExecutionPlan* plan, arangodb::velocypack::Slice base)
     : ExecutionNode(plan, base),
       _vocbase(&(plan->getAst()->query().vocbase())),
       _vertexOutVariable(nullptr),
@@ -771,7 +770,7 @@ CostEstimate GraphNode::estimateCost() const {
     size_t baseNumItems = 0;
     for (auto& e : _edgeColls) {
       TRI_ASSERT(e != nullptr);
-      auto count = e->count(_options->trx(), transaction::CountType::TryCache);
+      auto count = e->count(_options->trx(), transaction::CountType::kTryCache);
       // Assume an estimate if 10% hit rate
       baseCost *= count / 10;
       baseNumItems += static_cast<size_t>(std::ceil(count / 10));

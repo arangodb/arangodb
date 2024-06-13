@@ -37,34 +37,44 @@ struct Variable;
 /// @brief CollectOptions
 struct CollectOptions final {
   /// @brief selected aggregation method
-  enum class CollectMethod { UNDEFINED, HASH, SORTED, DISTINCT, COUNT };
+  enum class CollectMethod { kUndefined, kHash, kSorted, kDistinct, kCount };
 
   /// @brief constructor, using default values
-  CollectOptions();
+  CollectOptions() noexcept;
+
+  explicit CollectOptions(velocypack::Slice);
 
   CollectOptions(CollectOptions const& other) = default;
 
   CollectOptions& operator=(CollectOptions const& other) = default;
 
-  /// @brief constructor
-  explicit CollectOptions(arangodb::velocypack::Slice);
+  /// @brief whether or not the method has been fixed
+  bool isFixed() const noexcept;
+
+  /// @brief set method and fix it. note: some cluster optimizer rule
+  /// adjusts the methods after it has been initially fixed.
+  void fixMethod(CollectMethod m) noexcept;
 
   /// @brief whether or not the method can be used
-  bool canUseMethod(CollectMethod method) const;
+  bool canUseMethod(CollectMethod m) const noexcept;
 
   /// @brief whether or not the method should be used
-  bool shouldUseMethod(CollectMethod method) const;
+  bool shouldUseMethod(CollectMethod m) const noexcept;
 
   /// @brief convert the options to VelocyPack
-  void toVelocyPack(arangodb::velocypack::Builder&) const;
+  void toVelocyPack(velocypack::Builder&) const;
 
   /// @brief get the aggregation method from a string
-  static CollectMethod methodFromString(std::string_view);
+  static CollectMethod methodFromString(std::string_view) noexcept;
 
   /// @brief stringify the aggregation method
   static std::string_view methodToString(CollectOptions::CollectMethod method);
 
+  /// @brief type of COLLECT, e.g. sorted, hash, distinct, count...
   CollectMethod method;
+  /// @brief if true, then the CollectMethod must not be changed after
+  /// being set. if false, the CollectMethod can still change later.
+  bool fixed;
 };
 
 struct GroupVarInfo final {

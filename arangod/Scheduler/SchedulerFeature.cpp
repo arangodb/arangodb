@@ -24,6 +24,7 @@
 #include <atomic>
 #include <chrono>
 #include <limits>
+#include <memory>
 #include <thread>
 
 #include "SchedulerFeature.h"
@@ -45,6 +46,7 @@
 #include "RestServer/ServerFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SupervisedScheduler.h"
+#include "Scheduler/ThreadPoolScheduler.h"
 #ifdef USE_V8
 #include "VocBase/Methods/Tasks.h"
 #endif
@@ -245,18 +247,20 @@ return HTTP 503 instead of HTTP 200 when their availability API is probed.)");
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
   options
-      ->addOption("--server.max-number-detached-threads",
-                  "The maximum number of detached scheduler threads.",
-                  new UInt64Parameter(&_nrMaximalDetachedThreads),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Default,
-                      arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(31200)
-      .setLongDescription(
-          R"(If a scheduler thread performs a potentially long running operation like waiting for a lock, it can detach itself from the scheduler. This allows a new scheduler thread to be started and avoids blocking all threads with long-running operations, thereby avoiding deadlock situations. The default should normally be OK.)");
+      ->addOption(
+          "--server.scheduler", "The scheduler type to use.",
+          new DiscreteValuesParameter<StringParameter>(
+              &_schedulerType,
+              std::unordered_set<std::string>{"supervised", "threadpools"}),
+          arangodb::options::makeFlags(arangodb::options::Flags::Uncommon))
+      .setIntroducedIn(31210);
 
   // obsolete options
   options->addObsoleteOption("--server.threads", "number of threads", true);
+
+  options->addObsoleteOption(
+      "--server.max-number-detached-threads",
+      "The maximum number of detached scheduler threads.", true);
 
   // renamed options
   options->addOldOption("scheduler.threads", "server.maximal-threads");
@@ -325,24 +329,29 @@ void SchedulerFeature::prepare() {
   TRI_ASSERT(_nrMinimalThreads <= _nrMaximalThreads);
   TRI_ASSERT(_queueSize > 0);
 
-  // on a DB server we intentionally disable throttling of incoming requests.
-  // this is because coordinators are the gatekeepers, and they should
-  // perform all the throttling.
-  uint64_t ongoingLowPriorityLimit =
-      ServerState::instance()->isDBServer()
-          ? 0
-          : static_cast<uint64_t>(_ongoingLowPriorityMultiplier *
-                                  _nrMaximalThreads);
+  auto metrics = std::make_shared<SchedulerMetrics>(_metricsFeature);
+  _scheduler = std::invoke([&]() -> std::unique_ptr<Scheduler> {
+    if (_schedulerType == "supervised") {
+      // on a DB server we intentionally disable throttling of incoming
+      // requests. this is because coordinators are the gatekeepers, and they
+      // should perform all the throttling.
+      uint64_t ongoingLowPriorityLimit =
+          ServerState::instance()->isDBServer()
+              ? 0
+              : static_cast<uint64_t>(_ongoingLowPriorityMultiplier *
+                                      _nrMaximalThreads);
+      return std::make_unique<SupervisedScheduler>(
+          server(), _nrMinimalThreads, _nrMaximalThreads, _queueSize,
+          _fifo1Size, _fifo2Size, _fifo3Size, ongoingLowPriorityLimit,
+          _unavailabilityQueueFillGrade, metrics);
+    } else {
+      TRI_ASSERT(_schedulerType == "threadpools");
+      return std::make_unique<ThreadPoolScheduler>(server(), _nrMaximalThreads,
+                                                   std::move(metrics));
+    }
+  });
 
-  auto sched = std::make_unique<SupervisedScheduler>(
-      server(), _nrMinimalThreads, _nrMaximalThreads, _queueSize, _fifo1Size,
-      _fifo2Size, _fifo3Size, ongoingLowPriorityLimit,
-      _unavailabilityQueueFillGrade, _nrMaximalDetachedThreads,
-      _metricsFeature);
-
-  SCHEDULER = sched.get();
-
-  _scheduler = std::move(sched);
+  SCHEDULER = _scheduler.get();
 }
 
 void SchedulerFeature::start() {

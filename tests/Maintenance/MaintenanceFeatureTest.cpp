@@ -32,13 +32,16 @@
 #include "Basics/Result.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/Action.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/Maintenance.h"
 #include "Cluster/MaintenanceFeature.h"
-#include "Cluster/ClusterTypes.h"
+#include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/MetricsFeature.h"
 #include "Mocks/Servers.h"
-#include "Replication/ReplicationFeature.h"
 #include "RestServer/UpgradeFeature.h"
+#include "Statistics/StatisticsFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 
 #include "MaintenanceFeatureMock.h"
 
@@ -202,7 +205,17 @@ class MaintenanceFeatureTestUnthreaded : public ::testing::Test {
   void SetUp() override {
     as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(
         std::true_type{});
-    as.addFeature<arangodb::metrics::MetricsFeature>();
+    as.addFeature<arangodb::metrics::MetricsFeature>(
+        arangodb::LazyApplicationFeatureReference<
+            arangodb::QueryRegistryFeature>(nullptr),
+        arangodb::LazyApplicationFeatureReference<arangodb::StatisticsFeature>(
+            nullptr),
+        arangodb::LazyApplicationFeatureReference<
+            arangodb::EngineSelectorFeature>(nullptr),
+        arangodb::LazyApplicationFeatureReference<
+            arangodb::metrics::ClusterMetricsFeature>(nullptr),
+        arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
+            nullptr));
   }
 
   std::shared_ptr<arangodb::options::ProgramOptions> po =
@@ -437,9 +450,16 @@ struct MaintenanceFeatureTestThreaded : ::testing::Test {
   arangodb::ArangodServer as{po, nullptr};
 
   void SetUp() override {
-    as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(
+    using namespace arangodb;
+    as.addFeature<application_features::GreetingsFeaturePhase>(
         std::false_type{});
-    as.addFeature<arangodb::metrics::MetricsFeature>();
+    as.addFeature<metrics::MetricsFeature>(
+        LazyApplicationFeatureReference<QueryRegistryFeature>(nullptr),
+        LazyApplicationFeatureReference<StatisticsFeature>(nullptr),
+        LazyApplicationFeatureReference<EngineSelectorFeature>(nullptr),
+        LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(
+            nullptr),
+        LazyApplicationFeatureReference<ClusterFeature>(nullptr));
   }
 };
 

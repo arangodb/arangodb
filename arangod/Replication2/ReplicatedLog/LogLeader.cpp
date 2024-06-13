@@ -148,16 +148,15 @@ auto delayedFuture(IScheduler* sched,
   if (sched) {
     auto p = futures::Promise<futures::Unit>();
     auto f = p.getFuture();
-    auto item = sched->queueDelayed(
-        "r2 appendentries", duration,
-        [p = std::move(p)](bool cancelled) mutable {
-          if (cancelled) {
-            p.setException(basics::Exception(Result{TRI_ERROR_REQUEST_CANCELED},
-                                             ADB_HERE));
-          } else {
-            p.setValue(futures::Unit{});
-          }
-        });
+    auto item = sched->queueDelayed("r2 appendentries", duration,
+                                    [p = std::move(p)](bool cancelled) mutable {
+                                      if (cancelled) {
+                                        p.setException(basics::Exception(Result{
+                                            TRI_ERROR_REQUEST_CANCELED}));
+                                      } else {
+                                        p.setValue(futures::Unit{});
+                                      }
+                                    });
 
     return std::make_pair(std::move(item), std::move(f));
   }
@@ -524,7 +523,7 @@ auto replicated_log::LogLeader::getStatus() const -> LogStatus {
                                                 leaderData) {
     if (leaderData._didResign) {
       throw ParticipantResignedException(
-          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
     }
     auto [releaseIndex, lowestIndexToKeep] = _compactionManager->getIndexes();
     LeaderStatus status;
@@ -622,7 +621,7 @@ auto replicated_log::LogLeader::getQuickStatus() const -> QuickLogStatus {
   auto guard = _guardedLeaderData.getLockedGuard();
   if (guard->_didResign) {
     throw ParticipantResignedException(
-        TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
+        TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
   }
   auto commitFailReason = std::optional<CommitFailReason>{};
   if (_inMemoryLogManager->calculateCommitLag() > std::chrono::seconds{20}) {
@@ -679,7 +678,7 @@ auto replicated_log::LogLeader::waitFor(LogIndex index) -> WaitForFuture {
     if (leaderData._didResign) {
       auto promise = WaitForPromise{};
       promise.setException(ParticipantResignedException(
-          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE));
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED));
       return promise.getFuture();
     }
     auto const commitIndex = _inMemoryLogManager->getCommitIndex();
@@ -704,7 +703,7 @@ auto replicated_log::LogLeader::triggerAsyncReplication() -> void {
   auto preparedRequests = _guardedLeaderData.doUnderLock([](auto& leaderData) {
     if (leaderData._didResign) {
       throw ParticipantResignedException(
-          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
     }
     return leaderData.prepareAppendEntries();
   });
@@ -1258,7 +1257,7 @@ void replicated_log::LogLeader::updateReleaseIndex(LogIndex doneWithIdx) {
 }
 
 auto replicated_log::LogLeader::compact() -> ResultT<CompactionResult> {
-  auto result = _compactionManager->compact().get();
+  auto result = _compactionManager->compact().waitAndGet();
   if (result.error) {
     return Result{result.error->errorNumber(), result.error->errorMessage()};
   }
@@ -1515,7 +1514,7 @@ auto replicated_log::LogLeader::setSnapshotAvailable(
   auto guard = _guardedLeaderData.getLockedGuard();
   if (guard->_didResign) {
     throw ParticipantResignedException(
-        TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
+        TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
   }
   auto follower = guard->_follower.find(participantId);
   if (follower == guard->_follower.end()) {
@@ -1566,7 +1565,7 @@ auto replicated_log::LogLeader::resign() && -> std::tuple<
           LOG_CTX("5d3b8", ERR, _logContext)
               << "Leader " << participantId << " already resigned!";
           throw ParticipantResignedException(
-              TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED, ADB_HERE);
+              TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED);
         }
         std::move(*_inMemoryLogManager).resign();
 
@@ -1587,8 +1586,7 @@ auto replicated_log::LogLeader::resign() && -> std::tuple<
             // Check this to make sure that setException does not throw
             if (!promise.isFulfilled()) {
               promise.setException(ParticipantResignedException(
-                  TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
-                  ADB_HERE));
+                  TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED));
             }
           }
           queues->waitForResignQueue.resolveAll();
@@ -1664,7 +1662,7 @@ auto replicated_log::LogLeader::LocalFollower::release(LogIndex stop) const
   LOG_CTX("23745", DEBUG, _logContext)
       << "local follower releasing with stop at " << stop;
   auto trx = _storageManager->transaction();
-  auto res = trx->removeFront(stop).get();
+  auto res = trx->removeFront(stop).waitAndGet();
   LOG_CTX_IF("2aba1", WARN, _logContext, res.fail())
       << "local follower failed to release log entries: " << res.errorMessage();
   return res;

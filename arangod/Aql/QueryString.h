@@ -23,15 +23,12 @@
 
 #pragma once
 
-#include "Basics/Common.h"
-
 #include <cstdint>
 #include <iosfwd>
 #include <string>
 #include <string_view>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 /// View on a query string
 class QueryString {
@@ -54,7 +51,6 @@ class QueryString {
 
   ~QueryString() = default;
 
- public:
   std::string const& string() const noexcept { return _queryString; }
   char const* data() const noexcept { return _queryString.data(); }
   size_t size() const noexcept { return _queryString.size(); }
@@ -75,5 +71,4 @@ class QueryString {
 };
 
 std::ostream& operator<<(std::ostream&, QueryString const&);
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql

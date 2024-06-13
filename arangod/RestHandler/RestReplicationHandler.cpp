@@ -26,7 +26,7 @@
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
-#include "Basics/NumberUtils.h"
+#include "Auth/UserManager.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/RocksDBUtils.h"
@@ -278,12 +278,14 @@ static Result checkPlanLeaderDirect(
     // that is prepended by `arango`! WTF!?
     VPackSlice plan =
         res.slice().at(0).get(AgencyCommHelper::path()).get(agencyPath);
-    TRI_ASSERT(plan.isArray() && plan.length() > 0);
 
-    VPackSlice leaderSlice = plan.at(0);
-    TRI_ASSERT(leaderSlice.isString());
-    if (leaderSlice.isEqualString(claimLeaderId)) {
-      return Result{};
+    // The collection might be deleted in the meantime
+    if (plan.isArray() && plan.length() > 0) {
+      VPackSlice leaderSlice = plan.at(0);
+      TRI_ASSERT(leaderSlice.isString());
+      if (leaderSlice.isEqualString(claimLeaderId)) {
+        return Result{};
+      }
     }
   }
 
@@ -1875,7 +1877,8 @@ Result RestReplicationHandler::processRestoreIndexes(
       std::shared_ptr<arangodb::Index> idx;
       try {
         bool created = false;
-        idx = physical->createIndex(idxDef, /*restore*/ true, created).get();
+        idx = physical->createIndex(idxDef, /*restore*/ true, created)
+                  .waitAndGet();
       } catch (basics::Exception const& e) {
         if (e.code() == TRI_ERROR_NOT_IMPLEMENTED) {
           continue;
@@ -2393,7 +2396,7 @@ RestReplicationHandler::handleCommandAddFollower() {
     if (res.ok()) {
       OperationOptions options(_context);
       auto countRes =
-          trx.count(col->name(), transaction::CountType::Normal, options);
+          trx.count(col->name(), transaction::CountType::kNormal, options);
 
       if (countRes.ok()) {
         VPackSlice nrSlice = countRes.slice();
@@ -2466,7 +2469,7 @@ RestReplicationHandler::handleCommandAddFollower() {
 
   // referenceChecksum is the stringified number of documents in the collection
   ResultT<std::string> referenceChecksum =
-      computeCollectionChecksum(readLockId, col.get());
+      co_await computeCollectionChecksum(readLockId, col.get());
   if (!referenceChecksum.ok()) {
     generateError(std::move(referenceChecksum).result());
     co_return;
@@ -2477,7 +2480,8 @@ RestReplicationHandler::handleCommandAddFollower() {
     transaction::Manager* mgr = transaction::ManagerFeature::manager();
     TRI_ASSERT(mgr != nullptr);
     auto trxCtxtLease =
-        mgr->leaseManagedTrx(readLockId, AccessMode::Type::READ, true);
+        mgr->leaseManagedTrx(readLockId, AccessMode::Type::READ, true)
+            .waitAndGet();
     if (trxCtxtLease) {
       transaction::Methods trx{trxCtxtLease};
       if (!trx.isLocked(col.get(), AccessMode::Type::EXCLUSIVE)) {
@@ -2625,7 +2629,7 @@ void RestReplicationHandler::handleCommandSetTheLeader() {
   TRI_ASSERT(ServerState::instance()->isDBServer());
 
   bool success = false;
-  VPackSlice const body = this->parseVPackBody(success);
+  VPackSlice body = this->parseVPackBody(success);
   if (!success) {
     // error already created
     return;
@@ -2636,10 +2640,11 @@ void RestReplicationHandler::handleCommandSetTheLeader() {
                   "and 'shard'");
     return;
   }
-  VPackSlice const leaderIdSlice = body.get("leaderId");
-  VPackSlice const oldLeaderIdSlice = body.get("oldLeaderId");
-  VPackSlice const shard = body.get("shard");
-  VPackSlice const followingTermId = body.get(StaticStrings::FollowingTermId);
+
+  VPackSlice leaderIdSlice = body.get("leaderId");
+  VPackSlice oldLeaderIdSlice = body.get("oldLeaderId");
+  VPackSlice shard = body.get("shard");
+  VPackSlice followingTermId = body.get(StaticStrings::FollowingTermId);
   // Note that we tolerate if followingTermId is not present or not a number
   // for upgrade scenarios. If the new leader does not send it, it will also
   // not send it in the option IsSynchronousReplication.
@@ -2660,9 +2665,10 @@ void RestReplicationHandler::handleCommandSetTheLeader() {
     return;
   }
 
-  std::string currentLeader = col->followers()->getLeader();
+  std::string const currentLeaderCopy = col->followers()->getLeader();
+  std::string currentLeader = currentLeaderCopy;
   if (currentLeader ==
-      arangodb::maintenance::ResignShardLeadership::LeaderNotYetKnownString) {
+      maintenance::ResignShardLeadership::LeaderNotYetKnownString) {
     // We have resigned, check that we are the old leader
     currentLeader = ServerState::instance()->getId();
   } else {
@@ -2673,7 +2679,10 @@ void RestReplicationHandler::handleCommandSetTheLeader() {
     }
   }
 
+  std::string newLeader;
+
   if (leaderId != currentLeader) {
+    // leader server id change (i.e. different server has taken over)
     Result res = checkPlanLeaderDirect(col, leaderId);
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
@@ -2689,11 +2698,37 @@ void RestReplicationHandler::handleCommandSetTheLeader() {
     }
 
     if (followingTermId.isNumber()) {
-      col->followers()->setTheLeader(
-          leaderId + "_" +
-          StringUtils::itoa(followingTermId.getNumber<uint64_t>()));
+      newLeader =
+          absl::StrCat(leaderId, "_", followingTermId.getNumber<uint64_t>());
     } else {
-      col->followers()->setTheLeader(leaderId);
+      newLeader = leaderId;
+    }
+  } else {
+    // no leader change, but maybe the session id for the same leader has
+    // changed
+    if (followingTermId.isNumber() && !leaderId.empty() &&
+        currentLeaderCopy !=
+            maintenance::ResignShardLeadership::LeaderNotYetKnownString) {
+      Result res = checkPlanLeaderDirect(col, leaderId);
+      if (res.fail()) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
+
+      newLeader =
+          absl::StrCat(leaderId, "_", followingTermId.getNumber<uint64_t>());
+    }
+  }
+
+  if (!newLeader.empty()) {
+    LOG_TOPIC("71b25", DEBUG, Logger::REPLICATION)
+        << "setting leader for shard '" << _vocbase.name() << "/"
+        << shard.stringView() << "' from " << currentLeaderCopy << " to "
+        << newLeader;
+    if (!col->followers()->setTheLeaderConditional(currentLeaderCopy,
+                                                   newLeader)) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                    "leader changed concurrently during leader change attempt");
+      return;
     }
   }
 
@@ -2776,6 +2811,8 @@ RestReplicationHandler::handleCommandHoldReadLockCollection() {
   // potentially faster soft-lock synchronization with a smaller hard-lock
   // phase.
 
+  // TODO: the follower will always send "doSoftLockOnly=false" from 3.12.1
+  // onwards. we can remove the entire parameter in the future.
   bool doSoftLock = VelocyPackHelper::getBooleanValue(
       body, StaticStrings::ReplicationSoftLockOnly, false);
   AccessMode::Type lockType = AccessMode::Type::READ;
@@ -2798,6 +2835,10 @@ RestReplicationHandler::handleCommandHoldReadLockCollection() {
   Result res = co_await createBlockingTransaction(id, *col, ttl, lockType,
                                                   rebootId, serverId);
   if (!res.ok()) {
+    LOG_TOPIC("5f00f", DEBUG, Logger::REPLICATION)
+        << "Lock " << id << " for shard " << _vocbase.name() << "/"
+        << col->name() << " of type: " << (doSoftLock ? "soft" : "hard")
+        << " could not be created because of: " << res.errorMessage();
     generateError(res);
     co_return;
   }
@@ -2811,7 +2852,8 @@ RestReplicationHandler::handleCommandHoldReadLockCollection() {
     if (!res.ok()) {
       // this is potentially bad!
       LOG_TOPIC("957fa", WARN, Logger::REPLICATION)
-          << "Lock " << id
+          << "Lock " << id << " for shard " << _vocbase.name() << "/"
+          << col->name() << " of type: " << (doSoftLock ? "soft" : "hard")
           << " could not be canceled because of: " << res.errorMessage();
     }
     // indicate that we are not the leader
@@ -3459,7 +3501,7 @@ futures::Future<Result> RestReplicationHandler::createBlockingTransaction(
   // if we are not using superuser scope here and the leader is
   // read-only, trying to grab the lock in exclusive mode will
   // return a "read-only" error.
-  ExecContextScope scope(&ExecContext::superuser());
+  ExecContextScope scope(ExecContext::superuserAsShared());
 
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
@@ -3492,21 +3534,29 @@ futures::Future<Result> RestReplicationHandler::createBlockingTransaction(
     co_return res;
   }
 
-  ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
-
   std::string vn = _vocbase.name();
+
+  // we successfully created the transaction.
+  // make sure if it is aborted if something goes wrong.
+  auto transactionAborter = scopeGuard([mgr, id, vn]() noexcept {
+    try {
+      mgr->abortManagedTrx(id, vn).waitAndGet();
+    } catch (...) {
+    }
+  });
+
   try {
     if (!serverId.empty()) {
-      std::string comment = std::string("SynchronizeShard from ") + serverId +
-                            " for " + col.name() + " access mode " +
-                            AccessMode::typeString(access);
+      std::string comment =
+          absl::StrCat("SynchronizeShard from ", serverId, " for ", col.name(),
+                       " access mode ", AccessMode::typeString(access));
 
       std::function<void(void)> f = [=]() {
         try {
           // Code does not matter, read only access, so we can roll back.
           transaction::Manager* mgr = transaction::ManagerFeature::manager();
           if (mgr) {
-            mgr->abortManagedTrx(id, vn);
+            mgr->abortManagedTrx(id, vn).waitAndGet();
           }
         } catch (...) {
           // All errors that show up here can only be
@@ -3514,11 +3564,12 @@ futures::Future<Result> RestReplicationHandler::createBlockingTransaction(
         }
       };
 
+      ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
       auto rGuard =
           std::make_unique<RebootCookie>(ci.rebootTracker().callMeOnChange(
               {serverId, rebootId}, std::move(f), std::move(comment)));
-      auto ctx = mgr->leaseManagedTrx(id, AccessMode::Type::WRITE,
-                                      /*isSideUser*/ false);
+      auto ctx = co_await mgr->leaseManagedTrx(id, AccessMode::Type::WRITE,
+                                               /*isSideUser*/ false);
 
       if (!ctx) {
         // Trx does not exist. So we assume it got cancelled.
@@ -3537,14 +3588,14 @@ futures::Future<Result> RestReplicationHandler::createBlockingTransaction(
   }
 
   if (isTombstoned(id)) {
-    try {
-      co_return mgr->abortManagedTrx(id, vn);
-    } catch (...) {
-      // Maybe thrown in shutdown.
-    }
-    // DO NOT LOCK in this case, pointless
+    // DO NOT LOCK in this case, pointless.
+    // transactionAborter will abort the transaction for us.
     co_return {TRI_ERROR_TRANSACTION_INTERNAL, "transaction already cancelled"};
   }
+
+  // when we get here, we let the transaction remain active until it
+  // times out or a cancel request is sent.
+  transactionAborter.cancel();
 
   co_return isLockHeld(id);
 }
@@ -3563,7 +3614,7 @@ Result RestReplicationHandler::isLockHeld(TransactionId id) const {
   transaction::Status stats = mgr->getManagedTrxStatus(id);
   if (stats == transaction::Status::UNDEFINED) {
     return {TRI_ERROR_HTTP_NOT_FOUND,
-            "no hold read lock job found for id " + std::to_string(id.id())};
+            absl::StrCat("no hold read lock job found for id ", id.id())};
   }
 
   return {};
@@ -3577,7 +3628,7 @@ ResultT<bool> RestReplicationHandler::cancelBlockingTransaction(
   if (res.ok()) {
     transaction::Manager* mgr = transaction::ManagerFeature::manager();
     if (mgr) {
-      auto isAborted = mgr->abortManagedTrx(id, _vocbase.name());
+      auto isAborted = mgr->abortManagedTrx(id, _vocbase.name()).waitAndGet();
       if (isAborted.ok()) {  // lock was held
         return ResultT<bool>::success(true);
       }
@@ -3589,32 +3640,33 @@ ResultT<bool> RestReplicationHandler::cancelBlockingTransaction(
   return res;
 }
 
-ResultT<std::string> RestReplicationHandler::computeCollectionChecksum(
+futures::Future<ResultT<std::string>>
+RestReplicationHandler::computeCollectionChecksum(
     TransactionId id, LogicalCollection* col) const {
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   if (!mgr) {
-    return ResultT<std::string>::error(TRI_ERROR_SHUTTING_DOWN);
+    co_return ResultT<std::string>::error(TRI_ERROR_SHUTTING_DOWN);
   }
 
   try {
-    auto ctx =
-        mgr->leaseManagedTrx(id, AccessMode::Type::READ, /*isSideUser*/ false);
+    auto ctx = co_await mgr->leaseManagedTrx(id, AccessMode::Type::READ,
+                                             /*isSideUser*/ false);
     if (!ctx) {
       // Trx does not exist. So we assume it got cancelled.
-      return ResultT<std::string>::error(TRI_ERROR_TRANSACTION_INTERNAL,
-                                         "read transaction was cancelled");
+      co_return ResultT<std::string>::error(TRI_ERROR_TRANSACTION_INTERNAL,
+                                            "read transaction was cancelled");
     }
 
     transaction::Methods trx(ctx);
     TRI_ASSERT(trx.status() == transaction::Status::RUNNING);
 
     uint64_t num = col->getPhysical()->numberDocuments(&trx);
-    return ResultT<std::string>::success(std::to_string(num));
+    co_return ResultT<std::string>::success(std::to_string(num));
   } catch (...) {
     // Query exists, but is in use.
     // So in Locking phase
-    return ResultT<std::string>::error(TRI_ERROR_TRANSACTION_INTERNAL,
-                                       "Read lock not yet acquired!");
+    co_return ResultT<std::string>::error(TRI_ERROR_TRANSACTION_INTERNAL,
+                                          "Read lock not yet acquired!");
   }
 }
 
@@ -3706,14 +3758,15 @@ RequestLane RestReplicationHandler::lane() const {
         // In case of a hard-lock this shard is actually blocking
         // other operations. So let's hurry up with this.
         return RequestLane::CLUSTER_INTERNAL;
-      } else {
-        // This process will determine the start of a replication.
-        // It can be delayed a bit and can be queued after other write
-        // operations The follower is not in sync and requires to catch up
-        // anyways.
-        return RequestLane::SERVER_REPLICATION_CATCHUP;
       }
+
+      // This process will determine the start of a replication.
+      // It can be delayed a bit and can be queued after other write
+      // operations The follower is not in sync and requires to catch up
+      // anyways.
+      return RequestLane::SERVER_REPLICATION;
     }
+
     if (command == RemoveFollower || command == LoggerFollow ||
         command == Batch || command == Inventory || command == Revisions ||
         command == Dump) {

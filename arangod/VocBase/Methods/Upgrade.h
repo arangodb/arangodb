@@ -23,8 +23,6 @@
 
 #pragma once
 
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
 #include "Basics/Result.h"
 #include "VocBase/Methods/Version.h"
 
@@ -32,6 +30,10 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 class UpgradeFeature;
+
+namespace velocypack {
+class Slice;
+}
 
 namespace methods {
 
@@ -81,8 +83,8 @@ struct Upgrade {
     CLUSTER_DB_SERVER_LOCAL = (1u << 10)
   };
 
-  typedef std::function<bool(TRI_vocbase_t&, velocypack::Slice const&)>
-      TaskFunction;
+  using TaskFunction = std::function<Result(TRI_vocbase_t&, velocypack::Slice)>;
+
   struct Task {
     std::string name;
     std::string description;
@@ -100,7 +102,7 @@ struct Upgrade {
   /// @brief create a database
   /// corresponding to local-database.js
   static UpgradeResult createDB(TRI_vocbase_t& vocbase,
-                                arangodb::velocypack::Slice const& users);
+                                velocypack::Slice users);
 
   /// @brief executed on startup for non-coordinators
   /// @param upgrade  Perform an actual upgrade
@@ -124,8 +126,8 @@ struct Upgrade {
 #endif
 
   static UpgradeResult runTasks(TRI_vocbase_t& vocbase, VersionResult& vinfo,
-                                arangodb::velocypack::Slice const& params,
-                                uint32_t clusterFlag, uint32_t dbFlag);
+                                velocypack::Slice params, uint32_t clusterFlag,
+                                uint32_t dbFlag);
 
   /*
   /// @brief system database only

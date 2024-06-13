@@ -278,13 +278,6 @@ Index::FilterCosts SortedIndexAttributeMatcher::supportsFilterCondition(
     std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
     arangodb::Index const* idx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex) {
-  // mmfiles failure point compat
-  if (idx->type() == Index::TRI_IDX_TYPE_HASH_INDEX) {
-    TRI_IF_FAILURE("SimpleAttributeMatcher::accessFitsIndex") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-  }
-
   arangodb::containers::FlatHashMap<size_t,
                                     std::vector<arangodb::aql::AstNode const*>>
       found;
@@ -539,9 +532,9 @@ arangodb::aql::AstNode* SortedIndexAttributeMatcher::specializeCondition(
       }
 
       arangodb::aql::AstNodeType type = it->type;
-      if (arangodb::aql::Ast::IsReversibleOperator(type) &&
+      if (arangodb::aql::Ast::isReversibleOperator(type) &&
           it->getMember(1)->isAttributeAccessForVariable(reference, false)) {
-        type = arangodb::aql::Ast::ReverseOperator(type);
+        type = arangodb::aql::Ast::reverseOperator(type);
       }
 
       // do not let duplicate or related operators pass

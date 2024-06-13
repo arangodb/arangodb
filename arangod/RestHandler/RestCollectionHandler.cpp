@@ -67,6 +67,19 @@ RestCollectionHandler::RestCollectionHandler(ArangodServer& server,
                                              GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
+RequestLane RestCollectionHandler::lane() const {
+  if (_request->requestType() == rest::RequestType::GET) {
+    auto const& suffixes = _request->suffixes();
+    if (suffixes.size() >= 2 &&
+        (suffixes[1] == "shards" || suffixes[1] == "responsibleShard")) {
+      // these request types are non-blocking, so we can give them high priority
+      return RequestLane::CLUSTER_ADMIN;
+    }
+  }
+
+  return RequestLane::CLIENT_SLOW;
+}
+
 RestStatus RestCollectionHandler::execute() {
   switch (_request->requestType()) {
     case rest::RequestType::GET:
@@ -605,7 +618,7 @@ futures::Future<RestStatus> RestCollectionHandler::handleCommandPut() {
 
     OperationOptions options(_context);
     res = methods::Collections::updateProperties(*coll, props.slice(), options)
-              .get();
+              .waitAndGet();
     if (res.fail()) {
       generateError(res);
       co_return RestStatus::DONE;
@@ -730,7 +743,7 @@ void RestCollectionHandler::collectionRepresentation(
     FiguresType showFigures, CountType showCount) {
   if (showProperties || showCount != CountType::None) {
     // Here we need a transaction
-    initializeTransaction(*coll).get();
+    initializeTransaction(*coll).waitAndGet();
     methods::Collections::Context ctxt(coll, _activeTrx.get());
 
     collectionRepresentation(ctxt, showProperties, showFigures, showCount);
@@ -746,7 +759,7 @@ void RestCollectionHandler::collectionRepresentation(
     methods::Collections::Context& ctxt, bool showProperties,
     FiguresType showFigures, CountType showCount) {
   collectionRepresentationAsync(ctxt, showProperties, showFigures, showCount)
-      .get();
+      .waitAndGet();
 }
 
 futures::Future<futures::Unit>
@@ -804,8 +817,8 @@ RestCollectionHandler::collectionRepresentationAsync(
     TRI_ASSERT(trx != nullptr);
     opRes = co_await trx->countAsync(coll->name(),
                                      showCount == CountType::Detailed
-                                         ? transaction::CountType::Detailed
-                                         : transaction::CountType::Normal,
+                                         ? transaction::CountType::kDetailed
+                                         : transaction::CountType::kNormal,
                                      options);
   }
 

@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 namespace arangodb {
@@ -68,6 +67,9 @@ class RestQueryHandler : public RestVocbaseBaseHandler {
 
   /// @brief parses a query
   void parseQuery();
+
+  /// @brief dump contents of query registry
+  void dumpQueryRegistry();
 
   /// @brief returns the available optimizer rules
   void handleAvailableOptimizerRules();

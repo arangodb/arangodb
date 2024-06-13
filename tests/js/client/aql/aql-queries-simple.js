@@ -25,16 +25,12 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var errors = require("internal").errors;
-var helper = require("@arangodb/aql-helper");
-var getQueryResults = helper.getQueryResults;
-var assertQueryError = helper.assertQueryError;
+const jsunity = require("jsunity");
+const errors = require("internal").errors;
+const helper = require("@arangodb/aql-helper");
+const getQueryResults = helper.getQueryResults;
+const assertQueryError = helper.assertQueryError;
 const db = require('internal').db;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlQuerySimpleTestSuite () {
   return {
@@ -1425,13 +1421,13 @@ function ahuacatlQuerySimpleTestSuite () {
       assertTrue(expr.value);
       
       q = `RETURN IS_NULL(@value)`; 
-      nodes = db._createStatement({query: q, bindVars: {value: 42}}).explain().plan.nodes.filter((n) => n.type === 'CalculationNode');
+      nodes = db._createStatement({query: q, bindVars: {value: 42}, options: {expandBindParameters: "all"}}).explain().plan.nodes.filter((n) => n.type === 'CalculationNode');
       assertEqual(1, nodes.length);
       expr = nodes[0].expression;
       assertEqual("value", expr.type);
       assertFalse(expr.value);
       
-      nodes = db._createStatement({query:q, bindVars:{value: null}}).explain().plan.nodes.filter((n) => n.type === 'CalculationNode');
+      nodes = db._createStatement({query:q, bindVars: {value: null}, options: {expandBindParameters: "all"}}).explain().plan.nodes.filter((n) => n.type === 'CalculationNode');
       assertEqual(1, nodes.length);
       expr = nodes[0].expression;
       assertEqual("value", expr.type);

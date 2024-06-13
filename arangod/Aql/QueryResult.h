@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Basics/Result.h"
 
 #include <velocypack/Builder.h>
@@ -76,10 +75,8 @@ struct QueryResult {
   bool ok() const { return result.ok(); }
   bool fail() const { return result.fail(); }
   ErrorCode errorNumber() const { return result.errorNumber(); }
-  bool is(ErrorCode errorNumber) const {
-    return result.errorNumber() == errorNumber;
-  }
-  bool isNot(ErrorCode errorNumber) const { return !is(errorNumber); }
+  bool is(ErrorCode errorNumber) const { return result.is(errorNumber); }
+  bool isNot(ErrorCode errorNumber) const { return result.isNot(errorNumber); }
   std::string_view errorMessage() const { return result.errorMessage(); }
 
   uint64_t memoryUsage() const noexcept {
@@ -105,7 +102,6 @@ struct QueryResult {
     return value;
   }
 
- public:
   Result result;
   bool cached;
   bool allowDirtyReads;  // indicate that query was done with dirty reads,

@@ -23,13 +23,15 @@
 
 #pragma once
 
+#include "Containers/FlatHashMap.h"
+
 #include <velocypack/Slice.h>
 
 #include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
-#include <unordered_map>
+#include <string_view>
 #include <utility>
 
 namespace arangodb {
@@ -41,9 +43,9 @@ class Builder;
 namespace aql {
 struct AstNode;
 
-typedef std::unordered_map<std::string,
-                           std::pair<arangodb::velocypack::Slice, AstNode*>>
-    BindParametersType;
+using BindParametersType =
+    containers::FlatHashMap<std::string,
+                            std::pair<arangodb::velocypack::Slice, AstNode*>>;
 
 class BindParameters {
  public:
@@ -60,15 +62,21 @@ class BindParameters {
   /// @brief destroy the parameters
   ~BindParameters();
 
+  /// @brief validates that all bind parameters that were declared have
+  /// actually been used in the query.
+  /// will throw if there is at least one declared, but unused bind parameter.
+  void validateAllUsed() const;
+
   /// @brief return a bind parameter value and its corresponding AstNode by
   /// parameter name. will return VPackSlice::noneSlice() if the bind parameter
   /// does not exist. the returned AstNode is a nullptr in case no AstNode was
   /// yet registered for this bind parameter. This is not an error.
   std::pair<arangodb::velocypack::Slice, AstNode*> get(
-      std::string const& name) const noexcept;
+      std::string_view name) const noexcept;
 
-  /// @brief register an AstNode for the bind parameter
-  void registerNode(std::string const& name, AstNode* node);
+  /// @brief register an AstNode for the bind parameter.
+  /// note: the AstNode is not owned by the bind parameters class.
+  void registerNode(std::string_view name, AstNode* node);
 
   /// @brief run a visitor function on all bind parameters
   void visit(std::function<void(std::string const& key,
@@ -102,6 +110,11 @@ class BindParameters {
 
   /// @brief bind parameters map, indexed by name
   BindParametersType _parameters;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  /// @brief memory used by bind parameters
+  size_t _memoryUsage;
+#endif
 
   /// @brief internal state
   bool _processed;

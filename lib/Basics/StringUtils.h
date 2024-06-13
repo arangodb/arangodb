@@ -35,7 +35,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "Basics/Common.h"
 #include "Basics/debugging.h"
 
 namespace arangodb {

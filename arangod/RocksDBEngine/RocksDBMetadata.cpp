@@ -21,15 +21,11 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <rocksdb/db.h>
-#include <rocksdb/utilities/transaction.h>
-
-#include <velocypack/Iterator.h>
-
 #include "RocksDBMetadata.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/system-compiler.h"
 #include "Logger/LogMacros.h"
@@ -46,6 +42,10 @@
 #include "Transaction/Context.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
+
+#include <rocksdb/db.h>
+#include <rocksdb/utilities/transaction.h>
+#include <velocypack/Iterator.h>
 
 #include <chrono>
 #include <thread>
@@ -154,12 +154,14 @@ Result RocksDBMetadata::updateBlocker(TransactionId trxId,
     if (_blockers.end() == previous ||
         _blockersBySeq.end() ==
             _blockersBySeq.find(std::make_pair(previous->second, trxId))) {
-      res.reset(TRI_ERROR_INTERNAL);
+      TRI_ASSERT(false);
+      return res.reset(TRI_ERROR_INTERNAL);
     }
 
     auto removed =
         _blockersBySeq.erase(std::make_pair(previous->second, trxId));
     if (!removed) {
+      TRI_ASSERT(false);
       return res.reset(TRI_ERROR_INTERNAL);
     }
 
@@ -167,6 +169,7 @@ Result RocksDBMetadata::updateBlocker(TransactionId trxId,
     _blockers[trxId] = seq;
     auto crosslist = _blockersBySeq.emplace(seq, trxId);
     if (!crosslist.second) {
+      TRI_ASSERT(false);
       return res.reset(TRI_ERROR_INTERNAL);
     }
 

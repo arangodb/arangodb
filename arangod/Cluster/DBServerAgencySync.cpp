@@ -266,7 +266,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     return result;
   }
 
-  AgencyCache::databases_t plan = clusterInfo.getPlan(planIndex, dirty);
+  auto plan = clusterInfo.getPlan(planIndex, dirty);
 
   auto serverId = arangodb::ServerState::instance()->getId();
 
@@ -301,8 +301,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
     VPackObjectBuilder o(&rb);
 
-    AgencyCache::databases_t current =
-        clusterInfo.getCurrent(currentIndex, dirty);
+    auto current = clusterInfo.getCurrent(currentIndex, dirty);
 
     auto startTimePhaseOne = std::chrono::steady_clock::now();
     LOG_TOPIC("19aaf", TRACE, Logger::MAINTENANCE)
@@ -430,7 +429,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
               auto waitIndex = resultsSlice[0].getNumber<uint64_t>();
               LOG_TOPIC("cdc71", TRACE, Logger::MAINTENANCE)
                   << "waiting for local current version to update";
-              std::ignore = clusterInfo.waitForCurrent(waitIndex).get();
+              std::ignore = clusterInfo.waitForCurrent(waitIndex).waitAndGet();
               LOG_TOPIC("3f185", TRACE, Logger::MAINTENANCE)
                   << "current version updated";
             }

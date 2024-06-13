@@ -27,6 +27,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Basics/DownCast.h"
+#include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
@@ -73,6 +74,11 @@ using namespace arangodb;
 using Helper = basics::VelocyPackHelper;
 
 namespace {
+
+double defaultCountCacheTtl(bool system) noexcept {
+  TRI_IF_FAILURE("lowCountCacheTimeout") { return 1.0; }
+  return /*ttl*/ system ? 900.0 : 180.0;
+}
 
 std::string readGloballyUniqueId(velocypack::Slice info) {
   auto guid = basics::VelocyPackHelper::getStringValue(
@@ -154,7 +160,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
       _waitForSync(Helper::getBooleanValue(
           info, StaticStrings::WaitForSyncString, false)),
       _syncByRevision(determineSyncByRevision()),
-      _countCache(/*ttl*/ system() ? 900.0 : 180.0),
+      _countCache(defaultCountCacheTtl(system())),
       _physical(vocbase.engine().createPhysicalCollection(*this, info)) {
 
   TRI_IF_FAILURE("disableRevisionsAsDocumentIds") {

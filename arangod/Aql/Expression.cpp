@@ -87,7 +87,7 @@ Expression::Expression(Ast* ast, AstNode* node)
 }
 
 /// @brief create an expression from VPack
-Expression::Expression(Ast* ast, arangodb::velocypack::Slice const& slice)
+Expression::Expression(Ast* ast, arangodb::velocypack::Slice slice)
     : Expression(ast, ast->createNode(slice.get("expression"))) {
   TRI_ASSERT(_type != UNPROCESSED);
 }
@@ -1921,6 +1921,7 @@ AqlValue Expression::executeSimpleExpressionArithmetic(ExpressionContext& ctx,
       result = l * r;
       break;
     case NODE_TYPE_OPERATOR_BINARY_DIV:
+      TRI_ASSERT(r != 0.0);
       result = l / r;
       break;
     case NODE_TYPE_OPERATOR_BINARY_MOD:

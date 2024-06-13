@@ -26,7 +26,6 @@
 
 #include "Mocks/LogLevels.h"
 
-#include "Basics/Common.h"
 #include "Endpoint/Endpoint.h"
 #include "Endpoint/EndpointIp.h"
 #include "Endpoint/EndpointIpV4.h"

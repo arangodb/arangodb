@@ -25,49 +25,23 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var db = require("@arangodb").db;
-var helper = require("@arangodb/aql-helper");
-var getQueryResults = helper.getQueryResults;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+const jsunity = require("jsunity");
+const db = require("@arangodb").db;
+const helper = require("@arangodb/aql-helper");
+const getQueryResults = helper.getQueryResults;
 
 function ahuacatlLogicalTestSuite () {
-  var vn = "UnitTestsAhuacatlVertex";
-  var vertex = null;
-  var d = null;
-  
+  const cn = "UnitTestsLogical";
+
   return {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
-    setUpAll : function () {
-      // this.tearDown(); should actually work as well
-      db._drop(vn);
-      
-      vertex = db._create(vn);
-      d = vertex.save({ _key: "test1" });
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-
-    tearDownAll : function () {
-      db._drop(vn);
-    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test unary not
 ////////////////////////////////////////////////////////////////////////////////
     
     testUnaryNot1 : function () {
-      var expected = [ false ];
-      var actual = getQueryResults("RETURN !true");
+      let expected = [ false ];
+      let actual = getQueryResults("RETURN !true");
       assertEqual(expected, actual);
     },
 
@@ -76,8 +50,8 @@ function ahuacatlLogicalTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testUnaryNot2 : function () {
-      var expected = [ true ];
-      var actual = getQueryResults("RETURN !false");
+      let expected = [ true ];
+      let actual = getQueryResults("RETURN !false");
       assertEqual(expected, actual);
     },
 
@@ -86,8 +60,8 @@ function ahuacatlLogicalTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testUnaryNot3 : function () {
-      var expected = [ false ];
-      var actual = getQueryResults("RETURN !!false");
+      let expected = [ false ];
+      let actual = getQueryResults("RETURN !!false");
       assertEqual(expected, actual);
     },
 
@@ -96,8 +70,8 @@ function ahuacatlLogicalTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testUnaryNot4 : function () {
-      var expected = [ true ];
-      var actual = getQueryResults("RETURN !!!false");
+      let expected = [ true ];
+      let actual = getQueryResults("RETURN !!!false");
       assertEqual(expected, actual);
     },
 
@@ -106,8 +80,8 @@ function ahuacatlLogicalTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testUnaryNot5 : function () {
-      var expected = [ false ];
-      var actual = getQueryResults("RETURN !(1 == 1)");
+      let expected = [ false ];
+      let actual = getQueryResults("RETURN !(1 == 1)");
       assertEqual(expected, actual);
     },
 
@@ -116,8 +90,8 @@ function ahuacatlLogicalTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testUnaryNot6 : function () {
-      var expected = [ true ];
-      var actual = getQueryResults("RETURN !(!(1 == 1))");
+      let expected = [ true ];
+      let actual = getQueryResults("RETURN !(!(1 == 1))");
       assertEqual(expected, actual);
     },
 
@@ -126,8 +100,8 @@ function ahuacatlLogicalTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testUnaryNot7 : function () {
-      var expected = [ true ];
-      var actual = getQueryResults("RETURN !true == !!false");
+      let expected = [ true ];
+      let actual = getQueryResults("RETURN !true == !!false");
       assertEqual(expected, actual);
     },
 
@@ -136,16 +110,22 @@ function ahuacatlLogicalTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testUnaryNotNonBoolean : function () {
-      assertEqual([ true ], getQueryResults("RETURN !null")); 
-      assertEqual([ true ], getQueryResults("RETURN !0")); 
-      assertEqual([ true ], getQueryResults("RETURN !\"\"")); 
-      assertEqual([ false ], getQueryResults("RETURN !\" \"")); 
-      assertEqual([ false ], getQueryResults("RETURN !\"0\"")); 
-      assertEqual([ false ], getQueryResults("RETURN !\"1\"")); 
-      assertEqual([ false ], getQueryResults("RETURN !\"value\"")); 
-      assertEqual([ false ], getQueryResults("RETURN ![]")); 
-      assertEqual([ false ], getQueryResults("RETURN !{}")); 
-      assertEqual([ false ], getQueryResults("RETURN !DOCUMENT(" + vn + ", " + JSON.stringify(d._id) + ")")); 
+      let c = db._create(cn);
+      let doc = c.insert({});
+      try {
+        assertEqual([ true ], getQueryResults("RETURN !null")); 
+        assertEqual([ true ], getQueryResults("RETURN !0")); 
+        assertEqual([ true ], getQueryResults("RETURN !\"\"")); 
+        assertEqual([ false ], getQueryResults("RETURN !\" \"")); 
+        assertEqual([ false ], getQueryResults("RETURN !\"0\"")); 
+        assertEqual([ false ], getQueryResults("RETURN !\"1\"")); 
+        assertEqual([ false ], getQueryResults("RETURN !\"value\"")); 
+        assertEqual([ false ], getQueryResults("RETURN ![]")); 
+        assertEqual([ false ], getQueryResults("RETURN !{}")); 
+        assertEqual([ false ], getQueryResults("RETURN !DOCUMENT(" + cn + ", " + JSON.stringify(doc._id) + ")")); 
+      } finally {
+        db._drop(cn);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -169,8 +149,8 @@ function ahuacatlLogicalTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testBinaryAnd1 : function () {
-      var expected = [ true ];
-      var actual = getQueryResults("RETURN true && true");
+      let expected = [ true ];
+      let actual = getQueryResults("RETURN true && true");
       assertEqual(expected, actual);
     },
 
@@ -179,8 +159,8 @@ function ahuacatlLogicalTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testBinaryAnd2 : function () {
-      var expected = [ false ];
-      var actual = getQueryResults("RETURN true && false");
+      let expected = [ false ];
+      let actual = getQueryResults("RETURN true && false");
       assertEqual(expected, actual);
     },
 
@@ -189,8 +169,8 @@ function ahuacatlLogicalTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testBinaryAnd3 : function () {
-      var expected = [ false ];
-      var actual = getQueryResults("RETURN false && true");
+      let expected = [ false ];
+      let actual = getQueryResults("RETURN false && true");
       assertEqual(expected, actual);
     },
 
@@ -199,8 +179,8 @@ function ahuacatlLogicalTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testBinaryAnd4 : function () {
-      var expected = [ false ];
-      var actual = getQueryResults("RETURN false && false");
+      let expected = [ false ];
+      let actual = getQueryResults("RETURN false && false");
       assertEqual(expected, actual);
     },
 
@@ -209,8 +189,8 @@ function ahuacatlLogicalTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testBinaryAnd5 : function () {
-      var expected = [ true ];
-      var actual = getQueryResults("RETURN true && !false");
+      let expected = [ true ];
+      let actual = getQueryResults("RETURN true && !false");
       assertEqual(expected, actual);
     },
 
@@ -261,8 +241,8 @@ function ahuacatlLogicalTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testBinaryAndShortCircuit1 : function () {
-      var expected = [ false ];
-      var actual = getQueryResults("RETURN false && FAIL('this will fail')");
+      let expected = [ false ];
+      let actual = getQueryResults("RETURN false && FAIL('this will fail')");
       assertEqual(expected, actual);
     },
 
@@ -273,14 +253,14 @@ function ahuacatlLogicalTestSuite () {
     testBinaryAndShortCircuit2 : function () {
       assertException(function() { getQueryResults("RETURN true && FAIL('this will fail')"); });
     },
-
+    
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test binary or
 ////////////////////////////////////////////////////////////////////////////////
     
     testBinaryOr1 : function () {
-      var expected = [ true ];
-      var actual = getQueryResults("RETURN true || true");
+      let expected = [ true ];
+      let actual = getQueryResults("RETURN true || true");
       assertEqual(expected, actual);
     },
 
@@ -289,8 +269,8 @@ function ahuacatlLogicalTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testBinaryOr2 : function () {
-      var expected = [ true ];
-      var actual = getQueryResults("RETURN true || false");
+      let expected = [ true ];
+      let actual = getQueryResults("RETURN true || false");
       assertEqual(expected, actual);
     },
 
@@ -299,8 +279,8 @@ function ahuacatlLogicalTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testBinaryOr3 : function () {
-      var expected = [ true ];
-      var actual = getQueryResults("RETURN false || true");
+      let expected = [ true ];
+      let actual = getQueryResults("RETURN false || true");
       assertEqual(expected, actual);
     },
 
@@ -309,8 +289,8 @@ function ahuacatlLogicalTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testBinaryOr4 : function () {
-      var expected = [ false ];
-      var actual = getQueryResults("RETURN false || false");
+      let expected = [ false ];
+      let actual = getQueryResults("RETURN false || false");
       assertEqual(expected, actual);
     },
 
@@ -319,8 +299,8 @@ function ahuacatlLogicalTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testBinaryOr5 : function () {
-      var expected = [ true ];
-      var actual = getQueryResults("RETURN true || !false");
+      let expected = [ true ];
+      let actual = getQueryResults("RETURN true || !false");
       assertEqual(expected, actual);
     },
 
@@ -329,8 +309,8 @@ function ahuacatlLogicalTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testBinaryOr6 : function () {
-      var expected = [ true ];
-      var actual = getQueryResults("RETURN false || !false");
+      let expected = [ true ];
+      let actual = getQueryResults("RETURN false || !false");
       assertEqual(expected, actual);
     },
 
@@ -401,15 +381,76 @@ function ahuacatlLogicalTestSuite () {
     
     testBinaryOrShortCircuit3 : function () {
       assertException(function() { getQueryResults("RETURN FAIL('this will fail') || true"); });
-    }
+    },
+
+    testBinaryAndShortConditionOnlyExecutedOnce : function () {
+      let c = db._create(cn);
+      try {
+        let result = db._query(`RETURN LENGTH(FOR i IN 1..10 INSERT {} INTO ${cn} RETURN NEW) > 5 && [1, 2, 3]`).toArray();
+        assertEqual(1, result.length);
+        assertEqual([1, 2, 3], result[0]);
+        assertEqual(10, c.count());
+      } finally {
+        db._drop(cn);
+      }
+    },
+    
+    testBinaryOrShortConditionOnlyExecutedOnce : function () {
+      let c = db._create(cn);
+      try {
+        let result = db._query(`RETURN LENGTH(FOR i IN 1..10 INSERT {} INTO ${cn} RETURN NEW) < 5 || [1, 2, 3]`).toArray();
+        assertEqual(1, result.length);
+        assertEqual([1, 2, 3], result[0]);
+        assertEqual(10, c.count());
+      } finally {
+        db._drop(cn);
+      }
+    },
+    
+    testBinaryAndRightOperandExecutedConditionally : function () {
+      let c = db._create(cn);
+      try {
+        let result = db._query(`RETURN LENGTH(FOR i IN 1..10 INSERT {} INTO ${cn} RETURN NEW) < 5 && ASSERT(false, 'ass')`).toArray();
+        assertEqual(1, result.length);
+        assertEqual(false, result[0]);
+        assertEqual(10, c.count());
+      } finally {
+        db._drop(cn);
+      }
+    },
+    
+    testBinaryOrRightOperandExecutedConditionally : function () {
+      let c = db._create(cn);
+      try {
+        let result = db._query(`RETURN LENGTH(FOR i IN 1..10 INSERT {} INTO ${cn} RETURN NEW) > 5 || ASSERT(false, 'ass')`).toArray();
+        assertEqual(1, result.length);
+        assertEqual(true, result[0]);
+        assertEqual(10, c.count());
+      } finally {
+        db._drop(cn);
+      }
+    },
+    
+    testNestedConditions : function () {
+      const queries = [
+        [ `FOR i IN 1..3 FOR j IN 1..4 FILTER (i <= 3 || ASSERT(false, 'ass1')) && (j <= 4 || ASSERT(false, 'ass2')) RETURN 1`, 12 ],
+        [ `FOR i IN 1..3 FOR j IN 1..4 FILTER (i >= 4 && ASSERT(false, 'ass1')) || (j >= 5 && ASSERT(false, 'ass2')) RETURN 1`, 0 ],
+        [ `FOR i IN 1..3 FOR j IN 1..4 FILTER (i <= 3 && j <= 4) || ASSERT(false, 'ass') RETURN 1`, 12 ],
+        [ `FOR i IN 1..3 FOR j IN 1..4 FILTER (i >= 4 || j >= 5) && ASSERT(false, 'ass') RETURN 1`, 0 ],
+        // the (FOR v IN i / FOR v IN j) parts will fail when executed, as i / j are non-arrays
+        [ `FOR i IN 1..3 FOR j IN 1..4 FILTER (i <= 3 || (FOR v IN i RETURN v)) && (j <= 4 || (FOR v IN j RETURN v)) RETURN 1`, 12 ],
+        [ `FOR i IN 1..3 FOR j IN 1..4 FILTER ((i == 1 || i >= 3) && (j == 2 || j >= 4)) || (i == 2 || j IN [1, 3]) || ASSERT(false, 'ass') RETURN 1`, 12 ],
+      ];
+
+      queries.forEach((query) => {
+        let result = db._query(query[0]).toArray();
+        assertEqual(query[1], result.length, query);
+      });
+    },
+
   };
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ahuacatlLogicalTestSuite);
 
 return jsunity.done();
-

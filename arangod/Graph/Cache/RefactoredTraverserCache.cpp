@@ -27,6 +27,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/Query.h"
 #include "Aql/TraversalStats.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringHeap.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
@@ -260,7 +261,7 @@ bool RefactoredTraverserCache::appendVertex(
                   shardId,
                   id.substr(collectionNameResult.get().second + 1).stringView(),
                   cb)
-              .get();
+              .waitAndGet();
       if (res.ok()) {
         return true;
       }

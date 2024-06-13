@@ -63,9 +63,6 @@ class Scheduler {
   // ---------------------------------------------------------------------------
   // Scheduling and Task Queuing - the relevant stuff
   // ---------------------------------------------------------------------------
-  virtual Result detachThread(uint64_t* detachedThreads,
-                              uint64_t* maximumDetachedThreads);
-
   class DelayedWorkItem;
   typedef std::chrono::steady_clock clock;
   typedef std::shared_ptr<DelayedWorkItem> WorkHandle;
@@ -111,6 +108,16 @@ class Scheduler {
 
   // Returns the scheduler's server object
   ArangodServer& server() noexcept { return _server; }
+
+  struct WorkItemBase {
+    virtual ~WorkItemBase() { TRI_ASSERT(next == nullptr); }
+    virtual void invoke() = 0;
+
+    std::chrono::steady_clock::time_point enqueueTime;
+
+    // used by some schedulers to chain work items
+    WorkItemBase* next = nullptr;
+  };
 
   class DelayedWorkItem {
    public:
@@ -175,11 +182,6 @@ class Scheduler {
  protected:
   ArangodServer& _server;
 
-  struct WorkItemBase {
-    virtual ~WorkItemBase() = default;
-    virtual void invoke() = 0;
-  };
-
   template<typename F>
   struct WorkItem final : WorkItemBase, F {
     explicit WorkItem(F f)
@@ -243,6 +245,22 @@ class Scheduler {
         throw std::logic_error("delay was cancelled");
       }
     });
+  }
+
+  // Yield the current thread
+  futures::Future<futures::Unit> yield(
+      RequestLane lane = RequestLane::CONTINUATION) {
+    struct awaitable {
+      bool await_ready() { return false; }
+      void await_suspend(std::coroutine_handle<> coro) {
+        sched->queue(lane, [coro] { coro.resume(); });
+      }
+      void await_resume() {}
+      Scheduler* sched;
+      RequestLane lane;
+    };
+
+    co_await awaitable{this, lane};
   }
 
   // ---------------------------------------------------------------------------

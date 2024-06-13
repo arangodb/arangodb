@@ -43,6 +43,7 @@
 #include "Aql/QueryRegistry.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/SortCondition.h"
+#include "Auth/UserManager.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
@@ -443,11 +444,13 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
 
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE, false) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
@@ -497,8 +500,7 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
       auto const path = "/Current/Collections/" + vocbase->name() + "/" +
                         std::to_string(logicalCollection->id().id());
       auto const value = arangodb::velocypack::Parser::fromJson(
-          "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" "
-          "} ] } }");
+          "{ \"s12345\": { \"indexes\" : [ { \"id\": \"1\" } ] } }");
       EXPECT_TRUE((arangodb::AgencyComm(server.server())
                        .setValue(path, value->slice(), 0.0)
                        .successful()));
@@ -712,8 +714,7 @@ TEST_F(IResearchViewCoordinatorTest, test_create_link_in_background) {
       auto const path = "/Current/Collections/" + vocbase->name() + "/" +
                         std::to_string(logicalCollection->id().id());
       auto const value = arangodb::velocypack::Parser::fromJson(
-          "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" "
-          "} ] } }");
+          "{ \"s12345\": { \"indexes\" : [ { \"id\": \"1\" } ] } }");
       EXPECT_TRUE(arangodb::AgencyComm(server.server())
                       .setValue(path, value->slice(), 0.0)
                       .successful());
@@ -822,8 +823,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_with_link) {
       auto const path = "/Current/Collections/" + vocbase->name() + "/" +
                         std::to_string(logicalCollection->id().id());
       auto const value = arangodb::velocypack::Parser::fromJson(
-          "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" "
-          "} ] } }");
+          "{ \"s12345\": { \"indexes\" : [ { \"id\": \"1\" } ] } }");
       EXPECT_TRUE(arangodb::AgencyComm(server.server())
                       .setValue(path, value->slice(), 0.0)
                       .successful());
@@ -846,7 +846,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_with_link) {
     {
       auto const path = "/Current/Collections/" + vocbase->name() + "/" +
                         std::to_string(logicalCollection->id().id()) +
-                        "/shard-id-does-not-matter/indexes";
+                        "/s12345/indexes";
       EXPECT_TRUE(arangodb::AgencyComm(server.server())
                       .removeValues(path, false)
                       .successful());
@@ -856,11 +856,13 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_with_link) {
   {
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE, false) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
@@ -1134,8 +1136,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request) {
     auto const path = "/Current/Collections/" + vocbase->name() + "/" +
                       std::to_string(logicalCollection->id().id());
     auto const value = arangodb::velocypack::Parser::fromJson(
-        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" } ] "
-        "} }");
+        "{ \"s12345\": { \"indexes\" : [ { \"id\": \"1\" } ] } }");
     EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(path, value->slice(), 0.0)
                     .successful());
@@ -1510,8 +1511,7 @@ TEST_F(IResearchViewCoordinatorTest,
     auto const path = "/Current/Collections/" + vocbase->name() + "/" +
                       std::to_string(logicalCollection->id().id());
     auto const value = arangodb::velocypack::Parser::fromJson(
-        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" } ] "
-        "} }");
+        "{ \"s12345\": { \"indexes\" : [ { \"id\": \"1\" } ] } }");
     EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(path, value->slice(), 0.0)
                     .successful());
@@ -1884,8 +1884,7 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request) {
     auto const path = "/Current/Collections/" + vocbase->name() + "/" +
                       std::to_string(logicalCollection->id().id());
     auto const value = arangodb::velocypack::Parser::fromJson(
-        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" } ] "
-        "} }");
+        "{ \"s12345\": { \"indexes\" : [ { \"id\": \"1\" } ] } }");
     EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(path, value->slice(), 0.0)
                     .successful());
@@ -2260,8 +2259,7 @@ TEST_F(IResearchViewCoordinatorTest,
     auto const path = "/Current/Collections/" + vocbase->name() + "/" +
                       std::to_string(logicalCollection->id().id());
     auto const value = arangodb::velocypack::Parser::fromJson(
-        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" } ] "
-        "} }");
+        "{ \"s12345\": { \"indexes\" : [ { \"id\": \"1\" } ] } }");
     EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(path, value->slice(), 0.0)
                     .successful());
@@ -3132,24 +3130,21 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
   // simulate heartbeat thread (create index in current)
   {
     auto const value = arangodb::velocypack::Parser::fromJson(
-        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" } "
-        "] } }");
+        "{ \"s12345\": { \"indexes\" : [ { \"id\": \"1\" } ] } }");
     EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection1Path, value->slice(), 0.0)
                     .successful());
   }
   {
     auto const value = arangodb::velocypack::Parser::fromJson(
-        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"2\" } "
-        "] } }");
+        "{ \"s12345\": { \"indexes\" : [ { \"id\": \"2\" } ] } }");
     EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection2Path, value->slice(), 0.0)
                     .successful());
   }
   {
     auto const value = arangodb::velocypack::Parser::fromJson(
-        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"3\" } "
-        "] } }");
+        "{ \"s12345\": { \"indexes\" : [ { \"id\": \"3\" } ] } }");
     EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection3Path, value->slice(), 0.0)
                     .successful());
@@ -3464,7 +3459,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
   // simulate heartbeat thread (create index in current)
   {
     auto const value = arangodb::velocypack::Parser::fromJson(
-        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ ] } }");
+        "{ \"s12345\": { \"indexes\" : [ ] } }");
     EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection2Path, value->slice(), 0.0)
                     .successful());
@@ -3689,14 +3684,14 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_remove) {
   // simulate heartbeat thread (drop index in current)
   {
     auto const value = arangodb::velocypack::Parser::fromJson(
-        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ ] } }");
+        "{ \"s12345\": { \"indexes\" : [ ] } }");
     EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection1Path, value->slice(), 0.0)
                     .successful());
   }
   {
     auto const value = arangodb::velocypack::Parser::fromJson(
-        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ ] } }");
+        "{ \"s12345\": { \"indexes\" : [ ] } }");
     EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection3Path, value->slice(), 0.0)
                     .successful());
@@ -3831,16 +3826,14 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
   // simulate heartbeat thread (create index in current)
   {
     auto const value = arangodb::velocypack::Parser::fromJson(
-        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" } "
-        "] } }");
+        "{ \"s12345\": { \"indexes\" : [ { \"id\": \"1\" } ] } }");
     EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection1Path, value->slice(), 0.0)
                     .successful());
   }
   {
     auto const value = arangodb::velocypack::Parser::fromJson(
-        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"3\" } "
-        "] } }");
+        "{ \"s12345\": { \"indexes\" : [ { \"id\": \"3\" } ] } }");
     EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection3Path, value->slice(), 0.0)
                     .successful());
@@ -4071,8 +4064,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
   // simulate heartbeat thread (create index in current)
   {
     auto const value = arangodb::velocypack::Parser::fromJson(
-        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"2\" } "
-        "] } }");
+        "{ \"s12345\": { \"indexes\" : [ { \"id\": \"2\" } ] } }");
     EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection2Path, value->slice(), 0.0)
                     .successful());
@@ -4389,21 +4381,21 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
   // simulate heartbeat thread (drop index in current)
   {
     auto const value = arangodb::velocypack::Parser::fromJson(
-        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ ] } }");
+        "{ \"s12345\": { \"indexes\" : [ ] } }");
     EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection1Path, value->slice(), 0.0)
                     .successful());
   }
   {
     auto const value = arangodb::velocypack::Parser::fromJson(
-        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ ] } }");
+        "{ \"s12345\": { \"indexes\" : [ ] } }");
     EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection2Path, value->slice(), 0.0)
                     .successful());
   }
   {
     auto const value = arangodb::velocypack::Parser::fromJson(
-        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ ] } }");
+        "{ \"s12345\": { \"indexes\" : [ ] } }");
     EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection3Path, value->slice(), 0.0)
                     .successful());
@@ -4467,11 +4459,13 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_partial_add) {
 
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE, false) {}
-    } execContext;
-    arangodb::ExecContextScope scope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
@@ -4590,16 +4584,14 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   // simulate heartbeat thread (create index in current)
   {
     auto const value = arangodb::velocypack::Parser::fromJson(
-        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" } "
-        "] } }");
+        "{ \"s12345\": { \"indexes\" : [ { \"id\": \"1\" } ] } }");
     EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection1Path, value->slice(), 0.0)
                     .successful());
   }
   {
     auto const value = arangodb::velocypack::Parser::fromJson(
-        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"3\" } "
-        "] } }");
+        "{ \"s12345\": { \"indexes\" : [ { \"id\": \"3\" } ] } }");
     EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection3Path, value->slice(), 0.0)
                     .successful());
@@ -4836,22 +4828,21 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   // simulate heartbeat thread (create index in current)
   {
     auto const value = arangodb::velocypack::Parser::fromJson(
-        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ ] } }");
+        "{ \"s12345\": { \"indexes\" : [ ] } }");
     EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection1Path, value->slice(), 0.0)
                     .successful());
   }
   {
     auto const value = arangodb::velocypack::Parser::fromJson(
-        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"2\" } "
-        "] } }");
+        "{ \"s12345\": { \"indexes\" : [ { \"id\": \"2\" } ] } }");
     EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection2Path, value->slice(), 0.0)
                     .successful());
   }
   {
     auto const value = arangodb::velocypack::Parser::fromJson(
-        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ ] } }");
+        "{ \"s12345\": { \"indexes\" : [ ] } }");
     EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection3Path, value->slice(), 0.0)
                     .successful());
@@ -4997,15 +4988,14 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   // simulate heartbeat thread (create index in current)
   {
     auto const value = arangodb::velocypack::Parser::fromJson(
-        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\" : \"1\" "
-        "} ] } }");
+        "{ \"s12345\": { \"indexes\" : [ { \"id\" : \"1\" } ] } }");
     EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection1Path, value->slice(), 0.0)
                     .successful());
   }
   {
     auto const value = arangodb::velocypack::Parser::fromJson(
-        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ ] } }");
+        "{ \"s12345\": { \"indexes\" : [ ] } }");
     EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection2Path, value->slice(), 0.0)
                     .successful());
@@ -5153,7 +5143,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_replace) {
   // simulate heartbeat thread (drop index in current)
   {
     auto const value = arangodb::velocypack::Parser::fromJson(
-        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ ] } }");
+        "{ \"s12345\": { \"indexes\" : [ ] } }");
     EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection1Path, value->slice(), 0.0)
                     .successful());
@@ -5288,24 +5278,21 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
   // simulate heartbeat thread (create index in current)
   {
     auto const value = arangodb::velocypack::Parser::fromJson(
-        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" } "
-        "] } }");
+        "{ \"s12345\": { \"indexes\" : [ { \"id\": \"1\" } ] } }");
     EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection1Path, value->slice(), 0.0)
                     .successful());
   }
   {
     auto const value = arangodb::velocypack::Parser::fromJson(
-        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"2\" } "
-        "] } }");
+        "{ \"s12345\": { \"indexes\" : [ { \"id\": \"2\" } ] } }");
     EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection2Path, value->slice(), 0.0)
                     .successful());
   }
   {
     auto const value = arangodb::velocypack::Parser::fromJson(
-        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"3\" } "
-        "] } }");
+        "{ \"s12345\": { \"indexes\" : [ { \"id\": \"3\" } ] } }");
     EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection3Path, value->slice(), 0.0)
                     .successful());
@@ -5627,21 +5614,21 @@ TEST_F(IResearchViewCoordinatorTest, test_update_links_clear) {
   // simulate heartbeat thread (create index in current)
   {
     auto const value = arangodb::velocypack::Parser::fromJson(
-        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ ] } }");
+        "{ \"s12345\": { \"indexes\" : [ ] } }");
     EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection1Path, value->slice(), 0.0)
                     .successful());
   }
   {
     auto const value = arangodb::velocypack::Parser::fromJson(
-        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ ] } }");
+        "{ \"s12345\": { \"indexes\" : [ ] } }");
     EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection2Path, value->slice(), 0.0)
                     .successful());
   }
   {
     auto const value = arangodb::velocypack::Parser::fromJson(
-        "{ \"shard-id-does-not-matter\": { \"indexes\" : [ ] } }");
+        "{ \"s12345\": { \"indexes\" : [ ] } }");
     EXPECT_TRUE(arangodb::AgencyComm(server.server())
                     .setValue(currentCollection3Path, value->slice(), 0.0)
                     .successful());
@@ -5786,8 +5773,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
     // simulate heartbeat thread (create index in current)
     {
       auto const value = arangodb::velocypack::Parser::fromJson(
-          "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": \"1\" "
-          "} ] } }");
+          "{ \"s12345\": { \"indexes\" : [ { \"id\": \"1\" } ] } }");
       EXPECT_TRUE(arangodb::AgencyComm(server.server())
                       .setValue(currentCollectionPath, value->slice(), 0.0)
                       .successful());
@@ -5945,7 +5931,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
     // simulate heartbeat thread (drop index from current)
     {
       auto const value = arangodb::velocypack::Parser::fromJson(
-          "{ \"shard-id-does-not-matter\": { \"indexes\" : [ ] } }");
+          "{ \"s12345\": { \"indexes\" : [ ] } }");
       EXPECT_TRUE(arangodb::AgencyComm(server.server())
                       .setValue(currentCollectionPath, value->slice(), 0.0)
                       .successful());
@@ -5956,7 +5942,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
                      *logicalCollection, arangodb::velocypack::Parser::fromJson(
                                              std::to_string(linkId.id()))
                                              ->slice())
-                     .get()
+                     .waitAndGet()
                      .ok()));
     EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion(
                                   server.server()));  // plan version changed
@@ -6050,11 +6036,13 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
 
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE, false) {}
-    } execContext;
-    arangodb::ExecContextScope scope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
@@ -6257,8 +6245,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
         auto const path = "/Current/Collections/" + vocbase->name() + "/" +
                           std::to_string(logicalCollection->id().id());
         auto const value = arangodb::velocypack::Parser::fromJson(
-            "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": "
-            "\"1\" } ] } }");
+            "{ \"s12345\": { \"indexes\" : [ { \"id\": \"1\" } ] } }");
         EXPECT_TRUE(arangodb::AgencyComm(server.server())
                         .setValue(path, value->slice(), 0.0)
                         .successful());
@@ -6282,11 +6269,13 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
 
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE, false) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
@@ -6413,11 +6402,13 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
 
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE, false) {}
-    } execContext;
-    arangodb::ExecContextScope scope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::auth::UserMap userMap;    // empty map, no user -> no permissions
@@ -6490,8 +6481,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
         auto const path = "/Current/Collections/" + vocbase->name() + "/" +
                           std::to_string(logicalCollection->id().id());
         auto const value = arangodb::velocypack::Parser::fromJson(
-            "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": "
-            "\"2\" } ] } }");
+            "{ \"s12345\": { \"indexes\" : [ { \"id\": \"2\" } ] } }");
         EXPECT_TRUE(arangodb::AgencyComm(server.server())
                         .setValue(path, value->slice(), 0.0)
                         .successful());
@@ -6517,8 +6507,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
         auto const path = "/Current/Collections/" + vocbase->name() + "/" +
                           std::to_string(logicalCollection->id().id());
         auto const value = arangodb::velocypack::Parser::fromJson(
-            "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": "
-            "\"3\" } ] } }");
+            "{ \"s12345\": { \"indexes\" : [ { \"id\": \"3\" } ] } }");
         EXPECT_TRUE(arangodb::AgencyComm(server.server())
                         .setValue(path, value->slice(), 0.0)
                         .successful());
@@ -6527,11 +6516,13 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
 
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE, false) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
@@ -6664,11 +6655,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
         auto const path1 = "/Current/Collections/" + vocbase->name() + "/" +
                            std::to_string(logicalCollection1->id().id());
         auto const value0 = arangodb::velocypack::Parser::fromJson(
-            "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": "
-            "\"3\" } ] } }");
+            "{ \"s12345\": { \"indexes\" : [ { \"id\": \"3\" } ] } }");
         auto const value1 = arangodb::velocypack::Parser::fromJson(
-            "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": "
-            "\"4\" } ] } }");
+            "{ \"s12345\": { \"indexes\" : [ { \"id\": \"4\" } ] } }");
         EXPECT_TRUE(arangodb::AgencyComm(server.server())
                         .setValue(path0, value0->slice(), 0.0)
                         .successful());
@@ -6699,11 +6688,13 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
 
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE, false) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
@@ -6853,11 +6844,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
         auto const path1 = "/Current/Collections/" + vocbase->name() + "/" +
                            std::to_string(logicalCollection1->id().id());
         auto const value0 = arangodb::velocypack::Parser::fromJson(
-            "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": "
-            "\"5\" } ] } }");
+            "{ \"s12345\": { \"indexes\" : [ { \"id\": \"5\" } ] } }");
         auto const value1 = arangodb::velocypack::Parser::fromJson(
-            "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": "
-            "\"6\" } ] } }");
+            "{ \"s12345\": { \"indexes\" : [ { \"id\": \"6\" } ] } }");
         EXPECT_TRUE(arangodb::AgencyComm(server.server())
                         .setValue(path0, value0->slice(), 0.0)
                         .successful());
@@ -6890,7 +6879,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
       {
         auto const path = "/Current/Collections/" + vocbase->name() + "/" +
                           std::to_string(logicalCollection1->id().id()) +
-                          "/shard-id-does-not-matter/indexes";
+                          "/s12345/indexes";
         EXPECT_TRUE(arangodb::AgencyComm(server.server())
                         .removeValues(path, false)
                         .successful());
@@ -6899,11 +6888,13 @@ TEST_F(IResearchViewCoordinatorTest, test_update_overwrite) {
 
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE, false) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
@@ -7162,8 +7153,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
         auto const path = "/Current/Collections/" + vocbase->name() + "/" +
                           std::to_string(logicalCollection->id().id());
         auto const value = arangodb::velocypack::Parser::fromJson(
-            "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": "
-            "\"1\" } ] } }");
+            "{ \"s12345\": { \"indexes\" : [ { \"id\": \"1\" } ] } }");
         EXPECT_TRUE(arangodb::AgencyComm(server.server())
                         .setValue(path, value->slice(), 0.0)
                         .successful());
@@ -7187,11 +7177,13 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
 
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE, false) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
@@ -7318,11 +7310,13 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
 
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE, false) {}
-    } execContext;
-    arangodb::ExecContextScope scope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
     arangodb::auth::UserMap userMap;    // empty map, no user -> no permissions
@@ -7395,8 +7389,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
         auto const path = "/Current/Collections/" + vocbase->name() + "/" +
                           std::to_string(logicalCollection->id().id());
         auto const value = arangodb::velocypack::Parser::fromJson(
-            "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": "
-            "\"2\" } ] } }");
+            "{ \"s12345\": { \"indexes\" : [ { \"id\": \"2\" } ] } }");
         EXPECT_TRUE(arangodb::AgencyComm(server.server())
                         .setValue(path, value->slice(), 0.0)
                         .successful());
@@ -7421,7 +7414,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
       {
         auto const path = "/Current/Collections/" + vocbase->name() + "/" +
                           std::to_string(logicalCollection->id().id()) +
-                          "/shard-id-does-not-matter/indexes";
+                          "/s12345/indexes";
         EXPECT_TRUE(arangodb::AgencyComm(server.server())
                         .removeValues(path, false)
                         .successful());
@@ -7430,11 +7423,13 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
 
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE, false) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
@@ -7564,8 +7559,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
         auto const path = "/Current/Collections/" + vocbase->name() + "/" +
                           std::to_string(logicalCollection0->id().id());
         auto const value = arangodb::velocypack::Parser::fromJson(
-            "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": "
-            "\"3\" } ] } }");
+            "{ \"s12345\": { \"indexes\" : [ { \"id\": \"3\" } ] } }");
         EXPECT_TRUE(arangodb::AgencyComm(server.server())
                         .setValue(path, value->slice(), 0.0)
                         .successful());
@@ -7597,8 +7591,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
         auto const path1 = "/Current/Collections/" + vocbase->name() + "/" +
                            std::to_string(logicalCollection1->id().id());
         auto const value = arangodb::velocypack::Parser::fromJson(
-            "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": "
-            "\"4\" } ] } }");
+            "{ \"s12345\": { \"indexes\" : [ { \"id\": \"4\" } ] } }");
         EXPECT_TRUE(arangodb::AgencyComm(server.server())
                         .removeValues(path0, false)
                         .successful());
@@ -7610,11 +7603,13 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
 
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE, false) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 
@@ -7764,11 +7759,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
         auto const path1 = "/Current/Collections/" + vocbase->name() + "/" +
                            std::to_string(logicalCollection1->id().id());
         auto const value0 = arangodb::velocypack::Parser::fromJson(
-            "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": "
-            "\"5\" } ] } }");
+            "{ \"s12345\": { \"indexes\" : [ { \"id\": \"5\" } ] } }");
         auto const value1 = arangodb::velocypack::Parser::fromJson(
-            "{ \"shard-id-does-not-matter\": { \"indexes\" : [ { \"id\": "
-            "\"6\" } ] } }");
+            "{ \"s12345\": { \"indexes\" : [ { \"id\": \"6\" } ] } }");
         EXPECT_TRUE(arangodb::AgencyComm(server.server())
                         .setValue(path0, value0->slice(), 0.0)
                         .successful());
@@ -7801,7 +7794,7 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
       {
         auto const path = "/Current/Collections/" + vocbase->name() + "/" +
                           std::to_string(logicalCollection1->id().id()) +
-                          "/shard-id-does-not-matter/indexes";
+                          "/s12345/indexes";
         EXPECT_TRUE(arangodb::AgencyComm(server.server())
                         .removeValues(path, false)
                         .successful());
@@ -7810,11 +7803,13 @@ TEST_F(IResearchViewCoordinatorTest, test_update_partial) {
 
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "", "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "", "",
                                   arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE, false) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     auto* authFeature = arangodb::AuthenticationFeature::instance();
     auto* userManager = authFeature->userManager();
 

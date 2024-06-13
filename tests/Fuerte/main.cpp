@@ -33,7 +33,7 @@
 std::string myEndpoint = "tcp://localhost:8529";
 std::string myAuthentication = "basic:root:";
 
-std::vector<std::string> parse_args(int const& argc, char const* const* argv) {
+std::vector<std::string> parse_args(int argc, char const* const* argv) {
   std::vector<std::string> rv;
   for (int i = 0; i < argc; i++) {
     rv.emplace_back(argv[i]);
@@ -47,12 +47,12 @@ int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);   // removes google test parameters
   auto arguments = parse_args(argc, argv);  // init √global Schmutz
 
-  const std::string endpointArg = "--endpoint=";
-  const std::string authArg = "--authentication=";
+  std::string endpointArg = "--endpoint=";
+  std::string authArg = "--authentication=";
   for (auto const& arg : arguments) {
-    if (arg.substr(0, endpointArg.size()) == endpointArg) {
+    if (arg.starts_with(endpointArg)) {
       myEndpoint = arg.substr(endpointArg.size());
-    } else if (arg.substr(0, authArg.size()) == authArg) {
+    } else if (arg.starts_with(authArg)) {
       myAuthentication = arg.substr(authArg.size());
     }
   }

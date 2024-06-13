@@ -34,6 +34,7 @@
 
 #include "Metrics/Fwd.h"
 #include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerMetrics.h"
 
 namespace arangodb {
 class NetworkFeature;
@@ -48,22 +49,11 @@ class SupervisedScheduler final : public Scheduler {
                       uint64_t fifo1Size, uint64_t fifo2Size,
                       uint64_t fifo3Size, uint64_t ongoingLowPriorityLimit,
                       double unavailabilityQueueFillGrade,
-                      uint64_t maxNumberDetachedThreads,
-                      metrics::MetricsFeature& metrics);
+                      std::shared_ptr<SchedulerMetrics> metrics);
   ~SupervisedScheduler() final;
 
   bool start() override;
   void shutdown() override;
-
-  /// @brief Take current thread out of the Scheduler (to finish some
-  /// potentially long running task and allow a new thread to be started).
-  /// This should be called from a scheduler thread. If an error is returned
-  /// this operation has not worked. The thread can then consider to error
-  /// out instead of starting its long running task. Note that his also
-  /// happens if a configurable total number of detached threads has been
-  /// reached.
-  Result detachThread(uint64_t* detachedThreads,
-                      uint64_t* maximumDetachedThreads) override;
 
   void toVelocyPack(velocypack::Builder&) const override;
   Scheduler::QueueStatistics queueStatistics() const override;
@@ -198,7 +188,6 @@ class SupervisedScheduler final : public Scheduler {
   size_t const _maxNumWorkers;
   uint64_t const _maxFifoSizes[NumberOfQueues];
   uint64_t const _ongoingLowPriorityLimit;
-  uint64_t const _maxNumberDetachedThreads;
 
   /// @brief fill grade of the scheduler's queue (in %) from which onwards
   /// the server is considered unavailable (because of overload)
@@ -224,31 +213,7 @@ class SupervisedScheduler final : public Scheduler {
   std::condition_variable _conditionSupervisor;
   std::unique_ptr<SupervisedSchedulerManagerThread> _manager;
 
-  metrics::Gauge<uint64_t>& _metricsQueueLength;
-  metrics::Counter& _metricsJobsDoneTotal;
-  metrics::Counter& _metricsJobsSubmittedTotal;
-  metrics::Counter& _metricsJobsDequeuedTotal;
-  metrics::Gauge<uint64_t>& _metricsNumAwakeThreads;
-  metrics::Gauge<uint64_t>& _metricsNumWorkingThreads;
-  metrics::Gauge<uint64_t>& _metricsNumWorkerThreads;
-  metrics::Gauge<uint64_t>& _metricsNumDetachedThreads;
-  metrics::Gauge<uint64_t>& _metricsStackMemoryWorkerThreads;
-  metrics::Gauge<int64_t>& _schedulerQueueMemory;
-
-  metrics::Counter& _metricsHandlerTasksCreated;
-  metrics::Counter& _metricsThreadsStarted;
-  metrics::Counter& _metricsThreadsStopped;
-  metrics::Counter& _metricsQueueFull;
-  metrics::Counter& _metricsQueueTimeViolations;
-  metrics::Gauge<uint64_t>& _ongoingLowPriorityGauge;
-
-  /// @brief amount of time it took for the last low prio item to be dequeued
-  /// (time between queuing and dequeing) [ms].
-  /// this metric is only updated probabilistically
-  metrics::Gauge<uint64_t>& _metricsLastLowPriorityDequeueTime;
-
-  std::array<std::reference_wrapper<metrics::Gauge<uint64_t>>, NumberOfQueues>
-      _metricsQueueLengths;
+  std::shared_ptr<SchedulerMetrics> _metrics;
 };
 
 }  // namespace arangodb

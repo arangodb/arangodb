@@ -22,8 +22,6 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
-
 #include "gtest/gtest.h"
 
 #include "Basics/files.h"
@@ -31,14 +29,7 @@
 #include "Basics/Utf8Helper.h"
 #include "Basics/directories.h"
 
-#include "icu-helper.h"
-
-class CNormalizeStringTest : public ::testing::Test {
- protected:
-  CNormalizeStringTest() {
-    IcuInitializer::setup("./3rdParty/V8/v8/third_party/icu/common/icudtl.dat");
-  }
-};
+class CNormalizeStringTest : public ::testing::Test {};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
