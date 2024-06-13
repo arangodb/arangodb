@@ -2002,8 +2002,6 @@ futures::Future<OperationResult> Methods::anyLocal(
     }
   }
 
-  ResourceMonitor monitor(GlobalResourceMonitor::instance());
-
   resultBuilder.openArray();
 
   auto iterator =
@@ -2702,8 +2700,6 @@ futures::Future<OperationResult> Methods::allLocal(
                                 options);
     }
   }
-
-  ResourceMonitor monitor(GlobalResourceMonitor::instance());
 
   resultBuilder.openArray();
 
