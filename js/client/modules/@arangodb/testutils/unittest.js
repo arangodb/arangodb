@@ -150,7 +150,7 @@ function main (argv) {
   }
 
   rp.analyze.unitTestPrettyPrintResults(options, result);
-  return result.status && cu.GDB_OUTPUT === '';
+  return result.status;
 }
 
 let result = main(ARGUMENTS);

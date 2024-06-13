@@ -518,7 +518,7 @@ function unitTestPrettyPrintResults (options, results) {
     color = RED;
     statusMessage = 'Fail';
   }
-  if (results.crashed === true || cu.GDB_OUTPUT !== '') {
+  if (results.crashed === true) {
     color = RED;
     for (let failed in failedRuns) {
       crashedText += ' [' + failed + '] : ' + failedRuns[failed].replace(/^/mg, '    ');
@@ -1038,12 +1038,14 @@ function processCrashReport(result) {
       status: false,
       failed: 1,
     };
+    result.status = false;
+    result.crashed = true;
   }
 }
 
 function writeReports(options, results) {
-  fs.write(fs.join(options.testOutputDirectory, 'UNITTEST_RESULT_EXECUTIVE_SUMMARY.json'), String(results.status && cu.GDB_OUTPUT === ''), true);
-  fs.write(fs.join(options.testOutputDirectory, 'UNITTEST_RESULT_CRASHED.json'), String(results.crashed || cu.GDB_OUTPUT !== ''), true);
+  fs.write(fs.join(options.testOutputDirectory, 'UNITTEST_RESULT_EXECUTIVE_SUMMARY.json'), String(results.status), true);
+  fs.write(fs.join(options.testOutputDirectory, 'UNITTEST_RESULT_CRASHED.json'), String(results.crashed), true);
 }
 
 function dumpAllResults(options, results) {
