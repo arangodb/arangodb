@@ -56,7 +56,7 @@ const testPaths = {
   'resilience_replication2': [tu.pathForTesting('client/resilience/replication2')],
 };
 
-class resilienceRunner extends tu.runInArangoshRunner {
+class resilienceRunner extends trs.runInArangoshRunner {
   postStart() {
     global.theInstanceManager = this.instanceManager;
     return { state: true };
@@ -86,11 +86,7 @@ var _resilience = function(path, enableAliveMonitor) {
     }
     let testCases = tu.scanTestPaths(testPaths[path], localOptions);
     testCases = tu.splitBuckets(options, testCases);
-    // TODO merge conflict:
-    // BASE: let rc = new tu.runInArangoshRunner(localOptions, suiteName, {
-    // LOCAL: let rc = new resilienceRunner(localOptions, suiteName, {
-    // REMOTE:
-    let rc = new trs.runInArangoshRunner(localOptions, suiteName, {
+    let rc = new resilienceRunner(localOptions, suiteName, {
       'javascript.allow-external-process-control': 'true',
       'javascript.allow-port-testing': 'true',
       'javascript.allow-admin-execute': 'true',
