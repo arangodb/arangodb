@@ -103,7 +103,16 @@ CreateDatabaseInfo createExpressionVocbaseInfo(ArangodServer& server) {
   return info;
 }
 
-/// @brief sandbox vocbase for executing calculation queries
+/// @brief sandbox vocbase for executing calculation queries.
+/// TODO: instead of global variable, this should be an instance variable in the
+/// DatabaseFeature. otherwise it is problematic to create two individual
+/// DatabaseFeature objects with overlapping lifetime, as we do in the unit
+/// tests. by creating multiple DatabaseFeature objects, they may each clobber
+/// the global calculationVocbase object.
+/// the main user of the calculationVocbase is the IResearchAqlAnalyzer.
+/// its constructor should be changed so that instead of referring to global
+/// static methods to access the calculationVocbase, the DatabaseFeature
+/// instance should be passed into it.
 std::unique_ptr<TRI_vocbase_t> calculationVocbase;
 }  // namespace
 
@@ -397,9 +406,9 @@ void DatabaseFeature::validateOptions(
 
 void DatabaseFeature::initCalculationVocbase(ArangodServer& server) {
   auto& df = server.getFeature<DatabaseFeature>();
-  calculationVocbase =
-      std::make_unique<TRI_vocbase_t>(createExpressionVocbaseInfo(server),
-                                      df.versionTracker(), df.extendedNames());
+  calculationVocbase = std::make_unique<TRI_vocbase_t>(
+      createExpressionVocbaseInfo(server), df.versionTracker(),
+      df.extendedNames(), /*isInternal*/ true);
 }
 
 void DatabaseFeature::start() {
