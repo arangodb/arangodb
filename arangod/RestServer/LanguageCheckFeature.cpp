@@ -50,6 +50,7 @@ arangodb::Result readLanguage(arangodb::ArangodServer& server,
   std::string filename = databasePath.subdirectoryName("LANGUAGE");
 
   if (!TRI_ExistsFile(filename.c_str())) {
+    type = LanguageType::EMPTY;
     return TRI_ERROR_FILE_NOT_FOUND;
   }
 
@@ -87,7 +88,7 @@ arangodb::Result readLanguage(arangodb::ArangodServer& server,
   if (LanguageType::DEFAULT == type) {
     LOG_TOPIC("c499e", TRACE, arangodb::Logger::CONFIG)
         << "using default language: " << language;
-  } else {
+  } else if (LanguageType::ICU == type) {
     LOG_TOPIC("c490e", TRACE, arangodb::Logger::CONFIG)
         << "using icu language: " << language;
   }
@@ -151,21 +152,13 @@ ErrorCode writeLanguage(arangodb::ArangodServer& server, std::string_view lang,
   return TRI_ERROR_NO_ERROR;
 }
 
-std::tuple<std::string, LanguageType> getOrSetPreviousLanguage(
-    arangodb::ArangodServer& server, std::string_view collatorLang,
-    LanguageType currLangType) {
+std::tuple<std::string, LanguageType> getPreviousLanguage(
+    arangodb::ArangodServer& server) {
   std::string prevLanguage;
   LanguageType prevType;
   arangodb::Result res = ::readLanguage(server, prevLanguage, prevType);
 
-  if (res.ok()) {
-    return {prevLanguage, prevType};
-  }
-
-  // okay, we didn't find it, let's write out the input instead
-  ::writeLanguage(server, collatorLang, currLangType);
-
-  return {std::string{collatorLang}, currLangType};
+  return {prevLanguage, prevType};
 }
 }  // namespace
 
@@ -181,24 +174,33 @@ LanguageCheckFeature::LanguageCheckFeature(Server& server)
 void LanguageCheckFeature::start() {
   using namespace arangodb::basics;
 
-  auto& feature = server().getFeature<LanguageFeature>();
+  auto& serverRef = server();
+  auto& feature = serverRef.getFeature<LanguageFeature>();
   auto [currLang, currLangType] =
-      feature.getLanguage();  // language that was provided by user
-  auto collatorLang = feature.getCollatorLanguage();
-
-  auto [prevLang, prevLangType] =
-      ::getOrSetPreviousLanguage(server(), collatorLang, currLangType);
+      feature.getLanguage();  // language and type that were provided by user
 
   if (LanguageType::INVALID == currLangType) {
     LOG_TOPIC("7ef61", FATAL, arangodb::Logger::CONFIG)
-        << "Specified language '" << collatorLang << " has invalid type";
+        << "Specified language '" << currLang << " has invalid type";
     FATAL_ERROR_EXIT();
+  }
+  auto collatorLang = feature.getCollatorLanguage();
+  // 'collatorLang' was taken either from user input or from system.
+  // This language is currently used.
+
+  // Previous language setting from LANGUAGE file
+  auto [prevLang, prevLangType] = ::getPreviousLanguage(serverRef);
+
+  if (prevLang.empty() && prevLangType == LanguageType::EMPTY) {
+    // okay, we didn't find it, let's write out the input instead
+    ::writeLanguage(serverRef, collatorLang, currLangType);
+    return;
   }
 
   if (currLang.empty() && LanguageType::DEFAULT == currLangType &&
-      !prevLang.empty()) {
-    // we found something in LANGUAGE file
-    // override the empty current setting for default with the previous one
+      !prevLang.empty() && prevLangType != LanguageType::EMPTY) {
+    // we found something in LANGUAGE file AND nothing was provided by the user.
+    // Override the empty current setting for default with the previous one
     feature.resetLanguage(prevLang, prevLangType);
     return;
   }
