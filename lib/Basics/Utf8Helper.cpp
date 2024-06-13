@@ -127,19 +127,19 @@ bool Utf8Helper::setCollatorLanguage(std::string_view lang,
   }
   status = U_ZERO_ERROR;
 
-  if (_coll) {
-    ULocDataLocaleType type = ULOC_VALID_LOCALE;
-    // const icu::Locale& locale = _coll->getLocale(type, status);
+  // if (_coll) {
+  // ULocDataLocaleType type = ULOC_VALID_LOCALE;
+  // const icu::Locale& locale = _coll->getLocale(type, status);
 
-    if (U_FAILURE(status)) {
-      LOG_TOPIC("b251d", ERR, arangodb::Logger::FIXME)
-          << "error in Collator::getLocale(...): " << u_errorName(status);
-      return false;
-    }
-    // if (lang == locale.getName()) {
-    //   return true;
-    // }
-  }
+  // if (U_FAILURE(status)) {
+  //   LOG_TOPIC("b251d", ERR, arangodb::Logger::FIXME)
+  //       << "error in Collator::getLocale(...): " << u_errorName(status);
+  //   return false;
+  // }
+  // if (lang == locale.getName()) {
+  //   return true;
+  // }
+  // }
 
   icu::Collator* coll;
   if (lang == "") {
