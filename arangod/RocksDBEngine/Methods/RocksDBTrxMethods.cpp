@@ -299,7 +299,8 @@ void RocksDBTrxMethods::beginQuery(
     std::shared_ptr<ResourceMonitor> resourceMonitor,
     bool isModificationQuery) {
   // report to parent
-  RocksDBTrxBaseMethods::beginQuery(resourceMonitor, isModificationQuery);
+  RocksDBTrxBaseMethods::beginQuery(std::move(resourceMonitor),
+                                    isModificationQuery);
 
   if (!_state->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
     // don't bother with query tracking in non globally managed trx

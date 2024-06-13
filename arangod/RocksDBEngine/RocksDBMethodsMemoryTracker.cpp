@@ -140,7 +140,7 @@ void RocksDBMethodsMemoryTracker::beginQuery(
   if (_resourceMonitor == nullptr && resourceMonitor != nullptr) {
     TRI_ASSERT(_memoryUsageAtBeginQuery == 0);
 
-    _resourceMonitor = resourceMonitor;
+    _resourceMonitor = std::move(resourceMonitor);
     _memoryUsageAtBeginQuery = _memoryUsage;
   }
 }
