@@ -129,22 +129,7 @@ function main (argv) {
 
   killRemainingProcesses(result);
 
-  if (cu.GDB_OUTPUT !== '') {
-    result['crashreport'] = cu.GDB_OUTPUT;
-    result['crash'] = {
-      crash_report: {
-        status: false,
-        failed: 1,
-        all: {
-          status: false,
-          failed: 1,
-          message: (result.crashed ? "SUT crashed: \n": "SUT was aborted: \n") + cu.GDB_OUTPUT
-        }
-      },
-      status: false,
-      failed: 1,
-    };
-  }
+  rp.processCrashReport(result);
 
   try {
     rp.writeReports(options, result);

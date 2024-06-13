@@ -1022,6 +1022,25 @@ function writeDefaultReports(options, testSuites) {
 
 }
 
+function processCrashReport(result) {
+  if (cu.GDB_OUTPUT !== '') {
+    result['crashreport'] = cu.GDB_OUTPUT;
+    result['crash'] = {
+      crash_report: {
+        status: false,
+        failed: 1,
+        all: {
+          status: false,
+          failed: 1,
+          message: (result.crashed ? "SUT crashed: \n": "SUT was aborted: \n") + cu.GDB_OUTPUT
+        }
+      },
+      status: false,
+      failed: 1,
+    };
+  }
+}
+
 function writeReports(options, results) {
   fs.write(fs.join(options.testOutputDirectory, 'UNITTEST_RESULT_EXECUTIVE_SUMMARY.json'), String(results.status && cu.GDB_OUTPUT === ''), true);
   fs.write(fs.join(options.testOutputDirectory, 'UNITTEST_RESULT_CRASHED.json'), String(results.crashed || cu.GDB_OUTPUT !== ''), true);
@@ -1120,6 +1139,7 @@ exports.gatherStatus = gatherStatus;
 exports.gatherFailed = gatherFailed;
 exports.yamlDumpResults = yamlDumpResults;
 exports.addFailRunsMessage = addFailRunsMessage;
+exports.processCrashReport = processCrashReport;
 exports.dumpAllResults = dumpAllResults;
 exports.writeDefaultReports = writeDefaultReports;
 exports.writeReports = writeReports;
