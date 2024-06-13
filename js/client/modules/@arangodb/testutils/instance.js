@@ -677,7 +677,7 @@ class instance {
       subEnv.push(`ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY=${this.useableMemory}`);
     }
     subEnv.push(`ARANGODB_SERVER_DIR=${this.rootDir}`);
-    let ret = executeExternal(cmd, argv, false, subEnv);
+    let ret = executeExternal(cmd, argv, false, 0, subEnv);
     return ret;
   }
   // //////////////////////////////////////////////////////////////////////////////
