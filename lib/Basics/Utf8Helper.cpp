@@ -128,7 +128,7 @@ bool Utf8Helper::setCollatorLanguage(std::string_view lang,
   status = U_ZERO_ERROR;
 
   if (_coll) {
-    ULocDataLocaleType type = ULOC_VALID_LOCALE;
+    ULocDataLocaleType type = ULOC_ACTUAL_LOCALE;
     const icu::Locale& locale = _coll->getLocale(type, status);
 
     if (U_FAILURE(status)) {
