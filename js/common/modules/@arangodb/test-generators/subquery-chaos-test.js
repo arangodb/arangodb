@@ -25,6 +25,10 @@
 // //////////////////////////////////////////////////////////////////////////////
 const db = require("@arangodb").db;
 const _ = require("lodash");
+const {md5} = require("@arangodb/crypto");
+const arango = require("@arangodb").arango;
+
+const batchSize = 10;
 
 // This is a seedable RandomNumberGenerator
 // it is not operfect for Random numbers,
@@ -88,7 +92,7 @@ function popRandomElement(generator, list) {
 
 function randomFilter(generator, indent, bias, variables = []) {
   if (variables.length > 0 && coinToss(generator, bias)) {
-    var variable = Math.trunc(randomInt(generator, 0, variables.length));
+    let variable = Math.trunc(randomInt(generator, 0, variables.length));
     return (
       indent +
       " FILTER " +
@@ -130,7 +134,7 @@ function randomUpsert(generator, indent, bias, variables, collectionName) {
 }
 
 function* idGeneratorGenerator() {
-  var counter = 0;
+  let counter = 0;
   while (true) {
     yield counter;
     counter = counter + 1;
@@ -138,7 +142,7 @@ function* idGeneratorGenerator() {
 }
 
 function createChaosQuery(seed, numberSubqueries) {
-  var subqueryTotal = numberSubqueries;
+  let subqueryTotal = numberSubqueries;
   const idGenerator = idGeneratorGenerator();
   const randomGenerator = randomNumberGeneratorGenerator(seed);
   const collectionSize = 20;
@@ -146,7 +150,7 @@ function createChaosQuery(seed, numberSubqueries) {
   const query = function (indent, outerVariables) {
     // We have access to all variables in the enclosing scope
     // but we don't want them to leak outside, so we take a copy
-    var variables = {
+    let variables = {
       forVariables: [...outerVariables.forVariables],
       subqueryVariables: [...outerVariables.subqueryVariables],
     };
@@ -154,34 +158,32 @@ function createChaosQuery(seed, numberSubqueries) {
     const for_variable = "fv" + idGenerator.next().value;
     variables.forVariables.push(for_variable);
 
-    var my_query = "FOR " + for_variable + " IN 1.." + collectionSize + "\n";
+    let my_query = "FOR " + for_variable + " IN 1.." + collectionSize + "\n";
 
     my_query = my_query + randomFilter(randomGenerator, indent, 0.2, variables);
 
-    var nqueries = randomInt(randomGenerator, 0, Math.min(subqueryTotal, 3));
-    subqueryTotal = subqueryTotal - nqueries;
-    for (var i = 0; i < nqueries; i++) {
-      var sqv = "sq" + idGenerator.next().value;
-      var sq = query(indent + "  ", variables);
+    let nqueries = randomInt(randomGenerator, 0, Math.min(subqueryTotal, 3));
+    subqueryTotal -= nqueries;
+    for (let i = 0; i < nqueries; i++) {
+      let sqv = "sq" + idGenerator.next().value;
+      let sq = query(indent + "  ", variables);
       variables.subqueryVariables.push(sqv);
 
-      my_query = my_query + indent + " LET " + sqv + " = (" + sq + ")\n";
-      my_query =
-        my_query + randomFilter(randomGenerator, 0.4, variables.forVariables);
+      my_query += indent + " LET " + sqv + " = (" + sq + ")\n";
+      my_query += randomFilter(randomGenerator, 0.4, variables.forVariables);
     }
 
-    my_query = my_query + randomLimit(randomGenerator, indent, 0.7);
+    my_query += randomLimit(randomGenerator, indent, 0.7);
 
-    var collect = randomCollectWithCount(randomGenerator, indent, 0.1);
+    let collect = randomCollectWithCount(randomGenerator, indent, 0.1);
     if (collect !== "") {
-      my_query = my_query + collect;
+      my_query += collect;
       variables = { forVariables: [], subqueryVariables: ["counter"] };
     } else {
       variables.forVariables = [for_variable];
     }
 
-    my_query =
-      my_query +
+    my_query +=
       indent +
       " RETURN {" +
       [...variables.forVariables, ...variables.subqueryVariables].join(", ") +
@@ -196,22 +198,22 @@ function createChaosQuery(seed, numberSubqueries) {
 }
 
 function createModifyingChaosQuery(seed, numberSubqueries) {
-  var subqueryTotal = numberSubqueries;
+  let subqueryTotal = numberSubqueries;
   const idGenerator = idGeneratorGenerator();
   const randomGenerator = randomNumberGeneratorGenerator(seed);
   const collectionSize = 20;
 
   const collectionIdGenerator = (function* () {
-    var counter = 0;
+    let counter = 0;
     while (true) {
-      var cn = "SubqueryChaosCollection" + counter;
+      let cn = "SubqueryChaosCollection" + counter;
       counter = counter + 1;
       yield cn;
     }
   })();
 
   const query = function (indent, outerVariables) {
-    var variables = {
+    let variables = {
       forVariables: [...outerVariables.forVariables],
       subqueryVariables: [...outerVariables.subqueryVariables],
       collectionNames: [...outerVariables.collectionNames],
@@ -222,30 +224,26 @@ function createModifyingChaosQuery(seed, numberSubqueries) {
 
     const collection = collectionIdGenerator.next().value;
     variables.collectionNames.push(collection);
-    var my_query = "FOR " + for_variable + " IN " + collection + " \n";
+    let my_query = "FOR " + for_variable + " IN " + collection + " \n";
 
-    my_query = my_query + randomFilter(randomGenerator, indent, 0.2, variables);
+    my_query += randomFilter(randomGenerator, indent, 0.2, variables);
 
-    var nqueries = randomInt(randomGenerator, 0, Math.min(subqueryTotal, 3));
-    subqueryTotal = subqueryTotal - nqueries;
-    for (var i = 0; i < nqueries; i++) {
-      var sqv = "sq" + idGenerator.next().value;
-      var sq = query(indent + "  ", variables);
+    let nqueries = randomInt(randomGenerator, 0, Math.min(subqueryTotal, 3));
+    subqueryTotal -= nqueries;
+    for (let i = 0; i < nqueries; i++) {
+      let sqv = "sq" + idGenerator.next().value;
+      let sq = query(indent + "  ", variables);
       variables.subqueryVariables.push(sqv);
       variables.collectionNames = sq.collectionNames;
 
-      my_query =
-        my_query + indent + " LET " + sqv + " = (" + sq.queryString + ")\n";
-      my_query =
-        my_query +
-        randomFilter(randomGenerator, indent, 0.4, variables.forVariables);
+      my_query += indent + " LET " + sqv + " = (" + sq.queryString + ")\n";
+      my_query += randomFilter(randomGenerator, indent, 0.4, variables.forVariables);
     }
 
     // at the moment we only modify the current collection, as we otherwise
     // run into problems with generating queries that try to access data after
     // modification
-    my_query =
-      my_query +
+    my_query +=
       randomUpsert(
         randomGenerator,
         indent,
@@ -254,11 +252,11 @@ function createModifyingChaosQuery(seed, numberSubqueries) {
         collection
       );
 
-    my_query = my_query + randomLimit(randomGenerator, indent, 0.7);
+    my_query += randomLimit(randomGenerator, indent, 0.7);
 
-    var collect = randomCollectWithCount(randomGenerator, indent, 0.1);
+    let collect = randomCollectWithCount(randomGenerator, indent, 0.1);
     if (collect !== "") {
-      my_query = my_query + collect;
+      my_query += collect;
       variables = {
         forVariables: [],
         collectionNames: variables.collectionNames,
@@ -272,7 +270,7 @@ function createModifyingChaosQuery(seed, numberSubqueries) {
       .map((x) => x + ": UNSET_RECURSIVE(" + x + ',"_rev", "_id", "_key")')
       .join(", ");
 
-    my_query = my_query + indent + " RETURN {" + returns + "}";
+    my_query += indent + " RETURN {" + returns + "}";
 
     return {
       collectionNames: variables.collectionNames,
@@ -295,19 +293,39 @@ function runQuery(query, queryOptions, testOptions) {
     db._query(`FOR i IN 1..10 INSERT { value: i } INTO ${cn}`);
   }
 
+  queryOptions = { ...(testOptions.queryOptions || {}), ...queryOptions };
   if (testOptions.explainQuery) {
     db._explain(query.queryString, {}, queryOptions);
   }
 
-  /* Run query with all optimizations */
-  const result = db._query(query.queryString, {}, queryOptions).toArray();
+  let oldLogLevel;
+  if (testOptions.enableLogging) {
+    oldLogLevel = arango.GET("/_admin/log/level").queries;
+    arango.PUT("/_admin/log/level", { queries: "trace" });
+  }
 
+  /* Run query */
+  const result = db._createStatement({query: query.queryString, batchSize, options: queryOptions})
+    .execute();
+
+  if (testOptions.enableLogging) {
+    arango.PUT("/_admin/log/level", { queries: oldLogLevel });
+  }
+ 
+  /* Create a simple hash value from the query results, so that we don't have to
+   * load the entire result set into memory and work with it */
+  let hash = "";
+  while (result.hasNext()) {
+    let row = JSON.stringify(result.next());
+    hash = md5(hash + row); 
+  }
+
+  /* Cleanup */
   for (const cn of query.collectionNames) {
     db._drop(cn);
   }
 
-  /* Cleanup */
-  return result;
+  return hash;
 }
 
 function testQuery(query, testOptions) {
@@ -317,21 +335,21 @@ function testQuery(query, testOptions) {
   }
 
   /* Run query with all optimizations */
-  const result1 = runQuery(query, { }, testOptions);
+  const result1 = runQuery(query, {batchSize}, testOptions);
 
-  /* Run query without subquery splicing */
+  /* Run query with full count */
   const result2 = runQuery(
     query,
-    { fullCount: true, optimizer: { rules: ["-splice-subqueries"] } },
+    {fullCount: true, batchSize}, 
     testOptions
   );
 
   if (!_.isEqual(result1, result2)) {
     const msg = `Results of query
 	${query.queryString}
-        with subquery splicing:
+        hash without fullcount:
 	${JSON.stringify(result1)}
-        without subquery splicing:
+        hash with fullcount:
         ${JSON.stringify(result2)}
 	do not match!`;
 

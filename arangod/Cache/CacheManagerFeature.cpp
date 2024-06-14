@@ -64,9 +64,11 @@ void CacheManagerFeature::start() {
   // get options from provider once
   _options = _provider.getOptions();
 
-  if (ServerState::instance()->isAgent() || _options.cacheSize == 0) {
+  if (ServerState::instance()->isAgent() || _options.cacheSize == 0 ||
+      _options.maxCacheValueSize == 0) {
     // we intentionally do not activate the cache on an agency node, as it
-    // is not needed there
+    // is not needed there. the cache is also not needed when configured
+    // with a size of 0 or a max value size of 0.
     return;
   }
 
@@ -87,6 +89,7 @@ void CacheManagerFeature::start() {
       << "cache manager starting up. cache size: " << _options.cacheSize
       << ", ideal lower fill ratio: " << _options.idealLowerFillRatio
       << ", ideal upper fill ratio: " << _options.idealUpperFillRatio
+      << ", max cache value size: " << _options.maxCacheValueSize
       << ", min value size for edge compression: "
       << _options.minValueSizeForEdgeCompression << ", acceleration factor: "
       << _options.accelerationFactorForEdgeCompression

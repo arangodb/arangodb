@@ -245,13 +245,17 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   // vocbase might already be destroyed at the time the destructor is executed
   cache::Manager* _cacheManager;
 
+  // maximum size of cache values to be stored in in-memory cache for
+  // documents.
+  size_t const _maxCacheValueSize;
+
   /// @brief document cache (optional)
   /// use only with std::atomic_load|store_explicit()!
   mutable std::shared_ptr<cache::Cache> _cache;
 
-  std::atomic_bool _cacheEnabled;
-
   TransactionStatistics& _statistics;
+
+  std::atomic_bool _cacheEnabled;
 };
 
 inline RocksDBCollection* toRocksDBCollection(PhysicalCollection* physical) {

@@ -96,6 +96,16 @@ function TransactionsSuite () {
         db[cn].save({i});
       }
 
+      // note: the wait time here is arbitrary. some wait time is
+      // necessary because we are creating the database and collection
+      // via one coordinator, but we will be querying it from a different
+      // coordinator in this test.
+      // the 2 seconds should normally be enough for the second coordinator
+      // to catch up and acknowledge the new database and collections.
+      // if we don't wait enough here, it is not guaranteed that the 
+      // second coordinator is already aware of the new database or
+      // collections, which can make the tests in here fail with spurious
+      // "database not found" or "collection or view not found" errors.
       require("internal").wait(2);
     },
 

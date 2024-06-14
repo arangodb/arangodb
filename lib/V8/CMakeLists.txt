@@ -23,7 +23,7 @@ target_include_directories(arango_v8
   ${CMAKE_CURRENT_BINARY_DIR}
   SYSTEM PUBLIC
   ${OPENSSL_INCLUDE_DIR}
-  ${ICU_INCLUDE_DIR})
+  ${ICU64_INCLUDE_DIR})
 
 add_library(arango_v8_no_deadline STATIC
   v8-no-deadline.cpp)

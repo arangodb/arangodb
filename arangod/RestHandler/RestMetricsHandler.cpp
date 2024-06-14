@@ -265,10 +265,9 @@ RestStatus RestMetricsHandler::makeRedirection(std::string const& serverId,
     options.parameters.try_emplace("type", metrics::kLast);
   }
 
-  auto f = network::sendRequest(
-      pool, "server:" + serverId, fuerte::RestVerb::Get,
-      _request->requestPath(), VPackBuffer<uint8_t>{}, options,
-      network::addAuthorizationHeader(_request->headers()));
+  auto f = network::sendRequest(pool, "server:" + serverId,
+                                fuerte::RestVerb::Get, _request->requestPath(),
+                                VPackBuffer<uint8_t>{}, options);
 
   return waitForFuture(std::move(f).thenValue([self = shared_from_this(),
                                                last](network::Response&& r) {

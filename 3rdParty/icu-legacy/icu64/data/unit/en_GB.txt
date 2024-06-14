@@ -1,0 +1,40 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html#License
+en_GB{
+    %%Parent{"en_001"}
+    Version{"2.1.47.86"}
+    units{
+        concentr{
+            percent{
+                dnam{"per cent"}
+                one{"{0} per cent"}
+                other{"{0} per cent"}
+            }
+            permille{
+                dnam{"per mille"}
+                one{"{0} per mille"}
+                other{"{0} per mille"}
+            }
+        }
+    }
+    unitsShort{
+        concentr{
+            percent{
+                dnam{"per cent"}
+            }
+            permille{
+                dnam{"per mille"}
+            }
+        }
+        mass{
+            stone{
+                other{"{0} st"}
+            }
+        }
+        volume{
+            megaliter{
+                other{"{0} Ml"}
+            }
+        }
+    }
+}

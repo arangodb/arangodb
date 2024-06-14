@@ -628,7 +628,9 @@ struct DistributedQueryInstanciator final
     }
 
     TRI_ASSERT(snippets[0]->engineId() == 0);
-    _query.executionStats().setAliases(std::move(nodeAliases));
+    _query.executionStatsGuard().doUnderLock([&](auto& executionStats) {
+      executionStats.setAliases(std::move(nodeAliases));
+    });
 
     return res;
   }
@@ -774,9 +776,11 @@ void ExecutionEngine::instantiateFromPlan(Query& query, ExecutionPlan& plan,
                                                        std::move(sharedState));
 
 #ifdef USE_ENTERPRISE
-    for (auto const& pair : aliases) {
-      query.executionStats().addAlias(pair.first, pair.second);
-    }
+    query.executionStatsGuard().doUnderLock([&](auto& executionStats) {
+      for (auto const& pair : aliases) {
+        executionStats.addAlias(pair.first, pair.second);
+      }
+    });
 #endif
 
     // lease "slots" for async prefetching operations for the current query.

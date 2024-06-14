@@ -123,6 +123,11 @@ export const CollectionIndicesTable = () => {
       <ReactTable<Index>
         table={tableInstance}
         emptyStateMessage="No indexes found"
+        onRowSelect={row => {
+          const finalId = row.original.id.slice(row.original.id.lastIndexOf("/") + 1);
+          const collectionName = window.location.hash.split("#cIndices/")[1];
+          window.location.hash = `#cIndices/${collectionName}/${finalId}`;
+        }}
       />
     </Stack>
   );

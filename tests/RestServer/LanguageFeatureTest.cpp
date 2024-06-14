@@ -49,13 +49,13 @@ namespace {
 void checkCollatorSettings(std::string_view language, bool isDefaultLanguage) {
   // Create collator with expected language
   UErrorCode status = U_ZERO_ERROR;
-  icu::Collator* expectedColl = nullptr;
+  std::unique_ptr<icu_64_64::Collator> expectedColl;
   if (language == "") {
     // get default collator for empty language
-    expectedColl = icu::Collator::createInstance(status);
+    expectedColl.reset(icu_64_64::Collator::createInstance(status));
   } else {
-    icu::Locale locale(language.data());
-    expectedColl = icu::Collator::createInstance(locale, status);
+    icu_64_64::Locale locale(language.data());
+    expectedColl.reset(icu_64_64::Collator::createInstance(locale, status));
   }
 
   if (isDefaultLanguage) {
@@ -87,8 +87,6 @@ void checkCollatorSettings(std::string_view language, bool isDefaultLanguage) {
   ASSERT_EQ(expectedColl->getAttribute(UCOL_STRENGTH, status),
             actualColl->getAttribute(UCOL_STRENGTH, status));
   ASSERT_FALSE(U_FAILURE(status));
-
-  delete expectedColl;
 }
 
 void checkLanguageFile(const arangodb::ArangodServer& server,
@@ -162,11 +160,8 @@ class ArangoLanguageFeatureTest
   // Called before the first test in this test suite.
   // Can be omitted if not needed.
   static void SetUpTestCase() {
-    auto collator =
-        arangodb::basics::Utf8Helper::DefaultUtf8Helper.getCollator();
-    delete collator;
     arangodb::basics::Utf8Helper::DefaultUtf8Helper.setCollator(nullptr);
-    u_cleanup();
+    u_cleanup_64_64();
   }
 
   // Per-test-suite tear-down.

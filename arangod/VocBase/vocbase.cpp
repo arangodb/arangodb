@@ -1328,7 +1328,8 @@ TRI_vocbase_t::TRI_vocbase_t(arangodb::CreateDatabaseInfo&& info)
           info.server().getFeature<DatabaseFeature>().extendedNames()) {}
 
 TRI_vocbase_t::TRI_vocbase_t(CreateDatabaseInfo&& info,
-                             VersionTracker& versionTracker, bool extendedNames)
+                             VersionTracker& versionTracker, bool extendedNames,
+                             bool isInternal)
     : _server(info.server()),
       _engine(_server.getFeature<arangodb::EngineSelectorFeature>().engine()),
       _versionTracker(versionTracker),
@@ -1347,7 +1348,7 @@ TRI_vocbase_t::TRI_vocbase_t(CreateDatabaseInfo&& info,
     _metrics = std::make_unique<VocbaseMetrics>();
   }
 
-  if (_info.server().hasFeature<QueryRegistryFeature>()) {
+  if (_info.server().hasFeature<QueryRegistryFeature>() && !isInternal) {
     QueryRegistryFeature& feature =
         _info.server().getFeature<QueryRegistryFeature>();
     _queries = std::make_unique<aql::QueryList>(feature);
@@ -1667,8 +1668,8 @@ void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
                 auto c = resolver.getCollection(name);
                 if (c == nullptr) {
                   return Result{TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
-                                "Collection not found: " + name +
-                                    " in database " + this->name()};
+                                absl::StrCat("Collection not found: ", name,
+                                             " in database ", this->name())};
                 }
                 return c->getCollectionProperties();
               }};
@@ -1681,8 +1682,8 @@ void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
                 auto c = resolver.getCollection(name);
                 if (c == nullptr) {
                   return Result{TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
-                                "Collection not found: " + name +
-                                    " in database " + this->name()};
+                                absl::StrCat("Collection not found: ", name,
+                                             " in database ", this->name())};
                 }
                 return c->getCollectionProperties();
               }};
@@ -1698,7 +1699,6 @@ void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
   config.enforceReplicationFactor = true;
   config.defaultNumberOfShards = 1;
   config.defaultReplicationFactor = replicationFactor();
-
   config.defaultWriteConcern = writeConcern();
 
   config.isOneShardDB = cl.forceOneShard() || isOneShard();

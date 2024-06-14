@@ -1107,7 +1107,7 @@ Collection* addCollectionToQuery(QueryContext& query, std::string const& cname,
       TRI_ASSERT(coll != nullptr);
       query.trxForOptimization()
           .addCollectionAtRuntime(cname, AccessMode::Type::READ)
-          .get();
+          .waitAndGet();
     }
   }
 
@@ -3011,7 +3011,7 @@ struct SortToIndexNode final
       TRI_ASSERT(coll != nullptr);
       size_t numDocs =
           coll->count(&_plan->getAst()->query().trxForOptimization(),
-                      transaction::CountType::TryCache);
+                      transaction::CountType::kTryCache);
 
       bool canBeUsed = arangodb::aql::utils::getIndexForSortCondition(
           *coll, &sortCondition, outVariable, numDocs,
@@ -9029,7 +9029,7 @@ void arangodb::aql::optimizeProjections(Optimizer* opt,
                                  /*expectedAttribute*/ "",
                                  /*excludeStartNodeFilterCondition*/ true,
                                  attributes)) {
-        if (attributes.size() <= DocumentProducingNode::kMaxProjections) {
+        if (attributes.size() <= matNode->maxProjections()) {
           matNode->projections() = Projections(std::move(attributes));
         }
       }

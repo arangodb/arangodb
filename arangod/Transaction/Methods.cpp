@@ -59,6 +59,7 @@
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/ReplicatedRocksDBTransactionCollection.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
@@ -70,12 +71,15 @@
 #include "Transaction/IndexesSnapshot.h"
 #include "Transaction/Manager.h"
 #include "Transaction/ManagerFeature.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/Options.h"
 #include "Transaction/ReplicatedContext.h"
+#include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/ComputedValues.h"
 #include "VocBase/Identifiers/RevisionId.h"
 #include "VocBase/KeyGenerator.h"
@@ -644,7 +648,7 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
         _replicationType, _followers);
 
     if (res.fail()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
+      THROW_ARANGO_EXCEPTION(res);
     }
 
     _excludeAllFromReplication =
@@ -1393,8 +1397,8 @@ struct InsertProcessor : ModifyingProcessorBase<InsertProcessor> {
       basics::VelocyPackHelper::sanitizeNonClientTypes(
           _newDocumentBuilder->slice(), VPackSlice::noneSlice(),
           *_replicationData,
-          _methods.transactionContextPtr()->getVPackOptions(), true, true,
-          false);
+          *_methods.transactionContextPtr()->getVPackOptions(),
+          /*allowUnindexed*/ false);
     }
 
     return res;
@@ -1592,8 +1596,8 @@ struct ModifyProcessor : ModifyingProcessorBase<ModifyProcessor> {
       basics::VelocyPackHelper::sanitizeNonClientTypes(
           _newDocumentBuilder->slice(), VPackSlice::noneSlice(),
           *_replicationData,
-          _methods.transactionContextPtr()->getVPackOptions(), true, true,
-          false);
+          *_methods.transactionContextPtr()->getVPackOptions(),
+          /*allowUnindexed*/ false);
     }
 
     return res;
@@ -1922,7 +1926,7 @@ futures::Future<Result> transaction::Methods::beginAsync() {
 auto Methods::commit() noexcept -> Result {
   return commitInternal(MethodsApi::Synchronous)
       .then(basics::tryToResult)
-      .get();
+      .waitAndGet();
 }
 
 /// @brief commit / finish the transaction
@@ -1931,7 +1935,9 @@ auto transaction::Methods::commitAsync() noexcept -> Future<Result> {
 }
 
 auto Methods::abort() noexcept -> Result {
-  return abortInternal(MethodsApi::Synchronous).then(basics::tryToResult).get();
+  return abortInternal(MethodsApi::Synchronous)
+      .then(basics::tryToResult)
+      .waitAndGet();
 }
 
 /// @brief abort the transaction
@@ -1942,7 +1948,7 @@ auto transaction::Methods::abortAsync() noexcept -> Future<Result> {
 auto Methods::finish(Result const& res) noexcept -> Result {
   return finishInternal(res, MethodsApi::Synchronous)
       .then(basics::tryToResult)
-      .get();
+      .waitAndGet();
 }
 
 /// @brief finish a transaction (commit or abort), based on the previous state
@@ -1985,7 +1991,7 @@ OperationResult transaction::Methods::anyCoordinator(std::string const&,
 
 /// @brief fetches documents in a collection in random order, local
 futures::Future<OperationResult> transaction::Methods::anyLocal(
-    std::string const& collectionName, OperationOptions const& options) {
+    std::string const& collectionName, OperationOptions options) {
   DataSourceId cid =
       co_await addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   TransactionCollection* trxColl = trxCollection(cid);
@@ -2113,7 +2119,7 @@ futures::Future<Result> transaction::Methods::documentFastPath(
   if (_state->isCoordinator()) {
     OperationResult opRes = documentCoordinator(collectionName, value, options,
                                                 MethodsApi::Synchronous)
-                                .get();
+                                .waitAndGet();
     if (!opRes.fail()) {
       result.add(opRes.slice());
     }
@@ -2211,7 +2217,7 @@ OperationResult Methods::document(std::string const& collectionName,
                                   OperationOptions const& options) {
   return documentInternal(collectionName, value, options,
                           MethodsApi::Synchronous)
-      .get();
+      .waitAndGet();
 }
 
 /// @brief return one or multiple documents from a collection
@@ -2248,7 +2254,7 @@ Future<OperationResult> transaction::Methods::documentCoordinator(
 /// @brief read one or multiple documents in a collection, local
 Future<OperationResult> transaction::Methods::documentLocal(
     std::string const& collectionName, VPackSlice value,
-    OperationOptions const& options) {
+    OperationOptions options) {
   auto res = co_await GetDocumentProcessor::create(*this, collectionName, value,
                                                    options);
   if (res.fail()) {
@@ -2261,7 +2267,7 @@ OperationResult Methods::insert(std::string const& collectionName,
                                 VPackSlice value,
                                 OperationOptions const& options) {
   return insertInternal(collectionName, value, options, MethodsApi::Synchronous)
-      .get();
+      .waitAndGet();
 }
 
 /// @brief create one or multiple documents in a collection
@@ -2541,7 +2547,7 @@ Result transaction::Methods::determineReplication2TypeAndFollowers(
 /// if it fails, clean up after itself
 Future<OperationResult> transaction::Methods::insertLocal(
     std::string const& collectionName, VPackSlice value,
-    OperationOptions& options) {
+    OperationOptions options) {
   auto res =
       co_await InsertProcessor::create(*this, collectionName, value, options);
   if (res.fail()) {
@@ -2555,7 +2561,7 @@ OperationResult Methods::update(std::string const& collectionName,
                                 OperationOptions const& options) {
   return updateInternal(collectionName, updateValue, options,
                         MethodsApi::Synchronous)
-      .get();
+      .waitAndGet();
 }
 
 /// @brief update/patch one or multiple documents in a collection
@@ -2600,7 +2606,7 @@ OperationResult Methods::replace(std::string const& collectionName,
                                  OperationOptions const& options) {
   return replaceInternal(collectionName, replaceValue, options,
                          MethodsApi::Synchronous)
-      .get();
+      .waitAndGet();
 }
 
 /// @brief replace one or multiple documents in a collection
@@ -2618,7 +2624,7 @@ Future<OperationResult> transaction::Methods::replaceAsync(
 /// if it fails, clean up after itself
 Future<OperationResult> transaction::Methods::modifyLocal(
     std::string const& collectionName, VPackSlice newValue,
-    OperationOptions& options, bool isUpdate) {
+    OperationOptions options, bool isUpdate) {
   auto res = co_await ModifyProcessor::create(*this, collectionName, newValue,
                                               options, isUpdate);
   if (res.fail()) {
@@ -2631,7 +2637,7 @@ OperationResult Methods::remove(std::string const& collectionName,
                                 VPackSlice value,
                                 OperationOptions const& options) {
   return removeInternal(collectionName, value, options, MethodsApi::Synchronous)
-      .get();
+      .waitAndGet();
 }
 
 /// @brief remove one or multiple documents in a collection
@@ -2666,7 +2672,7 @@ Future<OperationResult> transaction::Methods::removeCoordinator(
 /// if it fails, clean up after itself
 Future<OperationResult> transaction::Methods::removeLocal(
     std::string const& collectionName, VPackSlice value,
-    OperationOptions& options) {
+    OperationOptions options) {
   auto res =
       co_await RemoveProcessor::create(*this, collectionName, value, options);
   if (res.fail()) {
@@ -2681,26 +2687,24 @@ futures::Future<OperationResult> transaction::Methods::all(
     OperationOptions const& options) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
-  OperationOptions optionsCopy = options;
-
   if (_state->isCoordinator()) {
-    co_return co_await allCoordinator(collectionName, skip, limit, optionsCopy);
+    co_return co_await allCoordinator(collectionName, skip, limit, options);
   }
 
-  co_return co_await allLocal(collectionName, skip, limit, optionsCopy);
+  co_return co_await allLocal(collectionName, skip, limit, options);
 }
 
 /// @brief fetches all documents in a collection, coordinator
 futures::Future<OperationResult> transaction::Methods::allCoordinator(
     std::string const& collectionName, uint64_t skip, uint64_t limit,
-    OperationOptions& options) {
+    OperationOptions const& options) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 /// @brief fetches all documents in a collection, local
 futures::Future<OperationResult> transaction::Methods::allLocal(
     std::string const& collectionName, uint64_t skip, uint64_t limit,
-    OperationOptions& options) {
+    OperationOptions options) {
   DataSourceId cid =
       co_await addCollectionAtRuntime(collectionName, AccessMode::Type::READ);
   TransactionCollection* trxColl = trxCollection(cid);
@@ -2744,7 +2748,7 @@ futures::Future<OperationResult> transaction::Methods::allLocal(
 OperationResult Methods::truncate(std::string const& collectionName,
                                   OperationOptions const& options) {
   return truncateInternal(collectionName, options, MethodsApi::Synchronous)
-      .get();
+      .waitAndGet();
 }
 
 /// @brief remove all documents in a collection
@@ -2974,7 +2978,7 @@ OperationResult Methods::count(std::string const& collectionName,
                                CountType type,
                                OperationOptions const& options) {
   return countInternal(collectionName, type, options, MethodsApi::Synchronous)
-      .get();
+      .waitAndGet();
 }
 
 /// @brief count the number of documents in a collection
@@ -2998,7 +3002,6 @@ futures::Future<OperationResult> transaction::Methods::countCoordinator(
 
   return countCoordinatorHelper(colptr, collectionName, type, options, api);
 }
-
 #endif
 
 futures::Future<OperationResult> transaction::Methods::countCoordinatorHelper(
@@ -3008,51 +3011,114 @@ futures::Future<OperationResult> transaction::Methods::countCoordinatorHelper(
   TRI_ASSERT(collinfo != nullptr);
   auto& cache = collinfo->countCache();
 
-  uint64_t documents = CountCache::NotPopulated;
-  if (type == transaction::CountType::ForceCache) {
-    // always return from the cache, regardless what's in it
-    documents = cache.get();
-  } else if (type == transaction::CountType::TryCache) {
-    documents = cache.getWithTtl();
-  }
+  if (type == transaction::CountType::kTryCache) {
+    // fetch current cache value
+    uint64_t documents = cache.get();
 
-  if (documents == CountCache::NotPopulated) {
-    // no cache hit, or detailed results requested
-    return arangodb::countOnCoordinator(*this, collectionName, options, api)
-        .thenValue(
-            [&cache, type, options](OperationResult&& res) -> OperationResult {
-              if (res.fail()) {
-                return std::move(res);
+    if (documents != CountCache::kNotPopulated) {
+      // cache was previously set to some value, but cache value may
+      // have been expired.
+
+      // bump the cache expiry value if required. this will only
+      // modify the cache's expiry timestamp if the cache value is
+      // already expired. when called concurrently, only one thread
+      // will succeed and return true from bumpExpiry.
+      bool bumped = cache.bumpExpiry();
+      if (bumped && SchedulerFeature::SCHEDULER != nullptr) {
+        // our thread bumped the expiry date. we need to schedule the refresh
+        // ourselves.
+        DatabaseFeature& databaseFeature =
+            vocbase().server().getFeature<DatabaseFeature>();
+        // post a refresh operation onto the scheduler, with LOW priority
+        SchedulerFeature::SCHEDULER->queue(
+            RequestLane::CLIENT_SLOW,
+            [&databaseFeature, databaseName = collinfo->vocbase().name(),
+             collectionName]() {
+              // it is possible that the target database does not exist anymore
+              // when the callback is scheduled for execution
+              auto vocbase = databaseFeature.useDatabase(databaseName);
+              if (vocbase == nullptr || vocbase->server().isStopping()) {
+                return;
               }
 
-              // reassemble counts from vpack
-              std::vector<std::pair<std::string, uint64_t>> counts;
-              TRI_ASSERT(res.slice().isArray());
-              for (VPackSlice count : VPackArrayIterator(res.slice())) {
-                TRI_ASSERT(count.isArray());
-                TRI_ASSERT(count[0].isString());
-                TRI_ASSERT(count[1].isNumber());
-                std::string key = count[0].copyString();
-                uint64_t value = count[1].getNumericValue<uint64_t>();
-                counts.emplace_back(std::move(key), value);
-              }
+              auto coro = [](VocbasePtr vocbase, std::string collectionName)
+                  -> futures::Future<futures::Unit> {
+                LOG_TOPIC("01d9a", TRACE, Logger::FIXME)
+                    << "refreshing count cache value for collection '"
+                    << vocbase->name() << "/" << collectionName << "'";
 
-              uint64_t total = 0;
-              OperationResult opRes =
-                  buildCountResult(options, counts, type, total);
-              cache.store(total);
-              return opRes;
+                // start a new transaction
+                auto origin = transaction::OperationOriginInternal{
+                    "refreshing document count cache"};
+                auto trx = std::make_shared<SingleCollectionTransaction>(
+                    transaction::StandaloneContext::create(*vocbase, origin),
+                    collectionName, AccessMode::Type::READ);
+
+                // the following is all best effort only. if something fails, we
+                // can ignore it, because the cache will eventually be refreshed
+                auto res = co_await trx->beginAsync();
+                if (res.fail()) {
+                  co_return;
+                }
+                OperationOptions options(ExecContext::current());
+                auto opResult = co_await trx->countAsync(
+                    collectionName, transaction::CountType::kNormal, options);
+                if (opResult.result.fail()) {
+                  co_return;
+                }
+                VPackSlice s = opResult.slice();
+                TRI_ASSERT(s.isNumber());
+                if (trx->documentCollection() != nullptr) {
+                  trx->documentCollection()->countCache().store(
+                      s.getNumber<uint64_t>());
+                }
+              };
+
+              coro(std::move(vocbase), std::move(collectionName))
+                  .thenFinal([](auto&&) {
+                    // weglächeln (ignore possible errors)
+                  });
             });
+      }
+
+      // if bumped is false here, it means that either the cache value
+      // was not expired, or that is was expired, but another concurrent
+      // thread updated the expiry value concurrently. in this case we
+      // will return the stale cache value if the cache value was ever
+      // populated. otherwise we need to update the cache ourselves.
+      VPackBuilder resultBuilder;
+      resultBuilder.add(VPackValue(documents));
+      return OperationResult(Result(), resultBuilder.steal(), options);
+    }
+    // fallthrough intentional
   }
 
-  // cache hit!
-  TRI_ASSERT(documents != CountCache::NotPopulated);
-  TRI_ASSERT(type != transaction::CountType::Detailed);
+  // need to query count values from DB server(s), from within the currently
+  // running transaction.
+  return arangodb::countOnCoordinator(*this, collectionName, options, api)
+      .thenValue([&cache, type,
+                  options](OperationResult&& res) -> OperationResult {
+        if (res.fail()) {
+          return std::move(res);
+        }
 
-  // return number from cache
-  VPackBuilder resultBuilder;
-  resultBuilder.add(VPackValue(documents));
-  return OperationResult(Result(), resultBuilder.steal(), options);
+        // reassemble counts from vpack
+        std::vector<std::pair<std::string, uint64_t>> counts;
+        TRI_ASSERT(res.slice().isArray());
+        for (VPackSlice count : VPackArrayIterator(res.slice())) {
+          TRI_ASSERT(count.isArray());
+          TRI_ASSERT(count[0].isString());
+          TRI_ASSERT(count[1].isNumber());
+          std::string key = count[0].copyString();
+          uint64_t value = count[1].getNumericValue<uint64_t>();
+          counts.emplace_back(std::move(key), value);
+        }
+
+        uint64_t total = 0;
+        OperationResult opRes = buildCountResult(options, counts, type, total);
+        cache.store(total);
+        return opRes;
+      });
 }
 
 /// @brief count the number of documents in a collection
@@ -3060,7 +3126,8 @@ OperationResult transaction::Methods::countLocal(
     std::string const& collectionName, transaction::CountType /*type*/,
     OperationOptions const& options) {
   DataSourceId cid =
-      addCollectionAtRuntime(collectionName, AccessMode::Type::READ).get();
+      addCollectionAtRuntime(collectionName, AccessMode::Type::READ)
+          .waitAndGet();
   TransactionCollection* trxColl = trxCollection(cid);
   if (trxColl == nullptr) {
     return OperationResult(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, options);
@@ -3129,7 +3196,8 @@ std::unique_ptr<IndexIterator> transaction::Methods::indexScan(
   }
 
   DataSourceId cid =
-      addCollectionAtRuntime(collectionName, AccessMode::Type::READ).get();
+      addCollectionAtRuntime(collectionName, AccessMode::Type::READ)
+          .waitAndGet();
   TransactionCollection* trxColl = trxCollection(cid);
   if (trxColl == nullptr) {
     throwCollectionNotFound(collectionName);
@@ -3199,9 +3267,9 @@ Result transaction::Methods::addCollection(DataSourceId cid,
 
   if (_mainTransaction && status != transaction::Status::CREATED) {
     // transaction already started?
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_TRANSACTION_INTERNAL,
-        "cannot add collection to a previously started top-level transaction");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_INTERNAL,
+                                   "cannot add collection to a previously "
+                                   "started top-level transaction");
   }
 
   if (cid.empty()) {
@@ -3213,8 +3281,8 @@ Result transaction::Methods::addCollection(DataSourceId cid,
 
   auto addCollectionCallback = [this, &collectionName, type,
                                 lockUsage](DataSourceId cid) -> void {
-    auto res =
-        _state->addCollection(cid, collectionName, type, lockUsage).get();
+    auto res = _state->addCollection(cid, collectionName, type, lockUsage)
+                   .waitAndGet();
 
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
@@ -3374,11 +3442,11 @@ Future<Result> Methods::replicateOperations(
         replication2::replicated_state::document::ReplicationOptions{
             .waitForSync = options.waitForSync});
 
-    // Should finish immediately, because we are not waiting the operation to be
-    // committed in the replicated log
+    // Should finish immediately, because we are not waiting the operation to
+    // be committed in the replicated log
     TRI_ASSERT(replicationFut.isReady());
 
-    auto replicationRes = replicationFut.get();
+    auto replicationRes = replicationFut.waitAndGet();
     if (replicationRes.fail()) {
       return replicationRes.result();
     }
@@ -3389,16 +3457,24 @@ Future<Result> Methods::replicateOperations(
 
   network::RequestOptions reqOpts;
   reqOpts.database = vocbase().name();
-  reqOpts.param(StaticStrings::IsRestoreString, "true");
+  // use a HIGH priority lane to execute the callback when the
+  // response arrives. we must not skip the scheduler entirely here
+  // because the callback may execute an intermediate commit in
+  // RocksDB or carry out agency communication in case a follower
+  // needs to be dropped. the HIGH priority is justified here
+  // because the callback must make progress: the callback can
+  // unblock other block threads on the leader that synchronously
+  // wait for this future to be resolved.
+  reqOpts.continuationLane = RequestLane::CLUSTER_INTERNAL;
 
+  reqOpts.param(StaticStrings::IsRestoreString, "true");
   reqOpts.param(StaticStrings::RefillIndexCachesString,
                 refill ? "true" : "false");
 
   network::addUserParameter(reqOpts, username());
 
   std::string url = absl::StrCat(
-      "/_api/document/",
-      arangodb::basics::StringUtils::urlEncode(collection->name()));
+      "/_api/document/", basics::StringUtils::urlEncode(collection->name()));
 
   std::string_view opName = "unknown";
   arangodb::fuerte::RestVerb requestType = arangodb::fuerte::RestVerb::Illegal;
@@ -3574,8 +3650,7 @@ Future<Result> Methods::replicateOperations(
           }
 
           bool followerRefused =
-              (r.errorNumber() ==
-               TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
+              r.is(TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION);
           didRefuse = didRefuse || followerRefused;
 
           replicationFailureReason =
@@ -3633,9 +3708,9 @@ Future<Result> Methods::replicateOperations(
 
             // Note: it is safe here to exit the loop early. We are losing the
             // leadership here. No matter what happens next, the Current entry
-            // in the agency is rewritten and thus replication is restarted from
-            // the new leader. There is no need to keep trying to drop followers
-            // at this point.
+            // in the agency is rewritten and thus replication is restarted
+            // from the new leader. There is no need to keep trying to drop
+            // followers at this point.
 
             if (res.is(TRI_ERROR_CLUSTER_NOT_LEADER)) {
               // In this case, we know that we are not or no longer
@@ -3832,8 +3907,7 @@ Future<OperationResult> Methods::insertInternal(
   if (_state->isCoordinator()) {
     f = insertCoordinator(collectionName, value, options, api);
   } else {
-    OperationOptions optionsCopy = options;
-    f = insertLocal(collectionName, value, optionsCopy);
+    f = insertLocal(collectionName, value, options);
   }
 
   return addTracking(std::move(f), [=, this](OperationResult&& opRes) {
@@ -3867,8 +3941,7 @@ Future<OperationResult> Methods::updateInternal(
     f = modifyCoordinator(collectionName, newValue, options,
                           TRI_VOC_DOCUMENT_OPERATION_UPDATE, api);
   } else {
-    OperationOptions optionsCopy = options;
-    f = modifyLocal(collectionName, newValue, optionsCopy, /*isUpdate*/ true);
+    f = modifyLocal(collectionName, newValue, options, /*isUpdate*/ true);
   }
   return addTracking(std::move(f), [=, this](OperationResult&& opRes) {
     events::ModifyDocument(vocbase().name(), collectionName, newValue,
@@ -3899,8 +3972,8 @@ Future<OperationResult> Methods::replaceInternal(
     f = modifyCoordinator(collectionName, newValue, options,
                           TRI_VOC_DOCUMENT_OPERATION_REPLACE, api);
   } else {
-    OperationOptions optionsCopy = options;
-    f = modifyLocal(collectionName, newValue, optionsCopy, /*isUpdate*/ false);
+    f = modifyLocal(collectionName, newValue, options,
+                    /*isUpdate*/ false);
   }
   return addTracking(std::move(f), [=, this](OperationResult&& opRes) {
     events::ReplaceDocument(vocbase().name(), collectionName, newValue,
@@ -3930,8 +4003,7 @@ Future<OperationResult> Methods::removeInternal(
   if (_state->isCoordinator()) {
     f = removeCoordinator(collectionName, value, options, api);
   } else {
-    OperationOptions optionsCopy = options;
-    f = removeLocal(collectionName, value, optionsCopy);
+    f = removeLocal(collectionName, value, options);
   }
   return addTracking(std::move(f), [=, this](OperationResult&& opRes) {
     events::DeleteDocument(vocbase().name(), collectionName, value,
@@ -3966,10 +4038,10 @@ futures::Future<OperationResult> Methods::countInternal(
     return countCoordinator(collectionName, type, options, api);
   }
 
-  if (type == CountType::Detailed) {
+  if (type == CountType::kDetailed) {
     // we are a single-server... we cannot provide detailed per-shard counts,
     // so just downgrade the request to a normal request
-    type = CountType::Normal;
+    type = CountType::kNormal;
   }
 
   return futures::makeFuture(countLocal(collectionName, type, options));
@@ -3985,7 +4057,7 @@ Result Methods::triggerIntermediateCommit() {
   return _state->triggerIntermediateCommit();
 }
 
-Result Methods::begin() { return beginAsync().get(); }
+Result Methods::begin() { return beginAsync().waitAndGet(); }
 
 #ifndef USE_ENTERPRISE
 ErrorCode Methods::validateSmartJoinAttribute(LogicalCollection const&,

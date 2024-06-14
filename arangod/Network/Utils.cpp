@@ -42,21 +42,6 @@
 
 namespace arangodb::network {
 
-Headers addAuthorizationHeader(
-    std::unordered_map<std::string, std::string> const& originalHeaders) {
-  auto auth = AuthenticationFeature::instance();
-
-  network::Headers headers;
-  if (auth != nullptr && auth->isActive()) {
-    headers.try_emplace(StaticStrings::Authorization,
-                        "bearer " + auth->tokenCache().jwtToken());
-  }
-  for (auto const& header : originalHeaders) {
-    headers.try_emplace(header.first, header.second);
-  }
-  return headers;
-}
-
 futures::Future<ErrorCode> resolveDestination(NetworkFeature const& feature,
                                               DestinationId const& dest,
                                               network::EndpointSpec& spec) {
@@ -103,7 +88,7 @@ futures::Future<ErrorCode> resolveDestination(ClusterInfo& ci,
     if (maybeServer.fail()) {
       LOG_TOPIC("60ee8", ERR, Logger::CLUSTER)
           << "cannot find responsible server for shard '" << spec.shardId
-          << "'";
+          << "': " << maybeServer.errorMessage();
       co_return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
     }
 
@@ -166,11 +151,10 @@ Result resultFromBody(arangodb::velocypack::Slice slice,
                       ErrorCode defaultError) {
   // read the error number from the response and use it if present
   if (slice.isObject()) {
-    VPackSlice num = slice.get(StaticStrings::ErrorNum);
-    VPackSlice msg = slice.get(StaticStrings::ErrorMessage);
-    if (num.isNumber()) {
+    if (VPackSlice num = slice.get(StaticStrings::ErrorNum); num.isNumber()) {
       auto errorCode = ErrorCode{num.getNumericValue<int>()};
-      if (msg.isString()) {
+      if (VPackSlice msg = slice.get(StaticStrings::ErrorMessage);
+          msg.isString()) {
         // found an error number and an error message, so let's use it!
         return Result(errorCode, msg.copyString());
       }

@@ -73,7 +73,7 @@ set(ARANGODB_VERSION_MINOR "12")
 
 # when building the nightly ARANGODB_VERSION_PATCH will be set
 if (NOT DEFINED ARANGODB_VERSION_PATCH)
-  set(ARANGODB_VERSION_PATCH "1")
+  set(ARANGODB_VERSION_PATCH "2")
   set(ARANGODB_VERSION_RELEASE_TYPE "devel")
   set(ARANGODB_VERSION_RELEASE_NUMBER "")
 else()
@@ -238,7 +238,7 @@ configure_file(
 )
 
 option(ARANGODB_BUILD_DATE "Specific build date set from the outside (leave empty to auto-generate)" "")
-if (ARANGODB_BUILD_DATE STREQUAL "")
+if (ARANGODB_BUILD_DATE STREQUAL "" OR ARANGODB_BUILD_DATE STREQUAL "OFF")
   if (NOT EXISTS "${CMAKE_CURRENT_BINARY_DIR}/lib/Basics/build-date.h")
     # auto-generate build date
     string(TIMESTAMP ARANGODB_BUILD_DATE "%Y-%m-%d %H:%M:%S")
@@ -1097,6 +1097,7 @@ list(INSERT SYSTEM_LIBRARIES 0
   ${BT_LIBS}
   ${ZLIB_LIBS}
   ${ICU_LIBS}
+  ${ICU64_LIBS}
   ${OPENSSL_LIBRARIES}
   ${BASE_LIBS}
   ${SYS_LIBS}

@@ -289,10 +289,12 @@
       // this number is arbitrary, but may reduce HTTP traffic a bit
       query = 'FOR x IN @@collection LET att = APPEND(SLICE(ATTRIBUTES(x), 0, 25), "_key", true)';
       query += this.setFiltersForQuery(bindVars);
-      // Sort result, only useful for a small number of docs
+      // Sort result, default sort is not stable in multi shard collections
       if (this.getTotal() < this.MAX_SORT && this.getSort() !== '') {
-        query += ' SORT x.@sortAttribute';
+        query += ' SORT x.@sortAttribute, x._key';
         bindVars.sortAttribute = this.getSort();
+      } else {
+        query += ' SORT x._key';
       }
 
       if (bindVars.count !== 'all') {
@@ -402,10 +404,12 @@
 
       query = 'FOR x in @@collection';
       query += this.setFiltersForQuery(bindVars);
-      // Sort result, only useful for a small number of docs
+      // Sort result, default sort is not stable in multi shard collections
       if (this.getTotal() < this.MAX_SORT && this.getSort() !== '') {
-        query += ' SORT x.@sortAttribute';
+        query += ' SORT x.@sortAttribute, x._key';
         bindVars.sortAttribute = this.getSort();
+      } else {
+        query += ' SORT x._key';
       }
 
       query += ' RETURN x';

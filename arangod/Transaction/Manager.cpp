@@ -26,11 +26,13 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryList.h"
+#include "Auth/TokenCache.h"
 #include "Assertions/ProdAssert.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/conversions.h"
 #include "Basics/system-functions.h"
 #include "Basics/voc-errors.h"
 #include "Cluster/ClusterFeature.h"
@@ -291,9 +293,9 @@ arangodb::cluster::CallbackGuard Manager::buildCallbackGuard(
       auto& clusterInfo = clusterFeature.clusterInfo();
       rGuard = clusterInfo.rebootTracker().callMeOnChange(
           origin,
-          [this, tid = state.id()]() {
+          [this, tid = state.id(), databaseName = state.vocbase().name()]() {
             // abort the transaction once the coordinator goes away
-            abortManagedTrx(tid, std::string()).get();
+            abortManagedTrx(tid, databaseName).waitAndGet();
           },
           "Transaction aborted since coordinator rebooted or failed.");
     }
@@ -655,7 +657,9 @@ futures::Future<ResultT<TransactionId>> Manager::createManagedTrx(
   // We allow to do a fast locking round here
   // We can only do this because we KNOW that the tid is not
   // known to any other place yet.
-  hints.set(transaction::Hints::Hint::ALLOW_FAST_LOCK_ROUND_CLUSTER);
+  if (!options.skipFastLockRound) {
+    hints.set(transaction::Hints::Hint::ALLOW_FAST_LOCK_ROUND_CLUSTER);
+  }
   res = co_await beginTransaction(hints, state);
   if (res.fail()) {
     co_return res;
@@ -663,6 +667,8 @@ futures::Future<ResultT<TransactionId>> Manager::createManagedTrx(
   // Unset the FastLockRound hint, if for some reason we ever end up locking
   // something again for this transaction we cannot recover from a fast lock
   // failure
+  // note: we can unconditionally call unset here even if skipFastLockRound
+  // was set. this does not do any harm.
   hints.unset(transaction::Hints::Hint::ALLOW_FAST_LOCK_ROUND_CLUSTER);
 
   // During beginTransaction we may reroll the Transaction ID.
@@ -757,6 +763,8 @@ futures::Future<Result> Manager::ensureManagedTrx(
 
   // start the transaction
   auto hints = ensureHints(options);
+  TRI_ASSERT(
+      !hints.has(transaction::Hints::Hint::ALLOW_FAST_LOCK_ROUND_CLUSTER));
   res = co_await beginTransaction(hints, state);
   if (res.fail()) {
     co_return res;
@@ -1007,7 +1015,7 @@ void Manager::returnManagedTrx(TransactionId tid, bool isSideUser) noexcept {
 
   if (isSoftAborted) {
     TRI_ASSERT(!isSideUser);
-    abortManagedTrx(tid, "" /* any database */).get();
+    abortManagedTrx(tid, "" /* any database */).waitAndGet();
   }
 }
 
@@ -1177,14 +1185,18 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
         }
         return res;  // all good
       } else {
-        std::string msg("transaction was already ");
-        if (mtrx.wasExpired) {
-          msg.append("expired");
+        std::string_view operation;
+        if (status == transaction::Status::COMMITTED) {
+          operation = "commit";
         } else {
-          msg.append(statusString(mtrx.finalStatus));
+          operation = "abort";
         }
-        return res.reset(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
-                         std::move(msg));
+        return res.reset(
+            TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
+            absl::StrCat("while trying to ", operation, " transaction ",
+                         tid.id(), ": transaction was already ",
+                         (mtrx.wasExpired ? "expired"
+                                          : statusString(mtrx.finalStatus))));
       }
     }
     TRI_ASSERT(mtrx.type == MetaType::Managed);
@@ -1499,7 +1511,7 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
     }
 
     if (!futures.empty()) {
-      auto responses = futures::collectAll(futures).get();
+      auto responses = futures::collectAll(futures).waitAndGet();
       for (auto const& it : responses) {
         if (!it.hasValue()) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
@@ -1571,7 +1583,8 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
           // note: expiry timestamp is a system clock value that indicates
           // number of seconds since the OS was started.
           builder.add("expiryTime",
-                      VPackValue(static_cast<uint64_t>(trx.expiryTime)));
+                      VPackValue(TRI_StringTimeStamp(
+                          trx.expiryTime, Logger::getUseLocalTime())));
           if (!ServerState::instance()->isDBServer()) {
             // proper user information is only present on single servers
             // and coordinators
@@ -1657,7 +1670,7 @@ Result Manager::abortAllManagedWriteTrx(std::string const& username,
     }
 
     for (auto& f : futures) {
-      network::Response const& resp = f.get();
+      network::Response const& resp = f.waitAndGet();
 
       if (resp.statusCode() != fuerte::StatusOK) {
         VPackSlice slice = resp.slice();

@@ -54,9 +54,9 @@ class AqlCallStack {
 
   // Initial
   explicit AqlCallStack(Empty);
+
   explicit AqlCallStack(AqlCallList call);
-  // Used in subquery
-  AqlCallStack(AqlCallStack const& other, AqlCallList call);
+
   // Used to pass between blocks
   AqlCallStack(AqlCallStack const& other) = default;
   AqlCallStack(AqlCallStack&& other) noexcept = default;
@@ -64,6 +64,8 @@ class AqlCallStack {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   // For tests
   explicit AqlCallStack(std::initializer_list<AqlCallList> calls);
+  // Used in subquery
+  AqlCallStack(AqlCallStack const& other, AqlCallList call);
 #endif
 
   AqlCallStack& operator=(AqlCallStack const& other) = default;

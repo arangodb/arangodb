@@ -45,13 +45,15 @@ function IndexBatchMaterializeTestSuite() {
     c.ensureIndex({type: "persistent", fields: ["y"]});
     c.ensureIndex({type: "persistent", fields: ["z", "w"]});
     c.ensureIndex({type: "persistent", fields: ["u", "_key"], unique: true});
+    c.ensureIndex({type: "persistent", fields: ["p", "values[*].y"], unique: false});
+
     return c;
   }
 
   function fillCollection(c, n) {
     let docs = [];
     for (let i = 0; i < n; i++) {
-      docs.push({x: i, y: 2 * i, z: 2 * i + 1, w: i % 10, u: i, b: i + 1});
+      docs.push({x: i, y: 2 * i, z: 2 * i + 1, w: i % 10, u: i, b: i + 1, p: i, q: i});
     }
     c.insert(docs);
   }
@@ -75,9 +77,9 @@ function IndexBatchMaterializeTestSuite() {
     }
   }
 
-  function checkResult(query, resultIsSorted = false) {
-    let expected = db._createStatement({query, optimizer: {rules: [`-${batchMaterializeRule}`]}}).execute().toArray();
-    let actual = db._createStatement({query}).execute().toArray();
+  function checkResult(query, resultIsSorted = false, options = {}) {
+    let expected = db._createStatement({query, options: { optimizer: {rules: [`-${batchMaterializeRule}`]}}}).execute().toArray();
+    let actual = db._createStatement({query, options}).execute().toArray();
 
     if (!resultIsSorted) {
       expected = _.sortBy(expected, ['_key']);
@@ -87,9 +89,9 @@ function IndexBatchMaterializeTestSuite() {
     assertEqual(actual, expected);
   }
 
-  function expectOptimization(query) {
+  function expectOptimization(query, options = {}) {
     try {
-      const plan = db._createStatement({query}).explain().plan;
+      const plan = db._createStatement({query, options}).explain().plan;
       assertNotEqual(plan.rules.indexOf(batchMaterializeRule), -1);
       const nodes = plan.nodes.map(n => n.type);
 
@@ -102,7 +104,7 @@ function IndexBatchMaterializeTestSuite() {
       const materializeNode = plan.nodes[nodes.indexOf("MaterializeNode")];
       assertEqual(indexNode.outNmDocId.id, materializeNode.inNmDocId.id);
 
-      checkResult(query);
+      checkResult(query, false, options);
       return {plan, nodes, indexNode, materializeNode};
     } catch (e) {
       db._explain(query);
@@ -119,7 +121,7 @@ function IndexBatchMaterializeTestSuite() {
       const c = makeCollection(collection);
 
       fillCollection(s, 10);
-      fillCollection(c, 1000);
+      fillCollection(c, 5000);
     },
 
     tearDownAll: function () {
@@ -169,6 +171,64 @@ function IndexBatchMaterializeTestSuite() {
       `;
 
       expectNoOptimization(query);
+    },
+    
+    testMaterializeIndexScanSkip: function () {
+      const query = `
+        FOR doc IN ${collection}
+          FILTER doc.x > 5
+          SORT doc.x 
+          LIMIT 20, 10
+          RETURN doc
+      `;
+
+      expectOptimization(query);
+    },
+    
+    testMaterializeIndexScanSkip2: function () {
+      const query = `
+        FOR doc IN ${collection}
+          FILTER doc.p > 5
+          LIMIT 20, 10
+          RETURN doc
+      `;
+
+      expectOptimization(query);
+    },
+    
+    testMaterializeIndexScanSkip3: function () {
+      const query = `
+        FOR doc IN ${collection}
+          FILTER doc.p > 5
+          FILTER NOOPT(doc.q > 0)
+          LIMIT 20, 10
+          RETURN doc
+      `;
+
+      expectOptimization(query);
+    },
+
+    testMaterializeIndexScanFullCount: function () {
+      const query = `
+        FOR doc IN ${collection}
+          FILTER doc.x > 5
+          SORT doc.x 
+          LIMIT 0, 20
+          RETURN doc
+      `;
+
+      expectOptimization(query, {fullCount: true});
+    },
+    
+    testMaterializeIndexScanFullCount2: function () {
+      const query = `
+        FOR doc IN ${collection}
+          FILTER doc.p > 5
+          LIMIT 0, 20
+          RETURN doc
+      `;
+
+      expectOptimization(query, {fullCount: true});
     },
 
     testMaterializeIndexScan: function () {
@@ -333,11 +393,33 @@ function IndexBatchMaterializeTestSuite() {
 
       expectOptimization(query);
     },
-
+    
     testMaterializeIndexScanPostFilterNotCovered: function () {
       const query = `
         FOR doc IN ${collection}
           FILTER doc.x > 5 AND doc.c < 7
+          RETURN doc
+      `;
+
+      expectNoOptimization(query);
+    },
+    
+    testMaterializeSkipIndexScanPostFilterCovered: function () {
+      const query = `
+        FOR doc IN ${collection}
+          FILTER doc.x > 5 AND doc.b < 7
+          LIMIT 10, 20
+          RETURN doc
+      `;
+
+      expectOptimization(query);
+    },
+
+    testMaterializeSkipIndexScanPostFilterNotCovered: function () {
+      const query = `
+        FOR doc IN ${collection}
+          FILTER doc.x > 5 AND doc.c < 7
+          LIMIT 10, 20
           RETURN doc
       `;
 

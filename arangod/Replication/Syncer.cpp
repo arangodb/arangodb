@@ -22,7 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Syncer.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/UserManager.h"
 #include "Basics/Exceptions.h"
 #include "Basics/RocksDBUtils.h"
 #include "Basics/StaticStrings.h"
@@ -294,9 +296,8 @@ arangodb::Result applyCollectionDumpMarkerInternal(
 
 namespace arangodb {
 
-Syncer::JobSynchronizer::JobSynchronizer(
-    std::shared_ptr<Syncer const> const& syncer)
-    : _syncer(syncer),
+Syncer::JobSynchronizer::JobSynchronizer(std::shared_ptr<Syncer const> syncer)
+    : _syncer(std::move(syncer)),
       _gotResponse(false),
       _time(0.0),
       _id(0),
@@ -489,6 +490,36 @@ bool Syncer::JobSynchronizer::hasJobInFlight() const noexcept {
   return _jobsInFlight > 0;
 }
 
+Syncer::JobSynchronizerScope::JobSynchronizerScope(
+    std::shared_ptr<Syncer const> syncer)
+    : _synchronizer(std::make_shared<JobSynchronizer>(std::move(syncer))) {
+  TRI_ASSERT(_synchronizer.use_count() == 1);
+}
+
+Syncer::JobSynchronizerScope::~JobSynchronizerScope() {
+  // if use_count is > 1, it means that we have copied the JobSynchronizer's
+  // shared_ptr already and dispatched a background task.
+  // we need to wait until the background task is fully done.
+  while (_synchronizer.use_count() > 1) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    std::this_thread::yield();
+  }
+}
+
+Syncer::JobSynchronizer* Syncer::JobSynchronizerScope::operator->() {
+  return _synchronizer.get();
+}
+
+Syncer::JobSynchronizer const* Syncer::JobSynchronizerScope::operator->()
+    const {
+  return _synchronizer.get();
+}
+
+std::shared_ptr<Syncer::JobSynchronizer> Syncer::JobSynchronizerScope::clone()
+    const {
+  return _synchronizer;
+}
+
 /**
  * @brief Generate a new syncer ID, used for the catchup in synchronous
  * replication.
@@ -662,7 +693,7 @@ Result Syncer::applyCollectionDumpMarker(transaction::Methods& trx,
       Result res = ::applyCollectionDumpMarkerInternal(
           _state, trx, coll, type, slice, conflictingDocumentKey);
 
-      if (res.errorNumber() != TRI_ERROR_LOCK_TIMEOUT) {
+      if (res.isNot(TRI_ERROR_LOCK_TIMEOUT)) {
         return res;
       }
 
@@ -916,7 +947,7 @@ void Syncer::createIndexInternal(velocypack::Slice idxDef,
 
   if (idx == nullptr) {
     bool created = false;
-    idx = physical->createIndex(idxDef, /*restore*/ true, created).get();
+    idx = physical->createIndex(idxDef, /*restore*/ true, created).waitAndGet();
   }
   TRI_ASSERT(idx != nullptr);
 }

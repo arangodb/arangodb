@@ -41,17 +41,17 @@ void QueryExpressionContext::registerError(ErrorCode errorCode,
   _query.warnings().registerError(errorCode, msg);
 }
 
-icu::RegexMatcher* QueryExpressionContext::buildRegexMatcher(
+icu_64_64::RegexMatcher* QueryExpressionContext::buildRegexMatcher(
     std::string_view expr, bool caseInsensitive) {
   return _aqlFunctionsInternalCache.buildRegexMatcher(expr, caseInsensitive);
 }
 
-icu::RegexMatcher* QueryExpressionContext::buildLikeMatcher(
+icu_64_64::RegexMatcher* QueryExpressionContext::buildLikeMatcher(
     std::string_view expr, bool caseInsensitive) {
   return _aqlFunctionsInternalCache.buildLikeMatcher(expr, caseInsensitive);
 }
 
-icu::RegexMatcher* QueryExpressionContext::buildSplitMatcher(
+icu_64_64::RegexMatcher* QueryExpressionContext::buildSplitMatcher(
     AqlValue splitExpression, velocypack::Options const* opts,
     bool& isEmptyExpression) {
   return _aqlFunctionsInternalCache.buildSplitMatcher(splitExpression, opts,

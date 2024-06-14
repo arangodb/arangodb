@@ -90,14 +90,14 @@ TEST(FutureTest, requires_only_move_ctor) {
     auto f = makeFuture<MoveCtorOnly>(MoveCtorOnly(42));
     ASSERT_TRUE(f.valid());
     ASSERT_TRUE(f.isReady());
-    auto v = std::move(f).get();
+    auto v = std::move(f).waitAndGet();
     ASSERT_TRUE(v.id_ == 42);
   }
   {
     auto f = makeFuture<MoveCtorOnly>(MoveCtorOnly(42));
     ASSERT_TRUE(f.valid());
     ASSERT_TRUE(f.isReady());
-    auto v = std::move(f).get();
+    auto v = std::move(f).waitAndGet();
     ASSERT_TRUE(v.id_ == 42);
   }
 }
@@ -197,11 +197,11 @@ TEST(FutureTest, hasPreconditionValid) {
 
   DOIT(f.isReady());
   DOIT(f.result());
-  DOIT(std::move(f).get());
+  DOIT(std::move(f).waitAndGet());
   DOIT(f.result());
   DOIT(f.hasValue());
   DOIT(f.hasException());
-  DOIT(f.get());
+  DOIT(f.waitAndGet());
   // DOIT(std::move(f).then());
   DOIT(std::ignore = std::move(f).thenValue([](int&&) noexcept -> void {}));
   DOIT(std::ignore = std::move(f).thenValue([](auto&&) noexcept -> void {}));
@@ -225,12 +225,12 @@ TEST(FutureTest, hasPostconditionValid) {
   DOIT(swallow(f.isReady()));
   DOIT(swallow(f.hasValue()));
   DOIT(swallow(f.hasException()));
-  DOIT(swallow(f.get()));
-  DOIT(swallow(f.getTry()));
+  DOIT(swallow(f.waitAndGet()));
+  DOIT(swallow(f.waitAndGetTry()));
   // DOIT(swallow(f.poll()));
   // DOIT(f.raise(std::logic_error("foo")));
   // DOIT(f.cancel());
-  DOIT(swallow(f.getTry()));
+  DOIT(swallow(f.waitAndGetTry()));
   DOIT(f.wait());
   // DOIT(std::move(f.wait()));
 
@@ -283,7 +283,7 @@ TEST(FutureTest, lacksPostconditionValid) {
   auto const swallow = [](auto) {};
   // DOIT(makeValid(), swallow(std::move(f).wait()));
   // DOIT(makeValid(), swallow(std::move(f.wait())));
-  DOIT(makeValid(), swallow(std::move(f).get()));
+  DOIT(makeValid(), swallow(std::move(f).waitAndGet()));
   // DOIT(makeValid(), swallow(std::move(f).semi()));
 
 #undef DOIT
@@ -312,7 +312,7 @@ TEST(FutureTest, thenError) {
                  .thenError<std::logic_error>(
                      [&](const std::logic_error& /* e */) noexcept { flag(); });
     EXPECT_FLAG();
-    EXPECT_NO_THROW(f.get());
+    EXPECT_NO_THROW(f.waitAndGet());
   }
 
   // By auto reference
@@ -322,7 +322,7 @@ TEST(FutureTest, thenError) {
             .thenValue([](Unit) { throw eggs; })
             .thenError<eggs_t>([&](auto const& /* e */) noexcept { flag(); });
     EXPECT_FLAG();
-    EXPECT_NO_THROW(f.get());
+    EXPECT_NO_THROW(f.waitAndGet());
   }
 
   {
@@ -333,7 +333,7 @@ TEST(FutureTest, thenError) {
                    return makeFuture();
                  });
     EXPECT_FLAG();
-    EXPECT_NO_THROW(f.get());
+    EXPECT_NO_THROW(f.waitAndGet());
   }
 
   // By value
@@ -342,7 +342,7 @@ TEST(FutureTest, thenError) {
                  .thenValue([](Unit) { throw eggs; })
                  .thenError<eggs_t>([&](eggs_t /* e */) noexcept { flag(); });
     EXPECT_FLAG();
-    EXPECT_NO_THROW(f.get());
+    EXPECT_NO_THROW(f.waitAndGet());
   }
 
   {
@@ -353,7 +353,7 @@ TEST(FutureTest, thenError) {
                    return makeFuture();
                  });
     EXPECT_FLAG();
-    EXPECT_NO_THROW(f.get());
+    EXPECT_NO_THROW(f.waitAndGet());
   }
 
   //    // Polymorphic
@@ -382,7 +382,7 @@ TEST(FutureTest, thenError) {
                  .thenValue([](Unit) { throw -1; })
                  .thenError<int>([&](int /* e */) noexcept { flag(); });
     EXPECT_FLAG();
-    EXPECT_NO_THROW(f.get());
+    EXPECT_NO_THROW(f.waitAndGet());
   }
 
   {
@@ -393,7 +393,7 @@ TEST(FutureTest, thenError) {
                    return makeFuture();
                  });
     EXPECT_FLAG();
-    EXPECT_NO_THROW(f.get());
+    EXPECT_NO_THROW(f.waitAndGet());
   }
 
   // Mutable lambda
@@ -403,7 +403,7 @@ TEST(FutureTest, thenError) {
                  .thenError<eggs_t&>(
                      [&](eggs_t& /* e */) mutable noexcept { flag(); });
     EXPECT_FLAG();
-    EXPECT_NO_THROW(f.get());
+    EXPECT_NO_THROW(f.waitAndGet());
   }
 
   {
@@ -414,7 +414,7 @@ TEST(FutureTest, thenError) {
                    return makeFuture();
                  });
     EXPECT_FLAG();
-    EXPECT_NO_THROW(f.get());
+    EXPECT_NO_THROW(f.waitAndGet());
   }
 
   // Function pointer
@@ -423,7 +423,7 @@ TEST(FutureTest, thenError) {
                  .thenValue([](Unit) -> int { throw eggs; })
                  .thenError<const eggs_t&>(onErrorHelperEggs)
                  .thenError<std::exception const&>(onErrorHelperGeneric);
-    ASSERT_TRUE(10 == f.get());
+    ASSERT_TRUE(10 == f.waitAndGet());
   }
   {
     auto f =
@@ -431,14 +431,14 @@ TEST(FutureTest, thenError) {
             .thenValue([](Unit) -> int { throw std::runtime_error("test"); })
             .thenError<const eggs_t&>(onErrorHelperEggs)
             .thenError<std::exception>(onErrorHelperGeneric);
-    ASSERT_TRUE(20 == f.get());
+    ASSERT_TRUE(20 == f.waitAndGet());
   }
   {
     auto f =
         makeFuture()
             .thenValue([](Unit) -> int { throw std::runtime_error("test"); })
             .thenError<const eggs_t&>(onErrorHelperEggs);
-    EXPECT_THROW(f.get(), std::runtime_error);
+    EXPECT_THROW(f.waitAndGet(), std::runtime_error);
   }
 
   // No throw
@@ -450,7 +450,7 @@ TEST(FutureTest, thenError) {
                    return -1;
                  });
     EXPECT_NO_FLAG();
-    ASSERT_TRUE(42 == f.get());
+    ASSERT_TRUE(42 == f.waitAndGet());
   }
 
   {
@@ -461,7 +461,7 @@ TEST(FutureTest, thenError) {
                    return makeFuture<int>(-1);
                  });
     EXPECT_NO_FLAG();
-    ASSERT_TRUE(42 == f.get());
+    ASSERT_TRUE(42 == f.waitAndGet());
   }
 
   // Catch different exception
@@ -471,7 +471,7 @@ TEST(FutureTest, thenError) {
                  .thenError<std::runtime_error&>(
                      [&](std::runtime_error& /* e */) noexcept { flag(); });
     EXPECT_NO_FLAG();
-    EXPECT_THROW(f.get(), eggs_t);
+    EXPECT_THROW(f.waitAndGet(), eggs_t);
   }
 
   {
@@ -483,7 +483,7 @@ TEST(FutureTest, thenError) {
               return makeFuture();
             });
     EXPECT_NO_FLAG();
-    EXPECT_THROW(f.get(), eggs_t);
+    EXPECT_THROW(f.waitAndGet(), eggs_t);
   }
 
   // Returned value propagates
@@ -492,7 +492,7 @@ TEST(FutureTest, thenError) {
         makeFuture()
             .thenValue([](Unit) -> int { throw eggs; })
             .thenError<eggs_t&>([&](eggs_t& /* e */) noexcept { return 42; });
-    ASSERT_TRUE(42 == f.get());
+    ASSERT_TRUE(42 == f.waitAndGet());
   }
 
   // Returned future propagates
@@ -501,7 +501,7 @@ TEST(FutureTest, thenError) {
                  .thenValue([](Unit) -> int { throw eggs; })
                  .thenError<eggs_t&>(
                      [&](eggs_t& /* e */) { return makeFuture<int>(42); });
-    ASSERT_TRUE(42 == f.get());
+    ASSERT_TRUE(42 == f.waitAndGet());
   }
 
   // Throw in callback
@@ -509,7 +509,7 @@ TEST(FutureTest, thenError) {
     auto f = makeFuture()
                  .thenValue([](Unit) -> int { throw eggs; })
                  .thenError<eggs_t&>([&](eggs_t& e) -> int { throw e; });
-    EXPECT_THROW(f.get(), eggs_t);
+    EXPECT_THROW(f.waitAndGet(), eggs_t);
   }
 
   {
@@ -517,7 +517,7 @@ TEST(FutureTest, thenError) {
         makeFuture()
             .thenValue([](Unit) -> int { throw eggs; })
             .thenError<eggs_t&>([&](eggs_t& e) -> Future<int> { throw e; });
-    EXPECT_THROW(f.get(), eggs_t);
+    EXPECT_THROW(f.waitAndGet(), eggs_t);
   }
 
 //    // exception_wrapper, return Future<T>
@@ -610,24 +610,24 @@ TEST(FutureTest, then) {
           .thenValue([](const std::string& s) { return makeFuture(s + ";9"); })
           .thenValue([](std::string s) { return makeFuture(s + ";10"); })
           .thenValue([](const std::string s) { return makeFuture(s + ";11"); });
-  std::string value = f.get();
+  std::string value = f.waitAndGet();
   ASSERT_TRUE(value == "1;2;3;4;5;6;7;8;9;10;11");
 }
 
 TEST(FutureTest, then_static_functions) {
   auto f = makeFuture<int>(10).thenValue(onThenHelperAddFive);
-  ASSERT_TRUE(f.get() == 15);
+  ASSERT_TRUE(f.waitAndGet() == 15);
 
   auto f2 = makeFuture<int>(15).thenValue(onThenHelperAddFutureFive);
-  ASSERT_TRUE(f2.get() == 20);
+  ASSERT_TRUE(f2.waitAndGet() == 20);
 }
 
 TEST(FutureTest, get) {
   auto f = makeFuture(std::make_unique<int>(42));
-  auto up = std::move(f).get();
+  auto up = std::move(f).waitAndGet();
   ASSERT_TRUE(42 == *up);
 
-  EXPECT_THROW(makeFuture<int>(eggs).get(), eggs_t);
+  EXPECT_THROW(makeFuture<int>(eggs).waitAndGet(), eggs_t);
 }
 
 TEST(FutureTest, isReady) {
@@ -645,39 +645,39 @@ TEST(FutureTest, futureNotReady) {
 }
 
 TEST(FutureTest, makeFuture) {
-  ASSERT_TRUE(makeFuture<int>(eggs).getTry().hasException());
-  ASSERT_FALSE(makeFuture(42).getTry().hasException());
+  ASSERT_TRUE(makeFuture<int>(eggs).waitAndGetTry().hasException());
+  ASSERT_FALSE(makeFuture(42).waitAndGetTry().hasException());
 }
 
 TEST(FutureTest, hasValue) {
-  ASSERT_TRUE(makeFuture(42).getTry().hasValue());
-  ASSERT_FALSE(makeFuture<int>(eggs).getTry().hasValue());
+  ASSERT_TRUE(makeFuture(42).waitAndGetTry().hasValue());
+  ASSERT_FALSE(makeFuture<int>(eggs).waitAndGetTry().hasValue());
 }
 
 TEST(FutureTest, makeFuture2) {
   // EXPECT_TYPE(makeFuture(42), Future<int>);
-  ASSERT_TRUE(42 == makeFuture(42).get());
+  ASSERT_TRUE(42 == makeFuture(42).waitAndGet());
 
   // EXPECT_TYPE(makeFuture<float>(42), Future<float>);
-  ASSERT_TRUE(42 == makeFuture<float>(42).get());
+  ASSERT_TRUE(42 == makeFuture<float>(42).waitAndGet());
 
   auto fun = [] { return 42; };
   // EXPECT_TYPE(makeFutureWith(fun), Future<int>);
-  ASSERT_TRUE(42 == makeFutureWith(fun).get());
+  ASSERT_TRUE(42 == makeFutureWith(fun).waitAndGet());
 
   auto funf = [] { return makeFuture<int>(43); };
   // EXPECT_TYPE(makeFutureWith(funf), Future<int>);
-  ASSERT_TRUE(43 == makeFutureWith(funf).get());
+  ASSERT_TRUE(43 == makeFutureWith(funf).waitAndGet());
 
   auto failfun = []() -> int { throw eggs; };
   // EXPECT_TYPE(makeFutureWith(failfun), Future<int>);
   EXPECT_NO_THROW(std::ignore = makeFutureWith(failfun));
-  EXPECT_THROW(makeFutureWith(failfun).get(), eggs_t);
+  EXPECT_THROW(makeFutureWith(failfun).waitAndGet(), eggs_t);
 
   auto failfunf = []() -> Future<int> { throw eggs; };
   // EXPECT_TYPE(makeFutureWith(failfunf), Future<int>);
   EXPECT_NO_THROW(std::ignore = makeFutureWith(failfunf));
-  EXPECT_THROW(makeFutureWith(failfunf).get(), eggs_t);
+  EXPECT_THROW(makeFutureWith(failfunf).waitAndGet(), eggs_t);
 
   // EXPECT_TYPE(makeFuture(), Future<Unit>);
 }
@@ -759,14 +759,14 @@ TEST(FutureTest, CircularDependencySharedPtrSelfReset) {
 
 TEST(FutureTest, Constructor) {
   auto f1 = []() -> Future<int> { return Future<int>(3); }();
-  ASSERT_TRUE(f1.get() == 3);
+  ASSERT_TRUE(f1.waitAndGet() == 3);
   auto f2 = []() -> Future<Unit> { return Future<Unit>(); }();
-  EXPECT_NO_THROW(f2.getTry());
+  EXPECT_NO_THROW(f2.waitAndGetTry());
 }
 
 TEST(FutureTest, ImplicitConstructor) {
   auto f1 = []() -> Future<int> { return 3; }();
-  ASSERT_TRUE(f1.get() == 3);
+  ASSERT_TRUE(f1.waitAndGet() == 3);
   // Unfortunately, the C++ standard does not allow the
   // following implicit conversion to work:
   // auto f2 = []() -> Future<Unit> { }();
@@ -774,10 +774,10 @@ TEST(FutureTest, ImplicitConstructor) {
 
 TEST(FutureTest, InPlaceConstructor) {
   auto f = Future<std::pair<int, double>>(std::in_place, 5, 3.2);
-  ASSERT_TRUE(5 == f.get().first);
+  ASSERT_TRUE(5 == f.waitAndGet().first);
 }
 
-TEST(FutureTest, makeFutureNoThrow) { makeFuture().get(); }
+TEST(FutureTest, makeFutureNoThrow) { makeFuture().waitAndGet(); }
 
 TEST(FutureTest, invokeCallbackReturningValueAsRvalue) {
   struct Foo {
@@ -792,9 +792,9 @@ TEST(FutureTest, invokeCallbackReturningValueAsRvalue) {
   // The continuation will be forward-constructed - copied if given as & and
   // moved if given as && - everywhere construction is required.
   // The continuation will be invoked with the same cvref as it is passed.
-  ASSERT_TRUE(101 == makeFuture<int>(100).thenValue(foo).get());
-  ASSERT_TRUE(202 == makeFuture<int>(200).thenValue(cfoo).get());
-  ASSERT_TRUE(303 == makeFuture<int>(300).thenValue(Foo()).get());
+  ASSERT_TRUE(101 == makeFuture<int>(100).thenValue(foo).waitAndGet());
+  ASSERT_TRUE(202 == makeFuture<int>(200).thenValue(cfoo).waitAndGet());
+  ASSERT_TRUE(303 == makeFuture<int>(300).thenValue(Foo()).waitAndGet());
 }
 
 TEST(FutureTest, invokeCallbackReturningFutureAsRvalue) {
@@ -810,9 +810,9 @@ TEST(FutureTest, invokeCallbackReturningFutureAsRvalue) {
   // The continuation will be forward-constructed - copied if given as & and
   // moved if given as && - everywhere construction is required.
   // The continuation will be invoked with the same cvref as it is passed.
-  ASSERT_TRUE(101 == makeFuture<int>(100).thenValue(foo).get());
-  ASSERT_TRUE(202 == makeFuture<int>(200).thenValue(cfoo).get());
-  ASSERT_TRUE(303 == makeFuture<int>(300).thenValue(Foo()).get());
+  ASSERT_TRUE(101 == makeFuture<int>(100).thenValue(foo).waitAndGet());
+  ASSERT_TRUE(202 == makeFuture<int>(200).thenValue(cfoo).waitAndGet());
+  ASSERT_TRUE(303 == makeFuture<int>(300).thenValue(Foo()).waitAndGet());
 }
 
 TEST(FutureTest, basic_example) {
@@ -820,7 +820,7 @@ TEST(FutureTest, basic_example) {
   Future<int> f = p.getFuture();
   auto f2 = std::move(f).thenValue(onThenHelperAddOne);
   p.setValue(42);
-  ASSERT_TRUE(f2.get() == 43);
+  ASSERT_TRUE(f2.waitAndGet() == 43);
 }
 
 TEST(FutureTest, basic_example_fpointer) {
@@ -828,5 +828,5 @@ TEST(FutureTest, basic_example_fpointer) {
   Future<int> f = p.getFuture();
   auto f2 = std::move(f).thenValue(&onThenHelperAddOne);
   p.setValue(42);
-  ASSERT_TRUE(f2.get() == 43);
+  ASSERT_TRUE(f2.waitAndGet() == 43);
 }

@@ -30,8 +30,7 @@
 #include <velocypack/Buffer.h>
 #include <velocypack/Slice.h>
 
-namespace arangodb {
-namespace network {
+namespace arangodb::network {
 
 /// @brief Create Cluster Communication result for insert
 OperationResult clusterResultInsert(
@@ -51,5 +50,4 @@ OperationResult clusterResultRemove(
     std::shared_ptr<VPackBuffer<uint8_t>> body, OperationOptions options,
     std::unordered_map<ErrorCode, size_t> errorCounter);
 
-}  // namespace network
-}  // namespace arangodb
+}  // namespace arangodb::network
