@@ -267,11 +267,12 @@ RocksDBDumpContext::RocksDBDumpContext(RocksDBEngine& engine,
             // only dealing with a single shard:
             std::uint64_t batchSize = (max - min) / _options.parallelism + 1;
             std::uint64_t pos = min;
-            LOG_DEVEL << "Hacking range " << min << " .. " << max
-                      << " to pieces...";
+            LOG_TOPIC("22222", INFO, Logger::DUMP)
+                << "Hacking range " << min << " .. " << max << " to pieces...";
             while (pos < max) {
-              LOG_DEVEL << "Piece: " << pos << " .. "
-                        << std::min(pos + batchSize, max);
+              LOG_TOPIC("33333", INFO, Logger::DUMP)
+                  << "Piece: " << pos << " .. "
+                  << std::min(pos + batchSize, max);
               _workItems.push({ci, pos, std::min(pos + batchSize, max)});
               pos += batchSize;
             }

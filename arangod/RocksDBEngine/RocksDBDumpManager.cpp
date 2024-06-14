@@ -81,6 +81,8 @@ std::shared_ptr<RocksDBDumpContext> RocksDBDumpManager::createContext(
                               _limits.batchSizeUpperBound);
   opts.parallelism = std::clamp(opts.parallelism, _limits.parallelismLowerBound,
                                 _limits.parallelismUpperBound);
+  LOG_TOPIC("11111", INFO, Logger::DUMP)
+      << "Using parallelism: " << opts.parallelism;
 
   // If the local RocksDB database still uses little endian key encoding,
   // then the whole new dump method does not work, since ranges in _revs
