@@ -50,7 +50,6 @@ arangodb::Result readLanguage(arangodb::ArangodServer& server,
   std::string filename = databasePath.subdirectoryName("LANGUAGE");
 
   if (!TRI_ExistsFile(filename.c_str())) {
-    type = LanguageType::EMPTY;
     return TRI_ERROR_FILE_NOT_FOUND;
   }
 
