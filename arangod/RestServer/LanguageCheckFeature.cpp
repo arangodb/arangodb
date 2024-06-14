@@ -155,7 +155,7 @@ ErrorCode writeLanguage(arangodb::ArangodServer& server, std::string_view lang,
 std::tuple<std::string, LanguageType> getPreviousLanguage(
     arangodb::ArangodServer& server) {
   std::string prevLanguage;
-  LanguageType prevType;
+  LanguageType prevType = LanguageType::EMPTY;
   [[maybe_unused]] auto res = ::readLanguage(server, prevLanguage, prevType);
 
   return {prevLanguage, prevType};
