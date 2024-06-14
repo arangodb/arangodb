@@ -94,6 +94,8 @@ class ArangoshExecutor(ArangoCLIprogressiveTimeoutExecutor):
                 # ATM CircleCI does not support to attach debuggers, so we generate core dumps instead
                 "--coreAbort",
                 "true",
+                "--build",
+                self.cfg.build_dir,
             ]
             + self.get_memory_limit_arg()
             + testing_args
