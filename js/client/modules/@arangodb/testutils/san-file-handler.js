@@ -95,6 +95,7 @@ class sanHandler {
       path.push(crypto.md5(String(internal.time() + Math.random())));
       subProcesEnv.push(`${coverage_name}=${fs.pathSeparator + fs.join(...path)}`);
     }
+    print(subProcesEnv)
     return subProcesEnv;
   }
 
@@ -193,6 +194,7 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
     }
     if (options.isCov && process.env.hasOwnProperty(coverage_name)) {
       options.covOptions[coverage_name] = process.env[coverage_name];
+      delete process.env[coverage_name];
     }
   });
 };
