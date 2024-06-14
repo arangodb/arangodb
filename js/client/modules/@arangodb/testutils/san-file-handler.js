@@ -27,8 +27,10 @@
 
 const _ = require('lodash');
 const fs = require('fs');
-const crashUtils = require('@arangodb/testutils/crash-utils');
 const crypto = require('@arangodb/crypto');
+const crashUtils = require('@arangodb/testutils/crash-utils');
+const tu = require('@arangodb/testutils/test-utils');
+const {versionHas} = require("@arangodb/test-helper");
 
 var regex = /[^\u0000-\u00ff]/; // Small performance gain from pre-compiling the regex
 function containsDoubleByte(str) {
@@ -41,11 +43,13 @@ let foundReportFiles = new Set();
 const coverage_name = 'LLVM_PROFILE_FILE';
 
 class sanHandler {
-  constructor(binaryName, sanOptions, isSan, extremeVerbosity) {
+  constructor(binaryName, options) {
     this.binaryName = binaryName;
-    this.sanOptions = _.cloneDeep(sanOptions);
-    this.enabled = isSan;
-    this.extremeVerbosity = extremeVerbosity;
+    this.sanOptions = _.cloneDeep(options.sanOptions);
+    this.covOptions = _.cloneDeep(options.covOptions);
+    this.isCov = options.isCov;
+    this.enabled = options.isSan;
+    this.extremeVerbosity = options.extremeVerbosity;
     this.sanitizerLogPaths = {};
     this.backup = {};
   }
@@ -82,14 +86,15 @@ class sanHandler {
       }
     }
 
-    if (process.env.hasOwnProperty(coverage_name)) {
-      let path = process.env[coverage_name].split(fs.pathSeparator);
+    if (this.isCov) {
+      let path = this.covOptions[coverage_name].split(fs.pathSeparator);
       if (path[path.length - 1] === "testingjs") {
         path.pop();
       }
       path.push(crypto.md5(String(internal.time() + Math.random())));
-      subProcesEnv.push(`${coverage_name}=${fs.pathSeparator}${fs.join(...path)}`);
+      subProcesEnv.push(`${coverage_name}=${fs.pathSeparator + fs.join(...path)}`);
     }
+    print(subProcesEnv)
     return subProcesEnv;
   }
 
@@ -131,3 +136,64 @@ class sanHandler {
 
 exports.sanHandler = sanHandler;
 exports.getNumSanitizerReports = () => foundReportFiles.size;
+exports.registerOptions = function(optionsDefaults, optionsDocumentation, optionHandlers) {
+  const isCoverage = versionHas('coverage');
+  const isSan = versionHas('asan') || versionHas('tsan');
+  const isInstrumented = versionHas('asan') || versionHas('tsan') || versionHas('coverage');
+  tu.CopyIntoObject(optionsDefaults, {
+    'isCov': isCoverage,
+    'covOptions': {},
+    'sanitizer': isSan,
+    'isSan': isSan,
+    'sanOptions': {},
+    'isInstrumented': isInstrumented,
+    'oneTestTimeout': (isInstrumented? 25 : 15) * 60,
+  });
+
+  tu.CopyIntoList(optionsDocumentation, [
+    'SUT instrumented binaries',
+    '   - `sanitizer`: if set the programs are run with enabled sanitizer',
+    '   - `isSan`: doubles oneTestTimeot value if set to true (for ASAN-related builds)',
+    '     and need longer timeouts',
+    '   - `isCov`: doubles oneTestTimeot value if set to true',
+  ]);
+  optionHandlers.push(function(options) {
+    // fiddle in suppressions for sanitizers if not already set from an
+    // outside script. this can populate the environment variables
+    // - ASAN_OPTIONS
+    // - UBSAN_OPTIONS
+    // - LSAN_OPTIONS
+    // - TSAN_OPTIONS
+    // note: this code repeats existing logic that can be found in
+    // scripts/unittest as well. according to @dothebart it must be
+    // present in both code locations.
+    if (options.isSan) {
+      ['asan', 'lsan', 'ubsan', 'tsan'].forEach(san => {
+         let fileName = san + "_arangodb_suppressions.txt";
+         let fullNameSup = `suppressions=${fs.join(fs.makeAbsolute(''), fileName)}`
+         let sanOpt = `${san.upperCase()}_OPTIONS`;
+         if (process.env.hasOwnProperty(sanOpt)) {
+           options.sanOptions[sanOpt] = {};
+           let opt = process.env[sanOpt];
+           delete process.env[sanOpt];
+           opt.split(':').forEach(oneOpt => {
+             let pair = oneOpt.split('=');
+             if (pair.length === 2) {
+               options.sanOptions[sanOpt][pair[0]] = pair[1];
+             }
+           });
+         }
+         else {
+           options.sanOptions[sanOpt] = {};
+         }
+         if (fs.exists(fileName)) {
+           options.sanOptions[sanOpt] = fullNameSup;
+         }
+       });
+    }
+    if (options.isCov && process.env.hasOwnProperty(coverage_name)) {
+      options.covOptions[coverage_name] = process.env[coverage_name];
+      delete process.env[coverage_name];
+    }
+  });
+};

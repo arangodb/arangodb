@@ -188,7 +188,7 @@ class instance {
     }
     this.JWT = null;
     this.jwtFiles = null;
-    this.sanHandler = new sanHandler('arangod', this.options.sanOptions, this.options.isSan, this.options.extremeVerbosity);
+    this.sanHandler = new sanHandler('arangod', this.options);
 
     this._makeArgsArangod();
 
@@ -666,7 +666,7 @@ class instance {
       subEnv.push(`ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY=${this.useableMemory}`);
     }
     subEnv.push(`ARANGODB_SERVER_DIR=${this.rootDir}`);
-    let ret = executeExternal(cmd, argv, false, 0, subEnv);
+    let ret = executeExternal(cmd, argv, false, subEnv);
     return ret;
   }
   // //////////////////////////////////////////////////////////////////////////////

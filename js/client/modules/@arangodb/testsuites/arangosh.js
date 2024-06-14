@@ -112,7 +112,7 @@ function arangosh (options) {
     }
 
     const startTime = time();
-    let sh = new sanHandler(pu.ARANGOSH_BIN, options.sanOptions, options.isSan, options.extremeVerbosity);
+    let sh = new sanHandler(pu.ARANGOSH_BIN, options);
     sh.detectLogfiles(tmpMgr.tempDir, tmpMgr.tempDir);
     let rc = executeExternalAndWait(pu.ARANGOSH_BIN, toArgv(args), false, 0, sh.getSanOptions());
     sh.fetchSanFileAfterExit(rc.pid);
@@ -269,7 +269,7 @@ function arangosh (options) {
 
   const startTime = time();
   let tmpMgr = new tmpDirMmgr('arangosh_tests_pipe', options);
-  let sh = new sanHandler(pu.ARANGOSH_BIN, options.sanOptions, options.isSan, options.extremeVerbosity);
+  let sh = new sanHandler(pu.ARANGOSH_BIN, options);
   sh.detectLogfiles(tmpMgr.tempDir, tmpMgr.tempDir);
   let res = executeExternal(pu.ARANGOSH_BIN, toArgv(args), true, 0, sh.getSanOptions());
   const deltaTime = time() - startTime;
@@ -322,7 +322,7 @@ function arangosh (options) {
     fs.write(execFile,
       'echo "db._databases();" | ' + fs.makeAbsolute(pu.ARANGOSH_BIN) + ' --server.endpoint tcp://127.0.0.1:0');
 
-    let sh = new sanHandler(pu.ARANGOSH_BIN, options.sanOptions, options.isSan, options.extremeVerbosity);
+    let sh = new sanHandler(pu.ARANGOSH_BIN, options);
     sh.detectLogfiles(tmpMgr.tempDir, tmpMgr.tempDir);
     executeExternalAndWait('sh', ['-c', 'chmod a+x ' + execFile]);
 
