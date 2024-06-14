@@ -24,6 +24,7 @@
 #include "RocksDBDumpContext.h"
 
 #include "Basics/Exceptions.h"
+#include "Basics/files.h"
 #include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
@@ -226,6 +227,8 @@ RocksDBDumpContext::RocksDBDumpContext(RocksDBEngine& engine,
       std::make_shared<rocksdb::ManagedSnapshot>(_engine.db()->GetRootDB());
   TRI_ASSERT(_snapshot->snapshot() != nullptr);
 
+  auto do_hack = TRI_ExistsFile("/tmp/hack");
+
   // build CollectionInfo objects for each collection/shard.
   // the guard objects inside will protect the collection/shard objects from
   // being deleted while the context is in use. that we we only have to ensure
@@ -256,7 +259,23 @@ RocksDBDumpContext::RocksDBDumpContext(RocksDBEngine& engine,
           max = RocksDBKey::documentId(rocksIt->key()).id() + 1;
 
           TRI_ASSERT(min < max);
-          _workItems.push({std::move(ci), min, max});
+          if (max - min < 1'000'000 || !do_hack) {
+            _workItems.push({std::move(ci), min, max});
+          } else {
+            // We have enough potential items in there, let's hack it
+            // into pieces, so that we can parallelize, even if we are
+            // only dealing with a single shard:
+            std::uint64_t batchSize = (max - min) / _options.parallelism + 1;
+            std::uint64_t pos = min;
+            LOG_DEVEL << "Hacking range " << min << " .. " << max
+                      << " to pieces...";
+            while (pos < max) {
+              LOG_DEVEL << "Piece: " << pos << " .. "
+                        << std::min(pos + batchSize, max);
+              _workItems.push({ci, pos, std::min(pos + batchSize, max)});
+              pos += batchSize;
+            }
+          }
         }
       }
     }
