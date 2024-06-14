@@ -612,9 +612,13 @@ void ClusterFeature::prepare() {
     FATAL_ERROR_EXIT();
   }
 
-  TRI_ASSERT(_agencyCache == nullptr);
-  TRI_ASSERT(_clusterInfo == nullptr);
-  allocateMembers();
+  // in the unit tests we have situations where prepare is called on an already
+  // prepared feature
+  if (_agencyCache == nullptr || _clusterInfo == nullptr) {
+    TRI_ASSERT(_agencyCache == nullptr);
+    TRI_ASSERT(_clusterInfo == nullptr);
+    allocateMembers();
+  }
 
   if (ServerState::instance()->isAgent() || _enableCluster) {
     AuthenticationFeature* af = AuthenticationFeature::instance();
