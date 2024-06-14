@@ -28,6 +28,7 @@
 const _ = require('lodash');
 const fs = require('fs');
 const crashUtils = require('@arangodb/testutils/crash-utils');
+const crypto = require('@arangodb/crypto');
 
 var regex = /[^\u0000-\u00ff]/; // Small performance gain from pre-compiling the regex
 function containsDoubleByte(str) {
@@ -37,6 +38,7 @@ function containsDoubleByte(str) {
 }
 
 let foundReportFiles = new Set();
+const coverage_name = 'LLVM_PROFILE_FILE';
 
 class sanHandler {
   constructor(binaryName, sanOptions, isSan, extremeVerbosity) {
@@ -64,7 +66,8 @@ class sanHandler {
       }
     }
   }
-  setSanOptions() {
+  getSanOptions() {
+    let subProcesEnv = [];
     if (this.enabled) {
       for (const [key, value] of Object.entries(this.sanOptions)) {
         let oneSet = "";
@@ -75,17 +78,19 @@ class sanHandler {
           let val = valueOne.replace(/,/g, '_');
           oneSet += `${keyOne}=${val}`;
         }
-        this.backup[key] = process.env[key];
-        process.env[key] = oneSet;
+        subProcesEnv.push(`${key}=${oneSet}`);
       }
     }
-  }
-  resetSanOptions() {
-    if (this.enabled) {
-      for (const [key, value] of Object.entries(this.backup)) {
-        process.env[key] = value;
+
+    if (process.env.hasOwnProperty(coverage_name)) {
+      let path = process.env[coverage_name].split(fs.pathSeparator);
+      if (path[path.length - 1] === "testingjs") {
+        path.pop();
       }
+      path.push(crypto.md5(String(internal.time() + Math.random())));
+      subProcesEnv.push(`${coverage_name}=${fs.pathSeparator}${fs.join(...path)}`);
     }
+    return subProcesEnv;
   }
 
   fetchSanFileAfterExit(pid) {
