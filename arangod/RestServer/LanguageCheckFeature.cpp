@@ -156,7 +156,7 @@ std::tuple<std::string, LanguageType> getPreviousLanguage(
     arangodb::ArangodServer& server) {
   std::string prevLanguage;
   LanguageType prevType;
-  arangodb::Result res = ::readLanguage(server, prevLanguage, prevType);
+  [[maybe_unused]] auto res = ::readLanguage(server, prevLanguage, prevType);
 
   return {prevLanguage, prevType};
 }
@@ -181,7 +181,7 @@ void LanguageCheckFeature::start() {
 
   if (LanguageType::INVALID == currLangType) {
     LOG_TOPIC("7ef61", FATAL, arangodb::Logger::CONFIG)
-        << "Specified language '" << currLang << " has invalid type";
+        << "Specified language '" << currLang << "' has invalid type";
     FATAL_ERROR_EXIT();
   }
   auto collatorLang = feature.getCollatorLanguage();
