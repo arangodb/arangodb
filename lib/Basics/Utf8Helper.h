@@ -37,7 +37,7 @@
 
 namespace arangodb::basics {
 
-enum class LanguageType { INVALID, DEFAULT, ICU };
+enum class LanguageType { INVALID, DEFAULT, ICU, EMPTY };
 
 class Utf8Helper {
   Utf8Helper(Utf8Helper const&) = delete;
@@ -191,6 +191,7 @@ class Utf8Helper {
 
  private:
   std::unique_ptr<icu_64_64::Collator> _coll;
+  LanguageType _type;
 };
 
 }  // namespace arangodb::basics
