@@ -44,7 +44,7 @@ class RegexMatcher;
 namespace arangodb {
 namespace basics {
 
-enum class LanguageType { INVALID, DEFAULT, ICU };
+enum class LanguageType { INVALID, DEFAULT, ICU, EMPTY };
 
 class Utf8Helper {
   Utf8Helper(Utf8Helper const&) = delete;
@@ -200,6 +200,7 @@ class Utf8Helper {
 
  private:
   icu::Collator* _coll;
+  LanguageType _type;
 };
 }  // namespace basics
 }  // namespace arangodb
