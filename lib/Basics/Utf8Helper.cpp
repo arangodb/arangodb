@@ -136,7 +136,8 @@ bool Utf8Helper::setCollatorLanguage(std::string_view lang,
           << "error in Collator::getLocale(...): " << u_errorName(status);
       return false;
     }
-    if (lang == locale.getName()) {
+    if (lang == locale.getName() && _type == langType) {
+      // The collator with the same language and type is already created.
       return true;
     }
   }
@@ -188,6 +189,7 @@ bool Utf8Helper::setCollatorLanguage(std::string_view lang,
   }
 
   _coll = coll;
+  _type = langType;
   return true;
 }
 
