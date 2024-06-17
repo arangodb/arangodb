@@ -124,7 +124,7 @@ void ReplicatedRocksDBTransactionCollection::beginQuery(
     bool isModificationQuery) {
   auto* trxMethods = dynamic_cast<RocksDBTrxMethods*>(_rocksMethods.get());
   if (trxMethods) {
-    trxMethods->beginQuery(resourceMonitor, isModificationQuery);
+    trxMethods->beginQuery(std::move(resourceMonitor), isModificationQuery);
   }
 }
 
