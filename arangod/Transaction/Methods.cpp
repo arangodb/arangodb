@@ -635,7 +635,6 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
                           TRI_voc_document_operation_e operationType)
       : GenericProcessor<Derived>(methods, trxColl, collection, value, options),
         _indexesSnapshot(collection.getPhysical()->getIndexesSnapshot()),
-        _context(methods.transactionContext()),
         _replicationData(&methods),
         _operationType(operationType),
         _needToFetchOldDocument(
@@ -838,9 +837,6 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
   // potential rollback of the modification.
   IndexesSnapshot _indexesSnapshot;
 
-  // this shared_ptr is kept to keep context alive until the BuilderLeaser is
-  // destroyed
-  std::shared_ptr<transaction::Context> _context;
   // all document data that are going to be replicated, append-only
   transaction::BuilderLeaser _replicationData;
   Methods::ReplicationType _replicationType = Methods::ReplicationType::NONE;
@@ -2261,12 +2257,20 @@ Future<OperationResult> transaction::Methods::documentCoordinator(
 Future<OperationResult> transaction::Methods::documentLocal(
     std::string const& collectionName, VPackSlice value,
     OperationOptions options) {
-  auto res = co_await GetDocumentProcessor::create(*this, collectionName, value,
-                                                   options);
-  if (res.fail()) {
-    co_return OperationResult(std::move(res).result(), options);
+  auto fut = Future<OperationResult>::makeEmpty();
+  // Destroy the GetDocumentProcessor before awaiting the future, so the
+  // BuilderLeasers return their builders before the Context might be
+  // gone.
+  {
+    auto getDocumentProcessorRes = co_await GetDocumentProcessor::create(
+        *this, collectionName, value, options);
+    if (getDocumentProcessorRes.fail()) {
+      co_return OperationResult(std::move(getDocumentProcessorRes).result(),
+                                options);
+    }
+    fut = getDocumentProcessorRes.get().execute();
   }
-  co_return co_await res.get().execute();
+  co_return co_await std::move(fut);
 }
 
 OperationResult Methods::insert(std::string const& collectionName,
@@ -2554,17 +2558,19 @@ Result transaction::Methods::determineReplication2TypeAndFollowers(
 Future<OperationResult> transaction::Methods::insertLocal(
     std::string const& collectionName, VPackSlice value,
     OperationOptions options) {
-  auto res =
-      co_await InsertProcessor::create(*this, collectionName, value, options);
-  if (res.fail()) {
-    co_return OperationResult(std::move(res).result(), options);
-  }
-  auto fut = res.get().execute();
+  auto fut = Future<OperationResult>::makeEmpty();
+
+  // Destroy the InsertProcessor before awaiting the future, so the
+  // BuilderLeasers return their builders before the Context might be
+  // gone.
   {
-    // Destroy the InsertProcessor before awaiting the future, so the
-    // BuilderLeasers return their builders now, before the Context might be
-    // gone.
-    [[maybe_unused]] auto destroyMe = std::move(res);
+    auto insertProcessorRes =
+        co_await InsertProcessor::create(*this, collectionName, value, options);
+    if (insertProcessorRes.fail()) {
+      co_return OperationResult(std::move(insertProcessorRes).result(),
+                                std::move(options));
+    }
+    fut = insertProcessorRes.get().execute();
   }
   co_return co_await std::move(fut);
 }
@@ -2638,12 +2644,20 @@ Future<OperationResult> transaction::Methods::replaceAsync(
 Future<OperationResult> transaction::Methods::modifyLocal(
     std::string const& collectionName, VPackSlice newValue,
     OperationOptions options, bool isUpdate) {
-  auto res = co_await ModifyProcessor::create(*this, collectionName, newValue,
-                                              options, isUpdate);
-  if (res.fail()) {
-    co_return OperationResult(std::move(res).result(), options);
+  auto fut = Future<OperationResult>::makeEmpty();
+  // Destroy the ModifyProcessor before awaiting the future, so the
+  // BuilderLeasers return their builders before the Context might be
+  // gone.
+  {
+    auto modifyProcessorRes = co_await ModifyProcessor::create(
+        *this, collectionName, newValue, options, isUpdate);
+    if (modifyProcessorRes.fail()) {
+      co_return OperationResult(std::move(modifyProcessorRes).result(),
+                                std::move(options));
+    }
+    fut = modifyProcessorRes.get().execute();
   }
-  co_return co_await res.get().execute();
+  co_return co_await std::move(fut);
 }
 
 OperationResult Methods::remove(std::string const& collectionName,
@@ -2686,12 +2700,20 @@ Future<OperationResult> transaction::Methods::removeCoordinator(
 Future<OperationResult> transaction::Methods::removeLocal(
     std::string const& collectionName, VPackSlice value,
     OperationOptions options) {
-  auto res =
-      co_await RemoveProcessor::create(*this, collectionName, value, options);
-  if (res.fail()) {
-    co_return OperationResult(std::move(res).result(), options);
+  auto fut = Future<OperationResult>::makeEmpty();
+  // Destroy the RemoveProcessor before awaiting the future, so the
+  // BuilderLeasers return their builders before the Context might be
+  // gone.
+  {
+    auto removeProcessorRes =
+        co_await RemoveProcessor::create(*this, collectionName, value, options);
+    if (removeProcessorRes.fail()) {
+      co_return OperationResult(std::move(removeProcessorRes).result(),
+                                options);
+    }
+    fut = removeProcessorRes.get().execute();
   }
-  co_return co_await res.get().execute();
+  co_return co_await std::move(fut);
 }
 
 /// @brief fetches all documents in a collection
