@@ -107,8 +107,11 @@ void AqlItemBlockManager::returnBlock(AqlItemBlock*& block) noexcept {
   TRI_ASSERT(block != nullptr);
   TRI_ASSERT(block->getRefCount() == 0);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  TRI_ASSERT(_leasedBlocks > 0);
-  --_leasedBlocks;
+  auto leasedBlocks = _leasedBlocks.load();
+  do {
+    TRI_ASSERT(leasedBlocks > 0);
+  } while (
+      !_leasedBlocks.compare_exchange_weak(leasedBlocks, leasedBlocks - 1));
 #endif
 
   size_t const targetSize = block->capacity();
