@@ -39,7 +39,7 @@ const executeScript = internal.executeScript;
 const statusExternal = internal.statusExternal;
 const executeExternal = internal.executeExternal;
 const executeExternalAndWait = internal.executeExternalAndWait;
-const tmpDirMmgr = require('@arangodb/testutils/tmpDirManager').tmpDirManager;
+const tmpDirMngr = require('@arangodb/testutils/tmpDirManager').tmpDirManager;
 const {sanHandler} = require('@arangodb/testutils/san-file-handler');
 
 const platform = internal.platform;
@@ -99,7 +99,7 @@ function arangosh (options) {
     print('--------------------------------------------------------------------------------');
 
     let weirdNames = ['some dog', 'ла́ять', '犬', 'Kläffer'];
-    let tmpMgr = new tmpDirMmgr(fs.join('arangosh_tests', ...weirdNames), options);
+    let tmpMgr = new tmpDirMngr(fs.join('arangosh_tests_weird_names'), options);
 
     ////////////////////////////////////////////////////////////////////////////////
     // run command from a .js file
@@ -268,7 +268,7 @@ function arangosh (options) {
   args['javascript.execute-string'] = "print(require('internal').pollStdin())";
 
   const startTime = time();
-  let tmpMgr = new tmpDirMmgr('arangosh_tests_pipe', options);
+  let tmpMgr = new tmpDirMngr('arangosh_tests_pipe', options);
   let sh = new sanHandler(pu.ARANGOSH_BIN, options);
   sh.detectLogfiles(tmpMgr.tempDir, tmpMgr.tempDir);
   let res = executeExternal(pu.ARANGOSH_BIN, toArgv(args), true, 0, sh.getSanOptions());
@@ -310,7 +310,7 @@ function arangosh (options) {
   print((failSuccess ? GREEN : RED) + 'Status: ' + (failSuccess ? 'SUCCESS' : 'FAIL') + RESET);
 
   {
-    let tmpMgr = new tmpDirMmgr('arangosh_tests_echo', options);
+    let tmpMgr = new tmpDirMngr('arangosh_tests_echo', options);
     var echoSuccess = true;
     var deltaTime2 = 0;
     var execFile = fs.getTempFile();
@@ -353,7 +353,7 @@ function arangosh (options) {
 
   // test shebang execution with arangosh
   {
-    let tmpMgr = new tmpDirMmgr('arangosh_tests_shebang', options);
+    let tmpMgr = new tmpDirMngr('arangosh_tests_shebang', options);
     var shebangSuccess = true;
     var deltaTime3 = 0;
     var shebangFile = fs.getTempFile();
