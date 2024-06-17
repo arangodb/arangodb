@@ -353,6 +353,11 @@ bool SimpleModifier<ModifierCompletion,
                     _results);
 }
 
+template<typename ModifierCompletion, typename Enable>
+void SimpleModifier<ModifierCompletion, Enable>::clearRows() noexcept {
+  _operations.clear();
+}
+
 template class ::arangodb::aql::SimpleModifier<InsertModifierCompletion>;
 template class ::arangodb::aql::SimpleModifier<RemoveModifierCompletion>;
 template class ::arangodb::aql::SimpleModifier<UpdateReplaceModifierCompletion>;

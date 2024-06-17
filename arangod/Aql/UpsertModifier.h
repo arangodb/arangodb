@@ -116,6 +116,11 @@ class UpsertModifier {
   bool hasResultOrException() const noexcept;
   bool hasNeitherResultNorOperationPending() const noexcept;
 
+  // Destroy all InputAqlItemRows, and with it SharedAqlItemBlockPtrs, this
+  // holds. This is necessary to ensure the lifetime of the AqlItemBlocks is
+  // shorter than of the AqlItemBlockManager, to which they are returned.
+  void clearRows() noexcept;
+
  private:
   bool resultAvailable() const;
   VPackArrayIterator getUpdateResultsIterator() const;
