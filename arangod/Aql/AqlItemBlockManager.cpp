@@ -40,7 +40,7 @@ AqlItemBlockManager::AqlItemBlockManager(
 /// @brief destroy the manager
 AqlItemBlockManager::~AqlItemBlockManager() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  TRI_ASSERT(_leasedBlocks == 0);
+  TRI_ASSERT(_leasedBlocks == 0) << "leased blocks left: " << _leasedBlocks;
 #endif
 
   delete _constValueBlock;
@@ -107,6 +107,7 @@ void AqlItemBlockManager::returnBlock(AqlItemBlock*& block) noexcept {
   TRI_ASSERT(block != nullptr);
   TRI_ASSERT(block->getRefCount() == 0);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(_leasedBlocks > 0);
   --_leasedBlocks;
 #endif
 
