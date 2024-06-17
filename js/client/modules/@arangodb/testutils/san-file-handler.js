@@ -31,12 +31,13 @@ const crypto = require('@arangodb/crypto');
 const crashUtils = require('@arangodb/testutils/crash-utils');
 const tu = require('@arangodb/testutils/test-utils');
 const {versionHas} = require("@arangodb/test-helper");
+const internal = require('internal');
 
 var regex = /[^\u0000-\u00ff]/; // Small performance gain from pre-compiling the regex
 function containsDoubleByte(str) {
-    if (!str.length) return false;
-    if (str.charCodeAt(0) > 255) return true;
-    return regex.test(str);
+  if (!str.length) return false;
+  if (str.charCodeAt(0) > 255) return true;
+  return regex.test(str);
 }
 
 let foundReportFiles = new Set();
@@ -94,7 +95,6 @@ class sanHandler {
       path.push(crypto.md5(String(internal.time() + Math.random())));
       subProcesEnv.push(`${coverage_name}=${fs.pathSeparator + fs.join(...path)}`);
     }
-    print(subProcesEnv)
     return subProcesEnv;
   }
 
@@ -169,27 +169,27 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
     // present in both code locations.
     if (options.isSan) {
       ['asan', 'lsan', 'ubsan', 'tsan'].forEach(san => {
-         let fileName = san + "_arangodb_suppressions.txt";
-         let fullNameSup = `suppressions=${fs.join(fs.makeAbsolute(''), fileName)}`
-         let sanOpt = `${san.upperCase()}_OPTIONS`;
-         if (process.env.hasOwnProperty(sanOpt)) {
-           options.sanOptions[sanOpt] = {};
-           let opt = process.env[sanOpt];
-           delete process.env[sanOpt];
-           opt.split(':').forEach(oneOpt => {
-             let pair = oneOpt.split('=');
-             if (pair.length === 2) {
-               options.sanOptions[sanOpt][pair[0]] = pair[1];
-             }
-           });
-         }
-         else {
-           options.sanOptions[sanOpt] = {};
-         }
-         if (fs.exists(fileName)) {
-           options.sanOptions[sanOpt] = fullNameSup;
-         }
-       });
+        let fileName = san + "_arangodb_suppressions.txt";
+        let fullNameSup = `suppressions=${fs.join(fs.makeAbsolute(''), fileName)}`;
+        let sanOpt = `${san.upperCase()}_OPTIONS`;
+        if (process.env.hasOwnProperty(sanOpt)) {
+          options.sanOptions[sanOpt] = {};
+          let opt = process.env[sanOpt];
+          delete process.env[sanOpt];
+          opt.split(':').forEach(oneOpt => {
+            let pair = oneOpt.split('=');
+            if (pair.length === 2) {
+              options.sanOptions[sanOpt][pair[0]] = pair[1];
+            }
+          });
+        }
+        else {
+          options.sanOptions[sanOpt] = {};
+        }
+        if (fs.exists(fileName)) {
+          options.sanOptions[sanOpt] = fullNameSup;
+        }
+      });
     }
     if (options.isCov && process.env.hasOwnProperty(coverage_name)) {
       options.covOptions[coverage_name] = process.env[coverage_name];
