@@ -635,6 +635,7 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
                           TRI_voc_document_operation_e operationType)
       : GenericProcessor<Derived>(methods, trxColl, collection, value, options),
         _indexesSnapshot(collection.getPhysical()->getIndexesSnapshot()),
+        _context(methods.transactionContext()),
         _replicationData(&methods),
         _operationType(operationType),
         _needToFetchOldDocument(
@@ -777,13 +778,15 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
         // in case of an error.
 
         // Now replicate the good operations on all followers:
-        return this->_methods
-            .replicateOperations(this->_trxColl, _followers, this->_options,
-                                 *this->_replicationData, _operationType,
-                                 this->_methods.username())
-            .thenValue([options = this->_options,
-                        errs = std::move(errorCounter),
-                        resultData = std::move(resDocs)](Result&& res) mutable {
+        auto fut = this->_methods.replicateOperations(
+            this->_trxColl, _followers, this->_options, *this->_replicationData,
+            _operationType, this->_methods.username());
+        // Return the builder now, so it doesn't happen too late when the
+        // context might already be gone.
+        _replicationData.clear();
+        return std::move(fut).thenValue(
+            [options = this->_options, errs = std::move(errorCounter),
+             resultData = std::move(resDocs)](Result&& res) mutable {
               if (!res.ok()) {
                 return OperationResult{std::move(res), options};
               }
@@ -835,6 +838,9 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
   // potential rollback of the modification.
   IndexesSnapshot _indexesSnapshot;
 
+  // this shared_ptr is kept to keep context alive until the BuilderLeaser is
+  // destroyed
+  std::shared_ptr<transaction::Context> _context;
   // all document data that are going to be replicated, append-only
   transaction::BuilderLeaser _replicationData;
   Methods::ReplicationType _replicationType = Methods::ReplicationType::NONE;
@@ -2553,7 +2559,14 @@ Future<OperationResult> transaction::Methods::insertLocal(
   if (res.fail()) {
     co_return OperationResult(std::move(res).result(), options);
   }
-  co_return co_await res.get().execute();
+  auto fut = res.get().execute();
+  {
+    // Destroy the InsertProcessor before awaiting the future, so the
+    // BuilderLeasers return their builders now, before the Context might be
+    // gone.
+    [[maybe_unused]] auto destroyMe = std::move(res);
+  }
+  co_return co_await std::move(fut);
 }
 
 OperationResult Methods::update(std::string const& collectionName,
@@ -3446,6 +3459,7 @@ Future<Result> Methods::replicateOperations(
     // be committed in the replicated log
     TRI_ASSERT(replicationFut.isReady());
 
+    // TODO This shouldn't be synchronous
     auto replicationRes = replicationFut.waitAndGet();
     if (replicationRes.fail()) {
       return replicationRes.result();
@@ -3876,9 +3890,9 @@ Future<OperationResult> Methods::documentInternal(
 
   if (_state->isCoordinator()) {
     return addTracking(documentCoordinator(collectionName, value, options, api),
-                       [=, this](OperationResult&& opRes) {
-                         events::ReadDocument(vocbase().name(), collectionName,
-                                              value, opRes.options,
+                       [=, dbName = vocbase().name()](OperationResult&& opRes) {
+                         events::ReadDocument(dbName, collectionName, value,
+                                              opRes.options,
                                               opRes.errorNumber());
                          return std::move(opRes);
                        });
@@ -3910,13 +3924,14 @@ Future<OperationResult> Methods::insertInternal(
     f = insertLocal(collectionName, value, options);
   }
 
-  return addTracking(std::move(f), [=, this](OperationResult&& opRes) {
-    events::CreateDocument(
-        vocbase().name(), collectionName,
-        (opRes.ok() && opRes.options.returnNew) ? opRes.slice() : value,
-        opRes.options, opRes.errorNumber());
-    return std::move(opRes);
-  });
+  return addTracking(
+      std::move(f), [=, dbName = vocbase().name()](OperationResult&& opRes) {
+        events::CreateDocument(
+            dbName, collectionName,
+            (opRes.ok() && opRes.options.returnNew) ? opRes.slice() : value,
+            opRes.options, opRes.errorNumber());
+        return std::move(opRes);
+      });
 }
 
 Future<OperationResult> Methods::updateInternal(
@@ -3943,11 +3958,12 @@ Future<OperationResult> Methods::updateInternal(
   } else {
     f = modifyLocal(collectionName, newValue, options, /*isUpdate*/ true);
   }
-  return addTracking(std::move(f), [=, this](OperationResult&& opRes) {
-    events::ModifyDocument(vocbase().name(), collectionName, newValue,
-                           opRes.options, opRes.errorNumber());
-    return std::move(opRes);
-  });
+  return addTracking(
+      std::move(f), [=, dbName = vocbase().name()](OperationResult&& opRes) {
+        events::ModifyDocument(dbName, collectionName, newValue, opRes.options,
+                               opRes.errorNumber());
+        return std::move(opRes);
+      });
 }
 
 Future<OperationResult> Methods::replaceInternal(
@@ -3975,11 +3991,12 @@ Future<OperationResult> Methods::replaceInternal(
     f = modifyLocal(collectionName, newValue, options,
                     /*isUpdate*/ false);
   }
-  return addTracking(std::move(f), [=, this](OperationResult&& opRes) {
-    events::ReplaceDocument(vocbase().name(), collectionName, newValue,
-                            opRes.options, opRes.errorNumber());
-    return std::move(opRes);
-  });
+  return addTracking(
+      std::move(f), [=, dbName = vocbase().name()](OperationResult&& opRes) {
+        events::ReplaceDocument(dbName, collectionName, newValue, opRes.options,
+                                opRes.errorNumber());
+        return std::move(opRes);
+      });
 }
 
 Future<OperationResult> Methods::removeInternal(
@@ -4005,11 +4022,12 @@ Future<OperationResult> Methods::removeInternal(
   } else {
     f = removeLocal(collectionName, value, options);
   }
-  return addTracking(std::move(f), [=, this](OperationResult&& opRes) {
-    events::DeleteDocument(vocbase().name(), collectionName, value,
-                           opRes.options, opRes.errorNumber());
-    return std::move(opRes);
-  });
+  return addTracking(
+      std::move(f), [=, dbName = vocbase().name()](OperationResult&& opRes) {
+        events::DeleteDocument(dbName, collectionName, value, opRes.options,
+                               opRes.errorNumber());
+        return std::move(opRes);
+      });
 }
 
 Future<OperationResult> Methods::truncateInternal(
