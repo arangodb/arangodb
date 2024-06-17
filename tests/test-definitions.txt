@@ -32,8 +32,6 @@ recovery priority=2000 buckets=8 parallelity=3 size=small single
 recovery_cluster priority=2000 size=small cluster buckets=8
 
 recovery_server priority=2000 buckets=3 parallelity=3 size=small single
-# cluster
-recovery_cluster_server priority=2000 buckets=1 parallelity=1 size=small
 
 shell_api priority=500 single -- $EncryptionAtRest
 
