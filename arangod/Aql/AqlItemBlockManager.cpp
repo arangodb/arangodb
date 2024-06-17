@@ -38,7 +38,13 @@ AqlItemBlockManager::AqlItemBlockManager(
     : _resourceMonitor(resourceMonitor) {}
 
 /// @brief destroy the manager
-AqlItemBlockManager::~AqlItemBlockManager() { delete _constValueBlock; }
+AqlItemBlockManager::~AqlItemBlockManager() {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(_leasedBlocks == 0);
+#endif
+
+  delete _constValueBlock;
+}
 
 void AqlItemBlockManager::initializeConstValueBlock(RegisterCount nrRegs) {
   TRI_ASSERT(_constValueBlock == nullptr);
@@ -89,6 +95,10 @@ SharedAqlItemBlockPtr AqlItemBlockManager::requestBlock(
   TRI_ASSERT(block->getRefCount() == 0);
   TRI_ASSERT(block->hasShadowRows() == false);
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  ++_leasedBlocks;
+#endif
+
   return SharedAqlItemBlockPtr{block};
 }
 
@@ -96,6 +106,9 @@ SharedAqlItemBlockPtr AqlItemBlockManager::requestBlock(
 void AqlItemBlockManager::returnBlock(AqlItemBlock*& block) noexcept {
   TRI_ASSERT(block != nullptr);
   TRI_ASSERT(block->getRefCount() == 0);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  --_leasedBlocks;
+#endif
 
   size_t const targetSize = block->capacity();
   uint32_t const i = Bucket::getId(targetSize);

@@ -407,11 +407,12 @@ class AqlItemBlock {
     explicit OwnershipChecker(std::atomic<std::thread::id>& v) : _v(v) {
       auto old =
           _v.exchange(std::this_thread::get_id(), std::memory_order_relaxed);
-      TRI_ASSERT(old == std::thread::id());
+      TRI_ASSERT(old == std::thread::id()) << "old=" << old;
     }
     ~OwnershipChecker() {
       auto old = _v.exchange(std::thread::id(), std::memory_order_relaxed);
-      TRI_ASSERT(old == std::this_thread::get_id());
+      TRI_ASSERT(old == std::this_thread::get_id())
+          << "old=" << old << ", this=" << std::this_thread::get_id();
     }
     std::atomic<std::thread::id>& _v;
   };
