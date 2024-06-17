@@ -470,6 +470,19 @@ void QuerySnippet::serializeIntoBuilder(
     // it needs to expose its input register by all means
     internalGather->setVarsUsedLater(_nodes.front()->getVarsUsedLaterStack());
     internalGather->setRegsToClear({});
+    // No DBServer-internal parallelism (yet) for modification operations
+    bool const hasModification = std::any_of(
+        localExpansions.cbegin(), localExpansions.cend(),
+        [](auto const& it) { return it.first->isModificationNode(); });
+    if (hasModification) {
+      auto const parallelism = internalGather->parallelism();
+      LOG_TOPIC_IF("dd0f1", DEBUG, Logger::QUERIES,
+                   parallelism != GatherNode::Parallelism::Serial)
+          << "Overriding parallelism of " << toString(parallelism) << " with "
+          << toString(GatherNode::Parallelism::Serial)
+          << " on the DBServer's gather node";
+      internalGather->setParallelism(GatherNode::Parallelism::Serial);
+    }
     auto const reservedId = ExecutionNodeId::InternalNode;
     nodeAliases.try_emplace(internalGather->id(), reservedId);
 
@@ -520,7 +533,7 @@ void QuerySnippet::serializeIntoBuilder(
         }
       } else {
         // In this case we actually do not care for the real value, we just need
-        // to ensure that every client get's exactly one copy.
+        // to ensure that every client gets exactly one copy.
         for (size_t i = 0; i < numberOfShardsToPermutate; i++) {
           distIds.emplace_back(StringUtils::itoa(i));
         }
