@@ -886,7 +886,14 @@ function processQuery(query, explain, planIndex) {
     // the code can be removed when only supporting server versions
     // >= 3.12.
     stats.nodes.forEach(n => {
-      nodes[n.id].runtime = n.runtime;
+      // the try..catch here is necessary because we may have nodes inside
+      // the stats object that are not contained in the original plan.
+      // this can happen for parallel traversals, which inserts additional
+      // nodes into the plan on the DB servers after the plan is shipped
+      // to the servers.
+      try {
+        nodes[n.id].runtime = n.runtime;
+      } catch (err) {}
     });
     stats.nodes.forEach(n => {
       if (nodes.hasOwnProperty(n.id) && !n.hasOwnProperty('fetching')) {
