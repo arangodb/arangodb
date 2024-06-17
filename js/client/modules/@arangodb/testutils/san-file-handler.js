@@ -170,10 +170,10 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
     if (options.isSan) {
       ['asan', 'lsan', 'ubsan', 'tsan'].forEach(whichSan => {
         let fileName = whichSan + "_arangodb_suppressions.txt";
-        let fullNameSup = `suppressions=${fs.join(fs.makeAbsolute(''), fileName)}`;
+        let fullNameSup = `${fs.join(fs.makeAbsolute(''), fileName)}`;
         let sanOpt = `${whichSan.toUpperCase()}_OPTIONS`;
+        options.sanOptions[sanOpt] = {};
         if (process.env.hasOwnProperty(sanOpt)) {
-          options.sanOptions[sanOpt] = {};
           let opt = process.env[sanOpt];
           delete process.env[sanOpt];
           opt.split(':').forEach(oneOpt => {
@@ -187,13 +187,12 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
           options.sanOptions[sanOpt] = {};
         }
         if (fs.exists(fileName)) {
-          options.sanOptions[sanOpt] = fullNameSup;
+          options.sanOptions[sanOpt]['suppressions'] = fullNameSup;
         }
       });
     }
     if (options.isCov && process.env.hasOwnProperty(coverage_name)) {
       options.covOptions[coverage_name] = process.env[coverage_name];
-      delete process.env[coverage_name];
     }
   });
 };
