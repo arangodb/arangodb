@@ -683,7 +683,6 @@ void ClusterFeature::prepare() {
     FATAL_ERROR_EXIT();
   }
 
-  // This must remain here for proper function after hot restores
   if (!ServerState::instance()->integrateIntoCluster(
           _requestedRole, _myEndpoint, _myAdvertisedEndpoint)) {
     LOG_TOPIC("fea1e", FATAL, Logger::STARTUP)
