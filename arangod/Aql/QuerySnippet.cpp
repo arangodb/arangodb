@@ -23,7 +23,6 @@
 
 #include "QuerySnippet.h"
 
-#include "Aql/Collection.h"
 #include "Aql/ExecutionNode/CollectionAccessingNode.h"
 #include "Aql/ExecutionNode/DistributeConsumerNode.h"
 #include "Aql/ExecutionNode/DistributeNode.h"
@@ -40,6 +39,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogLevel.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Aql/LocalGraphNode.h"
