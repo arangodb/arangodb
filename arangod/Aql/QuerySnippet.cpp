@@ -40,6 +40,7 @@
 #include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogLevel.h"
+#include "Logger/LogMacros.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Aql/LocalGraphNode.h"
