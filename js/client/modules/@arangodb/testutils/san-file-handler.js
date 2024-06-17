@@ -168,10 +168,10 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
     // scripts/unittest as well. according to @dothebart it must be
     // present in both code locations.
     if (options.isSan) {
-      ['asan', 'lsan', 'ubsan', 'tsan'].forEach(san => {
-        let fileName = san + "_arangodb_suppressions.txt";
+      ['asan', 'lsan', 'ubsan', 'tsan'].forEach(whichSan => {
+        let fileName = whichSan + "_arangodb_suppressions.txt";
         let fullNameSup = `suppressions=${fs.join(fs.makeAbsolute(''), fileName)}`;
-        let sanOpt = `${san.upperCase()}_OPTIONS`;
+        let sanOpt = `${whichSan.toUpperCase()}_OPTIONS`;
         if (process.env.hasOwnProperty(sanOpt)) {
           options.sanOptions[sanOpt] = {};
           let opt = process.env[sanOpt];
