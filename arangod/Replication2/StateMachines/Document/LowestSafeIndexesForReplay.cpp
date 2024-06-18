@@ -54,4 +54,9 @@ LowestSafeIndexesForReplay::LowestSafeIndexesForReplay(
   setFromMetadata(metadata);
 }
 
+auto LowestSafeIndexesForReplay::getMap() const noexcept
+    -> std::map<ShardID, LogIndex> const& {
+  return _map;
+}
+
 }  // namespace arangodb::replication2::replicated_state::document

@@ -42,10 +42,7 @@ struct LowestSafeIndexesForReplay {
   void setFromMetadata(DocumentStateMetadata const& metadata);
 
   // only used for a maintainer-mode check
-  constexpr auto getMap() const noexcept -> std::map<ShardID, LogIndex> const& {
-    static_assert(maintainerMode);
-    return _map;
-  }
+  auto getMap() const noexcept -> std::map<ShardID, LogIndex> const&;
 
  private:
   std::map<ShardID, LogIndex> _map;
