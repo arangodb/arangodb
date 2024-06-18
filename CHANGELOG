@@ -1,6 +1,7 @@
 devel
 -----
 
+* FE-453: Upgrade arangojs version used in web UI.
 
 
 3.12.1 (XXXX-XX-XX)
