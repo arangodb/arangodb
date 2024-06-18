@@ -129,11 +129,20 @@ export const CollectionIndicesTable = () => {
   });
   return (
     <Stack>
-      <TableControl<Index> table={tableInstance} columns={TABLE_COLUMNS} />
-      <ReactTable<Index>
+      <TableControl<Index & { progress?: number }>
+        table={tableInstance}
+        columns={TABLE_COLUMNS}
+      />
+      <ReactTable<Index & { progress?: number }>
         table={tableInstance}
         emptyStateMessage="No indexes found"
         onRowSelect={row => {
+          if (
+            typeof row.original.progress === "number" &&
+            row.original.progress < 100
+          ) {
+            return;
+          }
           const finalId = row.original.id.slice(
             row.original.id.lastIndexOf("/") + 1
           );
