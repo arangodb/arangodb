@@ -3264,9 +3264,9 @@
   integrity sha512-XYmBiy+ohOR4Lh5jE379fV2IU+6Jn4g5qASinhitfyO71b/sCo6MKsMLF5tc7Zf2CE8hViVQyYSobJNke8OvUw==
 
 "@types/node@^20.11.26":
-  version "20.14.1"
-  resolved "https://registry.yarnpkg.com/@types/node/-/node-20.14.1.tgz#2434dbcb1f039e31f2c0e9969da93f52cf6348f3"
-  integrity sha512-T2MzSGEu+ysB/FkWfqmhV3PLyQlowdptmmgD20C6QxsS8Fmv5SjpZ1ayXaEC0S21/h5UJ9iA6W/5vSNU5l00OA==
+  version "20.14.5"
+  resolved "https://registry.yarnpkg.com/@types/node/-/node-20.14.5.tgz#fe35e3022ebe58b8f201580eb24e1fcfc0f2487d"
+  integrity sha512-aoRR+fJkZT2l0aGOJhuA8frnCSoNX6W7U2mpNq63+BxBIj5BQFt8rHy627kijCmm63ijdSdwvGgpUsU6MBsZZA==
   dependencies:
     undici-types "~5.26.4"
 
@@ -3926,10 +3926,10 @@ anymatch@~3.1.2:
     normalize-path "^3.0.0"
     picomatch "^2.0.4"
 
-arangojs@^9.0.0-preview.3:
-  version "9.0.0-preview.3"
-  resolved "https://registry.yarnpkg.com/arangojs/-/arangojs-9.0.0-preview.3.tgz#2140a716b97f60c1b89878ac9da370743e3c3dd5"
-  integrity sha512-6G2yCiEREG19QZazjCx/WjceXYSwzh0ji4QrnbLrsmAvopPSLS9D+xzTgDFQCkE9aXkprmfOH4updPEKN9JNKA==
+arangojs@^9.0.0-preview.4:
+  version "9.0.0-preview.4"
+  resolved "https://registry.yarnpkg.com/arangojs/-/arangojs-9.0.0-preview.4.tgz#ddf00f7ab5a843a5e1db2ab8463d522b471a661d"
+  integrity sha512-t6tjd2MlAKG2hpXigElzpWkLLZTXu7WHjXR4QDlxw4B/z018ujz9a+G4XIUfgW376kpfFE3pPTqR6aDLyipJGg==
   dependencies:
     "@types/node" "^20.11.26"
 
