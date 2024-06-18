@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed a bug where accessing a collection right after creation can sometimes
+  fail.
+
 * FE-454: Fix saving document in "Tree" mode.
 
 * FE-310: Query editor in web UI can now be resized vertically.
