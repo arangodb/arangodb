@@ -70,7 +70,6 @@ const usePermissionTableData = () => {
         permission: permissionObject.permission,
         collections: Object.entries(permissionObject.collections || {})
           .map(([collectionName, collectionPermission]) => {
-            
             // filter out built-in collections
             if (collectionName.startsWith("_")) {
               return null;
@@ -268,6 +267,9 @@ export const UserPermissionsContextProvider = ({
     refetchDatabasePermissions
   });
 
+  const rawUsername = decodeURIComponent(username);
+  const isManagedUser = rawUsername.includes("|");
+  const isRootUser = rawUsername === "root";
   const tableInstance = useSortableReactTable<DatabaseTableType>({
     data: databaseTable || [],
     columns: TABLE_COLUMNS,
@@ -280,7 +282,11 @@ export const UserPermissionsContextProvider = ({
     defaultFilters: [],
     storageKey: "userPermissions",
     getExpandedRowModel: getExpandedRowModel(),
-    getRowCanExpand: () => true
+    getRowCanExpand: () => true,
+    meta: {
+      isManagedUser,
+      isRootUser
+    }
   });
 
   React.useEffect(() => {
