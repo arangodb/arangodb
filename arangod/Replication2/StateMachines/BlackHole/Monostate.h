@@ -22,6 +22,8 @@
 
 #pragma once
 
+#include <velocypack/Slice.h>
+
 namespace arangodb::replication2::replicated_state {
 
 struct Monostate {
@@ -31,7 +33,7 @@ struct Monostate {
       // We could also check whether we got null here.
       return arangodb::inspection::Status();
     } else {
-      return f.apply(arangodb::inspection::Null{});
+      return f.apply(arangodb::velocypack::Slice::emptyObjectSlice());
     }
   }
 };

@@ -197,14 +197,12 @@ struct ApplyEntriesHandler : HandlerBase<Runtime, ApplyEntriesState> {
                                 LogIndex index) -> Result;
   template<class T>
   requires IsAnyOf<T, ReplicatedOperation::CreateShard,
+                   ReplicatedOperation::CreateIndex,
                    ReplicatedOperation::DropIndex>
   auto applyDataDefinitionEntry(T const& op, LogIndex index) -> Result;
 
   template<class T>
   auto applyEntryAndReleaseIndex(T const& op, LogIndex index) -> Result;
-
-  auto applyDataDefinitionEntry(ReplicatedOperation::CreateIndex const& op,
-                                LogIndex index) -> Result;
 };
 
 struct ApplyEntriesActor {

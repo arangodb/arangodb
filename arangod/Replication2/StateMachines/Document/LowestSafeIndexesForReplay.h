@@ -22,6 +22,8 @@
 
 #pragma once
 
+#include <Basics/MaintainerMode.h>
+
 #include <map>
 
 namespace arangodb {
@@ -38,7 +40,15 @@ struct LowestSafeIndexesForReplay {
   explicit LowestSafeIndexesForReplay(DocumentStateMetadata const& metadata);
   bool isSafeForReplay(ShardID, LogIndex);
   void setFromMetadata(DocumentStateMetadata const& metadata);
-  std::map<ShardID, LogIndex> map;
+
+  // only used for a maintainer-mode check
+  constexpr auto getMap() const noexcept -> std::map<ShardID, LogIndex> const& {
+    static_assert(maintainerMode);
+    return _map;
+  }
+
+ private:
+  std::map<ShardID, LogIndex> _map;
 };
 
 }  // namespace arangodb::replication2::replicated_state::document

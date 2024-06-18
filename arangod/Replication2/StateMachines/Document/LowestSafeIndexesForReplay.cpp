@@ -30,8 +30,8 @@ namespace arangodb::replication2::replicated_state::document {
 
 bool LowestSafeIndexesForReplay::isSafeForReplay(ShardID shardId,
                                                  LogIndex logIndex) {
-  auto it = map.find(shardId);
-  if (it == map.end()) {
+  auto it = _map.find(shardId);
+  if (it == _map.end()) {
     return true;
   } else {
     return logIndex >= it->second;
@@ -46,7 +46,7 @@ void LowestSafeIndexesForReplay::setFromMetadata(
                  std::inserter(newMap, newMap.end()), [](auto const& kv) {
                    return std::pair{ShardID(kv.first), kv.second};
                  });
-  map = std::move(newMap);
+  _map = std::move(newMap);
 }
 
 LowestSafeIndexesForReplay::LowestSafeIndexesForReplay(

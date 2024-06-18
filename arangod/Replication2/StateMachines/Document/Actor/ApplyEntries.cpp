@@ -296,16 +296,11 @@ auto ApplyEntriesHandler<Runtime>::applyDataDefinitionEntry(
 template<typename Runtime>
 template<class T>
 requires IsAnyOf<T, ReplicatedOperation::CreateShard,
+                 ReplicatedOperation::CreateIndex,
                  ReplicatedOperation::DropIndex>
 auto ApplyEntriesHandler<Runtime>::applyDataDefinitionEntry(T const& op,
                                                             LogIndex index)
     -> Result {
-  return applyEntryAndReleaseIndex(op, index);
-}
-
-template<typename Runtime>
-auto ApplyEntriesHandler<Runtime>::applyDataDefinitionEntry(
-    ReplicatedOperation::CreateIndex const& op, LogIndex index) -> Result {
   return applyEntryAndReleaseIndex(op, index);
 }
 

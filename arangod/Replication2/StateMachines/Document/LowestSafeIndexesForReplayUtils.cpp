@@ -47,7 +47,7 @@ void increaseAndPersistLowestSafeIndexForReplayTo(
   auto trx = stream.beginMetadataTrx();
   auto& metadata = trx->get();
   if constexpr (maintainerMode) {
-    auto const& inMemMap = lowestSafeIndexesForReplay.map;
+    auto const& inMemMap = lowestSafeIndexesForReplay.getMap();
     auto persistedMap = metadata.lowestSafeIndexesForReplay;
     if (!lsfifrMapsAreEqual(inMemMap, persistedMap)) {
       auto msg = std::stringstream{};
