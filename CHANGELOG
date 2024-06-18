@@ -1,7 +1,9 @@
 devel
 -----
 
-
+* Swagger UI: Remove fragment identifiers from request URLs. They are merely
+  used to disambiguate polymorphic endpoints in the OpenAPI descriptions of
+  the HTTP API documentation.
 
 3.12.1 (XXXX-XX-XX)
 -------------------
