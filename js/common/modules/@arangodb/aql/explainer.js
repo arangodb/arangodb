@@ -2048,10 +2048,14 @@ function processQuery(query, explain, planIndex) {
           }
         }
         let varString = '';
-        if (node.outVariable.id !== node.oldDocVariable.id) {
-          varString = variableName(node.oldDocVariable) + ' ' + keyword('INTO') + ' ' + variableName(node.outVariable);
+        if (node.hasOwnProperty('oldDocVariable')) {
+          if (node.outVariable.id !== node.oldDocVariable.id) {
+            varString = variableName(node.oldDocVariable) + ' ' + keyword('INTO') + ' ' + variableName(node.outVariable);
+          } else {
+            varString = variableName(node.oldDocVariable);
+          }
         } else {
-          varString = variableName(node.oldDocVariable);
+          varString = variableName(node.outVariable);
         }
         return keyword('MATERIALIZE') + ' ' + varString + (annotations.length > 0 ? annotation(` /*${annotations} */`) : '') + accessString;
       case 'OffsetMaterializeNode':
