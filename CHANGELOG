@@ -1,9 +1,4 @@
-devel
------
-
-
-
-3.12.1 (XXXX-XX-XX)
+3.12.1 (2024-06-18)
 -------------------
 
 * FE-454: Fix saving document in "Tree" mode.
