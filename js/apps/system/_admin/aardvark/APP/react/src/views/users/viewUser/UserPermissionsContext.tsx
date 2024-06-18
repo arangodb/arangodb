@@ -297,6 +297,9 @@ export const UserPermissionsContextProvider = ({
     refetchDatabasePermissions
   });
 
+  const rawUsername = decodeURIComponent(username);
+  const isManagedUser = rawUsername.includes("|");
+  const isRootUser = rawUsername === "root";
   const tableInstance = useSortableReactTable<DatabaseTableType>({
     data: databaseTable || [],
     columns: TABLE_COLUMNS,
@@ -309,7 +312,11 @@ export const UserPermissionsContextProvider = ({
     defaultFilters: [],
     storageKey: "userPermissions",
     getExpandedRowModel: getExpandedRowModel(),
-    getRowCanExpand: () => true
+    getRowCanExpand: () => true,
+    meta: {
+      isManagedUser,
+      isRootUser
+    }
   });
 
   return (

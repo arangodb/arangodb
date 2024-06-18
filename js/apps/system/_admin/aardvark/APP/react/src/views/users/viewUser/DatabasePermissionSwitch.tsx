@@ -25,6 +25,7 @@ export const DatabasePermissionSwitch = ({
   checked: boolean;
   info: CellContext<any, unknown>;
 }) => {
+  const { isManagedUser } = (info.table.options.meta || {}) as any;
   const isDefaultForDatabase = getIsDefaultForDatabase(info);
   const isDefaultRow = getIsDefaultRow(info);
   const isUndefined = info.column.id === "undefined";
@@ -43,7 +44,11 @@ export const DatabasePermissionSwitch = ({
   };
   return (
     <Flex gap="3">
-      <Radio isChecked={checked} onChange={handleChange} />
+      <Radio
+        isDisabled={isManagedUser}
+        isChecked={checked}
+        onChange={handleChange}
+      />
       {isLoading && <Spinner size="sm" />}
       {isDefaultForDatabase && <Tag size="sm">Default</Tag>}
     </Flex>
