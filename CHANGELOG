@@ -7,6 +7,10 @@ devel
 3.12.1 (XXXX-XX-XX)
 -------------------
 
+* FE-454: Fix saving document in "Tree" mode.
+
+* FE-310: Query editor in web UI can now be resized vertically.
+
 * Fix a potential data corruption in a collection's Merkle tree, in case a write
   operation in a streaming transaction ran into the transaction's maximum size
   limit and failed. If the error was ignored and the transaction committed, the

@@ -176,11 +176,13 @@ class FollowerInfo {
       velocypack::Builder& builder) const;
 
  private:
+  /// @brief inject the information about "servers" and "failoverCandidates".
+  /// must be called with _dataLock locked.
   void injectFollowerInfoInternal(velocypack::Builder& builder) const;
 
   bool updateFailoverCandidates();
 
-  Result persistInAgency(bool isRemove) const;
+  Result persistInAgency(bool isRemove, bool acquireDataLock) const;
 
   velocypack::Builder newShardEntry(velocypack::Slice oldValue) const;
 };

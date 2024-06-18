@@ -29,7 +29,6 @@ export const QueryEditorBottomBar = () => {
   return (
     <Flex
       direction="row"
-      borderBottom="1px solid"
       borderX="1px solid"
       borderColor="gray.300"
       padding="2"
