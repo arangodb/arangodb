@@ -1474,7 +1474,7 @@ ExecutionNode::getVariableIdsUsedHere() const {
 
 bool ExecutionNode::setsVariable(VarSet const& which) const {
   for (auto const& v : getVariablesSetHere()) {
-    if (which.find(v) != which.end()) {
+    if (which.contains(v)) {
       return true;
     }
   }

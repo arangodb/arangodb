@@ -2048,10 +2048,14 @@ function processQuery(query, explain, planIndex) {
           }
         }
         let varString = '';
-        if (node.outVariable.id !== node.oldDocVariable.id) {
-          varString = variableName(node.oldDocVariable) + ' ' + keyword('INTO') + ' ' + variableName(node.outVariable);
+        if (node.hasOwnProperty('oldDocVariable')) {
+          if (node.outVariable.id !== node.oldDocVariable.id) {
+            varString = variableName(node.oldDocVariable) + ' ' + keyword('INTO') + ' ' + variableName(node.outVariable);
+          } else {
+            varString = variableName(node.oldDocVariable);
+          }
         } else {
-          varString = variableName(node.oldDocVariable);
+          varString = variableName(node.outVariable);
         }
         return keyword('MATERIALIZE') + ' ' + varString + (annotations.length > 0 ? annotation(` /*${annotations} */`) : '') + accessString;
       case 'OffsetMaterializeNode':
@@ -2645,6 +2649,8 @@ function inspectDump(filename, outfile) {
         if (details.properties.isSmart) {
           delete details.properties.numberOfShards;
         }
+        delete details.properties.objectId;
+        delete details.properties.statusString;
         print("db._createEdgeCollection(" + JSON.stringify(collection) + ", " + JSON.stringify(details.properties) + ");");
       } else {
         print("db._create(" + JSON.stringify(collection) + ", " + JSON.stringify(details.properties) + ");");

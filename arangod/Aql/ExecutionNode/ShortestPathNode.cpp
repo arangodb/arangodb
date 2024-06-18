@@ -307,7 +307,7 @@ ShortestPathNode::_buildOutputRegisters() const {
   return std::make_pair(outputRegisters, outputRegisterMapping);
 };
 
-RegIdSet ShortestPathNode::_buildVariableInformation() const {
+RegIdSet ShortestPathNode::buildVariableInformation() const {
   auto inputRegisters = RegIdSet();
   auto& varInfo = getRegisterPlan()->varInfo;
   if (usesStartInVariable()) {
@@ -329,7 +329,7 @@ RegIdSet ShortestPathNode::_buildVariableInformation() const {
 // 3. or ClusterProvider<ClusterProviderStep>
 
 template<typename ShortestPath, typename Provider, typename ProviderOptions>
-std::unique_ptr<ExecutionBlock> ShortestPathNode::_makeExecutionBlockImpl(
+std::unique_ptr<ExecutionBlock> ShortestPathNode::makeExecutionBlockImpl(
     ShortestPathOptions* opts, ProviderOptions forwardProviderOptions,
     ProviderOptions backwardProviderOptions,
     arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions,
@@ -361,7 +361,7 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
     ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
-  auto inputRegisters = _buildVariableInformation();
+  auto inputRegisters = buildVariableInformation();
 
   auto opts = static_cast<ShortestPathOptions*>(options());
 
@@ -453,25 +453,25 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
             _buildOutputRegisters<WeightedShortestPath>();
         auto registerInfos = createRegisterInfos(std::move(inputRegisters),
                                                  std::move(outputRegisters));
-        return _makeExecutionBlockImpl<WeightedShortestPathEnumerator<Provider>,
-                                       Provider,
-                                       SingleServerBaseProviderOptions>(
+        return makeExecutionBlockImpl<WeightedShortestPathEnumerator<Provider>,
+                                      Provider,
+                                      SingleServerBaseProviderOptions>(
             opts, std::move(forwardProviderOptions),
             std::move(backwardProviderOptions), enumeratorOptions,
             validatorOptions, std::move(outputRegisterMapping), engine,
-            sourceInput, targetInput, registerInfos);
+            sourceInput, targetInput, std::move(registerInfos));
       } else {
         auto [outputRegisters, outputRegisterMapping] =
             _buildOutputRegisters<ShortestPath>();
         auto registerInfos = createRegisterInfos(std::move(inputRegisters),
                                                  std::move(outputRegisters));
-        return _makeExecutionBlockImpl<ShortestPathEnumerator<Provider>,
-                                       Provider,
-                                       SingleServerBaseProviderOptions>(
+        return makeExecutionBlockImpl<ShortestPathEnumerator<Provider>,
+                                      Provider,
+                                      SingleServerBaseProviderOptions>(
             opts, std::move(forwardProviderOptions),
             std::move(backwardProviderOptions), enumeratorOptions,
             validatorOptions, std::move(outputRegisterMapping), engine,
-            sourceInput, targetInput, registerInfos);
+            sourceInput, targetInput, std::move(registerInfos));
       }
     } else {
       // SingleServer Tracing enabled
@@ -480,25 +480,25 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
             _buildOutputRegisters<WeightedShortestPathTracer>();
         auto registerInfos = createRegisterInfos(std::move(inputRegisters),
                                                  std::move(outputRegisters));
-        return _makeExecutionBlockImpl<
+        return makeExecutionBlockImpl<
             TracedWeightedShortestPathEnumerator<Provider>,
             ProviderTracer<Provider>, SingleServerBaseProviderOptions>(
             opts, std::move(forwardProviderOptions),
             std::move(backwardProviderOptions), enumeratorOptions,
             validatorOptions, std::move(outputRegisterMapping), engine,
-            sourceInput, targetInput, registerInfos);
+            sourceInput, targetInput, std::move(registerInfos));
       } else {
         auto [outputRegisters, outputRegisterMapping] =
             _buildOutputRegisters<ShortestPathTracer>();
         auto registerInfos = createRegisterInfos(std::move(inputRegisters),
                                                  std::move(outputRegisters));
-        return _makeExecutionBlockImpl<TracedShortestPathEnumerator<Provider>,
-                                       ProviderTracer<Provider>,
-                                       SingleServerBaseProviderOptions>(
+        return makeExecutionBlockImpl<TracedShortestPathEnumerator<Provider>,
+                                      ProviderTracer<Provider>,
+                                      SingleServerBaseProviderOptions>(
             opts, std::move(forwardProviderOptions),
             std::move(backwardProviderOptions), enumeratorOptions,
             validatorOptions, std::move(outputRegisterMapping), engine,
-            sourceInput, targetInput, registerInfos);
+            sourceInput, targetInput, std::move(registerInfos));
       }
     }
   } else {
@@ -522,25 +522,25 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
             _buildOutputRegisters<WeightedShortestPathCluster>();
         auto registerInfos = createRegisterInfos(std::move(inputRegisters),
                                                  std::move(outputRegisters));
-        return _makeExecutionBlockImpl<
+        return makeExecutionBlockImpl<
             WeightedShortestPathEnumerator<ClusterProvider>, ClusterProvider,
             ClusterBaseProviderOptions>(
             opts, std::move(forwardProviderOptions),
             std::move(backwardProviderOptions), enumeratorOptions,
             validatorOptions, std::move(outputRegisterMapping), engine,
-            sourceInput, targetInput, registerInfos);
+            sourceInput, targetInput, std::move(registerInfos));
       } else {
         auto [outputRegisters, outputRegisterMapping] =
             _buildOutputRegisters<ShortestPathCluster>();
         auto registerInfos = createRegisterInfos(std::move(inputRegisters),
                                                  std::move(outputRegisters));
-        return _makeExecutionBlockImpl<ShortestPathEnumerator<ClusterProvider>,
-                                       ClusterProvider,
-                                       ClusterBaseProviderOptions>(
+        return makeExecutionBlockImpl<ShortestPathEnumerator<ClusterProvider>,
+                                      ClusterProvider,
+                                      ClusterBaseProviderOptions>(
             opts, std::move(forwardProviderOptions),
             std::move(backwardProviderOptions), enumeratorOptions,
             validatorOptions, std::move(outputRegisterMapping), engine,
-            sourceInput, targetInput, registerInfos);
+            sourceInput, targetInput, std::move(registerInfos));
       }
     } else {
       auto [outputRegisters, outputRegisterMapping] =
@@ -548,13 +548,13 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
       auto registerInfos = createRegisterInfos(std::move(inputRegisters),
                                                std::move(outputRegisters));
 
-      return _makeExecutionBlockImpl<
+      return makeExecutionBlockImpl<
           TracedShortestPathEnumerator<ClusterProvider>,
           ProviderTracer<ClusterProvider>, ClusterBaseProviderOptions>(
           opts, std::move(forwardProviderOptions),
           std::move(backwardProviderOptions), enumeratorOptions,
           validatorOptions, std::move(outputRegisterMapping), engine,
-          sourceInput, targetInput, registerInfos);
+          sourceInput, targetInput, std::move(registerInfos));
     }
   }
   TRI_ASSERT(false);
