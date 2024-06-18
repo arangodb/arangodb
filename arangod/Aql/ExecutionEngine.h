@@ -61,7 +61,7 @@ class ExecutionEngine {
   /// @brief create the engine
   ExecutionEngine(EngineId eId, QueryContext& query,
                   AqlItemBlockManager& itemBlockManager,
-                  std::shared_ptr<SharedQueryState> sharedState = nullptr);
+                  std::shared_ptr<SharedQueryState> sharedState);
 
   /// @brief destroy the engine, frees all assigned blocks
   TEST_VIRTUAL ~ExecutionEngine();

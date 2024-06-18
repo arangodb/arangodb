@@ -37,6 +37,7 @@
 #include "Aql/Parser.h"
 #include "Aql/QueryContext.h"
 #include "Aql/QueryString.h"
+#include "Aql/SharedQueryState.h"
 #include "Aql/StandaloneCalculation.h"
 #include "Basics/FunctionUtils.h"
 #include "Basics/ResourceUsage.h"
@@ -328,7 +329,8 @@ AqlAnalyzer::AqlAnalyzer(Options const& options)
           arangodb::DatabaseFeature::getCalculationVocbase(),
           transaction::OperationOriginInternal{"AQL analyzer"})),
       _itemBlockManager(_query->resourceMonitor()),
-      _engine(0, *_query, _itemBlockManager, nullptr),
+      _engine(0, *_query, _itemBlockManager,
+              std::make_shared<SharedQueryState>(_query->vocbase().server())),
       _resetImpl(&resetFromQuery) {
   _query->resourceMonitor().memoryLimit(_options.memoryLimit);
   std::get<AnalyzerValueTypeAttribute>(_attrs).value = _options.returnType;

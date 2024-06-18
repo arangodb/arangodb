@@ -1,6 +1,10 @@
 devel
 -----
 
+* Remove restriction that disabled async prefetching for all query nodes that
+  (indirectly) depended on a RemoteNode. This allows more query parts to run
+  concurrently.
+
 * FE-310: Query editor in web UI can now be resized vertically.
 
 

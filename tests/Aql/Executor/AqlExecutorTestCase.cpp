@@ -30,7 +30,9 @@ using namespace arangodb::tests::aql;
 template<bool enableQueryTrace>
 AqlExecutorTestCase<enableQueryTrace>::AqlExecutorTestCase(Scheduler* scheduler)
     : fakedQuery{_server->createFakeQuery(scheduler, enableQueryTrace)} {
-  auto engine = std::make_unique<ExecutionEngine>(0, *fakedQuery, manager());
+  auto engine = std::make_unique<ExecutionEngine>(
+      0, *fakedQuery, manager(),
+      std::make_shared<SharedQueryState>(_server->server(), scheduler));
   if constexpr (enableQueryTrace) {
     Logger::QUERIES.setLogLevel(LogLevel::DEBUG);
   }
