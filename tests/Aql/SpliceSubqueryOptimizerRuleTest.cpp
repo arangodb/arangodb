@@ -142,7 +142,7 @@ class SpliceSubqueryNodeOptimizerRuleTest : public ::testing::Test {
     auto splicedQuery = arangodb::aql::Query::create(
         std::move(ctx), arangodb::aql::QueryString(querystring), bindParamVpack,
         arangodb::aql::QueryOptions(ruleOptions(additionalOptions)->slice()));
-    splicedQuery->prepareQuery();
+    splicedQuery->prepareQuery().waitAndGet();
     ASSERT_EQ(queryRegistry->numberRegisteredQueries(), 0)
         << "query string: " << querystring;
 

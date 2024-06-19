@@ -2971,7 +2971,7 @@ TEST_F(IResearchViewNodeTest, serialize) {
         "\"name\": \"d\",\"id\": 0 }]}]}}] "
         " }");
 
-    queryScores.prepareQuery();
+    queryScores.prepareQuery().waitAndGet();
     arangodb::aql::Variable const outVariable("variable", 0, false,
                                               resourceMonitor);
     arangodb::aql::Variable const outScore0("variable100", 1, false,
