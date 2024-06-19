@@ -1,3 +1,10 @@
+3.12.1.1 (XXXX-XX-XX)
+---------------------
+
+* OASIS-25850: Fix incomplete replacing of projection variables in traversals.
+  This fixes a regression introduced in 3.12.0.
+
+
 3.12.1 (2024-06-18)
 -------------------
 
