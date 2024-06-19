@@ -709,7 +709,6 @@ auto ExecutionEngine::executeForClient(AqlCallStack const& stack,
 }
 
 // @brief create an execution engine from a plan
-// TODO check that the lifetime of the arguments outlast this coroutine
 futures::Future<futures::Unit> ExecutionEngine::instantiateFromPlan(
     Query& query, ExecutionPlan& plan, bool planRegisters) {
   auto const role = ServerState::instance()->getRole();

@@ -28,10 +28,8 @@
 #include "Aql/types.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterTypes.h"
-#include "VocBase/AccessMode.h"
 
 #include <map>
-#include <set>
 #include <stack>
 
 namespace arangodb {
@@ -93,6 +91,16 @@ class EngineInfoContainerDBServerServerBased {
   void addGraphNode(GraphNode* node, bool pushToSingleServer);
 
  private:
+  struct BuildEnginesInternalResult {
+    Result result;
+    std::optional<ErrorCode> cleanupReason;
+  };
+  auto buildEnginesInternal(
+      std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
+      MapRemoteToSnippet& snippetIds, ServerQueryIdList& serverToQueryId,
+      std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases,
+      std::vector<ServerID>& dbServers)
+      -> futures::Future<BuildEnginesInternalResult>;
   /**
    * @brief Helper method to generate the Request to be send to a specific
    * database server. this request contains all the necessary information to
