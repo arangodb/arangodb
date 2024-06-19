@@ -993,18 +993,10 @@ function ClusterCollectionSuite () {
     testCreateWithSlowCurrentUpdate : function () {
       let setFailAt;
       let removeFailAt;
-      if (isServer) {
-        if (internal.debugCanUseFailAt()) {
-          setFailAt = internal.debugSetFailAt;
-          removeFailAt = internal.debugRemoveFailAt;
-        }
-      } else {
-        const arango = internal.arango;
-        const coordinatorEndpoint = arango.getEndpoint();
-        if (debugCanUseFailAt(coordinatorEndpoint)) {
-          setFailAt = failurePoint => debugSetFailAt(coordinatorEndpoint, failurePoint);
-          removeFailAt = failurePoint => debugRemoveFailAt(coordinatorEndpoint, failurePoint);
-        }
+      const coordinatorEndpoint = internal.arango.getEndpoint();
+      if (debugCanUseFailAt(coordinatorEndpoint)) {
+        setFailAt = failurePoint => debugSetFailAt(coordinatorEndpoint, failurePoint);
+        removeFailAt = failurePoint => debugRemoveFailAt(coordinatorEndpoint, failurePoint);
       }
       if (!setFailAt) {
         console.info('Failure tests disabled, skipping...');
@@ -1023,7 +1015,8 @@ function ClusterCollectionSuite () {
           docs.push({ _key: "test" + i });
         }
         // inserting a document fails if it needs to look up a shard and
-        // ClusterInfo/Current hasn't caught up yet
+        // ClusterInfo/Current hasn't caught up yet, in which case insert
+        // throws an exception.
         c.insert(docs);
       } finally {
         removeFailAt(failurePoint);
