@@ -555,7 +555,7 @@ struct DistributedQueryInstanciator final
   ///        * In case the Network is broken, all non-reachable DBServers will
   ///        clean out their snippets after a TTL.
   ///        Returns the First Coordinator Engine, the one not in the registry.
-  Result buildEngines() {
+  futures::Future<Result> buildEngines() {
     TRI_ASSERT(ServerState::instance()->isCoordinator());
 
     // QueryIds are filled by responses of DBServer parts.
@@ -565,10 +565,10 @@ struct DistributedQueryInstanciator final
     SnippetList& snippets = _query.snippets();
 
     std::map<ExecutionNodeId, ExecutionNodeId> nodeAliases;
-    Result res = _dbserverParts.buildEngines(_nodesById, snippetIds, srvrQryId,
-                                             nodeAliases);
+    Result res = co_await _dbserverParts.buildEngines(_nodesById, snippetIds,
+                                                      srvrQryId, nodeAliases);
     if (res.fail()) {
-      return res;
+      co_return res;
     }
 
     // The coordinator engines cannot decide on lock issues later on,
@@ -576,7 +576,7 @@ struct DistributedQueryInstanciator final
     res = _coordinatorParts.buildEngines(_query, _query.itemBlockManager(),
                                          snippetIds, snippets);
     if (res.fail()) {
-      return res;
+      co_return res;
     }
 
     TRI_ASSERT(snippets.size() > 0);
@@ -634,7 +634,7 @@ struct DistributedQueryInstanciator final
       executionStats.setAliases(std::move(nodeAliases));
     });
 
-    return res;
+    co_return res;
   }
 };
 
@@ -709,9 +709,10 @@ auto ExecutionEngine::executeForClient(AqlCallStack const& stack,
 }
 
 // @brief create an execution engine from a plan
-void ExecutionEngine::instantiateFromPlan(Query& query, ExecutionPlan& plan,
-                                          bool planRegisters) {
-  auto const role = arangodb::ServerState::instance()->getRole();
+// TODO check that the lifetime of the arguments outlast this coroutine
+futures::Future<futures::Unit> ExecutionEngine::instantiateFromPlan(
+    Query& query, ExecutionPlan& plan, bool planRegisters) {
+  auto const role = ServerState::instance()->getRole();
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (ServerState::instance()->isCoordinator() ||
@@ -748,13 +749,13 @@ void ExecutionEngine::instantiateFromPlan(Query& query, ExecutionPlan& plan,
   }
 #endif
 
-  if (arangodb::ServerState::isCoordinator(role)) {
+  if (ServerState::isCoordinator(role)) {
     // distributed query
     DistributedQueryInstanciator inst(query, plan.getNodesById(),
                                       pushToSingleServer);
     plan.root()->flatWalk(inst, true);
 
-    Result res = inst.buildEngines();
+    Result res = co_await inst.buildEngines();
     if (res.fail()) {
       THROW_ARANGO_EXCEPTION(res);
     }
@@ -804,6 +805,7 @@ void ExecutionEngine::instantiateFromPlan(Query& query, ExecutionPlan& plan,
 
   TRI_ASSERT(snippets.size() == 1 ||
              ServerState::instance()->isClusterRole(role));
+  co_return;
 }
 
 void arangodb::aql::ExecutionEngine::setupEngineRoot(ExecutionBlock& root) {

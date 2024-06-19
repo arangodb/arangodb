@@ -224,7 +224,7 @@ struct MockGraphDatabase {
       query->collections().add(c, AccessMode::Type::READ,
                                arangodb::aql::Collection::Hint::Collection);
     }
-    query->prepareQuery();
+    query->prepareQuery().waitAndGet();
 
     return query;
   }

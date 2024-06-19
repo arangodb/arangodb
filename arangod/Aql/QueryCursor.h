@@ -95,13 +95,17 @@ class QueryResultCursor final : public arangodb::Cursor {
 /// Cursor managing a query from which it continuously gets
 /// new results. Query, transaction and locks will live until
 /// cursor is deleted (or query exhausted)
-class QueryStreamCursor final : public arangodb::Cursor {
- public:
-  QueryStreamCursor(std::shared_ptr<aql::Query> q, size_t batchSize, double ttl,
-                    bool isRetriable,
-                    transaction::OperationOrigin operationOrigin);
+class QueryStreamCursor final : public Cursor {
+  struct Token {};
 
-  ~QueryStreamCursor();
+ public:
+  static auto create(std::shared_ptr<Query> q, size_t batchSize, double ttl,
+                     bool isRetriable)
+      -> futures::Future<std::unique_ptr<QueryStreamCursor>>;
+
+  QueryStreamCursor(Token, std::shared_ptr<Query> q, size_t batchSize,
+                    double ttl, bool isRetriable);
+  ~QueryStreamCursor() override;
 
   void kill() override;
 
@@ -135,6 +139,8 @@ class QueryStreamCursor final : public arangodb::Cursor {
   }
 
  private:
+  auto finishConstruction() -> futures::Future<futures::Unit>;
+
   // Writes from _queryResults to builder. Removes copied blocks from
   // _queryResults and sets _queryResultPos appropriately. Relies on the caller
   // to have fetched more than batchSize() result rows (if possible) in order to

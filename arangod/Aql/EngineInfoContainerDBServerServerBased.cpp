@@ -296,7 +296,8 @@ bool EngineInfoContainerDBServerServerBased::isNotSatelliteLeader(
 //   this methods a shutdown request is send to all DBServers.
 //   In case the network is broken and this shutdown request is lost
 //   the DBServers will clean up their snippets after a TTL.
-Result EngineInfoContainerDBServerServerBased::buildEngines(
+// TODO rewrite asynchronously
+futures::Future<Result> EngineInfoContainerDBServerServerBased::buildEngines(
     std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
     MapRemoteToSnippet& snippetIds, aql::ServerQueryIdList& serverToQueryId,
     std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases) {
@@ -308,7 +309,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   std::vector<ServerID> dbServers = _shardLocking.getRelevantServers();
   if (dbServers.empty()) {
     // No snippets to be placed on dbservers
-    return {};
+    return Result{};
   }
   // We at least have one Snippet, or one graph node.
   // Otherwise the locking needs to be empty.
@@ -316,6 +317,8 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
 
   ErrorCode cleanupReason = TRI_ERROR_CLUSTER_TIMEOUT;
 
+  // TODO We can't have a guard that's a coroutine, so we need to refactor this
+  //      to a different pattern.
   auto cleanupGuard =
       scopeGuard([this, &serverToQueryId, &cleanupReason]() noexcept {
         try {
@@ -327,6 +330,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
             // complete shutdown to have finished before we return to the
             // caller. this is done so that there will be no 2 AQL queries in
             // the same streaming transaction at the same time
+            // TODO don't wait
             futures::collectAll(requests).wait();
           }
         } catch (std::exception const& ex) {
@@ -435,7 +439,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     _query.incHttpRequests(unsigned(1));
   }
 
-  futures::Future<Result> fastPathResult =
+  futures::Future<Result> fastPathFut =
       futures::collectAll(networkCalls)
           .thenValue([](std::vector<arangodb::futures::Try<Result>>&& responses)
                          -> Result {
@@ -463,12 +467,14 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
             // we see was LOCK_TIMEOUT.
             return res;
           });
-  if (fastPathResult.waitAndGet().fail()) {
-    if (fastPathResult.waitAndGet().isNot(TRI_ERROR_LOCK_TIMEOUT)) {
+  // TODO don't wait
+  auto& fastPathResult = fastPathFut.waitAndGet();
+  if (fastPathResult.fail()) {
+    if (fastPathResult.isNot(TRI_ERROR_LOCK_TIMEOUT)) {
       // we got an error. this will trigger the cleanupGuard!
       // set the proper error reason.
-      cleanupReason = fastPathResult.waitAndGet().errorNumber();
-      return fastPathResult.waitAndGet();
+      cleanupReason = fastPathResult.errorNumber();
+      return fastPathResult;
     }
 
     // if we ever get here, the initial fast lock request has failed
@@ -479,13 +485,14 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
 
     // we got a lock timeout response for the fast path locking...
     {
-      // in case of fast path failure, we need to cleanup engines
-      auto requests = cleanupEngines(fastPathResult.waitAndGet().errorNumber(),
+      // in case of fast path failure, we need to clean up engines
+      auto requests = cleanupEngines(fastPathResult.errorNumber(),
                                      _query.vocbase().name(), serverToQueryId);
       // Wait for all cleanup requests to complete.
       // So we know that all Transactions are aborted.
       Result res;
       for (auto& tryRes : requests) {
+        // TODO don't wait
         network::Response const& response = tryRes.waitAndGet();
         if (response.fail()) {
           // note first error, but continue iterating over all results
@@ -573,17 +580,19 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
           std::move(didCreateEngine), snippetIds, serverToQueryId,
           serverToQueryIdLock, pool, options, false /* fastPath */);
       _query.incHttpRequests(unsigned(1));
-      if (request.waitAndGet().fail()) {
+      // TODO don't wait
+      auto& requestResult = request.waitAndGet();
+      if (requestResult.fail()) {
         // this will trigger the cleanupGuard.
         // set the proper error reason
-        cleanupReason = request.waitAndGet().errorNumber();
-        return request.waitAndGet();
+        cleanupReason = requestResult.errorNumber();
+        return requestResult;
       }
     }
   }
 
   cleanupGuard.cancel();
-  return {};
+  return Result{};
 }
 
 Result EngineInfoContainerDBServerServerBased::parseResponse(

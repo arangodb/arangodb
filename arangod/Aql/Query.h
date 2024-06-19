@@ -138,7 +138,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// every following call will be ignored.
   void ensureExecutionTime() noexcept;
 
-  void prepareQuery();
+  [[nodiscard]] futures::Future<futures::Unit> prepareQuery();
 
   /// @brief execute an AQL query
   ExecutionState execute(QueryResult& res);
@@ -167,11 +167,9 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// @brief prepare a query out of some velocypack data.
   /// only to be used on single server or coordinator.
   /// never call this on a DB server!
-  void prepareFromVelocyPack(velocypack::Slice querySlice,
-                             velocypack::Slice collections,
-                             velocypack::Slice variables,
-                             velocypack::Slice snippets,
-                             QueryAnalyzerRevisions const& analyzersRevision);
+  futures::Future<futures::Unit> prepareFromVelocyPack(
+      velocypack::Slice querySlice, velocypack::Slice collections,
+      velocypack::Slice variables, velocypack::Slice snippets);
 
   /// @brief whether or not a query is a modification query
   bool isModificationQuery() const noexcept final;
@@ -311,7 +309,8 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   // log the end of a query (warnings only)
   void logAtEnd(QueryResult const& queryResult) const;
 
-  enum class ExecutionPhase { INITIALIZE, EXECUTE, FINALIZE };
+  enum class ExecutionPhase { INITIALIZE, PREPARE, EXECUTE, FINALIZE };
+  friend auto toString(ExecutionPhase) -> std::string_view;
 
  protected:
   AqlItemBlockManager _itemBlockManager;
@@ -431,6 +430,10 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   /// @brief was this query killed (can only be set once)
   std::atomic<bool> _queryKilled;
+
+  // This holds a possible exception of prepareQuery, so it can be re-thrown at
+  // the right moment.
+  futures::Try<futures::Unit> _prepareResult;
 };
 
 }  // namespace aql

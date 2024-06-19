@@ -636,7 +636,7 @@ std::shared_ptr<arangodb::aql::Query> prepareQuery(
       arangodb::aql::QueryOptions(
           arangodb::velocypack::Parser::fromJson(optionsString)->slice()));
 
-  query->prepareQuery();
+  query->prepareQuery().waitAndGet();
   return query;
 }
 
@@ -741,7 +741,7 @@ void assertFilterOptimized(
       std::move(ctx), arangodb::aql::QueryString(queryString), bindVars,
       arangodb::aql::QueryOptions(options->slice()));
 
-  query->prepareQuery();
+  query->prepareQuery().waitAndGet();
   EXPECT_TRUE(query->plan());
   auto plan = const_cast<arangodb::aql::ExecutionPlan*>(query->plan());
 

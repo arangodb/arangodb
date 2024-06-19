@@ -349,7 +349,7 @@ void Query::ensureExecutionTime() noexcept {
   }
 }
 
-void Query::prepareQuery() {
+futures::Future<futures::Unit> Query::prepareQuery() {
   try {
     init(/*createProfile*/ true);
 
@@ -405,7 +405,7 @@ void Query::prepareQuery() {
 
     // simon: assumption is _queryString is empty for DBServer snippets
     bool const planRegisters = !_queryString.empty();
-    ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters);
+    co_await ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters);
 
     _plans.push_back(std::move(plan));
 
@@ -435,6 +435,7 @@ void Query::prepareQuery() {
     _resultCode = TRI_ERROR_INTERNAL;
     throw;
   }
+  co_return;
 }
 
 /// @brief prepare an AQL query, this is a preparation for execute, but
@@ -572,10 +573,34 @@ ExecutionState Query::execute(QueryResult& queryResult) {
           }
         }
 
+        TRI_ASSERT(!_prepareResult.valid());
         // will throw if it fails
-        if (!_ast) {  // simon: hack for AQL_EXECUTEJSON
-          prepareQuery();
+        auto prepare = [&]() -> futures::Future<futures::Unit> {
+          if (!_ast) {  // simon: hack for AQL_EXECUTEJSON
+            return prepareQuery();
+          }
+          return futures::Future<futures::Unit>(futures::Unit{});
+        }();
+        _executionPhase = ExecutionPhase::PREPARE;
+        if (!prepare.isReady()) {
+          std::move(prepare).thenFinal(
+              [this, sqs = sharedState()](auto&& tryResult) {
+                sqs->executeAndWakeup([this, tryResult = std::move(tryResult)] {
+                  _prepareResult = std::move(tryResult);
+                  TRI_ASSERT(_prepareResult.valid());
+                  return true;
+                });
+              });
+          return ExecutionState::WAITING;
+        } else {
+          _prepareResult = std::move(prepare).result();
+          TRI_ASSERT(_prepareResult.valid());
         }
+      }
+        [[fallthrough]];
+      case ExecutionPhase::PREPARE: {
+        TRI_ASSERT(_prepareResult.valid());
+        _prepareResult.throwIfFailed();
 
         logAtStart();
         // NOTE: If the options have a shorter lifetime than the builder, it
@@ -592,7 +617,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
       case ExecutionPhase::EXECUTE: {
         TRI_ASSERT(queryResult.data != nullptr);
         TRI_ASSERT(queryResult.data->isOpenArray());
-        TRI_ASSERT(_trx != nullptr);
+        TRI_ASSERT(_trx != nullptr) << "id=" << id();
 
         if (useQueryCache && (isModificationQuery() || !_warnings.empty() ||
                               !_ast->root()->isCacheable())) {
@@ -800,7 +825,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
     }
 
     // will throw if it fails
-    prepareQuery();
+    prepareQuery().waitAndGet();
 
     logAtStart();
 
@@ -2044,10 +2069,9 @@ void Query::debugKillQuery() {
 /// @brief prepare a query out of some velocypack data.
 /// only to be used on single server or coordinator.
 /// never call this on a DB server!
-void Query::prepareFromVelocyPack(
+futures::Future<futures::Unit> Query::prepareFromVelocyPack(
     velocypack::Slice querySlice, velocypack::Slice collections,
-    velocypack::Slice variables, velocypack::Slice snippets,
-    QueryAnalyzerRevisions const& analyzersRevision) {
+    velocypack::Slice variables, velocypack::Slice snippets) {
   TRI_ASSERT(!ServerState::instance()->isDBServer());
 
   LOG_TOPIC("9636f", DEBUG, Logger::QUERIES)
@@ -2109,16 +2133,19 @@ void Query::prepareFromVelocyPack(
   enterState(QueryExecutionState::ValueType::PARSING);
 
   bool const planRegisters = !_queryString.empty();
-  auto instantiateSnippet = [&](velocypack::Slice snippet) {
+  auto instantiateSnippet =
+      [&](velocypack::Slice snippet) -> futures::Future<futures::Unit> {
     auto plan = ExecutionPlan::instantiateFromVelocyPack(_ast.get(), snippet);
     TRI_ASSERT(plan != nullptr);
 
-    ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters);
+    co_await ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters);
     _plans.push_back(std::move(plan));
+    co_return;
   };
 
   for (auto pair : VPackObjectIterator(snippets, /*sequential*/ true)) {
-    instantiateSnippet(pair.value);
+    // TODO Can these be set up concurrently to speed this up?
+    co_await instantiateSnippet(pair.value);
 
     TRI_ASSERT(!_snippets.empty());
     TRI_ASSERT(!_trx->state()->isDBServer() ||
@@ -2139,4 +2166,20 @@ void Query::prepareFromVelocyPack(
   _queryProfile->registerInQueryList();
 
   enterState(QueryExecutionState::ValueType::EXECUTION);
+
+  co_return;
+}
+
+auto aql::toString(Query::ExecutionPhase phase) -> std::string_view {
+  switch (phase) {
+    case Query::ExecutionPhase::INITIALIZE:
+      return "INITIALIZE";
+    case Query::ExecutionPhase::PREPARE:
+      return "PREPARE";
+    case Query::ExecutionPhase::EXECUTE:
+      return "EXECUTE";
+    case Query::ExecutionPhase::FINALIZE:
+      return "FINALIZE";
+  }
+  ADB_UNREACHABLE;
 }

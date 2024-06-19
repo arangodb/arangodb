@@ -112,7 +112,7 @@ void ClusterQuery::buildTraverserEngines(velocypack::Slice traverserSlice,
 /// @brief prepare a query out of some velocypack data.
 /// only to be used on a DB server.
 /// never call this on a single server or coordinator!
-void ClusterQuery::prepareFromVelocyPack(
+futures::Future<futures::Unit> ClusterQuery::prepareFromVelocyPack(
     velocypack::Slice querySlice, velocypack::Slice collections,
     velocypack::Slice variables, velocypack::Slice snippets,
     velocypack::Slice traverserSlice, std::string const& user,
@@ -199,18 +199,20 @@ void ClusterQuery::prepareFromVelocyPack(
   enterState(QueryExecutionState::ValueType::PARSING);
 
   bool const planRegisters = !_queryString.empty();
-  auto instantiateSnippet = [&](velocypack::Slice snippet) {
+  auto instantiateSnippet =
+      [&](velocypack::Slice snippet) -> futures::Future<futures::Unit> {
     auto plan = ExecutionPlan::instantiateFromVelocyPack(_ast.get(), snippet);
     TRI_ASSERT(plan != nullptr);
 
-    ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters);
+    co_await ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters);
     _plans.push_back(std::move(plan));
+    co_return;
   };
 
   TRI_ASSERT(answerBuilder.isOpenObject());
   answerBuilder.add("snippets", VPackValue(VPackValueType::Object));
   for (auto pair : VPackObjectIterator(snippets, /*sequential*/ true)) {
-    instantiateSnippet(pair.value);
+    co_await instantiateSnippet(pair.value);
 
     TRI_ASSERT(!_snippets.empty());
     TRI_ASSERT(_snippets.back()->engineId() != 0);
@@ -227,6 +229,7 @@ void ClusterQuery::prepareFromVelocyPack(
   buildTraverserEngines(traverserSlice, answerBuilder);
 
   enterState(QueryExecutionState::ValueType::EXECUTION);
+  co_return;
 }
 
 futures::Future<Result> ClusterQuery::finalizeClusterQuery(

@@ -83,7 +83,7 @@ class EngineInfoContainerDBServerServerBased {
   //   In case the network is broken and this shutdown request is lost
   //   the DBServers will clean up their snippets after a TTL.
   //   simon: in v3.7 we get a global QueryId for all snippets on a server
-  Result buildEngines(
+  futures::Future<Result> buildEngines(
       std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
       MapRemoteToSnippet& snippetIds, aql::ServerQueryIdList& serverQueryIds,
       std::map<ExecutionNodeId, ExecutionNodeId>& nodeAliases);

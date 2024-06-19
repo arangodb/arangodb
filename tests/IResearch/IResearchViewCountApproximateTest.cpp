@@ -525,7 +525,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorExact) {
       arangodb::transaction::StandaloneContext::create(
           vocbase(), arangodb::transaction::OperationOriginTestCase{}),
       arangodb::aql::QueryString(queryString), nullptr);
-  query->prepareQuery();
+  query->prepareQuery().waitAndGet();
   ASSERT_TRUE(query->ast());
   auto plan =
       arangodb::aql::ExecutionPlan::instantiateFromAst(query->ast(), false);
@@ -608,7 +608,7 @@ TEST_F(IResearchViewCountApproximateTest,
       arangodb::transaction::StandaloneContext::create(
           vocbase(), arangodb::transaction::OperationOriginTestCase{}),
       arangodb::aql::QueryString(queryString), nullptr);
-  query->prepareQuery();
+  query->prepareQuery().waitAndGet();
   ASSERT_TRUE(query->ast());
   auto plan =
       arangodb::aql::ExecutionPlan::instantiateFromAst(query->ast(), false);
@@ -692,7 +692,7 @@ TEST_F(IResearchViewCountApproximateTest, directSkipAllForMergeExecutorCost) {
       arangodb::transaction::StandaloneContext::create(
           vocbase(), arangodb::transaction::OperationOriginTestCase{}),
       arangodb::aql::QueryString(queryString), nullptr);
-  query->prepareQuery();
+  query->prepareQuery().waitAndGet();
   ASSERT_TRUE(query->ast());
   auto plan =
       arangodb::aql::ExecutionPlan::instantiateFromAst(query->ast(), false);

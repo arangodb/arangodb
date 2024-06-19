@@ -27,15 +27,19 @@
 #include "Aql/ExecutionState.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/types.h"
-#include "Aql/WalkerWorker.h"
 #include "Basics/Result.h"
 #include "Cluster/CallbackGuard.h"
-#include "Containers/SmallVector.h"
 
 #include <memory>
 #include <string>
 #include <utility>
 #include <vector>
+
+namespace arangodb::futures {
+template<typename T>
+class Future;
+struct Unit;
+}  // namespace arangodb::futures
 
 namespace arangodb::aql {
 
@@ -71,8 +75,8 @@ class ExecutionEngine {
   size_t asyncPrefetchSlotsLeased() const noexcept;
 
   // @brief create an execution engine from a plan
-  static void instantiateFromPlan(Query& query, ExecutionPlan& plan,
-                                  bool planRegisters);
+  [[nodiscard]] static futures::Future<futures::Unit> instantiateFromPlan(
+      Query& query, ExecutionPlan& plan, bool planRegisters);
 
   /// @brief Prepares execution blocks for executing provided plan
   /// @param plan plan to execute, should be without cluster nodes. Only local

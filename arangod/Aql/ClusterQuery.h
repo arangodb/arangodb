@@ -56,7 +56,7 @@ class ClusterQuery : public Query {
   /// @brief prepare a query out of some velocypack data.
   /// only to be used on a DB server.
   /// never call this on a single server or coordinator!
-  void prepareFromVelocyPack(
+  futures::Future<futures::Unit> prepareFromVelocyPack(
       velocypack::Slice querySlice, velocypack::Slice collections,
       velocypack::Slice variables, velocypack::Slice snippets,
       velocypack::Slice traverserSlice, std::string const& user,

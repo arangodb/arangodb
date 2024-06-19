@@ -149,17 +149,27 @@ Result QueryResultCursor::dumpSync(VPackBuilder& builder) {
 // .............................................................................
 // QueryStreamCursor class
 // .............................................................................
+auto QueryStreamCursor::create(std::shared_ptr<Query> q, size_t batchSize,
+                               double ttl, bool isRetriable)
+    -> futures::Future<std::unique_ptr<QueryStreamCursor>> {
+  auto cursor = std::make_unique<QueryStreamCursor>(
+      Token{}, std::move(q), batchSize, ttl, isRetriable);
+  co_await cursor->finishConstruction();
+  co_return cursor;
+}
 
-QueryStreamCursor::QueryStreamCursor(
-    std::shared_ptr<arangodb::aql::Query> q, size_t batchSize, double ttl,
-    bool isRetriable, transaction::OperationOrigin operationOrigin)
+QueryStreamCursor::QueryStreamCursor(Token, std::shared_ptr<Query> q,
+                                     size_t batchSize, double ttl,
+                                     bool isRetriable)
     : Cursor(TRI_NewServerSpecificTick(), batchSize, ttl, /*hasCount*/ false,
              isRetriable),
       _query(std::move(q)),
       _queryResultPos(0),
       _finalization(false),
-      _allowDirtyReads(false) {
-  _query->prepareQuery();
+      _allowDirtyReads(false) {}
+
+auto QueryStreamCursor::finishConstruction() -> futures::Future<futures::Unit> {
+  co_await _query->prepareQuery();
   _allowDirtyReads = _query->allowDirtyReads();  // is set by prepareQuery!
   TRI_IF_FAILURE("QueryStreamCursor::directKillAfterPrepare") {
     QueryStreamCursor::debugKillQuery();
@@ -196,6 +206,7 @@ QueryStreamCursor::QueryStreamCursor(
   }
 
   _query->exitV8Executor();
+  co_return;
 }
 
 QueryStreamCursor::~QueryStreamCursor() {

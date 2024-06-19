@@ -189,9 +189,9 @@ Cursor* CursorRepository::createFromQueryResult(aql::QueryResult&& result,
 /// the cursor will create a query internally and retain it until deleted
 //////////////////////////////////////////////////////////////////////////////
 
-Cursor* CursorRepository::createQueryStream(
-    std::shared_ptr<arangodb::aql::Query> q, size_t batchSize, double ttl,
-    bool isRetriable, transaction::OperationOrigin operationOrigin) {
+futures::Future<Cursor*> CursorRepository::createQueryStream(
+    std::shared_ptr<aql::Query> q, size_t batchSize, double ttl,
+    bool isRetriable) {
   TRI_ASSERT(q->queryOptions().stream);
 
   if (_softShutdownOngoing != nullptr &&
@@ -201,11 +201,11 @@ Cursor* CursorRepository::createQueryStream(
                                    "Coordinator soft shutdown ongoing.");
   }
 
-  auto cursor = std::make_unique<aql::QueryStreamCursor>(
-      std::move(q), batchSize, ttl, isRetriable, operationOrigin);
+  auto cursor = co_await aql::QueryStreamCursor::create(std::move(q), batchSize,
+                                                        ttl, isRetriable);
   cursor->use();
 
-  return addCursor(std::move(cursor));
+  co_return addCursor(std::move(cursor));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
