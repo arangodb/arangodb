@@ -358,12 +358,16 @@ void RocksDBTrxBaseMethods::PopSavePoint() {
 
 void RocksDBTrxBaseMethods::beginQuery(
     std::shared_ptr<ResourceMonitor> resourceMonitor,
-    bool /*isModificationQuery*/) {
-  _memoryTracker.beginQuery(resourceMonitor);
+    bool isModificationQuery) {
+  if (isModificationQuery) {
+    _memoryTracker.beginQuery(resourceMonitor);
+  }
 }
 
-void RocksDBTrxBaseMethods::endQuery(bool /*isModificationQuery*/) noexcept {
-  _memoryTracker.endQuery();
+void RocksDBTrxBaseMethods::endQuery(bool isModificationQuery) noexcept {
+  if (isModificationQuery) {
+    _memoryTracker.endQuery();
+  }
 }
 
 void RocksDBTrxBaseMethods::cleanupTransaction() {
