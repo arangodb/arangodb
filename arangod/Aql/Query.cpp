@@ -322,6 +322,10 @@ void Query::kill() {
   }
 }
 
+void Query::setKillFlag() {
+  _queryKilled.store(true, std::memory_order_acq_rel);
+}
+
 /// @brief the query's transaction id. returns 0 if no transaction
 /// has been assigned to the query yet. use this only for informational
 /// purposes
