@@ -1268,6 +1268,8 @@ ErrorCode DatabaseFeature::iterateDatabases(velocypack::Slice databases) {
         FATAL_ERROR_EXIT();
       }
     }
+    TRI_ASSERT(!next->contains(database->name()))
+        << "duplicate database name " << database->name();
     next->emplace(database->name(), database.get());
     std::ignore = database.release();
   }
