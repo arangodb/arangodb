@@ -862,6 +862,9 @@ RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
                             TRI_ERROR_HTTP_NOT_FOUND);
               return futures::Unit{};
             }
+            // we must be the only user of this query
+            TRI_ASSERT(query.use_count() == 1)
+                << "Finalizing query with use_count " << query.use_count();
             return query->finalizeClusterQuery(errorCode).thenValue(
                 [self = std::move(self), this,
                  q = std::move(query)](Result res) {

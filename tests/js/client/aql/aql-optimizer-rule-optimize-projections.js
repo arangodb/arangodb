@@ -146,6 +146,40 @@ function optimizerRuleTestSuite () {
       });
     },
 
+    // verifies an issue with projection variables not being correctly replaced
+    // inside traversals
+    testOptimizeProjectionsTraversalRegression: function () {
+      const vn = ["v1", "v2", "v3"];
+      const en = ["e1", "e2"];
+
+      vn.forEach((n) => { db._create(n); });
+      en.forEach((n) => { db._createEdgeCollection(n); });
+
+      try {
+        let k1 = db.v1.insert({ from: 1704067200000 })._id;
+        let k2 = db.v2.insert({ from: 1514764800000 })._id;
+        let k3 = db.v3.insert({ start: 1619827200000 })._id;
+
+        db.e1.insert({ _from: k2, _to: k1 });
+        db.e2.insert({ _from: k3, _to: k2 });
+
+        const query = `
+WITH v2, v3, v1
+FOR doc1 IN v1 FILTER doc1._id == '${k1}'
+FOR doc2 IN 1..1 INBOUND doc1 e1
+FOR doc3 IN 1..1 INBOUND doc2 e2
+FILTER doc3.start < doc1.from
+RETURN { s: doc3.start, f: doc1.from }`;
+        
+        let result = db._query(query).toArray();
+        assertEqual(1, result.length);
+        assertEqual({ s: 1619827200000, f: 1704067200000 }, result[0]);
+      } finally {
+        vn.forEach((n) => { db._drop(n); });
+        en.forEach((n) => { db._drop(n); });
+      }
+    },
+
   };
 }
 
