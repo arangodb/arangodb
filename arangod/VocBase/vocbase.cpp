@@ -129,6 +129,10 @@ void TRI_vocbase_t::release() noexcept {
   TRI_ASSERT(v >= 2);
 }
 
+arangodb::VocbasePtr TRI_vocbase_t::getSharedPtr() noexcept {
+  return VocbasePtr{use() ? this : nullptr};
+}
+
 bool TRI_vocbase_t::isDangling() const noexcept {
   auto const v = _refCount.load(std::memory_order_acquire);
   TRI_ASSERT((v & 1) == 0 || !isSystem());

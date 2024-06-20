@@ -126,8 +126,8 @@ class AqlShadowItemRowTest : public ::testing::Test {
                                  SharedAqlItemBlockPtr const& inputBlock,
                                  SharedAqlItemBlockPtr& outputBlock) {
     auto numRegisters = inputBlock->numRegisters();
-    outputBlock.reset(new AqlItemBlock(itemBlockManager, targetNumberOfRows,
-                                       numRegisters + 1));
+    outputBlock =
+        itemBlockManager.requestBlock(targetNumberOfRows, numRegisters + 1);
     // We do not add or remove anything, just move
     auto outputRegisters = RegIdSet{numRegisters};
     size_t maxShadowRowDepth = 0;

@@ -380,7 +380,7 @@ TEST_F(AsyncExecutorTest, AsyncNode_does_not_return_stored_WAITING) {
   consumer2->addDependency(mutex.get());
 
   std::deque<arangodb::aql::SharedAqlItemBlockPtr> blockDeque;
-  SharedAqlItemBlockPtr block{new AqlItemBlock(blockManager, 1, 1)};
+  auto block = blockManager.requestBlock(1, 1);
   blockDeque.emplace_back(std::move(block));
   auto waitingBlock = std::make_unique<WaitingExecutionBlockMock>(
       fakedQuery->rootEngine(), generateNodeDummy(), std::move(blockDeque),
