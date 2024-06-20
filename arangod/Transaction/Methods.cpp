@@ -3638,8 +3638,15 @@ Future<Result> Methods::replicateOperations(
   // we continue with the operation, since most likely, the follower was
   // simply dropped in the meantime.
   // In any case, we drop the follower here (just in case).
+  auto vocbasePtr = vocbase().getSharedPtr();
+  if (vocbasePtr == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
+        fmt::format("Database {} deleted during transaction {}",
+                    vocbase().name(), tid().id()));
+  }
   auto cb = [followerList, startTimeReplication, opName, collection, count,
-             vocbase = vocbase().getSharedPtr(), state = _state](
+             vocbase = std::move(vocbasePtr), state = _state](
                 std::vector<futures::Try<network::Response>>&& responses)
       -> futures::Future<Result> {
     auto duration = std::chrono::steady_clock::now() - startTimeReplication;
