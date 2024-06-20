@@ -104,21 +104,20 @@ class Methods {
   Methods& operator=(Methods const&) = delete;
 
   /// @brief create the transaction
-  explicit Methods(
-      std::shared_ptr<transaction::Context> ctx,
-      transaction::Options const& options = transaction::Options());
+  explicit Methods(std::shared_ptr<Context> ctx,
+                   Options const& options = Options());
 
   /// @brief create the transaction, and add a collection to it.
   /// use on followers only!
-  Methods(std::shared_ptr<transaction::Context> ctx,
-          std::string const& collectionName, AccessMode::Type type);
+  Methods(std::shared_ptr<Context> ctx, std::string const& collectionName,
+          AccessMode::Type type);
 
   /// @brief create the transaction, used to be UserTransaction
-  Methods(std::shared_ptr<transaction::Context> ctx,
+  Methods(std::shared_ptr<Context> ctx,
           std::vector<std::string> const& readCollections,
           std::vector<std::string> const& writeCollections,
           std::vector<std::string> const& exclusiveCollections,
-          transaction::Options const& options);
+          Options const& options);
 
   /// @brief destroy the transaction
   virtual ~Methods();
@@ -138,8 +137,7 @@ class Methods {
   ///               will match trx.state()->status() for top-level transactions
   ///               may not match trx.state()->status() for embeded transactions
   ///               since their staus is not updated from RUNNING
-  using StatusChangeCallback = std::function<void(transaction::Methods& trx,
-                                                  transaction::Status status)>;
+  using StatusChangeCallback = std::function<void(Methods& trx, Status status)>;
 
   /// @brief add a callback to be called for LogicalDataSource instance
   ///        association events, e.g. addCollection(...)
@@ -175,11 +173,11 @@ class Methods {
                    char const*& key, size_t& outLength);
 
   /// @brief return a pointer to the transaction context
-  std::shared_ptr<transaction::Context> const& transactionContext() const {
+  std::shared_ptr<Context> const& transactionContext() const {
     return _transactionContext;
   }
 
-  TEST_VIRTUAL transaction::Context* transactionContextPtr() const {
+  TEST_VIRTUAL Context* transactionContextPtr() const {
     TRI_ASSERT(_transactionContext != nullptr);
     return _transactionContext.get();
   }
@@ -199,7 +197,7 @@ class Methods {
   bool isMainTransaction() const noexcept;
 
   /// @brief add a transaction hint
-  void addHint(transaction::Hints::Hint hint) noexcept;
+  void addHint(Hints::Hint hint) noexcept;
 
   /// @brief whether or not the transaction consists of a single operation only
   bool isSingleOperationTransaction() const noexcept;
@@ -214,8 +212,8 @@ class Methods {
   TEST_VIRTUAL velocypack::Options const& vpackOptions() const;
 
   /// @brief begin the transaction
+  [[nodiscard, deprecated("use async variant")]] Result begin();
   [[nodiscard]] futures::Future<Result> beginAsync();
-  Result begin();
 
   /// @deprecated use async variant
   [[nodiscard, deprecated("use async variant")]] auto commit() noexcept
@@ -379,10 +377,9 @@ class Methods {
   /// @brief factory for IndexIterator objects
   /// note: the caller must have read-locked the underlying collection when
   /// calling this method
-  std::unique_ptr<IndexIterator> indexScan(ResourceMonitor& monitor,
-                                           std::string const& collectionName,
-                                           CursorType cursorType,
-                                           ReadOwnWrites readOwnWrites);
+  futures::Future<std::unique_ptr<IndexIterator>> indexScan(
+      std::string const& collectionName, CursorType cursorType,
+      ReadOwnWrites readOwnWrites);
 
   /// @brief test if a collection is already locked
   ENTERPRISE_VIRT bool isLocked(arangodb::LogicalCollection*,
@@ -441,7 +438,7 @@ class Methods {
 
   futures::Future<OperationResult> documentCoordinator(
       std::string const& collectionName, VPackSlice value,
-      OperationOptions const& options, MethodsApi api);
+      OperationOptions options, MethodsApi api);
 
   Future<OperationResult> documentLocal(std::string const& collectionName,
                                         VPackSlice value,
@@ -449,7 +446,7 @@ class Methods {
 
   Future<OperationResult> insertCoordinator(std::string const& collectionName,
                                             VPackSlice value,
-                                            OperationOptions const& options,
+                                            OperationOptions options,
                                             MethodsApi api);
 
   Future<OperationResult> insertLocal(std::string const& collectionName,
@@ -470,7 +467,7 @@ class Methods {
 
   Future<OperationResult> modifyCoordinator(
       std::string const& collectionName, VPackSlice newValue,
-      OperationOptions const& options, TRI_voc_document_operation_e operation,
+      OperationOptions options, TRI_voc_document_operation_e operation,
       MethodsApi api);
 
   Future<OperationResult> modifyLocal(std::string const& collectionName,
@@ -479,8 +476,8 @@ class Methods {
 
   Future<OperationResult> removeCoordinator(std::string const& collectionName,
                                             VPackSlice value,
-                                            OperationOptions const& options,
-                                            transaction::MethodsApi api);
+                                            OperationOptions options,
+                                            MethodsApi api);
 
   Future<OperationResult> removeLocal(std::string const& collectionName,
                                       VPackSlice value,
@@ -501,7 +498,7 @@ class Methods {
                                             OperationOptions options);
 
   Future<OperationResult> truncateCoordinator(std::string const& collectionName,
-                                              OperationOptions& options,
+                                              OperationOptions options,
                                               MethodsApi api);
 
   Future<OperationResult> truncateLocal(std::string collectionName,
@@ -549,15 +546,16 @@ class Methods {
 
   futures::Future<OperationResult> countCoordinator(
       std::string const& collectionName, CountType type,
-      OperationOptions const& options, MethodsApi api);
+      OperationOptions options, MethodsApi api);
 
   futures::Future<OperationResult> countCoordinatorHelper(
       std::shared_ptr<LogicalCollection> const& collinfo,
       std::string const& collectionName, CountType type,
       OperationOptions const& options, MethodsApi api);
 
-  OperationResult countLocal(std::string const& collectionName, CountType type,
-                             OperationOptions const& options);
+  futures::Future<OperationResult> countLocal(std::string const& collectionName,
+                                              CountType type,
+                                              OperationOptions options);
 
   /// @brief add a collection by id, with the name supplied
   Result addCollection(DataSourceId, std::string_view, AccessMode::Type);
@@ -573,10 +571,10 @@ class Methods {
   std::shared_ptr<TransactionState> _state;
 
   /// @brief the transaction context
-  std::shared_ptr<transaction::Context> _transactionContext;
+  std::shared_ptr<Context> _transactionContext;
 
   /// @brief transaction hints
-  transaction::Hints _localHints;
+  Hints _localHints;
 
   bool _mainTransaction;
 
