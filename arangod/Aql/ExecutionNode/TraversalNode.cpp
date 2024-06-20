@@ -374,6 +374,17 @@ void TraversalNode::replaceVariables(
       }
     }
   }
+
+  if (_condition) {
+    _condition->replaceVariables(replacements);
+
+    // determine new set of variables used by post filters
+    _postFilterVariables.clear();
+    for (auto& it : _postFilterConditions) {
+      it = Ast::replaceVariables(const_cast<AstNode*>(it), replacements, true);
+      Ast::getReferencedVariables(it, _postFilterVariables);
+    }
+  }
 }
 
 void TraversalNode::replaceAttributeAccess(
@@ -395,6 +406,23 @@ void TraversalNode::replaceAttributeAccess(
   if (_pruneExpression != nullptr) {
     _pruneExpression->replaceAttributeAccess(searchVariable, attribute,
                                              replaceVariable);
+    // determine new set of variables used by prune expression
+    VarSet variables;
+    _pruneExpression->variables(variables);
+    _pruneVariables = std::move(variables);
+  }
+  if (_condition && self != this) {
+    _condition->replaceAttributeAccess(searchVariable, attribute,
+                                       replaceVariable);
+
+    // determine new set of variables used by post filters
+    _postFilterVariables.clear();
+    for (auto& it : _postFilterConditions) {
+      it = Ast::replaceAttributeAccess(_plan->getAst(),
+                                       const_cast<AstNode*>(it), searchVariable,
+                                       attribute, replaceVariable);
+      Ast::getReferencedVariables(it, _postFilterVariables);
+    }
   }
 }
 
