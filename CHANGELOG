@@ -1,6 +1,9 @@
 devel
 -----
 
+* Fixed a bug where accessing a collection right after creation can sometimes
+  fail.
+
 * OASIS-25850: Fix incomplete replacing of projection variables in traversals.
   This fixes a regression introduced in 3.12.0.
 
