@@ -1,5 +1,1 @@
-
-shell_api priority=500 single -- $EncryptionAtRest
-
-shell_api priority=500 cluster -- $EncryptionAtRest
-
+wal_cleanup full cluster priority=2500 -- --dumpAgencyOnError true
