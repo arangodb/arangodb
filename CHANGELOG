@@ -1,6 +1,9 @@
 devel
 -----
 
+* During AQL setup, the Coordinator will no longer block threads while waiting
+  for DBServers to finish the query instantiation.
+
 * FE-454: Fix saving document in "Tree" mode.
 
 * FE-310: Query editor in web UI can now be resized vertically.
