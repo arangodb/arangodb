@@ -435,7 +435,6 @@ futures::Future<futures::Unit> Query::prepareQuery() {
     _resultCode = TRI_ERROR_INTERNAL;
     throw;
   }
-  co_return;
 }
 
 /// @brief prepare an AQL query, this is a preparation for execute, but
@@ -2144,7 +2143,6 @@ futures::Future<futures::Unit> Query::prepareFromVelocyPack(
   };
 
   for (auto pair : VPackObjectIterator(snippets, /*sequential*/ true)) {
-    // TODO Can these be set up concurrently to speed this up?
     co_await instantiateSnippet(pair.value);
 
     TRI_ASSERT(!_snippets.empty());

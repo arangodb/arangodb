@@ -229,7 +229,6 @@ futures::Future<futures::Unit> ClusterQuery::prepareFromVelocyPack(
   buildTraverserEngines(traverserSlice, answerBuilder);
 
   enterState(QueryExecutionState::ValueType::EXECUTION);
-  co_return;
 }
 
 futures::Future<Result> ClusterQuery::finalizeClusterQuery(

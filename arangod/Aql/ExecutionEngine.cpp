@@ -804,7 +804,6 @@ futures::Future<futures::Unit> ExecutionEngine::instantiateFromPlan(
 
   TRI_ASSERT(snippets.size() == 1 ||
              ServerState::instance()->isClusterRole(role));
-  co_return;
 }
 
 void arangodb::aql::ExecutionEngine::setupEngineRoot(ExecutionBlock& root) {

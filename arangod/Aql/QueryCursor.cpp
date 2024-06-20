@@ -206,7 +206,6 @@ auto QueryStreamCursor::finishConstruction() -> futures::Future<futures::Unit> {
   }
 
   _query->exitV8Executor();
-  co_return;
 }
 
 QueryStreamCursor::~QueryStreamCursor() {

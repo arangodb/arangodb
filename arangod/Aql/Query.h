@@ -138,7 +138,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// every following call will be ignored.
   void ensureExecutionTime() noexcept;
 
-  [[nodiscard]] futures::Future<futures::Unit> prepareQuery();
+  futures::Future<futures::Unit> prepareQuery();
 
   /// @brief execute an AQL query
   ExecutionState execute(QueryResult& res);

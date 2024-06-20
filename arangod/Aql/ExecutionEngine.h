@@ -75,8 +75,9 @@ class ExecutionEngine {
   size_t asyncPrefetchSlotsLeased() const noexcept;
 
   // @brief create an execution engine from a plan
-  [[nodiscard]] static futures::Future<futures::Unit> instantiateFromPlan(
-      Query& query, ExecutionPlan& plan, bool planRegisters);
+  static futures::Future<futures::Unit> instantiateFromPlan(Query& query,
+                                                            ExecutionPlan& plan,
+                                                            bool planRegisters);
 
   /// @brief Prepares execution blocks for executing provided plan
   /// @param plan plan to execute, should be without cluster nodes. Only local

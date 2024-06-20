@@ -93,6 +93,8 @@ class EngineInfoContainerDBServerServerBased {
  private:
   struct BuildEnginesInternalResult {
     Result result;
+    // cleanup will be executed iff either cleanupReason is set, or if an
+    // exception is thrown.
     std::optional<ErrorCode> cleanupReason;
   };
   auto buildEnginesInternal(

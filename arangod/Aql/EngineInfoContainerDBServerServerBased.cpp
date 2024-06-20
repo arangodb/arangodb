@@ -296,7 +296,6 @@ bool EngineInfoContainerDBServerServerBased::isNotSatelliteLeader(
 //   this methods a shutdown request is send to all DBServers.
 //   In case the network is broken and this shutdown request is lost
 //   the DBServers will clean up their snippets after a TTL.
-// TODO rewrite asynchronously
 futures::Future<Result> EngineInfoContainerDBServerServerBased::buildEngines(
     std::unordered_map<ExecutionNodeId, ExecutionNode*> const& nodesById,
     MapRemoteToSnippet& snippetIds, aql::ServerQueryIdList& serverToQueryId,
@@ -315,8 +314,6 @@ futures::Future<Result> EngineInfoContainerDBServerServerBased::buildEngines(
   // Otherwise the locking needs to be empty.
   TRI_ASSERT(!_closedSnippets.empty() || !_graphNodes.empty());
 
-  // TODO We can't have a guard that's a coroutine, so we need to refactor this
-  //      to a different pattern.
   auto cleanup =
       [this, &serverToQueryId](
           ErrorCode cleanupReason) noexcept -> futures::Future<futures::Unit> {
@@ -335,7 +332,6 @@ futures::Future<Result> EngineInfoContainerDBServerServerBased::buildEngines(
       LOG_TOPIC("2a9fe", WARN, Logger::AQL)
           << "unable to clean up query snippets: " << ex.what();
     }
-    co_return;
   };
 
   auto cleanupReason = std::optional<ErrorCode>();
