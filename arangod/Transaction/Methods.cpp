@@ -2266,7 +2266,7 @@ Future<OperationResult> transaction::Methods::documentLocal(
         *this, collectionName, value, options);
     if (getDocumentProcessorRes.fail()) {
       co_return OperationResult(std::move(getDocumentProcessorRes).result(),
-                                options);
+                                std::move(options));
     }
     fut = getDocumentProcessorRes.get().execute();
   }
