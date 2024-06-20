@@ -2266,7 +2266,7 @@ Future<OperationResult> transaction::Methods::documentLocal(
         *this, collectionName, value, options);
     if (getDocumentProcessorRes.fail()) {
       co_return OperationResult(std::move(getDocumentProcessorRes).result(),
-                                options);
+                                std::move(options));
     }
     fut = getDocumentProcessorRes.get().execute();
   }
@@ -2709,7 +2709,7 @@ Future<OperationResult> transaction::Methods::removeLocal(
         co_await RemoveProcessor::create(*this, collectionName, value, options);
     if (removeProcessorRes.fail()) {
       co_return OperationResult(std::move(removeProcessorRes).result(),
-                                options);
+                                std::move(options));
     }
     fut = removeProcessorRes.get().execute();
   }
