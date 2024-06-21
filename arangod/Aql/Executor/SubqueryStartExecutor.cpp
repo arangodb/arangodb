@@ -77,6 +77,7 @@ auto SubqueryStartExecutor::produceShadowRow(AqlItemBlockInputRange& input,
   TRI_ASSERT(!output.allRowsUsed());
   if (_inputRow.isInitialized()) {
     // Actually consume the input row now.
+    TRI_ASSERT(input.hasDataRow());
     auto const [upstreamState, inputRow] = input.nextDataRow();
     // We are only supposed to report the inputRow we
     // have seen in produce as a ShadowRow

@@ -207,6 +207,8 @@ class TraversalExecutor {
   [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
       -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
 
+  void initializeCursor();
+
  private:
   auto doOutput(OutputAqlItemRow& output) -> void;
 
@@ -216,7 +218,6 @@ class TraversalExecutor {
 
   auto traversalEnumerator() -> arangodb::graph::TraversalEnumerator*;
 
- private:
   Infos& _infos;
 
   // an AST owned by the TraversalExecutor, used to store data of index

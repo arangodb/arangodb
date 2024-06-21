@@ -479,6 +479,14 @@ auto TraversalExecutor::skipRowsRange(AqlItemBlockInputRange& input,
   TRI_ASSERT(false);
 }
 
+void TraversalExecutor::initializeCursor() {
+  // TODO: check if this implementation cleans enough
+  _ast.clearMost();
+  _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
+  _infos.traversalEnumerator()->clear(false);
+  _infos.traversalEnumerator()->unprepareValidatorContext();
+}
+
 // Set a new start vertex for traversal, for this fetch inputs
 // from input until we are either successful or input is unwilling
 // to give us more.
@@ -488,7 +496,8 @@ bool TraversalExecutor::initTraverser(AqlItemBlockInputRange& input) {
   TRI_ASSERT(traversalEnumerator()->isDone());
 
   while (input.hasDataRow()) {
-    std::tie(std::ignore, _inputRow) = input.nextDataRow();
+    std::tie(std::ignore, _inputRow) =
+        input.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
 
     std::string sourceString;
     TRI_ASSERT(_inputRow.isInitialized());
