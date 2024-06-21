@@ -73,12 +73,10 @@ bool arangodb::MultipartMessage::findBoundaryEnd(size_t& offset) const {
 }
 
 bool arangodb::MultipartMessage::isAtEnd(size_t& offset) const {
-  if (offset < message.size() && message[offset] == '-') {
-    ++offset;
-    if (offset < message.size() && message[offset] == '-') {
-      ++offset;
-      return true;
-    }
+  if (offset + 1 < message.size() && message[offset] == '-' &&
+      message[offset + 1] == '-') {
+    offset += 2;
+    return true;
   }
   return false;
 }
