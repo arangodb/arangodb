@@ -77,7 +77,7 @@ TEST_F(EnumerateListExecutorTest, test_check_state_first_row_border) {
       itemBlockManager, fakeUnusedBlock->steal(), false);
 
   // This is the relevant part of the test
-  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 5)};
+  auto block = itemBlockManager.requestBlock(1000, 5);
   RegisterInfos registerInfos(RegIdSet{3}, RegIdSet{4}, 4, 5, {},
                               {RegIdSet{0, 1, 2, 3}});
   EnumerateListExecutorInfos executorInfos(
@@ -117,7 +117,7 @@ TEST_F(EnumerateListExecutorTest, test_check_state_second_row_border) {
       itemBlockManager, fakeUnusedBlock->steal(), false);
 
   // This is the relevant part of the test
-  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1000, 5)};
+  auto block = itemBlockManager.requestBlock(1000, 5);
   RegisterInfos registerInfos(RegIdSet{3}, RegIdSet{4}, 4, 5, {},
                               {RegIdSet{0, 1, 2, 3}});
   EnumerateListExecutorInfos executorInfos(
@@ -173,8 +173,7 @@ class EnumerateListExecutorTestProduce
         RegisterInfos{RegIdSet{inputRegister}, RegIdSet{outputRegister},
                       nrInputRegister,         nrOutputRegister,
                       std::move(regToClear),   std::move(regToKeep)};
-    block = SharedAqlItemBlockPtr{
-        new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)};
+    block = itemBlockManager.requestBlock(1000, nrOutputRegister);
     return infos;
   }
 

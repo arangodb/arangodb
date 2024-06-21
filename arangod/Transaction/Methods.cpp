@@ -775,13 +775,15 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
         // in case of an error.
 
         // Now replicate the good operations on all followers:
-        return this->_methods
-            .replicateOperations(this->_trxColl, _followers, this->_options,
-                                 *this->_replicationData, _operationType,
-                                 this->_methods.username())
-            .thenValue([options = this->_options,
-                        errs = std::move(errorCounter),
-                        resultData = std::move(resDocs)](Result&& res) mutable {
+        auto fut = this->_methods.replicateOperations(
+            this->_trxColl, _followers, this->_options, *this->_replicationData,
+            _operationType, this->_methods.username());
+        // Return the builder now, so it doesn't happen too late when the
+        // context might already be gone.
+        _replicationData.clear();
+        return std::move(fut).thenValue(
+            [options = this->_options, errs = std::move(errorCounter),
+             resultData = std::move(resDocs)](Result&& res) mutable {
               if (!res.ok()) {
                 return OperationResult{std::move(res), options};
               }
@@ -2228,12 +2230,20 @@ Future<OperationResult> Methods::documentCoordinator(
 Future<OperationResult> Methods::documentLocal(
     std::string const& collectionName, VPackSlice value,
     OperationOptions options) {
-  auto res = co_await GetDocumentProcessor::create(*this, collectionName, value,
-                                                   options);
-  if (res.fail()) {
-    co_return OperationResult(std::move(res).result(), options);
+  auto fut = Future<OperationResult>::makeEmpty();
+  // Destroy the GetDocumentProcessor before awaiting the future, so the
+  // BuilderLeasers return their builders before the Context might be
+  // gone.
+  {
+    auto getDocumentProcessorRes = co_await GetDocumentProcessor::create(
+        *this, collectionName, value, options);
+    if (getDocumentProcessorRes.fail()) {
+      co_return OperationResult(std::move(getDocumentProcessorRes).result(),
+                                std::move(options));
+    }
+    fut = getDocumentProcessorRes.get().execute();
   }
-  co_return co_await res.get().execute();
+  co_return co_await std::move(fut);
 }
 
 OperationResult Methods::insert(std::string const& collectionName,
@@ -2521,12 +2531,21 @@ Result Methods::determineReplication2TypeAndFollowers(
 Future<OperationResult> Methods::insertLocal(std::string const& collectionName,
                                              VPackSlice value,
                                              OperationOptions options) {
-  auto res =
-      co_await InsertProcessor::create(*this, collectionName, value, options);
-  if (res.fail()) {
-    co_return OperationResult(std::move(res).result(), options);
+  auto fut = Future<OperationResult>::makeEmpty();
+
+  // Destroy the InsertProcessor before awaiting the future, so the
+  // BuilderLeasers return their builders before the Context might be
+  // gone.
+  {
+    auto insertProcessorRes =
+        co_await InsertProcessor::create(*this, collectionName, value, options);
+    if (insertProcessorRes.fail()) {
+      co_return OperationResult(std::move(insertProcessorRes).result(),
+                                std::move(options));
+    }
+    fut = insertProcessorRes.get().execute();
   }
-  co_return co_await res.get().execute();
+  co_return co_await std::move(fut);
 }
 
 OperationResult Methods::update(std::string const& collectionName,
@@ -2598,12 +2617,20 @@ Future<OperationResult> Methods::modifyLocal(std::string const& collectionName,
                                              VPackSlice newValue,
                                              OperationOptions options,
                                              bool isUpdate) {
-  auto res = co_await ModifyProcessor::create(*this, collectionName, newValue,
-                                              options, isUpdate);
-  if (res.fail()) {
-    co_return OperationResult(std::move(res).result(), options);
+  auto fut = Future<OperationResult>::makeEmpty();
+  // Destroy the ModifyProcessor before awaiting the future, so the
+  // BuilderLeasers return their builders before the Context might be
+  // gone.
+  {
+    auto modifyProcessorRes = co_await ModifyProcessor::create(
+        *this, collectionName, newValue, options, isUpdate);
+    if (modifyProcessorRes.fail()) {
+      co_return OperationResult(std::move(modifyProcessorRes).result(),
+                                std::move(options));
+    }
+    fut = modifyProcessorRes.get().execute();
   }
-  co_return co_await res.get().execute();
+  co_return co_await std::move(fut);
 }
 
 OperationResult Methods::remove(std::string const& collectionName,
@@ -2645,12 +2672,20 @@ Future<OperationResult> Methods::removeCoordinator(
 Future<OperationResult> Methods::removeLocal(std::string const& collectionName,
                                              VPackSlice value,
                                              OperationOptions options) {
-  auto res =
-      co_await RemoveProcessor::create(*this, collectionName, value, options);
-  if (res.fail()) {
-    co_return OperationResult(std::move(res).result(), options);
+  auto fut = Future<OperationResult>::makeEmpty();
+  // Destroy the RemoveProcessor before awaiting the future, so the
+  // BuilderLeasers return their builders before the Context might be
+  // gone.
+  {
+    auto removeProcessorRes =
+        co_await RemoveProcessor::create(*this, collectionName, value, options);
+    if (removeProcessorRes.fail()) {
+      co_return OperationResult(std::move(removeProcessorRes).result(),
+                                std::move(options));
+    }
+    fut = removeProcessorRes.get().execute();
   }
-  co_return co_await res.get().execute();
+  co_return co_await std::move(fut);
 }
 
 /// @brief fetches all documents in a collection
@@ -3405,6 +3440,7 @@ Future<Result> Methods::replicateOperations(
     // be committed in the replicated log
     TRI_ASSERT(replicationFut.isReady());
 
+    // TODO This shouldn't be synchronous
     auto replicationRes = replicationFut.waitAndGet();
     if (replicationRes.fail()) {
       return replicationRes.result();
@@ -3560,11 +3596,20 @@ Future<Result> Methods::replicateOperations(
   // we continue with the operation, since most likely, the follower was
   // simply dropped in the meantime.
   // In any case, we drop the follower here (just in case).
-  auto cb = [=, this](std::vector<futures::Try<network::Response>>&& responses)
+  auto vocbasePtr = vocbase().getSharedPtr();
+  if (vocbasePtr == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
+        fmt::format("Database {} deleted during transaction {}",
+                    vocbase().name(), tid().id()));
+  }
+  auto cb = [followerList, startTimeReplication, opName, collection, count,
+             vocbase = std::move(vocbasePtr), state = _state](
+                std::vector<futures::Try<network::Response>>&& responses)
       -> futures::Future<Result> {
     auto duration = std::chrono::steady_clock::now() - startTimeReplication;
     auto& replMetrics =
-        vocbase().server().getFeature<ReplicationMetricsFeature>();
+        vocbase->server().getFeature<ReplicationMetricsFeature>();
     replMetrics.synchronousOpsTotal() += 1;
     replMetrics.synchronousTimeTotal() +=
         std::chrono::nanoseconds(duration).count();
@@ -3602,7 +3647,7 @@ Future<Result> Methods::replicateOperations(
           // follower, but simply return the error and abort our local
           // transaction.
           if (r.is(TRI_ERROR_TRANSACTION_ABORTED) &&
-              this->state()->hasHint(Hints::Hint::FROM_TOPLEVEL_AQL)) {
+              state->hasHint(Hints::Hint::FROM_TOPLEVEL_AQL)) {
             return r;
           }
 
@@ -3614,8 +3659,7 @@ Future<Result> Methods::replicateOperations(
               absl::StrCat("got error from follower: ", r.errorMessage());
 
           if (followerRefused) {
-            ++vocbase()
-                  .server()
+            ++vocbase->server()
                   .getFeature<ClusterFeature>()
                   .followersRefusedCounter();
 
@@ -3635,7 +3679,7 @@ Future<Result> Methods::replicateOperations(
       }
 
       if (!replicationFailureReason.empty()) {
-        if (!vocbase().server().isStopping()) {
+        if (!vocbase->server().isStopping()) {
           LOG_TOPIC("12d8c", WARN, Logger::REPLICATION)
               << "synchronous replication of " << opName << " operation "
               << "(" << count << " doc(s)): "
@@ -3697,7 +3741,7 @@ Future<Result> Methods::replicateOperations(
       return Result{TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED};
     } else {
       // execute a deferred intermediate commit, if required.
-      return performIntermediateCommitIfRequired(collection->id());
+      return state->performIntermediateCommitIfRequired(collection->id());
     }
   };
   return futures::collectAll(std::move(futures)).thenValue(std::move(cb));
@@ -3826,9 +3870,11 @@ Future<OperationResult> Methods::documentInternal(
   }
 
   if (_state->isCoordinator()) {
+    // save the name; `this` might be gone after suspension
+    auto dbName = vocbase().name();
     auto opRes =
         co_await documentCoordinator(collectionName, value, options, api);
-    events::ReadDocument(vocbase().name(), collectionName, value, opRes.options,
+    events::ReadDocument(dbName, collectionName, value, opRes.options,
                          opRes.errorNumber());
     co_return opRes;
   }
@@ -3852,6 +3898,8 @@ Future<OperationResult> Methods::insertInternal(
     co_return emptyResult(options);
   }
 
+  // save the name; `this` might be gone after suspension
+  auto dbName = vocbase().name();
   auto opRes = co_await [&] {
     if (_state->isCoordinator()) {
       return insertCoordinator(collectionName, value, options, api);
@@ -3861,7 +3909,7 @@ Future<OperationResult> Methods::insertInternal(
   }();
 
   events::CreateDocument(
-      vocbase().name(), collectionName,
+      dbName, collectionName,
       (opRes.ok() && opRes.options.returnNew) ? opRes.slice() : value,
       opRes.options, opRes.errorNumber());
 
@@ -3885,6 +3933,8 @@ Future<OperationResult> Methods::updateInternal(
     co_return emptyResult(options);
   }
 
+  // save the name; `this` might be gone after suspension
+  auto dbName = vocbase().name();
   auto opRes = co_await [&] {
     if (_state->isCoordinator()) {
       return modifyCoordinator(collectionName, newValue, options,
@@ -3894,8 +3944,8 @@ Future<OperationResult> Methods::updateInternal(
     }
   }();
 
-  events::ModifyDocument(vocbase().name(), collectionName, newValue,
-                         opRes.options, opRes.errorNumber());
+  events::ModifyDocument(dbName, collectionName, newValue, opRes.options,
+                         opRes.errorNumber());
   co_return std::move(opRes);
 }
 
@@ -3916,6 +3966,8 @@ Future<OperationResult> Methods::replaceInternal(
     co_return emptyResult(options);
   }
 
+  // save the name; `this` might be gone after suspension
+  auto dbName = vocbase().name();
   auto opRes = co_await [&] {
     if (_state->isCoordinator()) {
       return modifyCoordinator(collectionName, newValue, options,
@@ -3926,8 +3978,8 @@ Future<OperationResult> Methods::replaceInternal(
     }
   }();
 
-  events::ReplaceDocument(vocbase().name(), collectionName, newValue,
-                          opRes.options, opRes.errorNumber());
+  events::ReplaceDocument(dbName, collectionName, newValue, opRes.options,
+                          opRes.errorNumber());
   co_return std::move(opRes);
 }
 
@@ -3948,6 +4000,8 @@ Future<OperationResult> Methods::removeInternal(
     co_return emptyResult(options);
   }
 
+  // save the name; `this` might be gone after suspension
+  auto dbName = vocbase().name();
   auto opRes = co_await [&] {
     if (_state->isCoordinator()) {
       return removeCoordinator(collectionName, value, options, api);
@@ -3955,7 +4009,7 @@ Future<OperationResult> Methods::removeInternal(
       return removeLocal(collectionName, value, options);
     }
   }();
-  events::DeleteDocument(vocbase().name(), collectionName, value, opRes.options,
+  events::DeleteDocument(dbName, collectionName, value, opRes.options,
                          opRes.errorNumber());
   co_return std::move(opRes);
 }

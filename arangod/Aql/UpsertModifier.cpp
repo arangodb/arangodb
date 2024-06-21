@@ -368,3 +368,5 @@ bool UpsertModifier::hasResultOrException() const noexcept {
 bool UpsertModifier::hasNeitherResultNorOperationPending() const noexcept {
   return resultState() == ModificationExecutorResultState::NoResult;
 }
+
+void UpsertModifier::clearRows() noexcept { _operations.clear(); }
