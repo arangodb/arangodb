@@ -905,9 +905,12 @@ BuilderLeaser::BuilderLeaser(Context* transactionContext)
 BuilderLeaser::BuilderLeaser(Methods* trx)
     : BuilderLeaser{trx->transactionContextPtr()} {}
 
-BuilderLeaser::~BuilderLeaser() {
+BuilderLeaser::~BuilderLeaser() { clear(); }
+
+void BuilderLeaser::clear() {
   if (_builder != nullptr) {
     _transactionContext->returnBuilder(_builder);
+    _builder = nullptr;
   }
 }
 

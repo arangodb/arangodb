@@ -186,13 +186,6 @@ ExecutionState SimpleModifier<ModifierCompletion, Enable>::transact(
 
   auto result = _completion.transact(trx, _accumulator.closeAndGetContents());
 
-  // we are currently waiting here for the `result` future to get
-  // ready before we continue. this makes the AQL modification
-  // operations blocking as in previous versions of ArangoDB.
-  // TODO: fix this and make it truly non-blocking (requires to
-  // fix some lifecycle issues for AQL queries first).
-  result.wait();
-
   if (result.isReady()) {
     _results = std::move(result.waitAndGet());
     return ExecutionState::DONE;
@@ -358,6 +351,11 @@ bool SimpleModifier<ModifierCompletion,
                         [](std::exception_ptr const&) { return false; },
                     },
                     _results);
+}
+
+template<typename ModifierCompletion, typename Enable>
+void SimpleModifier<ModifierCompletion, Enable>::clearRows() noexcept {
+  _operations.clear();
 }
 
 template class ::arangodb::aql::SimpleModifier<InsertModifierCompletion>;
