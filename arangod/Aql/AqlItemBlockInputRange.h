@@ -57,6 +57,11 @@ class AqlItemBlockInputRange {
 
   std::pair<ExecutorState, InputAqlItemRow> peekDataRow() const;
 
+  /// @brief optimized version of peekDataRow, only to be used when it is known
+  /// that there is a next data row (i.e. if a previous call to hasDataRow()
+  /// returned true)
+  std::pair<ExecutorState, InputAqlItemRow> peekDataRow(HasDataRow) const;
+
   std::pair<ExecutorState, InputAqlItemRow> nextDataRow();
 
   /// @brief optimized version of nextDataRow, only to be used when it is known
