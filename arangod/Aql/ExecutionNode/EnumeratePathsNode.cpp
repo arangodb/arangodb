@@ -779,6 +779,61 @@ void EnumeratePathsNode::replaceVariables(
   if (_distributeVariable != nullptr) {
     _distributeVariable = Variable::replace(_distributeVariable, replacements);
   }
+
+  for (auto& it : _globalEdgeConditions) {
+    it = Ast::replaceVariables(const_cast<AstNode*>(it), replacements, true);
+  }
+
+  for (auto& it : _globalVertexConditions) {
+    it = Ast::replaceVariables(const_cast<AstNode*>(it), replacements, true);
+  }
+
+  if (_fromCondition != nullptr) {
+    _fromCondition = Ast::replaceVariables(_fromCondition, replacements, true);
+  }
+
+  if (_toCondition != nullptr) {
+    _toCondition = Ast::replaceVariables(_toCondition, replacements, true);
+  }
+}
+
+void EnumeratePathsNode::replaceAttributeAccess(
+    ExecutionNode const* self, Variable const* searchVariable,
+    std::span<std::string_view> attribute, Variable const* replaceVariable,
+    size_t /*index*/) {
+  if (_inStartVariable != nullptr && searchVariable == _inStartVariable &&
+      attribute.size() == 1 && attribute[0] == StaticStrings::IdString) {
+    _inStartVariable = replaceVariable;
+  }
+  if (_inTargetVariable != nullptr && searchVariable == _inTargetVariable &&
+      attribute.size() == 1 && attribute[0] == StaticStrings::IdString) {
+    _inTargetVariable = replaceVariable;
+  }
+  // TODO: replace _distributeVariable?
+
+  for (auto& it : _globalEdgeConditions) {
+    it =
+        Ast::replaceAttributeAccess(_plan->getAst(), const_cast<AstNode*>(it),
+                                    searchVariable, attribute, replaceVariable);
+  }
+
+  for (auto& it : _globalVertexConditions) {
+    it =
+        Ast::replaceAttributeAccess(_plan->getAst(), const_cast<AstNode*>(it),
+                                    searchVariable, attribute, replaceVariable);
+  }
+
+  if (_fromCondition != nullptr) {
+    _fromCondition =
+        Ast::replaceAttributeAccess(_plan->getAst(), _fromCondition,
+                                    searchVariable, attribute, replaceVariable);
+  }
+
+  if (_toCondition != nullptr) {
+    _toCondition =
+        Ast::replaceAttributeAccess(_plan->getAst(), _toCondition,
+                                    searchVariable, attribute, replaceVariable);
+  }
 }
 
 /// @brief getVariablesSetHere

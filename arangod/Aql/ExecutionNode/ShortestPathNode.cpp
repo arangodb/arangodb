@@ -634,6 +634,7 @@ void ShortestPathNode::replaceAttributeAccess(
       attribute.size() == 1 && attribute[0] == StaticStrings::IdString) {
     _inTargetVariable = replaceVariable;
   }
+  // TODO: replace _distributeVariable?
 
   if (_fromCondition != nullptr) {
     _fromCondition =
