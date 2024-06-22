@@ -26,9 +26,11 @@
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/QueryContext.h"
+#include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -41,38 +43,148 @@ std::string_view constexpr kTypeDisabled("disabled");
 std::string_view constexpr kTypeIllegal("illegal");
 std::string_view constexpr kTypeNone("none");
 std::string_view constexpr kTypeSimple("simple");
+std::string_view constexpr kTypeNested("nested");
 
 std::string_view constexpr kFieldContainer("indexHint");
 std::string_view constexpr kFieldForced("forced");
 std::string_view constexpr kFieldHint("hint");
 std::string_view constexpr kFieldType("type");
 
-IndexHint::HintType fromTypeName(std::string_view typeName) noexcept {
-  if (kTypeDisabled == typeName) {
-    return IndexHint::Disabled;
+bool getBooleanValue(AstNode const* child, bool& result) {
+  AstNode const* value = child->getMember(0);
+
+  if (value->isBoolValue()) {
+    result = value->isTrue();
+    return true;
   }
-  if (kTypeSimple == typeName) {
-    return IndexHint::Simple;
+  return false;
+}
+
+void indexesToVelocyPack(velocypack::Builder& builder,
+                         IndexHint::PossibleIndexes const& indexes) {
+  for (auto const& index : indexes) {
+    builder.add(VPackValue(index));
   }
-  if (kTypeNone == typeName) {
-    return IndexHint::None;
+}
+
+bool handleStringOrArray(AstNode const* value,
+                         std::function<void(AstNode const*)> const& cb) {
+  if (value->isStringValue()) {
+    cb(value);
+    return true;
+  }
+  if (value->type == NODE_TYPE_ARRAY) {
+    for (size_t i = 0; i < value->numMembers(); ++i) {
+      AstNode const* member = value->getMember(i);
+      if (!member->isStringValue()) {
+        return false;
+      }
+      cb(member);
+    }
+    return true;
+  }
+  return false;
+}
+
+bool parseNestedHint(AstNode const* node, IndexHint::NestedContents& hint) {
+  TRI_ASSERT(node->type == AstNodeType::NODE_TYPE_OBJECT);
+
+  // iterate over all collections
+  for (size_t i = 0; i < node->numMembers(); i++) {
+    AstNode const* child = node->getMember(i);
+
+    if (child->type != AstNodeType::NODE_TYPE_OBJECT_ELEMENT) {
+      return false;
+    }
+
+    std::string_view collectionName(child->getStringView());
+
+    AstNode const* sub = child->getMember(0);
+
+    if (sub->type != NODE_TYPE_OBJECT) {
+      return false;
+    }
+
+    // iterate over all directions
+    for (size_t j = 0; j < sub->numMembers(); j++) {
+      AstNode const* child = sub->getMember(j);
+
+      if (child->type != AstNodeType::NODE_TYPE_OBJECT_ELEMENT) {
+        return false;
+      }
+
+      std::string_view directionName(child->getStringView());
+
+      if (directionName != StaticStrings::GraphDirectionInbound &&
+          directionName != StaticStrings::GraphDirectionOutbound) {
+        // wrong attribute name
+        return false;
+      }
+
+      AstNode const* sub = child->getMember(0);
+      if (sub->type != NODE_TYPE_OBJECT) {
+        return false;
+      }
+
+      auto& ref = hint[std::string{collectionName}][std::string{directionName}];
+
+      for (size_t k = 0; k < sub->numMembers(); k++) {
+        AstNode const* level = sub->getMember(k);
+
+        if (level->type != AstNodeType::NODE_TYPE_OBJECT_ELEMENT) {
+          return false;
+        }
+
+        std::string_view levelName(level->getStringView());
+
+        uint64_t levelId = 0;
+        if (levelName == "base") {
+          levelId = UINT64_MAX;
+        } else {
+          bool valid = false;
+          levelId = NumberUtils::atoi_positive<uint64_t>(
+              levelName.data(), levelName.data() + levelName.size(), valid);
+          if (!valid) {
+            return false;
+          }
+        }
+
+        AstNode const* value = level->getMember(0);
+
+        if (!handleStringOrArray(value, [&](AstNode const* value) {
+              TRI_ASSERT(value->isStringValue());
+              ref[levelId].emplace_back(value->getStringValue(),
+                                        value->getStringLength());
+            })) {
+          return false;
+        }
+      }
+    }
   }
 
-  return IndexHint::Illegal;
+  return true;
+}
+
+IndexHint::HintType fromTypeName(std::string_view typeName) noexcept {
+  if (kTypeDisabled == typeName) {
+    return IndexHint::kDisabled;
+  }
+  if (kTypeSimple == typeName) {
+    return IndexHint::kSimple;
+  }
+  if (kTypeNested == typeName) {
+    return IndexHint::kNested;
+  }
+  if (kTypeNone == typeName) {
+    return IndexHint::kNone;
+  }
+
+  return IndexHint::kIllegal;
 }
 }  // namespace
 
-IndexHint::IndexHint(QueryContext& query, AstNode const* node) {
-  auto getBooleanValue = [](AstNode const* child, bool& result) {
-    AstNode const* value = child->getMember(0);
-
-    if (value->isBoolValue()) {
-      result = value->getBoolValue();
-      return true;
-    }
-    return false;
-  };
-
+IndexHint::IndexHint(QueryContext& query, AstNode const* node,
+                     IndexHint::FromCollection) {
   if (node->type == AstNodeType::NODE_TYPE_OBJECT) {
     for (size_t i = 0; i < node->numMembers(); i++) {
       AstNode const* child = node->getMember(i);
@@ -87,33 +199,26 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node) {
           // indexHint
           AstNode const* value = child->getMember(0);
 
-          if (value->isStringValue()) {
-            // indexHint: string
-            if (_type == HintType::Disabled) {
-              // disableIndex vs. indexHint is contradicting...
-              ExecutionPlan::invalidOptionAttribute(query, "contradicting",
-                                                    "FOR", name);
-            }
-            _type = HintType::Simple;
-            _hint.simple.emplace_back(value->getStringValue(),
-                                      value->getStringLength());
-          } else if (value->type == AstNodeType::NODE_TYPE_ARRAY) {
-            // indexHint: string: array
-            if (_type == HintType::Disabled) {
-              // disableIndex vs. indexHint is contradicting...
-              ExecutionPlan::invalidOptionAttribute(query, "contradicting",
-                                                    "FOR", name);
-            }
-            _type = HintType::Simple;
-            for (size_t j = 0; j < value->numMembers(); j++) {
-              AstNode const* member = value->getMember(j);
-              if (member->isStringValue()) {
-                _hint.simple.emplace_back(member->getStringValue(),
-                                          member->getStringLength());
-              }
-            }
+          bool ok = true;
+          if (!handleStringOrArray(value, [&](AstNode const* value) {
+                TRI_ASSERT(value->isStringValue());
+                if (_type == HintType::kDisabled) {
+                  // disableIndex vs. indexHint is contradicting...
+                  ExecutionPlan::invalidOptionAttribute(query, "contradicting",
+                                                        "FOR", name);
+                }
+                _type = HintType::kSimple;
+                if (!std::holds_alternative<SimpleContents>(_hint)) {
+                  // reset to simple type
+                  _hint = SimpleContents{};
+                }
+                std::get<SimpleContents>(_hint).emplace_back(
+                    value->getStringValue(), value->getStringLength());
+              })) {
+            ok = false;
           }
-          handled = !_hint.simple.empty();
+
+          handled = ok && !empty();
         } else if (name == StaticStrings::IndexHintOptionForce) {
           // forceIndexHint
           if (getBooleanValue(child, _forced)) {
@@ -132,14 +237,14 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node) {
             // disableIndex: bool
             if (value->getBoolValue()) {
               // disableIndex: true. this will disable all index hints
-              _type = HintType::Disabled;
-              if (!_hint.simple.empty()) {
+              _type = HintType::kDisabled;
+              if (!empty()) {
                 // disableIndex vs. indexHint is contradicting...
                 ExecutionPlan::invalidOptionAttribute(query, "contradicting",
                                                       "FOR", name);
-                _hint.simple.clear();
+                clear();
               }
-              TRI_ASSERT(_hint.simple.empty());
+              TRI_ASSERT(empty());
             }
             handled = true;
           }
@@ -167,15 +272,53 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node) {
         if (!handled) {
           VPackBuilder builder;
           child->getMember(0)->toVelocyPackValue(builder);
-          std::string msg = "invalid value " + builder.toJson() + " in ";
-          ExecutionPlan::invalidOptionAttribute(query, msg, "FOR", name);
+          ExecutionPlan::invalidOptionAttribute(
+              query, absl::StrCat("invalid value ", builder.toJson(), " in"),
+              "FOR", name);
         }
       }
     }
   }
 }
 
-IndexHint::IndexHint(VPackSlice slice) {
+IndexHint::IndexHint(QueryContext& query, AstNode const* node,
+                     IndexHint::FromTraversal) {
+  if (node->type == AstNodeType::NODE_TYPE_OBJECT) {
+    for (size_t i = 0; i < node->numMembers(); i++) {
+      AstNode const* child = node->getMember(i);
+
+      if (child->type == AstNodeType::NODE_TYPE_OBJECT_ELEMENT) {
+        TRI_ASSERT(child->numMembers() > 0);
+        std::string_view name(child->getStringView());
+
+        if (name == StaticStrings::IndexHintOption) {
+          // indexHint
+          AstNode const* value = child->getMember(0);
+
+          if (value->type == AstNodeType::NODE_TYPE_OBJECT) {
+            _type = HintType::kNested;
+            _hint = NestedContents{};
+            if (!parseNestedHint(value, std::get<NestedContents>(_hint))) {
+              clear();
+            }
+          }
+          if (empty()) {
+            VPackBuilder builder;
+            child->getMember(0)->toVelocyPackValue(builder);
+            ExecutionPlan::invalidOptionAttribute(
+                query, absl::StrCat("invalid value ", builder.toJson(), " in"),
+                "FOR", name);
+          }
+        } else if (name == StaticStrings::IndexHintOptionForce) {
+          // forceIndexHint
+          getBooleanValue(child, _forced);
+        }
+      }
+    }
+  }
+}
+
+IndexHint::IndexHint(velocypack::Slice slice) {
   // read index hint from slice
   // index hints were introduced in version 3.5. in previous versions they
   // are not available, so we need to be careful when reading them
@@ -190,35 +333,103 @@ IndexHint::IndexHint(VPackSlice slice) {
         s, StaticStrings::WaitForSyncString, false);
   }
 
-  if (_type != HintType::Illegal && _type != HintType::None) {
+  if (_type != HintType::kIllegal && _type != HintType::kNone) {
     TRI_ASSERT(s.isObject());
 
-    if (_type == HintType::Simple) {
+    if (_type == HintType::kSimple) {
+      // deserialize simple index hint
+      _hint = SimpleContents{};
       VPackSlice hintSlice = s.get(kFieldHint);
       TRI_ASSERT(hintSlice.isArray());
-      for (VPackSlice index : VPackArrayIterator(hintSlice)) {
+      for (auto index : VPackArrayIterator(hintSlice)) {
         TRI_ASSERT(index.isString());
-        _hint.simple.emplace_back(index.copyString());
+        std::get<SimpleContents>(_hint).emplace_back(index.copyString());
+      }
+    } else if (_type == HintType::kNested) {
+      // deserialize bested index hint
+      _hint = NestedContents{};
+      VPackSlice hintSlice = s.get(kFieldHint);
+      TRI_ASSERT(hintSlice.isObject());
+      for (auto collection : VPackObjectIterator(hintSlice)) {
+        TRI_ASSERT(collection.value.isObject());
+        for (auto direction : VPackObjectIterator(collection.value)) {
+          TRI_ASSERT(direction.value.isObject());
+          for (auto level : VPackObjectIterator(direction.value)) {
+            std::string_view key = level.key.stringView();
+
+            uint64_t levelId;
+            if (key == "base") {
+              levelId = UINT64_MAX;
+            } else {
+              bool valid = true;
+              levelId = NumberUtils::atoi_positive<uint64_t>(
+                  key.data(), key.data() + key.size(), valid);
+              TRI_ASSERT(valid);
+            }
+            auto& ref = std::get<NestedContents>(
+                _hint)[collection.key.copyString()][direction.key.copyString()];
+            TRI_ASSERT(level.value.isArray());
+            for (auto index : VPackArrayIterator(level.value)) {
+              TRI_ASSERT(index.isString());
+              ref[levelId].emplace_back(index.copyString());
+            }
+          }
+        }
       }
     }
   }
 }
 
-std::vector<std::string> const& IndexHint::hint() const noexcept {
-  TRI_ASSERT(_type == HintType::Simple);
-  return _hint.simple;
+// returns true for hint types kSimple and kNested
+bool IndexHint::isSet() const noexcept {
+  return _type == HintType::kSimple || _type == HintType::kNested;
 }
 
-std::string_view IndexHint::typeName() const {
+std::vector<std::string> const& IndexHint::hint() const noexcept {
+  TRI_ASSERT(_type == HintType::kSimple);
+  return std::get<SimpleContents>(_hint);
+}
+
+bool IndexHint::empty() const noexcept {
+  if (_type == HintType::kSimple) {
+    return std::get<SimpleContents>(_hint).empty();
+  }
+  if (_type == HintType::kNested) {
+    for (auto const& collection : std::get<NestedContents>(_hint)) {
+      for (auto const& direction : collection.second) {
+        for (auto const& level : direction.second) {
+          if (!level.second.empty()) {
+            return false;
+          }
+        }
+      }
+    }
+    // fallthrough intentional
+  }
+
+  return true;
+}
+
+void IndexHint::clear() {
+  if (_type == HintType::kSimple) {
+    std::get<SimpleContents>(_hint).clear();
+  } else if (_type == HintType::kNested) {
+    std::get<NestedContents>(_hint).clear();
+  }
+}
+
+std::string_view IndexHint::typeName() const noexcept {
   switch (_type) {
-    case HintType::Illegal:
+    case HintType::kIllegal:
       return kTypeIllegal;
-    case HintType::Disabled:
+    case HintType::kDisabled:
       return kTypeDisabled;
-    case HintType::None:
+    case HintType::kNone:
       return kTypeNone;
-    case HintType::Simple:
+    case HintType::kSimple:
       return kTypeSimple;
+    case HintType::kNested:
+      return kTypeNested;
   }
 
   return kTypeIllegal;
@@ -230,10 +441,22 @@ void IndexHint::toVelocyPack(VPackBuilder& builder) const {
   builder.add(kFieldForced, VPackValue(_forced));
   builder.add(StaticStrings::IndexLookahead, VPackValue(_lookahead));
   builder.add(kFieldType, VPackValue(typeName()));
-  if (_type == HintType::Simple) {
+  if (_type == HintType::kSimple) {
     VPackArrayBuilder hintGuard(&builder, kFieldHint);
-    for (auto const& index : _hint.simple) {
-      builder.add(VPackValue(index));
+    indexesToVelocyPack(builder, std::get<SimpleContents>(_hint));
+  } else if (_type == HintType::kNested) {
+    VPackObjectBuilder hintGuard(&builder, kFieldHint);
+    for (auto const& collection : std::get<NestedContents>(_hint)) {
+      builder.add(collection.first, VPackValue(VPackValueType::Object));
+      for (auto const& direction : collection.second) {
+        builder.add(direction.first, VPackValue(VPackValueType::Object));
+        for (auto const& level : direction.second) {
+          builder.add(VPackValue(std::to_string(level.first)));
+          indexesToVelocyPack(builder, level.second);
+        }
+        builder.close();
+      }
+      builder.close();
     }
   }
 }

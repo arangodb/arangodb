@@ -293,18 +293,18 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(
           if (value->stringEqualsCaseInsensitive(
                   StaticStrings::GraphQueryPath)) {
             options->uniqueVertices =
-                arangodb::traverser::TraverserOptions::UniquenessLevel::PATH;
+                traverser::TraverserOptions::UniquenessLevel::PATH;
           } else if (value->stringEqualsCaseInsensitive(
                          StaticStrings::GraphQueryGlobal)) {
             options->uniqueVertices =
-                arangodb::traverser::TraverserOptions::UniquenessLevel::GLOBAL;
+                traverser::TraverserOptions::UniquenessLevel::GLOBAL;
           }
         } else if (name == "uniqueEdges" && value->isStringValue()) {
           // path is the default
           if (value->stringEqualsCaseInsensitive(
                   StaticStrings::GraphQueryNone)) {
             options->uniqueEdges =
-                arangodb::traverser::TraverserOptions::UniquenessLevel::NONE;
+                traverser::TraverserOptions::UniquenessLevel::NONE;
           } else if (value->stringEqualsCaseInsensitive(
                          StaticStrings::GraphQueryGlobal)) {
             THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -349,7 +349,7 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(
             // query and if the query is not a modification query.
             options->setParallelism(Ast::validatedParallelism(value));
           }
-        } else if (name == arangodb::StaticStrings::MaxProjections) {
+        } else if (name == StaticStrings::MaxProjections) {
           auto maxProjections = parseMaxProjections(value);
           if (maxProjections.fail()) {
             // will raise a warning, which can optionally abort the query
@@ -358,6 +358,11 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(
           } else {
             options->setMaxProjections(maxProjections.get());
           }
+        } else if (name == StaticStrings::IndexHintOptionForce) {
+          // will be handled by the following handler for "indexHint"
+        } else if (name == StaticStrings::IndexHintOption) {
+          IndexHint hint(ast->query(), optionsNode, IndexHint::FromTraversal{});
+          options->indexHint = std::move(hint);
         } else {
           ExecutionPlan::invalidOptionAttribute(ast->query(), "unknown",
                                                 "TRAVERSAL", name);
@@ -598,8 +603,12 @@ void ExecutionPlan::increaseCounter(ExecutionNode const& node) noexcept {
     EnumerateCollectionNode const* en =
         ExecutionNode::castTo<EnumerateCollectionNode const*>(&node);
     auto const& hint = en->hint();
-    _hasForcedIndexHints |=
-        hint.type() == aql::IndexHint::HintType::Simple && hint.isForced();
+    _hasForcedIndexHints |= hint.isSet() && hint.isForced();
+  } else if (type == ExecutionNode::TRAVERSAL) {
+    TraversalNode const* en =
+        ExecutionNode::castTo<TraversalNode const*>(&node);
+    auto const& hint = en->hint();
+    _hasForcedIndexHints |= hint.isSet() && hint.isForced();
   }
 }
 
@@ -1244,9 +1253,9 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "no collection for EnumerateCollection");
     }
-    IndexHint hint(_ast->query(), options);
+    IndexHint hint(_ast->query(), options, IndexHint::FromCollection{});
     en = createNode<EnumerateCollectionNode>(this, nextId(), collection, v,
-                                             false, hint);
+                                             false, std::move(hint));
     if (node->hasFlag(AstNodeFlagType::FLAG_READ_OWN_WRITES)) {
       // this is a FOR node that belongs to an UPSERT query
       ExecutionNode::castTo<EnumerateCollectionNode*>(en)->setCanReadOwnWrites(

@@ -98,6 +98,7 @@
 
 #include <absl/strings/str_cat.h>
 
+#include <initializer_list>
 #include <span>
 #include <tuple>
 
@@ -7327,7 +7328,7 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
         ExecutionNode::castTo<EnumerateCollectionNode const*>(node);
     auto const& colNodeHints = enumerateColNode->hint();
     if (colNodeHints.isForced() &&
-        colNodeHints.type() == IndexHint::HintType::Simple) {
+        colNodeHints.type() == IndexHint::HintType::kSimple) {
       auto indexes = enumerateColNode->collection()->indexes();
       auto& idxNames = colNodeHints.hint();
       for (auto const& idxName : idxNames) {

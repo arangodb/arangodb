@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Aql/FixedVarExpressionContext.h"
+#include "Aql/IndexHint.h"
 #include "Graph/BaseOptions.h"
 #include "StorageEngine/TransactionState.h"
 
@@ -85,13 +86,15 @@ struct TraverserOptions : public graph::BaseOptions {
 
   uint64_t maxDepth;
 
+  Order mode;
+
   bool useNeighbors;
+
+  bool _isDisjoint = false;
 
   UniquenessLevel uniqueVertices;
 
   UniquenessLevel uniqueEdges;
-
-  Order mode;
 
   std::string weightAttribute;
 
@@ -101,7 +104,7 @@ struct TraverserOptions : public graph::BaseOptions {
 
   std::vector<std::string> edgeCollections;
 
-  bool _isDisjoint = false;
+  aql::IndexHint indexHint;
 
   explicit TraverserOptions(arangodb::aql::QueryContext& query);
 

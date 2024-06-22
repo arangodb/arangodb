@@ -323,6 +323,12 @@ TraversalNode::TraversalNode(ExecutionPlan& plan, TraversalNode const& other,
 
 TraversalNode::~TraversalNode() = default;
 
+/// @brief user hint regarding which indexes to use
+IndexHint const& TraversalNode::hint() const {
+  auto opts = static_cast<TraverserOptions*>(options());
+  return opts->indexHint;
+}
+
 /// @brief return the path out variable
 Variable const* TraversalNode::pathOutVariable() const {
   return _pathOutVariable;
@@ -593,6 +599,9 @@ void TraversalNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
       }
     }
   }
+
+  // serialize index hint
+  hint().toVelocyPack(nodes);
 }
 
 std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(
@@ -600,7 +609,6 @@ std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(
   std::vector<IndexAccessor> indexAccessors{};
   auto ast = _plan->getAst();
   size_t numEdgeColls = _edgeColls.size();
-  bool onlyEdgeIndexes = false;
 
   auto calculateMemberToUpdate = [&](std::string const& memberString,
                                      std::optional<size_t>& memberToUpdate,
@@ -674,7 +682,7 @@ std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(
     bool res = aql::utils::getBestIndexHandleForFilterCondition(
         trx, *_edgeColls[i], indexCondition, options()->tmpVar(),
         itemsInCollection, aql::IndexHint(), indexToUse, ReadOwnWrites::no,
-        onlyEdgeIndexes);
+        /*onlyEdgeIndexes*/ false);
     if (!res) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "expected edge index not found");

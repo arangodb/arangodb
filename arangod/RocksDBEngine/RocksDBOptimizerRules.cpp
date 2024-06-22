@@ -140,7 +140,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
         auto const& hint = en->hint();
 
         // now check all indexes if they cover the projection
-        if (hint.type() != aql::IndexHint::HintType::Disabled) {
+        if (hint.type() != aql::IndexHint::HintType::kDisabled) {
           std::vector<std::shared_ptr<Index>> indexes;
 
           auto& trx = plan->getAst()->query().trxForOptimization();
@@ -185,7 +185,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
           };
 
           bool forced = false;
-          if (hint.type() == aql::IndexHint::HintType::Simple) {
+          if (hint.type() == aql::IndexHint::HintType::kSimple) {
             forced = hint.isForced();
             for (std::string const& hinted : hint.hint()) {
               auto idx = en->collection()->getCollection()->lookupIndex(hinted);
@@ -272,7 +272,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
           ExecutionNode::castTo<EnumerateCollectionNode*>(n);
       auto const& hint = en->hint();
 
-      if (hint.type() != aql::IndexHint::HintType::Disabled) {
+      if (hint.type() != aql::IndexHint::HintType::kDisabled) {
         std::shared_ptr<Index> picked;
         std::vector<std::shared_ptr<Index>> indexes;
 
@@ -296,7 +296,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
         };
 
         bool forced = false;
-        if (hint.type() == aql::IndexHint::HintType::Simple) {
+        if (hint.type() == aql::IndexHint::HintType::kSimple) {
           forced = hint.isForced();
           for (std::string const& hinted : hint.hint()) {
             auto idx = en->collection()->getCollection()->lookupIndex(hinted);
@@ -308,7 +308,8 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
           if (forced && !picked) {
             THROW_ARANGO_EXCEPTION_MESSAGE(
                 TRI_ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE,
-                "could not use index hint to serve query; " + hint.toString());
+                absl::StrCat("could not use index hint to serve query; ",
+                             hint.toString()));
           }
         }
 

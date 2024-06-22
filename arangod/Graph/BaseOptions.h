@@ -33,6 +33,7 @@
 #include "Transaction/Methods.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -250,7 +251,8 @@ struct BaseOptions {
                               std::string const& collectionName,
                               std::string const& attributeName,
                               aql::AstNode* condition, bool onlyEdgeIndexes,
-                              TRI_edge_direction_e direction);
+                              TRI_edge_direction_e direction,
+                              std::optional<uint64_t> depth);
 
   void toVelocyPackBase(VPackBuilder& builder) const;
 

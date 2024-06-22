@@ -377,16 +377,15 @@ void BaseOptions::addLookupInfo(aql::ExecutionPlan* plan,
                                 aql::AstNode* condition, bool onlyEdgeIndexes,
                                 TRI_edge_direction_e direction) {
   injectLookupInfoInList(_baseLookupInfos, plan, collectionName, attributeName,
-                         condition, onlyEdgeIndexes, direction);
+                         condition, onlyEdgeIndexes, direction,
+                         /*depth*/ std::nullopt);
 }
 
-void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
-                                         aql::ExecutionPlan* plan,
-                                         std::string const& collectionName,
-                                         std::string const& attributeName,
-                                         aql::AstNode* condition,
-                                         bool onlyEdgeIndexes,
-                                         TRI_edge_direction_e direction) {
+void BaseOptions::injectLookupInfoInList(
+    std::vector<LookupInfo>& list, aql::ExecutionPlan* plan,
+    std::string const& collectionName, std::string const& attributeName,
+    aql::AstNode* condition, bool onlyEdgeIndexes,
+    TRI_edge_direction_e direction, std::optional<uint64_t> depth) {
   TRI_ASSERT(
       (direction == TRI_EDGE_IN && attributeName == StaticStrings::ToString) ||
       (direction == TRI_EDGE_OUT &&

@@ -329,7 +329,7 @@ std::pair<bool, bool> findIndexHandleForAndNode(
     std::vector<transaction::Methods::IndexHandle>& usedIndexes,
     aql::AstNode*& specializedCondition, bool& isSparse, bool failOnForcedHint,
     ReadOwnWrites readOwnWrites) {
-  if (hint.type() == aql::IndexHint::HintType::Disabled) {
+  if (hint.type() == aql::IndexHint::HintType::kDisabled) {
     // usage of index disabled via index hint: disableIndex: true
     return std::make_pair(false, false);
   }
@@ -453,7 +453,7 @@ std::pair<bool, bool> findIndexHandleForAndNode(
     }
   };
 
-  if (hint.type() == aql::IndexHint::HintType::Simple) {
+  if (hint.type() == aql::IndexHint::HintType::kSimple) {
     std::vector<std::string> const& hintedIndices = hint.hint();
     for (std::string const& hinted : hintedIndices) {
       std::shared_ptr<Index> matched;
@@ -1238,7 +1238,7 @@ std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
       }
       if (index->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX &&
           // apply this index only if hinted
-          hint.type() == IndexHint::Simple &&
+          hint.type() == IndexHint::kSimple &&
           std::find(hint.hint().begin(), hint.hint().end(), index->name()) !=
               hint.hint().end()) {
         auto costs = index->supportsFilterCondition(
@@ -1318,7 +1318,7 @@ bool getIndexForSortCondition(aql::Collection const& coll,
                               size_t itemsInIndex, aql::IndexHint const& hint,
                               std::vector<std::shared_ptr<Index>>& usedIndexes,
                               size_t& coveredAttributes) {
-  if (hint.type() != aql::IndexHint::HintType::Disabled) {
+  if (hint.type() != aql::IndexHint::HintType::kDisabled) {
     // We do not have a condition. But we have a sort!
     if (!sortCondition->isEmpty() && sortCondition->isOnlyAttributeAccess() &&
         sortCondition->isUnidirectional()) {
@@ -1342,7 +1342,7 @@ bool getIndexForSortCondition(aql::Collection const& coll,
 
       auto indexes = coll.indexes();
 
-      if (hint.type() == aql::IndexHint::HintType::Simple) {
+      if (hint.type() == aql::IndexHint::HintType::kSimple) {
         std::vector<std::string> const& hintedIndices = hint.hint();
         for (std::string const& hinted : hintedIndices) {
           std::shared_ptr<Index> matched;

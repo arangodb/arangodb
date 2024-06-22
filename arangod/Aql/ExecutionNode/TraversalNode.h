@@ -26,6 +26,7 @@
 #include "Aql/EdgeConditionBuilder.h"
 #include "Aql/ExecutionNode/GraphNode.h"
 #include "Aql/Executor/TraversalExecutor.h"
+#include "Aql/IndexHint.h"
 #include "Aql/PruneExpressionEvaluator.h"
 #include "Graph/Types/UniquenessLevel.h"
 #include "VocBase/LogicalCollection.h"
@@ -118,6 +119,9 @@ class TraversalNode : public virtual GraphNode {
  public:
   /// @brief return the type of the node
   NodeType getType() const override final { return TRAVERSAL; }
+
+  /// @brief user hint regarding which indexes to use
+  IndexHint const& hint() const;
 
   /// @brief return the amount of bytes used
   size_t getMemoryUsedBytes() const override final;

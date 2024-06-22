@@ -692,11 +692,11 @@ void arangodb::aql::replaceLikeWithRangeRule(
           auto cn =
               ExecutionNode::castTo<EnumerateCollectionNode const*>(setter);
           auto const& hint = cn->hint();
-          if (hint.type() == IndexHint::Disabled) {
+          if (hint.type() == IndexHint::kDisabled) {
             // no index should be used. no need for the optimization
             return node;
           }
-          if (hint.type() == IndexHint::Simple) {
+          if (hint.type() == IndexHint::kSimple) {
             // we have an index hint
             Collection const* c = cn->collection();
 
