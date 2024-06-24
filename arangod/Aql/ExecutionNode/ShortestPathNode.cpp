@@ -611,6 +611,45 @@ void ShortestPathNode::replaceVariables(
   if (_distributeVariable != nullptr) {
     _distributeVariable = Variable::replace(_distributeVariable, replacements);
   }
+
+  if (_fromCondition != nullptr) {
+    _fromCondition = Ast::replaceVariables(_fromCondition, replacements, true);
+  }
+
+  if (_toCondition != nullptr) {
+    _toCondition = Ast::replaceVariables(_toCondition, replacements, true);
+  }
+}
+
+void ShortestPathNode::replaceAttributeAccess(
+    ExecutionNode const* self, Variable const* searchVariable,
+    std::span<std::string_view> attribute, Variable const* replaceVariable,
+    size_t /*index*/) {
+  if (_inStartVariable != nullptr && searchVariable == _inStartVariable &&
+      attribute.size() == 1 && attribute[0] == StaticStrings::IdString) {
+    _inStartVariable = replaceVariable;
+  }
+
+  if (_inTargetVariable != nullptr && searchVariable == _inTargetVariable &&
+      attribute.size() == 1 && attribute[0] == StaticStrings::IdString) {
+    _inTargetVariable = replaceVariable;
+  }
+  // note: _distributeVariable does not need to be replaced, as it is only
+  // populated by the optimizer, using a temporary calculation that the
+  // optimizer just inserted and that invokes any of the MAKE_DISTRIBUTE_...
+  // internal functions.
+
+  if (_fromCondition != nullptr) {
+    _fromCondition =
+        Ast::replaceAttributeAccess(_plan->getAst(), _fromCondition,
+                                    searchVariable, attribute, replaceVariable);
+  }
+
+  if (_toCondition != nullptr) {
+    _toCondition =
+        Ast::replaceAttributeAccess(_plan->getAst(), _toCondition,
+                                    searchVariable, attribute, replaceVariable);
+  }
 }
 
 /// @brief getVariablesSetHere

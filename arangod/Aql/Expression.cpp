@@ -503,10 +503,11 @@ AqlValue Expression::executeSimpleExpression(ExpressionContext& ctx,
                        "' is not supported in expressions"));
 
     default:
-      std::string msg("unhandled type '");
-      msg.append(node->getTypeString());
-      msg.append("' in executeSimpleExpression()");
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          absl::StrCat(
+              "unhandled type '", node->getTypeString(),
+              "' in executeSimpleExpression(): ", AstNode::toString(node)));
   }
 }
 
