@@ -634,7 +634,10 @@ void ShortestPathNode::replaceAttributeAccess(
       attribute.size() == 1 && attribute[0] == StaticStrings::IdString) {
     _inTargetVariable = replaceVariable;
   }
-  // TODO: replace _distributeVariable?
+  // note: _distributeVariable does not need to be replaced, as it is only
+  // populated by the optimizer, using a temporary calculation that the
+  // optimizer just inserted and that invokes any of the MAKE_DISTRIBUTE_...
+  // internal functions.
 
   if (_fromCondition != nullptr) {
     _fromCondition =
