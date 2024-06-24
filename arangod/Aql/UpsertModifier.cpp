@@ -303,7 +303,7 @@ ExecutionState UpsertModifier::transact(transaction::Methods& trx) {
     auto future = trx.insertAsync(_infos._aqlCollection->name(), toInsert,
                                   _infos._options);
     waitAndDetach(future);
-    _insertResults = std::move(future).get();
+    _insertResults = std::move(future).waitAndGet();
     throwOperationResultException(_infos, _insertResults);
   }
 
@@ -313,12 +313,12 @@ ExecutionState UpsertModifier::transact(transaction::Methods& trx) {
       auto future = trx.replaceAsync(_infos._aqlCollection->name(), toUpdate,
                                      _infos._options);
       waitAndDetach(future);
-      _updateResults = std::move(future).get();
+      _updateResults = std::move(future).waitAndGet();
     } else {
       auto future = trx.updateAsync(_infos._aqlCollection->name(), toUpdate,
                                     _infos._options);
       waitAndDetach(future);
-      _updateResults = std::move(future).get();
+      _updateResults = std::move(future).waitAndGet();
     }
     throwOperationResultException(_infos, _updateResults);
   }
