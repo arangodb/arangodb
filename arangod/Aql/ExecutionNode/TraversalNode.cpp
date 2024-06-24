@@ -377,13 +377,44 @@ void TraversalNode::replaceVariables(
 
   if (_condition) {
     _condition->replaceVariables(replacements);
+  }
 
-    // determine new set of variables used by post filters
-    _postFilterVariables.clear();
-    for (auto& it : _postFilterConditions) {
-      it = Ast::replaceVariables(const_cast<AstNode*>(it), replacements, true);
-      Ast::getReferencedVariables(it, _postFilterVariables);
+  if (_postFilterExpression != nullptr) {
+    _postFilterExpression->replaceVariables(replacements);
+  }
+
+  // determine new set of variables used by post filters
+  _postFilterVariables.clear();
+  for (auto& it : _postFilterConditions) {
+    it = Ast::replaceVariables(const_cast<AstNode*>(it), replacements, true);
+    // repopulate _postFilterVariables
+    Ast::getReferencedVariables(it, _postFilterVariables);
+  }
+
+  for (auto& it : _globalEdgeConditions) {
+    it = Ast::replaceVariables(const_cast<AstNode*>(it), replacements, true);
+  }
+
+  for (auto& it : _globalVertexConditions) {
+    it = Ast::replaceVariables(const_cast<AstNode*>(it), replacements, true);
+  }
+
+  for (auto& it : _edgeConditions) {
+    if (it.second != nullptr) {
+      it.second->replaceVariables(replacements);
     }
+  }
+
+  for (auto& it : _vertexConditions) {
+    it.second = Ast::replaceVariables(it.second, replacements, true);
+  }
+
+  if (_fromCondition != nullptr) {
+    _fromCondition = Ast::replaceVariables(_fromCondition, replacements, true);
+  }
+
+  if (_toCondition != nullptr) {
+    _toCondition = Ast::replaceVariables(_toCondition, replacements, true);
   }
 }
 
@@ -411,18 +442,61 @@ void TraversalNode::replaceAttributeAccess(
     _pruneExpression->variables(variables);
     _pruneVariables = std::move(variables);
   }
+
   if (_condition && self != this) {
     _condition->replaceAttributeAccess(searchVariable, attribute,
                                        replaceVariable);
+  }
 
-    // determine new set of variables used by post filters
-    _postFilterVariables.clear();
-    for (auto& it : _postFilterConditions) {
-      it = Ast::replaceAttributeAccess(_plan->getAst(),
-                                       const_cast<AstNode*>(it), searchVariable,
-                                       attribute, replaceVariable);
-      Ast::getReferencedVariables(it, _postFilterVariables);
+  if (_postFilterExpression != nullptr) {
+    _postFilterExpression->replaceAttributeAccess(searchVariable, attribute,
+                                                  replaceVariable);
+  }
+
+  // determine new set of variables used by post filters
+  _postFilterVariables.clear();
+  for (auto& it : _postFilterConditions) {
+    it =
+        Ast::replaceAttributeAccess(_plan->getAst(), const_cast<AstNode*>(it),
+                                    searchVariable, attribute, replaceVariable);
+    // repopulate _postFilterVariables
+    Ast::getReferencedVariables(it, _postFilterVariables);
+  }
+
+  for (auto& it : _globalEdgeConditions) {
+    it =
+        Ast::replaceAttributeAccess(_plan->getAst(), const_cast<AstNode*>(it),
+                                    searchVariable, attribute, replaceVariable);
+  }
+
+  for (auto& it : _globalVertexConditions) {
+    it =
+        Ast::replaceAttributeAccess(_plan->getAst(), const_cast<AstNode*>(it),
+                                    searchVariable, attribute, replaceVariable);
+  }
+
+  for (auto& it : _edgeConditions) {
+    if (it.second != nullptr) {
+      it.second->replaceAttributeAccess(_plan->getAst(), searchVariable,
+                                        attribute, replaceVariable);
     }
+  }
+
+  for (auto& it : _vertexConditions) {
+    it.second = Ast::replaceAttributeAccess(
+        _plan->getAst(), it.second, searchVariable, attribute, replaceVariable);
+  }
+
+  if (_fromCondition != nullptr) {
+    _fromCondition =
+        Ast::replaceAttributeAccess(_plan->getAst(), _fromCondition,
+                                    searchVariable, attribute, replaceVariable);
+  }
+
+  if (_toCondition != nullptr) {
+    _toCondition =
+        Ast::replaceAttributeAccess(_plan->getAst(), _toCondition,
+                                    searchVariable, attribute, replaceVariable);
   }
 }
 
