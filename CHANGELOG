@@ -1,6 +1,9 @@
 devel
 -----
 
+* BTS-1909, MDS-1232: Fixed a bug where COLLECT ... AGGREGATE x = UNIQUE(y)
+  could miss some results when multiple shards were aggregated in a cluster.
+
 * Fixed an issue where the request would hang when retrieving the result of an
   asynchronous HEAD request. Now, the response body is cleared and the
   Content-Length header is set to 0, ensuring compliance with the HTTP protocol
