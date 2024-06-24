@@ -23,10 +23,13 @@
 
 #pragma once
 
+#include "Containers/FlatHashMap.h"
+
 #include <cstdint>
 #include <iosfwd>
+#include <limits>
+#include <optional>
 #include <string>
-#include <unordered_map>
 #include <variant>
 #include <vector>
 
@@ -43,13 +46,15 @@ class QueryContext;
 /// @brief container for index hint information
 class IndexHint {
  public:
-  struct FromCollection {};
-  struct FromTraversal {};
+  struct FromCollectionOperation {};
+  struct FromGraphOperation {};
 
   // there is an important distinction between None and Disabled here:
   //   None = no index hint set
   //   Disabled = no index must be used!
   enum HintType : uint8_t { kIllegal, kNone, kSimple, kNested, kDisabled };
+  using DepthType = uint64_t;
+  static constexpr DepthType BaseDepth = std::numeric_limits<DepthType>::max();
 
   using PossibleIndexes = std::vector<std::string>;
 
@@ -62,14 +67,17 @@ class IndexHint {
   // } all levels must be numeric except the special value "base" (in
   // lowercase). allowed directions are "inbound" and "outbound" (both in lower
   // case only).
-  using NestedContents = std::unordered_map<
-      std::string,
-      std::unordered_map<std::string,
-                         std::unordered_map<uint64_t, PossibleIndexes>>>;
+  using NestedContents = containers::FlatHashMap<
+      /*collection*/ std::string,
+      containers::FlatHashMap<
+          /*direction*/ std::string,
+          containers::FlatHashMap<DepthType, PossibleIndexes>>>;
 
   IndexHint() = default;
-  explicit IndexHint(QueryContext& query, AstNode const* node, FromCollection);
-  explicit IndexHint(QueryContext& query, AstNode const* node, FromTraversal);
+  explicit IndexHint(QueryContext& query, AstNode const* node,
+                     FromCollectionOperation);
+  explicit IndexHint(QueryContext& query, AstNode const* node,
+                     FromGraphOperation);
   explicit IndexHint(velocypack::Slice slice);
 
   IndexHint(IndexHint&&) = default;
@@ -83,6 +91,7 @@ class IndexHint {
   // returns true for hint types kSimple and kNested
   bool isSet() const noexcept;
 
+  // TODO: rename
   std::vector<std::string> const& hint() const noexcept;
 
   void clear();
@@ -92,6 +101,10 @@ class IndexHint {
 
   size_t getLookahead() const noexcept { return _lookahead; }
   bool waitForSync() const noexcept { return _waitForSync; }
+
+  IndexHint getFromNested(std::string_view direction,
+                          std::string_view collection,
+                          IndexHint::DepthType depth) const;
 
  private:
   bool empty() const noexcept;

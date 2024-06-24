@@ -323,12 +323,6 @@ TraversalNode::TraversalNode(ExecutionPlan& plan, TraversalNode const& other,
 
 TraversalNode::~TraversalNode() = default;
 
-/// @brief user hint regarding which indexes to use
-IndexHint const& TraversalNode::hint() const {
-  auto opts = static_cast<TraverserOptions*>(options());
-  return opts->indexHint;
-}
-
 /// @brief return the path out variable
 Variable const* TraversalNode::pathOutVariable() const {
   return _pathOutVariable;
@@ -678,14 +672,19 @@ std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(
     // actual value does not matter much. 1000 has historically worked fine.
     constexpr size_t itemsInCollection = 1000;
 
+    // use most specific index hint here
+    auto indexHint =
+        hint().getFromNested(dir == TRI_EDGE_IN ? "inbound" : "outbound",
+                             _edgeColls[i]->name(), IndexHint::BaseDepth);
+
     auto& trx = plan()->getAst()->query().trxForOptimization();
     bool res = aql::utils::getBestIndexHandleForFilterCondition(
         trx, *_edgeColls[i], indexCondition, options()->tmpVar(),
-        itemsInCollection, aql::IndexHint(), indexToUse, ReadOwnWrites::no,
+        itemsInCollection, indexHint, indexToUse, ReadOwnWrites::no,
         /*onlyEdgeIndexes*/ false);
     if (!res) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "expected edge index not found");
+                                     "expected index not found for traversal");
     }
 
     std::optional<size_t> memberToUpdate{std::nullopt};

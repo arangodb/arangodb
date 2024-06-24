@@ -1116,6 +1116,8 @@ bool GraphNode::isEligibleAsSatelliteTraversal() const {
   return graph() != nullptr && graph()->isSatellite();
 }
 
+IndexHint const& GraphNode::hint() const { return options()->hint(); }
+
 /* Enterprise features */
 
 #ifndef USE_ENTERPRISE

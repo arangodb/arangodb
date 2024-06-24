@@ -24,7 +24,6 @@
 #pragma once
 
 #include "Aql/FixedVarExpressionContext.h"
-#include "Aql/IndexHint.h"
 #include "Graph/BaseOptions.h"
 #include "StorageEngine/TransactionState.h"
 
@@ -103,8 +102,6 @@ struct TraverserOptions : public graph::BaseOptions {
   std::vector<std::string> vertexCollections;
 
   std::vector<std::string> edgeCollections;
-
-  aql::IndexHint indexHint;
 
   explicit TraverserOptions(arangodb::aql::QueryContext& query);
 

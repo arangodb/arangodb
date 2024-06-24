@@ -120,9 +120,6 @@ class TraversalNode : public virtual GraphNode {
   /// @brief return the type of the node
   NodeType getType() const override final { return TRAVERSAL; }
 
-  /// @brief user hint regarding which indexes to use
-  IndexHint const& hint() const;
-
   /// @brief return the amount of bytes used
   size_t getMemoryUsedBytes() const override final;
 

@@ -168,8 +168,6 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
   }
 
   readProduceInfo(obj);
-
-  // TODO: read IndexHint
 }
 
 TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
@@ -392,8 +390,6 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
              isUniqueGlobalVerticesAllowed());
 
   readProduceInfo(info);
-
-  // TODO: read IndexHint
 }
 
 TraverserOptions::TraverserOptions(TraverserOptions const& other,
@@ -413,8 +409,7 @@ TraverserOptions::TraverserOptions(TraverserOptions const& other,
       weightAttribute(other.weightAttribute),
       defaultWeight(other.defaultWeight),
       vertexCollections(other.vertexCollections),
-      edgeCollections(other.edgeCollections),
-      indexHint(other.indexHint) {
+      edgeCollections(other.edgeCollections) {
   if (!allowAlreadyBuiltCopy) {
     TRI_ASSERT(other._baseLookupInfos.empty());
     TRI_ASSERT(other._depthLookupInfo.empty());

@@ -25,6 +25,7 @@
 
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/ExecutionNode/DocumentProducingNode.h"
+#include "Aql/IndexHint.h"
 #include "Aql/FixedVarExpressionContext.h"
 #include "Aql/NonConstExpressionContainer.h"
 #include "Aql/Projections.h"
@@ -220,6 +221,10 @@ struct BaseOptions {
 
   aql::Projections const& getEdgeProjections() const;
 
+  aql::IndexHint const& hint() const;
+
+  void setHint(aql::IndexHint hint);
+
   aql::Variable const* tmpVar();  // TODO check public
   arangodb::aql::FixedVarExpressionContext& getExpressionCtx();
 
@@ -324,7 +329,12 @@ struct BaseOptions {
 
   /// @brief Projections used on edge data (monitored)
   aql::Projections _edgeProjections;
+
+  aql::IndexHint _hint;
 };
 
 }  // namespace graph
 }  // namespace arangodb
+/// @brief user hint regarding which indexes to use
+
+/// @brief user hint regarding which indexes to use

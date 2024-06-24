@@ -361,8 +361,8 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(
         } else if (name == StaticStrings::IndexHintOptionForce) {
           // will be handled by the following handler for "indexHint"
         } else if (name == StaticStrings::IndexHintOption) {
-          IndexHint hint(ast->query(), optionsNode, IndexHint::FromTraversal{});
-          options->indexHint = std::move(hint);
+          options->setHint(IndexHint(ast->query(), optionsNode,
+                                     IndexHint::FromGraphOperation{}));
         } else {
           ExecutionPlan::invalidOptionAttribute(ast->query(), "unknown",
                                                 "TRAVERSAL", name);
@@ -1253,7 +1253,8 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "no collection for EnumerateCollection");
     }
-    IndexHint hint(_ast->query(), options, IndexHint::FromCollection{});
+    IndexHint hint(_ast->query(), options,
+                   IndexHint::FromCollectionOperation{});
     en = createNode<EnumerateCollectionNode>(this, nextId(), collection, v,
                                              false, std::move(hint));
     if (node->hasFlag(AstNodeFlagType::FLAG_READ_OWN_WRITES)) {

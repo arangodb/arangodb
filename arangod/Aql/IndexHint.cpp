@@ -50,6 +50,17 @@ std::string_view constexpr kFieldForced("forced");
 std::string_view constexpr kFieldHint("hint");
 std::string_view constexpr kFieldType("type");
 
+std::pair<IndexHint::DepthType, bool> getDepth(std::string_view level) {
+  if (level == "base") {
+    return std::make_pair(IndexHint::BaseDepth, true);
+  }
+  bool valid = false;
+  IndexHint::DepthType levelId =
+      NumberUtils::atoi_positive<IndexHint::DepthType>(
+          level.data(), level.data() + level.size(), valid);
+  return std::make_pair(levelId, valid);
+}
+
 bool getBooleanValue(AstNode const* child, bool& result) {
   AstNode const* value = child->getMember(0);
 
@@ -126,7 +137,7 @@ bool parseNestedHint(AstNode const* node, IndexHint::NestedContents& hint) {
         return false;
       }
 
-      auto& ref = hint[std::string{collectionName}][std::string{directionName}];
+      auto& ref = hint[collectionName][directionName];
 
       for (size_t k = 0; k < sub->numMembers(); k++) {
         AstNode const* level = sub->getMember(k);
@@ -137,16 +148,9 @@ bool parseNestedHint(AstNode const* node, IndexHint::NestedContents& hint) {
 
         std::string_view levelName(level->getStringView());
 
-        uint64_t levelId = 0;
-        if (levelName == "base") {
-          levelId = UINT64_MAX;
-        } else {
-          bool valid = false;
-          levelId = NumberUtils::atoi_positive<uint64_t>(
-              levelName.data(), levelName.data() + levelName.size(), valid);
-          if (!valid) {
-            return false;
-          }
+        auto [levelId, valid] = getDepth(levelName);
+        if (!valid) {
+          return false;
         }
 
         AstNode const* value = level->getMember(0);
@@ -184,7 +188,7 @@ IndexHint::HintType fromTypeName(std::string_view typeName) noexcept {
 }  // namespace
 
 IndexHint::IndexHint(QueryContext& query, AstNode const* node,
-                     IndexHint::FromCollection) {
+                     IndexHint::FromCollectionOperation) {
   if (node->type == AstNodeType::NODE_TYPE_OBJECT) {
     for (size_t i = 0; i < node->numMembers(); i++) {
       AstNode const* child = node->getMember(i);
@@ -282,7 +286,7 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node,
 }
 
 IndexHint::IndexHint(QueryContext& query, AstNode const* node,
-                     IndexHint::FromTraversal) {
+                     IndexHint::FromGraphOperation) {
   if (node->type == AstNodeType::NODE_TYPE_OBJECT) {
     for (size_t i = 0; i < node->numMembers(); i++) {
       AstNode const* child = node->getMember(i);
@@ -357,17 +361,11 @@ IndexHint::IndexHint(velocypack::Slice slice) {
           for (auto level : VPackObjectIterator(direction.value)) {
             std::string_view key = level.key.stringView();
 
-            uint64_t levelId;
-            if (key == "base") {
-              levelId = UINT64_MAX;
-            } else {
-              bool valid = true;
-              levelId = NumberUtils::atoi_positive<uint64_t>(
-                  key.data(), key.data() + key.size(), valid);
-              TRI_ASSERT(valid);
-            }
+            auto [levelId, valid] = getDepth(key);
+            TRI_ASSERT(valid);
+
             auto& ref = std::get<NestedContents>(
-                _hint)[collection.key.copyString()][direction.key.copyString()];
+                _hint)[collection.key.stringView()][direction.key.stringView()];
             TRI_ASSERT(level.value.isArray());
             for (auto index : VPackArrayIterator(level.value)) {
               TRI_ASSERT(index.isString());
@@ -451,7 +449,11 @@ void IndexHint::toVelocyPack(VPackBuilder& builder) const {
       for (auto const& direction : collection.second) {
         builder.add(direction.first, VPackValue(VPackValueType::Object));
         for (auto const& level : direction.second) {
-          builder.add(VPackValue(std::to_string(level.first)));
+          if (level.first == BaseDepth) {
+            builder.add(VPackValue("base"));
+          } else {
+            builder.add(VPackValue(std::to_string(level.first)));
+          }
           indexesToVelocyPack(builder, level.second);
         }
         builder.close();
@@ -468,6 +470,45 @@ std::string IndexHint::toString() const {
     toVelocyPack(builder);
   }
   return builder.slice().toJson();
+}
+
+IndexHint IndexHint::getFromNested(std::string_view direction,
+                                   std::string_view collection,
+                                   IndexHint::DepthType depth) const {
+  IndexHint specific;
+
+  auto appendIndexes = [this, &specific](auto const& indexes) {
+    specific._type = HintType::kSimple;
+    specific._forced = _forced;
+    for (auto const& index : indexes) {
+      std::get<SimpleContents>(specific._hint).emplace_back(index);
+    }
+  };
+
+  if (_type == IndexHint::kNested) {
+    auto& hints = std::get<NestedContents>(_hint);
+    // find collection
+    if (auto it = hints.find(collection); it != hints.end()) {
+      // find direction
+      if (auto it2 = it->second.find(direction); it2 != it->second.end()) {
+        // find specific depth
+        auto it3 = it2->second.find(depth);
+        if (it3 != it2->second.end()) {
+          appendIndexes(it3->second);
+        }
+        // find base depth, if it was not already the original depth queried
+        if (depth != BaseDepth) {
+          // append all indexes for base-depth
+          it3 = it2->second.find(BaseDepth);
+          if (it3 != it2->second.end()) {
+            appendIndexes(it3->second);
+          }
+        }
+      }
+    }
+  }
+
+  return specific;
 }
 
 std::ostream& operator<<(std::ostream& stream, IndexHint const& hint) {
