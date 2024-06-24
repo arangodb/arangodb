@@ -1,6 +1,8 @@
 v3.11.10 (XXXX-XX-XX)
 ---------------------
 
+* Sort out a thread blockage on AQL upsert waiting for replication.
+
 * FE-454: Fix saving document in "Tree" mode.
 
 * Fix a potential data corruption in a collection's Merkle tree, in case
