@@ -1,6 +1,8 @@
 devel
 -----
 
+* Sort out a thread blockage on AQL upsert waiting for replication.
+
 * Fixed an issue where the request would hang when retrieving the result of an
   asynchronous HEAD request. Now, the response body is cleared and the
   Content-Length header is set to 0, ensuring compliance with the HTTP protocol
@@ -18,8 +20,6 @@ devel
 
 3.12.1 (XXXX-XX-XX)
 -------------------
-
-* Sort out a thread blockage on AQL upsert waiting for replication.
 
 * FE-454: Fix saving document in "Tree" mode.
 
