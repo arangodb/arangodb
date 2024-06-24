@@ -669,7 +669,7 @@ struct AggregatorUniqueStep2 final : public AggregatorUnique {
     for (VPackSlice it : VPackArrayIterator(s)) {
       if (seen.contains(it)) {
         // already saw the same value
-        return;
+        continue;
       }
 
       char* pos = allocator.store(it.startAs<char>(), it.byteSize());
@@ -744,7 +744,7 @@ struct AggregatorSortedUniqueStep2 final : public AggregatorSortedUnique {
     for (VPackSlice it : VPackArrayIterator(s)) {
       if (seen.find(it) != seen.end()) {
         // already saw the same value
-        return;
+        continue;
       }
 
       char* pos = allocator.store(it.startAs<char>(), it.byteSize());
@@ -839,9 +839,9 @@ struct AggregatorCountDistinctStep2 final : public AggregatorCountDistinct {
     }
 
     for (VPackSlice it : VPackArrayIterator(s)) {
-      if (seen.find(s) != seen.end()) {
+      if (seen.contains(it)) {
         // already saw the same value
-        return;
+        continue;
       }
 
       char* pos = allocator.store(it.startAs<char>(), it.byteSize());
