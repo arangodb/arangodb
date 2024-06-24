@@ -270,7 +270,7 @@ void ModificationExecutorHelpers::waitAndDetach(
       if (!future.isReady()) {
         LOG_TOPIC("afe32", INFO, Logger::THREADS)
             << "Did not get replication response within " << detachTime.count()
-            << " microseconds, detaching scheduler thread.";
+            << " milliseconds, detaching scheduler thread.";
         uint64_t currentNumberDetached = 0;
         uint64_t maximumNumberDetached = 0;
         auto res = SchedulerFeature::SCHEDULER->detachThread(
