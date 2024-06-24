@@ -36,6 +36,10 @@
 #include <string>
 
 namespace arangodb {
+namespace futures {
+template<typename T>
+class Future;
+}
 namespace aql {
 
 struct ModificationExecutorInfos;
@@ -94,6 +98,8 @@ OperationOptions convertOptions(ModificationOptions const& in,
                                 Variable const* outVariableOld);
 
 AqlValue getDocumentOrNull(velocypack::Slice elm, std::string const& key);
+
+void waitAndDetach(futures::Future<OperationResult>& future);
 
 }  // namespace ModificationExecutorHelpers
 }  // namespace aql
