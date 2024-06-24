@@ -19,6 +19,8 @@ devel
 3.12.1 (XXXX-XX-XX)
 -------------------
 
+* Sort out a thread blockage on AQL upsert waiting for replication.
+
 * FE-454: Fix saving document in "Tree" mode.
 
 * FE-310: Query editor in web UI can now be resized vertically.
