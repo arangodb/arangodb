@@ -454,10 +454,11 @@ function optimizerAggregateTestSuite () {
 
       assertEqual(5, dbsCollectNode.aggregates.length);
       assertEqual("LENGTH", dbsCollectNode.aggregates[0].type);
-      assertEqual("UNIQUE", dbsCollectNode.aggregates[1].type);
-      assertEqual("UNIQUE", dbsCollectNode.aggregates[2].type);
-      assertEqual("UNIQUE", dbsCollectNode.aggregates[3].type);
-      assertEqual("UNIQUE", dbsCollectNode.aggregates[4].type);
+      const type = isCluster ? "UNIQUE" : "COUNT_DISTINCT";
+      assertEqual(type, dbsCollectNode.aggregates[1].type);
+      assertEqual(type, dbsCollectNode.aggregates[2].type);
+      assertEqual(type, dbsCollectNode.aggregates[3].type);
+      assertEqual(type, dbsCollectNode.aggregates[4].type);
 
       if (isCluster) {
         const coordCollectNode = collectNodes[1];
