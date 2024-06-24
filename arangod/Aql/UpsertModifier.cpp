@@ -300,19 +300,22 @@ ExecutionState UpsertModifier::transact(transaction::Methods& trx) {
 
   auto toInsert = _insertAccumulator.closeAndGetContents();
   if (toInsert.isArray() && toInsert.length() > 0) {
-    _insertResults =
-        trx.insert(_infos._aqlCollection->name(), toInsert, _infos._options);
+    _insertResults = trx.insertAsync(_infos._aqlCollection->name(), toInsert,
+                                     _infos._options)
+                         .waitAndGet();
     throwOperationResultException(_infos, _insertResults);
   }
 
   auto toUpdate = _updateAccumulator.closeAndGetContents();
   if (toUpdate.isArray() && toUpdate.length() > 0) {
     if (_infos._isReplace) {
-      _updateResults =
-          trx.replace(_infos._aqlCollection->name(), toUpdate, _infos._options);
+      _updateResults = trx.replaceAsync(_infos._aqlCollection->name(), toUpdate,
+                                        _infos._options)
+                           .waitAndGet();
     } else {
-      _updateResults =
-          trx.update(_infos._aqlCollection->name(), toUpdate, _infos._options);
+      _updateResults = trx.updateAsync(_infos._aqlCollection->name(), toUpdate,
+                                       _infos._options)
+                           .waitAndGet();
     }
     throwOperationResultException(_infos, _updateResults);
   }
