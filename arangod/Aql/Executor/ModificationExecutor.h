@@ -170,7 +170,7 @@ class ModificationExecutor {
   using Stats = ModificationStats;
 
   ModificationExecutor(FetcherType&, Infos&);
-  ~ModificationExecutor() = default;
+  ~ModificationExecutor();
 
   [[nodiscard]] auto produceRows(typename FetcherType::DataRange& input,
                                  OutputAqlItemRow& output)
@@ -205,5 +205,13 @@ class ModificationExecutor {
   std::size_t _skipCount{};
   Stats _stats{};
 };
+
+template<typename FetcherType, typename ModifierType>
+ModificationExecutor<FetcherType, ModifierType>::~ModificationExecutor() {
+  // Clear all InputAqlItemRows the modifier still holds, and with it the
+  // SharedAqlItemBlockPtrs. This is so the referenced AqlItemBlocks can be
+  // returned to the AqlItemBlockManager now, while the latter still exists.
+  _modifier->clearRows();
+}
 
 }  // namespace arangodb::aql

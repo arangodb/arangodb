@@ -71,10 +71,6 @@ class AqlItemBlock {
   AqlItemBlock(AqlItemBlock const&) = delete;
   AqlItemBlock& operator=(AqlItemBlock const&) = delete;
 
-  /// @brief create the block
-  AqlItemBlock(AqlItemBlockManager&, size_t numRows,
-               RegisterCount numRegisters);
-
   void initFromSlice(arangodb::velocypack::Slice);
 
   /// @brief auxiliary struct to track how often the same AqlValue is
@@ -113,8 +109,13 @@ class AqlItemBlock {
   using ShadowRowIterator = std::vector<uint32_t>::const_iterator;
 
  protected:
+  /// @brief create the block
+  /// Should only ever be called by AqlItemBlockManager, so it's protected
+  AqlItemBlock(AqlItemBlockManager&, size_t numRows,
+               RegisterCount numRegisters);
+
   /// @brief destroy the block
-  /// Should only ever be deleted by AqlItemManager::returnBlock, so the
+  /// Should only ever be deleted by AqlItemBlockManager::returnBlock, so the
   /// destructor is protected.
   ~AqlItemBlock();
 
@@ -407,11 +408,12 @@ class AqlItemBlock {
     explicit OwnershipChecker(std::atomic<std::thread::id>& v) : _v(v) {
       auto old =
           _v.exchange(std::this_thread::get_id(), std::memory_order_relaxed);
-      TRI_ASSERT(old == std::thread::id());
+      TRI_ASSERT(old == std::thread::id()) << "old=" << old;
     }
     ~OwnershipChecker() {
       auto old = _v.exchange(std::thread::id(), std::memory_order_relaxed);
-      TRI_ASSERT(old == std::this_thread::get_id());
+      TRI_ASSERT(old == std::this_thread::get_id())
+          << "old=" << old << ", this=" << std::this_thread::get_id();
     }
     std::atomic<std::thread::id>& _v;
   };
