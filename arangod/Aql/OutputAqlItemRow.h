@@ -259,12 +259,12 @@ class OutputAqlItemRow {
            _numValuesWritten == numRegistersToWrite();
   }
 
-  [[nodiscard]] AqlItemBlock const& block() const noexcept {
+  [[nodiscard]] inline AqlItemBlock const& block() const noexcept {
     TRI_ASSERT(_block != nullptr);
     return *_block;
   }
 
-  AqlItemBlock& block() noexcept {
+  inline AqlItemBlock& block() noexcept {
     TRI_ASSERT(_block != nullptr);
     return *_block;
   }

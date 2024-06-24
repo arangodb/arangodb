@@ -1110,6 +1110,15 @@ AqlValue AqlItemBlock::stealAndEraseValue(size_t index, RegisterId varNr) {
   return value;
 }
 
+RegisterCount AqlItemBlock::numRegisters() const noexcept {
+  return _numRegisters;
+}
+
+size_t AqlItemBlock::numRows() const noexcept { return _numRows; }
+size_t AqlItemBlock::maxModifiedRowIndex() const noexcept {
+  return _maxModifiedRowIndex;
+}
+
 std::tuple<size_t, size_t> AqlItemBlock::getRelevantRange() const {
   // NOTE:
   // Right now we can only support a range of datarows, that ends
@@ -1176,6 +1185,8 @@ size_t AqlItemBlock::numShadowRows() const noexcept {
 AqlItemBlockManager& AqlItemBlock::aqlItemBlockManager() noexcept {
   return _manager;
 }
+
+size_t AqlItemBlock::getRefCount() const noexcept { return _refCount; }
 
 void AqlItemBlock::incrRefCount() const noexcept {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

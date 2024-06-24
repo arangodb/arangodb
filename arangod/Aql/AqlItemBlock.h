@@ -204,11 +204,11 @@ class AqlItemBlock {
   AqlValue stealAndEraseValue(size_t index, RegisterId varNr);
 
   /// @brief getter for _numRegisters
-  RegisterCount numRegisters() const noexcept { return _numRegisters; }
+  RegisterCount numRegisters() const noexcept;
 
   /// @brief getter for _numRows
-  size_t numRows() const noexcept { return _numRows; }
-  size_t maxModifiedRowIndex() const noexcept { return _maxModifiedRowIndex; }
+  size_t numRows() const noexcept;
+  size_t maxModifiedRowIndex() const noexcept;
 
   /// @brief get the relevant consumable range of the block
   std::tuple<size_t, size_t> getRelevantRange() const;
@@ -338,7 +338,7 @@ class AqlItemBlock {
 
  protected:
   AqlItemBlockManager& aqlItemBlockManager() noexcept;
-  size_t getRefCount() const noexcept { return _refCount; }
+  size_t getRefCount() const noexcept;
   void incrRefCount() const noexcept;
   size_t decrRefCount() const noexcept;
 

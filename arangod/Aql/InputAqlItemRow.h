@@ -141,6 +141,7 @@ class InputAqlItemRow {
 
   AqlItemBlock const& block() const noexcept;
 
+ private:
   /**
    * @brief Underlying AqlItemBlock storing the data.
    */
