@@ -138,6 +138,8 @@ class permissionsRunner extends trs.runLocalInArangoshRunner {
             if (!executeScript(content, true, te)) {
               this.options.cleanup = false;
               throw new Error("setup of test failed");
+            } else {
+              print("Setup test data OK.");
             }
           } catch (ex) {
             this.options.cleanup = false;

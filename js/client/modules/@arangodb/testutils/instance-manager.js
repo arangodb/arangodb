@@ -187,17 +187,6 @@ class instanceManager {
     fs.removeDirectoryRecursive(this.rootDir, true);
   }
 
-  relaunchIfType(instanceRoleFilter, moreArgs) {
-    if (this.pid || this.instanceRole !==  instanceRoleFilter) {
-      return true;
-    }
-    print("relaunching: " + this.name);
-    this.launchInstance(moreArgs);
-    if (!this.checkArangoAlive()) {
-      throw new Error(`startup of ${this.instanceRole} failed! bailing out!`);
-    }
-  }
-  
   getMemLayout () {
     if (this.options.memory !== undefined) {
       if (this.options.cluster) {
@@ -749,7 +738,9 @@ class instanceManager {
           }
           first = false;
         }
-        if (!rc) {
+        if (rc) {
+          break;
+        } else {
           internal.sleep(1);
         }
       }
@@ -1334,6 +1325,9 @@ class instanceManager {
     } catch (e) {
       print(RED + Date() + " error connecting '" + this.endpoint + "' Error: " + JSON.stringify(e) + RESET);
       if (e instanceof ArangoError && e.message.search('Connection reset by peer') >= 0) {
+        internal.sleep(5);
+        arango.reconnect(this.endpoint, '_system', 'root', '');
+      } else if (e instanceof ArangoError && e.message.search('service unavailable due to startup or maintenance mode') >= 0) {
         internal.sleep(5);
         arango.reconnect(this.endpoint, '_system', 'root', '');
       } else {

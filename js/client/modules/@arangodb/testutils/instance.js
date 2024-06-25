@@ -1248,6 +1248,17 @@ class instance {
     }
   }
 
+  relaunchIfType(instanceRoleFilter, moreArgs) {
+    if (this.pid || this.instanceRole !==  instanceRoleFilter) {
+      return true;
+    }
+    print("relaunching: " + this.name);
+    this.launchInstance(moreArgs);
+    if (!this.checkArangoAlive()) {
+      throw new Error(`startup of ${this.instanceRole} failed! bailing out!`);
+    }
+  }
+
   suspend() {
     if (this.suspended) {
       print(CYAN + Date() + ' NOT suspending "' + this.name + " again!" + RESET);
