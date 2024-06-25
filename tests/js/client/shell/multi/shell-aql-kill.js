@@ -62,7 +62,7 @@ function aqlKillSuite () {
     return () => {
       const queries = require("@arangodb/aql/queries").current();
       const stillThere = queries.filter(q => q.id === queryId).length > 0;
-      if (!stillThere) {
+      if (stillThere) {
         return undefined;
       } else {
         return true;
