@@ -145,7 +145,7 @@ function aqlKillSuite () {
       runAbortQueryTest("FOR i IN 1..10000000 RETURN SLEEP(1)");
     },
 
-    testAbortWriteQuery: function () {
+    testAbortInsertQuery: function () {
       runAbortQueryTest(`FOR i IN 1..10000000 INSERT {} INTO ${cn}`);
     },
 
