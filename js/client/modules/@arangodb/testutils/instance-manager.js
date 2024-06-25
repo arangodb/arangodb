@@ -83,6 +83,7 @@ class instanceManager {
     this.agencyConfig = new inst.agencyConfig(options, this);
     this.dumpedAgency = false;
     this.leader = null;
+    this.instanceRoles = [];
     this.urls = [];
     this.endpoints = [];
     this.arangods = [];
@@ -186,6 +187,25 @@ class instanceManager {
     fs.removeDirectoryRecursive(this.rootDir, true);
   }
 
+  _flushPid() {
+      if (this.pid) {
+        return;
+      }
+      this.exitStatus = null;
+      this.pid = null;
+      this.upAndRunning = false;
+  }
+  relaunchIfType(instanceRoleFilter, moreArgs) {
+    if (this.pid || this.instanceRole !==  instanceRoleFilter) {
+      return true;
+    }
+    print("relaunching: " + this.name);
+    this.launchInstance(moreArgs);
+    if (!this.checkArangoAlive()) {
+      throw new Error(`startup of ${this.instanceRole} failed! bailing out!`);
+    }
+  }
+  
   getMemLayout () {
     if (this.options.memory !== undefined) {
       if (this.options.cluster) {
@@ -229,69 +249,77 @@ class instanceManager {
         return true;
       }
       this.getMemLayout();
-      for (let count = 0;
-           this.options.agency && count < this.agencyConfig.agencySize;
-           count ++) {
-        this.arangods.push(new inst.instance(this.options,
-                                             instanceRole.agent,
-                                             this.addArgs,
-                                             this.httpAuthOptions,
-                                             this.protocol,
-                                             fs.join(this.rootDir, instanceRole.agent + "_" + count),
-                                             this.restKeyFile,
-                                             this.agencyConfig,
-                                             this.tmpDir,
-                                             this.memlayout[instanceRole.agent]));
+      if (this.options.agency) {
+        for (let count = 0;
+             count < this.agencyConfig.agencySize;
+             count ++) {
+          this.arangods.push(new inst.instance(this.options,
+                                               instanceRole.agent,
+                                               this.addArgs,
+                                               this.httpAuthOptions,
+                                               this.protocol,
+                                               fs.join(this.rootDir, instanceRole.agent + "_" + count),
+                                               this.restKeyFile,
+                                               this.agencyConfig,
+                                               this.tmpDir,
+                                               this.memlayout[instanceRole.agent]));
+        }
+        this.instanceRoles.push(instanceRole.agent);
       }
-      
-      for (let count = 0;
-           this.options.cluster && count < this.options.dbServers;
-           count ++) {
-        this.arangods.push(new inst.instance(this.options,
-                                             instanceRole.dbServer,
-                                             this.addArgs,
-                                             this.httpAuthOptions,
-                                             this.protocol,
-                                             fs.join(this.rootDir, instanceRole.dbServer + "_" + count),
-                                             this.restKeyFile,
-                                             this.agencyConfig,
-                                             this.tmpDir,
-                                             this.memlayout[instanceRole.dbServer]));
-      }
-      
-      for (let count = 0;
-           this.options.cluster && count < this.options.coordinators;
-           count ++) {
-        this.arangods.push(new inst.instance(this.options,
-                                             instanceRole.coordinator,
-                                             this.addArgs,
-                                             this.httpAuthOptions,
-                                             this.protocol,
-                                             fs.join(this.rootDir, instanceRole.coordinator + "_" + count),
-                                             this.restKeyFile,
-                                             this.agencyConfig,
-                                             this.tmpDir,
-                                             this.memlayout[instanceRole.coordinator] ));
-        frontendCount ++;
-      }
-      
-      for (let count = 0;
-           !this.options.agency && count < this.options.singles;
-           count ++) {
-         // Single server...
-        this.arangods.push(new inst.instance(this.options,
-                                             instanceRole.single,
-                                             this.addArgs,
-                                             this.httpAuthOptions,
-                                             this.protocol,
-                                             fs.join(this.rootDir, instanceRole.single + "_" + count),
-                                             this.restKeyFile,
-                                             this.agencyConfig,
-                                             this.tmpDir,
-                                             this.memlayout[instanceRole.single]));
-        this.urls.push(this.arangods[this.arangods.length -1].url);
-        this.endpoints.push(this.arangods[this.arangods.length -1].endpoint);
-        frontendCount ++;
+
+      if (this.options.cluster) {
+        for (let count = 0;
+             count < this.options.dbServers;
+             count ++) {
+          this.arangods.push(new inst.instance(this.options,
+                                               instanceRole.dbServer,
+                                               this.addArgs,
+                                               this.httpAuthOptions,
+                                               this.protocol,
+                                               fs.join(this.rootDir, instanceRole.dbServer + "_" + count),
+                                               this.restKeyFile,
+                                               this.agencyConfig,
+                                               this.tmpDir,
+                                               this.memlayout[instanceRole.dbServer]));
+        }
+        this.instanceRoles.push(instanceRole.dbServer);
+
+        for (let count = 0;
+             count < this.options.coordinators;
+             count ++) {
+          this.arangods.push(new inst.instance(this.options,
+                                               instanceRole.coordinator,
+                                               this.addArgs,
+                                               this.httpAuthOptions,
+                                               this.protocol,
+                                               fs.join(this.rootDir, instanceRole.coordinator + "_" + count),
+                                               this.restKeyFile,
+                                               this.agencyConfig,
+                                               this.tmpDir,
+                                               this.memlayout[instanceRole.coordinator] ));
+          frontendCount ++;
+        }
+        this.instanceRoles.push(instanceRole.coordinator);
+      }  else {
+        for (let count = 0;
+             !this.options.agency && count < this.options.singles;
+             count ++) {
+          // Single server...
+          this.arangods.push(new inst.instance(this.options,
+                                               instanceRole.single,
+                                               this.addArgs,
+                                               this.httpAuthOptions,
+                                               this.protocol,
+                                               fs.join(this.rootDir, instanceRole.single + "_" + count),
+                                               this.restKeyFile,
+                                               this.agencyConfig,
+                                               this.tmpDir,
+                                               this.memlayout[instanceRole.single]));
+          this.urls.push(this.arangods[this.arangods.length -1].url);
+          this.endpoints.push(this.arangods[this.arangods.length -1].endpoint);
+          frontendCount ++;
+        }
+        this.instanceRoles.push(instanceRole.single);
       }
       if (frontendCount > 0) {
         this.url = this.urls[0];
@@ -374,37 +402,20 @@ class instanceManager {
     }
     this.launchFinalize(startTime);
   }
+
   printProcessInfo(startTime) {
     if (this.options.noStartStopLogs) {
       return;
     }
     print(CYAN + Date() + ' up and running in ' + (time() - startTime) + ' seconds' + RESET);
-    var matchPort = /.*:.*:([0-9]*)/;
     var ports = [];
     var processInfo = [];
     this.arangods.forEach(arangod => {
-      let res = matchPort.exec(arangod.endpoint);
-      if (!res) {
-        return;
-      }
-      var port = res[1];
-      if (arangod.isAgent()) {
-        if (this.options.sniffAgency) {
-          ports.push('port ' + port);
-        }
-      } else if (arangod.isRole(instanceRole.dbServer)) {
-        if (this.options.sniffDBServers) {
-          ports.push('port ' + port);
-        }
-      } else {
-        ports.push('port ' + port);
-      }
-      processInfo.push('  [' + arangod.name +
-                       '] up with pid ' + arangod.pid +
-                       ' - ' + arangod.dataDir);
+      processInfo.push(arangod.getProcessInfo(ports));
     });
     print(processInfo.join('\n') + '\n');
   }
+
   launchTcpDump(name) {
     if (this.options.sniff === undefined || this.options.sniff === false) {
       return true;
@@ -485,9 +496,7 @@ class instanceManager {
   }
 
   initProcessStats() {
-    this.arangods.forEach((arangod) => {
-      arangod.stats = arangod._getProcessStats();
-    });
+    this.arangods.forEach((arangod) => { arangod.getProcessStats();  });
   }
 
   getDeltaProcessStats(instanceInfo) {
@@ -495,22 +504,12 @@ class instanceManager {
       let deltaStats = {};
       let deltaSum = {};
       this.arangods.forEach((arangod) => {
-        let newStats = arangod._getProcessStats();
-        let myDeltaStats = {};
-        for (let key in arangod.stats) {
-          if (key.startsWith('sockstat_')) {
-            myDeltaStats[key] = newStats[key];
-          } else {
-            myDeltaStats[key] = newStats[key] - arangod.stats[key];
-          }
-        }
-        deltaStats[arangod.pid + '_' + arangod.instanceRole] = myDeltaStats;
-        arangod.stats = newStats;
-        for (let key in myDeltaStats) {
+        let oneDeltaStats = arangod.getDeltaProcessStats();
+        for (let key in oneDeltaStats) {
           if (deltaSum.hasOwnProperty(key)) {
-            deltaSum[key] += myDeltaStats[key];
+            deltaSum[key] += oneDeltaStats[key];
           } else {
-            deltaSum[key] = myDeltaStats[key];
+            deltaSum[key] = oneDeltaStats[key];
           }
         }
       });
@@ -654,23 +653,9 @@ class instanceManager {
       name = "global health check";
       const health = internal.clusterHealth();
       return this.arangods.every((arangod) => {
-        name = "on node " + arangod.name;
-        if (arangod.isAgent() || arangod.isRole(instanceRole.single)) {
-          return true;
-        }
-        if (health.hasOwnProperty(arangod.id)) {
-          if (health[arangod.id].Status === "GOOD") {
-            return true;
-          } else {
-            print(RED + "ClusterHealthCheck failed " + arangod.id + " has status "
-                  + health[arangod.id].Status + " (which is not equal to GOOD)");
-            return false;
-          }
-        } else {
-          print(RED + "ClusterHealthCheck failed " + arangod.id
-                + " does not have health property");
-          return false;
-        }
+        let ret = arangod.checkServerGood(health);
+        name += ret[0];
+        return ret[1];
       });
     } catch(e) {
       print("Error checking cluster health " + name + " => " + e);
@@ -957,17 +942,7 @@ class instanceManager {
     // Shut down all non-agency servers:
     const n = this.arangods.length;
 
-    let toShutdown = this.arangods.slice();
-    toShutdown.sort((a, b) => {
-      if (a.instanceRole === b.instanceRole) return 0;
-      if (a.isRole(instanceRole.coordinator) &&
-          b.isRole(instanceRole.dbServer)) return -1;
-      if (b.isRole(instanceRole.coordinator) &&
-          a.isRole(instanceRole.dbServer)) return 1;
-      if (a.isAgent()) return 1;
-      if (b.isAgent()) return -1;
-      return 0;
-    });
+    let toShutdown = this.arangods.slice().reverse();
     if (!this.options.noStartStopLogs) {
       let shutdown = [];
       toShutdown.forEach(arangod => {shutdown.push(arangod.name);});
@@ -1388,76 +1363,8 @@ class instanceManager {
     return endpoint;
   }
 
-  launchFinalize(startTime) {
-    if (!this.options.cluster && !this.options.agency) {
-      let httpOptions = _.clone(this.httpAuthOptions);
-      httpOptions.method = 'POST';
-      httpOptions.returnBodyOnError = true;
-      let count = 0;
-      this.arangods.forEach(arangod => {
-        if (arangod.suspended) {
-          return;
-        }
-        while (true) {
-          wait(1, false);
-          if (this.options.useReconnect && arangod.isFrontend()) {
-            try {
-              if (this.JWT) {
-                print(Date() + " reconnecting with JWT " + arangod.url);
-                arango.reconnect(arangod.endpoint,
-                                 '_system',
-                                 this.options.username,
-                                 this.options.password,
-                                 count > 50,
-                                 this.JWT);
-              } else {
-                print(Date() + " reconnecting " + arangod.url);
-                arango.reconnect(arangod.endpoint,
-                                 '_system',
-                                 this.options.username,
-                                 this.options.password,
-                                 count > 50);
-              }
-              break;
-            } catch (e) {
-              this.arangods.forEach( arangod => {
-                let status = arangod.status(false);
-                if (status.status !== "RUNNING") {
-                  throw new Error(`Arangod ${arangod.pid} exited instantly! ` + JSON.stringify(status));
-                }
-              });
-              print(Date() + " caught exception: " + e.message);
-            }
-          } else {
-            print(Date() + " tickeling " + arangod.url);
-            const reply = download(arangod.url + '/_api/version', '', httpOptions);
-
-            if (!reply.error && reply.code === 200) {
-              break;
-            }
-          }
-          ++count;
-
-          if (count % 60 === 0) {
-            if (!arangod.checkArangoAlive()) {
-              throw new Error('startup failed! bailing out!');
-            }
-          }
-          if (count === this.startupMaxCount) {
-            throw new Error('startup timed out! bailing out!');
-          }
-        }
-      });
-      this.endpoints = [this.endpoint];
-      this.urls = [this.url];
-    } else if (this.options.agency && !this.options.cluster) {
-      this.arangods.forEach(arangod => {
-        this.urls.push(arangod.url);
-        this.endpoints.push(arangod.endpoint);
-      });
-      this.url = this.urls[0];
-      this.endpoint = this.endpoints[0];
-    } else {
+  setEndpoints() {
+    if (this.options.cluster) {
       this.arangods.forEach(arangod => {
         if (arangod.isRole(instanceRole.coordinator)) {
           this.urls.push(arangod.url);
@@ -1469,10 +1376,20 @@ class instanceManager {
       }
       this.url = this.urls[0];
       this.endpoint = this.endpoints[0];
+    } else if (this.options.agency) {
+      this.arangods.forEach(arangod => {
+        this.urls.push(arangod.url);
+        this.endpoints.push(arangod.endpoint);
+      });
+      this.url = this.urls[0];
+      this.endpoint = this.endpoints[0];
+    } else {
+      this.endpoints = [this.endpoint];
+      this.urls = [this.url];
     }
-    
-    this.printProcessInfo(startTime);
-    internal.sleep(this.options.sleepBeforeStart);
+  }
+  
+  spawnClusterHealthMonitor() {
     if ((this.options.cluster || this.options.agency) &&
         !this.hasOwnProperty('clusterHealthMonitor') &&
         !this.options.disableClusterMonitor) {
@@ -1495,78 +1412,45 @@ class instanceManager {
       this.initProcessStats();
     }
   }
+
+  launchFinalize(startTime) {
+    if (!this.options.cluster && !this.options.agency) {
+      let deadline = time() + this.startupMaxCount;
+      this.arangods.forEach(arangod => {
+        try {
+          arangod.pingUntilReady(this.httpAuthOptions, deadline);
+        } catch (e) {
+          this.arangods.forEach( arangod => {
+            let status = arangod.status(false);
+            if (status.status !== "RUNNING") {
+              throw new Error(`Arangod ${arangod.pid} exited instantly! ` + JSON.stringify(status));
+            }
+          });
+          print(Date() + " caught exception: " + e.message);
+        }
+      });
+    }
+    this.setEndpoints();
+    this.printProcessInfo(startTime);
+    internal.sleep(this.options.sleepBeforeStart);
+    this.spawnClusterHealthMonitor();
+  }
   
   reStartInstance(moreArgs) {
     const startTime = time();
     this.addArgs = _.defaults(this.addArgs, moreArgs);
     this.httpAuthOptions = pu.makeAuthorizationHeaders(this.options, this.addArgs);
-    this.arangods.forEach(function (oneInstance, i) {
-      if (oneInstance.pid) {
-        return;
-      }
-      oneInstance.exitStatus = null;
-      oneInstance.pid = null;
-      oneInstance.upAndRunning = false;
-    });
+    this.arangods.forEach(arangod => { arangod.flushPid(); });
 
     let success = true;
-    this.arangods.forEach(function (oneInstance, i) {
-      if (oneInstance.pid) {
-        return;
-      }
-      if (oneInstance.isAgent()) {
-        print("relaunching: " + oneInstance.name);
-        oneInstance.launchInstance(moreArgs);
-        success = success && oneInstance.checkArangoAlive();
-      }
-    });
-    if (!success) {
-      throw new Error('startup of agency failed! bailing out!');
-    }
-    this.arangods.forEach(function (oneInstance, i) {
-      if (oneInstance.pid !== null) {
-        return;
-      }
-      if (oneInstance.isRole(instanceRole.dbServer)) {
-        print("relaunching: " + oneInstance.name);
-        oneInstance.launchInstance(moreArgs);
-      }
-    });
-    this.arangods.forEach(function (oneInstance, i) {
-      if (oneInstance.pid !== null) {
-        return;
-      }
-      if (oneInstance.isRole(instanceRole.coordinator)) {
-        print("relaunching: " + oneInstance.name);
-        oneInstance.launchInstance(moreArgs);
-      }
-    });
-    this.arangods.forEach(function (oneInstance, i) {
-      if (oneInstance.pid !== null) {
-        return;
-      }
-      if (oneInstance.isRole(instanceRole.single)) {
-        oneInstance.launchInstance(moreArgs);
-      }
+    this.instanceRoles.forEach(instanceRole  => {
+      this.arangods.forEach(arangod => { arangod.relaunchIfType(instanceRole, moreArgs); });
     });
 
-    if (this.options.cluster && !this.options.skipReconnect) {
-      this.checkClusterAlive({}); // todo addArgs
-      print("reconnecting " + this.endpoint);
-      let JWT;
-      if (this.addArgs && this.addArgs.hasOwnProperty('server.jwt-secret')) {
-        JWT = this.addArgs['server.jwt-secret'];
-      }
-      if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret')) {
-        JWT = moreArgs['server.jwt-secret'];
-      }
-      arango.reconnect(this.endpoint,
-                       '_system',
-                       this.options.username,
-                       this.options.password,
-                       false,
-                       JWT);
+    if (this.addArgs && this.addArgs.hasOwnProperty('server.jwt-secret')) {
+        this.JWT = this.addArgs['server.jwt-secret'];
     }
+
     this.launchFinalize(startTime);
   }
 }
