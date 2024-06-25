@@ -3,6 +3,9 @@ v3.11.10 (XXXX-XX-XX)
 
 * Sort out a thread blockage on AQL upsert waiting for replication.
 
+* BTS-1909, MDS-1232: Fixed a bug where COLLECT ... AGGREGATE x = UNIQUE(y)
+  could miss some results when multiple shards were aggregated in a cluster.
+
 * FE-454: Fix saving document in "Tree" mode.
 
 * Fix a potential data corruption in a collection's Merkle tree, in case
