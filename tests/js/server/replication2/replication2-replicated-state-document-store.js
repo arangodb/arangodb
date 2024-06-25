@@ -1194,7 +1194,7 @@ const replicatedStateSnapshotTransferSuite = function () {
         } catch (e) {
           print("Error: ", e);
           print("Collection contents: ", col.all().toArray());
-          fail(`Expected collection ${name} to have document ${key} - collection contents see above`);
+          fail(`Expected collection ${name} to have document ${key}, but got ${e} - collection contents see above`);
         }
       }
     },

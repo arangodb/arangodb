@@ -446,6 +446,9 @@ size_t UpsertModifier::nrOfWritesIgnored() const { return nrOfErrors(); }
 size_t UpsertModifier::getBatchSize() const { return _batchSize; }
 
 bool UpsertModifier::hasResultOrException() const noexcept {
+  // Note that this is never called while the modifier is running, that's why we
+  // don't need to lock _resultMutex. This way possible unintended races might
+  // be revealed by TSan.
   return std::visit(overload{
                         [](NoResult) { return false; },
                         [](Waiting) { return false; },
@@ -456,6 +459,9 @@ bool UpsertModifier::hasResultOrException() const noexcept {
 }
 
 bool UpsertModifier::hasNeitherResultNorOperationPending() const noexcept {
+  // Note that this is never called while the modifier is running, that's why we
+  // don't need to lock _resultMutex. This way possible unintended races might
+  // be revealed by TSan.
   return std::visit(overload{
                         [](NoResult) { return true; },
                         [](Waiting) { return false; },
