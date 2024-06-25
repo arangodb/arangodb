@@ -233,6 +233,30 @@ function enumeratePathsFilter() {
       assertEqual(rr.length, 1, "expecting precisely one result");
       const longPath = getVerticesAndEdgesFromPath(rr[0]);
       assertEqual(longPath.vertices.length, 5, `found path ${JSON.stringify(longPath)}`);
+      
+      const restrictedQuery2 = `
+        FOR path IN ANY K_SHORTEST_PATHS "${vName}/19" TO "${vName}/23" GRAPH "${graphName}"
+            FILTER path.edges[* RETURN CURRENT.colour] ALL == "green"
+            LIMIT 1
+            RETURN path`;
+
+      assertRuleFires(restrictedQuery2);
+      const rr2 = db._query(restrictedQuery2).toArray();
+      assertEqual(rr2.length, 1, "expecting precisely one result");
+      const longPath2 = getVerticesAndEdgesFromPath(rr2[0]);
+      assertEqual(longPath2.vertices.length, 5, `found path ${JSON.stringify(longPath)}`);
+      
+      const restrictedQuery3 = `
+        FOR path IN ANY K_SHORTEST_PATHS "${vName}/19" TO "${vName}/23" GRAPH "${graphName}"
+            FILTER path.edges[*].colour ALL == "green"
+            LIMIT 1
+            RETURN path`;
+
+      assertRuleFires(restrictedQuery3);
+      const rr3 = db._query(restrictedQuery3).toArray();
+      assertEqual(rr3.length, 1, "expecting precisely one result");
+      const longPath3 = getVerticesAndEdgesFromPath(rr3[0]);
+      assertEqual(longPath3.vertices.length, 5, `found path ${JSON.stringify(longPath)}`);
     },
   };
 
