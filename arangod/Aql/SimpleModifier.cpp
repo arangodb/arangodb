@@ -331,6 +331,9 @@ SimpleModifier<ModifierCompletion, Enable>::getResultsIterator() const {
 template<typename ModifierCompletion, typename Enable>
 bool SimpleModifier<ModifierCompletion, Enable>::hasResultOrException()
     const noexcept {
+  // Note that this is never called while the modifier is running, that's why we
+  // don't need to lock _resultMutex. This way possible unintended races might
+  // be revealed by TSan.
   return std::visit(overload{
                         [](NoResult) { return false; },
                         [](Waiting) { return false; },
@@ -344,6 +347,9 @@ template<typename ModifierCompletion, typename Enable>
 bool SimpleModifier<ModifierCompletion,
                     Enable>::hasNeitherResultNorOperationPending()
     const noexcept {
+  // Note that this is never called while the modifier is running, that's why we
+  // don't need to lock _resultMutex. This way possible unintended races might
+  // be revealed by TSan.
   return std::visit(overload{
                         [](NoResult) { return true; },
                         [](Waiting) { return false; },
@@ -354,7 +360,7 @@ bool SimpleModifier<ModifierCompletion,
 }
 
 template<typename ModifierCompletion, typename Enable>
-void SimpleModifier<ModifierCompletion, Enable>::clearRows() noexcept {
+void SimpleModifier<ModifierCompletion, Enable>::stopAndClear() noexcept {
   _operations.clear();
 }
 

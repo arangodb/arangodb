@@ -153,7 +153,7 @@ class SimpleModifier : public std::enable_shared_from_this<
   // Destroy all InputAqlItemRows, and with it SharedAqlItemBlockPtrs, this
   // holds. This is necessary to ensure the lifetime of the AqlItemBlocks is
   // shorter than of the AqlItemBlockManager, to which they are returned.
-  void clearRows() noexcept;
+  void stopAndClear() noexcept;
 
  private:
   [[nodiscard]] bool resultAvailable() const;
