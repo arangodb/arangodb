@@ -27,6 +27,7 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/RecursiveLocker.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/UnshackledMutex.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/hashes.h"
@@ -168,7 +169,7 @@ uint64_t RocksDBMetaCollection::numberDocuments(
 
 // rescans the collection to update document count
 futures::Future<uint64_t> RocksDBMetaCollection::recalculateCounts() {
-  std::unique_lock<std::mutex> guard(_recalculationLock);
+  std::unique_lock<basics::UnshackledMutex> guard(_recalculationLock);
 
   rocksdb::TransactionDB* db = _engine.db();
   const rocksdb::Snapshot* snapshot = nullptr;
