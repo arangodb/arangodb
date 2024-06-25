@@ -66,7 +66,6 @@ const RESET = internal.COLORS.COLOR_RESET;
 // const YELLOW = internal.COLORS.COLOR_YELLOW;
 const IS_A_TTY = RED.length !== 0;
 
-
 const abortSignal = 6;
 const termSignal = 15;
 
@@ -94,49 +93,11 @@ const instanceRole = {
   coordinator: 'coordinator',
 };
 
-class agencyConfig {
-  constructor(options, wholeCluster) {
-    this.wholeCluster = wholeCluster;
-    this.agencySize = options.agencySize;
-    this.supervision = String(options.agencySupervision);
-    this.waitForSync = false;
-    if (options.agencyWaitForSync !== undefined) {
-      this.waitForSync = options.agencyWaitForSync = false;
-    }
-    this.agencyInstances = [];
-    this.agencyEndpoint = "";
-    this.agentsLaunched = 0;
-    this.urls = [];
-    this.endpoints = [];
-  }
-  getStructure() {
-    return {
-      agencySize: this.agencySize,
-      agencyInstances: this.agencyInstances.length,
-      supervision: this.supervision,
-      waitForSync: this.waitForSync,
-      agencyEndpoint: this.agencyEndpoint,
-      agentsLaunched: this.agentsLaunched,
-      urls: this.urls,
-      endpoints: this.endpoints
-    };
-  }
-  setFromStructure(struct) {
-    this.agencySize = struct['agencySize'];
-    this.supervision = struct['supervision'];
-    this.waitForSync = struct['waitForSync'];
-    this.agencyEndpoint = struct['agencyEndpoint'];
-    this.agentsLaunched = struct['agentsLaunched'];
-    this.urls = struct['urls'];
-    this.endpoints = struct['endpoints'];
-  }
-}
-
 class instance {
   #pid = null;
 
   // / protocol must be one of ["tcp", "ssl", "unix"]
-  constructor(options, instanceRole, addArgs, authHeaders, protocol, rootDir, restKeyFile, agencyConfig, tmpDir, mem) {
+  constructor(options, instanceRole, addArgs, authHeaders, protocol, rootDir, restKeyFile, agencyMgr, tmpDir, mem) {
     this.id = null;
     this.pm = pm.getPortManager(options);
     this.options = options;
@@ -161,7 +122,7 @@ class instance {
     }
     this.authHeaders = authHeaders;
     this.restKeyFile = restKeyFile;
-    this.agencyConfig = agencyConfig;
+    this.agencyMgr = agencyMgr;
 
     this.upAndRunning = false;
     this.suspended = false;
@@ -225,7 +186,7 @@ class instance {
       protocol: this.protocol,
       authHeaders: this.authHeaders,
       restKeyFile: this.restKeyFile,
-      agencyConfig: this.agencyConfig.getStructure(),
+      agencyConfig: this.agencyMgr.getStructure(),
       upAndRunning: this.upAndRunning,
       suspended: this.suspended,
       port: this.port,
@@ -245,7 +206,7 @@ class instance {
     };
   }
 
-  setFromStructure(struct, agencyConfig) {
+  setFromStructure(struct, agencyMgr) {
     this.name = struct['name'];
     this.instanceRole = struct['instanceRole'];
     this.message = struct['message'];
@@ -320,6 +281,11 @@ class instance {
       ports.push('port ' + port);
     }
     return `  [${this.name}] up with pid ${this.pid} - ${this.dataDir}`;
+  }
+  
+  resetAuthHeaders(authHeaders, JWT) {
+    this.authHeaders = authHeaders;
+    this.JWT = JWT;
   }
   
   // //////////////////////////////////////////////////////////////////////////////
@@ -431,9 +397,9 @@ class instance {
     if (this.isAgent()) {
       this.args = Object.assign(this.args, {
         'agency.activate': 'true',
-        'agency.size': this.agencyConfig.agencySize,
-        'agency.wait-for-sync': this.agencyConfig.waitForSync,
-        'agency.supervision': this.agencyConfig.supervision,
+        'agency.size': this.agencyMgr.agencySize,
+        'agency.wait-for-sync': this.agencyMgr.waitForSync,
+        'agency.supervision': this.agencyMgr.supervision,
         'agency.my-address': this.protocol + '://127.0.0.1:' + this.port,
         // Sometimes for unknown reason the agency startup is too slow.
         // With this log level we might have a chance to see what is going on.
@@ -445,30 +411,30 @@ class instance {
       if (!this.args.hasOwnProperty("agency.supervision-frequency")) {
         this.args['agency.supervision-frequency'] = '1.0';
       }
-      this.agencyConfig.agencyInstances.push(this);
-      if (this.agencyConfig.agencyInstances.length === this.agencyConfig.agencySize) {
+      this.agencyMgr.agencyInstances.push(this);
+      if (this.agencyMgr.agencyInstances.length === this.agencyMgr.agencySize) {
         let l = [];
-        this.agencyConfig.agencyInstances.forEach(agentInstance => {
+        this.agencyMgr.agencyInstances.forEach(agentInstance => {
           l.push(agentInstance.endpoint);
-          this.agencyConfig.urls.push(agentInstance.url);
-          this.agencyConfig.endpoints.push(agentInstance.endpoint);
+          this.agencyMgr.urls.push(agentInstance.url);
+          this.agencyMgr.endpoints.push(agentInstance.endpoint);
         });
-        this.agencyConfig.agencyInstances.forEach(agentInstance => {
+        this.agencyMgr.agencyInstances.forEach(agentInstance => {
           agentInstance.args['agency.endpoint'] = _.clone(l);
         });
-        this.agencyConfig.agencyEndpoint = this.agencyConfig.agencyInstances[0].endpoint;
+        this.agencyMgr.agencyEndpoint = this.agencyMgr.agencyInstances[0].endpoint;
       }
     } else if (this.instanceRole === instanceRole.dbServer) {
       this.args = Object.assign(this.args, {
         'cluster.my-role':'PRIMARY',
         'cluster.my-address': this.args['server.endpoint'],
-        'cluster.agency-endpoint': this.agencyConfig.agencyEndpoint
+        'cluster.agency-endpoint': this.agencyMgr.agencyEndpoint
       });
     } else if (this.instanceRole === instanceRole.coordinator) {
       this.args = Object.assign(this.args, {
         'cluster.my-role': 'COORDINATOR',
         'cluster.my-address': this.args['server.endpoint'],
-        'cluster.agency-endpoint': this.agencyConfig.agencyEndpoint,
+        'cluster.agency-endpoint': this.agencyMgr.agencyEndpoint,
         'foxx.force-update-on-startup': true
       });
       if (!this.args.hasOwnProperty('cluster.default-replication-factor')) {
@@ -745,9 +711,9 @@ class instance {
 
     sleep(0.5);
     if (this.isAgent()) {
-      this.agencyConfig.agentsLaunched += 1;
-      if (this.agencyConfig.agentsLaunched === this.agencyConfig.agencySize) {
-        this.agencyConfig.wholeCluster.checkClusterAlive();
+      this.agencyMgr.agentsLaunched += 1;
+      if (this.agencyMgr.agentsLaunched === this.agencyMgr.agencySize) {
+        this.agencyMgr.wholeCluster.checkClusterAlive(); // TODO???
       }
     }
   }
@@ -829,27 +795,17 @@ class instance {
 
     print(CYAN + Date()  + " relaunching: " + this.name + ', url: ' + this.url + RESET);
     this.launchInstance(moreArgs);
-    while(true) {
-      const reply = download(this.url + '/_api/version', '');
-
-      if (!reply.error && reply.code === 200) {
-        break;
-      }
-      if (unAuthOK && reply.code === 401) {
-        break;
-      }
-      if (this.options.extremeVerbosity) {
-        print(this.name + ' answered: ' + JSON.stringify(reply));
-      }
-      sleep(0.5);
-      if (!this.checkArangoAlive()) {
-        print("instance gone! " + this.name);
-        this.pid = null;
-        throw new Error("restart failed! " + this.name);
-      }
-    }
+    this.pingUntilReady(this.authHeaders, time() + 60);
     print(CYAN + Date() + ' ' + this.name + ', url: ' + this.url + ', running again with PID ' + this.pid + RESET);
   }
+
+  restartIfType(instanceRoleFilter, moreArgs) {
+    if (this.pid || this.instanceRole !==  instanceRoleFilter) {
+      return true;
+    }
+    this.restartOneInstance(moreArgs);
+  }
+
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief periodic checks whether spawned arangod processes are still alive
   // //////////////////////////////////////////////////////////////////////////////
@@ -1201,7 +1157,7 @@ class instance {
         localTimeout = localTimeout + 60;
       }
       if ((time() - shutdownTime) > localTimeout) {
-        this.agencyConfig.wholeCluster.dumpAgency();
+        this.agencyMgr.dumpAgency();
         print(Date() + ' forcefully terminating ' + yaml.safeDump(this.getStructure()) +
               ' after ' + timeout + 's grace period; marking crashy.');
         this.serverCrashedLocal = true;
@@ -1245,17 +1201,6 @@ class instance {
       if (this.exitStatus.status !== 'RUNNING') {
         this.pid = null;
       }
-    }
-  }
-
-  relaunchIfType(instanceRoleFilter, moreArgs) {
-    if (this.pid || this.instanceRole !==  instanceRoleFilter) {
-      return true;
-    }
-    print("relaunching: " + this.name);
-    this.launchInstance(moreArgs);
-    if (!this.checkArangoAlive()) {
-      throw new Error(`startup of ${this.instanceRole} failed! bailing out!`);
     }
   }
 
@@ -1334,7 +1279,6 @@ class instance {
 
 
 exports.instance = instance;
-exports.agencyConfig = agencyConfig;
 exports.instanceType = instanceType;
 exports.instanceRole = instanceRole;
 exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
