@@ -1,6 +1,8 @@
 v3.11.10 (XXXX-XX-XX)
 ---------------------
 
+* Update timezone database as of 25.06.2024.
+
 * Rebuilt included rclone v1.62.2 with go1.22.4.
 
 * Sort out a thread blockage on AQL upsert waiting for replication.
