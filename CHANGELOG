@@ -1,6 +1,8 @@
 devel
 -----
 
+* Update timezone database as of 25.06.2024.
+
 * Rebuilt included rclone v1.65.2 with go1.22.4.
 
 * Swagger UI: Remove fragment identifiers from request URLs. They are merely
