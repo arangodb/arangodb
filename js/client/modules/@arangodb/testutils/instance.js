@@ -291,7 +291,27 @@ class instance {
       }
     }
   }
-  
+
+  getProcessInfo(ports) {
+    var matchPort = /.*:.*:([0-9]*)/;
+    let res = matchPort.exec(this.endpoint);
+    if (!res) {
+      return "";
+    }
+    var port = res[1];
+    if (this.isAgent()) {
+      if (this.options.sniffAgency) {
+        ports.push('port ' + port);
+      }
+    } else if (this.isRole(instanceRole.dbServer)) {
+      if (this.options.sniffDBServers) {
+        ports.push('port ' + port);
+      }
+    } else {
+      ports.push('port ' + port);
+    }
+    return `  [${this.name}] up with pid ${this.pid} - ${this.dataDir}`;
+  }
   
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief arguments for testing (server)
@@ -508,6 +528,23 @@ class instance {
       });
     }
     return processStats;
+  }
+  getProcessStats() {
+    this.stats = this._getProcessStats();
+  }
+  getDeltaProcessStats() {
+    let newStats = this._getProcessStats();
+    let deltaStats = {};
+    for (let key in this.stats) {
+      if (key.startsWith('sockstat_')) {
+        deltaStats[key] = newStats[key];
+      } else {
+        deltaStats[key] = newStats[key] - this.stats[key];
+      }
+    }
+    deltaStats[this.pid + '_' + this.instanceRole] = deltaStats;
+    this.stats = newStats;
+    return deltaStats;
   }
   getSockStat(preamble) {
     if (this.options.getSockStat && (platform === 'linux')) {
@@ -851,6 +888,68 @@ class instance {
       }
     }
     return running;
+  }
+
+  checkServerGood(health) {
+    let name = '';
+    name = "on node " + this.name;
+    if (this.isAgent() || this.isRole(instanceRole.single)) {
+      return [name, true];
+    }
+    if (health.hasOwnProperty(this.id)) {
+      if (health[this.id].Status === "GOOD") {
+        return [name, true];
+      } else {
+        print(`${RED}ClusterHealthCheck failed ${this.id} has status ${health[this.id].Status} (which is not equal to GOOD)${RESET}`);
+        return [name, false];
+      }
+    } else {
+      print(`${RED}ClusterHealthCheck failed ${this.id} does not have health property${RESET}`);
+      return [name, false];
+    }
+  }
+
+  pingUntilReady(httpAuthOptions, deadline) {
+    if (this.suspended) {
+      return;
+    }
+    let httpOptions = _.clone(httpAuthOptions);
+    httpOptions.method = 'POST';
+    httpOptions.returnBodyOnError = true;
+    while (true) {
+      wait(1, false);
+      if (this.options.useReconnect && this.isFrontend()) {
+          if (this.JWT) {
+            print(Date() + " reconnecting with JWT " + this.url);
+            this.reconnect(this.endpoint,
+                           '_system',
+                           this.options.username,
+                           this.options.password,
+                           time() < deadline,
+                           this.JWT);
+          } else {
+            print(Date() + " reconnecting " + this.url);
+            this.reconnect(this.endpoint,
+                           '_system',
+                           this.options.username,
+                           this.options.password,
+                           time() < deadline);
+          }
+        break;
+      } else {
+        print(`${Date()} tickeling ${this.url}`);
+        const reply = download(this.url + '/_api/version', '', httpOptions);
+        if (!reply.error && reply.code === 200) {
+          break;
+        }
+      }
+
+      if (time() >= deadline) {
+        if (!this.checkArangoAlive()) {
+          throw new Error('startup failed! bailing out!');
+        }
+      }
+    }
   }
 
   isRunning() {
