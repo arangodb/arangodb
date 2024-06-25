@@ -724,10 +724,21 @@ std::vector<arangodb::graph::IndexAccessor> ShortestPathNode::buildIndexes(
     // arbitrary value for "number of edges in collection" used here. the
     // actual value does not matter much. 1000 has historically worked fine.
     constexpr size_t itemsInCollection = 1000;
+
+    // use most specific index hint here.
+    // TODO: this code is prepared to use index hints, but due to the
+    // "onlyEdgeIndexes" flag set to true here, the optimizer will _always_ pick
+    // the edge index for the shortest path query. we should fix the condition
+    // handling inside shortest path queries so that it can work with arbitrary,
+    // multi-field conditions and thus indexes.
+    auto indexHint = hint().getFromNested(
+        (reverse ? opposite : dir) == TRI_EDGE_IN ? "inbound" : "outbound",
+        _edgeColls[i]->name(), IndexHint::BaseDepth);
+
     auto& trx = plan()->getAst()->query().trxForOptimization();
     bool res = aql::utils::getBestIndexHandleForFilterCondition(
         trx, *_edgeColls[i], clonedCondition, options()->tmpVar(),
-        itemsInCollection, aql::IndexHint(), indexToUse, ReadOwnWrites::no,
+        itemsInCollection, indexHint, indexToUse, ReadOwnWrites::no,
         /*onlyEdgeIndexes*/ true);
     if (!res) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,

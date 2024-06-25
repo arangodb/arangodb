@@ -46,8 +46,12 @@ class QueryContext;
 /// @brief container for index hint information
 class IndexHint {
  public:
+  // tag used for EnumerateCollection
   struct FromCollectionOperation {};
-  struct FromGraphOperation {};
+  // tag used for traversal operations
+  struct FromTraversal {};
+  // tag used for path queries, e.g. shortest path, k-paths, k-shortest-paths
+  struct FromPathsQuery {};
 
   // there is an important distinction between None and Disabled here:
   //   None = no index hint set
@@ -74,11 +78,14 @@ class IndexHint {
           containers::FlatHashMap<DepthType, PossibleIndexes>>>;
 
   IndexHint() = default;
+
+  explicit IndexHint(velocypack::Slice slice);
   explicit IndexHint(QueryContext& query, AstNode const* node,
                      FromCollectionOperation);
-  explicit IndexHint(QueryContext& query, AstNode const* node,
-                     FromGraphOperation);
-  explicit IndexHint(velocypack::Slice slice);
+  // only delegates to private internal ctor
+  explicit IndexHint(QueryContext& query, AstNode const* node, FromTraversal);
+  // only delegates to private internal ctor
+  explicit IndexHint(QueryContext& query, AstNode const* node, FromPathsQuery);
 
   IndexHint(IndexHint&&) = default;
   IndexHint& operator=(IndexHint&&) = default;
@@ -106,6 +113,9 @@ class IndexHint {
                           IndexHint::DepthType depth) const;
 
  private:
+  // actual constructor for traversal/paths queries
+  IndexHint(QueryContext& query, AstNode const* node, bool hasLevels);
+
   bool empty() const noexcept;
 
   HintType _type{kNone};

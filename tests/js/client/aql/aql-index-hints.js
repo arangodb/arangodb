@@ -31,8 +31,9 @@ const jsunity = require("jsunity");
 const normalize = require("@arangodb/aql-helper").normalizeProjections;
 const errors = internal.errors;
 const analyzers = require("@arangodb/analyzers");
+const cn = 'UnitTestsIndexHints';
 
-function indexHintSuite () {
+function indexHintCollectionSuite () {
   const getIndexNames = function (query) {
     const explain = db._createStatement(query).explain();
     const usedIndicesInJoin = explain.plan.nodes.filter(node => (node.type === 'JoinNode'))
@@ -46,7 +47,6 @@ function indexHintSuite () {
     return usedIndicesInJoin === undefined ? usedIndices : usedIndices.concat(usedIndicesInJoin);
   };
 
-  const cn = 'UnitTestsIndexHints';
   const cn2 = 'TestCollectionWithGeoIndex';
   const invertedIdxName = 'inverted1';
   const invertedIdxName2 = 'inverted2';
@@ -62,13 +62,9 @@ function indexHintSuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
     setUpAll: function () {
-      internal.db._drop(cn);
-      collection = internal.db._create(cn);
+      db._drop(cn);
+      collection = db._create(cn);
 
       collection.ensureIndex({type: 'hash', name: 'hash_a', fields: ['a']});
       collection.ensureIndex({type: 'hash', name: 'hash_a_b', fields: ['a', 'b']});
@@ -82,8 +78,8 @@ function indexHintSuite () {
       defaultSortingIndex = 'hash_a';
       alternateSortingIndex = 'skip_a_b';
 
-      internal.db._drop(cn2);
-      collection = internal.db._create(cn2);
+      db._drop(cn2);
+      collection = db._create(cn2);
       collection.ensureIndex({type: "persistent", fields: ["value1"], name: persistentIdxName});
       collection.ensureIndex({type: "persistent", fields: ["value2"], name: persistentIdxName2});
       collection.ensureIndex({type: "geo", geoJson: true, fields: ["geo"], name: geoIdxName});
@@ -117,8 +113,8 @@ function indexHintSuite () {
     },
 
     tearDownAll: function () {
-      internal.db._drop(cn);
-      internal.db._drop(cn2);
+      db._drop(cn);
+      db._drop(cn2);
       analyzers.remove("geo_json", true);
     },
 
@@ -949,19 +945,206 @@ function indexHintSuite () {
   };
 }
 
-function indexHintDisableIndexSuite () {
-  const cn = 'UnitTestsIndexHints';
-
+function indexHintTraversalSuite () {
   return {
 
     setUpAll: function () {
-      internal.db._drop(cn);
-      let c = internal.db._create(cn);
+      let c = db._create(cn + "Vertex");
+      let docs = [];
+      for (let i = 0; i < 1000; ++i) {
+        docs.push({ _key: "test" + i });
+      }
+      c.insert(docs);
+      
+      c = db._createEdgeCollection(cn + "Edge");
+      c.ensureIndex({type: 'persistent', name: 'from', fields: ['_from']});
+      c.ensureIndex({type: 'persistent', name: 'from_value1', fields: ['_from', 'value1']});
+      c.ensureIndex({type: 'persistent', name: 'from_value1_value2', fields: ['_from', 'value1', 'value2']});
+      c.ensureIndex({type: 'persistent', name: 'to', fields: ['_to']});
+      c.ensureIndex({type: 'persistent', name: 'to_value1', fields: ['_to', 'value1']});
+      c.ensureIndex({type: 'persistent', name: 'to_value1_value2', fields: ['_to', 'value1', 'value2']});
+
+      docs = [];
+      for (let i = 0; i < 10000; ++i) {
+        docs.push({ _from: cn + "Vertex/test" + (i % 100), _to: cn + "Vertex/test" + (i % 1000), value1: i, value2: i });
+        if (docs.length === 1000) {
+          c.insert(docs);
+          docs = [];
+        }
+      }
+    },
+
+    tearDownAll: function () {
+      db._drop(cn + "Vertex");
+      db._drop(cn + "Edge");
+    },
+
+    testTraversalUsesEdgeIndexWithoutHints : function () {
+      ["inbound", "outbound"].forEach((dir) => {
+        const query = `
+FOR v, e, p IN 1..4 ${dir} '${cn}Vertex/test0' ${cn}Edge 
+  RETURN v._key`;
+
+        let plan = db._createStatement({ query }).explain().plan;
+        let nodes = plan.nodes;
+        let ns = nodes.filter((node) => node.type === 'TraversalNode');
+        assertEqual(1, ns.length, query);
+        let node = ns[0];
+
+        let indexes = node.indexes;
+        assertTrue(indexes.hasOwnProperty("base"), indexes);
+
+        let baseIndexes = indexes.base;
+        assertEqual(1, baseIndexes.length, baseIndexes);
+        assertEqual("edge", baseIndexes[0].type);
+        assertEqual("edge", baseIndexes[0].name);
+        assertEqual([ (dir === "inbound" ? "_to" : "_from") ], baseIndexes[0].fields);
+        assertTrue(indexes.hasOwnProperty("levels"), indexes);
+        assertEqual({}, indexes.levels);
+
+        assertTrue(node.hasOwnProperty("indexHint"), node);
+        assertFalse(node.indexHint.forced, node.indexHint);
+        assertEqual("none", node.indexHint.type, node.indexHint);
+      });
+    },
+    
+    testTraversalUsesIndexHintForBase : function () {
+      [
+        [ "outbound", [
+          ["edge", ["_from"]], 
+          ["from", ["_from"]], 
+          ["from_value1", ["_from", "value1"]], 
+          ["from_value1_value2", ["_from", "value1", "value2"]],
+        ]],
+        [ "inbound", [
+          ["edge", ["_to"]], 
+          ["to", ["_to"]], 
+          ["to_value1", ["_to", "value1"]], 
+          ["to_value1_value2", ["_to", "value1", "value2"]],
+        ]],
+      ].forEach((dirAndIndexes) => {
+        let [dir, indexes] = dirAndIndexes;
+
+        indexes.forEach((idxData) => {
+          let [idxName, idxFields] = idxData;
+          const query = `
+FOR v, e, p IN 1..4 ${dir} '${cn}Vertex/test0' ${cn}Edge OPTIONS { indexHint: { ${cn}Edge: { ${dir}: { base: "${idxName}" } } } } 
+  RETURN v._key`;
+
+          let plan = db._createStatement({ query }).explain().plan;
+          let nodes = plan.nodes;
+          let ns = nodes.filter((node) => node.type === 'TraversalNode');
+          assertEqual(1, ns.length, query);
+          let node = ns[0];
+
+          let indexes = node.indexes;
+          assertTrue(indexes.hasOwnProperty("base"), indexes);
+
+          let baseIndexes = indexes.base;
+          assertEqual(1, baseIndexes.length, baseIndexes);
+          if (idxName === "edge") {
+            assertEqual("edge", baseIndexes[0].type);
+          } else {
+            assertEqual("persistent", baseIndexes[0].type);
+          }
+          assertEqual(idxName, baseIndexes[0].name);
+          assertEqual(idxFields, baseIndexes[0].fields);
+          
+          assertTrue(indexes.hasOwnProperty("levels"), indexes);
+          assertEqual({}, indexes.levels);
+
+          assertTrue(node.hasOwnProperty("indexHint"), node);
+          assertFalse(node.indexHint.forced, node.indexHint);
+          assertEqual("nested", node.indexHint.type, node.indexHint);
+        });
+      });
+    },
+    
+    testTraversalUsesIndexHintsOnLevels : function () {
+      [
+        [ "outbound", [
+          ["edge", ["_from"]], 
+          ["from", ["_from"]], 
+          ["from_value1", ["_from", "value1"]], 
+          ["from_value1_value2", ["_from", "value1", "value2"]],
+        ]],
+        [ "inbound", [
+          ["edge", ["_to"]], 
+          ["to", ["_to"]], 
+          ["to_value1", ["_to", "value1"]], 
+          ["to_value1_value2", ["_to", "value1", "value2"]],
+        ]],
+      ].forEach((dirAndIndexes) => {
+        let [dir, indexes] = dirAndIndexes;
+
+        indexes.forEach((idxData) => {
+          let [idxName, idxFields] = idxData;
+          const query = `
+FOR v, e, p IN 1..4 ${dir} '${cn}Vertex/test0' ${cn}Edge OPTIONS { indexHint: { ${cn}Edge: { ${dir}: { base: "edge", "1": "${idxName}", "3": "edge" } } } }
+  FILTER p.edges[1].${dir === 'inbound' ? '_to' : '_from'} == '${cn}Vertex/test0'
+  FILTER p.edges[3].${dir === 'inbound' ? '_to' : '_from'} == '${cn}Vertex/test0'
+  RETURN v._key`;
+
+          let plan = db._createStatement({ query }).explain().plan;
+          let nodes = plan.nodes;
+          let ns = nodes.filter((node) => node.type === 'TraversalNode');
+          assertEqual(1, ns.length, query);
+          let node = ns[0];
+
+          let indexes = node.indexes;
+          assertTrue(indexes.hasOwnProperty("base"), indexes);
+
+          let baseIndexes = indexes.base;
+          assertEqual(1, baseIndexes.length, baseIndexes);
+          assertEqual("edge", baseIndexes[0].type);
+          assertEqual("edge", baseIndexes[0].name);
+          assertEqual([ dir === 'inbound' ? '_to' : '_from' ], baseIndexes[0].fields);
+
+          assertTrue(indexes.hasOwnProperty("levels"), indexes);
+          assertTrue(indexes.levels.hasOwnProperty("1"), indexes);
+          assertTrue(indexes.levels.hasOwnProperty("3"), indexes);
+          assertFalse(indexes.levels.hasOwnProperty("0"), indexes);
+          assertFalse(indexes.levels.hasOwnProperty("2"), indexes);
+          assertFalse(indexes.levels.hasOwnProperty("4"), indexes);
+
+          let level1 = indexes.levels["1"];
+          assertEqual(1, level1.length, level1);
+          if (idxName === "edge") {
+            assertEqual("edge", level1[0].type);
+          } else {
+            assertEqual("persistent", level1[0].type);
+          }
+          assertEqual(idxName, level1[0].name);
+          assertEqual(idxFields, level1[0].fields);
+          
+          let level3 = indexes.levels["3"];
+          assertEqual(1, level3.length, level3);
+          assertEqual("edge", level3[0].type);
+          assertEqual("edge", level3[0].name);
+          assertEqual([ (dir === "inbound" ? "_to" : "_from") ], level3[0].fields);
+
+          assertTrue(node.hasOwnProperty("indexHint"), node);
+          assertFalse(node.indexHint.forced, node.indexHint);
+          assertEqual("nested", node.indexHint.type, node.indexHint);
+        });
+      });
+    },
+
+  };
+
+}
+
+function indexHintDisableIndexSuite () {
+  return {
+
+    setUpAll: function () {
+      db._drop(cn);
+      let c = db._create(cn);
       c.ensureIndex({type: 'persistent', name: 'value1', fields: ['value1']});
     },
 
     tearDownAll: function () {
-      internal.db._drop(cn);
+      db._drop(cn);
     },
 
     testDisableIndexOff: function () {
@@ -1042,7 +1225,8 @@ function indexHintDisableIndexSuite () {
   };
 }
 
-jsunity.run(indexHintSuite);
+jsunity.run(indexHintCollectionSuite);
+jsunity.run(indexHintTraversalSuite);
 jsunity.run(indexHintDisableIndexSuite);
 
 return jsunity.done();

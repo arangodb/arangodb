@@ -361,8 +361,8 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(
         } else if (name == StaticStrings::IndexHintOptionForce) {
           // will be handled by the following handler for "indexHint"
         } else if (name == StaticStrings::IndexHintOption) {
-          options->setHint(IndexHint(ast->query(), optionsNode,
-                                     IndexHint::FromGraphOperation{}));
+          options->setHint(
+              IndexHint(ast->query(), optionsNode, IndexHint::FromTraversal{}));
         } else {
           ExecutionPlan::invalidOptionAttribute(ast->query(), "unknown",
                                                 "TRAVERSAL", name);
@@ -415,6 +415,20 @@ std::unique_ptr<graph::BaseOptions> createShortestPathOptions(
               std::string(value->getStringValue(), value->getStringLength()));
         } else if (name == "defaultWeight" && value->isNumericValue()) {
           options->setDefaultWeight(value->getDoubleValue());
+        } else if (name == StaticStrings::IndexHintOptionForce) {
+          // will be handled by the following handler for "indexHint"
+        } else if (name == StaticStrings::IndexHintOption) {
+#if 1
+          // TODO: index hints are currently unsupported for paths queries
+          ExecutionPlan::invalidOptionAttribute(
+              ast->query(), "unknown",
+              arangodb::graph::PathType::toString(type), name);
+#else
+          // TODO: enable this code once the index code for paths queries
+          // support multi-key indexes and conditions
+          options->setHint(IndexHint(ast->query(), optionsNode,
+                                     IndexHint::FromPathsQuery{}));
+#endif
         } else {
           ExecutionPlan::invalidOptionAttribute(
               ast->query(), "unknown",
@@ -1522,9 +1536,9 @@ ExecutionNode* ExecutionPlan::fromNodeShortestPath(ExecutionNode* previous,
                                 arangodb::graph::PathType::Type::ShortestPath);
 
   // First create the node
-  auto spNode =
-      new ShortestPathNode(this, nextId(), &(_ast->query().vocbase()),
-                           direction, start, target, graph, std::move(options));
+  auto spNode = createNode<ShortestPathNode>(
+      this, nextId(), &(_ast->query().vocbase()), direction, start, target,
+      graph, std::move(options));
 
   auto variable = node->getMember(5);
   TRI_ASSERT(variable->type == NODE_TYPE_VARIABLE);
@@ -1541,9 +1555,7 @@ ExecutionNode* ExecutionPlan::fromNodeShortestPath(ExecutionNode* previous,
     spNode->setEdgeOutput(v);
   }
 
-  ExecutionNode* en = registerNode(spNode);
-  TRI_ASSERT(en != nullptr);
-  return addDependency(previous, en);
+  return addDependency(previous, spNode);
 }
 
 /// @brief create an execution plan element from an AST for ENUMERATE_PATHS node

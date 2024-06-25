@@ -667,9 +667,6 @@ void TraversalNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
       }
     }
   }
-
-  // serialize index hint
-  hint().toVelocyPack(nodes);
 }
 
 std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(

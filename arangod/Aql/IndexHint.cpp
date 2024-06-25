@@ -97,7 +97,8 @@ bool handleStringOrArray(AstNode const* value,
   return false;
 }
 
-bool parseNestedHint(AstNode const* node, IndexHint::NestedContents& hint) {
+bool parseNestedHint(AstNode const* node, IndexHint::NestedContents& hint,
+                     bool hasLevels) {
   TRI_ASSERT(node->type == AstNodeType::NODE_TYPE_OBJECT);
 
   // iterate over all collections
@@ -132,33 +133,46 @@ bool parseNestedHint(AstNode const* node, IndexHint::NestedContents& hint) {
         return false;
       }
 
-      AstNode const* sub = child->getMember(0);
-      if (sub->type != NODE_TYPE_OBJECT) {
-        return false;
-      }
-
       auto& ref = hint[collectionName][directionName];
 
-      for (size_t k = 0; k < sub->numMembers(); k++) {
-        AstNode const* level = sub->getMember(k);
+      AstNode const* sub = child->getMember(0);
 
-        if (level->type != AstNodeType::NODE_TYPE_OBJECT_ELEMENT) {
+      if (hasLevels) {
+        if (sub->type != NODE_TYPE_OBJECT) {
           return false;
         }
 
-        std::string_view levelName(level->getStringView());
+        // iterate over all levels
+        for (size_t k = 0; k < sub->numMembers(); k++) {
+          AstNode const* level = sub->getMember(k);
 
-        auto [levelId, valid] = getDepth(levelName);
-        if (!valid) {
-          return false;
+          if (level->type != AstNodeType::NODE_TYPE_OBJECT_ELEMENT) {
+            return false;
+          }
+
+          std::string_view levelName(level->getStringView());
+
+          auto [levelId, valid] = getDepth(levelName);
+          if (!valid) {
+            return false;
+          }
+
+          AstNode const* value = level->getMember(0);
+
+          if (!handleStringOrArray(value, [&](AstNode const* value) {
+                TRI_ASSERT(value->isStringValue());
+                ref[levelId].emplace_back(value->getStringValue(),
+                                          value->getStringLength());
+              })) {
+            return false;
+          }
         }
-
-        AstNode const* value = level->getMember(0);
-
-        if (!handleStringOrArray(value, [&](AstNode const* value) {
+      } else {
+        // no levels
+        if (!handleStringOrArray(sub, [&](AstNode const* value) {
               TRI_ASSERT(value->isStringValue());
-              ref[levelId].emplace_back(value->getStringValue(),
-                                        value->getStringLength());
+              ref[IndexHint::BaseDepth].emplace_back(value->getStringValue(),
+                                                     value->getStringLength());
             })) {
           return false;
         }
@@ -286,7 +300,15 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node,
 }
 
 IndexHint::IndexHint(QueryContext& query, AstNode const* node,
-                     IndexHint::FromGraphOperation) {
+                     IndexHint::FromTraversal op)
+    : IndexHint(query, node, /*hasLevels*/ true) {}
+
+IndexHint::IndexHint(QueryContext& query, AstNode const* node,
+                     IndexHint::FromPathsQuery op)
+    : IndexHint(query, node, /*hasLevels*/ false) {}
+
+// internal constructor for nested index hints for graph operations
+IndexHint::IndexHint(QueryContext& query, AstNode const* node, bool hasLevels) {
   if (node->type == AstNodeType::NODE_TYPE_OBJECT) {
     for (size_t i = 0; i < node->numMembers(); i++) {
       AstNode const* child = node->getMember(i);
@@ -302,7 +324,8 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node,
           if (value->type == AstNodeType::NODE_TYPE_OBJECT) {
             _type = HintType::kNested;
             _hint = NestedContents{};
-            if (!parseNestedHint(value, std::get<NestedContents>(_hint))) {
+            if (!parseNestedHint(value, std::get<NestedContents>(_hint),
+                                 hasLevels)) {
               clear();
             }
           }
