@@ -176,7 +176,7 @@ EnumeratePathsNode::EnumeratePathsNode(
 EnumeratePathsNode::~EnumeratePathsNode() = default;
 
 EnumeratePathsNode::EnumeratePathsNode(ExecutionPlan* plan,
-                                       arangodb::velocypack::Slice const& base)
+                                       arangodb::velocypack::Slice base)
     : GraphNode(plan, base),
       _pathType(arangodb::graph::PathType::Type::KShortestPaths),
       _pathOutVariable(nullptr),
@@ -189,9 +189,7 @@ EnumeratePathsNode::EnumeratePathsNode(ExecutionPlan* plan,
       _distributeVariable(nullptr) {
   if (base.hasKey(StaticStrings::GraphQueryShortestPathType)) {
     _pathType = arangodb::graph::PathType::fromString(
-        base.get(StaticStrings::GraphQueryShortestPathType)
-            .copyString()
-            .c_str());
+        base.get(StaticStrings::GraphQueryShortestPathType).stringView());
   }
 
   // Path out variable
@@ -249,7 +247,7 @@ EnumeratePathsNode::EnumeratePathsNode(ExecutionPlan* plan,
   {
     auto list = base.get("globalEdgeConditions");
     if (list.isArray()) {
-      for (auto const& cond : VPackArrayIterator(list)) {
+      for (auto cond : VPackArrayIterator(list)) {
         _globalEdgeConditions.emplace_back(plan->getAst()->createNode(cond));
       }
     }
@@ -258,7 +256,7 @@ EnumeratePathsNode::EnumeratePathsNode(ExecutionPlan* plan,
   {
     auto list = base.get("globalVertexConditions");
     if (list.isArray()) {
-      for (auto const& cond : VPackArrayIterator(list)) {
+      for (auto cond : VPackArrayIterator(list)) {
         _globalVertexConditions.emplace_back(plan->getAst()->createNode(cond));
       }
     }

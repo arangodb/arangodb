@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global fail, assertEqual, assertNotEqual, assertTrue */
+/*global fail, assertEqual, assertNotEqual, assertTrue, assertFalse */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -1080,7 +1080,75 @@ FOR v, e, p IN 1..4 ${dir} '${cn}Vertex/test0' ${cn}Edge OPTIONS { indexHint: { 
         indexes.forEach((idxData) => {
           let [idxName, idxFields] = idxData;
           const query = `
-FOR v, e, p IN 1..4 ${dir} '${cn}Vertex/test0' ${cn}Edge OPTIONS { indexHint: { ${cn}Edge: { ${dir}: { base: "edge", "1": "${idxName}", "3": "edge" } } } }
+FOR v, e, p IN 1..5 ${dir} '${cn}Vertex/test0' ${cn}Edge OPTIONS { indexHint: { ${cn}Edge: { ${dir}: { base: "edge", "1": "${idxName}", "3": "edge" } } } }
+  FILTER p.edges[1].${dir === 'inbound' ? '_to' : '_from'} == '${cn}Vertex/test0'
+  FILTER p.edges[3].${dir === 'inbound' ? '_to' : '_from'} == '${cn}Vertex/test0'
+  FILTER p.edges[4].${dir === 'inbound' ? '_to' : '_from'} == '${cn}Vertex/test0'
+  RETURN v._key`;
+
+          let plan = db._createStatement({ query }).explain().plan;
+          let nodes = plan.nodes;
+          let ns = nodes.filter((node) => node.type === 'TraversalNode');
+          assertEqual(1, ns.length, query);
+          let node = ns[0];
+
+          let indexes = node.indexes;
+          assertTrue(indexes.hasOwnProperty("base"), indexes);
+
+          let baseIndexes = indexes.base;
+          assertEqual(1, baseIndexes.length, baseIndexes);
+          assertEqual("edge", baseIndexes[0].type);
+          assertEqual("edge", baseIndexes[0].name);
+          assertEqual([ dir === 'inbound' ? '_to' : '_from' ], baseIndexes[0].fields);
+
+          assertTrue(indexes.hasOwnProperty("levels"), indexes);
+          assertTrue(indexes.levels.hasOwnProperty("1"), indexes);
+          assertTrue(indexes.levels.hasOwnProperty("3"), indexes);
+          assertFalse(indexes.levels.hasOwnProperty("0"), indexes);
+          assertFalse(indexes.levels.hasOwnProperty("2"), indexes);
+          assertFalse(indexes.levels.hasOwnProperty("5"), indexes);
+
+          let level1 = indexes.levels["1"];
+          assertEqual(1, level1.length, level1);
+          if (idxName === "edge") {
+            assertEqual("edge", level1[0].type);
+          } else {
+            assertEqual("persistent", level1[0].type);
+          }
+          assertEqual(idxName, level1[0].name);
+          assertEqual(idxFields, level1[0].fields);
+          
+          let level3 = indexes.levels["3"];
+          assertEqual(1, level3.length, level3);
+          assertEqual("edge", level3[0].type);
+          assertEqual("edge", level3[0].name);
+          assertEqual([ (dir === "inbound" ? "_to" : "_from") ], level3[0].fields);
+          
+          // no index hint was given to level 4, but it will implicitly use the
+          // index hint for base then
+          let level4 = indexes.levels["4"];
+          assertEqual(1, level4.length, level4);
+          assertEqual("edge", level4[0].type);
+          assertEqual("edge", level4[0].name);
+          assertEqual([ (dir === "inbound" ? "_to" : "_from") ], level4[0].fields);
+
+          assertTrue(node.hasOwnProperty("indexHint"), node);
+          assertFalse(node.indexHint.forced, node.indexHint);
+          assertEqual("nested", node.indexHint.type, node.indexHint);
+        });
+      });
+    },
+    
+    testTraversalWithWrongIndexHints : function () {
+      [
+        [ "outbound", [ "to", "to_value1", "peter" ] ],
+        [ "inbound", [ "from", "from_value1", "peter" ] ],
+      ].forEach((dirAndIndexes) => {
+        let [dir, indexes] = dirAndIndexes;
+
+        indexes.forEach((idxName) => {
+          const query = `
+FOR v, e, p IN 1..4 ${dir} '${cn}Vertex/test0' ${cn}Edge OPTIONS { indexHint: { ${cn}Edge: { ${dir}: { base: "${idxName}", "1": "${idxName}", "3": "edge" } } } }
   FILTER p.edges[1].${dir === 'inbound' ? '_to' : '_from'} == '${cn}Vertex/test0'
   FILTER p.edges[3].${dir === 'inbound' ? '_to' : '_from'} == '${cn}Vertex/test0'
   RETURN v._key`;
@@ -1107,15 +1175,12 @@ FOR v, e, p IN 1..4 ${dir} '${cn}Vertex/test0' ${cn}Edge OPTIONS { indexHint: { 
           assertFalse(indexes.levels.hasOwnProperty("2"), indexes);
           assertFalse(indexes.levels.hasOwnProperty("4"), indexes);
 
+          // the edge index will be used on the sub-levels as well
           let level1 = indexes.levels["1"];
           assertEqual(1, level1.length, level1);
-          if (idxName === "edge") {
-            assertEqual("edge", level1[0].type);
-          } else {
-            assertEqual("persistent", level1[0].type);
-          }
-          assertEqual(idxName, level1[0].name);
-          assertEqual(idxFields, level1[0].fields);
+          assertEqual("edge", level1[0].type);
+          assertEqual("edge", level1[0].name);
+          assertEqual([ (dir === "inbound" ? "_to" : "_from") ], level1[0].fields);
           
           let level3 = indexes.levels["3"];
           assertEqual(1, level3.length, level3);

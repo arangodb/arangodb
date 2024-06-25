@@ -255,13 +255,13 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node,
             // disableIndex: bool
             if (value->getBoolValue()) {
               // disableIndex: true. this will disable all index hints
-              _type = HintType::kDisabled;
               if (!empty()) {
                 // disableIndex vs. indexHint is contradicting...
                 ExecutionPlan::invalidOptionAttribute(query, "contradicting",
                                                       "FOR", name);
-                clear();
               }
+              clear();
+              _type = HintType::kDisabled;
               TRI_ASSERT(empty());
             }
             handled = true;
@@ -334,7 +334,7 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node, bool hasLevels) {
             child->getMember(0)->toVelocyPackValue(builder);
             ExecutionPlan::invalidOptionAttribute(
                 query, absl::StrCat("invalid value ", builder.toJson(), " in"),
-                "FOR", name);
+                "TRAVERSAL", name);
           }
         } else if (name == StaticStrings::IndexHintOptionForce) {
           // forceIndexHint

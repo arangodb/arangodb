@@ -353,13 +353,20 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(
           auto maxProjections = parseMaxProjections(value);
           if (maxProjections.fail()) {
             // will raise a warning, which can optionally abort the query
-            ExecutionPlan::invalidOptionAttribute(query, "invalid", "FOR",
+            ExecutionPlan::invalidOptionAttribute(query, "invalid", "TRAVERSAL",
                                                   name);
           } else {
             options->setMaxProjections(maxProjections.get());
           }
         } else if (name == StaticStrings::IndexHintOptionForce) {
+#if 1
+          // TODO: forceIndexHint is currently not supported for traversal index
+          // hints
+          ExecutionPlan::invalidOptionAttribute(ast->query(), "unknown",
+                                                "TRAVERSAL", name);
+#else
           // will be handled by the following handler for "indexHint"
+#endif
         } else if (name == StaticStrings::IndexHintOption) {
           options->setHint(
               IndexHint(ast->query(), optionsNode, IndexHint::FromTraversal{}));
@@ -383,7 +390,7 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(
   return options;
 }
 
-std::unique_ptr<graph::BaseOptions> createShortestPathOptions(
+std::unique_ptr<graph::BaseOptions> createPathsQueryOptions(
     Ast* ast, AstNode const* direction, AstNode const* optionsNode,
     arangodb::graph::PathType::Type type) {
   TRI_ASSERT(direction != nullptr);
@@ -411,12 +418,20 @@ std::unique_ptr<graph::BaseOptions> createShortestPathOptions(
         TRI_ASSERT(value->isConstant());
 
         if (name == "weightAttribute" && value->isStringValue()) {
-          options->setWeightAttribute(
-              std::string(value->getStringValue(), value->getStringLength()));
+          options->setWeightAttribute(value->getString());
         } else if (name == "defaultWeight" && value->isNumericValue()) {
           options->setDefaultWeight(value->getDoubleValue());
         } else if (name == StaticStrings::IndexHintOptionForce) {
+          // TODO: flip the #if 1 to #if 0 and vice versa here when adding
+          // proper support for index hints to paths queries
+#if 1
+          // TODO: index hints are currently unsupported for paths queries
+          ExecutionPlan::invalidOptionAttribute(
+              ast->query(), "unknown",
+              arangodb::graph::PathType::toString(type), name);
+#else
           // will be handled by the following handler for "indexHint"
+#endif
         } else if (name == StaticStrings::IndexHintOption) {
 #if 1
           // TODO: index hints are currently unsupported for paths queries
@@ -1532,8 +1547,8 @@ ExecutionNode* ExecutionPlan::fromNodeShortestPath(ExecutionNode* previous,
   AstNode const* graph = node->getMember(3);
 
   auto options =
-      createShortestPathOptions(getAst(), direction, node->getMember(4),
-                                arangodb::graph::PathType::Type::ShortestPath);
+      createPathsQueryOptions(getAst(), direction, node->getMember(4),
+                              arangodb::graph::PathType::Type::ShortestPath);
 
   // First create the node
   auto spNode = createNode<ShortestPathNode>(
@@ -1579,10 +1594,10 @@ ExecutionNode* ExecutionPlan::fromNodeEnumeratePaths(ExecutionNode* previous,
   AstNode const* graph = node->getMember(4);
 
   auto options =
-      createShortestPathOptions(getAst(), direction, node->getMember(5), type);
+      createPathsQueryOptions(getAst(), direction, node->getMember(5), type);
 
   // First create the node
-  auto spNode = new EnumeratePathsNode(
+  auto spNode = createNode<EnumeratePathsNode>(
       this, nextId(), &(_ast->query().vocbase()), type, direction, start,
       target, graph, std::move(options));
 
@@ -1592,9 +1607,7 @@ ExecutionNode* ExecutionPlan::fromNodeEnumeratePaths(ExecutionNode* previous,
   TRI_ASSERT(v != nullptr);
   spNode->setPathOutput(v);
 
-  ExecutionNode* en = registerNode(spNode);
-  TRI_ASSERT(en != nullptr);
-  return addDependency(previous, en);
+  return addDependency(previous, spNode);
 }
 
 /// @brief create an execution plan element from an AST FILTER node
