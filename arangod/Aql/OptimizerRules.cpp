@@ -7330,7 +7330,7 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
     if (colNodeHints.isForced() &&
         colNodeHints.type() == IndexHint::HintType::kSimple) {
       auto indexes = enumerateColNode->collection()->indexes();
-      auto& idxNames = colNodeHints.hint();
+      auto& idxNames = colNodeHints.candidateIndexes();
       for (auto const& idxName : idxNames) {
         for (std::shared_ptr<Index> const& idx : indexes) {
           if (idx->name() == idxName) {

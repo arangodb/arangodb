@@ -187,7 +187,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
           bool forced = false;
           if (hint.type() == aql::IndexHint::HintType::kSimple) {
             forced = hint.isForced();
-            for (std::string const& hinted : hint.hint()) {
+            for (std::string const& hinted : hint.candidateIndexes()) {
               auto idx = en->collection()->getCollection()->lookupIndex(hinted);
               if (idx && selectIndexIfPossible(idx)) {
                 TRI_ASSERT(picked != nullptr);
@@ -298,7 +298,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
         bool forced = false;
         if (hint.type() == aql::IndexHint::HintType::kSimple) {
           forced = hint.isForced();
-          for (std::string const& hinted : hint.hint()) {
+          for (std::string const& hinted : hint.candidateIndexes()) {
             auto idx = en->collection()->getCollection()->lookupIndex(hinted);
             if (idx && selectIndexIfPossible(idx)) {
               TRI_ASSERT(picked != nullptr);

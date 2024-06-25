@@ -91,8 +91,7 @@ class IndexHint {
   // returns true for hint types kSimple and kNested
   bool isSet() const noexcept;
 
-  // TODO: rename
-  std::vector<std::string> const& hint() const noexcept;
+  std::vector<std::string> const& candidateIndexes() const noexcept;
 
   void clear();
   void toVelocyPack(velocypack::Builder& builder) const;

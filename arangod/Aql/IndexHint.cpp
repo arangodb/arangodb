@@ -383,7 +383,7 @@ bool IndexHint::isSet() const noexcept {
   return _type == HintType::kSimple || _type == HintType::kNested;
 }
 
-std::vector<std::string> const& IndexHint::hint() const noexcept {
+std::vector<std::string> const& IndexHint::candidateIndexes() const noexcept {
   TRI_ASSERT(_type == HintType::kSimple);
   return std::get<SimpleContents>(_hint);
 }

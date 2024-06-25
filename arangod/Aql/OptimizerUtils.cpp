@@ -454,7 +454,7 @@ std::pair<bool, bool> findIndexHandleForAndNode(
   };
 
   if (hint.type() == aql::IndexHint::HintType::kSimple) {
-    std::vector<std::string> const& hintedIndices = hint.hint();
+    std::vector<std::string> const& hintedIndices = hint.candidateIndexes();
     for (std::string const& hinted : hintedIndices) {
       std::shared_ptr<Index> matched;
       for (std::shared_ptr<Index> const& idx : indexes) {
@@ -1240,8 +1240,9 @@ std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
       if (index->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX &&
           // apply this index only if hinted
           hint.type() == IndexHint::kSimple &&
-          std::find(hint.hint().begin(), hint.hint().end(), index->name()) !=
-              hint.hint().end()) {
+          std::find(hint.candidateIndexes().begin(),
+                    hint.candidateIndexes().end(),
+                    index->name()) != hint.candidateIndexes().end()) {
         auto costs = index->supportsFilterCondition(
             trx, indexes, root, reference, itemsInCollection);
         if (costs.supportsCondition) {
@@ -1344,7 +1345,7 @@ bool getIndexForSortCondition(aql::Collection const& coll,
       auto indexes = coll.indexes();
 
       if (hint.type() == aql::IndexHint::HintType::kSimple) {
-        std::vector<std::string> const& hintedIndices = hint.hint();
+        std::vector<std::string> const& hintedIndices = hint.candidateIndexes();
         for (std::string const& hinted : hintedIndices) {
           std::shared_ptr<Index> matched;
           for (std::shared_ptr<Index> const& idx : indexes) {

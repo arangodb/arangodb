@@ -702,7 +702,7 @@ void arangodb::aql::replaceLikeWithRangeRule(
 
             // check if any of the indexes suggested in the index hint is
             // an inverted index. if so, we disable the optimization
-            for (auto const& name : hint.hint()) {
+            for (auto const& name : hint.candidateIndexes()) {
               auto idx = c->getCollection()->lookupIndex(name);
               if (idx != nullptr &&
                   idx->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX) {

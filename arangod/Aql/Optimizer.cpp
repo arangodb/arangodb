@@ -446,7 +446,8 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
         return ExecutionNode::castTo<TraversalNode const*>(n)->hint();
       }(n);
 
-      if (hint.isSet() && hint.isForced()) {
+      // TODO: fix
+      if (hint.isSet() && hint.isForced() && false) {
         // unsatisfied index hint.
         foundForcedHint = true;
 
