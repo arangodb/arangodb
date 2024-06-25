@@ -354,7 +354,7 @@ bool SimpleModifier<ModifierCompletion,
 }
 
 template<typename ModifierCompletion, typename Enable>
-void SimpleModifier<ModifierCompletion, Enable>::clearRows() noexcept {
+void SimpleModifier<ModifierCompletion, Enable>::stopAndClear() noexcept {
   _operations.clear();
 }
 

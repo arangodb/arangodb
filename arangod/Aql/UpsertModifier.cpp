@@ -465,7 +465,7 @@ bool UpsertModifier::hasNeitherResultNorOperationPending() const noexcept {
                     _results);
 }
 
-void UpsertModifier::clearRows() noexcept {
+void UpsertModifier::stopAndClear() noexcept {
   _operations.clear();
   auto guard = std::lock_guard(_trxMutex);
   // should be called only once, thus...

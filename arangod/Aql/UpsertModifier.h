@@ -105,8 +105,9 @@ class UpsertModifier : public std::enable_shared_from_this<UpsertModifier> {
   // Destroy all InputAqlItemRows, and with it SharedAqlItemBlockPtrs, this
   // holds. This is necessary to ensure the lifetime of the AqlItemBlocks is
   // shorter than of the AqlItemBlockManager, to which they are returned.
-  // TODO Rename this, at it does do more now.
-  void clearRows() noexcept;
+  // Also makes sure the transaction Methods will not be used from this point
+  // on, as they might have been destroyed.
+  void stopAndClear() noexcept;
 
  private:
   bool resultAvailable() const;
