@@ -100,6 +100,12 @@ function aqlKillSuite () {
 
     const queryId = findQueryId(query);
 
+    // Sleep a short random amount up to 10ms, to make it more likely to catch
+    // the query in different situations. Square to make shorter sleeps more
+    // likely than longer ones.
+    const sleepForMs = 10 * Math.pow(Math.random(), 2);
+    internal.wait(sleepForMs * 1e-3);
+
     assertTrue(queryId > 0);
 
     const killResult = arango.DELETE("/_api/query/" + queryId);
