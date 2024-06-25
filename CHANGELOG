@@ -137,6 +137,10 @@ v3.11.10 (2024-06-28)
 
 * Sort out a thread blockage on AQL upsert waiting for replication.
 
+* Swagger UI: Remove fragment identifiers from request URLs. They are merely
+  used to disambiguate polymorphic endpoints in the OpenAPI descriptions of
+  the HTTP API documentation.
+
 * BTS-1909, MDS-1232: Fixed a bug where COLLECT ... AGGREGATE x = UNIQUE(y)
   could miss some results when multiple shards were aggregated in a cluster.
 
