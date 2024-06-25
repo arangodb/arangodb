@@ -24,10 +24,12 @@
 // / @author Jan Steemann
 // //////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require('jsunity');
-var internal = require('internal');
-var arangodb = require('@arangodb');
-var db = arangodb.db;
+const jsunity = require('jsunity');
+const {assertTrue, assertEqual} = jsunity.jsUnity.assertions;
+const internal = require('internal');
+const arangodb = require('@arangodb');
+const db = arangodb.db;
+const _ = require('lodash');
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test suite
@@ -36,6 +38,79 @@ var db = arangodb.db;
 function aqlKillSuite () {
   'use strict';
   const cn = "UnitTestsCollection";
+
+  function findQueryId(query) {
+    for (let tries = 0; tries < 30; ++tries) {
+      const queries = require("@arangodb/aql/queries").current();
+      const queryId = _.first(queries
+      .filter(q => q.query === query)
+      .map(q => q.id));
+      if (queryId !== undefined) {
+        return queryId;
+      }
+
+      internal.wait(1, false);
+    }
+    return undefined;
+  }
+
+  function runAbortQueryTest(query) {
+    const cursorResult = arango.POST_RAW("/_api/cursor",
+      {query},
+      {"x-arango-async" : "store"});
+
+    const jobId = cursorResult.headers["x-arango-async-id"];
+
+    const queryId = findQueryId(query);
+
+    assertTrue(queryId > 0);
+
+    const killResult = arango.DELETE("/_api/query/" + queryId);
+    assertEqual(killResult.code, 200);
+
+    let putResult;
+    for (let tries = 0; tries < 30; ++tries) {
+      putResult = arango.PUT_RAW("/_api/job/" + jobId, {});
+      if (putResult.code === 410) {
+        break;
+      }
+      internal.wait(1, false);
+    }
+    assertEqual(410, putResult.code);
+  }
+  function runCancelQueryTest(query) {
+    const cursorResult = arango.POST_RAW("/_api/cursor",
+      {query},
+      {"x-arango-async" : "store"});
+
+    const jobId = cursorResult.headers["x-arango-async-id"];
+
+    const queryId = findQueryId(query);
+
+    assertTrue(queryId > 0);
+
+    // cancel the async job
+
+    const result = arango.PUT_RAW("/_api/job/" + jobId + "/cancel", {});
+    assertEqual(result.code, 200);
+
+    // make sure the query is no longer in the list of running queries
+    let tries;
+    for (tries = 0; tries < 30; ++tries) {
+      let queries = require("@arangodb/aql/queries").current();
+      let stillThere = false;
+      queries.filter(function(data) {
+        if (data.id === queryId) {
+          stillThere = true;
+        }
+      });
+      if (!stillThere) {
+        break;
+      }
+      internal.wait(1, false);
+    }
+    assertTrue(tries < 30);
+  }
   
   return {
 
@@ -49,136 +124,16 @@ function aqlKillSuite () {
     },
     
     testAbortReadQuery: function () {
-      let result = arango.POST_RAW("/_api/cursor", {
-        query: "FOR i IN 1..10000000 RETURN SLEEP(1)"
-      }, { 
-        "x-arango-async" : "store"
-      });
-
-      let jobId = result.headers["x-arango-async-id"];
-
-      let queryId = 0;
-      let tries = 0;
-      while (++tries < 30) {
-        let queries = require("@arangodb/aql/queries").current();
-        queries.filter(function(data) {
-          if (data.query.indexOf("SLEEP(1)") !== -1) {
-            queryId = data.id;
-          }
-        });
-        if (queryId > 0) {
-          break;
-        }
-        
-        require("internal").wait(1, false);
-      }
-
-      assertTrue(queryId > 0);
-
-      result = arango.DELETE("/_api/query/" + queryId);
-      assertEqual(result.code, 200);
-
-      tries = 0;
-      while (++tries < 30) {
-        result = arango.PUT_RAW("/_api/job/" + jobId, {});
-        if (result.code === 410) {
-          break;
-        }
-        require("internal").wait(1, false);
-      }
-      assertEqual(410, result.code);
+      runAbortQueryTest("FOR i IN 1..10000000 RETURN SLEEP(1)");
     },
 
     testAbortWriteQuery: function () {
-      let result = arango.POST_RAW("/_api/cursor", {
-        query: "FOR i IN 1..10000000 INSERT {} INTO " + cn
-      }, { 
-        "x-arango-async" : "store"
-      });
-
-      let jobId = result.headers["x-arango-async-id"];
-
-      let queryId = 0;
-      let tries = 0;
-      while (++tries < 30) {
-        let queries = require("@arangodb/aql/queries").current();
-        queries.filter(function(data) {
-          if (data.query.indexOf(cn) !== -1) {
-            queryId = data.id;
-          }
-        });
-        if (queryId > 0) {
-          break;
-        }
-        
-        require("internal").wait(1, false);
-      }
-
-      assertTrue(queryId > 0);
-
-      result = arango.DELETE("/_api/query/" + queryId);
-      assertEqual(result.code, 200);
-
-      tries = 0;
-      while (++tries < 30) {
-        result = arango.PUT_RAW("/_api/job/" + jobId, {});
-        if (result.code === 410) {
-          break;
-        }
-        require("internal").wait(1, false);
-      }
-      assertEqual(410, result.code);
+      runAbortQueryTest(`FOR i IN 1..10000000 INSERT {} INTO ${cn}`);
     },
 
     // test killing the query via the Job API
     testCancelWriteQuery: function () {
-      let result = arango.POST_RAW("/_api/cursor", {
-        query: "FOR i IN 1..10000000 INSERT {} INTO " + cn
-      }, { 
-        "x-arango-async" : "store"
-      });
-
-      let jobId = result.headers["x-arango-async-id"];
-
-      let queryId = 0;
-      let tries = 0;
-      while (++tries < 30) {
-        let queries = require("@arangodb/aql/queries").current();
-        queries.filter(function(data) {
-          if (data.query.indexOf(cn) !== -1) {
-            queryId = data.id;
-          }
-        });
-        if (queryId > 0) {
-          break;
-        }
-        
-        require("internal").wait(1, false);
-      }
-
-      assertTrue(queryId > 0);
-
-      // cancel the async job
-
-      result = arango.PUT_RAW("/_api/job/" + jobId + "/cancel", {});
-      assertEqual(result.code, 200);
-
-      // make sure the query is no longer in the list of running queries
-      tries = 0;
-      while (++tries < 30) {
-        let queries = require("@arangodb/aql/queries").current();
-        let stillThere = false;
-        queries.filter(function(data) {
-          if (data.id === queryId) {
-            stillThere = true;
-          }
-        });
-        if (!stillThere) {
-          break;
-        }
-        require("internal").wait(1, false);
-      }
-      assertTrue(tries < 30);
+      runCancelQueryTest(`FOR i IN 1..10000000 INSERT {} INTO ${cn}`);
     },
   };
 }
