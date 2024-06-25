@@ -88,7 +88,7 @@ function aqlKillSuite () {
         .filter(q => q.query === query)
         .map(q => q.id));
     };
-    return tryForUntil({until})
+    return tryForUntil({until});
   }
 
   function runAbortQueryTest(query) {
