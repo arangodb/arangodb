@@ -376,6 +376,9 @@ futures::Future<futures::Unit> UpsertModifier::transactInternal(
   if (toInsert.isArray() && toInsert.length() > 0) {
     auto future = [&] {
       auto guard = std::lock_guard(_trxMutex);
+      if (!_trxAlive) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+      }
       return trx.insertAsync(_infos._aqlCollection->name(), toInsert,
                              _infos._options);
     }();
@@ -387,6 +390,9 @@ futures::Future<futures::Unit> UpsertModifier::transactInternal(
   if (toUpdate.isArray() && toUpdate.length() > 0) {
     auto future = [&] {
       auto guard = std::lock_guard(_trxMutex);
+      if (!_trxAlive) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+      }
       if (_infos._isReplace) {
         return trx.replaceAsync(_infos._aqlCollection->name(), toUpdate,
                                 _infos._options);
