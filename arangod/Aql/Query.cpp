@@ -106,14 +106,14 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
              std::shared_ptr<VPackBuilder> bindParameters, QueryOptions options,
              std::shared_ptr<SharedQueryState> sharedState)
     : QueryContext(ctx->vocbase(), ctx->operationOrigin(), id),
-      _itemBlockManager(_resourceMonitor),
+      _itemBlockManager(*_resourceMonitor),
       _queryString(std::move(queryString)),
       _transactionContext(std::move(ctx)),
       _sharedState(std::move(sharedState)),
 #ifdef USE_V8
       _v8Executor(nullptr),
 #endif
-      _bindParameters(_resourceMonitor, bindParameters),
+      _bindParameters(*_resourceMonitor, bindParameters),
       _queryOptions(std::move(options)),
       _trx(nullptr),
       _startTime(currentSteadyClockValue()),
@@ -181,7 +181,7 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
   }
 
   // set memory limit for query
-  _resourceMonitor.memoryLimit(_queryOptions.memoryLimit);
+  _resourceMonitor->memoryLimit(_queryOptions.memoryLimit);
   _warnings.updateOptions(_queryOptions);
 
   // store name of user that started the query
@@ -201,7 +201,7 @@ Query::Query(std::shared_ptr<transaction::Context> ctx, QueryString queryString,
 
 Query::~Query() {
   if (_planSliceCopy != nullptr) {
-    _resourceMonitor.decreaseMemoryUsage(_planSliceCopy->size());
+    _resourceMonitor->decreaseMemoryUsage(_planSliceCopy->size());
   }
 
   // In the most derived class needs to explicitly call 'destroy()'
@@ -219,10 +219,10 @@ void Query::destroy() {
   unregisterQueryInTransactionState();
   TRI_ASSERT(!_registeredQueryInTrx);
 
-  _resourceMonitor.decreaseMemoryUsage(_resultMemoryUsage);
+  _resourceMonitor->decreaseMemoryUsage(_resultMemoryUsage);
   _resultMemoryUsage = 0;
 
-  _resourceMonitor.decreaseMemoryUsage(_planMemoryUsage);
+  _resourceMonitor->decreaseMemoryUsage(_planMemoryUsage);
   _planMemoryUsage = 0;
 
   if (_queryOptions.profile >= ProfileLevel::TraceOne) {
@@ -322,6 +322,10 @@ void Query::kill() {
   }
 }
 
+void Query::setKillFlag() {
+  _queryKilled.store(true, std::memory_order_acq_rel);
+}
+
 /// @brief the query's transaction id. returns 0 if no transaction
 /// has been assigned to the query yet. use this only for informational
 /// purposes
@@ -391,7 +395,7 @@ void Query::prepareQuery() {
       plan->toVelocyPack(b, flags, serializeQueryData);
 
       try {
-        _resourceMonitor.increaseMemoryUsage(_planSliceCopy->size());
+        _resourceMonitor->increaseMemoryUsage(_planSliceCopy->size());
       } catch (...) {
         // must clear _planSliceCopy here so that the destructor of
         // Query doesn't subtract the memory used by _planSliceCopy
@@ -517,7 +521,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
 
   // Run the query optimizer:
   enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
-  Optimizer opt(_resourceMonitor, _queryOptions.maxNumberOfPlans);
+  Optimizer opt(*_resourceMonitor, _queryOptions.maxNumberOfPlans);
   // get enabled/disabled rules
   opt.createPlans(std::move(plan), _queryOptions, false);
   // Now plan and all derived plans belong to the optimizer
@@ -644,7 +648,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
             TRI_ASSERT(newLength >= previousLength);
             size_t diff = newLength - previousLength;
 
-            _resourceMonitor.increaseMemoryUsage(diff);
+            _resourceMonitor->increaseMemoryUsage(diff);
             _resultMemoryUsage += diff;
           }
 
@@ -887,7 +891,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
           }
 
           // this may throw
-          _resourceMonitor.increaseMemoryUsage(memoryUsage);
+          _resourceMonitor->increaseMemoryUsage(memoryUsage);
           _resultMemoryUsage += memoryUsage;
 
           TRI_IF_FAILURE(
@@ -995,7 +999,7 @@ ExecutionState Query::finalize(VPackBuilder& extras) {
   if (!_snippets.empty()) {
     executionStatsGuard().doUnderLock([&](auto& executionStats) {
       executionStats.requests += _numRequests.load(std::memory_order_relaxed);
-      executionStats.setPeakMemoryUsage(_resourceMonitor.peak());
+      executionStats.setPeakMemoryUsage(_resourceMonitor->peak());
       executionStats.setExecutionTime(executionTime());
       executionStats.setIntermediateCommits(
           _trx->state()->numIntermediateCommits());
@@ -1095,7 +1099,7 @@ QueryResult Query::explain() {
 
     // Run the query optimizer:
     enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
-    Optimizer opt(_resourceMonitor, _queryOptions.maxNumberOfPlans);
+    Optimizer opt(*_resourceMonitor, _queryOptions.maxNumberOfPlans);
     // get enabled/disabled rules
     opt.createPlans(std::move(plan), _queryOptions, true);
 
@@ -1178,7 +1182,7 @@ QueryResult Query::explain() {
         ensureExecutionTime();
         VPackObjectBuilder guard(&b, /*unindexed*/ true);
         opt._stats.toVelocyPack(b);
-        b.add("peakMemoryUsage", VPackValue(_resourceMonitor.peak()));
+        b.add("peakMemoryUsage", VPackValue(_resourceMonitor->peak()));
         b.add("executionTime", VPackValue(executionTime()));
       }
     }
@@ -1352,7 +1356,8 @@ void Query::init(bool createProfile) {
 void Query::registerQueryInTransactionState() {
   TRI_ASSERT(!_registeredQueryInTrx);
   // register ourselves in the TransactionState
-  _trx->state()->beginQuery(&resourceMonitor(), isModificationQuery());
+  _trx->state()->beginQuery(resourceMonitorAsSharedPtr(),
+                            isModificationQuery());
   _registeredQueryInTrx = true;
 }
 
@@ -2054,7 +2059,7 @@ void Query::prepareFromVelocyPack(
       << " this: " << (uintptr_t)this;
 
   // track memory usage
-  ResourceUsageScope scope(_resourceMonitor);
+  ResourceUsageScope scope(*_resourceMonitor);
   scope.increase(querySlice.byteSize() + collections.byteSize() +
                  variables.byteSize() + snippets.byteSize());
 

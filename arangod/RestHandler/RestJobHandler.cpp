@@ -102,6 +102,13 @@ void RestJobHandler::putJob() {
 
   // plus a new header
   _response->setHeaderNC(StaticStrings::AsyncId, value);
+
+  if (!_response->generateBody() && _response->bodySize() > 0) {
+    // We cannot return a `Content-Length` header without a body, in response to
+    // a PUT request. That would cause the client to hang indefinitely, while
+    // waiting for the body to be sent.
+    _response->clearBody();
+  }
 }
 
 void RestJobHandler::putJobMethod() {

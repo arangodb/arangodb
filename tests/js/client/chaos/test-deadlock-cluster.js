@@ -373,7 +373,7 @@ function DeadlockSuite() {
       getDBServers().forEach((s) => {
         droppedFollowersAfter[s.id] = getMetric(s.url, "arangodb_dropped_followers_total");
       });
-      assertEqual(droppedFollowersBefore, droppedFollowersAfter);
+      assertEqual(droppedFollowersBefore, droppedFollowersAfter, JSON.stringify({droppedFollowersBefore, droppedFollowersAfter}));
 
       print(Date() + " Waiting for shards to get in sync");
       for (let i = 0; i < numCollections; ++i) {

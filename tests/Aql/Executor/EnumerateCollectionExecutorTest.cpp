@@ -115,7 +115,7 @@ class EnumerateCollectionExecutorTest : public AqlExecutorTestCase<false> {
         executorInfos(0 /*outReg*/, *fakedQuery, &aqlCollection, &outVariable,
                       varUsedLater, nullptr, projections, {}, random, count,
                       arangodb::ReadOwnWrites::no),
-        block(new AqlItemBlock(itemBlockManager, 1000, 2)) {}
+        block(itemBlockManager.requestBlock(1000, 2)) {}
 };
 
 TEST_F(EnumerateCollectionExecutorTest, the_produce_datarange_empty) {
@@ -327,8 +327,7 @@ class EnumerateCollectionExecutorTestProduce
                                                   random,
                                                   count,
                                                   arangodb::ReadOwnWrites::no};
-    block = SharedAqlItemBlockPtr{
-        new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)};
+    block = itemBlockManager.requestBlock(1000, nrOutputRegister);
     return infos;
   }
 
