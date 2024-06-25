@@ -41,14 +41,14 @@ function aqlKillSuite () {
   const cn = "UnitTestsCollection";
 
   function tryForUntil({sleepFor = 0.001, stopAfter = 30, until}) {
-    let tries = 0;
+    // Remember that Date.now() returns ms, but internal.wait() takes s.
+    // Units <3
     for (
-      const start = Date.now();
-      Date.now() < start + stopAfter;
+      const start = Date.now()/1e3;
+      Date.now()/1e3 < start + stopAfter;
       internal.wait(sleepFor, false),
         sleepFor *= 1.5
     ) {
-      ++tries;
       const result = until();
       if (result !== undefined) {
         return result;
@@ -82,13 +82,13 @@ function aqlKillSuite () {
   }
 
   function findQueryId(query) {
-    const until = () => {
+    const queryIdFound = () => {
       const queries = require("@arangodb/aql/queries").current();
       return _.first(queries
         .filter(q => q.query === query)
         .map(q => q.id));
     };
-    return tryForUntil({until});
+    return tryForUntil({until: queryIdFound});
   }
 
   function runAbortQueryTest(query) {
@@ -132,9 +132,21 @@ function aqlKillSuite () {
   }
   
   return {
+    // Note that we purposefully reuse the documents in the collection for
+    // multiple tests, even if they modify it. The rationale is:
+    // * setup takes quite long
+    // * if the tests work as intended, the queries get killed before commit
+    // * even if they don't they shouldn't prevent subsequent queries from working
+    //   (that's why REMOVE is last)
     setUpAll: function () {
       db._drop(cn);
-      db._create(cn, { numberOfShards: 3 });
+      const col = db._create(cn, { numberOfShards: 3 });
+      const batchSize = 10_000;
+      const documents = 1_000_000;
+      for (let i = 0; i < documents; i += batchSize) {
+        const docs = [...Array(batchSize).keys()].map(i => ({_key: `k${i}`}));
+        col.insert(docs);
+      }
     },
 
     tearDownAll: function () {
@@ -145,13 +157,45 @@ function aqlKillSuite () {
       runAbortQueryTest("FOR i IN 1..10000000 RETURN SLEEP(1)");
     },
 
+    // test killing the query via the Job API
+    testCancelWriteQuery: function () {
+      runCancelQueryTest(`FOR i IN 1..10000000 INSERT {} INTO ${cn}`);
+    },
+
     testAbortInsertQuery: function () {
       runAbortQueryTest(`FOR i IN 1..10000000 INSERT {} INTO ${cn}`);
     },
 
-    // test killing the query via the Job API
-    testCancelWriteQuery: function () {
-      runCancelQueryTest(`FOR i IN 1..10000000 INSERT {} INTO ${cn}`);
+    testAbortUpdateQuery: function () {
+      runAbortQueryTest(`FOR i IN 1..1000000 UPDATE {_key: CONCAT("k", i), i} IN ${cn}`);
+    },
+
+    testAbortReplaceQuery: function () {
+      runAbortQueryTest(`FOR i IN 1..1000000 REPLACE {_key: CONCAT("k", i), i} IN ${cn}`);
+    },
+
+    testAbortUpsertInsertQuery: function () {
+      runAbortQueryTest(`FOR i IN 1..10000000 UPSERT {_key: CONCAT("new", i)} INSERT {} UPDATE {} IN ${cn}`);
+    },
+
+    testAbortUpsertUpdateQuery: function () {
+      runAbortQueryTest(`FOR i IN 1..1000000 UPSERT {_key: CONCAT("k", i)} INSERT {} UPDATE {i} IN ${cn}`);
+    },
+
+    testAbortUpsertReplaceQuery: function () {
+      runAbortQueryTest(`FOR i IN 1..1000000 UPSERT {_key: CONCAT("k", i)} INSERT {} REPLACE {i} IN ${cn}`);
+    },
+
+    testAbortUpsertMixedInsertUpdateQuery: function () {
+      runAbortQueryTest(`FOR i IN 1..1000000 FOR k IN ["k", "new"] UPSERT {_key: CONCAT(k, i)} INSERT {_key: CONCAT(k, i), i} UPDATE {i} IN ${cn}`);
+    },
+
+    testAbortUpsertMixedInsertReplaceQuery: function () {
+      runAbortQueryTest(`FOR i IN 1..1000000 FOR k IN ["k", "new"] UPSERT {_key: CONCAT(k, i)} INSERT {_key: CONCAT(k, i), i} REPLACE {i} IN ${cn}`);
+    },
+
+    testAbortRemoveQuery: function () {
+      runAbortQueryTest(`FOR i IN 1..1000000 REMOVE {_key: CONCAT("k", i)} IN ${cn}`);
     },
   };
 }
