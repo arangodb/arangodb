@@ -28,6 +28,7 @@ const jsunity = require('jsunity');
 const {assertTrue, assertEqual} = jsunity.jsUnity.assertions;
 const internal = require('internal');
 const arangodb = require('@arangodb');
+const console = require('console');
 const db = arangodb.db;
 const _ = require('lodash');
 
@@ -39,19 +40,55 @@ function aqlKillSuite () {
   'use strict';
   const cn = "UnitTestsCollection";
 
-  function findQueryId(query) {
-    for (let tries = 0; tries < 30; ++tries) {
-      const queries = require("@arangodb/aql/queries").current();
-      const queryId = _.first(queries
-      .filter(q => q.query === query)
-      .map(q => q.id));
-      if (queryId !== undefined) {
-        return queryId;
+  function tryForUntil({sleepFor = 0.001, stopAfter = 30, until}) {
+    let tries = 0;
+    for (
+      const start = Date.now();
+      Date.now() < start + stopAfter;
+      internal.wait(sleepFor, false),
+        sleepFor *= 1.5
+    ) {
+      ++tries;
+      const result = until();
+      if (result !== undefined) {
+        return result;
       }
-
-      internal.wait(1, false);
     }
+    console.warn(`Giving up after ${stopAfter}s in ` + JSON.stringify(new Error().stack));
     return undefined;
+  }
+
+  function queryGone (queryId) {
+    return () => {
+      const queries = require("@arangodb/aql/queries").current();
+      const stillThere = queries.filter(q => q.id === queryId).length > 0;
+      if (!stillThere) {
+        return undefined;
+      } else {
+        return true;
+      }
+    };
+  }
+
+  function jobGone (jobId) {
+    return () => {
+      const res = arango.PUT_RAW("/_api/job/" + jobId, {});
+      if (res.code === 410) {
+        return res;
+      } else {
+        return undefined;
+      }
+    };
+  }
+
+  function findQueryId(query) {
+    const until = () => {
+      const queries = require("@arangodb/aql/queries").current();
+      return _.first(queries
+        .filter(q => q.query === query)
+        .map(q => q.id));
+    };
+    return tryForUntil({until})
   }
 
   function runAbortQueryTest(query) {
@@ -68,16 +105,10 @@ function aqlKillSuite () {
     const killResult = arango.DELETE("/_api/query/" + queryId);
     assertEqual(killResult.code, 200);
 
-    let putResult;
-    for (let tries = 0; tries < 30; ++tries) {
-      putResult = arango.PUT_RAW("/_api/job/" + jobId, {});
-      if (putResult.code === 410) {
-        break;
-      }
-      internal.wait(1, false);
-    }
+    const putResult = tryForUntil({until: jobGone(jobId)});
     assertEqual(410, putResult.code);
   }
+
   function runCancelQueryTest(query) {
     const cursorResult = arango.POST_RAW("/_api/cursor",
       {query},
@@ -95,25 +126,12 @@ function aqlKillSuite () {
     assertEqual(result.code, 200);
 
     // make sure the query is no longer in the list of running queries
-    let tries;
-    for (tries = 0; tries < 30; ++tries) {
-      let queries = require("@arangodb/aql/queries").current();
-      let stillThere = false;
-      queries.filter(function(data) {
-        if (data.id === queryId) {
-          stillThere = true;
-        }
-      });
-      if (!stillThere) {
-        break;
-      }
-      internal.wait(1, false);
-    }
-    assertTrue(tries < 30);
+
+    const gone = tryForUntil({until: queryGone(queryId)});
+    assertTrue(gone);
   }
   
   return {
-
     setUpAll: function () {
       db._drop(cn);
       db._create(cn, { numberOfShards: 3 });
