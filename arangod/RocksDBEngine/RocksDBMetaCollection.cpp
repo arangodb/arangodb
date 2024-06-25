@@ -1611,7 +1611,8 @@ Result RocksDBMetaCollection::applyUpdatesForTransaction(
     containers::RevisionTree& tree, rocksdb::SequenceNumber commitSeq,
     std::unique_lock<std::mutex>& lock) const {
   TRI_ASSERT(lock.owns_lock());
-  TRI_ASSERT(_logicalCollection.useSyncByRevision());
+  TRI_ASSERT(_logicalCollection.useSyncByRevision() ||
+             _logicalCollection.deleted());
 
   return basics::catchVoidToResult([&]() -> void {
     auto insertIt = _revisionInsertBuffers.begin();
