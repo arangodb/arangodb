@@ -207,6 +207,15 @@ class instance {
 
   get pid() { return this.#pid; }
 
+  _flushPid() {
+      if (this.pid) {
+        return;
+      }
+      this.exitStatus = null;
+      this.pid = null;
+      this.upAndRunning = false;
+  }
+
   getStructure() {
     return {
       name: this.name,
