@@ -9,8 +9,9 @@ devel
   Content-Length header is set to 0, ensuring compliance with the HTTP protocol
   and preventing indefinite client waits.
 
-* Document modification operations (insert, update, etc) during an AQL query on
-  DBServers no longer block threads while waiting for replication.
+* Document modification operations (INSERT, UPDATE, REPLACE, REMOVE, and UPSERT)
+  during an AQL query on DBServers no longer block threads while waiting for
+  replication.
 
 * Fixed a bug where accessing a collection right after creation can sometimes
   fail.
