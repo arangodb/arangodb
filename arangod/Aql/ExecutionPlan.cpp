@@ -359,7 +359,7 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(
             options->setMaxProjections(maxProjections.get());
           }
         } else if (name == StaticStrings::IndexHintOptionForce) {
-#if 1
+#ifndef ENABLE_FORCED_INDEX_HINTS_FOR_GRAPH_OPERATIONS
           // TODO: forceIndexHint is currently not supported for traversal index
           // hints
           ExecutionPlan::invalidOptionAttribute(ast->query(), "unknown",
@@ -422,9 +422,7 @@ std::unique_ptr<graph::BaseOptions> createPathsQueryOptions(
         } else if (name == "defaultWeight" && value->isNumericValue()) {
           options->setDefaultWeight(value->getDoubleValue());
         } else if (name == StaticStrings::IndexHintOptionForce) {
-          // TODO: flip the #if 1 to #if 0 and vice versa here when adding
-          // proper support for index hints to paths queries
-#if 1
+#ifndef ENABLE_FORCED_INDEX_HINTS_FOR_GRAPH_OPERATIONS
           // TODO: index hints are currently unsupported for paths queries
           ExecutionPlan::invalidOptionAttribute(
               ast->query(), "unknown",
@@ -433,7 +431,7 @@ std::unique_ptr<graph::BaseOptions> createPathsQueryOptions(
           // will be handled by the following handler for "indexHint"
 #endif
         } else if (name == StaticStrings::IndexHintOption) {
-#if 1
+#ifndef ENABLE_FORCED_INDEX_HINTS_FOR_GRAPH_OPERATIONS
           // TODO: index hints are currently unsupported for paths queries
           ExecutionPlan::invalidOptionAttribute(
               ast->query(), "unknown",
@@ -633,11 +631,22 @@ void ExecutionPlan::increaseCounter(ExecutionNode const& node) noexcept {
         ExecutionNode::castTo<EnumerateCollectionNode const*>(&node);
     auto const& hint = en->hint();
     _hasForcedIndexHints |= hint.isSet() && hint.isForced();
+#if ENABLE_FORCED_INDEX_HINTS_FOR_GRAPH_OPERATIONS
   } else if (type == ExecutionNode::TRAVERSAL) {
+    // TODO: enable this code when we fully support forced index hints for
+    // traversals. then also add other graph node types here.
     TraversalNode const* en =
         ExecutionNode::castTo<TraversalNode const*>(&node);
     auto const& hint = en->hint();
     _hasForcedIndexHints |= hint.isSet() && hint.isForced();
+  } else if (type == ExecutionNode::ENUMERATE_PATHS) {
+    // TODO: enable this code when we fully support forced index hints for
+    // traversals. then also add other graph node types here.
+    EnumeratePathsNode const* en =
+        ExecutionNode::castTo<EnumeratePathsNode const*>(&node);
+    auto const& hint = en->hint();
+    _hasForcedIndexHints |= hint.isSet() && hint.isForced();
+#endif
   }
 }
 

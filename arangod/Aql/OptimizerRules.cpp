@@ -7327,8 +7327,7 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
     auto enumerateColNode =
         ExecutionNode::castTo<EnumerateCollectionNode const*>(node);
     auto const& colNodeHints = enumerateColNode->hint();
-    if (colNodeHints.isForced() &&
-        colNodeHints.type() == IndexHint::HintType::kSimple) {
+    if (colNodeHints.isForced() && colNodeHints.isSimple()) {
       auto indexes = enumerateColNode->collection()->indexes();
       auto& idxNames = colNodeHints.candidateIndexes();
       for (auto const& idxName : idxNames) {

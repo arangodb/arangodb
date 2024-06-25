@@ -140,7 +140,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
         auto const& hint = en->hint();
 
         // now check all indexes if they cover the projection
-        if (hint.type() != aql::IndexHint::HintType::kDisabled) {
+        if (!hint.isDisabled()) {
           std::vector<std::shared_ptr<Index>> indexes;
 
           auto& trx = plan->getAst()->query().trxForOptimization();
@@ -185,7 +185,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
           };
 
           bool forced = false;
-          if (hint.type() == aql::IndexHint::HintType::kSimple) {
+          if (hint.isSimple()) {
             forced = hint.isForced();
             for (std::string const& hinted : hint.candidateIndexes()) {
               auto idx = en->collection()->getCollection()->lookupIndex(hinted);
@@ -272,7 +272,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
           ExecutionNode::castTo<EnumerateCollectionNode*>(n);
       auto const& hint = en->hint();
 
-      if (hint.type() != aql::IndexHint::HintType::kDisabled) {
+      if (!hint.isDisabled()) {
         std::shared_ptr<Index> picked;
         std::vector<std::shared_ptr<Index>> indexes;
 
@@ -296,7 +296,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
         };
 
         bool forced = false;
-        if (hint.type() == aql::IndexHint::HintType::kSimple) {
+        if (hint.isSimple()) {
           forced = hint.isForced();
           for (std::string const& hinted : hint.candidateIndexes()) {
             auto idx = en->collection()->getCollection()->lookupIndex(hinted);

@@ -53,29 +53,10 @@ class IndexHint {
   // tag used for path queries, e.g. shortest path, k-paths, k-shortest-paths
   struct FromPathsQuery {};
 
-  // there is an important distinction between None and Disabled here:
-  //   None = no index hint set
-  //   Disabled = no index must be used!
-  enum HintType : uint8_t { kIllegal, kNone, kSimple, kNested, kDisabled };
   using DepthType = uint64_t;
   static constexpr DepthType BaseDepth = std::numeric_limits<DepthType>::max();
 
   using PossibleIndexes = std::vector<std::string>;
-
-  // simple index hint, either "index-id" or ["index-id1", "index-id2", ...]
-  using SimpleContents = PossibleIndexes;
-  // nested index hint, used for traversals. the structure is:
-  // { collection name => { direction => { level => index hint(s) } } }
-  // e.g.
-  // { "edges": { "outbound": { "base": "index1", "1": ["index2", "index3"] } }
-  // } all levels must be numeric except the special value "base" (in
-  // lowercase). allowed directions are "inbound" and "outbound" (both in lower
-  // case only).
-  using NestedContents = containers::FlatHashMap<
-      /*collection*/ std::string,
-      containers::FlatHashMap<
-          /*direction*/ std::string,
-          containers::FlatHashMap<DepthType, PossibleIndexes>>>;
 
   IndexHint() = default;
 
@@ -92,15 +73,16 @@ class IndexHint {
   IndexHint(IndexHint const&) = default;
   IndexHint& operator=(IndexHint const&) = default;
 
-  HintType type() const noexcept { return _type; }
   bool isForced() const noexcept { return _forced; }
 
-  // returns true for hint types kSimple and kNested
+  // returns true for hint types simple and nested
   bool isSet() const noexcept;
+  bool isSimple() const noexcept;
+  bool isNested() const noexcept;
+  bool isDisabled() const noexcept;
 
-  std::vector<std::string> const& candidateIndexes() const noexcept;
+  PossibleIndexes const& candidateIndexes() const noexcept;
 
-  void clear();
   void toVelocyPack(velocypack::Builder& builder) const;
   std::string_view typeName() const noexcept;
   std::string toString() const;
@@ -113,20 +95,47 @@ class IndexHint {
                           IndexHint::DepthType depth) const;
 
  private:
+  struct NoContents {};
+  struct Disabled {};
+
+  // simple index hint, either "index-id" or ["index-id1", "index-id2", ...]
+  using SimpleContents = PossibleIndexes;
+  // nested index hint, used for traversals. the structure is:
+  // { collection name => { direction => { level => index hint(s) } } }
+  // e.g.
+  // { "edges": { "outbound": { "base": "index1", "1": ["index2", "index3"] } }
+  // } all levels must be numeric except the special value "base" (in
+  // lowercase). allowed directions are "inbound" and "outbound" (both in lower
+  // case only).
+  using NestedContents = containers::FlatHashMap<
+      /*collection*/ std::string,
+      containers::FlatHashMap<
+          /*direction*/ std::string,
+          containers::FlatHashMap<DepthType, PossibleIndexes>>>;
+
   // actual constructor for traversal/paths queries
   IndexHint(QueryContext& query, AstNode const* node, bool hasLevels);
 
   bool empty() const noexcept;
 
-  HintType _type{kNone};
+  void indexesToVelocyPack(velocypack::Builder& builder,
+                           PossibleIndexes const& indexes) const;
+
+  bool parseNestedHint(AstNode const* node, NestedContents& hint,
+                       bool hasLevels) const;
+
   bool _forced{false};
   bool _waitForSync{false};
   size_t _lookahead{1};
 
-  // actual hint is a recursive structure, with the data type determined by the
-  // _type above; in the case of a nested IndexHint, the value of isForced() is
-  // inherited
-  std::variant<SimpleContents, NestedContents> _hint;
+  // there is an important distinction between NoContents and Disabled here:
+  //   NoContents = no index hint set
+  //   Disabled = no index must be used!
+  //   SimpleContents = simple index hint, with one or multiple candidate
+  //   indexes NestedContents = multi-level index hint, with one or multiple
+  //   candidate indexes used for individual collections, directions and/or
+  //   depths. this is only used by graph operations
+  std::variant<NoContents, SimpleContents, NestedContents, Disabled> _hint;
 };
 
 std::ostream& operator<<(std::ostream& stream,

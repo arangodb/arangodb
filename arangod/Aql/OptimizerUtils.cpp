@@ -329,7 +329,7 @@ std::pair<bool, bool> findIndexHandleForAndNode(
     std::vector<transaction::Methods::IndexHandle>& usedIndexes,
     aql::AstNode*& specializedCondition, bool& isSparse, bool failOnForcedHint,
     ReadOwnWrites readOwnWrites) {
-  if (hint.type() == aql::IndexHint::HintType::kDisabled) {
+  if (hint.isDisabled()) {
     // usage of index disabled via index hint: disableIndex: true
     return std::make_pair(false, false);
   }
@@ -453,7 +453,7 @@ std::pair<bool, bool> findIndexHandleForAndNode(
     }
   };
 
-  if (hint.type() == aql::IndexHint::HintType::kSimple) {
+  if (hint.isSimple()) {
     std::vector<std::string> const& hintedIndices = hint.candidateIndexes();
     for (std::string const& hinted : hintedIndices) {
       std::shared_ptr<Index> matched;
@@ -1239,7 +1239,7 @@ std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
       }
       if (index->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX &&
           // apply this index only if hinted
-          hint.type() == IndexHint::kSimple &&
+          hint.isSimple() &&
           std::find(hint.candidateIndexes().begin(),
                     hint.candidateIndexes().end(),
                     index->name()) != hint.candidateIndexes().end()) {
@@ -1320,7 +1320,7 @@ bool getIndexForSortCondition(aql::Collection const& coll,
                               size_t itemsInIndex, aql::IndexHint const& hint,
                               std::vector<std::shared_ptr<Index>>& usedIndexes,
                               size_t& coveredAttributes) {
-  if (hint.type() != aql::IndexHint::HintType::kDisabled) {
+  if (!hint.isDisabled()) {
     // We do not have a condition. But we have a sort!
     if (!sortCondition->isEmpty() && sortCondition->isOnlyAttributeAccess() &&
         sortCondition->isUnidirectional()) {
@@ -1344,7 +1344,7 @@ bool getIndexForSortCondition(aql::Collection const& coll,
 
       auto indexes = coll.indexes();
 
-      if (hint.type() == aql::IndexHint::HintType::kSimple) {
+      if (hint.isSimple()) {
         std::vector<std::string> const& hintedIndices = hint.candidateIndexes();
         for (std::string const& hinted : hintedIndices) {
           std::shared_ptr<Index> matched;

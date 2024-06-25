@@ -1235,6 +1235,8 @@ void TraversalNode::traversalCloneHelper(ExecutionPlan& plan,
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   c.checkConditionsDefined();
+  // validate that we copied index hints correctly
+  TRI_ASSERT(c.hint().isSet() == hint().isSet());
 #endif
 }
 

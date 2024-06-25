@@ -26,6 +26,7 @@
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
+#include "Aql/ExecutionNode/EnumeratePathsNode.h"
 #include "Aql/ExecutionNode/TraversalNode.h"
 #include "Aql/IndexHint.h"
 #include "Aql/OptimizerRule.h"
@@ -45,8 +46,13 @@ using namespace arangodb::aql;
 
 namespace {
 std::initializer_list<ExecutionNode::NodeType> const indexHintCheckTypes{
-    ExecutionNode::ENUMERATE_COLLECTION, ExecutionNode::TRAVERSAL};
-}
+    ExecutionNode::ENUMERATE_COLLECTION,
+#ifdef ENABLE_FORCED_INDEX_HINTS_FOR_GRAPH_OPERATIONS
+    ExecutionNode::TRAVERSAL,
+    ExecutionNode::ENUMERATE_PATHS,
+#endif
+};
+}  // namespace
 
 Optimizer::Optimizer(ResourceMonitor& resourceMonitor, size_t maxNumberOfPlans)
     : _plans(resourceMonitor),
@@ -435,19 +441,29 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
     for (auto n : nodes) {
       TRI_ASSERT(n);
       TRI_ASSERT(n->getType() == ExecutionNode::ENUMERATE_COLLECTION ||
-                 n->getType() == ExecutionNode::TRAVERSAL);
+                 n->getType() == ExecutionNode::TRAVERSAL ||
+                 n->getType() == ExecutionNode::ENUMERATE_PATHS);
 
       auto const& hint = [](ExecutionNode const* n) {
         if (n->getType() == ExecutionNode::ENUMERATE_COLLECTION) {
           return ExecutionNode::castTo<EnumerateCollectionNode const*>(n)
               ->hint();
         }
-        TRI_ASSERT(n->getType() == ExecutionNode::TRAVERSAL);
-        return ExecutionNode::castTo<TraversalNode const*>(n)->hint();
+#ifdef ENABLE_FORCED_INDEX_HINTS_FOR_GRAPH_OPERATIONS
+        if (n->getType() == ExecutionNode::TRAVERSAL) {
+          return ExecutionNode::castTo<TraversalNode const*>(n)->hint();
+        }
+        if (n->getType() == ExecutionNode::ENUMERATE_PATHS) {
+          return ExecutionNode::castTo<EnumeratePathsNode const*>(n)->hint();
+        }
+#endif
+        TRI_ASSERT(false);
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_INTERNAL,
+            "invalid node encountered with forced index hints");
       }(n);
 
-      // TODO: fix
-      if (hint.isSet() && hint.isForced() && false) {
+      if (hint.isSet() && hint.isForced()) {
         // unsatisfied index hint.
         foundForcedHint = true;
 
