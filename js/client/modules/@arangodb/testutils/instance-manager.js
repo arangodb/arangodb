@@ -187,14 +187,6 @@ class instanceManager {
     fs.removeDirectoryRecursive(this.rootDir, true);
   }
 
-  _flushPid() {
-      if (this.pid) {
-        return;
-      }
-      this.exitStatus = null;
-      this.pid = null;
-      this.upAndRunning = false;
-  }
   relaunchIfType(instanceRoleFilter, moreArgs) {
     if (this.pid || this.instanceRole !==  instanceRoleFilter) {
       return true;
@@ -415,7 +407,31 @@ class instanceManager {
     });
     print(processInfo.join('\n') + '\n');
   }
+  printStillRunningProcessInfo() {
+    if (this.options.noStartStopLogs) {
+      return;
+    }
+    let roles = {};
+    // TODO
+    this.arangods.forEach(arangod => {
+      if (!roles.hasOwnProperty(arangod.instanceRole)) {
+        roles[arangod.instanceRole] = 0;
+      }
+      ++roles[arangod.instanceRole];
+    });
+    let roleNames = [];
+    for (let r in roles) {
+      // e.g. 2 + coordinator + (s)
+      roleNames.push(roles[r] + ' ' + r + '(s)');
+    }
+    print(roleNames.join(', ') + ' are still running...');
+  }
 
+  getNames(arangods) {
+    let names = [];
+    arangods.forEach(arangod => {names.push(arangod.name);});
+    return names;
+  }
   launchTcpDump(name) {
     if (this.options.sniff === undefined || this.options.sniff === false) {
       return true;
@@ -558,6 +574,10 @@ class instanceManager {
   // / @brief dump the state of the agency to disk. if we still can get one.
   // //////////////////////////////////////////////////////////////////////////////
   dumpAgency() {
+    if ((this.options.agency === false) || (this.options.dumpAgencyOnError === false)) {
+      return;
+    }
+
     this.dumpedAgency = true;
     const dumpdir = fs.join(this.options.testOutputDirectory, `agencydump_${this.instanceCount}`);
     const zipfn = fs.join(this.options.testOutputDirectory, `agencydump_${this.instanceCount}.zip`);
@@ -929,24 +949,12 @@ class instanceManager {
       }
     }
 
-    if ((this.options.cluster || this.options.agency) && this.hasOwnProperty('clusterHealthMonitor')) {
-      try {
-        this.clusterHealthMonitor['kill'] = killExternal(this.clusterHealthMonitor.pid);
-        this.clusterHealthMonitor['statusExternal'] = statusExternal(this.clusterHealthMonitor.pid, true);
-      }
-      catch (x) {
-        print(x);
-      }
-    }
-
+    this.stopClusterHealthMonitor();
     // Shut down all non-agency servers:
-    const n = this.arangods.length;
 
     let toShutdown = this.arangods.slice().reverse();
     if (!this.options.noStartStopLogs) {
-      let shutdown = [];
-      toShutdown.forEach(arangod => {shutdown.push(arangod.name);});
-      print(Date() + ' Shutdown order: \n' + yaml.safeDump(shutdown));
+      print(Date() + ' Shutdown order: \n' + yaml.safeDump(this.getNames(toShutdown)));
     }
     let nonAgenciesCount = this.arangods.filter(arangod => {
       if ((arangod.exitStatus !== null) &&
@@ -963,7 +971,7 @@ class instanceManager {
       timeout *= 2;
     }
 
-    if ((toShutdown.length > 0) && (this.options.agency === true) && (this.options.dumpAgencyOnError === true)) {
+    if (toShutdown.length > 0) {
       this.dumpAgency();
     }
     if (forceTerminate) {
@@ -1030,22 +1038,7 @@ class instanceManager {
         }
       });
       if (toShutdown.length > 0) {
-        let roles = {};
-        // TODO
-        toShutdown.forEach(arangod => {
-          if (!roles.hasOwnProperty(arangod.instanceRole)) {
-            roles[arangod.instanceRole] = 0;
-          }
-          ++roles[arangod.instanceRole];
-        });
-        let roleNames = [];
-        for (let r in roles) {
-          // e.g. 2 + coordinator + (s)
-          roleNames.push(roles[r] + ' ' + r + '(s)');
-        }
-        if (!this.options.noStartStopLogs) {
-          print(roleNames.join(', ') + ' are still running...');
-        }
+        this.printStillRunningProcessInfo();
         require('internal').wait(1, false);
       }
     }
@@ -1412,7 +1405,17 @@ class instanceManager {
       this.initProcessStats();
     }
   }
-
+  stopClusterHealthMonitor() {
+    if (this.hasOwnProperty('clusterHealthMonitor')) {
+      try {
+        this.clusterHealthMonitor['kill'] = killExternal(this.clusterHealthMonitor.pid);
+        this.clusterHealthMonitor['statusExternal'] = statusExternal(this.clusterHealthMonitor.pid, true);
+      }
+      catch (x) {
+        print(x);
+      }
+    }
+  }
   launchFinalize(startTime) {
     if (!this.options.cluster && !this.options.agency) {
       let deadline = time() + this.startupMaxCount;
@@ -1440,7 +1443,7 @@ class instanceManager {
     const startTime = time();
     this.addArgs = _.defaults(this.addArgs, moreArgs);
     this.httpAuthOptions = pu.makeAuthorizationHeaders(this.options, this.addArgs);
-    this.arangods.forEach(arangod => { arangod.flushPid(); });
+    this.arangods.forEach(arangod => { arangod._flushPid(); });
 
     let success = true;
     this.instanceRoles.forEach(instanceRole  => {
