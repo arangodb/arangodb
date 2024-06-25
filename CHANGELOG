@@ -1,7 +1,7 @@
 devel
 -----
 
-* Upgraded bundled version of RocksDB to 9.3.
+* Upgraded bundled version of RocksDB to 9.4.
 
   The default values for the following RocksDB-related startup options were 
   adjusted as well:
@@ -19,11 +19,30 @@ devel
   The startup option `--rocksdb.throttle-slow-down-writes-trigger` has been
   obsoleted.
 
-* FE-310: Query editor in web UI can now be resized vertically.
+* BTS-1909, MDS-1232: Fixed a bug where COLLECT ... AGGREGATE x = UNIQUE(y)
+  could miss some results when multiple shards were aggregated in a cluster.
+
+* Fixed an issue where the request would hang when retrieving the result of an
+  asynchronous HEAD request. Now, the response body is cleared and the
+  Content-Length header is set to 0, ensuring compliance with the HTTP protocol
+  and preventing indefinite client waits.
+
+* Document modification operations (insert, update, etc) during an AQL query on
+  DBServers no longer block threads while waiting for replication.
+
+* Fixed a bug where accessing a collection right after creation can sometimes
+  fail.
+
+* OASIS-25850: Fix incomplete replacing of projection variables in traversals.
+  This fixes a regression introduced in 3.12.0.
 
 
 3.12.1 (XXXX-XX-XX)
 -------------------
+
+* FE-454: Fix saving document in "Tree" mode.
+
+* FE-310: Query editor in web UI can now be resized vertically.
 
 * Fix a potential data corruption in a collection's Merkle tree, in case a write
   operation in a streaming transaction ran into the transaction's maximum size

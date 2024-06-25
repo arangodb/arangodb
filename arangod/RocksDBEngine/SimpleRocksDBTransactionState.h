@@ -46,7 +46,7 @@ class SimpleRocksDBTransactionState final : public RocksDBTransactionState,
     return _rocksMethods.get();
   }
 
-  void beginQuery(ResourceMonitor* resourceMonitor,
+  void beginQuery(std::shared_ptr<ResourceMonitor> resourceMonitor,
                   bool isModificationQuery) override;
   void endQuery(bool isModificationQuery) noexcept override;
 

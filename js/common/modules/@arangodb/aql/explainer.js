@@ -728,7 +728,7 @@ function printShortestPathDetails(shortestPaths) {
   stringBuilder.appendLine(line);
 
   for (let sp of shortestPaths) {
-    line = ' ' + pad(1 + maxIdLen - String(sp.id).length) + sp.id + '   ';
+    line = ' ' + pad(1 + maxIdLen - String(sp.id).length) + variable(sp.id) + '   ';
 
     if (sp.hasOwnProperty('vertexCollectionNameStr')) {
       line += sp.vertexCollectionNameStr +
@@ -886,7 +886,14 @@ function processQuery(query, explain, planIndex) {
     // the code can be removed when only supporting server versions
     // >= 3.12.
     stats.nodes.forEach(n => {
-      nodes[n.id].runtime = n.runtime;
+      // the try..catch here is necessary because we may have nodes inside
+      // the stats object that are not contained in the original plan.
+      // this can happen for parallel traversals, which inserts additional
+      // nodes into the plan on the DB servers after the plan is shipped
+      // to the servers.
+      try {
+        nodes[n.id].runtime = n.runtime;
+      } catch (err) {}
     });
     stats.nodes.forEach(n => {
       if (nodes.hasOwnProperty(n.id) && !n.hasOwnProperty('fetching')) {
@@ -1016,7 +1023,7 @@ function processQuery(query, explain, planIndex) {
       var rhs = buildExpression(node.subNodes[1]);
       if (node.subNodes.length === 3) {
         // array operator node... prepend "all" | "any" | "none" to node type
-        name = node.subNodes[2].quantifier + ' ' + name;
+        name = keyword(node.subNodes[2].quantifier.toUpperCase()) + ' ' + name;
       }
       if (node.sorted) {
         return lhs + ' ' + name + ' ' + annotation('/* sorted */') + ' ' + rhs;
@@ -2041,10 +2048,14 @@ function processQuery(query, explain, planIndex) {
           }
         }
         let varString = '';
-        if (node.outVariable.id !== node.oldDocVariable.id) {
-          varString = variableName(node.oldDocVariable) + ' ' + keyword('INTO') + ' ' + variableName(node.outVariable);
+        if (node.hasOwnProperty('oldDocVariable')) {
+          if (node.outVariable.id !== node.oldDocVariable.id) {
+            varString = variableName(node.oldDocVariable) + ' ' + keyword('INTO') + ' ' + variableName(node.outVariable);
+          } else {
+            varString = variableName(node.oldDocVariable);
+          }
         } else {
-          varString = variableName(node.oldDocVariable);
+          varString = variableName(node.outVariable);
         }
         return keyword('MATERIALIZE') + ' ' + varString + (annotations.length > 0 ? annotation(` /*${annotations} */`) : '') + accessString;
       case 'OffsetMaterializeNode':
@@ -2638,6 +2649,8 @@ function inspectDump(filename, outfile) {
         if (details.properties.isSmart) {
           delete details.properties.numberOfShards;
         }
+        delete details.properties.objectId;
+        delete details.properties.statusString;
         print("db._createEdgeCollection(" + JSON.stringify(collection) + ", " + JSON.stringify(details.properties) + ");");
       } else {
         print("db._create(" + JSON.stringify(collection) + ", " + JSON.stringify(details.properties) + ");");
