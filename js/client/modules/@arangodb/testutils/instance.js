@@ -788,6 +788,9 @@ class instance {
     if (unAuthOK === undefined) {
       unAuthOK = false;
     }
+    if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret')) {
+      this.JWT = moreArgs['server.jwt-secret'];
+    }
     const startTime = time();
     this.exitStatus = null;
     this.pid = null;
