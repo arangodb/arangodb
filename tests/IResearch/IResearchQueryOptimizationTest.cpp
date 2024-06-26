@@ -28,6 +28,7 @@
 
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/OptimizerRule.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "IResearch/ApplicationServerHelper.h"
