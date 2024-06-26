@@ -1148,7 +1148,7 @@ bool AqlItemBlock::isShadowRow(size_t row) const noexcept {
   return _shadowRows.is(row);
 }
 
-size_t AqlItemBlock::getShadowRowDepth(size_t row) const {
+size_t AqlItemBlock::getShadowRowDepth(size_t row) const noexcept {
   TRI_ASSERT(isShadowRow(row));
   TRI_ASSERT(hasShadowRows());
   return _shadowRows.getDepth(row);

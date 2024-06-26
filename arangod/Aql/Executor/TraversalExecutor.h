@@ -207,8 +207,6 @@ class TraversalExecutor {
   [[nodiscard]] auto skipRowsRange(AqlItemBlockInputRange& input, AqlCall& call)
       -> std::tuple<ExecutorState, Stats, size_t, AqlCall>;
 
-  void initializeCursor();
-
  private:
   auto doOutput(OutputAqlItemRow& output) -> void;
 

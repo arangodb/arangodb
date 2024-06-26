@@ -479,14 +479,6 @@ auto TraversalExecutor::skipRowsRange(AqlItemBlockInputRange& input,
   TRI_ASSERT(false);
 }
 
-void TraversalExecutor::initializeCursor() {
-  // TODO: check if this implementation cleans enough
-  _ast.clearMost();
-  _inputRow = InputAqlItemRow{CreateInvalidInputRowHint{}};
-  _infos.traversalEnumerator()->clear(false);
-  _infos.traversalEnumerator()->unprepareValidatorContext();
-}
-
 // Set a new start vertex for traversal, for this fetch inputs
 // from input until we are either successful or input is unwilling
 // to give us more.

@@ -28,7 +28,6 @@
 
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/AqlValue.h"
-#include "Aql/Range.h"
 
 #include <velocypack/Builder.h>
 #include <boost/container/flat_set.hpp>
