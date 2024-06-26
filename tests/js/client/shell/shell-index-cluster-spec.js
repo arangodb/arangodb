@@ -50,8 +50,8 @@ describe('Cluster collection creation options', function() {
     });
     it('should cleanup current after creating a faulty index', function() {
         db._create("testi", {numberOfShards: 1});
-        let current = global.instanceManager.getFromPlan('Current/Collections/_system');
-        let plan = global.instanceManager.getFromPlan('Plan/Collections/_system');
+        let current = global.instanceManager.agencyMgr..getFromPlan('Current/Collections/_system');
+        let plan = global.instanceManager.agencyMgr..getFromPlan('Plan/Collections/_system');
         let collectionId = Object.values(plan.arango.Plan.Collections['_system']).reduce((result, collectionDef) => {
             if (result) {
                 return result;
@@ -69,7 +69,7 @@ describe('Cluster collection creation options', function() {
         }).to.throw();
         // wait for the schmutz
         internal.wait(1.0);
-        current = global.instanceManager.getFromPlan(`Current/Collections/_system/${collectionId}`);
+        current = global.instanceManager.agencyMgr.getFromPlan(`Current/Collections/_system/${collectionId}`);
         Object.values(current.arango.Current.Collections['_system'][collectionId]).forEach(entry => {
             expect(entry.indexes).to.have.lengthOf(1);
         });
