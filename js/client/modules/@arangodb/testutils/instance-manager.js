@@ -1223,6 +1223,9 @@ class instanceManager {
   }
   
   reStartInstance(moreArgs) {
+    if (moreArgs === undefined) {
+      moreArgs = {};
+    }
     const startTime = time();
     this.addArgs = _.defaults(this.addArgs, moreArgs);
     this.httpAuthOptions = pu.makeAuthorizationHeaders(this.options, this.addArgs);
