@@ -923,10 +923,13 @@ class instance {
         }
       }
 
-      if (time() >= deadline) {
+      if (time() <= deadline) {
         if (!this.checkArangoAlive()) {
           throw new Error('startup failed! bailing out!');
         }
+        print('.');
+      } else {
+        throw new Error(`server did not become availabe on time : ${deadline}`);
       }
     }
   }
