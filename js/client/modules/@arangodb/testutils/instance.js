@@ -886,7 +886,7 @@ class instance {
       if (this.options.useReconnect && this.isFrontend()) {
           if (this.JWT) {
             print(Date() + " reconnecting with JWT " + this.url);
-            this.reconnect(this.endpoint,
+            arango.reconnect(this.endpoint,
                            '_system',
                            this.options.username,
                            this.options.password,
@@ -894,7 +894,7 @@ class instance {
                            this.JWT);
           } else {
             print(Date() + " reconnecting " + this.url);
-            this.reconnect(this.endpoint,
+            arango.reconnect(this.endpoint,
                            '_system',
                            this.options.username,
                            this.options.password,
