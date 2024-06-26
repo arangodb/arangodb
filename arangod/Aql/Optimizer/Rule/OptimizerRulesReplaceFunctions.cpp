@@ -21,8 +21,6 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "OptimizerRules.h"
-
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
@@ -43,6 +41,7 @@
 #include "Aql/Function.h"
 #include "Aql/IndexHint.h"
 #include "Aql/Optimizer.h"
+#include "Aql/OptimizerRules.h"
 #include "Aql/Query.h"
 #include "Aql/SortElement.h"
 #include "Aql/Variable.h"

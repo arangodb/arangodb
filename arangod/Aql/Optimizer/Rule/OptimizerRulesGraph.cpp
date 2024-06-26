@@ -21,8 +21,6 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "GraphOptimizerRules.h"
-
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
@@ -30,6 +28,7 @@
 #include "Aql/ExecutionNode/TraversalNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Optimizer.h"
+#include "Aql/Optimizer/Rule/OptimizerRulesGraph.h"
 #include "Containers/SmallVector.h"
 
 using namespace arangodb;
