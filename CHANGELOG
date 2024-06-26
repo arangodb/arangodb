@@ -1,24 +1,29 @@
 devel
 -----
 
+
+
+3.12.1 (XXXX-XX-XX)
+-------------------
+
 * Support indexHint AQL option for traversals.
   The structure of traversal index hints is as follows:
-  
+
       { collection: { direction: { level: indexes } } }
- 
+
   with the following meanings:
   - collection: the name of an edge collection for which the index hint should
     be applied. Proper capitalization of the collection name is important.
   - direction:  the direction for which to apply the index hint. Valid values
     are `inbound` and `outbound`, in lowercase.
-  - level: the level/depth for which the index should be applied. Valid level 
-    values are the string `base` and any stringified numeric values greater
-    or equal to zero.
+  - level: the level/depth for which the index should be applied. Valid level
+    values are the string `base` and any stringified numeric values greater or
+    equal to zero.
 
   Example:
 
       FOR v, e, p IN 1..5 OUTBOUND startVertex edgeCollection
-      OPTIONS { 
+      OPTIONS {
         indexHint: {
           "edgeCollection": {
             "outbound": {
@@ -30,12 +35,12 @@ devel
           }
         }
       }
-      FILTER p.edges[1].foo == 'bar' && 
-             p.edges[2].foo == 'bar' && 
+      FILTER p.edges[1].foo == 'bar' &&
+             p.edges[2].foo == 'bar' &&
              p.edges[2].baz == 'qux'
 
-  Because the collection names and levels/depths are used a object keys here,
-  it is useful to enclose them in quotes. Omitting the quotes around them may
+  Because the collection names and levels/depths are used a object keys here, it
+  is useful to enclose them in quotes. Omitting the quotes around them may
   result in parse errors for the query.
 
   Note that index hints for levels other than `base` will only be considered
@@ -51,8 +56,8 @@ devel
 * Rebuilt included rclone v1.65.2 with go1.22.4.
 
 * Swagger UI: Remove fragment identifiers from request URLs. They are merely
-  used to disambiguate polymorphic endpoints in the OpenAPI descriptions of
-  the HTTP API documentation.
+  used to disambiguate polymorphic endpoints in the OpenAPI descriptions of the
+  HTTP API documentation.
 
 * BTS-1909, MDS-1232: Fixed a bug where COLLECT ... AGGREGATE x = UNIQUE(y)
   could miss some results when multiple shards were aggregated in a cluster.
@@ -71,10 +76,6 @@ devel
 
 * OASIS-25850: Fix incomplete replacing of projection variables in traversals.
   This fixes a regression introduced in 3.12.0.
-
-
-3.12.1 (XXXX-XX-XX)
--------------------
 
 * FE-454: Fix saving document in "Tree" mode.
 
