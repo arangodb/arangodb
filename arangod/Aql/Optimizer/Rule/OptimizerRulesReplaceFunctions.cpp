@@ -691,17 +691,17 @@ void arangodb::aql::replaceLikeWithRangeRule(
           auto cn =
               ExecutionNode::castTo<EnumerateCollectionNode const*>(setter);
           auto const& hint = cn->hint();
-          if (hint.type() == IndexHint::Disabled) {
+          if (hint.isDisabled()) {
             // no index should be used. no need for the optimization
             return node;
           }
-          if (hint.type() == IndexHint::Simple) {
+          if (hint.isSimple()) {
             // we have an index hint
             Collection const* c = cn->collection();
 
             // check if any of the indexes suggested in the index hint is
             // an inverted index. if so, we disable the optimization
-            for (auto const& name : hint.hint()) {
+            for (auto const& name : hint.candidateIndexes()) {
               auto idx = c->getCollection()->lookupIndex(name);
               if (idx != nullptr &&
                   idx->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX) {

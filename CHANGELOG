@@ -1,6 +1,51 @@
 devel
 -----
 
+* Support indexHint AQL option for traversals.
+  The structure of traversal index hints is as follows:
+  
+      { collection: { direction: { level: indexes } } }
+ 
+  with the following meanings:
+  - collection: the name of an edge collection for which the index hint should
+    be applied. Proper capitalization of the collection name is important.
+  - direction:  the direction for which to apply the index hint. Valid values
+    are `inbound` and `outbound`, in lowercase.
+  - level: the level/depth for which the index should be applied. Valid level 
+    values are the string `base` and any stringified numeric values greater
+    or equal to zero.
+
+  Example:
+
+      FOR v, e, p IN 1..5 OUTBOUND startVertex edgeCollection
+      OPTIONS { 
+        indexHint: {
+          "edgeCollection": {
+            "outbound": {
+              "base": ["edge"],
+              "1": "myIndex1",
+              "2": ["myIndex2", "myIndex1"],
+              "3": "myIndex3",
+            }
+          }
+        }
+      }
+      FILTER p.edges[1].foo == 'bar' && 
+             p.edges[2].foo == 'bar' && 
+             p.edges[2].baz == 'qux'
+
+  Because the collection names and levels/depths are used a object keys here,
+  it is useful to enclose them in quotes. Omitting the quotes around them may
+  result in parse errors for the query.
+
+  Note that index hints for levels other than `base` will only be considered
+  if the traversal actually uses a specific filter condition for the specified
+  level. In the above example, this is true for levels 1 and 2, but not for
+  level 3. Consequently, the index hint for level 3 will be ignored here.
+
+  Currently index hints cannot be forced to be used for traversals, i.e. the
+  `forceIndexHint` option is currently not supported for traversals.
+
 * Update timezone database as of 25.06.2024.
 
 * Rebuilt included rclone v1.65.2 with go1.22.4.
