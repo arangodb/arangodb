@@ -70,6 +70,7 @@ const termSignal = 15;
 const instanceRole = inst.instanceRole;
 
 let instanceCount = 1;
+const seconds = x => x * 1000;
 
 class instanceManager {
   constructor(protocol, options, addArgs, testname, tmpDir) {
@@ -640,7 +641,6 @@ class instanceManager {
       return previous && ret;
     }, true);
     if (rc && this.options.cluster && !skipHealthCheck && this.arangods.length > 1) {
-      const seconds = x => x * 1000;
       const checkAllAlive = () => this.arangods.every(arangod => arangod.checkArangoAlive());
       let first = true;
       rc = false;
@@ -1201,7 +1201,7 @@ class instanceManager {
   }
   launchFinalize(startTime) {
     if (!this.options.cluster && !this.options.agency) {
-      let deadline = time() + this.startupMaxCount;
+      let deadline = time() + seconds(this.startupMaxCount);
       this.arangods.forEach(arangod => {
         try {
           arangod.pingUntilReady(this.httpAuthOptions, deadline);

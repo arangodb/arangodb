@@ -73,6 +73,8 @@ let tcpdump;
 
 let PORTMANAGER;
 
+const seconds = x => x * 1000;
+
 function getSockStatFile(pid) {
   try {
     return fs.read("/proc/" + pid + "/net/sockstat");
@@ -798,7 +800,7 @@ class instance {
 
     print(CYAN + Date()  + " relaunching: " + this.name + ', url: ' + this.url + RESET);
     this.launchInstance(moreArgs);
-    this.pingUntilReady(this.authHeaders, time() + 60);
+    this.pingUntilReady(this.authHeaders, time() + seconds(60));
     print(CYAN + Date() + ' ' + this.name + ', url: ' + this.url + ', running again with PID ' + this.pid + RESET);
   }
 
@@ -913,7 +915,7 @@ class instance {
           }
         }
       } catch (ex) {
-        if (time() > deadline) {
+        if (time() < deadline) {
           print('.');
           sleep(1);
         } else {
