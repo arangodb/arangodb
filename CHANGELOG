@@ -46,6 +46,10 @@ devel
   Currently index hints cannot be forced to be used for traversals, i.e. the
   `forceIndexHint` option is currently not supported for traversals.
 
+* Update timezone database as of 25.06.2024.
+
+* Rebuilt included rclone v1.65.2 with go1.22.4.
+
 * Swagger UI: Remove fragment identifiers from request URLs. They are merely
   used to disambiguate polymorphic endpoints in the OpenAPI descriptions of
   the HTTP API documentation.
