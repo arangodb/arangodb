@@ -147,8 +147,8 @@ function agencyRestart (options) {
       };
       fs.makeDirectoryRecursive(params.crashLogDir);
       params.crashLog = fs.join(params.crashLogDir, 'crash.log');
-      let agencyMgr = new agencyMgr(options, null);
-      runArangodRecovery(params, agencyMgr);
+      let agencyMgrInst = new agencyMgr(options, null);
+      runArangodRecovery(params, agencyMgrInst);
 
       ////////////////////////////////////////////////////////////////////////
       print(BLUE + "running recovery of test " + count + " - " + test + RESET);
@@ -162,7 +162,7 @@ function agencyRestart (options) {
           duration: -1
         });
       } catch (er) {}
-      runArangodRecovery(params, agencyMgr);
+      runArangodRecovery(params, agencyMgrInst);
 
       results[test] = trs.readTestResult(
         params.instance.args['temp.path'],
