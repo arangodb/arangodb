@@ -27,7 +27,7 @@
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Optimizer.h"
-#include "Aql/Optimizer/Rules/EnumeratePathsFilter/EnumeratePathsFilterMatcher.h"
+#include "Aql/Optimizer/Rule/EnumeratePathsFilter/EnumeratePathsFilterMatcher.h"
 #include "Containers/SmallVector.h"
 
 using namespace arangodb;

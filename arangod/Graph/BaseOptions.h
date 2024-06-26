@@ -25,6 +25,7 @@
 
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/ExecutionNode/DocumentProducingNode.h"
+#include "Aql/IndexHint.h"
 #include "Aql/FixedVarExpressionContext.h"
 #include "Aql/NonConstExpressionContainer.h"
 #include "Aql/Projections.h"
@@ -33,6 +34,7 @@
 #include "Transaction/Methods.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -219,6 +221,10 @@ struct BaseOptions {
 
   aql::Projections const& getEdgeProjections() const;
 
+  aql::IndexHint const& hint() const;
+
+  void setHint(aql::IndexHint hint);
+
   aql::Variable const* tmpVar();  // TODO check public
   arangodb::aql::FixedVarExpressionContext& getExpressionCtx();
 
@@ -250,7 +256,8 @@ struct BaseOptions {
                               std::string const& collectionName,
                               std::string const& attributeName,
                               aql::AstNode* condition, bool onlyEdgeIndexes,
-                              TRI_edge_direction_e direction);
+                              TRI_edge_direction_e direction,
+                              std::optional<uint64_t> depth);
 
   void toVelocyPackBase(VPackBuilder& builder) const;
 
@@ -322,7 +329,12 @@ struct BaseOptions {
 
   /// @brief Projections used on edge data (monitored)
   aql::Projections _edgeProjections;
+
+  aql::IndexHint _hint;
 };
 
 }  // namespace graph
 }  // namespace arangodb
+/// @brief user hint regarding which indexes to use
+
+/// @brief user hint regarding which indexes to use

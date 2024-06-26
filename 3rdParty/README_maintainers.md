@@ -300,7 +300,15 @@ the _Execute_ button.
   user is authorized to execute, the response should not indicate an
   ArangoDB authentication error.
 
-  This confirms the `requestInterceptor`-related changes were applied correctly.
+  This confirms the `requestInterceptor`-related changes for authentication
+  were applied correctly.
+
+* When using the `POST /_api/index#persistent` endpoint with any collection name,
+  the response URL should contain `?collection=<collection-name>` but not contain
+  `#persistent` anywhere.
+
+  This confirms the `requestInterceptor`-related changes for removing
+  fragment identifiers used for disambiguation in OpenAPI were applied correctly.
 
 * All text in the API documentation should use readable color combinations.
   The API documentation should NOT look obviously "broken" or "ugly".
