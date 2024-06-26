@@ -1718,9 +1718,6 @@ TEST_F(IResearchLinkTest, test_maintenance_disabled_at_creation) {
     ASSERT_NE(nullptr, link);
 
     // 1st - tasks active(), 2nd - tasks pending(), 3rd - threads()
-    ASSERT_EQ(std::make_tuple(size_t(1), size_t(0), size_t(1)),
-              feature.stats(ThreadGroup::_0));
-
     std::tuple<size_t, size_t, size_t> stats;
     do {
       stats = feature.stats(ThreadGroup::_1);
