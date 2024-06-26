@@ -115,6 +115,12 @@ class ShortestPathNode : public virtual GraphNode {
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
                             replacements) override;
 
+  void replaceAttributeAccess(ExecutionNode const* self,
+                              Variable const* searchVariable,
+                              std::span<std::string_view> attribute,
+                              Variable const* replaceVariable,
+                              size_t index) override;
+
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const override final;
 
@@ -170,7 +176,7 @@ class ShortestPathNode : public virtual GraphNode {
   /// DBServer cannot map the Vertex to its shard.
   Variable const* _distributeVariable;
 
-  RegIdSet _buildVariableInformation() const;
+  RegIdSet buildVariableInformation() const;
 
   template<typename ShortestPathEnumeratorType>
   std::pair<RegIdSet, typename ShortestPathExecutorInfos<
@@ -179,7 +185,7 @@ class ShortestPathNode : public virtual GraphNode {
 
   template<typename ShortestPathRefactored, typename Provider,
            typename ProviderOptions>
-  std::unique_ptr<ExecutionBlock> _makeExecutionBlockImpl(
+  std::unique_ptr<ExecutionBlock> makeExecutionBlockImpl(
       graph::ShortestPathOptions* opts, ProviderOptions forwardProviderOptions,
       ProviderOptions backwardProviderOptions,
       arangodb::graph::TwoSidedEnumeratorOptions enumeratorOptions,

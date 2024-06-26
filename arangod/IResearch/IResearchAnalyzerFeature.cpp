@@ -2005,7 +2005,9 @@ Result IResearchAnalyzerFeature::cleanupAnalyzersCollection(
         ctx, arangodb::StaticStrings::AnalyzersCollection,
         AccessMode::Type::WRITE);
     trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
-    trx.begin();
+    if (auto res = trx.begin(); res.fail()) {
+      return res;
+    }
 
     auto queryDelete = aql::Query::create(ctx, queryDeleteString, bindBuilder);
 

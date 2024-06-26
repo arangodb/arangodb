@@ -830,6 +830,12 @@ RestStatus RestAqlHandler::handleUseQuery(std::string const& operation,
 
 // handle query finalization for all engines
 RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
+  TRI_IF_FAILURE("Query::finishTimeout") {
+    // intentionally delay the request
+    std::this_thread::sleep_for(
+        std::chrono::milliseconds(RandomGenerator::interval(uint32_t(1000))));
+  }
+
   auto qid = arangodb::basics::StringUtils::uint64(idString);
   bool success = false;
   VPackSlice querySlice = this->parseVPackBody(success);
@@ -856,6 +862,9 @@ RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
                             TRI_ERROR_HTTP_NOT_FOUND);
               return futures::Unit{};
             }
+            // we must be the only user of this query
+            TRI_ASSERT(query.use_count() == 1)
+                << "Finalizing query with use_count " << query.use_count();
             return query->finalizeClusterQuery(errorCode).thenValue(
                 [self = std::move(self), this,
                  q = std::move(query)](Result res) {

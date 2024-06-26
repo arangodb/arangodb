@@ -1661,7 +1661,7 @@ Result TailingSyncer::runContinuousSync() {
   // the shared status will wait in its destructor until all posted
   // requests have been completed/canceled!
   auto self = shared_from_this();
-  auto sharedStatus = std::make_shared<Syncer::JobSynchronizer>(self);
+  Syncer::JobSynchronizerScope sharedStatus(self);
 
   bool worked = false;
   bool mustFetchBatch = true;
@@ -1682,7 +1682,7 @@ Result TailingSyncer::runContinuousSync() {
     // false" to processLeaderLog requires that processLeaderLog has already
     // requested the next batch in the background on the previous invocation
     Result res = processLeaderLog(
-        sharedStatus, builder, fetchTick, lastScannedTick, fromTick,
+        sharedStatus.clone(), builder, fetchTick, lastScannedTick, fromTick,
         _state.applier._ignoreErrors, worked, mustFetchBatch);
 
     uint64_t sleepTime;
@@ -1996,10 +1996,10 @@ Result TailingSyncer::processLeaderLog(
     // do not fetch the same batch next time we enter processLeaderLog
     // (that would be duplicate work)
     mustFetchBatch = false;
-    sharedStatus->request([this, self = shared_from_this(), sharedStatus,
-                           fetchTick, lastScannedTick, firstRegularTick]() {
-      fetchLeaderLog(sharedStatus, fetchTick, lastScannedTick,
-                     firstRegularTick);
+    sharedStatus->request([self = shared_from_this(), sharedStatus, fetchTick,
+                           lastScannedTick, firstRegularTick]() {
+      std::static_pointer_cast<TailingSyncer>(self)->fetchLeaderLog(
+          sharedStatus, fetchTick, lastScannedTick, firstRegularTick);
     });
   }
 

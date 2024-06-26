@@ -28,8 +28,6 @@
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 
-#include "Logger/LogMacros.h"
-
 using namespace arangodb;
 using namespace arangodb::aql;
 

@@ -189,6 +189,8 @@ class BuilderLeaser {
   velocypack::Builder* get() const noexcept { return _builder; }
   velocypack::Builder* steal() { return std::exchange(_builder, nullptr); }
 
+  void clear();
+
  private:
   Context* _transactionContext;
   velocypack::Builder* _builder;

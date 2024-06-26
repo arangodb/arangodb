@@ -24,7 +24,7 @@
 #pragma once
 
 #include "Basics/FutureSharedLock.h"
-#include "Basics/ReadWriteLock.h"
+#include "Basics/UnshackledMutex.h"
 #include "Basics/ResultT.h"
 #include "Containers/MerkleTree.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -206,7 +206,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
   using FutureLock = arangodb::futures::FutureSharedLock<SchedulerWrapper>;
   mutable FutureLock _exclusiveLock;
   /// @brief collection lock used for recalculation count values
-  mutable std::mutex _recalculationLock;
+  mutable basics::UnshackledMutex _recalculationLock;
 
   /// @brief depth for all revision trees.
   /// depth is large from the beginning so that the trees are always

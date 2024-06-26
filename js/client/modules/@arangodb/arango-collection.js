@@ -1424,7 +1424,7 @@ ArangoCollection.prototype._revisionTreeVerification = function() {
     throw "Could not create batch!";
   }
   let requestResult = this._database._connection.GET(this._prefixurl(
-    `/_api/replication/revisions/tree?collection=${encodeURIComponent(this._name)}&verification=true&batchId=${batch.id}`));
+    `/_api/replication/revisions/tree?collection=${encodeURIComponent(this._name)}&verification=true&batchId=${batch.id}&onlyPopulated=false`));
   this._database._connection.DELETE(this._prefixurl(
     `/_api/replication/batch/${batch.id}`));
   return requestResult;

@@ -10,7 +10,7 @@ parameters:
     default: ""
   build-docker-image:
     type: string
-    default: "arangodb/ubuntubuildarangodb-devel:5"
+    default: "arangodb/ubuntubuildarangodb-devel:6"
   test-docker-image:
     type: string
     default: public.ecr.aws/b0b8h2r4/test-ubuntu:23.10-5b6113b7
@@ -215,12 +215,31 @@ jobs:
       - run:
           name: Install eslint
           command: |
-            apk add --no-cache npm
+            apk add --no-cache npm curl jq
             npm -g install eslint@8.46.0
       - run:
           name: Run eslint
           command: |
             utils/eslint.sh
+      - run:
+          name: "Cancel other workflows"
+          when: on_fail
+          command: |
+            ## Get the IDs of currently running/on_hold workflows, but exclude ourselves
+            curl --header "Circle-Token: $CIRCLECI_TOKEN" --request GET "https://circleci.com/api/v2/pipeline/${CIRCLE_PIPELINE_ID}/workflow" | \
+                jq -r '.items[]|select(.id != "'${CIRCLE_WORKFLOW_ID}'" and (.status == "on_hold" or .status == "running")) | .id' >> WF_to_cancel.txt
+
+            ## Cancel any currently running/on_hold workflow with the same name
+            if [ -s WF_to_cancel.txt ]; then
+              echo "Cancelling the following workflow(s):"
+              cat WF_to_cancel.txt 
+              while read WF_ID;
+                do
+                  curl --header "Circle-Token: $CIRCLECI_TOKEN" --request POST https://circleci.com/api/v2/workflow/$WF_ID/cancel
+                done < WF_to_cancel.txt
+            else
+              echo "Nothing to cancel"
+            fi
 
   compile-linux:
     parameters:
@@ -464,8 +483,7 @@ jobs:
             python3 -u scripts/test/test_launch_controller.py << parameters.suites >> \
               --testBuckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX \
               --cluster << parameters.cluster >> \
-              --extraArgs " << parameters.extraArgs >>" \
-              --definition tests/test-definitions.txt
+              --extraArgs " << parameters.extraArgs >>"
       - run:
           name: Copy test results
           when: always
@@ -633,6 +651,7 @@ workflows:
             - minimal-checkout
       - eslint:
           name: eslint
+          context: [ circleci-token ]
           requires:
             - minimal-checkout
   # all other workflows are defined in generate_config.py

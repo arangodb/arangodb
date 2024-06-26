@@ -27,6 +27,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
+#include "Basics/debugging.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandlerFactory.h"
@@ -38,9 +39,100 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "Utils/ExecContext.h"
 
+#include <absl/strings/str_cat.h>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
+
+bool arangodb::MultipartMessage::skipBoundaryStart(size_t& offset) const {
+  size_t foundPos = message.find(boundary, offset);
+  if (foundPos == offset) {
+    foundPos += boundary.size();
+    while (foundPos < message.size() && message[foundPos] == ' ') {
+      ++foundPos;
+    }
+    if (foundPos < message.size() && message[foundPos] == '\r') {
+      ++foundPos;
+    }
+    if (foundPos < message.size() && message[foundPos] == '\n') {
+      offset = foundPos + 1;
+      return true;
+    }
+  }
+  return false;
+}
+
+bool arangodb::MultipartMessage::findBoundaryEnd(size_t& offset) const {
+  size_t foundPos = message.find(boundary, offset);
+  if (foundPos != std::string_view::npos) {
+    offset = foundPos + boundary.size();
+    return true;
+  }
+  return false;
+}
+
+bool arangodb::MultipartMessage::isAtEnd(size_t& offset) const {
+  if (offset + 1 < message.size() && message[offset] == '-' &&
+      message[offset + 1] == '-') {
+    offset += 2;
+    return true;
+  }
+  return false;
+}
+
+std::string arangodb::MultipartMessage::getHeader(size_t& offset) const {
+  std::string header;
+
+  while (true) {
+    while (offset < message.size() && message[offset] == ' ') {
+      ++offset;
+    }
+    if (offset >= message.size()) {
+      break;
+    }
+
+    // find first linebreak
+    size_t eol1 = message.find("\r\n", offset);
+    size_t eol2 = message.find("\n", offset);
+
+    if (eol1 == 0) {
+      // line starts with Windows linebreak;
+      offset += 2;
+      break;
+    }
+    if (eol2 == 0) {
+      // line starts with normal linebreak
+      offset += 1;
+      break;
+    }
+
+    size_t eol = [&]() {
+      if (eol1 != std::string::npos ||
+          (eol2 == std::string::npos || eol1 < eol2)) {
+        return eol1;
+      }
+      return eol2;
+    }();
+
+    if (eol == std::string::npos) {
+      break;
+    }
+
+    header = {message.data() + offset, eol - offset};
+    offset = eol;
+    TRI_ASSERT(offset < message.size());
+    TRI_ASSERT(message[eol] == '\n' || message[eol] == '\r');
+    if (message[offset] == '\r') {
+      offset += 1;
+    }
+    if (message[offset] == '\n') {
+      offset += 1;
+    }
+    break;
+  }
+  return header;
+}
 
 RestBatchHandler::RestBatchHandler(ArangodServer& server,
                                    GeneralRequest* request,
@@ -78,15 +170,11 @@ RestStatus RestBatchHandler::execute() {
   _response->setContentType(_request->header(StaticStrings::ContentTypeHeader));
 
   // http required here
-  std::string_view bodyStr = _request->rawPayload();
-
   // setup some auxiliary structures to parse the multipart message
-  _multipartMessage =
-      MultipartMessage{_boundary.data(), _boundary.size(), bodyStr.data(),
-                       bodyStr.data() + bodyStr.size()};
+  _multipartMessage = {_boundary, _request->rawPayload()};
 
   _helper.message = _multipartMessage;
-  _helper.searchStart = _multipartMessage.messageStart;
+  _helper.searchStart = 0;
 
   // and wait for completion
   return executeNextHandler() ? RestStatus::WAITING : RestStatus::DONE;
@@ -116,10 +204,9 @@ void RestBatchHandler::processSubHandlerResult(RestHandler const& handler) {
   httpResponse->body().appendText(StaticStrings::BatchContentType);
 
   // append content-id if it is present
-  if (_helper.contentId != nullptr) {
+  if (!_helper.contentId.empty()) {
     httpResponse->body().appendText(
-        "\r\nContent-Id: " +
-        std::string(_helper.contentId, _helper.contentIdLength));
+        absl::StrCat("\r\nContent-Id: ", _helper.contentId));
   }
 
   httpResponse->body().appendText(std::string_view("\r\n\r\n"));
@@ -169,59 +256,43 @@ bool RestBatchHandler::executeNextHandler() {
     return false;
   }
 
-  // split part into header & body
-  char const* partStart = _helper.foundStart;
-  char const* partEnd = partStart + _helper.foundLength;
-  size_t const partLength = _helper.foundLength;
-
-  char const* headerStart = partStart;
-  char const* bodyStart = nullptr;
-  size_t headerLength = 0;
-  size_t bodyLength = 0;
-
-  // assume Windows linebreak \r\n\r\n as delimiter
-  char const* p = strstr(headerStart, "\r\n\r\n");
-
-  if (p != nullptr && p + 4 <= partEnd) {
-    headerLength = p - partStart;
-    bodyStart = p + 4;
-    bodyLength = partEnd - bodyStart;
-  } else {
-    // test Unix linebreak
-    p = strstr(headerStart, "\n\n");
-
-    if (p != nullptr && p + 2 <= partEnd) {
-      headerLength = p - partStart;
-      bodyStart = p + 2;
-      bodyLength = partEnd - bodyStart;
-    } else {
-      // no delimiter found, assume we have only a header
-      headerLength = partLength;
+  auto [header, body] = [](std::string_view value) {
+    // assume Windows linebreak \r\n\r\n as delimiter
+    size_t pos = value.find("\r\n\r\n");
+    if (pos != std::string_view::npos) {
+      return std::make_pair(value.substr(0, pos), value.substr(pos + 4));
     }
-  }
+    // test Unix linebreak
+    pos = value.find("\n\n");
+    if (pos != std::string_view::npos) {
+      return std::make_pair(value.substr(0, pos), value.substr(pos + 2));
+    }
+    // assume we only have a header
+    return std::make_pair(value, std::string_view());
+  }(_helper.found);
 
   // set up request object for the part
   LOG_TOPIC("910e9", TRACE, arangodb::Logger::REPLICATION)
-      << "part header is: " << std::string(headerStart, headerLength);
+      << "part header is: " << header;
 
   auto request = std::make_unique<HttpRequest>(_request->connectionInfo(),
                                                /*messageId*/ 1);
-  if (0 < headerLength) {
-    auto buff = std::make_unique<char[]>(headerLength + 1);
-    memcpy(buff.get(), headerStart, headerLength);
-    (buff.get())[headerLength] = 0;
-    request->parseHeader(buff.get(), headerLength);
+  if (!header.empty()) {
+    auto buff = std::make_unique<char[]>(header.size() + 1);
+    memcpy(buff.get(), header.data(), header.size());
+    (buff.get())[header.size()] = 0;
+    request->parseHeader(buff.get(), header.size());
   }
 
   // inject the request context from the framing (batch) request
   request->setRequestContext(_request->requestContext());
   request->setDatabaseName(_request->databaseName());
 
-  if (bodyLength > 0) {
+  if (!body.empty()) {
     LOG_TOPIC("63afb", TRACE, arangodb::Logger::REPLICATION)
-        << "part body is '" << std::string_view(bodyStart, bodyLength) << "'";
+        << "part body is '" << body << "'";
     request->clearBody();
-    request->appendBody(bodyStart, bodyLength);
+    request->appendBody(body.data(), body.size());
     request->appendNullTerminator();
   }
 
@@ -290,7 +361,7 @@ bool RestBatchHandler::getBoundaryBody(std::string& result) {
   char const* e = p + bodyStr.size();
 
   // skip whitespace
-  while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n') {
+  while (p < e && (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n')) {
     ++p;
   }
 
@@ -331,29 +402,37 @@ bool RestBatchHandler::getBoundaryHeader(std::string& result) {
   // "Content-Type: multipart/form-data; boundary=<boundary goes here>"
   std::vector<std::string> parts = StringUtils::split(contentType, ';');
 
-  if (parts.size() != 2 || parts[0] != StaticStrings::MultiPartContentType) {
+  if (parts.size() != 2) {
     // content-type is not formatted as expected
     return false;
   }
-
-  static size_t const boundaryLength = 9;  // strlen("boundary=");
-
-  // trim 2nd part and lowercase it
-  StringUtils::trimInPlace(parts[1]);
-  std::string p = parts[1].substr(0, boundaryLength);
-  StringUtils::tolowerInPlace(p);
-
-  if (p != "boundary=") {
+  std::string& key = parts[0];
+  StringUtils::tolowerInPlace(key);
+  if (key != StaticStrings::MultiPartContentType) {
     return false;
   }
 
-  std::string boundary = parts[1].substr(boundaryLength);
+  // trim 2nd part and lowercase it
+  std::string boundary = parts[1];
+  StringUtils::trimInPlace(boundary);
 
-  if ((boundary.length() > 1) && (boundary[0] == '"') &&
-      (boundary[boundary.length() - 1] == '"')) {
+  parts = StringUtils::split(boundary, '=');
+  if (parts.size() < 2) {
+    return false;
+  }
+  StringUtils::tolowerInPlace(parts[0]);
+
+  constexpr std::string_view kBoundary{"boundary"};
+
+  if (!parts[0].starts_with(kBoundary)) {
+    return false;
+  }
+
+  boundary = parts[1];
+
+  if (boundary.starts_with('"') && boundary.ends_with('"')) {
     StringUtils::trimInPlace(boundary, "\"");
-  } else if ((boundary.length() > 1) && (boundary[0] == '\'') &&
-             (boundary[boundary.length() - 1] == '\'')) {
+  } else if (boundary.starts_with('\'') && boundary.ends_with('\'')) {
     StringUtils::trimInPlace(boundary, "'");
   }
 
@@ -387,174 +466,78 @@ bool RestBatchHandler::getBoundary(std::string& result) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestBatchHandler::extractPart(SearchHelper& helper) {
-  TRI_ASSERT(helper.searchStart != nullptr);
-
   // init the response
-  helper.foundStart = nullptr;
-  helper.foundLength = 0;
+  helper.found = {};
   helper.containsMore = false;
-  helper.contentId = nullptr;
-  helper.contentIdLength = 0;
+  helper.contentId = "";
 
-  char const* searchEnd = helper.message.messageEnd;
-
-  if (helper.searchStart >= searchEnd) {
+  if (helper.searchStart >= helper.message.message.size()) {
     // we're at the end already
     return false;
   }
 
-  // search for boundary
-  char const* found = strstr(helper.searchStart, helper.message.boundary);
-
-  if (found == nullptr) {
-    // not contained. this is an error
+  // this call can modify helper.searchStart
+  if (!helper.message.skipBoundaryStart(helper.searchStart)) {
     return false;
   }
-
-  if (found != helper.searchStart) {
-    // boundary not located at beginning. this is an error
-    return false;
-  }
-
-  found += helper.message.boundaryLength;
-
-  if (found + 1 >= searchEnd) {
-    // we're outside the buffer. this is an error
-    return false;
-  }
-
-  while (found < searchEnd && *found == ' ') {
-    ++found;
-  }
-
-  if (found + 2 >= searchEnd) {
-    // we're outside the buffer. this is an error
-    return false;
-  }
-
-  if (*found == '\r') {
-    ++found;
-  }
-  if (*found != '\n') {
-    // no linebreak found
-    return false;
-  }
-  ++found;
 
   bool hasTypeHeader = false;
-
-  int breakLength = 1;
-
-  while (found < searchEnd) {
-    while (*found == ' ' && found < searchEnd) {
-      ++found;
-    }
-
-    // try Windows linebreak first
-    breakLength = 2;
-
-    char const* eol = strstr(found, "\r\n");
-
-    if (eol == nullptr) {
-      breakLength = 1;
-      eol = strchr(found, '\n');
-
-      if (eol == found) {
-        break;
-      }
-    } else {
-      char const* eol2 = strchr(found, '\n');
-
-      if (eol2 != nullptr && eol2 < eol) {
-        breakLength = 1;
-        eol = eol2;
-      }
-    }
-
-    if (eol == nullptr || eol == found) {
+  while (true) {
+    // this call can modify helper.searchStart
+    std::string header = helper.message.getHeader(helper.searchStart);
+    if (header.empty()) {
       break;
     }
-
-    // split key/value of header
-    char const* colon =
-        static_cast<char const*>(memchr(found, (int)':', eol - found));
-
-    if (nullptr == colon) {
+    auto parts = StringUtils::split(header, ':');
+    if (parts.size() != 2) {
       // invalid header, not containing ':'
       return false;
     }
 
     // set up the key
-    std::string key(found, colon - found);
+    std::string& key = parts[0];
     StringUtils::trimInPlace(key);
+    StringUtils::tolowerInPlace(key);
 
-    if (key[0] == 'c' || key[0] == 'C') {
+    if (key == StaticStrings::ContentTypeHeader) {
       // got an interesting key. now process it
-      StringUtils::tolowerInPlace(key);
+      // extract the value, too
+      std::string& value = parts[1];
+      StringUtils::trimInPlace(value);
 
-      // skip the colon itself
-      ++colon;
-      // skip any whitespace
-      while (*colon == ' ') {
-        ++colon;
-      }
-
-      if (key == StaticStrings::ContentTypeHeader) {
-        // extract the value, too
-        std::string value(colon, eol - colon);
-        StringUtils::trimInPlace(value);
-
-        if (value == StaticStrings::BatchContentType) {
-          hasTypeHeader = true;
-        } else {
-          LOG_TOPIC("f7836", WARN, arangodb::Logger::REPLICATION)
-              << "unexpected content-type '" << value
-              << "' for multipart-message. expected: '"
-              << StaticStrings::BatchContentType << "'";
-        }
-      } else if ("content-id" == key) {
-        helper.contentId = colon;
-        helper.contentIdLength = eol - colon;
+      if (value == StaticStrings::BatchContentType) {
+        hasTypeHeader = true;
       } else {
-        // ignore other headers
+        LOG_TOPIC("f7836", WARN, arangodb::Logger::REPLICATION)
+            << "unexpected content-type '" << value
+            << "' for multipart-message. expected: '"
+            << StaticStrings::BatchContentType << "'";
       }
+    } else if ("content-id" == key) {
+      std::string& value = parts[1];
+      StringUtils::trimInPlace(value);
+      helper.contentId = value;
     }
-
-    found = eol + breakLength;  // plus the \n
   }
-
-  found += breakLength;  // for 2nd \n
 
   if (!hasTypeHeader) {
     // no Content-Type header. this is an error
     return false;
   }
 
-  // we're at the start of the body part. set the return value
-  helper.foundStart = found;
+  size_t offset = helper.searchStart;
 
-  // search for the end of the boundary
-  found = strstr(helper.foundStart, helper.message.boundary);
-
-  if (found == nullptr || found >= searchEnd) {
+  if (!helper.message.findBoundaryEnd(helper.searchStart)) {
     // did not find the end. this is an error
     return false;
   }
 
-  helper.foundLength = found - helper.foundStart;
+  helper.found = {helper.message.message.data() + offset,
+                  helper.searchStart - offset - helper.message.boundary.size()};
 
-  char const* p = found + helper.message.boundaryLength;
-
-  if (p + 2 > searchEnd) {
-    // end of boundary is outside the buffer
-    return false;
+  helper.containsMore = !helper.message.isAtEnd(helper.searchStart);
+  if (helper.containsMore) {
+    helper.searchStart -= helper.message.boundary.size();
   }
-
-  if (*p != '-' || *(p + 1) != '-') {
-    // we've not reached the end yet
-    helper.containsMore = true;
-    helper.searchStart = found;
-  }
-
   return true;
 }

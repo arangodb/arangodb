@@ -95,7 +95,7 @@ Group Base Specifications Issue 7</a>, IEEE Std 1003.1-2017, 2018
 Edition.
 Because the database's scope encompasses real-world changes to civil
 timekeeping, its model for describing time is more complex than the
-standard and daylight saving times supported by POSIX.
+standard and daylight saving times supported by POSIX.1-2017.
 A <code><abbr>tz</abbr></code> timezone corresponds to a ruleset that can
 have more than two changes per year, these changes need not merely
 flip back and forth between two alternatives, and the rules themselves
@@ -187,7 +187,7 @@ in decreasing order of importance:
     href="https://en.wikipedia.org/wiki/ASCII">ASCII</a> letters,
     '<code>.</code>', '<code>-</code>' and '<code>_</code>'.
     Do not use digits, as that might create an ambiguity with <a
-    href="https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap08.html#tag_08_03">POSIX
+    href="https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap08.html#tag_08_03">POSIX.1-2017
     <code>TZ</code> strings</a>.
     A file name component must not exceed 14 characters or start with
     '<code>-</code>'.
@@ -362,6 +362,11 @@ The backward-compatibility file <code>zone.tab</code> is similar
 but conforms to the older-version guidelines related to <abbr>ISO</abbr> 3166-1;
 it lists only one country code per entry and unlike <code>zone1970.tab</code>
 it can list names defined in <code>backward</code>.
+Applications that process only timestamps from now on can instead use the file
+<code>zonenow.tab</code>, which partitions the world more coarsely,
+into regions where clocks agree now and in the predicted future;
+this file is smaller and simpler than <code>zone1970.tab</code>
+and <code>zone.tab</code>.
 </p>
 
 <p>
@@ -373,7 +378,7 @@ nowadays distributions typically use it
 and no great weight should be attached to whether a link
 is defined in <code>backward</code> or in some other file.
 The source file <code>etcetera</code> defines names that may be useful
-on platforms that do not support POSIX-style <code>TZ</code> strings;
+on platforms that do not support POSIX.1-2017-style <code>TZ</code> strings;
 no other source file other than <code>backward</code>
 contains links to its zones.
 One of <code>etcetera</code>'s names is <code>Etc/UTC</code>,
@@ -421,7 +426,7 @@ in decreasing order of importance:
     expression <code>[-+[:alnum:]]{3,6}</code> should match the
     abbreviation.
     This guarantees that all abbreviations could have been specified by a
-    POSIX <code>TZ</code> string.
+    POSIX.1-2017 <code>TZ</code> string.
     </p>
   </li>
   <li>
@@ -765,12 +770,12 @@ href="https://www.dissentmagazine.org/blog/booked-a-global-history-of-time-vanes
     calendar with 24-hour days. These divergences range from
     relatively minor, such as Japanese bars giving times like "24:30" for the
     wee hours of the morning, to more-significant differences such as <a
-    href="https://www.pri.org/stories/2015-01-30/if-you-have-meeting-ethiopia-you-better-double-check-time">the
+    href="https://theworld.org/stories/2015-01-30/if-you-have-meeting-ethiopia-you-better-double-check-time">the
     east African practice of starting the day at dawn</a>, renumbering
     the Western 06:00 to be 12:00. These practices are largely outside
     the scope of the <code><abbr>tz</abbr></code> code and data, which
     provide only limited support for date and time localization
-    such as that required by POSIX.
+    such as that required by POSIX.1-2017.
     If <abbr>DST</abbr> is not used a different time zone
     can often do the trick; for example, in Kenya a <code>TZ</code> setting
     like <code>&lt;-03&gt;3</code> or <code>America/Cayenne</code> starts
@@ -867,23 +872,23 @@ input is occasionally extended, and a platform may still be shipping
 an older <code>zic</code>.
 </p>
 
-<h3 id="POSIX">POSIX properties and limitations</h3>
+<h3 id="POSIX">POSIX.1-2017 properties and limitations</h3>
 <ul>
   <li>
     <p>
-    In POSIX, time display in a process is controlled by the
+    In POSIX.1-2017, time display in a process is controlled by the
     environment variable <code>TZ</code>.
-    Unfortunately, the POSIX
+    Unfortunately, the POSIX.1-2017
     <code>TZ</code> string takes a form that is hard to describe and
     is error-prone in practice.
-    Also, POSIX <code>TZ</code> strings cannot deal with daylight
+    Also, POSIX.1-2017 <code>TZ</code> strings cannot deal with daylight
     saving time rules not based on the Gregorian calendar (as in
     Morocco), or with situations where more than two time zone
     abbreviations or <abbr>UT</abbr> offsets are used in an area.
     </p>
 
     <p>
-    The POSIX <code>TZ</code> string takes the following form:
+    The POSIX.1-2017 <code>TZ</code> string takes the following form:
     </p>
 
     <p>
@@ -950,7 +955,7 @@ an older <code>zic</code>.
     </dl>
 
     <p>
-    Here is an example POSIX <code>TZ</code> string for New
+    Here is an example POSIX.1-2017 <code>TZ</code> string for New
     Zealand after 2007.
     It says that standard time (<abbr>NZST</abbr>) is 12 hours ahead
     of <abbr>UT</abbr>, and that daylight saving time
@@ -961,7 +966,7 @@ an older <code>zic</code>.
     <pre><code>TZ='NZST-12NZDT,M9.5.0,M4.1.0/3'</code></pre>
 
     <p>
-    This POSIX <code>TZ</code> string is hard to remember, and
+    This POSIX.1-2017 <code>TZ</code> string is hard to remember, and
     mishandles some timestamps before 2008.
     With this package you can use this instead:
     </p>
@@ -999,7 +1004,7 @@ an older <code>zic</code>.
     limit phone calls to off-peak hours.
   </li>
   <li>
-    POSIX provides no convenient and efficient way to determine
+    POSIX.1-2017 provides no convenient and efficient way to determine
     the <abbr>UT</abbr> offset and time zone abbreviation of arbitrary
     timestamps, particularly for timezones
     that do not fit into the POSIX model.
@@ -1026,14 +1031,14 @@ an older <code>zic</code>.
   </li>
 </ul>
 
-<h3 id="POSIX-extensions">Extensions to POSIX in the
+<h3 id="POSIX-extensions">Extensions to POSIX.1-2017 in the
 <code><abbr>tz</abbr></code> code</h3>
 <ul>
   <li>
     <p>
     The <code>TZ</code> environment variable is used in generating
     the name of a file from which time-related information is read
-    (or is interpreted à la POSIX); <code>TZ</code> is no longer
+    (or is interpreted à la POSIX.1-2017); <code>TZ</code> is no longer
     constrained to be a string containing abbreviations
     and numeric data as described <a href="#POSIX">above</a>.
     The file's format is <dfn><abbr>TZif</abbr></dfn>,
