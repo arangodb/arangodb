@@ -25,6 +25,7 @@
 
 #include <velocypack/Iterator.h>
 
+#include "Aql/OptimizerRule.h"
 #include "IResearch/IResearchLink.h"
 #include "IResearch/IResearchLinkHelper.h"
 #include "IResearch/IResearchView.h"
