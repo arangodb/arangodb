@@ -342,6 +342,8 @@ class instanceManager {
       let hasTimedOut = internal.SetGlobalExecutionDeadlineTo(0.0);
       if (hasTimedOut) {
         print(RED + Date() + ' Deadline reached! Forcefully shutting down!' + RESET);
+      } else {
+        print(`${RED}${Date()} Startup failed! Forcefully shutting down:\n${e.message}${e.stack}\n${RESET}`);
       }
       this.arangods.forEach(arangod => {
         try {

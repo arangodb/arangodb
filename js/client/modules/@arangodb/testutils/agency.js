@@ -189,16 +189,11 @@ class agencyMgr {
   }
   
   detectAgencyAlive() {
-    if (this.options.agency &&
+    if (!this.options.agency ||
         !this.shouldBeCompleted() &&
         this.moreIsAlreadyRunning) {
       return;
     }
-    
-    //        count === this.agencySize) {
-      //    this.detectAgencyAlive();
-        // this.dumpedAgency
-    
     let count = 20;
     while (count > 0) {
       let haveConfig = 0;
