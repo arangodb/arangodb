@@ -316,7 +316,7 @@ function recovery_cluster_server (options) {
         results[test] = {
           failed: 1,
           status: false,
-          message: "Crashed! \n" + err + "\nAborting execution of more tests",
+          message: `Crashed! \n${err.message}\nAborting execution of more tests\n${err.stack}`,
           duration: -1
         };
         results.status = false;

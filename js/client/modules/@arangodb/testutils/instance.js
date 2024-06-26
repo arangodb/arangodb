@@ -883,7 +883,8 @@ class instance {
     httpOptions.returnBodyOnError = true;
     while (true) {
       wait(1, false);
-      if (this.options.useReconnect && this.isFrontend()) {
+      try {
+        if (this.options.useReconnect && this.isFrontend()) {
           if (this.JWT) {
             print(Date() + " reconnecting with JWT " + this.url);
             arango.reconnect(this.endpoint,
@@ -900,12 +901,20 @@ class instance {
                            this.options.password,
                            time() < deadline);
           }
-        break;
-      } else {
-        print(`${Date()} tickeling ${this.url}`);
-        const reply = download(this.url + '/_api/version', '', httpOptions);
-        if (!reply.error && reply.code === 200) {
-          break;
+          return;
+        } else {
+          print(`${Date()} tickeling ${this.url}`);
+          const reply = download(this.url + '/_api/version', '', httpOptions);
+          if (!reply.error && reply.code === 200) {
+            return;
+          }
+        }
+      } catch (ex) {
+        if (time() > deadline) {
+          print('.');
+          sleep(1);
+        } else {
+          throw new Error(`server did not become availabe on time : ${deadline} - ${ex.message}`);
         }
       }
 
