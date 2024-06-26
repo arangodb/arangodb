@@ -181,7 +181,7 @@ class permissionsRunner extends trs.runLocalInArangoshRunner {
               }
               this.results[te] = {
                 message: "Aborting testrun; failed to launch instance: " +
-                  ex.message + " - " +
+                  ex.message + " - " + ex.stack +
                   JSON.stringify(this.instanceManager.getStructure()),
                 status: false,
                 shutdown: false
