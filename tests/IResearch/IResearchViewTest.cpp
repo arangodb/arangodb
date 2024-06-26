@@ -51,7 +51,6 @@
 #include "Aql/Function.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/SortCondition.h"
-#include "Aql/OptimizerRulesFeature.h"
 #include "Auth/UserManager.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/error.h"
