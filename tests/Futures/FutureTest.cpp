@@ -21,15 +21,391 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Futures/Future.h"
-#include "Futures/Utilities.h"
-
 #include "gtest/gtest.h"
 
+#include "Futures/Try.h"
+#include "Futures/Unit.h"
+#include "Futures/Exceptions.h"
+
+#include <coroutine>
 #include <condition_variable>
 #include <exception>
 #include <mutex>
+#include <memory>
 
+namespace arangodb::futures {
+
+template<typename T>
+struct Future;
+template<typename T>
+struct promise_type;
+
+template<typename T>
+struct promise_type_base {
+  auto initial_suspend() { return std::suspend_never{}; }
+  auto final_suspend() noexcept {
+    struct final_await {
+      auto await_ready() noexcept { return false; }
+      std::coroutine_handle<> await_suspend(std::coroutine_handle<>) {
+        if (_promise->_ready.exchange(true, std::memory_order_release)) {
+          return _promise->_continuation;
+        } else {
+          return std::noop_coroutine();
+        }
+      }
+      void await_resume() noexcept {}
+      promise_type_base* _promise;
+    };
+
+    return final_await{this};
+  }
+
+  void unhandled_exception() { _value.set_exception(std::current_exception()); }
+
+  Future<T> get_return_object() {
+    return Future<T>{std::coroutine_handle<promise_type<T>>::from_promise(
+        *static_cast<promise_type<T>*>(this))};
+  }
+
+  std::atomic_bool _ready;
+  Try<T> _value;
+  std::coroutine_handle<> _continuation;
+};
+
+template<typename T>
+struct promise_type : promise_type_base<T> {
+  template<typename V>
+  void return_value(V&& v) {
+    this->_value.emplace(std::forward<V>(v));
+  }
+};
+
+template<>
+struct promise_type<Unit> : promise_type_base<Unit> {
+  void return_void() { this->_value.emplace(); }
+};
+
+template<typename T>
+struct isFuture {
+  using inner = void;
+  static inline constexpr bool value = false;
+};
+template<typename T>
+struct isFuture<Future<T>> {
+  using inner = T;
+  static inline constexpr bool value = true;
+};
+
+template<typename T>
+struct [[nodiscard]] Future {
+  using promise_type = promise_type<T>;
+
+  struct awaitable {
+    bool await_ready() noexcept {
+      return _handle.promise()._ready.load(std::memory_order_relaxed);
+    }
+    bool await_suspend(std::coroutine_handle<> continuation) {
+      auto& promise = _handle.promise();
+      promise._continuation = continuation;
+      return !promise._ready.exchange(true, std::memory_order_acquire);
+    }
+
+    auto& await_resume() { return _handle.promise()._value; }
+
+    std::coroutine_handle<promise_type> _handle;
+  };
+
+  template<typename F>
+  struct TransformAwaitable : private awaitable {
+    TransformAwaitable(F fn, std::coroutine_handle<promise_type> handle)
+        : awaitable{handle}, fn(std::move(fn)) {}
+
+    using awaitable::await_ready;
+    using awaitable::await_suspend;
+    F fn;
+    auto await_resume() { return fn(awaitable::await_resume()); }
+  };
+
+  template<typename F>
+  TransformAwaitable(F&& f, std::coroutine_handle<promise_type>)
+      -> TransformAwaitable<F>;
+
+  auto awaitValue() {
+    return TransformAwaitable{[](auto& t) { return std::move(t).get(); },
+                              _handle};
+  }
+  auto awaitTry() { return awaitable{_handle}; }
+
+  auto operator co_await() { return awaitValue(); }
+
+  explicit Future(std::coroutine_handle<promise_type> handle)
+      : _handle(handle) {}
+  Future() = default;
+
+  bool valid() const noexcept { return _handle != nullptr; }
+  bool isReady() const {
+    if (!valid()) {
+      throw FutureException(ErrorCode::NoState);
+    }
+    return _handle.promise()._ready.load(std::memory_order_relaxed);
+  }
+
+  template<typename V = T, std::enable_if_t<!isFuture<V>::value, int> = 0>
+  Future(V&& v) {
+    *this = makeValue(std::forward<V>(v));
+  }
+
+  Future(Future&& f) { std::swap(_handle, f._handle); }
+  Future& operator=(Future&& f) {
+    if (this != &f) {
+      detach();
+      _handle = f._handle;
+      f._handle = nullptr;
+    }
+    return *this;
+  }
+
+  template<typename... Args>
+  Future(std::in_place_t, Args&&... args) {
+    *this = makeValue(T(std::forward<Args>(args)...));
+  }
+
+  static Future<T> makeEmpty() { return {}; }
+  static Future<T> makeValue(T t) { co_return std::move(t); }
+
+  T& waitAndGet() & {
+    wait();
+    return result().get();
+  }
+  T waitAndGet() && {
+    wait();
+    return std::move(Future<T>(std::move(*this)).result().get());
+  }
+
+  bool hasValue() const {
+    TRI_ASSERT(isReady());
+    return result().hasValue();
+  }
+  bool hasException() const {
+    TRI_ASSERT(isReady());
+    return result().hasException();
+  }
+
+  Try<T>& waitAndGetTry() & {
+    wait();
+    return result();
+  }
+
+  Try<T>&& waitAndGetTry() && {
+    wait();
+    return std::move(result());
+  }
+
+  Try<T>& result() {
+    if (!valid()) {
+      throw FutureException(ErrorCode::NoState);
+    }
+    if (!isReady()) {
+      throw FutureException(ErrorCode::FutureNotReady);
+    }
+    return _handle.promise()._value;
+  }
+  Try<T> const& result() const {
+    if (!valid()) {
+      throw FutureException(ErrorCode::NoState);
+    }
+    if (!isReady()) {
+      throw FutureException(ErrorCode::FutureNotReady);
+    }
+    return _handle.promise()._value;
+  }
+
+  void wait() {
+    if (!valid()) {
+      throw FutureException(ErrorCode::NoState);
+    }
+    bool done = false;
+    std::mutex mutex;
+    std::condition_variable cv;
+
+    std::ignore = [&, this]() -> Future<Unit> {
+      co_await this->awaitTry();
+      std::unique_lock guard(mutex);
+      done = true;
+      cv.notify_one();
+      co_return;
+    }();
+
+    std::unique_lock guard(mutex);
+    cv.wait(guard, [&] { return done; });
+  }
+
+  template<typename F, typename R = std::invoke_result_t<F, T&&>>
+  auto thenValue(F fn) -> Future<lift_unit_t<R>>
+  requires(!isFuture<R>::value) {
+    if (!valid()) {
+      throw FutureException(ErrorCode::NoState);
+    }
+    return [&]() -> Future<lift_unit_t<R>> { co_return fn(co_await *this); }();
+  }
+  template<typename F, typename R = std::invoke_result_t<F, T&&>>
+  auto thenValue(F fn) -> Future<lift_unit_t<typename isFuture<R>::inner>>
+  requires(isFuture<R>::value) {
+    if (!valid()) {
+      throw FutureException(ErrorCode::NoState);
+    }
+    return [&]() -> Future<lift_unit_t<typename isFuture<R>::inner>> {
+      co_return co_await fn(co_await *this);
+    }();
+  }
+
+  template<typename F, typename R = std::invoke_result_t<F, Try<T>&&>>
+  auto then(F fn) -> Future<lift_unit_t<R>>
+  requires(!isFuture<R>::value) {
+    co_return fn(std::move(co_await awaitTry()));
+  }
+  template<typename F, typename R = std::invoke_result_t<F, Try<T>&&>>
+  auto then(F fn) -> Future<lift_unit_t<typename isFuture<R>::inner>>
+  requires(isFuture<R>::value) {
+    co_return co_await fn(std::move(co_await awaitTry()));
+  }
+
+  template<typename ExceptionType, typename ET = std::decay_t<ExceptionType>,
+           typename F, typename R = std::invoke_result_t<F, ET&>>
+  auto thenError(F fn) -> Future<T>
+  requires(!isFuture<R>::value) {
+    try {
+      if constexpr (std::is_same_v<T, Unit>) {
+        co_await *this;
+        co_return;
+      } else {
+        co_return co_await *this;
+      }
+    } catch (ET& e) {
+      co_return fn(e);
+    }
+  }
+  template<typename ExceptionType, typename ET = std::decay_t<ExceptionType>,
+           typename F, typename R = std::invoke_result_t<F, ET&>>
+  auto thenError(F fn) -> Future<T>
+  requires(isFuture<R>::value) {
+    ET* ep = nullptr;
+    try {
+      if constexpr (std::is_same_v<T, Unit>) {
+        co_await *this;
+        co_return;
+      } else {
+        co_return co_await *this;
+      }
+      ADB_UNREACHABLE;
+    } catch (ET& e) {
+      ep = &e;
+    }
+    if constexpr (std::is_same_v<T, Unit>) {
+      co_await fn(*ep);
+      co_return;
+    } else {
+      co_return co_await fn(*ep);
+    }
+  }
+
+  ~Future() { detach(); }
+
+  void detach() {
+    if (_handle) {
+      _handle.promise()._continuation = std::noop_coroutine();
+      if (_handle.promise()._ready.exchange(true)) {
+        _handle.destroy();
+      }
+    }
+  }
+
+ private:
+  std::coroutine_handle<promise_type> _handle;
+};
+
+template<typename T>
+Future<typename std::decay<T>::type> makeFuture(T&& t) {
+  co_return std::forward<T>(t);
+}
+template<typename T>
+Future<T> makeFuture(Try<T> e) {
+  co_return e.get();
+}
+template<typename T>
+Future<T> makeFuture(std::exception_ptr e) {
+  co_await std::suspend_never{};  // trigger coroutine generation
+  std::rethrow_exception(e);
+}
+template<class T, class E>
+typename std::enable_if<std::is_base_of<std::exception, E>::value,
+                        Future<T>>::type
+makeFuture(E const& e) {
+  co_await std::suspend_never{};  // trigger coroutine generation
+  throw e;
+}
+Future<Unit> makeFuture() { co_return; }
+
+// makeFutureWith(Future<T>()) -> Future<T>
+template<typename F, typename R = std::invoke_result_t<F>>
+typename std::enable_if<isFuture<R>::value, R>::type makeFutureWith(F&& func) {
+  using InnerType = typename isFuture<R>::inner;
+  try {
+    return std::forward<F>(func)();
+  } catch (...) {
+    return makeFuture<InnerType>(std::current_exception());
+  }
+}
+
+// makeFutureWith(T()) -> Future<T>
+// makeFutureWith(void()) -> Future<Unit>
+template<typename F, typename R = std::invoke_result_t<F>>
+typename std::enable_if<!isFuture<R>::value, Future<R>>::type makeFutureWith(
+    F&& func) {
+  return makeFuture<R>(
+      makeTryWith([&func]() mutable { return std::forward<F>(func)(); }));
+}
+
+template<typename T>
+struct Promise {
+  using promise_type = typename Future<T>::promise_type;
+
+  Future<T> getFuture() {
+    struct promise_awaitable {
+      bool await_ready() { return false; }
+      void await_suspend(std::coroutine_handle<promise_type> handle) {
+        _p->_handle = handle;
+      }
+      void await_resume() {}
+      Promise* _p;
+    };
+
+    co_await promise_awaitable{this};
+    ADB_UNREACHABLE;
+  }
+
+  void setTry(Try<T>&& t) {
+    promise_type& p = _handle.promise();
+    p.return_value(std::move(t));
+    if (p._ready.exchange(true)) {
+      p._continuation.resume();
+    }
+  }
+
+  template<typename V>
+  void setValue(V&& v) {
+    promise_type& p = _handle.promise();
+    p.return_value(std::forward<V>(v));
+    if (p._ready.exchange(true)) {
+      p._continuation.resume();
+    }
+  }
+
+ private:
+  std::coroutine_handle<typename Future<T>::promise_type> _handle;
+};
+
+}  // namespace arangodb::futures
 using namespace arangodb::futures;
 
 namespace {
