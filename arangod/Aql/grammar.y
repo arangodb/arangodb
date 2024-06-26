@@ -489,6 +489,16 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %type <node> T_DOUBLE
 %type <strval> T_PARAMETER;
 %type <strval> T_DATA_SOURCE_PARAMETER;
+%type <strval> T_OUTBOUND;
+%type <strval> T_INBOUND;
+%type <strval> T_ANY;
+%type <strval> T_ALL;
+%type <strval> T_NONE;
+%type <strval> T_LIKE;
+%type <strval> T_INTO;
+%type <strval> T_WITH;
+%type <strval> T_WINDOW;
+%type <strval> T_LIMIT;
 %type <node> with_collection;
 %type <node> sort_list;
 %type <node> sort_element;
@@ -2068,6 +2078,46 @@ object_element:
       // create a reference to the variable
       auto node = ast->createNodeReference(variable);
       parser->pushObjectElement($1.value, $1.length, node);
+    }
+  | T_INBOUND T_COLON expression {
+      // attribute-name : attribute-value
+      parser->pushObjectElement($1.value, $1.length, $3);
+    }
+  | T_OUTBOUND T_COLON expression {
+      // attribute-name : attribute-value
+      parser->pushObjectElement($1.value, $1.length, $3);
+    }
+  | T_ANY T_COLON expression {
+      // attribute-name : attribute-value
+      parser->pushObjectElement($1.value, $1.length, $3);
+    }
+  | T_ALL T_COLON expression {
+      // attribute-name : attribute-value
+      parser->pushObjectElement($1.value, $1.length, $3);
+    }
+  | T_NONE T_COLON expression {
+      // attribute-name : attribute-value
+      parser->pushObjectElement($1.value, $1.length, $3);
+    }
+  | T_LIKE T_COLON expression {
+      // attribute-name : attribute-value
+      parser->pushObjectElement($1.value, $1.length, $3);
+    }
+  | T_INTO T_COLON expression {
+      // attribute-name : attribute-value
+      parser->pushObjectElement($1.value, $1.length, $3);
+    }
+  | T_WITH T_COLON expression {
+      // attribute-name : attribute-value
+      parser->pushObjectElement($1.value, $1.length, $3);
+    }
+  | T_WINDOW T_COLON expression {
+      // attribute-name : attribute-value
+      parser->pushObjectElement($1.value, $1.length, $3);
+    }
+  | T_LIMIT T_COLON expression {
+      // attribute-name : attribute-value
+      parser->pushObjectElement($1.value, $1.length, $3);
     }
   | object_element_name T_COLON expression {
       // attribute-name : attribute-value

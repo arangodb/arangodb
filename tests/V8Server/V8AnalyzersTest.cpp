@@ -42,7 +42,6 @@
 #include "Mocks/LogLevels.h"
 
 #include "ApplicationFeatures/HttpEndpointProvider.h"
-#include "Aql/OptimizerRulesFeature.h"
 #include "Aql/QueryRegistry.h"
 #include "Auth/UserManager.h"
 #include "GeneralServer/AuthenticationFeature.h"
