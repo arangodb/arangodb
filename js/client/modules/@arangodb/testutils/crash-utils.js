@@ -292,14 +292,14 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
     var matchVarTmp = /\/var\/tmp/;
     var matchSystemdCoredump = /.*systemd-coredump*/;
     var corePattern = fs.readBuffer(cpf);
-    var cp = corePattern.utf8Slice(0, corePattern.length);
+    var cp = corePattern.utf8Slice(0, corePattern.length).trim();
 
     if (matchApport.exec(cp) !== null) {
       print(RED + 'apport handles corefiles on your system. Uninstall it if you want us to get corefiles for analysis.' + RESET);
       return;
     }
 
-    const knownPatterns = ["%s", "%d", "%e", "%E", "%g", "%h", "%i", "%I", "%s", "%t", "%u"];
+    const knownPatterns = ["%s", "%d", "%e", "%E", "%g", "%h", "%i", "%I", "%t", "%u"];
     const replaceKnownPatterns = (s) => {
       knownPatterns.forEach(p => {
         s = s.replace(p, "*");
@@ -319,9 +319,9 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
       options.coreDirectory = replaceKnownPatterns(cp).replace('%p', instanceInfo.pid);
     } else {
       let found = false;
-      options.coreDirectory = replaceKnownPatterns(cp).replace('%p', instanceInfo.pid).trim();
+      options.coreDirectory = replaceKnownPatterns(cp).replace('%p', instanceInfo.pid);
       if (options.coreDirectory.search('/') < 0) {
-        let rx = new RegExp(options.coreDirectory);
+        let rx = new RegExp(cp.replace(/%[sdeEghiItu]/, '.*').replace(/%p/, instanceInfo.pid));
         fs.list('.').forEach((file) => {
           if (file.match(rx) != null) {
             options.coreDirectory = file;
@@ -331,8 +331,8 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
         });
       }
       if (!found) {
-        print(RED + 'Don\'t know howto locate corefiles in your system. "' + cpf + '" contains: "' + cp + '" was looking in: "' + options.coreDirectory + RESET);
-        print(RED + 'Directory: ' + JSON.stringify(fs.list('.')));
+        print(RED + 'Don\'t know howto locate corefiles in your system. "' + cpf + '" contains: "' + cp + '" was looking in: "' + options.coreDirectory + '"' + RESET);
+        print(RED + 'Directory (' + fs.makeAbsolute('.') + '): ' + JSON.stringify(fs.list('.')));
         return;
       }
     }
