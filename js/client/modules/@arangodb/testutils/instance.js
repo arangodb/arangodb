@@ -640,9 +640,12 @@ class instance {
   // / @brief executes a command, possible with valgrind
   // //////////////////////////////////////////////////////////////////////////////
 
-  _executeArangod (moreArgs) {
+  _executeArangod (moreArgs, subEnv) {
     if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret')) {
       this.JWT = moreArgs['server.jwt-secret'];
+    }
+    if (subEnv === undefined) {
+      subEnv = [];
     }
 
     let cmd = pu.ARANGOD_BIN;
@@ -679,8 +682,8 @@ class instance {
       print(Date() + ' starting process ' + cmd + ' with arguments: ' + JSON.stringify(argv));
     }
 
-    let subEnv = this.sanHandler.getSanOptions();
-
+    this.sanHandler.getSanOptions(subEnv);
+    print(subEnv)
     if ((this.useableMemory === undefined) && (this.options.memory !== undefined)){
       throw new Error(`${this.name} don't have planned memory though its configured!`);
     }
@@ -699,9 +702,9 @@ class instance {
   // /
   // //////////////////////////////////////////////////////////////////////////////
 
-  startArango () {
+  startArango (subEnv) {
     try {
-      this.pid = this._executeArangod().pid;
+      this.pid = this._executeArangod({}, subEnv).pid;
       if (this.options.enableAliveMonitor) {
         internal.addPidToMonitor(this.pid);
       }
