@@ -236,7 +236,7 @@ IndexHint::IndexHint(velocypack::Slice slice) {
   // read index hint from slice
   // index hints were introduced in version 3.5. in previous versions they
   // are not available, so we need to be careful when reading them
-  std::string_view type;
+  std::string type;
 
   VPackSlice s = slice.get(kFieldContainer);
   if (s.isObject()) {
