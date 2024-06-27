@@ -25,6 +25,7 @@
 // / @author Wilfried Goesgens
 // //////////////////////////////////////////////////////////////////////////////
 
+const crypto = require('@arangodb/crypto');
 const fs = require('fs');
 const tu = require('@arangodb/testutils/test-utils');
 const internal = require('internal');
