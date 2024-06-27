@@ -356,7 +356,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
   let sh = new sanHandler(cmd.replace(/.*\//, ''), options);
   sh.detectLogfiles(instanceInfo.rootDir, instanceInfo.rootDir);
   let subProcessEnv = [];
-  sh.getSanOptions(subProcessEnv)
+  sh.getSanOptions(subProcessEnv);
   let res = executeExternalAndWait(cmd, args, false, timeout * 1000,  subProcessEnv);
   
   instanceInfo.pid = res.pid;

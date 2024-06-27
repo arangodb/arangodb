@@ -39,6 +39,7 @@ const GREEN = internal.COLORS.COLOR_GREEN;
 const RED = internal.COLORS.COLOR_RED;
 const RESET = internal.COLORS.COLOR_RESET;
 // const YELLOW = internal.COLORS.COLOR_YELLOW;
+const seconds = x => x * 1000;
 
 class agencyMgr {
   constructor(options, wholeCluster) {
@@ -80,7 +81,7 @@ class agencyMgr {
     this.endpoints = struct['endpoints'];
   }
   getAgency(path, method, body = null) {
-    return this.agencyInstances[0].getAgent(path, method, body);
+    return this.getAgent(this.agencyInstances[0], path, method, body);
   }
 
   shouldBeCompleted() {
@@ -93,6 +94,38 @@ class agencyMgr {
     let count = 0;
     this.wholeCluster.arangods.forEach(arangod => { if (arangod.pid !== null) {count ++;}});
     return count > this.agencySize;
+  }
+  getAgent(agent, path, method, body = null) {
+    let opts = {
+      method: method
+    };
+    if (body === null) {
+      body = (method === 'POST') ? '[["/"]]' : '';
+    }
+
+    if (agent.args.hasOwnProperty('authOpts')) {
+      opts['jwt'] = crypto.jwtEncode(agent.authOpts['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
+    } else if (agent.args.hasOwnProperty('server.jwt-secret')) {
+      opts['jwt'] = crypto.jwtEncode(agent.args['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
+    } else if (agent.jwtFiles) {
+      opts['jwt'] = crypto.jwtEncode(fs.read(agent.jwtFiles[0]), {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
+    }
+    return download(agent.url + path, body, opts);
+  }
+
+  dumpAgent(agent, path, method, fn, dumpdir) {
+    print('--------------------------------- '+ fn + ' -----------------------------------------------');
+    let agencyReply = this.getAgent(agent, path, method);
+    if (agencyReply.code === 200) {
+      if (fn === "agencyState") {
+        fs.write(fs.join(dumpdir, `${fn}_${agent.pid}.json`), agencyReply.body);
+      } else {
+        let agencyValue = JSON.parse(agencyReply.body);
+        fs.write(fs.join(dumpdir, `${fn}_${agent.pid}.json`), JSON.stringify(agencyValue, null, 2));
+      }
+    } else {
+      print(agencyReply);
+    }
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -119,16 +152,16 @@ class agencyMgr {
     } else {
       fs.makeDirectory(dumpdir);
     }
-    this.agencyInstances.forEach((arangod) => {
+    this.agencyInstances.forEach(arangod => {
       if (!arangod.checkArangoAlive()) {
         print(Date() + " this agent is already dead: " + JSON.stringify(arangod.getStructure()));
       } else {
         print(Date() + " Attempting to dump Agent: " + JSON.stringify(arangod.getStructure()));
-        arangod.dumpAgent( '/_api/agency/config', 'GET', 'agencyConfig', dumpdir);
+        this.dumpAgent(arangod,  '/_api/agency/config', 'GET', 'agencyConfig', dumpdir);
 
-        arangod.dumpAgent('/_api/agency/state', 'GET', 'agencyState', dumpdir);
+        this.dumpAgent(arangod, '/_api/agency/state', 'GET', 'agencyState', dumpdir);
 
-        arangod.dumpAgent('/_api/agency/read', 'POST', 'agencyPlan', dumpdir);
+        this.dumpAgent(arangod, '/_api/agency/read', 'POST', 'agencyPlan', dumpdir);
       }
     });
     let zipfiles = [];
@@ -146,7 +179,7 @@ class agencyMgr {
     fs.removeDirectory(dumpdir);
   }
   getFromPlan(path) {
-    let req = this.agencyInstances[0].getAgent('/_api/agency/read', 'POST', `[["/arango/${path}"]]`);
+    let req = this.getAgent(this.agencyInstances[0], '/_api/agency/read', 'POST', `[["/arango/${path}"]]`);
     if (req.code !== 200) {
       throw new Error(`Failed to query agency [["/arango/${path}"]] : ${JSON.stringify(req)}`);
     }
@@ -188,10 +221,10 @@ class agencyMgr {
     }
   }
   
-  detectAgencyAlive() {
+  detectAgencyAlive(httpAuthOptions) {
     if (!this.options.agency ||
-        !this.shouldBeCompleted() &&
-        this.moreIsAlreadyRunning) {
+        !this.shouldBeCompleted() ||
+        this.moreIsAlreadyRunning()) {
       return;
     }
     let count = 20;
@@ -200,7 +233,7 @@ class agencyMgr {
       let haveLeader = 0;
       let leaderId = null;
       for (let agentIndex = 0; agentIndex < this.agencySize; agentIndex ++) {
-        let reply = this.agencyInstances[agentIndex].getAgent('/_api/agency/config', 'GET');
+        let reply = this.getAgent(this.agencyInstances[agentIndex], '/_api/agency/config', 'GET');
         if (this.options.extremeVerbosity) {
           print("Response ====> ");
           print(reply);
@@ -225,7 +258,7 @@ class agencyMgr {
           try {
             // set back log level to info for agents
             for (let agentIndex = 0; agentIndex < this.agencySize; agentIndex ++) {
-              this.agencyInstances[agentIndex].getAgent('/_admin/log/level', 'PUT', JSON.stringify({"agency":"info"}));
+              this.getAgent(this.agencyInstances[agentIndex], '/_admin/log/level', 'PUT', JSON.stringify({"agency":"info"}));
             }
           } catch (err) {}
           return;
