@@ -71,7 +71,6 @@ function getInstanceInfo() {
   if (global.hasOwnProperty('instanceManager')) {
     return global.instanceManager;
   }
-  print(global)
   if (instanceInfo === null) {
     instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
     if (instanceInfo.arangods.length > 2) {
