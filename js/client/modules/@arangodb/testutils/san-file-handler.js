@@ -71,8 +71,7 @@ class sanHandler {
       }
     }
   }
-  getSanOptions() {
-    let subProcesEnv = [];
+  getSanOptions(subProcesEnv) {
     if (this.enabled) {
       for (const [key, value] of Object.entries(this.sanOptions)) {
         let oneSet = "";
