@@ -1,5 +1,6 @@
 target_sources(arangodbtests
   PRIVATE
+  AsyncTest.cpp
   ConversionsTest.cpp
   CsvTest.cpp
   datetime.cpp
