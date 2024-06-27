@@ -60,7 +60,9 @@ struct ConcurrentNoWait {
 struct InstanceCounterValue {
   InstanceCounterValue() { instanceCounter += 1; }
   InstanceCounterValue(InstanceCounterValue const& o) { instanceCounter += 1; }
-  InstanceCounterValue(InstanceCounterValue&& o) { instanceCounter += 1; }
+  InstanceCounterValue(InstanceCounterValue&& o) noexcept {
+    instanceCounter += 1;
+  }
 
   ~InstanceCounterValue() {
     if (instanceCounter == 0) {
@@ -132,6 +134,25 @@ TYPED_TEST(AsyncTest, async_return) {
   this->wait.await(a);
   EXPECT_TRUE(awaitable.await_ready());
   EXPECT_EQ(awaitable.await_resume(), 12);
+}
+
+TYPED_TEST(AsyncTest, async_return_move) {
+  using ValueType = TypeParam::second_type;
+
+  auto a = [&]() -> async<ValueType> {
+    co_await this->wait;
+    co_return 12;
+  }();
+
+  EXPECT_TRUE(a.valid());
+
+  auto b = std::move(a);
+  EXPECT_TRUE(b.valid());
+  EXPECT_FALSE(a.valid());
+
+  a = std::move(b);
+  EXPECT_TRUE(a.valid());
+  EXPECT_FALSE(b.valid());
 }
 
 TYPED_TEST(AsyncTest, async_return_destroy) {

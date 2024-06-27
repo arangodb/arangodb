@@ -1,4 +1,6 @@
 #pragma once
+
+#include "expected.h"
 #include <coroutine>
 #include <atomic>
 #include <stdexcept>
@@ -8,202 +10,6 @@
 #include <iostream>
 
 namespace arangodb {
-
-template<typename T>
-struct expected {
-  expected() {}
-
-  template<typename... Args>
-  explicit expected(std::in_place_t, Args&&... args) noexcept(
-      std::is_nothrow_constructible_v<T, Args...>) requires
-      std::constructible_from<T, Args...> {
-    new (&_value) T(std::forward<Args>(args)...);
-    _state = kValue;
-  }
-
-  explicit expected(std::exception_ptr ex) {
-    _exception = ex;
-    _state = kException;
-  }
-
-  expected(expected const& other) noexcept(
-      std::is_nothrow_copy_constructible_v<T>) requires
-      std::copy_constructible<T> {
-    if (other._state == kValue) {
-      new (&_value) T(other._value);
-      _state = kValue;
-    } else if (other._state == kException) {
-      static_assert(std::is_nothrow_copy_constructible_v<std::exception_ptr>);
-      new (&_exception) std::exception_ptr(other._exception);
-      _state = kException;
-    }
-  }
-
-  expected(expected&& other) noexcept(
-      std::is_nothrow_move_constructible_v<T>) requires
-      std::move_constructible<T> {
-    if (other._state == kValue) {
-      new (&_value) T(std::move(other._value));
-      _state = kValue;
-    } else if (other._state == kException) {
-      static_assert(std::is_nothrow_move_constructible_v<std::exception_ptr>);
-      new (&_exception) std::exception_ptr(std::move(other._exception));
-      _state = kException;
-    }
-  }
-
-  expected& operator=(expected const& other) noexcept(
-      std::is_nothrow_copy_constructible_v<T>&&
-          std::is_nothrow_destructible_v<T>&& std::is_nothrow_copy_assignable_v<
-              T>) requires(std::copy_constructible<T>&&
-                               std::is_copy_assignable_v<T>) {
-    if (this != &other) {
-      if (other._state == kValue && _state == kValue) {
-        _state = other._state;
-      } else {
-        reset();
-        if (other._state == kValue) {
-          new (&_value) T(other._value);
-          _state = kValue;
-        } else if (other._state == kException) {
-          static_assert(
-              std::is_nothrow_copy_constructible_v<std::exception_ptr>);
-          new (&_exception) std::exception_ptr(other._exception);
-          _state = kException;
-        }
-      }
-    }
-    return *this;
-  }
-
-  expected& operator=(expected&& other) noexcept(
-      std::is_nothrow_move_constructible_v<T>&&
-          std::is_nothrow_destructible_v<T>&& std::is_nothrow_move_assignable_v<
-              T>) requires(std::move_constructible<T>&&
-                               std::is_move_assignable_v<T>) {
-    if (this != &other) {
-      if (other._state == kValue && _state == kValue) {
-        _state = std::move(other._state);
-      } else {
-        reset();
-        if (other._state == kValue) {
-          new (&_value) T(other._value);
-          _state = kValue;
-        } else if (other._state == kException) {
-          static_assert(
-              std::is_nothrow_copy_constructible_v<std::exception_ptr>);
-          new (&_exception) std::exception_ptr(other._exception);
-          _state = kException;
-        }
-        other.reset();
-      }
-    }
-    return *this;
-  }
-
-  template<typename... Args>
-  T& emplace(Args&&... args) noexcept(
-      std::is_nothrow_constructible_v<T, Args...>&&
-          std::is_nothrow_destructible_v<T>) requires
-      std::constructible_from<T, Args...> {
-    reset();
-    new (&_value) T(std::forward<Args>(args)...);
-    _state = kValue;
-    return _value;
-  }
-
-  void set_exception(std::exception_ptr const& ex) noexcept(
-      std::is_nothrow_destructible_v<T>) {
-    reset();
-    new (&_exception) std::exception_ptr(ex);
-    _state = kException;
-  }
-
-  T& get() & {
-    if (_state == kEmpty) {
-      throw std::runtime_error("accessing empty expected");
-    } else if (_state == kException) {
-      std::rethrow_exception(_exception);
-    } else {
-      return _value;
-    }
-  }
-
-  T const& get() const& {
-    if (_state == kEmpty) {
-      throw std::runtime_error("accessing empty expected");
-    } else if (_state == kException) {
-      std::rethrow_exception(_exception);
-    } else {
-      return _value;
-    }
-  }
-
-  T&& get() && {
-    if (_state == kEmpty) {
-      throw std::runtime_error("accessing empty expected");
-    } else if (_state == kException) {
-      std::rethrow_exception(_exception);
-    } else {
-      return std::move(_value);
-    }
-  }
-
-  T const&& get() const&& {
-    if (_state == kEmpty) {
-      throw std::runtime_error("accessing empty expected");
-    } else if (_state == kException) {
-      std::rethrow_exception(_exception);
-    } else {
-      return std::move(_value);
-    }
-  }
-
-  // It is debatable if -> and * operators should rethrow an exception within
-  T* operator->() noexcept { return &_value; }
-  T const* operator->() const noexcept { return &_value; }
-  T& operator*() noexcept { return &_value; }
-  T const& operator*() const noexcept { return &_value; }
-
-  ~expected() { reset(); }
-
-  void reset() {
-    if (_state == kValue) {
-      _value.~T();
-    } else if (_state == kException) {
-      _exception.~exception_ptr();
-    }
-    _state = kEmpty;
-  }
-
- private:
-  union {
-    T _value;
-    std::exception_ptr _exception;
-  };
-
-  enum { kEmpty, kValue, kException } _state = kEmpty;
-};
-
-template<>
-struct expected<void> {
-  expected() = default;
-  explicit expected(std::exception_ptr ex) : _exception(std::move(ex)) {}
-  void reset() { _exception = nullptr; }
-
-  void get() const {
-    if (_exception) {
-      std::rethrow_exception(_exception);
-    }
-  }
-
-  void set_exception(std::exception_ptr const& ex) { _exception = ex; }
-
-  void emplace() noexcept { reset(); }
-
- private:
-  std::exception_ptr _exception;
-};
 
 template<typename T>
 struct async_promise;
@@ -236,6 +42,11 @@ struct async_promise_base {
   auto get_return_object() {
     return async<T>{std::coroutine_handle<promise_type>::from_promise(
         *static_cast<promise_type*>(this))};
+  }
+
+  template<typename A>
+  A await_transform(A&& awaitable) {
+    return std::forward<A>(awaitable);
   }
 
   std::atomic<void*> _continuation = nullptr;
@@ -297,6 +108,19 @@ struct async {
   ~async() { reset(); }
 
   explicit async(std::coroutine_handle<promise_type> h) : _handle(h) {}
+
+  async(async const&) = delete;
+  async& operator=(async const&) = delete;
+
+  async(async&& o) noexcept : _handle(std::move(o._handle)) {
+    o._handle = nullptr;
+  }
+
+  async& operator=(async&& o) noexcept {
+    reset();
+    std::swap(o._handle, _handle);
+    return *this;
+  }
 
  private:
   std::coroutine_handle<promise_type> _handle;
