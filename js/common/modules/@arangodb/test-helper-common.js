@@ -108,6 +108,9 @@ exports.truncateFailure = function (collection) {
 };
 
 function getInstanceInfo() {
+  if (global.hasOwnProperty('instanceManager')) {
+    instanceInfo = global.instanceManager;
+  }
   if (instanceInfo === null) {
     instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
     if (instanceInfo.arangods.length > 2) {
