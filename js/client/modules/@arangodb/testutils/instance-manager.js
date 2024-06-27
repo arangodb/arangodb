@@ -326,9 +326,9 @@ class instanceManager {
     try {
       let count = 0;
       this.arangods.forEach(arangod => {
-        arangod.startArango(subenv);
+        arangod.startArango(_.cloneDeep(subenv));
         count += 1;
-        this.agencyMgr.detectAgencyAlive();
+        this.agencyMgr.detectAgencyAlive(this.httpAuthOptions);
       });
       if (this.options.cluster) {
         this.checkClusterAlive();
