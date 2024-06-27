@@ -1573,7 +1573,6 @@ class instanceManager {
 
 exports.instanceManager = instanceManager;
 exports.registerOptions = function(optionsDefaults, optionsDocumentation, optionHandlers) {
-  const isSan = versionHas('asan') || versionHas('tsan');
   tu.CopyIntoObject(optionsDefaults, {
     'memory': undefined,
     'singles': 1, // internal only
@@ -1594,9 +1593,6 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
     'sniffDevice': undefined,
     'sniffProgram': undefined,
     'sniffFilter': undefined,
-    'sanitizer': isSan,
-    'isSan': isSan,
-    'sanOptions': {},
     'sleepBeforeStart' : 0,
     'memprof': false,
     'valgrind': false,
@@ -1627,9 +1623,6 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
     '   - `serverRoot`: directory where data/ points into the db server. Use in',
     '                   conjunction with "server".',
     '   - `memprof`: take snapshots (requries memprof enabled build)',
-    '   - `sanitizer`: if set the programs are run with enabled sanitizer',
-    '   - `isSan`: doubles oneTestTimeot value if set to true (for ASAN-related builds)',
-    '     and need longer timeouts',
     ' SUT packet capturing:',
     '   - `sniff`: if we should try to launch tcpdump / windump for a testrun',
     '              false / true / sudo',
@@ -1661,43 +1654,5 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
     if (options.encryptionAtRest && !pu.isEnterpriseClient) {
       options.encryptionAtRest = false;
     }
-    // fiddle in suppressions for sanitizers if not already set from an
-    // outside script. this can populate the environment variables
-    // - ASAN_OPTIONS
-    // - UBSAN_OPTIONS
-    // - LSAN_OPTIONS
-    // - TSAN_OPTIONS
-    // note: this code repeats existing logic that can be found in
-    // scripts/unittest as well. according to @dothebart it must be
-    // present in both code locations.
-  if (options.isSan) {
-    ['ASAN_OPTIONS',
-     'LSAN_OPTIONS',
-     'UBSAN_OPTIONS',
-     'TSAN_OPTIONS'].forEach(sanOpt => {
-       if (process.env.hasOwnProperty(sanOpt)) {
-         options.sanOptions[sanOpt] = {};
-         let opt = process.env[sanOpt];
-         opt.split(':').forEach(oneOpt => {
-           let pair = oneOpt.split('=');
-           if (pair.length === 2) {
-             options.sanOptions[sanOpt][pair[0]] = pair[1];
-           }
-         });
-       }
-     });
-  }
-
-    ["asan", "ubsan", "lsan", "tsan"].forEach((san) => {
-      let envName = san.toUpperCase() + "_OPTIONS";
-      let fileName = san + "_arangodb_suppressions.txt";
-      if (!process.env.hasOwnProperty(envName) &&
-          fs.exists(fileName)) {
-        process.env[envName] = `suppressions=${fs.join(fs.makeAbsolute(''), fileName)}`;
-        print('preparing ' + san + ' environment:', envName + '=' + process.env[envName]);
-      }
-    });
-
-    
   });
 };
