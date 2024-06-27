@@ -68,6 +68,7 @@ exports.flushInstanceInfo = () => {
 };
 
 function getInstanceInfo() {
+  print(global); print(new Error().stack);
   if (global.hasOwnProperty('instanceManager')) {
     return global.instanceManager;
   }
