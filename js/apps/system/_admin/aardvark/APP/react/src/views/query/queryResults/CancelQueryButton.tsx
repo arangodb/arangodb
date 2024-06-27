@@ -8,14 +8,12 @@ export const CancelQueryButton = ({
   asyncJobId
 }: {
   index: number;
-  asyncJobId?: string;
+  asyncJobId: string;
 }) => {
   const { onRemoveResult } = useQueryContext();
   const onCancel = async () => {
     try {
-      if (asyncJobId) {
-        await getCurrentDB().job(asyncJobId).cancel();
-      }
+      await getCurrentDB().job(asyncJobId).cancel();
       onRemoveResult(index);
       window.arangoHelper.arangoNotification("Query cancelled");
     } catch (e) {}
