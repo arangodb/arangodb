@@ -26,6 +26,9 @@
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
+#include "Aql/ExecutionNode/EnumeratePathsNode.h"
+#include "Aql/ExecutionNode/TraversalNode.h"
+#include "Aql/IndexHint.h"
 #include "Aql/OptimizerRule.h"
 #include "Aql/OptimizerRules.h"
 #include "Aql/OptimizerRulesFeature.h"
@@ -35,7 +38,21 @@
 #include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
 
+#include <absl/strings/str_cat.h>
+
+#include <initializer_list>
+
 using namespace arangodb::aql;
+
+namespace {
+std::initializer_list<ExecutionNode::NodeType> const indexHintCheckTypes{
+    ExecutionNode::ENUMERATE_COLLECTION,
+#ifdef ENABLE_FORCED_INDEX_HINTS_FOR_GRAPH_OPERATIONS
+    ExecutionNode::TRAVERSAL,
+    ExecutionNode::ENUMERATE_PATHS,
+#endif
+};
+}  // namespace
 
 Optimizer::Optimizer(ResourceMonitor& resourceMonitor, size_t maxNumberOfPlans)
     : _plans(resourceMonitor),
@@ -420,21 +437,42 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
     // now check if they are all satisfied.
     bool foundForcedHint = false;
     containers::SmallVector<ExecutionNode*, 8> nodes;
-    bestPlan->findNodesOfType(nodes, ExecutionNode::ENUMERATE_COLLECTION, true);
+    bestPlan->findNodesOfType(nodes, ::indexHintCheckTypes, true);
     for (auto n : nodes) {
       TRI_ASSERT(n);
-      TRI_ASSERT(n->getType() == ExecutionNode::ENUMERATE_COLLECTION);
-      EnumerateCollectionNode const* en =
-          ExecutionNode::castTo<EnumerateCollectionNode const*>(n);
-      auto const& hint = en->hint();
-      if (hint.type() == aql::IndexHint::HintType::Simple && hint.isForced()) {
+      TRI_ASSERT(n->getType() == ExecutionNode::ENUMERATE_COLLECTION ||
+                 n->getType() == ExecutionNode::TRAVERSAL ||
+                 n->getType() == ExecutionNode::ENUMERATE_PATHS);
+
+      auto const& hint = [](ExecutionNode const* n) {
+        if (n->getType() == ExecutionNode::ENUMERATE_COLLECTION) {
+          return ExecutionNode::castTo<EnumerateCollectionNode const*>(n)
+              ->hint();
+        }
+#ifdef ENABLE_FORCED_INDEX_HINTS_FOR_GRAPH_OPERATIONS
+        if (n->getType() == ExecutionNode::TRAVERSAL) {
+          return ExecutionNode::castTo<TraversalNode const*>(n)->hint();
+        }
+        if (n->getType() == ExecutionNode::ENUMERATE_PATHS) {
+          return ExecutionNode::castTo<EnumeratePathsNode const*>(n)->hint();
+        }
+#endif
+        TRI_ASSERT(false);
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_INTERNAL,
+            "invalid node encountered with forced index hints");
+      }(n);
+
+      if (hint.isSet() && hint.isForced()) {
         // unsatisfied index hint.
         foundForcedHint = true;
+
         if (_plans.size() == 1) {
           // we are the last plan and cannot satisfy the index hint -> fail
           THROW_ARANGO_EXCEPTION_MESSAGE(
               TRI_ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE,
-              "could not use index hint to serve query; " + hint.toString());
+              absl::StrCat("could not use index hint to serve query; ",
+                           hint.toString()));
         }
 
         // there are more plans left to try.

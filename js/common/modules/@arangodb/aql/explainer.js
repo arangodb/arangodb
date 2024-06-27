@@ -672,7 +672,7 @@ function printTraversalDetails(traversals) {
 
   traversals.forEach(node => {
     outTable.alignNewEntry();
-    outTable.addCell(0, String(node.id));
+    outTable.addCell(0, variable(String(node.id)));
     outTable.addCell(1, node.minMaxDepth);
     outTable.addCell(2, node.vertexCollectionNameStr, node.vertexCollectionNameStrLen);
     outTable.addCell(3, node.edgeCollectionNameStr, node.edgeCollectionNameStrLen);
