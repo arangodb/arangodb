@@ -233,7 +233,7 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node, bool hasLevels) {
 }
 
 IndexHint::IndexHint(velocypack::Slice slice) {
-  std::string type{kTypeNone};
+  std::string_view type{kTypeNone};
 
   VPackSlice s = slice.get(kFieldContainer);
   if (s.isObject()) {
@@ -243,7 +243,7 @@ IndexHint::IndexHint(velocypack::Slice slice) {
     _waitForSync = basics::VelocyPackHelper::getBooleanValue(
         s, StaticStrings::WaitForSyncString, false);
 
-    type = basics::VelocyPackHelper::getStringValue(s, kFieldType, type);
+    type = basics::VelocyPackHelper::getStringView(s, kFieldType, type);
   }
 
   if (type == kTypeNone) {
