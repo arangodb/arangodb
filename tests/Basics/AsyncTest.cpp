@@ -8,7 +8,7 @@ namespace {
 struct WaitSlot {
   void resume() { _continuation.resume(); }
 
-  void await(auto&) {}
+  void await() {}
 
   std::coroutine_handle<> _continuation;
 
@@ -21,14 +21,14 @@ struct WaitSlot {
 
 struct NoWait {
   void resume() {}
-  void await(auto&) {}
+  void await() {}
 
   auto operator co_await() { return std::suspend_never{}; }
 };
 
 struct ConcurrentNoWait {
   void resume() {}
-  void await(auto&) { _thread.join(); }
+  void await() { _thread.join(); }
 
   bool await_ready() { return false; }
   void await_resume() {}
@@ -114,7 +114,7 @@ using MyTypes = ::testing::Types<
     std::pair<NoWait, CopyOnlyValue>, std::pair<WaitSlot, MoveOnlyValue>,
     std::pair<ConcurrentNoWait, MoveOnlyValue>,
     std::pair<NoWait, CopyOnlyValue>, std::pair<WaitSlot, MoveOnlyValue>,
-    std::pair<ConcurrentNoWait, MoveOnlyValue>>;
+    std::pair<ConcurrentNoWait, CopyOnlyValue>>;
 TYPED_TEST_SUITE(AsyncTest, MyTypes);
 
 using namespace arangodb;
@@ -131,7 +131,7 @@ TYPED_TEST(AsyncTest, async_return) {
   EXPECT_TRUE(a.valid());
   auto awaitable = std::move(a).operator co_await();
   EXPECT_FALSE(a.valid());
-  this->wait.await(a);
+  this->wait.await();
   EXPECT_TRUE(awaitable.await_ready());
   EXPECT_EQ(awaitable.await_resume(), 12);
 }
@@ -153,6 +153,9 @@ TYPED_TEST(AsyncTest, async_return_move) {
   a = std::move(b);
   EXPECT_TRUE(a.valid());
   EXPECT_FALSE(b.valid());
+
+  this->wait.resume();
+  this->wait.await();
 }
 
 TYPED_TEST(AsyncTest, async_return_destroy) {
@@ -167,6 +170,8 @@ TYPED_TEST(AsyncTest, async_return_destroy) {
   EXPECT_TRUE(a.valid());
   a.reset();
   EXPECT_FALSE(a.valid());
+
+  this->wait.await();
 }
 
 TYPED_TEST(AsyncTest, await_ready_async) {
@@ -183,7 +188,7 @@ TYPED_TEST(AsyncTest, await_ready_async) {
   EXPECT_TRUE(b.valid());
   EXPECT_FALSE(a.valid());
   auto awaitable = std::move(b).operator co_await();
-  this->wait.await(b);
+  this->wait.await();
   EXPECT_TRUE(awaitable.await_ready());
   EXPECT_EQ(awaitable.await_resume(), 24);
 }
@@ -199,7 +204,7 @@ TYPED_TEST(AsyncTest, async_throw) {
   this->wait.resume();
   EXPECT_TRUE(a.valid());
   auto awaitable = std::move(a).operator co_await();
-  this->wait.await(a);
+  this->wait.await();
   EXPECT_TRUE(awaitable.await_ready());
   EXPECT_THROW(awaitable.await_resume(), std::runtime_error);
 }
@@ -224,7 +229,7 @@ TYPED_TEST(AsyncTest, await_throw_async) {
   EXPECT_TRUE(b.valid());
   EXPECT_FALSE(a.valid());
   auto awaitable = std::move(b).operator co_await();
-  this->wait.await(b);
+  this->wait.await();
   EXPECT_TRUE(awaitable.await_ready());
   EXPECT_EQ(awaitable.await_resume(), 0);
 }
@@ -246,7 +251,7 @@ TYPED_TEST(AsyncTest, await_async_void) {
   EXPECT_TRUE(b.valid());
   EXPECT_FALSE(a.valid());
   auto awaitable = std::move(b).operator co_await();
-  this->wait.await(b);
+  this->wait.await();
   EXPECT_TRUE(awaitable.await_ready());
   EXPECT_EQ(awaitable.await_resume(), 2);
 }
@@ -272,7 +277,7 @@ TYPED_TEST(AsyncTest, await_async_void_exception) {
   EXPECT_TRUE(b.valid());
   EXPECT_FALSE(a.valid());
   auto awaitable = std::move(b).operator co_await();
-  this->wait.await(b);
+  this->wait.await();
   EXPECT_TRUE(awaitable.await_ready());
   EXPECT_EQ(awaitable.await_resume(), 0);
 }

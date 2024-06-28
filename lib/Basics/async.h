@@ -7,8 +7,6 @@
 #include <utility>
 #include <source_location>
 
-#include <iostream>
-
 namespace arangodb {
 
 template<typename T>
@@ -24,13 +22,18 @@ struct async_promise_base {
   auto final_suspend() noexcept {
     struct awaitable {
       bool await_ready() noexcept { return false; }
-      std::coroutine_handle<> await_suspend(std::coroutine_handle<>) noexcept {
+      std::coroutine_handle<> await_suspend(
+          std::coroutine_handle<> self) noexcept {
         auto addr =
             _promise->_continuation.exchange(std::noop_coroutine().address());
         if (addr == nullptr) {
           return std::noop_coroutine();
         } else {
-          return std::coroutine_handle<>::from_address(addr);
+          auto continuation = std::coroutine_handle<>::from_address(addr);
+          if (continuation == std::noop_coroutine()) {
+            self.destroy();
+          }
+          return continuation;
         }
       }
       void await_resume() noexcept {}
