@@ -105,7 +105,7 @@ function verifySstSuite() {
         // call ArangoDB with `--rocksdb.verify-sst true` and check exit code
         let sh = new sanHandler(arangod, global.instanceManager.options);
         let tmpMgr = new tmpDirMngr(fs.join('shell-verify-sst-noncluster'), global.instanceManager.options);
-        let actualRc = internal.executeExternalAndWait(arangod, args, sh.getSanOptions());
+        let actualRc = internal.executeExternalAndWait(arangod, args, false, 0, sh.getSanOptions());
         sh.fetchSanFileAfterExit(actualRc.pid);
         assertTrue(actualRc.hasOwnProperty("exit"), actualRc);
         assertEqual(0, actualRc.exit, actualRc);

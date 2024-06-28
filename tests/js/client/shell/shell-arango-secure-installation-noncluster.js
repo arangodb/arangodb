@@ -65,7 +65,7 @@ function arangoSecureInstallationSuite () {
         let sh = new sanHandler(pu.ARANGOD_BIN, global.instanceManager.options);
         let tmpMgr = new tmpDirMngr(fs.join('shell-arango-secure-installation-noncluster-1'), global.instanceManager.options);
         sh.detectLogfiles(tmpMgr.tempDir, tmpMgr.tempDir);
-        let actualRc = internal.executeExternalAndWait(arangoSecureInstallation, args, sh.getSanOptions());
+        let actualRc = internal.executeExternalAndWait(arangoSecureInstallation, args, false, 0, sh.getSanOptions());
         sh.fetchSanFileAfterExit(actualRc.pid);
         assertTrue(actualRc.hasOwnProperty("exit"), actualRc);
         assertEqual(1, actualRc.exit, actualRc);
@@ -89,7 +89,7 @@ function arangoSecureInstallationSuite () {
         let sh = new sanHandler(pu.ARANGOD_BIN, global.instanceManager.options);
         let tmpMgr = new tmpDirMngr(fs.join('shell-arango-secure-installation-noncluster-2'), global.instanceManager.options);
         sh.detectLogfiles(tmpMgr.tempDir, tmpMgr.tempDir);
-        let actualRc = internal.executeExternalAndWait(arangoSecureInstallation, args, sh.getSanOptions());
+        let actualRc = internal.executeExternalAndWait(arangoSecureInstallation, args, false, 0, sh.getSanOptions());
         sh.fetchSanFileAfterExit(actualRc.pid);
         assertTrue(actualRc.hasOwnProperty("exit"), actualRc);
         assertEqual(0, actualRc.exit, actualRc);

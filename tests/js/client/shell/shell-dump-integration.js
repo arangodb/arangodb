@@ -94,7 +94,7 @@ function dumpIntegrationSuite() {
 
     let sh = new sanHandler(arangodump, global.instanceManager.options);
     let tmpMgr = new tmpDirMngr(fs.join('shell-dump-integration'), global.instanceManager.options);
-    let actualRc = internal.executeExternalAndWait(arangodump, args, sh.getSanOptions());
+    let actualRc = internal.executeExternalAndWait(arangodump, args, false, 0, sh.getSanOptions());
     sh.fetchSanFileAfterExit(actualRc.pid);
     assertTrue(actualRc.hasOwnProperty("exit"));
     assertEqual(expectRc, actualRc.exit);

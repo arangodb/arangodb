@@ -142,14 +142,14 @@ function restoreIntegrationSuite() {
   };
 
   let runRestore = function (path, args, rc) {
-      let sh = new sanHandler(arangorestore, global.instanceManager.options);
-      let tmpMgr = new tmpDirMngr(fs.join('shell-restore-integration'), global.instanceManager.options);
+    let sh = new sanHandler(arangorestore, global.instanceManager.options);
+    let tmpMgr = new tmpDirMngr(fs.join('shell-restore-integration'), global.instanceManager.options);
     args.push('--input-directory');
     args.push(path);
     addConnectionArgs(args);
 
     sh.detectLogfiles(tmpMgr.tempDir, tmpMgr.tempDir);
-    let actualRc = internal.executeExternalAndWait(arangorestore, args, sh.getSanOptions());
+    let actualRc = internal.executeExternalAndWait(arangorestore, args, false, 0, sh.getSanOptions());
     sh.fetchSanFileAfterExit(actualRc.pid);
     assertTrue(actualRc.hasOwnProperty("exit"), actualRc);
     assertEqual(rc, actualRc.exit, actualRc);

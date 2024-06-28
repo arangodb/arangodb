@@ -71,7 +71,7 @@ function UpgradeForceOneShardRegressionSuite() {
       addConnectionArgs(args);
       require("console").warn(`Start arangod agency with args: ${JSON.stringify(args)}`);
       sh.detectLogfiles(tmpMgr.tempDir, tmpMgr.tempDir);
-      const actualRc = executeExternalAndWait(arangod, args, sh.getSanOptions());
+      const actualRc = executeExternalAndWait(arangod, args, false, 0, sh.getSanOptions());
       sh.fetchSanFileAfterExit(actualRc.pid);
       assertEqual(actualRc.exit, 0, `Instead process exited with ${JSON.stringify(actualRc)}`);
     }
