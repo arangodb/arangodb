@@ -42,6 +42,7 @@ const _ = require('lodash');
 const inst = require('@arangodb/testutils/instance');
 const request = require('@arangodb/request');
 const arangosh = require('@arangodb/arangosh');
+const pu = require('@arangodb/testutils/process-utils');
 const jsunity = require('jsunity');
 const { isCluster } = require('../../bootstrap/modules/internal');
 const arango = internal.arango;
@@ -59,6 +60,8 @@ exports.isEqual = isEqual;
 exports.compareStringIds = compareStringIds;
 
 let instanceInfo = null;
+const tmpDirMngr = require('@arangodb/testutils/tmpDirManager').tmpDirManager;
+const {sanHandler} = require('@arangodb/testutils/san-file-handler');
 
 exports.flushInstanceInfo = () => {
   instanceInfo = null;
@@ -316,7 +319,7 @@ const debug = function (text) {
   console.warn(text);
 };
 
-const runShell = function(args, prefix) {
+const runShell = function(args, prefix, sanHnd) {
   let options = internal.options();
 
   let endpoint = arango.getEndpoint().replace(/\+vpp/, '').replace(/^http:/, 'tcp:').replace(/^https:/, 'ssl:').replace(/^vst:/, 'tcp:').replace(/^h2:/, 'tcp:');
@@ -337,7 +340,7 @@ const runShell = function(args, prefix) {
     argv.push(options['javascript.module-directory'][o]);
   }
 
-  let result = internal.executeExternal(global.ARANGOSH_BIN, argv, false /*usePipes*/);
+  let result = internal.executeExternal(global.ARANGOSH_BIN, argv, false /*usePipes*/, sanHnd.getSanOptions());
   assertTrue(result.hasOwnProperty('pid'));
   let status = internal.statusExternal(result.pid);
   assertEqual(status.status, "RUNNING");
@@ -345,6 +348,7 @@ const runShell = function(args, prefix) {
 };
 
 const buildCode = function(dbname, key, command, cn, duration) {
+  
   let file = fs.getTempFile() + "-" + key;
   fs.write(file, `
 (function() {
@@ -376,18 +380,22 @@ while (++saveTries < 100) {
 })();
   `);
 
+  let sanHnd = new sanHandler(pu.ARANGOSH_BIN, global.instanceManager.options);
+  let tmpMgr = new tmpDirMngr(fs.join(`chaos_${key}`), global.instanceManager.options);
+  
   let args = {'javascript.execute': file};
   args["--server.database"] = dbname;
-  let pid = runShell(args, file);
+  sanHnd.detectLogfiles(tmpMgr.tempDir, tmpMgr.tempDir);
+  let pid = runShell(args, file, sanHnd);
   debug("started client with key '" + key + "', pid " + pid + ", args: " + JSON.stringify(args));
-  return { key, file, pid };
+  return { key, file, pid,  sanHnd, tmpMgr};
 };
 exports.runShell = runShell;
 
 const abortSignal = 6;
 
 exports.runParallelArangoshTests = function (tests, duration, cn) {
-  assertTrue(fs.isFile(global.ARANGOSH_BIN), "arangosh executable not found!");
+  assertTrue(fs.isFile(pu.ARANGOSH_BIN), "arangosh executable not found!");
   
   assertFalse(db[cn].exists("stop"));
   let clients = [];
@@ -415,6 +423,7 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
             client.failed = true;
             debug(`Client ${client.pid} exited before the duration end. Aborting tests: ${JSON.stringify(status)}`);
             count = duration + 10;
+            client.sanHnd.fetchSanFileAfterExit(status.pid);
           }
         }
       });
