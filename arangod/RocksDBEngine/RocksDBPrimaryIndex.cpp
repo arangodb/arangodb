@@ -37,9 +37,6 @@
 #include "Cache/CacheManagerFeature.h"
 #include "Cache/TransactionalCache.h"
 #include "Cluster/ServerState.h"
-#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
-#include "CrashHandler/CrashHandler.h"
-#endif
 #include "Indexes/SortedIndexAttributeMatcher.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
@@ -819,10 +816,6 @@ Result RocksDBPrimaryIndex::update(
       err.appendErrorMessage("; new key: ");
       err.appendErrorMessage(newDoc.get(StaticStrings::KeyString).copyString());
     });
-#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
-    LOG_TOPIC("f3b56", ERR, Logger::ENGINES) << res.errorMessage();
-    CrashHandler::logBacktrace();
-#endif
     TRI_ASSERT(false) << res.errorMessage();
     return res;
   }
