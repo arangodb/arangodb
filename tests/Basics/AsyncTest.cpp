@@ -6,17 +6,22 @@
 namespace {
 
 struct WaitSlot {
-  void resume() { _continuation.resume(); }
+  void resume() {
+    ready = true;
+    _continuation.resume();
+  }
 
   void await() {}
 
   std::coroutine_handle<> _continuation;
 
-  bool await_ready() { return false; }
+  bool await_ready() { return ready; }
   void await_resume() {}
   void await_suspend(std::coroutine_handle<> continuation) {
     _continuation = continuation;
   }
+
+  bool ready = false;
 };
 
 struct NoWait {
@@ -28,31 +33,51 @@ struct NoWait {
 
 struct ConcurrentNoWait {
   void resume() {}
-  void await() { _thread.join(); }
+  void await() {
+    await_suspend(std::noop_coroutine());
+    _thread.join();
+  }
 
   bool await_ready() { return false; }
   void await_resume() {}
   void await_suspend(std::coroutine_handle<> handle) {
     {
       std::unique_lock guard(_mutex);
-      _coro = handle;
+      _coro.emplace_back(handle);
     }
     _cv.notify_one();
   }
-
   ConcurrentNoWait()
       : _thread([&] {
-          {
-            std::unique_lock guard(_mutex);
-            _cv.wait(guard, [&] { return _coro != nullptr; });
+          bool stopping = false;
+          while (true) {
+            std::coroutine_handle<> handle;
+            {
+              std::unique_lock guard(_mutex);
+              if (_coro.empty() && stopping) {
+                break;
+              }
+              _cv.wait(guard, [&] { return !_coro.empty(); });
+              handle = _coro.front();
+              _coro.pop_front();
+            }
+            if (handle == std::noop_coroutine()) {
+              stopping = true;
+            }
+            handle.resume();
           }
-
-          _coro.resume();
         }) {}
+
+  ~ConcurrentNoWait() {
+    if (_thread.joinable()) {
+      await_suspend(std::noop_coroutine());
+      _thread.join();
+    }
+  }
 
   std::mutex _mutex;
   std::condition_variable_any _cv;
-  std::coroutine_handle<> _coro;
+  std::deque<std::coroutine_handle<>> _coro;
 
   std::jthread _thread;
 };
@@ -276,6 +301,30 @@ TYPED_TEST(AsyncTest, await_async_void_exception) {
   this->wait.resume();
   EXPECT_TRUE(b.valid());
   EXPECT_FALSE(a.valid());
+  auto awaitable = std::move(b).operator co_await();
+  this->wait.await();
+  EXPECT_TRUE(awaitable.await_ready());
+  EXPECT_EQ(awaitable.await_resume(), 0);
+}
+
+TYPED_TEST(AsyncTest, multiple_suspension_points) {
+  using ValueType = TypeParam::second_type;
+
+  auto a = [&]() -> async<ValueType> {
+    co_await this->wait;
+    co_return 12;
+  };
+
+  auto b = [&]() -> async<ValueType> {
+    for (int i = 0; i < 10; i++) {
+      co_await a();
+    }
+
+    co_return 0;
+  }();
+
+  this->wait.resume();
+  EXPECT_TRUE(b.valid());
   auto awaitable = std::move(b).operator co_await();
   this->wait.await();
   EXPECT_TRUE(awaitable.await_ready());
