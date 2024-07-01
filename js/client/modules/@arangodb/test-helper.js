@@ -356,14 +356,13 @@ const buildCode = function(dbname, key, command, cn, duration) {
 require('internal').SetGlobalExecutionDeadlineTo((${duration} + 180) * 1000);
 let tries = 0;
 while (true) {
-  if (++tries % 3 === 0) {
-    try {
-      if (db['${cn}'].exists('stop')) {
-        break;
-      }
-    } catch (err) {
-      // the operation may actually fail because of failure points
+  ++tries;
+  try {
+    if (db['${cn}'].exists('stop')) {
+      break;
     }
+  } catch (err) {
+    // the operation may actually fail because of failure points
   }
   ${command}
 }
@@ -460,9 +459,11 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
         // try again
       }
     }
-    let tries = 0;
+
     const allClientsDone = () => clients.every(client => client.done);
-    while (++tries < 120) {
+    const maxTries = (versionHas('asan') || versionHas('tsan')) ? 240 : 120;
+    let tries = 0;
+    while (++tries < maxTries) {
       clients.forEach(function (client) {
         if (!client.done) {
           let status = internal.statusExternal(client.pid);
