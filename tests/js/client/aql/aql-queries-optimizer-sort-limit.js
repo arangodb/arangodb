@@ -29,7 +29,8 @@ const jsunity = require("jsunity");
 const internal = require("internal");
 const helper = require("@arangodb/aql-helper");
 const getQueryResults = helper.getQueryResults;
-const db = require('internal').db;
+const db = internal.db;
+const isCluster = internal.isCluster();
 
 function ahuacatlQueryOptimizerLimitTestSuite () {
   const cn = "UnitTestsAhuacatlOptimizerLimit";
@@ -231,8 +232,12 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
         assertEqual(sorts.length, 1);
         assertEqual(sorts[0].limit, test.offset + test.limit);
         assertEqual(sorts[0].strategy, "constrained-heap");
-       
-        assertEqual(stats.filtered, test.expectedFiltered);
+      
+        if (!isCluster) {
+          // in cluster mode the constrained heap sort does not throw away any values
+          // in this query.
+          assertEqual(stats.filtered, test.expectedFiltered);
+        }
       });
     },
 
@@ -287,7 +292,11 @@ function ahuacatlQueryOptimizerLimitTestSuite () {
       assertEqual(sorts[0].limit, 10);
       assertEqual(sorts[0].strategy, "constrained-heap");
         
-      assertEqual(stats.filtered, 1000);
+      if (!isCluster) {
+        // in cluster mode the constrained heap sort does not throw away any values
+        // in this query.
+        assertEqual(stats.filtered, 1000);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////

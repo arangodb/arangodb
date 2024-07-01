@@ -1,6 +1,9 @@
 devel
 -----
 
+* Make constrained heap sort in AQL report all filtered rows as "filtered" in
+  the query profile.
+
 * Added `verifyCertificates` attribute option for the `requests` JavaScript
   module. This option defaults to false, so that no certificates will be 
   verified in an HTTPS connection made with the `requests` module. If the

@@ -137,6 +137,7 @@ class RocksDBVPackIndexInIterator final : public IndexIterator {
         _current(_searchValues.slice()),
         _indexIteratorOptions(opts),
         _memoryUsage(0),
+        _maxResultsPerLookupValue(UINT64_MAX),
         _format(format) {
     TRI_ASSERT(_wrapped != nullptr);
 
@@ -147,6 +148,8 @@ class RocksDBVPackIndexInIterator final : public IndexIterator {
     ResourceUsageScope scope(_resourceMonitor, _searchValues.size());
     // now we are responsible for tracking memory usage
     _memoryUsage += scope.trackedAndSteal();
+
+    _wrapped->setLimit(_maxResultsPerLookupValue);
   }
 
   ~RocksDBVPackIndexInIterator() override {
@@ -282,6 +285,7 @@ class RocksDBVPackIndexInIterator final : public IndexIterator {
   void adjustIterator() {
     bool wasRearmed = _wrapped->rearm(_current.value(), _indexIteratorOptions);
     TRI_ASSERT(wasRearmed);
+    _wrapped->setLimit(_maxResultsPerLookupValue);
   }
 
   ResourceMonitor& _resourceMonitor;
@@ -291,6 +295,7 @@ class RocksDBVPackIndexInIterator final : public IndexIterator {
   velocypack::ArrayIterator _current;
   IndexIteratorOptions const _indexIteratorOptions;
   size_t _memoryUsage;
+  uint64_t _maxResultsPerLookupValue;
   RocksDBVPackIndexSearchValueFormat const _format;
 };
 
@@ -560,6 +565,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
         _bounds(std::move(bounds)),
         _rangeBound(reverse ? _bounds.start() : _bounds.end()),
         _memoryUsage(0),
+        _limit(UINT64_MAX),
         _format(format),
         _mustSeek(true) {
     TRI_ASSERT(index->columnFamily() ==
@@ -599,6 +605,11 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
 
   std::string_view typeName() const noexcept final {
     return "rocksdb-index-iterator";
+  }
+
+  void setLimit(uint64_t limit) noexcept override {
+    _limit = limit;
+    LOG_DEVEL << "CALLING SET LIMIT " << limit;
   }
 
   /// @brief index does support rearming
@@ -839,6 +850,8 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   template<typename F1, typename F2>
   inline bool nextImplementation(F1&& handleIndexEntry,
                                  F2&& consumeIteratorValue, uint64_t limit) {
+    limit = std::min(limit, _limit);
+
     if (_cache) {
       while (true) {
         // this loop will only be left by return statements
@@ -848,6 +861,10 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
             bool valid;
             do {
               handleIndexEntry();
+
+              if (--_limit == 0) {
+                return false;
+              }
 
               valid = _resultIterator.valid();
 
@@ -889,7 +906,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
         ensureIterator();
         TRI_ASSERT(_iterator != nullptr);
 
-        if (limit == 0 || !_iterator->Valid() || outOfRange()) {
+        if (limit == 0 || _limit == 0 || !_iterator->Valid() || outOfRange()) {
           // No limit no data, or we are actually done. The last call should
           // have returned false
           TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
@@ -921,7 +938,8 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     ensureIterator();
     TRI_ASSERT(_iterator != nullptr);
 
-    if (!_iterator->Valid() || outOfRange() || ADB_UNLIKELY(limit == 0)) {
+    if (!_iterator->Valid() || outOfRange() || ADB_UNLIKELY(limit == 0) ||
+        _limit == 0) {
       // No limit no data, or we are actually done. The last call should have
       // returned false
       TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
@@ -942,6 +960,10 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
       if (!advance()) {
         // validate that Iterator is in a good shape and hasn't failed
         rocksutils::checkIteratorStatus(*_iterator);
+        return false;
+      }
+
+      if (--_limit == 0) {
         return false;
       }
 
@@ -1183,6 +1205,8 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
 
   // memory used by this iterator
   size_t _memoryUsage;
+  uint64_t _limit;
+
   RocksDBVPackIndexSearchValueFormat const _format;
   bool _mustSeek;
 };

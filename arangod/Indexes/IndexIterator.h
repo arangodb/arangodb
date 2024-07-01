@@ -229,7 +229,6 @@ class IndexIterator {
                        bool(aql::AqlValue&& searchDoc,
                             IndexIteratorCoveringData& covering) const>;
 
- public:
   IndexIterator(IndexIterator const&) = delete;
   IndexIterator& operator=(IndexIterator const&) = delete;
   IndexIterator() = delete;
@@ -349,6 +348,8 @@ class IndexIterator {
 
   /// @brief whether or not the index iterator supports rearming
   virtual bool canRearm() const { return false; }
+
+  virtual void setLimit(uint64_t limit) noexcept {}
 
   /// @brief returns cache hits (first) and misses (second) statistics, and
   /// resets their values to 0

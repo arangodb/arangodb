@@ -521,6 +521,8 @@ bool IndexExecutor::CursorReader::readIndex(
     _cursorStats.incrCacheMisses(cm);
   });
 
+  LOG_DEVEL << "CURSOR READING " << output.numRowsLeft() << " ROWS";
+
   switch (_strategy) {
     case IndexNode::Strategy::kNoResult:
       TRI_ASSERT(_documentNonProducer != nullptr);
@@ -663,6 +665,7 @@ IndexExecutor::IndexExecutor(Fetcher& fetcher, Infos& infos)
 IndexExecutor::~IndexExecutor() = default;
 
 void IndexExecutor::initializeCursor() {
+  LOG_DEVEL << "INITIALIZECU";
   _state = ExecutorState::HASMORE;
   _input = InputAqlItemRow{CreateInvalidInputRowHint{}};
   _documentProducingFunctionContext.reset();
