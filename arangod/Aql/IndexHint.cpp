@@ -362,6 +362,7 @@ void IndexHint::toVelocyPack(VPackBuilder& builder) const {
           } else {
             builder.add(VPackValue(std::to_string(level.first)));
           }
+          VPackArrayBuilder hintGuard(&builder);
           indexesToVelocyPack(builder, level.second);
         }
         builder.close();
@@ -429,11 +430,9 @@ IndexHint IndexHint::getFromNested(std::string_view direction,
 void IndexHint::indexesToVelocyPack(
     velocypack::Builder& builder,
     IndexHint::PossibleIndexes const& indexes) const {
-  builder.openArray();
   for (auto const& index : indexes) {
     builder.add(VPackValue(index));
   }
-  builder.close();
 }
 
 bool IndexHint::parseNestedHint(AstNode const* node,
