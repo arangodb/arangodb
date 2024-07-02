@@ -188,6 +188,12 @@ class instanceManager {
     });
     return ret;
   }
+  debugSetFailAt(failurePoint) {
+    arangods.forEach(arangod => {arangod.debugSetFailAt(failurepoint);});
+  }
+  debugRemoveFailAt(failurePoint) {
+    arangods.forEach(arangod => {arangod.debugRemoveFailAt(failurepoint);});
+  }
   _getNames(arangods) {
     let names = [];
     arangods.forEach(arangod => {names.push(arangod.name);});
