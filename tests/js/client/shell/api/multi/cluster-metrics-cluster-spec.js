@@ -289,7 +289,7 @@ describe('_admin/metrics', () => {
   let servers;
 
   before(() => {
-    servers = global.instanceManager.getTypeToUrlsMap()
+    servers = global.instanceManager.getTypeToUrlsMap();
   });
 
   const extractKeyAndLabel = (key) => {
