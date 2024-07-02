@@ -895,7 +895,10 @@ VPackBuilder LogicalCollection::toVelocyPackIgnore(
     Serialization context) const {
   VPackBuilder full;
   full.openObject();
-  properties(full, context);
+  auto res = properties(full, context);
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
   full.close();
   if (ignoreKeys.empty()) {
     return full;

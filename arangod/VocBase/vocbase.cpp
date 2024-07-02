@@ -656,7 +656,11 @@ void TRI_vocbase_t::inventory(
       *this, [&result](LogicalView::ptr const& view) -> bool {
         if (view) {
           result.openObject();
-          view->properties(result, LogicalDataSource::Serialization::Inventory);
+          auto res = view->properties(
+              result, LogicalDataSource::Serialization::Inventory);
+          if (res.fail()) {
+            THROW_ARANGO_EXCEPTION(res);
+          }
           result.close();
         }
 
