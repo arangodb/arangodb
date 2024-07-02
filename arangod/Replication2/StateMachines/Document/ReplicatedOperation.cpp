@@ -79,7 +79,9 @@ auto ReplicatedOperation::buildTruncateOperation(
 auto ReplicatedOperation::buildCreateShardOperation(
     ShardID shard, TRI_col_type_e collectionType,
     velocypack::SharedSlice properties) noexcept -> ReplicatedOperation {
-  TRI_ASSERT(!properties.hasKey(StaticStrings::ObjectId));
+  // the None slice is used in the gtests
+  TRI_ASSERT(properties.isNone() ||
+             !properties.hasKey(StaticStrings::ObjectId));
   return ReplicatedOperation{
       std::in_place, CreateShard{shard, collectionType, std::move(properties)}};
 }
