@@ -429,9 +429,11 @@ IndexHint IndexHint::getFromNested(std::string_view direction,
 void IndexHint::indexesToVelocyPack(
     velocypack::Builder& builder,
     IndexHint::PossibleIndexes const& indexes) const {
+  builder.openArray();
   for (auto const& index : indexes) {
     builder.add(VPackValue(index));
   }
+  builder.close();
 }
 
 bool IndexHint::parseNestedHint(AstNode const* node,
