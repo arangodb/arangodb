@@ -213,3 +213,26 @@ TEST_F(ExpectedTest, copy_assignment_value) {
     EXPECT_EQ(o.get(), str);
   }
 }
+
+TEST_F(ExpectedTest, copy_move_value) {
+  std::string str = "Hello World!";
+  {
+    expected<std::string> e{std::in_place, str};
+    expected<std::string> o;
+    o = std::move(e);
+    EXPECT_EQ(o.get(), str);
+  }
+  {
+    expected<std::string> e{std::in_place, str};
+    expected<std::string> o{std::in_place, "Other"};
+    o = std::move(e);
+    EXPECT_EQ(o.get(), str);
+  }
+  {
+    expected<std::string> e{std::in_place, str};
+    expected<std::string> o{
+        std::make_exception_ptr(std::runtime_error("TEST!"))};
+    o = std::move(e);
+    EXPECT_EQ(o.get(), str);
+  }
+}

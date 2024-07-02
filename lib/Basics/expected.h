@@ -78,7 +78,7 @@ struct expected {
                                std::is_move_assignable_v<T>) {
     if (this != &other) {
       if (other._state == kValue && _state == kValue) {
-        _state = std::move(other._state);
+        _value = std::move(other._value);
       } else {
         reset();
         if (other._state == kValue) {
