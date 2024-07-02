@@ -1,11 +1,12 @@
 #pragma once
 #include <stdexcept>
 #include <type_traits>
+#include "Assertions/Assert.h"
 
 namespace arangodb {
 template<typename T>
 struct expected {
-  expected() {}
+  expected() noexcept {}
 
   template<typename... Args>
   explicit expected(std::in_place_t, Args&&... args) noexcept(
@@ -15,9 +16,9 @@ struct expected {
     _state = kValue;
   }
 
-  explicit expected(std::exception_ptr ex) {
-    _exception = ex;
-    _state = kException;
+  explicit expected(std::exception_ptr ex) noexcept
+      : _exception(std::move(ex)), _state(kException) {
+    static_assert(std::is_nothrow_move_constructible_v<std::exception_ptr>);
   }
 
   expected(expected const& other) noexcept(
@@ -53,7 +54,7 @@ struct expected {
                                std::is_copy_assignable_v<T>) {
     if (this != &other) {
       if (other._state == kValue && _state == kValue) {
-        _state = other._state;
+        _value = other._value;
       } else {
         reset();
         if (other._state == kValue) {
@@ -81,12 +82,12 @@ struct expected {
       } else {
         reset();
         if (other._state == kValue) {
-          new (&_value) T(other._value);
+          new (&_value) T(std::move(other._value));
           _state = kValue;
         } else if (other._state == kException) {
           static_assert(
-              std::is_nothrow_copy_constructible_v<std::exception_ptr>);
-          new (&_exception) std::exception_ptr(other._exception);
+              std::is_nothrow_move_constructible_v<std::exception_ptr>);
+          new (&_exception) std::exception_ptr(std::move(other._exception));
           _state = kException;
         }
         other.reset();
@@ -106,10 +107,10 @@ struct expected {
     return _value;
   }
 
-  void set_exception(std::exception_ptr const& ex) noexcept(
+  void set_exception(std::exception_ptr ex) noexcept(
       std::is_nothrow_destructible_v<T>) {
     reset();
-    new (&_exception) std::exception_ptr(ex);
+    new (&_exception) std::exception_ptr(std::move(ex));
     _state = kException;
   }
 
@@ -154,20 +155,33 @@ struct expected {
   }
 
   // It is debatable if -> and * operators should rethrow an exception within
-  T* operator->() noexcept { return &_value; }
-  T const* operator->() const noexcept { return &_value; }
-  T& operator*() noexcept { return &_value; }
-  T const& operator*() const noexcept { return &_value; }
+  T* operator->() noexcept {
+    TRI_ASSERT(_state == kValue);
+    return &_value;
+  }
+  T const* operator->() const noexcept {
+    TRI_ASSERT(_state == kValue);
+    return &_value;
+  }
+  T& operator*() noexcept {
+    TRI_ASSERT(_state == kValue);
+    return &_value;
+  }
+  T const& operator*() const noexcept {
+    TRI_ASSERT(_state == kValue);
+    return &_value;
+  }
 
-  ~expected() { reset(); }
+  ~expected() noexcept(std::is_nothrow_destructible_v<T>) { reset(); }
 
-  void reset() {
-    if (_state == kValue) {
+  void reset() noexcept(std::is_nothrow_destructible_v<T>) {
+    auto state = _state;
+    _state = kEmpty;
+    if (state == kValue) {
       _value.~T();
-    } else if (_state == kException) {
+    } else if (state == kException) {
       _exception.~exception_ptr();
     }
-    _state = kEmpty;
   }
 
  private:
@@ -191,7 +205,7 @@ struct expected<void> {
     }
   }
 
-  void set_exception(std::exception_ptr const& ex) { _exception = ex; }
+  void set_exception(std::exception_ptr ex) { _exception = std::move(ex); }
 
   void emplace() noexcept { reset(); }
 

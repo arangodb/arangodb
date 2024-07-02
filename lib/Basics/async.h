@@ -24,14 +24,14 @@ struct async_promise_base {
       bool await_ready() noexcept { return false; }
       std::coroutine_handle<> await_suspend(
           std::coroutine_handle<> self) noexcept {
-        auto addr =
-            _promise->_continuation.exchange(std::noop_coroutine().address());
+        auto addr = _promise->_continuation.exchange(self.address());
         if (addr == nullptr) {
           return std::noop_coroutine();
         } else {
           auto continuation = std::coroutine_handle<>::from_address(addr);
-          if (continuation == std::noop_coroutine()) {
+          if (addr == self.address()) {
             self.destroy();
+            return std::noop_coroutine();
           }
           return continuation;
         }
@@ -97,8 +97,7 @@ struct async {
   void reset() {
     if (_handle) {
       if (_handle.promise()._continuation.exchange(
-              std::noop_coroutine().address(), std::memory_order_release) !=
-          nullptr) {
+              _handle.address(), std::memory_order_release) != nullptr) {
         _handle.destroy();
       }
       _handle = nullptr;
