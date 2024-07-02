@@ -1242,6 +1242,78 @@ FOR v, e, p IN 1..5 ANY '${cn}Vertex/test0' ${cn}Edge OPTIONS { indexHint: { ${c
       assertEqual(["_to", "value1", "value2"], level4[1].fields);
     },
     
+    testTraversalMultipleIndexHints : function () {
+      const query = `
+FOR v, e, p IN 1..2 OUTBOUND '${cn}Vertex/test0' ${cn}Edge OPTIONS { indexHint: { ${cn}Edge: { outbound: { base: ["from_value1", "from_value1_value2"] } } } }
+  FILTER p.edges[0]._from == '${cn}Vertex/test0'
+  RETURN v._key`;
+
+      let plan = db._createStatement({ query }).explain().plan;
+      let nodes = plan.nodes;
+      let ns = nodes.filter((node) => node.type === 'TraversalNode');
+      assertEqual(1, ns.length, query);
+      let node = ns[0];
+
+      let indexes = node.indexes;
+      assertTrue(indexes.hasOwnProperty("base"), indexes);
+
+      let baseIndexes = indexes.base;
+      assertEqual(1, baseIndexes.length, baseIndexes);
+
+      assertEqual("persistent", baseIndexes[0].type);
+      assertEqual("from_value1", baseIndexes[0].name);
+      assertEqual(["_from", "value1"], baseIndexes[0].fields);
+
+      assertTrue(indexes.hasOwnProperty("levels"), indexes);
+      let levelIndexes = indexes.levels;
+      
+      assertTrue(indexes.levels.hasOwnProperty("0"), indexes);
+      assertFalse(indexes.levels.hasOwnProperty("1"), indexes);
+
+      let level0 = indexes.levels["0"];
+      assertEqual(1, level0.length);
+
+      assertEqual("persistent", level0[0].type);
+      assertEqual("from_value1", level0[0].name);
+      assertEqual(["_from", "value1"], level0[0].fields);
+    },
+    
+    testTraversalMultipleIndexHints2 : function () {
+      const query = `
+FOR v, e, p IN 1..2 OUTBOUND '${cn}Vertex/test0' ${cn}Edge OPTIONS { indexHint: { ${cn}Edge: { outbound: { base: ["from_value1", "from_value1_value2"], "0": ["from_value1_value2"] } } } } 
+  FILTER p.edges[0]._from == '${cn}Vertex/test0'
+  RETURN v._key`;
+
+      let plan = db._createStatement({ query }).explain().plan;
+      let nodes = plan.nodes;
+      let ns = nodes.filter((node) => node.type === 'TraversalNode');
+      assertEqual(1, ns.length, query);
+      let node = ns[0];
+
+      let indexes = node.indexes;
+      assertTrue(indexes.hasOwnProperty("base"), indexes);
+
+      let baseIndexes = indexes.base;
+      assertEqual(1, baseIndexes.length, baseIndexes);
+
+      assertEqual("persistent", baseIndexes[0].type);
+      assertEqual("from_value1", baseIndexes[0].name);
+      assertEqual(["_from", "value1"], baseIndexes[0].fields);
+
+      assertTrue(indexes.hasOwnProperty("levels"), indexes);
+      let levelIndexes = indexes.levels;
+      
+      assertTrue(indexes.levels.hasOwnProperty("0"), indexes);
+      assertFalse(indexes.levels.hasOwnProperty("1"), indexes);
+
+      let level0 = indexes.levels["0"];
+      assertEqual(1, level0.length);
+
+      assertEqual("persistent", level0[0].type);
+      assertEqual("from_value1_value2", level0[0].name);
+      assertEqual(["_from", "value1", "value2"], level0[0].fields);
+    },
+    
     testTraversalWithWrongIndexHints : function () {
       [
         [ "outbound", [ "to", "to_value1", "peter" ] ],
