@@ -115,6 +115,12 @@ class ShortestPathNode : public virtual GraphNode {
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
                             replacements) override;
 
+  void replaceAttributeAccess(ExecutionNode const* self,
+                              Variable const* searchVariable,
+                              std::span<std::string_view> attribute,
+                              Variable const* replaceVariable,
+                              size_t index) override;
+
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const override final;
 

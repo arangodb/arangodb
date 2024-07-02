@@ -24,10 +24,13 @@
 // / @author Jan Steemann
 // //////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require('jsunity');
-var internal = require('internal');
-var arangodb = require('@arangodb');
-var db = arangodb.db;
+const jsunity = require('jsunity');
+const {assertTrue, assertEqual} = jsunity.jsUnity.assertions;
+const internal = require('internal');
+const arangodb = require('@arangodb');
+const console = require('console');
+const db = arangodb.db;
+const _ = require('lodash');
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test suite
@@ -36,12 +39,120 @@ var db = arangodb.db;
 function aqlKillSuite () {
   'use strict';
   const cn = "UnitTestsCollection";
+
+  function tryForUntil({sleepFor = 0.001, stopAfter = 30, until}) {
+    // Remember that Date.now() returns ms, but internal.wait() takes s.
+    // Units <3
+    for (
+      const start = Date.now()/1e3;
+      Date.now()/1e3 < start + stopAfter;
+      internal.wait(sleepFor, false),
+        sleepFor *= 1.5
+    ) {
+      const result = until();
+      if (result !== undefined) {
+        return result;
+      }
+    }
+    console.warn(`Giving up after ${stopAfter}s in ` + JSON.stringify(new Error().stack));
+    return undefined;
+  }
+
+  function queryGone (queryId) {
+    return () => {
+      const queries = require("@arangodb/aql/queries").current();
+      const stillThere = queries.filter(q => q.id === queryId).length > 0;
+      if (stillThere) {
+        return undefined;
+      } else {
+        return true;
+      }
+    };
+  }
+
+  function jobGone (jobId) {
+    return () => {
+      const res = arango.PUT_RAW("/_api/job/" + jobId, {});
+      if (res.code === 410) {
+        return res;
+      } else {
+        return undefined;
+      }
+    };
+  }
+
+  function findQueryId(query) {
+    const queryIdFound = () => {
+      const queries = require("@arangodb/aql/queries").current();
+      return _.first(queries
+        .filter(q => q.query === query)
+        .map(q => q.id));
+    };
+    return tryForUntil({until: queryIdFound});
+  }
+
+  function runAbortQueryTest(query) {
+    const cursorResult = arango.POST_RAW("/_api/cursor",
+      {query},
+      {"x-arango-async" : "store"});
+
+    const jobId = cursorResult.headers["x-arango-async-id"];
+
+    const queryId = findQueryId(query);
+
+    // Sleep a short random amount up to 10ms, to make it more likely to catch
+    // the query in different situations. Square to make shorter sleeps more
+    // likely than longer ones.
+    const sleepForMs = 10 * Math.pow(Math.random(), 2);
+    internal.wait(sleepForMs * 1e-3);
+
+    assertTrue(queryId > 0);
+
+    const killResult = arango.DELETE("/_api/query/" + queryId);
+    assertEqual(killResult.code, 200);
+
+    const putResult = tryForUntil({until: jobGone(jobId)});
+    assertEqual(410, putResult.code);
+  }
+
+  function runCancelQueryTest(query) {
+    const cursorResult = arango.POST_RAW("/_api/cursor",
+      {query},
+      {"x-arango-async" : "store"});
+
+    const jobId = cursorResult.headers["x-arango-async-id"];
+
+    const queryId = findQueryId(query);
+
+    assertTrue(queryId > 0);
+
+    // cancel the async job
+
+    const result = arango.PUT_RAW("/_api/job/" + jobId + "/cancel", {});
+    assertEqual(result.code, 200);
+
+    // make sure the query is no longer in the list of running queries
+
+    const gone = tryForUntil({until: queryGone(queryId)});
+    assertTrue(gone);
+  }
   
   return {
-
+    // Note that we purposefully reuse the documents in the collection for
+    // multiple tests, even if they modify it. The rationale is:
+    // * setup takes quite long
+    // * if the tests work as intended, the queries get killed before commit
+    // * even if they don't they shouldn't prevent subsequent queries from working
+    //   (that's why REMOVE is last)
     setUpAll: function () {
       db._drop(cn);
-      db._create(cn, { numberOfShards: 3 });
+      const col = db._create(cn, { numberOfShards: 3 });
+      const batchSize = 10_000;
+      const documents = 1_000_000;
+      for (let i = 0; i < documents; i += batchSize) {
+        const docs = [...Array(batchSize).keys()].map(i => ({_key: `k${i}`}));
+        col.insert(docs);
+      }
     },
 
     tearDownAll: function () {
@@ -49,136 +160,48 @@ function aqlKillSuite () {
     },
     
     testAbortReadQuery: function () {
-      let result = arango.POST_RAW("/_api/cursor", {
-        query: "FOR i IN 1..10000000 RETURN SLEEP(1)"
-      }, { 
-        "x-arango-async" : "store"
-      });
-
-      let jobId = result.headers["x-arango-async-id"];
-
-      let queryId = 0;
-      let tries = 0;
-      while (++tries < 30) {
-        let queries = require("@arangodb/aql/queries").current();
-        queries.filter(function(data) {
-          if (data.query.indexOf("SLEEP(1)") !== -1) {
-            queryId = data.id;
-          }
-        });
-        if (queryId > 0) {
-          break;
-        }
-        
-        require("internal").wait(1, false);
-      }
-
-      assertTrue(queryId > 0);
-
-      result = arango.DELETE("/_api/query/" + queryId);
-      assertEqual(result.code, 200);
-
-      tries = 0;
-      while (++tries < 30) {
-        result = arango.PUT_RAW("/_api/job/" + jobId, {});
-        if (result.code === 410) {
-          break;
-        }
-        require("internal").wait(1, false);
-      }
-      assertEqual(410, result.code);
-    },
-
-    testAbortWriteQuery: function () {
-      let result = arango.POST_RAW("/_api/cursor", {
-        query: "FOR i IN 1..10000000 INSERT {} INTO " + cn
-      }, { 
-        "x-arango-async" : "store"
-      });
-
-      let jobId = result.headers["x-arango-async-id"];
-
-      let queryId = 0;
-      let tries = 0;
-      while (++tries < 30) {
-        let queries = require("@arangodb/aql/queries").current();
-        queries.filter(function(data) {
-          if (data.query.indexOf(cn) !== -1) {
-            queryId = data.id;
-          }
-        });
-        if (queryId > 0) {
-          break;
-        }
-        
-        require("internal").wait(1, false);
-      }
-
-      assertTrue(queryId > 0);
-
-      result = arango.DELETE("/_api/query/" + queryId);
-      assertEqual(result.code, 200);
-
-      tries = 0;
-      while (++tries < 30) {
-        result = arango.PUT_RAW("/_api/job/" + jobId, {});
-        if (result.code === 410) {
-          break;
-        }
-        require("internal").wait(1, false);
-      }
-      assertEqual(410, result.code);
+      runAbortQueryTest("FOR i IN 1..10000000 RETURN SLEEP(1)");
     },
 
     // test killing the query via the Job API
     testCancelWriteQuery: function () {
-      let result = arango.POST_RAW("/_api/cursor", {
-        query: "FOR i IN 1..10000000 INSERT {} INTO " + cn
-      }, { 
-        "x-arango-async" : "store"
-      });
+      runCancelQueryTest(`FOR i IN 1..10000000 INSERT {} INTO ${cn}`);
+    },
 
-      let jobId = result.headers["x-arango-async-id"];
+    testAbortInsertQuery: function () {
+      runAbortQueryTest(`FOR i IN 1..10000000 INSERT {} INTO ${cn}`);
+    },
 
-      let queryId = 0;
-      let tries = 0;
-      while (++tries < 30) {
-        let queries = require("@arangodb/aql/queries").current();
-        queries.filter(function(data) {
-          if (data.query.indexOf(cn) !== -1) {
-            queryId = data.id;
-          }
-        });
-        if (queryId > 0) {
-          break;
-        }
-        
-        require("internal").wait(1, false);
-      }
+    testAbortUpdateQuery: function () {
+      runAbortQueryTest(`FOR i IN 1..1000000 UPDATE {_key: CONCAT("k", i), i} IN ${cn}`);
+    },
 
-      assertTrue(queryId > 0);
+    testAbortReplaceQuery: function () {
+      runAbortQueryTest(`FOR i IN 1..1000000 REPLACE {_key: CONCAT("k", i), i} IN ${cn}`);
+    },
 
-      // cancel the async job
+    testAbortUpsertInsertQuery: function () {
+      runAbortQueryTest(`FOR i IN 1..10000000 UPSERT {_key: CONCAT("new", i)} INSERT {} UPDATE {} IN ${cn}`);
+    },
 
-      result = arango.PUT_RAW("/_api/job/" + jobId + "/cancel", {});
-      assertEqual(result.code, 200);
+    testAbortUpsertUpdateQuery: function () {
+      runAbortQueryTest(`FOR i IN 1..1000000 UPSERT {_key: CONCAT("k", i)} INSERT {} UPDATE {i} IN ${cn}`);
+    },
 
-      // make sure the query is no longer in the list of running queries
-      tries = 0;
-      while (++tries < 30) {
-        let queries = require("@arangodb/aql/queries").current();
-        let stillThere = false;
-        queries.filter(function(data) {
-          if (data.id === queryId) {
-            stillThere = true;
-          }
-        });
-        if (!stillThere) {
-          break;
-        }
-        require("internal").wait(1, false);
-      }
-      assertTrue(tries < 30);
+    testAbortUpsertReplaceQuery: function () {
+      runAbortQueryTest(`FOR i IN 1..1000000 UPSERT {_key: CONCAT("k", i)} INSERT {} REPLACE {i} IN ${cn}`);
+    },
+
+    testAbortUpsertMixedInsertUpdateQuery: function () {
+      runAbortQueryTest(`FOR i IN 1..1000000 FOR k IN ["k", "new"] UPSERT {_key: CONCAT(k, i)} INSERT {_key: CONCAT(k, i), i} UPDATE {i} IN ${cn}`);
+    },
+
+    testAbortUpsertMixedInsertReplaceQuery: function () {
+      runAbortQueryTest(`FOR i IN 1..1000000 FOR k IN ["k", "new"] UPSERT {_key: CONCAT(k, i)} INSERT {_key: CONCAT(k, i), i} REPLACE {i} IN ${cn}`);
+    },
+
+    testAbortRemoveQuery: function () {
+      runAbortQueryTest(`FOR i IN 1..1000000 REMOVE {_key: CONCAT("k", i)} IN ${cn}`);
     },
   };
 }

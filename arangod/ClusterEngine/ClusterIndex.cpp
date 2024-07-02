@@ -217,11 +217,11 @@ double ClusterIndex::selectivityEstimate(std::string_view) const {
 
   // floating-point tolerance
   TRI_ASSERT(_clusterSelectivity >= 0.0 && _clusterSelectivity <= 1.00001);
-  return _clusterSelectivity;
+  return _clusterSelectivity.load(std::memory_order_relaxed);
 }
 
 void ClusterIndex::updateClusterSelectivityEstimate(double estimate) {
-  _clusterSelectivity = estimate;
+  _clusterSelectivity.store(estimate, std::memory_order_relaxed);
 }
 
 bool ClusterIndex::isSorted() const {

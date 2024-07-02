@@ -1181,7 +1181,7 @@ QueryResult Query::explain() {
         // optimizer statistics
         ensureExecutionTime();
         VPackObjectBuilder guard(&b, /*unindexed*/ true);
-        opt._stats.toVelocyPack(b);
+        opt.toVelocyPack(b);
         b.add("peakMemoryUsage", VPackValue(_resourceMonitor->peak()));
         b.add("executionTime", VPackValue(executionTime()));
       }

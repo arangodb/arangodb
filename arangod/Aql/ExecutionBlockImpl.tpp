@@ -1676,17 +1676,15 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
 
   if constexpr (executorCanReturnWaiting<Executor>) {
     // If state is SKIP, PRODUCE or FASTFORWARD, we were WAITING.
-    // The call stack must be restored in all cases, but only SKIP needs to
-    // restore the clientCall.
+    // The clientCall and call stack must be restored.
     switch (_execState) {
       default:
         break;
       case ExecState::SKIP:
-        TRI_ASSERT(_clientRequest.requestLessDataThan(ctx.clientCall));
-        ctx.clientCall = _clientRequest;
-        [[fallthrough]];
       case ExecState::PRODUCE:
       case ExecState::FASTFORWARD:
+        TRI_ASSERT(_clientRequest.requestLessDataThan(ctx.clientCall));
+        ctx.clientCall = _clientRequest;
         TRI_ASSERT(_stackBeforeWaiting.requestLessDataThan(ctx.stack));
         ctx.stack = _stackBeforeWaiting;
     }
@@ -1830,7 +1828,9 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
               executor().produceRows(_lastRange, *_outputItemRow);
 
           if (executorState == ExecutionState::WAITING) {
-            // We need to persist the old stack before we return.
+            // We need to persist the old call before we return.
+            // We might have some local accounting to this call.
+            _clientRequest = ctx.clientCall;
             // We might have some local accounting in this stack.
             _stackBeforeWaiting = ctx.stack;
             // We do not return anything in WAITING state, also NOT skipped.
@@ -1861,7 +1861,7 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
                     ctx.clientCall.getLimit() > 0) &&
                    outputIsFull()) {
           // In pass through variant we need to stop whenever the block is full.
-          // In all other branches only if the client Still needs more data.
+          // In all other branches only if the client still needs more data.
           _execState = ExecState::DONE;
           break;
         } else if (ctx.clientCall.getLimit() > 0 && executorNeedsCall(call)) {
@@ -1904,7 +1904,9 @@ ExecutionBlockImpl<Executor>::executeWithoutTrace(
           std::tie(executorState, stats, skippedLocal, call) =
               executor().skipRowsRange(_lastRange, dummy);
           if (executorState == ExecutionState::WAITING) {
-            // We need to persist the old stack before we return.
+            // We need to persist the old call before we return.
+            // We might have some local accounting to this call.
+            _clientRequest = ctx.clientCall;
             // We might have some local accounting in this stack.
             _stackBeforeWaiting = ctx.stack;
             // We do not return anything in WAITING state, also NOT skipped.
