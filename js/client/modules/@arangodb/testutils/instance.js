@@ -1257,6 +1257,44 @@ class instance {
     }
     return `  [${this.name}] up with pid ${this.pid} - ${this.dataDir}`;
   }
+  debugSetFailAt(failurePoint) {
+    this.connect();
+    let reply = arango.PUT_RAW('/_admin/debug/failat/' + failurePoint, '');
+    if (reply.code !== 200) {
+      throw new Error(`Failed to set ${failurePoint}: ${reply.parsedBody}`);
+    }
+  }
+  debugRemoveFailAt(failurePoint) {
+    this.connect();
+    let reply = arango.DELETE_RAW('/_admin/debug/failat/' + failurepoint, '');
+    if (reply.code !== 200) {
+      throw new Error(`Failed to remove ${failurePoint}: ${reply.parsedBody}`);
+    }
+  }
+  debugCanUseFailAt() {
+    let reply = arango.GET_RAW('/_admin/debug/failat/');
+    if (reply.code !== 200) {
+      if (reply.code === 401) {
+        throw new Error(`Failed to alsk for failurepoint: ${reply.parsedBody}`);
+      }
+      return false;
+    }
+    return reply.parsedBody === true;   
+  }
+  debugTerminate() {
+    this.connect();
+    let reply;
+    try {
+      reply = arango.PUT_RAW('/_admin/debug/crash', '');
+    } catch(ex) {
+      print(`Terminated instance ${this.name} - ${ex}`);
+    }
+    if (reply.code !== 200) {
+        throw new Error(`Failed to crash ${failurePoint}: ${reply.parsedBody}`);
+      }
+    }
+  }
+  
 }
 
 

@@ -256,11 +256,11 @@ function testSuite() {
   return {
     setUpAll : function () {
       // set this failure point so that metrics updates are pushed immediately
-      internal.debugSetFailAt("alwaysPublishShardMetrics");
+      global.instanceManager.debugSetFailAt("alwaysPublishShardMetrics");
     },
       
     tearDownAll : function () {
-      internal.debugRemoveFailAt("alwaysPublishShardMetrics");
+      global.instanceManager.debugRemoveFailAt("alwaysPublishShardMetrics");
     },
 
     testDoesNotPolluteNormalMetricsAPI : function () {
@@ -1607,7 +1607,5 @@ function testSuite() {
   };
 }
 
-if (internal.debugCanUseFailAt()) {
-  jsunity.run(testSuite);
-}
+jsunity.run(testSuite);
 return jsunity.done();
