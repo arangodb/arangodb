@@ -6,6 +6,9 @@ devel
 3.12.1 (XXXX-XX-XX)
 -------------------
 
+* Fix serialization of multiple query plans using the `allPlans: true` hint
+  when run `explain` on a query.
+
 * Support indexHint AQL option for traversals.
   The structure of traversal index hints is as follows:
 
