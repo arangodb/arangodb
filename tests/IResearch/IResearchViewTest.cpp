@@ -259,7 +259,7 @@ TEST_F(IResearchViewTest, test_defaults) {
 
     builder.openObject();
     auto res = view->properties(
-        builder, arangodb::LogicalDataSource::Serialization::Persistence);
+        builder, arangodb::LogicalDataSource::Serialization::Properties);
     ASSERT_TRUE(res.ok());
     builder.close();
 
