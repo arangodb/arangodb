@@ -23,7 +23,7 @@ struct expected {
 
   expected(expected const& other) noexcept(
       std::is_nothrow_copy_constructible_v<T>) requires
-      std::copy_constructible<T> {
+      std::is_copy_constructible_v<T> {
     if (other._state == kValue) {
       new (&_value) T(other._value);
       _state = kValue;
@@ -50,7 +50,7 @@ struct expected {
   expected& operator=(expected const& other) noexcept(
       std::is_nothrow_copy_constructible_v<T>&&
           std::is_nothrow_destructible_v<T>&& std::is_nothrow_copy_assignable_v<
-              T>) requires(std::copy_constructible<T>&&
+              T>) requires(std::is_copy_constructible_v<T>&&
                                std::is_copy_assignable_v<T>) {
     if (this != &other) {
       if (other._state == kValue && _state == kValue) {
