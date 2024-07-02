@@ -1255,7 +1255,7 @@ class instance {
   }
   debugRemoveFailAt(failurePoint) {
     this.connect();
-    let reply = arango.DELETE_RAW('/_admin/debug/failat/' + failurepoint, '');
+    let reply = arango.DELETE_RAW('/_admin/debug/failat/' + failurePoint, '');
     if (reply.code !== 200) {
       throw new Error(`Failed to remove ${failurePoint}: ${reply.parsedBody}`);
     }
@@ -1279,11 +1279,9 @@ class instance {
       print(`Terminated instance ${this.name} - ${ex}`);
     }
     if (reply.code !== 200) {
-        throw new Error(`Failed to crash ${failurePoint}: ${reply.parsedBody}`);
-      }
+      throw new Error(`Failed to crash ${this.name}: ${reply.parsedBody}`);
     }
   }
-  
 }
 
 
