@@ -1,6 +1,14 @@
 devel
 -----
 
+* Adjust our usage of `_FORTIFY_SOURCE` in maintainer mode:
+  - use `_FORTIFY_SOURCE` compile definition also when building with clang.
+    Previously it was only used when compiling with gcc.
+  - use `_FORTIFY_SOURCE=3`, which adds runtime memory safety checks (and some
+    runtime overhead). Previously we used `_FORTIFY_SOURCE=2`.
+  This only affects maintainer mode builds. Non-maintainer-mode builds are not
+  affected, as `_FORTIFY_SOURCE` is not used on them.
+
 * Added array and object destructuring to AQL LET statements.
 
   * Array Destructuring: Array destructuring is the assignment of array values
