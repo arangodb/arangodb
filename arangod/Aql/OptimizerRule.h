@@ -386,6 +386,9 @@ struct OptimizerRule {
     // otherwise the projections handling of JoinNodes will be incorrect.
     optimizeProjectionsRule,
 
+    // TODO: add a code comment here
+    pushLimitIntoIndexRule,
+
     // final cleanup, after projections
     removeUnnecessaryCalculationsRule4,
 
