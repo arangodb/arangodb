@@ -178,6 +178,16 @@ class instanceManager {
       });
     }
   }
+  getTypeToUrlsMap() {
+    let ret = new Map();
+    this.instanceRoles.forEach(role => {
+      ret.set(role, []);
+    });
+    this.arangods.forEach(arangod => {
+      ret.get(arangod.instanceRole).push(arangod.url)
+    });
+    return ret;
+  }
   _getNames(arangods) {
     let names = [];
     arangods.forEach(arangod => {names.push(arangod.name);});
