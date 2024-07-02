@@ -974,16 +974,14 @@ void ClusterFeature::stop() {
     // We try to actively cancel all open requests that may still be in the
     // Agency. We cannot react to them anymore.
     _asyncAgencyCommPool->shutdownConnections();
+    _asyncAgencyCommPool->drainConnections();
+    _asyncAgencyCommPool->stop();
   }
 }
 
 void ClusterFeature::unprepare() {
   if (_enableCluster) {
     _clusterInfo->unprepare();
-    if (_asyncAgencyCommPool) {
-      _asyncAgencyCommPool->drainConnections();
-      _asyncAgencyCommPool->stop();
-    }
   }
   _agencyCache.reset();
 }
