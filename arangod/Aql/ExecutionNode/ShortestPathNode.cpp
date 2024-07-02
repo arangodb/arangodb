@@ -55,18 +55,20 @@ static void parseNodeInput(AstNode const* node, std::string& id,
     case NODE_TYPE_VALUE:
       if (node->value.type != VALUE_TYPE_STRING) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_QUERY_PARSE, std::string("invalid ") + part +
-                                       " vertex. Must either be "
-                                       "an _id string or an object with _id.");
+            TRI_ERROR_QUERY_PARSE,
+            absl::StrCat("invalid ", part,
+                         " vertex. Must either be "
+                         "an _id string or an object with _id."));
       }
       variable = nullptr;
       id = node->getString();
       break;
     default:
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE,
-                                     std::string("invalid ") + part +
-                                         " vertex. Must either be an "
-                                         "_id string or an object with _id.");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_QUERY_PARSE,
+          absl::StrCat("invalid ", part,
+                       " vertex. Must either be an "
+                       "_id string or an object with _id."));
   }
 }
 static GraphNode::InputVertex prepareVertexInput(ShortestPathNode const* node,
