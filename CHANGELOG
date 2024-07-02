@@ -64,6 +64,13 @@ devel
     `firstName` and the value `Doe` to the target variable `lastName`. Note
     that neither of these attributes exist in the source object.
 
+* Added `verifyCertificates` attribute option for the `requests` JavaScript
+  module. This option defaults to false, so that no certificates will be 
+  verified in an HTTPS connection made with the `requests` module. If the
+  option is set to true, the server certificate of the remote server will be
+  verified using the default certificate store of the system.
+  There is also a `verifyDepth` attribute to limit the maximum length of the 
+  certificate chain that counts as valid.
 
 3.12.1 (XXXX-XX-XX)
 -------------------
