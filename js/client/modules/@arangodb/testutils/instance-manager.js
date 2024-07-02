@@ -184,15 +184,18 @@ class instanceManager {
       ret.set(role, []);
     });
     this.arangods.forEach(arangod => {
-      ret.get(arangod.instanceRole).push(arangod.url)
+      ret.get(arangod.instanceRole).push(arangod.url);
     });
     return ret;
   }
   debugSetFailAt(failurePoint) {
-    arangods.forEach(arangod => {arangod.debugSetFailAt(failurepoint);});
+    this.arangods.forEach(arangod => {arangod.debugSetFailAt(failurePoint);});
   }
   debugRemoveFailAt(failurePoint) {
-    arangods.forEach(arangod => {arangod.debugRemoveFailAt(failurepoint);});
+    this.arangods.forEach(arangod => {arangod.debugRemoveFailAt(failurePoint);});
+  }
+  debugTerminate() {
+    this.arangods.forEach(arangod => {arangod.debugTerminate();});
   }
   _getNames(arangods) {
     let names = [];
