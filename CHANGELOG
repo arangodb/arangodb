@@ -1,6 +1,9 @@
 devel
 -----
 
+* Make constrained heap sort in AQL report all filtered rows as "filtered" in
+  the query profile.
+
 * Adjust our usage of `_FORTIFY_SOURCE` in maintainer mode:
   - use `_FORTIFY_SOURCE` compile definition also when building with clang.
     Previously it was only used when compiling with gcc.
