@@ -95,10 +95,14 @@ class Parser;
 }
 
 (?i:LIMIT) {
+  yylval->strval.value = yyextra->ast()->resources().registerString(yytext, yyleng);
+  yylval->strval.length = yyleng;
   return T_LIMIT;
 }
 
 (?i:WINDOW) {
+  yylval->strval.value = yyextra->ast()->resources().registerString(yytext, yyleng);
+  yylval->strval.length = yyleng;
   return T_WINDOW;
 }
 
@@ -139,10 +143,14 @@ class Parser;
 }
 
 (?i:INTO) {
+  yylval->strval.value = yyextra->ast()->resources().registerString(yytext, yyleng);
+  yylval->strval.length = yyleng;
   return T_INTO;
 }
 
 (?i:WITH) {
+  yylval->strval.value = yyextra->ast()->resources().registerString(yytext, yyleng);
+  yylval->strval.length = yyleng;
   return T_WITH;
 }
 
@@ -187,22 +195,32 @@ class Parser;
 }
 
 (?i:OUTBOUND) {
+  yylval->strval.value = yyextra->ast()->resources().registerString(yytext, yyleng);
+  yylval->strval.length = yyleng;
   return T_OUTBOUND;
 }
 
 (?i:INBOUND) {
+  yylval->strval.value = yyextra->ast()->resources().registerString(yytext, yyleng);
+  yylval->strval.length = yyleng;
   return T_INBOUND;
 }
 
 (?i:ANY) {
+  yylval->strval.value = yyextra->ast()->resources().registerString(yytext, yyleng);
+  yylval->strval.length = yyleng;
   return T_ANY;
 }
 
 (?i:ALL) {
+  yylval->strval.value = yyextra->ast()->resources().registerString(yytext, yyleng);
+  yylval->strval.length = yyleng;
   return T_ALL;
 }
 
 (?i:NONE) {
+  yylval->strval.value = yyextra->ast()->resources().registerString(yytext, yyleng);
+  yylval->strval.length = yyleng;
   return T_NONE;
 }
 
@@ -211,6 +229,8 @@ class Parser;
 }
 
 (?i:LIKE) {
+  yylval->strval.value = yyextra->ast()->resources().registerString(yytext, yyleng);
+  yylval->strval.length = yyleng;
   return T_LIKE;
 }
 

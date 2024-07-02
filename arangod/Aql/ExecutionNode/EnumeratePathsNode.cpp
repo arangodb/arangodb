@@ -176,7 +176,7 @@ EnumeratePathsNode::EnumeratePathsNode(
 EnumeratePathsNode::~EnumeratePathsNode() = default;
 
 EnumeratePathsNode::EnumeratePathsNode(ExecutionPlan* plan,
-                                       arangodb::velocypack::Slice const& base)
+                                       arangodb::velocypack::Slice base)
     : GraphNode(plan, base),
       _pathType(arangodb::graph::PathType::Type::KShortestPaths),
       _pathOutVariable(nullptr),
@@ -189,9 +189,7 @@ EnumeratePathsNode::EnumeratePathsNode(ExecutionPlan* plan,
       _distributeVariable(nullptr) {
   if (base.hasKey(StaticStrings::GraphQueryShortestPathType)) {
     _pathType = arangodb::graph::PathType::fromString(
-        base.get(StaticStrings::GraphQueryShortestPathType)
-            .copyString()
-            .c_str());
+        base.get(StaticStrings::GraphQueryShortestPathType).stringView());
   }
 
   // Path out variable
@@ -249,7 +247,7 @@ EnumeratePathsNode::EnumeratePathsNode(ExecutionPlan* plan,
   {
     auto list = base.get("globalEdgeConditions");
     if (list.isArray()) {
-      for (auto const& cond : VPackArrayIterator(list)) {
+      for (auto cond : VPackArrayIterator(list)) {
         _globalEdgeConditions.emplace_back(plan->getAst()->createNode(cond));
       }
     }
@@ -258,7 +256,7 @@ EnumeratePathsNode::EnumeratePathsNode(ExecutionPlan* plan,
   {
     auto list = base.get("globalVertexConditions");
     if (list.isArray()) {
-      for (auto const& cond : VPackArrayIterator(list)) {
+      for (auto cond : VPackArrayIterator(list)) {
         _globalVertexConditions.emplace_back(plan->getAst()->createNode(cond));
       }
     }
@@ -878,7 +876,6 @@ EnumeratePathsNode::buildReverseUsedIndexes() const {
 std::vector<arangodb::graph::IndexAccessor> EnumeratePathsNode::buildIndexes(
     bool reverse) const {
   size_t numEdgeColls = _edgeColls.size();
-  constexpr bool onlyEdgeIndexes = true;
 
   std::vector<IndexAccessor> indexAccessors;
   indexAccessors.reserve(numEdgeColls);
@@ -901,11 +898,22 @@ std::vector<arangodb::graph::IndexAccessor> EnumeratePathsNode::buildIndexes(
     // arbitrary value for "number of edges in collection" used here. the
     // actual value does not matter much. 1000 has historically worked fine.
     constexpr size_t itemsInCollection = 1000;
+
+    // use most specific index hint here
+    // TODO: this code is prepared to use index hints, but due to the
+    // "onlyEdgeIndexes" flag set to true here, the optimizer will _always_ pick
+    // the edge index for the paths query. we should fix the condition handling
+    // inside path queries so that it can work with arbitrary, multi-field
+    // conditions and thus indexes.
+    auto indexHint = hint().getFromNested(
+        (reverse ? opposite : dir) == TRI_EDGE_IN ? "inbound" : "outbound",
+        _edgeColls[i]->name(), IndexHint::BaseDepth);
+
     auto& trx = plan()->getAst()->query().trxForOptimization();
     bool res = aql::utils::getBestIndexHandleForFilterCondition(
         trx, *_edgeColls[i], clonedCondition, options()->tmpVar(),
-        itemsInCollection, aql::IndexHint(), indexToUse, ReadOwnWrites::no,
-        onlyEdgeIndexes);
+        itemsInCollection, indexHint, indexToUse, ReadOwnWrites::no,
+        /*onlyEdgeIndexes*/ true);
     if (!res) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "expected edge index not found");

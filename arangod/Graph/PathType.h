@@ -23,8 +23,9 @@
 
 #pragma once
 
-namespace arangodb {
-namespace graph {
+#include <string_view>
+
+namespace arangodb::graph {
 
 struct PathType {
   enum class Type {
@@ -38,11 +39,10 @@ struct PathType {
   PathType() = delete;
 
   /// @brief get the type from a string
-  static Type fromString(char const* value);
+  static Type fromString(std::string_view value);
 
   /// @brief return the type as a string
-  static char const* toString(Type value);
+  static std::string_view toString(Type value);
 };
 
-}  // namespace graph
-}  // namespace arangodb
+}  // namespace arangodb::graph

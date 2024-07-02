@@ -149,7 +149,6 @@ void buildLogMessage(SmallString& buffer, std::string_view context, int signal,
   buffer.append(" [").append(nameFetcher.get()).append("]");
 
   // append signal number and name
-  bool printed = false;
   buffer.append(" caught unexpected signal ").appendUInt64(uint64_t(signal));
   buffer.append(" (").append(arangodb::signals::name(signal));
   if (info != nullptr) {
@@ -162,15 +161,21 @@ void buildLogMessage(SmallString& buffer, std::string_view context, int signal,
     }
     // pid that sent the signal
     buffer.append(") from pid ").appendUInt64(uint64_t(info->si_pid));
-    printed = true;
-  }
-  if (!printed) {
+  } else {
     buffer.append(")");
   }
 
   if (char const* ss = ::stateString.load(); ss != nullptr) {
     // append application server state
     buffer.append(" in state \"").append(ss).append("\"");
+  }
+
+  {
+    // append current working directory
+    char cwd[4096];
+    if (getcwd(cwd, sizeof(cwd)) != nullptr) {
+      buffer.append(" in directory \"").append(cwd).append("\"");
+    }
   }
 
   if (info != nullptr && (signal == SIGSEGV || signal == SIGBUS)) {
