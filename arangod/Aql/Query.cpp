@@ -391,9 +391,13 @@ void Query::prepareQuery() {
           /*verbose*/ false, /*includeInternals*/ false,
           /*explainRegisters*/ false);
       _planSliceCopy = std::make_unique<VPackBufferUInt8>();
-      VPackBuilder b(*_planSliceCopy);
       try {
+        VPackBuilder b(*_planSliceCopy);
         plan->toVelocyPack(b, flags, serializeQueryData);
+
+        TRI_IF_FAILURE("Query::serializePlans1") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
         _resourceMonitor->increaseMemoryUsage(_planSliceCopy->size());
       } catch (std::exception const& ex) {
         // must clear _planSliceCopy here so that the destructor of
@@ -403,6 +407,10 @@ void Query::prepareQuery() {
         LOG_TOPIC("006c7", ERR, Logger::QUERIES)
             << "unable to convert execution plan to vpack: " << ex.what();
         throw;
+      }
+
+      TRI_IF_FAILURE("Query::serializePlans2") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
     }
 
@@ -1151,12 +1159,20 @@ QueryResult Query::explain() {
         TRI_ASSERT(pln != nullptr);
 
         preparePlanForSerialization(pln);
+
         pln->toVelocyPack(*result.data, flags, serializeQueryData);
+        TRI_IF_FAILURE("Query::serializePlans1") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
 
         // memory accounting for different execution plans
         size_t currentSize = result.data->bufferRef().byteSize();
         scope.increase(currentSize - previousSize);
         previousSize = currentSize;
+
+        TRI_IF_FAILURE("Query::serializePlans2") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
       }
       // cachability not available here
       result.cached = false;
@@ -1168,7 +1184,15 @@ QueryResult Query::explain() {
       preparePlanForSerialization(bestPlan);
       bestPlan->toVelocyPack(*result.data, flags, serializeQueryData);
 
+      TRI_IF_FAILURE("Query::serializePlans1") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+
       scope.increase(result.data->bufferRef().byteSize());
+
+      TRI_IF_FAILURE("Query::serializePlans2") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
 
       // cachability
       result.cached = (!_queryString.empty() && !isModificationQuery() &&
