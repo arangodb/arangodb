@@ -1,3 +1,10 @@
+v3.11.10-2 (2024-07-04)
+-----------------------
+
+* Use __nss_configure_lookup to opt out of /etc/nsswitch.conf.
+  Add the startup option --honor-nsswitch to cancel the opt-out.
+
+
 v3.11.10 (2024-06-28)
 ---------------------
 
