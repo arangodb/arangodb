@@ -40,6 +40,7 @@ using EN = arangodb::aql::ExecutionNode;
 void arangodb::aql::pushLimitIntoIndexRule(Optimizer* opt,
                                            std::unique_ptr<ExecutionPlan> plan,
                                            OptimizerRule const& rule) {
+  // TEST
   bool modified = false;
 
   containers::SmallVector<ExecutionNode*, 8> indexes;
