@@ -386,11 +386,11 @@ struct OptimizerRule {
     // otherwise the projections handling of JoinNodes will be incorrect.
     optimizeProjectionsRule,
 
-    // TODO: add a code comment here
-    pushLimitIntoIndexRule,
-
     // final cleanup, after projections
     removeUnnecessaryCalculationsRule4,
+
+    // TODO: add a code comment here
+    pushLimitIntoIndexRule,
 
     // allows execution nodes to asynchronously prefetch the next batch from
     // their upstream node.

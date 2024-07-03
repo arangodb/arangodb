@@ -50,6 +50,7 @@
 #include "Transaction/Methods.h"
 
 #include <velocypack/Iterator.h>
+#include <cstdint>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -622,6 +623,8 @@ Condition* IndexNode::condition() const { return _condition.get(); }
 IndexIteratorOptions IndexNode::options() const { return _options; }
 
 void IndexNode::setAscending(bool value) { _options.ascending = value; }
+
+void IndexNode::setLimit(uint64_t value) noexcept { _options.limit = value; }
 
 bool IndexNode::needsGatherNodeSort() const { return _needsGatherNodeSort; }
 

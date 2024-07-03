@@ -146,9 +146,14 @@ class RocksDBVPackIndexInIterator final : public IndexIterator {
     // now we are responsible for tracking memory usage
     _memoryUsage += scope.trackedAndSteal();
 
-    if (_limitPerLookupValue.has_value()) {
-      _wrapped->setLimit(*_limitPerLookupValue);
+    if (opts.limit > 0) {
+      _wrapped->setLimit(opts.limit);
     }
+    // TODO REMOVE later
+    /*    if (_limitPerLookupValue.has_value()) {*/
+    /*LOG_DEVEL << "LADIDA LIMIT2 " << *_limitPerLookupValue;*/
+    /*_wrapped->setLimit(*_limitPerLookupValue);*/
+    /*}*/
   }
 
   ~RocksDBVPackIndexInIterator() override {
