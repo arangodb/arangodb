@@ -1,3 +1,15 @@
+v3.11.11 (XXXX-XX-XX)
+---------------------
+
+* Added `verifyCertificates` attribute option for the `requests` JavaScript
+  module. This option defaults to false, so that no certificates will be 
+  verified in an HTTPS connection made with the `requests` module. If the
+  option is set to true, the server certificate of the remote server will be
+  verified using the default certificate store of the system.
+  There is also a `verifyDepth` attribute to limit the maximum length of the 
+  certificate chain that counts as valid.
+
+
 v3.11.10 (2024-06-28)
 ---------------------
 
