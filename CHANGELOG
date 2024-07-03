@@ -1,10 +1,7 @@
-devel
------
-
-
-
 3.12.1 (XXXX-XX-XX)
 -------------------
+
+* Fix a nullptr access when aborting a move shard job for a already dropped collection.
 
 * Fix serialization of multiple query plans using the `allPlans: true` hint
   when run `explain` on a query.
