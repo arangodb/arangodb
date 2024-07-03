@@ -362,6 +362,7 @@ void IndexHint::toVelocyPack(VPackBuilder& builder) const {
           } else {
             builder.add(VPackValue(std::to_string(level.first)));
           }
+          VPackArrayBuilder hintGuard(&builder);
           indexesToVelocyPack(builder, level.second);
         }
         builder.close();
