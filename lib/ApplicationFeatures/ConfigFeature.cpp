@@ -80,7 +80,7 @@ void ConfigFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption(
       "--honour-nsswitch",
-      "Allow hostname lookup configuration via /etc/nsswtich.conf if on "
+      "Allow hostname lookup configuration via /etc/nsswitch.conf if on "
       "Linux/glibc.",
       new BooleanParameter(&_honourNsswitch),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
