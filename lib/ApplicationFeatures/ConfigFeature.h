@@ -79,7 +79,7 @@ class ConfigFeature final : public application_features::ApplicationFeature {
   std::vector<std::string> _defines;
   bool _checkConfiguration;
   bool _honorNsswitch;  // If this is set to true, the internal override is
-                         // deactivated.
+                        // deactivated.
 };
 
 }  // namespace arangodb
