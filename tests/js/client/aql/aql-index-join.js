@@ -841,6 +841,8 @@ const IndexJoinTestSuite = function () {
       });
       fillEdgeCollectionWith("B", documentIdsOfA);
 
+      // Using the attribute _id causes the primary index to reject the streaming request.
+      // Thus, we expect no join to be created.
       const query = `
           FOR doc1 IN A
           SORT doc1._key
@@ -849,7 +851,6 @@ const IndexJoinTestSuite = function () {
             RETURN [doc1, doc2.x, doc1._id]
         `;
 
-      // Testing with edge index based on `_from` attribute
       let plan = db._createStatement({
         query: query,
         bindVars: null,
