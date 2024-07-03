@@ -19,6 +19,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Aql/Condition.h"
 #include "Aql/ExecutionNode/IndexNode.h"
 #include "Aql/ExecutionNode/LimitNode.h"
 #include "Aql/ExecutionNode/SortNode.h"
@@ -26,7 +27,6 @@
 #include "Aql/OptimizerRules.h"
 #include "Aql/OptimizerUtils.h"
 #include "Aql/SortElement.h"
-#include "Basics/AttributeNameParser.h"
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
 
@@ -36,6 +36,74 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
+
+bool isEligibleIndex(transaction::Methods::IndexHandle const& idx) {
+  // we only care about persistent indexes.
+  // note that "hash" and "skiplist" indexes are the same as persistent
+  // indexes under the hood, just with legacy naming.
+  if (idx->type() != Index::IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX &&
+      idx->type() != Index::IndexType::TRI_IDX_TYPE_HASH_INDEX &&
+      idx->type() != Index::IndexType::TRI_IDX_TYPE_SKIPLIST_INDEX) {
+    LOG_DEVEL << __LINE__;
+    return false;
+  }
+
+  // we only care about compound indexes
+  if (idx->fields().size() < 2) {
+    LOG_DEVEL << __LINE__;
+    return false;
+  }
+
+  return true;
+}
+
+bool isEligibleSort(auto itIndex, auto const itIndexEnd, auto itSort,
+                    auto const itSortEnd, auto& outVariable) {
+  std::optional<bool> sortAscending;
+
+  while (itIndex != itIndexEnd && itSort != itSortEnd) {
+    LOG_DEVEL << "COMPARING: index: " << *itIndex
+              << ", sort: " << itSort->attributePath;
+    if (itIndex->size() != itSort->attributePath.size()) {
+      // ["a"] == ["a"]   vs.  ["b"] != ["b", "sub"]
+      LOG_DEVEL << __LINE__;
+      return false;
+    }
+
+    if (std::any_of(itIndex->begin(), itIndex->end(),
+                    [](auto const& it) { return it.shouldExpand; })) {
+      LOG_DEVEL << __LINE__;
+      return false;
+    }
+
+    if (std::equal(
+            itIndex->begin(), itIndex->end(), itSort->attributePath.begin(),
+            itSort->attributePath.end(),
+            [](auto const& lhs, auto const& rhs) { return lhs.name == rhs; })) {
+      LOG_DEVEL << __LINE__;
+      return false;
+    }
+
+    if (!sortAscending.has_value()) {
+      // note first used sort order
+      sortAscending = itSort->ascending;
+    } else if (*sortAscending != itSort->ascending) {
+      // different sort orders used
+      LOG_DEVEL << __LINE__;
+      return false;
+    }
+
+    if (itSort->var != outVariable) {
+      // we are sorting by something unrelated to the index
+      LOG_DEVEL << __LINE__;
+      return false;
+    }
+
+    ++itIndex;
+    ++itSort;
+  }
+  return true;
+}
 
 void arangodb::aql::pushLimitIntoIndexRule(Optimizer* opt,
                                            std::unique_ptr<ExecutionPlan> plan,
@@ -52,9 +120,7 @@ void arangodb::aql::pushLimitIntoIndexRule(Optimizer* opt,
     // Check if the condition of index node is `IN`
     if (indexNode->condition() == nullptr ||
         indexNode->condition()->root() == nullptr ||
-        indexNode->condition()->root()->type !=
-            NODE_TYPE_OPERATOR_NARY_OR) {
-
+        indexNode->condition()->root()->type != NODE_TYPE_OPERATOR_NARY_OR) {
       continue;
     }
 
@@ -74,26 +140,6 @@ void arangodb::aql::pushLimitIntoIndexRule(Optimizer* opt,
       continue;
     }
 
-    auto isEligibleIndex = [](auto const& idx) -> bool {
-      // we only care about persistent indexes.
-      // note that "hash" and "skiplist" indexes are the same as persistent
-      // indexes under the hood, just with legacy naming.
-      if (idx->type() != Index::IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX &&
-          idx->type() != Index::IndexType::TRI_IDX_TYPE_HASH_INDEX &&
-          idx->type() != Index::IndexType::TRI_IDX_TYPE_SKIPLIST_INDEX) {
-        LOG_DEVEL << __LINE__;
-        return false;
-      }
-
-      // we only care about compound indexes
-      if (idx->fields().size() < 2) {
-        LOG_DEVEL << __LINE__;
-        return false;
-      }
-
-      return true;
-    };
-
     auto const& usedIndex = indexes.front();
     if (!isEligibleIndex(usedIndex)) {
       LOG_DEVEL << __LINE__;
@@ -112,6 +158,8 @@ void arangodb::aql::pushLimitIntoIndexRule(Optimizer* opt,
     LOG_DEVEL << "SORTFIELDS: " << sortFields.size();
     for (auto const& x : sortFields) {
       LOG_DEVEL << " - " << x.toString();
+      LOG_DEVEL << x.attributePath;
+      LOG_DEVEL << x.var;
     }
     // SORT doc.a ASC, doc.b DESC, foo.bar.baz ASC
     // [
@@ -120,61 +168,11 @@ void arangodb::aql::pushLimitIntoIndexRule(Optimizer* opt,
     //   {var: foo, ascending: true, attributePath: ["bar", "baz"]},
     // ]
 
-    auto isEligibleSort = [&](auto itIndex, auto itIndexEnd, auto itSort,
-                              auto itSortEnd) -> bool {
-      std::optional<bool> sortAscending;
-
-      while (itIndex != itIndexEnd && itSort != itSortEnd) {
-        LOG_DEVEL << "COMPARING: index: " << *itIndex
-                  << ", sort: " << itSort->attributePath;
-        if (itIndex->size() != itSort->attributePath.size()) {
-          // ["a"] == ["a"]   vs.  ["b"] != ["b", "sub"]
-          LOG_DEVEL << __LINE__;
-          return false;
-        }
-
-        if (std::any_of(itIndex->begin(), itIndex->end(),
-                        [](auto const& it) { return it.shouldExpand; })) {
-          LOG_DEVEL << __LINE__;
-          return false;
-        }
-
-        if (std::equal(itIndex->begin(), itIndex->end(),
-                       itSort->attributePath.begin(),
-                       itSort->attributePath.end(),
-                       [](auto const& lhs, auto const& rhs) {
-                         return lhs.name == rhs;
-                       })) {
-          LOG_DEVEL << __LINE__;
-          return false;
-        }
-
-        if (!sortAscending.has_value()) {
-          // note first used sort order
-          sortAscending = itSort->ascending;
-        } else if (*sortAscending != itSort->ascending) {
-          // different sort orders used
-          LOG_DEVEL << __LINE__;
-          return false;
-        }
-
-        if (itSort->var != outVariable) {
-          // we are sorting by something unrelated to the index
-          LOG_DEVEL << __LINE__;
-          return false;
-        }
-
-        ++itIndex;
-        ++itSort;
-      }
-      return true;
-    };
-
     if (!isEligibleSort(usedIndex->fields().begin(), usedIndex->fields().end(),
-                        sortFields.begin(), sortFields.end()) &&
+                        sortFields.begin(), sortFields.end(), outVariable) &&
         !isEligibleSort(usedIndex->fields().begin() + 1,
                         usedIndex->fields().end(), sortFields.begin(),
-                        sortFields.end())) {
+                        sortFields.end(), outVariable)) {
       LOG_DEVEL << __LINE__;
       continue;
     }
