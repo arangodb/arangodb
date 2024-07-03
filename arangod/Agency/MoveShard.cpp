@@ -1276,11 +1276,6 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
     return result;
   }
 
-  if (!_snapshot.has(planColPrefix + _database + "/" + _collection)) {
-    moveShardFinish(false, true, "collection has been dropped in the meantime");
-    return Result{};
-  }
-
   // Can now only be TODO or PENDING.
   if (_status == TODO) {
     // Do NOT remove, just cause it seems obvious!
@@ -1306,6 +1301,11 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
     }
     _status = PENDING;
     // If the above finish failed, then we must be in PENDING
+  }
+
+  if (!_snapshot.has(planColPrefix + _database + "/" + _collection)) {
+    moveShardFinish(true, false, "collection was dropped");
+    return Result{};
   }
 
   // Can now only be PENDING

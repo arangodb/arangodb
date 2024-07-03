@@ -1394,10 +1394,11 @@ TEST_F(MoveShardTest, if_the_collection_was_dropped_when_aborting_the_job) {
   Job& spyMoveShard = spy.get();
   spyMoveShard.run(aborts);
 
-  Verify(Method(spy, finish)
-             .Matching([](std::string const& server, std::string const& shard,
-                          bool success, std::string const& reason,
-                          query_t const& payload) -> bool { return success; }));
+  Verify(
+      Method(spy, finish)
+          .Matching([](std::string const& server, std::string const& shard,
+                       bool success, std::string const& reason,
+                       query_t const& payload) -> bool { return !success; }));
 }
 
 TEST_F(
