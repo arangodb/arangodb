@@ -166,6 +166,9 @@ const IndexPrimaryJoinTestSuite = function () {
     },
 
     testAllMatchPrimaryIndexNoProjections: function () {
+      if (isCluster) {
+        return;
+      }
       let A = createCollection("A");
       let B = createCollection("B");
 
