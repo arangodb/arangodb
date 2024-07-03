@@ -1,6 +1,9 @@
 v3.11.11 (XXXX-XX-XX)
 ---------------------
 
+* Use __nss_configure_lookup to opt out of /etc/nsswitch.conf.
+  Add the startup option --honor-nsswitch to cancel the opt-out.
+
 * Added `verifyCertificates` attribute option for the `requests` JavaScript
   module. This option defaults to false, so that no certificates will be 
   verified in an HTTPS connection made with the `requests` module. If the
