@@ -25,7 +25,6 @@
 
 #include "RocksDBVPackIndex.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
 #include "Basics/GlobalResourceMonitor.h"
@@ -134,7 +133,6 @@ class RocksDBVPackIndexInIterator final : public IndexIterator {
         _current(_searchValues.slice()),
         _indexIteratorOptions(opts),
         _memoryUsage(0),
-        _limitPerLookupValue(std::nullopt),
         _format(format) {
     TRI_ASSERT(_wrapped != nullptr);
 
@@ -149,11 +147,6 @@ class RocksDBVPackIndexInIterator final : public IndexIterator {
     if (opts.limit > 0) {
       _wrapped->setLimit(opts.limit);
     }
-    // TODO REMOVE later
-    /*    if (_limitPerLookupValue.has_value()) {*/
-    /*LOG_DEVEL << "LADIDA LIMIT2 " << *_limitPerLookupValue;*/
-    /*_wrapped->setLimit(*_limitPerLookupValue);*/
-    /*}*/
   }
 
   ~RocksDBVPackIndexInIterator() override {
@@ -289,10 +282,6 @@ class RocksDBVPackIndexInIterator final : public IndexIterator {
   void adjustIterator() {
     bool wasRearmed = _wrapped->rearm(_current.value(), _indexIteratorOptions);
     TRI_ASSERT(wasRearmed);
-
-    if (_limitPerLookupValue.has_value()) {
-      _wrapped->setLimit(*_limitPerLookupValue);
-    }
   }
 
   ResourceMonitor& _resourceMonitor;
@@ -302,7 +291,6 @@ class RocksDBVPackIndexInIterator final : public IndexIterator {
   velocypack::ArrayIterator _current;
   IndexIteratorOptions const _indexIteratorOptions;
   size_t _memoryUsage;
-  std::optional<uint64_t> _limitPerLookupValue;
   RocksDBVPackIndexSearchValueFormat const _format;
 };
 
