@@ -50,6 +50,11 @@ void arangodb::aql::pushLimitIntoIndexRule(Optimizer* opt,
     TRI_ASSERT(index->getType() == EN::INDEX);
     auto* indexNode = ExecutionNode::castTo<IndexNode*>(index);
 
+    // Check that there is no post filtering 
+    if (indexNode->hasFilter()) {
+      continue;
+    }
+
     // remember the output variable that is produced by the IndexNode
     Variable const* outVariable = indexNode->outVariable();
 
