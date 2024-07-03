@@ -615,7 +615,7 @@ void Constituent::run() {
 
     auto queryFuture = arangodb::aql::runStandaloneAqlQuery(
         *_vocbase, origin, aql::QueryString(aql), nullptr);
-    auto queryResult = std::move(queryFuture.get());
+    auto queryResult = std::move(queryFuture.waitAndGet());
 
     if (queryResult.result.fail()) {
       THROW_ARANGO_EXCEPTION(queryResult.result);

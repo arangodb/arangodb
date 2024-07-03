@@ -126,7 +126,7 @@ aql::QueryResult queryEdges(TRI_vocbase_t& vocbase, std::string const& cname,
   auto queryFuture = arangodb::aql::runStandaloneAqlQuery(
       vocbase, origin, aql::QueryString(queryString(dir)),
       std::move(bindParameters), std::move(options));
-  return std::move(queryFuture.get());
+  return std::move(queryFuture.waitAndGet());
 }
 }  // namespace
 

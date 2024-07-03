@@ -549,7 +549,7 @@ Result visitAnalyzers(TRI_vocbase_t& vocbase,
         auto queryFuture = arangodb::aql::runStandaloneAqlQuery(
             vocbase, operationOrigin, aql::QueryString(oneShardQueryString),
             nullptr);
-        auto result = std::move(queryFuture.get());
+        auto result = std::move(queryFuture.waitAndGet());
 
         if (TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND ==
             result.result.errorNumber()) {
@@ -627,7 +627,7 @@ Result visitAnalyzers(TRI_vocbase_t& vocbase,
 
   auto queryFuture = arangodb::aql::runStandaloneAqlQuery(
       vocbase, operationOrigin, aql::QueryString(queryString), nullptr);
-  auto result = std::move(queryFuture.get());
+  auto result = std::move(queryFuture.waitAndGet());
 
   if (TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND == result.result.errorNumber()) {
     return {};  // treat missing collection as if there are no analyzers

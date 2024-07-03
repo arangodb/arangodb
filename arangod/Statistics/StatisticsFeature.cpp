@@ -1135,7 +1135,7 @@ Result StatisticsFeature::getClusterSystemStatistics(
     auto queryFuture = arangodb::aql::runStandaloneAqlQuery(
         *sysVocbase, origin, aql::QueryString(stats15Query), bindVars,
         std::move(options));
-    auto queryResult = std::move(queryFuture.get());
+    auto queryResult = std::move(queryFuture.waitAndGet());
 
     if (queryResult.result.fail()) {
       return queryResult.result;
@@ -1153,7 +1153,7 @@ Result StatisticsFeature::getClusterSystemStatistics(
     auto queryFuture = arangodb::aql::runStandaloneAqlQuery(
         *sysVocbase, origin, aql::QueryString(statsSamplesQuery), bindVars,
         std::move(options));
-    auto queryResult = std::move(queryFuture.get());
+    auto queryResult = std::move(queryFuture.waitAndGet());
 
     if (queryResult.result.fail()) {
       return queryResult.result;

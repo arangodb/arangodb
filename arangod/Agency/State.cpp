@@ -557,7 +557,7 @@ size_t State::removeConflicts(VPackSlice transactions, bool gotSnapshot) {
             "removing agency log conflicts"};
         auto queryFuture = arangodb::aql::runStandaloneAqlQuery(
             *_vocbase, origin, aql::QueryString(aql), std::move(bindVars));
-        auto queryResult = std::move(queryFuture.get());
+        auto queryResult = std::move(queryFuture.waitAndGet());
         if (queryResult.result.fail()) {
           THROW_ARANGO_EXCEPTION(queryResult.result);
         }
@@ -974,7 +974,7 @@ bool State::loadLastCompactedSnapshot(Store& store, index_t& index,
       "loading last compacted agency snapshot"};
   auto queryFuture = arangodb::aql::runStandaloneAqlQuery(
       *_vocbase, origin, aql::QueryString(aql), nullptr);
-  auto queryResult = std::move(queryFuture.get());
+  auto queryResult = std::move(queryFuture.waitAndGet());
 
   if (queryResult.result.fail()) {
     THROW_ARANGO_EXCEPTION(queryResult.result);
@@ -1016,7 +1016,7 @@ index_t State::loadCompacted() {
       transaction::OperationOriginInternal{"loading compacted agency snapshot"};
   auto queryFuture = arangodb::aql::runStandaloneAqlQuery(
       *_vocbase, origin, aql::QueryString(aql), nullptr);
-  auto queryResult = std::move(queryFuture.get());
+  auto queryResult = std::move(queryFuture.waitAndGet());
 
   if (queryResult.result.fail()) {
     THROW_ARANGO_EXCEPTION(queryResult.result);
@@ -1062,7 +1062,7 @@ bool State::loadOrPersistConfiguration() {
         transaction::OperationOriginInternal{"loading agency configuration"};
     auto queryFuture = arangodb::aql::runStandaloneAqlQuery(
         *_vocbase, origin, aql::QueryString(aql), nullptr);
-    return std::move(queryFuture.get());
+    return std::move(queryFuture.waitAndGet());
   };
 
   aql::QueryResult queryResult = loadConfiguration();
@@ -1209,7 +1209,7 @@ bool State::loadRemaining(index_t cind) {
       "loading remaining agency log entries"};
   auto queryFuture = arangodb::aql::runStandaloneAqlQuery(
       *_vocbase, origin, aql::QueryString(aql), std::move(bindVars));
-  auto queryResult = std::move(queryFuture.get());
+  auto queryResult = std::move(queryFuture.waitAndGet());
 
   if (queryResult.result.fail()) {
     THROW_ARANGO_EXCEPTION(queryResult.result);
@@ -1425,7 +1425,7 @@ bool State::compactPersisted(index_t cind, index_t keep) {
       transaction::OperationOriginInternal{"compacting agency log entries"};
   auto queryFuture = arangodb::aql::runStandaloneAqlQuery(
       *_vocbase, origin, aql::QueryString(aql), std::move(bindVars));
-  auto queryResult = std::move(queryFuture.get());
+  auto queryResult = std::move(queryFuture.waitAndGet());
 
   if (queryResult.result.fail()) {
     THROW_ARANGO_EXCEPTION(queryResult.result);
@@ -1468,7 +1468,7 @@ bool State::removeObsolete(index_t cind) {
         "removing obsolete agency snapshots"};
     auto queryFuture = arangodb::aql::runStandaloneAqlQuery(
         *_vocbase, origin, aql::QueryString(aql), std::move(bindVars));
-    auto queryResult = std::move(queryFuture.get());
+    auto queryResult = std::move(queryFuture.waitAndGet());
 
     if (queryResult.result.fail()) {
       THROW_ARANGO_EXCEPTION(queryResult.result);
@@ -1572,7 +1572,7 @@ bool State::storeLogFromSnapshot(Store& snapshot, index_t index, term_t term) {
       transaction::OperationOriginInternal{"removing all agency log entries"};
   auto queryFuture = arangodb::aql::runStandaloneAqlQuery(
       *_vocbase, origin, aql::QueryString(aql), nullptr);
-  auto queryResult = std::move(queryFuture.get());
+  auto queryResult = std::move(queryFuture.waitAndGet());
 
   // We ignore the result, in the worst case we have some log entries
   // too many.
@@ -1647,14 +1647,14 @@ query_t State::allLogs() const {
 
   auto compQueryFuture = arangodb::aql::runStandaloneAqlQuery(
       *_vocbase, origin, aql::QueryString(comp), nullptr);
-  auto compqResult = std::move(compQueryFuture.get());
+  auto compqResult = std::move(compQueryFuture.waitAndGet());
   if (compqResult.result.fail()) {
     THROW_ARANGO_EXCEPTION(compqResult.result);
   }
 
   auto logsQFuture = arangodb::aql::runStandaloneAqlQuery(
       *_vocbase, origin, aql::QueryString(logs), nullptr);
-  auto logsqResult = std::move(logsQFuture.get());
+  auto logsqResult = std::move(logsQFuture.waitAndGet());
 
   if (logsqResult.result.fail()) {
     THROW_ARANGO_EXCEPTION(logsqResult.result);
@@ -1742,7 +1742,7 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
   std::string aql("FOR c IN compact SORT c._key DESC LIMIT 1 RETURN c");
   auto queryFuture = arangodb::aql::runStandaloneAqlQuery(
       vocbase, origin, aql::QueryString(aql), nullptr);
-  auto queryResult = std::move(queryFuture.get());
+  auto queryResult = std::move(queryFuture.waitAndGet());
 
   if (queryResult.result.fail()) {
     THROW_ARANGO_EXCEPTION(queryResult.result);
@@ -1768,7 +1768,7 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(TRI_vocbase_t& vocbase,
   aql = "FOR l IN log SORT l._key RETURN l";
   auto query2Future = arangodb::aql::runStandaloneAqlQuery(
       vocbase, origin, aql::QueryString(aql), nullptr);
-  auto queryResult2 = std::move(queryFuture.get());
+  auto queryResult2 = std::move(queryFuture.waitAndGet());
 
   if (queryResult2.result.fail()) {
     THROW_ARANGO_EXCEPTION(queryResult2.result);
@@ -1843,7 +1843,7 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
       "serializing agency log to velocypack"};
   auto queryFuture = arangodb::aql::runStandaloneAqlQuery(
       *_vocbase, origin, aql::QueryString(logQueryStr), std::move(bindVars));
-  auto logQueryResult = std::move(queryFuture.get());
+  auto logQueryResult = std::move(queryFuture.waitAndGet());
 
   if (logQueryResult.result.fail()) {
     THROW_ARANGO_EXCEPTION(logQueryResult.result);
@@ -1897,7 +1897,7 @@ uint64_t State::toVelocyPack(index_t lastIndex, VPackBuilder& builder) const {
 
     auto compQueryFuture = arangodb::aql::runStandaloneAqlQuery(
         *_vocbase, origin, aql::QueryString(compQueryStr), std::move(bindVars));
-    auto compQueryResult = std::move(compQueryFuture.get());
+    auto compQueryResult = std::move(compQueryFuture.waitAndGet());
 
     if (compQueryResult.result.fail()) {
       THROW_ARANGO_EXCEPTION(compQueryResult.result);

@@ -1656,7 +1656,7 @@ futures::Future<Result> RestReplicationHandler::processRestoreUsersBatch() {
   auto origin = transaction::OperationOriginREST{"restoring users"};
   auto queryFuture = arangodb::aql::runStandaloneAqlQuery(
       _vocbase, origin, aql::QueryString(aql), std::move(bindVars));
-  auto queryResult = std::move(queryFuture.get());
+  auto queryResult = std::move(queryFuture.waitAndGet());
 
   // neither agency nor dbserver should get here
   AuthenticationFeature* af = AuthenticationFeature::instance();

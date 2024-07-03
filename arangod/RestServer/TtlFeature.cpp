@@ -404,7 +404,7 @@ class TtlThread final : public ServerThread<ArangodServer> {
             auto queryFuture = arangodb::aql::runStandaloneAqlQuery(
                 *vocbase, origin, aql::QueryString(::lookupQuery),
                 std::move(bindVars), std::move(options));
-            auto queryResult = std::move(queryFuture.get());
+            auto queryResult = std::move(queryFuture.waitAndGet());
 
             if (queryResult.result.fail()) {
               // we can probably live with an error here...

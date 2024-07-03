@@ -178,7 +178,7 @@ void StatisticsWorker::collectGarbage(std::string const& name,
   auto queryFuture = arangodb::aql::runStandaloneAqlQuery(
       _vocbase, origin, aql::QueryString(::garbageCollectionQuery), _bindVars,
       std::move(options));
-  auto queryResult = std::move(queryFuture.get());
+  auto queryResult = std::move(queryFuture.waitAndGet());
 
   if (queryResult.result.fail()) {
     THROW_ARANGO_EXCEPTION(queryResult.result);
@@ -312,7 +312,7 @@ std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::lastEntry(
       aql::QueryString(_clusterId.empty() ? ::lastEntryQuery
                                           : ::filteredLastEntryQuery),
       _bindVars, std::move(options));
-  auto queryResult = std::move(queryFuture.get());
+  auto queryResult = std::move(queryFuture.waitAndGet());
 
   if (queryResult.result.fail()) {
     THROW_ARANGO_EXCEPTION(queryResult.result);
@@ -345,7 +345,7 @@ void StatisticsWorker::compute15Minute(VPackBuilder& builder, double start) {
       aql::QueryString(_clusterId.empty() ? ::fifteenMinuteQuery
                                           : ::filteredFifteenMinuteQuery),
       _bindVars, std::move(options));
-  auto queryResult = std::move(queryFuture.get());
+  auto queryResult = std::move(queryFuture.waitAndGet());
 
   if (queryResult.result.fail()) {
     THROW_ARANGO_EXCEPTION(queryResult.result);

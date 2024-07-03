@@ -137,7 +137,7 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(ArangodServer& server) {
   auto queryFuture = arangodb::aql::runStandaloneAqlQuery(
       *vocbase, origin, aql::QueryString(queryStr), nullptr,
       std::move(options));
-  auto queryResult = std::move(queryFuture.get());
+  auto queryResult = std::move(queryFuture.waitAndGet());
 
   if (queryResult.result.fail()) {
     if (queryResult.result.is(TRI_ERROR_REQUEST_CANCELED) ||

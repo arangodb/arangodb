@@ -68,8 +68,10 @@ class LeaseManagerRestHandlerTest : public ::testing::Test {
       : server{},
         scheduler(std::make_unique<SupervisedScheduler>(
             server.server(), 2, 64, 128, 1024 * 1024, 4096, 4096, 128, 0.0,
-            server.server()
-                .template getFeature<arangodb::metrics::MetricsFeature>())),
+            std::make_shared<SchedulerMetrics>(
+                server.server()
+                    .template getFeature<
+                        arangodb::metrics::MetricsFeature>()))),
         rebootTracker(scheduler.get()),
         oldId{ServerState::instance()->getId()} {}
 

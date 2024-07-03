@@ -239,7 +239,7 @@ auto LeaseManager::reportLeases(GetType type,
       return report;
     }
     case ALL: {
-      auto report = _networkHandler->collectFullLeaseReport().get();
+      auto report = _networkHandler->collectFullLeaseReport().waitAndGet();
       report.serverLeases.emplace(ServerState::instance()->getId(),
                                   prepareLocalReport(std::nullopt));
       return report;
@@ -415,7 +415,7 @@ auto LeaseManager::sendAbortRequestsForAbandonedLeases() noexcept -> void {
   }
   // Wait on futures outside the lock, as the futures themselves will lock the
   // guarded structure.
-  futures::collectAll(futures.begin(), futures.end()).get();
+  futures::collectAll(futures.begin(), futures.end()).waitAndGet();
 }
 
 auto LeaseManager::abortLeasesForServer(AbortLeaseInformation info) noexcept
