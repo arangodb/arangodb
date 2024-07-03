@@ -40,7 +40,6 @@ using EN = arangodb::aql::ExecutionNode;
 void arangodb::aql::pushLimitIntoIndexRule(Optimizer* opt,
                                            std::unique_ptr<ExecutionPlan> plan,
                                            OptimizerRule const& rule) {
-  // TEST
   bool modified = false;
 
   containers::SmallVector<ExecutionNode*, 8> indexes;
@@ -50,7 +49,16 @@ void arangodb::aql::pushLimitIntoIndexRule(Optimizer* opt,
     TRI_ASSERT(index->getType() == EN::INDEX);
     auto* indexNode = ExecutionNode::castTo<IndexNode*>(index);
 
-    // Check that there is no post filtering 
+    // Check if the condition of index node is `IN`
+    if (indexNode->condition() == nullptr ||
+        indexNode->condition()->root() == nullptr ||
+        indexNode->condition()->root()->type !=
+            NODE_TYPE_OPERATOR_NARY_OR) {
+
+      continue;
+    }
+
+    // Check that there is no post filtering
     if (indexNode->hasFilter()) {
       continue;
     }
