@@ -48,6 +48,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/LogScale.h"
@@ -611,7 +612,11 @@ void ClusterFeature::prepare() {
     FATAL_ERROR_EXIT();
   }
 
+  // in the unit tests we have situations where prepare is called on an already
+  // prepared feature
   if (_agencyCache == nullptr || _clusterInfo == nullptr) {
+    TRI_ASSERT(_agencyCache == nullptr);
+    TRI_ASSERT(_clusterInfo == nullptr);
     allocateMembers();
   }
 
@@ -678,19 +683,6 @@ void ClusterFeature::prepare() {
     FATAL_ERROR_EXIT();
   }
 
-  // This must remain here for proper function after hot restores
-  auto role = ServerState::instance()->getRole();
-  if (role != ServerState::ROLE_AGENT && role != ServerState::ROLE_UNDEFINED) {
-    if (!_agencyCache->start()) {
-      LOG_TOPIC("4680e", FATAL, Logger::CLUSTER)
-          << "unable to start agency cache thread";
-      FATAL_ERROR_EXIT();
-    }
-
-    LOG_TOPIC("bae31", DEBUG, Logger::CLUSTER)
-        << "Waiting for agency cache to become ready.";
-  }
-
   if (!ServerState::instance()->integrateIntoCluster(
           _requestedRole, _myEndpoint, _myAdvertisedEndpoint)) {
     LOG_TOPIC("fea1e", FATAL, Logger::STARTUP)
@@ -700,6 +692,7 @@ void ClusterFeature::prepare() {
 
   auto endpoints = AsyncAgencyCommManager::INSTANCE->endpoints();
 
+  auto role = ServerState::instance()->getRole();
   if (role == ServerState::ROLE_UNDEFINED) {
     // no role found
     LOG_TOPIC("613f4", FATAL, arangodb::Logger::CLUSTER)
@@ -745,6 +738,7 @@ void ClusterFeature::start() {
   }
 
   auto role = ServerState::instance()->getRole();
+  TRI_ASSERT(role != ServerState::ROLE_UNDEFINED);
 
   // We need to wait for any cluster operation, which needs access to the
   // agency cache for it to become ready. The essentials in the cluster, namely
@@ -753,7 +747,16 @@ void ClusterFeature::start() {
   // empty agency. There are also other measures that guard against such a
   // outcome. But there is also no point continuing with a first agency poll.
   if (role != ServerState::ROLE_AGENT && role != ServerState::ROLE_UNDEFINED) {
-    _agencyCache->waitFor(1).get();
+    if (!_agencyCache->start()) {
+      LOG_TOPIC("4680e", FATAL, Logger::CLUSTER)
+          << "unable to start agency cache thread";
+      FATAL_ERROR_EXIT();
+    }
+
+    LOG_TOPIC("bae31", DEBUG, Logger::CLUSTER)
+        << "Waiting for agency cache to become ready.";
+
+    _agencyCache->waitFor(1).waitAndGet();
     LOG_TOPIC("13eab", DEBUG, Logger::CLUSTER)
         << "Agency cache is ready. Starting cluster cache syncers";
   }
@@ -835,6 +838,7 @@ void ClusterFeature::start() {
       << (_myAdvertisedEndpoint.empty() ? "-" : _myAdvertisedEndpoint)
       << ", role: " << ServerState::roleToString(role);
 
+  TRI_ASSERT(_agencyCache);
   auto [acb, idx] = _agencyCache->read(std::vector<std::string>{
       AgencyCommHelper::path("Sync/HeartbeatIntervalMs")});
   auto result = acb->slice();
@@ -889,8 +893,8 @@ void ClusterFeature::start() {
     _hotbackupRestoreCallback =
         std::make_shared<AgencyCallback>(server(), "Sync/HotBackupRestoreDone",
                                          hotBackupRestoreDone, true, false);
-    Result r = _agencyCallbackRegistry->registerCallback(
-        _hotbackupRestoreCallback, true);
+    Result r =
+        _agencyCallbackRegistry->registerCallback(_hotbackupRestoreCallback);
     if (r.fail()) {
       LOG_TOPIC("82516", WARN, Logger::BACKUP)
           << "Could not register hotbackup restore callback, this could lead "
@@ -970,16 +974,16 @@ void ClusterFeature::stop() {
     // We try to actively cancel all open requests that may still be in the
     // Agency. We cannot react to them anymore.
     _asyncAgencyCommPool->shutdownConnections();
+    _asyncAgencyCommPool->drainConnections();
+    _asyncAgencyCommPool->stop();
   }
 }
 
 void ClusterFeature::unprepare() {
   if (_enableCluster) {
     _clusterInfo->unprepare();
-    if (_asyncAgencyCommPool) {
-      _asyncAgencyCommPool->drainConnections();
-    }
   }
+  _agencyCache.reset();
 }
 
 void ClusterFeature::shutdown() try {
@@ -1012,6 +1016,7 @@ void ClusterFeature::shutdown() try {
 
   if (_asyncAgencyCommPool) {
     _asyncAgencyCommPool->drainConnections();
+    _asyncAgencyCommPool->stop();
   }
 } catch (...) {
   // this is called from the dtor. not much we can do here except logging
@@ -1125,8 +1130,10 @@ AgencyCache& ClusterFeature::agencyCache() {
 }
 
 void ClusterFeature::allocateMembers() {
-  _agencyCallbackRegistry =
-      std::make_unique<AgencyCallbackRegistry>(server(), agencyCallbacksPath());
+  _agencyCallbackRegistry = std::make_unique<AgencyCallbackRegistry>(
+      server(), *this, server().getFeature<EngineSelectorFeature>(),
+      server().getFeature<DatabaseFeature>(),
+      server().getFeature<metrics::MetricsFeature>(), agencyCallbacksPath());
   _agencyCache = std::make_unique<AgencyCache>(
       server(), *_agencyCallbackRegistry, _syncerShutdownCode);
   _clusterInfo = std::make_unique<ClusterInfo>(
@@ -1280,7 +1287,7 @@ void ClusterFeature::runConnectivityCheck() {
     if (this->server().isStopping()) {
       break;
     }
-    network::Response const& r = f.get();
+    network::Response const& r = f.waitAndGet();
     TRI_ASSERT(r.destination.starts_with("server:"));
 
     if (r.ok()) {

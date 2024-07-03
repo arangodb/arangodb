@@ -53,7 +53,7 @@ void FileIterator::moveToFirstEntry(IteratorPosition position) {
 auto FileIterator::next() -> std::optional<PersistedLogEntry> {
   auto res = _reader.readNextLogEntry();
   if (res.fail()) {
-    if (res.errorNumber() == TRI_ERROR_END_OF_FILE) {
+    if (res.is(TRI_ERROR_END_OF_FILE)) {
       return std::nullopt;
     }
     THROW_ARANGO_EXCEPTION(res.result());

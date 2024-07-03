@@ -139,6 +139,8 @@ void QueryRegistry::insertQuery(std::shared_ptr<ClusterQuery> query, double ttl,
     // no need to revert last insert
     throw;
   }
+  // we want to release the ptr before releasing the lock!
+  query.reset();
 }
 
 /// @brief open

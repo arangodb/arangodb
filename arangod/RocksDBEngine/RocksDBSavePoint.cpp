@@ -79,6 +79,9 @@ void RocksDBSavePoint::prepareOperation(RevisionId rid) {
 /// @brief acknowledges the current savepoint, so there
 /// will be no rollback when the destructor is called
 Result RocksDBSavePoint::finish(RevisionId rid) {
+  TRI_ASSERT(_tainted);
+  TRI_ASSERT(!_handled || _state.isSingleOperation());
+
   Result res = basics::catchToResult([&]() -> Result {
     return _state.addOperation(_collectionId, rid, _operationType);
   });
@@ -102,8 +105,6 @@ Result RocksDBSavePoint::finish(RevisionId rid) {
 
       // this will prevent the rollback call in the destructor
       _handled = true;
-    } else {
-      TRI_ASSERT(res.fail());
     }
   }
 

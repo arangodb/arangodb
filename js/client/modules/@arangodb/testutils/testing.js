@@ -66,7 +66,6 @@ let optionsDocumentation = [
   '   - `cleanup`: if set to false the data files',
   '                and logs are not removed after termination of the test.',
   '',
-  '',
   '   - `verbose`: if set to true, be more verbose',
   '   - `noStartStopLogs`: if set to true, suppress startup and shutdown messages printed by process manager. Overridden by `extremeVerbosity`',
   '   - `extremeVerbosity`: if set to true, then there will be more test run',
@@ -78,8 +77,6 @@ let optionsDocumentation = [
   ''
 ];
 
-const isCoverage = versionHas('coverage');
-const isInstrumented = versionHas('asan') || versionHas('tsan') || versionHas('coverage');
 const optionsDefaults = {
   'cleanup': true,
   'concurrency': 3,
@@ -91,9 +88,6 @@ const optionsDefaults = {
   'protocol': 'tcp',
   'replication': false,
   'setInterruptable': ! internal.isATTy(),
-  'oneTestTimeout': (isInstrumented? 25 : 15) * 60,
-  'isCov': isCoverage,
-  'isInstrumented': isInstrumented,
   'useReconnect': true,
   'username': 'root',
   'verbose': false,
@@ -327,8 +321,8 @@ function loadModuleOptions () {
         m.registerOptions(optionsDefaults, optionsDocumentation, optionHandlers);
       }
     } catch (x) {
-      print('failed to load module ' + testModules[j]);
-      throw x;
+      print(`${RED}failed to load module${testModules[j]}:  ${x.message} \n${x.stack}` + RESET);
+      process.exit(1);
     }
   }
   optionsDocumentation.push(' testsuite specific options:');
@@ -444,7 +438,7 @@ function iterateTests(cases, options) {
       delete result.shutdown;
     }
 
-    status = rp.gatherStatus(result);
+    status = rp.gatherStatus(result) && shutdownSuccess;
     let failed = rp.gatherFailed(result);
     if (!status) {
       globalStatus = false;

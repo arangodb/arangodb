@@ -150,6 +150,11 @@ class SimpleModifier : public std::enable_shared_from_this<
   bool hasResultOrException() const noexcept;
   bool hasNeitherResultNorOperationPending() const noexcept;
 
+  // Destroy all InputAqlItemRows, and with it SharedAqlItemBlockPtrs, this
+  // holds. This is necessary to ensure the lifetime of the AqlItemBlocks is
+  // shorter than of the AqlItemBlockManager, to which they are returned.
+  void stopAndClear() noexcept;
+
  private:
   [[nodiscard]] bool resultAvailable() const;
   [[nodiscard]] VPackArrayIterator getResultsIterator() const;

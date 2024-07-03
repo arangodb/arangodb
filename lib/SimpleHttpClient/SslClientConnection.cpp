@@ -22,8 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <cerrno>
+#include <chrono>
 #include <cstring>
 #include <string>
+#include <string_view>
 
 #include "Basics/operating-system.h"
 
@@ -56,7 +58,6 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Ssl/ssl-helper.h"
-#include <chrono>
 
 #undef TRACE_SSL_CONNECTIONS
 
@@ -69,7 +70,7 @@ using namespace arangodb::httpclient;
 namespace {
 
 #ifdef TRACE_SSL_CONNECTIONS
-static char const* tlsTypeName(int type) {
+static std::string_view tlsTypeName(int type) {
   switch (type) {
 #ifdef SSL3_RT_HEADER
     case SSL3_RT_HEADER:
@@ -83,6 +84,8 @@ static char const* tlsTypeName(int type) {
       return "TLS handshake";
     case SSL3_RT_APPLICATION_DATA:
       return "TLS app data";
+    case SSL3_RT_INNER_CONTENT_TYPE:
+      return "TLS inner content type";
     default:
       return "TLS Unknown";
   }
@@ -153,7 +156,7 @@ static void sslTlsTrace(int direction, int sslVersion, int contentType,
   // enable this for tracing SSL connections
   if (sslVersion) {
     sslVersion >>= 8; /* check the upper 8 bits only below */
-    char const* tlsRtName;
+    std::string_view tlsRtName;
     if (sslVersion == SSL3_VERSION_MAJOR && contentType)
       tlsRtName = tlsTypeName(contentType);
     else
@@ -182,7 +185,9 @@ SslClientConnection::SslClientConnection(
       _ssl(nullptr),
       _ctx(nullptr),
       _sslProtocol(sslProtocol),
-      _socketFlags(0) {
+      _socketFlags(0),
+      _verifyDepth(10),
+      _verifyCertificates(false) {
   init(sslProtocol);
 }
 
@@ -195,7 +200,8 @@ SslClientConnection::SslClientConnection(
       _ssl(nullptr),
       _ctx(nullptr),
       _sslProtocol(sslProtocol),
-      _socketFlags(0) {
+      _socketFlags(0),
+      _verifyCertificates(false) {
   init(sslProtocol);
 }
 
@@ -352,7 +358,15 @@ bool SslClientConnection::connectSocket() {
     return false;
   }
 
-  SSL_set_verify(_ssl, SSL_VERIFY_NONE, nullptr);
+  if (_verifyCertificates) {
+    SSL_set_verify(_ssl, SSL_VERIFY_PEER, nullptr);
+    SSL_set_verify_depth(_ssl, _verifyDepth);
+
+    SSL_CTX_set_default_verify_paths(_ctx);
+    SSL_CTX_set_default_verify_dir(_ctx);
+  } else {
+    SSL_set_verify(_ssl, SSL_VERIFY_NONE, nullptr);
+  }
 
   ERR_clear_error();
 
@@ -402,6 +416,8 @@ bool SslClientConnection::connectSocket() {
     /* Gets the earliest error code from the
        thread's error queue and removes the entry. */
     unsigned long lastError = ERR_get_error();
+
+    _errorDetails.append(ERR_error_string(lastError, nullptr)).append(" - ");
 
     if (errorDetail == SSL_ERROR_SYSCALL && lastError == 0) {
       if (ret == 0) {

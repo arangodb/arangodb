@@ -39,7 +39,8 @@ const executeScript = internal.executeScript;
 const statusExternal = internal.statusExternal;
 const executeExternal = internal.executeExternal;
 const executeExternalAndWait = internal.executeExternalAndWait;
-const tmpDirMmgr = require('@arangodb/testutils/tmpDirManager').tmpDirManager;
+const tmpDirMngr = require('@arangodb/testutils/tmpDirManager').tmpDirManager;
+const {sanHandler} = require('@arangodb/testutils/san-file-handler');
 
 const platform = internal.platform;
 
@@ -98,7 +99,7 @@ function arangosh (options) {
     print('--------------------------------------------------------------------------------');
 
     let weirdNames = ['some dog', 'ла́ять', '犬', 'Kläffer'];
-    let tmpMgr = new tmpDirMmgr(fs.join('arangosh_tests', ...weirdNames), options);
+    let tmpMgr = new tmpDirMngr(fs.join('arangosh_tests_weird_names'), options);
 
     ////////////////////////////////////////////////////////////////////////////////
     // run command from a .js file
@@ -111,7 +112,10 @@ function arangosh (options) {
     }
 
     const startTime = time();
-    let rc = executeExternalAndWait(pu.ARANGOSH_BIN, toArgv(args), false, 0 /*, coverageEnvironment() */);
+    let sh = new sanHandler(pu.ARANGOSH_BIN, options);
+    sh.detectLogfiles(tmpMgr.tempDir, tmpMgr.tempDir);
+    let rc = executeExternalAndWait(pu.ARANGOSH_BIN, toArgv(args), false, 0, sh.getSanOptions());
+    sh.fetchSanFileAfterExit(rc.pid);
     const deltaTime = time() - startTime;
     const failSuccess = (rc.hasOwnProperty('exit') && rc.exit === expectedReturnCode);
 
@@ -156,7 +160,9 @@ function arangosh (options) {
     }
 
     const startTime2 = time();
-    let rc2 = executeExternalAndWait(pu.ARANGOSH_BIN, toArgv(args2), false, 0 /*, coverageEnvironment() */);
+
+    let rc2 = executeExternalAndWait(pu.ARANGOSH_BIN, toArgv(args2), false, 0, sh.getSanOptions());
+    sh.fetchSanFileAfterExit(rc2.pid);
     const deltaTime2 = time() - startTime;
     const failSuccess2 = (rc2.hasOwnProperty('exit') && rc2.exit === expectedReturnCode);
 
@@ -196,7 +202,7 @@ function arangosh (options) {
           1,
           {'server.endpoint': 'tcp://0.0.0.0:8529'});
   print();
-  
+
   runTest('testArangoshExitCodeConnectAnyIp6',
           'Starting arangosh with failing connect:',
           'db._databases();',
@@ -262,7 +268,10 @@ function arangosh (options) {
   args['javascript.execute-string'] = "print(require('internal').pollStdin())";
 
   const startTime = time();
-  let res = executeExternal(pu.ARANGOSH_BIN, toArgv(args), true, 0 /*, coverageEnvironment() */);
+  let tmpMgr = new tmpDirMngr('arangosh_tests_pipe', options);
+  let sh = new sanHandler(pu.ARANGOSH_BIN, options);
+  sh.detectLogfiles(tmpMgr.tempDir, tmpMgr.tempDir);
+  let res = executeExternal(pu.ARANGOSH_BIN, toArgv(args), true, 0, sh.getSanOptions());
   const deltaTime = time() - startTime;
 
   fs.writePipe(res.pid, "bla\n");
@@ -273,6 +282,7 @@ function arangosh (options) {
   let success = output === searchstring;
 
   let rc = statusExternal(res.pid, true);
+  sh.fetchSanFileAfterExit(res.pid);
   let failSuccess = (rc.hasOwnProperty('exit') && rc.exit === 0);
   failSuccess = failSuccess && success;
   if (options.extremeVerbosity) {
@@ -298,8 +308,9 @@ function arangosh (options) {
 
   ret[section]['duration'] = time() - startTime;
   print((failSuccess ? GREEN : RED) + 'Status: ' + (failSuccess ? 'SUCCESS' : 'FAIL') + RESET);
-  
+
   {
+    let tmpMgr = new tmpDirMngr('arangosh_tests_echo', options);
     var echoSuccess = true;
     var deltaTime2 = 0;
     var execFile = fs.getTempFile();
@@ -311,10 +322,13 @@ function arangosh (options) {
     fs.write(execFile,
       'echo "db._databases();" | ' + fs.makeAbsolute(pu.ARANGOSH_BIN) + ' --server.endpoint tcp://127.0.0.1:0');
 
+    let sh = new sanHandler(pu.ARANGOSH_BIN, options);
+    sh.detectLogfiles(tmpMgr.tempDir, tmpMgr.tempDir);
     executeExternalAndWait('sh', ['-c', 'chmod a+x ' + execFile]);
 
     const startTime2 = time();
-    let rc = executeExternalAndWait('sh', ['-c', execFile]);
+    let rc = executeExternalAndWait('sh', ['-c', execFile], false, 0, sh.getSanOptions());
+    sh.fetchSanFileAfterExit(rc.pid);
     deltaTime2 = time() - startTime2;
 
     echoSuccess = (rc.hasOwnProperty('exit') && rc.exit === 1);
@@ -338,45 +352,49 @@ function arangosh (options) {
   }
 
   // test shebang execution with arangosh
-  var shebangSuccess = true;
-  var deltaTime3 = 0;
-  var shebangFile = fs.getTempFile();
+  {
+    let tmpMgr = new tmpDirMngr('arangosh_tests_shebang', options);
+    var shebangSuccess = true;
+    var deltaTime3 = 0;
+    var shebangFile = fs.getTempFile();
 
-  print('\n--------------------------------------------------------------------------------');
-  print('Starting arangosh via shebang script');
-  print('--------------------------------------------------------------------------------');
+    print('\n--------------------------------------------------------------------------------');
+    print('Starting arangosh via shebang script');
+    print('--------------------------------------------------------------------------------');
 
-  if (options.verbose) {
-    print(CYAN + 'shebang script: ' + shebangFile + RESET);
+    if (options.verbose) {
+      print(CYAN + 'shebang script: ' + shebangFile + RESET);
+    }
+
+    fs.write(shebangFile,
+             '#!' + fs.makeAbsolute(pu.ARANGOSH_BIN) + ' --javascript.execute \n' +
+             'print("hello world");\n');
+
+    executeExternalAndWait('sh', ['-c', 'chmod a+x ' + shebangFile]);
+
+    const startTime3 = time();
+    sh.detectLogfiles(tmpMgr.tempDir, tmpMgr.tempDir);
+    rc = executeExternalAndWait('sh', ['-c', shebangFile], false, sh.getSanOptions());
+    sh.fetchSanFileAfterExit(rc.pid);
+    deltaTime3 = time() - startTime3;
+
+    if (options.verbose) {
+      print(CYAN + 'execute returned: ' + RESET, rc);
+    }
+
+    shebangSuccess = (rc.hasOwnProperty('exit') && rc.exit === 0);
+
+    if (!shebangSuccess) {
+      ret.failed += 1;
+      ret.testArangoshShebang.failed = 1;
+      ret.testArangoshShebang['message'] =
+        'didn\'t get expected return code (0): \n' +
+        yaml.safeDump(rc);
+    } else {
+      ret.testArangoshShebang.failed = 0;
+    }
+    fs.remove(shebangFile);
   }
-
-  fs.write(shebangFile,
-           '#!' + fs.makeAbsolute(pu.ARANGOSH_BIN) + ' --javascript.execute \n' +
-           'print("hello world");\n');
-
-  executeExternalAndWait('sh', ['-c', 'chmod a+x ' + shebangFile]);
-
-  const startTime3 = time();
-  rc = executeExternalAndWait('sh', ['-c', shebangFile]);
-  deltaTime3 = time() - startTime3;
-
-  if (options.verbose) {
-    print(CYAN + 'execute returned: ' + RESET, rc);
-  }
-
-  shebangSuccess = (rc.hasOwnProperty('exit') && rc.exit === 0);
-
-  if (!shebangSuccess) {
-    ret.failed += 1;
-    ret.testArangoshShebang.failed = 1;
-    ret.testArangoshShebang['message'] =
-      'didn\'t get expected return code (0): \n' +
-      yaml.safeDump(rc);
-  } else {
-    ret.testArangoshShebang.failed = 0;
-  }
-  fs.remove(shebangFile);
-
   ++ret.testArangoshShebang['total'];
   ret.testArangoshShebang['status'] = shebangSuccess;
   ret.testArangoshShebang['duration'] = deltaTime3;

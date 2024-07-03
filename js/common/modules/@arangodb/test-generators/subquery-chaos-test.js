@@ -26,6 +26,7 @@
 const db = require("@arangodb").db;
 const _ = require("lodash");
 const {md5} = require("@arangodb/crypto");
+const arango = require("@arangodb").arango;
 
 const batchSize = 10;
 
@@ -292,12 +293,24 @@ function runQuery(query, queryOptions, testOptions) {
     db._query(`FOR i IN 1..10 INSERT { value: i } INTO ${cn}`);
   }
 
+  queryOptions = { ...(testOptions.queryOptions || {}), ...queryOptions };
   if (testOptions.explainQuery) {
     db._explain(query.queryString, {}, queryOptions);
   }
 
+  let oldLogLevel;
+  if (testOptions.enableLogging) {
+    oldLogLevel = arango.GET("/_admin/log/level").queries;
+    arango.PUT("/_admin/log/level", { queries: "trace" });
+  }
+
   /* Run query */
-  const result = db._createStatement({query: query.queryString, batchSize, options: queryOptions}).execute();
+  const result = db._createStatement({query: query.queryString, batchSize, options: queryOptions})
+    .execute();
+
+  if (testOptions.enableLogging) {
+    arango.PUT("/_admin/log/level", { queries: oldLogLevel });
+  }
  
   /* Create a simple hash value from the query results, so that we don't have to
    * load the entire result set into memory and work with it */

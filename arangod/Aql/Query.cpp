@@ -224,14 +224,14 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
              std::shared_ptr<VPackBuilder> bindParameters, QueryOptions options,
              std::shared_ptr<SharedQueryState> sharedState)
     : QueryContext(ctx->vocbase(), ctx->operationOrigin(), id),
-      _itemBlockManager(_resourceMonitor),
+      _itemBlockManager(*_resourceMonitor),
       _queryString(std::move(queryString)),
       _transactionContext(std::move(ctx)),
       _sharedState(std::move(sharedState)),
 #ifdef USE_V8
       _v8Executor(nullptr),
 #endif
-      _bindParameters(_resourceMonitor, bindParameters),
+      _bindParameters(*_resourceMonitor, bindParameters),
       _queryOptions(std::move(options)),
       _trx(nullptr),
       _startTime(currentSteadyClockValue()),
@@ -299,7 +299,7 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
   }
 
   // set memory limit for query
-  _resourceMonitor.memoryLimit(_queryOptions.memoryLimit);
+  _resourceMonitor->memoryLimit(_queryOptions.memoryLimit);
   _warnings.updateOptions(_queryOptions);
 
   // store name of user that started the query
@@ -319,7 +319,7 @@ Query::Query(std::shared_ptr<transaction::Context> ctx, QueryString queryString,
 
 Query::~Query() {
   if (_planSliceCopy != nullptr) {
-    _resourceMonitor.decreaseMemoryUsage(_planSliceCopy->size());
+    _resourceMonitor->decreaseMemoryUsage(_planSliceCopy->size());
   }
 
   // In the most derived class needs to explicitly call 'destroy()'
@@ -337,10 +337,10 @@ void Query::destroy() {
   unregisterQueryInTransactionState();
   TRI_ASSERT(!_registeredQueryInTrx);
 
-  _resourceMonitor.decreaseMemoryUsage(_resultMemoryUsage);
+  _resourceMonitor->decreaseMemoryUsage(_resultMemoryUsage);
   _resultMemoryUsage = 0;
 
-  _resourceMonitor.decreaseMemoryUsage(_planMemoryUsage);
+  _resourceMonitor->decreaseMemoryUsage(_planMemoryUsage);
   _planMemoryUsage = 0;
 
   if (_queryOptions.profile >= ProfileLevel::TraceOne) {
@@ -440,6 +440,10 @@ void Query::kill() {
   }
 }
 
+void Query::setKillFlag() {
+  _queryKilled.store(true, std::memory_order_acq_rel);
+}
+
 /// @brief the query's transaction id. returns 0 if no transaction
 /// has been assigned to the query yet. use this only for informational
 /// purposes
@@ -505,17 +509,26 @@ void Query::prepareQuery(std::shared_ptr<QueryAborter> queryAborter) {
           /*verbose*/ false, /*includeInternals*/ false,
           /*explainRegisters*/ false);
       _planSliceCopy = std::make_unique<VPackBufferUInt8>();
-      VPackBuilder b(*_planSliceCopy);
-      plan->toVelocyPack(b, flags, serializeQueryData);
-
       try {
-        _resourceMonitor.increaseMemoryUsage(_planSliceCopy->size());
-      } catch (...) {
+        VPackBuilder b(*_planSliceCopy);
+        plan->toVelocyPack(b, flags, serializeQueryData);
+
+        TRI_IF_FAILURE("Query::serializePlans1") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+        _resourceMonitor->increaseMemoryUsage(_planSliceCopy->size());
+      } catch (std::exception const& ex) {
         // must clear _planSliceCopy here so that the destructor of
         // Query doesn't subtract the memory used by _planSliceCopy
         // without us having it tracked properly here.
         _planSliceCopy.reset();
+        LOG_TOPIC("006c7", ERR, Logger::QUERIES)
+            << "unable to convert execution plan to vpack: " << ex.what();
         throw;
+      }
+
+      TRI_IF_FAILURE("Query::serializePlans2") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
     }
 
@@ -636,7 +649,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
 
   // Run the query optimizer:
   enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
-  Optimizer opt(_resourceMonitor, _queryOptions.maxNumberOfPlans);
+  Optimizer opt(*_resourceMonitor, _queryOptions.maxNumberOfPlans);
   // get enabled/disabled rules
   opt.createPlans(std::move(plan), _queryOptions, false);
   // Now plan and all derived plans belong to the optimizer
@@ -764,7 +777,7 @@ ExecutionState Query::execute(std::shared_ptr<QueryAborter> aborter,
             TRI_ASSERT(newLength >= previousLength);
             size_t diff = newLength - previousLength;
 
-            _resourceMonitor.increaseMemoryUsage(diff);
+            _resourceMonitor->increaseMemoryUsage(diff);
             _resultMemoryUsage += diff;
           }
 
@@ -1008,7 +1021,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate,
           }
 
           // this may throw
-          _resourceMonitor.increaseMemoryUsage(memoryUsage);
+          _resourceMonitor->increaseMemoryUsage(memoryUsage);
           _resultMemoryUsage += memoryUsage;
 
           TRI_IF_FAILURE(
@@ -1116,7 +1129,7 @@ ExecutionState Query::finalize(VPackBuilder& extras) {
   if (!_snippets.empty()) {
     executionStatsGuard().doUnderLock([&](auto& executionStats) {
       executionStats.requests += _numRequests.load(std::memory_order_relaxed);
-      executionStats.setPeakMemoryUsage(_resourceMonitor.peak());
+      executionStats.setPeakMemoryUsage(_resourceMonitor->peak());
       executionStats.setExecutionTime(executionTime());
       executionStats.setIntermediateCommits(
           _trx->state()->numIntermediateCommits());
@@ -1216,7 +1229,7 @@ QueryResult Query::explain() {
 
     // Run the query optimizer:
     enterState(QueryExecutionState::ValueType::PLAN_OPTIMIZATION);
-    Optimizer opt(_resourceMonitor, _queryOptions.maxNumberOfPlans);
+    Optimizer opt(*_resourceMonitor, _queryOptions.maxNumberOfPlans);
     // get enabled/disabled rules
     opt.createPlans(std::move(plan), _queryOptions, true);
 
@@ -1255,16 +1268,32 @@ QueryResult Query::explain() {
     options.buildUnindexedArrays = true;
     result.data = std::make_shared<VPackBuilder>(&options);
 
+    ResourceUsageScope scope(*_resourceMonitor);
+
     if (_queryOptions.allPlans) {
       VPackArrayBuilder guard(result.data.get());
 
+      size_t previousSize = result.data->bufferRef().byteSize();
       auto const& plans = opt.getPlans();
       for (auto& it : plans) {
         auto& pln = it.first;
         TRI_ASSERT(pln != nullptr);
 
         preparePlanForSerialization(pln);
+
         pln->toVelocyPack(*result.data, flags, serializeQueryData);
+        TRI_IF_FAILURE("Query::serializePlans1") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+
+        // memory accounting for different execution plans
+        size_t currentSize = result.data->bufferRef().byteSize();
+        scope.increase(currentSize - previousSize);
+        previousSize = currentSize;
+
+        TRI_IF_FAILURE("Query::serializePlans2") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
       }
       // cachability not available here
       result.cached = false;
@@ -1276,10 +1305,23 @@ QueryResult Query::explain() {
       preparePlanForSerialization(bestPlan);
       bestPlan->toVelocyPack(*result.data, flags, serializeQueryData);
 
+      TRI_IF_FAILURE("Query::serializePlans1") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+
+      scope.increase(result.data->bufferRef().byteSize());
+
+      TRI_IF_FAILURE("Query::serializePlans2") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+
       // cachability
       result.cached = (!_queryString.empty() && !isModificationQuery() &&
                        _warnings.empty() && _ast->root()->isCacheable());
     }
+
+    // the query object no owns the memory used by the plan(s)
+    _planMemoryUsage += scope.trackedAndSteal();
 
     // technically no need to commit, as we are only explaining here
     auto commitResult = _trx->commit();
@@ -1298,8 +1340,8 @@ QueryResult Query::explain() {
         // optimizer statistics
         ensureExecutionTime();
         VPackObjectBuilder guard(&b, /*unindexed*/ true);
-        opt._stats.toVelocyPack(b);
-        b.add("peakMemoryUsage", VPackValue(_resourceMonitor.peak()));
+        opt.toVelocyPack(b);
+        b.add("peakMemoryUsage", VPackValue(_resourceMonitor->peak()));
         b.add("executionTime", VPackValue(executionTime()));
       }
     }
@@ -1473,7 +1515,8 @@ void Query::init(bool createProfile) {
 void Query::registerQueryInTransactionState() {
   TRI_ASSERT(!_registeredQueryInTrx);
   // register ourselves in the TransactionState
-  _trx->state()->beginQuery(&resourceMonitor(), isModificationQuery());
+  _trx->state()->beginQuery(resourceMonitorAsSharedPtr(),
+                            isModificationQuery());
   _registeredQueryInTrx = true;
 }
 
@@ -1852,8 +1895,8 @@ ExecutionState Query::cleanupTrxAndEngines(ErrorCode errorCode) {
       _shutdownState.store(ShutdownState::None, std::memory_order_relaxed);
     });
     futures::Future<Result> commitResult = _trx->commitAsync();
-    if (commitResult.get().fail()) {
-      THROW_ARANGO_EXCEPTION(std::move(commitResult).get());
+    if (commitResult.waitAndGet().fail()) {
+      THROW_ARANGO_EXCEPTION(std::move(commitResult).waitAndGet());
     }
     TRI_IF_FAILURE("Query::finalize_before_done") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -2070,7 +2113,7 @@ void Query::prepareFromVelocyPack(
       << " this: " << (uintptr_t)this;
 
   // track memory usage
-  ResourceUsageScope scope(_resourceMonitor);
+  ResourceUsageScope scope(*_resourceMonitor);
   scope.increase(querySlice.byteSize() + collections.byteSize() +
                  variables.byteSize() + snippets.byteSize());
 

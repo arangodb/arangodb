@@ -115,6 +115,8 @@ class GraphNode : public ExecutionNode {
   // Can be fully pushed down to a DBServer and is available on all DBServers
   bool isEligibleAsSatelliteTraversal() const;
 
+  IndexHint const& hint() const;
+
   /// @brief the cost of a graph node
   CostEstimate estimateCost() const override;
 

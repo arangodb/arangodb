@@ -160,7 +160,7 @@ Result removeRevisions(transaction::Methods& trx, LogicalCollection& collection,
       auto fut =
           trx.state()->performIntermediateCommitIfRequired(collection.id());
       TRI_ASSERT(fut.isReady());
-      res = fut.get();
+      res = fut.waitAndGet();
     }
 
     stats.waitedForRemovals += TRI_microtime() - t;
@@ -329,7 +329,7 @@ Result fetchRevisions(NetworkFeature& netFeature, transaction::Methods& trx,
       TRI_ASSERT(futures.size() == shoppingLists.size());
       auto& f = futures.front();
       double tWait = TRI_microtime();
-      auto& val = f.get();
+      auto& val = f.waitAndGet();
       stats.waitedForDocs += TRI_microtime() - tWait;
       Result res = val.combinedResult();
       if (res.fail()) {
@@ -495,7 +495,7 @@ Result fetchRevisions(NetworkFeature& netFeature, transaction::Methods& trx,
       auto fut =
           trx.state()->performIntermediateCommitIfRequired(collection.id());
       TRI_ASSERT(fut.isReady());
-      res = fut.get();
+      res = fut.waitAndGet();
 
       if (res.fail()) {
         return res;
@@ -1111,12 +1111,12 @@ Result DatabaseInitialSyncer::fetchCollectionDump(LogicalCollection* coll,
   // the shared status will wait in its destructor until all posted
   // requests have been completed/canceled!
   auto self = shared_from_this();
-  auto sharedStatus = std::make_shared<Syncer::JobSynchronizer>(self);
+  Syncer::JobSynchronizerScope sharedStatus(self);
 
   // order initial chunk. this will block until the initial response
   // has arrived
-  fetchDumpChunk(sharedStatus, baseUrl, coll, leaderColl, batch, fromTick,
-                 chunkSize);
+  fetchDumpChunk(sharedStatus.clone(), baseUrl, coll, leaderColl, batch,
+                 fromTick, chunkSize);
 
   while (true) {
     std::unique_ptr<httpclient::SimpleHttpResult> dumpResponse;
@@ -1188,16 +1188,17 @@ Result DatabaseInitialSyncer::fetchCollectionDump(LogicalCollection* coll,
     if (checkMore && !isAborted()) {
       // already fetch next batch in the background, by posting the
       // request to the scheduler, which can run it asynchronously
-      sharedStatus->request([this, self, baseUrl, sharedStatus, coll,
-                             leaderColl, batch, fromTick, chunkSize]() {
+      sharedStatus->request([self, baseUrl, sharedStatus = sharedStatus.clone(),
+                             coll, leaderColl, batch, fromTick, chunkSize]() {
         TRI_IF_FAILURE("Replication::forceCheckCancellation") {
           // we intentionally sleep here for a while, so the next call gets
           // executed after the scheduling thread has thrown its
           // TRI_ERROR_INTERNAL exception for our failure point
           std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
-        fetchDumpChunk(sharedStatus, baseUrl, coll, leaderColl, batch + 1,
-                       fromTick, chunkSize);
+        std::static_pointer_cast<DatabaseInitialSyncer>(self)->fetchDumpChunk(
+            sharedStatus, baseUrl, coll, leaderColl, batch + 1, fromTick,
+            chunkSize);
       });
       TRI_IF_FAILURE("Replication::forceCheckCancellation") {
         // forcefully abort replication once we have scheduled the job
@@ -1314,10 +1315,9 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(
   // pessimistic wait of roughly 1e9/day and repeat the call without a quick
   // option.
   std::string const baseUrl = replutils::ReplicationUrl + "/keys";
-  std::string url = baseUrl + "?collection=" + urlEncode(leaderColl) +
-                    "&to=" + std::to_string(maxTick) +
-                    "&serverId=" + _state.localServerIdString +
-                    "&batchId=" + std::to_string(_config.batch.id);
+  std::string url = absl::StrCat(
+      baseUrl, "?collection=", urlEncode(leaderColl), "&to=", maxTick,
+      "&serverId=", _state.localServerIdString, "&batchId=", _config.batch.id);
 
   std::string msg = "fetching collection keys for collection '" + coll->name() +
                     "' from " + url;
@@ -1362,9 +1362,9 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(
     if (!found) {
       ++stats.numFailedConnects;
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                    std::string("got invalid response from leader at ") +
-                        _config.leader.endpoint + url +
-                        ": could not find 'X-Arango-Async' header");
+                    absl::StrCat("got invalid response from leader at ",
+                                 _config.leader.endpoint, url,
+                                 ": could not find 'X-Arango-Async' header"));
     }
 
     double const startTime = TRI_microtime();
@@ -1397,8 +1397,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(
           ++stats.numFailedConnects;
           stats.waitedForInitial += waitTime;
           return Result(TRI_ERROR_REPLICATION_NO_RESPONSE,
-                        std::string("job not found on leader at ") +
-                            _config.leader.endpoint);
+                        absl::StrCat("job not found on leader at ",
+                                     _config.leader.endpoint));
         }
       }
 
@@ -1409,8 +1409,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(
         stats.waitedForInitial += waitTime;
         return Result(
             TRI_ERROR_REPLICATION_NO_RESPONSE,
-            std::string("timed out waiting for response from leader at ") +
-                _config.leader.endpoint);
+            absl::StrCat("timed out waiting for response from leader at ",
+                         _config.leader.endpoint));
       }
 
       if (isAborted()) {
@@ -1634,11 +1634,10 @@ void DatabaseInitialSyncer::fetchRevisionsChunk(
       isVPack = true;
     }
 
-    _config.progress.set(
-        std::string(
-            "fetching leader collection revision ranges for collection '") +
-        coll->name() + "', type: " + typeString + ", format: " +
-        (isVPack ? "vpack" : "json") + ", id: " + leaderColl + ", url: " + url);
+    _config.progress.set(absl::StrCat(
+        "fetching leader collection revision ranges for collection '",
+        coll->name(), "', type: ", typeString, ", format: ",
+        (isVPack ? "vpack" : "json"), ", id: ", leaderColl, ", url: ", url));
 
     double t = TRI_microtime();
 
@@ -1887,18 +1886,24 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
   TRI_IF_FAILURE("SyncerNoEncodeAsHLC") { encodeAsHLC = false; }
 
   // now lets get the actual ranges and handle the differences
+  VPackBuilder requestBuilder;
   {
-    VPackBuilder requestBuilder;
-    {
-      VPackArrayBuilder list(&requestBuilder);
-      for (auto const& pair : ranges) {
-        VPackArrayBuilder range(&requestBuilder);
-        // ok to use only HLC encoding here.
-        requestBuilder.add(VPackValue(RevisionId{pair.first}.toHLC()));
-        requestBuilder.add(VPackValue(RevisionId{pair.second}.toHLC()));
-      }
+    VPackArrayBuilder list(&requestBuilder);
+    for (auto const& pair : ranges) {
+      VPackArrayBuilder range(&requestBuilder);
+      // ok to use only HLC encoding here.
+      requestBuilder.add(VPackValue(RevisionId{pair.first}.toHLC()));
+      requestBuilder.add(VPackValue(RevisionId{pair.second}.toHLC()));
     }
+  }
+  std::string const requestPayload = requestBuilder.slice().toJson();
 
+  std::string const url = absl::StrCat(
+      baseUrl, "/", RestReplicationHandler::Ranges,
+      "?collection=", urlEncode(leaderColl),
+      "&serverId=", _state.localServerIdString, "&batchId=", _config.batch.id);
+
+  {
     std::unique_ptr<ReplicationIterator> iter =
         physical->getReplicationIterator(
             ReplicationIterator::Ordering::Revision, *trx);
@@ -1954,12 +1959,6 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
       return res;
     };
 
-    std::string const requestPayload = requestBuilder.slice().toJson();
-    std::string const url =
-        absl::StrCat(baseUrl, "/", RestReplicationHandler::Ranges,
-                     "?collection=", urlEncode(leaderColl),
-                     "&serverId=", _state.localServerIdString,
-                     "&batchId=", _config.batch.id);
     RevisionId requestResume{ranges[0].first};  // start with beginning
     RevisionId iterResume = requestResume;
     std::size_t chunk = 0;
@@ -1967,12 +1966,12 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
     // the shared status will wait in its destructor until all posted
     // requests have been completed/canceled!
     auto self = shared_from_this();
-    auto sharedStatus = std::make_shared<Syncer::JobSynchronizer>(self);
+    Syncer::JobSynchronizerScope sharedStatus(self);
 
     // order initial chunk. this will block until the initial response
     // has arrived
-    fetchRevisionsChunk(sharedStatus, url, coll, leaderColl, requestPayload,
-                        requestResume);
+    fetchRevisionsChunk(sharedStatus.clone(), url, coll, leaderColl,
+                        requestPayload, requestResume);
 
     // Builder will be recycled
     VPackBuilder responseBuilder;
@@ -2065,10 +2064,12 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByRevisions(
       if (requestResume < RevisionId::max() && !isAborted()) {
         // already fetch next chunk in the background, by posting the
         // request to the scheduler, which can run it asynchronously
-        sharedStatus->request([this, self, url, sharedStatus, coll, leaderColl,
-                               requestResume, &requestPayload]() {
-          fetchRevisionsChunk(sharedStatus, url, coll, leaderColl,
-                              requestPayload, requestResume);
+        sharedStatus->request([self, url, sharedStatus = sharedStatus.clone(),
+                               coll, leaderColl, requestResume,
+                               &requestPayload]() {
+          std::static_pointer_cast<DatabaseInitialSyncer>(self)
+              ->fetchRevisionsChunk(sharedStatus, url, coll, leaderColl,
+                                    requestPayload, requestResume);
         });
       }
 

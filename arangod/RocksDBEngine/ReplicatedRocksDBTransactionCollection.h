@@ -56,7 +56,8 @@ class ReplicatedRocksDBTransactionCollection final
     return _rocksMethods.get();
   }
 
-  void beginQuery(ResourceMonitor* resourceMonitor, bool isModificationQuery);
+  void beginQuery(std::shared_ptr<ResourceMonitor> resourceMonitor,
+                  bool isModificationQuery);
   void endQuery(bool isModificationQuery) noexcept;
 
   /// @returns tick of last operation in a transaction

@@ -329,7 +329,7 @@ std::pair<bool, bool> findIndexHandleForAndNode(
     std::vector<transaction::Methods::IndexHandle>& usedIndexes,
     aql::AstNode*& specializedCondition, bool& isSparse, bool failOnForcedHint,
     ReadOwnWrites readOwnWrites) {
-  if (hint.type() == aql::IndexHint::HintType::Disabled) {
+  if (hint.isDisabled()) {
     // usage of index disabled via index hint: disableIndex: true
     return std::make_pair(false, false);
   }
@@ -453,8 +453,8 @@ std::pair<bool, bool> findIndexHandleForAndNode(
     }
   };
 
-  if (hint.type() == aql::IndexHint::HintType::Simple) {
-    std::vector<std::string> const& hintedIndices = hint.hint();
+  if (hint.isSimple()) {
+    std::vector<std::string> const& hintedIndices = hint.candidateIndexes();
     for (std::string const& hinted : hintedIndices) {
       std::shared_ptr<Index> matched;
       for (std::shared_ptr<Index> const& idx : indexes) {
@@ -478,7 +478,8 @@ std::pair<bool, bool> findIndexHandleForAndNode(
     if (hint.isForced() && bestIndex == nullptr && failOnForcedHint) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE,
-          "could not use index hint to serve query; " + hint.toString());
+          absl::StrCat("could not use index hint to serve query; ",
+                       hint.toString()));
     }
   }
 
@@ -1238,9 +1239,10 @@ std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
       }
       if (index->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX &&
           // apply this index only if hinted
-          hint.type() == IndexHint::Simple &&
-          std::find(hint.hint().begin(), hint.hint().end(), index->name()) !=
-              hint.hint().end()) {
+          hint.isSimple() &&
+          std::find(hint.candidateIndexes().begin(),
+                    hint.candidateIndexes().end(),
+                    index->name()) != hint.candidateIndexes().end()) {
         auto costs = index->supportsFilterCondition(
             trx, indexes, root, reference, itemsInCollection);
         if (costs.supportsCondition) {
@@ -1318,7 +1320,7 @@ bool getIndexForSortCondition(aql::Collection const& coll,
                               size_t itemsInIndex, aql::IndexHint const& hint,
                               std::vector<std::shared_ptr<Index>>& usedIndexes,
                               size_t& coveredAttributes) {
-  if (hint.type() != aql::IndexHint::HintType::Disabled) {
+  if (!hint.isDisabled()) {
     // We do not have a condition. But we have a sort!
     if (!sortCondition->isEmpty() && sortCondition->isOnlyAttributeAccess() &&
         sortCondition->isUnidirectional()) {
@@ -1342,8 +1344,8 @@ bool getIndexForSortCondition(aql::Collection const& coll,
 
       auto indexes = coll.indexes();
 
-      if (hint.type() == aql::IndexHint::HintType::Simple) {
-        std::vector<std::string> const& hintedIndices = hint.hint();
+      if (hint.isSimple()) {
+        std::vector<std::string> const& hintedIndices = hint.candidateIndexes();
         for (std::string const& hinted : hintedIndices) {
           std::shared_ptr<Index> matched;
           for (std::shared_ptr<Index> const& idx : indexes) {

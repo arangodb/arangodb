@@ -51,8 +51,7 @@ class MetricStats : public metrics::Guard<IResearchDataStore::Stats> {
   };
 
   // toVPack
-  static bool skip(ArangodServer& server, std::string_view labels) {
-    auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
+  static bool skip(ClusterInfo& ci, std::string_view labels) {
     auto start = labels.find(kShard);
     TRI_ASSERT(start != std::string_view::npos);
     start += kShard.size();

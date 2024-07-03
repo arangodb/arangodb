@@ -297,7 +297,7 @@ TYPED_TEST(StorageEngineMethodsTest, write_log_entries) {
 
   {
     auto iter = storage::rocksdb::test::make_iterator(entries);
-    auto res = this->methods->insert(std::move(iter), {}).get();
+    auto res = this->methods->insert(std::move(iter), {}).waitAndGet();
     EXPECT_TRUE(res.ok());
   }
 
@@ -322,16 +322,16 @@ TYPED_TEST(StorageEngineMethodsTest, write_log_entries_remove_front_back) {
 
   {
     auto iter = storage::rocksdb::test::make_iterator(entries);
-    auto res = this->methods->insert(std::move(iter), {}).get();
+    auto res = this->methods->insert(std::move(iter), {}).waitAndGet();
     EXPECT_TRUE(res.ok());
   }
 
   {
-    auto result = this->methods->removeFront(LogIndex{2}, {}).get();
+    auto result = this->methods->removeFront(LogIndex{2}, {}).waitAndGet();
     ASSERT_TRUE(result.ok());
   }
   {
-    auto result = this->methods->removeBack(LogIndex{3}, {}).get();
+    auto result = this->methods->removeBack(LogIndex{3}, {}).waitAndGet();
     ASSERT_TRUE(result.ok());
   }
 
@@ -357,7 +357,7 @@ TYPED_TEST(StorageEngineMethodsTest, write_log_entries_iter_after_remove) {
 
   {
     auto iter = storage::rocksdb::test::make_iterator(entries);
-    auto res = this->methods->insert(std::move(iter), {}).get();
+    auto res = this->methods->insert(std::move(iter), {}).waitAndGet();
     EXPECT_TRUE(res.ok());
   }
 
@@ -367,7 +367,7 @@ TYPED_TEST(StorageEngineMethodsTest, write_log_entries_iter_after_remove) {
 
   {
     // remove log entries
-    auto result = this->methods->removeFront(LogIndex{1}, {}).get();
+    auto result = this->methods->removeFront(LogIndex{1}, {}).waitAndGet();
     ASSERT_TRUE(result.ok());
   }
 

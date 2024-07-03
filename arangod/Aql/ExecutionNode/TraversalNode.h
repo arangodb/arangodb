@@ -26,6 +26,7 @@
 #include "Aql/EdgeConditionBuilder.h"
 #include "Aql/ExecutionNode/GraphNode.h"
 #include "Aql/Executor/TraversalExecutor.h"
+#include "Aql/IndexHint.h"
 #include "Aql/PruneExpressionEvaluator.h"
 #include "Graph/Types/UniquenessLevel.h"
 #include "VocBase/LogicalCollection.h"

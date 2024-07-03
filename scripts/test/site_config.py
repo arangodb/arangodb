@@ -14,18 +14,6 @@ import psutil
 from socket_counter import get_socket_count
 
 IS_ARM = platform.processor() == "arm" or platform.processor() == "aarch64"
-IS_WINDOWS = platform.win32_ver()[0] != ""
-IS_MAC = platform.mac_ver()[0] != ""
-IS_LINUX = not IS_MAC and not IS_WINDOWS
-if IS_MAC:
-    # Put us to the performance cores:
-    # https://apple.stackexchange.com/questions/443713
-    from os import setpriority
-
-    PRIO_DARWIN_THREAD = 0b0011
-    PRIO_DARWIN_PROCESS = 0b0100
-    PRIO_DARWIN_BG = 0x1000
-    setpriority(PRIO_DARWIN_PROCESS, 0, 0)
 
 
 def sigint_boomerang_handler(signum, frame):
@@ -35,14 +23,6 @@ def sigint_boomerang_handler(signum, frame):
         sys.exit(1)
     # pylint: disable=unnecessary-pass
     pass
-
-
-if IS_WINDOWS:
-    original_sigint_handler = signal.getsignal(signal.SIGINT)
-    signal.signal(signal.SIGINT, sigint_boomerang_handler)
-    # pylint: disable=unused-import
-    # this will patch psutil for us:
-    import monkeypatch_psutil
 
 
 def get_workspace():
@@ -100,7 +80,7 @@ class SiteConfig:
     """this environment - adapted to oskar defaults"""
 
     # pylint: disable=too-few-public-methods disable=too-many-instance-attributes
-    def __init__(self, definition_file):
+    def __init__(self, base_source_dir, build_dir):
         # pylint: disable=too-many-statements disable=too-many-branches
         self.datetime_format = "%Y-%m-%dT%H%M%SZ"
         self.trace = False
@@ -131,20 +111,8 @@ class SiteConfig:
             self.timeout *= 4
         self.no_threads = psutil.cpu_count()
         self.available_slots = round(self.no_threads * 2)  # logical=False)
-        if IS_MAC and platform.processor() == "arm":
-            if psutil.cpu_count() == 8:
-                self.no_threads = 6  # M1 mac mini only has 4 performance cores
-                self.available_slots = 10
-            if psutil.cpu_count() == 20:
-                self.no_threads = 16  # M2 mac studio only has 16 performance cores
-                self.available_slots = 14
-                self.timeout *= 2
-        if IS_WINDOWS:
-            self.max_load = self.no_threads * 0.5
-            self.max_load1 = self.no_threads * 0.6
-        else:
-            self.max_load = self.no_threads * 0.9
-            self.max_load1 = self.no_threads * 1.1
+        self.max_load = self.no_threads * 0.9
+        self.max_load1 = self.no_threads * 1.1
         # roughly increase 1 per ten cores
         self.core_dozend = round(self.no_threads / 10)
         if self.core_dozend == 0:
@@ -174,16 +142,7 @@ class SiteConfig:
             self.max_load /= 2
         self.deadline = datetime.now() + timedelta(seconds=self.timeout)
         self.hard_deadline = datetime.now() + timedelta(seconds=self.timeout + 660)
-        if definition_file.is_file():
-            definition_file = definition_file.parent
-        # base_source_dir = (definition_file / '..').resolve()
-        # TODO - find a better solution
-        base_source_dir = Path(".").resolve()
-        bin_dir = (base_source_dir / "build" / "bin").resolve()
-        if IS_WINDOWS:
-            for target in ["RelWithdebInfo", "Debug"]:
-                if (bin_dir / target).exists():
-                    bin_dir = bin_dir / target
+        bin_dir = (build_dir / "bin").resolve()
         socket_count = "was not allowed to see socket counts!"
         try:
             socket_count = str(get_socket_count())
@@ -209,6 +168,7 @@ class SiteConfig:
 {san_gcov_msg}"""
         )
         self.cfgdir = base_source_dir / "etc" / "testing"
+        self.build_dir = build_dir
         self.bin_dir = bin_dir
         self.base_path = base_source_dir
         self.test_data_dir = base_source_dir

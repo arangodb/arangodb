@@ -28,7 +28,7 @@
 
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/OptimizerRulesFeature.h"
+#include "Aql/OptimizerRule.h"
 #include "Aql/Query.h"
 #include "Aql/QueryAborter.h"
 #include "Aql/QueryRegistry.h"
@@ -277,8 +277,9 @@ class QueryOptimization : public QueryTestMulti {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->properties(builder,
-                     arangodb::LogicalDataSource::Serialization::Properties);
+    auto res = view->properties(
+        builder, arangodb::LogicalDataSource::Serialization::Properties);
+    ASSERT_TRUE(res.ok());
     builder.close();
 
     auto slice = builder.slice();
@@ -324,7 +325,8 @@ class QueryOptimization : public QueryTestMulti {
                "version": $0,
                "includeAllFields": true })",
           version()));
-      logicalCollection1->createIndex(createJson->slice(), created).get();
+      logicalCollection1->createIndex(createJson->slice(), created)
+          .waitAndGet();
       ASSERT_TRUE(created);
       auto const viewDefinition = absl::Substitute(R"({ "indexes": [
         { "collection": "collection_1", "index": "index_1"}

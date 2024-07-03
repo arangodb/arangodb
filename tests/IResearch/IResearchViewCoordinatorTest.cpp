@@ -348,8 +348,9 @@ TEST_F(IResearchViewCoordinatorTest, test_defaults) {
     {
       arangodb::velocypack::Builder builder;
       builder.openObject();
-      view->properties(builder,
-                       arangodb::LogicalDataSource::Serialization::List);
+      auto res = view->properties(
+          builder, arangodb::LogicalDataSource::Serialization::List);
+      ASSERT_TRUE(res.ok());
       builder.close();
       auto slice = builder.slice();
       arangodb::iresearch::IResearchViewMeta meta;
@@ -770,8 +771,9 @@ TEST_F(IResearchViewCoordinatorTest, test_create_link_in_background) {
     ASSERT_NE(nullptr, logicalView);
     VPackBuilder builder;
     builder.openObject();
-    logicalView->properties(
+    auto res = logicalView->properties(
         builder, arangodb::LogicalDataSource::Serialization::Properties);
+    ASSERT_TRUE(res.ok());
     builder.close();
     ASSERT_TRUE(builder.slice().hasKey("links"));
     auto links = builder.slice().get("links");
@@ -955,8 +957,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
     {
       VPackBuilder builder;
       builder.openObject();
-      view->properties(builder,
-                       arangodb::LogicalDataSource::Serialization::Properties);
+      auto res = view->properties(
+          builder, arangodb::LogicalDataSource::Serialization::Properties);
+      ASSERT_TRUE(res.ok());
       builder.close();
 
       arangodb::iresearch::IResearchViewMeta meta;
@@ -996,8 +999,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
       {
         VPackBuilder builder;
         builder.openObject();
-        fullyUpdatedView->properties(
+        auto res = fullyUpdatedView->properties(
             builder, arangodb::LogicalDataSource::Serialization::Properties);
+        ASSERT_TRUE(res.ok());
         builder.close();
 
         arangodb::iresearch::IResearchViewMeta meta;
@@ -1014,8 +1018,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
       {
         VPackBuilder builder;
         builder.openObject();
-        view->properties(
+        auto res = view->properties(
             builder, arangodb::LogicalDataSource::Serialization::Properties);
+        ASSERT_TRUE(res.ok());
         builder.close();
 
         arangodb::iresearch::IResearchViewMeta meta;
@@ -1055,8 +1060,9 @@ TEST_F(IResearchViewCoordinatorTest, test_update_properties) {
       {
         VPackBuilder builder;
         builder.openObject();
-        partiallyUpdatedView->properties(
+        auto res = partiallyUpdatedView->properties(
             builder, arangodb::LogicalDataSource::Serialization::Properties);
+        ASSERT_TRUE(res.ok());
         builder.close();
 
         arangodb::iresearch::IResearchViewMeta meta;
@@ -1152,8 +1158,9 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request) {
   {
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    logicalView->properties(builder,
-                            arangodb::LogicalDataSource::Serialization::List);
+    auto res = logicalView->properties(
+        builder, arangodb::LogicalDataSource::Serialization::List);
+    ASSERT_TRUE(res.ok());
     builder.close();
 
     auto slice = builder.slice();
@@ -1175,8 +1182,9 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request) {
 
     VPackBuilder builder;
     builder.openObject();
-    logicalView->properties(
+    auto res = logicalView->properties(
         builder, arangodb::LogicalDataSource::Serialization::Properties);
+    ASSERT_TRUE(res.ok());
     builder.close();
 
     auto slice = builder.slice();
@@ -1261,8 +1269,9 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request) {
 
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    logicalView->properties(
+    auto res = logicalView->properties(
         builder, arangodb::LogicalDataSource::Serialization::Persistence);
+    ASSERT_TRUE(res.ok());
     builder.close();
 
     auto slice = builder.slice();
@@ -1339,8 +1348,9 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_user_request) {
 
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    logicalView->properties(
+    auto res = logicalView->properties(
         builder, arangodb::LogicalDataSource::Serialization::Inventory);
+    ASSERT_TRUE(res.ok());
     builder.close();
 
     auto slice = builder.slice();
@@ -1527,8 +1537,9 @@ TEST_F(IResearchViewCoordinatorTest,
   {
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    logicalView->properties(builder,
-                            arangodb::LogicalDataSource::Serialization::List);
+    auto res = logicalView->properties(
+        builder, arangodb::LogicalDataSource::Serialization::List);
+    ASSERT_TRUE(res.ok());
     builder.close();
 
     auto slice = builder.slice();
@@ -1550,8 +1561,9 @@ TEST_F(IResearchViewCoordinatorTest,
 
     VPackBuilder builder;
     builder.openObject();
-    logicalView->properties(
+    auto res = logicalView->properties(
         builder, arangodb::LogicalDataSource::Serialization::Properties);
+    ASSERT_TRUE(res.ok());
     builder.close();
 
     auto slice = builder.slice();
@@ -1636,8 +1648,9 @@ TEST_F(IResearchViewCoordinatorTest,
 
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    logicalView->properties(
+    auto res = logicalView->properties(
         builder, arangodb::LogicalDataSource::Serialization::Persistence);
+    ASSERT_TRUE(res.ok());
     builder.close();
 
     auto slice = builder.slice();
@@ -1714,8 +1727,9 @@ TEST_F(IResearchViewCoordinatorTest,
 
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    logicalView->properties(
+    auto res = logicalView->properties(
         builder, arangodb::LogicalDataSource::Serialization::Inventory);
+    ASSERT_TRUE(res.ok());
     builder.close();
 
     auto slice = builder.slice();
@@ -1900,8 +1914,9 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request) {
   {
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    logicalView->properties(builder,
-                            arangodb::LogicalDataSource::Serialization::List);
+    auto res = logicalView->properties(
+        builder, arangodb::LogicalDataSource::Serialization::List);
+    ASSERT_TRUE(res.ok());
     builder.close();
 
     auto slice = builder.slice();
@@ -1923,8 +1938,9 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request) {
 
     VPackBuilder builder;
     builder.openObject();
-    logicalView->properties(
+    auto res = logicalView->properties(
         builder, arangodb::LogicalDataSource::Serialization::Properties);
+    ASSERT_TRUE(res.ok());
     builder.close();
 
     auto slice = builder.slice();
@@ -2009,8 +2025,9 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request) {
 
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    logicalView->properties(
+    auto res = logicalView->properties(
         builder, arangodb::LogicalDataSource::Serialization::Persistence);
+    ASSERT_TRUE(res.ok());
     builder.close();
 
     auto slice = builder.slice();
@@ -2087,8 +2104,9 @@ TEST_F(IResearchViewCoordinatorTest, test_properties_internal_request) {
 
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    logicalView->properties(
+    auto res = logicalView->properties(
         builder, arangodb::LogicalDataSource::Serialization::Inventory);
+    ASSERT_TRUE(res.ok());
     builder.close();
 
     auto slice = builder.slice();
@@ -2275,8 +2293,9 @@ TEST_F(IResearchViewCoordinatorTest,
   {
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    logicalView->properties(builder,
-                            arangodb::LogicalDataSource::Serialization::List);
+    auto res = logicalView->properties(
+        builder, arangodb::LogicalDataSource::Serialization::List);
+    ASSERT_TRUE(res.ok());
     builder.close();
 
     auto slice = builder.slice();
@@ -2298,8 +2317,9 @@ TEST_F(IResearchViewCoordinatorTest,
 
     VPackBuilder builder;
     builder.openObject();
-    logicalView->properties(
+    auto res = logicalView->properties(
         builder, arangodb::LogicalDataSource::Serialization::Properties);
+    ASSERT_TRUE(res.ok());
     builder.close();
 
     auto slice = builder.slice();
@@ -2384,8 +2404,9 @@ TEST_F(IResearchViewCoordinatorTest,
 
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    logicalView->properties(
+    auto res = logicalView->properties(
         builder, arangodb::LogicalDataSource::Serialization::Persistence);
+    ASSERT_TRUE(res.ok());
     builder.close();
 
     auto slice = builder.slice();
@@ -2462,8 +2483,9 @@ TEST_F(IResearchViewCoordinatorTest,
 
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    logicalView->properties(
+    auto res = logicalView->properties(
         builder, arangodb::LogicalDataSource::Serialization::Inventory);
+    ASSERT_TRUE(res.ok());
     builder.close();
 
     auto slice = builder.slice();
@@ -2617,8 +2639,9 @@ TEST_F(IResearchViewCoordinatorTest, test_primary_compression_properties) {
 
     VPackBuilder builder;
     builder.openObject();
-    view->properties(builder,
-                     arangodb::LogicalDataSource::Serialization::Properties);
+    auto res = view->properties(
+        builder, arangodb::LogicalDataSource::Serialization::Properties);
+    ASSERT_TRUE(res.ok());
     builder.close();
 
     auto slice = builder.slice();
@@ -2674,8 +2697,9 @@ TEST_F(IResearchViewCoordinatorTest, test_primary_compression_properties) {
 
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    view->properties(builder,
-                     arangodb::LogicalDataSource::Serialization::Persistence);
+    auto res = view->properties(
+        builder, arangodb::LogicalDataSource::Serialization::Persistence);
+    ASSERT_TRUE(res.ok());
     builder.close();
 
     auto slice = builder.slice();
@@ -2762,8 +2786,9 @@ TEST_F(IResearchViewCoordinatorTest, test_primary_compression_properties) {
 
     arangodb::velocypack::Builder builder;
     builder.openObject();
-    view->properties(builder,
-                     arangodb::LogicalDataSource::Serialization::Inventory);
+    auto res = view->properties(
+        builder, arangodb::LogicalDataSource::Serialization::Inventory);
+    ASSERT_TRUE(res.ok());
     builder.close();
 
     auto slice = builder.slice();
@@ -5943,7 +5968,7 @@ TEST_F(IResearchViewCoordinatorTest, test_drop_link) {
                      *logicalCollection, arangodb::velocypack::Parser::fromJson(
                                              std::to_string(linkId.id()))
                                              ->slice())
-                     .get()
+                     .waitAndGet()
                      .ok()));
     EXPECT_TRUE(planVersion < arangodb::tests::getCurrentPlanVersion(
                                   server.server()));  // plan version changed
