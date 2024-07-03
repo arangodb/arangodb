@@ -1,6 +1,9 @@
 devel
 -----
 
+* Use __nss_configure_lookup to opt out of /etc/nsswitch.conf. Add option
+  --honour-nsswitch to cancel the opt out.
+
 * Make constrained heap sort in AQL report all filtered rows as "filtered" in
   the query profile.
 
