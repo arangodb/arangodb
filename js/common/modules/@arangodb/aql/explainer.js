@@ -829,12 +829,15 @@ function processQuery(query, explain, planIndex) {
     maxRuntimeLen = String('Runtime [s]').length,
     stats = explain.stats;
 
-  let plan = explain.plan;
-  if (plan === undefined) {
+  if (explain === undefined || (explain.plan === undefined && explain.plans === undefined)) {
     throw "incomplete query execution plan data - this should not happen unless when connected to a DB-Server. fetching query plans/profiles from a DB-Server is not supported!";
   }
+  
+  let plan;
   if (planIndex !== undefined) {
     plan = explain.plans[planIndex];
+  } else {
+    plan = explain.plan;
   }
 
   /// mode with actual runtime stats per node

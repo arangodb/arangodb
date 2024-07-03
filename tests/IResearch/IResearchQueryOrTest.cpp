@@ -639,7 +639,9 @@ class QueryOrView : public QueryOr {
       velocypack::Builder builder;
 
       builder.openObject();
-      view->properties(builder, LogicalDataSource::Serialization::Properties);
+      auto res = view->properties(builder,
+                                  LogicalDataSource::Serialization::Properties);
+      ASSERT_TRUE(res.ok());
       builder.close();
 
       auto slice = builder.slice();
