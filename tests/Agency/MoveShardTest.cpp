@@ -1344,6 +1344,63 @@ TEST_F(MoveShardTest,
                           query_t const& payload) -> bool { return success; }));
 }
 
+TEST_F(MoveShardTest, if_the_collection_was_dropped_when_aborting_the_job) {
+  std::function<std::unique_ptr<VPackBuilder>(velocypack::Slice,
+                                              std::string const&)>
+      createTestStructure = [&](velocypack::Slice s, std::string const& path) {
+        auto builder = std::make_unique<velocypack::Builder>();
+        if (s.isObject()) {
+          builder->add(VPackValue(VPackValueType::Object));
+          for (auto it : VPackObjectIterator(s)) {
+            auto childBuilder =
+                createTestStructure(it.value, path + "/" + it.key.copyString());
+            if (childBuilder) {
+              builder->add(it.key.stringView(), childBuilder->slice());
+            }
+          }
+
+          if (path == "/arango/Target/Pending") {
+            VPackBuilder pendingJob;
+            {
+              VPackObjectBuilder b(&pendingJob);
+              auto plainJob = createJob("BOGUS", SHARD_FOLLOWER1, FREE_SERVER);
+              for (auto it : VPackObjectIterator(plainJob.slice())) {
+                pendingJob.add(it.key.copyString(), it.value);
+              }
+              pendingJob.add("timeCreated",
+                             VPackValue(timepointToString(
+                                 std::chrono::system_clock::now())));
+              pendingJob.add("abort", VPackValue(true));
+            }
+            builder->add(jobId, pendingJob.slice());
+          }
+          builder->close();
+        } else {
+          builder->add(s);
+        }
+        return builder;
+      };
+
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
+  auto agency = createAgencyFromBuilder(*builder);
+
+  Mock<AgentInterface> mockAgent;
+  AgentInterface& agent = mockAgent.get();
+
+  auto moveShard = MoveShard(*agency, &agent, PENDING, jobId);
+  Mock<MoveShard> spy(moveShard);
+  Fake(Method(spy, finish));
+
+  Job& spyMoveShard = spy.get();
+  spyMoveShard.run(aborts);
+
+  Verify(
+      Method(spy, finish)
+          .Matching([](std::string const& server, std::string const& shard,
+                       bool success, std::string const& reason,
+                       query_t const& payload) -> bool { return !success; }));
+}
+
 TEST_F(
     MoveShardTest,
     if_the_collection_was_dropped_before_the_job_could_be_started_just_finish_the_job) {
