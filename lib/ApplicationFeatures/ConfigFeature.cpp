@@ -79,10 +79,10 @@ void ConfigFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                                           arangodb::options::Flags::Command));
 
   options->addOption(
-      "--honour-nsswitch",
+      "--honor-nsswitch",
       "Allow hostname lookup configuration via /etc/nsswitch.conf if on "
       "Linux/glibc.",
-      new BooleanParameter(&_honourNsswitch),
+      new BooleanParameter(&_honorNsswitch),
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 }
 
@@ -278,14 +278,14 @@ void ConfigFeature::prepare() {
   // If this happens on a system with a different version of glibc installed
   // (like for example an older Ubuntu system or a Debian or RedHat system),
   // then glibc tries to dynamically load a module which does not fit and the
-  // process crashes with a high likelyhood. To prevent this, we use the
+  // process crashes with a high likelihood. To prevent this, we use the
   // (undocumented) override function below. This has the consequence that the
   // host name lookup will always just use /etc/hosts and normal DNS lookup. And
   // username lookup will always just use /etc/passwd, regardless of the system
   // configuration. There is an opt-out for this in form of the configuration
-  // option --honour-nsswitch. Use this only if you are running on a system
+  // option --honor-nsswitch. Use this only if you are running on a system
   // without glibc installed, or with glibc version 2.39.0.
-  if (!_honourNsswitch) {
+  if (!_honorNsswitch) {
     __nss_configure_lookup("hosts", "files dns");
     __nss_configure_lookup("passwd", "files");
     __nss_configure_lookup("group", "files");

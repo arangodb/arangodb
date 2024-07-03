@@ -54,7 +54,7 @@ class ConfigFeature final : public application_features::ApplicationFeature {
         _file(configFilename),
         _progname(progname),
         _checkConfiguration(false),
-        _honourNsswitch(false) {
+        _honorNsswitch(false) {
     static_assert(
         Server::template isCreatedAfter<ConfigFeature, VersionFeature>());
 
@@ -78,7 +78,7 @@ class ConfigFeature final : public application_features::ApplicationFeature {
   std::string _progname;
   std::vector<std::string> _defines;
   bool _checkConfiguration;
-  bool _honourNsswitch;  // If this is set to true, the internal override is
+  bool _honorNsswitch;  // If this is set to true, the internal override is
                          // deactivated.
 };
 
