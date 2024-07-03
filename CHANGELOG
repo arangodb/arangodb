@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fix a nullptr access when aborting a move shard job for a already dropped collection.
+
 * Make constrained heap sort in AQL report all filtered rows as "filtered" in
   the query profile.
 
