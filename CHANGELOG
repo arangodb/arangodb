@@ -1,3 +1,10 @@
+v3.11.11 (XXXX-XX-XX)
+---------------------
+
+* Use __nss_configure_lookup to opt out of /etc/nsswitch.conf. Add option
+  --honour-nsswitch to cancel the opt out.
+
+
 v3.11.10 (2024-06-28)
 ---------------------
 
