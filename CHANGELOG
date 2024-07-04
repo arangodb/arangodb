@@ -6,6 +6,9 @@ devel
 3.12.1 (XXXX-XX-XX)
 -------------------
 
+* Use __nss_configure_lookup to opt out of /etc/nsswitch.conf.
+  Add the startup option --honor-nsswitch to cancel the opt-out.
+
 * Fix memory accounting in join executor.
 
 * Fix issues with late materialization being sometimes implicitly dependent on
