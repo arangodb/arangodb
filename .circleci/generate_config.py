@@ -551,21 +551,23 @@ def add_x64_enterprise_workflow(workflows, tests, args):
 
 
 def add_aarch64_community_workflow(workflows, tests, args):
-    add_workflow(
-        workflows,
-        tests,
-        BuildConfig("aarch64", False, args.sanitizer, args.nightly),
-        args,
-    )
+    if args.ui == "" or args.ui == "off" or args.ui == "on":
+        add_workflow(
+            workflows,
+            tests,
+            BuildConfig("aarch64", False, args.sanitizer, args.nightly),
+            args,
+        )
 
 
 def add_aarch64_enterprise_workflow(workflows, tests, args):
-    add_workflow(
-        workflows,
-        tests,
-        BuildConfig("aarch64", True, args.sanitizer, args.nightly),
-        args,
-    )
+    if args.ui == "" or args.ui == "off" or args.ui == "on":
+        add_workflow(
+            workflows,
+            tests,
+            BuildConfig("aarch64", True, args.sanitizer, args.nightly),
+            args,
+        )
 
 
 def generate_jobs(config, args, tests):
