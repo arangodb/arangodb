@@ -24,7 +24,8 @@ struct async_promise_base {
       bool await_ready() noexcept { return false; }
       std::coroutine_handle<> await_suspend(
           std::coroutine_handle<> self) noexcept {
-        auto addr = _promise->_continuation.exchange(self.address());
+        auto addr = _promise->_continuation.exchange(self.address(),
+                                                     std::memory_order_acq_rel);
         if (addr == nullptr) {
           return std::noop_coroutine();
         } else if (addr == self.address()) {
@@ -70,10 +71,11 @@ struct async {
     struct awaitable {
       bool await_ready() noexcept {
         return _handle.promise()._continuation.load(
-                   std::memory_order_relaxed) != nullptr;
+                   std::memory_order_acquire) != nullptr;
       }
       bool await_suspend(std::coroutine_handle<> c) noexcept {
-        return _handle.promise()._continuation.exchange(c.address()) == nullptr;
+        return _handle.promise()._continuation.exchange(
+                   c.address(), std::memory_order_acq_rel) == nullptr;
       }
       auto await_resume() {
         expected<T> r = std::move(_handle.promise()._value);
