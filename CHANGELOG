@@ -1,6 +1,9 @@
 v3.11.11 (XXXX-XX-XX)
 ---------------------
 
+* Add syslog client implementation for Windows. This allows one to configure
+  syslog logging for Windows deployments.
+
 * Use __nss_configure_lookup to opt out of /etc/nsswitch.conf.
   Add the startup option --honor-nsswitch to cancel the opt-out.
 
