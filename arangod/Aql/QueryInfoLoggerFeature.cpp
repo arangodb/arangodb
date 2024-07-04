@@ -367,7 +367,7 @@ class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
     velocypack::Builder out;
     Result res =
         methods::Indexes::ensureIndex(*collection, body.slice(), true, out)
-            .get();
+            .waitAndGet();
     return res;
   }
 

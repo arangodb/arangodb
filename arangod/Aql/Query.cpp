@@ -184,7 +184,7 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
   }
 
   // set memory limit for query
-  _resourceMonitor.memoryLimit(_queryOptions.memoryLimit);
+  _resourceMonitor->memoryLimit(_queryOptions.memoryLimit);
   _warnings.updateFromOptions(_queryOptions);
 
   // store name of user that started the query
