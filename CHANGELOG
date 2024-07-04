@@ -3,6 +3,17 @@
 
 * Fix a nullptr access when aborting a move shard job for a already dropped collection.
 
+* Use __nss_configure_lookup to opt out of /etc/nsswitch.conf.
+  Add the startup option --honor-nsswitch to cancel the opt-out.
+
+* Fix memory accounting in join executor.
+
+* Fix issues with late materialization being sometimes implicitly dependent on
+  the optimizer rule "optimize-projections" being enabled. Now disable some
+  late materialization optimizations in case this rule is not active.
+  Also fix a specific case in which no results were being materialized in case
+  the optimizer rule "optimize-projections" was disabled.
+
 * Fix serialization of multiple query plans using the `allPlans: true` hint
   when run `explain` on a query.
 

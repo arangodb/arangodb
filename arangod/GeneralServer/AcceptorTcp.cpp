@@ -114,13 +114,13 @@ void AcceptorTcp<T>::close() {
     _open = false;  // make sure the _open flag is `false` before we
                     // cancel/close the acceptor, since otherwise the
                     // handleError method will restart async_accept.
-    _acceptor.close();
+    _ctx.io_context.wrap([this]() { _acceptor.close(); });
   }
 }
 
 template<SocketType T>
 void AcceptorTcp<T>::cancel() {
-  _acceptor.cancel();
+  _ctx.io_context.wrap([this]() { _acceptor.cancel(); });
 }
 
 template<>
