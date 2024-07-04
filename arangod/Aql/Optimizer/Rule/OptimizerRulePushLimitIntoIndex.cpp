@@ -123,7 +123,7 @@ void arangodb::aql::pushLimitIntoIndexRule(Optimizer* opt,
       continue;
     }
 
-    // The condition of IndexNode can only be a single CompareInNode for the
+    // The condition of IndexNode can only be a single `compare in` for the
     // rule to be applicable
     auto* compareInNode = indexNode->condition() == nullptr
                               ? nullptr
@@ -141,23 +141,6 @@ void arangodb::aql::pushLimitIntoIndexRule(Optimizer* opt,
     }
     if (compareInNode == nullptr) {
       LOG_DEVEL << "Single in operator not found ";
-      continue;
-    }
-
-    // remember the output variable that is produced by the IndexNode
-    Variable const* outVariable = indexNode->outVariable();
-
-    auto const& indexes = indexNode->getIndexes();
-    if (indexes.size() != 1) {
-      // IndexNode uses more than a single index. not safe to apply the
-      // optimization here.
-      LOG_DEVEL << __LINE__;
-      continue;
-    }
-
-    auto const& usedIndex = indexes.front();
-    if (!isEligibleIndex(usedIndex)) {
-      LOG_DEVEL << __LINE__;
       continue;
     }
 
@@ -182,7 +165,22 @@ void arangodb::aql::pushLimitIntoIndexRule(Optimizer* opt,
     //   {var: doc, ascending: false, attributePath: ["b"]},
     //   {var: foo, ascending: true, attributePath: ["bar", "baz"]},
     // ]
+ 
+    // remember the output variable that is produced by the IndexNode
+    Variable const* outVariable = indexNode->outVariable();
 
+    auto const& indexes = indexNode->getIndexes();
+    if (indexes.size() != 1) {
+      // IndexNode uses more than a single index. not safe to apply the
+      // optimization here.
+      LOG_DEVEL << __LINE__;
+      continue;
+    }
+    auto const& usedIndex = indexes.front();
+    if (!isEligibleIndex(usedIndex)) {
+      LOG_DEVEL << __LINE__;
+      continue;
+    }
     if (!isEligibleSort(usedIndex->fields().begin(), usedIndex->fields().end(),
                         sortFields.begin(), sortFields.end(), outVariable) &&
         !isEligibleSort(usedIndex->fields().begin() + 1,
