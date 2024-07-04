@@ -25,6 +25,9 @@
 
 #include "Aql/VariableGenerator.h"
 
+#include <span>
+#include <unordered_map>
+
 namespace arangodb {
 
 namespace velocypack {
@@ -34,6 +37,7 @@ class Slice;
 
 namespace aql {
 struct AstNode;
+struct Variable;
 
 // Helper class to generate AQL AstNode conditions
 // that can be handed over to Indexes in order to
@@ -76,6 +80,13 @@ class EdgeConditionBuilder {
 
   EdgeConditionBuilder(EdgeConditionBuilder const&) = delete;
   EdgeConditionBuilder(EdgeConditionBuilder&&) = delete;
+
+  void replaceVariables(
+      std::unordered_map<VariableId, Variable const*> const& replacements);
+
+  void replaceAttributeAccess(Ast* ast, Variable const* searchVariable,
+                              std::span<std::string_view> attribute,
+                              Variable const* replaceVariable);
 
   // Add a condition on the edges that is not related to
   // the direction e.g. `label == foo`

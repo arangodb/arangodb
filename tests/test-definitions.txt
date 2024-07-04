@@ -108,11 +108,13 @@ hot_backup enterprise size=large -- --dumpAgencyOnError true
 
 # frequent restarts impose more threats to the SUT, increase parallelity.
 server_parameters priority=1000 parallelity=3 buckets=3 single -- --dumpAgencyOnError true
-server_parameters priority=1000 parallelity=5 buckets=6 size=small cluster -- --dumpAgencyOnError true
+server_parameters priority=1000 parallelity=5 buckets=6 cluster -- --dumpAgencyOnError true
 server_permissions,server_secrets priority=1000 parallelity=5 size=small -- --dumpAgencyOnError true
 
 # Dump Tests
 dump size=medium -- --dumpAgencyOnError true
+# BTS-1852 enable after fix:
+# dump size=medium enterprise cluster name=dump_singleshard_cluster -- --forceOneShard true --cluster true --dumpAgencyOnError true
 dump_authentication size=medium -- --dumpAgencyOnError true
 dump_jwt size=medium -- --dumpAgencyOnError true
 dump_multiple size=medium -- --dumpAgencyOnError true

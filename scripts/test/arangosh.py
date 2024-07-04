@@ -2,21 +2,13 @@
 """ launch a testing.js instance with given testsuite and arguments """
 import logging
 import os
-from site_config import IS_WINDOWS
 from async_client import (
     make_logfile_params,
     logfile_line_result,
     delete_logfile_params,
 )
 
-if IS_WINDOWS:
-    from async_client_pipe import (
-        ArangoCLIprogressiveTimeoutExecutorPipe as ArangoCLIprogressiveTimeoutExecutor,
-    )
-else:
-    from async_client_pty import (
-        ArangoCLIprogressiveTimeoutExecutorPty as ArangoCLIprogressiveTimeoutExecutor,
-    )
+from async_client import ArangoCLIprogressiveTimeoutExecutor
 
 
 class ArangoshExecutor(ArangoCLIprogressiveTimeoutExecutor):
@@ -40,7 +32,7 @@ class ArangoshExecutor(ArangoCLIprogressiveTimeoutExecutor):
             with open("/sys/fs/cgroup/memory/memory.limit_in_bytes") as limit:
                 memory = int(limit.read())
                 san_mode = os.environ.get("SAN_MODE")
-                if san_mode != None:
+                if san_mode is not None:
                     # sanitizer builds need more resources, but the sanitizer
                     # allocations are not considered in the memory accounting,
                     # so we reduce the memory assigned to all the instances
@@ -102,6 +94,8 @@ class ArangoshExecutor(ArangoCLIprogressiveTimeoutExecutor):
                 # ATM CircleCI does not support to attach debuggers, so we generate core dumps instead
                 "--coreAbort",
                 "true",
+                "--build",
+                self.cfg.build_dir,
             ]
             + self.get_memory_limit_arg()
             + testing_args

@@ -23,25 +23,29 @@
 
 #pragma once
 
+#include "Metrics/Fwd.h"
+#include "Network/ConnectionPool.h"
+#include "RestServer/arangod.h"
+#include "Scheduler/Scheduler.h"
+
+#include <fuerte/requests.h>
+
 #include <atomic>
 #include <cstdint>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <string_view>
 
-#include <fuerte/requests.h>
-
-#include "Network/ConnectionPool.h"
-#include "Metrics/Fwd.h"
-#include "RestServer/arangod.h"
-#include "Scheduler/Scheduler.h"
-
 namespace arangodb {
+class Thread;
+
 namespace network {
 struct RequestOptions;
 
 struct RetryableRequest {
   virtual ~RetryableRequest() = default;
+  virtual bool isDone() const = 0;
   virtual void retry() = 0;
   virtual void cancel() = 0;
 };
@@ -66,8 +70,6 @@ class NetworkFeature final : public ArangodFeature {
   void beginShutdown() override;
   void stop() override;
   void unprepare() override;
-
-  void cancelRetryRequests() noexcept;
 
   bool prepared() const noexcept;
 
@@ -104,6 +106,7 @@ class NetworkFeature final : public ArangodFeature {
                      std::unique_ptr<fuerte::Response>& res);
 
  private:
+  void cancelGarbageCollection() noexcept;
   void injectAcceptEncodingHeader(fuerte::Request& req) const;
   bool compressRequestBody(network::RequestOptions const& opts,
                            fuerte::Request& req) const;
@@ -127,9 +130,7 @@ class NetworkFeature final : public ArangodFeature {
   std::mutex _workItemMutex;
   Scheduler::WorkHandle _workItem;
 
-  std::unordered_map<std::shared_ptr<network::RetryableRequest>,
-                     Scheduler::WorkHandle>
-      _retryRequests;
+  std::unique_ptr<Thread> _retryThread;
 
   /// @brief number of cluster-internal forwarded requests
   /// (from one coordinator to another, in case load-balancing

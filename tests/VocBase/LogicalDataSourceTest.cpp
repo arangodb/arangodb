@@ -87,7 +87,18 @@ class LogicalDataSourceTest : public ::testing::Test {
     features.emplace_back(server.addFeature<arangodb::DatabaseFeature>(),
                           false);
     features.emplace_back(
-        server.addFeature<arangodb::metrics::MetricsFeature>(), false);
+        server.addFeature<arangodb::metrics::MetricsFeature>(
+            arangodb::LazyApplicationFeatureReference<
+                arangodb::QueryRegistryFeature>(nullptr),
+            arangodb::LazyApplicationFeatureReference<
+                arangodb::StatisticsFeature>(nullptr),
+            arangodb::LazyApplicationFeatureReference<
+                arangodb::EngineSelectorFeature>(nullptr),
+            arangodb::LazyApplicationFeatureReference<
+                arangodb::metrics::ClusterMetricsFeature>(nullptr),
+            arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
+                nullptr)),
+        false);
     features.emplace_back(
         server.addFeature<arangodb::QueryRegistryFeature>(
             server.template getFeature<arangodb::metrics::MetricsFeature>()),

@@ -96,7 +96,7 @@ futures::Future<Result> ReplicatedRocksDBTransactionState::doCommit() {
   // in replicateOperation futures, even if we return early
   ScopeGuard guard{[&]() noexcept {
     try {
-      futures::collectAll(commits).get();
+      futures::collectAll(commits).waitAndGet();
     } catch (std::exception const&) {
     }
   }};
@@ -272,7 +272,7 @@ Result ReplicatedRocksDBTransactionState::doAbort() {
         }
         continue;
       }
-      auto res = leader->replicateOperation(operation, options).get();
+      auto res = leader->replicateOperation(operation, options).waitAndGet();
       bool resigned = false;
       if (res.fail()) {
         if (res.is(TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED)) {
@@ -328,7 +328,8 @@ RocksDBTransactionMethods* ReplicatedRocksDBTransactionState::rocksdbMethods(
 }
 
 void ReplicatedRocksDBTransactionState::beginQuery(
-    ResourceMonitor* resourceMonitor, bool isModificationQuery) {
+    std::shared_ptr<ResourceMonitor> resourceMonitor,
+    bool isModificationQuery) {
   RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockOwner);
   for (auto& col : _collections) {
     static_cast<ReplicatedRocksDBTransactionCollection&>(*col).beginQuery(

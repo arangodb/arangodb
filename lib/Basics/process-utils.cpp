@@ -23,11 +23,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <errno.h>
+#include <spawn.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <signal.h>
 #include <algorithm>
 #include <chrono>
 #include <memory>
@@ -36,8 +38,6 @@
 #include <absl/strings/str_cat.h>
 
 #include "process-utils.h"
-#include "signals.h"
-#include "Basics/system-functions.h"
 
 #if defined(TRI_HAVE_MACOS_MEM_STATS)
 #include <sys/sysctl.h>
@@ -73,18 +73,25 @@
 
 #include "Basics/NumberUtils.h"
 #include "Basics/PageSize.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/debugging.h"
 #include "Basics/error.h"
+#include "Basics/files.h"
 #include "Basics/memory.h"
 #include "Basics/operating-system.h"
+#include "Basics/signals.h"
+#include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
 #include "Basics/voc-errors.h"
-#include "Basics/files.h"
+#include "Containers/FlatHashMap.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+
+#include <algorithm>
+#include <string_view>
 
 using namespace arangodb;
 
@@ -225,9 +232,176 @@ static bool CreatePipes(int* pipe_server_to_child, int* pipe_child_to_server) {
 /// @brief starts external process
 ////////////////////////////////////////////////////////////////////////////////
 
-static void StartExternalProcess(ExternalProcess* external, bool usePipes,
-                                 std::vector<std::string> const& additionalEnv,
-                                 std::string const& fileForStdErr) {
+static void StartExternalProcessPosixSpawn(
+    ExternalProcess* external, bool usePipes,
+    std::vector<std::string> const& additionalEnv,
+    std::string const& fileForStdErr) {
+  int pipe_server_to_child[2];
+  int pipe_child_to_server[2];
+
+  if (usePipes) {
+    bool ok = CreatePipes(pipe_server_to_child, pipe_child_to_server);
+
+    if (!ok) {
+      external->_status = TRI_EXT_PIPE_FAILED;
+      return;
+    }
+  }
+
+  int err = 0;  // accumulate any errors we might get
+  posix_spawn_file_actions_t file_actions;
+  err |= posix_spawn_file_actions_init(&file_actions);
+  // file actions are performed in order they were added.
+
+  if (usePipes) {
+    err |= posix_spawn_file_actions_adddup2(&file_actions,
+                                            pipe_server_to_child[0], 0);
+    err |= posix_spawn_file_actions_adddup2(&file_actions,
+                                            pipe_child_to_server[1], 1);
+
+    err |= posix_spawn_file_actions_addclose(&file_actions,
+                                             pipe_server_to_child[0]);
+    err |= posix_spawn_file_actions_addclose(&file_actions,
+                                             pipe_server_to_child[1]);
+    err |= posix_spawn_file_actions_addclose(&file_actions,
+                                             pipe_child_to_server[0]);
+    err |= posix_spawn_file_actions_addclose(&file_actions,
+                                             pipe_child_to_server[1]);
+  } else {
+    err |= posix_spawn_file_actions_addopen(&file_actions, 0, "/dev/null",
+                                            O_RDONLY, 0);
+  }
+
+  if (!fileForStdErr.empty()) {
+    err |= posix_spawn_file_actions_addopen(&file_actions, 2,
+                                            fileForStdErr.c_str(),
+                                            O_CREAT | O_WRONLY | O_TRUNC, 0644);
+  }
+
+  posix_spawnattr_t spawn_attrs;
+  err |= posix_spawnattr_init(&spawn_attrs);
+  err |= posix_spawnattr_setflags(
+      &spawn_attrs, POSIX_SPAWN_SETSIGDEF | POSIX_SPAWN_SETSIGMASK);
+  sigset_t all;
+  sigfillset(&all);
+  err |= posix_spawnattr_setsigdefault(&spawn_attrs, &all);
+  sigset_t none;
+  sigemptyset(&none);
+  err |= posix_spawnattr_setsigmask(&spawn_attrs, &none);
+
+  ScopeGuard cleanup([&]() noexcept {
+    posix_spawnattr_destroy(&spawn_attrs);
+    posix_spawn_file_actions_destroy(&file_actions);
+  });
+
+  if (err != 0) {
+    external->_status = TRI_EXT_PIPE_FAILED;
+    if (usePipes) {
+      close(pipe_server_to_child[0]);
+      close(pipe_server_to_child[1]);
+      close(pipe_child_to_server[0]);
+      close(pipe_child_to_server[1]);
+    }
+    return;
+  }
+
+  auto extractName = [](char const* value) noexcept {
+    std::string_view v;
+    if (value != nullptr) {
+      v = value;
+      if (auto pos = v.find('='); pos != std::string_view::npos) {
+        v = v.substr(0, pos);
+      }
+    }
+    return v;
+  };
+
+  // note the position in the envs vector for every unique environment variable.
+  // we do this to make the passed environment variables unique, e.g. in case
+  // the original env contains a setting with is later overriden by
+  // additionalEnv. in this case we want additionalEnv to win.
+  containers::FlatHashMap<std::string_view, size_t> positions;
+
+  std::vector<char*> envs;
+  for (char** e = environ; *e != nullptr; ++e) {
+    positions.insert_or_assign(extractName(*e), envs.size());
+    envs.push_back(*e);
+  }
+
+  envs.reserve(envs.size() + additionalEnv.size() + 1);
+  for (auto const& e : additionalEnv) {
+    auto name = extractName(e.data());
+    if (auto it = positions.find(name); it != positions.end()) {
+      // environment variable already set. now update it
+      envs[it->second] = const_cast<char*>(e.data());
+    } else {
+      // new environment variable
+      positions.emplace(name, envs.size());
+      envs.push_back(const_cast<char*>(e.data()));
+    }
+  }
+
+  TRI_ASSERT(std::unique(envs.begin(), envs.end(),
+                         [&](char const* lhs, char const* rhs) {
+                           return extractName(lhs) == extractName(rhs);
+                         }) == envs.end());
+
+  // terminate the array with a null pointer entry. this is required for
+  // posix_spawnp
+  envs.emplace_back(nullptr);
+
+  int result = posix_spawnp(&external->_pid, external->_executable.c_str(),
+                            &file_actions, &spawn_attrs, external->_arguments,
+                            envs.data());
+
+  if (result != 0) {
+    int errnoCopy = errno;
+    if (errnoCopy == ENOENT) {
+      // We fake the old legacy behaviour here from the fork/exec times:
+      external->_status = TRI_EXT_TERMINATED;
+      external->_exitStatus = 1;
+      LOG_TOPIC("e3a2c", ERR, arangodb::Logger::FIXME)
+          << "spawn failed: executable '" << external->_executable
+          << "' not found";
+    } else {
+      external->_status = TRI_EXT_FORK_FAILED;
+
+      LOG_TOPIC("e3a2b", ERR, arangodb::Logger::FIXME)
+          << "spawning of executable '" << external->_executable
+          << "' failed: " << strerror(errnoCopy);
+    }
+    if (usePipes) {
+      close(pipe_server_to_child[0]);
+      close(pipe_server_to_child[1]);
+      close(pipe_child_to_server[0]);
+      close(pipe_child_to_server[1]);
+    }
+
+    return;
+  }
+
+  LOG_TOPIC("ac58b", DEBUG, arangodb::Logger::FIXME)
+      << "spawning executable '" << external->_executable
+      << "' succeeded, child pid: " << external->_pid;
+
+  if (usePipes) {
+    close(pipe_server_to_child[0]);
+    close(pipe_child_to_server[1]);
+
+    external->_writePipe = pipe_server_to_child[1];
+    external->_readPipe = pipe_child_to_server[0];
+  } else {
+    external->_writePipe = -1;
+    external->_readPipe = -1;
+  }
+
+  external->_status = TRI_EXT_RUNNING;
+}
+
+[[maybe_unused]] static void StartExternalProcess(
+    ExternalProcess* external, bool usePipes,
+    std::vector<std::string> const& additionalEnv,
+    std::string const& fileForStdErr) {
   int pipe_server_to_child[2];
   int pipe_child_to_server[2];
 
@@ -675,9 +849,11 @@ void TRI_CreateExternalProcess(char const* executable,
   external->_arguments[n + 1] = nullptr;
   external->_status = TRI_EXT_NOT_STARTED;
 
-  StartExternalProcess(external.get(), usePipes, additionalEnv, fileForStdErr);
+  StartExternalProcessPosixSpawn(external.get(), usePipes, additionalEnv,
+                                 fileForStdErr);
 
-  if (external->_status != TRI_EXT_RUNNING) {
+  if (external->_status != TRI_EXT_RUNNING &&
+      external->_status != TRI_EXT_TERMINATED) {
     pid->_pid = TRI_INVALID_PROCESS_ID;
     return;
   }

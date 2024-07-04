@@ -187,7 +187,6 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
         [prefix + "{ parallelism: 4 } RETURN 1"],
         [prefix + "{ maxProjections: 123 } RETURN 1"],
 
-        [prefix + "{ indexHint: 'primary' } RETURN 1", "indexHint"],
         [prefix + "{ disableIndex: true } RETURN 1", "disableIndex"],
         [prefix + "{ lookahead: 0 } RETURN 1", "lookahead"],
         [prefix + "{ defaultWeight: true } RETURN 1", "defaultWeight"],
@@ -201,6 +200,16 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
         [prefix + "{ waitForSync: -1 } RETURN 1", "waitForSync"],
         [prefix + "{ method: 'hash' } RETURN 1", "method"],
         [prefix + "{ tititi: 'piff' } RETURN 1", "tititi"],
+        
+        // index hint has a wrong structure
+        [prefix + "{ indexHint: 'primary' } RETURN 1", "indexHint"],
+        [prefix + "{ indexHint: {} } RETURN 1", "indexHint"],
+        [prefix + "{ indexHint: { foo: {} } } RETURN 1", "indexHint"],
+        [prefix + "{ indexHint: { foo: { milch: {} } } } RETURN 1", "indexHint"],
+        [prefix + "{ indexHint: { foo: { inbound: {} } } } RETURN 1", "indexHint"],
+
+        // forceIndexHint not (yet) support for traversal index hints
+        [prefix + "{ forceIndexHint: true } RETURN 1", "forceIndexHint"],
       ];
 
       checkQueries("TRAVERSAL", queries);
@@ -220,14 +229,46 @@ function aqlOptionsVerificationSuite(isSearchAlias) {
         [prefix + "{ waitForSync: -1 } RETURN 1", "waitForSync"],
         [prefix + "{ method: 'hash' } RETURN 1", "method"],
         [prefix + "{ tititi: 'piff' } RETURN 1", "tititi"],
-        [prefix + "{ indexHint: 'primary' } RETURN 1", "indexHint"],
-        [prefix + "{ forceIndexHint: true } RETURN 1", "forceIndexHint"],
         [prefix + "{ disableIndex: true } RETURN 1", "disableIndex"],
         [prefix + "{ maxProjections: 123 } RETURN 1", "maxProjections"],
         [prefix + "{ lookahead: 0 } RETURN 1", "lookahead"],
+        
+        // indexHints not (yet) support for path queries
+        [prefix + "{ indexHint: 'primary' } RETURN 1", "indexHint"],
+        // forceIndexHint not (yet) support for path queries
+        [prefix + "{ forceIndexHint: true } RETURN 1", "forceIndexHint"],
       ];
 
       checkQueries("SHORTEST_PATH", queries);
+    },
+    
+    testEnumeratePaths: function () {
+      ["K_PATHS", "K_SHORTEST_PATHS"].forEach((type) => {
+        const prefix = "FOR p IN OUTBOUND " + type + " '" + cn + "/test0' TO '" + cn + "/test1' " + cn + "Edge OPTIONS ";
+        const queries = [
+          [prefix + "{ weightAttribute: 'testi' } RETURN 1"],
+          [prefix + "{ defaultWeight: 42.5 } RETURN 1"],
+
+          [prefix + "{ weightAttribute: false } RETURN 1", "weightAttribute"],
+          [prefix + "{ defaultWeight: false } RETURN 1", "defaultWeight"],
+          [prefix + "{ waitForSync: false } RETURN 1", "waitForSync"],
+          [prefix + "{ waitForSync: true } RETURN 1", "waitForSync"],
+          [prefix + "{ waitForSync: +1 } RETURN 1", "waitForSync"],
+          [prefix + "{ waitForSync: -1 } RETURN 1", "waitForSync"],
+          [prefix + "{ method: 'hash' } RETURN 1", "method"],
+          [prefix + "{ tititi: 'piff' } RETURN 1", "tititi"],
+          [prefix + "{ disableIndex: true } RETURN 1", "disableIndex"],
+          [prefix + "{ maxProjections: 123 } RETURN 1", "maxProjections"],
+          [prefix + "{ lookahead: 0 } RETURN 1", "lookahead"],
+        
+          // indexHints not (yet) support for path queries
+          [prefix + "{ indexHint: 'primary' } RETURN 1", "indexHint"],
+          // forceIndexHint not (yet) support for path queries
+          [prefix + "{ forceIndexHint: true } RETURN 1", "forceIndexHint"],
+        ];
+
+        checkQueries(type, queries);
+      });
     },
 
     testCollect: function () {

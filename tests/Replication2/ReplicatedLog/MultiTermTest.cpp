@@ -56,7 +56,7 @@ TEST_F(MultiTermTest, add_follower_test) {
     leaderLogContainer->runAll();
     {
       ASSERT_TRUE(f.isReady());
-      auto const& result = f.get();
+      auto const& result = f.waitAndGet();
       EXPECT_THAT(result.quorum->quorum,
                   testing::ElementsAre(leaderLogContainer->serverId()));
     }
@@ -128,7 +128,7 @@ TEST_F(MultiTermTest, resign_leader_wait_for) {
     config = addUpdatedTerm({});
     config->installConfig(false);
     ASSERT_TRUE(f.isReady());
-    EXPECT_ANY_THROW({ std::ignore = f.get(); });
+    EXPECT_ANY_THROW({ std::ignore = f.waitAndGet(); });
     EXPECT_ANY_THROW({ std::ignore = oldLeader->getStatus(); });
     EXPECT_EQ(leaderLog->getQuickStatus().local.spearHead,
               TermIndexPair(LogTerm{2}, LogIndex{3}));
@@ -298,7 +298,7 @@ TEST_F(MultiTermTest, resign_leader_append_entries) {
 
     ASSERT_TRUE(f2.isReady());
     {
-      auto result = f2.get();
+      auto result = f2.waitAndGet();
       EXPECT_EQ(result.currentCommitIndex, LogIndex{3});
       EXPECT_EQ(result.quorum->index, LogIndex{3});
       EXPECT_EQ(result.quorum->term, LogTerm{2});

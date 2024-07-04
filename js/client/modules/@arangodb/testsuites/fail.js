@@ -30,11 +30,9 @@ const functionsDocumentation = {
   'success': 'this job will always produce a sucessfull result'
 };
 
-const optionsDocumentation = [
-];
-
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
+const tu = require('@arangodb/testutils/test-utils');
 
 const testPaths = {
   'fail': [],
@@ -153,6 +151,5 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   testFns['fail2'] = fail2;
   testFns['success'] = success;
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };

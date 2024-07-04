@@ -244,8 +244,9 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // We directly read the entire cursor. so batchsize == limit
   auto iterator =
-      trx.indexScan(monitor, collectionName,
-                    transaction::Methods::CursorType::ALL, ReadOwnWrites::no);
+      trx.indexScan(collectionName, transaction::Methods::CursorType::ALL,
+                    ReadOwnWrites::no)
+          .waitAndGet();
   auto cb = [&](LocalDocumentId, aql::DocumentData&&, VPackSlice slice) {
     auto const& buffer = resultBuilder.bufferRef();
     size_t memoryUsageOld = buffer.size();
@@ -320,7 +321,7 @@ static void JS_AnyQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   OperationOptions options(ExecContext::current());
-  OperationResult cursor = trx.any(collectionName, options).get();
+  OperationResult cursor = trx.any(collectionName, options).waitAndGet();
 
   res = trx.finish(cursor.result);
 
@@ -375,7 +376,7 @@ static void JS_ChecksumCollection(
 
   Result r = methods::Collections::checksum(*col, withRevisions, withData,
                                             checksum, revId)
-                 .get();
+                 .waitAndGet();
 
   if (!r.ok()) {
     TRI_V8_THROW_EXCEPTION(r);

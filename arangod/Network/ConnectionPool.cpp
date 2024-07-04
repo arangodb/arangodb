@@ -29,22 +29,21 @@
 #include "Containers/SmallVector.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
-#include "Network/NetworkFeature.h"
-
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/LogScale.h"
 #include "Metrics/MetricsFeature.h"
+#include "Network/NetworkFeature.h"
 
 #include <fuerte/connection.h>
 #include <fuerte/loop.h>
 #include <fuerte/types.h>
 
 #include <memory>
+#include <vector>
 
-namespace arangodb {
-namespace network {
+namespace arangodb::network {
 
 using namespace arangodb::fuerte::v1;
 
@@ -71,6 +70,7 @@ struct ConnectionPool::Impl {
       : _config(config),
         _pool(pool),
         _loop(config.numIOThreads, config.name),
+        _stopped(false),
         _totalConnectionsInPool(*_config.metrics.totalConnectionsInPool),
         _successSelect(*_config.metrics.successSelect),
         _noSuccessSelect(*_config.metrics.noSuccessSelect),
@@ -85,6 +85,11 @@ struct ConnectionPool::Impl {
   network::ConnectionPtr leaseConnection(std::string const& endpoint,
                                          bool& isFromPool) {
     READ_LOCKER(guard, _lock);
+    if (_stopped) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_SHUTTING_DOWN,
+                                     "connection pool already stopped");
+    }
+
     auto it = _connections.find(endpoint);
     if (it == _connections.end()) {
       guard.unlock();
@@ -95,6 +100,16 @@ struct ConnectionPool::Impl {
       return selectConnection(endpoint, *it2->second, isFromPool);
     }
     return selectConnection(endpoint, *it->second, isFromPool);
+  }
+
+  /// @brief stops the connection pool
+  void stop() {
+    {
+      WRITE_LOCKER(guard, _lock);
+      _stopped = true;
+    }
+    drainConnections();
+    _loop.stop();
   }
 
   /// @brief drain all connections
@@ -311,10 +326,17 @@ struct ConnectionPool::Impl {
   ConnectionPool& _pool;
 
   mutable basics::ReadWriteLock _lock;
+  /// @brief map from endpoint to a bucket with connections to the endpoint.
+  /// protected by _lock.
   std::unordered_map<std::string, std::unique_ptr<Bucket>> _connections;
 
   /// @brief contains fuerte asio::io_context
   fuerte::EventLoopService _loop;
+
+  /// @brief whether or not the connection pool was already stopped. if set
+  /// to true, calling leaseConnection will throw an exception. protected
+  /// by _lock.
+  bool _stopped;
 
   metrics::Gauge<uint64_t>& _totalConnectionsInPool;
   metrics::Counter& _successSelect;
@@ -327,7 +349,10 @@ struct ConnectionPool::Impl {
 ConnectionPool::ConnectionPool(ConnectionPool::Config const& config)
     : _impl(std::make_unique<Impl>(config, *this)) {}
 
-ConnectionPool::~ConnectionPool() { shutdownConnections(); }
+ConnectionPool::~ConnectionPool() {
+  shutdownConnections();
+  stop();
+}
 
 /// @brief request a connection for a specific endpoint
 /// note: it is the callers responsibility to ensure the endpoint
@@ -336,6 +361,9 @@ network::ConnectionPtr ConnectionPool::leaseConnection(
     std::string const& endpoint, bool& isFromPool) {
   return _impl->leaseConnection(endpoint, isFromPool);
 }
+
+/// @brief stops the connection pool (also calls drainConnections)
+void ConnectionPool::stop() { _impl->stop(); }
 
 /// @brief drain all connections
 void ConnectionPool::drainConnections() { _impl->drainConnections(); }
@@ -451,5 +479,4 @@ ConnectionPool::Metrics ConnectionPool::Metrics::createStub(
       name);
 }
 
-}  // namespace network
-}  // namespace arangodb
+}  // namespace arangodb::network

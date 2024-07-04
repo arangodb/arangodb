@@ -745,7 +745,7 @@ class QueryGeoContainsSearch : public QueryGeoContains {
         version(), analyzer));
     auto collection = _vocbase.lookupCollection("testCollection0");
     EXPECT_TRUE(collection);
-    collection->createIndex(createJson->slice(), created).get();
+    collection->createIndex(createJson->slice(), created).waitAndGet();
     ASSERT_TRUE(created);
   }
 

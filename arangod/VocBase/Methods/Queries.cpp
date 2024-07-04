@@ -157,7 +157,7 @@ arangodb::Result getQueries(TRI_vocbase_t& vocbase, velocypack::Builder& out,
     }
 
     if (!futures.empty()) {
-      auto responses = futures::collectAll(futures).get();
+      auto responses = futures::collectAll(futures).waitAndGet();
       for (auto const& it : responses) {
         auto& resp = it.get();
         res.reset(resp.combinedResult());
@@ -258,7 +258,7 @@ Result Queries::clearSlow(TRI_vocbase_t& vocbase, bool allDatabases,
     }
 
     if (!futures.empty()) {
-      auto responses = futures::collectAll(futures).get();
+      auto responses = futures::collectAll(futures).waitAndGet();
       for (auto const& it : responses) {
         auto& resp = it.get();
         res.reset(resp.combinedResult());

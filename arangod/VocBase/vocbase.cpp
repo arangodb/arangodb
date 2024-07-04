@@ -129,6 +129,10 @@ void TRI_vocbase_t::release() noexcept {
   TRI_ASSERT(v >= 2);
 }
 
+arangodb::VocbasePtr TRI_vocbase_t::getSharedPtr() noexcept {
+  return VocbasePtr{use() ? this : nullptr};
+}
+
 bool TRI_vocbase_t::isDangling() const noexcept {
   auto const v = _refCount.load(std::memory_order_acquire);
   TRI_ASSERT((v & 1) == 0 || !isSystem());
@@ -652,7 +656,11 @@ void TRI_vocbase_t::inventory(
       *this, [&result](LogicalView::ptr const& view) -> bool {
         if (view) {
           result.openObject();
-          view->properties(result, LogicalDataSource::Serialization::Inventory);
+          auto res = view->properties(
+              result, LogicalDataSource::Serialization::Inventory);
+          if (res.fail()) {
+            THROW_ARANGO_EXCEPTION(res);
+          }
           result.close();
         }
 
@@ -1328,7 +1336,8 @@ TRI_vocbase_t::TRI_vocbase_t(arangodb::CreateDatabaseInfo&& info)
           info.server().getFeature<DatabaseFeature>().extendedNames()) {}
 
 TRI_vocbase_t::TRI_vocbase_t(CreateDatabaseInfo&& info,
-                             VersionTracker& versionTracker, bool extendedNames)
+                             VersionTracker& versionTracker, bool extendedNames,
+                             bool isInternal)
     : _server(info.server()),
       _engine(_server.getFeature<arangodb::EngineSelectorFeature>().engine()),
       _versionTracker(versionTracker),
@@ -1347,7 +1356,7 @@ TRI_vocbase_t::TRI_vocbase_t(CreateDatabaseInfo&& info,
     _metrics = std::make_unique<VocbaseMetrics>();
   }
 
-  if (_info.server().hasFeature<QueryRegistryFeature>()) {
+  if (_info.server().hasFeature<QueryRegistryFeature>() && !isInternal) {
     QueryRegistryFeature& feature =
         _info.server().getFeature<QueryRegistryFeature>();
     _queries = std::make_unique<aql::QueryList>(feature);
@@ -1667,8 +1676,8 @@ void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
                 auto c = resolver.getCollection(name);
                 if (c == nullptr) {
                   return Result{TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
-                                "Collection not found: " + name +
-                                    " in database " + this->name()};
+                                absl::StrCat("Collection not found: ", name,
+                                             " in database ", this->name())};
                 }
                 return c->getCollectionProperties();
               }};
@@ -1681,8 +1690,8 @@ void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
                 auto c = resolver.getCollection(name);
                 if (c == nullptr) {
                   return Result{TRI_ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,
-                                "Collection not found: " + name +
-                                    " in database " + this->name()};
+                                absl::StrCat("Collection not found: ", name,
+                                             " in database ", this->name())};
                 }
                 return c->getCollectionProperties();
               }};
@@ -1698,7 +1707,6 @@ void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
   config.enforceReplicationFactor = true;
   config.defaultNumberOfShards = 1;
   config.defaultReplicationFactor = replicationFactor();
-
   config.defaultWriteConcern = writeConcern();
 
   config.isOneShardDB = cl.forceOneShard() || isOneShard();

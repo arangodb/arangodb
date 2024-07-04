@@ -25,7 +25,11 @@
 /// @author Copyright 2015, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-let jsunity = require('jsunity');
+const jsunity = require('jsunity');
+const arangodb = require("@arangodb");
+const internal = require("internal");
+
+const db = arangodb.db;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -52,7 +56,7 @@ function AsyncRequestSuite () {
         if (res.code === 200) {
           break;
         }
-        require("internal").sleep(0.5);
+        internal.sleep(0.5);
       }
 
       assertEqual(200, res.code);
@@ -69,6 +73,45 @@ function AsyncRequestSuite () {
         assertEqual(503, res.code);
       } finally {
         arango.DELETE("/_admin/debug/failat/queueFull");
+      }
+    },
+
+    testAsyncHeadRequest() {
+      const cn = "testAsyncHeadRequestCollection";
+      const testKey = "testAsyncHeadRequestDocument";
+      db._drop(cn);
+
+      try {
+        let col = db._create(cn);
+        col.insert({_key: testKey});
+
+        // Make sure we can retrieve the document length via a HEAD request
+        const keyUrl = `/_api/document/${cn}/${testKey}`;
+        let res = arango.HEAD_RAW(keyUrl);
+        assertEqual(200, res.code, `Document with key ${testKey}: ${JSON.stringify(res)}`);
+        assertTrue(res.headers["content-length"] !== "0", `Document with key ${testKey}: ${JSON.stringify(res)}`);
+
+        // Sending an async HEAD request should work, but the content-length should be 0.
+        // Otherwise, the PUT request will hang.
+        res = arango.HEAD_RAW(keyUrl, { "x-arango-async" : "store" });
+        assertEqual(202, res.code, `Document with key ${testKey}: ${JSON.stringify(res)}`);
+        assertTrue(res.headers.hasOwnProperty("x-arango-async-id"));
+        const jobId = res.headers["x-arango-async-id"];
+
+        // Loop until the async job is ready
+        let tries = 0;
+        while (++tries < 30) {
+          res = arango.PUT_RAW("/_api/job/" + jobId, "");
+          if (res.code === 200) {
+            break;
+          }
+          internal.sleep(0.5);
+        }
+
+        assertEqual(200, res.code, `Job ID ${jobId}: ${JSON.stringify(res)}`);
+        assertTrue(res.headers["content-length"] === "0", `Job ID ${jobId}: ${JSON.stringify(res)}`);
+      } finally {
+        db._drop(cn);
       }
     },
   };

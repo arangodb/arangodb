@@ -13,7 +13,7 @@ project_file=$1
  
 echo "Threads: $threads"
 echo "cppcheck version: $(cppcheck --version)"
-cppcheck "$@" \
+cppcheck \
   -j $threads \
   --xml --xml-version=2 \
   --project=$project_file \

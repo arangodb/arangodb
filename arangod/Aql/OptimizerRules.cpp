@@ -98,6 +98,7 @@
 
 #include <absl/strings/str_cat.h>
 
+#include <initializer_list>
 #include <span>
 #include <tuple>
 
@@ -1107,7 +1108,7 @@ Collection* addCollectionToQuery(QueryContext& query, std::string const& cname,
       TRI_ASSERT(coll != nullptr);
       query.trxForOptimization()
           .addCollectionAtRuntime(cname, AccessMode::Type::READ)
-          .get();
+          .waitAndGet();
     }
   }
 
@@ -3011,7 +3012,7 @@ struct SortToIndexNode final
       TRI_ASSERT(coll != nullptr);
       size_t numDocs =
           coll->count(&_plan->getAst()->query().trxForOptimization(),
-                      transaction::CountType::TryCache);
+                      transaction::CountType::kTryCache);
 
       bool canBeUsed = arangodb::aql::utils::getIndexForSortCondition(
           *coll, &sortCondition, outVariable, numDocs,
@@ -7326,10 +7327,9 @@ void arangodb::aql::geoIndexRule(Optimizer* opt,
     auto enumerateColNode =
         ExecutionNode::castTo<EnumerateCollectionNode const*>(node);
     auto const& colNodeHints = enumerateColNode->hint();
-    if (colNodeHints.isForced() &&
-        colNodeHints.type() == IndexHint::HintType::Simple) {
+    if (colNodeHints.isForced() && colNodeHints.isSimple()) {
       auto indexes = enumerateColNode->collection()->indexes();
-      auto& idxNames = colNodeHints.hint();
+      auto& idxNames = colNodeHints.candidateIndexes();
       for (auto const& idxName : idxNames) {
         for (std::shared_ptr<Index> const& idx : indexes) {
           if (idx->name() == idxName) {
