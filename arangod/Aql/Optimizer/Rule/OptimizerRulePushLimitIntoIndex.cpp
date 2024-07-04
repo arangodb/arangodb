@@ -42,6 +42,8 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
 
+/// The index is eligible only if it is a type of persistent index
+/// and if it build on multiple attributes
 bool isEligibleIndex(transaction::Methods::IndexHandle const& idx) {
   // we only care about persistent indexes.
   // note that "hash" and "skiplist" indexes are the same as persistent
@@ -55,7 +57,6 @@ bool isEligibleIndex(transaction::Methods::IndexHandle const& idx) {
 
   // we only care about compound indexes
   if (idx->fields().size() < 2) {
-    LOG_DEVEL << __LINE__;
     return false;
   }
 
@@ -171,7 +172,7 @@ void arangodb::aql::pushLimitIntoIndexRule(Optimizer* opt,
     // The condition of IndexNode can only be a single `compare in` for the
     // rule to be applicable
     // The tree has a specific format => DNF therefore the assumption
-    // of having only one members and expecting COMPARE IN node
+    // of having only one member and expecting COMPARE IN node
     // is valid
     auto* compareInNode = indexNode->condition() == nullptr
                               ? nullptr
@@ -188,7 +189,6 @@ void arangodb::aql::pushLimitIntoIndexRule(Optimizer* opt,
       compareInNode = compareInNode->getMember(0);
     }
     if (compareInNode == nullptr) {
-      LOG_DEVEL << "Single in operator not found ";
       continue;
     }
 
@@ -209,44 +209,23 @@ void arangodb::aql::pushLimitIntoIndexRule(Optimizer* opt,
     }
     auto const& usedIndex = indexes.front();
     if (!isEligibleIndex(usedIndex)) {
-      LOG_DEVEL << __LINE__;
       continue;
     }
 
-    TRI_ASSERT(compareInNode->numMembers() == 2);
-    if (auto* lhs = compareInNode->getMember(0);
+    // compareInNode is a binary node
+    if (auto const* lhs = compareInNode->getMember(0);
         lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-      std::vector<std::string> fullPath;
-      auto currentMember = lhs;
-      while (currentMember != nullptr &&
-             currentMember->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-        fullPath.push_back(currentMember->getString());
-
-        currentMember = currentMember->getMember(0);
-      }
-      if (currentMember->type != NODE_TYPE_REFERENCE) {
+      std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>
+          varVectorAttributePair;
+      if (!lhs->isAttributeAccessForVariable(varVectorAttributePair, false)) {
         continue;
       }
 
-      auto* variable = static_cast<Variable const*>(currentMember->getData());
-      if (outVariable != variable) {
+      if (varVectorAttributePair.first != outVariable) {
         continue;
       }
 
-      // doc.license.foo IN ["license", "license2"]
-      // FULL PATH [foo, license]
-      // indexFields:
-      // - [license.foo]
-      // - [date_created]
-      LOG_DEVEL << "FULL PAHT " << fullPath;
-      if (!std::equal(fullPath.rbegin(), fullPath.rend(),
-                      usedIndex->fields().front().begin(),
-                      usedIndex->fields().front().end(),
-                      [](const auto& lhs, const auto& rhs) {
-                        return lhs == rhs.name;
-                      })) {
-        LOG_DEVEL << "Comparison between path of full path and index first "
-                     "attribute full path fails";
+      if (varVectorAttributePair.second != *usedIndex->fields().begin()) {
         continue;
       }
     }
