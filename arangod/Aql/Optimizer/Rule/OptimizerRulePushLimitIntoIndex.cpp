@@ -22,6 +22,8 @@
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/Condition.h"
+#include "Aql/Expression.h"
+#include "Aql/ExecutionNode/CalculationNode.h"
 #include "Aql/ExecutionNode/IndexNode.h"
 #include "Aql/ExecutionNode/LimitNode.h"
 #include "Aql/ExecutionNode/SortNode.h"
@@ -61,28 +63,75 @@ bool isEligibleIndex(transaction::Methods::IndexHandle const& idx) {
 }
 
 bool isEligibleSort(auto itIndex, auto const itIndexEnd, auto itSort,
-                    auto const itSortEnd, const auto* outVariable) {
+                    auto const itSortEnd, const auto* outVariable,
+                    auto* executionPlan, auto* indexNode) {
   std::optional<bool> sortAscending;
 
   while (itIndex != itIndexEnd && itSort != itSortEnd) {
     LOG_DEVEL << "COMPARING: index: " << *itIndex
               << ", sort: " << itSort->attributePath;
-    if (itIndex->size() != itSort->attributePath.size()) {
-      // ["a"] == ["a"]   vs.  ["b"] != ["b", "sub"]
-      LOG_DEVEL << __LINE__;
-      return false;
+
+    if (itSort->var != nullptr) {
+      LOG_DEVEL << "VAR is not nullptr ";
+      auto* executionNode = executionPlan->getVarSetBy(itSort->var->id);
+      if (executionNode == nullptr) {
+        LOG_DEVEL << "Execution plan must have a var";
+        return false;
+      }
+
+      if (executionNode->getType() != EN::CALCULATION) {
+        LOG_DEVEL << "It is not a calc node";
+        return false;
+      }
+
+      auto calculationNode =
+          ExecutionNode::castTo<CalculationNode const*>(executionNode);
+      auto* rootNode = calculationNode->expression()->node();
+      std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>
+          varVectorAttributePair;
+      if (!rootNode->isAttributeAccessForVariable(varVectorAttributePair,
+                                                  false)) {
+        LOG_DEVEL << "It is not attribtie for variable";
+        return false;
+      }
+      // Stop optimization
+      if (varVectorAttributePair.first != indexNode->outVariable()) {
+        LOG_DEVEL << "Output var not equal";
+        return false;
+      }
+
+      LOG_DEVEL << "ASASASSA";
+      LOG_DEVEL << varVectorAttributePair.second;
+      LOG_DEVEL << *itIndex;
+      if (varVectorAttributePair.second != *itIndex) {
+        LOG_DEVEL << "attribute path not eq";
+        return false;
+      }
+
+    } else {
+      if (itIndex->size() != itSort->attributePath.size()) {
+        // ["a"] == ["a"]   vs.  ["b"] != ["b", "sub"]
+        LOG_DEVEL << __LINE__;
+        return false;
+      }
+      if (std::equal(itIndex->begin(), itIndex->end(),
+                     itSort->attributePath.begin(), itSort->attributePath.end(),
+                     [](auto const& lhs, auto const& rhs) {
+                       return lhs.name == rhs;
+                     })) {
+        LOG_DEVEL << __LINE__;
+        return false;
+      }
+
+      if (itSort->var != outVariable) {
+        // we are sorting by something unrelated to the index
+        LOG_DEVEL << __LINE__;
+        return false;
+      }
     }
 
     if (std::any_of(itIndex->begin(), itIndex->end(),
                     [](auto const& it) { return it.shouldExpand; })) {
-      LOG_DEVEL << __LINE__;
-      return false;
-    }
-
-    if (std::equal(
-            itIndex->begin(), itIndex->end(), itSort->attributePath.begin(),
-            itSort->attributePath.end(),
-            [](auto const& lhs, auto const& rhs) { return lhs.name == rhs; })) {
       LOG_DEVEL << __LINE__;
       return false;
     }
@@ -92,12 +141,6 @@ bool isEligibleSort(auto itIndex, auto const itIndexEnd, auto itSort,
       sortAscending = itSort->ascending;
     } else if (*sortAscending != itSort->ascending) {
       // different sort orders used
-      LOG_DEVEL << __LINE__;
-      return false;
-    }
-
-    if (itSort->var != outVariable) {
-      // we are sorting by something unrelated to the index
       LOG_DEVEL << __LINE__;
       return false;
     }
@@ -209,7 +252,11 @@ void arangodb::aql::pushLimitIntoIndexRule(Optimizer* opt,
     }
 
     // Check if index node parents contains a pair of sort and limit
-    ExecutionNode* sortNode = indexNode->getFirstParent();
+    auto* sortNode = indexNode->getFirstParent();
+    while (sortNode != nullptr && sortNode->getType() == EN::CALCULATION) {
+      sortNode = sortNode->getFirstParent();
+    }
+
     if (sortNode == nullptr || sortNode->getType() != EN::SORT) {
       LOG_DEVEL << __LINE__;
       continue;
@@ -231,10 +278,11 @@ void arangodb::aql::pushLimitIntoIndexRule(Optimizer* opt,
     // ]
 
     if (!isEligibleSort(usedIndex->fields().begin(), usedIndex->fields().end(),
-                        sortFields.begin(), sortFields.end(), outVariable) &&
+                        sortFields.begin(), sortFields.end(), outVariable,
+                        plan.get(), indexNode) &&
         !isEligibleSort(usedIndex->fields().begin() + 1,
                         usedIndex->fields().end(), sortFields.begin(),
-                        sortFields.end(), outVariable)) {
+                        sortFields.end(), outVariable, plan.get(), indexNode)) {
       LOG_DEVEL << __LINE__;
       continue;
     }
