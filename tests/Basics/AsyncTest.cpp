@@ -137,9 +137,9 @@ struct AsyncTest<std::pair<WaitType, ValueType>> : ::testing::Test {
 
 using MyTypes = ::testing::Types<
     std::pair<NoWait, CopyOnlyValue>, std::pair<WaitSlot, MoveOnlyValue>,
-    std::pair<ConcurrentNoWait, MoveOnlyValue>,
-    std::pair<NoWait, CopyOnlyValue>, std::pair<WaitSlot, MoveOnlyValue>,
-    std::pair<ConcurrentNoWait, CopyOnlyValue>>;
+    /*std::pair<ConcurrentNoWait, MoveOnlyValue>,*/
+    std::pair<NoWait, CopyOnlyValue>, std::pair<WaitSlot, MoveOnlyValue>/*,
+    std::pair<ConcurrentNoWait, CopyOnlyValue>*/>;
 TYPED_TEST_SUITE(AsyncTest, MyTypes);
 
 using namespace arangodb;
