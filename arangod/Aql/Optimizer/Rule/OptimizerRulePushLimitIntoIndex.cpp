@@ -19,6 +19,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Aql/Ast.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode/IndexNode.h"
 #include "Aql/ExecutionNode/LimitNode.h"
@@ -117,24 +118,29 @@ void arangodb::aql::pushLimitIntoIndexRule(Optimizer* opt,
     TRI_ASSERT(index->getType() == EN::INDEX);
     auto* indexNode = ExecutionNode::castTo<IndexNode*>(index);
 
-    // The condition of IndexNode can only be a single CompareInNode
-    auto* compareInNode = indexNode->condition() != nullptr
-                              ? indexNode->condition()->root()
-                              : nullptr;
-    while (compareInNode != nullptr && compareInNode->numMembers() == 1) {
-      if (compareInNode->numMembers() != 1) {
-        compareInNode = nullptr;
+    // Check that there is no post filtering
+    if (indexNode->hasFilter()) {
+      continue;
+    }
+
+    // The condition of IndexNode can only be a single CompareInNode for the
+    // rule to be applicable
+    auto* compareInNode = indexNode->condition() == nullptr
+                              ? nullptr
+                              : indexNode->condition()->root();
+    while (compareInNode != nullptr) {
+      if (compareInNode->type == NODE_TYPE_OPERATOR_BINARY_IN) {
         break;
       }
-      if (compareInNode->type == NODE_TYPE_OPERATOR_BINARY_IN) {
+      if (compareInNode->numMembers() != 1) {
+        compareInNode = nullptr;
         break;
       }
 
       compareInNode = compareInNode->getMember(0);
     }
-
-    // Check that there is no post filtering
-    if (indexNode->hasFilter()) {
+    if (compareInNode == nullptr) {
+      LOG_DEVEL << "Single in operator not found ";
       continue;
     }
 
