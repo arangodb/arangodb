@@ -27,13 +27,11 @@ struct async_promise_base {
         auto addr = _promise->_continuation.exchange(self.address());
         if (addr == nullptr) {
           return std::noop_coroutine();
+        } else if (addr == self.address()) {
+          self.destroy();
+          return std::noop_coroutine();
         } else {
-          auto continuation = std::coroutine_handle<>::from_address(addr);
-          if (addr == self.address()) {
-            self.destroy();
-            return std::noop_coroutine();
-          }
-          return continuation;
+          return std::coroutine_handle<>::from_address(addr);
         }
       }
       void await_resume() noexcept {}
@@ -45,11 +43,6 @@ struct async_promise_base {
   auto get_return_object() {
     return async<T>{std::coroutine_handle<promise_type>::from_promise(
         *static_cast<promise_type*>(this))};
-  }
-
-  template<typename A>
-  A await_transform(A&& awaitable) {
-    return std::forward<A>(awaitable);
   }
 
   std::atomic<void*> _continuation = nullptr;
@@ -87,6 +80,10 @@ struct async {
         _handle.destroy();
         return std::move(r).get();
       }
+      explicit awaitable(std::coroutine_handle<promise_type> handle)
+          : _handle(handle) {}
+
+     private:
       std::coroutine_handle<promise_type> _handle;
     };
 
