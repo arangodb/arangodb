@@ -1,4 +1,4 @@
-v3.11.10-2 (2024-07-04)
+v3.11.10.1 (XXXX-XX-XX)
 -----------------------
 
 * Use __nss_configure_lookup to opt out of /etc/nsswitch.conf.
