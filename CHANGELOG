@@ -1,6 +1,9 @@
 v3.11.11 (XXXX-XX-XX)
 ---------------------
 
+* Updated ArangoDB Starter to v0.18.7-preview-2 and arangosync to
+  v2.19.8-preview-2.
+
 * Use __nss_configure_lookup to opt out of /etc/nsswitch.conf.
   Add the startup option --honor-nsswitch to cancel the opt-out.
 
