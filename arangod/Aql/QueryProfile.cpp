@@ -62,6 +62,7 @@ void QueryProfile::unregisterFromQueryList() noexcept {
   // only remove from list when the query was inserted into it...
   if (_tracked) {
     auto queryList = _query.vocbase().queryList();
+    TRI_ASSERT(queryList != nullptr);
 
     try {
       queryList->remove(_query);
