@@ -274,17 +274,23 @@ auto Snapshot::generateBatch(state::Ongoing const&) -> ResultT<SnapshotBatch> {
         operations.reserve(3);
         {
           auto properties = VPackBuilder();
-          {
-            VPackObjectBuilder ob(&properties);
-            if (auto shardSerializationRes = shard->properties(
-                    properties, LogicalDataSource::Serialization::Inventory);
-                shardSerializationRes.fail()) {
-              LOG_CTX("b8f94", ERR, loggerContext)
-                  << "Failed to serialize shard " << shard->name()
-                  << " properties: " << shardSerializationRes;
-              TRI_ASSERT(false) << shardSerializationRes;
-              return shardSerializationRes;
-            }
+          try {
+            properties = shard->toVelocyPackIgnore(
+                {
+                    StaticStrings::DataSourceId,
+                    StaticStrings::DataSourceName,
+                    StaticStrings::DataSourceGuid,
+                    StaticStrings::ObjectId,
+                },
+                LogicalDataSource::Serialization::Inventory);
+          } catch (basics::Exception const& exception) {
+            LOG_CTX("b8f94", ERR, loggerContext)
+                << "Failed to serialize shard " << shard->name()
+                << " properties: " << exception.message();
+            TRI_ASSERT(false)
+                << exception.location() << ": [" << exception.code() << "] "
+                << exception.message();
+            throw;
           }
           operations.emplace_back(
               ReplicatedOperation::buildCreateShardOperation(

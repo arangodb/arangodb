@@ -72,6 +72,82 @@ void Aqlerror(YYLTYPE* locp,
 
 namespace {
 
+// forward declaration
+void destructureObject(Parser* parser, std::string_view sourceVariable, 
+                       arangodb::containers::SmallVector<AstNode const*, 8>& paths, AstNode const* array);
+
+void destructureArray(Parser* parser, std::string_view sourceVariable, 
+                      arangodb::containers::SmallVector<AstNode const*, 8>& paths, AstNode const* array) {
+  int64_t index = 0;
+  size_t const n = array->numMembers();
+
+  for (size_t i = 0; i < n; ++i) {
+    auto member = array->getMember(i);
+    
+    if (member->type == NODE_TYPE_ARRAY) {
+      // array value => recurse
+      AstNode* indexNode = parser->ast()->createNodeValueInt(index);
+      paths.emplace_back(indexNode);
+ 
+      int64_t tag = member->getIntValue(true);
+      if (tag == 1) {
+        destructureArray(parser, sourceVariable, paths, member);
+      } else {
+        destructureObject(parser, sourceVariable, paths, member);
+      }
+
+      paths.pop_back();
+    } else if (member->type == NODE_TYPE_VARIABLE) {
+      // an actual variable assignment. we need to do something!
+      AstNode* indexNode = parser->ast()->createNodeValueInt(index);
+      paths.emplace_back(indexNode);
+
+      AstNode const* accessor = parser->ast()->createNodeReference(sourceVariable);
+      for (auto const& it : paths) {
+        accessor = parser->ast()->createNodeIndexedAccess(accessor, it);
+      }
+      AstNode* node = parser->ast()->createNodeLet(member, accessor);
+      parser->ast()->addOperation(node);
+      
+      paths.pop_back();
+    }
+
+    ++index;
+  }
+}
+
+void destructureObject(Parser* parser, std::string_view sourceVariable, 
+                       arangodb::containers::SmallVector<AstNode const*, 8>& paths, AstNode const* array) {
+  size_t const n = array->numMembers();
+  
+  for (size_t i = 0; i < n; i += 2) {
+    auto member = array->getMember(i);
+    
+    if (member->isStringValue()) {
+      AstNode const* assigned = array->getMember(i + 1);
+      
+      paths.emplace_back(member);
+      if (assigned->type == NODE_TYPE_ARRAY) {
+        // need to recurse
+        int64_t tag = assigned->getIntValue(true);
+        if (tag == 1) {
+          destructureArray(parser, sourceVariable, paths, assigned);
+        } else {
+          destructureObject(parser, sourceVariable, paths, assigned);
+        }
+      } else if (assigned->type == NODE_TYPE_VARIABLE) {
+        AstNode* accessor = parser->ast()->createNodeReference(sourceVariable);
+        for (auto const& it : paths) {
+          accessor = parser->ast()->createNodeIndexedAccess(accessor, it);
+        }
+        AstNode* node = parser->ast()->createNodeLet(assigned, accessor);
+        parser->ast()->addOperation(node);
+      }
+      paths.pop_back();
+    }
+  }
+}
+
 bool caseInsensitiveEqual(std::string_view lhs, std::string_view rhs) noexcept {
   return std::equal(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(), [](char l, char r) {
     return arangodb::basics::StringUtils::tolower(l) == arangodb::basics::StringUtils::tolower(r);
@@ -489,6 +565,8 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %type <node> T_DOUBLE
 %type <strval> T_PARAMETER;
 %type <strval> T_DATA_SOURCE_PARAMETER;
+%type <node> array_destructuring;
+%type <node> object_destructuring;
 %type <strval> T_OUTBOUND;
 %type <strval> T_INBOUND;
 %type <strval> T_ANY;
@@ -975,6 +1053,84 @@ let_element:
     variable_name T_ASSIGN expression {
       auto node = parser->ast()->createNodeLet($1.value, $1.length, $3, true);
       parser->ast()->addOperation(node);
+    }
+  | array_destructuring T_ASSIGN expression {
+      std::string nextName = parser->ast()->variables()->nextName();
+      auto node = parser->ast()->createNodeLet(nextName.c_str(), nextName.size(), $3, false);
+      parser->ast()->addOperation(node);
+
+      arangodb::containers::SmallVector<AstNode const*, 8> paths;
+      ::destructureArray(parser, nextName, paths, $1);
+    }
+  | object_destructuring T_ASSIGN expression {
+      std::string nextName = parser->ast()->variables()->nextName();
+      auto node = parser->ast()->createNodeLet(nextName.c_str(), nextName.size(), $3, false);
+      parser->ast()->addOperation(node);
+
+      arangodb::containers::SmallVector<AstNode const*, 8> paths;
+      ::destructureObject(parser, nextName, paths, $1);
+    }
+  ;
+
+array_destructuring:
+    T_ARRAY_OPEN {
+      AstNode* node = parser->ast()->createNodeArray();
+      node->setIntValue(1);
+      parser->pushStack(node);
+    } array_destructuring_element T_ARRAY_CLOSE {
+      $$ = static_cast<AstNode*>(parser->popStack());
+    }
+  ;
+
+array_destructuring_element:
+    /* empty */ {
+      parser->pushArrayElement(parser->ast()->createNodeValueNull());
+    }
+  | variable_name {
+      parser->pushArrayElement(parser->ast()->createNodeVariable({$1.value, $1.length}, true));
+    }
+  | array_destructuring {
+      parser->pushArrayElement($1);
+    }
+  | object_destructuring {
+      parser->pushArrayElement($1);
+    }
+  | array_destructuring_element T_COMMA array_destructuring_element {
+    }
+  ;
+
+object_destructuring:
+    T_OBJECT_OPEN {
+      AstNode* node = parser->ast()->createNodeArray();
+      node->setIntValue(2);
+      parser->pushStack(node);
+    } object_destructuring_element T_OBJECT_CLOSE {
+      $$ = static_cast<AstNode*>(parser->popStack());
+    }
+  ;
+
+object_destructuring_element:
+    /* empty */ {
+      parser->pushArrayElement(parser->ast()->createNodeValueNull());
+      parser->pushArrayElement(parser->ast()->createNodeValueNull());
+    }
+  | variable_name {
+      parser->pushArrayElement(parser->ast()->createNodeValueString($1.value, $1.length));
+      parser->pushArrayElement(parser->ast()->createNodeVariable({$1.value, $1.length}, true));
+    }
+  | variable_name T_COLON variable_name {
+      parser->pushArrayElement(parser->ast()->createNodeValueString($1.value, $1.length));
+      parser->pushArrayElement(parser->ast()->createNodeVariable({$3.value, $3.length}, true));
+    }
+  | variable_name T_COLON object_destructuring {
+      parser->pushArrayElement(parser->ast()->createNodeValueString($1.value, $1.length));
+      parser->pushArrayElement($3);
+    }
+  | variable_name T_COLON array_destructuring {
+      parser->pushArrayElement(parser->ast()->createNodeValueString($1.value, $1.length));
+      parser->pushArrayElement($3);
+    }
+  | object_destructuring_element T_COMMA object_destructuring_element {
     }
   ;
 

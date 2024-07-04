@@ -2236,8 +2236,13 @@ Result RocksDBEngine::createView(TRI_vocbase_t& vocbase, DataSourceId id,
   VPackBuilder props;
 
   props.openObject();
-  view.properties(props,
-                  LogicalDataSource::Serialization::PersistenceWithInProgress);
+  auto result = view.properties(
+      props, LogicalDataSource::Serialization::PersistenceWithInProgress);
+  if (result.fail()) {
+    LOG_TOPIC_IF("234ae", WARN, Logger::VIEWS, !result.ok())
+        << "could not serialize view " << id << ": " << result;
+    return result;
+  }
   props.close();
 
   RocksDBValue const value = RocksDBValue::View(props.slice());
@@ -4162,5 +4167,4 @@ void RocksDBEngine::addCacheMetrics(uint64_t initial, uint64_t effective,
     _metricsEdgeCacheEmptyInserts.count(totalEmptyInserts);
   }
 }
-
 }  // namespace arangodb
