@@ -27,11 +27,7 @@ if (LINUX OR DARWIN)
     set(JEMALLOC_CONFIG "background_thread:true,cache_oblivious:false")
   endif ()
 
-  if (USE_JEMALLOC_CHECKS)
-    set(JEMALLOC_CHECKS "--enable-opt-safety-checks" "--enable-opt-size-checks")
-  else ()
-    set(JEMALLOC_CHECKS "")
-  endif ()
+  set(JEMALLOC_CHECKS "--enable-opt-safety-checks" "--enable-opt-size-checks" "--enable-uaf-detection" "--enable-debug")
 
   if (USE_JEMALLOC_PROF)
     if (USE_LIBUNWIND)
