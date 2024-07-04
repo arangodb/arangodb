@@ -75,7 +75,7 @@ def parse_arguments():
     parser.add_argument(
         "--ui", type=str, help="whether to run UI test [off|on|only|community]"
     )
-    parser.add_argument("--ui-testsuites", type=str, help="which test of UI job to run")
+    parser.add_argument("--ui-testsuites", type=str, help="which test of UI job to run [off|on|only]")
     parser.add_argument(
         "--ui-deployments", type=str, help="which deployments [CL, SG, ...] to run"
     )
@@ -405,12 +405,9 @@ def add_rta_ui_test_jobs_to_workflow(args, workflow, build_config, build_job):
 
 def add_test_jobs_to_workflow(args, workflow, tests, build_config, build_job, repl2):
     if build_config.arch == "x64" and args.ui != "" and args.ui != "off":
-        if build_config.enterprise:
-            add_rta_ui_test_jobs_to_workflow(args, workflow, build_config, build_job)
-        elif args.ui == "community":
-            add_rta_ui_test_jobs_to_workflow(args, workflow, build_config, build_job)
-        if args.ui == "only":
-            return
+        add_rta_ui_test_jobs_to_workflow(args, workflow, build_config, build_job)
+    if args.ui == "only":
+        return
     if build_config.enterprise:
         workflow["jobs"].append(
             {
@@ -526,8 +523,6 @@ def add_workflow(workflows, tests, build_config, args):
 
 
 def add_x64_community_workflow(workflows, tests, args):
-    if args.ui != "" and args.ui != "community" and args.ui != "off":
-        return
     if args.sanitizer != "" and args.nightly:
         # for nightly sanitizer runs we skip community and only test enterprise
         return
@@ -556,23 +551,21 @@ def add_x64_enterprise_workflow(workflows, tests, args):
 
 
 def add_aarch64_community_workflow(workflows, tests, args):
-    if args.ui == "" or args.ui == "off":
-        add_workflow(
-            workflows,
-            tests,
-            BuildConfig("aarch64", False, args.sanitizer, args.nightly),
-            args,
-        )
+    add_workflow(
+        workflows,
+        tests,
+        BuildConfig("aarch64", False, args.sanitizer, args.nightly),
+        args,
+    )
 
 
 def add_aarch64_enterprise_workflow(workflows, tests, args):
-    if args.ui == "" or args.ui == "off":
-        add_workflow(
-            workflows,
-            tests,
-            BuildConfig("aarch64", True, args.sanitizer, args.nightly),
-            args,
-        )
+    add_workflow(
+        workflows,
+        tests,
+        BuildConfig("aarch64", True, args.sanitizer, args.nightly),
+        args,
+    )
 
 
 def generate_jobs(config, args, tests):
