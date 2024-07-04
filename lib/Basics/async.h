@@ -58,8 +58,9 @@ struct async_promise_base {
 
 template<typename T>
 struct async_promise : async_promise_base<T> {
-  void return_value(T v) {
-    async_promise_base<T>::_value.emplace(std::move(v));
+  template<typename V = T>
+  void return_value(V&& v) {
+    async_promise_base<T>::_value.emplace(std::forward<V>(v));
   }
 };
 
