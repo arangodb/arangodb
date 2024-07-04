@@ -551,7 +551,7 @@ def add_x64_enterprise_workflow(workflows, tests, args):
 
 
 def add_aarch64_community_workflow(workflows, tests, args):
-    if args.ui == "" or args.ui == "off" or args.ui == "on":
+    if args.ui != "only":
         add_workflow(
             workflows,
             tests,
@@ -561,7 +561,7 @@ def add_aarch64_community_workflow(workflows, tests, args):
 
 
 def add_aarch64_enterprise_workflow(workflows, tests, args):
-    if args.ui == "" or args.ui == "off" or args.ui == "on":
+    if args.ui != "only":
         add_workflow(
             workflows,
             tests,
