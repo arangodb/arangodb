@@ -165,6 +165,49 @@ const IndexPrimaryJoinTestSuite = function () {
       db._dropDatabase(databaseName);
     },
 
+    testAllMatchPrimaryIndexNoProjections: function () {
+      if (isCluster) {
+        return;
+      }
+      let A = createCollection("A");
+      let B = createCollection("B");
+
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({_key: "test" + i});
+      }
+      A.insert(docs);
+      B.insert(docs);
+
+      docs.sort((lhs, rhs) => {
+        return lhs._key < rhs._key ? -1 : 1;
+      });
+      docs = docs.map((doc) => {
+        return {k1: doc._key, k2: doc._key};
+      });
+
+      const query = `FOR doc1 IN A 
+        SORT doc1._key
+        FOR doc2 IN B 
+          FILTER doc1._key == doc2._key
+          RETURN {k1: doc1._key, k2: doc2._key}`;
+
+      [[], ["-optimize-projections"]].forEach((rules) => {
+        const options = {optimizer: {rules}};
+    
+        const plan = db._createStatement({ query, options }).explain().plan;
+
+        let planNodes = plan.nodes.map(function (node) {
+          return node.type;
+        });
+
+        assertNotEqual(-1, planNodes.indexOf("JoinNode"), planNodes);
+
+        let res = db._query(query, null, options).toArray();
+        assertEqual(res, docs);
+      });
+    },
+
     testAllMatchPrimaryIndex: function () {
       const B = fillCollection("B", singleAttributeGenerator(5, "x", x => 2 * x), ["_key"]);
       // No additional index on B, we want to make use of the default (rocksdb) primary index

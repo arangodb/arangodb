@@ -29,8 +29,6 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "VocBase/vocbase.h"
 
-#include "Logger/LogMacros.h"
-
 using namespace arangodb;
 
 thread_local std::shared_ptr<ExecContext const> ExecContext::CURRENT = nullptr;

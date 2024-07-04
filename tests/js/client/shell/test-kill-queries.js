@@ -24,13 +24,10 @@
 // / @author Heiko Kernbach
 // //////////////////////////////////////////////////////////////////////////////
 
-let jsunity = require('jsunity');
-let internal = require('internal');
-let arangodb = require('@arangodb');
-const isServer = require('@arangodb').isServer;
-// Only required on client
-const arango = isServer ? {} : arangodb.arango;
-let db = arangodb.db;
+const jsunity = require('jsunity');
+const internal = require('internal');
+const arangodb = require('@arangodb');
+const db = arangodb.db;
 
 function GenericQueryKillSuite() { // can be either default or stream
   'use strict';
@@ -156,30 +153,20 @@ function GenericQueryKillSuite() { // can be either default or stream
   testCases.push(createTestCaseEntry("QueryStreamCursor::directKillAfterTrxSetup", false, "on", "on"));
 
   // On stream the dump happens during process of the query, so it can be killed
-  if (isServer) { // shell_server
-    testCases.push(createTestCaseEntry("QueryCursor::directKillBeforeQueryIsGettingDumpedSynced", false, "on", "on"));
-    testCases.push(createTestCaseEntry("QueryCursor::directKillAfterQueryIsGettingDumpedSynced", false, "on", "off"));
-  } else { // shell_client
-    testCases.push(createTestCaseEntry("QueryCursor::directKillBeforeQueryIsGettingDumped", false, "on", "on"));
-    if (internal.isCluster()) {
-      // In cluster we can return WAITING. This will result in wakeup that will find a killed to report
-      testCases.push(createTestCaseEntry("QueryCursor::directKillAfterQueryIsGettingDumped", false, "on", "on"));
-    } else {
-      // In single server we cannot return WAITING, so once dump is finished everything is done.
-      testCases.push(createTestCaseEntry("QueryCursor::directKillAfterQueryIsGettingDumped", false, "on", "off"));
-    }
+  testCases.push(createTestCaseEntry("QueryCursor::directKillBeforeQueryIsGettingDumped", false, "on", "on"));
+  if (internal.isCluster()) {
+    // In cluster we can return WAITING. This will result in wakeup that will find a killed to report
+    testCases.push(createTestCaseEntry("QueryCursor::directKillAfterQueryIsGettingDumped", false, "on", "on"));
+  } else {
+    // In single server we cannot return WAITING, so once dump is finished everything is done.
+    testCases.push(createTestCaseEntry("QueryCursor::directKillAfterQueryIsGettingDumped", false, "on", "off"));
   }
 
   /*
    * Non-Stream
    */
   // On non stream the (dump) handleQueryResult happens after query is fully processed, so it cannot be killed anymore.
-  if (isServer) { // shell_server
-    testCases.push(createTestCaseEntry("Query::executeV8directKillBeforeQueryResultIsGettingHandled", false, "off", "off"));
-    testCases.push(createTestCaseEntry("Query::executeV8directKillAfterQueryResultIsGettingHandled", false, "off", "off"));
-  } else { // shell_client
-    testCases.push(createTestCaseEntry("RestCursorHandler::directKillBeforeQueryResultIsGettingHandled", false, "off", "off"));
-  }
+  testCases.push(createTestCaseEntry("RestCursorHandler::directKillBeforeQueryResultIsGettingHandled", false, "off", "off"));
 
   /*
    * Execution in default & stream
