@@ -137,9 +137,9 @@ struct AsyncTest<std::pair<WaitType, ValueType>> : ::testing::Test {
 
 using MyTypes = ::testing::Types<
     std::pair<NoWait, CopyOnlyValue>, std::pair<WaitSlot, MoveOnlyValue>,
-    /*std::pair<ConcurrentNoWait, MoveOnlyValue>,*/
-    std::pair<NoWait, CopyOnlyValue>, std::pair<WaitSlot, MoveOnlyValue>/*,
-    std::pair<ConcurrentNoWait, CopyOnlyValue>*/>;
+    std::pair<ConcurrentNoWait, MoveOnlyValue>,
+    std::pair<NoWait, CopyOnlyValue>, std::pair<WaitSlot, MoveOnlyValue>,
+    std::pair<ConcurrentNoWait, CopyOnlyValue>>;
 TYPED_TEST_SUITE(AsyncTest, MyTypes);
 
 using namespace arangodb;
@@ -315,13 +315,15 @@ TYPED_TEST(AsyncTest, multiple_suspension_points) {
     co_return 12;
   };
 
-  auto b = [&]() -> async<ValueType> {
+  auto lambda = [&]() -> async<ValueType> {
     for (int i = 0; i < 10; i++) {
       co_await a();
     }
 
     co_return 0;
-  }();
+  };
+
+  auto b = lambda();
 
   this->wait.resume();
   EXPECT_TRUE(b.valid());
