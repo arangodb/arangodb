@@ -20,6 +20,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/Ast.h"
+#include "Aql/AstNode.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode/IndexNode.h"
 #include "Aql/ExecutionNode/LimitNode.h"
@@ -28,6 +29,7 @@
 #include "Aql/OptimizerRules.h"
 #include "Aql/OptimizerUtils.h"
 #include "Aql/SortElement.h"
+#include "Aql/Variable.h"
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
 
@@ -125,6 +127,9 @@ void arangodb::aql::pushLimitIntoIndexRule(Optimizer* opt,
 
     // The condition of IndexNode can only be a single `compare in` for the
     // rule to be applicable
+    // The tree has a specific format => DNF therefore the assumption
+    // of having only one members and expecting COMPARE IN node
+    // is valid
     auto* compareInNode = indexNode->condition() == nullptr
                               ? nullptr
                               : indexNode->condition()->root();
@@ -142,6 +147,65 @@ void arangodb::aql::pushLimitIntoIndexRule(Optimizer* opt,
     if (compareInNode == nullptr) {
       LOG_DEVEL << "Single in operator not found ";
       continue;
+    }
+
+    // Cannot apply rule if in loop
+    if (indexNode->isInInnerLoop()) {
+      continue;
+    }
+
+    // remember the output variable that is produced by the IndexNode
+    Variable const* outVariable = indexNode->outVariable();
+
+    auto const& indexes = indexNode->getIndexes();
+    if (indexes.size() != 1) {
+      // IndexNode uses more than a single index. not safe to apply the
+      // optimization here.
+      LOG_DEVEL << __LINE__;
+      continue;
+    }
+    auto const& usedIndex = indexes.front();
+    if (!isEligibleIndex(usedIndex)) {
+      LOG_DEVEL << __LINE__;
+      continue;
+    }
+
+    TRI_ASSERT(compareInNode->numMembers() == 2);
+    if (auto* lhs = compareInNode->getMember(0);
+        lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      std::vector<std::string> fullPath;
+      auto currentMember = lhs;
+      while (currentMember != nullptr &&
+             currentMember->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+        fullPath.push_back(currentMember->getString());
+
+        currentMember = currentMember->getMember(0);
+      }
+      if (currentMember->type != NODE_TYPE_REFERENCE) {
+        continue;
+      }
+
+      auto* variable = static_cast<Variable const*>(currentMember->getData());
+      if (outVariable != variable) {
+        continue;
+      }
+
+      // doc.license.foo IN ["license", "license2"]
+      // FULL PATH [foo, license]
+      // indexFields:
+      // - [license.foo]
+      // - [date_created]
+      LOG_DEVEL << "FULL PAHT " << fullPath;
+      if (!std::equal(fullPath.rbegin(), fullPath.rend(),
+                      usedIndex->fields().front().begin(),
+                      usedIndex->fields().front().end(),
+                      [](const auto& lhs, const auto& rhs) {
+                        return lhs == rhs.name;
+                      })) {
+        LOG_DEVEL << "Comparison between path of full path and index first "
+                     "attribute full path fails";
+        continue;
+      }
     }
 
     // Check if index node parents contains a pair of sort and limit
@@ -165,22 +229,7 @@ void arangodb::aql::pushLimitIntoIndexRule(Optimizer* opt,
     //   {var: doc, ascending: false, attributePath: ["b"]},
     //   {var: foo, ascending: true, attributePath: ["bar", "baz"]},
     // ]
- 
-    // remember the output variable that is produced by the IndexNode
-    Variable const* outVariable = indexNode->outVariable();
 
-    auto const& indexes = indexNode->getIndexes();
-    if (indexes.size() != 1) {
-      // IndexNode uses more than a single index. not safe to apply the
-      // optimization here.
-      LOG_DEVEL << __LINE__;
-      continue;
-    }
-    auto const& usedIndex = indexes.front();
-    if (!isEligibleIndex(usedIndex)) {
-      LOG_DEVEL << __LINE__;
-      continue;
-    }
     if (!isEligibleSort(usedIndex->fields().begin(), usedIndex->fields().end(),
                         sortFields.begin(), sortFields.end(), outVariable) &&
         !isEligibleSort(usedIndex->fields().begin() + 1,
