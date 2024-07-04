@@ -58,7 +58,7 @@ bool isEligibleIndex(transaction::Methods::IndexHandle const& idx) {
 }
 
 bool isEligibleSort(auto itIndex, auto const itIndexEnd, auto itSort,
-                    auto const itSortEnd, auto& outVariable) {
+                    auto const itSortEnd, const auto* outVariable) {
   std::optional<bool> sortAscending;
 
   while (itIndex != itIndexEnd && itSort != itSortEnd) {
@@ -117,11 +117,20 @@ void arangodb::aql::pushLimitIntoIndexRule(Optimizer* opt,
     TRI_ASSERT(index->getType() == EN::INDEX);
     auto* indexNode = ExecutionNode::castTo<IndexNode*>(index);
 
-    // Check if the condition of index node is `IN`
-    if (indexNode->condition() == nullptr ||
-        indexNode->condition()->root() == nullptr ||
-        indexNode->condition()->root()->type != NODE_TYPE_OPERATOR_NARY_OR) {
-      continue;
+    // The condition of IndexNode can only be a single CompareInNode
+    auto* compareInNode = indexNode->condition() != nullptr
+                              ? indexNode->condition()->root()
+                              : nullptr;
+    while (compareInNode != nullptr && compareInNode->numMembers() == 1) {
+      if (compareInNode->numMembers() != 1) {
+        compareInNode = nullptr;
+        break;
+      }
+      if (compareInNode->type == NODE_TYPE_OPERATOR_BINARY_IN) {
+        break;
+      }
+
+      compareInNode = compareInNode->getMember(0);
     }
 
     // Check that there is no post filtering
