@@ -1114,7 +1114,12 @@ version.)");
                       arangodb::options::Flags::OnAgent,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(31000);
+      .setIntroducedIn(31000)
+      .setLongDescription(
+          R"(Note that format version 6 can only be read by RocksDB versions
+>= 8.6.0. Thus switching to format version 6 will make the database files
+incompatible with ArangoDB versions with a lower RocksDB version in case of
+downgrading.)");
 
   options
       ->addOption("--rocksdb.optimize-filters-for-memory",
