@@ -19,11 +19,12 @@ struct NotNothrowDestructible {
 };
 
 struct CopyConstructible {
-  explicit CopyConstructible(int) {}
-  CopyConstructible(CopyConstructible const&) {}
+  explicit CopyConstructible(int x) : x(x) {}
+  CopyConstructible(CopyConstructible const& o) : x(o.x) {}
   CopyConstructible(CopyConstructible&&) = delete;
   CopyConstructible& operator=(CopyConstructible const&) { return *this; };
   CopyConstructible& operator=(CopyConstructible&&) = delete;
+  int x;
 };
 
 struct NothrowCopyConstructible {
@@ -125,15 +126,80 @@ static_assert(std::is_nothrow_move_assignable_v<NothrowMoveConstructible>);
 static_assert(
     std::is_nothrow_move_assignable_v<expected<NothrowMoveConstructible>>);
 
-TEST_F(ExpectedTest, construct_default) { expected<Constructible> e; }
+TEST_F(ExpectedTest, construct_default) {
+  expected<Constructible> e;
+  EXPECT_EQ(e.state(), expected<Constructible>::kEmpty);
+}
 
 TEST_F(ExpectedTest, construct_nothrow) {
   expected<Constructible> e{std::in_place, 12};
+  EXPECT_EQ(e.state(), expected<Constructible>::kValue);
 }
 
 TEST_F(ExpectedTest, construct_exception) {
   expected<Constructible> e{
       std::make_exception_ptr(std::runtime_error{"TEST!"})};
+  EXPECT_EQ(e.state(), expected<Constructible>::kException);
+}
+
+TEST_F(ExpectedTest, construct_copy_construct_value) {
+  std::string str = "Hello World!";
+  expected<std::string> e{std::in_place, str};
+  expected<std::string> f{e};
+
+  // e is unchanged, f is equal to e
+  EXPECT_EQ(e.state(), expected<std::string>::kValue);
+  EXPECT_EQ(e.get(), str);
+  EXPECT_EQ(f.state(), expected<std::string>::kValue);
+  EXPECT_EQ(f.get(), str);
+}
+
+TEST_F(ExpectedTest, construct_copy_construct_empty) {
+  expected<std::string> e{};
+  expected<std::string> f{e};
+
+  // e is unchanged, f is equal to e
+  EXPECT_EQ(e.state(), expected<std::string>::kEmpty);
+  EXPECT_EQ(f.state(), expected<std::string>::kEmpty);
+}
+
+TEST_F(ExpectedTest, construct_copy_construct_exception) {
+  expected<std::string> e{std::make_exception_ptr(std::runtime_error("TEST!"))};
+  expected<std::string> f{e};
+
+  // e is unchanged, f is equal to e
+  EXPECT_EQ(e.state(), expected<std::string>::kException);
+  EXPECT_EQ(f.state(), expected<std::string>::kException);
+  EXPECT_EQ(e.exception_ptr(), f.exception_ptr());
+}
+
+TEST_F(ExpectedTest, construct_move_construct_value) {
+  expected<std::unique_ptr<int>> e{std::in_place, std::make_unique<int>(12)};
+  expected<std::unique_ptr<int>> f{std::move(e)};
+
+  EXPECT_EQ(e.state(), expected<std::unique_ptr<int>>::kValue);
+  EXPECT_EQ(e->get(), nullptr);
+  EXPECT_EQ(f.state(), expected<std::unique_ptr<int>>::kValue);
+  EXPECT_EQ(*f->get(), 12);
+}
+
+TEST_F(ExpectedTest, construct_move_construct_exception) {
+  auto ptr = std::make_exception_ptr(std::runtime_error("TEST!"));
+  expected<std::unique_ptr<int>> e{ptr};
+  expected<std::unique_ptr<int>> f{std::move(e)};
+
+  EXPECT_EQ(e.state(), expected<std::unique_ptr<int>>::kException);
+  EXPECT_EQ(e.exception_ptr(), nullptr);
+  EXPECT_EQ(f.state(), expected<std::unique_ptr<int>>::kException);
+  EXPECT_EQ(f.exception_ptr(), ptr);
+}
+
+TEST_F(ExpectedTest, construct_move_construct_empty) {
+  expected<std::unique_ptr<int>> e{};
+  expected<std::unique_ptr<int>> f{std::move(e)};
+
+  EXPECT_EQ(e.state(), expected<std::unique_ptr<int>>::kEmpty);
+  EXPECT_EQ(f.state(), expected<std::unique_ptr<int>>::kEmpty);
 }
 
 TEST_F(ExpectedTest, access_value_empty) {
@@ -167,72 +233,212 @@ TEST_F(ExpectedTest, access_value_value) {
   static_assert(std::is_const_v<
                 std::remove_reference_t<decltype(std::cref(e).get().get())>>);
   static_assert(std::is_rvalue_reference_v<decltype(std::move(e).get())>);
-  static_assert(std::is_rvalue_reference_v<
-                decltype(std::move(std::cref(e).get()).get())>);
   static_assert(std::is_const_v<std::remove_reference_t<
                     decltype(std::move(std::cref(e).get()).get())>>);
-}
-
-TEST_F(ExpectedTest, copy_construction_value) {
-  {
-    std::string str = "Hello World!";
-    expected<std::string> e{std::in_place, str};
-    expected<std::string> o{e};
-    EXPECT_EQ(o.get(), str);
-  }
-
-  {
-    expected<std::string> e;
-    expected<std::string> o{e};
-    EXPECT_THROW({ o.get(); }, std::runtime_error);
-  }
-  {
-    expected<std::string> e{std::make_exception_ptr(my_exception("TEST!"))};
-    expected<std::string> o{e};
-    EXPECT_THROW({ o.get(); }, my_exception);
-  }
 }
 
 TEST_F(ExpectedTest, copy_assignment_value) {
   std::string str = "Hello World!";
   expected<std::string> e{std::in_place, str};
+  EXPECT_EQ(e.state(), expected<std::string>::kValue);
+
   {
-    expected<std::string> o;
-    o = e;
-    EXPECT_EQ(o.get(), str);
+    expected<std::string> f{};
+    EXPECT_EQ(f.state(), expected<std::string>::kEmpty);
+    f = e;
+    EXPECT_EQ(f.state(), expected<std::string>::kValue);
+    EXPECT_EQ(f.get(), str);
   }
+
   {
-    expected<std::string> o{std::in_place, "Other"};
-    o = e;
-    EXPECT_EQ(o.get(), str);
-  }
-  {
-    expected<std::string> o{
+    expected<std::string> f{
         std::make_exception_ptr(std::runtime_error("TEST!"))};
-    o = e;
-    EXPECT_EQ(o.get(), str);
+    EXPECT_EQ(f.state(), expected<std::string>::kException);
+    f = e;
+    EXPECT_EQ(f.state(), expected<std::string>::kValue);
+    EXPECT_EQ(f.get(), str);
+  }
+
+  {
+    expected<std::string> f{std::in_place, "FooBar"};
+    EXPECT_EQ(f.state(), expected<std::string>::kValue);
+    f = e;
+    EXPECT_EQ(f.state(), expected<std::string>::kValue);
+    EXPECT_EQ(f.get(), str);
+  }
+
+  EXPECT_EQ(e.state(), expected<std::string>::kValue);
+  EXPECT_EQ(e.get(), str);
+}
+
+TEST_F(ExpectedTest, copy_assignment_exception) {
+  auto ptr = std::make_exception_ptr(std::runtime_error("TEST!"));
+  expected<std::string> e{ptr};
+  EXPECT_EQ(e.state(), expected<std::string>::kException);
+
+  {
+    expected<std::string> f{};
+    EXPECT_EQ(f.state(), expected<std::string>::kEmpty);
+    f = e;
+    EXPECT_EQ(f.state(), expected<std::string>::kException);
+    EXPECT_EQ(f.exception_ptr(), ptr);
+  }
+
+  {
+    expected<std::string> f{
+        std::make_exception_ptr(std::runtime_error("TEST!"))};
+    EXPECT_EQ(f.state(), expected<std::string>::kException);
+    f = e;
+    EXPECT_EQ(f.state(), expected<std::string>::kException);
+    EXPECT_EQ(f.exception_ptr(), ptr);
+  }
+
+  {
+    expected<std::string> f{std::in_place, "FooBar"};
+    EXPECT_EQ(f.state(), expected<std::string>::kValue);
+    f = e;
+    EXPECT_EQ(f.state(), expected<std::string>::kException);
+    EXPECT_EQ(f.exception_ptr(), ptr);
+  }
+
+  EXPECT_EQ(e.state(), expected<std::string>::kException);
+  EXPECT_EQ(e.exception_ptr(), ptr);
+}
+
+TEST_F(ExpectedTest, copy_assignment_empty) {
+  expected<std::string> e{};
+  EXPECT_EQ(e.state(), expected<std::string>::kEmpty);
+
+  {
+    expected<std::string> f{};
+    EXPECT_EQ(f.state(), expected<std::string>::kEmpty);
+    f = e;
+    EXPECT_EQ(f.state(), expected<std::string>::kEmpty);
+  }
+
+  {
+    expected<std::string> f{
+        std::make_exception_ptr(std::runtime_error("TEST!"))};
+    EXPECT_EQ(f.state(), expected<std::string>::kException);
+    f = e;
+    EXPECT_EQ(f.state(), expected<std::string>::kEmpty);
+  }
+
+  {
+    expected<std::string> f{std::in_place, "FooBar"};
+    EXPECT_EQ(f.state(), expected<std::string>::kValue);
+    f = e;
+    EXPECT_EQ(f.state(), expected<std::string>::kEmpty);
+  }
+
+  EXPECT_EQ(e.state(), expected<std::string>::kEmpty);
+}
+
+TEST_F(ExpectedTest, move_assignment_empty) {
+  {
+    expected<std::unique_ptr<int>> e{};
+    EXPECT_EQ(e.state(), expected<std::unique_ptr<int>>::kEmpty);
+    expected<std::unique_ptr<int>> f{};
+    EXPECT_EQ(f.state(), expected<std::unique_ptr<int>>::kEmpty);
+    f = std::move(e);
+    EXPECT_EQ(f.state(), expected<std::unique_ptr<int>>::kEmpty);
+    EXPECT_EQ(e.state(), expected<std::unique_ptr<int>>::kEmpty);
+  }
+
+  {
+    expected<std::unique_ptr<int>> e{};
+    EXPECT_EQ(e.state(), expected<std::unique_ptr<int>>::kEmpty);
+    expected<std::unique_ptr<int>> f{
+        std::make_exception_ptr(std::runtime_error("TEST!"))};
+    EXPECT_EQ(f.state(), expected<std::unique_ptr<int>>::kException);
+    f = std::move(e);
+    EXPECT_EQ(f.state(), expected<std::unique_ptr<int>>::kEmpty);
+    EXPECT_EQ(e.state(), expected<std::unique_ptr<int>>::kEmpty);
+  }
+
+  {
+    expected<std::unique_ptr<int>> e{};
+    EXPECT_EQ(e.state(), expected<std::unique_ptr<int>>::kEmpty);
+    expected<std::unique_ptr<int>> f{std::in_place, std::make_unique<int>(12)};
+    EXPECT_EQ(f.state(), expected<std::unique_ptr<int>>::kValue);
+    f = std::move(e);
+    EXPECT_EQ(f.state(), expected<std::unique_ptr<int>>::kEmpty);
+    EXPECT_EQ(e.state(), expected<std::unique_ptr<int>>::kEmpty);
   }
 }
 
-TEST_F(ExpectedTest, copy_move_value) {
-  std::string str = "Hello World!";
+TEST_F(ExpectedTest, move_assignment_value) {
   {
-    expected<std::string> e{std::in_place, str};
-    expected<std::string> o;
-    o = std::move(e);
-    EXPECT_EQ(o.get(), str);
+    expected<std::unique_ptr<int>> e{std::in_place, std::make_unique<int>(12)};
+    EXPECT_EQ(e.state(), expected<std::unique_ptr<int>>::kValue);
+    expected<std::unique_ptr<int>> f{};
+    EXPECT_EQ(f.state(), expected<std::unique_ptr<int>>::kEmpty);
+    f = std::move(e);
+    EXPECT_EQ(f.state(), expected<std::unique_ptr<int>>::kValue);
+    EXPECT_NE(f->get(), nullptr);
+    EXPECT_EQ(e.state(), expected<std::unique_ptr<int>>::kValue);
+    EXPECT_EQ(e->get(), nullptr);
   }
   {
-    expected<std::string> e{std::in_place, str};
-    expected<std::string> o{std::in_place, "Other"};
-    o = std::move(e);
-    EXPECT_EQ(o.get(), str);
-  }
-  {
-    expected<std::string> e{std::in_place, str};
-    expected<std::string> o{
+    expected<std::unique_ptr<int>> e{std::in_place, std::make_unique<int>(12)};
+    EXPECT_EQ(e.state(), expected<std::unique_ptr<int>>::kValue);
+    expected<std::unique_ptr<int>> f{
         std::make_exception_ptr(std::runtime_error("TEST!"))};
-    o = std::move(e);
-    EXPECT_EQ(o.get(), str);
+    EXPECT_EQ(f.state(), expected<std::unique_ptr<int>>::kException);
+    f = std::move(e);
+    EXPECT_EQ(f.state(), expected<std::unique_ptr<int>>::kValue);
+    EXPECT_NE(f->get(), nullptr);
+    EXPECT_EQ(e.state(), expected<std::unique_ptr<int>>::kValue);
+    EXPECT_EQ(e->get(), nullptr);
+  }
+  {
+    expected<std::unique_ptr<int>> e{std::in_place, std::make_unique<int>(12)};
+    EXPECT_EQ(e.state(), expected<std::unique_ptr<int>>::kValue);
+    expected<std::unique_ptr<int>> f{std::in_place, std::make_unique<int>(15)};
+    EXPECT_EQ(f.state(), expected<std::unique_ptr<int>>::kValue);
+    f = std::move(e);
+    EXPECT_EQ(f.state(), expected<std::unique_ptr<int>>::kValue);
+    EXPECT_NE(f->get(), nullptr);
+    EXPECT_EQ(*f->get(), 12);
+    EXPECT_EQ(e.state(), expected<std::unique_ptr<int>>::kValue);
+    EXPECT_EQ(e->get(), nullptr);
+  }
+}
+
+TEST_F(ExpectedTest, move_assignment_exception) {
+  auto ptr = std::make_exception_ptr(std::runtime_error("TEST!"));
+  {
+    expected<std::unique_ptr<int>> e{ptr};
+    EXPECT_EQ(e.state(), expected<std::unique_ptr<int>>::kException);
+    expected<std::unique_ptr<int>> f{};
+    EXPECT_EQ(f.state(), expected<std::unique_ptr<int>>::kEmpty);
+    f = std::move(e);
+    EXPECT_EQ(f.state(), expected<std::unique_ptr<int>>::kException);
+    EXPECT_EQ(f.exception_ptr(), ptr);
+    EXPECT_EQ(e.state(), expected<std::unique_ptr<int>>::kException);
+    EXPECT_EQ(e.exception_ptr(), nullptr);
+  }
+  {
+    expected<std::unique_ptr<int>> e{ptr};
+    EXPECT_EQ(e.state(), expected<std::unique_ptr<int>>::kException);
+    expected<std::unique_ptr<int>> f{
+        std::make_exception_ptr(std::runtime_error("TEST!"))};
+    EXPECT_EQ(f.state(), expected<std::unique_ptr<int>>::kException);
+    f = std::move(e);
+    EXPECT_EQ(f.state(), expected<std::unique_ptr<int>>::kException);
+    EXPECT_EQ(f.exception_ptr(), ptr);
+    EXPECT_EQ(e.state(), expected<std::unique_ptr<int>>::kException);
+    EXPECT_EQ(e.exception_ptr(), nullptr);
+  }
+  {
+    expected<std::unique_ptr<int>> e{ptr};
+    EXPECT_EQ(e.state(), expected<std::unique_ptr<int>>::kException);
+    expected<std::unique_ptr<int>> f{std::in_place, std::make_unique<int>(15)};
+    EXPECT_EQ(f.state(), expected<std::unique_ptr<int>>::kValue);
+    f = std::move(e);
+    EXPECT_EQ(f.state(), expected<std::unique_ptr<int>>::kException);
+    EXPECT_EQ(f.exception_ptr(), ptr);
+    EXPECT_EQ(e.state(), expected<std::unique_ptr<int>>::kException);
+    EXPECT_EQ(e.exception_ptr(), nullptr);
   }
 }

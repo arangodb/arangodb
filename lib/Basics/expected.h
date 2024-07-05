@@ -90,7 +90,6 @@ struct expected {
           new (&_exception) std::exception_ptr(std::move(other._exception));
           _state = kException;
         }
-        other.reset();
       }
     }
     return *this;
@@ -144,17 +143,8 @@ struct expected {
     }
   }
 
-  T const&& get() const&& {
-    if (_state == kEmpty) {
-      throw std::runtime_error("accessing empty expected");
-    } else if (_state == kException) {
-      std::rethrow_exception(_exception);
-    } else {
-      return std::move(_value);
-    }
-  }
-
-  // It is debatable if -> and * operators should rethrow an exception within
+  // It is debatable whether -> and * operators should rethrow an exception
+  // within or not
   T* operator->() noexcept {
     TRI_ASSERT(_state == kValue);
     return &_value;
@@ -184,13 +174,24 @@ struct expected {
     }
   }
 
+  std::exception_ptr exception_ptr() const noexcept {
+    TRI_ASSERT(_state == kException);
+    return _exception;
+  }
+
+  bool ok() const noexcept { return _state == kValue; }
+  operator bool() const noexcept { return ok(); }
+
+  enum State { kEmpty, kValue, kException };
+  State state() const noexcept { return _state; }
+
  private:
   union {
     T _value;
     std::exception_ptr _exception;
   };
 
-  enum { kEmpty, kValue, kException } _state = kEmpty;
+  State _state = kEmpty;
 };
 
 template<>
