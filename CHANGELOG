@@ -1,9 +1,12 @@
 devel
 -----
 
+* Removed unused log topic "audit-service".
+
 * Updated ArangoDB Starter to v0.19.3-preview-2.
 
-* Fix a nullptr access when aborting a move shard job for a already dropped collection.
+* Fix a nullptr access when aborting a move shard job for a already dropped
+  collection.
 
 * Use __nss_configure_lookup to opt out of /etc/nsswitch.conf.
   Add the startup option --honor-nsswitch to cancel the opt-out.
