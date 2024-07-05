@@ -62,43 +62,51 @@ bool isEligibleIndex(transaction::Methods::IndexHandle const& idx) {
   return true;
 }
 
-bool isEligibleSort(auto itIndex, auto const itIndexEnd, auto itSort,
-                    auto const itSortEnd, const auto* outVariable,
-                    auto* executionPlan, auto* indexNode) {
+bool isEligibleSort(auto itIndex, auto const itIndexEnd, auto const& sortFields,
+                    auto const* executionPlan, auto const* indexNode) {
   std::optional<bool> sortAscending;
+  auto itSort = sortFields.begin();
 
-  while (itIndex != itIndexEnd && itSort != itSortEnd) {
+  while (itIndex != itIndexEnd && itSort != sortFields.end()) {
+    // Compare the index attribute with sort attribute
     if (itSort->var != nullptr) {
-      auto* executionNode = executionPlan->getVarSetBy(itSort->var->id);
+      // To get the attribute of SortNode when we have variable defined
+      // we need CalculationNode
+      auto const* executionNode = executionPlan->getVarSetBy(itSort->var->id);
       if (executionNode == nullptr) {
         return false;
       }
-
       if (executionNode->getType() != EN::CALCULATION) {
         return false;
       }
 
-      auto calculationNode =
+      auto const* calculationNode =
           ExecutionNode::castTo<CalculationNode const*>(executionNode);
-      auto* rootNode = calculationNode->expression()->node();
       std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>
-          varVectorAttributePair;
-      if (!rootNode->isAttributeAccessForVariable(varVectorAttributePair,
+          attributeAccessResult;
+
+      auto const* rootNode = calculationNode->expression()->node();
+      if (!rootNode->isAttributeAccessForVariable(attributeAccessResult,
                                                   false)) {
         return false;
       }
-      // Stop optimization
-      if (varVectorAttributePair.first != indexNode->outVariable()) {
+
+      // If variable whose attributes are being accesses is not the same as
+      // indexed cannot apply the rule
+      if (attributeAccessResult.first != indexNode->outVariable()) {
         return false;
       }
 
-      if (varVectorAttributePair.second != *itIndex) {
+      // If the attributes of variable are not the same as indexed attributes,
+      // cannot apply the rule
+      if (attributeAccessResult.second != *itIndex) {
         return false;
       }
-
     } else {
+      // Number of attributes on compound key must be the same as the one in
+      // the number of attributes in sort
+      // ["a"] == ["a"]  vs.  ["b"] != ["b", "sub"]
       if (itIndex->size() != itSort->attributePath.size()) {
-        // ["a"] == ["a"]   vs.  ["b"] != ["b", "sub"]
         return false;
       }
       if (std::equal(itIndex->begin(), itIndex->end(),
@@ -109,8 +117,8 @@ bool isEligibleSort(auto itIndex, auto const itIndexEnd, auto itSort,
         return false;
       }
 
-      if (itSort->var != outVariable) {
-        // we are sorting by something unrelated to the index
+      // We are sorting by something unrelated to the index
+      if (itSort->var != indexNode->outVariable()) {
         return false;
       }
     }
@@ -119,7 +127,6 @@ bool isEligibleSort(auto itIndex, auto const itIndexEnd, auto itSort,
                     [](auto const& it) { return it.shouldExpand; })) {
       return false;
     }
-
     if (!sortAscending.has_value()) {
       // note first used sort order
       sortAscending = itSort->ascending;
@@ -135,7 +142,7 @@ bool isEligibleSort(auto itIndex, auto const itIndexEnd, auto itSort,
 }
 
 /// If the following conditions are met this rule will apply:
-/// - there is an index node
+/// - there is an persistent index used
 /// - IndexNode must not have post filter
 /// - IndexNode must not be in the inner loop
 /// - IndexNode must have a single condition containing `COMPARE IN` operator
@@ -242,11 +249,10 @@ void arangodb::aql::pushLimitIntoIndexRule(Optimizer* opt,
     // ]
 
     if (!isEligibleSort(usedIndex->fields().begin(), usedIndex->fields().end(),
-                        sortFields.begin(), sortFields.end(), outVariable,
-                        plan.get(), indexNode) &&
+                        sortFields, plan.get(), indexNode) &&
         !isEligibleSort(usedIndex->fields().begin() + 1,
-                        usedIndex->fields().end(), sortFields.begin(),
-                        sortFields.end(), outVariable, plan.get(), indexNode)) {
+                        usedIndex->fields().end(), sortFields, plan.get(),
+                        indexNode)) {
       continue;
     }
 
