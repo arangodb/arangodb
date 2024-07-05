@@ -1,6 +1,9 @@
 v3.11.11 (XXXX-XX-XX)
 ---------------------
 
+* Add syslog client implementation for Windows. This allows one to configure
+  syslog logging for Windows deployments.
+
 * Updated ArangoDB Starter to v0.18.7-preview-2 and arangosync to
   v2.19.8-preview-2.
 

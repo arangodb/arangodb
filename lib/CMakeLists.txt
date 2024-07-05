@@ -102,6 +102,7 @@ if (MSVC)
           Basics/terminal-utils-win32.cpp
           Basics/threads-win32.cpp
           )
+  target_link_libraries(arango_lightweight PRIVATE syslog-win32)
 else ()
   target_sources(arango_lightweight PRIVATE
           Basics/terminal-utils-posix.cpp

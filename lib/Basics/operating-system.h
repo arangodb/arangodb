@@ -544,6 +544,8 @@
 
 #if defined(_WIN32) && defined(_MSC_VER)
 
+#define ARANGODB_ENABLE_SYSLOG 1
+
 // necessary defines and includes
 
 #ifdef _WIN64
