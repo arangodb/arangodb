@@ -51,7 +51,6 @@ bool isEligibleIndex(transaction::Methods::IndexHandle const& idx) {
   if (idx->type() != Index::IndexType::TRI_IDX_TYPE_PERSISTENT_INDEX &&
       idx->type() != Index::IndexType::TRI_IDX_TYPE_HASH_INDEX &&
       idx->type() != Index::IndexType::TRI_IDX_TYPE_SKIPLIST_INDEX) {
-    LOG_DEVEL << __LINE__;
     return false;
   }
 
@@ -69,19 +68,13 @@ bool isEligibleSort(auto itIndex, auto const itIndexEnd, auto itSort,
   std::optional<bool> sortAscending;
 
   while (itIndex != itIndexEnd && itSort != itSortEnd) {
-    LOG_DEVEL << "COMPARING: index: " << *itIndex
-              << ", sort: " << itSort->attributePath;
-
     if (itSort->var != nullptr) {
-      LOG_DEVEL << "VAR is not nullptr ";
       auto* executionNode = executionPlan->getVarSetBy(itSort->var->id);
       if (executionNode == nullptr) {
-        LOG_DEVEL << "Execution plan must have a var";
         return false;
       }
 
       if (executionNode->getType() != EN::CALCULATION) {
-        LOG_DEVEL << "It is not a calc node";
         return false;
       }
 
@@ -92,27 +85,20 @@ bool isEligibleSort(auto itIndex, auto const itIndexEnd, auto itSort,
           varVectorAttributePair;
       if (!rootNode->isAttributeAccessForVariable(varVectorAttributePair,
                                                   false)) {
-        LOG_DEVEL << "It is not attribtie for variable";
         return false;
       }
       // Stop optimization
       if (varVectorAttributePair.first != indexNode->outVariable()) {
-        LOG_DEVEL << "Output var not equal";
         return false;
       }
 
-      LOG_DEVEL << "ASASASSA";
-      LOG_DEVEL << varVectorAttributePair.second;
-      LOG_DEVEL << *itIndex;
       if (varVectorAttributePair.second != *itIndex) {
-        LOG_DEVEL << "attribute path not eq";
         return false;
       }
 
     } else {
       if (itIndex->size() != itSort->attributePath.size()) {
         // ["a"] == ["a"]   vs.  ["b"] != ["b", "sub"]
-        LOG_DEVEL << __LINE__;
         return false;
       }
       if (std::equal(itIndex->begin(), itIndex->end(),
@@ -120,20 +106,17 @@ bool isEligibleSort(auto itIndex, auto const itIndexEnd, auto itSort,
                      [](auto const& lhs, auto const& rhs) {
                        return lhs.name == rhs;
                      })) {
-        LOG_DEVEL << __LINE__;
         return false;
       }
 
       if (itSort->var != outVariable) {
         // we are sorting by something unrelated to the index
-        LOG_DEVEL << __LINE__;
         return false;
       }
     }
 
     if (std::any_of(itIndex->begin(), itIndex->end(),
                     [](auto const& it) { return it.shouldExpand; })) {
-      LOG_DEVEL << __LINE__;
       return false;
     }
 
@@ -142,7 +125,6 @@ bool isEligibleSort(auto itIndex, auto const itIndexEnd, auto itSort,
       sortAscending = itSort->ascending;
     } else if (*sortAscending != itSort->ascending) {
       // different sort orders used
-      LOG_DEVEL << __LINE__;
       return false;
     }
 
@@ -152,6 +134,17 @@ bool isEligibleSort(auto itIndex, auto const itIndexEnd, auto itSort,
   return true;
 }
 
+/// If the following conditions are met this rule will apply:
+/// - there is an index node
+/// - IndexNode must not have post filter
+/// - IndexNode must not be in the inner loop
+/// - IndexNode must have a single condition containing `COMPARE IN` operator
+/// - attribute in the `COMPARE IN` operator must be in the same one used in
+/// index
+/// - first parent of IndexNode must be SortNode (we can skip calculation node)
+/// - order of attributes in SortNode must match the order of attributes of
+/// index
+/// - first parent of SortNode must be a LimitNode
 void arangodb::aql::pushLimitIntoIndexRule(Optimizer* opt,
                                            std::unique_ptr<ExecutionPlan> plan,
                                            OptimizerRule const& rule) {
@@ -204,7 +197,6 @@ void arangodb::aql::pushLimitIntoIndexRule(Optimizer* opt,
     if (indexes.size() != 1) {
       // IndexNode uses more than a single index. not safe to apply the
       // optimization here.
-      LOG_DEVEL << __LINE__;
       continue;
     }
     auto const& usedIndex = indexes.front();
@@ -237,18 +229,11 @@ void arangodb::aql::pushLimitIntoIndexRule(Optimizer* opt,
     }
 
     if (sortNode == nullptr || sortNode->getType() != EN::SORT) {
-      LOG_DEVEL << __LINE__;
       continue;
     }
 
     auto const& sortFields =
         ExecutionNode::castTo<SortNode const*>(sortNode)->elements();
-    LOG_DEVEL << "SORTFIELDS: " << sortFields.size();
-    for (auto const& x : sortFields) {
-      LOG_DEVEL << " - " << x.toString();
-      LOG_DEVEL << x.attributePath;
-      LOG_DEVEL << x.var;
-    }
     // SORT doc.a ASC, doc.b DESC, foo.bar.baz ASC
     // [
     //   {var: doc, ascending: true, attributePath: ["a"]},
@@ -262,13 +247,11 @@ void arangodb::aql::pushLimitIntoIndexRule(Optimizer* opt,
         !isEligibleSort(usedIndex->fields().begin() + 1,
                         usedIndex->fields().end(), sortFields.begin(),
                         sortFields.end(), outVariable, plan.get(), indexNode)) {
-      LOG_DEVEL << __LINE__;
       continue;
     }
 
     ExecutionNode* limitNode = sortNode->getFirstParent();
     if (limitNode == nullptr || limitNode->getType() != EN::LIMIT) {
-      LOG_DEVEL << __LINE__;
       continue;
     }
 
