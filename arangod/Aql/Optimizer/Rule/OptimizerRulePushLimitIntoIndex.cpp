@@ -33,7 +33,6 @@
 #include "Aql/SortElement.h"
 #include "Aql/Variable.h"
 #include "Indexes/Index.h"
-#include "Logger/LogMacros.h"
 
 #include <algorithm>
 #include <optional>
@@ -42,7 +41,7 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
 
-/// The index is eligible only if it is a type of persistent index
+/// index is eligible only if it is a type of persistent index
 /// and if it build on multiple attributes
 bool isEligibleIndex(transaction::Methods::IndexHandle const& idx) {
   // we only care about persistent indexes.
@@ -62,65 +61,44 @@ bool isEligibleIndex(transaction::Methods::IndexHandle const& idx) {
   return true;
 }
 
+/// optimization can be applied if the sorting attributes being sorted match
+/// the index attributes, and they are all in the same order (ASC/DESC)
 bool isEligibleSort(auto itIndex, auto const itIndexEnd, auto const& sortFields,
                     auto const* executionPlan, auto const* indexNode) {
   std::optional<bool> sortAscending;
   auto itSort = sortFields.begin();
 
   while (itIndex != itIndexEnd && itSort != sortFields.end()) {
-    // Compare the index attribute with sort attribute
-    if (itSort->var != nullptr) {
-      // To get the attribute of SortNode when we have variable defined
-      // we need CalculationNode
-      auto const* executionNode = executionPlan->getVarSetBy(itSort->var->id);
-      if (executionNode == nullptr) {
-        return false;
-      }
-      if (executionNode->getType() != EN::CALCULATION) {
-        return false;
-      }
+    auto const* sortVar = itSort->var;
 
-      auto const* calculationNode =
-          ExecutionNode::castTo<CalculationNode const*>(executionNode);
-      std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>
-          attributeAccessResult;
+    // to get the attributes of SortNode CalculationNode is needed
+    auto const* executionNode = executionPlan->getVarSetBy(sortVar->id);
+    if (executionNode == nullptr) {
+      return false;
+    }
+    if (executionNode->getType() != EN::CALCULATION) {
+      return false;
+    }
+    auto const* calculationNode =
+        ExecutionNode::castTo<CalculationNode const*>(executionNode);
 
-      auto const* rootNode = calculationNode->expression()->node();
-      if (!rootNode->isAttributeAccessForVariable(attributeAccessResult,
-                                                  false)) {
-        return false;
-      }
+    std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>
+        attributeAccessResult;
+    auto const* rootNode = calculationNode->expression()->node();
+    if (!rootNode->isAttributeAccessForVariable(attributeAccessResult, false)) {
+      return false;
+    }
 
-      // If variable whose attributes are being accesses is not the same as
-      // indexed cannot apply the rule
-      if (attributeAccessResult.first != indexNode->outVariable()) {
-        return false;
-      }
+    // if variable whose attributes are being accesses is not the same as
+    // indexed cannot apply the rule
+    if (attributeAccessResult.first != indexNode->outVariable()) {
+      return false;
+    }
 
-      // If the attributes of variable are not the same as indexed attributes,
-      // cannot apply the rule
-      if (attributeAccessResult.second != *itIndex) {
-        return false;
-      }
-    } else {
-      // Number of attributes on compound key must be the same as the one in
-      // the number of attributes in sort
-      // ["a"] == ["a"]  vs.  ["b"] != ["b", "sub"]
-      if (itIndex->size() != itSort->attributePath.size()) {
-        return false;
-      }
-      if (std::equal(itIndex->begin(), itIndex->end(),
-                     itSort->attributePath.begin(), itSort->attributePath.end(),
-                     [](auto const& lhs, auto const& rhs) {
-                       return lhs.name == rhs;
-                     })) {
-        return false;
-      }
-
-      // We are sorting by something unrelated to the index
-      if (itSort->var != indexNode->outVariable()) {
-        return false;
-      }
+    // if the attributes of variable are not the same as indexed attributes,
+    // cannot apply the rule
+    if (attributeAccessResult.second != *itIndex) {
+      return false;
     }
 
     if (std::any_of(itIndex->begin(), itIndex->end(),
@@ -141,7 +119,7 @@ bool isEligibleSort(auto itIndex, auto const itIndexEnd, auto const& sortFields,
   return true;
 }
 
-/// If the following conditions are met this rule will apply:
+/// if the following conditions are met this rule will apply:
 /// - there is an persistent index used
 /// - IndexNode must not have post filter
 /// - IndexNode must not be in the inner loop
@@ -164,19 +142,24 @@ void arangodb::aql::pushLimitIntoIndexRule(Optimizer* opt,
     TRI_ASSERT(index->getType() == EN::INDEX);
     auto* indexNode = ExecutionNode::castTo<IndexNode*>(index);
 
-    // Check that there is no post filtering
+    // check that there is no post filtering
     if (indexNode->hasFilter()) {
       continue;
     }
 
-    // The condition of IndexNode can only be a single `compare in` for the
+    // cannot apply rule if in loop
+    if (indexNode->isInInnerLoop()) {
+      continue;
+    }
+
+    // condition of IndexNode can only be a single `compare in` for the
     // rule to be applicable
-    // The tree has a specific format => DNF therefore the assumption
+    // the tree has a specific format => DNF therefore the assumption
     // of having only one member and expecting COMPARE IN node
     // is valid
-    auto* compareInNode = indexNode->condition() == nullptr
-                              ? nullptr
-                              : indexNode->condition()->root();
+    auto const* compareInNode = indexNode->condition() == nullptr
+                                    ? nullptr
+                                    : indexNode->condition()->root();
     while (compareInNode != nullptr) {
       if (compareInNode->type == NODE_TYPE_OPERATOR_BINARY_IN) {
         break;
@@ -192,14 +175,6 @@ void arangodb::aql::pushLimitIntoIndexRule(Optimizer* opt,
       continue;
     }
 
-    // Cannot apply rule if in loop
-    if (indexNode->isInInnerLoop()) {
-      continue;
-    }
-
-    // remember the output variable that is produced by the IndexNode
-    Variable const* outVariable = indexNode->outVariable();
-
     auto const& indexes = indexNode->getIndexes();
     if (indexes.size() != 1) {
       // IndexNode uses more than a single index. not safe to apply the
@@ -211,26 +186,30 @@ void arangodb::aql::pushLimitIntoIndexRule(Optimizer* opt,
       continue;
     }
 
-    // compareInNode is a binary node
+    // remember the output variable that is produced by the IndexNode
+    Variable const* outVariable = indexNode->outVariable();
+
+    // check if `compare in` variable is same as IndexNode output,
+    // and that it compares against the attribute defined in index
     if (auto const* lhs = compareInNode->getMember(0);
         lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
       std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>
-          varVectorAttributePair;
-      if (!lhs->isAttributeAccessForVariable(varVectorAttributePair, false)) {
+          attributeAccessResult;
+      if (!lhs->isAttributeAccessForVariable(attributeAccessResult, false)) {
         continue;
       }
-
-      if (varVectorAttributePair.first != outVariable) {
+      if (attributeAccessResult.first != outVariable) {
         continue;
       }
-
-      if (varVectorAttributePair.second != *usedIndex->fields().begin()) {
+      if (attributeAccessResult.second != *usedIndex->fields().begin()) {
         continue;
       }
+    } else {
+      continue;
     }
 
-    // Check if index node parents contains a pair of sort and limit
-    auto* sortNode = indexNode->getFirstParent();
+    // check if index node parents contains a pair of sort and limit
+    auto const* sortNode = indexNode->getFirstParent();
     while (sortNode != nullptr && sortNode->getType() == EN::CALCULATION) {
       sortNode = sortNode->getFirstParent();
     }
@@ -241,12 +220,6 @@ void arangodb::aql::pushLimitIntoIndexRule(Optimizer* opt,
 
     auto const& sortFields =
         ExecutionNode::castTo<SortNode const*>(sortNode)->elements();
-    // SORT doc.a ASC, doc.b DESC, foo.bar.baz ASC
-    // [
-    //   {var: doc, ascending: true, attributePath: ["a"]},
-    //   {var: doc, ascending: false, attributePath: ["b"]},
-    //   {var: foo, ascending: true, attributePath: ["bar", "baz"]},
-    // ]
 
     if (!isEligibleSort(usedIndex->fields().begin(), usedIndex->fields().end(),
                         sortFields, plan.get(), indexNode) &&
