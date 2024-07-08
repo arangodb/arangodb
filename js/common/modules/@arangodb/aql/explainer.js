@@ -2596,7 +2596,7 @@ function debug(query, bindVars, options) {
       result.analyzers[used_a] = {
         type: analyzers.analyzer(used_a).type(),
         properties: analyzers.analyzer(used_a).properties()
-      }
+      };
     }
   });
   
@@ -2665,11 +2665,11 @@ function inspectDump(filename, outfile) {
   print("/* analyzers setup */");
   const analyzers_names = Object.keys(data.analyzers);
   if (analyzers_names.length > 0) {
-    print("var analyzers = require('@arangodb/analyzers')")
+    print("var analyzers = require('@arangodb/analyzers')");
     for (let i = 0; i < analyzers_names.length; ++i) {
       let name = analyzers_names[i];
-      print(`try { analyzers.remove("${name}"); } catch (err) { print(String(err)); }`)
-      print(`analyzers.save("${name}", ${JSON.stringify(data.analyzers[name]["type"])}, ${JSON.stringify(data.analyzers[name]["properties"])})`)
+      print(`try { analyzers.remove("${name}"); } catch (err) { print(String(err)); }`);
+      print(`analyzers.save("${name}", ${JSON.stringify(data.analyzers[name]["type"])}, ${JSON.stringify(data.analyzers[name]["properties"])})`);
     }
   }
   print();
