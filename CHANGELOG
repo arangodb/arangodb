@@ -5,7 +5,7 @@
   could lead to the key generator's sequence being set to a too low value
   after recovery.
 
-* Updated ArangoDB Starter to v0.19.3-preview-2.
+* Updated ArangoDB Starter to v0.19.3.
 
 * Fix a nullptr access when aborting a move shard job for a already dropped collection.
 
