@@ -89,8 +89,8 @@ bool isEligibleSort(auto itIndex, auto const itIndexEnd, auto const& sortFields,
       return false;
     }
 
-    // if variable whose attributes are being accesses is not the same as
-    // indexed cannot apply the rule
+    // if variable whose attributes are being accessed is not the same as
+    // indexed, we cannot apply the rule
     if (attributeAccessResult.first != indexNode->outVariable()) {
       return false;
     }
@@ -208,7 +208,8 @@ void arangodb::aql::pushLimitIntoIndexRule(Optimizer* opt,
       continue;
     }
 
-    // check if index node parents contains a pair of sort and limit
+    // check if index node parents contains a pair of sort and limit.
+    // skipping over any amount of CalculationNodes is valid here.
     auto const* sortNode = indexNode->getFirstParent();
     while (sortNode != nullptr && sortNode->getType() == EN::CALCULATION) {
       sortNode = sortNode->getFirstParent();
@@ -234,7 +235,7 @@ void arangodb::aql::pushLimitIntoIndexRule(Optimizer* opt,
       continue;
     }
 
-    indexNode->setLimit(ExecutionNode::castTo<LimitNode*>(limitNode)->limit());
+    indexNode->setLimit(ExecutionNode::castTo<LimitNode*>(limitNode)->offset() + ExecutionNode::castTo<LimitNode*>(limitNode)->limit());
     modified = true;
   }
 
