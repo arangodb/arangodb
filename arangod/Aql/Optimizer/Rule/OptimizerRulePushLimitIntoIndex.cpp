@@ -84,8 +84,9 @@ bool isEligibleSort(auto itIndex, auto const itIndexEnd, auto const& sortFields,
 
     std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>
         attributeAccessResult;
-    auto const* rootNode = calculationNode->expression()->node();
-    if (!rootNode->isAttributeAccessForVariable(attributeAccessResult, false)) {
+    if (auto const* rootNode = calculationNode->expression()->node();
+        rootNode != nullptr &&
+        !rootNode->isAttributeAccessForVariable(attributeAccessResult, false)) {
       return false;
     }
 
@@ -235,7 +236,8 @@ void arangodb::aql::pushLimitIntoIndexRule(Optimizer* opt,
       continue;
     }
 
-    indexNode->setLimit(ExecutionNode::castTo<LimitNode*>(limitNode)->offset() + ExecutionNode::castTo<LimitNode*>(limitNode)->limit());
+    indexNode->setLimit(ExecutionNode::castTo<LimitNode*>(limitNode)->offset() +
+                        ExecutionNode::castTo<LimitNode*>(limitNode)->limit());
     modified = true;
   }
 

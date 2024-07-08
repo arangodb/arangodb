@@ -812,7 +812,7 @@ involved attributes are covered by inverted indexes.)");
   registerRule("push-limit-into-index", pushLimitIntoIndexRule,
                OptimizerRule::pushLimitIntoIndexRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
-               R"(TODO: add a description.)");
+               R"(Push limit into index node.)");
 
   registerRule("materialize-into-separate-variable",
                materializeIntoSeparateVariable,
