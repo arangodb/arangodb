@@ -1154,7 +1154,7 @@ function dealing_with_cursorsSuite_checking_a_querySuite() {
 
     test_window_aggregate_no_arguments_query: function () {
       let cmd = "/_api/query";
-      let body = {"query": `FOR e IN []   WINDOW { preceding: 1 } AGGREGATE i = LENGTH()   RETURN 1`};
+      let body = {"query": `FOR e IN [] WINDOW { preceding: 1 } AGGREGATE i = LENGTH() RETURN 1`};
       let doc = arango.POST_RAW(cmd, body);
 
       assertEqual(doc.code, 200);
