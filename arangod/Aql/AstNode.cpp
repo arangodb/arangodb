@@ -171,6 +171,7 @@ frozen::unordered_map<int, std::string_view, 80> kTypeNames{
     {static_cast<int>(NODE_TYPE_PARAMETER_DATASOURCE), "datasource parameter"},
     {static_cast<int>(NODE_TYPE_FOR_VIEW), "view enumeration"},
     {static_cast<int>(NODE_TYPE_ARRAY_FILTER), "array filter"},
+    {static_cast<int>(NODE_TYPE_DESTRUCTURING), "destructuring"},
     {static_cast<int>(NODE_TYPE_WINDOW), "window"},
 };
 
@@ -649,6 +650,7 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice slice)
     case NODE_TYPE_FOR_VIEW:
     case NODE_TYPE_WINDOW:
     case NODE_TYPE_ARRAY_FILTER:
+    case NODE_TYPE_DESTRUCTURING:
       break;
   }
 
@@ -1557,6 +1559,7 @@ bool AstNode::isSimple() const {
   if (type == NODE_TYPE_ARRAY || type == NODE_TYPE_OBJECT ||
       type == NODE_TYPE_EXPANSION || type == NODE_TYPE_ITERATOR ||
       type == NODE_TYPE_ARRAY_LIMIT || type == NODE_TYPE_ARRAY_FILTER ||
+      type == NODE_TYPE_DESTRUCTURING ||
       type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT ||
       type == NODE_TYPE_OPERATOR_TERNARY ||
       type == NODE_TYPE_OPERATOR_NARY_AND ||

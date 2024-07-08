@@ -382,7 +382,7 @@ function allShortestPathsSyntaxTestSuite() {
         db._query(query);
         fail();
       } catch (e) {
-        assertMatch(/ALL_SHORTEST_PATHS only has one return variable/, e.errorMessage);
+        assertMatch(/ALL_SHORTEST_PATHS should only have a single output variable/, e.errorMessage);
       }
     }
   };
