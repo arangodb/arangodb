@@ -1,1 +1,3 @@
 wal_cleanup full cluster priority=2500 -- --dumpAgencyOnError true
+dump_mixed_cluster_single size=medium -- --dumpAgencyOnError true
+
