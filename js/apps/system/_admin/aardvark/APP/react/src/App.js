@@ -1,6 +1,7 @@
 import 'jsoneditor-react/es/editor.min.css';
 import React, { Component } from 'react';
 import ReactDOM from 'react-dom';
+import { createRoot } from 'react-dom/client';
 
 const jsoneditor = require('jsoneditor');
 const d3 = require('d3');
@@ -99,6 +100,7 @@ window.Noty = Noty;
 
 window.React = React;
 window.ReactDOM = ReactDOM;
+window.createRoot = createRoot;
 window.Joi = require('../../frontend/js/lib/joi-browser.min.js');
 window.jQuery = window.$ = jQuery;
 window.parsePrometheusTextFormat = parsePrometheusTextFormat;
