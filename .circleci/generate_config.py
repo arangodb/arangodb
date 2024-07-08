@@ -495,7 +495,7 @@ def add_build_job(workflow, build_config, overrides=None):
 def add_workflow(workflows, tests, build_config, args):
     repl2 = args.replication_two
     suffix = "nightly" if build_config.isNightly else "pr"
-    if args.ui != "" and args.ui != "off":
+    if build_config.arch == "x64" and args.ui != "" and args.ui != "off":
         ui = True
         if args.ui == "only":
             suffix = "only_ui_tests-" + suffix
