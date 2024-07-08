@@ -102,7 +102,6 @@ window.Noty = Noty;
 
 window.React = React;
 window.ReactDOM = ReactDOM;
-window.createRoot = createRoot;
 window.Joi = require('../../frontend/js/lib/joi-browser.min.js');
 window.jQuery = window.$ = jQuery;
 window.parsePrometheusTextFormat = parsePrometheusTextFormat;
