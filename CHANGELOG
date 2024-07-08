@@ -1,25 +1,24 @@
 v3.11.11 (XXXX-XX-XX)
 ---------------------
 
+* Updated ArangoDB Starter to v0.18.7 and arangosync to v2.19.8-preview-2.
+
 * Fixed MDS-1216: restoring the previous value of the "padded" key generator
-  could lead to the key generator's sequence being set to a too low value
-  after recovery.
+  could lead to the key generator's sequence being set to a too low value after
+  recovery.
 
 * Add syslog client implementation for Windows. This allows one to configure
   syslog logging for Windows deployments.
-
-* Updated ArangoDB Starter to v0.18.7-preview-2 and arangosync to
-  v2.19.8-preview-2.
 
 * Use __nss_configure_lookup to opt out of /etc/nsswitch.conf.
   Add the startup option --honor-nsswitch to cancel the opt-out.
 
 * Added `verifyCertificates` attribute option for the `requests` JavaScript
-  module. This option defaults to false, so that no certificates will be 
-  verified in an HTTPS connection made with the `requests` module. If the
-  option is set to true, the server certificate of the remote server will be
-  verified using the default certificate store of the system.
-  There is also a `verifyDepth` attribute to limit the maximum length of the 
+  module. This option defaults to false, so that no certificates will be
+  verified in an HTTPS connection made with the `requests` module. If the option
+  is set to true, the server certificate of the remote server will be verified
+  using the default certificate store of the system.
+  There is also a `verifyDepth` attribute to limit the maximum length of the
   certificate chain that counts as valid.
 
 
