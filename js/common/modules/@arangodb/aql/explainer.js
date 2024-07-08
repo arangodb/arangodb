@@ -1500,9 +1500,13 @@ function processQuery(query, explain, planIndex) {
         });
         return keyword('JOIN');
       case 'IndexNode':
+        var limit = '';
         collectionVariables[node.outVariable.id] = node.collection;
         if (node.filter) {
           filter = '   ' + keyword('FILTER') + ' ' + buildExpression(node.filter) + '   ' + annotation('/* early pruning */');
+        }
+        if (node.limit > 0) {
+          limit = '   '  + keyword('LIMIT') + ' ' + value(JSON.stringify(node.limit)) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC') + '   ' + annotation('/* early reducing results */');
         }
         if (node.projections) {
           // produce LET nodes for each projection output register
@@ -1531,7 +1535,7 @@ function processQuery(query, explain, planIndex) {
         }
         node.indexes.forEach(function (idx, i) { iterateIndexes(idx, i, node, types, false); });
         return `${keyword('FOR')} ${variableName(node.outVariable)} ${keyword('IN')} ${collection(node.collection)}` + indexVariables +
-          `   ${annotation(`/* ${types.join(', ')}${projections(node, 'filterProjections', 'filter projections')}${projections(node, 'projections', 'projections')}${node.satellite ? ', satellite' : ''}${restriction(node)} */`)} ` + filter +
+          `   ${annotation(`/* ${types.join(', ')}${projections(node, 'filterProjections', 'filter projections')}${projections(node, 'projections', 'projections')}${node.satellite ? ', satellite' : ''}${restriction(node)} */`)} ` + filter + limit +
           '   ' + annotation(indexAnnotation);
 
       case 'TraversalNode': {
