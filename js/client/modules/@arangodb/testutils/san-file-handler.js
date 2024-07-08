@@ -93,7 +93,7 @@ class sanHandler {
         path.pop();
       }
       path.push(crypto.md5(String(internal.time() + Math.random())));
-      subProcesEnv.push(`${coverage_name}=${fs.pathSeparator + fs.join(...path)}`);
+      subProcesEnv.push(`${coverage_name}=${fs.pathSeparator + fs.join(...path)}_${this.binaryName}`);
     }
     print(subProcesEnv)
     return subProcesEnv;
