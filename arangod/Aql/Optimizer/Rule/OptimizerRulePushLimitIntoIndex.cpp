@@ -84,9 +84,11 @@ bool isEligibleSort(auto itIndex, auto const itIndexEnd, auto const& sortFields,
 
     std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>
         attributeAccessResult;
-    if (auto const* rootNode = calculationNode->expression()->node();
-        rootNode != nullptr &&
-        !rootNode->isAttributeAccessForVariable(attributeAccessResult, false)) {
+    auto const* calculationNodeExpression = calculationNode->expression();
+    if (calculationNodeExpression != nullptr &&
+        calculationNodeExpression->node() != nullptr &&
+        !calculationNodeExpression->node()->isAttributeAccessForVariable(
+            attributeAccessResult, false)) {
       return false;
     }
 
