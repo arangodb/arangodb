@@ -222,7 +222,6 @@ void arangodb::aql::pushLimitIntoIndexRule(Optimizer* opt,
 
     auto const& sortFields =
         ExecutionNode::castTo<SortNode const*>(sortNode)->elements();
-
     if (!isEligibleSort(usedIndex->fields().begin(), usedIndex->fields().end(),
                         sortFields, plan.get(), indexNode) &&
         !isEligibleSort(usedIndex->fields().begin() + 1,
@@ -231,13 +230,13 @@ void arangodb::aql::pushLimitIntoIndexRule(Optimizer* opt,
       continue;
     }
 
-    ExecutionNode* limitNode = sortNode->getFirstParent();
-    if (limitNode == nullptr || limitNode->getType() != EN::LIMIT) {
+    auto* maybeLimitNode = sortNode->getFirstParent();
+    if (maybeLimitNode == nullptr || maybeLimitNode->getType() != EN::LIMIT) {
       continue;
     }
 
-    indexNode->setLimit(ExecutionNode::castTo<LimitNode*>(limitNode)->offset() +
-                        ExecutionNode::castTo<LimitNode*>(limitNode)->limit());
+    auto* limitNode = ExecutionNode::castTo<LimitNode*>(maybeLimitNode);
+    indexNode->setLimit(limitNode->offset() + limitNode->limit());
     modified = true;
   }
 

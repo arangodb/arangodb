@@ -44,7 +44,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Containers/FlatHashSet.h"
 #include "Indexes/Index.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/CountCache.h"
 #include "Transaction/Methods.h"
@@ -523,7 +522,9 @@ IndexNode::~IndexNode() = default;
 /// its unique dependency
 CostEstimate IndexNode::estimateCost() const {
   CostEstimate estimate = _dependencies.at(0)->getCost();
-  size_t incoming = estimate.estimatedNrItems;
+  size_t incoming = hasLimit()
+                        ? std::min(estimate.estimatedNrItems, _options.limit)
+                        : estimate.estimatedNrItems;
 
   transaction::Methods& trx = _plan->getAst()->query().trxForOptimization();
   // estimate for the number of documents in the collection. may be
@@ -625,6 +626,8 @@ IndexIteratorOptions IndexNode::options() const { return _options; }
 void IndexNode::setAscending(bool value) { _options.ascending = value; }
 
 void IndexNode::setLimit(uint64_t value) noexcept { _options.limit = value; }
+
+bool IndexNode::hasLimit() const noexcept { return _options.limit != 0; }
 
 bool IndexNode::needsGatherNodeSort() const { return _needsGatherNodeSort; }
 
