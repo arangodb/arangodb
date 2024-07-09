@@ -1,0 +1,102 @@
+/*jshint globalstrict:false, strict:false, maxlen: 500 */
+/*global assertTrue, assertEqual, assertNotEqual, assertNull, assertFalse */
+
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
+
+const jsunity = require("jsunity");
+const internal = require("internal");
+const errors = internal.errors;
+const db = require("@arangodb").db;
+const helper = require("@arangodb/aql-helper");
+const assertQueryError = helper.assertQueryError;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite
+////////////////////////////////////////////////////////////////////////////////
+
+function optimizerPushLimitIntoIndexTestSuite () {
+  let c;
+  return {
+    setUpAll : function () {
+      db._drop("UnitTestsCollection");
+      c = db._create("UnitTestsCollection"); 
+      docs = []; 
+      for (i = 0; i < 1000; ++i) { 
+        c.insert({ 
+          _key: "test" + i, 
+          date_created: "20240613" + i, 
+          license: (i <= 700 ? "cc-by-sa" : (i < 900 ? "cc-by-nc" : "foo")) 
+        }); 
+      }
+      c.insert(docs);
+      c.ensureIndex({ name: "license-date", type: "persistent", fields: ["license", "date_created"] }); 
+    },
+    tearDownAll : function () {
+      db._drop("UnitTestsCollection");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief limit pushed into index node with applicable sorting conditions
+////////////////////////////////////////////////////////////////////////////////
+
+    testPushLimitIntoIndexRuleApplicableSortConditions : function () {
+      var queries = [
+        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created ASC LIMIT 0, 100 RETURN i._key",
+        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created DESC LIMIT 0, 100 RETURN i._key",
+      ];
+
+      for (var i = 0; i < queries.length; ++i) {
+        var plan = db._createStatement(queries[i]).explain().plan;
+        var indexNode = plan.nodes[1];
+
+        assertEqual("IndexNode", indexNode.type);
+        assertEqual(indexNode.limit, 100);
+        assertNotEqual(-1, plan.rules.indexOf("push-limit-into-index"));
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief limit pushed into index node with inapplicable sorting conditions
+////////////////////////////////////////////////////////////////////////////////
+    testPushLimitIntoIndexRuleInapplicableSortConditions : function () {
+     var queries = [
+        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.foo LIMIT 0, 100 RETURN i._key",
+        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created, i.foo LIMIT 0, 100 RETURN i._key",
+        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created, i.license  LIMIT 0, 100 RETURN i._key",
+        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.license ASC, i.date_created DESC LIMIT 0, 100 RETURN i._key",
+        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.license, i.date_created LIMIT 0, 100 RETURN i._key", // Even though it can be used, it won't be
+      ];
+ 
+      for (var i = 0; i < queries.length; ++i) {
+        var plan = db._createStatement(queries[i]).explain().plan;
+        var indexNode = plan.nodes[1];
+
+        assertEqual("IndexNode", indexNode.type);
+        assertEqual(indexNode.limit, 0);
+      }
+    }
+  };
+}
+
+jsunity.run(optimizerPushLimitIntoIndexTestSuite);
+
+return jsunity.done();
