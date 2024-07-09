@@ -119,6 +119,11 @@ bool isEligibleSort(auto itIndex, auto const itIndexEnd, auto const& sortFields,
     ++itIndex;
     ++itSort;
   }
+
+  // must exhaust every field in sort node
+  if (itSort != sortFields.end()) {
+    return false;
+  }
   return true;
 }
 
