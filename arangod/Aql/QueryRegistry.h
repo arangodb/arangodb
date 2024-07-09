@@ -155,7 +155,7 @@ class QueryRegistry {
     /// received the finish request
     futures::Promise<std::shared_ptr<ClusterQuery>> _promise;
 
-    size_t _numEngines;        // used for legacy shutdown
+    size_t _numEngines;  // used for legacy shutdown
     size_t _numOpen;
 
     std::string _queryString;  // can be empty

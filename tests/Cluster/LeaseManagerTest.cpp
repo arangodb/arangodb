@@ -74,9 +74,9 @@ class LeaseManagerTest : public ::testing::Test,
             mockApplicationServer.server(), 2, 64, 128, 1024 * 1024, 4096, 4096,
             128, 0.0,
             std::make_shared<SchedulerMetrics>(
-              mockApplicationServer.server()
-                  .template getFeature<
-                      arangodb::metrics::MetricsFeature>()))),
+                mockApplicationServer.server()
+                    .template getFeature<
+                        arangodb::metrics::MetricsFeature>()))),
         rebootTracker(scheduler.get()),
         oldId{ServerState::instance()->getId()} {}
 
