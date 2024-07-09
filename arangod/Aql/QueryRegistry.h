@@ -115,9 +115,6 @@ class QueryRegistry {
   /// when the database gets dropped
   void destroy(std::string const& vocbase);
 
-  /// @brief expireQueries, this deletes all expired queries from the registry
-  void expireQueries();
-
   /// @brief return number of registered queries
   size_t numberRegisteredQueries();
 
@@ -158,8 +155,6 @@ class QueryRegistry {
     /// received the finish request
     futures::Promise<std::shared_ptr<ClusterQuery>> _promise;
 
-    double const _timeToLive;  // in seconds
-    double _expires;           // UNIX UTC timestamp of expiration
     size_t _numEngines;        // used for legacy shutdown
     size_t _numOpen;
 
