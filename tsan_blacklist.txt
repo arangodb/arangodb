@@ -1,0 +1,9 @@
+# blacklist functions with known races to avoid instrumentation and the overhead involved
+# note that we have to used mangled names here!
+
+# boost::lockfree::* namespace
+fun:_ZN5boost8lockfree*
+
+# v8::* namespace
+fun:ZN2v8*
+fun:_ZN2v8*
