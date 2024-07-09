@@ -39,7 +39,7 @@ function optimizerPushLimitIntoIndexTestSuite () {
     setUpAll : function () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection"); 
-      docs = []; 
+      var docs = []; 
       for (i = 0; i < 1000; ++i) { 
         docs.push({ 
           _key: "test" + i, 
@@ -59,14 +59,14 @@ function optimizerPushLimitIntoIndexTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testPushLimitIntoIndexRuleApplicableSortConditions : function () {
-      var queries = [
+      let queries = [
         "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created ASC LIMIT 100 RETURN i._key",
         "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created DESC LIMIT 100 RETURN i._key",
       ];
 
       for (var i = 0; i < queries.length; ++i) {
-        var plan = db._createStatement(queries[i]).explain().plan;
-        var indexNode = plan.nodes[1];
+        let plan = db._createStatement(queries[i]).explain().plan;
+        let indexNode = plan.nodes[1];
 
         assertEqual("IndexNode", indexNode.type);
         assertEqual(indexNode.limit, 100);
@@ -78,17 +78,18 @@ function optimizerPushLimitIntoIndexTestSuite () {
 /// @brief limit pushed into index node with inapplicable sorting conditions
 ////////////////////////////////////////////////////////////////////////////////
     testPushLimitIntoIndexRuleInapplicableSortConditions : function () {
-     var queries = [
+     let queries = [
         "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.foo LIMIT 100 RETURN i._key",
         "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created, i.foo LIMIT 100 RETURN i._key",
         "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created, i.license  LIMIT 100 RETURN i._key",
         "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.license ASC, i.date_created DESC LIMIT 100 RETURN i._key",
-        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.license, i.date_created LIMIT 100 RETURN i._key", // Even though it can be used, it won't be
+        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.license ASC, i.date_created ASC LIMIT 100 RETURN i._key",
+        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.license DESC, i.date_created DESC LIMIT 100 RETURN i._key",
       ];
  
       for (var i = 0; i < queries.length; ++i) {
-        var plan = db._createStatement(queries[i]).explain().plan;
-        var indexNode = plan.nodes[1];
+        let plan = db._createStatement(queries[i]).explain().plan;
+        let indexNode = plan.nodes[1];
 
         assertEqual("IndexNode", indexNode.type);
         assertEqual(indexNode.limit, 0);
@@ -100,15 +101,14 @@ function optimizerPushLimitIntoIndexTestSuite () {
 /// @brief test case with additional conditional filtering in index node
 ////////////////////////////////////////////////////////////////////////////////
     testPushLimitIntoIndexRuleConditionalFiltering : function () {
-     var queries = [
+     let queries = [
         "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] AND i.date_created > 500 SORT i.date_created LIMIT 100 RETURN i._key",
-        //"FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] OR i.date_created > 500 SORT i.date_created LIMIT 100 RETURN i._key",
         "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] and i.foo == true SORT i.date_created LIMIT 100 RETURN i._key",
       ];
  
       for (var i = 0; i < queries.length; ++i) {
-        var plan = db._createStatement(queries[i]).explain().plan;
-        var indexNode = plan.nodes[1];
+        let plan = db._createStatement(queries[i]).explain().plan;
+        let indexNode = plan.nodes[1];
 
         assertEqual("IndexNode", indexNode.type);
         assertEqual(indexNode.limit, 0);
@@ -122,10 +122,10 @@ function optimizerPushLimitIntoIndexTestSuite () {
     testPushLimitIntoIndexRuleORConditionalFiltering : function () {
       var query = "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] OR i.date_created > 500 SORT i.date_created LIMIT 100 RETURN i._key";
 
-      var plan = db._createStatement(query).explain().plan;
-      let nodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
+      let plan = db._createStatement(query).explain().plan;
+      let indexNodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
 
-      assertEqual(0, nodes.length);
+      assertEqual(0, indexNodes.length);
       assertEqual(-1, plan.rules.indexOf("push-limit-into-index"));
     },
 
@@ -135,8 +135,8 @@ function optimizerPushLimitIntoIndexTestSuite () {
     testPushLimitIntoIndexRuleDoubleLoop : function () {
       var query = "FOR i in 0..2 FOR j IN " + c.name() + " FILTER j.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT j.date_created LIMIT 100 RETURN j._key";
 
-      var plan = db._createStatement(query).explain().plan;
-      var indexNode = plan.nodes[3];
+      let plan = db._createStatement(query).explain().plan;
+      let indexNode = plan.nodes[3];
 
       assertEqual("IndexNode", indexNode.type);
       assertEqual(indexNode.limit, 0);
@@ -149,12 +149,35 @@ function optimizerPushLimitIntoIndexTestSuite () {
     testPushLimitIntoIndexRuleWithOffset : function () {
       var query = "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created LIMIT 8, 100 RETURN i._key";
 
-      var plan = db._createStatement(query).explain().plan;
-      var indexNode = plan.nodes[1];
+      let plan = db._createStatement(query).explain().plan;
+      let indexNode = plan.nodes[1];
 
       assertEqual("IndexNode", indexNode.type);
       assertEqual(indexNode.limit, 108);
       assertNotEqual(-1, plan.rules.indexOf("push-limit-into-index"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test case when rule does not trigger
+////////////////////////////////////////////////////////////////////////////////
+    testPushLimitIntoIndexRuleDoesNotTrigger: function () {
+     let queries = [
+        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa'] SORT i.date_created DESC LIMIT 100 RETURN i._key",
+        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created RETURN i._key",
+        "FOR i IN " + c.name() + " SORT i.date_created DESC LIMIT 100 RETURN i._key",
+      ];
+ 
+      for (var i = 0; i < queries.length; ++i) {
+        let plan = db._createStatement(queries[i]).explain().plan;
+        let indexNodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
+
+        assertTrue(indexNodes.length <= 1);
+        if (indexNodes.length == 1) {
+          assertEqual("IndexNode", indexNodes[0].type);
+          assertEqual(indexNodes[0].limit, 0);
+          assertEqual(-1, plan.rules.indexOf("push-limit-into-index"));
+        }
+      }
     },
   };
 }
