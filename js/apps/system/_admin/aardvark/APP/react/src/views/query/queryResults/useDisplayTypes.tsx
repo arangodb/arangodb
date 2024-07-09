@@ -274,7 +274,7 @@ const detectGeo = ({
     }
   });
 
-  if (result.length === validGeojsonCount) {
+  if (result?.length === validGeojsonCount) {
     isGeo = true;
   } else {
     isGeo = false;
