@@ -1,13 +1,17 @@
 3.12.1 (XXXX-XX-XX)
 -------------------
 
+* Fix an "invalid document type" exception when using the AQL ENTRIES function
+  on a database document or edge.
+
 * Fixed MDS-1216: restoring the previous value of the "padded" key generator
   could lead to the key generator's sequence being set to a too low value
   after recovery.
 
 * Updated ArangoDB Starter to v0.19.3.
 
-* Fix a nullptr access when aborting a move shard job for a already dropped collection.
+* Fix a nullptr access when aborting a move shard job for a already dropped 
+  collection.
 
 * Use __nss_configure_lookup to opt out of /etc/nsswitch.conf.
   Add the startup option --honor-nsswitch to cancel the opt-out.
