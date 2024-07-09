@@ -92,8 +92,57 @@ function optimizerPushLimitIntoIndexTestSuite () {
 
         assertEqual("IndexNode", indexNode.type);
         assertEqual(indexNode.limit, 0);
+        assertEqual(-1, plan.rules.indexOf("push-limit-into-index"));
       }
-    }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test case with additional conditional filtering in index node
+////////////////////////////////////////////////////////////////////////////////
+    testPushLimitIntoIndexRuleConditionalFiltering : function () {
+     var queries = [
+        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] AND i.date_created > 500 SORT i.date_created LIMIT 0, 100 RETURN i._key",
+        //"FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] OR i.date_created > 500 SORT i.date_created LIMIT 0, 100 RETURN i._key",
+        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] and i.foo == true SORT i.date_created LIMIT 0, 100 RETURN i._key",
+      ];
+ 
+      for (var i = 0; i < queries.length; ++i) {
+        var plan = db._createStatement(queries[i]).explain().plan;
+        var indexNode = plan.nodes[1];
+
+        assertEqual("IndexNode", indexNode.type);
+        assertEqual(indexNode.limit, 0);
+        assertEqual(-1, plan.rules.indexOf("push-limit-into-index"));
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test case with double loop
+////////////////////////////////////////////////////////////////////////////////
+    testPushLimitIntoIndexRuleDoubleLoop : function () {
+      var query = "FOR i in 0..2 FOR j IN " + c.name() + " FILTER j.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT j.date_created LIMIT 0, 100 RETURN j._key";
+
+      var plan = db._createStatement(query).explain().plan;
+      var indexNode = plan.nodes[3];
+
+      assertEqual("IndexNode", indexNode.type);
+      assertEqual(indexNode.limit, 0);
+      assertEqual(-1, plan.rules.indexOf("push-limit-into-index"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test case with offset
+////////////////////////////////////////////////////////////////////////////////
+    testPushLimitIntoIndexRuleWithOffset : function () {
+      var query = "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created LIMIT 8, 100 RETURN i._key";
+
+      var plan = db._createStatement(query).explain().plan;
+      var indexNode = plan.nodes[1];
+
+      assertEqual("IndexNode", indexNode.type);
+      assertEqual(indexNode.limit, 108);
+      assertNotEqual(-1, plan.rules.indexOf("push-limit-into-index"));
+    },
   };
 }
 
