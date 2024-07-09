@@ -44,6 +44,9 @@ devel
   loops, SHORTEST_PATH FOR loops, K_PATHS FOR loops, K_SHORTEST_PATHS FOR loops
   nor ALL_SHORTEST_PATHS FOR loops.
 
+* Fix an "invalid document type" exception when using the AQL ENTRIES function
+  on a database document or edge.
+
 * Updated ArangoDB Starter to v0.19.3.
 
 * Fixed MDS-1216: restoring the previous value of the "padded" key generator
