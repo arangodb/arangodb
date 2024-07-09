@@ -2500,8 +2500,7 @@ function debug(query, bindVars, options) {
         type: v.type(),
         properties: v.properties()
       };
-    } else {
-      // a collection
+    } else if (isNaN(collection.name)) {
       if (c.type() === 3 && collection.name.match(/^_(local|from|to)_.+/)) {
         // an internal smart-graph collection. let's skip this
         return;
@@ -2661,18 +2660,20 @@ function inspectDump(filename, outfile) {
   });
   print();
 
-  // all analyzers
-  print("/* analyzers setup */");
-  const analyzers_names = Object.keys(data.analyzers);
-  if (analyzers_names.length > 0) {
-    print("var analyzers = require('@arangodb/analyzers')");
-    for (let i = 0; i < analyzers_names.length; ++i) {
-      let name = analyzers_names[i];
-      print(`try { analyzers.remove("${name}"); } catch (err) { print(String(err)); }`);
-      print(`analyzers.save("${name}", ${JSON.stringify(data.analyzers[name]["type"])}, ${JSON.stringify(data.analyzers[name]["properties"])})`);
+  // all analyzers if they are exists
+  if (data.hasOwnProperty("analyzers")) {
+    print("/* analyzers setup */");
+    const analyzers_names = Object.keys(data.analyzers);
+    if (analyzers_names.length > 0) {
+      print("var analyzers = require('@arangodb/analyzers')");
+      for (let i = 0; i < analyzers_names.length; ++i) {
+        let name = analyzers_names[i];
+        print(`try { analyzers.remove("${name}"); } catch (err) { print(String(err)); }`);
+        print(`analyzers.save("${name}", ${JSON.stringify(data.analyzers[name]["type"])}, ${JSON.stringify(data.analyzers[name]["properties"])})`);
+      }
     }
+    print();
   }
-  print();
 
   // all collections and indexes first, as data insertion may go wrong later
   print("/* collections and indexes setup */");
