@@ -190,6 +190,12 @@ function request (req) {
   if (req.sslProtocol) {
     options.sslProtocol = req.sslProtocol;
   }
+  if (is.existy(req.verifyCertificates)) {
+    options.verifyCertificates = req.verifyCertificates;
+  }
+  if (is.existy(req.verifyDepth)) {
+    options.verifyDepth = req.verifyDepth;
+  }
   if (is.existy(req.auth)) {
     if (is.existy(req.auth.jwt)) {
       options.jwt = req.auth.jwt;

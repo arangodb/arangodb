@@ -391,17 +391,26 @@ futures::Future<futures::Unit> Query::prepareQuery() {
           /*verbose*/ false, /*includeInternals*/ false,
           /*explainRegisters*/ false);
       _planSliceCopy = std::make_unique<VPackBufferUInt8>();
-      VPackBuilder b(*_planSliceCopy);
-      plan->toVelocyPack(b, flags, serializeQueryData);
-
       try {
+        VPackBuilder b(*_planSliceCopy);
+        plan->toVelocyPack(b, flags, serializeQueryData);
+
+        TRI_IF_FAILURE("Query::serializePlans1") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
         _resourceMonitor->increaseMemoryUsage(_planSliceCopy->size());
-      } catch (...) {
+      } catch (std::exception const& ex) {
         // must clear _planSliceCopy here so that the destructor of
         // Query doesn't subtract the memory used by _planSliceCopy
         // without us having it tracked properly here.
         _planSliceCopy.reset();
+        LOG_TOPIC("006c7", ERR, Logger::QUERIES)
+            << "unable to convert execution plan to vpack: " << ex.what();
         throw;
+      }
+
+      TRI_IF_FAILURE("Query::serializePlans2") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
     }
 
@@ -1162,16 +1171,32 @@ QueryResult Query::explain() {
     options.buildUnindexedArrays = true;
     result.data = std::make_shared<VPackBuilder>(&options);
 
+    ResourceUsageScope scope(*_resourceMonitor);
+
     if (_queryOptions.allPlans) {
       VPackArrayBuilder guard(result.data.get());
 
+      size_t previousSize = result.data->bufferRef().byteSize();
       auto const& plans = opt.getPlans();
       for (auto& it : plans) {
         auto& pln = it.first;
         TRI_ASSERT(pln != nullptr);
 
         preparePlanForSerialization(pln);
+
         pln->toVelocyPack(*result.data, flags, serializeQueryData);
+        TRI_IF_FAILURE("Query::serializePlans1") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+
+        // memory accounting for different execution plans
+        size_t currentSize = result.data->bufferRef().byteSize();
+        scope.increase(currentSize - previousSize);
+        previousSize = currentSize;
+
+        TRI_IF_FAILURE("Query::serializePlans2") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
       }
       // cachability not available here
       result.cached = false;
@@ -1183,10 +1208,23 @@ QueryResult Query::explain() {
       preparePlanForSerialization(bestPlan);
       bestPlan->toVelocyPack(*result.data, flags, serializeQueryData);
 
+      TRI_IF_FAILURE("Query::serializePlans1") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+
+      scope.increase(result.data->bufferRef().byteSize());
+
+      TRI_IF_FAILURE("Query::serializePlans2") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+
       // cachability
       result.cached = (!_queryString.empty() && !isModificationQuery() &&
                        _warnings.empty() && _ast->root()->isCacheable());
     }
+
+    // the query object no owns the memory used by the plan(s)
+    _planMemoryUsage += scope.trackedAndSteal();
 
     // technically no need to commit, as we are only explaining here
     auto commitResult = _trx->commit();
@@ -1205,7 +1243,7 @@ QueryResult Query::explain() {
         // optimizer statistics
         ensureExecutionTime();
         VPackObjectBuilder guard(&b, /*unindexed*/ true);
-        opt._stats.toVelocyPack(b);
+        opt.toVelocyPack(b);
         b.add("peakMemoryUsage", VPackValue(_resourceMonitor->peak()));
         b.add("executionTime", VPackValue(executionTime()));
       }

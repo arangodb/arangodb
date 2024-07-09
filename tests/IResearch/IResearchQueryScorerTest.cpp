@@ -1933,8 +1933,9 @@ class QueryScorerView : public QueryScorer {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->properties(builder,
-                       arangodb::LogicalDataSource::Serialization::Properties);
+      auto res = view->properties(
+          builder, arangodb::LogicalDataSource::Serialization::Properties);
+      ASSERT_TRUE(res.ok());
       builder.close();
 
       auto slice = builder.slice();
