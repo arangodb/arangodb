@@ -45,7 +45,9 @@ class SingletonNode : public ExecutionNode {
 
   /// @brief constructor with an id
  public:
-  SingletonNode(ExecutionPlan* plan, ExecutionNodeId id);
+  SingletonNode(ExecutionPlan* plan, ExecutionNodeId id,
+                std::unordered_map<std::string_view, Variable const*>
+                    bindParameterOutVars);
 
   SingletonNode(ExecutionPlan* plan, arangodb::velocypack::Slice base);
 
@@ -69,10 +71,14 @@ class SingletonNode : public ExecutionNode {
   AsyncPrefetchEligibility canUseAsyncPrefetching()
       const noexcept override final;
 
+  std::vector<const Variable*> getVariablesSetHere() const override;
+
  protected:
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder&,
                       unsigned flags) const override final;
+
+  std::unordered_map<std::string_view, Variable const*> _bindParameterOutVars;
 };
 
 }  // namespace aql

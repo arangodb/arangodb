@@ -1391,7 +1391,13 @@ function processQuery(query, explain, planIndex) {
 
     switch (node.type) {
       case 'SingletonNode':
-        return keyword('ROOT');
+        let bindVars = [];
+        if (node.bindParameterVariables) {
+          for (const [name, bindVar] of Object.entries(node.bindParameterVariables)) {
+            bindVars.push(variableName(bindVar) + ' = ' + variable("@" + name));
+          }
+        }
+        return keyword('ROOT') + ' ' + bindVars.join(', ');
       case 'NoResultsNode':
         return keyword('EMPTY') + '   ' + annotation('/* empty result set */');
       case 'EnumerateCollectionNode':

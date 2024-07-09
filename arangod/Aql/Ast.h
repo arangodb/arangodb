@@ -134,7 +134,10 @@ class Ast {
   bool isInSubQuery() const noexcept;
 
   /// @brief return a copy of our own bind parameters
-  std::unordered_set<std::string> bindParameters() const;
+  std::unordered_set<std::string> bindParametersAsBuilder() const;
+
+  std::unordered_map<std::string_view, Variable const*> bindParameterVariables()
+      const;
 
   /// @brief get the query scopes
   Scopes* scopes();
@@ -750,6 +753,9 @@ class Ast {
 
   /// @brief ast flags
   AstPropertiesFlagsType _astFlags;
+
+  /// @brief variables that bind parameters were replaced with
+  std::unordered_map<std::string_view, Variable const*> _bindParameterVariables;
 };
 
 }  // namespace aql

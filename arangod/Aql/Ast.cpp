@@ -2194,55 +2194,22 @@ AstNode* Ast::replaceValueBindParameter(AstNode* node,
                           param);
   }
 
-  auto const constantParameter = node->isConstant();
+  auto iter = _bindParameterVariables.find(param);
+  if (iter == _bindParameterVariables.end()) {
+    bool inserted = false;
+    auto var = variables()->createTemporaryVariable();
+    std::tie(iter, inserted) = _bindParameterVariables.emplace(param, var);
+    var->setBindParameterReplacement(std::string{param});
 
-  if (cachedNode != nullptr) {
-    // we have already processed this bind parameter and turned it into
-    // an AstNode before.
-    // now only create a shallow copy of the bind parameter.
-    node = shallowCopyForModify(cachedNode);
+    TRI_ASSERT(inserted);
 
-    TRI_ASSERT(!constantParameter || node->hasFlag(DETERMINED_CONSTANT));
-    TRI_ASSERT(!constantParameter || node->hasFlag(VALUE_CONSTANT));
-    TRI_ASSERT(node->hasFlag(DETERMINED_SIMPLE));
-    TRI_ASSERT(node->hasFlag(VALUE_SIMPLE));
-    TRI_ASSERT(node->hasFlag(DETERMINED_RUNONDBSERVER));
-    TRI_ASSERT(node->hasFlag(VALUE_RUNONDBSERVER));
-    TRI_ASSERT(node->hasFlag(DETERMINED_NONDETERMINISTIC));
-    TRI_ASSERT(!node->hasFlag(VALUE_NONDETERMINISTIC));
-    TRI_ASSERT(node->hasFlag(FLAG_BIND_PARAMETER));
-  } else {
-    // bind parameter containing a value literal. not processed before.
-    node = nodeFromVPack(value, true);
-
-    if (node != nullptr) {
-      if (constantParameter) {
-        // already mark node as constant here if parameters are constant
-        node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
-      }
-      // mark node as simple
-      node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
-      // mark node as executable on db-server
-      node->setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
-      // mark node as deterministic
-      node->setFlag(DETERMINED_NONDETERMINISTIC);
-
-      // finally note that the node was created from a bind parameter
-      node->setFlag(FLAG_BIND_PARAMETER);
-
-      // register the AstNode for this bind parameter, so when the query
-      // string refers to the same bind parameter multiple times, we
-      // don't have to regenerate an AstNode for it. in case a bind
-      // parameter is used multiple times in the query string, upon any
-      // following occurrences the AstNode registered here will be
-      // found, and only a shallow copy of the existing AstNode will be
-      // created. This helps to save memory and processing time for
-      // large bind parameter values.
-      parameters.registerNode(param, node);
-    }
+    auto varNode = createNodeReference(iter->second);
+    parameters.registerNode(param, varNode);
+    return varNode;
   }
 
-  return node;
+  TRI_ASSERT(cachedNode != nullptr);
+  return cachedNode;
 }
 
 /// @brief replace an attribute access with just the variable
@@ -4384,8 +4351,13 @@ AstNode* Ast::endSubQuery() {
 
 bool Ast::isInSubQuery() const noexcept { return (_queries.size() > 1); }
 
-std::unordered_set<std::string> Ast::bindParameters() const {
+std::unordered_set<std::string> Ast::bindParametersAsBuilder() const {
   return std::unordered_set<std::string>(_bindParameters);
+}
+
+std::unordered_map<std::string_view, Variable const*>
+Ast::bindParameterVariables() const {
+  return _bindParameterVariables;
 }
 
 Scopes* Ast::scopes() { return &_scopes; }

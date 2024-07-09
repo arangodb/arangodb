@@ -2406,7 +2406,8 @@ ExecutionNode* ExecutionPlan::fromNodeWindow(ExecutionNode* previous,
 ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
 
-  ExecutionNode* en = createNode<SingletonNode>(this, nextId());
+  ExecutionNode* en =
+      createNode<SingletonNode>(this, nextId(), _ast->bindParameterVariables());
 
   size_t const n = node->numMembers();
 

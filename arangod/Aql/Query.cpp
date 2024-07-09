@@ -564,7 +564,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
         if (useQueryCache) {
           // check the query cache for an existing result
           auto cacheEntry = QueryCache::instance()->lookup(
-              &_vocbase, hash(), _queryString, bindParameters());
+              &_vocbase, hash(), _queryString, bindParametersAsBuilder());
 
           if (cacheEntry != nullptr) {
             if (cacheEntry->currentUserHasPermissions()) {
@@ -687,7 +687,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
 
           // create a query cache entry for later storage
           _cacheEntry = std::make_unique<QueryCacheResultEntry>(
-              hash(), _queryString, queryResult.data, bindParameters(),
+              hash(), _queryString, queryResult.data, bindParametersAsBuilder(),
               std::move(dataSources)  // query DataSources
           );
         }
@@ -791,7 +791,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
     if (useQueryCache) {
       // check the query cache for an existing result
       auto cacheEntry = QueryCache::instance()->lookup(
-          &_vocbase, hash(), _queryString, bindParameters());
+          &_vocbase, hash(), _queryString, bindParametersAsBuilder());
 
       if (cacheEntry != nullptr) {
         if (cacheEntry->currentUserHasPermissions()) {
@@ -934,7 +934,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
 
       // create a cache entry for later usage
       _cacheEntry = std::make_unique<QueryCacheResultEntry>(
-          hash(), _queryString, builder, bindParameters(),
+          hash(), _queryString, builder, bindParametersAsBuilder(),
           std::move(dataSources)  // query DataSources
       );
     }
@@ -1499,7 +1499,7 @@ std::string Query::extractQueryString(size_t maxLength, bool show) const {
 
 void Query::stringifyBindParameters(std::string& out, std::string_view prefix,
                                     size_t maxLength) const {
-  auto bp = bindParameters();
+  auto bp = bindParametersAsBuilder();
   if (bp != nullptr && !bp->slice().isNone() && maxLength >= 3) {
     // append prefix, e.g. "bind parameters: "
     out.append(prefix);
