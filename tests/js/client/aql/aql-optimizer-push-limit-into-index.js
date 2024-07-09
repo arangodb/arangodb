@@ -117,6 +117,19 @@ function optimizerPushLimitIntoIndexTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test case with additional OR conditional filtering in index node
+////////////////////////////////////////////////////////////////////////////////
+    testPushLimitIntoIndexRuleORConditionalFiltering : function () {
+      var query = "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] OR i.date_created > 500 SORT i.date_created LIMIT 100 RETURN i._key";
+
+      var plan = db._createStatement(query).explain().plan;
+      let nodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
+
+      assertEqual(0, nodes.length);
+      assertEqual(-1, plan.rules.indexOf("push-limit-into-index"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test case with double loop
 ////////////////////////////////////////////////////////////////////////////////
     testPushLimitIntoIndexRuleDoubleLoop : function () {
