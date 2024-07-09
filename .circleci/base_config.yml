@@ -458,6 +458,17 @@ jobs:
           name: Enabled coredumps
           command: ulimit -c unlimited
       - run:
+          name: Log processes
+          command: |
+            ps v | head -n 1
+            echo "======"
+            while true; do
+              sleep 5
+              ps v | grep "arangod " | while read line ; do echo "$(date +"%T") > $line" ; done ;
+              echo "======"
+            done
+          background: true
+      - run:
           name: Run << parameters.suiteName >> tests
           # we increase the no_output_timeout so our own timeout mechanism can kick in and gather more information
           no_output_timeout: 20m
