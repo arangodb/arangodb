@@ -39,9 +39,6 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Cluster/CallbackGuard.h"
-#include "Cluster/ClusterFeature.h"
-#include "Cluster/ClusterInfo.h"
 #include "Cluster/LeaseManager/LeaseId.h"
 #include "Cluster/LeaseManager/LeaseManagerFeature.h"
 #include "Cluster/RebootTracker.h"
@@ -316,8 +313,7 @@ futures::Future<futures::Unit> RestAqlHandler::setupClusterQuery() {
   collectionBuilder.close();
 
   auto origin = transaction::OperationOriginAQL{"running AQL query"};
-
-  double const ttl = options.ttl;
+  
   // creates a StandaloneContext or a leased context
   auto q = ClusterQuery::create(
       clusterQueryId, co_await createTransactionContext(access, origin),
@@ -361,35 +357,14 @@ futures::Future<futures::Unit> RestAqlHandler::setupClusterQuery() {
   answerBuilder.close();  // result
   answerBuilder.close();
 
-  cluster::CallbackGuard rGuard;
-
   // Now set an alarm for the case that the coordinator is restarted which
   // initiated this query. In that case, we want to drop our piece here:
   if (rebootId.initialized()) {
     LOG_TOPIC("42512", TRACE, Logger::AQL)
         << "Setting RebootTracker on coordinator " << coordinatorId
         << " for query with id " << q->id();
-    auto& clusterFeature = _server.getFeature<ClusterFeature>();
-    auto& clusterInfo = clusterFeature.clusterInfo();
-    // TODO: This rGuard will be erased, it is superseeded by the LeaseManager
-    rGuard = clusterInfo.rebootTracker().callMeOnChange(
-        {coordinatorId, rebootId},
-        [/*queryRegistry = _queryRegistry, */ vocbaseName = _vocbase.name(),
-         queryId = q->id()]() {
-#ifdef TEMP_DISABLED
-          queryRegistry->destroyQuery(queryId, TRI_ERROR_TRANSACTION_ABORTED);
-#endif
-          LOG_TOPIC("42511", DEBUG, Logger::AQL)
-              << "Query snippet destroyed as consequence of "
-                 "RebootTracker for coordinator, db="
-              << vocbaseName << " queryId=" << queryId;
-        },
-        "Query aborted since coordinator rebooted or failed.");
     if (auto leaseSlice = querySlice.get("leaseId"); leaseSlice.isNumber()) {
       cluster::LeaseId leaseId{leaseSlice.getNumber<uint64_t>()};
-
-      LOG_DEVEL << "Register Query: " << q->id() << " with lease "
-                << leaseId.id() << " using colls: " << q->collectionNames();
       auto res =
           server()
               .getFeature<cluster::LeaseManagerFeature>()
@@ -410,7 +385,6 @@ futures::Future<futures::Unit> RestAqlHandler::setupClusterQuery() {
                   [queryRegistry = _queryRegistry,
                    vocbaseName = _vocbase.name(),
                    queryId = q->id()]() noexcept {
-                    LOG_DEVEL << "EXPECTO ABORTUM!! " << queryId;
                     queryRegistry->destroyQuery(queryId,
                                                 TRI_ERROR_TRANSACTION_ABORTED);
                     LOG_TOPIC("42511", DEBUG, Logger::AQL)
@@ -432,7 +406,7 @@ futures::Future<futures::Unit> RestAqlHandler::setupClusterQuery() {
     qs = qss.stringView();
   }
 
-  _queryRegistry->insertQuery(std::move(q), ttl, qs, std::move(rGuard));
+  _queryRegistry->insertQuery(std::move(q), qs);
 
   generateResult(rest::ResponseCode::OK, std::move(buffer));
 }

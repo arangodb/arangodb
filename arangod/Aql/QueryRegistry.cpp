@@ -55,9 +55,8 @@ QueryRegistry::~QueryRegistry() {
 }
 
 /// @brief insert
-void QueryRegistry::insertQuery(std::shared_ptr<ClusterQuery> query, double ttl,
-                                std::string_view qs,
-                                cluster::CallbackGuard guard) {
+void QueryRegistry::insertQuery(std::shared_ptr<ClusterQuery> query,
+                                std::string_view qs) {
   TRI_ASSERT(!ServerState::instance()->isSingleServer());
 
   TRI_ASSERT(query != nullptr);
@@ -79,7 +78,7 @@ void QueryRegistry::insertQuery(std::shared_ptr<ClusterQuery> query, double ttl,
   }
 
   // create the query info object outside of the lock
-  auto p = std::make_unique<QueryInfo>(query, ttl, qs, std::move(guard));
+  auto p = std::make_unique<QueryInfo>(query, qs);
 
   TRI_IF_FAILURE("QueryRegistryInsertException2") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -328,7 +327,7 @@ auto QueryRegistry::lookupQueryForFinalization(QueryId id, ErrorCode errorCode)
       auto inserted =
           _queries
               .emplace(id, std::make_unique<QueryInfo>(
-                               errorCode, std::max(_defaultTTL, 600.0) + 300.0))
+                               errorCode))
               .second;
       TRI_ASSERT(inserted);
       return _queries.end();
@@ -627,18 +626,16 @@ bool QueryRegistry::queryIsRegistered(QueryId id) {
 
 /// @brief constructor for a regular query
 QueryRegistry::QueryInfo::QueryInfo(std::shared_ptr<ClusterQuery> query,
-                                    double ttl, std::string_view qs,
-                                    cluster::CallbackGuard guard)
+                                    std::string_view qs)
     : _query(std::move(query)),
       _numEngines(0),
       _numOpen(0),
       _queryString(qs),
       _errorCode(TRI_ERROR_NO_ERROR),
-      _isTombstone(false),
-      _rebootTrackerCallbackGuard(std::move(guard)) {}
+      _isTombstone(false) {}
 
 /// @brief constructor for a tombstone
-QueryRegistry::QueryInfo::QueryInfo(ErrorCode errorCode, double ttl)
+QueryRegistry::QueryInfo::QueryInfo(ErrorCode errorCode)
     : _query(nullptr),
       _numEngines(0),
       _numOpen(0),
