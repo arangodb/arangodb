@@ -1506,7 +1506,7 @@ function processQuery(query, explain, planIndex) {
           filter = '   ' + keyword('FILTER') + ' ' + buildExpression(node.filter) + '   ' + annotation('/* early pruning */');
         }
         if (node.limit > 0) {
-          limit = '   '  + keyword('LIMIT') + ' ' + value(JSON.stringify(node.limit)) + ' ' + keyword(node.ascending ? 'ASC' : 'DESC') + '   ' + annotation('/* early reducing results */');
+          limit = '   '  + keyword('LIMIT') + ' ' + value(JSON.stringify(node.limit)) + ' ' + annotation('/* early reducing results */');
         }
         if (node.projections) {
           // produce LET nodes for each projection output register
