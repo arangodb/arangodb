@@ -27,7 +27,11 @@ export const QueryTableView = ({
       </Text>
     );
   }
-  const headers = Object.keys(firstValidResult);
+  const resultHeaders = queryResult.result
+    ?.map(resultItem => resultItem && Object.keys(resultItem))
+    .filter(Boolean);
+  // dedeupe across all headers
+  const headers = Array.from(new Set(resultHeaders?.flat().filter(Boolean)));
   if (!headers.length) {
     return null;
   }
