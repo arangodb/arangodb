@@ -801,7 +801,12 @@ AqlValue functions::Entries(ExpressionContext* expressionContext,
   for (auto [key, value] : VPackObjectIterator(objectSlice, true)) {
     VPackArrayBuilder pair(builder.get(), true);
     builder->add(key);
-    builder->add(value);
+    if (value.isCustom()) {
+      builder->add(VPackValue(transaction::helpers::extractIdString(
+          trx->resolver(), value, objectSlice)));
+    } else {
+      builder->add(value);
+    }
   }
 
   builder->close();
