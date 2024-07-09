@@ -41,7 +41,7 @@ function optimizerPushLimitIntoIndexTestSuite () {
       c = db._create("UnitTestsCollection"); 
       docs = []; 
       for (i = 0; i < 1000; ++i) { 
-        c.insert({ 
+        docs.push({ 
           _key: "test" + i, 
           date_created: "20240613" + i, 
           license: (i <= 700 ? "cc-by-sa" : (i < 900 ? "cc-by-nc" : "foo")) 
@@ -60,8 +60,8 @@ function optimizerPushLimitIntoIndexTestSuite () {
 
     testPushLimitIntoIndexRuleApplicableSortConditions : function () {
       var queries = [
-        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created ASC LIMIT 0, 100 RETURN i._key",
-        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created DESC LIMIT 0, 100 RETURN i._key",
+        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created ASC LIMIT 100 RETURN i._key",
+        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created DESC LIMIT 100 RETURN i._key",
       ];
 
       for (var i = 0; i < queries.length; ++i) {
@@ -79,11 +79,11 @@ function optimizerPushLimitIntoIndexTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     testPushLimitIntoIndexRuleInapplicableSortConditions : function () {
      var queries = [
-        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.foo LIMIT 0, 100 RETURN i._key",
-        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created, i.foo LIMIT 0, 100 RETURN i._key",
-        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created, i.license  LIMIT 0, 100 RETURN i._key",
-        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.license ASC, i.date_created DESC LIMIT 0, 100 RETURN i._key",
-        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.license, i.date_created LIMIT 0, 100 RETURN i._key", // Even though it can be used, it won't be
+        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.foo LIMIT 100 RETURN i._key",
+        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created, i.foo LIMIT 100 RETURN i._key",
+        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created, i.license  LIMIT 100 RETURN i._key",
+        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.license ASC, i.date_created DESC LIMIT 100 RETURN i._key",
+        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.license, i.date_created LIMIT 100 RETURN i._key", // Even though it can be used, it won't be
       ];
  
       for (var i = 0; i < queries.length; ++i) {
@@ -101,9 +101,9 @@ function optimizerPushLimitIntoIndexTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     testPushLimitIntoIndexRuleConditionalFiltering : function () {
      var queries = [
-        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] AND i.date_created > 500 SORT i.date_created LIMIT 0, 100 RETURN i._key",
-        //"FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] OR i.date_created > 500 SORT i.date_created LIMIT 0, 100 RETURN i._key",
-        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] and i.foo == true SORT i.date_created LIMIT 0, 100 RETURN i._key",
+        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] AND i.date_created > 500 SORT i.date_created LIMIT 100 RETURN i._key",
+        //"FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] OR i.date_created > 500 SORT i.date_created LIMIT 100 RETURN i._key",
+        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] and i.foo == true SORT i.date_created LIMIT 100 RETURN i._key",
       ];
  
       for (var i = 0; i < queries.length; ++i) {
@@ -120,7 +120,7 @@ function optimizerPushLimitIntoIndexTestSuite () {
 /// @brief test case with double loop
 ////////////////////////////////////////////////////////////////////////////////
     testPushLimitIntoIndexRuleDoubleLoop : function () {
-      var query = "FOR i in 0..2 FOR j IN " + c.name() + " FILTER j.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT j.date_created LIMIT 0, 100 RETURN j._key";
+      var query = "FOR i in 0..2 FOR j IN " + c.name() + " FILTER j.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT j.date_created LIMIT 100 RETURN j._key";
 
       var plan = db._createStatement(query).explain().plan;
       var indexNode = plan.nodes[3];
