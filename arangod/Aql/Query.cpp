@@ -468,10 +468,14 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   // doc.@attr).
   _ast->injectBindParametersFirstStage(_bindParameters, this->resolver());
 
-  // put in value bind parameters. TODO: move this further down in the process,
-  // so that the optimizer can run with value bind parameters still unreplaced
-  // in the AST.
-  _ast->injectBindParametersSecondStage(_bindParameters);
+  bool constexpr enableCaching = true;
+
+  // put in value bind parameters.
+  if (enableCaching) {
+    _ast->replaceBindParametersWithVariables(_bindParameters);
+  } else {
+    _ast->injectBindParametersSecondStage(_bindParameters);
+  }
 
   if (parser.ast()->containsUpsertNode()) {
     // UPSERTs and intermediate commits do not play nice together, because the

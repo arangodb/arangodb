@@ -134,7 +134,7 @@ class Ast {
   bool isInSubQuery() const noexcept;
 
   /// @brief return a copy of our own bind parameters
-  std::unordered_set<std::string> bindParametersAsBuilder() const;
+  std::unordered_set<std::string> bindParameterNames() const;
 
   std::unordered_map<std::string_view, Variable const*> bindParameterVariables()
       const;
@@ -461,6 +461,10 @@ class Ast {
   /// @brief injects second-stage bind parameter values into the AST
   /// (i.e. all value bind parameters)
   void injectBindParametersSecondStage(BindParameters& parameters);
+
+  /// @brief replaces bind parameters with special variables. This is used
+  /// for query plan caching.
+  void replaceBindParametersWithVariables(BindParameters& parameters);
 
   /// @brief replace variables
   ///        the unlock parameter will unlock the variable node before it

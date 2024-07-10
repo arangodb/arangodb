@@ -2164,6 +2164,51 @@ void Ast::injectBindParametersFirstStage(
 
 /// @brief injects second-stage bind parameter values into the AST
 /// (i.e. all value bind parameters)
+void Ast::replaceBindParametersWithVariables(BindParameters& parameters) {
+  if (_containsBindParameters) {
+    auto func = [&](AstNode* node) -> AstNode* {
+      if (node->type == NODE_TYPE_PARAMETER) {
+        // found a bind parameter in the query string.
+        // replace it with a variable
+        TRI_ASSERT(node->type == NODE_TYPE_PARAMETER);
+
+        std::string_view param = node->getStringView();
+        TRI_ASSERT(!param.empty());
+
+        auto [value, cachedNode] = parameters.get(param);
+        if (value.isNone()) {
+          // query uses a bind parameter that was not defined by the user
+          ::throwFormattedError(_query, TRI_ERROR_QUERY_BIND_PARAMETER_MISSING,
+                                param);
+        }
+
+        auto iter = _bindParameterVariables.find(param);
+        if (iter == _bindParameterVariables.end()) {
+          bool inserted = false;
+          auto var = variables()->createTemporaryVariable();
+          std::tie(iter, inserted) =
+              _bindParameterVariables.emplace(param, var);
+          var->setBindParameterReplacement(std::string{param});
+
+          TRI_ASSERT(inserted);
+
+          auto varNode = createNodeReference(iter->second);
+          parameters.registerNode(param, varNode);
+          return varNode;
+        }
+
+        TRI_ASSERT(cachedNode != nullptr);
+        return cachedNode;
+      }
+      return node;
+    };
+
+    _root = traverseAndModify(_root, func);
+  }
+}
+
+/// @brief injects second-stage bind parameter values into the AST
+/// (i.e. all value bind parameters)
 void Ast::injectBindParametersSecondStage(BindParameters& parameters) {
   if (_containsBindParameters) {
     auto func = [&](AstNode* node) -> AstNode* {
@@ -2174,7 +2219,6 @@ void Ast::injectBindParametersSecondStage(BindParameters& parameters) {
       }
       return node;
     };
-
     _root = traverseAndModify(_root, func);
   }
 }
@@ -2194,22 +2238,54 @@ AstNode* Ast::replaceValueBindParameter(AstNode* node,
                           param);
   }
 
-  auto iter = _bindParameterVariables.find(param);
-  if (iter == _bindParameterVariables.end()) {
-    bool inserted = false;
-    auto var = variables()->createTemporaryVariable();
-    std::tie(iter, inserted) = _bindParameterVariables.emplace(param, var);
-    var->setBindParameterReplacement(std::string{param});
+  auto const constantParameter = node->isConstant();
 
-    TRI_ASSERT(inserted);
+  if (cachedNode != nullptr) {
+    // we have already processed this bind parameter and turned it into
+    // an AstNode before.
+    // now only create a shallow copy of the bind parameter.
+    node = shallowCopyForModify(cachedNode);
 
-    auto varNode = createNodeReference(iter->second);
-    parameters.registerNode(param, varNode);
-    return varNode;
+    TRI_ASSERT(!constantParameter || node->hasFlag(DETERMINED_CONSTANT));
+    TRI_ASSERT(!constantParameter || node->hasFlag(VALUE_CONSTANT));
+    TRI_ASSERT(node->hasFlag(DETERMINED_SIMPLE));
+    TRI_ASSERT(node->hasFlag(VALUE_SIMPLE));
+    TRI_ASSERT(node->hasFlag(DETERMINED_RUNONDBSERVER));
+    TRI_ASSERT(node->hasFlag(VALUE_RUNONDBSERVER));
+    TRI_ASSERT(node->hasFlag(DETERMINED_NONDETERMINISTIC));
+    TRI_ASSERT(!node->hasFlag(VALUE_NONDETERMINISTIC));
+    TRI_ASSERT(node->hasFlag(FLAG_BIND_PARAMETER));
+  } else {
+    // bind parameter containing a value literal. not processed before.
+    node = nodeFromVPack(value, true);
+    if (node != nullptr) {
+      if (constantParameter) {
+        // already mark node as constant here if parameters are constant
+        node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
+      }
+      // mark node as simple
+      node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
+      // mark node as executable on db-server
+      node->setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
+      // mark node as deterministic
+      node->setFlag(DETERMINED_NONDETERMINISTIC);
+
+      // finally note that the node was created from a bind parameter
+      node->setFlag(FLAG_BIND_PARAMETER);
+
+      // register the AstNode for this bind parameter, so when the query
+      // string refers to the same bind parameter multiple times, we
+      // don't have to regenerate an AstNode for it. in case a bind
+      // parameter is used multiple times in the query string, upon any
+      // following occurrences the AstNode registered here will be
+      // found, and only a shallow copy of the existing AstNode will be
+      // created. This helps to save memory and processing time for
+      // large bind parameter values.
+      parameters.registerNode(param, node);
+    }
   }
 
-  TRI_ASSERT(cachedNode != nullptr);
-  return cachedNode;
+  return node;
 }
 
 /// @brief replace an attribute access with just the variable
@@ -4351,7 +4427,7 @@ AstNode* Ast::endSubQuery() {
 
 bool Ast::isInSubQuery() const noexcept { return (_queries.size() > 1); }
 
-std::unordered_set<std::string> Ast::bindParametersAsBuilder() const {
+std::unordered_set<std::string> Ast::bindParameterNames() const {
   return std::unordered_set<std::string>(_bindParameters);
 }
 
