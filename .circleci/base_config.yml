@@ -460,11 +460,12 @@ jobs:
       - run:
           name: Log processes
           command: |
-            ps v | head -n 1
+            export PS_FORMAT="pid,%cpu,%mem,rss,thcount,args"
+            ps | head -n 1
             echo "======"
             while true; do
-              sleep 5
-              ps v | grep "arangod " | grep -v grep | while read line ; do echo "$(date +"%T") > $line" ; done ;
+              sleep 3
+              ps | grep "arangod " | grep -v grep | while read line ; do echo "$(date +"%T") > $line" ; done ;
               echo "======"
             done
           background: true
