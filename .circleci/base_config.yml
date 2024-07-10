@@ -460,14 +460,22 @@ jobs:
       - run:
           name: Log processes
           command: |
-            export PS_FORMAT="pid,%cpu,%mem,rss,thcount,args"
+            export PS_FORMAT="pid,%cpu,%mem,rss,thcount,oom,oomadj,args"
             ps | head -n 1
             echo "======"
             while true; do
               sleep 3
-              ps | grep "arangod " | grep -v grep | while read line ; do echo "$(date +"%T") > $line" ; done ;
+              ps -a | grep "arangod " | grep -v grep | while read line ; do echo "$(date +"%T") > $line" ; done ;
               echo "======"
             done
+          background: true
+      - when:
+          condition:
+            not:
+              equal: [ << << pipeline.parameters.sanitizer >> >>, ""]
+          name: Symbolizer server
+          steps:
+            - run: ./utils/llvm-symbolizer-server.py
           background: true
       - run:
           name: Run << parameters.suiteName >> tests
@@ -483,9 +491,6 @@ jobs:
             elif [ "<< pipeline.parameters.sanitizer >>" = "tsan" ]; then
               export TSAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/tsan.log:detect_deadlocks=true:second_deadlock_stack=1:suppressions=tsan_arangodb_suppressions.txt:print_suppressions=0:external_symbolizer_path=`pwd`/utils/llvm-symbolizer-client.py"
               export SAN_MODE=tsan
-            fi
-            if [ "<< pipeline.parameters.sanitizer >>" != "" ]; then
-              ./utils/llvm-symbolizer-server.py > ./work/symbolizer-server.log &
             fi
 
             # check if promtool is available and if so set the environment variable to enable the according tests
