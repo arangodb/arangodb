@@ -103,7 +103,7 @@ function filterStack(stack, filters) {
   return filtered;
 }
 
-function readGdbFileFiltered(gdbOutputFile) {
+function readGdbFileFiltered(gdbOutputFile, options) {
   try {
     const filters = JSON.parse(fs.read(
       fs.join(pu.JS_DIR,
@@ -118,7 +118,7 @@ function readGdbFileFiltered(gdbOutputFile) {
     let moreMessages = [];
     for (let j = 0; j < maxBuffer; j++) {
       if (buf[j] === 10) { // \n
-        var line = buf.asciiSlice(lineStart, j);
+        var line = buf.utf8Slice(lineStart, j);
         lineStart = j + 1;
         if (line.search('Thread ') === 0 || (!inStack && line[0] === '#')) {
           inStack = true;
@@ -145,9 +145,11 @@ function readGdbFileFiltered(gdbOutputFile) {
           }
           if (line.length === 0) {
             if (!filterStack(stack, filters)) {
-              print("did not filter this stack: ");
-              print(stack);
-              print(moreMessages);
+              if (options.extremeVerbosity === true) {
+                print("did not filter this stack: ");
+                print(stack);
+                print(moreMessages);
+              }
               moreMessages.forEach(line => {
                 GDB_OUTPUT += line.trim() + '\n';
               });
@@ -209,7 +211,7 @@ Crash analysis of: ` + JSON.stringify(instanceInfo.getStructure()) + '\n\n';
     print("Failed to generate GDB output file?");
     return "";
   }
-  readGdbFileFiltered(gdbOutputFile);
+  readGdbFileFiltered(gdbOutputFile, options);
   if (options.extremeVerbosity === true) {
     let thisDump = fs.read(gdbOutputFile);
     print(thisDump);
@@ -237,7 +239,7 @@ function generateCoreDumpGDB (instanceInfo, options, storeArangodPath, pid, gene
     }
   }
   let command = [
-    '--batch',
+    '--batch-silent',
     '-ex', 'set pagination off',
     '-ex', 'set confirm off',
     '-ex', `set logging file ${gdbOutputFile}`,
@@ -654,7 +656,7 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
     var matchVarTmp = /\/var\/tmp/;
     var matchSystemdCoredump = /.*systemd-coredump*/;
     var corePattern = fs.readBuffer(cpf);
-    var cp = corePattern.asciiSlice(0, corePattern.length);
+    var cp = corePattern.utf8Slice(0, corePattern.length).trim();
 
     if (matchApport.exec(cp) !== null) {
       print(RED + 'apport handles corefiles on your system. Uninstall it if you want us to get corefiles for analysis.' + RESET);
@@ -681,9 +683,9 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
       options.coreDirectory = replaceKnownPatterns(cp).replace('%p', instanceInfo.pid);
     } else {
       let found = false;
-      options.coreDirectory = replaceKnownPatterns(cp).replace('%p', instanceInfo.pid).trim();
+      options.coreDirectory = replaceKnownPatterns(cp).replace('%p', instanceInfo.pid);
       if (options.coreDirectory.search('/') < 0) {
-        let rx = new RegExp(options.coreDirectory);
+        let rx = new RegExp(cp.replace(/%[sdeEghiItu]/, '.*').replace(/%p/, instanceInfo.pid));
         fs.list('.').forEach((file) => {
           if (file.match(rx) != null) {
             options.coreDirectory = file;
@@ -693,8 +695,8 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
         });
       }
       if (!found) {
-        print(RED + 'Don\'t know howto locate corefiles in your system. "' + cpf + '" contains: "' + cp + '" was looking in: "' + options.coreDirectory + RESET);
-        print(RED + 'Directory: ' + JSON.stringify(fs.list('.')));
+        print(RED + 'Don\'t know howto locate corefiles in your system. "' + cpf + '" contains: "' + cp + '" was looking in: "' + options.coreDirectory + '"' + RESET);
+        print(RED + 'Directory (' + fs.makeAbsolute('.') + '): ' + JSON.stringify(fs.list('.')));
         return;
       }
     }

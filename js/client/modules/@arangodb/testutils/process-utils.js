@@ -110,22 +110,6 @@ const TOP_DIR = (function findTopDir () {
   return topDir;
 }());
 
-// create additional system environment variables for coverage
-function coverageEnvironment () {
-  let result = [];
-  let name = 'GCOV_PREFIX';
-
-  if (process.env.hasOwnProperty(name)) {
-    result.push(
-      name +
-      "=" +
-      process.env[name] +
-      "/" +
-      crypto.md5(String(internal.time() + Math.random())));
-  }
-
-  return result;
-}
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief calculates all the path locations
@@ -383,7 +367,7 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
   let sh;
   let res = {};
   if (platform.substr(0, 3) === 'win' && !options.disableMonitor) {
-    res = executeExternal(cmd, args, false, coverageEnvironment());
+    res = executeExternal(cmd, args, false);
     instanceInfo.pid = res.pid;
     instanceInfo.exitStatus = res;
     if (crashUtils.runProcdump(options, instanceInfo, rootDir, res.pid)) {
@@ -412,10 +396,10 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
     }
   } else {
     // V8 executeExternalAndWait thinks that timeout is in ms, so *1000
-    sh = new sanHandler(cmd.replace(/.*\//, ''), options.sanOptions, options.isSan, options.extremeVerbosity);
+    sh = new sanHandler(cmd.replace(/.*\//, ''), options);
     sh.detectLogfiles(instanceInfo.rootDir, instanceInfo.rootDir);
     sh.setSanOptions();
-    res = executeExternalAndWait(cmd, args, false, timeout * 1000, coverageEnvironment());
+    res = executeExternalAndWait(cmd, args, false, timeout * 1000, sh.getSanOptions());
     instanceInfo.pid = res.pid;
     instanceInfo.exitStatus = res;
     sh.resetSanOptions();
@@ -533,7 +517,6 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
 
 exports.setupBinaries = setupBinaries;
 exports.endpointToURL = endpointToURL;
-exports.coverageEnvironment = coverageEnvironment;
 
 exports.executeAndWait = executeAndWait;
 exports.killRemainingProcesses = killRemainingProcesses;

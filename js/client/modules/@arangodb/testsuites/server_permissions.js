@@ -285,6 +285,7 @@ function server_permissions(options) {
 function server_parameters(options) {
   let testCases = tu.scanTestPaths(testPaths.server_parameters, options);
   testCases = tu.splitBuckets(options, testCases);
+  require('internal').env.OPTIONS=JSON.stringify(options);
   return new permissionsRunner(options, "server_parameters").run(testCases);
 }
 

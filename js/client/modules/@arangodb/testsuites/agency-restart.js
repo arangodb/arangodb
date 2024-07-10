@@ -155,7 +155,7 @@ function agencyRestart (options) {
       params.options.disableMonitor = options.disableMonitor;
       params.setup = false;
       try {
-        tu.writeTestResult(params.instance.args['temp.path'], {
+        trs.writeTestResult(params.instance.args['temp.path'], {
           failed: 1,
           status: false,
           message: "unable to run agency_restart test " + test,
