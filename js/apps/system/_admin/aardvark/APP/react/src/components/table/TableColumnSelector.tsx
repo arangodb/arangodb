@@ -50,7 +50,7 @@ export const TableColumnSelector = <Data extends object>({
                   }}
                   key={column.id}
                 >
-                  {column.header}
+                  <>{column.header}</>
                 </Checkbox>
               );
             })}

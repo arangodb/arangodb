@@ -92,7 +92,6 @@ const ClearButton = ({
   onClear: () => void;
   appliedFiltersCount: number;
 }) => {
-
   return (
     <Button
       textTransform="uppercase"
@@ -146,9 +145,7 @@ const AddFilterButton = <Data extends object>({
           }
           return (
             <MenuItem onClick={() => addFilter(filter)} key={filter.id}>
-              {typeof filter.header === "function"
-                ? filter.header({ column, header, table })
-                : filter.header}
+              <>{filter.header}</>
             </MenuItem>
           );
         })}

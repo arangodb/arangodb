@@ -1,11 +1,5 @@
 import { MinusIcon } from "@chakra-ui/icons";
-import {
-  FormLabel,
-  Grid,
-  IconButton,
-  Input,
-  Stack
-} from "@chakra-ui/react";
+import { FormLabel, Grid, IconButton, Input, Stack } from "@chakra-ui/react";
 import { Column, ColumnDef, Table as TableType } from "@tanstack/react-table";
 import * as React from "react";
 import MultiSelect from "../select/MultiSelect";
@@ -62,7 +56,7 @@ const FilterLabel = <Data extends object>({
   return (
     <Stack direction="row" alignItems="center">
       <FormLabel margin="0" htmlFor={columnInstance.id}>
-        {columnInstance.columnDef.header}
+        <>{columnInstance.columnDef.header}</>
       </FormLabel>
     </Stack>
   );
