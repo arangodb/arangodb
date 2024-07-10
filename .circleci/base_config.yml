@@ -472,7 +472,7 @@ jobs:
       - when:
           condition:
             not:
-              equal: [ << << pipeline.parameters.sanitizer >> >>, ""]
+              equal: [ << pipeline.parameters.sanitizer >>, ""]
           name: Symbolizer server
           steps:
             - run: ./utils/llvm-symbolizer-server.py
