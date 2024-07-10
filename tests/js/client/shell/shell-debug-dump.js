@@ -43,7 +43,7 @@ const analyzers = require('@arangodb/analyzers');
 const vn1 = "testVertex1";
 const vn2 = "testVertex2";
 const vn3 = "testVertex3";
-const cn  = "collection"
+const cn  = "collection";
 const cn1 = "edgeTestCollection";
 const cn2 = "edgeTestCollection2";
 const relationName = "isRelated";
@@ -389,7 +389,6 @@ function debugDumpViews () {
       let query = `for d in view search ANALYZER(d.value1 == "31" or d.value1 == "1", "my_delimiter") return d `;
       let res = db._query(query).toArray();
       assertEqual(res.length, 2);
-      print(fileName)
       explainer.debugDump(fileName, query, {}, {examples: 50, anonymize: false});
       explainer.inspectDump(fileName, outFileName);
       recreateEmptyDatabase();
