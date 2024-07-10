@@ -136,8 +136,7 @@ class Ast {
   /// @brief return a copy of our own bind parameters
   std::unordered_set<std::string> bindParameterNames() const;
 
-  std::unordered_map<std::string_view, Variable const*> bindParameterVariables()
-      const;
+  BindParameterVariableMapping bindParameterVariables() const;
 
   /// @brief get the query scopes
   Scopes* scopes();
@@ -466,6 +465,10 @@ class Ast {
   /// for query plan caching.
   void replaceBindParametersWithVariables(BindParameters& parameters);
 
+  /// @brief replaces bind parameters with special variables. This is used
+  /// for query plan caching.
+  void replaceBindParametersWithValues(BindParameters& parameters);
+
   /// @brief replace variables
   ///        the unlock parameter will unlock the variable node before it
   ///        replaces the variable. This unlock is potentially dangerous if the
@@ -759,7 +762,7 @@ class Ast {
   AstPropertiesFlagsType _astFlags;
 
   /// @brief variables that bind parameters were replaced with
-  std::unordered_map<std::string_view, Variable const*> _bindParameterVariables;
+  BindParameterVariableMapping _bindParameterVariables;
 };
 
 }  // namespace aql

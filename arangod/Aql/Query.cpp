@@ -468,12 +468,7 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   // doc.@attr).
   _ast->injectBindParametersFirstStage(_bindParameters, this->resolver());
 
-  if (_queryOptions.cachePlan) {
-    _ast->replaceBindParametersWithVariables(_bindParameters);
-  } else {
-    // put in value bind parameters.
-    _ast->injectBindParametersSecondStage(_bindParameters);
-  }
+  _ast->injectBindParametersSecondStage(_bindParameters);
 
   if (parser.ast()->containsUpsertNode()) {
     // UPSERTs and intermediate commits do not play nice together, because the
@@ -1082,12 +1077,7 @@ QueryResult Query::explain() {
     // put in bind parameters
     parser.ast()->injectBindParametersFirstStage(_bindParameters,
                                                  this->resolver());
-    if (_queryOptions.cachePlan) {
-      _ast->replaceBindParametersWithVariables(_bindParameters);
-    } else {
-      // put in value bind parameters.
-      _ast->injectBindParametersSecondStage(_bindParameters);
-    }
+    _ast->injectBindParametersSecondStage(_bindParameters);
     _bindParameters.validateAllUsed();
 
     // optimize and validate the ast
@@ -1395,7 +1385,11 @@ void Query::init(bool createProfile) {
   enterState(QueryExecutionState::ValueType::INITIALIZATION);
 
   TRI_ASSERT(_ast == nullptr);
-  _ast = std::make_unique<Ast>(*this);
+  AstPropertiesFlagsType flags = AstPropertyFlag::AST_FLAG_DEFAULT;
+  if (_queryOptions.cachePlan) {
+    flags |= AstPropertyFlag::NON_CONST_PARAMETERS;
+  }
+  _ast = std::make_unique<Ast>(*this, flags);
 }
 
 void Query::registerQueryInTransactionState() {

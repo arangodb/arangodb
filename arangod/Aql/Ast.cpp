@@ -2209,7 +2209,7 @@ void Ast::replaceBindParametersWithVariables(BindParameters& parameters) {
 
 /// @brief injects second-stage bind parameter values into the AST
 /// (i.e. all value bind parameters)
-void Ast::injectBindParametersSecondStage(BindParameters& parameters) {
+void Ast::replaceBindParametersWithValues(BindParameters& parameters) {
   if (_containsBindParameters) {
     auto func = [&](AstNode* node) -> AstNode* {
       if (node->type == NODE_TYPE_PARAMETER) {
@@ -2221,6 +2221,19 @@ void Ast::injectBindParametersSecondStage(BindParameters& parameters) {
     };
 
     _root = traverseAndModify(_root, func);
+  }
+}
+
+/// @brief injects second-stage bind parameter values into the AST
+/// (i.e. all value bind parameters)
+void Ast::injectBindParametersSecondStage(BindParameters& parameters) {
+  if (_containsBindParameters) {
+    if (query().queryOptions().cachePlan) {
+      replaceBindParametersWithVariables(parameters);
+    } else {
+      // put in value bind parameters.
+      replaceBindParametersWithValues(parameters);
+    }
   }
 }
 
@@ -4433,8 +4446,7 @@ std::unordered_set<std::string> Ast::bindParameterNames() const {
   return std::unordered_set<std::string>(_bindParameters);
 }
 
-std::unordered_map<std::string_view, Variable const*>
-Ast::bindParameterVariables() const {
+BindParameterVariableMapping Ast::bindParameterVariables() const {
   return _bindParameterVariables;
 }
 

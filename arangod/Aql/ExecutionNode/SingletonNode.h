@@ -46,8 +46,8 @@ class SingletonNode : public ExecutionNode {
   /// @brief constructor with an id
  public:
   SingletonNode(ExecutionPlan* plan, ExecutionNodeId id,
-                std::unordered_map<std::string_view, Variable const*>
-                    bindParameterOutVars);
+                BindParameterVariableMapping bindParameterOutVars);
+  SingletonNode(ExecutionPlan* plan, ExecutionNodeId id);
 
   SingletonNode(ExecutionPlan* plan, arangodb::velocypack::Slice base);
 
@@ -78,7 +78,7 @@ class SingletonNode : public ExecutionNode {
   void doToVelocyPack(arangodb::velocypack::Builder&,
                       unsigned flags) const override final;
 
-  std::unordered_map<std::string_view, Variable const*> _bindParameterOutVars;
+  BindParameterVariableMapping _bindParameterOutVars;
 };
 
 }  // namespace aql

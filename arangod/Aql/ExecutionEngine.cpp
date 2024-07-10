@@ -871,8 +871,6 @@ void ExecutionEngine::initializeConstValueBlock(
               block->emplaceValue(0, reg.value(), AqlValue(value.slice()));
             }
           } else if (var->type() == Variable::Type::BindParameter) {
-            LOG_DEVEL << "CONSTANT REGISTER BIND VARIABLE "
-                      << var->bindParameterName();
             RegisterId reg = regPlan->variableToOptionalRegisterId(var->id);
             if (reg.value() != RegisterId::maxRegisterId) {
               auto [slice, node] = bindParameters.get(var->bindParameterName());
@@ -880,7 +878,6 @@ void ExecutionEngine::initializeConstValueBlock(
                 THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_BIND_PARAMETER_MISSING);
               }
 
-              LOG_DEVEL << var->bindParameterName() << " = " << slice.toJson();
               block->emplaceValue(0, reg.value(), AqlValue(slice));
             }
           }

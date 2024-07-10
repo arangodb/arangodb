@@ -33,18 +33,20 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
-SingletonNode::SingletonNode(
-    ExecutionPlan* plan, ExecutionNodeId id,
-    std::unordered_map<std::string_view, Variable const*> bindParameterOutVars)
+SingletonNode::SingletonNode(ExecutionPlan* plan, ExecutionNodeId id,
+                             BindParameterVariableMapping bindParameterOutVars)
     : ExecutionNode(plan, id),
       _bindParameterOutVars(std::move(bindParameterOutVars)) {}
+
+SingletonNode::SingletonNode(ExecutionPlan* plan, ExecutionNodeId id)
+    : ExecutionNode(plan, id) {}
 
 SingletonNode::SingletonNode(ExecutionPlan* plan,
                              arangodb::velocypack::Slice base)
     : ExecutionNode(plan, base) {
   if (auto bindVars = base.get("bindParameterVariables"); !bindVars.isNone()) {
     for (auto [key, value] : VPackObjectIterator(bindVars)) {
-      _bindParameterOutVars[key.stringView()] =
+      _bindParameterOutVars[key.copyString()] =
           Variable::varFromVPack(plan->getAst(), base, key.stringView());
     }
   }
