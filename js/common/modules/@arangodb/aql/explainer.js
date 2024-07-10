@@ -2588,7 +2588,7 @@ function debug(query, bindVars, options) {
   let analyzers = require("@arangodb/analyzers");
   let all_analyzers = analyzers.toArray();
   used_analyzers.forEach(used_a => {
-    let re = new RegExp(String.raw`^_system::${used_a}$`, "g");
+    let re = new RegExp(String.raw`::${used_a}$`, "g");
     let found = all_analyzers.find((a) => a.name().match(re));
     if(found) {
       // it means that it is not a system analyzer
