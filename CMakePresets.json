@@ -80,7 +80,7 @@
       "cacheVariables": {
         "USE_JEMALLOC": "Off",
         "STATIC_EXECUTABLES": "Off",
-        "CMAKE_CXX_FLAGS": "-fsanitize=thread",
+        "CMAKE_CXX_FLAGS": "-fsanitize=thread -fsanitize-blacklist=${sourceDir}/tsan_blacklist.txt",
         "CMAKE_C_FLAGS": "-fsanitize=thread",
         "USE_MINIMAL_DEBUGINFO": "On"
       }
