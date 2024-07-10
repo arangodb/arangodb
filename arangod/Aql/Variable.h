@@ -59,7 +59,7 @@ struct Variable {
     Regular,
     /// @brief a variable with a constant value
     Const,
-    /// @brief
+    /// @brief variable is a replacement for a bind parameter
     BindParameter,
   };
 
