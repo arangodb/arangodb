@@ -323,7 +323,7 @@ void Query::kill() {
 }
 
 void Query::setKillFlag() {
-  _queryKilled.store(true, std::memory_order_acq_rel);
+  _queryKilled.store(true, std::memory_order_release);
 }
 
 /// @brief the query's transaction id. returns 0 if no transaction
