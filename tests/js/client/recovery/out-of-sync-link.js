@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global fail, assertTrue, assertFalse, assertEqual */
+/* global runSetup fail, assertTrue, assertFalse, assertEqual */
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
@@ -28,9 +28,9 @@ const internal = require('internal');
 const errors = internal.errors;
 const jsunity = require('jsunity');
 
-function runSetup () {
+if (runSetup === true) {
   'use strict';
-  internal.debugClearFailAt();
+  global.instanceManager.debugClearFailAt();
 
   db._create('UnitTestsRecovery1');
   db._create('UnitTestsRecovery2');
@@ -43,7 +43,7 @@ function runSetup () {
   v.properties({ links: { UnitTestsRecovery1: { includeAllFields: true }, UnitTestsRecovery2: { includeAllFields: true } } });
   
   // set failure point that makes commits go wrong
-  internal.debugSetFailAt("ArangoSearch::FailOnCommit");
+  global.instanceManager.debugSetFailAt("ArangoSearch::FailOnCommit");
 
   db['UnitTestsRecovery1'].insert({});
   db['UnitTestsRecovery2'].insert({});
@@ -60,7 +60,7 @@ function runSetup () {
   }
  
   // remove failure point 
-  internal.debugClearFailAt();
+  global.instanceManager.debugClearFailAt();
   
   v = db._createView('UnitTestsRecoveryView3', 'arangosearch', {});
   v.properties({ links: { UnitTestsRecovery3: { includeAllFields: true } } });
@@ -68,6 +68,7 @@ function runSetup () {
   db['UnitTestsRecovery3'].insert({});
   db._query("FOR doc IN UnitTestsRecoveryView3 OPTIONS {waitForSync: true} RETURN doc");
 
+  return 0;
 }
 
 function recoverySuite () {
@@ -87,7 +88,7 @@ function recoverySuite () {
       assertEqual(p.links.UnitTestsRecovery2.error, "outOfSync");
  
       // set failure point that makes querying failed links go wrong
-      internal.debugSetFailAt("ArangoSearch::FailQueriesOnOutOfSync");
+      global.instanceManager.debugSetFailAt("ArangoSearch::FailQueriesOnOutOfSync");
 
       // queries must fail because links are marked as out of sync
       try {
@@ -112,7 +113,7 @@ function recoverySuite () {
       assertEqual(1, result.length);
     
       // clear all failure points
-      internal.debugClearFailAt();
+      global.instanceManager.debugClearFailAt();
       
       // queries must not fail now because we removed the failure point
       result = db._query("FOR doc IN UnitTestsRecoveryView1 OPTIONS {waitForSync: true} RETURN doc").toArray();
@@ -125,13 +126,5 @@ function recoverySuite () {
   };
 }
 
-function main (argv) {
-  'use strict';
-  if (argv[1] === 'setup') {
-    runSetup();
-    return 0;
-  } else {
-    jsunity.run(recoverySuite);
-    return jsunity.writeDone().status ? 0 : 1;
-  }
-}
+jsunity.run(recoverySuite);
+return jsunity.done();

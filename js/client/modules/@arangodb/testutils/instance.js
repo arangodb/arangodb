@@ -587,7 +587,7 @@ class instance {
     if (!this.options.coreCheck && this.options.setInterruptable && !running) {
       print(`fatal exit of ${this.pid} arangod => ${JSON.stringify(res)}! Bye!`);
       pu.killRemainingProcesses({status: false});
-      process.exit();
+      throw new Error(`fatal exit of ${this.pid} arangod => ${JSON.stringify(res)}! Bye!`);
     }
 
     if (!running) {
@@ -1264,11 +1264,11 @@ class instance {
       throw new Error(`Failed to set ${failurePoint}: ${reply.parsedBody}`);
     }
   }
-  debugRemoveFailAt(failurePoint) {
+  debugClearFailAt(failurePoint) {
     this.connect();
-    let reply = arango.DELETE_RAW('/_admin/debug/failat/' + failurePoint, '');
+    let reply = arango.DELETE_RAW(`/_admin/debug/failat/${(failurePoint=== undefined)?'': '/' + failurePoint}`);
     if (reply.code !== 200) {
-      throw new Error(`Failed to remove ${failurePoint}: ${reply.parsedBody}`);
+      throw new Error(`Failed to remove FP: '${failurePoint}' =>  ${reply.parsedBody}`);
     }
   }
   debugCanUseFailAt() {
@@ -1282,15 +1282,40 @@ class instance {
     return reply.parsedBody === true;   
   }
   debugTerminate() {
-    this.connect();
-    let reply;
-    try {
-      reply = arango.PUT_RAW('/_admin/debug/crash', '');
-    } catch(ex) {
-      print(`Terminated instance ${this.name} - ${ex}`);
+    if (this.pid === null) {
+      return;
     }
-    if (reply.code !== 200) {
-      throw new Error(`Failed to crash ${this.name}: ${reply.parsedBody}`);
+    let res = statusExternal(this.pid, false);
+    if (res.status === 'NOT-FOUND') {
+      print(`${Date()} ${this.name}: PID ${this.pid} missing on our list, retry?`);
+      sleep(0.2);
+      res = statusExternal(this.pid, false);
+    }
+    const running = res.status === 'RUNNING';
+    if (!running) {
+      // the test may have abortet by itself already, using SIG_ARBRT or SIG_KILL.
+      this.exitStatus = res;
+      if (res.hasOwnProperty('signal') &&
+          (res.signal !== 6)&&(res.signal !== 9)) {
+        throw new Error(`unexpected exit signal of ${this.name} - ${JSON.stringify(res)}`);
+      }
+      return;
+    } else {
+      this.connect();
+      let reply;
+      try {
+        reply = arango.PUT_RAW('/_admin/debug/crash', '');
+      } catch(ex) {
+        if (ex instanceof ArangoError &&
+            ex.errorNum === internal.errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code) {
+          print(`Terminated instance ${this.name} - ${ex}`);
+          return;
+        }
+        throw new Error(`Failed to crash ${this.name}: ${ex}`);
+      }
+      if (reply.code !== 200) {
+        throw new Error(`Failed to crash ${this.name}: ${reply.parsedBody}`);
+      }
     }
   }
 }
