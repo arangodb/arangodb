@@ -92,9 +92,7 @@ const ClearButton = ({
   onClear: () => void;
   appliedFiltersCount: number;
 }) => {
-  if (appliedFiltersCount === 0) {
-    return null;
-  }
+
   return (
     <Button
       textTransform="uppercase"
@@ -104,6 +102,7 @@ const ClearButton = ({
       variant="ghost"
       size="xs"
       colorScheme="blue"
+      isDisabled={appliedFiltersCount === 0}
     >
       Clear
     </Button>
