@@ -398,7 +398,6 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
     // V8 executeExternalAndWait thinks that timeout is in ms, so *1000
     sh = new sanHandler(cmd.replace(/.*\//, ''), options);
     sh.detectLogfiles(instanceInfo.rootDir, instanceInfo.rootDir);
-    sh.setSanOptions();
     res = executeExternalAndWait(cmd, args, false, timeout * 1000, sh.getSanOptions());
     instanceInfo.pid = res.pid;
     instanceInfo.exitStatus = res;
