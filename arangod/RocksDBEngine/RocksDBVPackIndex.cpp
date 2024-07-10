@@ -282,6 +282,9 @@ class RocksDBVPackIndexInIterator final : public IndexIterator {
   void adjustIterator() {
     bool wasRearmed = _wrapped->rearm(_current.value(), _indexIteratorOptions);
     TRI_ASSERT(wasRearmed);
+    if (_indexIteratorOptions.limit > 0) {
+      _wrapped->setLimit(_indexIteratorOptions.limit);
+    }
   }
 
   ResourceMonitor& _resourceMonitor;
