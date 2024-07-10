@@ -244,6 +244,10 @@ void arangodb::aql::pushLimitIntoIndexRule(Optimizer* opt,
 
     auto* limitNode = ExecutionNode::castTo<LimitNode*>(maybeLimitNode);
     indexNode->setLimit(limitNode->offset() + limitNode->limit());
+
+    if (!sortFields.front().ascending) {
+      indexNode->setAscending(false);
+    }
     modified = true;
   }
 
