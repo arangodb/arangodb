@@ -180,7 +180,7 @@ function optimizerPushLimitIntoIndexTestSuite () {
       }
     },
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test results are same with and without rule
+/// @brief test results are same with and without rule test
 ////////////////////////////////////////////////////////////////////////////////
     testPushLimitIntoIndexRuleResults: function () {
      let queries = [
