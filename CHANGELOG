@@ -1,6 +1,8 @@
 devel
 -----
 
+* Remove unused "mmap" log topic.
+
 * Support array and object destructuring for FOR loops that refer to simple
   expressions or collections.
 
