@@ -2424,6 +2424,7 @@ function debug(query, bindVars, options) {
     database: dbProperties,
     query: input,
     queryCache: require('@arangodb/aql/cache').properties(),
+    analyzers: {},
     collections: {},
     views: {}
   };
@@ -2503,8 +2504,7 @@ function debug(query, bindVars, options) {
         type: v.type(),
         properties: v.properties()
       };
-    } else {
-      // a collection
+    } else if (isNaN(collection.name)) {
       if (c.type() === 3 && collection.name.match(/^_(local|from|to)_.+/)) {
         // an internal smart-graph collection. let's skip this
         return;
@@ -2578,6 +2578,31 @@ function debug(query, bindVars, options) {
     result.collections[c.name] = c;
   });
 
+  let used_analyzers = new Set();
+  Object.values(result.views).forEach(v => {
+    let links = v["properties"]["links"];
+    Object.values(links).forEach(c => {
+      let curr_analyzers = c["analyzers"];
+      curr_analyzers.forEach(a => {
+        used_analyzers.add(a);
+      });
+    });
+  });
+
+  let analyzers = require("@arangodb/analyzers");
+  let all_analyzers = analyzers.toArray();
+  used_analyzers.forEach(used_a => {
+    let re = new RegExp(String.raw`::${used_a}$`, "g");
+    let found = all_analyzers.find((a) => a.name().match(re));
+    if(found) {
+      // it means that it is not a system analyzer
+      result.analyzers[used_a] = {
+        type: analyzers.analyzer(used_a).type(),
+        properties: analyzers.analyzer(used_a).properties()
+      };
+    }
+  });
+  
   result.graphs = graphs;
   return result;
 }
@@ -2631,6 +2656,28 @@ function inspectDump(filename, outfile) {
     print("db._graphs.insert(" + JSON.stringify(details) + ");");
   });
   print();
+
+  // drop views to be able to recreate analyzers
+  print("/*drop views */");
+  Object.keys(data.views || {}).forEach(function (view) {
+    print("db._dropView(" + JSON.stringify(view) + ");");
+  });
+  print();
+
+  // all analyzers if they are exists
+  if (data.hasOwnProperty("analyzers")) {
+    print("/* analyzers setup */");
+    const analyzers_names = Object.keys(data.analyzers);
+    if (analyzers_names.length > 0) {
+      print("var analyzers = require('@arangodb/analyzers')");
+      for (let i = 0; i < analyzers_names.length; ++i) {
+        let name = analyzers_names[i];
+        print(`try { analyzers.remove("${name}"); } catch (err) { print(String(err)); }`);
+        print(`analyzers.save("${name}", ${JSON.stringify(data.analyzers[name]["type"])}, ${JSON.stringify(data.analyzers[name]["properties"])})`);
+      }
+    }
+    print();
+  }
 
   // all collections and indexes first, as data insertion may go wrong later
   print("/* collections and indexes setup */");
@@ -2698,7 +2745,6 @@ function inspectDump(filename, outfile) {
   print("/* views */");
   Object.keys(data.views || {}).forEach(function (view) {
     let details = data.views[view];
-    print("db._dropView(" + JSON.stringify(view) + ");");
     print("db._createView(" + JSON.stringify(view) + ", " + JSON.stringify(details.type) + ", " + JSON.stringify(details.properties) + ");");
   });
   print();
