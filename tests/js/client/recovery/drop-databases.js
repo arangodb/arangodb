@@ -86,7 +86,6 @@ function recoverySuite () {
       }
 
       db._useDatabase('UnitTestsRecovery4');
-      print(db._collections())
       assertEqual(1, db.test.count());
       assertEqual('UnitTestsRecovery4', db._name());
     }

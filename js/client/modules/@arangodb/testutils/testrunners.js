@@ -71,7 +71,6 @@ function getTestCode(file, options, instanceManager) {
 }
 
 function readTestResult(path, rc, testCase) {
-  print(path)
   const jsonFN = fs.join(path, 'testresult.json');
   let buf;
   try {

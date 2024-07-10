@@ -185,7 +185,7 @@ function runArangodRecovery (params, useEncryption, isKillAfterSetup = true) {
   let testFunc;
   let success = -1;
   try {
-    db._useDatabase('_system');
+    internal.db._useDatabase('_system');
     let content = `(function(){ let runSetup=${params.setup?"true":"false"};${testCode}
 }())`; // DO NOT JOIN WITH THE LINE ABOVE -- because of content could contain '//' at the very EOF
     success = executeScript(content, true, params.script);
