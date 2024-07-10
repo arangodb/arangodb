@@ -39,7 +39,7 @@ function optimizerPushLimitIntoIndexTestSuite () {
     setUpAll : function () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection"); 
-      var docs = []; 
+      let docs = []; 
       for (i = 0; i < 1000; ++i) { 
         docs.push({ 
           _key: "test" + i, 
@@ -64,7 +64,7 @@ function optimizerPushLimitIntoIndexTestSuite () {
         "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created DESC LIMIT 100 RETURN i._key",
       ];
 
-      for (var i = 0; i < queries.length; ++i) {
+      for (let i = 0; i < queries.length; ++i) {
         let plan = db._createStatement(queries[i]).explain().plan;
         let indexNode = plan.nodes[1];
 
@@ -87,7 +87,7 @@ function optimizerPushLimitIntoIndexTestSuite () {
         "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.license DESC, i.date_created DESC LIMIT 100 RETURN i._key",
       ];
  
-      for (var i = 0; i < queries.length; ++i) {
+      for (let i = 0; i < queries.length; ++i) {
         let plan = db._createStatement(queries[i]).explain().plan;
         let indexNode = plan.nodes[1];
 
@@ -106,7 +106,7 @@ function optimizerPushLimitIntoIndexTestSuite () {
         "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] and i.foo == true SORT i.date_created LIMIT 100 RETURN i._key",
       ];
  
-      for (var i = 0; i < queries.length; ++i) {
+      for (let i = 0; i < queries.length; ++i) {
         let plan = db._createStatement(queries[i]).explain().plan;
         let indexNode = plan.nodes[1];
 
@@ -120,7 +120,7 @@ function optimizerPushLimitIntoIndexTestSuite () {
 /// @brief test case with additional OR conditional filtering in index node
 ////////////////////////////////////////////////////////////////////////////////
     testPushLimitIntoIndexRuleORConditionalFiltering : function () {
-      var query = "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] OR i.date_created > 500 SORT i.date_created LIMIT 100 RETURN i._key";
+      let query = "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] OR i.date_created > 500 SORT i.date_created LIMIT 100 RETURN i._key";
 
       let plan = db._createStatement(query).explain().plan;
       let indexNodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
@@ -133,7 +133,7 @@ function optimizerPushLimitIntoIndexTestSuite () {
 /// @brief test case with double loop
 ////////////////////////////////////////////////////////////////////////////////
     testPushLimitIntoIndexRuleDoubleLoop : function () {
-      var query = "FOR i in 0..2 FOR j IN " + c.name() + " FILTER j.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT j.date_created LIMIT 100 RETURN j._key";
+      let query = "FOR i in 0..2 FOR j IN " + c.name() + " FILTER j.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT j.date_created LIMIT 100 RETURN j._key";
 
       let plan = db._createStatement(query).explain().plan;
       let indexNode = plan.nodes[3];
@@ -147,7 +147,7 @@ function optimizerPushLimitIntoIndexTestSuite () {
 /// @brief test case with offset
 ////////////////////////////////////////////////////////////////////////////////
     testPushLimitIntoIndexRuleWithOffset : function () {
-      var query = "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created LIMIT 8, 100 RETURN i._key";
+      let query = "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created LIMIT 8, 100 RETURN i._key";
 
       let plan = db._createStatement(query).explain().plan;
       let indexNode = plan.nodes[1];
@@ -167,7 +167,7 @@ function optimizerPushLimitIntoIndexTestSuite () {
         "FOR i IN " + c.name() + " SORT i.date_created DESC LIMIT 100 RETURN i._key",
       ];
  
-      for (var i = 0; i < queries.length; ++i) {
+      for (let i = 0; i < queries.length; ++i) {
         let plan = db._createStatement(queries[i]).explain().plan;
         let indexNodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
 
@@ -177,6 +177,23 @@ function optimizerPushLimitIntoIndexTestSuite () {
           assertEqual(indexNodes[0].limit, 0);
           assertEqual(-1, plan.rules.indexOf("push-limit-into-index"));
         }
+      }
+    },
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test results are same with and without rule
+////////////////////////////////////////////////////////////////////////////////
+    testPushLimitIntoIndexRuleResults: function () {
+     let queries = [
+        //"FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created ASC LIMIT 100 RETURN i._key",
+        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created DESC LIMIT 100 RETURN i.date_created",
+      ];
+ 
+      for (let i = 0; i < queries.length; ++i) {
+        const opts = { optimizer: { rules: ["-push-limit-into-index"] } };
+        let resultsWithoutRule = db._query(queries[i], null, opts).toArray();
+        let resultsWithRule = db._query(queries[i]).toArray();
+
+        assertEqual(resultsWithoutRule, resultsWithRule);
       }
     },
   };
