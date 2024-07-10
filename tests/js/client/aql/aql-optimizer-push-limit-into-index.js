@@ -40,7 +40,7 @@ function optimizerPushLimitIntoIndexTestSuite () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection"); 
       let docs = []; 
-      for (i = 0; i < 1000; ++i) { 
+      for (let i = 0; i < 1000; ++i) { 
         docs.push({ 
           _key: "test" + i, 
           date_created: "20240613" + i, 
@@ -172,7 +172,7 @@ function optimizerPushLimitIntoIndexTestSuite () {
         let indexNodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
 
         assertTrue(indexNodes.length <= 1);
-        if (indexNodes.length == 1) {
+        if (indexNodes.length === 1) {
           assertEqual("IndexNode", indexNodes[0].type);
           assertEqual(indexNodes[0].limit, 0);
           assertEqual(-1, plan.rules.indexOf("push-limit-into-index"));
