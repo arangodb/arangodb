@@ -153,12 +153,12 @@ auto QueryStreamCursor::create(std::shared_ptr<Query> q, size_t batchSize,
                                double ttl, bool isRetriable)
     -> futures::Future<std::unique_ptr<QueryStreamCursor>> {
   auto cursor = std::make_unique<QueryStreamCursor>(
-      Token{}, std::move(q), batchSize, ttl, isRetriable);
+      PrivateToken{}, std::move(q), batchSize, ttl, isRetriable);
   co_await cursor->finishConstruction();
   co_return cursor;
 }
 
-QueryStreamCursor::QueryStreamCursor(Token, std::shared_ptr<Query> q,
+QueryStreamCursor::QueryStreamCursor(PrivateToken, std::shared_ptr<Query> q,
                                      size_t batchSize, double ttl,
                                      bool isRetriable)
     : Cursor(TRI_NewServerSpecificTick(), batchSize, ttl, /*hasCount*/ false,

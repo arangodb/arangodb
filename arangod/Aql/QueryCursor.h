@@ -96,14 +96,14 @@ class QueryResultCursor final : public arangodb::Cursor {
 /// new results. Query, transaction and locks will live until
 /// cursor is deleted (or query exhausted)
 class QueryStreamCursor final : public Cursor {
-  struct Token {};
+  struct PrivateToken {};
 
  public:
   static auto create(std::shared_ptr<Query> q, size_t batchSize, double ttl,
                      bool isRetriable)
       -> futures::Future<std::unique_ptr<QueryStreamCursor>>;
 
-  QueryStreamCursor(Token, std::shared_ptr<Query> q, size_t batchSize,
+  QueryStreamCursor(PrivateToken, std::shared_ptr<Query> q, size_t batchSize,
                     double ttl, bool isRetriable);
   ~QueryStreamCursor() override;
 
