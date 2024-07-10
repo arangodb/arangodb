@@ -32,6 +32,7 @@ const functionsDocumentation = {
 
 const fs = require('fs');
 const internal = require('internal');
+const executeScript = internal.executeScript;
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
 const trs = require('@arangodb/testutils/testrunners');
@@ -179,39 +180,35 @@ function runArangodRecovery (params, useEncryption, isKillAfterSetup = true) {
   }
 
   Object.assign(agentArgs, additionalTestParams);
-  require('internal').env.INSTANCEINFO = JSON.stringify(params.instanceManager.getStructure());
+  let testCode = fs.readFileSync(params.script);
+  global.instanceManager = params.instanceManager;
+  let testFunc;
+  let success = -1;
   try {
-    let instanceInfo = {
-      rootDir: params.instanceManager.rootDir,
-      pid: 0,
-      exitStatus: {},
-      getStructure: function() { return {}; }
-    };
+    db._useDatabase('_system');
+    let content = `(function(){ let runSetup=${params.setup?"true":"false"};${testCode}
+}())`; // DO NOT JOIN WITH THE LINE ABOVE -- because of content could contain '//' at the very EOF
+    success = executeScript(content, true, params.script);
 
-    pu.executeAndWait(pu.ARANGOSH_BIN,
-                      toArgv(agentArgs),
-                      params.options,
-                      false,
-                      params.instanceManager.rootDir,
-                      false,
-                      0,
-                      instanceInfo);
-    if (!instanceInfo.exitStatus.hasOwnProperty('exit') || (instanceInfo.exitStatus.exit !== 0)) {
-      print('Nonzero exit code of test: ' + JSON.stringify(instanceInfo.exitStatus));
+    if (params.setup && success !== 0) {
+      if ( typeof success === 'object' && !Array.isArray(success) && success !== null) {
+        print(`faulty test: setup phase did not terminate with integer: ${params.script}: \n ${JSON.stringify(success)}`);
+        throw new Error(`faulty test: ${params.script} - setup phase did not terminate with integer`);
+      }
+      print('Nonzero exit code of setup: ' + JSON.stringify(success));
       params.instanceManager.shutdownInstance(false);
       params.instanceManager.destructor(false);
       return {
         status: false,
-        message: 'Nonzero exit code of test: ' + JSON.stringify(instanceInfo.exitStatus)
+        message: 'Nonzero exit code of test: ' + JSON.stringify(success)
       };
     }
-  } catch(err) {
-    print('Error while launching test:' + err);
-    params.instanceManager.shutdownInstance(false);
-    params.instanceManager.destructor(false);
+  } catch (ex) {
+    print(`${RED}test '${params.script} failed to parse: - ${ex}${RESET}`);
     return {
       status: false,
-      message: 'Error while launching test: ' + err
+      message: "test doesn't parse! '" + params.script + "' - " + ex.message || String(ex),
+      stack: ex.stack
     };
   }
   if (params.setup) {
@@ -227,22 +224,23 @@ function runArangodRecovery (params, useEncryption, isKillAfterSetup = true) {
     if (isKillAfterSetup) {
       print(BLUE + "killing " + dbServers.length + " DBServers/Coordinators/Singles " + RESET);
       dbServers.forEach((arangod) => {
-        internal.debugTerminateInstance(arangod.endpoint);
+        params.instanceManager.debugTerminate();
         // need this to properly mark spawned process as killed in internal test data
         arangod.exitStatus = internal.killExternal(arangod.pid, termSignal); 
         arangod.pid = 0;
       });
     }
-  } else {
     return {
-      status: params.instanceManager.shutdownInstance(false),
+      status: true,
+      message: ""
+    };
+  } else {
+    success['shutdown'] = {
+      status:  params.instanceManager.shutdownInstance(false),
       message: "during shutdown"
     };
+    return success;
   }
-  return {
-    status: true,
-    message: ""
-  };
 }
 
 function _recovery (options, recoveryTests) {
@@ -295,6 +293,7 @@ function _recovery (options, recoveryTests) {
       let ret = runArangodRecovery(params, useEncryption, !doNotKillTests.includes(test));
       if (!ret.status) {
         results[test] = ret;
+        results.status = false;
         continue;
       }
       ////////////////////////////////////////////////////////////////////////
@@ -302,16 +301,8 @@ function _recovery (options, recoveryTests) {
       params.options.disableMonitor = localOptions.disableMonitor;
       params.setup = false;
       try {
-        trs.writeTestResult(params.temp_path, {
-          failed: 1,
-          status: false, 
-          message: "unable to run recovery test " + test,
-          duration: -1
-        });
-      } catch (er) { print(er);}
-      let res = { status: false};
-      try {
-        res = runArangodRecovery(params, useEncryption);
+        results[test] = runArangodRecovery(params, useEncryption);
+        results.status = results.status && results[test].status;
       } catch (err) {
         results[test] = {
           failed: 1,
@@ -325,19 +316,6 @@ function _recovery (options, recoveryTests) {
         return results;
       }
 
-      results[test] = trs.readTestResult(
-        params.temp_path,
-        {
-          status: false
-        },
-        test
-      );
-      if (!res.status) {
-        results.status = false;
-        results[test].status = false;
-        results[test].failed = 1;
-        results[test].message += " - " + res.message;
-      }
       params.instanceManager.destructor(results[test].status);
       if (results[test].status) {
         if (params.keyDir !== "") {

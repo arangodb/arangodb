@@ -71,6 +71,7 @@ function getTestCode(file, options, instanceManager) {
 }
 
 function readTestResult(path, rc, testCase) {
+  print(path)
   const jsonFN = fs.join(path, 'testresult.json');
   let buf;
   try {
@@ -367,3 +368,4 @@ exports.runLocalInArangoshRunner = runLocalInArangoshRunner;
 exports.shellv8Runner = shellv8Runner;
 exports.readTestResult = readTestResult;
 exports.writeTestResult = writeTestResult;
+exports.getTestCode = getTestCode;

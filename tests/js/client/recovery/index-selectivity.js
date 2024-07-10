@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertTrue, assertFalse */
+/* global runSetup assertEqual, assertTrue, assertFalse */
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
@@ -29,9 +29,9 @@ const jsunity = require('jsunity');
   
 const cn = 'UnitTestsRecovery';
 
-function runSetup () {
+if (runSetup === true) {
   'use strict';
-  internal.debugClearFailAt();
+  global.instanceManager.debugClearFailAt();
 
   let c1 = db._create(cn + '1');
   c1.ensureIndex({ type: "persistent", fields: ["a"], estimates: true });
@@ -44,6 +44,7 @@ function runSetup () {
 
   c1.insert({ _key: 'crashme' }, true);
 
+  return 0;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -82,13 +83,5 @@ function recoverySuite () {
   };
 }
 
-function main (argv) {
-  'use strict';
-  if (argv[1] === 'setup') {
-    runSetup();
-    return 0;
-  } else {
-    jsunity.run(recoverySuite);
-    return jsunity.writeDone().status ? 0 : 1;
-  }
-}
+jsunity.run(recoverySuite);
+return jsunity.done();

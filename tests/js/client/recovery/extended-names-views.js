@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused: false */
-/* global assertTrue, assertNotEqual, NORMALIZE_STRING */
+/* global runSetup assertTrue, assertNotEqual, NORMALIZE_STRING */
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
@@ -31,10 +31,11 @@ const ArangoView = require("@arangodb").ArangoView;
 
 const extendedName = "Десятую Международную Конференцию по 💩🍺🌧t⛈c🌩_⚡🔥💥🌨";
 
-function runSetup () {
+if (runSetup === true) {
   'use strict';
 
   db._createView(extendedName, "arangosearch", {});
+  return 0;
 }
 
 function recoverySuite () {
@@ -58,13 +59,5 @@ function recoverySuite () {
   };
 }
 
-function main (argv) {
-  'use strict';
-  if (argv[1] === 'setup') {
-    runSetup();
-    return 0;
-  } else {
-    jsunity.run(recoverySuite);
-    return jsunity.writeDone().status ? 0 : 1;
-  }
-}
+jsunity.run(recoverySuite);
+return jsunity.done();

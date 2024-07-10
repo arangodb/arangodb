@@ -192,7 +192,10 @@ class instanceManager {
     this.arangods.forEach(arangod => {arangod.debugSetFailAt(failurePoint);});
   }
   debugRemoveFailAt(failurePoint) {
-    this.arangods.forEach(arangod => {arangod.debugRemoveFailAt(failurePoint);});
+    this.arangods.forEach(arangod => {arangod.debugClearFailAt(failurePoint);});
+  }
+  debugClearFailAt(failurePoint) {
+    this.arangods.forEach(arangod => {arangod.debugClearFailAt(failurePoint);});
   }
   debugTerminate() {
     this.arangods.forEach(arangod => {arangod.debugTerminate();});

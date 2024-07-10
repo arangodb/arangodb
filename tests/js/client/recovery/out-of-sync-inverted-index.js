@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global fail, assertTrue, assertFalse, assertEqual */
+/* global runSetup fail, assertTrue, assertFalse, assertEqual */
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
@@ -28,18 +28,18 @@ const internal = require('internal');
 const errors = internal.errors;
 const jsunity = require('jsunity');
 
-function runSetup () {
+if (runSetup === true) {
   'use strict';
-  internal.debugClearFailAt();
+  global.instanceManager.debugClearFailAt();
 
   let c = db._create('UnitTestsRecovery1');
   c.ensureIndex({ type: 'inverted', name: 'inverted', fields: [{name: 'value', analyzer: 'identity'}] });
 
   // set failure point that makes commit fail
-  internal.debugSetFailAt("ArangoSearch::FailOnCommit");
+  global.instanceManager.debugSetFailAt("ArangoSearch::FailOnCommit");
       
   // set failure point that makes querying failed links go wrong
-  internal.debugSetFailAt("ArangoSearch::FailQueriesOnOutOfSync");
+  global.instanceManager.debugSetFailAt("ArangoSearch::FailQueriesOnOutOfSync");
 
   c.insert({ value: 'testi' });
 
@@ -55,7 +55,7 @@ function runSetup () {
   }
 
   // remove failure points 
-  internal.debugClearFailAt();
+  global.instanceManager.debugClearFailAt();
   
   c = db._create('UnitTestsRecovery2');
   c.ensureIndex({ type: 'inverted', name: 'inverted', fields: [{name: 'value', analyzer: 'identity'}] });
@@ -63,6 +63,7 @@ function runSetup () {
   c.insert({ value: 'testi' });
   db._query("FOR doc IN UnitTestsRecovery2 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.value == '1' RETURN doc");
 
+  return 0;
 }
 
 function recoverySuite () {
@@ -76,7 +77,7 @@ function recoverySuite () {
       assertEqual(idx.error, "outOfSync");
       
       // set failure point that makes querying failed links go wrong
-      internal.debugSetFailAt("ArangoSearch::FailQueriesOnOutOfSync");
+      global.instanceManager.debugSetFailAt("ArangoSearch::FailQueriesOnOutOfSync");
   
       // query must fail because index is marked as out of sync
       try {
@@ -94,7 +95,7 @@ function recoverySuite () {
       assertEqual(0, result.length);
       
       // clear all failure points
-      internal.debugClearFailAt();
+      global.instanceManager.debugClearFailAt();
 
       result = db._query("FOR doc IN UnitTestsRecovery1 OPTIONS {indexHint: 'inverted', waitForSync: true} FILTER doc.value == '1' RETURN doc").toArray();
       assertEqual([], result);
@@ -103,13 +104,5 @@ function recoverySuite () {
   };
 }
 
-function main (argv) {
-  'use strict';
-  if (argv[1] === 'setup') {
-    runSetup();
-    return 0;
-  } else {
-    jsunity.run(recoverySuite);
-    return jsunity.writeDone().status ? 0 : 1;
-  }
-}
+jsunity.run(recoverySuite);
+return jsunity.done();

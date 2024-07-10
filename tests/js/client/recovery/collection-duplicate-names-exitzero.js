@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertNull, assertTrue, assertFalse */
+/* global runSetup assertEqual, assertNull, assertTrue, assertFalse */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -31,7 +31,7 @@ var internal = require('internal');
 var jsunity = require('jsunity');
 
 
-function runSetup () {
+if (runSetup === true) {
   db._drop('UnitTestsRecovery');
   db._create('UnitTestsRecovery');
 
@@ -67,12 +67,5 @@ function recoverySuite () {
 // / @brief executes the test suite
 // //////////////////////////////////////////////////////////////////////////////
 
-function main (argv) {
-  'use strict';
-  if (argv[1] === 'setup') {
-    return runSetup();
-  } else {
-    jsunity.run(recoverySuite);
-    return jsunity.writeDone().status ? 0 : 1;
-  }
-}
+jsunity.run(recoverySuite);
+return jsunity.done();

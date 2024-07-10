@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused: false */
-/* global assertTrue, assertFalse, assertEqual, assertMatch */
+/* global runSetup assertTrue, assertFalse, assertEqual, assertMatch */
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
@@ -28,9 +28,9 @@ var db = require('@arangodb').db;
 var internal = require('internal');
 var jsunity = require('jsunity');
 
-function runSetup () {
+if (runSetup === true) {
   'use strict';
-  internal.debugClearFailAt();
+  global.instanceManager.debugClearFailAt();
 
   var c;
   db._drop('UnitTestsRecovery1');
@@ -47,7 +47,7 @@ function runSetup () {
   c.save({ name: 'b' });
   c.save({ name: 'c' });
 
-  internal.debugSetFailAt("RocksDBSettingsManagerSync"); 
+  global.instanceManager.debugSetFailAt("RocksDBSettingsManagerSync"); 
   
   db._drop('UnitTestsRecovery3');
   c = db._create('UnitTestsRecovery3', { keyOptions: { type: 'uuid' } });
@@ -73,6 +73,7 @@ function runSetup () {
     }
   }
 
+  return 0;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -130,13 +131,5 @@ function recoverySuite () {
 // / @brief executes the test suite
 // //////////////////////////////////////////////////////////////////////////////
 
-function main (argv) {
-  'use strict';
-  if (argv[1] === 'setup') {
-    runSetup();
-    return 0;
-  } else {
-    jsunity.run(recoverySuite);
-    return jsunity.writeDone().status ? 0 : 1;
-  }
-}
+jsunity.run(recoverySuite);
+return jsunity.done();
