@@ -386,7 +386,7 @@ function debugDumpViews () {
     },
 
     testDebugDumpWithViews: function () {
-      let query = `for d in view search ANALYZER(d.value1 == "31" or d.value1 == "1", "my_delimiter") return d `;
+      let query = `for d in view search ANALYZER(d.value1 == "31" or d.value1 == "1", "my_delimiter") OPTIONS {waitForSync: true } return d `;
       let res = db._query(query).toArray();
       assertEqual(res.length, 2);
       explainer.debugDump(fileName, query, {}, {examples: 50, anonymize: false});
