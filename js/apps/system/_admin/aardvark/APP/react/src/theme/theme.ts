@@ -79,7 +79,7 @@ export const theme = extendTheme({
               }
             };
           }
-          return defaultTheme.components.Tabs.variants.line;
+          return defaultTheme.components.Tabs.variants?.line;
         }
       }
     },
@@ -136,7 +136,7 @@ export const theme = extendTheme({
               }
             };
           }
-          return defaultTheme.components.Button.variants.solid(props);
+          return defaultTheme.components.Button.variants?.solid(props);
         }
       }
     },
