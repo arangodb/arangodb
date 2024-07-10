@@ -96,8 +96,6 @@ void Variable::toVelocyPack(velocypack::Builder& builder,
   if (type() == Variable::Type::Const) {
     builder.add(VPackValue("constantValue"));
     _constantValue.toVelocyPack(nullptr, builder, /*allowUnindexed*/ true);
-  } else if (type() == Variable::Type::BindParameter) {
-    builder.add("bindParameter", VPackValue(_bindParameterName));
   }
 }
 
@@ -106,6 +104,9 @@ void Variable::toVelocyPackCommon(velocypack::Builder& builder) const {
   builder.add("name", VPackValue(name));
   builder.add("isFullDocumentFromCollection",
               VPackValue(isFullDocumentFromCollection));
+  if (type() == Variable::Type::BindParameter) {
+    builder.add("bindParameter", VPackValue(_bindParameterName));
+  }
 }
 
 /// @brief replace a variable by another

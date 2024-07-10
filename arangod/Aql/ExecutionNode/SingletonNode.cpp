@@ -47,7 +47,7 @@ SingletonNode::SingletonNode(ExecutionPlan* plan,
   if (auto bindVars = base.get("bindParameterVariables"); !bindVars.isNone()) {
     for (auto [key, value] : VPackObjectIterator(bindVars)) {
       _bindParameterOutVars[key.copyString()] =
-          Variable::varFromVPack(plan->getAst(), base, key.stringView());
+          Variable::varFromVPack(plan->getAst(), bindVars, key.stringView());
     }
   }
 }

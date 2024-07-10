@@ -97,7 +97,8 @@ RestAqlHandler::~RestAqlHandler() {
 //      <queryId: {nodes: [ <nodes>]}>
 //    },
 //    traverserEngines: [ <infos for traverser engines> ],
-//    variables: [ <variables> ]
+//    variables: [ <variables> ],
+//    bindParameters: { param : value ... }
 //  }
 futures::Future<futures::Unit> RestAqlHandler::setupClusterQuery() {
   // We should not intentionally call this method
@@ -209,6 +210,14 @@ futures::Future<futures::Unit> RestAqlHandler::setupClusterQuery() {
     co_return;
   }
 
+  std::shared_ptr<VPackBuilder> bindParameter = nullptr;
+  {
+    VPackSlice bindParameterSlice = querySlice.get("bindParameters");
+    if (bindParameterSlice.isObject()) {
+      bindParameter = std::make_shared<VPackBuilder>(bindParameterSlice);
+    }
+  }
+
   LOG_TOPIC("f9e30", DEBUG, arangodb::Logger::AQL)
       << "Setting up cluster AQL with " << querySlice.toJson();
 
@@ -314,11 +323,14 @@ futures::Future<futures::Unit> RestAqlHandler::setupClusterQuery() {
 
   auto origin = transaction::OperationOriginAQL{"running AQL query"};
 
+  TRI_ASSERT(bindParameter == nullptr || options.cachePlan)
+      << "Queries running in cluster only have bind variables attached, if "
+         "plan caching is enabled";
   double const ttl = options.ttl;
   // creates a StandaloneContext or a leased context
   auto q = ClusterQuery::create(
-      clusterQueryId, co_await createTransactionContext(access, origin),
-      std::move(options));
+      clusterQueryId, std::move(bindParameter),
+      co_await createTransactionContext(access, origin), std::move(options));
   TRI_ASSERT(clusterQueryId == 0 || clusterQueryId == q->id());
 
   VPackBufferUInt8 buffer;

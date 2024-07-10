@@ -31,6 +31,7 @@ const jsunity = require("jsunity");
 const helper = require("@arangodb/aql-helper");
 
 const database = "BindParameterVarsTestDb";
+const collection = "MyTestCollection";
 
 function aqlBindParameterVariableTest() {
 
@@ -42,7 +43,7 @@ function aqlBindParameterVariableTest() {
       db._createDatabase(database);
       db._useDatabase(database);
 
-      const C = db._create("C");
+      const C = db._create(collection);
       let docs = [];
       for (let i = 0; i < 100; i++) {
         docs.push({_key: `v${i}`, i, j: 2*i});
@@ -118,6 +119,27 @@ function aqlBindParameterVariableTest() {
 
       const result = stmt.execute().toArray();
       assertEqual(result, [4, 8, 12, 16, 20]);
+    },
+
+    testFilterDocumentsBindParameter: function () {
+      const query = `
+        FOR doc IN ${collection}
+        FILTER doc.i % @${bind} == 0
+        SORT doc.i
+        LIMIT 6
+        RETURN doc.i
+      `;
+      const stmt = db._createStatement({query, bindVars: {param: 4}, options: {cachePlan: true}});
+      const plan = stmt.explain().plan;
+
+      const singleton = plan.nodes[0];
+      assertEqual(singleton.type, "SingletonNode");
+
+      const bindParameter = singleton.bindParameterVariables;
+      assertEqual(Object.keys(bindParameter), [bind]);
+
+      const result = stmt.execute().toArray();
+      assertEqual(result, [0, 4, 8, 12, 16, 20]);
     }
 
   };
