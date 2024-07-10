@@ -130,6 +130,19 @@ function optimizerPushLimitIntoIndexTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test case with condition not on index attribute
+////////////////////////////////////////////////////////////////////////////////
+    testPushLimitIntoIndexRuleConditionNotOnIndexAttribute : function () {
+      let query = "FOR i IN " + c.name() + " FILTER i.foo IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created LIMIT 100 RETURN i._key";
+
+      let plan = db._createStatement(query).explain().plan;
+      let indexNodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
+
+      assertEqual(0, indexNodes.length);
+      assertEqual(-1, plan.rules.indexOf("push-limit-into-index"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test case with double loop
 ////////////////////////////////////////////////////////////////////////////////
     testPushLimitIntoIndexRuleDoubleLoop : function () {
@@ -183,13 +196,16 @@ function optimizerPushLimitIntoIndexTestSuite () {
 /// @brief test results are same with and without rule test
 ////////////////////////////////////////////////////////////////////////////////
     testPushLimitIntoIndexRuleResults: function () {
+     const opts = { optimizer: { rules: ["-push-limit-into-index"] } };
      let queries = [
-        //"FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created ASC LIMIT 100 RETURN i._key",
-        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created DESC LIMIT 100 RETURN i.date_created",
+        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created ASC LIMIT 100 RETURN i._key",
+        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created DESC LIMIT 100 RETURN i._key",
+        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created DESC LIMIT 8, 100 RETURN i._key",
+        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.license, i.date_created DESC LIMIT 0, 100 RETURN i._key",
+        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.license, i.date_created DESC LIMIT 0, 100 RETURN i._key",
       ];
  
       for (let i = 0; i < queries.length; ++i) {
-        const opts = { optimizer: { rules: ["-push-limit-into-index"] } };
         let resultsWithoutRule = db._query(queries[i], null, opts).toArray();
         let resultsWithRule = db._query(queries[i]).toArray();
 
@@ -199,6 +215,118 @@ function optimizerPushLimitIntoIndexTestSuite () {
   };
 }
 
+function optimizerPushLimitIntoIndexWithoutIndexTestSuite () {
+  let c;
+  return {
+    setUpAll : function () {
+      db._drop("UnitTestsCollection");
+      c = db._create("UnitTestsCollection"); 
+      let docs = []; 
+      for (let i = 0; i < 1000; ++i) { 
+        docs.push({ 
+          _key: "test" + i, 
+          date_created: "20240613" + i, 
+          license: (i <= 700 ? "cc-by-sa" : (i < 900 ? "cc-by-nc" : "foo")) 
+        }); 
+      }
+      c.insert(docs);
+    },
+    tearDownAll : function () {
+      db._drop("UnitTestsCollection");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test case rule cannot trigger since there is no index in place
+////////////////////////////////////////////////////////////////////////////////
+    testPushLimitIntoIndexRuleWithoutIndex: function () {
+     let queries = [
+        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created ASC LIMIT 100 RETURN i._key",
+        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created DESC LIMIT 100 RETURN i._key",
+      ];
+ 
+      for (let i = 0; i < queries.length; ++i) {
+        let plan = db._createStatement(queries[i]).explain().plan;
+        let indexNodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
+
+        assertTrue(indexNodes.length <= 1);
+        if (indexNodes.length === 1) {
+          assertEqual("IndexNode", indexNodes[0].type);
+          assertEqual(indexNodes[0].limit, 0);
+          assertEqual(-1, plan.rules.indexOf("push-limit-into-index"));
+        }
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test case reverse index exists
+////////////////////////////////////////////////////////////////////////////////
+    testPushLimitIntoIndexRuleWithReverseIndex: function () {
+     c.ensureIndex({ name: "date-license", type: "persistent", fields: ["date_created", "license"] }); 
+     let queries = [
+        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created ASC LIMIT 100 RETURN i._key",
+        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created DESC LIMIT 100 RETURN i._key",
+      ];
+ 
+      for (let i = 0; i < queries.length; ++i) {
+        let plan = db._createStatement(queries[i]).explain().plan;
+        let indexNodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
+
+        assertTrue(indexNodes.length <= 1);
+        if (indexNodes.length === 1) {
+          assertEqual("IndexNode", indexNodes[0].type);
+          assertEqual(indexNodes[0].limit, 0);
+          assertEqual(-1, plan.rules.indexOf("push-limit-into-index"));
+        }
+      }
+    },
+  };
+}
+
+function optimizerPushLimitIntoIndexMultipleIndexesTestSuite () {
+  let c;
+  return {
+    setUpAll : function () {
+      db._drop("UnitTestsCollection");
+      c = db._create("UnitTestsCollection"); 
+      let docs = []; 
+      for (let i = 0; i < 1000; ++i) { 
+        docs.push({ 
+          _key: "test" + i, 
+          date_created: "20240613" + i, 
+          license: (i <= 700 ? "cc-by-sa" : (i < 900 ? "cc-by-nc" : "foo")) 
+        }); 
+      }
+      c.insert(docs);
+      c.ensureIndex({ name: "license-date", type: "persistent", fields: ["license", "date_created"] }); 
+      c.ensureIndex({ name: "date-license", type: "persistent", fields: ["date_created", "license"] }); 
+    },
+    tearDownAll : function () {
+      db._drop("UnitTestsCollection");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test case rule cannot trigger since there is no index in place
+////////////////////////////////////////////////////////////////////////////////
+    testPushLimitIntoIndexRuleWithMultipleIndexes: function () {
+     let queries = [
+        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created ASC LIMIT 100 RETURN i._key",
+        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created DESC LIMIT 100 RETURN i._key",
+      ];
+ 
+      for (let i = 0; i < queries.length; ++i) {
+        let plan = db._createStatement(queries[i]).explain().plan;
+        let indexNode = plan.nodes[1];
+
+        assertEqual("IndexNode", indexNode.type);
+        assertEqual(indexNode.limit, 100);
+        assertNotEqual(-1, plan.rules.indexOf("push-limit-into-index"));
+      }
+    },
+  };
+}
+
 jsunity.run(optimizerPushLimitIntoIndexTestSuite);
+jsunity.run(optimizerPushLimitIntoIndexWithoutIndexTestSuite);
+jsunity.run(optimizerPushLimitIntoIndexMultipleIndexesTestSuite);
 
 return jsunity.done();
