@@ -473,10 +473,11 @@ jobs:
           condition:
             not:
               equal: [ << pipeline.parameters.sanitizer >>, ""]
-          name: Symbolizer server
           steps:
-            - run: ./utils/llvm-symbolizer-server.py
-          background: true
+            - run:
+                name: Symbolizer server
+                command: ./utils/llvm-symbolizer-server.py
+                background: true
       - run:
           name: Run << parameters.suiteName >> tests
           # we increase the no_output_timeout so our own timeout mechanism can kick in and gather more information
