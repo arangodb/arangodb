@@ -2219,6 +2219,7 @@ void Ast::injectBindParametersSecondStage(BindParameters& parameters) {
       }
       return node;
     };
+
     _root = traverseAndModify(_root, func);
   }
 }
@@ -2258,6 +2259,7 @@ AstNode* Ast::replaceValueBindParameter(AstNode* node,
   } else {
     // bind parameter containing a value literal. not processed before.
     node = nodeFromVPack(value, true);
+
     if (node != nullptr) {
       if (constantParameter) {
         // already mark node as constant here if parameters are constant

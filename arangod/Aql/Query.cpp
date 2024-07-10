@@ -468,12 +468,10 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   // doc.@attr).
   _ast->injectBindParametersFirstStage(_bindParameters, this->resolver());
 
-  bool constexpr enableCaching = true;
-
-  // put in value bind parameters.
-  if (enableCaching) {
+  if (_queryOptions.cachePlan) {
     _ast->replaceBindParametersWithVariables(_bindParameters);
   } else {
+    // put in value bind parameters.
     _ast->injectBindParametersSecondStage(_bindParameters);
   }
 
@@ -1084,7 +1082,12 @@ QueryResult Query::explain() {
     // put in bind parameters
     parser.ast()->injectBindParametersFirstStage(_bindParameters,
                                                  this->resolver());
-    parser.ast()->injectBindParametersSecondStage(_bindParameters);
+    if (_queryOptions.cachePlan) {
+      _ast->replaceBindParametersWithVariables(_bindParameters);
+    } else {
+      // put in value bind parameters.
+      _ast->injectBindParametersSecondStage(_bindParameters);
+    }
     _bindParameters.validateAllUsed();
 
     // optimize and validate the ast
