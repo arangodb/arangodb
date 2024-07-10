@@ -1,6 +1,49 @@
 devel
 -----
 
+* Support array and object destructuring for FOR loops that refer to simple
+  expressions or collections.
+
+  The following is now possible to write in AQL:
+
+      FOR {value1, value2} IN collection
+        FILTER value1 == @value1 && value2 == @value2
+        RETURN value1
+
+  This destructures every single object from `collection` and extracts its
+  `value1` and `value2` attributes. It is equivalent to writing:
+
+      FOR doc IN collection
+        FILTER doc.value1 == @value1 && doc.value2 == @value2
+        RETURN doc.value1
+
+  It is also possible to destructure array inputs into separate variables.
+  For example, the following query
+
+      FOR doc IN collection 
+        FOR [key, value] IN ENTRIES(doc) 
+        RETURN {key, value}
+
+  can be used to destructure all members from the expression `ENTRIES(doc)`
+  and assign the first member to the variable `key`, and the second member
+  to the variable `value`.
+
+  This is equivalent to writing:
+
+      FOR doc IN collection 
+        FOR entry IN ENTRIES(doc) 
+          LET key = entry[0]
+          LET value = entry[1]
+          RETURN {key, value}
+
+  Accessing an undefined object attribute or an undefined array members results
+  in a value of `null` being produced. Applying destructuring on any 
+  incompatible input types produces `null` as well.
+
+  Destructuring is not supported for view-based FOR loops, for traversal FOR
+  loops, SHORTEST_PATH FOR loops, K_PATHS FOR loops, K_SHORTEST_PATHS FOR loops
+  nor ALL_SHORTEST_PATHS FOR loops.
+
 * Fix an "invalid document type" exception when using the AQL ENTRIES function
   on a database document or edge.
 

@@ -393,6 +393,9 @@ class Ast {
   /// @brief create an AST calculated object element node
   AstNode* createNodeCalculatedObjectElement(AstNode const*, AstNode const*);
 
+  /// @brief create an AST destructuring node
+  AstNode* createNodeDestructuring(AstNode const* value, bool isObject);
+
   /// @brief create an AST with collections node
   AstNode* createNodeWithCollections(AstNode const*,
                                      CollectionNameResolver const& resolver);
