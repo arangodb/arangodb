@@ -464,7 +464,7 @@ jobs:
             echo "======"
             while true; do
               sleep 5
-              ps v | grep "arangod " | while read line ; do echo "$(date +"%T") > $line" ; done ;
+              ps v | grep "arangod " | grep -v grep | while read line ; do echo "$(date +"%T") > $line" ; done ;
               echo "======"
             done
           background: true
