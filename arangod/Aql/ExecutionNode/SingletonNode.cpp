@@ -45,7 +45,7 @@ SingletonNode::SingletonNode(ExecutionPlan* plan,
                              arangodb::velocypack::Slice base)
     : ExecutionNode(plan, base) {
   if (auto bindVars = base.get("bindParameterVariables"); !bindVars.isNone()) {
-    for (auto [key, value] : VPackObjectIterator(bindVars)) {
+    for (auto [key, value] : VPackObjectIterator(bindVars, true)) {
       _bindParameterOutVars[key.copyString()] =
           Variable::varFromVPack(plan->getAst(), bindVars, key.stringView());
     }

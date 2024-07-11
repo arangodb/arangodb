@@ -210,11 +210,11 @@ futures::Future<futures::Unit> RestAqlHandler::setupClusterQuery() {
     co_return;
   }
 
-  std::shared_ptr<VPackBuilder> bindParameter = nullptr;
+  std::shared_ptr<VPackBuilder> bindParameters = nullptr;
   {
-    VPackSlice bindParameterSlice = querySlice.get("bindParameters");
-    if (bindParameterSlice.isObject()) {
-      bindParameter = std::make_shared<VPackBuilder>(bindParameterSlice);
+    VPackSlice bindParametersSlice = querySlice.get("bindParameters");
+    if (bindParametersSlice.isObject()) {
+      bindParameters = std::make_shared<VPackBuilder>(bindParametersSlice);
     }
   }
 
@@ -323,13 +323,13 @@ futures::Future<futures::Unit> RestAqlHandler::setupClusterQuery() {
 
   auto origin = transaction::OperationOriginAQL{"running AQL query"};
 
-  TRI_ASSERT(bindParameter == nullptr || options.optimizePlanForCaching)
+  TRI_ASSERT(bindParameters == nullptr || options.optimizePlanForCaching)
       << "Queries running in cluster only have bind variables attached, if "
          "plan caching is enabled";
   double const ttl = options.ttl;
   // creates a StandaloneContext or a leased context
   auto q = ClusterQuery::create(
-      clusterQueryId, std::move(bindParameter),
+      clusterQueryId, std::move(bindParameters),
       co_await createTransactionContext(access, origin), std::move(options));
   TRI_ASSERT(clusterQueryId == 0 || clusterQueryId == q->id());
 
