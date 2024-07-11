@@ -238,8 +238,8 @@ class Logger {
   static LogGroup& defaultLogGroup();
   static LogLevel logLevel();
   static std::unordered_set<std::string> structuredLogParams();
-  static std::vector<std::pair<std::string, LogLevel>> logLevelTopics();
-  static std::vector<std::pair<std::string, LogLevel>> const&
+  static std::vector<std::pair<TopicName, LogLevel>> logLevelTopics();
+  static std::vector<std::pair<TopicName, LogLevel>> const&
   defaultLogLevelTopics();
   static void setLogLevel(LogLevel);
   static void setLogLevel(std::string const&);
@@ -286,7 +286,7 @@ class Logger {
   static bool translateLogLevel(std::string const& l, bool isGeneral,
                                 LogLevel& level) noexcept;
 
-  static std::string const& translateLogLevel(LogLevel) noexcept;
+  static std::string_view translateLogLevel(LogLevel) noexcept;
 
   static void log(char const* logid, char const* function, char const* file,
                   int line, LogLevel level, size_t topicId,
@@ -320,7 +320,7 @@ class Logger {
 
   // default log levels, captured once at startup. these can be used
   // to reset the log levels back to defaults.
-  static std::vector<std::pair<std::string, LogLevel>> _defaultLogLevelTopics;
+  static std::vector<std::pair<TopicName, LogLevel>> _defaultLogLevelTopics;
 
   // these variables must be set before calling initialized
   static std::unordered_set<std::string>

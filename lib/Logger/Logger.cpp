@@ -63,14 +63,14 @@ using namespace arangodb::basics;
 using namespace arangodb::structuredParams;
 
 namespace {
-static std::string const DEFAULT = "DEFAULT";
-static std::string const FATAL = "FATAL";
-static std::string const ERR = "ERROR";
-static std::string const WARN = "WARNING";
-static std::string const INFO = "INFO";
-static std::string const DEBUG = "DEBUG";
-static std::string const TRACE = "TRACE";
-static std::string const UNKNOWN = "UNKNOWN";
+static constexpr std::string_view DEFAULT = "DEFAULT";
+static constexpr std::string_view FATAL = "FATAL";
+static constexpr std::string_view ERR = "ERROR";
+static constexpr std::string_view WARN = "WARNING";
+static constexpr std::string_view INFO = "INFO";
+static constexpr std::string_view DEBUG = "DEBUG";
+static constexpr std::string_view TRACE = "TRACE";
+static constexpr std::string_view UNKNOWN = "UNKNOWN";
 
 class DefaultLogGroup final : public LogGroup {
   std::size_t id() const override { return 0; }
@@ -115,7 +115,7 @@ std::function<void()> Logger::_onDroppedMessage;
 
 // default log levels, captured once at startup. these can be used
 // to reset the log levels back to defaults.
-std::vector<std::pair<std::string, LogLevel>> Logger::_defaultLogLevelTopics{};
+std::vector<std::pair<TopicName, LogLevel>> Logger::_defaultLogLevelTopics{};
 
 std::unordered_set<std::string> Logger::_structuredLogParams({});
 arangodb::basics::ReadWriteLock Logger::_structuredParamsLock;
@@ -166,11 +166,11 @@ std::unordered_set<std::string> Logger::structuredLogParams() {
   return _structuredLogParams;
 }
 
-std::vector<std::pair<std::string, LogLevel>> Logger::logLevelTopics() {
+std::vector<std::pair<TopicName, LogLevel>> Logger::logLevelTopics() {
   return LogTopic::logLevelTopics();
 }
 
-std::vector<std::pair<std::string, LogLevel>> const&
+std::vector<std::pair<TopicName, LogLevel>> const&
 Logger::defaultLogLevelTopics() {
   return _defaultLogLevelTopics;
 }
@@ -494,7 +494,7 @@ bool Logger::translateLogLevel(std::string const& l, bool isGeneral,
   return true;
 }
 
-std::string const& Logger::translateLogLevel(LogLevel level) noexcept {
+std::string_view Logger::translateLogLevel(LogLevel level) noexcept {
   switch (level) {
     case LogLevel::ERR:
       return ERR;

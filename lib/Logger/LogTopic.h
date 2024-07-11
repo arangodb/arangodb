@@ -32,6 +32,9 @@
 #include "Logger/LogLevel.h"
 
 namespace arangodb {
+
+using TopicName = std::string_view;
+
 class LogTopic {
   LogTopic& operator=(LogTopic const&) = delete;
 
@@ -39,12 +42,12 @@ class LogTopic {
   static constexpr size_t MAX_LOG_TOPICS = 64;
 
   // pseudo topic to address all log topics
-  static const std::string ALL;
+  static constexpr TopicName ALL = "all";
 
-  static std::vector<std::pair<std::string, LogLevel>> logLevelTopics();
-  static void setLogLevel(std::string const&, LogLevel);
-  static LogTopic* lookup(std::string const&);
-  static std::string_view lookup(size_t topicId);
+  static std::vector<std::pair<TopicName, LogLevel>> logLevelTopics();
+  static void setLogLevel(TopicName, LogLevel);
+  static LogTopic* lookup(TopicName);
+  static TopicName lookup(size_t topicId);
 
   virtual ~LogTopic() = default;
 
@@ -64,7 +67,7 @@ class LogTopic {
   }
 
   size_t id() const { return _id; }
-  std::string const& name() const { return _name; }
+  TopicName name() const { return _name; }
   std::string const& displayName() const { return _displayName; }
   LogLevel level() const { return _level.load(std::memory_order_relaxed); }
 
@@ -73,10 +76,10 @@ class LogTopic {
   }
 
  private:
-  LogTopic(std::string const& name, LogLevel level, size_t id);
+  LogTopic(TopicName name, LogLevel level, size_t id);
 
   size_t const _id;
-  std::string const _name;
+  TopicName _name;
   std::string _displayName;
   std::atomic<LogLevel> _level;
 };
