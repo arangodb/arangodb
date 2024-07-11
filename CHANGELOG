@@ -5,6 +5,8 @@ devel
   into index iteration and can optimize the query execution when compound
   index is used along with SORT and LIMIT clauses.
 
+* FE-423: Add a progress bar to reflect an index creation process.
+
 * Remove unused "mmap" log topic.
 
 * Support array and object destructuring for FOR loops that refer to simple
