@@ -50,7 +50,7 @@ RocksDBSstFileMethods::RocksDBSstFileMethods(
       _ridx(&ridx),
       _cf(ridx.columnFamily()),
       _sstFileWriter(rocksdb::EnvOptions(dbOptions), dbOptions,
-                     ridx.columnFamily()->GetComparator(), ridx.columnFamily()),
+                     ridx.columnFamily()),
       _idxPath(idxPath),
       _usageTracker(usageTracker),
       _bytesWrittenToDir(0) {}

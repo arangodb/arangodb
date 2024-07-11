@@ -374,6 +374,48 @@ void TraversalNode::replaceVariables(
       }
     }
   }
+
+  if (_condition) {
+    _condition->replaceVariables(replacements);
+  }
+
+  if (_postFilterExpression != nullptr) {
+    _postFilterExpression->replaceVariables(replacements);
+  }
+
+  // determine new set of variables used by post filters
+  _postFilterVariables.clear();
+  for (auto& it : _postFilterConditions) {
+    it = Ast::replaceVariables(const_cast<AstNode*>(it), replacements, true);
+    // repopulate _postFilterVariables
+    Ast::getReferencedVariables(it, _postFilterVariables);
+  }
+
+  for (auto& it : _globalEdgeConditions) {
+    it = Ast::replaceVariables(const_cast<AstNode*>(it), replacements, true);
+  }
+
+  for (auto& it : _globalVertexConditions) {
+    it = Ast::replaceVariables(const_cast<AstNode*>(it), replacements, true);
+  }
+
+  for (auto& it : _edgeConditions) {
+    if (it.second != nullptr) {
+      it.second->replaceVariables(replacements);
+    }
+  }
+
+  for (auto& it : _vertexConditions) {
+    it.second = Ast::replaceVariables(it.second, replacements, true);
+  }
+
+  if (_fromCondition != nullptr) {
+    _fromCondition = Ast::replaceVariables(_fromCondition, replacements, true);
+  }
+
+  if (_toCondition != nullptr) {
+    _toCondition = Ast::replaceVariables(_toCondition, replacements, true);
+  }
 }
 
 void TraversalNode::replaceAttributeAccess(
@@ -395,6 +437,66 @@ void TraversalNode::replaceAttributeAccess(
   if (_pruneExpression != nullptr) {
     _pruneExpression->replaceAttributeAccess(searchVariable, attribute,
                                              replaceVariable);
+    // determine new set of variables used by prune expression
+    VarSet variables;
+    _pruneExpression->variables(variables);
+    _pruneVariables = std::move(variables);
+  }
+
+  if (_condition && self != this) {
+    _condition->replaceAttributeAccess(searchVariable, attribute,
+                                       replaceVariable);
+  }
+
+  if (_postFilterExpression != nullptr) {
+    _postFilterExpression->replaceAttributeAccess(searchVariable, attribute,
+                                                  replaceVariable);
+  }
+
+  // determine new set of variables used by post filters
+  _postFilterVariables.clear();
+  for (auto& it : _postFilterConditions) {
+    it =
+        Ast::replaceAttributeAccess(_plan->getAst(), const_cast<AstNode*>(it),
+                                    searchVariable, attribute, replaceVariable);
+    // repopulate _postFilterVariables
+    Ast::getReferencedVariables(it, _postFilterVariables);
+  }
+
+  for (auto& it : _globalEdgeConditions) {
+    it =
+        Ast::replaceAttributeAccess(_plan->getAst(), const_cast<AstNode*>(it),
+                                    searchVariable, attribute, replaceVariable);
+  }
+
+  for (auto& it : _globalVertexConditions) {
+    it =
+        Ast::replaceAttributeAccess(_plan->getAst(), const_cast<AstNode*>(it),
+                                    searchVariable, attribute, replaceVariable);
+  }
+
+  for (auto& it : _edgeConditions) {
+    if (it.second != nullptr) {
+      it.second->replaceAttributeAccess(_plan->getAst(), searchVariable,
+                                        attribute, replaceVariable);
+    }
+  }
+
+  for (auto& it : _vertexConditions) {
+    it.second = Ast::replaceAttributeAccess(
+        _plan->getAst(), it.second, searchVariable, attribute, replaceVariable);
+  }
+
+  if (_fromCondition != nullptr) {
+    _fromCondition =
+        Ast::replaceAttributeAccess(_plan->getAst(), _fromCondition,
+                                    searchVariable, attribute, replaceVariable);
+  }
+
+  if (_toCondition != nullptr) {
+    _toCondition =
+        Ast::replaceAttributeAccess(_plan->getAst(), _toCondition,
+                                    searchVariable, attribute, replaceVariable);
   }
 }
 
@@ -572,7 +674,6 @@ std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(
   std::vector<IndexAccessor> indexAccessors{};
   auto ast = _plan->getAst();
   size_t numEdgeColls = _edgeColls.size();
-  bool onlyEdgeIndexes = false;
 
   auto calculateMemberToUpdate = [&](std::string const& memberString,
                                      std::optional<size_t>& memberToUpdate,
@@ -642,14 +743,19 @@ std::vector<IndexAccessor> TraversalNode::buildIndexAccessor(
     // actual value does not matter much. 1000 has historically worked fine.
     constexpr size_t itemsInCollection = 1000;
 
+    // use most specific index hint here
+    auto indexHint =
+        hint().getFromNested(dir == TRI_EDGE_IN ? "inbound" : "outbound",
+                             _edgeColls[i]->name(), IndexHint::BaseDepth);
+
     auto& trx = plan()->getAst()->query().trxForOptimization();
     bool res = aql::utils::getBestIndexHandleForFilterCondition(
         trx, *_edgeColls[i], indexCondition, options()->tmpVar(),
-        itemsInCollection, aql::IndexHint(), indexToUse, ReadOwnWrites::no,
-        onlyEdgeIndexes);
+        itemsInCollection, indexHint, indexToUse, ReadOwnWrites::no,
+        /*onlyEdgeIndexes*/ false);
     if (!res) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "expected edge index not found");
+                                     "expected index not found for traversal");
     }
 
     std::optional<size_t> memberToUpdate{std::nullopt};
@@ -1129,6 +1235,8 @@ void TraversalNode::traversalCloneHelper(ExecutionPlan& plan,
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   c.checkConditionsDefined();
+  // validate that we copied index hints correctly
+  TRI_ASSERT(c.hint().isSet() == hint().isSet());
 #endif
 }
 

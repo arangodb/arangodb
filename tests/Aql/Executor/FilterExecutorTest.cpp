@@ -64,7 +64,7 @@ class FilterExecutorTest
 
   FilterExecutorTest()
       : itemBlockManager(monitor),
-        block(new AqlItemBlock(itemBlockManager, 1000, 1)),
+        block(itemBlockManager.requestBlock(1000, 1)),
         outputRegisters(),
         infos(0) {}
 

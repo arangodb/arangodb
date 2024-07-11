@@ -1178,6 +1178,13 @@ ErrorCode DatabaseFeature::iterateDatabases(velocypack::Slice databases) {
   auto prev = _databases.load();
   auto next = _databases.make(prev);
 
+  std::vector<TRI_vocbase_t*> newDatabases;
+  auto databaseGuard = scopeGuard([&newDatabases]() noexcept {
+    for (auto p : newDatabases) {
+      delete p;
+    }
+  });
+
   ServerState::RoleEnum role = ServerState::instance()->getRole();
 
   for (velocypack::Slice it : velocypack::ArrayIterator(databases)) {
@@ -1268,10 +1275,13 @@ ErrorCode DatabaseFeature::iterateDatabases(velocypack::Slice databases) {
         FATAL_ERROR_EXIT();
       }
     }
+    ADB_PROD_ASSERT(!next->contains(database->name()))
+        << "duplicate database name " << database->name();
     next->emplace(database->name(), database.get());
-    std::ignore = database.release();
+    newDatabases.emplace_back(database.release());
   }
 
+  databaseGuard.cancel();
   _databases.store(std::move(next));
   waitUnique(prev);
 

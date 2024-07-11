@@ -160,7 +160,7 @@ TEST_F(AqlItemBlockTest, test_read_values_copy) {
 }
 
 TEST_F(AqlItemBlockTest, test_write_values) {
-  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 2, 2)};
+  auto block = itemBlockManager.requestBlock(2, 2);
   AqlValue a(AqlValueHintInt(1));
   AqlValue b(AqlValueHintInt(2));
   AqlValue c(AqlValueHintInt(3));
@@ -178,7 +178,7 @@ TEST_F(AqlItemBlockTest, test_write_values) {
 }
 
 TEST_F(AqlItemBlockTest, test_emplace_values) {
-  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 2, 2)};
+  auto block = itemBlockManager.requestBlock(2, 2);
   block->emplaceValue(0, 0, AqlValueHintInt(1));
   block->emplaceValue(0, 1, AqlValueHintInt(2));
   block->emplaceValue(1, 0, AqlValueHintInt(3));
@@ -206,7 +206,7 @@ TEST_F(AqlItemBlockTest, test_block_contains_shadow_rows) {
 }
 
 TEST_F(AqlItemBlockTest, test_serialization_deserialization_1) {
-  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 2, 2)};
+  auto block = itemBlockManager.requestBlock(2, 2);
 
   block->emplaceValue(0, 0, dummyData(0));
   block->emplaceValue(0, 1, dummyData(1));
@@ -239,7 +239,7 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_2) {
   // Use first, second and third position independently.
   // All other positions remain empty
   for (RegisterId::value_t dataPosition = 0; dataPosition < 3; ++dataPosition) {
-    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1, 3)};
+    auto block = itemBlockManager.requestBlock(1, 3);
 
     block->emplaceValue(0, dataPosition, dummyData(4));
     VPackBuilder result;
@@ -273,7 +273,7 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_3) {
   // Use first, second and third position as empty independently.
   // All other positions use the value
   for (RegisterId::value_t dataPosition = 0; dataPosition < 3; ++dataPosition) {
-    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 1, 3)};
+    auto block = itemBlockManager.requestBlock(1, 3);
     for (RegisterId::value_t i = 0; i < 3; ++i) {
       if (i != dataPosition) {
         block->emplaceValue(0, i, dummyData(4));
@@ -306,7 +306,7 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_3) {
 }
 
 TEST_F(AqlItemBlockTest, test_serialization_deserialization_shadowrows) {
-  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 4, 2)};
+  auto block = itemBlockManager.requestBlock(4, 2);
 
   block->emplaceValue(0, 0, dummyData(0));
   block->emplaceValue(0, 1, dummyData(1));
@@ -359,7 +359,7 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_shadowrows) {
 }
 
 TEST_F(AqlItemBlockTest, test_serialization_deserialization_slices) {
-  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 2, 2)};
+  auto block = itemBlockManager.requestBlock(2, 2);
   block->emplaceValue(0, 0, dummyData(4));
   block->emplaceValue(0, 1, dummyData(5));
   block->emplaceValue(1, 0, dummyData(0));
@@ -406,7 +406,7 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_slices) {
 }
 
 TEST_F(AqlItemBlockTest, test_serialization_deserialization_with_ranges) {
-  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 3, 2)};
+  auto block = itemBlockManager.requestBlock(3, 2);
   block->emplaceValue(0, 0, dummyData(4));
   block->emplaceValue(0, 1, dummyData(5));
   block->emplaceValue(1, 0, dummyData(0));
@@ -480,7 +480,7 @@ TEST_F(AqlItemBlockTest, test_serialization_deserialization_with_ranges) {
 }
 
 TEST_F(AqlItemBlockTest, test_serialization_deserialization_input_row) {
-  SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 2, 2)};
+  auto block = itemBlockManager.requestBlock(2, 2);
   block->emplaceValue(0, 0, dummyData(4));
   block->emplaceValue(0, 1, dummyData(5));
   block->emplaceValue(1, 0, dummyData(0));

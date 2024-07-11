@@ -253,7 +253,7 @@ return HTTP 503 instead of HTTP 200 when their availability API is probed.)");
               &_schedulerType,
               std::unordered_set<std::string>{"supervised", "threadpools"}),
           arangodb::options::makeFlags(arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(31210);
+      .setIntroducedIn(31201);
 
   // obsolete options
   options->addObsoleteOption("--server.threads", "number of threads", true);

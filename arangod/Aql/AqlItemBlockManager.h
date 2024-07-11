@@ -89,6 +89,9 @@ class AqlItemBlockManager {
 
   static constexpr uint32_t numBuckets = 12;
   static constexpr size_t numBlocksPerBucket = 7;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  std::atomic<size_t> _leasedBlocks = 0;
+#endif
 
   struct Bucket {
     std::array<AqlItemBlock*, numBlocksPerBucket> blocks;

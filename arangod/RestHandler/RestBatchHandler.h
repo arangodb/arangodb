@@ -25,33 +25,33 @@
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
+#include <string>
+#include <string_view>
+
 namespace arangodb {
 
 // container for complete multipart message
 struct MultipartMessage {
-  MultipartMessage(char const* boundary, size_t const boundaryLength,
-                   char const* messageStart, char const* messageEnd)
-      : boundary(boundary),
-        boundaryLength(boundaryLength),
-        messageStart(messageStart),
-        messageEnd(messageEnd) {}
-  MultipartMessage() : MultipartMessage("", 0, "", "") {}
+  MultipartMessage(std::string_view boundary, std::string_view message)
+      : boundary(boundary), message(message) {}
+  MultipartMessage() = default;
 
-  char const* boundary;
-  size_t boundaryLength;
-  char const* messageStart;
-  char const* messageEnd;
+  bool skipBoundaryStart(size_t& offset) const;
+  bool findBoundaryEnd(size_t& offset) const;
+  bool isAtEnd(size_t& offset) const;
+  std::string getHeader(size_t& offset) const;
+
+  std::string_view boundary;
+  std::string_view message;
 };
 
 // container for search data within multipart message
 struct SearchHelper {
   MultipartMessage message;
-  char const* searchStart;
-  char const* foundStart;
-  size_t foundLength;
-  char const* contentId;
-  size_t contentIdLength;
-  bool containsMore;
+  size_t searchStart = 0;
+  std::string_view found;
+  std::string contentId;
+  bool containsMore = false;
 };
 
 class RestBatchHandler : public RestVocbaseBaseHandler {
@@ -59,7 +59,6 @@ class RestBatchHandler : public RestVocbaseBaseHandler {
   RestBatchHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
   ~RestBatchHandler();
 
- public:
   RestStatus execute() override;
   char const* name() const override final { return "RestBatchHandler"; }
   // be pessimistic about what this handler does... it may invoke V8
@@ -79,7 +78,6 @@ class RestBatchHandler : public RestVocbaseBaseHandler {
   // extract the next part from a multipart message
   bool extractPart(SearchHelper&);
 
- private:
   bool executeNextHandler();
   void processSubHandlerResult(RestHandler const& handler);
 

@@ -989,6 +989,40 @@ function ClusterCollectionSuite () {
       }
     },
 
+    // regression test for https://github.com/arangodb/arangodb/pull/21071
+    testCreateWithSlowCurrentUpdate : function () {
+      let setFailAt;
+      let removeFailAt;
+      const coordinatorEndpoint = internal.arango.getEndpoint();
+      if (debugCanUseFailAt(coordinatorEndpoint)) {
+        setFailAt = failurePoint => debugSetFailAt(coordinatorEndpoint, failurePoint);
+        removeFailAt = failurePoint => debugRemoveFailAt(coordinatorEndpoint, failurePoint);
+      }
+      if (!setFailAt) {
+        console.info('Failure tests disabled, skipping...');
+        return;
+      }
+
+      const failurePoint = 'ClusterInfo::slowCurrentSyncer';
+      const cn = "UnitTestsClusterCrud";
+      try {
+        // delay updates for current in the syncer thread
+        setFailAt(failurePoint);
+        // create a collection
+        const c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 });
+        const docs = [];
+        for (let i = 0; i < 100; ++i) {
+          docs.push({ _key: "test" + i });
+        }
+        // inserting a document fails if it needs to look up a shard and
+        // ClusterInfo/Current hasn't caught up yet, in which case insert
+        // throws an exception.
+        c.insert(docs);
+      } finally {
+        removeFailAt(failurePoint);
+        db._drop(cn);
+      }
+    },
   };
 }
 
