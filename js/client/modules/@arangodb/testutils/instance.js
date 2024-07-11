@@ -1281,10 +1281,8 @@ class instance {
     }
     return reply.parsedBody === true;   
   }
-  debugTerminate() {
-    if (this.pid === null) {
-      return;
-    }
+
+  checkDebugTerminated() {
     let res = statusExternal(this.pid, false);
     if (res.status === 'NOT-FOUND') {
       print(`${Date()} ${this.name}: PID ${this.pid} missing on our list, retry?`);
@@ -1299,8 +1297,16 @@ class instance {
           (res.signal !== 6)&&(res.signal !== 9)) {
         throw new Error(`unexpected exit signal of ${this.name} - ${JSON.stringify(res)}`);
       }
+      this.pid = null;
+      return true;
+    }
+    return false;
+  }
+  debugTerminate() {
+    if (this.pid === null) {
       return;
-    } else {
+    }
+    if (!this.checkDebugTerminated()){
       this.connect();
       let reply;
       try {
@@ -1316,6 +1322,9 @@ class instance {
       if (reply.code !== 200) {
         throw new Error(`Failed to crash ${this.name}: ${reply.parsedBody}`);
       }
+    }
+    if (!this.checkDebugTerminated()) {
+      throw new Error(`instance wouldn't crash ${this.name}`);
     }
   }
 }
