@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global runSetup assertEqual, assertFalse, assertTrue */
+/* global assertEqual, assertFalse, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -33,9 +33,9 @@ const colName1 = 'UnitTestsRecovery1';
 const colName2 = 'UnitTestsRecovery2';
 const colName3 = 'UnitTestsRecovery3';
 
-if (runSetup === true) {
+function runSetup () {
   'use strict';
-  global.instanceManager.debugClearFailAt();
+  internal.debugClearFailAt();
 
   db._drop(colName1);
   let c = db._create(colName1);
@@ -96,7 +96,7 @@ if (runSetup === true) {
   internal.waitForEstimatorSync(); 
   internal.sleep(2);
 
-  return global.instanceManager.debugTerminate('crashing server');
+  internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -134,5 +134,13 @@ function recoverySuite () {
 // / @brief executes the test suite
 // //////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(recoverySuite);
-return jsunity.done();
+function main (argv) {
+  'use strict';
+  if (argv[1] === 'setup') {
+    runSetup();
+    return 0;
+  } else {
+    jsunity.run(recoverySuite);
+    return jsunity.writeDone().status ? 0 : 1;
+  }
+}

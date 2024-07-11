@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global runSetup assertEqual, assertFalse, assertTrue, assertNotNull */
+/* global assertEqual, assertFalse, assertTrue, assertNotNull */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -102,16 +102,16 @@ function runSetup (config) {
       if (fpSet > 0 && fp >= 0.95) {
         // remove all failure points
         console.warn("clearing all failure points");
-        global.instanceManager.debugClearFailAt();
+        internal.debugClearFailAt();
         fpSet = 0;
       } else if (fp >= 0.85 || fpSet === 0) {
         // set failure points
         _.shuffle(failurePoints);
         console.warn("clearing all failure points");
-        global.instanceManager.debugClearFailAt();
+        internal.debugClearFailAt();
         let fp = Math.floor(Math.random() * failurePoints.length);
         for (let i = 0; i < fp; ++i) {
-          global.instanceManager.debugSetFailAt(failurePoints[i]);
+          internal.debugSetFailAt(failurePoints[i]);
         }
         fpSet = fp;
       }
@@ -172,7 +172,7 @@ function runSetup (config) {
 
   require("console").warn("Collection counts written to control:", JSON.stringify(collectionCounts));
 
-  global.instanceManager.debugTerminate('crashing server');
+  internal.debugTerminate('crashing server');
 }
 
 function recoverySuite () {
@@ -231,17 +231,17 @@ function recoverySuite () {
   };
 }
 
-function main (runSetup, config) {
+function main (argv, config) {
   numberOfCollections = config.numberOfCollections || numberOfCollections;
   maxIterations = config.maxIterations || maxIterations;
   maxRunTime = config.maxRunTime || maxRunTime;
 
-  if (runSetup) {
+  if (argv[1] === 'setup') {
     runSetup(config);
     return 0;
   } else {
     jsunity.run(recoverySuite);
-    return jsunity.done();
+    return jsunity.writeDone().status ? 0 : 1;
   }
 }
 

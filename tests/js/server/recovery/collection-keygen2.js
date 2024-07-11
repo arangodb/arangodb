@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused: false */
-/* global runSetup assertTrue, assertFalse, assertEqual */
+/* global assertTrue, assertFalse, assertEqual */
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
@@ -25,12 +25,12 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 var db = require('@arangodb').db;
-;
+var internal = require('internal');
 var jsunity = require('jsunity');
 
-if (runSetup === true) {
+function runSetup() {
   'use strict';
-  global.instanceManager.debugClearFailAt();
+  internal.debugClearFailAt();
   var c, i;
 
   // write some documents with autoincrement keys
@@ -76,7 +76,7 @@ if (runSetup === true) {
   }
   c.save({value: 0}, {waitForSync: true});
 
-  return global.instanceManager.debugTerminate('crashing server');
+  internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -113,5 +113,13 @@ function recoverySuite() {
 // / @brief executes the test suite
 // //////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(recoverySuite);
-return jsunity.done();
+function main(argv) {
+  'use strict';
+  if (argv[1] === 'setup') {
+    runSetup();
+    return 0;
+  } else {
+    jsunity.run(recoverySuite);
+    return jsunity.writeDone().status ? 0 : 1;
+  }
+}

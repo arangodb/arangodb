@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused: false */
-/* global runSetup assertNotNull */
+/* global assertNotNull */
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
@@ -25,13 +25,13 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const db = require('@arangodb').db;
-;
+const internal = require('internal');
 const fs = require('fs');
 const jsunity = require('jsunity');
 
-if (runSetup === true) {
+function runSetup () {
   'use strict';
-  global.instanceManager.debugClearFailAt();
+  internal.debugClearFailAt();
 
   let c = db._create('UnitTestsRecovery');
   let walfiles = () => {
@@ -68,11 +68,10 @@ if (runSetup === true) {
         fs.writeFileSync(fn, "");
         
         // crash
-        return global.instanceManager.debugTerminate('crashing server');
+        internal.debugTerminate('crashing server');
       }
     }
   }
-  return 1;
 }
 
 function recoverySuite () {
@@ -96,5 +95,13 @@ function recoverySuite () {
   };
 }
 
-jsunity.run(recoverySuite);
-return jsunity.done();
+function main (argv) {
+  'use strict';
+  if (argv[1] === 'setup') {
+    runSetup();
+    return 0;
+  } else {
+    jsunity.run(recoverySuite);
+    return jsunity.writeDone().status ? 0 : 1;
+  }
+}
