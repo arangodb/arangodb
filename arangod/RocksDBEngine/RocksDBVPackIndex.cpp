@@ -26,6 +26,7 @@
 #include "RocksDBVPackIndex.h"
 
 #include "Aql/AstNode.h"
+#include "Aql/IndexStreamIterator.h"
 #include "Aql/SortCondition.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
@@ -50,11 +51,9 @@
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBIndexingDisabler.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
-#include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Transaction/OperationOrigin.h"
@@ -62,7 +61,6 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
-#include "Aql/IndexStreamIterator.h"
 
 #include <rocksdb/comparator.h>
 #include <rocksdb/iterator.h>
@@ -680,7 +678,9 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     return true;
   }
 
-  void setLimit(uint64_t limit) noexcept override { _limit = limit; }
+  void setLimit(uint64_t limit) noexcept override {
+    _limitPerLookupValue = limit;
+  }
 
   /// @brief Get the next limit many elements in the index
   bool nextImpl(LocalDocumentIdCallback const& cb, uint64_t limit) override {
@@ -927,7 +927,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     TRI_ASSERT(_iterator != nullptr);
 
     if (!_iterator->Valid() || outOfRange() || ADB_UNLIKELY(limit == 0) ||
-        _limit.value_or(UINT64_MAX) == 0) {
+        _limitPerLookupValue.value_or(UINT64_MAX) == 0) {
       // No limit no data, or we are actually done. The last call should have
       // returned false
       TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
@@ -939,7 +939,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     }
 
     TRI_ASSERT(limit > 0);
-    TRI_ASSERT(_limit.value_or(UINT64_MAX) > 0);
+    TRI_ASSERT(_limitPerLookupValue.value_or(UINT64_MAX) > 0);
 
     // cannot get here if we have a cache
     do {
@@ -951,8 +951,8 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
         rocksutils::checkIteratorStatus(*_iterator);
         return false;
       }
-      if (_limit.has_value()) {
-        uint64_t& l = *_limit;
+      if (_limitPerLookupValue.has_value()) {
+        uint64_t& l = *_limitPerLookupValue;
         --l;
         if (l == 0) {
           return false;
@@ -1202,7 +1202,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   // this is only used as a performance optimization. the iterator will
   // stop producing results once this limit was exceeded. if not set,
   // it does nothing.
-  std::optional<uint64_t> _limit;
+  std::optional<uint64_t> _limitPerLookupValue;
 
   RocksDBVPackIndexSearchValueFormat const _format;
   bool _mustSeek;
