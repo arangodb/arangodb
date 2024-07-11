@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused: false */
-/* global runSetup assertNull, assertNotNull */
+/* global assertNull, assertNotNull */
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
@@ -25,14 +25,14 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 var db = require('@arangodb').db;
-;
+var internal = require('internal');
 var jsunity = require('jsunity');
 
-if (runSetup === true) {
+function runSetup () {
   'use strict';
   
   // turn off syncing of counters etc.  
-  global.instanceManager.debugSetFailAt("RocksDBSettingsManagerSync"); 
+  internal.debugSetFailAt("RocksDBSettingsManagerSync"); 
 
   // write some documents with autoincrement keys
   db._drop('UnitTestsRecovery1');
@@ -52,7 +52,7 @@ if (runSetup === true) {
   c = db._create('UnitTestsRecovery2');
   c.save({ }, { waitForSync: true });
 
-  return global.instanceManager.debugTerminate('crashing server');
+  internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -78,5 +78,13 @@ function recoverySuite () {
 // / @brief executes the test suite
 // //////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(recoverySuite);
-return jsunity.done();
+function main (argv) {
+  'use strict';
+  if (argv[1] === 'setup') {
+    runSetup();
+    return 0;
+  } else {
+    jsunity.run(recoverySuite);
+    return jsunity.writeDone().status ? 0 : 1;
+  }
+}

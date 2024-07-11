@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global runSetup assertEqual, assertFalse, assertTrue */
+/* global assertEqual, assertFalse, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -26,12 +26,12 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 var db = require('@arangodb').db;
-;
+var internal = require('internal');
 var jsunity = require('jsunity');
 
-if (runSetup === true) {
+function runSetup () {
   'use strict';
-  global.instanceManager.debugClearFailAt();
+  internal.debugClearFailAt();
 
   db._drop('UnitTestsRecovery1');
   let c = db._create('UnitTestsRecovery1');
@@ -42,7 +42,7 @@ if (runSetup === true) {
   }
   c.insert(docs);
 
-  global.instanceManager.debugSetFailAt("RocksDBBuilderIndex::fillIndex");
+  internal.debugSetFailAt("RocksDBBuilderIndex::fillIndex");
   c.ensureIndex({ type: "skiplist", fields: ["value"] });
   return 0;
 }
@@ -77,5 +77,12 @@ function recoverySuite () {
 // / @brief executes the test suite
 // //////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(recoverySuite);
-return jsunity.done();
+function main (argv) {
+  'use strict';
+  if (argv[1] === 'setup') {
+    return runSetup();
+  } else {
+    jsunity.run(recoverySuite);
+    return jsunity.writeDone().status ? 0 : 1;
+  }
+}

@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global runSetup assertEqual, assertFalse, assertTrue */
+/* global assertEqual, assertFalse, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -32,7 +32,7 @@ const jsunity = require('jsunity');
 const colName1 = 'UnitTestsRecovery1';
 const colName2 = 'UnitTestsRecovery2';
 
-if (runSetup === true) {
+function runSetup () {
   'use strict';
   let c = db._create(colName1);
 
@@ -73,7 +73,7 @@ if (runSetup === true) {
   }
   
   // now break inserts
-  global.instanceManager.debugSetFailAt("RevisionTree::applyInserts");
+  internal.debugSetFailAt("RevisionTree::applyInserts");
   
   c = db._collection(colName1);
 
@@ -99,7 +99,7 @@ if (runSetup === true) {
   
   c.insert({ _key: 'crashme' }, true);
 
-  return global.instanceManager.debugTerminate('crashing server');
+  internal.debugTerminate('crashing server');
 }
 
 function recoverySuite () {
@@ -126,5 +126,13 @@ function recoverySuite () {
   };
 }
 
-jsunity.run(recoverySuite);
-return jsunity.done();
+function main (argv) {
+  'use strict';
+  if (argv[1] === 'setup') {
+    runSetup();
+    return 0;
+  } else {
+    jsunity.run(recoverySuite);
+    return jsunity.writeDone().status ? 0 : 1;
+  }
+}

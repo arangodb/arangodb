@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global runSetup assertEqual, assertFalse, assertTrue */
+/* global assertEqual, assertFalse, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -45,7 +45,7 @@ let waitForUpdatesToFinish = (c) => {
   }
 };
 
-if (runSetup === true) {
+function runSetup () {
   'use strict';
   jsunity.jsUnity.attachAssertions();
 
@@ -66,11 +66,11 @@ if (runSetup === true) {
  
   // don't take into account any buffered updates when decided whether we
   // need to persist a tree to disk
-  global.instanceManager.debugSetFailAt("needToPersistRevisionTree::checkBuffers");
+  internal.debugSetFailAt("needToPersistRevisionTree::checkBuffers");
   // add extra delays between the decision not to persist the tree and what
   // we bump our sequence number to
-  global.instanceManager.debugSetFailAt("serializeMeta::delayCallToLastSerializedRevisionTree");
-  global.instanceManager.debugSetFailAt("RocksDBMetaCollection::forceSerialization");
+  internal.debugSetFailAt("serializeMeta::delayCallToLastSerializedRevisionTree");
+  internal.debugSetFailAt("RocksDBMetaCollection::forceSerialization");
   
   // let background thread finish
   internal.sleep(2);
@@ -93,7 +93,7 @@ if (runSetup === true) {
   internal.debugRemoveFailAt("needToPersistRevisionTree::checkBuffers");
   internal.sleep(15);
 
-  return global.instanceManager.debugTerminate('crashing server');
+  internal.debugTerminate('crashing server');
 }
 
 function recoverySuite () {
@@ -124,5 +124,13 @@ function recoverySuite () {
   };
 }
 
-jsunity.run(recoverySuite);
-return jsunity.done();
+function main (argv) {
+  'use strict';
+  if (argv[1] === 'setup') {
+    runSetup();
+    return 0;
+  } else {
+    jsunity.run(recoverySuite);
+    return jsunity.writeDone().status ? 0 : 1;
+  }
+}

@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global runSetup assertEqual, assertFalse, assertTrue */
+/* global assertEqual, assertFalse, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -34,9 +34,9 @@ const colName2 = 'UnitTestsRecovery2';
 const colName3 = 'UnitTestsRecovery3';
 const colName4 = 'UnitTestsRecovery4';
 
-if (runSetup === true) {
+function runSetup () {
   'use strict';
-  global.instanceManager.debugSetFailAt("applyUpdates::forceHibernation2");
+  internal.debugSetFailAt("applyUpdates::forceHibernation2");
 
   let c = db._create(colName1);
 
@@ -97,7 +97,7 @@ if (runSetup === true) {
   
   c.insert({ _key: 'crashme' }, true);
 
-  return global.instanceManager.debugTerminate('crashing server');
+  internal.debugTerminate('crashing server');
 }
 
 function recoverySuite () {
@@ -130,5 +130,13 @@ function recoverySuite () {
   };
 }
 
-jsunity.run(recoverySuite);
-return jsunity.done();
+function main (argv) {
+  'use strict';
+  if (argv[1] === 'setup') {
+    runSetup();
+    return 0;
+  } else {
+    jsunity.run(recoverySuite);
+    return jsunity.writeDone().status ? 0 : 1;
+  }
+}

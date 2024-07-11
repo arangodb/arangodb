@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global runSetup assertEqual, assertTrue, assertFalse */
+/* global assertEqual, assertTrue, assertFalse */
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
@@ -32,9 +32,9 @@ const replication = require('@arangodb/replication');
 const cn = 'UnitTestsRecovery';
 const vn = 'UnitTestsView';
 
-if (runSetup === true) {
+function runSetup () {
   'use strict';
-  global.instanceManager.debugClearFailAt();
+  internal.debugClearFailAt();
 
   let c = db._create(cn);
   let docs = [];
@@ -46,21 +46,20 @@ if (runSetup === true) {
 
   let v = db._createView(vn, 'search-alias', {});
   
-  global.instanceManager.debugSetFailAt("StatisticsWorker::bypass");
+  internal.debugSetFailAt("StatisticsWorker::bypass");
 
   internal.waitForEstimatorSync();
   let lastTickBeforeLink = replication.logger.state().state.lastLogTick;
   
   // prevent background thread from running and noting view's progress
-  global.instanceManager.debugSetFailAt("RocksDBBackgroundThread::run");
+  internal.debugSetFailAt("RocksDBBackgroundThread::run");
 
   let meta = { indexes: [ { collection: cn, index: "pupa" } ] };
   v.properties(meta);
 
   c.insert({ _key: "lastLogTick", tick: lastTickBeforeLink }, true);
 
-  global.instanceManager.debugTerminate('crashing server');
-  return 0;
+  internal.debugTerminate('crashing server');
 }
 
 function recoverySuite () {
@@ -92,5 +91,13 @@ function recoverySuite () {
   };
 }
 
-jsunity.run(recoverySuite);
-return jsunity.done();
+function main (argv) {
+  'use strict';
+  if (argv[1] === 'setup') {
+    runSetup();
+    return 0;
+  } else {
+    jsunity.run(recoverySuite);
+    return jsunity.writeDone().status ? 0 : 1;
+  }
+}

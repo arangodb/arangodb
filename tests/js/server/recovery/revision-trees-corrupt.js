@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global runSetup assertEqual, assertFalse, assertTrue */
+/* global assertEqual, assertFalse, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -32,11 +32,11 @@ const jsunity = require('jsunity');
 const colName1 = 'UnitTestsRecovery1';
 const colName2 = 'UnitTestsRecovery2';
 
-if (runSetup === true) {
+function runSetup () {
   'use strict';
   jsunity.jsUnity.attachAssertions();
   
-  global.instanceManager.debugSetFailAt("MerkleTree::serializeUncompressed");
+  internal.debugSetFailAt("MerkleTree::serializeUncompressed");
   
   let c = db._create(colName1);
 
@@ -75,9 +75,9 @@ if (runSetup === true) {
   assertEqual(23, db[colName1]._revisionTreeSummary().count);
   assertEqual(42, db[colName2]._revisionTreeSummary().count);
   
-  global.instanceManager.debugSetFailAt("RocksDBMetaCollection::forceSerialization");
-  global.instanceManager.debugSetFailAt("applyUpdates::forceHibernation1");
-  global.instanceManager.debugSetFailAt("applyUpdates::forceHibernation2");
+  internal.debugSetFailAt("RocksDBMetaCollection::forceSerialization");
+  internal.debugSetFailAt("applyUpdates::forceHibernation1");
+  internal.debugSetFailAt("applyUpdates::forceHibernation2");
 
   // and force a write
   db[colName1].insert({});
@@ -107,7 +107,7 @@ if (runSetup === true) {
 
   c.insert({ _key: 'crashme' }, true);
 
-  return global.instanceManager.debugTerminate('crashing server');
+  internal.debugTerminate('crashing server');
 }
 
 function recoverySuite () {
@@ -132,5 +132,13 @@ function recoverySuite () {
   };
 }
 
-jsunity.run(recoverySuite);
-return jsunity.done();
+function main (argv) {
+  'use strict';
+  if (argv[1] === 'setup') {
+    runSetup();
+    return 0;
+  } else {
+    jsunity.run(recoverySuite);
+    return jsunity.writeDone().status ? 0 : 1;
+  }
+}

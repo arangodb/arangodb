@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused: false */
-/* global runSetup assertEqual, assertFalse, assertNotNull, fail */
+/* global assertEqual, assertFalse, assertNotNull, fail */
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
@@ -25,10 +25,10 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 var db = require('@arangodb').db;
-const internal = require('internal');
+var internal = require('internal');
 var jsunity = require('jsunity');
 
-if (runSetup === true) {
+function runSetup () {
   'use strict';
 
   db._drop('UnitTestsRecovery1');
@@ -51,7 +51,7 @@ if (runSetup === true) {
   c = db._create('UnitTestsRecovery2');
   c.insert({}, { waitForSync: true });
 
-  return global.instanceManager.debugTerminate('crashing server');
+  internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -102,5 +102,13 @@ function recoverySuite () {
 // / @brief executes the test suite
 // //////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(recoverySuite);
-return jsunity.done();
+function main (argv) {
+  'use strict';
+  if (argv[1] === 'setup') {
+    runSetup();
+    return 0;
+  } else {
+    jsunity.run(recoverySuite);
+    return jsunity.writeDone().status ? 0 : 1;
+  }
+}

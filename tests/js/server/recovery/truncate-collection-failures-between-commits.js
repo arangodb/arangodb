@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global runSetup assertEqual, assertFalse, assertTrue, fail */
+/* global assertEqual, assertFalse, assertTrue, fail */
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
@@ -30,8 +30,8 @@ const internal = require('internal');
 const jsunity = require('jsunity');
 const colName = "UnitTestsRecovery";
 
-if (runSetup === true) {
-  global.instanceManager.debugClearFailAt();
+const runSetup = function () {
+  internal.debugClearFailAt();
 
   db._drop(colName);
   const c = db._create(colName);
@@ -47,12 +47,12 @@ if (runSetup === true) {
   c.insert(docs);
   c.insert(docs);
 
-  global.instanceManager.debugSetFailAt("SegfaultAfterIntermediateCommit");
+  internal.debugSetFailAt("SegfaultAfterIntermediateCommit");
 
   // This will crash the server
   c.truncate();
 
-  return global.instanceManager.checkDebugTerminated() ? 0 : 1;
+  fail();
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -138,5 +138,18 @@ const recoverySuite = function () {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(recoverySuite);
-return jsunity.done();
+function main (argv) {
+  'use strict';
+
+  if (internal.debugCanUseFailAt()) {
+    if (argv[1] === 'setup') {
+      runSetup();
+      return 0;
+    } else {
+      jsunity.run(recoverySuite);
+      return jsunity.writeDone().status ? 0 : 1;
+    }
+  } else {
+    return jsunity.writeDone().status ? 0 : 1;
+  }
+}
