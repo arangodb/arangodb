@@ -228,7 +228,7 @@ void QueryList::remove(Query& query) {
 
       _slow.emplace_back(
           query.id(), query.vocbase().name(), query.user(), std::move(q),
-          _trackBindVars ? query.bindParameters() : nullptr,
+          _trackBindVars ? query.bindParametersAsBuilder() : nullptr,
           _trackDataSources ? query.collectionNames()
                             : std::vector<std::string>(),
           now - elapsed, /* start timestamp */
@@ -336,7 +336,7 @@ std::vector<QueryEntryCopy> QueryList::listCurrent() {
       result.emplace_back(
           query.id(), query.vocbase().name(), query.user(),
           query.extractQueryString(maxLength, showQueryString),
-          _trackBindVars ? query.bindParameters() : nullptr,
+          _trackBindVars ? query.bindParametersAsBuilder() : nullptr,
           _trackDataSources ? query.collectionNames()
                             : std::vector<std::string>(),
           now - elapsed /* start timestamp */, elapsed /* run time */,

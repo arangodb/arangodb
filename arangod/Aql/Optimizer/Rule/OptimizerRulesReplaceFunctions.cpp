@@ -161,8 +161,8 @@ AstNode* createSubqueryWithLimit(ExecutionPlan* plan, ExecutionNode* node,
   auto* ast = plan->getAst();
 
   /// singleton
-  ExecutionNode* eSingleton =
-      plan->createNode<SingletonNode>(plan, plan->nextId());
+  ExecutionNode* eSingleton = plan->createNode<SingletonNode>(
+      plan, plan->nextId(), ast->bindParameterVariables());
 
   /// return
   /// link output of index with the return node
