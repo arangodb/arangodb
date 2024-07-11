@@ -3,6 +3,9 @@
 #include <type_traits>
 #include "Assertions/Assert.h"
 
+static_assert(std::is_nothrow_copy_constructible_v<std::exception_ptr>);
+static_assert(std::is_nothrow_move_constructible_v<std::exception_ptr>);
+
 namespace arangodb {
 template<typename T>
 struct expected {
@@ -18,9 +21,7 @@ struct expected {
   }
 
   explicit expected(std::exception_ptr ex) noexcept
-      : _exception(std::move(ex)), _state(kException) {
-    static_assert(std::is_nothrow_move_constructible_v<std::exception_ptr>);
-  }
+      : _exception(std::move(ex)), _state(kException) {}
 
  private:
   auto copy_from(expected const& other) noexcept(
@@ -31,7 +32,6 @@ struct expected {
       new (&_value) T(other._value);
       _state = kValue;
     } else if (other._state == kException) {
-      static_assert(std::is_nothrow_copy_constructible_v<std::exception_ptr>);
       new (&_exception) std::exception_ptr(other._exception);
       _state = kException;
     }
@@ -70,7 +70,6 @@ struct expected {
       new (&_value) T(std::move(other._value));
       _state = kValue;
     } else if (other._state == kException) {
-      static_assert(std::is_nothrow_move_constructible_v<std::exception_ptr>);
       new (&_exception) std::exception_ptr(std::move(other._exception));
       _state = kException;
     }
