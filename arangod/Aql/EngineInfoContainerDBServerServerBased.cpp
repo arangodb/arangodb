@@ -176,7 +176,7 @@ std::vector<bool> EngineInfoContainerDBServerServerBased::buildEngineInfo(
   infoBuilder.add(StaticStrings::AttrCoordinatorId,
                   VPackValue(ServerState::instance()->getId()));
 
-  if (_query.queryOptions().cachePlan) {
+  if (_query.queryOptions().optimizePlanForCaching) {
     infoBuilder.add("bindParameters", q->bindParametersAsBuilder()->slice());
   }
 

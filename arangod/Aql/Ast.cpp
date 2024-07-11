@@ -2228,7 +2228,7 @@ void Ast::replaceBindParametersWithValues(BindParameters& parameters) {
 /// (i.e. all value bind parameters)
 void Ast::injectBindParametersSecondStage(BindParameters& parameters) {
   if (_containsBindParameters) {
-    if (query().queryOptions().cachePlan) {
+    if (query().queryOptions().optimizePlanForCaching) {
       replaceBindParametersWithVariables(parameters);
     } else {
       // put in value bind parameters.

@@ -323,7 +323,7 @@ futures::Future<futures::Unit> RestAqlHandler::setupClusterQuery() {
 
   auto origin = transaction::OperationOriginAQL{"running AQL query"};
 
-  TRI_ASSERT(bindParameter == nullptr || options.cachePlan)
+  TRI_ASSERT(bindParameter == nullptr || options.optimizePlanForCaching)
       << "Queries running in cluster only have bind variables attached, if "
          "plan caching is enabled";
   double const ttl = options.ttl;

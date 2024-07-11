@@ -100,7 +100,7 @@ struct QueryOptions {
   // skips audit logging - used only internally
   bool skipAudit;
   // whether or not the optimizer result should be cached
-  bool cachePlan;
+  bool optimizePlanForCaching;
 
   ExplainRegisterPlan explainRegisters;
 

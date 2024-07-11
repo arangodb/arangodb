@@ -1386,7 +1386,8 @@ void Query::init(bool createProfile) {
 
   TRI_ASSERT(_ast == nullptr);
   AstPropertiesFlagsType flags = AstPropertyFlag::AST_FLAG_DEFAULT;
-  if (_queryOptions.cachePlan) {
+  // Create a plan that can be executed with different sets of bind parameters.
+  if (_queryOptions.optimizePlanForCaching) {
     flags |= AstPropertyFlag::NON_CONST_PARAMETERS;
   }
   _ast = std::make_unique<Ast>(*this, flags);
