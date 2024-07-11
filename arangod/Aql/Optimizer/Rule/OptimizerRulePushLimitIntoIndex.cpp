@@ -72,6 +72,10 @@ bool isEligibleSort(auto itIndex, auto const itIndexEnd, auto const& sortFields,
   while (itIndex != itIndexEnd && itSort != sortFields.end()) {
     auto const* sortVar = itSort->var;
 
+    if (!itSort->attributePath.empty()) {
+      return false;
+    }
+
     // to get the attributes of SortNode CalculationNode is needed
     auto const* executionNode = executionPlan->getVarSetBy(sortVar->id);
     if (executionNode == nullptr) {
@@ -269,9 +273,8 @@ void arangodb::aql::pushLimitIntoIndexRule(Optimizer* opt,
     auto* limitNode = ExecutionNode::castTo<LimitNode*>(maybeLimitNode);
     indexNode->setLimit(limitNode->offset() + limitNode->limit());
 
-    if (!sortFields.front().ascending) {
-      indexNode->setAscending(false);
-    }
+    indexNode->setAscending(sortFields.front().ascending);
+
     modified = true;
   }
 
