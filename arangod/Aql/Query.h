@@ -30,12 +30,13 @@
 #include "Aql/ExecutionStats.h"
 #include "Aql/QueryContext.h"
 #include "Aql/QueryExecutionState.h"
+#include "Aql/QueryPlanCache.h"
 #include "Aql/QueryResult.h"
-#include "Basics/Guarded.h"
 #ifdef USE_V8
 #include "Aql/QueryResultV8.h"
 #endif
 #include "Aql/QueryString.h"
+#include "Basics/Guarded.h"
 #include "Basics/ResourceUsage.h"
 #include "Scheduler/SchedulerFeature.h"
 #ifdef USE_V8
@@ -55,7 +56,6 @@ struct TRI_vocbase_t;
 namespace arangodb {
 
 class CollectionNameResolver;
-class LogicalDataSource;
 
 namespace transaction {
 class Context;
@@ -274,6 +274,8 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   void registerQueryInTransactionState();
   void unregisterQueryInTransactionState() noexcept;
 
+  bool canUsePlanCache() noexcept;
+
   /// @brief calculate a hash for the query, once
   uint64_t hash();
 
@@ -396,6 +398,11 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   /// @brief user that started the query
   std::string _user;
+
+  /// @brief optional plan cache key that was used to look up the query in the
+  /// plan cache. this will be result for storing the query plan later in the
+  /// cache
+  std::optional<QueryPlanCache::Key> _planCacheKey;
 
 #ifdef USE_V8
   /// @brief whether or not someone else has acquired a V8 executor for us

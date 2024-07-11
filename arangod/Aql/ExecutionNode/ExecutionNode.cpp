@@ -956,6 +956,7 @@ void ExecutionNode::toVelocyPack(velocypack::Builder& builder,
   if (flags & ExecutionNode::SERIALIZE_PARENTS) {
     VPackArrayBuilder guard(&builder, "parents");
     for (auto const& it : _parents) {
+      TRI_ASSERT(it != nullptr);
       builder.add(VPackValue(it->id().id()));
     }
   }
@@ -1017,6 +1018,7 @@ void ExecutionNode::toVelocyPack(velocypack::Builder& builder,
       for (auto const& stackEntry : _varsValidStack) {
         VPackArrayBuilder stackEntryGuard(&builder);
         for (auto const& oneVar : stackEntry) {
+          TRI_ASSERT(oneVar != nullptr);
           oneVar->toVelocyPack(builder);
         }
       }
@@ -1024,7 +1026,8 @@ void ExecutionNode::toVelocyPack(velocypack::Builder& builder,
 
     if (flags & ExecutionNode::SERIALIZE_REGISTER_INFORMATION) {
       builder.add(VPackValue("unusedRegsStack"));
-      auto const& unusedRegsStack = _registerPlan->unusedRegsByNode.at(id());
+      auto const& unusedRegsStack =
+          getRegisterPlan()->unusedRegsByNode.at(id());
       {
         VPackArrayBuilder guard(&builder);
         TRI_ASSERT(!unusedRegsStack.empty());
@@ -1038,15 +1041,16 @@ void ExecutionNode::toVelocyPack(velocypack::Builder& builder,
       }
 
       builder.add(VPackValue("regVarMapStack"));
-      auto const& regVarMapStack = _registerPlan->regVarMapStackByNode.at(id());
+      auto const& regVarMapStack =
+          getRegisterPlan()->regVarMapStackByNode.at(id());
       {
         VPackArrayBuilder guard(&builder);
         TRI_ASSERT(!regVarMapStack.empty());
         for (auto const& stackEntry : regVarMapStack) {
           VPackObjectBuilder stackEntryGuard(&builder);
           for (auto const& reg : stackEntry) {
-            using std::to_string;
-            builder.add(VPackValue(to_string(reg.first.value())));
+            builder.add(VPackValue(std::to_string(reg.first.value())));
+            TRI_ASSERT(reg.second != nullptr);
             reg.second->toVelocyPack(builder);
           }
         }
@@ -1057,6 +1061,7 @@ void ExecutionNode::toVelocyPack(velocypack::Builder& builder,
         VPackArrayBuilder guard(&builder);
         auto const& varsSetHere = getVariablesSetHere();
         for (auto const& oneVar : varsSetHere) {
+          TRI_ASSERT(oneVar != nullptr);
           oneVar->toVelocyPack(builder);
         }
       }
@@ -1067,6 +1072,7 @@ void ExecutionNode::toVelocyPack(velocypack::Builder& builder,
         auto varsUsedHere = VarSet{};
         getVariablesUsedHere(varsUsedHere);
         for (auto const& oneVar : varsUsedHere) {
+          TRI_ASSERT(oneVar != nullptr);
           oneVar->toVelocyPack(builder);
         }
       }
@@ -1295,8 +1301,8 @@ RegisterCount ExecutionNode::getNrInputRegisters() const {
 
 auto ExecutionNode::getRegsToKeepStack() const -> RegIdSetStack {
   if (_regsToKeepStack.empty()) {
-    return _registerPlan->calcRegsToKeep(_varsUsedLaterStack, _varsValidStack,
-                                         getVariablesSetHere());
+    return getRegisterPlan()->calcRegsToKeep(
+        _varsUsedLaterStack, _varsValidStack, getVariablesSetHere());
   }
   return _regsToKeepStack;
 }
@@ -1351,6 +1357,7 @@ void ExecutionNode::removeRegistersGreaterThan(RegisterId maxRegister) {
     }
   };
 
+  TRI_ASSERT(_registerPlan != nullptr);
   auto it = _registerPlan->unusedRegsByNode.find(_id);
   if (it != _registerPlan->unusedRegsByNode.end()) {
     removeRegisters(it->second.back());

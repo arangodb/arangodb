@@ -75,7 +75,7 @@ ExecutionNode* SingletonNode::clone(ExecutionPlan* plan,
 
 /// @brief doToVelocyPack, for SingletonNode
 void SingletonNode::doToVelocyPack(velocypack::Builder& builder,
-                                   unsigned) const {
+                                   unsigned /*flags*/) const {
   builder.add(VPackValue("bindParameterVariables"));
   builder.openObject();
   for (auto const& [name, var] : _bindParameterOutVars) {

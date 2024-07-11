@@ -41,6 +41,7 @@
 #include "Aql/QueryCache.h"
 #include "Aql/QueryExecutionState.h"
 #include "Aql/QueryList.h"
+#include "Aql/QueryPlanCache.h"
 #include "Aql/QueryProfile.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/SharedQueryState.h"
@@ -355,13 +356,64 @@ void Query::ensureExecutionTime() noexcept {
 
 void Query::prepareQuery() {
   try {
+    std::unique_ptr<ExecutionPlan> plan;
+
+    if (canUsePlanCache()) {
+      // construct plan cache key
+      TRI_ASSERT(!_planCacheKey.has_value());
+      _planCacheKey.emplace(_vocbase.queryPlanCache().createCacheKey(
+          _queryString, bindParametersAsBuilder()));
+
+      // look up query in query plan cache
+      auto cacheEntry = _vocbase.queryPlanCache().lookup(*_planCacheKey);
+      if (cacheEntry != nullptr) {
+        // entry found in plan cache
+        VPackSlice querySlice = cacheEntry->slice();
+        VPackSlice collections = querySlice.get("collections");
+        VPackSlice variables = querySlice.get("variables");
+
+        QueryAnalyzerRevisions analyzersRevision;
+        auto revisionRes = analyzersRevision.fromVelocyPack(querySlice);
+        if (ADB_UNLIKELY(revisionRes.fail())) {
+          THROW_ARANGO_EXCEPTION(revisionRes);
+        }
+
+        VPackBuilder snippetBuilder;
+        snippetBuilder.openObject();
+        snippetBuilder.add("0", VPackValue(VPackValueType::Object));
+        snippetBuilder.add("nodes", querySlice.get("nodes"));
+        snippetBuilder.close();
+        snippetBuilder.close();
+
+        // TODO: validate all this
+        prepareFromVelocyPack(querySlice /*VPackSlice::emptyObjectSlice()*/,
+                              collections, variables,
+                              /*snippets*/ snippetBuilder.slice(),
+                              analyzersRevision);
+
+        TRI_ASSERT(!_plans.empty());
+        if (!_plans.empty()) {
+          auto& plan = _plans.front();
+          plan->findVarUsage();
+          plan->planRegisters(ExplainRegisterPlan::Yes);
+          plan->findCollectionAccessVariables();
+          plan->prepareTraversalOptions();
+
+          enterState(QueryExecutionState::ValueType::EXECUTION);
+          return;
+        }
+      }
+
+      // fallthrough intentional
+    }
+
     init(/*createProfile*/ true);
 
     enterState(QueryExecutionState::ValueType::PARSING);
 
-    std::unique_ptr<ExecutionPlan> plan = preparePlan();
+    plan = preparePlan();
+
     TRI_ASSERT(plan != nullptr);
-    plan->findVarUsage();
 
     TRI_ASSERT(_trx != nullptr);
     TRI_ASSERT(_trx->status() == transaction::Status::RUNNING);
@@ -540,6 +592,49 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
 
   // validate that all bind parameters are in use
   _bindParameters.validateAllUsed();
+
+  plan->findVarUsage();
+
+  if (canUsePlanCache()) {
+    plan->planRegisters(ExplainRegisterPlan::No);
+
+    TRI_ASSERT(_planCacheKey.has_value());
+    // TODO: verify these options
+    unsigned flags = ExecutionPlan::buildSerializationFlags(
+        /*verbosePlans*/ true, /*explainInternals*/ true,
+        /*explainRegisters*/ false);
+
+    // TODO: verify if we need all this
+    auto serializeQueryData = [this](velocypack::Builder& builder) {
+      // set up collections
+      TRI_ASSERT(builder.isOpenObject());
+      builder.add(VPackValue("collections"));
+      collections().toVelocyPack(builder);
+
+      // set up variables
+      TRI_ASSERT(builder.isOpenObject());
+      builder.add(VPackValue("variables"));
+      _ast->variables()->toVelocyPack(builder);
+
+      builder.add("isModificationQuery",
+                  VPackValue(_ast->containsModificationNode()));
+    };
+
+    auto serialized = std::make_shared<velocypack::Builder>();
+    plan->toVelocyPack(*serialized, flags, serializeQueryData);
+
+    // convert map of data sources into vector of data source names
+    std::vector<std::string> dataSources;
+    std::transform(_queryDataSources.begin(), _queryDataSources.end(),
+                   std::back_inserter(dataSources),
+                   [](auto const& it) { return it.second; });
+
+    // store plan in query plan cache for future queries
+    _vocbase.queryPlanCache().store(std::move(*_planCacheKey),
+                                    std::move(dataSources),
+                                    std::move(serialized));
+    _planCacheKey.reset();
+  }
 
   return plan;
 }
@@ -1419,6 +1514,33 @@ uint64_t Query::hash() {
   return _queryHash;
 }
 
+bool Query::canUsePlanCache() noexcept {
+  if (!_queryOptions.optimizePlanForCaching) {
+    return false;
+  }
+#ifdef USE_ENTERPRISE
+  // declaring any inaccessible collections in the query options
+  // disables plan caching, because otherwise the inaccessible
+  // collections would need to become part of the cached plan.
+  if (!_queryOptions.inaccessibleCollections.empty()) {
+    return false;
+  }
+#endif
+  // restricting the query to certain shards via options disables
+  // plan caching.
+  if (!_queryOptions.restrictToShards.empty()) {
+    return false;
+  }
+
+  // using the forceOneShardAttributeValue query option currently
+  // disables query plan caching as well.
+  if (!_queryOptions.forceOneShardAttributeValue.empty()) {
+    return false;
+  }
+
+  return true;
+}
+
 /// @brief log a query
 void Query::logAtStart() {
   if (_queryString.empty()) {
@@ -2137,6 +2259,8 @@ void Query::prepareFromVelocyPack(
   // create the transaction object, but do not start the transaction yet
   _trx->addHint(
       transaction::Hints::Hint::FROM_TOPLEVEL_AQL);  // only used on toplevel
+
+  _allowDirtyReads = _trx->state()->options().allowDirtyReads;
 
   Result res = _trx->begin();
   if (!res.ok()) {

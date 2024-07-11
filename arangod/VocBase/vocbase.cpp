@@ -23,22 +23,10 @@
 
 #include "vocbase.h"
 
-#include <algorithm>
-#include <chrono>
-#include <exception>
-#include <memory>
-#include <type_traits>
-#include <unordered_map>
-#include <utility>
-
-#include <velocypack/Collection.h>
-#include <velocypack/Slice.h>
-#include <velocypack/Value.h>
-#include <velocypack/ValueType.h>
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryList.h"
+#include "Aql/QueryPlanCache.h"
 #include "Auth/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Exceptions.tpp"
@@ -100,8 +88,20 @@
 #include "VocBase/VocBaseLogManager.h"
 #include "VocBase/VocbaseMetrics.h"
 
-#include <thread>
 #include <absl/strings/str_cat.h>
+#include <velocypack/Collection.h>
+#include <velocypack/Slice.h>
+#include <velocypack/Value.h>
+#include <velocypack/ValueType.h>
+
+#include <algorithm>
+#include <chrono>
+#include <exception>
+#include <memory>
+#include <thread>
+#include <type_traits>
+#include <unordered_map>
+#include <utility>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -487,6 +487,7 @@ Result TRI_vocbase_t::dropCollectionWorker(LogicalCollection& collection) {
   TRI_ASSERT(writeLocker.isLocked());
   TRI_ASSERT(locker.isLocked());
 
+  queryPlanCache().invalidateAll();
   aql::QueryCache::instance()->invalidate(this);
 
   collection.setDeleted();
@@ -508,6 +509,8 @@ Result TRI_vocbase_t::dropCollectionWorker(LogicalCollection& collection) {
 }
 
 void TRI_vocbase_t::stop() {
+  queryPlanCache().invalidateAll();
+
   try {
     shutdownReplicatedLogs();
 
@@ -1364,6 +1367,8 @@ TRI_vocbase_t::TRI_vocbase_t(CreateDatabaseInfo&& info,
     numberOfCursorsMetric = feature.cursorsMetric();
     memoryUsageMetric = feature.cursorsMemoryUsageMetric();
   }
+
+  _queryPlanCache = std::make_unique<aql::QueryPlanCache>();
   _cursorRepository = std::make_unique<CursorRepository>(
       *this, numberOfCursorsMetric, memoryUsageMetric);
 

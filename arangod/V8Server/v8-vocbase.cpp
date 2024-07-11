@@ -782,7 +782,7 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(revisionRes);
   }
 
-  // simon: hack to get the behaviour of old second aql::Query constructor
+  // simon: hack to get the behavior of old second aql::Query constructor
   VPackBuilder snippetBuilder;  // simon: hack to make format conform
   snippetBuilder.openObject();
   snippetBuilder.add("0", VPackValue(VPackValueType::Object));
@@ -791,7 +791,6 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
   snippetBuilder.close();
 
   TRI_ASSERT(!ServerState::instance()->isDBServer());
-  VPackBuilder ignoreResponse;
   query->prepareFromVelocyPack(
       /*querySlice*/ VPackSlice::emptyObjectSlice(), collections, variables,
       /*snippets*/ snippetBuilder.slice(), analyzersRevision);
