@@ -72,7 +72,7 @@ struct expected {
  public : expected(expected&& other) noexcept(
               std::is_nothrow_move_constructible_v<T>) requires
           std::move_constructible<T> {
-    move_from(other);
+    move_from(std::move(other));
   }
 
   expected& operator=(expected&& other) noexcept(
@@ -85,7 +85,7 @@ struct expected {
         _value = std::move(other._value);
       } else {
         reset();
-        move_from(other);
+        move_from(std::move(other));
       }
     }
     return *this;
