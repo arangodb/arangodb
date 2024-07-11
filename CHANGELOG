@@ -1,6 +1,10 @@
 devel
 -----
 
+* Add optimizer rule `push-limit-into-index` that pushes a limit down
+  into index iteration and can optimize the query execution when compound
+  index is used along with SORT and LIMIT clauses.
+
 * FE-423: Add a progress bar to reflect an index creation process.
 
 * Remove unused "mmap" log topic.
