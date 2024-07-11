@@ -403,9 +403,13 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept try {
   // can do here to signal this problem.
 }
 
-void RestHandler::runHandlerStateMachine() {
+auto RestHandler::runHandlerStateMachine(bool isWakeup) -> HandlerState {
   std::lock_guard lock{_executionMutex};
-  TRI_ASSERT(_callback);
+  TRI_ASSERT(_sendResponseCallback);
+
+  if (isWakeup && _state != HandlerState::PAUSED) {
+    return _state;
+  }
 
   while (true) {
     switch (_state) {
@@ -419,7 +423,7 @@ void RestHandler::runHandlerStateMachine() {
           shutdownExecute(false);
           LOG_TOPIC("23a33", DEBUG, Logger::COMMUNICATION)
               << "Pausing rest handler execution " << this;
-          return;  // stop state machine
+          return _state;  // stop state machine
         }
         break;
       }
@@ -430,7 +434,7 @@ void RestHandler::runHandlerStateMachine() {
           shutdownExecute(/*isFinalized*/ false);
           LOG_TOPIC("23727", DEBUG, Logger::COMMUNICATION)
               << "Pausing rest handler execution " << this;
-          return;  // stop state machine
+          return _state;  // stop state machine
         }
         break;
       }
@@ -452,19 +456,19 @@ void RestHandler::runHandlerStateMachine() {
         // compress response if required
         compressResponse();
         // Callback may stealStatistics!
-        _callback(this);
+        _sendResponseCallback(this);
         break;
 
       case HandlerState::FAILED:
         _statistics.SET_REQUEST_END();
         // Callback may stealStatistics!
-        _callback(this);
+        _sendResponseCallback(this);
 
         shutdownExecute(false);
-        return;
+        return _state;
 
       case HandlerState::DONE:
-        return;
+        return _state;
     }
   }
 }
@@ -513,12 +517,8 @@ void RestHandler::shutdownExecute(bool isFinalized) noexcept {
 /// Execute the rest handler state machine. Retry the wakeup,
 /// returns true if _state == PAUSED, false otherwise
 bool RestHandler::wakeupHandler() {
-  std::lock_guard lock{_executionMutex};
-  if (_state == HandlerState::PAUSED) {
-    runHandlerStateMachine();  // may change _state
-    return _state == HandlerState::PAUSED;
-  }
-  return false;
+  auto const state = runHandlerStateMachine(true);
+  return state == HandlerState::PAUSED;
 }
 
 void RestHandler::executeEngine(bool isContinue) {
@@ -788,3 +788,10 @@ futures::Future<futures::Unit> RestHandler::executeAsync() {
 }
 
 RestStatus RestHandler::execute() { return waitForFuture(executeAsync()); }
+
+void RestHandler::runHandler(
+    std::function<void(rest::RestHandler*)> responseCallback) {
+  TRI_ASSERT(_state == HandlerState::PREPARE);
+  _sendResponseCallback = std::move(responseCallback);
+  runHandlerStateMachine();
+}
