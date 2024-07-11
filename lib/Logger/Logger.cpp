@@ -631,7 +631,7 @@ void Logger::log(char const* logid, char const* function, char const* file,
     // the topic
     {
       out.append(",\"topic\":");
-      std::string topic = LogTopic::lookup(topicId);
+      std::string_view topic = LogTopic::lookup(topicId);
       // value of topic is always safe to print
       dumper.appendString(topic.data(), topic.size());
     }

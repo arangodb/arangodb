@@ -44,12 +44,12 @@ class LogTopic {
   static std::vector<std::pair<std::string, LogLevel>> logLevelTopics();
   static void setLogLevel(std::string const&, LogLevel);
   static LogTopic* lookup(std::string const&);
-  static std::string lookup(size_t topicId);
+  static std::string_view lookup(size_t topicId);
 
-  explicit LogTopic(std::string const& name);
   virtual ~LogTopic() = default;
 
-  LogTopic(std::string const& name, LogLevel level);
+  template<typename Topic>
+  LogTopic(Topic);
 
   LogTopic(LogTopic const& that)
       : _id(that._id), _name(that._name), _displayName(that._displayName) {
@@ -73,6 +73,8 @@ class LogTopic {
   }
 
  private:
+  LogTopic(std::string const& name, LogLevel level, size_t id);
+
   size_t const _id;
   std::string const _name;
   std::string _displayName;
