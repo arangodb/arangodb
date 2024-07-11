@@ -522,9 +522,7 @@ IndexNode::~IndexNode() = default;
 /// its unique dependency
 CostEstimate IndexNode::estimateCost() const {
   CostEstimate estimate = _dependencies.at(0)->getCost();
-  size_t incoming = hasLimit()
-                        ? std::min(estimate.estimatedNrItems, _options.limit)
-                        : estimate.estimatedNrItems;
+  size_t incoming = estimate.estimatedNrItems;
 
   transaction::Methods& trx = _plan->getAst()->query().trxForOptimization();
   // estimate for the number of documents in the collection. may be
@@ -536,6 +534,9 @@ CostEstimate IndexNode::estimateCost() const {
 
   auto root = _condition->root();
   TRI_ASSERT(!_allCoveredByOneIndex || _indexes.size() == 1);
+  // TODO Add estimation for push-limit-into-index rule since
+  // this rule can drastically reduce the number of documents produced
+  // and therefore the cost
   for (size_t i = 0; i < _indexes.size(); ++i) {
     Index::FilterCosts costs =
         Index::FilterCosts::defaultCosts(itemsInCollection);
