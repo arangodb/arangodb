@@ -63,8 +63,7 @@ namespace arangodb::aql {
 //   the cache whenever
 //   - a collection gets dropped
 //   - maybe: the properties of a collection get changed (TODO: clarify if this
-//   can
-//     influence the query plans at all)
+//     can influence the query plans at all)
 //   - an index for a collection gets dropped
 //   - a new index for a collection gets created
 //   - a view gets dropped
@@ -73,15 +72,13 @@ namespace arangodb::aql {
 //   executed via other coordinators by tailing the changes in the AgencyCache,
 //   and react accordingly. this is currently missing in this PR.
 // - dropping caches when a database is dropped is not necessary however,
-// because
-//   each database has its own QueryPlanCache object
+//   because each database has its own QueryPlanCache object
 // - the cache implementation is intentionally kept simple. each per-database
 //   cache object has a simple R/W lock, which may turn out to be a point of
 //   mutex contention at some point. in this case, we could shard each cache
 //   object so that it uses multiple buckets
 // - we currently disable caching whenever one of the following query options
-// are
-//   used:
+//   are used:
 //   - forceOneShardAttributeValue
 //   - inaccessibleCollections (Enterprise Edition only)
 //   - restrictToShards ("shardIds" query option)
@@ -103,11 +100,11 @@ namespace arangodb::aql {
 //     lead to different plan cache keys and entries.
 //   - attribute name bind parameters: these must be part of the plan cache key.
 //     the same query string used with different attribute name bind parameters
-//     must lead to different plan cache keys and entries.
+//     must lead to different plan cache keys and entries. this is currently not
+//     the case!
 //   - value bind parameters: these should be fully ignored when constructing
-//   the
-//     plan cache keys, i.e. different value bind parameter values should lead
-//     to the same plan cache key if everything else is identical.
+//     the plan cache keys, i.e. different value bind parameter values should
+//     lead to the same plan cache key if everything else is identical.
 // - memory limit: currently, the plan cache has no memory limit nor memory
 //   accounting. it is currently unclear if we want to put a limit on the cache,
 //   and if it should be a global limit across all databases, or a per-database
@@ -117,11 +114,41 @@ namespace arangodb::aql {
 //   so that database admins can always check how much memory is actually in use
 //   for cached plans.
 // - the serialized query plans are relatively verbose right now. it may be
-// possible
-//   to reduce the verbosity of the cached plans somehow, by passing other flags
-//   to the serialization function. this would reduce the memory usage of cached
-//   plans, and would very likely speed up caching and creating a plan from the
-//   plan cache.
+//   possible to reduce the verbosity of the cached plans somehow, by passing
+//   other flags to the serialization function. this would reduce the memory
+//   usage of cached plans, and would very likely speed up caching and creating
+//   a plan from the plan cache.
+// - observability is missing: when a query is created from a cached plan, there
+//   is currently no visibility for this in the query result nor in the explain
+//   output nor profile result. we should add a "cachedPlan" attribute in these
+//   results which show the hash of the cached plan, if any. we should also
+//   improve the explainer so that it displays the "cachedPlan" value.
+// - when enabling the "optimizePlanForCaching" flag for a query, the generated
+//   query execution plan may be worse than when not setting this flag. the
+//   reason is that certain query optimizations are only possible when literal
+//   values are used in the query, e.g. the "restrict-to-single-shard" optimizer
+//   rule looks if there are filter conditions on the collections' shard key
+//   attributes that include literal values. in this case, the optimizer is
+//   sometimes able to figure out that the query will only touch a single shard,
+//   and thus apply the "restrict-to-single-shard" optimizer rule. this
+//   optimization is not possible when the filter condition on the shard key
+//   attribute(s) uses a variable instead of a value literal.
+//   it is currently unclear how to bring back this optimization in case a
+//   cached plan is used. potentially it is an option to run a limited number
+//   of optimizer rules on the plan that was retrieved from the cache.
+// - using _value bind parameters_ in certain positions of the query string may
+//   change the semantics of a query and thus may mandate the use of a different
+//   query execution plan. it is currently unclear if this is the case or not,
+//   but we should validate this. a few places for which this may be an issue:
+//   - LIMIT @offset, @limit (if allowed by the parser): the offset and limit
+//     values are part of the LimitNode, so using different offsets/limits
+//     may require using different plans
+//   - FOR ... OPTIONS @options (if allowed by the parser): OPTIONS can
+//     influence the behavior of the query, so using different sets of options
+//     may require using different plans
+//   - INSERT/UPDATE/REPLACE/REMOVE/UPSERT ... OPTIONS @options (if allowed by
+//     the parser): OPTIONS can influence the behavior of modification queries,
+//     so using different sets of options may require using different plans
 class QueryPlanCache {
  public:
   struct Key {

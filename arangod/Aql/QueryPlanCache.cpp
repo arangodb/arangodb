@@ -67,7 +67,9 @@ QueryPlanCache::~QueryPlanCache() {}
 std::shared_ptr<velocypack::Builder> QueryPlanCache::lookup(
     QueryPlanCache::Key const& key) const {
   std::shared_lock guard(_mutex);
+  LOG_DEVEL << "LOOKUP: CACHE HAS " << _entries.size() << " ENTRIES";
   if (auto it = _entries.find(key); it != _entries.end()) {
+    LOG_DEVEL << "LOOKUP: FOUND PLAN";
     return (*it).second.serializedPlan;
   }
   return nullptr;
@@ -81,6 +83,7 @@ void QueryPlanCache::store(
   std::unique_lock guard(_mutex);
 
   _entries.insert_or_assign(std::move(key), std::move(value));
+  LOG_DEVEL << "STORE: CACHE HAS " << _entries.size() << " ENTRIES";
 }
 
 QueryPlanCache::Key QueryPlanCache::createCacheKey(
@@ -116,6 +119,7 @@ std::shared_ptr<velocypack::Builder> QueryPlanCache::filterBindParameters(
   result->openObject();
   if (source != nullptr) {
     for (auto it : VPackObjectIterator(source->slice())) {
+      LOG_DEVEL << "- " << it.key.stringView();
       if (it.key.stringView().starts_with('@')) {
         // collection name bind parameter
         result->add(it.key.stringView(), it.value);
