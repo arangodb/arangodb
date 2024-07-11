@@ -84,18 +84,7 @@ function runArangodRecovery (params, useEncryption, isKillAfterSetup = true) {
     additionalParams['rocksdb.encryption-hardware-acceleration'] = (Math.random() * 100 >= 50) ? "true" : "false";
   }
 
-  // for cluster runs we have separate parameter set for servers and for testagent(arangosh)
-  let additionalTestParams  = {
-    // arangosh has different name for parameter :(
-    'javascript.execute':  params.script,
-    'javascript.run-main': true,
-    'temp.path': params.temp_path
-  };
-
   if (params.setup) {
-    additionalTestParams['server.request-timeout'] = '60';
-    additionalTestParams['javascript.script-parameter'] = 'setup';
-
     // special handling for crash-handler recovery tests
     if (params.script.match(/crash-handler/)) {
       // forcefully enable crash handler, even if turned off globally
@@ -105,14 +94,14 @@ function runArangodRecovery (params, useEncryption, isKillAfterSetup = true) {
 
     params.options.disableMonitor = true;
     
-    let args = {};
+    let instanceArgs = {};
     
     // enable development debugging if extremeVerbosity is set
     if (params.options.extremeVerbosity === true) {
-      args['log.level'] = 'development=info';
+      instanceArgs['log.level'] = 'development=info';
     }
-    args = Object.assign(args, params.options.extraArgs);
-    args = Object.assign(args, {
+    instanceArgs = Object.assign(instanceArgs, params.options.extraArgs);
+    instanceArgs = Object.assign(instanceArgs, {
       'rocksdb.wal-file-timeout-initial': 10,
       'replication.auto-start': 'true',
       'log.output': 'file://' + params.crashLog
@@ -120,10 +109,10 @@ function runArangodRecovery (params, useEncryption, isKillAfterSetup = true) {
 
     if (useEncryption) {
       params.keyDir = fs.join(fs.getTempPath(), 'arango_encryption');
-      if (!fs.exists(params.keyDir)) {  // needed on win32
+      if (!fs.exists(params.keyDir)) {
         fs.makeDirectory(params.keyDir);
       }
-        
+
       const key = '01234567890123456789012345678901';
       
       let keyfile = fs.join(params.keyDir, 'rocksdb-encryption-keyfile');
@@ -131,18 +120,16 @@ function runArangodRecovery (params, useEncryption, isKillAfterSetup = true) {
 
       // special handling for encryption-keyfolder tests
       if (params.script.match(/encryption-keyfolder/)) {
-        args['rocksdb.encryption-keyfolder'] = params.keyDir;
+        instanceArgs['rocksdb.encryption-keyfolder'] = params.keyDir;
         process.env["rocksdb-encryption-keyfolder"] = params.keyDir;
       } else {
-        args['rocksdb.encryption-keyfile'] = keyfile;
+        instanceArgs['rocksdb.encryption-keyfile'] = keyfile;
         process.env["rocksdb-encryption-keyfile"] = keyfile;
       }
     }
 
-    params.args = args;
+    params.instanceArgs = instanceArgs;
       
-  } else {
-    additionalTestParams['javascript.script-parameter'] = 'recovery';
   }
 
   process.env["state-file"] = params.stateFile;
@@ -150,10 +137,10 @@ function runArangodRecovery (params, useEncryption, isKillAfterSetup = true) {
   process.env["isSan"] = params.options.isSan;
 
   if (params.setup) {
-    params.args = Object.assign(params.args, additionalParams);
+    params.instanceArgs = Object.assign(params.instanceArgs, additionalParams);
     params.instanceManager = new im.instanceManager(params.options.protocol,
                                                     params.options,
-                                                    params.args,
+                                                    params.instanceArgs,
                                                     fs.join('recovery',
                                                             params.count.toString()));
     params.instanceManager.prepareInstance();
@@ -169,23 +156,17 @@ function runArangodRecovery (params, useEncryption, isKillAfterSetup = true) {
       };
     }
   } else {
-    print(BLUE + "Restarting single " + RESET);
+    print(BLUE + "Restarting " + RESET);
     params.instanceManager.reStartInstance();
   }
   params.instanceManager.reconnect();
-  let agentArgs = ct.makeArgs.arangosh(params.options);
-  agentArgs['server.endpoint'] = params.instanceManager.findEndpoint();
-  if (params.args['log.level']) {
-    agentArgs['log.level'] = params.args['log.level'];
-  }
+  internal.db._useDatabase('_system');
 
-  Object.assign(agentArgs, additionalTestParams);
   let testCode = fs.readFileSync(params.script);
   global.instanceManager = params.instanceManager;
   let testFunc;
   let success = -1;
   try {
-    internal.db._useDatabase('_system');
     let content = `(function(){ let runSetup=${params.setup?"true":"false"};${testCode}
 }())`; // DO NOT JOIN WITH THE LINE ABOVE -- because of content could contain '//' at the very EOF
     success = executeScript(content, true, params.script);
@@ -225,9 +206,6 @@ function runArangodRecovery (params, useEncryption, isKillAfterSetup = true) {
       print(BLUE + "killing " + dbServers.length + " DBServers/Coordinators/Singles " + RESET);
       dbServers.forEach((arangod) => {
         params.instanceManager.debugTerminate();
-        // need this to properly mark spawned process as killed in internal test data
-        arangod.exitStatus = internal.killExternal(arangod.pid, termSignal); 
-        arangod.pid = 0;
       });
     }
     return {

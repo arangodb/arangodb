@@ -712,7 +712,10 @@ class instanceManager {
 
     let success = true;
     this.instanceRoles.forEach(instanceRole  => {
-      this.arangods.forEach(arangod => { arangod.restartIfType(instanceRole, moreArgs); });
+      this.arangods.forEach(arangod => {
+        arangod.restartIfType(instanceRole, moreArgs);
+        this.agencyMgr.detectAgencyAlive(this.httpAuthOptions);
+      });
     });
     this.launchFinalize(startTime);
   }
