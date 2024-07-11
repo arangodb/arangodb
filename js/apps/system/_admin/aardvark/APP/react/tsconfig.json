@@ -2,7 +2,7 @@
   "compileOnSave": false,
   "compilerOptions": {
     "allowSyntheticDefaultImports": true,
-    "lib": ["dom", "es2023"],
+    "lib": ["dom", "es2022"],
     "jsx": "react",
     "target": "es2016",
     "module": "esnext",
