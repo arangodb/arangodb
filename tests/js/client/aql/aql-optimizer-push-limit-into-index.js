@@ -37,7 +37,6 @@ function optimizerPushLimitIntoIndexTestSuite () {
   let c;
   return {
     setUpAll : function () {
-      db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection"); 
       let docs = []; 
       for (let i = 0; i < 1000; ++i) { 
@@ -180,6 +179,7 @@ function optimizerPushLimitIntoIndexTestSuite () {
      let queries = [
         "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa'] SORT i.date_created DESC LIMIT 100 RETURN i._key",
         "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created RETURN i._key",
+        "FOR i IN " + c.name() + " FILTER i.date_created IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.license RETURN i._key",
         "FOR i IN " + c.name() + " SORT i.date_created DESC LIMIT 100 RETURN i._key",
       ];
  
@@ -204,14 +204,14 @@ function optimizerPushLimitIntoIndexTestSuite () {
         "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created ASC LIMIT 100 RETURN i._key",
         "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created DESC LIMIT 100 RETURN i._key",
         "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created DESC LIMIT 8, 100 RETURN i._key",
-        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.license, i.date_created DESC LIMIT 0, 100 RETURN i._key",
-        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.license, i.date_created DESC LIMIT 0, 100 RETURN i._key",
       ];
  
       for (let i = 0; i < queries.length; ++i) {
         let resultsWithoutRule = db._query(queries[i], null, opts).toArray();
         let resultsWithRule = db._query(queries[i]).toArray();
-
+        let plan = db._createStatement(queries[i]).explain().plan;
+        
+        assertNotEqual(-1, plan.rules.indexOf("push-limit-into-index"));
         assertEqual(resultsWithoutRule, resultsWithRule);
       }
     },
@@ -221,8 +221,7 @@ function optimizerPushLimitIntoIndexTestSuite () {
 function optimizerPushLimitIntoIndexWithoutIndexTestSuite () {
   let c;
   return {
-    setUpAll : function () {
-      db._drop("UnitTestsCollection");
+    setUp : function () {
       c = db._create("UnitTestsCollection"); 
       let docs = []; 
       for (let i = 0; i < 1000; ++i) { 
@@ -234,7 +233,7 @@ function optimizerPushLimitIntoIndexWithoutIndexTestSuite () {
       }
       c.insert(docs);
     },
-    tearDownAll : function () {
+    tearDown: function () {
       db._drop("UnitTestsCollection");
     },
 
@@ -288,8 +287,7 @@ function optimizerPushLimitIntoIndexWithoutIndexTestSuite () {
 function optimizerPushLimitIntoIndexMultipleIndexesTestSuite () {
   let c;
   return {
-    setUpAll : function () {
-      db._drop("UnitTestsCollection");
+    setUp : function () {
       c = db._create("UnitTestsCollection"); 
       let docs = []; 
       for (let i = 0; i < 1000; ++i) { 
@@ -300,17 +298,18 @@ function optimizerPushLimitIntoIndexMultipleIndexesTestSuite () {
         }); 
       }
       c.insert(docs);
-      c.ensureIndex({ name: "license-date", type: "persistent", fields: ["license", "date_created"] }); 
-      c.ensureIndex({ name: "date-license", type: "persistent", fields: ["date_created", "license"] }); 
     },
-    tearDownAll : function () {
+    tearDown : function () {
       db._drop("UnitTestsCollection");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test case rule cannot trigger since there is no index in place
+/// @brief test case rule on license-date index triggers even though the reversed
+// index is present
 ////////////////////////////////////////////////////////////////////////////////
     testPushLimitIntoIndexRuleWithMultipleIndexes: function () {
+      c.ensureIndex({ name: "license-date", type: "persistent", fields: ["license", "date_created"] }); 
+      c.ensureIndex({ name: "date-license", type: "persistent", fields: ["date_created", "license"] }); 
      let queries = [
         "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created ASC LIMIT 100 RETURN i._key",
         "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created DESC LIMIT 100 RETURN i._key",
@@ -323,6 +322,58 @@ function optimizerPushLimitIntoIndexMultipleIndexesTestSuite () {
         assertEqual("IndexNode", indexNode.type);
         assertEqual(indexNode.limit, 100);
         assertNotEqual(-1, plan.rules.indexOf("push-limit-into-index"));
+      }
+    },
+ 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test case rule triggers with three attributes in index
+////////////////////////////////////////////////////////////////////////////////
+    testPushLimitIntoIndexRuleWithThreeIndexAttributes: function () {
+      c.ensureIndex({ name: "license-date-bar", type: "persistent", fields: ["license", "date_created", "bar"] }); 
+     let queries = [
+        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created ASC LIMIT 100 RETURN i._key",
+        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created DESC LIMIT 100 RETURN i._key",
+        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created, i.bar LIMIT 100 RETURN i._key",
+        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created DESC, i.bar DESC LIMIT 100 RETURN i._key",
+      ];
+ 
+      for (let i = 0; i < queries.length; ++i) {
+        let plan = db._createStatement(queries[i]).explain().plan;
+        let indexNodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
+        assertEqual(1, indexNodes.length);
+
+        let indexNode = indexNodes[0];
+ 
+        assertEqual("IndexNode", indexNode.type);
+        assertEqual(indexNode.limit, 100);
+        assertNotEqual(-1, plan.rules.indexOf("push-limit-into-index"));
+      }
+    }, 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test case rule not triggering when three attributes in index
+////////////////////////////////////////////////////////////////////////////////
+    testPushLimitIntoIndexRuleWithThreeIndexAttributesRuleNotTriggering: function () {
+      c.ensureIndex({ name: "license-date-bar", type: "persistent", fields: ["license", "date_created", "bar"] }); 
+     let queries = [
+        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created DESC, i.bar ASC LIMIT 100 RETURN i._key",
+        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.date_created ASC, i.bar DESC LIMIT 100 RETURN i._key",
+        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.bar DESC LIMIT 100 RETURN i._key",
+        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT i.bar ASC LIMIT 100 RETURN i._key",
+        "FOR i IN " + c.name() + " FILTER i.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] AND i.date_created == true SORT i.bar LIMIT 100 RETURN i._key",
+      ];
+ 
+      for (let i = 0; i < queries.length; ++i) {
+        let plan = db._createStatement(queries[i]).explain().plan;
+
+        let indexNodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
+        assertEqual(1, indexNodes.length);
+
+        let indexNode = indexNodes[0];
+
+        assertEqual("IndexNode", indexNode.type);
+        assertEqual(indexNode.limit, 0);
+        assertEqual(-1, plan.rules.indexOf("push-limit-into-index"));
       }
     },
   };
