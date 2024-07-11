@@ -201,8 +201,9 @@ struct expected {
 template<>
 struct expected<void> {
   expected() = default;
-  explicit expected(std::exception_ptr ex) : _exception(std::move(ex)) {}
-  void reset() { _exception = nullptr; }
+  explicit expected(std::exception_ptr ex) noexcept
+      : _exception(std::move(ex)) {}
+  void reset() noexcept { _exception = nullptr; }
 
   void get() const {
     if (_exception) {
@@ -210,7 +211,9 @@ struct expected<void> {
     }
   }
 
-  void set_exception(std::exception_ptr ex) { _exception = std::move(ex); }
+  void set_exception(std::exception_ptr ex) noexcept {
+    _exception = std::move(ex);
+  }
 
   void emplace() noexcept { reset(); }
 
