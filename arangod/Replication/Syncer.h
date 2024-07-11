@@ -65,7 +65,7 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
     JobSynchronizer(JobSynchronizer const&) = delete;
     JobSynchronizer& operator=(JobSynchronizer const&) = delete;
 
-    explicit JobSynchronizer(std::shared_ptr<Syncer const> const& syncer);
+    explicit JobSynchronizer(std::shared_ptr<Syncer const> syncer);
     ~JobSynchronizer();
 
     /// @brief whether or not a response has arrived
@@ -144,6 +144,23 @@ class Syncer : public std::enable_shared_from_this<Syncer> {
 
     /// @brief number of posted jobs in flight
     uint64_t _jobsInFlight;
+  };
+
+  class JobSynchronizerScope {
+   public:
+    JobSynchronizerScope(JobSynchronizerScope const&) = delete;
+    JobSynchronizerScope& operator=(JobSynchronizerScope const&) = delete;
+
+    explicit JobSynchronizerScope(std::shared_ptr<Syncer const> syncer);
+    ~JobSynchronizerScope();
+
+    JobSynchronizer* operator->();
+    JobSynchronizer const* operator->() const;
+
+    std::shared_ptr<JobSynchronizer> clone() const;
+
+   private:
+    std::shared_ptr<JobSynchronizer> _synchronizer;
   };
 
   struct SyncerState {

@@ -30,6 +30,7 @@
 // server is started in unicode directory
 
 const tu = require('@arangodb/testutils/test-utils');
+const trs = require('@arangodb/testutils/testrunners');
 const fs = require('fs');
 const _ = require('lodash');
 
@@ -53,7 +54,7 @@ function paths_server(options) {
   let opts = _.clone(options);
   // procdump can't stand weird characters in programm options
   opts.disableMonitor = true;
-  let rc = new tu.runOnArangodRunner(opts, fs.join('server_paths', weirdNames[0], weirdNames[1], weirdNames[2], weirdNames[3])).run(testCases);
+  let rc = new trs.runOnArangodRunner(opts, fs.join('server_paths', weirdNames[0], weirdNames[1], weirdNames[2], weirdNames[3])).run(testCases);
   process.env.TMPDIR = tmpPath;
   process.env.TEMP = tmpPath;
   process.env.TMP = tmpPath;
@@ -64,5 +65,5 @@ function paths_server(options) {
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['paths_server'] = paths_server;
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };

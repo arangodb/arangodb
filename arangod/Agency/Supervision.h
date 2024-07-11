@@ -77,7 +77,7 @@ void cleanupHotbackupTransferJobsFunctional(
 void failBrokenHotbackupTransferJobsFunctional(
     Node const& snapshot, std::shared_ptr<VPackBuilder> envelope);
 
-class Supervision : public arangodb::Thread {
+class Supervision : public ServerThread<ArangodServer> {
  public:
   typedef std::chrono::system_clock::time_point TimePoint;
   typedef std::string ServerID;

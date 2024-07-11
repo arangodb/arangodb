@@ -37,6 +37,7 @@ class LinScale final : public Scale<T> {
 
   LinScale(T const& low, T const& high, size_t n) : Scale<T>{low, high, n} {
     this->_delim.resize(n - 1);
+    TRI_ASSERT(n > 0);
     _div = (high - low) / (T)n;
     TRI_ASSERT(_div > 0);
     T le = low;
@@ -52,6 +53,7 @@ class LinScale final : public Scale<T> {
    * @return    index
    */
   size_t pos(T val) const {
+    TRI_ASSERT(_div > 0);
     return static_cast<size_t>(std::floor((val - this->_low) / _div));
   }
 

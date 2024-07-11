@@ -438,6 +438,7 @@ IndexExecutor::CursorReader::CursorReader(
                               : buildDocumentCallback<false, false>(context);
       break;
   }
+
   if (_coveringProducer) {
     if (_strategy == IndexNode::Strategy::kCovering) {
       _coveringSkipper =
@@ -459,6 +460,29 @@ IndexExecutor::CursorReader::CursorReader(
                                 DocumentProducingCallbackVariant::
                                     WithFilterCoveredByIndex{},
                                 context);
+    } else if (_strategy == IndexNode::Strategy::kLateMaterialized) {
+      if (_infos.getFilter() != nullptr) {
+        _coveringSkipper =
+            checkUniqueness
+                ? ::getCallback<true, true, /*produceResult*/ false>(
+                      DocumentProducingCallbackVariant::
+                          WithFilterCoveredByIndex{},
+                      context)
+                : ::getCallback<false, true, /*produceResult*/ false>(
+                      DocumentProducingCallbackVariant::
+                          WithFilterCoveredByIndex{},
+                      context);
+      } else {
+        _coveringSkipper =
+            checkUniqueness
+                ? ::getCallback<true, true>(DocumentProducingCallbackVariant::
+                                                WithProjectionsCoveredByIndex{},
+                                            context)
+                : ::getCallback<false, true>(
+                      DocumentProducingCallbackVariant::
+                          WithProjectionsCoveredByIndex{},
+                      context);
+      }
     }
   } else {
     _documentSkipper = checkUniqueness
@@ -550,10 +574,13 @@ size_t IndexExecutor::CursorReader::skipIndex(size_t toSkip) {
   if (_infos.getFilter() != nullptr || _checkUniqueness) {
     while (hasMore() && (skipped < toSkip)) {
       switch (_strategy) {
+        case IndexNode::Strategy::kLateMaterialized:
+          _context.setAllowCoveringIndexOptimization(true);
+          [[fallthrough]];
+
         case IndexNode::Strategy::kCovering:
         case IndexNode::Strategy::kCoveringFilterScanOnly:
         case IndexNode::Strategy::kCoveringFilterOnly:
-        case IndexNode::Strategy::kLateMaterialized:
           TRI_ASSERT(_coveringSkipper != nullptr);
           _cursor->nextCovering(_coveringSkipper, toSkip - skipped);
           break;

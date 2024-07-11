@@ -301,8 +301,9 @@ class Cache : public std::enable_shared_from_this<Cache> {
  private:
   void ensureEvictionStats();
 
-  // manage the actual table - note: MUST be used only with atomic_load and
-  // atomic_store!
+  // manage the actual table
+  // note: access to the _table pointer must be guarded by _tableLock!
+  mutable basics::ReadWriteSpinLock _tableLock;
   std::shared_ptr<Table> _table;
 
   Table::BucketClearer _bucketClearer;

@@ -352,7 +352,7 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
       VPackBuilder dbInfoBuilder;
       if (!futures.empty()) {
         dbInfoBuilder.openObject();
-        auto responses = futures::collectAll(futures).get();
+        auto responses = futures::collectAll(futures).waitAndGet();
         for (auto const& it : responses) {
           auto& resp = it.get();
           auto res = resp.combinedResult();
@@ -620,7 +620,7 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
             OperationOptions options(ExecContext::current());
 
             OperationResult opResult =
-                trx.count(collName, transaction::CountType::Normal, options);
+                trx.count(collName, transaction::CountType::kNormal, options);
             std::ignore = trx.finish(opResult.result);
             if (opResult.fail()) {
               LOG_TOPIC("8ae00", WARN, Logger::STATISTICS)

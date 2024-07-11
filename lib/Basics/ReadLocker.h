@@ -31,22 +31,21 @@
 #include <thread>
 
 /// @brief construct locker with file and line information
-#define READ_LOCKER(obj, lock)                                                 \
-  arangodb::basics::ReadLocker<typename std::decay<decltype(lock)>::type> obj( \
-      &lock, arangodb::basics::LockerType::BLOCKING, true, __FILE__, __LINE__)
+#define READ_LOCKER(obj, lock)      \
+  arangodb::basics::ReadLocker obj( \
+      &lock, arangodb::basics::LockerType::BLOCKING, true)
 
-#define READ_LOCKER_EVENTUAL(obj, lock)                                        \
-  arangodb::basics::ReadLocker<typename std::decay<decltype(lock)>::type> obj( \
-      &lock, arangodb::basics::LockerType::EVENTUAL, true, __FILE__, __LINE__)
+#define READ_LOCKER_EVENTUAL(obj, lock) \
+  arangodb::basics::ReadLocker obj(     \
+      &lock, arangodb::basics::LockerType::EVENTUAL, true)
 
-#define TRY_READ_LOCKER(obj, lock)                                             \
-  arangodb::basics::ReadLocker<typename std::decay<decltype(lock)>::type> obj( \
-      &lock, arangodb::basics::LockerType::TRY, true, __FILE__, __LINE__)
+#define TRY_READ_LOCKER(obj, lock)                                           \
+  arangodb::basics::ReadLocker obj(&lock, arangodb::basics::LockerType::TRY, \
+                                   true)
 
-#define CONDITIONAL_READ_LOCKER(obj, lock, condition)                          \
-  arangodb::basics::ReadLocker<typename std::decay<decltype(lock)>::type> obj( \
-      &lock, arangodb::basics::LockerType::BLOCKING, (condition), __FILE__,    \
-      __LINE__)
+#define CONDITIONAL_READ_LOCKER(obj, lock, condition) \
+  arangodb::basics::ReadLocker obj(                   \
+      &lock, arangodb::basics::LockerType::BLOCKING, (condition))
 
 namespace arangodb::basics {
 
@@ -63,7 +62,12 @@ class ReadLocker {
   /// @brief acquires a read-lock
   /// The constructor acquires a read lock, the destructor unlocks the lock.
   ReadLocker(LockType* readWriteLock, LockerType type, bool condition,
-             char const* file, int line) noexcept
+             SourceLocation location = SourceLocation::current()) noexcept
+      : ReadLocker(readWriteLock, type, condition, location.file_name(),
+                   location.line()) {}
+  [[deprecated("Use SourceLocation instead")]] ReadLocker(
+      LockType* readWriteLock, LockerType type, bool condition,
+      char const* file, int line) noexcept
       : _readWriteLock(readWriteLock),
         _file(file),
         _line(line),
@@ -142,6 +146,8 @@ class ReadLocker {
     return false;
   }
 
+  LockType* getLock() const noexcept { return _readWriteLock; }
+
  private:
   /// @brief the read-write lock
   LockType* _readWriteLock;
@@ -155,5 +161,11 @@ class ReadLocker {
   /// @brief whether or not we acquired the lock
   bool _isLocked;
 };
+
+template<class LockType>
+ReadLocker(LockType*, LockerType, bool, char const*, int)
+    -> ReadLocker<LockType>;
+template<class LockType>
+ReadLocker(LockType*, LockerType, bool, SourceLocation) -> ReadLocker<LockType>;
 
 }  // namespace arangodb::basics

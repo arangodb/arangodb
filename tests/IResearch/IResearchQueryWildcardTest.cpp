@@ -626,7 +626,7 @@ class QueryWildcardSearch : public QueryWildcard {
           version()));
       auto collection = _vocbase.lookupCollection("testCollection1");
       ASSERT_TRUE(collection);
-      collection->createIndex(createJson->slice(), created).get();
+      collection->createIndex(createJson->slice(), created).waitAndGet();
       ASSERT_TRUE(created);
     }
     // create view

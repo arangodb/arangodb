@@ -186,7 +186,7 @@ auto WeightedTwoSidedEnumerator<
   if (!looseEnds.empty()) {
     // Will throw all network errors here
     futures::Future<std::vector<Step*>> futureEnds = _provider.fetch(looseEnds);
-    futureEnds.get();
+    futureEnds.waitAndGet();
   }
 }
 
@@ -207,7 +207,7 @@ auto WeightedTwoSidedEnumerator<
   if (!looseEnds.empty()) {
     // Will throw all network errors here
     futures::Future<std::vector<Step*>> futureEnds = _provider.fetch(looseEnds);
-    futureEnds.get();
+    futureEnds.waitAndGet();
   }
 }
 
@@ -234,7 +234,7 @@ auto WeightedTwoSidedEnumerator<
     futures::Future<std::vector<Step*>> futureEnds = _provider.fetch(looseEnds);
 
     // Will throw all network errors here
-    auto&& preparedEnds = futureEnds.get();
+    auto&& preparedEnds = futureEnds.waitAndGet();
 
     TRI_ASSERT(preparedEnds.size() != 0);
   }

@@ -31,6 +31,7 @@ const functionsDocumentation = {
 
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
+const tu = require('@arangodb/testutils/test-utils');
 
 const testPaths = {
   'version': []
@@ -89,5 +90,5 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['version'] = version;
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };

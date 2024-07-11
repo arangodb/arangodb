@@ -28,6 +28,7 @@
 #include "Aql/Query.h"
 #include "Aql/QueryList.h"
 #include "Aql/QueryRegistry.h"
+#include "Auth/TokenCache.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
@@ -155,7 +156,7 @@ void RestQueryHandler::dumpQueryRegistry() {
     }
 
     if (!futures.empty()) {
-      auto responses = futures::collectAll(futures).get();
+      auto responses = futures::collectAll(futures).waitAndGet();
       for (auto const& it : responses) {
         if (!it.hasValue()) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);

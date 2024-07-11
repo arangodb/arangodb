@@ -147,9 +147,15 @@ add_library(arangoserver STATIC
   RestServer/UpgradeFeature.cpp
   RestServer/ViewTypesFeature.cpp
   RestServer/VocbaseContext.cpp
+  Scheduler/LockfreeThreadPool.cpp
   Scheduler/Scheduler.cpp
   Scheduler/SchedulerFeature.cpp
+  Scheduler/SchedulerMetrics.cpp
+  Scheduler/SimpleThreadPool.cpp
   Scheduler/SupervisedScheduler.cpp
+  Scheduler/ThreadPoolScheduler.cpp
+  Scheduler/ThreadPoolScheduler.cpp
+  Scheduler/WorkStealingThreadPool.cpp
   Sharding/ShardDistributionReporter.cpp
   Sharding/ShardingFeature.cpp
   Sharding/ShardingInfo.cpp
@@ -169,8 +175,8 @@ add_library(arangoserver STATIC
   Transaction/Hints.cpp
   Transaction/History.cpp
   Transaction/IndexesSnapshot.cpp
-  Transaction/Manager.cpp
   Transaction/ManagedContext.cpp
+  Transaction/Manager.cpp
   Transaction/ManagerFeature.cpp
   Transaction/Methods.cpp
   Transaction/Options.cpp

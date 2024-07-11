@@ -28,14 +28,11 @@
 const functionsDocumentation = {
   'gtest': 'gtest test suites'
 };
-const optionsDocumentation = [
-  '   - `skipGTest`: if set to true the gtest unittests are skipped',
-  '   - `skipGeo`: obsolete and only here for downwards-compatibility'
-];
 
 const _ = require('lodash');
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
+const tu = require('@arangodb/testutils/test-utils');
 const tmpDirMmgr = require('@arangodb/testutils/tmpDirManager').tmpDirManager;
 const {getGTestResults} = require('@arangodb/testutils/result-processing');
 const testPaths = {
@@ -94,49 +91,45 @@ function gtestRunner (testfilename, name, opts, testoptions) {
   let testResultJsonFile = fs.join(rootDir, 'testResults.json');
 
   const binary = locateGTest(testfilename);
-  if (!options.skipGTest) {
-    if (binary !== '') {
-      let tmpMgr = new tmpDirMmgr('gtest', options);
-      let argv = [
-        '--gtest_output=json:' + testResultJsonFile,
-      ];
+  if (binary !== '') {
+    let tmpMgr = new tmpDirMmgr('gtest', options);
+    let argv = [
+      '--gtest_output=json:' + testResultJsonFile,
+    ];
 
-      let filter = options.commandSwitches ? options.commandSwitches.filter(s => s.startsWith("gtest_filter=")) : [];
-      if (filter.length > 0) {
-        if (filter.length > 1) {
-          throw "Found more than one gtest_filter argument";
-        }
-        argv.push('--' + filter[0]);
-      } else if (options.hasOwnProperty('testCase') && (typeof (options.testCase) !== 'undefined')) {
-        argv.push('--gtest_filter='+options.testCase);
-      } else {
-        argv.push('--gtest_filter=-*_LongRunning');
+    let filter = options.commandSwitches ? options.commandSwitches.filter(s => s.startsWith("gtest_filter=")) : [];
+    if (filter.length > 0) {
+      if (filter.length > 1) {
+        throw "Found more than one gtest_filter argument";
       }
-      // all non gtest args have to come last
-      argv.push('--log.line-number');
-      argv.push(options.extremeVerbosity ? "true" : "false");
-      results[name] = pu.executeAndWait(binary, argv, options, 'all-gtest', rootDir, options.coreCheck);
-      results[name].failed = results[name].status ? 0 : 1;
-      if (!results[name].status) {
-        results.failed += 1;
-      }
-      results = getGTestResults(testResultJsonFile, results);
-      tmpMgr.destructor((results.failed === 0) && options.cleanup);
+      argv.push('--' + filter[0]);
+    } else if (options.hasOwnProperty('testCase') && (typeof (options.testCase) !== 'undefined')) {
+      argv.push('--gtest_filter='+options.testCase);
     } else {
-      results.failed += 1;
-      results[name] = {
-        failed: 1,
-        status: false,
-        message: `binary ${testfilename} not found when trying to run suite "all-gtest"`
-      };
+      argv.push('--gtest_filter=-*_LongRunning');
     }
+    // all non gtest args have to come last
+    argv.push('--log.line-number');
+    argv.push(options.extremeVerbosity ? "true" : "false");
+    results[name] = pu.executeAndWait(binary, argv, options, 'all-gtest', rootDir, options.coreCheck);
+    results[name].failed = results[name].status ? 0 : 1;
+    if (!results[name].status) {
+      results.failed += 1;
+    }
+    results = getGTestResults(testResultJsonFile, results);
+    tmpMgr.destructor((results.failed === 0) && options.cleanup);
+  } else {
+    results.failed += 1;
+    results[name] = {
+      failed: 1,
+      status: false,
+      message: `binary ${testfilename} not found when trying to run suite "all-gtest"`
+    };
   }
   return results;
 }
 
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
-  opts['skipGtest'] = false;
-
   Object.assign(allTestPaths, testPaths);
 
   const tests = [ 'arangodbtests_zkd' ];
@@ -151,6 +144,5 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   let no_iresearch_filter = ['gtest_filter=-IResearch*:*_LongRunning*'];
   testFns['gtest_arangodb'] = x => gtestRunner('arangodbtests', 'gtest-arangodb', x, no_iresearch_filter);
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };

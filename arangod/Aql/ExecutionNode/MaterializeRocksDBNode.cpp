@@ -27,10 +27,13 @@
 #include "Aql/Collection.h"
 #include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionEngine.h"
-#include "Aql/Executor/MaterializeExecutor.h"
+#include "Aql/ExecutionNode/DocumentProducingNode.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Executor/MaterializeExecutor.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/Variable.h"
+#include "Basics/StaticStrings.h"
+#include "Basics/VelocyPackHelper.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -45,27 +48,33 @@ MaterializeRocksDBNode::MaterializeRocksDBNode(
     aql::Variable const& inDocId, aql::Variable const& outVariable,
     aql::Variable const& oldDocVariable)
     : MaterializeNode(plan, id, inDocId, outVariable, oldDocVariable),
-      CollectionAccessingNode(collection) {}
+      CollectionAccessingNode(collection),
+      _maxProjections(DocumentProducingNode::kMaxProjections) {}
 
 MaterializeRocksDBNode::MaterializeRocksDBNode(ExecutionPlan* plan,
                                                arangodb::velocypack::Slice base)
     : MaterializeNode(plan, base),
       CollectionAccessingNode(plan, base),
       _projections(Projections::fromVelocyPack(
-          plan->getAst(), base, plan->getAst()->query().resourceMonitor())) {}
+          plan->getAst(), base, plan->getAst()->query().resourceMonitor())),
+      _maxProjections(basics::VelocyPackHelper::getNumericValue(
+          base.get(StaticStrings::MaxProjections),
+          DocumentProducingNode::kMaxProjections)) {}
 
-void MaterializeRocksDBNode::doToVelocyPack(velocypack::Builder& nodes,
+void MaterializeRocksDBNode::doToVelocyPack(velocypack::Builder& builder,
                                             unsigned flags) const {
   // call base class method
-  MaterializeNode::doToVelocyPack(nodes, flags);
+  MaterializeNode::doToVelocyPack(builder, flags);
 
   // add collection information
-  CollectionAccessingNode::toVelocyPack(nodes, flags);
-  nodes.add(kMaterializeNodeInLocalDocIdParam, true);
+  CollectionAccessingNode::toVelocyPack(builder, flags);
+  builder.add(kMaterializeNodeInLocalDocIdParam, true);
 
   if (!_projections.empty()) {
-    _projections.toVelocyPack(nodes);
+    _projections.toVelocyPack(builder);
   }
+
+  builder.add(StaticStrings::MaxProjections, VPackValue(maxProjections()));
 }
 
 std::vector<Variable const*> MaterializeRocksDBNode::getVariablesSetHere()
@@ -134,6 +143,7 @@ ExecutionNode* MaterializeRocksDBNode::clone(ExecutionPlan* plan,
       plan, _id, collection(), *_inNonMaterializedDocId, *_outVariable,
       *_oldDocVariable);
   c->_projections = _projections;
+  c->setMaxProjections(maxProjections());
   CollectionAccessingNode::cloneInto(*c);
   return cloneHelper(std::move(c), withDependencies);
 }

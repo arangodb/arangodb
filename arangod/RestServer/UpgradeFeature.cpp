@@ -24,6 +24,7 @@
 #include "UpgradeFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/UserManager.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/application-exit.h"
@@ -233,7 +234,7 @@ void UpgradeFeature::start() {
 
       VPackSlice extras = VPackSlice::noneSlice();
       res = um->storeUser(true, "root", init.defaultPassword(), true, extras);
-      if (res.fail() && res.errorNumber() == TRI_ERROR_USER_NOT_FOUND) {
+      if (res.is(TRI_ERROR_USER_NOT_FOUND)) {
         res =
             um->storeUser(false, "root", init.defaultPassword(), true, extras);
       }

@@ -23,6 +23,12 @@ file(
 if (LINUX)
   set(LIBUNWIND_CC_TMP "${CMAKE_C_COMPILER}")
   set(LIBUNWIND_CXX_TMP "${CMAKE_CXX_COMPILER}")
+  
+  # add build-type specific c flags and cxx flags here, because otherwise
+  # they would be lost
+  set(LIBUNWIND_C_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE_UPPER}}")
+  set(LIBUNWIND_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE_UPPER}}")
+  message(DEBUG "LIBUNWIND_C_FLAGS=${LIBUNWIND_C_FLAGS} LIBUNWIND_CXX_FLAGS=${LIBUNWIND_CXX_FLAGS}")
 
   set(LIBUNWIND_LIB "${CMAKE_CURRENT_BINARY_DIR}/v${LIBUNWIND_VERSION}/src/.libs/libunwind.a")
   # note: in the following configure, turning on cxx exceptions will cause duplicate
@@ -37,8 +43,8 @@ if (LINUX)
     CONFIGURE_COMMAND
       "${LIBUNWIND_SOURCE_DIR}/configure" CC=${LIBUNWIND_CC_TMP}
                   CXX=${LIBUNWIND_CXX_TMP}
-                  CFLAGS=${CMAKE_C_FLAGS}
-                  CXXFLAGS=${CMAKE_CXX_FLAGS}
+                  CFLAGS=${LIBUNWIND_C_FLAGS}
+                  CXXFLAGS=${LIBUNWIND_CXX_FLAGS}
                   --prefix=${CMAKE_CURRENT_BINARY_DIR}
                   --disable-shared --enable-static --disable-tests --disable-documentation --disable-per-thread-cache --disable-coredump --disable-ptrace --disable-setjmp --disable-debug --enable-debug-frame --disable-zlibdebuginfo --disable-minidebuginfo --disable-cxx-exceptions --disable-weak-backtrace --disable-unwind-header
     BUILD_COMMAND

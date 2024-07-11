@@ -24,18 +24,22 @@
 #include "SortElement.h"
 
 #include "Aql/Variable.h"
+#include "Basics/debugging.h"
 
 #include <absl/strings/str_cat.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
 
-SortElement::SortElement(Variable const* v, bool asc)
-    : var(v), ascending(asc) {}
+SortElement::SortElement(Variable const* v, bool asc) : var(v), ascending(asc) {
+  TRI_ASSERT(var != nullptr);
+}
 
 SortElement::SortElement(Variable const* v, bool asc,
                          std::vector<std::string> path)
-    : var(v), ascending(asc), attributePath(std::move(path)) {}
+    : SortElement(v, asc) {
+  attributePath = std::move(path);
+}
 
 std::string SortElement::toString() const {
   std::string result = absl::StrCat("$", var->id);

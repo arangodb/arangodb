@@ -172,7 +172,8 @@ void ShortestPathOptions::addReverseLookupInfo(
     std::string const& attributeName, aql::AstNode* condition,
     bool onlyEdgeIndexes, TRI_edge_direction_e direction) {
   injectLookupInfoInList(_reverseLookupInfos, plan, collectionName,
-                         attributeName, condition, onlyEdgeIndexes, direction);
+                         attributeName, condition, onlyEdgeIndexes, direction,
+                         std::nullopt);
 }
 
 double ShortestPathOptions::weightEdge(VPackSlice edge) const {

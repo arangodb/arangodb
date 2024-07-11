@@ -61,7 +61,9 @@ class LogScale final : public Scale<T> {
     }
     _div = this->_delim.front() - low;
     TRI_ASSERT(_div > T(0));
+    TRI_ASSERT(_base > 0);
     _lbase = std::log(_base);
+    TRI_ASSERT(_lbase > 0);
   }
 
   /**
@@ -80,6 +82,8 @@ class LogScale final : public Scale<T> {
    * @return    index
    */
   size_t pos(T val) const {
+    TRI_ASSERT(_div > 0);
+    TRI_ASSERT(_lbase > 0);
     return static_cast<size_t>(
         1 + std::floor(log((val - this->_low) / _div) / _lbase));
   }

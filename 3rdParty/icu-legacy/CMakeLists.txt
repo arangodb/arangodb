@@ -28,9 +28,13 @@ set(ICU64_LIBS
     "${CMAKE_CURRENT_BINARY_DIR}/lib/libicudata64.a"
 )
 
-# suppress tons of warnings caused by non-overridden methods in ICU source
-set(ICU_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-suggest-override")
+# add build-type specific c flags and cxx flags here, because otherwise
+# they would be lost
+set(ICU_C_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE_UPPER}}")
+set(ICU_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE_UPPER}} -Wno-suggest-override")
+# suppress tons of warnings caused by non-overridden methods in ICU source.
 string(REGEX REPLACE "-Wsuggest-override" "" ICU_CXX_FLAGS ${ICU_CXX_FLAGS})
+message(DEBUG "ICU_C_FLAGS=${ICU_C_FLAGS} ICU_CXX_FLAGS=${ICU_CXX_FLAGS}")
 
 ExternalProject_Add(
   iculegacy_build
@@ -44,7 +48,7 @@ ExternalProject_Add(
     ./configure
       CC=${CMAKE_C_COMPILER}
       CXX=${CMAKE_CXX_COMPILER}
-      CFLAGS=${CMAKE_C_FLAGS}
+      CFLAGS=${ICU_C_FLAGS}
       CXXFLAGS=${ICU_CXX_FLAGS}
       CPPFLAGS=${CMAKE_CPPFLAGS}
       --prefix=${CMAKE_CURRENT_BINARY_DIR}

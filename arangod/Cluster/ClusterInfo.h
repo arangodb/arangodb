@@ -933,8 +933,12 @@ class ClusterInfo final {
 
   /// @brief map shardId to collection name (not ID)
   CollectionID getCollectionNameForShard(ShardID shardId);
+  CollectionID getCollectionNameForShard(
+      basics::ReadLocker<basics::ReadWriteLock>&, ShardID shardId);
   /// @brief map shardId to database name (not ID)
   auto getDatabaseNameForShard(ShardID shardId) -> std::optional<DatabaseID>;
+  auto getDatabaseNameForShard(basics::ReadLocker<basics::ReadWriteLock>&,
+                               ShardID shardId) -> std::optional<DatabaseID>;
 
   auto getReplicatedLogLeader(replication2::LogId) const -> ResultT<ServerID>;
 

@@ -29,10 +29,10 @@
 const functionsDocumentation = {
   'agency': 'run agency tests'
 };
-const optionsDocumentation = [
-];
 
 const tu = require('@arangodb/testutils/test-utils');
+const tr = require('@arangodb/testutils/testrunner');
+const trs = require('@arangodb/testutils/testrunners');
 
 const testPaths = {
   'agency': [tu.pathForTesting('client/agency')]
@@ -50,7 +50,10 @@ function agency (options) {
 
   options.agency = true;
   options.cluster = false;
-  let results = new tu.runInArangoshRunner(options,  'agency', {}, false, false).run(testCases);
+  let results = new trs.runInArangoshRunner(
+    options,  'agency', {},
+    (tr.sutFilters.checkUsers.concat(tr.sutFilters.checkCollections)).concat(tr.sutFilters.checkDBs))
+      .run(testCases);
 
   options.agency = saveAgency;
   options.cluster = saveCluster;
@@ -62,6 +65,5 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['agency'] = agency;
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };

@@ -29,12 +29,10 @@
 const functionsDocumentation = {
   'load_balancing': 'load balancing tests'
 };
-const optionsDocumentation = [
-  '   - `skipLoadBalancing : testing load_balancing will be skipped.'
-];
 
 const _ = require('lodash');
 const tu = require('@arangodb/testutils/test-utils');
+const trs = require('@arangodb/testutils/testrunners');
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 const CYAN = require('internal').COLORS.COLOR_CYAN;
@@ -54,16 +52,6 @@ const testPaths = {
 ////////////////////////////////////////////////////////////////////////////////
 
 function loadBalancingClient (options) {
-  if (options.skipLoadBalancing === true) {
-    print('skipping Load Balancing tests!');
-    return {
-      load_balancing: {
-        status: true,
-        skipped: true
-      }
-    };
-  }
-
   print(CYAN + 'Load Balancing tests...' + RESET);
   const excludeAuth = (fn) => { return (fn.indexOf('-auth') === -1); };
   let testCases = tu.scanTestPaths(testPaths.load_balancing, options)
@@ -74,7 +62,7 @@ function loadBalancingClient (options) {
     opts.coordinators = 2;
   }
 
-  let rc = new tu.runInArangoshRunner(opts, 'load_balancing', {
+  let rc = new trs.runInArangoshRunner(opts, 'load_balancing', {
     'server.authentication': 'false'
   }).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
@@ -86,16 +74,6 @@ function loadBalancingClient (options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function loadBalancingAuthClient (options) {
-  if (options.skipLoadBalancing === true) {
-    print('skipping Load Balancing tests!');
-    return {
-      load_balancing_auth: {
-        status: true,
-        skipped: true
-      }
-    };
-  }
-
   print(CYAN + 'Load Balancing with Authentication tests...' + RESET);
   const excludeNoAuth = (fn) => { return (fn.indexOf('-noauth') === -1); };
   let testCases = tu.scanTestPaths(testPaths.load_balancing, options)
@@ -108,7 +86,7 @@ function loadBalancingAuthClient (options) {
   opts.username = 'root';
   opts.password = '';
 
-  let rc = new tu.runInArangoshRunner(opts, 'load_balancing', _.clone(tu.testServerAuthInfo)).run(testCases);
+  let rc = new trs.runInArangoshRunner(opts, 'load_balancing', _.clone(tu.testServerAuthInfo)).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
 }
@@ -118,8 +96,5 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   testFns['load_balancing'] = loadBalancingClient;
   testFns['load_balancing_auth'] = loadBalancingAuthClient;
 
-  opts['skipLoadBalancing'] = false;
-
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };

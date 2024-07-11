@@ -35,8 +35,8 @@ const SpotlightSelect = () => {
   ) => {
     // default search
     if (
-      label.toLocaleLowerCase().includes(searchString) ||
-      value.toLocaleLowerCase().includes(searchString)
+      label.toLocaleLowerCase().includes(searchString.toLocaleLowerCase()) ||
+      value.toLocaleLowerCase().includes(searchString.toLocaleLowerCase())
     ) {
       return true;
     }

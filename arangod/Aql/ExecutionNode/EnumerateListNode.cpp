@@ -142,6 +142,9 @@ size_t EnumerateListNode::getMemoryUsedBytes() const { return sizeof(*this); }
 void EnumerateListNode::replaceVariables(
     std::unordered_map<VariableId, Variable const*> const& replacements) {
   _inVariable = Variable::replace(_inVariable, replacements);
+  if (hasFilter()) {
+    filter()->replaceVariables(replacements);
+  }
 }
 
 void EnumerateListNode::replaceAttributeAccess(

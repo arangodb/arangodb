@@ -98,7 +98,8 @@ std::unique_ptr<ExecutionBlock> SubqueryEndNode::createBlock(
 
   auto const& vpackOptions = engine.getQuery().vpackOptions();
   auto executorInfos = SubqueryEndExecutorInfos(
-      &vpackOptions, engine.getQuery().resourceMonitor(), inReg, outReg);
+      &vpackOptions, engine.getQuery().resourceMonitor(), std::move(inReg),
+      std::move(outReg));
 
   return std::make_unique<ExecutionBlockImpl<SubqueryEndExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));

@@ -51,8 +51,8 @@ using SortedServersSet = std::set<ServerID, IsServerIdLessThan>;
 
 /// @brief begin a transaction on all followers
 Future<Result> beginTransactionOnLeaders(
-    TransactionState&, ClusterTrxMethods::SortedServersSet const& leaders,
-    transaction::MethodsApi api);
+    std::shared_ptr<TransactionState>,
+    ClusterTrxMethods::SortedServersSet leaders, transaction::MethodsApi api);
 
 /// @brief commit a transaction on a subordinate
 Future<arangodb::Result> commitTransaction(transaction::Methods& trx,

@@ -394,16 +394,13 @@ class VelocyPackHelper {
     return compare(lhs, rhs, useUTF8, options, lhsBase, rhsBase) == 0;
   }
 
-  static bool hasNonClientTypes(arangodb::velocypack::Slice,
-                                bool checkExternals, bool checkCustom);
+  static bool hasNonClientTypes(arangodb::velocypack::Slice input);
 
-  static void sanitizeNonClientTypes(arangodb::velocypack::Slice input,
-                                     arangodb::velocypack::Slice base,
-                                     arangodb::velocypack::Builder& output,
-                                     arangodb::velocypack::Options const*,
-                                     bool sanitizeExternals,
-                                     bool sanitizeCustom,
-                                     bool allowUnindexed = false);
+  static void sanitizeNonClientTypes(
+      arangodb::velocypack::Slice input, arangodb::velocypack::Slice base,
+      arangodb::velocypack::Builder& output,
+      arangodb::velocypack::Options const& options,
+      bool allowUnindexed = false);
 
   static uint64_t extractIdValue(VPackSlice const& slice);
 

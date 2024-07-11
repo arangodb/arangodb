@@ -27,6 +27,8 @@
 #include "Basics/debugging.h"
 #include "Containers/SmallVector.h"
 
+#include <absl/strings/str_cat.h>
+
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -306,6 +308,7 @@ void zkd::compareWithBoxInto(byte_string_view cur, byte_string_view min,
   std::size_t step = 0;
   std::size_t dim = 0;
 
+  TRI_ASSERT(dimensions > 0 || max_size == 0);
   for (std::size_t i = 0; i < 8 * max_size; i++) {
     TRI_ASSERT(step == i / dimensions);
     TRI_ASSERT(dim == i % dimensions);
@@ -344,9 +347,8 @@ void zkd::compareWithBoxInto(byte_string_view cur, byte_string_view min,
 auto zkd::testInBox(byte_string_view cur, byte_string_view min,
                     byte_string_view max, std::size_t dimensions) -> bool {
   if (dimensions == 0) {
-    auto msg = std::string{"dimensions argument to "};
-    msg += __func__;
-    msg += " must be greater than zero.";
+    auto msg = absl::StrCat("dimensions argument to ", __func__,
+                            " must be greater than zero.");
     throw std::invalid_argument{msg};
   }
 
@@ -427,6 +429,7 @@ auto zkd::getNextZValue(byte_string_view cur, byte_string_view min,
     while (changeBP != 0 && !update_dims) {
       --changeBP;
       if (nisp.getBit(changeBP) == Bit::ZERO) {
+        TRI_ASSERT(dims > 0);
         auto dim = changeBP % dims;
         auto step = changeBP / dims;
         if (cmpResult[dim].saveMax <= step) {
@@ -455,6 +458,7 @@ auto zkd::getNextZValue(byte_string_view cur, byte_string_view min,
   // after `bitPos`
   auto const nextGreaterBitInDim = [dims](std::size_t const bitPos,
                                           std::size_t const dim) {
+    TRI_ASSERT(dims > 0);
     auto const posRem = bitPos % dims;
     auto const posFloor = bitPos - posRem;
     auto const result = dim > posRem ? (posFloor + dim) : posFloor + dims + dim;

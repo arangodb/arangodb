@@ -777,6 +777,7 @@ void Manager::shrinkOvergrownCaches(Manager::TaskEnvironment environment,
         // by default, resizeCache() will only free memory from caches by
         // eviciting cache entries. it will not shrink the hash table sizes
         bool allowShrinking = false;
+        TRI_ASSERT(cacheList.size() > 0);
         if (static_cast<double>(i) / static_cast<double>(cacheList.size()) <=
             kCachesToShrinkRatio) {
           // for the bottom kCachesToShrinkRation caches we will also trigger a
@@ -1031,6 +1032,7 @@ Manager::PriorityList Manager::priorityList() {
       minimumWeight *= 1.001;  // bump by 0.1% until we fix precision issues
     }
 
+    TRI_ASSERT(_caches.size() > 0);
     double uniformMarginalWeight = 0.2 / static_cast<double>(_caches.size());
     double baseWeight = std::max(minimumWeight, uniformMarginalWeight);
 
@@ -1074,6 +1076,7 @@ Manager::PriorityList Manager::priorityList() {
     }
     // avoid div-by-zero
     globalUsage = std::max(globalUsage, std::uint64_t(1));
+    TRI_ASSERT(globalUsage > 0);
 
     // gather all unaccessed caches at beginning of list
     for (auto& c : _caches) {

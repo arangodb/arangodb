@@ -28,11 +28,9 @@
 const functionsDocumentation = {
   'queryCacheAuthorization': 'authorization check for query cache'
 };
-const optionsDocumentation = [
-  '   - `skipQueryCacheAuthorization` : if set to true the read only tests are skipped'
-];
 
 const pu = require('@arangodb/testutils/process-utils');
+const tu = require('@arangodb/testutils/test-utils');
 const ct = require('@arangodb/testutils/client-tools');
 const im = require('@arangodb/testutils/instance-manager');
 const request = require('@arangodb/request');
@@ -54,19 +52,6 @@ const testPaths = {
 
 function queryCacheAuthorization (options) {
   const results = { failed: 0 };
-
-  if (options.skipQueryCacheAuthorization === true) {
-    print('skipping queryCacheAuthorization tests!');
-    return {
-      failed: 0,
-      queryCacheAuthorization: {
-        failed: 0,
-        status: true,
-        skipped: true
-      }
-    };
-  } // if
-
   if (options.cluster) {
     print('skipping queryCacheAuthorization tests on cluster!');
     return {
@@ -164,6 +149,5 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['queryCacheAuthorization'] = queryCacheAuthorization;
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };

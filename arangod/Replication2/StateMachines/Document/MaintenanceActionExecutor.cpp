@@ -27,11 +27,11 @@
 #include "Cluster/CreateCollection.h"
 #include "Cluster/EnsureIndex.h"
 #include "Cluster/Maintenance.h"
-#include "Cluster/UpdateCollection.h"
 #include "Logger/LogMacros.h"
-#include "Utils/DatabaseGuard.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/LogicalCollection.h"
+
+#include <velocypack/Collection.h>
 
 namespace arangodb::replication2::replicated_state::document {
 MaintenanceActionExecutor::MaintenanceActionExecutor(
@@ -46,7 +46,26 @@ MaintenanceActionExecutor::MaintenanceActionExecutor(
 
 auto MaintenanceActionExecutor::executeCreateCollection(
     ShardID const& shard, TRI_col_type_e collectionType,
-    velocypack::SharedSlice const& properties) noexcept -> Result {
+    velocypack::SharedSlice properties) noexcept -> Result {
+  static const auto forbiddenKeys = std::unordered_set{
+      StaticStrings::DataSourceId,
+      StaticStrings::DataSourceName,
+      StaticStrings::DataSourceGuid,
+      StaticStrings::ObjectId,
+  };
+  if (std::ranges::any_of(forbiddenKeys, [&](auto const& key) {
+        return properties.hasKey(key);
+      })) {
+    LOG_TOPIC("2ddb5", ERR, Logger::REPLICATION2)
+        << "While creating shard " << shard
+        << ": Forbidden property in collection creation; one of "
+        << forbiddenKeys << " found in " << properties.toJson();
+    TRI_ASSERT(false) << "Forbidden property in collection creation: "
+                      << properties.toJson();
+    properties =
+        velocypack::Collection::remove(properties.slice(), forbiddenKeys)
+            .sharedSlice();
+  }
   std::shared_ptr<LogicalCollection> col;
   auto res = basics::catchToResult([&]() -> Result {
     OperationOptions options(ExecContext::current());
@@ -85,7 +104,7 @@ auto MaintenanceActionExecutor::executeModifyCollection(
         OperationOptions options(ExecContext::current());
         return methods::Collections::updateProperties(*col, properties.slice(),
                                                       options)
-            .get();
+            .waitAndGet();
       });
 
   if (res.fail()) {
@@ -116,7 +135,7 @@ auto MaintenanceActionExecutor::executeCreateIndex(
     return methods::Indexes::ensureIndex(*col, properties.slice(), true, output,
                                          std::move(progress),
                                          std::move(callback))
-        .get();
+        .waitAndGet();
   });
 
   if (res.ok()) {
@@ -135,8 +154,9 @@ auto MaintenanceActionExecutor::executeCreateIndex(
 auto MaintenanceActionExecutor::executeDropIndex(
     std::shared_ptr<LogicalCollection> col, IndexId indexId) noexcept
     -> Result {
-  auto res = basics::catchToResult(
-      [&] { return methods::Indexes::dropDBServer(*col, indexId).get(); });
+  auto res = basics::catchToResult([&] {
+    return methods::Indexes::dropDBServer(*col, indexId).waitAndGet();
+  });
 
   LOG_CTX("e155f", DEBUG, _loggerContext)
       << "Dropping local index " << indexId << " of " << _vocbase.name() << "/"

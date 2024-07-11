@@ -8,6 +8,7 @@ add_executable(fuertetest
 )
 
 target_link_libraries(fuertetest
+    arango
     fuerte
     gtest
     boost_boost

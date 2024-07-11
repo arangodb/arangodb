@@ -376,6 +376,20 @@ class MerkleTree : public MerkleTreeBase {
    */
   void remove(std::vector<std::uint64_t> const& keys);
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  /**
+   * @brief Remove a batch of keys (as values) from the tree.
+   *        This is a special version of remove that processes the keys in
+   *        the specified order, without sorting them first.
+   *
+   * @param keys  The keys to be removed. Each key will be hashed to generate
+   *              a value, then removed as if by the basic single removal
+   *              method. This batch method is considerably more efficient.
+   * @throws std::invalid_argument  If remove hits a node with 0 count
+   */
+  void removeUnsorted(std::vector<std::uint64_t> const& keys);
+#endif
+
   /**
    * @brief Remove all values from the tree.
    */

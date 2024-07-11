@@ -584,7 +584,11 @@ class AgencyComm {
   static uint64_t const MAX_SLEEP_TIME = 50000;     // microseconds
 
  public:
-  explicit AgencyComm(ArangodServer&);
+  [[deprecated(
+      "Avoid this constructor to get rid of the ArangodServer "
+      "dependency")]] explicit AgencyComm(ArangodServer&);
+  AgencyComm(ApplicationServer&, ClusterFeature&, EngineSelectorFeature&,
+             DatabaseFeature&);
 
   AgencyCommResult sendServerState(double timeout);
 
@@ -640,8 +644,9 @@ class AgencyComm {
   AgencyCommResult sendTransactionWithFailover(AgencyTransaction const&,
                                                double timeout = 0.0);
 
-  ArangodServer& server();
-
+  // TODO I think this should be moved into ClusterFeature, which would allow us
+  //      here to get rid of both the ClusterFeature and the DatabaseFeature
+  //      dependencies.
   bool ensureStructureInitialized();
 
   AgencyCommResult sendWithFailover(arangodb::rest::RequestType, double,
@@ -659,7 +664,10 @@ class AgencyComm {
 
   bool shouldInitializeStructure();
 
-  ArangodServer& _server;
+  ApplicationServer& _server;
+  ClusterFeature& _clusterFeature;
+  EngineSelectorFeature& _engineSelectorFeature;
+  DatabaseFeature& _databaseFeature;
   metrics::Histogram<metrics::LogScale<uint64_t>>& _agency_comm_request_time_ms;
 };
 

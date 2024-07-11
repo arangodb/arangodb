@@ -2558,6 +2558,55 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test entries
+////////////////////////////////////////////////////////////////////////////////
+
+    testEntries: function () {
+      const values = [
+        {a:1},
+        {a:2, b:3},
+        {a:2, b:"foo"},
+        {b:"foo"},
+      ];
+
+      values.forEach(function (value) {
+        const actual = getQueryResults("RETURN ENTRIES(" + JSON.stringify(value) + ")");
+        assertEqual(Object.entries(value), actual[0], value);
+      });
+    },
+    
+    testOnDocuments: function () {
+      const cn = "UnitTestsCollection";
+
+      let expected = [];
+      let c = db._create(cn);
+      try {
+        for (let i = 0; i < 10; ++i) {
+          c.insert({ ["value" + i]: i, _key: "value" + i });
+          expected.push(["_id", cn + "/value" + i]);
+        }
+
+        let result = db._query(`FOR doc IN ${cn} SORT doc._key FOR entry IN ENTRIES(doc) FILTER entry[0] == '_id' RETURN entry`).toArray();
+        assertEqual(result, expected);
+      } finally {
+        db._drop(cn);
+      }
+    },
+
+    testEntriesInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN ENTRIES()");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN ENTRIES({}, 1)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN ENTRIES({}, 1, 2)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ENTRIES([ ])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ENTRIES(null)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ENTRIES(true)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ENTRIES(0)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ENTRIES(1)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN ENTRIES(\"\")");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test matches
 ////////////////////////////////////////////////////////////////////////////////
     

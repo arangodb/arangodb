@@ -36,7 +36,7 @@ const pu = require('@arangodb/testutils/process-utils');
 const im = require('@arangodb/testutils/instance-manager');
 
 const options = JSON.parse(internal.env.OPTIONS);
-pu.setupBinaries(options.build, options.buildType, options.configDir);
+pu.setupBinaries(options);
 
 let instanceManager = new im.instanceManager(options.protocol, options, {}, '');
 try {

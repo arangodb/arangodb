@@ -169,6 +169,7 @@ ShardingInfo::ShardingInfo(arangodb::velocypack::Slice info,
         for (auto const& serverSlice : VPackArrayIterator(shardSlice.value)) {
           servers.push_back(serverSlice.copyString());
         }
+        TRI_ASSERT(_shardIds != nullptr);
         _shardIds->try_emplace(shard, servers);
       }
     }
@@ -332,6 +333,7 @@ void ShardingInfo::toVelocyPack(VPackBuilder& result,
   if (includeShardsEntry) {
     result.add(VPackValue("shards"));
     result.openObject();
+    TRI_ASSERT(_shardIds != nullptr);
     auto tmpShards = _shardIds;
 
     for (auto const& shards : *tmpShards) {
@@ -478,10 +480,14 @@ std::vector<std::string> const& ShardingInfo::shardKeys() const noexcept {
   return _shardKeys;
 }
 
-std::shared_ptr<ShardMap> ShardingInfo::shardIds() const { return _shardIds; }
+std::shared_ptr<ShardMap> ShardingInfo::shardIds() const {
+  TRI_ASSERT(_shardIds != nullptr);
+  return _shardIds;
+}
 
 std::set<ShardID> ShardingInfo::shardListAsShardID() const {
   std::set<ShardID> result;
+  TRI_ASSERT(_shardIds != nullptr);
   for (auto const& mapElement : *_shardIds) {
     result.emplace(mapElement.first);
   }
@@ -495,6 +501,7 @@ std::shared_ptr<ShardMap> ShardingInfo::shardIds(
     return _shardIds;
   }
 
+  TRI_ASSERT(_shardIds != nullptr);
   std::shared_ptr<ShardMap> copy = _shardIds;
   auto result = std::make_shared<ShardMap>();
 
@@ -509,6 +516,7 @@ std::shared_ptr<ShardMap> ShardingInfo::shardIds(
 }
 
 void ShardingInfo::setShardMap(std::shared_ptr<ShardMap> const& map) {
+  TRI_ASSERT(map != nullptr);
   _shardIds = map;
   _numberOfShards = map->size();
 }

@@ -132,7 +132,7 @@ std::optional<std::string> ClusterMetricsFeature::update(
                                             .getNumber<uint64_t>()
                                       : 0;
       }();
-      writeData(version, metricsOnLeader(nf, cf).getTry());
+      writeData(version, metricsOnLeader(nf, cf).waitAndGetTry());
     }
   } catch (...) {
   }

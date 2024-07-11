@@ -4,7 +4,6 @@
 # External Projects used by ArangoDB
 # ------------------------------------------------------------------------------
 
-include(ExternalProject)
 include(UpdateModule)
 
 remove_definitions("-DUSE_ENTERPRISE=1")

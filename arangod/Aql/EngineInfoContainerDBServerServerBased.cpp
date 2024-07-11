@@ -219,7 +219,7 @@ EngineInfoContainerDBServerServerBased::buildSetupRequest(
 
   auto buildCallback =
       [this, server, didCreateEngine = std::move(didCreateEngine),
-       &serverToQueryId, &serverToQueryIdLock, &snippetIds, globalId](
+       &serverToQueryId, &serverToQueryIdLock, &snippetIds, globalId, fastPath](
           arangodb::futures::Try<arangodb::network::Response> const& response)
       -> Result {
     auto const& resolvedResponse = response.get();
@@ -246,7 +246,7 @@ EngineInfoContainerDBServerServerBased::buildSetupRequest(
       return {TRI_ERROR_INTERNAL, "malformed response while building engines"};
     }
     auto result = parseResponse(responseSlice, snippetIds, server,
-                                didCreateEngine, queryId, rebootId);
+                                didCreateEngine, queryId, rebootId, fastPath);
     serverToQueryId.emplace_back(ServerQueryIdEntry{server, queryId, rebootId});
 
     return result;
@@ -463,12 +463,12 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
             // we see was LOCK_TIMEOUT.
             return res;
           });
-  if (fastPathResult.get().fail()) {
-    if (fastPathResult.get().isNot(TRI_ERROR_LOCK_TIMEOUT)) {
+  if (fastPathResult.waitAndGet().fail()) {
+    if (fastPathResult.waitAndGet().isNot(TRI_ERROR_LOCK_TIMEOUT)) {
       // we got an error. this will trigger the cleanupGuard!
       // set the proper error reason.
-      cleanupReason = fastPathResult.get().errorNumber();
-      return fastPathResult.get();
+      cleanupReason = fastPathResult.waitAndGet().errorNumber();
+      return fastPathResult.waitAndGet();
     }
 
     // if we ever get here, the initial fast lock request has failed
@@ -480,13 +480,13 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     // we got a lock timeout response for the fast path locking...
     {
       // in case of fast path failure, we need to cleanup engines
-      auto requests = cleanupEngines(fastPathResult.get().errorNumber(),
+      auto requests = cleanupEngines(fastPathResult.waitAndGet().errorNumber(),
                                      _query.vocbase().name(), serverToQueryId);
       // Wait for all cleanup requests to complete.
       // So we know that all Transactions are aborted.
       Result res;
       for (auto& tryRes : requests) {
-        network::Response const& response = tryRes.get();
+        network::Response const& response = tryRes.waitAndGet();
         if (response.fail()) {
           // note first error, but continue iterating over all results
           LOG_TOPIC("2d319", DEBUG, Logger::AQL)
@@ -573,11 +573,11 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
           std::move(didCreateEngine), snippetIds, serverToQueryId,
           serverToQueryIdLock, pool, options, false /* fastPath */);
       _query.incHttpRequests(unsigned(1));
-      if (request.get().fail()) {
+      if (request.waitAndGet().fail()) {
         // this will trigger the cleanupGuard.
         // set the proper error reason
-        cleanupReason = request.get().errorNumber();
-        return request.get();
+        cleanupReason = request.waitAndGet().errorNumber();
+        return request.waitAndGet();
       }
     }
   }
@@ -589,29 +589,37 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
 Result EngineInfoContainerDBServerServerBased::parseResponse(
     VPackSlice response, MapRemoteToSnippet& queryIds, ServerID const& server,
     std::vector<bool> const& didCreateEngine, QueryId& globalQueryId,
-    RebootId& rebootId) const {
+    RebootId& rebootId, bool fastPath) const {
   TRI_ASSERT(!server.starts_with("server:"));
 
   if (!response.isObject() || !response.get("result").isObject()) {
+    if (response.hasKey(StaticStrings::ErrorNum) &&
+        response.hasKey(StaticStrings::ErrorMessage)) {
+      // got a proper error message back
+      Result res =
+          network::resultFromBody(response, TRI_ERROR_CLUSTER_AQL_COMMUNICATION)
+              .withError([&](result::Error& err) {
+                err.appendErrorMessage(
+                    absl::StrCat(". Please check: ", server));
+              });
+      if (!fastPath || res.isNot(TRI_ERROR_LOCKED)) {
+        LOG_TOPIC("0c3f3", WARN, Logger::AQL)
+            << "Received error information from " << server << ": "
+            << response.toJson();
+      }
+      return res;
+    }
+
     LOG_TOPIC("0c3f2", WARN, Logger::AQL)
         << "Received error information from " << server << ": "
         << response.toJson();
-    if (response.hasKey(StaticStrings::ErrorNum) &&
-        response.hasKey(StaticStrings::ErrorMessage)) {
-      return network::resultFromBody(response,
-                                     TRI_ERROR_CLUSTER_AQL_COMMUNICATION)
-          .withError([&](result::Error& err) {
-            err.appendErrorMessage(
-                StringUtils::concatT(". Please check: ", server));
-          });
-    }
     return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
-            "Unable to deploy query on all required "
-            "servers: " +
-                response.toJson() +
-                ". This can happen during "
-                "failover. Please check: " +
-                server};
+            absl::StrCat("Unable to deploy query on all required "
+                         "servers: ",
+                         response.toJson(),
+                         ". This can happen during "
+                         "failover. Please check: ",
+                         server)};
   }
 
   VPackSlice result = response.get("result");
@@ -636,10 +644,10 @@ Result EngineInfoContainerDBServerServerBased::parseResponse(
   for (auto const& resEntry : VPackObjectIterator(snippets)) {
     if (!resEntry.value.isString()) {
       return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
-              "Unable to deploy query snippets on all required "
-              "servers. This can happen during "
-              "failover. Please check: " +
-                  server};
+              absl::StrCat("Unable to deploy query snippets on all required "
+                           "servers. This can happen during "
+                           "failover. Please check: ",
+                           server)};
     }
     auto remoteId = ExecutionNodeId{0};
     std::string shardId;
@@ -659,10 +667,11 @@ Result EngineInfoContainerDBServerServerBased::parseResponse(
   if (!travEngines.isNone()) {
     if (!travEngines.isArray()) {
       return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
-              "Unable to deploy query traverser engines on all required "
-              "servers. This can happen during "
-              "failover. Please check: " +
-                  server};
+              absl::StrCat(
+                  "Unable to deploy query traverser engines on all required "
+                  "servers. This can happen during "
+                  "failover. Please check: ",
+                  server)};
     }
     auto idIter = VPackArrayIterator(travEngines);
     TRI_ASSERT(_graphNodes.size() == didCreateEngine.size());
@@ -670,10 +679,10 @@ Result EngineInfoContainerDBServerServerBased::parseResponse(
       if (didCreateEngine[i]) {
         if (!idIter.valid()) {
           return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
-                  "The DBServer was not able to create enough "
-                  "traversal engines. This can happen during "
-                  "failover. Please check; " +
-                      server};
+                  absl::StrCat("The DBServer was not able to create enough "
+                               "traversal engines. This can happen during "
+                               "failover. Please check; ",
+                               server)};
         }
         _graphNodes[i]->addEngine(idIter.value().getNumber<aql::EngineId>(),
                                   server);

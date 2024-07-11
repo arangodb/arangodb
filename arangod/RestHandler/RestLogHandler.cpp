@@ -106,7 +106,7 @@ RestStatus RestLogHandler::handlePostRequest(
     namespace paths = ::arangodb::cluster::paths;
     auto& agencyCache =
         _vocbase.server().getFeature<ClusterFeature>().agencyCache();
-    if (auto result = agencyCache.waitForLatestCommitIndex().get();
+    if (auto result = agencyCache.waitForLatestCommitIndex().waitAndGet();
         result.fail()) {
       THROW_ARANGO_EXCEPTION(result);
     }

@@ -574,7 +574,7 @@ TEST(ProjectionsTest, toVelocyPackFromIndexSimple) {
   auto indexJson = velocypack::Parser::fromJson(
       "{\"type\":\"hash\", \"fields\":[\"a\", \"b\"]}");
   auto index =
-      logicalCollection->createIndex(indexJson->slice(), created).get();
+      logicalCollection->createIndex(indexJson->slice(), created).waitAndGet();
 
   std::vector<arangodb::aql::AttributeNamePath> attributes = {
       createAttributeNamePath({"a"}, resMonitor),
@@ -625,7 +625,7 @@ TEST(ProjectionsTest, toVelocyPackFromIndexComplex1) {
   auto indexJson = velocypack::Parser::fromJson(
       "{\"type\":\"hash\", \"fields\":[\"sub.a\", \"sub.b\", \"c\"]}");
   auto index =
-      logicalCollection->createIndex(indexJson->slice(), created).get();
+      logicalCollection->createIndex(indexJson->slice(), created).waitAndGet();
 
   std::vector<arangodb::aql::AttributeNamePath> attributes = {
       createAttributeNamePath({"sub", "a"}, resMonitor),
@@ -671,7 +671,7 @@ TEST(ProjectionsTest, toVelocyPackFromIndexComplex2) {
   auto indexJson = velocypack::Parser::fromJson(
       "{\"type\":\"hash\", \"fields\":[\"sub\", \"c\"]}");
   auto index =
-      logicalCollection->createIndex(indexJson->slice(), created).get();
+      logicalCollection->createIndex(indexJson->slice(), created).waitAndGet();
 
   std::vector<arangodb::aql::AttributeNamePath> attributes = {
       createAttributeNamePath({"sub", "a"}, resMonitor),

@@ -30,6 +30,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fpconv.h"
+#include "Basics/StaticStrings.h"
 #include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
 #include "Transaction/Context.h"
@@ -767,6 +768,48 @@ AqlValue functions::Zip(ExpressionContext* expressionContext, AstNode const&,
 
     keysIt.next();
     valuesIt.next();
+  }
+
+  builder->close();
+
+  return AqlValue(builder->slice(), builder->size());
+}
+
+AqlValue functions::Entries(ExpressionContext* expressionContext,
+                            AstNode const&,
+                            VPackFunctionParametersView parameters) {
+  // cppcheck-suppress variableScope
+  static char const* AFN = "ENTRIES";
+
+  AqlValue const& object =
+      aql::functions::extractFunctionParameterValue(parameters, 0);
+
+  if (!object.isObject()) {
+    registerWarning(expressionContext, AFN,
+                    TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+    return AqlValue(AqlValueHintNull());
+  }
+
+  transaction::Methods* trx = &expressionContext->trx();
+  auto* vopts = &trx->vpackOptions();
+
+  AqlValueMaterializer objectMaterializer(vopts);
+  VPackSlice objectSlice = objectMaterializer.slice(object);
+
+  transaction::BuilderLeaser builder(trx);
+  builder->openArray();
+
+  for (auto [key, value] : VPackObjectIterator(objectSlice, true)) {
+    VPackArrayBuilder pair(builder.get(), true);
+    builder->add(key);
+    if (value.isCustom()) {
+      TRI_ASSERT(key.stringView() == StaticStrings::IdString)
+          << "found custom value for key " << key.toJson();
+      builder->add(VPackValue(transaction::helpers::extractIdString(
+          trx->resolver(), value, objectSlice)));
+    } else {
+      builder->add(value);
+    }
   }
 
   builder->close();

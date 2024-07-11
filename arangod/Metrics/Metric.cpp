@@ -52,9 +52,6 @@ std::string_view Metric::labels() const noexcept { return _labels; }
 
 std::string_view Metric::help() const noexcept { return _help; }
 
-void Metric::toVPack(velocypack::Builder& builder,
-                     ArangodServer& server) const {}
-
 Metric::~Metric() = default;
 
 std::ostream& operator<<(std::ostream& output, CounterType const& s) {

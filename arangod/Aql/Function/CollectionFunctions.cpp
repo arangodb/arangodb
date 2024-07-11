@@ -182,7 +182,7 @@ AqlValue functions::CollectionCount(ExpressionContext* expressionContext,
   std::string const collectionName = element.slice().copyString();
   OperationOptions options(ExecContext::current());
   OperationResult res =
-      trx->count(collectionName, transaction::CountType::Normal, options);
+      trx->count(collectionName, transaction::CountType::kNormal, options);
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res.result);
   }

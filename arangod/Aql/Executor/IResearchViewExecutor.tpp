@@ -1610,7 +1610,7 @@ bool IResearchViewExecutor<ExecutionTraits>::fillBuffer(ReadContext& ctx) {
   auto limit = clientCall.getUnclampedLimit();
   bool const isUnlimited = limit == aql::AqlCall::Infinity{};
   TRI_ASSERT(isUnlimited || std::holds_alternative<std::size_t>(limit));
-  if (!isUnlimited) {
+  if (!isUnlimited && atMostInitial != 0) {
     parallelism = std::clamp(std::get<std::size_t>(limit) / atMostInitial,
                              (size_t)1, parallelism);
   }

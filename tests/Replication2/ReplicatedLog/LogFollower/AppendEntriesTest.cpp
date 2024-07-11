@@ -130,7 +130,7 @@ TEST_F(AppendEntriesFollowerTest, append_entries_with_commit_index) {
     request.leaderId = "leader";
     request.leaderTerm = LogTerm{1};
     request.prevLogEntry = TermIndexPair{LogTerm{1}, LogIndex{99}};
-    auto result = follower->appendEntries(request).get();
+    auto result = follower->appendEntries(request).waitAndGet();
 
     EXPECT_TRUE(result.isSuccess()) << result.reason.getErrorMessage();
   }
@@ -151,7 +151,7 @@ TEST_F(AppendEntriesFollowerTest, append_entries_fail_wrong_term) {
     request.leaderId = "leader";
     request.leaderTerm = LogTerm{2};
     request.prevLogEntry = TermIndexPair{LogTerm{1}, LogIndex{99}};
-    auto result = follower->appendEntries(request).get();
+    auto result = follower->appendEntries(request).waitAndGet();
 
     EXPECT_FALSE(result.isSuccess());
     EXPECT_EQ(result.reason.error,
@@ -174,7 +174,7 @@ TEST_F(AppendEntriesFollowerTest, append_entries_fail_wrong_leader) {
     request.leaderId = "INVALID";
     request.leaderTerm = LogTerm{1};
     request.prevLogEntry = TermIndexPair{LogTerm{1}, LogIndex{99}};
-    auto result = follower->appendEntries(request).get();
+    auto result = follower->appendEntries(request).waitAndGet();
 
     EXPECT_FALSE(result.isSuccess());
     EXPECT_EQ(result.reason.error,
@@ -197,7 +197,7 @@ TEST_F(AppendEntriesFollowerTest, append_entries_no_match) {
     request.leaderId = "leader";
     request.leaderTerm = LogTerm{1};
     request.prevLogEntry = TermIndexPair{LogTerm{2}, LogIndex{99}};
-    auto result = follower->appendEntries(request).get();
+    auto result = follower->appendEntries(request).waitAndGet();
 
     EXPECT_FALSE(result.isSuccess());
     EXPECT_EQ(result.reason.error,
@@ -231,7 +231,7 @@ TEST_F(AppendEntriesFollowerTest, append_entries_update_syncIndex) {
     request.prevLogEntry = TermIndexPair{LogTerm{1}, LogIndex{99}};
     request.entries =
         generateEntries(LogTerm{1}, LogRange{LogIndex{100}, LogIndex{120}});
-    auto result = follower->appendEntries(request).get();
+    auto result = follower->appendEntries(request).waitAndGet();
     EXPECT_TRUE(result.isSuccess());
     EXPECT_EQ(result.syncIndex, LogIndex{119});
   }
@@ -250,7 +250,7 @@ TEST_F(AppendEntriesFollowerTest, append_entries_update_syncIndex) {
     request.prevLogEntry = TermIndexPair{LogTerm{1}, LogIndex{119}};
     request.entries =
         generateEntries(LogTerm{1}, LogRange{LogIndex{230}, LogIndex{240}});
-    auto result = follower->appendEntries(request).get();
+    auto result = follower->appendEntries(request).waitAndGet();
     EXPECT_FALSE(result.isSuccess());
     EXPECT_EQ(result.syncIndex, LogIndex{119});
   }
@@ -278,7 +278,7 @@ TEST_F(AppendEntriesFollowerTest, append_entries_trigger_compaction) {
     request.leaderId = "leader";
     request.leaderTerm = LogTerm{1};
     request.prevLogEntry = TermIndexPair{LogTerm{1}, LogIndex{99}};
-    auto result = follower->appendEntries(request).get();
+    auto result = follower->appendEntries(request).waitAndGet();
 
     EXPECT_TRUE(result.isSuccess());
   }
@@ -314,7 +314,7 @@ TEST_F(AppendEntriesFollowerTest, append_entries_trigger_snapshot) {
     request.prevLogEntry = TermIndexPair{LogTerm{0}, LogIndex{0}};
     request.entries =
         generateEntries(LogTerm{1}, LogRange{LogIndex{200}, LogIndex{250}});
-    auto result = follower->appendEntries(request).get();
+    auto result = follower->appendEntries(request).waitAndGet();
     EXPECT_TRUE(result.isSuccess());
   }
 
@@ -351,7 +351,7 @@ TEST_F(AppendEntriesFollowerTest, append_entries_rewrite) {
     request.prevLogEntry = TermIndexPair{LogTerm{1}, LogIndex{50}};
     request.entries =
         generateEntries(LogTerm{2}, LogRange{LogIndex{51}, LogIndex{60}});
-    auto result = follower->appendEntries(request).get();
+    auto result = follower->appendEntries(request).waitAndGet();
     EXPECT_TRUE(result.isSuccess());
   }
 
@@ -387,7 +387,7 @@ TEST_F(AppendEntriesFollowerTest, outdated_message_id) {
     request.leaderId = "leader";
     request.leaderTerm = LogTerm{2};
     request.prevLogEntry = TermIndexPair{LogTerm{1}, LogIndex{99}};
-    auto result = follower->appendEntries(request).get();
+    auto result = follower->appendEntries(request).waitAndGet();
     EXPECT_TRUE(result.isSuccess());
   }
 
@@ -399,7 +399,7 @@ TEST_F(AppendEntriesFollowerTest, outdated_message_id) {
     request.leaderId = "leader";
     request.leaderTerm = LogTerm{2};
     request.prevLogEntry = TermIndexPair{LogTerm{1}, LogIndex{99}};
-    auto result = follower->appendEntries(request).get();
+    auto result = follower->appendEntries(request).waitAndGet();
     EXPECT_FALSE(result.isSuccess());
     EXPECT_EQ(result.reason.error,
               AppendEntriesErrorReason::ErrorType::kMessageOutdated);
@@ -429,7 +429,8 @@ TEST_F(AppendEntriesFollowerTest, resigned_follower) {
     request.leaderId = "leader";
     request.leaderTerm = LogTerm{2};
     request.prevLogEntry = TermIndexPair{LogTerm{1}, LogIndex{99}};
-    EXPECT_THROW({ std::ignore = follower->appendEntries(request).get(); },
-                 ParticipantResignedException);
+    EXPECT_THROW(
+        { std::ignore = follower->appendEntries(request).waitAndGet(); },
+        ParticipantResignedException);
   }
 }

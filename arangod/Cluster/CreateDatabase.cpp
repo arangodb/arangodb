@@ -90,7 +90,7 @@ bool CreateDatabase::first() {
     res = Databases::create(server, ExecContext::current(),
                             _description.get(DATABASE), users, properties());
     result(res);
-    if (!res.ok() && res.errorNumber() != TRI_ERROR_ARANGO_DUPLICATE_NAME) {
+    if (res.fail() && res.isNot(TRI_ERROR_ARANGO_DUPLICATE_NAME)) {
       LOG_TOPIC("5fb67", ERR, Logger::MAINTENANCE)
           << "CreateDatabase: failed to create database " << database << ": "
           << res;

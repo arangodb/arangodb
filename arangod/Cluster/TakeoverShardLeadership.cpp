@@ -151,7 +151,7 @@ static void sendLeaderChangeRequests(
     futures.emplace_back(std::move(f));
   }
 
-  auto responses = futures::collectAll(futures).get();
+  auto responses = futures::collectAll(futures).waitAndGet();
 
   // This code intentionally ignores all errors
   realInsyncFollowers = std::make_shared<std::vector<ServerID>>();
@@ -209,7 +209,7 @@ static void handleLeadership(uint64_t planIndex, LogicalCollection& collection,
     }
     LOG_TOPIC("fe222", DEBUG, Logger::MAINTENANCE)
         << "Waiting until ClusterInfo has version " << currVersion;
-    ci.waitForCurrentVersion(currVersion).get();
+    ci.waitForCurrentVersion(currVersion).waitAndGet();
 
     auto currentInfo = ci.getCollectionCurrent(
         databaseName, std::to_string(collection.planId().id()));

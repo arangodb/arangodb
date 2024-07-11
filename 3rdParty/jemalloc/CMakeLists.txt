@@ -45,6 +45,12 @@ if (LINUX OR DARWIN)
     endif()
   endif ()
 
+  # add build-type specific c flags and cxx flags here, because otherwise
+  # they would be lost
+  set(JEMALLOC_C_FLAGS "${CMAKE_C_FLAGS} ${CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE_UPPER}}")
+  set(JEMALLOC_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE_UPPER}}")
+  message(DEBUG "JEMALLOC_C_FLAGS=${JEMALLOC_C_FLAGS} JEMALLOC_CXX_FLAGS=${JEMALLOC_CXX_FLAGS}")
+
   set(JEMALLOC_LIB "${CMAKE_CURRENT_BINARY_DIR}/lib/libjemalloc.a")
   ExternalProject_Add(
     jemalloc_build
@@ -66,8 +72,8 @@ if (LINUX OR DARWIN)
       ./configure
         CC=${JEMALLOC_CC}
         CXX=${JEMALLOC_CXX}
-        CFLAGS=${CMAKE_C_FLAGS}
-        CXXFLAGS=${CMAKE_CXX_FLAGS}
+        CFLAGS=${JEMALLOC_C_FLAGS}
+        CXXFLAGS=${JEMALLOC_CXX_FLAGS}
         CPPFLAGS=${JEMALLOC_CPPFLAGS}
         --prefix=${CMAKE_CURRENT_BINARY_DIR}
         --with-malloc-conf=${JEMALLOC_CONFIG}

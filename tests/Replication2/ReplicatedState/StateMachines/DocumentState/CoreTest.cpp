@@ -85,7 +85,7 @@ TEST_F(DocumentStateMachineTest,
       .Times(1);
   EXPECT_CALL(*shardHandlerMock, dropAllShards()).Times(1);
   auto res = follower->acquireSnapshot("participantId");
-  EXPECT_TRUE(res.isReady() && res.get().ok());
+  EXPECT_TRUE(res.isReady() && res.waitAndGet().ok());
   Mock::VerifyAndClearExpectations(transactionHandlerMock.get());
   Mock::VerifyAndClearExpectations(shardHandlerMock.get());
 

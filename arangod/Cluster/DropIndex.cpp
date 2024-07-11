@@ -115,7 +115,7 @@ bool DropIndex::first() {
       if (vocbase->replicationVersion() == replication::Version::TWO) {
         return dropIndexReplication2(col, id);
       }
-      return Indexes::drop(*col, index.slice()).get();
+      return Indexes::drop(*col, index.slice()).waitAndGet();
     });
     result(res);
 
@@ -155,7 +155,9 @@ auto DropIndex::dropIndexReplication2(std::shared_ptr<LogicalCollection>& coll,
       return res.result();
     }
     auto indexId = IndexId{res.get()};
-    return coll->getDocumentStateLeader()->dropIndex(shardId, indexId).get();
+    return coll->getDocumentStateLeader()
+        ->dropIndex(shardId, indexId)
+        .waitAndGet();
   });
 
   if (res.is(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER) ||

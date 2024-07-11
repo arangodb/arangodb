@@ -55,7 +55,10 @@ class SkipResult {
 
   auto didSkip(size_t skipped) -> void;
 
-  auto didSkipSubquery(size_t skipped, size_t depth) -> void;
+  // depthOffset is added to depth, except it won't underflow.
+  template<int depthOffset = 0>
+  requires(depthOffset == 0 || depthOffset == -1)  //
+      auto didSkipSubquery(size_t skipped, size_t depth) -> void;
 
   auto getSkipOnSubqueryLevel(size_t depth) const -> size_t;
 

@@ -648,7 +648,7 @@ Index::FilterCosts JoinNode::costsForIndexInfo(
     JoinNode::IndexInfo const& info) const {
   transaction::Methods& trx = _plan->getAst()->query().trxForOptimization();
   size_t itemsInCollection =
-      info.collection->count(&trx, transaction::CountType::TryCache);
+      info.collection->count(&trx, transaction::CountType::kTryCache);
 
   Index::FilterCosts costs =
       Index::FilterCosts::defaultCosts(itemsInCollection);

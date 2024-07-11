@@ -25,28 +25,25 @@
 #include "Basics/Exceptions.h"
 #include "Basics/voc-errors.h"
 
-#include <cstring>
+namespace arangodb::graph {
 
-namespace arangodb {
-namespace graph {
-
-constexpr char const* KShortestPathsName = "K_SHORTEST_PATHS";
-constexpr char const* KPathsName = "K_PATHS";
-constexpr char const* AllShortestPathsName = "ALL_SHORTEST_PATHS";
-constexpr char const* ShortestPathName = "SHORTEST_PATH";
+constexpr std::string_view KShortestPathsName = "K_SHORTEST_PATHS";
+constexpr std::string_view KPathsName = "K_PATHS";
+constexpr std::string_view AllShortestPathsName = "ALL_SHORTEST_PATHS";
+constexpr std::string_view ShortestPathName = "SHORTEST_PATH";
 
 /// @brief get the type from a string
-/*static*/ PathType::Type PathType::fromString(char const* value) {
-  if (strcmp(value, KShortestPathsName) == 0) {
+/*static*/ PathType::Type PathType::fromString(std::string_view value) {
+  if (value == KShortestPathsName) {
     return Type::KShortestPaths;
   }
-  if (strcmp(value, KPathsName) == 0) {
+  if (value == KPathsName) {
     return Type::KPaths;
   }
-  if (strcmp(value, AllShortestPathsName) == 0) {
+  if (value == AllShortestPathsName) {
     return Type::AllShortestPaths;
   }
-  if (strcmp(value, ShortestPathName) == 0) {
+  if (value == ShortestPathName) {
     return Type::ShortestPath;
   }
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -54,7 +51,7 @@ constexpr char const* ShortestPathName = "SHORTEST_PATH";
 }
 
 /// @brief return the type as a string
-/*static*/ char const* PathType::toString(PathType::Type value) {
+/*static*/ std::string_view PathType::toString(PathType::Type value) {
   switch (value) {
     case Type::KShortestPaths:
       return KShortestPathsName;
@@ -68,5 +65,4 @@ constexpr char const* ShortestPathName = "SHORTEST_PATH";
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid path type");
 }
 
-}  // namespace graph
-}  // namespace arangodb
+}  // namespace arangodb::graph

@@ -1492,7 +1492,7 @@ static ErrorCode clusterSendToAllServers(
   }
 
   for (auto& f : futures) {
-    network::Response const& res = f.get();  // throws exceptions upwards
+    network::Response const& res = f.waitAndGet();  // throws exceptions upwards
     auto commError = network::fuerteToArangoErrorCode(res);
     if (commError != TRI_ERROR_NO_ERROR) {
       return commError;

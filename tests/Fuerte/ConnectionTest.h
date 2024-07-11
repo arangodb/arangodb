@@ -69,6 +69,7 @@ class ConnectionTestF : public ::testing::TestWithParam<ConnectionTestParams> {
   std::shared_ptr<fu::Connection> createConnection() {
     // Set connection parameters
     fu::ConnectionBuilder cbuilder;
+    cbuilder.verifyHost(false);
     setupEndpointFromEnv(cbuilder);
     cbuilder.protocolType(GetParam()._protocol);
     setupAuthenticationFromEnv(cbuilder);

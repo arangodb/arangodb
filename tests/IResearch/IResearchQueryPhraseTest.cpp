@@ -24,7 +24,6 @@
 
 #include <velocypack/Iterator.h>
 
-#include "Aql/OptimizerRulesFeature.h"
 #include "IResearch/IResearchVPackComparer.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchViewSort.h"
@@ -6499,7 +6498,7 @@ class QueryPhraseSearch : public QueryPhrase {
       auto collection =
           vocbase.lookupCollection(absl::Substitute("testCollection$0", name));
       ASSERT_TRUE(collection);
-      collection->createIndex(createJson->slice(), created).get();
+      collection->createIndex(createJson->slice(), created).waitAndGet();
       ASSERT_TRUE(created);
     };
     createIndex(0);

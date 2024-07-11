@@ -471,7 +471,8 @@ class ApplicationServerT : public ApplicationServer {
                   std::is_base_of_v<Impl, Type>);
     constexpr auto featureId = Features::template id<Type>();
 
-    TRI_ASSERT(hasFeature<Type>());
+    TRI_ASSERT(hasFeature<Type>())
+        << "Feature missing: " << typeid(Type).name();
     auto& feature = *_features[featureId];
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     auto obj = dynamic_cast<Impl*>(&feature);

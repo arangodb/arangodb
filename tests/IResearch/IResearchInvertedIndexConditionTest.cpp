@@ -94,7 +94,8 @@ class IResearchInvertedIndexConditionTest
     auto builder = getInvertedIndexPropertiesSlice(id, fields, &storedFields,
                                                    nullptr, "unique_name2");
     bool created = false;
-    auto inverted = _collection->createIndex(builder.slice(), created).get();
+    auto inverted =
+        _collection->createIndex(builder.slice(), created).waitAndGet();
     ASSERT_TRUE(created);
     ASSERT_TRUE(inverted);
     auto* index = dynamic_cast<arangodb::iresearch::IResearchInvertedIndex*>(
@@ -127,7 +128,8 @@ class IResearchInvertedIndexConditionTest
     auto builder = getInvertedIndexPropertiesSlice(id, fields, nullptr, nullptr,
                                                    "unique_name3");
     bool created = false;
-    auto inverted = _collection->createIndex(builder.slice(), created).get();
+    auto inverted =
+        _collection->createIndex(builder.slice(), created).waitAndGet();
     ASSERT_TRUE(created);
     ASSERT_TRUE(inverted);
     auto* index = dynamic_cast<arangodb::iresearch::IResearchInvertedIndex*>(
@@ -207,7 +209,8 @@ class IResearchInvertedIndexConditionTest
     auto builder = getInvertedIndexPropertiesSlice(id, indexFields, nullptr,
                                                    &fields, "unique_name3");
     bool created = false;
-    auto inverted = _collection->createIndex(builder.slice(), created).get();
+    auto inverted =
+        _collection->createIndex(builder.slice(), created).waitAndGet();
     ASSERT_TRUE(created);
     ASSERT_TRUE(inverted);
     auto* index = dynamic_cast<arangodb::iresearch::IResearchInvertedIndex*>(

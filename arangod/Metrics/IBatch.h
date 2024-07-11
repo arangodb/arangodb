@@ -27,6 +27,9 @@
 #include <string>
 #include <string_view>
 
+namespace arangodb {
+class ClusterInfo;
+}
 namespace arangodb::velocypack {
 
 class Builder;
@@ -39,7 +42,7 @@ class IBatch {
   virtual void toPrometheus(std::string& result, std::string_view globals,
                             bool ensureWhitespace) const = 0;
 
-  virtual void toVPack(velocypack::Builder& builder, ArangodServer&) const = 0;
+  virtual void toVPack(velocypack::Builder& builder, ClusterInfo&) const = 0;
 
   virtual size_t remove(std::string_view labels) = 0;
 

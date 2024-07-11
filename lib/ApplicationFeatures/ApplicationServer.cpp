@@ -713,10 +713,11 @@ void ApplicationServer::start() {
             feature.stop();
             feature.state(ApplicationFeature::State::STOPPED);
           } catch (...) {
-            // ignore errors on shutdown
-            LOG_TOPIC("13223", TRACE, Logger::STARTUP)
+            // if something goes wrong, we simply rethrow to abort!
+            LOG_TOPIC("13223", FATAL, Logger::STARTUP)
                 << "caught exception while stopping feature '" << feature.name()
                 << "'";
+            throw;
           }
         }
       }
@@ -725,18 +726,22 @@ void ApplicationServer::start() {
       for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend();
            ++it) {
         ApplicationFeature& feature = *it;
-        if (feature.state() == ApplicationFeature::State::STOPPED) {
-          LOG_TOPIC("6ba4f", TRACE, Logger::STARTUP)
-              << "forcefully unpreparing feature '" << feature.name() << "'";
-          try {
-            feature.unprepare();
-            feature.state(ApplicationFeature::State::UNPREPARED);
-          } catch (...) {
-            // ignore errors on shutdown
-            LOG_TOPIC("7d68f", TRACE, Logger::STARTUP)
-                << "caught exception while unpreparing feature '"
-                << feature.name() << "'";
-          }
+        ADB_PROD_ASSERT(feature.state() == ApplicationFeature::State::STOPPED ||
+                        feature.state() == ApplicationFeature::State::PREPARED)
+            << "feature " << feature.name() << " is in state "
+            << (int)feature.state();
+
+        LOG_TOPIC("6ba4f", TRACE, Logger::STARTUP)
+            << "forcefully unpreparing feature '" << feature.name() << "'";
+        try {
+          feature.unprepare();
+          feature.state(ApplicationFeature::State::UNPREPARED);
+        } catch (...) {
+          // if something goes wrong, we simply rethrow to abort!
+          LOG_TOPIC("7d68f", FATAL, Logger::STARTUP)
+              << "caught exception while unpreparing feature '"
+              << feature.name() << "'";
+          throw;
         }
       }
       shutdownFatalError();

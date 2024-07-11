@@ -169,8 +169,11 @@ Result DBServerAgencySync::getLocalCollections(
 
         // generate a collection definition identical to that which would be
         // persisted in the case of SingleServer
-        collection->properties(collections,
-                               LogicalDataSource::Serialization::Persistence);
+        auto res = collection->properties(
+            collections, LogicalDataSource::Serialization::Persistence);
+        if (res.fail()) {
+          return res;
+        }
 
         auto const& folls = collection->followers();
         std::string const theLeader = folls->getLeader();
@@ -429,7 +432,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
               auto waitIndex = resultsSlice[0].getNumber<uint64_t>();
               LOG_TOPIC("cdc71", TRACE, Logger::MAINTENANCE)
                   << "waiting for local current version to update";
-              std::ignore = clusterInfo.waitForCurrent(waitIndex).get();
+              std::ignore = clusterInfo.waitForCurrent(waitIndex).waitAndGet();
               LOG_TOPIC("3f185", TRACE, Logger::MAINTENANCE)
                   << "current version updated";
             }

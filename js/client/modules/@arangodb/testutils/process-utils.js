@@ -30,16 +30,17 @@
 const _ = require('lodash');
 const fs = require('fs');
 const rp = require('@arangodb/testutils/result-processing');
+const tu = require('@arangodb/testutils/test-utils');
 const yaml = require('js-yaml');
 const internal = require('internal');
 const crashUtils = require('@arangodb/testutils/crash-utils');
+const {sanHandler} = require('@arangodb/testutils/san-file-handler');
 const crypto = require('@arangodb/crypto');
 const ArangoError = require('@arangodb').ArangoError;
 const debugGetFailurePoints = require('@arangodb/test-helper').debugGetFailurePoints;
 
 /* Functions: */
 const toArgv = internal.toArgv;
-const executeExternal = internal.executeExternal;
 const executeExternalAndWait = internal.executeExternalAndWait;
 const killExternal = internal.killExternal;
 const statusExternal = internal.statusExternal;
@@ -104,34 +105,18 @@ const TOP_DIR = (function findTopDir () {
   return topDir;
 }());
 
-// create additional system environment variables for coverage
-function coverageEnvironment () {
-  let result = [];
-  let name = 'LLVM_PROFILE_FILE';
-
-  if (process.env.hasOwnProperty(name)) {
-    result.push(
-      name +
-      "=" +
-      process.env[name] +
-      "/" +
-      crypto.md5(String(internal.time() + Math.random())));
-  }
-
-  return result;
-}
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief calculates all the path locations
 // / required to be called first.
 // //////////////////////////////////////////////////////////////////////////////
 
-function setupBinaries (builddir, buildType, configDir) {
-  if (builddir === '') {
+function setupBinaries (options) {
+  if (options.build === '') {
     if (fs.exists('build') && fs.exists(fs.join('build', 'bin'))) {
-      builddir = 'build';
+      options.build = 'build';
     } else if (fs.exists('bin')) {
-      builddir = '.';
+      options.build = '.';
     } else {
       print('FATAL: cannot find binaries, use "--build"\n');
 
@@ -141,7 +126,7 @@ function setupBinaries (builddir, buildType, configDir) {
     }
   }
 
-  BIN_DIR = fs.join(builddir, 'bin');
+  BIN_DIR = fs.join(options.build, 'bin');
   if (!fs.exists(BIN_DIR)) {
     BIN_DIR = fs.join(TOP_DIR, BIN_DIR);
   }
@@ -150,18 +135,9 @@ function setupBinaries (builddir, buildType, configDir) {
     BIN_DIR = fs.join(TOP_DIR, 'bin');
   }
 
-  UNITTESTS_DIR = fs.join(fs.join(builddir, 'tests'));
+  UNITTESTS_DIR = fs.join(fs.join(options.build, 'tests'));
   if (!fs.exists(UNITTESTS_DIR)) {
     UNITTESTS_DIR = fs.join(TOP_DIR, UNITTESTS_DIR);
-  }
-
-  if (buildType !== '') {
-    if (fs.exists(fs.join(BIN_DIR, buildType))) {
-      BIN_DIR = fs.join(BIN_DIR, buildType);
-    }
-    if (fs.exists(fs.join(UNITTESTS_DIR, buildType))) {
-      UNITTESTS_DIR = fs.join(UNITTESTS_DIR, buildType);
-    }
   }
 
   ARANGOBACKUP_BIN = fs.join(BIN_DIR, 'arangobackup' + executableExt);
@@ -174,13 +150,13 @@ function setupBinaries (builddir, buildType, configDir) {
   ARANGOSH_BIN = fs.join(BIN_DIR, 'arangosh' + executableExt);
   ARANGO_SECURE_INSTALLATION_BIN = fs.join(BIN_DIR, 'arango-secure-installation' + executableExt);
 
-  CONFIG_ARANGODB_DIR = fs.join(builddir, 'etc', 'arangodb3');
+  CONFIG_ARANGODB_DIR = fs.join(options.build, 'etc', 'arangodb3');
   if (!fs.exists(CONFIG_ARANGODB_DIR)) {
     CONFIG_ARANGODB_DIR = fs.join(TOP_DIR, CONFIG_ARANGODB_DIR);
   }
 
   CONFIG_RELATIVE_DIR = fs.join(TOP_DIR, 'etc', 'relative');
-  CONFIG_DIR = fs.join(TOP_DIR, configDir);
+  CONFIG_DIR = fs.join(TOP_DIR, options.configDir);
 
   JS_DIR = fs.join(TOP_DIR, 'js');
   JS_ENTERPRISE_DIR = fs.join(TOP_DIR, 'enterprise/js');
@@ -205,25 +181,6 @@ function setupBinaries (builddir, buildType, configDir) {
   checkFiles.forEach((file) => {
     if (!fs.isFile(file)) {
       throw new Error('unable to locate ' + file);
-    }
-  });
-
-  // fiddle in suppressions for sanitizers if not already set from an
-  // outside script. this can populate the environment variables
-  // - ASAN_OPTIONS
-  // - UBSAN_OPTIONS
-  // - LSAN_OPTIONS
-  // - TSAN_OPTIONS
-  // note: this code repeats existing logic that can be found in
-  // scripts/unittest as well. according to @dothebart it must be
-  // present in both code locations.
-  ["asan", "ubsan", "lsan", "tsan"].forEach((san) => {
-    let envName = san.toUpperCase() + "_OPTIONS";
-    let fileName = san + "_arangodb_suppressions.txt";
-    if (!process.env.hasOwnProperty(envName) &&
-        fs.exists(fileName)) {
-      process.env[envName] = `suppressions=${fs.join(fs.makeAbsolute(''), fileName)}`;
-      print('preparing ' + san + ' environment:', envName + '=' + process.env[envName]);
     }
   });
 
@@ -395,13 +352,20 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
   }
 
   // V8 executeExternalAndWait thinks that timeout is in ms, so *1000
-  let res = executeExternalAndWait(cmd, args, false, timeout * 1000, coverageEnvironment());
+  
+  let sh = new sanHandler(cmd.replace(/.*\//, ''), options);
+  sh.detectLogfiles(instanceInfo.rootDir, instanceInfo.rootDir);
+  let res = executeExternalAndWait(cmd, args, false, timeout * 1000,  sh.getSanOptions());
+  
   instanceInfo.pid = res.pid;
   instanceInfo.exitStatus = res;
-  crashUtils.calculateMonitorValues(options, instanceInfo, res.pid, cmd);
   const deltaTime = time() - startTime;
-
   let errorMessage = ' - ';
+  if (sh.fetchSanFileAfterExit(res.pid)) {
+    serverCrashedLocal = true;
+    res.status = false;
+    errorMessage += " Sanitizer indicated issues  - ";
+  }
 
   if (coreCheck &&
       instanceInfo.exitStatus.hasOwnProperty('signal') &&
@@ -503,7 +467,6 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
 
 exports.setupBinaries = setupBinaries;
 exports.endpointToURL = endpointToURL;
-exports.coverageEnvironment = coverageEnvironment;
 
 exports.executeAndWait = executeAndWait;
 exports.killRemainingProcesses = killRemainingProcesses;
@@ -532,3 +495,17 @@ Object.defineProperty(exports, 'CONFIG_ARANGODB_DIR', {get: () => CONFIG_ARANGOD
 Object.defineProperty(exports, 'CONFIG_RELATIVE_DIR', {get: () => CONFIG_RELATIVE_DIR});
 Object.defineProperty(exports, 'serverCrashed', {get: () => serverCrashedLocal, set: (value) => { serverCrashedLocal = value; } });
 Object.defineProperty(exports, 'serverFailMessages', {get: () => serverFailMessagesLocal, set: (value) => { serverFailMessagesLocal = value; }});
+exports.registerOptions = function(optionsDefaults, optionsDocumentation) {
+  tu.CopyIntoObject(optionsDefaults, {
+    'build': '',
+    'configDir': 'etc/testing',
+  });
+
+  tu.CopyIntoList(optionsDocumentation, [
+    ' Environment options:',
+    '   - `build`: the directory containing the binaries',
+    '   - `configDir`: the directory containing the config files, defaults to',
+    '                  etc/testing',
+    ''
+  ]);
+};

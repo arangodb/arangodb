@@ -38,7 +38,7 @@ IoContext::IoThread::IoThread(application_features::ApplicationServer& server,
     : Thread(server, "Io"), _iocontext(iocontext) {}
 
 IoContext::IoThread::IoThread(IoThread const& other)
-    : Thread(other._server, "Io"), _iocontext(other._iocontext) {}
+    : Thread("Io"), _iocontext(other._iocontext) {}
 
 IoContext::IoThread::~IoThread() { shutdown(); }
 

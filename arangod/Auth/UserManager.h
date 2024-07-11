@@ -54,7 +54,7 @@ class ReadLocker;
 namespace auth {
 class Handler;
 
-typedef std::unordered_map<std::string, auth::User> UserMap;
+using UserMap = std::unordered_map<std::string, auth::User>;
 
 /// UserManager is the sole point of access for users and permissions
 /// stored in `_system/_users`. The permissions are cached locally if possible,

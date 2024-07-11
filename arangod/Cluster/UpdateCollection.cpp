@@ -133,7 +133,8 @@ bool UpdateCollection::first() {
         }
 
         OperationOptions options(ExecContext::current());
-        return Collections::updateProperties(*coll, props, options).get();
+        return Collections::updateProperties(*coll, props, options)
+            .waitAndGet();
       }));
       result(res);
 
@@ -193,6 +194,6 @@ auto UpdateCollection::updateCollectionReplication2(
                                 &shard]() mutable {
     return coll->getDocumentStateLeader()
         ->modifyShard(shard, collection, std::move(props))
-        .get();
+        .waitAndGet();
   });
 }

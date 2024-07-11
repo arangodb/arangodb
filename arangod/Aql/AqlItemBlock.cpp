@@ -32,6 +32,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Containers/FlatHashMap.h"
 #include "Containers/HashSet.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
@@ -657,7 +658,7 @@ SharedAqlItemBlockPtr AqlItemBlock::slice(std::vector<size_t> const& chosen,
 /// @brief toJson, transfer all rows of this AqlItemBlock to Json, the result
 /// can be used to recreate the AqlItemBlock via the Json constructor
 void AqlItemBlock::toVelocyPack(velocypack::Options const* const trxOptions,
-                                VPackBuilder& result) const {
+                                velocypack::Builder& result) const {
   return toVelocyPack(0, numRows(), trxOptions, result);
 }
 
@@ -696,7 +697,7 @@ void AqlItemBlock::toVelocyPack(velocypack::Options const* const trxOptions,
 ///                  such that actual indices start at 2
 void AqlItemBlock::toVelocyPack(size_t from, size_t to,
                                 velocypack::Options const* const trxOptions,
-                                VPackBuilder& result) const {
+                                velocypack::Builder& result) const {
   // Can only have positive slice size
   TRI_ASSERT(from < to);
   // We cannot slice over the upper bound.
@@ -708,7 +709,10 @@ void AqlItemBlock::toVelocyPack(size_t from, size_t to,
   options.buildUnindexedArrays = true;
   options.buildUnindexedObjects = true;
 
-  VPackBuilder raw(&options);
+  // use an on-stack buffer for building the result. this avoids creating
+  // a buffer object on the heap using a shared_ptr
+  VPackBufferUInt8 buffer;
+  VPackBuilder raw(buffer, &options);
   raw.openArray();
   // Two nulls in the beginning such that indices start with 2
   raw.add(VPackValue(VPackValueType::Null));
@@ -725,32 +729,27 @@ void AqlItemBlock::toVelocyPack(size_t from, size_t to,
     Positional,  // saw a value previously encountered
   };
 
-  std::unordered_map<AqlValue, size_t> table;  // remember duplicates
-  size_t lastTablePos = 0;
-  State lastState = Positional;
-
-  State currentState = Positional;
-  size_t runLength = 0;
-  size_t tablePos = 0;
+  // map keyed by unique AqlValues. we use this to remember duplicates.
+  // the mapped size_t value is the position of the entry in the "raw"
+  // builder array
+  containers::FlatHashMap<AqlValue, size_t> table;
 
   result.add("data", VPackValue(VPackValueType::Array));
 
   // write out data buffered for repeated "empty" or "next" values
   auto writeBuffered = [](State lastState, size_t lastTablePos,
-                          VPackBuilder& result, size_t runLength) {
+                          velocypack::Builder& result, size_t runLength) {
     if (lastState == Range) {
       return;
     }
 
     if (lastState == Positional) {
       if (lastTablePos >= 2) {
-        if (runLength == 1) {
-          result.add(VPackValue(lastTablePos));
-        } else {
+        if (runLength > 1) {
           result.add(VPackValue(-4));
           result.add(VPackValue(runLength));
-          result.add(VPackValue(lastTablePos));
         }
+        result.add(VPackValue(lastTablePos));
       }
     } else {
       TRI_ASSERT(lastState == Empty || lastState == Next);
@@ -765,6 +764,11 @@ void AqlItemBlock::toVelocyPack(size_t from, size_t to,
     }
   };
 
+  size_t lastTablePos = 0;
+  State lastState = Positional;
+  State currentState = Positional;
+  size_t tablePos = 0;
+  size_t runLength = 0;
   size_t pos = 2;  // write position in raw
 
   // hack hack hack: we use a fake register to serialize shadow rows
@@ -800,13 +804,23 @@ void AqlItemBlock::toVelocyPack(size_t from, size_t to,
       } else if (a.isRange()) {
         currentState = Range;
       } else {
-        auto it = table.find(a);
+        TRI_ASSERT(pos >= 2);
+        // attempt an insert into the map without checking if the
+        // target element already exists. if it already exists,
+        // then the try_emplace does nothing, but we will get an
+        // iterator to the existing element.
+        // in case we inserted the value, we can simply go on and
+        // increase the global position counter.
+        auto [it, inserted] = table.try_emplace(a, pos);
 
-        if (it == table.end()) {
+        if (inserted) {
+          // we inserted a new element
           currentState = Next;
           a.toVelocyPack(trxOptions, raw, /*allowUnindexed*/ true);
-          table.try_emplace(a, pos++);
+          // must update position after the insert
+          pos++;
         } else {
+          // we are reusing an already existing element
           currentState = Positional;
           tablePos = it->second;
           TRI_ASSERT(tablePos >= 2);
@@ -853,9 +867,9 @@ void AqlItemBlock::toVelocyPack(size_t from, size_t to,
   result.add("raw", raw.slice());
 }
 
-void AqlItemBlock::rowToSimpleVPack(
-    size_t row, velocypack::Options const* options,
-    arangodb::velocypack::Builder& builder) const {
+void AqlItemBlock::rowToSimpleVPack(size_t row,
+                                    velocypack::Options const* options,
+                                    velocypack::Builder& builder) const {
   VPackArrayBuilder rowBuilder{&builder};
 
   if (isShadowRow(row)) {

@@ -383,84 +383,74 @@ bool IsServerIdLessThan::operator()(ServerID const& lhs,
 
 /// @brief begin a transaction on all leaders
 Future<Result> beginTransactionOnLeaders(
-    TransactionState& state, ClusterTrxMethods::SortedServersSet const& leaders,
-    // everything in this function is done synchronously, so the `api` parameter
-    // is currently unused.
-    [[maybe_unused]] transaction::MethodsApi api) {
-  TRI_ASSERT(state.isCoordinator());
-  TRI_ASSERT(!state.hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
+    std::shared_ptr<TransactionState> state,
+    ClusterTrxMethods::SortedServersSet leaders, transaction::MethodsApi api) {
+  TRI_ASSERT(state->isCoordinator());
+  TRI_ASSERT(!state->hasHint(transaction::Hints::Hint::SINGLE_OPERATION));
   Result res;
   if (leaders.empty()) {
-    return res;
+    co_return res;
   }
 
-  // If !state.knownServers.empty() => We have already locked something.
+  // If !state->knownServers.empty() => We have already locked something.
   //   We cannot revert fastPath locking and continue over slowpath. (Trx may be
   //   used)
   bool canRevertToSlowPath =
-      state.hasHint(transaction::Hints::Hint::ALLOW_FAST_LOCK_ROUND_CLUSTER) &&
-      state.knownServers().empty();
+      state->hasHint(transaction::Hints::Hint::ALLOW_FAST_LOCK_ROUND_CLUSTER) &&
+      state->knownServers().empty();
 
-  double oldLockTimeout = state.options().lockTimeout;
+  double oldLockTimeout = state->options().lockTimeout;
   {
     if (canRevertToSlowPath) {
       // We first try to do a fast lock, if we cannot get this
       // There is a potential dead lock situation
       // and we revert to a slow locking to be on the safe side.
-      state.options().lockTimeout = kFastPathLockTimeout;
+      state->options().lockTimeout = kFastPathLockTimeout;
 
       // Run fastPath
       std::vector<Future<network::Response>> requests;
       for (ServerID const& leader : leaders) {
-        if (state.knowsServer(leader)) {
+        if (state->knowsServer(leader)) {
           continue;  // already sent a begin transaction there
         }
-        TRI_ASSERT(state.options().lockTimeout <= kFastPathLockTimeout);
-        requests.emplace_back(::beginTransactionRequest(
-            state, leader, transaction::MethodsApi::Synchronous));
+        TRI_ASSERT(state->options().lockTimeout <= kFastPathLockTimeout);
+        requests.emplace_back(::beginTransactionRequest(*state, leader, api));
       }
 
       // use original lock timeout here
-      state.options().lockTimeout = oldLockTimeout;
+      state->options().lockTimeout = oldLockTimeout;
 
       if (requests.empty()) {
-        return res;
+        co_return res;
       }
 
-      TransactionId const tid = state.id().child();
+      TransactionId const tid = state->id().child();
 
-      Result fastPathResult =
-          futures::collectAll(requests)
-              .thenValue([&tid, &state](
-                             std::vector<Try<network::Response>>&& responses)
-                             -> Result {
-                // We need to make sure to get() all responses.
-                // Otherwise they will eventually resolve and trigger the
-                // .then() callback which might be after we left this
-                // function. Especially if one response errors with
-                // "non-repairable" code so we actually abort here and cannot
-                // revert to slow path execution.
-                Result result{TRI_ERROR_NO_ERROR};
-                for (Try<arangodb::network::Response> const& tryRes :
-                     responses) {
-                  network::Response const& resp =
-                      tryRes.get();  // throws exceptions upwards
+      auto responses = co_await futures::collectAll(requests);
 
-                  Result res = ::checkTransactionResult(
-                      tid, transaction::Status::RUNNING, resp);
-                  if (res.fail()) {
-                    if (!result.fail() || result.is(TRI_ERROR_LOCK_TIMEOUT)) {
-                      result = res;
-                    }
-                  } else {
-                    state.addKnownServer(
-                        resp.serverId());  // add server id to known list
-                  }
-                }
+      // We need to make sure to get() all responses.
+      // Otherwise they will eventually resolve and trigger the
+      // .then() callback which might be after we left this
+      // function. Especially if one response errors with
+      // "non-repairable" code so we actually abort here and cannot
+      // revert to slow path execution.
+      Result fastPathResult{TRI_ERROR_NO_ERROR};
+      for (Try<arangodb::network::Response> const& tryRes : responses) {
+        network::Response const& resp =
+            tryRes.get();  // throws exceptions upwards
 
-                return result;
-              })
-              .get();
+        Result res1 =
+            ::checkTransactionResult(tid, transaction::Status::RUNNING, resp);
+        if (res1.fail()) {
+          if (!fastPathResult.fail() ||
+              fastPathResult.is(TRI_ERROR_LOCK_TIMEOUT)) {
+            fastPathResult = res1;
+          }
+        } else {
+          state->addKnownServer(
+              resp.serverId());  // add server id to known list
+        }
+      }
 
       if (fastPathResult.isNot(TRI_ERROR_LOCK_TIMEOUT) ||
           !canRevertToSlowPath) {
@@ -468,29 +458,27 @@ Future<Result> beginTransactionOnLeaders(
         // We need to return the result here.
         // We made sure that all servers that reported success are known to the
         // transaction.
-        return fastPathResult;
+        co_return fastPathResult;
       }
 
       TRI_ASSERT(fastPathResult.is(TRI_ERROR_LOCK_TIMEOUT));
 
       // abortTransaction on knownServers() and wait for them
-      if (!state.knownServers().empty()) {
-        Result resetRes =
-            commitAbortTransaction(&state, transaction::Status::ABORTED,
-                                   transaction::MethodsApi::Synchronous)
-                .get();
+      if (!state->knownServers().empty()) {
+        Result resetRes = co_await commitAbortTransaction(
+            state.get(), transaction::Status::ABORTED, api);
         if (resetRes.fail()) {
           // return here if cleanup failed - this needs to be a success
-          return resetRes;
+          co_return resetRes;
         }
       }
 
       // the following call also clears _knownServers (!)
-      state.coordinatorRerollTransactionId();
+      state->coordinatorRerollTransactionId();
     }
 
     // Entering slow path
-    TRI_ASSERT(state.options().lockTimeout == oldLockTimeout);
+    TRI_ASSERT(state->options().lockTimeout == oldLockTimeout);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // Make sure we always maintain the correct ordering of servers
@@ -506,17 +494,16 @@ Future<Result> beginTransactionOnLeaders(
       serverBefore = leader;
 #endif
 
-      auto resp = ::beginTransactionRequest(
-          state, leader, transaction::MethodsApi::Synchronous);
-      auto const& resolvedResponse = resp.get();
+      auto const resolvedResponse =
+          co_await ::beginTransactionRequest(*state, leader, api);
       if (resolvedResponse.fail()) {
-        return resolvedResponse.combinedResult();
+        co_return resolvedResponse.combinedResult();
       }
-      state.addKnownServer(leader);  // add server id to known list
+      state->addKnownServer(leader);  // add server id to known list
     }
   }
 
-  return TRI_ERROR_NO_ERROR;
+  co_return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief commit a transaction on a subordinate

@@ -83,6 +83,7 @@
 #include "Sharding/ShardingInfo.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
+#include "Transaction/CountCache.h"
 #include "Utils/Events.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
@@ -343,7 +344,7 @@ void doQueueLinkDrop(IndexId id, std::string const& collection,
           res = Result{TRI_ERROR_DEBUG};
         }
         else {
-          res = methods::Indexes::drop(*coll, builder.slice()).get();
+          res = methods::Indexes::drop(*coll, builder.slice()).waitAndGet();
         }
         if (res.fail() && res.isNot(TRI_ERROR_ARANGO_INDEX_NOT_FOUND)) {
           // we should have internal superuser
@@ -365,6 +366,19 @@ void doQueueLinkDrop(IndexId id, std::string const& collection,
   };
   scheduler->queue(RequestLane::INTERNAL_LOW, dropTask);
 }
+
+inline arangodb::AgencyOperation SetOldEntry(
+    std::string const& key, std::vector<std::string_view> const& path,
+    VPackSlice plan) {
+  VPackSlice newEntry = plan.get(path);
+  if (newEntry.isNone()) {
+    // This is a countermeasure to protect against non-existing paths. If we
+    // get anything else original plan is already broken.
+    newEntry = VPackSlice::emptyObjectSlice();
+  }
+  return {key, AgencyValueOperationType::SET, newEntry};
+}
+
 }  // namespace
 }  // namespace arangodb
 
@@ -662,14 +676,14 @@ void ClusterInfo::flush() {
 bool ClusterInfo::doesDatabaseExist(std::string_view databaseID) {
   // Wait for sensible data in agency cache
   if (!_planProt.isValid) {
-    Result r = waitForPlan(1).get();
+    Result r = waitForPlan(1).waitAndGet();
     if (r.fail()) {
       THROW_ARANGO_EXCEPTION(r);
     }
   }
 
   if (!_currentProt.isValid) {
-    Result r = waitForCurrent(1).get();
+    Result r = waitForCurrent(1).waitAndGet();
     if (r.fail()) {
       THROW_ARANGO_EXCEPTION(r);
     }
@@ -713,46 +727,22 @@ bool ClusterInfo::doesDatabaseExist(std::string_view databaseID) {
 
 std::vector<DatabaseID> ClusterInfo::databases() {
   if (!_planProt.isValid) {
-    Result r = waitForPlan(1).get();
+    Result r = waitForPlan(1).waitAndGet();
     if (r.fail()) {
       THROW_ARANGO_EXCEPTION(r);
     }
   }
 
-  if (!_currentProt.isValid) {
-    Result r = waitForCurrent(1).get();
-    if (r.fail()) {
-      THROW_ARANGO_EXCEPTION(r);
-    }
-  }
-
-  if (!_dbServersProt.isValid) {
-    loadCurrentDBServers();
-  }
-
-  // From now on we know that all data has been valid once, so no need
-  // to check the isValid flags again under the lock.
-
-  size_t expectedSize;
-  {
-    READ_LOCKER(readLocker, _dbServersProt.lock);
-    expectedSize = _dbServers.size();
-  }
-
+  // The _plannedDatabases map contains all Databases that
+  // are planned to exist, and that do not have the "isBuilding"
+  // flag set. Hence those databases have been successfully created
+  // and should be listed.
   std::vector<DatabaseID> result;
   {
     READ_LOCKER(readLockerPlanned, _planProt.lock);
-    READ_LOCKER(readLockerCurrent, _currentProt.lock);
     // _plannedDatabases is a map-type<DatabaseID, VPackSlice>
     for (auto const& it : _plannedDatabases) {
-      // _currentDatabases is:
-      //   a map-type<DatabaseID, a map-type<ServerID, VPackSlice>>
-      if (auto it2 = _currentDatabases.find(it.first);
-          it2 != _currentDatabases.end()) {
-        if (it2->second->size() >= expectedSize) {
-          result.emplace_back(it.first);
-        }
-      }
+      result.emplace_back(it.first);
     }
   }
 
@@ -767,12 +757,16 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
     TRI_vocbase_t& vocbase, uint64_t planVersion, bool cleanupLinks) const {
   std::shared_ptr<LogicalCollection> collection;
   uint64_t hash = 0;
+  uint64_t countCache = transaction::CountCache::kNotPopulated;
 
   if (!isBuilding && existingCollections != _plannedCollections.end()) {
     // check if we already know this collection from a previous run...
     if (auto existing = existingCollections->second->find(collectionId);
         existing != existingCollections->second->end()) {
       CollectionWithHash const& previous = existing->second;
+      // note the cached count result of the previous collection
+      countCache = previous.collection->countCache().get();
+
       // compare the hash values of what is in the cache with the hash of the
       // collection a hash value of 0 means that the collection must not be read
       // from the cache, potentially because it contains a link to a view (which
@@ -804,6 +798,13 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
     // changed
     collection = vocbase.createCollectionObject(data, /*isAStub*/ true);
     TRI_ASSERT(collection != nullptr);
+
+    if (countCache != transaction::CountCache::kNotPopulated) {
+      // carry forward the count cache value from the previous collection, if
+      // set. this way we avoid that the count value will be refetched via
+      // HTTP requests instantly after the collection object is used next.
+      collection->countCache().store(countCache);
+    }
     if (!isBuilding) {
       auto indexes = collection->getPhysical()->getAllIndexes();
       // if the collection has a link to a view, there are dependencies between
@@ -882,7 +883,7 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
   // This is of great importance to not accidentally delete data facing an
   // empty agency. There are also other measures that guard against such an
   // outcome. But there is also no point continuing with a first agency poll.
-  Result r = _agencyCache.waitFor(1).get();
+  Result r = _agencyCache.waitFor(1).waitAndGet();
   if (r.fail()) {
     THROW_ARANGO_EXCEPTION(r);
   }
@@ -2248,7 +2249,7 @@ std::shared_ptr<LogicalCollection> ClusterInfo::getCollectionNT(
   }
 
   if (!_planProt.isValid) {
-    Result r = waitForPlan(1).get();
+    Result r = waitForPlan(1).waitAndGet();
     if (r.fail()) {
       return nullptr;
     }
@@ -2294,7 +2295,7 @@ std::shared_ptr<LogicalDataSource> ClusterInfo::getCollectionOrViewNT(
   }
 
   if (!_planProt.isValid) {
-    Result r = waitForPlan(1).get();
+    Result r = waitForPlan(1).waitAndGet();
     if (r.fail()) {
       return nullptr;
     }
@@ -2370,7 +2371,7 @@ ClusterInfo::generateCollectionStubs(TRI_vocbase_t& database) {
 std::shared_ptr<CollectionInfoCurrent> ClusterInfo::getCollectionCurrent(
     std::string_view databaseID, std::string_view collectionID) {
   if (!_currentProt.isValid) {
-    Result r = waitForCurrent(1).get();
+    Result r = waitForCurrent(1).waitAndGet();
     if (r.fail()) {
       THROW_ARANGO_EXCEPTION(r);
     }
@@ -2469,7 +2470,8 @@ std::shared_ptr<LogicalView> ClusterInfo::getView(std::string_view databaseID,
     }
   }
 
-  Result res = fetchAndWaitForPlanVersion(std::chrono::seconds(10)).get();
+  Result res =
+      fetchAndWaitForPlanVersion(std::chrono::seconds(10)).waitAndGet();
   if (res.ok()) {
     READ_LOCKER(readLocker, _planProt.lock);
     auto view = lookupView(_plannedViews);
@@ -2810,7 +2812,7 @@ Result ClusterInfo::waitForDatabaseInCurrent(
 
   if (VPackSlice resultsSlice = res.slice().get("results");
       resultsSlice.length() > 0) {
-    Result r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
+    Result r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).waitAndGet();
     if (r.fail()) {
       return r;
     }
@@ -2947,7 +2949,7 @@ Result ClusterInfo::createFinalizeDatabaseCoordinator(
   Result r;
   if (VPackSlice resultsSlice = res.slice().get("results");
       resultsSlice.length() > 0) {
-    r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
+    r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).waitAndGet();
   }
 
   // The transaction was successful and the database should
@@ -3139,7 +3141,7 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
   }
   if (VPackSlice resultsSlice = res.slice().get("results");
       resultsSlice.length() > 0) {
-    Result r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
+    Result r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).waitAndGet();
     if (r.fail()) {
       return r;
     }
@@ -3198,7 +3200,7 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
         AgencyWriteTransaction cx(
             {delCurrentCollection, incrementCurrentVersion});
         res = ac.sendTransactionWithFailover(cx);
-        if (res.successful() && replicatedStatesCleanup.get().ok()) {
+        if (res.successful() && replicatedStatesCleanup.waitAndGet().ok()) {
           return Result(TRI_ERROR_NO_ERROR);
         }
         return Result(TRI_ERROR_CLUSTER_COULD_NOT_REMOVE_DATABASE_IN_CURRENT);
@@ -3412,7 +3414,7 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
   }
   if (VPackSlice resultsSlice = res.slice().get("results");
       resultsSlice.length() > 0) {
-    Result r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
+    Result r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).waitAndGet();
     if (r.fail()) {
       return r;
     }
@@ -3574,7 +3576,7 @@ Result ClusterInfo::createViewCoordinator(  // create view
   Result r;
   if (VPackSlice resultsSlice = res.slice().get("results");
       resultsSlice.length() > 0) {
-    r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
+    r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).waitAndGet();
   }
 
   events::CreateView(databaseName, name, r.errorNumber());
@@ -3608,8 +3610,8 @@ Result ClusterInfo::dropViewCoordinator(  // drop view
   Result result;
 
   if (res.successful() && res.slice().get("results").length()) {
-    result =
-        waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>()).get();
+    result = waitForPlan(res.slice().get("results")[0].getNumber<uint64_t>())
+                 .waitAndGet();
   }
 
   if (!res.successful() && !result.fail()) {
@@ -3681,7 +3683,7 @@ Result ClusterInfo::setViewPropertiesCoordinator(
   Result r;
   if (VPackSlice resultsSlice = res.slice().get("results");
       resultsSlice.length() > 0) {
-    r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
+    r = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).waitAndGet();
   }
   return r;
 }
@@ -3740,7 +3742,8 @@ ClusterInfo::startModifyingAnalyzerCoordinator(std::string_view databaseID) {
             if (results.isArray() && results.length() > 0) {
               readLocker.unlock();  // we want to wait for plan to load -
                                     // release reader
-              Result r = waitForPlan(results[0].getNumber<uint64_t>()).get();
+              Result r =
+                  waitForPlan(results[0].getNumber<uint64_t>()).waitAndGet();
               if (r.fail()) {
                 return std::make_pair(r, AnalyzersRevision::LATEST);
               }
@@ -3803,7 +3806,7 @@ ClusterInfo::startModifyingAnalyzerCoordinator(std::string_view databaseID) {
     } else {
       auto results = res.slice().get("results");
       if (results.isArray() && results.length() > 0) {
-        Result r = waitForPlan(results[0].getNumber<uint64_t>()).get();
+        Result r = waitForPlan(results[0].getNumber<uint64_t>()).waitAndGet();
         if (r.fail()) {
           return std::make_pair(r, AnalyzersRevision::LATEST);
         }
@@ -3923,7 +3926,7 @@ Result ClusterInfo::finishModifyingAnalyzerCoordinator(
     } else {
       auto results = res.slice().get("results");
       if (results.isArray() && results.length() > 0) {
-        Result r = waitForPlan(results[0].getNumber<uint64_t>()).get();
+        Result r = waitForPlan(results[0].getNumber<uint64_t>()).waitAndGet();
         if (r.fail()) {
           return r;
         }
@@ -4598,7 +4601,7 @@ ClusterInfo::getResponsibleServer(ShardID shardID) {
   int tries = 0;
 
   if (!_currentProt.isValid) {
-    Result r = waitForCurrent(1).get();
+    Result r = waitForCurrent(1).waitAndGet();
     if (r.fail()) {
       THROW_ARANGO_EXCEPTION(r);
     }
@@ -4630,8 +4633,8 @@ ClusterInfo::getResponsibleServer(ShardID shardID) {
     }
 
     LOG_TOPIC("b1dc5", INFO, Logger::CLUSTER)
-        << "getResponsibleServerReplication1: found resigned leader, "
-        << "waiting for half a second...";
+        << "getResponsibleServerReplication1: found resigned leader for shard "
+        << shardID << ", waiting for half a second...";
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
   }
 
@@ -4651,7 +4654,7 @@ futures::Future<ResultT<ServerID>> ClusterInfo::getLeaderForShard(
 futures::Future<Result> ClusterInfo::getLeadersForShards(
     std::span<ShardID const> shards, std::span<ServerID> result) {
   if (!_currentProt.isValid) {
-    Result r = waitForCurrent(1).get();
+    Result r = waitForCurrent(1).waitAndGet();
     if (r.fail()) {
       THROW_ARANGO_EXCEPTION(r);
     }
@@ -4663,7 +4666,10 @@ futures::Future<Result> ClusterInfo::getLeadersForShards(
       // std::shared_ptr<std::vector<ServerId>>>
       auto it = _shardsToCurrentServers.find(shardId);
       if (it == _shardsToCurrentServers.end()) {
-        return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
+        return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                      fmt::format("Could not find servers of shard {} in "
+                                  "Current version {} (raft index {})",
+                                  shardId, _currentVersion, _currentIndex)};
       }
       auto& servers = it->second;
       TRI_ASSERT(servers != nullptr);
@@ -4692,10 +4698,26 @@ futures::Future<Result> ClusterInfo::getLeadersForShards(
       co_return std::get<Result>(resolveResult);
     } else {
       auto shardId = std::get<ShardID>(resolveResult);
-      auto database = getDatabaseNameForShard(shardId);
-      auto collection = getCollectionNameForShard(shardId);
-      if (!database.has_value() || collection.empty()) {
-        co_return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
+
+      auto readLocker = basics::ReadLocker(&_planProt.lock,
+                                           basics::LockerType::BLOCKING, true);
+      auto const database = getDatabaseNameForShard(readLocker, shardId);
+      auto const collection = getCollectionNameForShard(readLocker, shardId);
+      auto const planVersion = _planVersion;
+      auto const planIndex = _planIndex;
+      readLocker.unlock();
+      if (!database.has_value()) {
+        co_return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                   fmt::format("Could not find database for shard {} in Plan "
+                               "version {} (raft index {})",
+                               shardId, planVersion, planIndex)};
+      }
+      if (collection.empty()) {
+        co_return {
+            TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+            fmt::format("Could not find collection for shard {} in Plan "
+                        "version {} (raft index {}) (database is {})",
+                        shardId, planVersion, planIndex, database.value())};
       }
       LOG_TOPIC("289f7", INFO, Logger::CLUSTER)
           << "getLeaderForShard: found resigned leader for shard " << shardId
@@ -4715,7 +4737,14 @@ futures::Future<Result> ClusterInfo::getLeadersForShards(
                   -> std::optional<std::tuple<Result, consensus::index_t>> {
                 if (servers.isNone()) {
                   return std::make_tuple(
-                      Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND}, index);
+                      Result{
+                          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                          fmt::format(
+                              "Database or collection ({}/{}) gone in Current "
+                              "while waiting for leader of shard {} (raft "
+                              "index {})",
+                              *database, collection, shardId, index)},
+                      index);
                 }
 
                 bool const leaderResigned = [&]() {
@@ -4791,7 +4820,7 @@ containers::FlatHashMap<ShardID, ServerID> ClusterInfo::getResponsibleServers(
   int tries = 0;
 
   if (!_currentProt.isValid) {
-    Result r = waitForCurrent(1).get();
+    Result r = waitForCurrent(1).waitAndGet();
     if (r.fail()) {
       THROW_ARANGO_EXCEPTION(r);
     }
@@ -4955,7 +4984,7 @@ ClusterInfo::getPlan(uint64_t& index,
                      containers::FlatHashSet<std::string> const& dirty) {
   // We should never proceed here, until we have seen an
   // initial agency cache through loadPlan
-  Result r = waitForPlan(1).get();
+  Result r = waitForPlan(1).waitAndGet();
   if (r.fail()) {
     THROW_ARANGO_EXCEPTION(r);
   }
@@ -4980,7 +5009,7 @@ ClusterInfo::getCurrent(uint64_t& index,
                         containers::FlatHashSet<std::string> const& dirty) {
   // We should never proceed here, until we have seen an
   // initial agency cache through loadCurrent
-  Result r = waitForCurrent(1).get();
+  Result r = waitForCurrent(1).waitAndGet();
   if (r.fail()) {
     THROW_ARANGO_EXCEPTION(r);
   }
@@ -5129,8 +5158,16 @@ Result ClusterInfo::getShardServers(ShardID shardId,
 }
 
 CollectionID ClusterInfo::getCollectionNameForShard(ShardID shardId) {
-  READ_LOCKER(readLocker, _planProt.lock);
+  auto readLocker =
+      basics::ReadLocker(&_planProt.lock, basics::LockerType::BLOCKING, true);
+  return getCollectionNameForShard(readLocker, shardId);
+}
 
+CollectionID ClusterInfo::getCollectionNameForShard(
+    basics::ReadLocker<std::decay_t<decltype(_planProt.lock)>>& readLocker,
+    ShardID shardId) {
+  TRI_ASSERT(readLocker.getLock() == &_planProt.lock);
+  TRI_ASSERT(readLocker.isLocked());
   if (auto it = _shardToName.find(shardId); it != _shardToName.end()) {
     return CollectionID{it->second};
   }
@@ -5139,8 +5176,17 @@ CollectionID ClusterInfo::getCollectionNameForShard(ShardID shardId) {
 
 auto ClusterInfo::getDatabaseNameForShard(ShardID shardId)
     -> std::optional<DatabaseID> {
-  READ_LOCKER(readLocker, _planProt.lock);
+  auto readLocker =
+      basics::ReadLocker(&_planProt.lock, basics::LockerType::BLOCKING, true);
+  return getDatabaseNameForShard(readLocker, shardId);
+}
 
+auto ClusterInfo::getDatabaseNameForShard(
+    [[maybe_unused]] basics::ReadLocker<std::decay_t<decltype(_planProt.lock)>>&
+        readLocker,
+    ShardID shardId) -> std::optional<DatabaseID> {
+  TRI_ASSERT(readLocker.getLock() == &_planProt.lock);
+  TRI_ASSERT(readLocker.isLocked());
   if (auto it = _shardToDb.find(shardId); it != _shardToDb.end()) {
     return DatabaseID{it->second};
   } else {
@@ -5246,25 +5292,23 @@ Result ClusterInfo::agencyPlan(std::shared_ptr<VPackBuilder> const& body) {
 }
 
 Result ClusterInfo::agencyReplan(VPackSlice const plan) {
+  TRI_IF_FAILURE("ClusterInfo::failReplanAgency") { return TRI_ERROR_DEBUG; }
+  // Apply only Collections and DBServers
   auto trxOperations = std::vector<AgencyOperation>{
       {"Current/Collections", AgencyValueOperationType::SET,
        VPackSlice::emptyObjectSlice()},
-      {"Plan/Collections", AgencyValueOperationType::SET,
-       plan.get({"arango", "Plan", "Collections"})},
+      SetOldEntry("Plan/Collections", {"arango", "Plan", "Collections"}, plan),
       {"Current/Databases", AgencyValueOperationType::SET,
        VPackSlice::emptyObjectSlice()},
-      {"Plan/Databases", AgencyValueOperationType::SET,
-       plan.get({"arango", "Plan", "Databases"})},
+      SetOldEntry("Plan/Databases", {"arango", "Plan", "Databases"}, plan),
       {"Current/Views", AgencyValueOperationType::SET,
        VPackSlice::emptyObjectSlice()},
       {"Current/CollectionGroups", AgencyValueOperationType::SET,
        VPackSlice::emptyObjectSlice()},
       {"Current/ReplicatedLogs", AgencyValueOperationType::SET,
        VPackSlice::emptyObjectSlice()},
-      {"Plan/Analyzers", AgencyValueOperationType::SET,
-       plan.get({"arango", "Plan", "Analyzers"})},
-      {"Plan/Views", AgencyValueOperationType::SET,
-       plan.get({"arango", "Plan", "Views"})},
+      SetOldEntry("Plan/Analyzers", {"arango", "Plan", "Analyzers"}, plan),
+      SetOldEntry("Plan/Views", {"arango", "Plan", "Views"}, plan),
       {"Current/Version", AgencySimpleOperationType::INCREMENT_OP},
       {"Plan/Version", AgencySimpleOperationType::INCREMENT_OP},
       {"Sync/UserVersion", AgencySimpleOperationType::INCREMENT_OP},
@@ -5313,7 +5357,14 @@ Result ClusterInfo::agencyReplan(VPackSlice const plan) {
   Result rr;
   if (VPackSlice resultsSlice = r.slice().get("results");
       resultsSlice.length() > 0) {
-    rr = waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
+    auto raftIndex = resultsSlice[0].getNumber<uint64_t>();
+    if (raftIndex == 0) {
+      // This means the above request was actually illegal
+      return {TRI_ERROR_HOT_BACKUP_INTERNAL,
+              "Failed to restore agency plan from Hotbackup. Please contact "
+              "ArangoDB support immediately."};
+    }
+    rr = waitForPlan(raftIndex).waitAndGet();
   }
 
   return rr;
@@ -5622,7 +5673,15 @@ void ClusterInfo::startSyncers() {
   _planSyncer = std::make_unique<SyncerThread>(
       _server, "Plan", [this] { return loadPlan(); }, _agencyCache);
   _curSyncer = std::make_unique<SyncerThread>(
-      _server, "Current", [this] { return loadCurrent(); }, _agencyCache);
+      _server, "Current",
+      [this] {
+        TRI_IF_FAILURE("ClusterInfo::slowCurrentSyncer") {
+          using namespace std::chrono_literals;
+          std::this_thread::sleep_for(10ms);
+        }
+        return loadCurrent();
+      },
+      _agencyCache);
 
   if (!_planSyncer->start() || !_curSyncer->start()) {
     LOG_TOPIC("b4fa6", FATAL, Logger::CLUSTER)

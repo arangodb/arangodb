@@ -47,6 +47,11 @@
 #include "Transaction/Options.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
+#include "Cluster/ClusterFeature.h"
+#include "Metrics/ClusterMetricsFeature.h"
+#include "Statistics/StatisticsFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 
 using namespace arangodb;
 
@@ -72,16 +77,19 @@ class PhysicalCollectionTest
     features.emplace_back(
         server.addFeature<
             arangodb::AuthenticationFeature>());  // required for VocbaseContext
-    features.emplace_back(server.addFeature<arangodb::DatabaseFeature>());
-    auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
+    features.emplace_back(server.addFeature<DatabaseFeature>());
+    auto& selector = server.addFeature<EngineSelectorFeature>();
     features.emplace_back(selector);
     selector.setEngineTesting(&engine);
-    features.emplace_back(
-        server.addFeature<arangodb::metrics::MetricsFeature>());
-    features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(
+    features.emplace_back(server.addFeature<metrics::MetricsFeature>(
+        LazyApplicationFeatureReference<QueryRegistryFeature>(server),
+        LazyApplicationFeatureReference<StatisticsFeature>(nullptr), selector,
+        LazyApplicationFeatureReference<metrics::ClusterMetricsFeature>(
+            nullptr),
+        LazyApplicationFeatureReference<ClusterFeature>(nullptr)));
+    features.emplace_back(server.addFeature<QueryRegistryFeature>(
         server.template getFeature<
-            arangodb::metrics::MetricsFeature>()));  // required for
-                                                     // TRI_vocbase_t
+            metrics::MetricsFeature>()));  // required for TRI_vocbase_t
 
     for (auto& f : features) {
       f.get().prepare();
@@ -89,8 +97,7 @@ class PhysicalCollectionTest
   }
 
   ~PhysicalCollectionTest() {
-    server.getFeature<arangodb::EngineSelectorFeature>().setEngineTesting(
-        nullptr);
+    server.getFeature<EngineSelectorFeature>().setEngineTesting(nullptr);
 
     for (auto& f : features) {
       f.get().unprepare();

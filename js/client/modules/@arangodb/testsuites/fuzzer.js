@@ -31,6 +31,7 @@ const functionsDocumentation = {
 
 const _ = require('lodash');
 const tu = require('@arangodb/testutils/test-utils');
+const trs = require('@arangodb/testutils/testrunners');
 const versionHas = require("@arangodb/test-helper").versionHas;
 
 const testPaths = {
@@ -56,7 +57,7 @@ function shellFuzzer(options) {
   let testCases = tu.scanTestPaths(testPaths.shell_fuzzer, options);
 
   testCases = tu.splitBuckets(options, testCases);
-  let rc = new tu.runLocalInArangoshRunner(options, 'shell_fuzzer').run(testCases);
+  let rc = new trs.runLocalInArangoshRunner(options, 'shell_fuzzer').run(testCases);
   return rc;
 }
 
@@ -64,7 +65,5 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['shell_fuzzer'] = shellFuzzer;
 
-  for (var attrname in functionsDocumentation) {
-    fnDocs[attrname] = functionsDocumentation[attrname];
-  }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };

@@ -559,16 +559,18 @@ void stats::Descriptions::processStatistics(VPackBuilder& b) const {
   double rss = (double)info._residentSize;
   double rssp = 0;
 
-  if (PhysicalMemory::getValue() != 0) {
-    rssp = rss / PhysicalMemory::getValue();
+  if (auto mem = PhysicalMemory::getValue(); mem != 0) {
+    rssp = rss / mem;
   }
 
   b.add("minorPageFaults", VPackValue(info._minorPageFaults));
   b.add("majorPageFaults", VPackValue(info._majorPageFaults));
-  b.add("userTime",
-        VPackValue((double)info._userTime / (double)info._scClkTck));
-  b.add("systemTime",
-        VPackValue((double)info._systemTime / (double)info._scClkTck));
+  if (info._scClkTck != 0) {
+    b.add("userTime",
+          VPackValue((double)info._userTime / (double)info._scClkTck));
+    b.add("systemTime",
+          VPackValue((double)info._systemTime / (double)info._scClkTck));
+  }
   b.add("numberOfThreads", VPackValue(info._numberThreads));
   b.add("residentSize", VPackValue(rss));
   b.add("residentSizePercent", VPackValue(rssp));

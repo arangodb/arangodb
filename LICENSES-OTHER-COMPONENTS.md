@@ -125,6 +125,16 @@ _Enterprise Edition only_
 * License Name: MIT License
 * License Id: MIT
 
+#### glibc
+
+* Name: glibc
+* Version: 2.39.0
+* Date: 2024-01-31
+* Project Home: https://www.gnu.org/software/libc
+* License: https://www.gnu.org/licenses/lgpl-3.0.html
+* License Name: GNU Lesser General Public License
+* License Id: LGPL-3.0
+
 ### Google V8
 
 * Name: V8

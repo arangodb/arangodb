@@ -40,6 +40,7 @@
 #include "RestServer/LogBufferFeature.h"
 #include "Utils/ExecContext.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -88,7 +89,18 @@ RestStatus RestAdminLogHandler::execute() {
   auto const type = _request->requestType();
 
   if (type == rest::RequestType::DELETE_REQ) {
-    clearLogs();
+    if (suffixes.empty() ||
+        (suffixes.size() == 1 && suffixes[0] == "entries")) {
+      clearLogs();
+    } else if (suffixes.size() == 1 && suffixes[0] == "level") {
+      // reset log levels to defaults
+      handleLogLevel();
+    } else {
+      generateError(rest::ResponseCode::BAD,
+                    TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
+                    "superfluous suffix, expecting /_admin/log/<suffix>, "
+                    "where suffix can be either omitted or 'level'");
+    }
   } else if (type == rest::RequestType::GET) {
     if (suffixes.empty()) {
       return reportLogs(/*newFormat*/ false);
@@ -443,7 +455,7 @@ RestStatus RestAdminLogHandler::handleLogLevel() {
       if (!found) {
         generateError(rest::ResponseCode::NOT_FOUND,
                       TRI_ERROR_HTTP_BAD_PARAMETER,
-                      std::string("unknown serverId supplied."));
+                      "unknown serverId supplied.");
         return RestStatus::DONE;
       }
 
@@ -462,7 +474,8 @@ RestStatus RestAdminLogHandler::handleLogLevel() {
           GeneralRequest::translateMethod(_request->requestType()));
 
       auto body = std::invoke([&]() -> std::optional<VPackBuffer<uint8_t>> {
-        if (_request->requestType() == rest::RequestType::GET) {
+        if (_request->requestType() == rest::RequestType::GET ||
+            _request->requestType() == rest::RequestType::DELETE_REQ) {
           return VPackBuffer<uint8_t>{};
         }
 
@@ -536,7 +549,26 @@ RestStatus RestAdminLogHandler::handleLogLevel() {
       }
     }
 
-    // now report current log level
+    // now report current log levels
+    VPackBuilder builder;
+    builder.openObject();
+    auto const& levels = Logger::logLevelTopics();
+    for (auto const& level : levels) {
+      builder.add(level.first,
+                  VPackValue(Logger::translateLogLevel(level.second)));
+    }
+    builder.close();
+
+    generateResult(rest::ResponseCode::OK, builder.slice());
+  } else if (type == rest::RequestType::DELETE_REQ) {
+    // reset log levels to defaults
+    for (auto const& it : Logger::defaultLogLevelTopics()) {
+      std::string l =
+          absl::StrCat(it.first, "=", Logger::translateLogLevel(it.second));
+      Logger::setLogLevel(l);
+    }
+
+    // now report resetted log levels
     VPackBuilder builder;
     builder.openObject();
     auto const& levels = Logger::logLevelTopics();

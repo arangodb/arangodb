@@ -318,7 +318,7 @@ TEST_F(StateManagerTest_EmptyState,
   {
     ASSERT_TRUE(appendEntriesFuture.isReady());
     ASSERT_TRUE(appendEntriesFuture.hasValue());
-    auto const appendEntriesResponse = appendEntriesFuture.get();
+    auto const appendEntriesResponse = appendEntriesFuture.waitAndGet();
     EXPECT_TRUE(appendEntriesResponse.isSuccess())
         << appendEntriesResponse.errorCode;
     EXPECT_TRUE(appendEntriesResponse.snapshotAvailable);
@@ -420,7 +420,7 @@ TEST_F(
   {
     ASSERT_TRUE(appendEntriesFuture.isReady());
     ASSERT_TRUE(appendEntriesFuture.hasValue());
-    auto const appendEntriesResponse = appendEntriesFuture.get();
+    auto const appendEntriesResponse = appendEntriesFuture.waitAndGet();
     EXPECT_TRUE(appendEntriesResponse.isSuccess())
         << appendEntriesResponse.errorCode;
     EXPECT_FALSE(appendEntriesResponse.snapshotAvailable);
@@ -565,7 +565,7 @@ TEST_F(
   {
     ASSERT_TRUE(appendEntriesFuture.isReady());
     ASSERT_TRUE(appendEntriesFuture.hasValue());
-    auto const appendEntriesResponse = appendEntriesFuture.get();
+    auto const appendEntriesResponse = appendEntriesFuture.waitAndGet();
     EXPECT_TRUE(appendEntriesResponse.isSuccess())
         << appendEntriesResponse.errorCode;
     EXPECT_TRUE(appendEntriesResponse.snapshotAvailable);
@@ -663,7 +663,7 @@ TEST_F(
   {
     ASSERT_TRUE(appendEntriesFuture.isReady());
     ASSERT_TRUE(appendEntriesFuture.hasValue());
-    auto const appendEntriesResponse = appendEntriesFuture.get();
+    auto const appendEntriesResponse = appendEntriesFuture.waitAndGet();
     EXPECT_TRUE(appendEntriesResponse.isSuccess())
         << appendEntriesResponse.errorCode;
     EXPECT_FALSE(appendEntriesResponse.snapshotAvailable);
@@ -804,7 +804,7 @@ TEST_F(
   {
     ASSERT_TRUE(appendEntriesFuture.isReady());
     ASSERT_TRUE(appendEntriesFuture.hasValue());
-    auto const appendEntriesResponse = appendEntriesFuture.get();
+    auto const appendEntriesResponse = appendEntriesFuture.waitAndGet();
     EXPECT_TRUE(appendEntriesResponse.isSuccess())
         << appendEntriesResponse.errorCode;
     EXPECT_TRUE(appendEntriesResponse.snapshotAvailable);
@@ -901,7 +901,7 @@ TEST_F(StateManagerTest_FakeState, follower_acquire_snapshot) {
   {
     ASSERT_TRUE(appendEntriesFuture.isReady());
     ASSERT_TRUE(appendEntriesFuture.hasValue());
-    auto const appendEntriesResponse = appendEntriesFuture.get();
+    auto const appendEntriesResponse = appendEntriesFuture.waitAndGet();
     EXPECT_TRUE(appendEntriesResponse.isSuccess())
         << appendEntriesResponse.errorCode;
     EXPECT_FALSE(appendEntriesResponse.snapshotAvailable);

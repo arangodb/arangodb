@@ -32,6 +32,7 @@
 
 namespace arangodb {
 class AgencyComm;
+class AgencyCache;
 
 namespace velocypack {
 class Builder;
@@ -100,11 +101,21 @@ class AgencyCallback {
   using CallbackType =
       std::function<bool(velocypack::Slice, consensus::index_t)>;
 
-  AgencyCallback(ArangodServer& server, std::string const&,
-                 std::function<bool(velocypack::Slice const&)> const&,
-                 bool needsValue, bool needsInitialValue = true);
-  AgencyCallback(ArangodServer& server, std::string key, CallbackType,
-                 bool needsValue, bool needsInitialValue = true);
+  AgencyCallback(ApplicationServer& server, AgencyCache& agencyCache,
+                 std::string key, CallbackType, bool needsValue,
+                 bool needsInitialValue = true);
+  [[deprecated(
+      "Avoid this constructor to get rid of the ArangodServer "
+      "dependency")]] AgencyCallback(ArangodServer& server, std::string const&,
+                                     std::function<
+                                         bool(velocypack::Slice const&)> const&,
+                                     bool needsValue,
+                                     bool needsInitialValue = true);
+  [[deprecated(
+      "Avoid this constructor to get rid of the ArangodServer "
+      "dependency")]] AgencyCallback(ArangodServer& server, std::string key,
+                                     CallbackType, bool needsValue,
+                                     bool needsInitialValue = true);
 
   std::string const key;
   arangodb::basics::ConditionVariable _cv;
@@ -129,12 +140,6 @@ class AgencyCallback {
 
   bool executeByCallbackOrTimeout(double);
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Set if local (b:true) or remote
-  //////////////////////////////////////////////////////////////////////////////
-  void local(bool b);
-  bool local() const;
-
   bool needsInitialValue() const noexcept { return _needsInitialValue; }
 
  private:
@@ -150,8 +155,8 @@ class AgencyCallback {
                   consensus::index_t raftIndex, bool forceCheck);
 
  private:
-  ArangodServer& _server;
-  std::unique_ptr<AgencyComm> _agency;
+  ApplicationServer& _server;
+  AgencyCache& _agencyCache;
   CallbackType const _cb;
   std::shared_ptr<velocypack::Builder> _lastData;
   bool const _needsValue;
@@ -165,9 +170,6 @@ class AgencyCallback {
   ///  3) caller going into condition.wait() (and not woken up)
   /// this variable is protected by the condition variable!
   bool _wasSignaled{false};
-
-  /// Determined when registered in registry. Default: true
-  bool _local{true};
 
   /// This index keeps track of which raft index was seen last. It ensures a
   /// monotonic view on the observed value.

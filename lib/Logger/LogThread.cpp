@@ -29,9 +29,8 @@
 
 using namespace arangodb;
 
-LogThread::LogThread(application_features::ApplicationServer& server,
-                     std::string const& name, uint32_t maxQueuedLogMessages)
-    : Thread(server, name),
+LogThread::LogThread(std::string const& name, uint32_t maxQueuedLogMessages)
+    : Thread(name),
       _messages(64),
       _maxQueuedLogMessages(maxQueuedLogMessages) {}
 

@@ -42,13 +42,11 @@ const functionsDocumentation = {
   'hot_backup': 'hotbackup tests'
 };
 
-const optionsDocumentation = [
-  '   - `skipEncrypted` : if set to true the encryption tests are skipped'
-];
-
 const pu = require('@arangodb/testutils/process-utils');
 const ct = require('@arangodb/testutils/client-tools');
 const tu = require('@arangodb/testutils/test-utils');
+const tr = require('@arangodb/testutils/testrunner');
+const trs = require('@arangodb/testutils/testrunners');
 const im = require('@arangodb/testutils/instance-manager');
 const fs = require('fs');
 const _ = require('lodash');
@@ -90,9 +88,9 @@ const testPaths = {
   'hot_backup': [tu.pathForTesting('client/dump')]
 };
 
-class DumpRestoreHelper extends tu.runInArangoshRunner {
+class DumpRestoreHelper extends trs.runInArangoshRunner {
   constructor(firstRunOptions, secondRunOptions, serverOptions, clientAuth, dumpOptions, restoreOptions, which, afterServerStart, rtaArgs) {
-    super(firstRunOptions, which, serverOptions, false);
+    super(firstRunOptions, which, serverOptions, tr.sutFilters.checkUsers);
     this.serverOptions = serverOptions;
     this.firstRunOptions = firstRunOptions;
     this.secondRunOptions = secondRunOptions;
@@ -1263,6 +1261,5 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   testFns['dump_non_parallel'] = dumpNonParallel;
   testFns['hot_backup'] = hotBackup;
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
-  for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };

@@ -70,6 +70,9 @@ class MaterializeRocksDBNode : public MaterializeNode,
 
   std::vector<Variable const*> getVariablesSetHere() const override final;
 
+  void setMaxProjections(size_t value) noexcept { _maxProjections = value; }
+  size_t maxProjections() const noexcept { return _maxProjections; }
+
   void projections(Projections proj) noexcept {
     _projections = std::move(proj);
   }
@@ -82,6 +85,8 @@ class MaterializeRocksDBNode : public MaterializeNode,
                       unsigned flags) const override final;
 
   Projections _projections;
+
+  size_t _maxProjections;
 };
 
 }  // namespace materialize

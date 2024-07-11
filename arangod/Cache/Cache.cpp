@@ -456,7 +456,8 @@ std::shared_ptr<Table> Cache::table() const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   _manager->trackTableCall();
 #endif
-  return std::atomic_load_explicit(&_table, std::memory_order_acquire);
+  SpinLocker guard(SpinLocker::Mode::Read, _tableLock);
+  return _table;
 }
 
 void Cache::shutdown() {
@@ -493,8 +494,10 @@ void Cache::shutdown() {
       _metadata.changeTable(0);
     }
     _manager->unregisterCache(_id);
-    std::atomic_store_explicit(&_table, std::shared_ptr<cache::Table>(),
-                               std::memory_order_release);
+    {
+      SpinLocker tableGuard(SpinLocker::Mode::Write, _tableLock);
+      _table.reset();
+    }
   }
 
   taskGuard.release();
@@ -568,7 +571,10 @@ bool Cache::migrate(std::shared_ptr<Table> newTable) {
   {
     SpinLocker taskGuard(SpinLocker::Mode::Write, _taskLock);
     oldTable = this->table();
-    std::atomic_store_explicit(&_table, newTable, std::memory_order_release);
+    {
+      SpinLocker tableGuard(SpinLocker::Mode::Write, _tableLock);
+      _table = newTable;
+    }
     oldTable->setAuxiliary(std::shared_ptr<Table>());
   }
 

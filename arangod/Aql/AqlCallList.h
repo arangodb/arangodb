@@ -26,7 +26,6 @@
 #include "Aql/AqlCall.h"
 
 #include <optional>
-#include <vector>
 
 namespace arangodb::velocypack {
 class Builder;
@@ -50,7 +49,7 @@ class AqlCallList {
   friend bool operator==(AqlCallList const& left, AqlCallList const& right);
 
   friend auto operator<<(std::ostream& out,
-                         const arangodb::aql::AqlCallList& list)
+                         arangodb::aql::AqlCallList const& list)
       -> std::ostream&;
 
   /**
@@ -143,12 +142,10 @@ class AqlCallList {
 
  private:
   /**
-   * @brief A list of specific calls for subqueries.
-   *        Right now we have only implemented variants where there is
-   *        at most one call in this list. But the code is actually ready for
-   *        any number of calls here.
+   * @brief An optional specific call for subqueries.
    */
-  std::vector<AqlCall> _specificCalls{};
+  std::optional<AqlCall> _specificCall{};
+
   std::optional<AqlCall> _defaultCall{std::nullopt};
 };
 

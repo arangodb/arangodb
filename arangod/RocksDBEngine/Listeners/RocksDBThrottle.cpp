@@ -342,6 +342,7 @@ void RocksDBThrottle::recalculateThrottle() {
     if (!_firstThrottle) {
       int64_t tempRate = _throttleBps.load(std::memory_order_relaxed);
 
+      TRI_ASSERT(_scalingFactor != 0);
       if (tempRate < newThrottle) {
         tempRate += (newThrottle - tempRate) / _scalingFactor;
       } else {

@@ -193,7 +193,7 @@ struct MockGraphDatabase {
 
     auto indexJson = velocypack::Parser::fromJson("{ \"type\": \"edge\" }");
     bool created = false;
-    auto index = edges->createIndex(indexJson->slice(), created).get();
+    auto index = edges->createIndex(indexJson->slice(), created).waitAndGet();
     TRI_ASSERT(index);
     TRI_ASSERT(created);
     return edges;

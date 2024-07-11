@@ -25,6 +25,8 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
+#include "Auth/UserManager.h"
+#include "Basics/Exceptions.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/StaticStrings.h"
@@ -84,7 +86,7 @@ using Helper = arangodb::basics::VelocyPackHelper;
 namespace {
 constexpr std::string_view moduleName("collections management");
 
-bool checkIfDefinedAsSatellite(VPackSlice const& properties) {
+bool checkIfDefinedAsSatellite(velocypack::Slice properties) {
   if (properties.hasKey(StaticStrings::ReplicationFactor)) {
     if (properties.get(StaticStrings::ReplicationFactor).isNumber()) {
       auto replFactor =
@@ -874,7 +876,9 @@ void Collections::applySystemCollectionProperties(
   if (col.name == designatedLeaderName) {
     // The leading collection needs to define sharding
     col.replicationFactor = vocbase.replicationFactor();
-    if (vocbase.server().hasFeature<ClusterFeature>()) {
+    if (vocbase.server().hasFeature<ClusterFeature>() &&
+        vocbase.replicationFactor() != 0) {
+      // do not adjust replication factor for satellite collections
       col.replicationFactor =
           (std::max)(col.replicationFactor.value(),
                      static_cast<uint64_t>(vocbase.server()
@@ -886,11 +890,13 @@ void Collections::applySystemCollectionProperties(
     col.distributeShardsLike = designatedLeaderName;
   }
 
-  [[maybe_unused]] auto res =
-      col.applyDefaultsAndValidateDatabaseConfiguration(config);
-  ADB_PROD_ASSERT(!res.fail())
-      << "Created illegal default system collection attributes: "
-      << res.errorMessage();
+  auto res = col.applyDefaultsAndValidateDatabaseConfiguration(config);
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        res.errorNumber(),
+        absl::StrCat("Created illegal default system collection attributes: ",
+                     res.errorMessage()));
+  }
 }
 
 void Collections::createSystemCollectionProperties(
@@ -1367,9 +1373,9 @@ futures::Future<Result> Collections::checksum(LogicalCollection& collection,
     auto cid = std::to_string(collection.id().id());
     auto& feature = collection.vocbase().server().getFeature<ClusterFeature>();
     OperationOptions options(ExecContext::current());
-    auto res = checksumOnCoordinator(feature, collection.vocbase().name(), cid,
-                                     options, withRevisions, withData)
-                   .get();
+    auto res =
+        co_await checksumOnCoordinator(feature, collection.vocbase().name(),
+                                       cid, options, withRevisions, withData);
     if (res.ok()) {
       revId = RevisionId::fromSlice(res.slice().get("revision"));
       checksum = res.slice().get("checksum").getUInt();
@@ -1399,9 +1405,9 @@ futures::Future<Result> Collections::checksum(LogicalCollection& collection,
   checksum = 0;
 
   // We directly read the entire cursor. so batchsize == limit
-  auto iterator =
-      trx.indexScan(monitor, collection.name(),
-                    transaction::Methods::CursorType::ALL, ReadOwnWrites::no);
+  auto iterator = co_await trx.indexScan(collection.name(),
+                                         transaction::Methods::CursorType::ALL,
+                                         ReadOwnWrites::no);
 
   iterator->allDocuments([&](LocalDocumentId, aql::DocumentData&&,
                              VPackSlice slice) {

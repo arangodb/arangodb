@@ -35,8 +35,7 @@
 
 #include <velocypack/Iterator.h>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 SubqueryStartNode::SubqueryStartNode(ExecutionPlan* plan,
                                      arangodb::velocypack::Slice const& base)
@@ -74,14 +73,11 @@ std::unique_ptr<ExecutionBlock> SubqueryStartNode::createBlock(
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
-  auto inputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
-  auto outputRegisters = std::make_shared<std::unordered_set<RegisterId>>();
-
   auto registerInfos = createRegisterInfos({}, {});
 
   // On purpose exclude the _subqueryOutVariable
   return std::make_unique<ExecutionBlockImpl<SubqueryStartExecutor>>(
-      &engine, this, registerInfos, registerInfos);
+      &engine, this, registerInfos, std::move(registerInfos));
 }
 
 ExecutionNode* SubqueryStartNode::clone(ExecutionPlan* plan,
@@ -101,5 +97,4 @@ bool SubqueryStartNode::isEqualTo(ExecutionNode const& other) const {
 
 size_t SubqueryStartNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql

@@ -26,6 +26,7 @@
 
 #include "Agency/AgencyComm.h"
 #include "Auth/Handler.h"
+#include "Auth/UserManager.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"

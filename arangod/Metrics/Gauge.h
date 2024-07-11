@@ -59,7 +59,7 @@ class Gauge : public Metric {
     }
   }
 
-  void toVPack(velocypack::Builder& builder, ArangodServer&) const final {
+  void toVPack(velocypack::Builder& builder) const final {
     builder.add(velocypack::Value{name()});
     builder.add(velocypack::Value{labels()});
     builder.add(velocypack::Value{load(std::memory_order_relaxed)});

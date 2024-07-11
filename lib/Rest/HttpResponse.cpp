@@ -142,6 +142,11 @@ size_t HttpResponse::bodySize() const {
   return _body->length();
 }
 
+void HttpResponse::clearBody() noexcept {
+  _body->clear();
+  _bodySize = 0;
+}
+
 void HttpResponse::setAllowCompression(
     rest::ResponseCompressionType rct) noexcept {
   if (_allowCompression == rest::ResponseCompressionType::kUnset) {
@@ -276,24 +281,21 @@ void HttpResponse::writeHeader(StringBuffer* output) {
       output->appendText("\r\n", 2);
     }
 
+    // From http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.13
+    //
+    // 14.13 Content-Length
+    //
+    // "The Content-Length entity-header field indicates the size of the
+    // entity-body, in decimal number of OCTETs, sent to the recipient or, in
+    // the case of the HEAD method, the size of the entity-body that would have
+    // been sent had the request been a GET."
+    //
+    // Note that a corner case exists where the HEAD method is sent with an
+    // X-Arango-Async header. This causes the server to store the result, which
+    // can be later retrieved via PUT. However, the PUT response cannot possibly
+    // return the initial Content-Length header, but will return 0 instead.
     output->appendText(std::string_view("Content-Length: "));
-
-    if (!_generateBody) {
-      // From http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html#sec14.13
-      //
-      // 14.13 Content-Length
-      //
-      // The Content-Length entity-header field indicates the size of the
-      // entity-body,
-      // in decimal number of OCTETs, sent to the recipient or, in the case of
-      // the HEAD method,
-      // the size of the entity-body that would have been sent had the request
-      // been a GET.
-      output->appendInteger(_bodySize);
-    } else {
-      output->appendInteger(_body->length());
-    }
-
+    output->appendInteger(bodySize());
     output->appendText("\r\n\r\n", 4);
   }
   // end of header, body to follow
@@ -341,6 +343,7 @@ void HttpResponse::addPayloadInternal(uint8_t const* data, size_t length,
   if (!options) {
     options = &velocypack::Options::Defaults;
   }
+  TRI_ASSERT(options != nullptr);
 
   if (_contentType == rest::ContentType::VPACK) {
     // the input (data) may contain multiple velocypack values, written
@@ -361,14 +364,12 @@ void HttpResponse::addPayloadInternal(uint8_t const* data, size_t length,
       // will contain sanitized data
       VPackBuffer<uint8_t> tmpBuffer;
       if (resolveExternals) {
-        bool resolveExt =
-            VelocyPackHelper::hasNonClientTypes(currentData, true, true);
+        bool resolveExt = VelocyPackHelper::hasNonClientTypes(currentData);
         if (resolveExt) {                  // resolve
           tmpBuffer.reserve(inputLength);  // reserve space already
           VPackBuilder builder(tmpBuffer, options);
           VelocyPackHelper::sanitizeNonClientTypes(
-              currentData, VPackSlice::noneSlice(), builder, options, true,
-              true);
+              currentData, VPackSlice::noneSlice(), builder, *options);
           currentData = VPackSlice(tmpBuffer.data());
           outputLength = currentData.byteSize();
         }

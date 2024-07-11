@@ -359,7 +359,7 @@ UpgradeResult methods::Upgrade::runTasks(TRI_vocbase_t& vocbase,
                          ") failed: ", res.errorMessage());
         LOG_TOPIC("0a886", ERR, Logger::STARTUP)
             << msg << " aborting upgrade procedure.";
-        return UpgradeResult(TRI_ERROR_INTERNAL, std::move(msg), vinfo.status);
+        return UpgradeResult(res.errorNumber(), std::move(msg), vinfo.status);
       }
     } catch (std::exception const& e) {
       LOG_TOPIC("022fe", ERR, Logger::STARTUP)

@@ -60,7 +60,8 @@ DocumentProducingNode::DocumentProducingNode(ExecutionPlan* plan,
           plan->getAst()->query().resourceMonitor())),
       _count(false),
       _useCache(true),
-      _maxProjections(kMaxProjections) {
+      _maxProjections(basics::VelocyPackHelper::getNumericValue(
+          slice.get(StaticStrings::MaxProjections), kMaxProjections)) {
   TRI_ASSERT(_outVariable != nullptr);
 
   VPackSlice p = slice.get(StaticStrings::Filter);

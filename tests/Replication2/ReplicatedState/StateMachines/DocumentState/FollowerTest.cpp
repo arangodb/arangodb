@@ -39,7 +39,7 @@ TEST_F(DocumentStateFollowerTest, follower_associated_shard_map) {
   auto transactionHandlerMock = createRealTransactionHandler();
   auto follower = createFollower();
   auto res = follower->acquireSnapshot("participantId");
-  EXPECT_TRUE(res.isReady() && res.get().ok());
+  EXPECT_TRUE(res.isReady() && res.waitAndGet().ok());
 
   auto shards = logicalCollections;
   auto shard = makeLogicalCollection(shardId);
@@ -91,7 +91,7 @@ TEST_F(DocumentStateFollowerTest,
 
   auto follower = createFollower();
   auto res = follower->acquireSnapshot("participantId");
-  EXPECT_TRUE(res.isReady() && res.get().ok());
+  EXPECT_TRUE(res.isReady() && res.waitAndGet().ok());
 
   Mock::VerifyAndClearExpectations(networkHandlerMock.get());
   Mock::VerifyAndClearExpectations(leaderInterfaceMock.get());
@@ -139,8 +139,8 @@ TEST_F(DocumentStateFollowerTest,
   std::thread t([follower]() {
     auto res = follower->acquireSnapshot("participantId");
     EXPECT_TRUE(res.isReady());
-    EXPECT_TRUE(res.get().fail());
-    EXPECT_TRUE(res.get().errorNumber() ==
+    EXPECT_TRUE(res.waitAndGet().fail());
+    EXPECT_TRUE(res.waitAndGet().errorNumber() ==
                 TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
   });
 
@@ -163,7 +163,7 @@ TEST_F(DocumentStateFollowerTest,
   auto transactionHandlerMock = createRealTransactionHandler();
   auto follower = createFollower();
   auto res = follower->acquireSnapshot("participantId");
-  EXPECT_TRUE(res.isReady() && res.get().ok());
+  EXPECT_TRUE(res.isReady() && res.waitAndGet().ok());
   auto stream = std::make_shared<MockProducerStream>();
   follower->setStream(stream);
 
@@ -185,7 +185,7 @@ TEST_F(DocumentStateFollowerTest,
     EXPECT_EQ(index, expectedReleaseIndex);
   });
   res = follower->applyEntries(std::move(entryIterator));
-  ASSERT_TRUE(res.get().ok());
+  ASSERT_TRUE(res.waitAndGet().ok());
 }
 
 TEST_F(DocumentStateFollowerTest,
@@ -195,7 +195,7 @@ TEST_F(DocumentStateFollowerTest,
   auto transactionHandlerMock = createRealTransactionHandler();
   auto follower = createFollower();
   auto res = follower->acquireSnapshot("participantId");
-  EXPECT_TRUE(res.isReady() && res.get().ok());
+  EXPECT_TRUE(res.isReady() && res.waitAndGet().ok());
   auto stream = std::make_shared<MockProducerStream>();
   follower->setStream(stream);
 
@@ -212,7 +212,7 @@ TEST_F(DocumentStateFollowerTest,
               applyEntry(Matcher<ReplicatedOperation::OperationType const&>(_)))
       .Times(3);
   res = follower->applyEntries(std::move(entryIterator));
-  ASSERT_TRUE(res.get().ok());
+  ASSERT_TRUE(res.waitAndGet().ok());
 }
 
 TEST_F(DocumentStateFollowerTest,
@@ -222,7 +222,7 @@ TEST_F(DocumentStateFollowerTest,
   auto transactionHandlerMock = createRealTransactionHandler();
   auto follower = createFollower();
   auto res = follower->acquireSnapshot("participantId");
-  EXPECT_TRUE(res.isReady() && res.get().ok());
+  EXPECT_TRUE(res.isReady() && res.waitAndGet().ok());
   auto stream = std::make_shared<MockProducerStream>();
   follower->setStream(stream);
 
@@ -238,7 +238,7 @@ TEST_F(DocumentStateFollowerTest,
 
   EXPECT_CALL(*stream, release).Times(0);
   res = follower->applyEntries(std::move(entryIterator));
-  ASSERT_TRUE(res.get().ok());
+  ASSERT_TRUE(res.waitAndGet().ok());
   Mock::VerifyAndClearExpectations(stream.get());
 }
 
@@ -249,7 +249,7 @@ TEST_F(DocumentStateFollowerTest,
   auto transactionHandlerMock = createRealTransactionHandler();
   auto follower = createFollower();
   auto res = follower->acquireSnapshot("participantId");
-  EXPECT_TRUE(res.isReady() && res.get().ok());
+  EXPECT_TRUE(res.isReady() && res.waitAndGet().ok());
   auto stream = std::make_shared<MockProducerStream>();
   follower->setStream(stream);
 
@@ -262,7 +262,9 @@ TEST_F(DocumentStateFollowerTest,
       velocypack::SharedSlice(), "root"));
   auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
   ASSERT_DEATH_CORE_FREE(
-      std::ignore = follower->applyEntries(std::move(entryIterator)).get(), "");
+      std::ignore =
+          follower->applyEntries(std::move(entryIterator)).waitAndGet(),
+      "");
 }
 
 TEST_F(DocumentStateFollowerTest,
@@ -272,7 +274,7 @@ TEST_F(DocumentStateFollowerTest,
   auto transactionHandlerMock = createRealTransactionHandler();
   auto follower = createFollower();
   auto res = follower->acquireSnapshot("participantId");
-  EXPECT_TRUE(res.isReady() && res.get().ok());
+  EXPECT_TRUE(res.isReady() && res.waitAndGet().ok());
   auto stream = std::make_shared<MockProducerStream>();
   follower->setStream(stream);
 
@@ -295,14 +297,14 @@ TEST_F(DocumentStateFollowerTest,
               applyEntry(Matcher<ReplicatedOperation::OperationType const&>(_)))
       .Times(7);
   res = follower->applyEntries(std::move(entryIterator));
-  ASSERT_TRUE(res.get().ok());
+  ASSERT_TRUE(res.waitAndGet().ok());
   Mock::VerifyAndClearExpectations(stream.get());
   Mock::VerifyAndClearExpectations(transactionHandlerMock.get());
 
   // First abort then commit
   follower = createFollower();
   res = follower->acquireSnapshot("participantId");
-  EXPECT_TRUE(res.isReady() && res.get().ok());
+  EXPECT_TRUE(res.isReady() && res.waitAndGet().ok());
   stream = std::make_shared<MockProducerStream>();
   follower->setStream(stream);
   entries.clear();
@@ -324,7 +326,7 @@ TEST_F(DocumentStateFollowerTest,
               applyEntry(Matcher<ReplicatedOperation::OperationType const&>(_)))
       .Times(7);
   res = follower->applyEntries(std::move(entryIterator));
-  ASSERT_TRUE(res.get().ok());
+  ASSERT_TRUE(res.waitAndGet().ok());
 }
 
 TEST_F(DocumentStateFollowerTest,
@@ -334,7 +336,7 @@ TEST_F(DocumentStateFollowerTest,
   auto transactionHandlerMock = createRealTransactionHandler();
   auto follower = createFollower();
   auto res = follower->acquireSnapshot("participantId");
-  EXPECT_TRUE(res.isReady() && res.get().ok());
+  EXPECT_TRUE(res.isReady() && res.waitAndGet().ok());
 
   auto stream = std::make_shared<MockProducerStream>();
   follower->setStream(stream);
@@ -351,7 +353,7 @@ TEST_F(DocumentStateFollowerTest,
       .Times(1);
   EXPECT_CALL(*stream, release).Times(1);
   res = follower->applyEntries(std::move(entryIterator));
-  ASSERT_TRUE(res.get().ok());
+  ASSERT_TRUE(res.waitAndGet().ok());
   Mock::VerifyAndClearExpectations(stream.get());
 
   // ModifyShard
@@ -363,7 +365,7 @@ TEST_F(DocumentStateFollowerTest,
       .Times(1);
   EXPECT_CALL(*stream, release).Times(1);
   res = follower->applyEntries(std::move(entryIterator));
-  ASSERT_TRUE(res.get().ok());
+  ASSERT_TRUE(res.waitAndGet().ok());
   Mock::VerifyAndClearExpectations(stream.get());
 
   // DropShard
@@ -373,7 +375,7 @@ TEST_F(DocumentStateFollowerTest,
   EXPECT_CALL(*shardHandlerMock, dropShard(myShard)).Times(1);
   EXPECT_CALL(*stream, release).Times(1);
   res = follower->applyEntries(std::move(entryIterator));
-  ASSERT_TRUE(res.get().ok());
+  ASSERT_TRUE(res.waitAndGet().ok());
   Mock::VerifyAndClearExpectations(stream.get());
 
   Mock::VerifyAndClearExpectations(shardHandlerMock.get());
@@ -386,7 +388,7 @@ TEST_F(DocumentStateFollowerTest,
   auto transactionHandlerMock = createRealTransactionHandler();
   auto follower = createFollower();
   auto res = follower->acquireSnapshot("participantId");
-  EXPECT_TRUE(res.isReady() && res.get().ok());
+  EXPECT_TRUE(res.isReady() && res.waitAndGet().ok());
   auto stream = std::make_shared<MockProducerStream>();
   follower->setStream(stream);
 
@@ -397,7 +399,9 @@ TEST_F(DocumentStateFollowerTest,
   ON_CALL(*shardHandlerMock, ensureShard(shardId, TRI_COL_TYPE_DOCUMENT, _))
       .WillByDefault(Return(Result(TRI_ERROR_WAS_ERLAUBE)));
   ASSERT_DEATH_CORE_FREE(
-      std::ignore = follower->applyEntries(std::move(entryIterator)).get(), "");
+      std::ignore =
+          follower->applyEntries(std::move(entryIterator)).waitAndGet(),
+      "");
 
   entries.clear();
   entries.emplace_back(ReplicatedOperation::buildDropShardOperation(shardId));
@@ -405,7 +409,9 @@ TEST_F(DocumentStateFollowerTest,
   ON_CALL(*shardHandlerMock, dropShard(shardId))
       .WillByDefault(Return(Result(TRI_ERROR_WAS_ERLAUBE)));
   ASSERT_DEATH_CORE_FREE(
-      std::ignore = follower->applyEntries(std::move(entryIterator)).get(), "");
+      std::ignore =
+          follower->applyEntries(std::move(entryIterator)).waitAndGet(),
+      "");
 }
 
 TEST_F(DocumentStateFollowerTest, follower_ignores_invalid_transactions) {
@@ -414,7 +420,7 @@ TEST_F(DocumentStateFollowerTest, follower_ignores_invalid_transactions) {
   auto transactionHandlerMock = createRealTransactionHandler();
   auto follower = createFollower();
   auto res = follower->acquireSnapshot("participantId");
-  EXPECT_TRUE(res.isReady() && res.get().ok());
+  EXPECT_TRUE(res.isReady() && res.waitAndGet().ok());
   auto stream = std::make_shared<MockProducerStream>();
   follower->setStream(stream);
 
@@ -427,7 +433,7 @@ TEST_F(DocumentStateFollowerTest, follower_ignores_invalid_transactions) {
       .Times(1)
       .WillOnce(Return(Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)));
   res = follower->applyEntries(std::move(entryIterator));
-  ASSERT_TRUE(res.get().ok());
+  ASSERT_TRUE(res.waitAndGet().ok());
   Mock::VerifyAndClearExpectations(transactionHandlerMock.get());
 
   // Try to commit the previous entry
@@ -442,7 +448,7 @@ TEST_F(DocumentStateFollowerTest, follower_ignores_invalid_transactions) {
   // we still release the entry!
   EXPECT_CALL(*stream, release(LogIndex{1})).Times(1);
   res = follower->applyEntries(std::move(entryIterator));
-  ASSERT_TRUE(res.get().ok());
+  ASSERT_TRUE(res.waitAndGet().ok());
   Mock::VerifyAndClearExpectations(transactionHandlerMock.get());
 
   // Try to apply another entry, this time making the shard available
@@ -453,7 +459,7 @@ TEST_F(DocumentStateFollowerTest, follower_ignores_invalid_transactions) {
               applyEntry(entries[0].getInnerOperation()))
       .Times(1);
   res = follower->applyEntries(std::move(entryIterator));
-  ASSERT_TRUE(res.get().ok());
+  ASSERT_TRUE(res.waitAndGet().ok());
   Mock::VerifyAndClearExpectations(shardHandlerMock.get());
   Mock::VerifyAndClearExpectations(transactionHandlerMock.get());
 }
@@ -465,7 +471,7 @@ TEST_F(DocumentStateFollowerTest,
   auto transactionHandlerMock = createRealTransactionHandler();
   auto follower = createFollower();
   auto res = follower->acquireSnapshot("participantId");
-  EXPECT_TRUE(res.isReady() && res.get().ok());
+  EXPECT_TRUE(res.isReady() && res.waitAndGet().ok());
   auto stream = std::make_shared<MockProducerStream>();
   follower->setStream(stream);
 
@@ -478,7 +484,7 @@ TEST_F(DocumentStateFollowerTest,
       velocypack::SharedSlice(), "root"));
   auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
   res = follower->applyEntries(std::move(entryIterator));
-  ASSERT_TRUE(res.get().ok());
+  ASSERT_TRUE(res.waitAndGet().ok());
 
   entries.clear();
   entries.emplace_back(
@@ -507,7 +513,7 @@ TEST_F(DocumentStateFollowerTest,
   EXPECT_CALL(*stream, release(LogIndex{1})).Times(1);
 
   res = follower->applyEntries(std::move(entryIterator));
-  ASSERT_TRUE(res.get().ok());
+  ASSERT_TRUE(res.waitAndGet().ok());
   Mock::VerifyAndClearExpectations(transactionHandlerMock.get());
   Mock::VerifyAndClearExpectations(stream.get());
 }

@@ -86,7 +86,7 @@ auto LogReader::seekLogIndexForward(LogIndex index)
   while (true) {
     auto res = _reader->read(header);
     if (res.fail()) {
-      if (res.errorNumber() == TRI_ERROR_END_OF_FILE) {
+      if (res.is(TRI_ERROR_END_OF_FILE)) {
         return ResultT<Record::CompressedHeader>::error(TRI_ERROR_END_OF_FILE,
                                                         "log index not found");
       }
@@ -228,7 +228,7 @@ auto LogReader::readNextLogEntry() -> ResultT<PersistedLogEntry> {
   Record::CompressedHeader compressedHeader;
   auto res = _reader->read(compressedHeader);
   if (res.fail()) {
-    auto error = res.errorNumber() == TRI_ERROR_END_OF_FILE
+    auto error = res.is(TRI_ERROR_END_OF_FILE)
                      ? TRI_ERROR_END_OF_FILE
                      : TRI_ERROR_REPLICATION_REPLICATED_WAL_ERROR;
     return RT::error(

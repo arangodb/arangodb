@@ -83,7 +83,7 @@ BEGIN {
 		    cc = cca[i]
 		    if (cc2name[cc]) {
 			cc_used[cc]++
-		    } else {
+		    } else if (! (cc == "XX" && zone_table == "zonenow.tab")) {
 			printf "%s:%d: %s: unknown country code\n", \
 				zone_table, zone_NR, cc >>"/dev/stderr"
 			status = 1
@@ -110,7 +110,7 @@ BEGIN {
 	      used_max_cc = cc
 	    }
 	  }
-	  if (used_max <= 1 && comments) {
+	  if (used_max <= 1 && comments && zone_table != "zonenow.tab") {
 	    printf "%s:%d: unnecessary comment '%s'\n", \
 	      zone_table, i, comments \
 	      >>"/dev/stderr"
@@ -149,7 +149,8 @@ $1 ~ /^#/ { next }
 		if ($3 ~ /%/) rulePercentUsed[$2] = 1
 	}
 	if (tz && tz ~ /\// && tz !~ /^Etc\//) {
-		if (!tztab[tz] && FILENAME != "backward") {
+		if (!tztab[tz] && FILENAME != "backward" \
+		    && zone_table != "zonenow.tab") {
 			printf "%s: no data for '%s'\n", zone_table, tz \
 				>>"/dev/stderr"
 			status = 1

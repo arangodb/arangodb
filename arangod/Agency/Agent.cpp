@@ -1388,6 +1388,7 @@ write_ret_t Agent::write(velocypack::Slice query, WriteMode const& wmode) {
     // ourselves.
 
     size_t ntrans = query.length();
+    TRI_ASSERT(_config.maxAppendSize() > 0);
     size_t npacks = ntrans / _config.maxAppendSize();
     if (ntrans % _config.maxAppendSize() != 0) {
       npacks++;

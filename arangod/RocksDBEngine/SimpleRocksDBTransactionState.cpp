@@ -138,11 +138,12 @@ Result SimpleRocksDBTransactionState::doAbort() {
   return _rocksMethods->abortTransaction();
 }
 
-void SimpleRocksDBTransactionState::beginQuery(ResourceMonitor* resourceMonitor,
-                                               bool isModificationQuery) {
+void SimpleRocksDBTransactionState::beginQuery(
+    std::shared_ptr<ResourceMonitor> resourceMonitor,
+    bool isModificationQuery) {
   auto* trxMethods = dynamic_cast<RocksDBTrxMethods*>(_rocksMethods.get());
   if (trxMethods) {
-    trxMethods->beginQuery(resourceMonitor, isModificationQuery);
+    trxMethods->beginQuery(std::move(resourceMonitor), isModificationQuery);
   }
 }
 

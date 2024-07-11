@@ -410,7 +410,7 @@ OperationResult buildCountResult(
   total = 0;
   VPackBuilder resultBuilder;
 
-  if (type == CountType::Detailed) {
+  if (type == CountType::kDetailed) {
     resultBuilder.openObject();
     for (auto const& it : count) {
       total += it.second;
@@ -905,9 +905,12 @@ BuilderLeaser::BuilderLeaser(Context* transactionContext)
 BuilderLeaser::BuilderLeaser(Methods* trx)
     : BuilderLeaser{trx->transactionContextPtr()} {}
 
-BuilderLeaser::~BuilderLeaser() {
+BuilderLeaser::~BuilderLeaser() { clear(); }
+
+void BuilderLeaser::clear() {
   if (_builder != nullptr) {
     _transactionContext->returnBuilder(_builder);
+    _builder = nullptr;
   }
 }
 

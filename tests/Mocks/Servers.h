@@ -268,6 +268,8 @@ class MockClusterServer
 
   ServerID const& getServerID() const;
 
+  auto genUniqId() const -> std::uint64_t;
+
   // You can only create specialized types
  protected:
   MockClusterServer(bool useAgencyMockConnection,

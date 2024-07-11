@@ -195,7 +195,7 @@ TEST_F(IResearchLinkTest, test_defaults) {
 
     bool created;
     auto link =
-        logicalCollection->createIndex(linkJson->slice(), created).get();
+        logicalCollection->createIndex(linkJson->slice(), created).waitAndGet();
     ASSERT_TRUE(nullptr != link && created);
     EXPECT_TRUE(link->canBeDropped());
     EXPECT_EQ(logicalCollection.get(), &(link->collection()));
@@ -273,7 +273,7 @@ TEST_F(IResearchLinkTest, test_defaults) {
 
     bool created;
     auto link =
-        logicalCollection->createIndex(linkJson->slice(), created).get();
+        logicalCollection->createIndex(linkJson->slice(), created).waitAndGet();
     ASSERT_TRUE(nullptr != link && created);
     EXPECT_TRUE(link->canBeDropped());
     EXPECT_EQ(logicalCollection.get(), &(link->collection()));
@@ -351,7 +351,7 @@ TEST_F(IResearchLinkTest, test_defaults) {
 
     bool created;
     auto link =
-        logicalCollection->createIndex(linkJson->slice(), created).get();
+        logicalCollection->createIndex(linkJson->slice(), created).waitAndGet();
     ASSERT_TRUE(nullptr != link && created);
     EXPECT_TRUE(link->canBeDropped());
     EXPECT_EQ(logicalCollection.get(), &(link->collection()));
@@ -875,7 +875,8 @@ TEST_F(IResearchLinkTest, test_write_index_creation_version_0) {
                  .string();
   irs::FSDirectory directory(dataPath);
   bool created;
-  auto link = logicalCollection->createIndex(linkJson->slice(), created).get();
+  auto link =
+      logicalCollection->createIndex(linkJson->slice(), created).waitAndGet();
   ASSERT_TRUE((false == !link && created));
   auto reader = irs::DirectoryReader(directory);
   EXPECT_EQ(0, reader.Reopen().live_docs_count());
@@ -941,7 +942,8 @@ TEST_F(IResearchLinkTest, test_write_index_creation_version_1) {
                  .string();
   irs::FSDirectory directory(dataPath);
   bool created;
-  auto link = logicalCollection->createIndex(linkJson->slice(), created).get();
+  auto link =
+      logicalCollection->createIndex(linkJson->slice(), created).waitAndGet();
   ASSERT_TRUE((false == !link && created));
   auto reader = irs::DirectoryReader(directory);
   EXPECT_EQ(0, reader.Reopen().live_docs_count());
@@ -1009,7 +1011,8 @@ TEST_F(IResearchLinkTest, test_write) {
                  .string();
   irs::FSDirectory directory(dataPath);
   bool created;
-  auto link = logicalCollection->createIndex(linkJson->slice(), created).get();
+  auto link =
+      logicalCollection->createIndex(linkJson->slice(), created).waitAndGet();
   ASSERT_TRUE((false == !link && created));
   auto reader = irs::DirectoryReader(directory);
   EXPECT_EQ(0, reader.Reopen().live_docs_count());
@@ -1123,7 +1126,8 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_sole) {
                  .string();
   irs::FSDirectory directory(dataPath);
   bool created;
-  auto link = logicalCollection->createIndex(linkJson->slice(), created).get();
+  auto link =
+      logicalCollection->createIndex(linkJson->slice(), created).waitAndGet();
   ASSERT_TRUE((false == !link && created));
   auto reader = irs::DirectoryReader(directory);
   EXPECT_EQ(0, reader.Reopen().live_docs_count());
@@ -1232,7 +1236,8 @@ TEST_F(IResearchLinkTest,
                  .string();
   irs::FSDirectory directory(dataPath);
   bool created;
-  auto link = logicalCollection->createIndex(linkJson->slice(), created).get();
+  auto link =
+      logicalCollection->createIndex(linkJson->slice(), created).waitAndGet();
   ASSERT_TRUE((false == !link && created));
   auto reader = irs::DirectoryReader(directory);
   EXPECT_EQ(0, reader.Reopen().live_docs_count());
@@ -1347,7 +1352,8 @@ TEST_F(IResearchLinkTest, test_write_with_custom_compression_nondefault_mixed) {
                  .string();
   irs::FSDirectory directory(dataPath);
   bool created;
-  auto link = logicalCollection->createIndex(linkJson->slice(), created).get();
+  auto link =
+      logicalCollection->createIndex(linkJson->slice(), created).waitAndGet();
   ASSERT_TRUE((false == !link && created));
   auto reader = irs::DirectoryReader(directory);
   EXPECT_EQ(0, reader.Reopen().live_docs_count());
@@ -1460,7 +1466,8 @@ TEST_F(IResearchLinkTest,
                  .string();
   irs::FSDirectory directory(dataPath);
   bool created;
-  auto link = logicalCollection->createIndex(linkJson->slice(), created).get();
+  auto link =
+      logicalCollection->createIndex(linkJson->slice(), created).waitAndGet();
   ASSERT_TRUE((false == !link && created));
   auto reader = irs::DirectoryReader(directory);
   EXPECT_EQ(0, reader.Reopen().live_docs_count());
@@ -1589,7 +1596,8 @@ TEST_F(
           std::make_unique<irs::mock::test_encryption>(kEncBlockSize)});
 
   bool created;
-  auto link = logicalCollection->createIndex(linkJson->slice(), created).get();
+  auto link =
+      logicalCollection->createIndex(linkJson->slice(), created).waitAndGet();
   ASSERT_TRUE((false == !link && created));
   auto reader = irs::DirectoryReader(directory);
   EXPECT_EQ(0, reader.Reopen().live_docs_count());
@@ -1704,14 +1712,12 @@ TEST_F(IResearchLinkTest, test_maintenance_disabled_at_creation) {
     ASSERT_TRUE(feature.queue(ThreadGroup::_1, 0ms, blockQueue));
 
     bool created;
-    link = logicalCollection->createIndex(linkJson->slice(), created).get();
+    link =
+        logicalCollection->createIndex(linkJson->slice(), created).waitAndGet();
     ASSERT_TRUE(created);
     ASSERT_NE(nullptr, link);
 
     // 1st - tasks active(), 2nd - tasks pending(), 3rd - threads()
-    ASSERT_EQ(std::make_tuple(size_t(1), size_t(0), size_t(1)),
-              feature.stats(ThreadGroup::_0));
-
     std::tuple<size_t, size_t, size_t> stats;
     do {
       stats = feature.stats(ThreadGroup::_1);
@@ -1815,7 +1821,7 @@ TEST_F(IResearchLinkTest, test_maintenance_consolidation) {
 
     bool created;
     auto link =
-        logicalCollection->createIndex(linkJson->slice(), created).get();
+        logicalCollection->createIndex(linkJson->slice(), created).waitAndGet();
     ASSERT_TRUE(created);
     ASSERT_NE(nullptr, link);
     auto linkImpl = std::dynamic_pointer_cast<IResearchLink>(link);
@@ -2046,7 +2052,7 @@ TEST_F(IResearchLinkTest, test_maintenance_commit) {
 
     bool created;
     auto link =
-        logicalCollection->createIndex(linkJson->slice(), created).get();
+        logicalCollection->createIndex(linkJson->slice(), created).waitAndGet();
     ASSERT_TRUE(created);
     ASSERT_NE(nullptr, link);
     auto linkImpl = std::dynamic_pointer_cast<IResearchLink>(link);
@@ -2294,7 +2300,8 @@ class IResearchLinkMetricsTest : public IResearchLinkTest {
       "view": "42",
       "includeAllFields": true
     })");
-    _link = _logicalCollection->createIndex(linkJson->slice(), created).get();
+    _link = _logicalCollection->createIndex(linkJson->slice(), created)
+                .waitAndGet();
     EXPECT_TRUE(created);
     EXPECT_NE(_link, nullptr);
     auto label = getLinkMetricLabel();

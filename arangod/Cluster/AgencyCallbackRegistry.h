@@ -28,6 +28,7 @@
 #include "Agency/AgencyPaths.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
+#include "Cluster/ClusterFeature.h"
 #include "Futures/Future.h"
 #include "Metrics/Fwd.h"
 
@@ -35,6 +36,7 @@
 
 namespace arangodb {
 class AgencyCallback;
+class AgencyCache;
 
 namespace application_features {
 class ApplicationServer;
@@ -42,14 +44,16 @@ class ApplicationServer;
 
 class AgencyCallbackRegistry {
  public:
-  explicit AgencyCallbackRegistry(ArangodServer&,
-                                  std::string const& callbackBasePath);
-
+  AgencyCallbackRegistry(ApplicationServer& server,
+                         ClusterFeature& clusterFeature,
+                         EngineSelectorFeature& engineSelectorFeature,
+                         DatabaseFeature& databaseFeature,
+                         metrics::MetricsFeature& metrics,
+                         std::string const& callbackBasePath);
   ~AgencyCallbackRegistry();
 
   /// @brief register a callback
-  [[nodiscard]] Result registerCallback(std::shared_ptr<AgencyCallback> cb,
-                                        bool local = true);
+  [[nodiscard]] Result registerCallback(std::shared_ptr<AgencyCallback> cb);
 
   /// @brief unregister a callback
   bool unregisterCallback(std::shared_ptr<AgencyCallback> cb);
@@ -85,9 +89,11 @@ class AgencyCallbackRegistry {
  private:
   std::string getEndpointUrl(uint64_t id) const;
 
-  AgencyComm _agency;
+  ApplicationServer& _server;
+  ClusterFeature& _clusterFeature;
+  AgencyComm _agencyComm;
 
-  arangodb::basics::ReadWriteLock _lock;
+  basics::ReadWriteLock _lock;
 
   std::string const _callbackBasePath;
 
@@ -139,7 +145,7 @@ auto AgencyCallbackRegistry::waitFor(std::string path, F&& fn)
   auto f = ctx->promise.getFuture();
 
   auto cb = std::make_shared<AgencyCallback>(
-      _agency.server(), std::move(path),
+      _server, _clusterFeature.agencyCache(), std::move(path),
       [ctx](velocypack::Slice slice, consensus::index_t index) -> bool {
         auto pred = ctx->operator()(slice, index);
         if (pred) {
@@ -150,7 +156,7 @@ auto AgencyCallbackRegistry::waitFor(std::string path, F&& fn)
       },
       true, true);
 
-  if (auto result = registerCallback(cb, true); result.fail()) {
+  if (auto result = registerCallback(cb); result.fail()) {
     THROW_ARANGO_EXCEPTION(result);
   }
 

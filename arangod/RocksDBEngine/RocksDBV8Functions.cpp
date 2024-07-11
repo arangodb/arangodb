@@ -158,7 +158,7 @@ static void JS_RecalculateCounts(
   auto* physical = toRocksDBCollection(*collection);
 
   v8::Handle<v8::Value> result = v8::Number::New(
-      isolate, static_cast<double>(physical->recalculateCounts().get()));
+      isolate, static_cast<double>(physical->recalculateCounts().waitAndGet()));
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -343,7 +343,7 @@ static void JS_CollectionRevisionTreeRebuild(
   }
 
   auto* physical = toRocksDBCollection(*collection);
-  Result result = physical->rebuildRevisionTree().get();
+  Result result = physical->rebuildRevisionTree().waitAndGet();
 
   if (result.fail()) {
     TRI_V8_THROW_EXCEPTION_FULL(result.errorNumber(), result.errorMessage());
@@ -371,7 +371,7 @@ static void JS_CollectionRevisionTreeSummary(
 
   auto* physical = toRocksDBCollection(*collection);
   VPackBuilder builder;
-  physical->revisionTreeSummary(builder, fromCollection).get();
+  physical->revisionTreeSummary(builder, fromCollection).waitAndGet();
 
   v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder.slice());
   TRI_V8_RETURN(result);

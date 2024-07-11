@@ -22,7 +22,6 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <Agency/AsyncAgencyComm.h>
 #include "gtest/gtest.h"
 
 #include "analysis/analyzers.hpp"
@@ -37,6 +36,7 @@
 #include "Mocks/Servers.h"
 #include "Mocks/StorageEngineMock.h"
 
+#include "Agency/AsyncAgencyComm.h"
 #include "Agency/Store.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
 #include "ApplicationFeatures/GreetingsFeaturePhase.h"
@@ -45,6 +45,7 @@
 #include "Aql/Function.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/QueryRegistry.h"
+#include "Auth/UserManager.h"
 #include "Basics/files.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
@@ -70,6 +71,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
+#include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/MetricsFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
@@ -77,6 +79,8 @@
 #include "RestServer/ViewTypesFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardingFeature.h"
+#include "Statistics/StatisticsFeature.h"
+#include "Statistics/StatisticsWorker.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/ExecContext.h"
@@ -1609,7 +1613,7 @@ TEST_F(IResearchAnalyzerFeatureCoordinatorTest, test_ensure_index_add_factory) {
     builder.close();
     res = arangodb::methods::Indexes::ensureIndex(*logicalCollection,
                                                   builder.slice(), true, tmp)
-              .get();
+              .waitAndGet();
     EXPECT_TRUE(res.ok());
   }
 }
@@ -1895,7 +1899,9 @@ TEST_F(IResearchAnalyzerFeatureTest,
           arangodb::transaction::StandaloneContext::create(
               *vocbase, arangodb::transaction::OperationOriginTestCase{}),
           collection, arangodb::AccessMode::Type::WRITE);
-      trx.begin();
+      if (auto res = trx.begin(); res.fail()) {
+        throw arangodb::basics::Exception(res);
+      }
       trx.truncate(collection, options);
       trx.insert(collection, VPackParser::fromJson("{}")->slice(), options);
       trx.insert(collection,
@@ -1966,7 +1972,9 @@ TEST_F(IResearchAnalyzerFeatureTest,
           arangodb::transaction::StandaloneContext::create(
               *vocbase, arangodb::transaction::OperationOriginTestCase{}),
           collection, arangodb::AccessMode::Type::WRITE);
-      trx.begin();
+      if (auto res = trx.begin(); res.fail()) {
+        throw arangodb::basics::Exception(res);
+      }
       trx.truncate(collection, options);
       trx.insert(collection,
                  VPackParser::fromJson(
@@ -2004,7 +2012,9 @@ TEST_F(IResearchAnalyzerFeatureTest,
           arangodb::transaction::StandaloneContext::create(
               *vocbase, arangodb::transaction::OperationOriginTestCase{}),
           collection, arangodb::AccessMode::Type::WRITE);
-      trx.begin();
+      if (auto res = trx.begin(); res.fail()) {
+        throw arangodb::basics::Exception(res);
+      }
       trx.truncate(collection, options);
       trx.insert(collection,
                  VPackParser::fromJson(
@@ -2119,7 +2129,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_persistence_remove_existing_records) {
               *vocbase, arangodb::transaction::OperationOriginTestCase{}),
           collection, arangodb::AccessMode::Type::WRITE);
 
-      trx.begin();
+      if (auto res = trx.begin(); res.fail()) {
+        throw arangodb::basics::Exception(res);
+      }
       trx.truncate(collection, options);
       trx.insert(collection,
                  VPackParser::fromJson("{\"name\": \"valid\", \"type\": "
@@ -2270,7 +2282,9 @@ TEST_F(IResearchAnalyzerFeatureTest,
           arangodb::transaction::StandaloneContext::create(
               *vocbase, arangodb::transaction::OperationOriginTestCase{}),
           collection, arangodb::AccessMode::Type::WRITE);
-      trx.begin();
+      if (auto res = trx.begin(); res.fail()) {
+        throw arangodb::basics::Exception(res);
+      }
       trx.truncate(collection, options);
       auto res = trx.commit();
       EXPECT_TRUE(res.ok());
@@ -2302,7 +2316,8 @@ TEST_F(IResearchAnalyzerFeatureTest,
         arangodb::AccessMode::Type::WRITE);
     EXPECT_TRUE((trx.begin().ok()));
     auto queryResult =
-        trx.all(arangodb::tests::AnalyzerCollectionName, 0, 2, options).get();
+        trx.all(arangodb::tests::AnalyzerCollectionName, 0, 2, options)
+            .waitAndGet();
     EXPECT_TRUE((true == queryResult.ok()));
     auto slice = arangodb::velocypack::Slice(queryResult.buffer->data());
     EXPECT_TRUE(slice.isArray());
@@ -2532,8 +2547,10 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
       .agencyCache()
       .applyTestTransaction(bogus.slice());
 
-  arangodb::network::ConnectionPool::Config poolConfig(
-      server.server().getFeature<arangodb::metrics::MetricsFeature>());
+  arangodb::network::ConnectionPool::Config poolConfig;
+  poolConfig.metrics =
+      arangodb::network::ConnectionPool::Metrics::fromMetricsFeature(
+          server.getFeature<arangodb::metrics::MetricsFeature>(), "mock-foo");
   poolConfig.clusterInfo =
       &server.getFeature<arangodb::ClusterFeature>().clusterInfo();
   poolConfig.numIOThreads = 1;
@@ -2550,7 +2567,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
   arangodb::AgencyComm(server.server()).ensureStructureInitialized();
 
   ASSERT_TRUE(server.server().hasFeature<arangodb::DatabaseFeature>());
-  auto& dbFeature = server.getFeature<arangodb::DatabaseFeature>();
+  auto& databaseFeature = server.getFeature<arangodb::DatabaseFeature>();
 
   // remove existing
   {
@@ -2643,12 +2660,24 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     // already have some state
 
     arangodb::ArangodServer newServer(nullptr, nullptr);
-    newServer.addFeature<arangodb::metrics::MetricsFeature>();
+    auto& metrics = newServer.addFeature<arangodb::metrics::MetricsFeature>(
+        arangodb::LazyApplicationFeatureReference<
+            arangodb::QueryRegistryFeature>(nullptr),
+        arangodb::LazyApplicationFeatureReference<arangodb::StatisticsFeature>(
+            nullptr),
+        arangodb::LazyApplicationFeatureReference<
+            arangodb::EngineSelectorFeature>(newServer),
+        arangodb::LazyApplicationFeatureReference<
+            arangodb::metrics::ClusterMetricsFeature>(nullptr),
+        arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
+            newServer));
     auto& cluster = newServer.addFeature<arangodb::ClusterFeature>();
     auto& networkFeature = newServer.addFeature<arangodb::NetworkFeature>(
-        newServer.getFeature<arangodb::metrics::MetricsFeature>(),
-        arangodb::network::ConnectionPool::Config(
-            newServer.getFeature<arangodb::metrics::MetricsFeature>()));
+        metrics,
+        arangodb::network::ConnectionPool::Config{
+            .metrics =
+                arangodb::network::ConnectionPool::Metrics::fromMetricsFeature(
+                    metrics, "mock")});
     auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();
     auto& selector = newServer.addFeature<arangodb::EngineSelectorFeature>();
     StorageEngineMock engine(newServer);
@@ -2656,8 +2685,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     newServer.addFeature<arangodb::ShardingFeature>();
     auto& sysDatabase = newServer.addFeature<arangodb::SystemDatabaseFeature>();
 #ifdef USE_V8
-    newServer.addFeature<arangodb::V8DealerFeature>(
-        newServer.template getFeature<arangodb::metrics::MetricsFeature>());
+    newServer.addFeature<arangodb::V8DealerFeature>(metrics);
 #endif
     newServer.addFeature<
         arangodb::application_features::CommunicationFeaturePhase>();
@@ -2733,19 +2761,30 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     };
 
     arangodb::ArangodServer newServer(nullptr, nullptr);
-    newServer.addFeature<arangodb::metrics::MetricsFeature>();
     auto& auth = newServer.addFeature<arangodb::AuthenticationFeature>();
+    auto& metrics = newServer.addFeature<arangodb::metrics::MetricsFeature>(
+        arangodb::LazyApplicationFeatureReference<
+            arangodb::QueryRegistryFeature>(nullptr),
+        arangodb::LazyApplicationFeatureReference<arangodb::StatisticsFeature>(
+            nullptr),
+        arangodb::LazyApplicationFeatureReference<
+            arangodb::EngineSelectorFeature>(newServer),
+        arangodb::LazyApplicationFeatureReference<
+            arangodb::metrics::ClusterMetricsFeature>(nullptr),
+        arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
+            newServer));
     auto& cluster = newServer.addFeature<arangodb::ClusterFeature>();
     auto& networkFeature = newServer.addFeature<arangodb::NetworkFeature>(
-        newServer.getFeature<arangodb::metrics::MetricsFeature>(),
-        arangodb::network::ConnectionPool::Config(
-            newServer.getFeature<arangodb::metrics::MetricsFeature>()));
+        metrics,
+        arangodb::network::ConnectionPool::Config{
+            .metrics =
+                arangodb::network::ConnectionPool::Metrics::fromMetricsFeature(
+                    metrics, "mock")});
     auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();
     auto& selector = newServer.addFeature<arangodb::EngineSelectorFeature>();
     StorageEngineMock engine(newServer);
     selector.setEngineTesting(&engine);
-    newServer.addFeature<arangodb::QueryRegistryFeature>(
-        newServer.template getFeature<arangodb::metrics::MetricsFeature>());
+    newServer.addFeature<arangodb::QueryRegistryFeature>(metrics);
     newServer.addFeature<arangodb::ShardingFeature>();
     auto& sysDatabase = newServer.addFeature<arangodb::SystemDatabaseFeature>();
 #ifdef USE_V8
@@ -2871,7 +2910,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
   // remove missing (no vocbase)
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(server.server());
-    ASSERT_EQ(nullptr, dbFeature.lookupDatabase("testVocbase"));
+    ASSERT_EQ(nullptr, databaseFeature.lookupDatabase("testVocbase"));
 
     EXPECT_EQ(nullptr,
               feature.get("testVocbase::test_analyzer",
@@ -2888,8 +2927,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_remove) {
     arangodb::iresearch::IResearchAnalyzerFeature feature(server.server());
     TRI_vocbase_t* vocbase;
     ASSERT_TRUE(
-        dbFeature.createDatabase(testDBInfo(server.server()), vocbase).ok());
-    ASSERT_NE(nullptr, dbFeature.lookupDatabase("testVocbase"));
+        databaseFeature.createDatabase(testDBInfo(server.server()), vocbase)
+            .ok());
+    ASSERT_NE(nullptr, databaseFeature.lookupDatabase("testVocbase"));
     EXPECT_EQ(nullptr,
               feature.get("testVocbase::test_analyzer",
                           arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
@@ -3257,15 +3297,23 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   auto& analyzers =
       newServer.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
   auto& functions = newServer.addFeature<arangodb::aql::AqlFunctionFeature>();
-  newServer.addFeature<arangodb::metrics::MetricsFeature>();
+  auto& metrics = newServer.addFeature<arangodb::metrics::MetricsFeature>(
+      arangodb::LazyApplicationFeatureReference<arangodb::QueryRegistryFeature>(
+          newServer),
+      arangodb::LazyApplicationFeatureReference<arangodb::StatisticsFeature>(
+          nullptr),
+      arangodb::LazyApplicationFeatureReference<
+          arangodb::EngineSelectorFeature>(nullptr),
+      arangodb::LazyApplicationFeatureReference<
+          arangodb::metrics::ClusterMetricsFeature>(nullptr),
+      arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
+          newServer));
   newServer.addFeature<arangodb::ClusterFeature>();
-  newServer.addFeature<arangodb::QueryRegistryFeature>(
-      newServer.template getFeature<arangodb::metrics::MetricsFeature>());
+  newServer.addFeature<arangodb::QueryRegistryFeature>(metrics);
   auto& sharding = newServer.addFeature<arangodb::ShardingFeature>();
   auto& systemdb = newServer.addFeature<arangodb::SystemDatabaseFeature>();
 #ifdef USE_V8
-  newServer.addFeature<arangodb::V8DealerFeature>(
-      newServer.template getFeature<arangodb::metrics::MetricsFeature>());
+  newServer.addFeature<arangodb::V8DealerFeature>(metrics);
 #endif
 
   auto cleanup = arangodb::scopeGuard([&]() noexcept {
@@ -4331,14 +4379,21 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
   auto& selector = newServer.addFeature<arangodb::EngineSelectorFeature>();
   StorageEngineMock engine(newServer);
   selector.setEngineTesting(&engine);
-  newServer.addFeature<arangodb::metrics::MetricsFeature>();
+  auto& metrics = newServer.addFeature<arangodb::metrics::MetricsFeature>(
+      arangodb::LazyApplicationFeatureReference<arangodb::QueryRegistryFeature>(
+          newServer),
+      arangodb::LazyApplicationFeatureReference<arangodb::StatisticsFeature>(
+          nullptr),
+      selector,
+      arangodb::LazyApplicationFeatureReference<
+          arangodb::metrics::ClusterMetricsFeature>(nullptr),
+      arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
+          newServer));
   newServer.addFeature<arangodb::ClusterFeature>();
-  newServer.addFeature<arangodb::QueryRegistryFeature>(
-      newServer.template getFeature<arangodb::metrics::MetricsFeature>());
+  newServer.addFeature<arangodb::QueryRegistryFeature>(metrics);
   auto& sysDatabase = newServer.addFeature<arangodb::SystemDatabaseFeature>();
 #ifdef USE_V8
-  newServer.addFeature<arangodb::V8DealerFeature>(
-      newServer.template getFeature<arangodb::metrics::MetricsFeature>());
+  newServer.addFeature<arangodb::V8DealerFeature>(metrics);
 #endif
 
   dbFeature.prepare();
@@ -4669,14 +4724,22 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
   auto& selector = newServer.addFeature<arangodb::EngineSelectorFeature>();
   StorageEngineMock engine(newServer);
   selector.setEngineTesting(&engine);
-  newServer.addFeature<arangodb::metrics::MetricsFeature>();
+  auto& metrics = newServer.addFeature<arangodb::metrics::MetricsFeature>(
+      arangodb::LazyApplicationFeatureReference<arangodb::QueryRegistryFeature>(
+          newServer),
+      arangodb::LazyApplicationFeatureReference<arangodb::StatisticsFeature>(
+          nullptr),
+      arangodb::LazyApplicationFeatureReference<
+          arangodb::EngineSelectorFeature>(nullptr),
+      arangodb::LazyApplicationFeatureReference<
+          arangodb::metrics::ClusterMetricsFeature>(nullptr),
+      arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
+          newServer));
   newServer.addFeature<arangodb::ClusterFeature>();
-  newServer.addFeature<arangodb::QueryRegistryFeature>(
-      newServer.template getFeature<arangodb::metrics::MetricsFeature>());
+  newServer.addFeature<arangodb::QueryRegistryFeature>(metrics);
   auto& sysDatabase = newServer.addFeature<arangodb::SystemDatabaseFeature>();
 #ifdef USE_V8
-  newServer.addFeature<arangodb::V8DealerFeature>(
-      newServer.template getFeature<arangodb::metrics::MetricsFeature>());
+  newServer.addFeature<arangodb::V8DealerFeature>(metrics);
 #endif
   auto cleanup = arangodb::scopeGuard([&dbFeature, this]() noexcept {
     dbFeature.unprepare();
@@ -4810,14 +4873,22 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
   auto& selector = newServer.addFeature<arangodb::EngineSelectorFeature>();
   StorageEngineMock engine(newServer);
   selector.setEngineTesting(&engine);
-  newServer.addFeature<arangodb::metrics::MetricsFeature>();
+  auto& metrics = newServer.addFeature<arangodb::metrics::MetricsFeature>(
+      arangodb::LazyApplicationFeatureReference<arangodb::QueryRegistryFeature>(
+          newServer),
+      arangodb::LazyApplicationFeatureReference<arangodb::StatisticsFeature>(
+          nullptr),
+      arangodb::LazyApplicationFeatureReference<
+          arangodb::EngineSelectorFeature>(nullptr),
+      arangodb::LazyApplicationFeatureReference<
+          arangodb::metrics::ClusterMetricsFeature>(nullptr),
+      arangodb::LazyApplicationFeatureReference<arangodb::ClusterFeature>(
+          newServer));
   newServer.addFeature<arangodb::ClusterFeature>();
-  newServer.addFeature<arangodb::QueryRegistryFeature>(
-      newServer.template getFeature<arangodb::metrics::MetricsFeature>());
+  newServer.addFeature<arangodb::QueryRegistryFeature>(metrics);
   auto& sysDatabase = newServer.addFeature<arangodb::SystemDatabaseFeature>();
 #ifdef USE_V8
-  newServer.addFeature<arangodb::V8DealerFeature>(
-      newServer.template getFeature<arangodb::metrics::MetricsFeature>());
+  newServer.addFeature<arangodb::V8DealerFeature>(metrics);
 #endif
   auto cleanup = arangodb::scopeGuard([&dbFeature, this]() noexcept {
     dbFeature.unprepare();

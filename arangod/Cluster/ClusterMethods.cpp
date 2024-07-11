@@ -169,7 +169,8 @@ Future<Result> beginTransactionOnSomeLeaders(TransactionState& state,
       }
     }
   }
-  return ClusterTrxMethods::beginTransactionOnLeaders(state, servers, api);
+  return ClusterTrxMethods::beginTransactionOnLeaders(state.shared_from_this(),
+                                                      std::move(servers), api);
 }
 
 // begin transaction on shard leaders
@@ -197,8 +198,8 @@ Future<Result> beginTransactionOnAllLeaders(transaction::Methods& trx,
       }
     }
   }
-  return ClusterTrxMethods::beginTransactionOnLeaders(*trx.state(), servers,
-                                                      api);
+  return ClusterTrxMethods::beginTransactionOnLeaders(trx.stateShrdPtr(),
+                                                      std::move(servers), api);
 }
 
 /// @brief add the correct header for the shard
@@ -1194,7 +1195,7 @@ futures::Future<OperationResult> countOnCoordinator(
   if (isManaged) {
     Result res = ::beginTransactionOnAllLeaders(
                      trx, *shardIds, transaction::MethodsApi::Synchronous)
-                     .get();
+                     .waitAndGet();
     if (res.fail()) {
       return futures::makeFuture(OperationResult(res, options));
     }
@@ -1220,12 +1221,12 @@ futures::Future<OperationResult> countOnCoordinator(
 
   auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
   for (auto const& p : *shardIds) {
-    network::Headers headers;
     if (p.second.empty()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
     }
     // extract leader
     std::string const& leader = p.second[0];
+    network::Headers headers;
     ClusterTrxMethods::addTransactionHeader(trx, leader, headers);
 
     futures.emplace_back(network::sendRequestRetry(
@@ -1412,7 +1413,7 @@ Result selectivityEstimatesOnCoordinator(ClusterFeature& feature,
 
   containers::FlatHashMap<std::string, std::vector<double>> indexEstimates;
   for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+    network::Response const& r = f.waitAndGet();
 
     auto res = r.combinedResult();
     if (res.fail()) {
@@ -1877,7 +1878,7 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
   if (trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
     res = ::beginTransactionOnAllLeaders(trx, *shardIds,
                                          transaction::MethodsApi::Synchronous)
-              .get();
+              .waitAndGet();
     if (res.fail()) {
       return futures::makeFuture(OperationResult(res, options));
     }
@@ -2088,7 +2089,7 @@ Future<OperationResult> getDocumentOnCoordinator(
   if (isManaged) {  // lazily begin the transaction
     Result res = ::beginTransactionOnAllLeaders(
                      trx, *shardIds, transaction::MethodsApi::Synchronous)
-                     .get();
+                     .waitAndGet();
     if (res.fail()) {
       return makeFuture(OperationResult(res, options));
     }
@@ -2216,7 +2217,7 @@ Result fetchEdgesFromEngines(
   }
 
   for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+    network::Response const& r = f.waitAndGet();
 
     auto res = r.combinedResult();
     if (res.fail()) {
@@ -2313,7 +2314,7 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
   }
 
   for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+    network::Response const& r = f.waitAndGet();
 
     auto res = r.combinedResult();
     if (res.fail()) {
@@ -2408,7 +2409,7 @@ void fetchVerticesFromEngines(
   }
 
   for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+    network::Response const& r = f.waitAndGet();
 
     auto res = r.combinedResult();
     if (res.fail()) {
@@ -2739,7 +2740,7 @@ Result flushWalOnAllDBServers(ClusterFeature& feature, bool waitForSync,
   }
 
   for (Future<network::Response>& f : futures) {
-    Result res = f.get().combinedResult();
+    Result res = f.waitAndGet().combinedResult();
     if (res.fail()) {
       return res;
     }
@@ -2790,7 +2791,7 @@ Result recalculateCountsOnAllDBServers(ClusterFeature& feature,
     }
   }
 
-  auto responses = futures::collectAll(futures).get();
+  auto responses = futures::collectAll(futures).waitAndGet();
   for (auto const& r : responses) {
     Result res = r.get().combinedResult();
     if (res.fail()) {
@@ -2830,7 +2831,7 @@ Result compactOnAllDBServers(ClusterFeature& feature, bool changeLevel,
   }
 
   for (Future<network::Response>& f : futures) {
-    Result res = f.get().combinedResult();
+    Result res = f.waitAndGet().combinedResult();
     if (res.fail()) {
       return res;
     }
@@ -2877,7 +2878,7 @@ Result compactOnAllDBServers(ClusterFeature& feature, std::string const& dbname,
   }
 
   for (Future<network::Response>& f : futures) {
-    Result res = f.get().combinedResult();
+    Result res = f.waitAndGet().combinedResult();
     if (res.fail()) {
       return res;
     }
@@ -2921,7 +2922,7 @@ arangodb::Result hotBackupList(
 
   size_t nrGood = 0;
   for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+    network::Response const& r = f.waitAndGet();
     if (!r.ok()) {
       continue;
     }
@@ -2944,7 +2945,7 @@ arangodb::Result hotBackupList(
   }
 
   for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+    network::Response const& r = f.waitAndGet();
     if (!r.ok()) {
       continue;
     }
@@ -3163,7 +3164,7 @@ arangodb::Result controlMaintenanceFeature(
 
   // Now listen to the results:
   for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+    network::Response const& r = f.waitAndGet();
 
     if (r.fail()) {
       return arangodb::Result(
@@ -3229,7 +3230,7 @@ arangodb::Result restoreOnDBServers(network::ConnectionPool* pool,
 
   // Now listen to the results:
   for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+    network::Response const& r = f.waitAndGet();
 
     if (r.fail()) {
       // oh-oh cluster is in a bad state
@@ -3460,7 +3461,11 @@ arangodb::Result hotRestoreCoordinator(ClusterFeature& feature,
   result = (matches.empty()) ? ci.agencyReplan(plan.slice())
                              : ci.agencyReplan(newPlan.slice());
   if (!result.ok()) {
-    result = controlMaintenanceFeature(pool, "proceed", backupId, dbServers);
+    // We ignore the result of the Proceed here.
+    // In case one of the servers does not proceed now, it will automatically
+    // reactivate maintenance after 30s.
+    std::ignore =
+        controlMaintenanceFeature(pool, "proceed", backupId, dbServers);
     events::RestoreHotbackup(backupId, result.errorNumber());
     return result;
   }
@@ -3547,9 +3552,7 @@ arangodb::Result lockServersTrxCommit(network::ConnectionPool* pool,
                                       std::vector<ServerID> const& servers,
                                       double lockWait,
                                       std::vector<ServerID>& lockedServers) {
-  using namespace std::chrono;
-
-  // Make sure all db servers have the backup with backup Id
+  // Make sure all servers have the backup with backup Id
 
   std::string const url = apiStr + "lock";
 
@@ -3588,15 +3591,15 @@ arangodb::Result lockServersTrxCommit(network::ConnectionPool* pool,
       // If we see at least one TRI_ERROR_LOCAL_LOCK_FAILED it is a failure
       // if all errors are TRI_ERROR_LOCK_TIMEOUT, then we report this and
       // this will lead to a retry:
-      if (finalRes.errorNumber() == TRI_ERROR_LOCAL_LOCK_FAILED) {
+      if (finalRes.is(TRI_ERROR_LOCAL_LOCK_FAILED)) {
         c = TRI_ERROR_LOCAL_LOCK_FAILED;
       }
-      finalRes = arangodb::Result(
-          c, StringUtils::concatT(finalRes.errorMessage(), ", ", m));
+      finalRes =
+          arangodb::Result(c, absl::StrCat(finalRes.errorMessage(), ", ", m));
     }
   };
   for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+    network::Response const& r = f.waitAndGet();
 
     if (r.fail()) {
       reportError(
@@ -3627,19 +3630,21 @@ arangodb::Result lockServersTrxCommit(network::ConnectionPool* pool,
         reportError(err, slc.get(StaticStrings::ErrorMessage).copyString());
         continue;
       }
-      reportError(TRI_ERROR_LOCAL_LOCK_FAILED,
-                  std::string("lock was denied from ") + r.destination +
-                      " when trying to check for lockId for hot backup " +
-                      backupId + ": " + slc.toJson());
+      reportError(
+          TRI_ERROR_LOCAL_LOCK_FAILED,
+          absl::StrCat("lock was denied from ", r.destination,
+                       " when trying to check for lockId for hot backup ",
+                       backupId, ": ", slc.toJson()));
       continue;
     }
 
     if (!slc.hasKey(lockPath) || !slc.get(lockPath).isNumber() ||
         !slc.hasKey("result") || !slc.get("result").isObject()) {
-      reportError(TRI_ERROR_LOCAL_LOCK_FAILED,
-                  std::string("invalid response from ") + r.destination +
-                      " when trying to check for lockId for hot backup " +
-                      backupId + ": " + slc.toJson());
+      reportError(
+          TRI_ERROR_LOCAL_LOCK_FAILED,
+          absl::StrCat("invalid response from ", r.destination,
+                       " when trying to check for lockId for hot backup ",
+                       backupId, ": ", slc.toJson()));
       continue;
     }
 
@@ -3650,10 +3655,11 @@ arangodb::Result lockServersTrxCommit(network::ConnectionPool* pool,
           << "acquired lock from " << r.destination << " for backupId "
           << backupId << " with lockId " << lockId;
     } catch (std::exception const& e) {
-      reportError(TRI_ERROR_LOCAL_LOCK_FAILED,
-                  std::string("invalid response from ") + r.destination +
-                      " when trying to get lockId for hot backup " + backupId +
-                      ": " + slc.toJson() + ", msg: " + e.what());
+      reportError(
+          TRI_ERROR_LOCAL_LOCK_FAILED,
+          absl::StrCat("invalid response from ", r.destination,
+                       " when trying to get lockId for hot backup ", backupId,
+                       ": ", slc.toJson(), ", msg: ", e.what()));
       continue;
     }
 
@@ -3663,7 +3669,11 @@ arangodb::Result lockServersTrxCommit(network::ConnectionPool* pool,
 
   if (finalRes.ok()) {
     LOG_TOPIC("c1869", DEBUG, Logger::BACKUP)
-        << "acquired transaction locks on all db servers";
+        << "acquired transaction locks on all coordinators";
+  } else {
+    LOG_TOPIC("8226a", DEBUG, Logger::BACKUP)
+        << "unable to acquire transaction locks on all coordinators: "
+        << finalRes.errorMessage();
   }
 
   return finalRes;
@@ -3672,9 +3682,11 @@ arangodb::Result lockServersTrxCommit(network::ConnectionPool* pool,
 arangodb::Result unlockServersTrxCommit(
     network::ConnectionPool* pool, std::string const& backupId,
     std::vector<ServerID> const& lockedServers) {
-  using namespace std::chrono;
+  LOG_TOPIC("2ba8f", DEBUG, Logger::BACKUP)
+      << "best effort attempt to kill all locks on coordinators "
+      << lockedServers;
 
-  // Make sure all db servers have the backup with backup Id
+  // Make sure all servers have the backup with backup Id
 
   std::string const url = apiStr + "unlock";
 
@@ -3696,12 +3708,23 @@ arangodb::Result unlockServersTrxCommit(
         pool, "server:" + server, fuerte::RestVerb::Post, url, body, reqOpts));
   }
 
-  std::ignore = futures::collectAll(futures).get();
+  auto responses = futures::collectAll(std::move(futures)).waitAndGet();
 
-  LOG_TOPIC("2ba8f", DEBUG, Logger::BACKUP)
-      << "best try to kill all locks on db servers";
+  Result res;
+  for (auto const& tryRes : responses) {
+    network::Response const& r = tryRes.get();
+    if (r.combinedResult().fail() && res.ok()) {
+      res = r.combinedResult();
+    }
+  }
 
-  return {};
+  LOG_TOPIC("48510", DEBUG, Logger::BACKUP)
+      << "killing all locks on coordinators resulted in: "
+      << res.errorMessage();
+
+  // return value is ignored by callers, but we'll return our status
+  // anyway.
+  return res;
 }
 
 std::vector<std::string> idPath{"result", "id"};
@@ -3747,7 +3770,7 @@ arangodb::Result hotBackupDBServers(network::ConnectionPool* pool,
   std::string version;
   bool sizeValid = true;
   for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+    network::Response const& r = f.waitAndGet();
 
     if (r.fail()) {
       return arangodb::Result(
@@ -3865,7 +3888,7 @@ arangodb::Result removeLocalBackups(network::ConnectionPool* pool,
 
   // Now listen to the results:
   for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+    network::Response const& r = f.waitAndGet();
 
     if (r.fail()) {
       return arangodb::Result(
@@ -3959,7 +3982,7 @@ arangodb::Result hotbackupAsyncLockCoordinatorsTransactions(
 
   // Perform the requests
   for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+    network::Response const& r = f.waitAndGet();
 
     if (r.fail()) {
       return arangodb::Result(
@@ -4014,7 +4037,7 @@ arangodb::Result hotbackupWaitForLockCoordinatorsTransactions(
 
   // Perform the requests
   for (Future<network::Response>& f : futures) {
-    network::Response const& r = f.get();
+    network::Response const& r = f.waitAndGet();
 
     if (r.fail()) {
       return arangodb::Result(
@@ -4613,7 +4636,7 @@ arangodb::Result getEngineStatsFromDBServers(ClusterFeature& feature,
         VPackBuffer<uint8_t>(), reqOpts));
   }
 
-  auto responses = futures::collectAll(std::move(futures)).get();
+  auto responses = futures::collectAll(std::move(futures)).waitAndGet();
 
   report.openObject();
   for (auto const& tryRes : responses) {

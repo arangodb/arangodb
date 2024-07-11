@@ -184,7 +184,7 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     EXPECT_TRUE(arangodb::methods::Indexes::ensureIndex(*logicalCollection,
                                                         linkJson->slice(), true,
                                                         outputDefinition)
-                    .get()
+                    .waitAndGet()
                     .ok());
 
     // get new version from plan
@@ -263,7 +263,7 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
         arangodb::velocypack::Parser::fromJson("{\"id\": \"42\"}");
     EXPECT_TRUE(
         arangodb::methods::Indexes::drop(*logicalCollection, indexArg->slice())
-            .get()
+            .waitAndGet()
             .ok());
 
     // get new version from plan
@@ -345,7 +345,7 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     EXPECT_TRUE(arangodb::methods::Indexes::ensureIndex(*logicalCollection,
                                                         linkJson->slice(), true,
                                                         outputDefinition)
-                    .get()
+                    .waitAndGet()
                     .ok());
 
     // get new version from plan

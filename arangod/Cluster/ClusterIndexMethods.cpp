@@ -504,8 +504,8 @@ Result dropIndexCoordinatorReplication2Inner(LogicalCollection const& col,
   }
   if (VPackSlice resultSlice = result.slice().get("results");
       resultSlice.length() > 0) {
-    Result r =
-        clusterInfo.waitForPlan(resultSlice[0].getNumber<uint64_t>()).get();
+    Result r = clusterInfo.waitForPlan(resultSlice[0].getNumber<uint64_t>())
+                   .waitAndGet();
     if (r.fail()) {
       return r;
     }
@@ -729,8 +729,8 @@ Result dropIndexCoordinatorInner(LogicalCollection const& col, IndexId iid,
   }
   if (VPackSlice resultSlice = result.slice().get("results");
       resultSlice.length() > 0) {
-    Result r =
-        clusterInfo.waitForPlan(resultSlice[0].getNumber<uint64_t>()).get();
+    Result r = clusterInfo.waitForPlan(resultSlice[0].getNumber<uint64_t>())
+                   .waitAndGet();
     if (r.fail()) {
       return r;
     }
@@ -932,7 +932,7 @@ auto ensureIndexCoordinatorReplication2Inner(
               }
               return Result{};
             });
-    auto res = waitOnSuccess.get();
+    auto res = waitOnSuccess.waitAndGet();
     if (res.fail()) {
       // Try our best to drop the index again
       std::ignore =
@@ -1146,8 +1146,8 @@ Result ensureIndexCoordinatorInner(LogicalCollection const& collection,
   if (result.successful()) {
     if (VPackSlice resultsSlice = result.slice().get("results");
         resultsSlice.length() > 0) {
-      Result r =
-          clusterInfo.waitForPlan(resultsSlice[0].getNumber<uint64_t>()).get();
+      Result r = clusterInfo.waitForPlan(resultsSlice[0].getNumber<uint64_t>())
+                     .waitAndGet();
       if (r.fail()) {
         return r;
       }
@@ -1262,7 +1262,7 @@ Result ensureIndexCoordinatorInner(LogicalCollection const& collection,
               resultsSlice.length() > 0) {
             Result r =
                 clusterInfo.waitForPlan(resultsSlice[0].getNumber<uint64_t>())
-                    .get();
+                    .waitAndGet();
             if (r.fail()) {
               return r;
             }
@@ -1312,7 +1312,7 @@ Result ensureIndexCoordinatorInner(LogicalCollection const& collection,
                 updateSlice.length() > 0) {
               Result r =
                   clusterInfo.waitForPlan(updateSlice[0].getNumber<uint64_t>())
-                      .get();
+                      .waitAndGet();
               if (r.fail()) {
                 return r;
               }

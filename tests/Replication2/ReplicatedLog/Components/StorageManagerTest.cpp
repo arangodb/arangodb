@@ -342,11 +342,11 @@ TEST_F(StorageManagerGMockTest, multiple_actions_with_error) {
 
   // first one failed with original error
   ASSERT_TRUE(f1.isReady());
-  EXPECT_EQ(f1.get().errorNumber(), TRI_ERROR_DEBUG);
+  EXPECT_EQ(f1.waitAndGet().errorNumber(), TRI_ERROR_DEBUG);
 
   // others are aborted due to conflict
   ASSERT_TRUE(f2.isReady());
-  EXPECT_EQ(f2.get().errorNumber(),
+  EXPECT_EQ(f2.waitAndGet().errorNumber(),
             TRI_ERROR_REPLICATION_REPLICATED_LOG_SUBSEQUENT_FAULT);
 }
 

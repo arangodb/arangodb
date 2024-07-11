@@ -32,6 +32,7 @@ const functionsDocumentation = {
 
 const _ = require('lodash');
 const tu = require('@arangodb/testutils/test-utils');
+const trs = require('@arangodb/testutils/testrunners');
 
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
 const CYAN = require('internal').COLORS.COLOR_CYAN;
@@ -58,11 +59,11 @@ function walCleanup (options) {
   opts.extraArgs['rocksdb.wal-file-timeout-initial'] = '3';
   opts.cluster = true;
 
-  let rc = new tu.runLocalInArangoshRunner(opts,
-                                           'wal_cleanup', {
-                                             'server.authentication': 'false',
-                                             'rocksdb.wal-file-timeout-initial': '3'
-                                           }).run(testCases);
+  let rc = new trs.runLocalInArangoshRunner(opts,
+                                            'wal_cleanup', {
+                                              'server.authentication': 'false',
+                                              'rocksdb.wal-file-timeout-initial': '3'
+                                            }).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
 }
@@ -71,5 +72,5 @@ exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['wal_cleanup'] = walCleanup;
 
-  for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
+  tu.CopyIntoObject(fnDocs, functionsDocumentation);
 };

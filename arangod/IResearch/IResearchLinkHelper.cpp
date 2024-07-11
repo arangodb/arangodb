@@ -129,7 +129,7 @@ Result createLink(LogicalCollection& collection, LogicalView const& view,
                   velocypack::Slice definition) {
   try {
     bool isNew = false;
-    auto link = collection.createIndex(definition, isNew).get();
+    auto link = collection.createIndex(definition, isNew).waitAndGet();
 
     if (!(link && isNew)) {
       return {TRI_ERROR_INTERNAL,
@@ -197,7 +197,7 @@ Result createLink(LogicalCollection& collection,
 
   velocypack::Builder tmp;
   return methods::Indexes::ensureIndex(collection, builder.slice(), true, tmp)
-      .get();
+      .waitAndGet();
 }
 
 template<typename ViewType>
@@ -232,7 +232,7 @@ Result dropLink<IResearchViewCoordinator>(LogicalCollection& collection,
               velocypack::Value(link.index().id().id()));
   builder.close();
 
-  return methods::Indexes::drop(collection, builder.slice()).get();
+  return methods::Indexes::drop(collection, builder.slice()).waitAndGet();
 }
 
 struct State {

@@ -390,7 +390,7 @@ void AgencyCache::run() {
 
       if (server().getFeature<NetworkFeature>().prepared()) {
         try {
-          auto rb = sendTransaction().get();
+          auto rb = sendTransaction().waitAndGet();
           if (!rb.ok() || rb.statusCode() != arangodb::fuerte::StatusOK) {
             // Error response, this includes client timeout
             increaseWaitTime();

@@ -307,7 +307,7 @@ void QueryTest::createIndexes(std::string_view definition1,
         version(), definition1));
     auto collection = _vocbase.lookupCollection("testCollection0");
     ASSERT_TRUE(collection);
-    collection->createIndex(createJson->slice(), created).get();
+    collection->createIndex(createJson->slice(), created).waitAndGet();
     ASSERT_TRUE(created);
   }
   // testIndex1
@@ -321,7 +321,7 @@ void QueryTest::createIndexes(std::string_view definition1,
         version(), definition2));
     auto collection = _vocbase.lookupCollection("testCollection1");
     ASSERT_TRUE(collection);
-    collection->createIndex(createJson->slice(), created).get();
+    collection->createIndex(createJson->slice(), created).waitAndGet();
     EXPECT_TRUE(created);
   }
 }
