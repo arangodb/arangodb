@@ -22,8 +22,8 @@ from socket_counter import get_socket_count
 # pylint: disable=line-too-long disable=broad-except
 from arangosh import ArangoshExecutor
 from test_config import get_priority, TestConfig
-from site_config import TEMP, IS_WINDOWS, IS_MAC, IS_LINUX, get_workspace
-from tools.killall import list_all_processes, kill_all_arango_processes
+from site_config import TEMP, get_workspace
+from tools.killall import list_all_processes
 
 MAX_COREFILES_SINGLE = 4
 MAX_COREFILES_CLUSTER = 15
@@ -38,7 +38,7 @@ if "MAX_CORESIZE" in os.environ:
 pp = pprint.PrettyPrinter(indent=4)
 
 ZIPFORMAT = "gztar"
-ZIPEXT="tar.gz"
+ZIPEXT = "tar.gz"
 try:
     import py7zr
 
@@ -46,7 +46,7 @@ try:
         "7zip", py7zr.pack_7zarchive, description="7zip archive"
     )
     ZIPFORMAT = "7zip"
-    ZIPEXT="7z"
+    ZIPEXT = "7z"
 except ModuleNotFoundError:
     pass
 
@@ -73,7 +73,7 @@ def testing_runner(testing_instance, this, arangosh):
         ret = arangosh.run_testing(
             this.suite,
             this.args,
-            15*60, # 15 Minutes screen idle before timeout
+            15 * 60,  # 15 Minutes screen idle before timeout
             this.base_logdir,
             this.log_file,
             this.name_enum,
@@ -126,7 +126,7 @@ def testing_runner(testing_instance, this, arangosh):
         except FileExistsError as ex:
             logging.error("can't expand the temp directory %s to %s", ex, final_name)
     except Exception as ex:
-        stack = ''.join(traceback.TracebackException.from_exception(ex).format())
+        stack = "".join(traceback.TracebackException.from_exception(ex).format())
         logging.exception("Python exception caught during test execution: ")
         this.crashed = True
         this.success = False
@@ -281,8 +281,6 @@ class TestingRunner:
                         one_child.kill()
                     except psutil.NoSuchProcess:  # pragma: no cover
                         pass
-            if IS_WINDOWS:
-                kill_all_arango_processes()
             logging.info("Main: waiting for the children to terminate")
             psutil.wait_procs(children, timeout=20)
             logging.info("Main: giving workers 20 more seconds to exit.")
@@ -299,13 +297,8 @@ class TestingRunner:
             list_all_processes()
             sys.stdout.flush()
             self.success = False
-            if IS_WINDOWS:
-                # pylint: disable=protected-access
-                # we want to exit without waiting for threads:
-                os._exit(4)
-            else:
-                os.kill(mica, signal.SIGKILL)
-                sys.exit(4)
+            os.kill(mica, signal.SIGKILL)
+            sys.exit(4)
 
     def testing_runner(self):
         """run testing suites"""
@@ -459,12 +452,10 @@ class TestingRunner:
             core_max_count = MAX_COREFILES_CLUSTER
         core_dir = Path.cwd()
         core_pattern = "core*"
-        if IS_WINDOWS:
-            core_pattern = "*.dmp"
         system_corefiles = []
         if "COREDIR" in os.environ:
             core_dir = Path(os.environ["COREDIR"])
-        elif IS_LINUX:
+        else:
             core_pattern = (
                 Path("/proc/sys/kernel/core_pattern")
                 .read_text(encoding="utf-8")
@@ -474,12 +465,6 @@ class TestingRunner:
                 core_dir = Path(core_pattern).parent
                 core_pattern = Path(core_pattern).name
             core_pattern = re.sub(r"%.", "*", core_pattern)
-        else:
-            core_dir = Path("/var/tmp/")  # default to coreDirectory in testing.js
-        if IS_MAC:
-            system_corefiles = list(Path("/cores").glob(core_pattern))
-            if system_corefiles is None:
-                system_corefiles = []
         core_files_list = list(core_dir.glob(core_pattern))
         if core_files_list is None:
             core_files_list = []
@@ -599,7 +584,9 @@ class TestingRunner:
         try:
             shutil.rmtree(TEMP, ignore_errors=False)
             zipformat = ZIPFORMAT
-            if (self.cfg.run_root / f"innerlogs.{ZIPEXT}").stat().st_size > 1024*1024*200:
+            if (
+                self.cfg.run_root / f"innerlogs.{ZIPEXT}"
+            ).stat().st_size > 1024 * 1024 * 200:
                 logging.info("Falling back to tar since innerlogs is huge!")
                 zipformat = "tar"
             shutil.make_archive(tarfile, zipformat, self.cfg.run_root, ".", True)

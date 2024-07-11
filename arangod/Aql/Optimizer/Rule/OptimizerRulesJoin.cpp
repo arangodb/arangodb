@@ -38,6 +38,7 @@
 #include "Aql/Expression.h"
 #include "Aql/IndexStreamIterator.h"
 #include "Aql/Optimizer.h"
+#include "Aql/OptimizerRules.h"
 #include "Aql/OptimizerUtils.h"
 #include "Aql/Projections.h"
 #include "Aql/Query.h"
@@ -55,7 +56,6 @@
 #include "Graph/TraverserOptions.h"
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
-#include "OptimizerRules.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
@@ -759,17 +759,33 @@ std::tuple<bool, IndicesOffsets> checkCandidatesEligible(
         LOG_JOIN_OPTIMIZER_RULE << "-> { EMPTY }";
       }
 
-      for (auto cIndexNode : candidates) {
-        if (cIndexNode->id() == candidateId) {
-          if (!cIndexNode->getIndexes()[0]->supportsStreamInterface(opts)) {
-            allCandidatesSupportStreamInterface = false;
-            LOG_JOIN_OPTIMIZER_RULE << "IndexNode's index does not "
-                                       "support streaming interface";
-            LOG_JOIN_OPTIMIZER_RULE
-                << "-> Index name: " << cIndexNode->getIndexes()[0]->name()
-                << ", id: " << cIndexNode->getIndexes()[0]->id();
-          }
-        }
+      auto nodeIter =
+          std::find_if(candidates.begin(), candidates.end(),
+                       [&](IndexNode* n) { return n->id() == candidateId; });
+      TRI_ASSERT(nodeIter != candidates.end());
+      auto node = *nodeIter;
+
+      if (node->projections().usesCoveringIndex()) {
+        std::transform(node->projections().projections().begin(),
+                       node->projections().projections().end(),
+                       std::back_inserter(opts.projectedFields),
+                       [](auto const& p) { return p.coveringIndexPosition; });
+      }
+
+      if (node->filterProjections().usesCoveringIndex()) {
+        std::transform(node->filterProjections().projections().begin(),
+                       node->filterProjections().projections().end(),
+                       std::back_inserter(opts.projectedFields),
+                       [](auto const& p) { return p.coveringIndexPosition; });
+      }
+
+      if (!node->getIndexes()[0]->supportsStreamInterface(opts)) {
+        allCandidatesSupportStreamInterface = false;
+        LOG_JOIN_OPTIMIZER_RULE << "IndexNode's index does not "
+                                   "support streaming interface";
+        LOG_JOIN_OPTIMIZER_RULE
+            << "-> Index name: " << node->getIndexes()[0]->name()
+            << ", id: " << node->getIndexes()[0]->id();
       }
     }
 

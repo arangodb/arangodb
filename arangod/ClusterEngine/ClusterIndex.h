@@ -30,6 +30,8 @@
 #include "Indexes/Index.h"
 #include "VocBase/Identifiers/IndexId.h"
 
+#include <atomic>
+
 namespace arangodb {
 class LogicalCollection;
 
@@ -119,7 +121,7 @@ class ClusterIndex : public Index {
   Index::IndexType _indexType;
   velocypack::Builder _info;
   bool _estimates;
-  double _clusterSelectivity;
+  std::atomic<double> _clusterSelectivity;
 
   // Only used in RocksDB edge index.
   std::vector<std::vector<basics::AttributeName>> _coveredFields;

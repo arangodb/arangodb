@@ -356,13 +356,18 @@ void RocksDBTrxBaseMethods::PopSavePoint() {
   }
 }
 
-void RocksDBTrxBaseMethods::beginQuery(ResourceMonitor* resourceMonitor,
-                                       bool /*isModificationQuery*/) {
-  _memoryTracker.beginQuery(resourceMonitor);
+void RocksDBTrxBaseMethods::beginQuery(
+    std::shared_ptr<ResourceMonitor> resourceMonitor,
+    bool isModificationQuery) {
+  if (isModificationQuery) {
+    _memoryTracker.beginQuery(resourceMonitor);
+  }
 }
 
-void RocksDBTrxBaseMethods::endQuery(bool /*isModificationQuery*/) noexcept {
-  _memoryTracker.endQuery();
+void RocksDBTrxBaseMethods::endQuery(bool isModificationQuery) noexcept {
+  if (isModificationQuery) {
+    _memoryTracker.endQuery();
+  }
 }
 
 void RocksDBTrxBaseMethods::cleanupTransaction() {
@@ -575,13 +580,12 @@ void RocksDBTrxBaseMethods::MultiGet(rocksdb::Snapshot const* snapshot,
                                      size_t count, rocksdb::Slice const* keys,
                                      rocksdb::PinnableSlice* values,
                                      rocksdb::Status* statuses) {
-  absl::Cleanup restore = [&, was = _readOptions.snapshot] {
-    _readOptions.snapshot = was;
-  };
-  _readOptions.snapshot = snapshot;
+  // make a copy of the ReadOptions, as we are going to modify the snapshot
+  ReadOptions ro = _readOptions;
+  ro.snapshot = snapshot;
 
   // Timestamps and multiple ColumnFamilies are not necessary for us
-  _db->MultiGet(_readOptions, &family, count, keys, values, statuses, false);
+  _db->MultiGet(ro, &family, count, keys, values, statuses, false);
 }
 
 void RocksDBTrxBaseMethods::MultiGet(rocksdb::ColumnFamilyHandle& family,

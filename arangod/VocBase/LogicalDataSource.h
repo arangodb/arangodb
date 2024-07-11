@@ -93,14 +93,14 @@ class LogicalDataSource {
   };
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief append a jSON definition of the data-source to the 'builder'
+  /// @brief append a JSON definition of the data-source to the 'builder'
   /// @param build the buffer to append to, must be an open object
   /// @param ctx defines which properties to serialize
   /// @param safe true only for internal, recursive, under lock, usage
   /// @return success
   //////////////////////////////////////////////////////////////////////////////
-  Result properties(velocypack::Builder& build, Serialization ctx,
-                    bool safe = false) const;
+  [[nodiscard]] Result properties(velocypack::Builder& build, Serialization ctx,
+                                  bool safe = false) const;
 
   virtual Result rename(std::string&& newName) = 0;
   bool system() const noexcept { return _system; }

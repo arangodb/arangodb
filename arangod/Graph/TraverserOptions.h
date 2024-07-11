@@ -85,13 +85,15 @@ struct TraverserOptions : public graph::BaseOptions {
 
   uint64_t maxDepth;
 
+  Order mode;
+
   bool useNeighbors;
+
+  bool _isDisjoint = false;
 
   UniquenessLevel uniqueVertices;
 
   UniquenessLevel uniqueEdges;
-
-  Order mode;
 
   std::string weightAttribute;
 
@@ -100,8 +102,6 @@ struct TraverserOptions : public graph::BaseOptions {
   std::vector<std::string> vertexCollections;
 
   std::vector<std::string> edgeCollections;
-
-  bool _isDisjoint = false;
 
   explicit TraverserOptions(arangodb::aql::QueryContext& query);
 

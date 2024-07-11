@@ -20,9 +20,6 @@
 // / limitations under the License.
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
-// /
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
@@ -149,6 +146,133 @@ function optimizerRuleTestSuite () {
   };
 }
 
+function optimizerRuleRegressionsTestSuite () {
+  const vn = ["v1", "v2", "v3"];
+  const en = ["e1", "e2"];
+
+  return {
+    setUp : function () {
+      vn.forEach((n) => { db._create(n); });
+      en.forEach((n) => { db._createEdgeCollection(n); });
+    },
+
+    tearDown : function () {
+      vn.forEach((n) => { db._drop(n); });
+      en.forEach((n) => { db._drop(n); });
+    },
+
+    // verifies an issue with projection variables not being correctly replaced
+    // inside traversals
+    testOptimizeProjectionsTraversalRegression: function () {
+      let k1 = db.v1.insert({ from: 1704067200000 })._id;
+      let k2 = db.v2.insert({ from: 1514764800000 })._id;
+      let k3 = db.v3.insert({ start: 1619827200000 })._id;
+
+      db.e1.insert({ _from: k2, _to: k1 });
+      db.e2.insert({ _from: k3, _to: k2 });
+
+      const query = `
+WITH v1, v2, v3
+FOR doc1 IN v1 FILTER doc1._id == '${k1}'
+FOR doc2 IN 1..1 INBOUND doc1 e1
+FOR doc3 IN 1..1 INBOUND doc2 e2
+FILTER doc3.start < doc1.from
+RETURN { s: doc3.start, f: doc1.from }`;
+      
+      let result = db._query(query).toArray();
+      assertEqual(1, result.length);
+      assertEqual({ s: 1619827200000, f: 1704067200000 }, result[0]);
+    },
+    
+    testOptimizeProjectionsTraversalPruneRegression: function () {
+      let k1 = db.v1.insert({ from: 1704067200000 })._id;
+      let k2 = db.v2.insert({ from: 1514764800000 })._id;
+      let k3 = db.v3.insert({ start: 1619827200000 })._id;
+
+      db.e1.insert({ _from: k2, _to: k1 });
+      db.e2.insert({ _from: k3, _to: k2 });
+
+      const query = `
+WITH v1, v2, v3
+FOR doc1 IN v1 FILTER doc1._id == '${k1}'
+FOR doc2 IN 1..1 INBOUND doc1 e1
+FOR doc3 IN 1..1 INBOUND doc2 e2
+PRUNE doc3.start > doc1.from
+RETURN { s: doc3.start, f: doc1.from }`;
+      
+      let result = db._query(query).toArray();
+      assertEqual(1, result.length);
+      assertEqual({ s: 1619827200000, f: 1704067200000 }, result[0]);
+    },
+    
+    testOptimizeProjectionsKShortestPathsRegression: function () {
+      let k1 = db.v1.insert({})._id;
+      let k2 = db.v1.insert({})._id;
+      let k3 = db.v1.insert({})._id;
+
+      db.e1.insert({ _from: k2, _to: k1, value: 1 });
+      db.e1.insert({ _from: k3, _to: k2, value: 1 });
+
+      const query = `
+WITH v1
+FOR doc1 IN v1 FILTER doc1._id == '${k3}'
+FOR doc2 IN v1 FILTER doc2._id == '${k1}'
+FOR p IN OUTBOUND K_SHORTEST_PATHS doc1._id TO doc2._id e1
+FILTER p.edges[*].value ALL == 1
+RETURN p.vertices[*]._id`;
+
+      let result = db._query(query).toArray(); 
+      assertEqual(1, result.length);
+      assertEqual(3, result[0].length);
+      assertEqual([k3, k2, k1], result[0]);
+    },
+    
+    testOptimizeProjectionsKPathsRegression: function () {
+      let k1 = db.v1.insert({})._id;
+      let k2 = db.v1.insert({})._id;
+      let k3 = db.v1.insert({})._id;
+
+      db.e1.insert({ _from: k2, _to: k1, value: 1 });
+      db.e1.insert({ _from: k3, _to: k2, value: 1 });
+
+      const query = `
+WITH v1
+FOR doc1 IN v1 FILTER doc1._id == '${k3}'
+FOR doc2 IN v1 FILTER doc2._id == '${k1}'
+FOR p IN 1..5 OUTBOUND K_PATHS doc1._id TO doc2._id e1
+FILTER p.edges[*].value ALL == 1
+RETURN p.vertices[*]._id`;
+
+      let result = db._query(query).toArray(); 
+      assertEqual(1, result.length);
+      assertEqual(3, result[0].length);
+      assertEqual([k3, k2, k1], result[0]);
+    },
+    
+    testOptimizeProjectionsShortestPathRegression: function () {
+      let k1 = db.v1.insert({})._id;
+      let k2 = db.v1.insert({})._id;
+      let k3 = db.v1.insert({})._id;
+
+      db.e1.insert({ _from: k2, _to: k1 });
+      db.e1.insert({ _from: k3, _to: k2 });
+
+      const query = `
+WITH v1
+FOR doc1 IN v1 FILTER doc1._id == '${k3}'
+FOR doc2 IN v1 FILTER doc2._id == '${k1}'
+FOR v, e IN OUTBOUND SHORTEST_PATH doc1._id TO doc2._id e1
+RETURN v._id`;
+
+      let result = db._query(query).toArray();
+      assertEqual(3, result.length);
+      assertEqual([k3, k2, k1], result);
+    },
+
+  };
+}
+
 jsunity.run(optimizerRuleTestSuite);
+jsunity.run(optimizerRuleRegressionsTestSuite);
 
 return jsunity.done();

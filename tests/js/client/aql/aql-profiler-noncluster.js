@@ -99,6 +99,9 @@ function ahuacatlProfilerTestSuite() {
         col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
       };
       const query = `FOR d IN @@col FILTER d.value <= 10 SORT d.more LIMIT 3 RETURN d`;    
+      // we intentionally disable the constrained heap sort in this test, so
+      // we always have a regular sort block
+      const options = {optimizer: {rules: ["-sort-limit"]}};
 
       const genNodeList = (rows, batches) => {
         return [
@@ -111,7 +114,7 @@ function ahuacatlProfilerTestSuite() {
         ];
       };
       profHelper.runDefaultChecks(
-        {query, genNodeList, prepare, bind}
+        {query, genNodeList, prepare, bind, options}
       );
 
       // collection was truncated. Insert them again
@@ -159,6 +162,9 @@ function ahuacatlProfilerTestSuite() {
           col.insert(_.range(1, rows + 1).map((i) => ({value: i})));
         };
         const query = `FOR d IN @@col FILTER d.value <= 10 SORT d.more LIMIT 3 RETURN d`;
+        // we intentionally disable the constrained heap sort in this test, so
+        // we always have a regular sort block
+        const options = {optimizer: {rules: ["-sort-limit"]}};
 
         const genNodeList = (rows, batches) => {
           return [
@@ -172,7 +178,7 @@ function ahuacatlProfilerTestSuite() {
         };
 
         profHelper.runDefaultChecks(
-          {query, genNodeList, prepare, bind}
+          {query, genNodeList, prepare, bind, options}
         );
 
         // collection was truncated. Insert them again

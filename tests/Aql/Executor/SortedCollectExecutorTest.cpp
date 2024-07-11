@@ -95,7 +95,7 @@ class SortedCollectExecutorTestNoRowsUpstream : public ::testing::Test {
                       expressionRegister, expressionVariable,
                       std::move(aggregateTypes), std::move(variables),
                       std::move(aggregateRegisters), &VPackOptions::Defaults),
-        block(new AqlItemBlock(itemBlockManager, 1000, 2)) {}
+        block(itemBlockManager.requestBlock(1000, 2)) {}
 };
 
 TEST_F(SortedCollectExecutorTestNoRowsUpstream, producer_gets_empty_input) {
@@ -182,7 +182,7 @@ class SortedCollectExecutorTestRowsUpstream : public ::testing::Test {
                       expressionRegister, expressionVariable,
                       std::move(aggregateTypes), std::move(variables),
                       std::move(aggregateRegisters), &VPackOptions::Defaults),
-        block(new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)) {}
+        block(itemBlockManager.requestBlock(1000, nrOutputRegister)) {}
 };
 
 TEST_F(SortedCollectExecutorTestRowsUpstream, producer_1) {
@@ -521,7 +521,7 @@ TEST(SortedCollectExecutorTestRowsUpstreamCountStrings, test) {
       std::move(aggregateRegisters), &VPackOptions::Defaults);
 
   SharedAqlItemBlockPtr block{
-      new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)};
+      itemBlockManager.requestBlock(1000, nrOutputRegister)};
 
   auto input = VPackParser::fromJson("[ [\"a\"], [\"aa\"], [\"aaa\"] ]");
   SingleRowFetcherHelper<::arangodb::aql::BlockPassthrough::Disable> fetcher(
@@ -635,7 +635,7 @@ class SortedCollectExecutorTestSkip : public ::testing::Test {
                       expressionRegister, expressionVariable,
                       std::move(aggregateTypes), std::move(variables),
                       std::move(aggregateRegisters), &VPackOptions::Defaults),
-        block(new AqlItemBlock(itemBlockManager, 1000, nrOutputRegister)) {}
+        block(itemBlockManager.requestBlock(1000, nrOutputRegister)) {}
 };
 
 TEST_F(SortedCollectExecutorTestSkip, skip_1) {

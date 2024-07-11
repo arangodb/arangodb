@@ -655,6 +655,9 @@ function ahuacatlProfilerTestSuite () {
 
     testSortLimitBlock1 : function () {
       const query = 'FOR i IN 1..@rows SORT i DESC LIMIT @offset, @limit RETURN i';
+      // we intentionally disable the constrained heap sort in this test, so
+      // we always have a regular sort block
+      const options = {optimizer: {rules: ["-sort-limit"]}};
       const genNodeList = (rows, batches) => [
         { type : SingletonBlock, calls : 1, items : 1, filtered: 0 },
         { type : CalculationBlock, calls : 1, items : 1, filtered: 0 },
@@ -670,7 +673,7 @@ function ahuacatlProfilerTestSuite () {
         // ~1/2 of rows:
         limit: limitMinusSkip(rows),
       });
-      profHelper.runDefaultChecks({query, genNodeList, bind, testRowCounts: sortLimitTestRowCounts});
+      profHelper.runDefaultChecks({query, genNodeList, bind, testRowCounts: sortLimitTestRowCounts, options});
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -695,7 +698,9 @@ function ahuacatlProfilerTestSuite () {
         // ~1/2 of rows:
         limit: limitMinusSkip(rows),
       });
-      profHelper.runDefaultChecks({query, genNodeList, bind, testRowCounts: sortLimitTestRowCounts, options: {fullCount: true}});
+      // we intentionally disable the constrained heap sort in this test, so
+      // we always have a regular sort block
+      profHelper.runDefaultChecks({query, genNodeList, bind, testRowCounts: sortLimitTestRowCounts, options: {fullCount: true, optimizer: {rules: ["-sort-limit"]}}});
     },
 
     ////////////////////////////////////////////////////////////////////////////////

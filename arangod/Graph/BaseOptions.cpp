@@ -287,7 +287,8 @@ BaseOptions::BaseOptions(BaseOptions const& other, bool allowAlreadyBuiltCopy)
       _parallelism(other._parallelism),
       _produceVertices(other._produceVertices),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
-      _maxProjections{other._maxProjections} {
+      _maxProjections{other._maxProjections},
+      _hint(other._hint) {
   setVertexProjections(other._vertexProjections);
   setEdgeProjections(other._edgeProjections);
 
@@ -297,8 +298,8 @@ BaseOptions::BaseOptions(BaseOptions const& other, bool allowAlreadyBuiltCopy)
   }
 }
 
-BaseOptions::BaseOptions(arangodb::aql::QueryContext& query, VPackSlice info,
-                         VPackSlice collections)
+BaseOptions::BaseOptions(arangodb::aql::QueryContext& query,
+                         velocypack::Slice info, velocypack::Slice collections)
     : BaseOptions(query) {
   VPackSlice read = info.get("tmpVar");
   if (!read.isObject()) {
@@ -328,6 +329,11 @@ BaseOptions::BaseOptions(arangodb::aql::QueryContext& query, VPackSlice info,
   }
 
   parseShardIndependentFlags(info);
+
+  if (VPackSlice hintNode = info.get(StaticStrings::IndexHintOption);
+      hintNode.isObject()) {
+    setHint(IndexHint(hintNode));
+  }
 }
 
 BaseOptions::~BaseOptions() {
@@ -377,16 +383,15 @@ void BaseOptions::addLookupInfo(aql::ExecutionPlan* plan,
                                 aql::AstNode* condition, bool onlyEdgeIndexes,
                                 TRI_edge_direction_e direction) {
   injectLookupInfoInList(_baseLookupInfos, plan, collectionName, attributeName,
-                         condition, onlyEdgeIndexes, direction);
+                         condition, onlyEdgeIndexes, direction,
+                         /*depth*/ std::nullopt);
 }
 
-void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
-                                         aql::ExecutionPlan* plan,
-                                         std::string const& collectionName,
-                                         std::string const& attributeName,
-                                         aql::AstNode* condition,
-                                         bool onlyEdgeIndexes,
-                                         TRI_edge_direction_e direction) {
+void BaseOptions::injectLookupInfoInList(
+    std::vector<LookupInfo>& list, aql::ExecutionPlan* plan,
+    std::string const& collectionName, std::string const& attributeName,
+    aql::AstNode* condition, bool onlyEdgeIndexes,
+    TRI_edge_direction_e direction, std::optional<uint64_t> depth) {
   TRI_ASSERT(
       (direction == TRI_EDGE_IN && attributeName == StaticStrings::ToString) ||
       (direction == TRI_EDGE_OUT &&
@@ -403,10 +408,15 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
   // actual value does not matter much. 1000 has historically worked fine.
   constexpr size_t itemsInCollection = 1000;
 
+  // use most specific index hint here
+  auto indexHint =
+      hint().getFromNested(direction == TRI_EDGE_IN ? "inbound" : "outbound",
+                           coll->name(), depth.value_or(IndexHint::BaseDepth));
+
   auto& trx = plan->getAst()->query().trxForOptimization();
   bool res = aql::utils::getBestIndexHandleForFilterCondition(
-      trx, *coll, info.indexCondition, _tmpVar, itemsInCollection,
-      aql::IndexHint(), info.idxHandles[0], ReadOwnWrites::no, onlyEdgeIndexes);
+      trx, *coll, info.indexCondition, _tmpVar, itemsInCollection, indexHint,
+      info.idxHandles[0], ReadOwnWrites::no, onlyEdgeIndexes);
   // Right now we have an enforced edge index which should always fit.
   if (!res) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -728,3 +738,7 @@ void BaseOptions::parseShardIndependentFlags(arangodb::velocypack::Slice info) {
     }
   }
 }
+
+aql::IndexHint const& BaseOptions::hint() const { return _hint; }
+
+void BaseOptions::setHint(aql::IndexHint hint) { _hint = std::move(hint); }

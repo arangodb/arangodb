@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 7000 */
-/*global assertEqual, assertTrue, assertMatch, fail, arango */
+/*global assertEqual, assertTrue, assertFalse, assertMatch, fail */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -190,6 +190,94 @@ function ahuacatlParseTestSuite () {
       assertEqual([ "friends", "relations", "users" ], getCollections(getParseResults("for r in relations for f in friends for u in users return u")));
       assertEqual([ "hans" ], getCollections(getParseResults("for r in (for x in hans return 1) return r")));
       assertEqual([ "hans" ], getCollections(getParseResults("for r in [ 1, 2 ] return hans")));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test arrays parsing
+////////////////////////////////////////////////////////////////////////////////
+
+    testArrays : function () {
+      function getRoot(query) { return getParseResults(query).ast[0]; }
+      
+      let returnNode = getRoot("RETURN []").subNodes[0];
+      assertEqual("return", returnNode.type);
+      assertEqual("array", returnNode.subNodes[0].type);
+      assertFalse(returnNode.subNodes[0].hasOwnProperty("subNodes"));
+
+      returnNode = getRoot("RETURN [1, 2, 3]").subNodes[0];
+      assertEqual("return", returnNode.type);
+      assertEqual("array", returnNode.subNodes[0].type);
+      let sub = returnNode.subNodes[0].subNodes;
+      assertEqual(3, sub.length);
+      assertEqual("value", sub[0].type);
+      assertEqual(1, sub[0].value);
+      assertEqual("value", sub[1].type);
+      assertEqual(2, sub[1].value);
+      assertEqual("value", sub[2].type);
+      assertEqual(3, sub[2].value);
+
+      // trailing comma      
+      returnNode = getRoot("RETURN [1, 2, 3, ]").subNodes[0];
+      assertEqual("return", returnNode.type);
+      assertEqual("array", returnNode.subNodes[0].type);
+      sub = returnNode.subNodes[0].subNodes;
+      assertEqual(3, sub.length);
+      assertEqual("value", sub[0].type);
+      assertEqual(1, sub[0].value);
+      assertEqual("value", sub[1].type);
+      assertEqual(2, sub[1].value);
+      assertEqual("value", sub[2].type);
+      assertEqual(3, sub[2].value);
+      
+      // two trailing commas
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "RETURN [1, 2, , ]"); 
+      
+      // single comma
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "RETURN [ , ]"); 
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test objects parsing
+////////////////////////////////////////////////////////////////////////////////
+
+    testObjects : function () {
+      function getRoot(query) { return getParseResults(query).ast[0]; }
+      
+      let returnNode = getRoot("RETURN {}").subNodes[0];
+      assertEqual("return", returnNode.type);
+      assertEqual("object", returnNode.subNodes[0].type);
+      assertFalse(returnNode.subNodes[0].hasOwnProperty("subNodes"));
+
+      returnNode = getRoot("RETURN { a: 1, b: 2, c: 3 }").subNodes[0];
+      assertEqual("return", returnNode.type);
+      assertEqual("object", returnNode.subNodes[0].type);
+      let sub = returnNode.subNodes[0].subNodes;
+      assertEqual(3, sub.length);
+      assertEqual("value", sub[0].subNodes[0].type);
+      assertEqual(1, sub[0].subNodes[0].value);
+      assertEqual("value", sub[1].subNodes[0].type);
+      assertEqual(2, sub[1].subNodes[0].value);
+      assertEqual("value", sub[2].subNodes[0].type);
+      assertEqual(3, sub[2].subNodes[0].value);
+
+      // trailing comma      
+      returnNode = getRoot("RETURN { a: 1, b: 2, c: 3, }").subNodes[0];
+      assertEqual("return", returnNode.type);
+      assertEqual("object", returnNode.subNodes[0].type);
+      sub = returnNode.subNodes[0].subNodes;
+      assertEqual(3, sub.length);
+      assertEqual("value", sub[0].subNodes[0].type);
+      assertEqual(1, sub[0].subNodes[0].value);
+      assertEqual("value", sub[1].subNodes[0].type);
+      assertEqual(2, sub[1].subNodes[0].value);
+      assertEqual("value", sub[2].subNodes[0].type);
+      assertEqual(3, sub[2].subNodes[0].value);
+      
+      // two trailing commas
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "RETURN { a: 1, b: 2, , }"); 
+      
+      // single comma
+      assertParseError(errors.ERROR_QUERY_PARSE.code, "RETURN { , }"); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////

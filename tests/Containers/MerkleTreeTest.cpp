@@ -294,6 +294,7 @@ TEST(MerkleTreeTest, test_insert_and_remove) {
   EXPECT_EQ(0, t.rootValue());
 }
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
 TEST(MerkleTreeTest, test_insert_and_rollback) {
   ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>
       t(6, 0, 1ULL << 18);
@@ -311,6 +312,7 @@ TEST(MerkleTreeTest, test_insert_and_rollback) {
   EXPECT_EQ(5, t.count());
   EXPECT_EQ(10532320421211682024ULL, t.rootValue());
 }
+#endif
 
 TEST(MerkleTreeTest, test_remove_out_of_range) {
   ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>
