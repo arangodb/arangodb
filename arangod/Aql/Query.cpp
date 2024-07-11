@@ -364,14 +364,6 @@ void Query::destroy() {
     resultCode = TRI_ERROR_QUERY_KILLED;
   }
 
-  // this will reset _trx, so _trx is invalid after here
-  try {
-    auto state = cleanupPlanAndEngine(resultCode, /*sync*/ true);
-    TRI_ASSERT(state != ExecutionState::WAITING);
-  } catch (...) {
-    // unfortunately we cannot do anything here, as we are in the destructor
-  }
-
   _queryProfile.reset();
 
   unregisterSnippets();
@@ -436,7 +428,7 @@ bool Query::killed() const {
 void Query::kill() {
   auto const wasKilled = _queryKilled.exchange(true, std::memory_order_acq_rel);
   if (ServerState::instance()->isCoordinator() && !wasKilled) {
-    cleanupPlanAndEngine(TRI_ERROR_QUERY_KILLED, /*sync*/ false);
+    cleanupPlanAndEngine(TRI_ERROR_QUERY_KILLED);
   }
 }
 
@@ -841,26 +833,22 @@ ExecutionState Query::execute(std::shared_ptr<QueryAborter> aborter,
     queryResult.reset(Result(
         ex.code(), "AQL: " + ex.message() +
                        QueryExecutionState::toStringWithPrefix(_execState)));
-    cleanupPlanAndEngine(ex.code(), /*sync*/ true);
   } catch (std::bad_alloc const&) {
     queryResult.reset(
         Result(TRI_ERROR_OUT_OF_MEMORY,
                StringUtils::concatT(
                    TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
                    QueryExecutionState::toStringWithPrefix(_execState))));
-    cleanupPlanAndEngine(TRI_ERROR_OUT_OF_MEMORY, /*sync*/ true);
   } catch (std::exception const& ex) {
     queryResult.reset(Result(
         TRI_ERROR_INTERNAL,
         ex.what() + QueryExecutionState::toStringWithPrefix(_execState)));
-    cleanupPlanAndEngine(TRI_ERROR_INTERNAL, /*sync*/ true);
   } catch (...) {
     queryResult.reset(
         Result(TRI_ERROR_INTERNAL,
                StringUtils::concatT(
                    TRI_errno_string(TRI_ERROR_INTERNAL),
                    QueryExecutionState::toStringWithPrefix(_execState))));
-    cleanupPlanAndEngine(TRI_ERROR_INTERNAL, /*sync*/ true);
   }
 
   logAtEnd(queryResult);
@@ -1080,26 +1068,22 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate,
     queryResult.reset(Result(
         ex.code(), "AQL: " + ex.message() +
                        QueryExecutionState::toStringWithPrefix(_execState)));
-    cleanupPlanAndEngine(ex.code(), /*sync*/ true);
   } catch (std::bad_alloc const&) {
     queryResult.reset(
         Result(TRI_ERROR_OUT_OF_MEMORY,
                StringUtils::concatT(
                    TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
                    QueryExecutionState::toStringWithPrefix(_execState))));
-    cleanupPlanAndEngine(TRI_ERROR_OUT_OF_MEMORY, /*sync*/ true);
   } catch (std::exception const& ex) {
     queryResult.reset(Result(
         TRI_ERROR_INTERNAL,
         ex.what() + QueryExecutionState::toStringWithPrefix(_execState)));
-    cleanupPlanAndEngine(TRI_ERROR_INTERNAL, /*sync*/ true);
   } catch (...) {
     queryResult.reset(
         Result(TRI_ERROR_INTERNAL,
                StringUtils::concatT(
                    TRI_errno_string(TRI_ERROR_INTERNAL),
                    QueryExecutionState::toStringWithPrefix(_execState))));
-    cleanupPlanAndEngine(TRI_ERROR_INTERNAL, /*sync*/ true);
   }
 
   logAtEnd(queryResult);
@@ -1118,7 +1102,7 @@ ExecutionState Query::finalize(VPackBuilder& extras) {
     _queryProfile->unregisterFromQueryList();
   }
 
-  auto state = cleanupPlanAndEngine(TRI_ERROR_NO_ERROR, /*sync*/ false);
+  auto state = cleanupPlanAndEngine(TRI_ERROR_NO_ERROR);
   if (state == ExecutionState::WAITING) {
     return state;
   }
@@ -1754,22 +1738,12 @@ void Query::enterState(QueryExecutionState::ValueType state) {
 }
 
 /// @brief cleanup plan and engine for current query
-ExecutionState Query::cleanupPlanAndEngine(ErrorCode errorCode, bool sync) {
+ExecutionState Query::cleanupPlanAndEngine(ErrorCode errorCode) {
   ensureExecutionTime();
 
   if (!_resultCode.has_value()) {  // TODO possible data race here
     // result code not yet set.
     _resultCode = errorCode;
-  }
-
-  if (sync && _sharedState) {
-    _sharedState->resetWakeupHandler();
-    auto state = cleanupTrxAndEngines(errorCode);
-    while (state == ExecutionState::WAITING) {
-      _sharedState->waitForAsyncWakeup();
-      state = cleanupTrxAndEngines(errorCode);
-    }
-    return state;
   }
 
   return cleanupTrxAndEngines(errorCode);

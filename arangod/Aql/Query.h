@@ -299,7 +299,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   void enterState(QueryExecutionState::ValueType);
 
   /// @brief cleanup plan and engine for current query can issue WAITING
-  ExecutionState cleanupPlanAndEngine(ErrorCode errorCode, bool sync);
+  ExecutionState cleanupPlanAndEngine(ErrorCode errorCode);
 
   void unregisterSnippets();
 
