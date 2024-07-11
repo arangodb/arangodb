@@ -149,8 +149,11 @@ function optimizerPushLimitIntoIndexTestSuite () {
       let query = "FOR i in 0..2 FOR j IN " + c.name() + " FILTER j.license IN ['cc-by-sa', 'cc-by-nc', 'foo'] SORT j.date_created LIMIT 100 RETURN j._key";
 
       let plan = db._createStatement(query).explain().plan;
-      let indexNode = plan.nodes[3];
+      let indexNodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
 
+      assertEqual(1, indexNodes.length);
+
+      let indexNode = indexNodes[0];
       assertEqual("IndexNode", indexNode.type);
       assertEqual(indexNode.limit, 0);
       assertEqual(-1, plan.rules.indexOf("push-limit-into-index"));

@@ -22,6 +22,7 @@
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/Condition.h"
+#include "Aql/ExecutionNode/GatherNode.h"
 #include "Aql/Expression.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
 #include "Aql/ExecutionNode/IndexNode.h"
@@ -145,7 +146,6 @@ void arangodb::aql::pushLimitIntoIndexRule(Optimizer* opt,
 
   containers::SmallVector<ExecutionNode*, 8> indexes;
   plan->findNodesOfType(indexes, EN::INDEX, /* enterSubqueries */ true);
-
   for (auto* index : indexes) {
     TRI_ASSERT(index->getType() == EN::INDEX);
     auto* indexNode = ExecutionNode::castTo<IndexNode*>(index);
@@ -238,6 +238,30 @@ void arangodb::aql::pushLimitIntoIndexRule(Optimizer* opt,
     }
 
     auto* maybeLimitNode = sortNode->getFirstParent();
+    while (maybeLimitNode != nullptr &&
+           (maybeLimitNode->getType() == EN::REMOTE ||
+            maybeLimitNode->getType() == EN::MATERIALIZE ||
+            maybeLimitNode->getType() == EN::CALCULATION ||
+            maybeLimitNode->getType() == EN::GATHER)) {
+      if (maybeLimitNode->getType() == EN::GATHER) {
+        auto const* gatherNode =
+            ExecutionNode::castTo<GatherNode const*>(maybeLimitNode);
+
+        if (gatherNode->isSortingGather()) {
+          maybeLimitNode = nullptr;
+          break;
+        }
+      } else if (maybeLimitNode->getType() == EN::CALCULATION) {
+        auto* calculationNode =
+            ExecutionNode::castTo<CalculationNode*>(maybeLimitNode);
+
+        if (!calculationNode->isDeterministic()) {
+          maybeLimitNode = nullptr;
+          break;
+        }
+      }
+      maybeLimitNode = maybeLimitNode->getFirstParent();
+    }
     if (maybeLimitNode == nullptr || maybeLimitNode->getType() != EN::LIMIT) {
       continue;
     }
