@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-422: Permissions of users managed by ArangoGraph are now shown as read-only
+
 * Remove unused "mmap" log topic.
 
 * Support array and object destructuring for FOR loops that refer to simple
