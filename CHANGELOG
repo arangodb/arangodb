@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-449: write concern is no longer set when creating a sattelite database
+
 * Remove unused "mmap" log topic.
 
 * Support array and object destructuring for FOR loops that refer to simple
