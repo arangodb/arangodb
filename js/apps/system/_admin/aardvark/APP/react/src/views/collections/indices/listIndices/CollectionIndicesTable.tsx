@@ -1,4 +1,4 @@
-import { Link, Stack } from "@chakra-ui/react";
+import { Link, Spinner, Stack, Text } from "@chakra-ui/react";
 import { CellContext, createColumnHelper } from "@tanstack/react-table";
 import { Index } from "arangojs/indexes";
 import React from "react";
@@ -10,14 +10,24 @@ import { TYPE_TO_LABEL_MAP } from "../CollectionIndicesHelpers";
 import { useSyncIndexCreationJob } from "../useSyncIndexCreationJob";
 import { CollectionIndexActionButtons } from "./CollectionIndexActionButtons";
 
-const columnHelper = createColumnHelper<Index>();
+const columnHelper = createColumnHelper<Index & { progress?: number }>();
 
-const NameCell = ({ info }: { info: CellContext<Index, string> }) => {
+const NameCell = ({
+  info
+}: {
+  info: CellContext<Index & { progress?: number }, string>;
+}) => {
   const id = info.row.original.id;
   const finalId = id.slice(id.lastIndexOf("/") + 1); // remove the collection name from the id
   const collectionName = window.location.hash.split("#cIndices/")[1]; // get the collection name from the url
   // need to use href here instead of RouteLink due to a bug in react-router
-  return (
+  return typeof info.row.original.progress === "number" &&
+    info.row.original.progress < 100 ? (
+    <Text>
+      {info.cell.getValue()} <Spinner size="xs" />{" "}
+      {info.row.original.progress.toFixed(0)}%
+    </Text>
+  ) : (
     <Link
       href={`#cIndices/${collectionName}/${finalId}`}
       textDecoration="underline"
@@ -119,12 +129,23 @@ export const CollectionIndicesTable = () => {
   });
   return (
     <Stack>
-      <TableControl<Index> table={tableInstance} columns={TABLE_COLUMNS} />
-      <ReactTable<Index>
+      <TableControl<Index & { progress?: number }>
+        table={tableInstance}
+        columns={TABLE_COLUMNS}
+      />
+      <ReactTable<Index & { progress?: number }>
         table={tableInstance}
         emptyStateMessage="No indexes found"
         onRowSelect={row => {
-          const finalId = row.original.id.slice(row.original.id.lastIndexOf("/") + 1);
+          if (
+            typeof row.original.progress === "number" &&
+            row.original.progress < 100
+          ) {
+            return;
+          }
+          const finalId = row.original.id.slice(
+            row.original.id.lastIndexOf("/") + 1
+          );
           const collectionName = window.location.hash.split("#cIndices/")[1];
           window.location.hash = `#cIndices/${collectionName}/${finalId}`;
         }}
