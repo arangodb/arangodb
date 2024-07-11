@@ -34,6 +34,8 @@
 #include "RestServer/SoftShutdownFeature.h"
 #include "Utils/ExecContext.h"
 
+#include <absl/strings/str_cat.h>
+
 namespace {
 bool authorized(
     std::pair<std::string, arangodb::rest::AsyncJobResult> const& job) {
@@ -183,8 +185,8 @@ Result AsyncJobManager::cancelJob(AsyncJobResult::IdType jobId) {
 
   if (it == _jobs.end() || !::authorized(it->second)) {
     rv.reset(TRI_ERROR_HTTP_NOT_FOUND,
-             "could not find job (" + std::to_string(jobId) +
-                 ") in AsyncJobManager during cancel operation");
+             absl::StrCat("could not find job (", jobId,
+                          ") in AsyncJobManager during cancel operation"));
     return rv;
   }
 

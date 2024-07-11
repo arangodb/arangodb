@@ -36,6 +36,8 @@
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Slice.h>
+
+#include <bit>
 #include <type_traits>
 
 #ifndef velocypack_malloc
@@ -581,9 +583,7 @@ double AqlValue::toDouble(bool& failed) const {
     case VPACK_INLINE_DOUBLE: {
       auto h = absl::little_endian::ToHost(
           _data.longNumberMeta.data.uintLittleEndian.val);
-      double v;
-      memcpy(&v, &h, sizeof(v));
-      return v;
+      return std::bit_cast<double>(h);
     }
     case VPACK_INLINE:
     case VPACK_SLICE_POINTER:
@@ -648,9 +648,7 @@ int64_t AqlValue::toInt64() const {
     case VPACK_INLINE_DOUBLE: {
       auto h = absl::little_endian::ToHost(
           _data.longNumberMeta.data.uintLittleEndian.val);
-      double v;
-      memcpy(&v, &h, sizeof(v));
-      return checkOverflow(v);
+      return checkOverflow(std::bit_cast<double>(h));
     }
     case VPACK_INLINE:
     case VPACK_SLICE_POINTER:
@@ -700,8 +698,7 @@ bool AqlValue::toBoolean() const {
     case VPACK_INLINE_DOUBLE: {
       auto h = absl::little_endian::ToHost(
           _data.longNumberMeta.data.uintLittleEndian.val);
-      double v;
-      memcpy(&v, &h, sizeof(v));
+      double v = std::bit_cast<double>(h);
       return v != 0.0;
     }
     case VPACK_INLINE:
@@ -1064,8 +1061,7 @@ AqlValue::AqlValue(AqlValueHintDouble v) noexcept {
     if (ADB_UNLIKELY(value == -0.0)) {  // unify +0.0 and -0.0 to +0.0
       value = 0.0;
     }
-    uint64_t h;
-    memcpy(&h, &value, sizeof(h));
+    uint64_t h = std::bit_cast<uint64_t>(value);
     _data.longNumberMeta.data.uintLittleEndian.val =
         absl::little_endian::FromHost(h);
   }

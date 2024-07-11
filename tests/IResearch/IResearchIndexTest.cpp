@@ -38,7 +38,6 @@
 #include "Mocks/StorageEngineMock.h"
 
 #include "Aql/AqlFunctionFeature.h"
-#include "Aql/OptimizerRulesFeature.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
 #include "Cluster/ClusterFeature.h"

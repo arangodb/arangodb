@@ -24,9 +24,9 @@
 
 #pragma once
 
-#include <memory>
+#include "Aql/Optimizer/Rule/OptimizerRulesLateMaterializedCommon.h"
 
-#include "Aql/LateMaterializedOptimizerRulesCommon.h"
+#include <memory>
 
 namespace arangodb {
 namespace aql {

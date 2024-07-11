@@ -40,7 +40,7 @@ struct IMaintenanceActionExecutor {
 
   virtual auto executeCreateCollection(
       ShardID const& shard, TRI_col_type_e collectionType,
-      velocypack::SharedSlice const& properties) noexcept -> Result = 0;
+      velocypack::SharedSlice properties) noexcept -> Result = 0;
 
   virtual auto executeDropCollection(
       std::shared_ptr<LogicalCollection> col) noexcept -> Result = 0;
@@ -68,9 +68,10 @@ class MaintenanceActionExecutor : public IMaintenanceActionExecutor {
                             TRI_vocbase_t& vocbase,
                             LoggerContext const& loggerContext);
 
-  auto executeCreateCollection(
-      ShardID const& shard, TRI_col_type_e collectionType,
-      velocypack::SharedSlice const& properties) noexcept -> Result override;
+  auto executeCreateCollection(ShardID const& shard,
+                               TRI_col_type_e collectionType,
+                               velocypack::SharedSlice properties) noexcept
+      -> Result override;
 
   auto executeDropCollection(std::shared_ptr<LogicalCollection> col) noexcept
       -> Result override;

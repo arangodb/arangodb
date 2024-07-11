@@ -380,11 +380,11 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
   // the shared status will wait in its destructor until all posted
   // requests have been completed/canceled!
   auto self = shared_from_this();
-  auto sharedStatus = std::make_shared<Syncer::JobSynchronizer>(self);
+  Syncer::JobSynchronizerScope sharedStatus(self);
 
   // order initial chunk. this will block until the initial response
   // has arrived
-  fetchWalChunk(sharedStatus, baseUrl, collectionName, fromTick,
+  fetchWalChunk(sharedStatus.clone(), baseUrl, collectionName, fromTick,
                 lastScannedTick);
 
   while (true) {
@@ -500,10 +500,10 @@ Result DatabaseTailingSyncer::syncCollectionCatchupInternal(
     if (checkMore) {
       // already fetch next batch in the background, by posting the
       // request to the scheduler, which can run it asynchronously
-      sharedStatus->request([this, self, baseUrl, sharedStatus, collectionName,
-                             fromTick, lastScannedTick]() {
-        fetchWalChunk(sharedStatus, baseUrl, collectionName, fromTick,
-                      lastScannedTick);
+      sharedStatus->request([self, baseUrl, sharedStatus = sharedStatus.clone(),
+                             collectionName, fromTick, lastScannedTick]() {
+        std::static_pointer_cast<DatabaseTailingSyncer>(self)->fetchWalChunk(
+            sharedStatus, baseUrl, collectionName, fromTick, lastScannedTick);
       });
     }
 

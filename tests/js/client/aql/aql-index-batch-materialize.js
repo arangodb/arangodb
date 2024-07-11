@@ -53,7 +53,7 @@ function IndexBatchMaterializeTestSuite() {
   function fillCollection(c, n) {
     let docs = [];
     for (let i = 0; i < n; i++) {
-      docs.push({x: i, y: 2 * i, z: 2 * i + 1, w: i % 10, u: i, b: i + 1, p: i, q: i});
+      docs.push({x: i, y: 2 * i, z: 2 * i + 1, w: i % 10, u: i, b: i + 1, p: i, q: i, r: i});
     }
     c.insert(docs);
   }
@@ -437,6 +437,22 @@ function IndexBatchMaterializeTestSuite() {
       const {indexNode} = expectOptimization(query);
       assertTrue(indexNode.indexCoversFilterProjections);
       assertEqual(normalize(indexNode.filterProjections), [["b"]]);
+    },
+    
+    testMaterializeIndexScanNoProjectionOptimization: function () {
+      const query = `
+        FOR doc IN ${collection}
+          FILTER doc.x > 5
+          RETURN doc.r
+      `;
+
+      expectOptimization(query, {optimizer: {rules: ["-optimize-projections"] } });
+
+      let results = db._query(query).toArray();
+      results = _.sortBy(results); 
+      for (let i = 0; i < results.length; ++i) {
+        assertEqual(results[i], i + 6);
+      }
     },
   };
 }

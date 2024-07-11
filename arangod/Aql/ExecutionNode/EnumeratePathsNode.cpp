@@ -176,7 +176,7 @@ EnumeratePathsNode::EnumeratePathsNode(
 EnumeratePathsNode::~EnumeratePathsNode() = default;
 
 EnumeratePathsNode::EnumeratePathsNode(ExecutionPlan* plan,
-                                       arangodb::velocypack::Slice const& base)
+                                       arangodb::velocypack::Slice base)
     : GraphNode(plan, base),
       _pathType(arangodb::graph::PathType::Type::KShortestPaths),
       _pathOutVariable(nullptr),
@@ -189,9 +189,7 @@ EnumeratePathsNode::EnumeratePathsNode(ExecutionPlan* plan,
       _distributeVariable(nullptr) {
   if (base.hasKey(StaticStrings::GraphQueryShortestPathType)) {
     _pathType = arangodb::graph::PathType::fromString(
-        base.get(StaticStrings::GraphQueryShortestPathType)
-            .copyString()
-            .c_str());
+        base.get(StaticStrings::GraphQueryShortestPathType).stringView());
   }
 
   // Path out variable
@@ -249,7 +247,7 @@ EnumeratePathsNode::EnumeratePathsNode(ExecutionPlan* plan,
   {
     auto list = base.get("globalEdgeConditions");
     if (list.isArray()) {
-      for (auto const& cond : VPackArrayIterator(list)) {
+      for (auto cond : VPackArrayIterator(list)) {
         _globalEdgeConditions.emplace_back(plan->getAst()->createNode(cond));
       }
     }
@@ -258,7 +256,7 @@ EnumeratePathsNode::EnumeratePathsNode(ExecutionPlan* plan,
   {
     auto list = base.get("globalVertexConditions");
     if (list.isArray()) {
-      for (auto const& cond : VPackArrayIterator(list)) {
+      for (auto cond : VPackArrayIterator(list)) {
         _globalVertexConditions.emplace_back(plan->getAst()->createNode(cond));
       }
     }
@@ -779,6 +777,64 @@ void EnumeratePathsNode::replaceVariables(
   if (_distributeVariable != nullptr) {
     _distributeVariable = Variable::replace(_distributeVariable, replacements);
   }
+
+  for (auto& it : _globalEdgeConditions) {
+    it = Ast::replaceVariables(const_cast<AstNode*>(it), replacements, true);
+  }
+
+  for (auto& it : _globalVertexConditions) {
+    it = Ast::replaceVariables(const_cast<AstNode*>(it), replacements, true);
+  }
+
+  if (_fromCondition != nullptr) {
+    _fromCondition = Ast::replaceVariables(_fromCondition, replacements, true);
+  }
+
+  if (_toCondition != nullptr) {
+    _toCondition = Ast::replaceVariables(_toCondition, replacements, true);
+  }
+}
+
+void EnumeratePathsNode::replaceAttributeAccess(
+    ExecutionNode const* self, Variable const* searchVariable,
+    std::span<std::string_view> attribute, Variable const* replaceVariable,
+    size_t /*index*/) {
+  if (_inStartVariable != nullptr && searchVariable == _inStartVariable &&
+      attribute.size() == 1 && attribute[0] == StaticStrings::IdString) {
+    _inStartVariable = replaceVariable;
+  }
+  if (_inTargetVariable != nullptr && searchVariable == _inTargetVariable &&
+      attribute.size() == 1 && attribute[0] == StaticStrings::IdString) {
+    _inTargetVariable = replaceVariable;
+  }
+  // note: _distributeVariable does not need to be replaced, as it is only
+  // populated by the optimizer, using a temporary calculation that the
+  // optimizer just inserted and that invokes any of the MAKE_DISTRIBUTE_...
+  // internal functions.
+
+  for (auto& it : _globalEdgeConditions) {
+    it =
+        Ast::replaceAttributeAccess(_plan->getAst(), const_cast<AstNode*>(it),
+                                    searchVariable, attribute, replaceVariable);
+  }
+
+  for (auto& it : _globalVertexConditions) {
+    it =
+        Ast::replaceAttributeAccess(_plan->getAst(), const_cast<AstNode*>(it),
+                                    searchVariable, attribute, replaceVariable);
+  }
+
+  if (_fromCondition != nullptr) {
+    _fromCondition =
+        Ast::replaceAttributeAccess(_plan->getAst(), _fromCondition,
+                                    searchVariable, attribute, replaceVariable);
+  }
+
+  if (_toCondition != nullptr) {
+    _toCondition =
+        Ast::replaceAttributeAccess(_plan->getAst(), _toCondition,
+                                    searchVariable, attribute, replaceVariable);
+  }
 }
 
 /// @brief getVariablesSetHere
@@ -820,7 +876,6 @@ EnumeratePathsNode::buildReverseUsedIndexes() const {
 std::vector<arangodb::graph::IndexAccessor> EnumeratePathsNode::buildIndexes(
     bool reverse) const {
   size_t numEdgeColls = _edgeColls.size();
-  constexpr bool onlyEdgeIndexes = true;
 
   std::vector<IndexAccessor> indexAccessors;
   indexAccessors.reserve(numEdgeColls);
@@ -843,11 +898,22 @@ std::vector<arangodb::graph::IndexAccessor> EnumeratePathsNode::buildIndexes(
     // arbitrary value for "number of edges in collection" used here. the
     // actual value does not matter much. 1000 has historically worked fine.
     constexpr size_t itemsInCollection = 1000;
+
+    // use most specific index hint here
+    // TODO: this code is prepared to use index hints, but due to the
+    // "onlyEdgeIndexes" flag set to true here, the optimizer will _always_ pick
+    // the edge index for the paths query. we should fix the condition handling
+    // inside path queries so that it can work with arbitrary, multi-field
+    // conditions and thus indexes.
+    auto indexHint = hint().getFromNested(
+        (reverse ? opposite : dir) == TRI_EDGE_IN ? "inbound" : "outbound",
+        _edgeColls[i]->name(), IndexHint::BaseDepth);
+
     auto& trx = plan()->getAst()->query().trxForOptimization();
     bool res = aql::utils::getBestIndexHandleForFilterCondition(
         trx, *_edgeColls[i], clonedCondition, options()->tmpVar(),
-        itemsInCollection, aql::IndexHint(), indexToUse, ReadOwnWrites::no,
-        onlyEdgeIndexes);
+        itemsInCollection, indexHint, indexToUse, ReadOwnWrites::no,
+        /*onlyEdgeIndexes*/ true);
     if (!res) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "expected edge index not found");

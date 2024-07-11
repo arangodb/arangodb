@@ -405,19 +405,19 @@ void CursorRepository::increaseNumberOfCursorsMetric(size_t value) noexcept {
 }
 
 void CursorRepository::decreaseNumberOfCursorsMetric(size_t value) noexcept {
-  if (_numberOfCursorsMetric != nullptr) {
+  if (_numberOfCursorsMetric != nullptr && value > 0) {
     _numberOfCursorsMetric->fetch_sub(value);
   }
 }
 
 void CursorRepository::increaseMemoryUsageMetric(size_t value) noexcept {
-  if (_memoryUsageMetric != nullptr) {
+  if (_memoryUsageMetric != nullptr && value > 0) {
     _memoryUsageMetric->fetch_add(value);
   }
 }
 
 void CursorRepository::decreaseMemoryUsageMetric(size_t value) noexcept {
-  if (_memoryUsageMetric != nullptr) {
+  if (_memoryUsageMetric != nullptr && value > 0) {
     _memoryUsageMetric->fetch_sub(value);
   }
 }

@@ -261,7 +261,7 @@ struct MockDocumentStateTransactionHandler
 struct MockMaintenanceActionExecutor
     : replicated_state::document::IMaintenanceActionExecutor {
   MOCK_METHOD(Result, executeCreateCollection,
-              (ShardID const&, TRI_col_type_e, velocypack::SharedSlice const&),
+              (ShardID const&, TRI_col_type_e, velocypack::SharedSlice),
               (noexcept, override));
   MOCK_METHOD(Result, executeDropCollection,
               (std::shared_ptr<LogicalCollection>), (noexcept, override));

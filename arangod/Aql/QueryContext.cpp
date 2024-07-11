@@ -48,7 +48,8 @@ using namespace arangodb::aql;
 QueryContext::QueryContext(TRI_vocbase_t& vocbase,
                            transaction::OperationOrigin operationOrigin,
                            QueryId id)
-    : _resourceMonitor(GlobalResourceMonitor::instance()),
+    : _resourceMonitor(
+          std::make_shared<ResourceMonitor>(GlobalResourceMonitor::instance())),
       _queryId(id ? id : TRI_NewServerSpecificTick()),
       _collections(&vocbase),
       _vocbase(vocbase),

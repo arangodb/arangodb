@@ -714,7 +714,6 @@ std::vector<std::string> TRI_FullTreeDirectory(char const* path) {
 
 ErrorCode TRI_RenameFile(char const* old, char const* filename,
                          long* systemError, std::string* systemErrorStr) {
-  TRI_ERRORBUF;
   int res = rename(old, filename);
 
   if (res != 0) {
@@ -1862,7 +1861,6 @@ arangodb::Result TRI_GetDiskSpaceInfo(std::string const& path,
   struct statvfs stat;
 
   if (statvfs(path.c_str(), &stat) == -1) {
-    TRI_SYSTEM_ERROR();
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     return {TRI_errno(), TRI_last_error()};
   }
@@ -1893,7 +1891,6 @@ arangodb::Result TRI_GetINodesInfo(std::string const& path,
   struct statvfs stat;
 
   if (statvfs(path.c_str(), &stat) == -1) {
-    TRI_SYSTEM_ERROR();
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     return {TRI_errno(), TRI_last_error()};
   }

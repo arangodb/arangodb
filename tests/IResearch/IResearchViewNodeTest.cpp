@@ -47,7 +47,6 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Executor/IResearchViewExecutor.h"
 #include "Aql/Executor/NoResultsExecutor.h"
-#include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryProfile.h"

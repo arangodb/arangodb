@@ -10,7 +10,7 @@ parameters:
     default: ""
   build-docker-image:
     type: string
-    default: "arangodb/ubuntubuildarangodb-devel:5"
+    default: "arangodb/ubuntubuildarangodb-devel:6"
   test-docker-image:
     type: string
     default: public.ecr.aws/b0b8h2r4/test-ubuntu:23.10-5b6113b7
@@ -458,18 +458,39 @@ jobs:
           name: Enabled coredumps
           command: ulimit -c unlimited
       - run:
+          name: Log processes
+          command: |
+            export PS_FORMAT="pid,%cpu,%mem,rss,thcount,oom,oomadj,args"
+            ps | head -n 1
+            echo "======"
+            while true; do
+              sleep 3
+              ps -a | grep "[a]rangod " || true | while read line ; do echo "$(date +"%T") > $line" ; done ;
+              echo "======"
+            done
+          background: true
+      - when:
+          condition:
+            not:
+              equal: [ << pipeline.parameters.sanitizer >>, ""]
+          steps:
+            - run:
+                name: Symbolizer server
+                command: ./utils/llvm-symbolizer-server.py
+                background: true
+      - run:
           name: Run << parameters.suiteName >> tests
           # we increase the no_output_timeout so our own timeout mechanism can kick in and gather more information
           no_output_timeout: 20m
           command: |
             mkdir work
             if [ "<< pipeline.parameters.sanitizer >>" = "alubsan" ]; then
-              export ASAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/alubsan.log:handle_ioctl=true:check_initialization_order=true:detect_container_overflow=true:detect_stack_use_after_return=false:detect_odr_violation=1:strict_init_order=true"
+              export ASAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/alubsan.log:handle_ioctl=true:check_initialization_order=true:detect_container_overflow=true:detect_stack_use_after_return=false:detect_odr_violation=1:strict_init_order=true:external_symbolizer_path=`pwd`/utils/llvm-symbolizer-client.py"
               export LSAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/alubsan.log:suppressions=lsan_arangodb_suppressions.txt:print_suppressions=0"
-              export UBSAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/alubsan.log:print_stacktrace=1:suppressions=ubsan_arangodb_suppressions.txt:print_suppressions=0"
+              export UBSAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/alubsan.log:print_stacktrace=1:suppressions=ubsan_arangodb_suppressions.txt:print_suppressions=0:external_symbolizer_path=`pwd`/utils/llvm-symbolizer-client.py"
               export SAN_MODE=alubsan
             elif [ "<< pipeline.parameters.sanitizer >>" = "tsan" ]; then
-              export TSAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/tsan.log:detect_deadlocks=true:second_deadlock_stack=1:suppressions=tsan_arangodb_suppressions.txt:print_suppressions=0"
+              export TSAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/tsan.log:detect_deadlocks=true:second_deadlock_stack=1:suppressions=tsan_arangodb_suppressions.txt:print_suppressions=0:external_symbolizer_path=`pwd`/utils/llvm-symbolizer-client.py"
               export SAN_MODE=tsan
             fi
 
@@ -483,8 +504,7 @@ jobs:
             python3 -u scripts/test/test_launch_controller.py << parameters.suites >> \
               --testBuckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX \
               --cluster << parameters.cluster >> \
-              --extraArgs " << parameters.extraArgs >>" \
-              --definition tests/test-definitions.txt
+              --extraArgs " << parameters.extraArgs >>"
       - run:
           name: Copy test results
           when: always

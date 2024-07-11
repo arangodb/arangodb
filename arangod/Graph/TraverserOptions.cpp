@@ -47,10 +47,10 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query)
       _baseVertexExpression(nullptr),
       minDepth(1),
       maxDepth(1),
+      mode(Order::DFS),
       useNeighbors(false),
       uniqueVertices(UniquenessLevel::NONE),
       uniqueEdges(UniquenessLevel::PATH),
-      mode(Order::DFS),
       defaultWeight(1.0) {}
 
 TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
@@ -176,10 +176,10 @@ TraverserOptions::TraverserOptions(arangodb::aql::QueryContext& query,
       _baseVertexExpression(nullptr),
       minDepth(1),
       maxDepth(1),
+      mode(Order::DFS),
       useNeighbors(false),
       uniqueVertices(UniquenessLevel::NONE),
-      uniqueEdges(UniquenessLevel::PATH),
-      mode(Order::DFS) {
+      uniqueEdges(UniquenessLevel::PATH) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   VPackSlice type = info.get("type");
   TRI_ASSERT(type.isString());
@@ -402,10 +402,10 @@ TraverserOptions::TraverserOptions(TraverserOptions const& other,
       _producePathsWeights(other._producePathsWeights),
       minDepth(other.minDepth),
       maxDepth(other.maxDepth),
+      mode(other.mode),
       useNeighbors(other.useNeighbors),
       uniqueVertices(other.uniqueVertices),
       uniqueEdges(other.uniqueEdges),
-      mode(other.mode),
       weightAttribute(other.weightAttribute),
       defaultWeight(other.defaultWeight),
       vertexCollections(other.vertexCollections),
@@ -659,7 +659,7 @@ void TraverserOptions::addDepthLookupInfo(aql::ExecutionPlan* plan,
                                           TRI_edge_direction_e direction) {
   auto& list = _depthLookupInfo[depth];
   injectLookupInfoInList(list, plan, collectionName, attributeName, condition,
-                         false, direction);
+                         /*onlyEdgeIndexes*/ false, direction, depth);
 }
 
 bool TraverserOptions::hasSpecificCursorForDepth(uint64_t depth) const {

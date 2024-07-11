@@ -27,7 +27,7 @@
 
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/ExecutionNode/IResearchViewNode.h"
-#include "Aql/OptimizerRulesFeature.h"
+#include "Aql/OptimizerRule.h"
 #include "Aql/Query.h"
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchLink.h"
@@ -245,8 +245,9 @@ class QueryNoMaterialization : public QueryTestMulti {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->properties(builder,
-                     arangodb::LogicalDataSource::Serialization::Properties);
+    auto res = view->properties(
+        builder, arangodb::LogicalDataSource::Serialization::Properties);
+    ASSERT_TRUE(res.ok());
     builder.close();
 
     auto slice = builder.slice();
@@ -670,8 +671,9 @@ TEST_P(QueryNoMaterialization, testStoredValuesRecord) {
   arangodb::velocypack::Builder builder;
 
   builder.openObject();
-  view->properties(builder,
-                   arangodb::LogicalDataSource::Serialization::Properties);
+  auto res = view->properties(
+      builder, arangodb::LogicalDataSource::Serialization::Properties);
+  ASSERT_TRUE(res.ok());
   builder.close();
 
   auto slice = builder.slice();
@@ -834,8 +836,9 @@ TEST_P(QueryNoMaterialization, testStoredValuesRecordWithCompression) {
   arangodb::velocypack::Builder builder;
 
   builder.openObject();
-  view->properties(builder,
-                   arangodb::LogicalDataSource::Serialization::Properties);
+  auto res = view->properties(
+      builder, arangodb::LogicalDataSource::Serialization::Properties);
+  ASSERT_TRUE(res.ok());
   builder.close();
 
   auto slice = builder.slice();

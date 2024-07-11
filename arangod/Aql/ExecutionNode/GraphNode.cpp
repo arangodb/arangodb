@@ -54,6 +54,7 @@
 #include "Enterprise/Aql/LocalTraversalNode.h"
 #endif
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Iterator.h>
 #include <utility>
 
@@ -76,9 +77,10 @@ struct DisjointSmartToSatelliteTester {
         // ANY is always forbidden
         return {
             TRI_ERROR_UNSUPPORTED_CHANGE_IN_SMART_TO_SATELLITE_DISJOINT_EDGE_DIRECTION,
-            "Using direction 'ANY' on collection: '" + collection->name() +
+            absl::StrCat(
+                "Using direction 'ANY' on collection: '", collection->name(),
                 "' could switch from Smart to Satellite and back. This "
-                "violates the isDisjoint feature and is forbidden."};
+                "violates the isDisjoint feature and is forbidden.")};
       }
       // Unify Edge storage, and edge read direction.
       // The smartToSatDir defines the direction in which we attempt to
@@ -237,10 +239,10 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
       auto [it, inserted] = seenCollections.try_emplace(eColName, dir);
       if (!inserted) {
         if ((*it).second != dir) {
-          std::string msg("conflicting directions specified for collection '" +
-                          std::string(eColName));
           THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID, msg);
+              TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID,
+              absl::StrCat("conflicting directions specified for collection '",
+                           eColName));
         }
         // do not re-add the same collection!
         continue;
@@ -249,11 +251,10 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
       auto collection = resolver.getCollection(eColName);
 
       if (!collection || collection->type() != TRI_COL_TYPE_EDGE) {
-        std::string msg("collection type invalid for collection '" +
-                        std::string(eColName) +
-                        ": expecting collection type 'edge'");
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID,
-                                       msg);
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID,
+            absl::StrCat("collection type invalid for collection '", eColName,
+                         ": expecting collection type 'edge'"));
       }
       if (_isDisjoint) {
         // TODO: Alternative to "THROW" we could run a community based Query
@@ -326,8 +327,7 @@ GraphNode::GraphNode(ExecutionPlan* plan, ExecutionNodeId id,
           // here, instead of a Disjoint one.
           auto res = disjointTest.isCollectionAllowed(c, _defaultDirection);
           if (res.fail()) {
-            THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(),
-                                           res.errorMessage());
+            THROW_ARANGO_EXCEPTION(res);
           }
         }
         if (!c->isSmart()) {
@@ -639,7 +639,8 @@ GraphNode::GraphNode(THIS_THROWS_WHEN_CALLED)
   THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
 }
 
-void GraphNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
+void GraphNode::doToVelocyPack(velocypack::Builder& nodes,
+                               unsigned flags) const {
   // TODO We need Both?!
   // Graph definition
   nodes.add("graph", _graphInfo.slice());
@@ -679,7 +680,8 @@ void GraphNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
       if (found == _collectionToShard.end()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
             TRI_ERROR_INTERNAL_AQL,
-            "unable to find shard '" + col->name() + "' in query shard map");
+            absl::StrCat("unable to find shard '", col->name(),
+                         "' in query shard map"));
       }
       if (found->second.isValid()) {
         builder.add(VPackValue(found->second));
@@ -744,6 +746,9 @@ void GraphNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
 
   nodes.add(VPackValue("indexes"));
   _options->toVelocyPackIndexes(nodes);
+
+  // serialize index hint
+  hint().toVelocyPack(nodes);
 }
 
 void GraphNode::graphCloneHelper(ExecutionPlan&, GraphNode& clone) const {
@@ -951,16 +956,14 @@ void GraphNode::addEdgeCollection(Collections const& collections,
   if (aqlCollection != nullptr) {
     addEdgeCollection(*aqlCollection, dir);
   } else {
-    std::string msg = "Edge collection `";
-    msg += name;
-    msg += "` could not be found";
+    std::string msg =
+        absl::StrCat("Edge collection `", name, "` could not be found");
     if (_graphObj != nullptr) {
-      msg += ", but is part of graph `";
-      msg += _graphObj->name();
-      msg += "`";
+      msg += absl::StrCat(", but is part of graph `", _graphObj->name(), "`");
     }
     msg += ".";
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, msg);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                                   std::move(msg));
   }
 }
 
@@ -1008,18 +1011,16 @@ void GraphNode::addVertexCollection(Collections const& collections,
   if (aqlCollection != nullptr) {
     addVertexCollection(*aqlCollection);
   } else {
-    std::string msg = "Vertex collection `";
-    msg += name;
-    msg += "` could not be found";
+    std::string msg =
+        absl::StrCat("Vertex collection `", name, "` could not be found");
     // If we have vertex collections, _graphObj should never be nullptr.
     // But let's stay on the side that's obviously safe without any context.
     if (_graphObj != nullptr) {
-      msg += ", but is part of graph `";
-      msg += _graphObj->name();
-      msg += "`";
+      msg += absl::StrCat(", but is part of graph `", _graphObj->name(), "`");
     }
     msg += ".";
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND, msg);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+                                   std::move(msg));
   }
 }
 
@@ -1115,6 +1116,8 @@ void GraphNode::setEdgeProjections(Projections projections) {
 bool GraphNode::isEligibleAsSatelliteTraversal() const {
   return graph() != nullptr && graph()->isSatellite();
 }
+
+IndexHint const& GraphNode::hint() const { return options()->hint(); }
 
 /* Enterprise features */
 

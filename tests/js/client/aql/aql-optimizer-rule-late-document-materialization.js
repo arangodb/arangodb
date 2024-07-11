@@ -495,6 +495,16 @@ function lateDocumentMaterializationRuleTestSuite () {
       assertEqual(1, result.length);
       assertEqual(result[0]._key, 'c0');
     },
+    testQueryResultsPrefixEarlyPruningNoOptimizeProjections() {
+      const options = {optimizer: {rules: ["-optimize-projections"] } };
+      let query = "FOR d IN " + prefixIndexCollectionName + " FILTER d.obj.b == {sb: 'b_val_0'} SORT d.obj.b LIMIT 10 RETURN d";
+      let plan = db._createStatement({query, options}).explain().plan;
+      assertNotEqual(-1, plan.rules.indexOf(ruleName));
+      assertNotEqual(-1, plan.rules.indexOf(earlyPruningRuleName));
+      let result = db._query(query, null, options).toArray();
+      assertEqual(1, result.length);
+      assertEqual(result[0]._key, 'c0');
+    },
     testConstrainedSortOnDbServer() {
       let query = "FOR d IN " + prefixIndexCollectionName  + " FILTER d.obj.b == {sb: 'b_val_0'} " +
                   "SORT d.obj.b LIMIT 10 RETURN {key: d._key, value:  d.some_value_from_doc}";

@@ -34,7 +34,6 @@
 
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "Aql/SharedQueryState.h"
 #include "Basics/VelocyPackHelper.h"

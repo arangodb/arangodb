@@ -160,6 +160,12 @@ function ahuacatlSubqueryChaos() {
       seed: 3581,
       showReproduce: true,
     },
+    q8: {
+      modifying: true,
+      numberSubqueries: 2,
+      seed: 19366714,
+      showReproduce: true,
+    },
   };
   return {
     testSpecificQueries: function () {

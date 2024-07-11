@@ -435,26 +435,22 @@ futures::Future<Result> TransactionState::addCollection(
     if (auto data = raceController.waitForOthers(2, _id, vocbase().server());
         data) {
       TRI_ASSERT(data->size() == 2);
-      // Slice out the first char, then we have a number
-      uint32_t shardNum = basics::StringUtils::uint32(&cname.back(), 1);
-      if (shardNum % 2 == 0) {
-        auto min = *std::min_element(data->begin(), data->end(),
-                                     [](std::any const& a, std::any const& b) {
-                                       return std::any_cast<TransactionId>(a) <
-                                              std::any_cast<TransactionId>(b);
-                                     });
-        if (_id == std::any_cast<TransactionId>(min)) {
-          std::this_thread::sleep_for(std::chrono::milliseconds(5));
+      auto sleeperId = std::invoke([&]() {
+        // Slice out the first char, then we have a number
+        uint32_t shardNum = basics::StringUtils::uint32(&cname.back(), 1);
+        auto comp = [](std::any const& a, std::any const& b) {
+          return std::any_cast<TransactionId>(a) <
+                 std::any_cast<TransactionId>(b);
+        };
+        if (shardNum % 2 == 0) {
+          return *std::min_element(data->begin(), data->end(), comp);
+        } else {
+          return *std::max_element(data->begin(), data->end(), comp);
         }
-      } else {
-        auto max = *std::max_element(data->begin(), data->end(),
-                                     [](std::any const& a, std::any const& b) {
-                                       return std::any_cast<TransactionId>(a) <
-                                              std::any_cast<TransactionId>(b);
-                                     });
-        if (_id == std::any_cast<TransactionId>(max)) {
-          std::this_thread::sleep_for(std::chrono::milliseconds(5));
-        }
+      });
+
+      if (_id == std::any_cast<TransactionId>(sleeperId)) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
       }
     }
   }

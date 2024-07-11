@@ -99,20 +99,14 @@
 #define ARANGODB_HAVE_SETGID 1
 #define ARANGODB_HAVE_SETUID 1
 
-#define TRI_random ::rand
-#define TRI_srandom ::srand
-
 // available features
 
 #define TRI_HAVE_POSIX 1
 
 #define TRI_HAVE_LINUX_PROC 1
 #define ARANGODB_HAVE_DOMAIN_SOCKETS 1
-#define TRI_HAVE_POSIX_MMAP 1
 #define TRI_HAVE_POSIX_PWD_GRP 1
 #define TRI_HAVE_POSIX_THREADS 1
-
-#define TRI_HAVE_ANONYMOUS_MMAP 1
 
 // alignment and limits
 
@@ -159,12 +153,7 @@
 #define TRI_stat_t struct stat
 #define TRI_write_t size_t
 
-#define TRI_ERRORBUF \
-  {}
-#define TRI_GET_ERRORBUF ::strerror(errno)
 #define TRI_LAST_ERROR_STR ::strerror(errno)
-#define TRI_SYSTEM_ERROR() \
-  {}
 #define TRI_GET_ARGV(ARGC, ARGV)
 
 // sockets
@@ -261,17 +250,11 @@
 #define ARANGODB_HAVE_DOMAIN_SOCKETS 1
 #define ARANGODB_HAVE_THREAD_AFFINITY 1
 #define TRI_HAVE_LINUX_PROC 1
-#define TRI_HAVE_POSIX_MMAP 1
 #define TRI_HAVE_POSIX_PWD_GRP 1
 #define TRI_HAVE_POSIX_THREADS 1
 #define TRI_HAVE_SC_PHYS_PAGES 1
 
-#define TRI_HAVE_ANONYMOUS_MMAP 1
-
 #define TRI_SC_NPROCESSORS_ONLN 1
-
-#define TRI_random ::rand
-#define TRI_srandom ::srand
 
 // alignment and limits
 
@@ -318,12 +301,7 @@
 #define TRI_stat_t struct stat
 #define TRI_write_t size_t
 
-#define TRI_ERRORBUF \
-  {}
-#define TRI_GET_ERRORBUF ::strerror(errno)
 #define TRI_LAST_ERROR_STR ::strerror(errno)
-#define TRI_SYSTEM_ERROR() \
-  {}
 #define TRI_GET_ARGV(ARGC, ARGV)
 
 // sockets

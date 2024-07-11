@@ -21,8 +21,6 @@
 /// @author Yuriy Popov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IndexNodeOptimizerRules.h"
-
 #include "Aql/Ast.h"
 #include "Aql/CalculationNodeVarFinder.h"
 #include "Aql/Collection.h"
@@ -34,8 +32,9 @@
 #include "Aql/ExecutionNode/MaterializeSearchNode.h"
 #include "Aql/ExecutionNode/SubqueryNode.h"
 #include "Aql/Expression.h"
-#include "Aql/LateMaterializedOptimizerRulesCommon.h"
 #include "Aql/Optimizer.h"
+#include "Aql/Optimizer/Rule/OptimizerRulesIndexNode.h"
+#include "Aql/Optimizer/Rule/OptimizerRulesLateMaterializedCommon.h"
 #include "Aql/QueryContext.h"
 #include "Basics/AttributeNameParser.h"
 #include "Cluster/ServerState.h"

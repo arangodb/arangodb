@@ -395,9 +395,12 @@ class TtlThread final : public ServerThread<ArangodServer> {
               std::min(properties.maxCollectionRemoves, limitLeft);
 
           while (leftForCurrentCollection > 0) {
-            // don't let query runtime restrictions affect the lookup query
             aql::QueryOptions options;
+            // don't let query runtime restrictions affect the lookup query
             options.maxRuntime = 0.0;
+            // no need to make the lookup query appear in the audit log
+            // every time we do a potential TTL index purge
+            options.skipAudit = true;
 
             auto query = aql::Query::create(
                 transaction::StandaloneContext::create(*vocbase, origin),

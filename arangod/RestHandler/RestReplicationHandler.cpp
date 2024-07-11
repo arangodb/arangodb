@@ -1061,8 +1061,11 @@ void RestReplicationHandler::handleCommandClusterInventory() {
       _vocbase, [&resultBuilder](LogicalView::ptr const& view) -> bool {
         if (view) {
           resultBuilder.openObject();
-          view->properties(resultBuilder,
-                           LogicalDataSource::Serialization::Inventory);
+          auto res = view->properties(
+              resultBuilder, LogicalDataSource::Serialization::Inventory);
+          if (res.fail()) {
+            THROW_ARANGO_EXCEPTION(res);
+          }
           // details, !forPersistence because on restore any
           // datasource ids will differ, so need an end-user
           // representation

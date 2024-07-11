@@ -780,8 +780,9 @@ TEST_F(IResearchViewDBServerTest, test_rename) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->properties(builder,
-                       arangodb::LogicalDataSource::Serialization::List);
+      auto res = view->properties(
+          builder, arangodb::LogicalDataSource::Serialization::List);
+      ASSERT_TRUE(res.ok());
       builder.close();
       EXPECT_TRUE(builder.slice().hasKey("name"));
       EXPECT_EQ(std::string("testView"),
@@ -795,8 +796,9 @@ TEST_F(IResearchViewDBServerTest, test_rename) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->properties(builder,
-                       arangodb::LogicalDataSource::Serialization::List);
+      auto res = view->properties(
+          builder, arangodb::LogicalDataSource::Serialization::List);
+      ASSERT_TRUE(res.ok());
       builder.close();
       EXPECT_TRUE(builder.slice().hasKey("name"));
       EXPECT_EQ(std::string("testView"),
@@ -843,8 +845,9 @@ TEST_F(IResearchViewDBServerTest, test_rename) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->properties(builder,
-                       arangodb::LogicalDataSource::Serialization::List);
+      auto res = view->properties(
+          builder, arangodb::LogicalDataSource::Serialization::List);
+      ASSERT_TRUE(res.ok());
       builder.close();
       EXPECT_TRUE(builder.slice().hasKey("name"));
       EXPECT_EQ(std::string("testView"),
@@ -858,8 +861,9 @@ TEST_F(IResearchViewDBServerTest, test_rename) {
       arangodb::velocypack::Builder builder;
 
       builder.openObject();
-      view->properties(builder,
-                       arangodb::LogicalDataSource::Serialization::List);
+      auto res = view->properties(
+          builder, arangodb::LogicalDataSource::Serialization::List);
+      ASSERT_TRUE(res.ok());
       builder.close();
       EXPECT_TRUE(builder.slice().hasKey("name"));
       EXPECT_EQ(std::string("testView"),
@@ -888,7 +892,9 @@ TEST_F(IResearchViewDBServerTest, test_toVelocyPack) {
     arangodb::velocypack::Builder builder;
 
     builder.openObject();
-    view->properties(builder, arangodb::LogicalDataSource::Serialization::List);
+    auto res = view->properties(
+        builder, arangodb::LogicalDataSource::Serialization::List);
+    ASSERT_TRUE(res.ok());
     builder.close();
     auto slice = builder.slice();
     EXPECT_EQ(4U, slice.length());

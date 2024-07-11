@@ -5673,7 +5673,15 @@ void ClusterInfo::startSyncers() {
   _planSyncer = std::make_unique<SyncerThread>(
       _server, "Plan", [this] { return loadPlan(); }, _agencyCache);
   _curSyncer = std::make_unique<SyncerThread>(
-      _server, "Current", [this] { return loadCurrent(); }, _agencyCache);
+      _server, "Current",
+      [this] {
+        TRI_IF_FAILURE("ClusterInfo::slowCurrentSyncer") {
+          using namespace std::chrono_literals;
+          std::this_thread::sleep_for(10ms);
+        }
+        return loadCurrent();
+      },
+      _agencyCache);
 
   if (!_planSyncer->start() || !_curSyncer->start()) {
     LOG_TOPIC("b4fa6", FATAL, Logger::CLUSTER)

@@ -126,6 +126,21 @@ jobs:
         default: "devel"
     steps:
       - run:
+          name: Print pipeline parameters
+          command: |
+            echo "enterprise-branch: << pipeline.parameters.enterprise-branch >>"
+            echo "create-docker-images: << pipeline.parameters.create-docker-images >>"
+            echo "rebuild-test-docker-images: << pipeline.parameters.rebuild-test-docker-images >>"
+            echo "build-docker-image: << pipeline.parameters.build-docker-image >>"
+            echo "nightly: << pipeline.parameters.nightly >>"
+            echo "replication-two: << pipeline.parameters.replication-two >>"
+            echo "c-compiler: << pipeline.parameters.c-compiler >>"
+            echo "cxx-compiler: << pipeline.parameters.cxx-compiler >>"
+            echo "sanitizer: << pipeline.parameters.sanitizer >>"
+            echo "ui: << pipeline.parameters.ui >>"
+            echo "ui-deployment: << pipeline.parameters.ui-deployment >>"
+            echo "ui-testsuites: << pipeline.parameters.ui-testsuites >>"
+      - run:
           name: Checkout
           command: |
             # We do not want to clone the whole repository since we only need a few files.

@@ -64,7 +64,7 @@ struct KeyGeneratorHelper {
 
   /// @brief create a key generator based on the options specified
   static std::unique_ptr<KeyGenerator> createKeyGenerator(
-      LogicalCollection const& collection, arangodb::velocypack::Slice);
+      LogicalCollection const& collection, velocypack::Slice);
 
   static std::unique_ptr<KeyGenerator> createEnterpriseKeyGenerator(
       std::unique_ptr<KeyGenerator> generator);
@@ -113,7 +113,11 @@ class KeyGenerator {
   virtual void track(std::string_view key) noexcept = 0;
 
   /// @brief build a VelocyPack representation of the generator in the builder
-  virtual void toVelocyPack(arangodb::velocypack::Builder&) const;
+  virtual void toVelocyPack(velocypack::Builder&) const;
+
+  /// @brief initialize key generator state, reading data/state from the
+  /// state object. state is guaranteed to be a velocypack object
+  virtual void initState(velocypack::Slice state);
 
   bool allowUserKeys() const noexcept { return _allowUserKeys; }
 
@@ -164,7 +168,7 @@ class KeyGeneratorWrapper : public KeyGenerator {
   void track(std::string_view key) noexcept override { _wrapped->track(key); }
 
   /// @brief build a VelocyPack representation of the generator in the builder
-  void toVelocyPack(arangodb::velocypack::Builder& result) const override {
+  void toVelocyPack(velocypack::Builder& result) const override {
     _wrapped->toVelocyPack(result);
   }
 

@@ -196,7 +196,8 @@ Result FollowerInfo::add(ServerID const& sid) {
   }
 
   // Now tell the agency
-  auto agencyRes = persistInAgency(false);
+  auto agencyRes =
+      persistInAgency(/*isRemove*/ false, /*acquireDataLock*/ true);
   if (agencyRes.ok() || agencyRes.is(TRI_ERROR_CLUSTER_NOT_LEADER)) {
     // Not a leader is expected
     return agencyRes;
@@ -208,8 +209,7 @@ Result FollowerInfo::add(ServerID const& sid) {
     agencyRes.reset(
         agencyRes.errorNumber(),
         absl::StrCat("unable to add follower in agency, timeout in agency CAS "
-                     "operation for "
-                     "key ",
+                     "operation for key ",
                      _docColl->vocbase().name(), "/", _docColl->planId().id(),
                      ": ", TRI_errno_string(agencyRes.errorNumber())));
     LOG_TOPIC("6295b", ERR, Logger::CLUSTER) << agencyRes.errorMessage();
@@ -387,7 +387,9 @@ Result FollowerInfo::remove(ServerID const& sid) {
     _failoverCandidates = v;  // will cast to std::vector<ServerID> const
   }
 
-  Result agencyRes = persistInAgency(true);
+  TRI_ASSERT(writeLocker.isLocked());
+  Result agencyRes =
+      persistInAgency(/*isRemove*/ true, /*acquireDataLock*/ false);
   if (agencyRes.ok()) {
     _writeConcernReached = _followers->size() + 1 >= _docColl->writeConcern();
     // +1 for the leader (me)
@@ -550,7 +552,8 @@ bool FollowerInfo::updateFailoverCandidates() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   checkDifference(*_followers, *_failoverCandidates);
 #endif
-  Result res = persistInAgency(true);
+  TRI_ASSERT(dataLocker.isLocked());
+  Result res = persistInAgency(/*isRemove*/ true, /*acquireDataLock*/ false);
   if (!res.ok()) {
     // We could not persist the update in the agency.
     // Collection left in RO mode.
@@ -567,7 +570,8 @@ bool FollowerInfo::updateFailoverCandidates() {
 }
 
 /// @brief Persist information in Current
-Result FollowerInfo::persistInAgency(bool isRemove) const {
+Result FollowerInfo::persistInAgency(bool isRemove,
+                                     bool acquireDataLock) const {
   // Now tell the agency
   TRI_ASSERT(_docColl != nullptr);
   std::string curPath = ::currentShardPath(*_docColl);
@@ -618,7 +622,7 @@ Result FollowerInfo::persistInAgency(bool isRemove) const {
           LOG_TOPIC("42231", INFO, Logger::CLUSTER)
               << ::reportName(isRemove)
               << ", did not find myself in Plan: " << _docColl->vocbase().name()
-              << "/" << std::to_string(_docColl->planId().id())
+              << "/" << _docColl->planId().id()
               << " (can happen when the leader changed recently).";
           if (!planEntry.isNone()) {
             LOG_TOPIC("ffede", INFO, Logger::CLUSTER)
@@ -626,7 +630,11 @@ Result FollowerInfo::persistInAgency(bool isRemove) const {
           }
           return {TRI_ERROR_CLUSTER_NOT_LEADER};
         } else {
-          auto newValue = newShardEntry(currentEntry);
+          VPackBuilder newValue;
+          {
+            CONDITIONAL_READ_LOCKER(readLocker, _dataLock, acquireDataLock);
+            newValue = newShardEntry(currentEntry);
+          }
           AgencyWriteTransaction trx;
           trx.preconditions.push_back(AgencyPrecondition(
               curPath, AgencyPrecondition::Type::VALUE, currentEntry));
@@ -666,7 +674,8 @@ std::pair<size_t, size_t> FollowerInfo::injectFollowerInfo(
   return std::make_pair(_followers->size(), _failoverCandidates->size());
 }
 
-/// @brief inject the information about "servers" and "failoverCandidates"
+/// @brief inject the information about "servers" and "failoverCandidates".
+/// must be called with _dataLock locked.
 void FollowerInfo::injectFollowerInfoInternal(VPackBuilder& builder) const {
   auto ourselves = ServerState::instance()->getId();
   TRI_ASSERT(builder.isOpenObject());

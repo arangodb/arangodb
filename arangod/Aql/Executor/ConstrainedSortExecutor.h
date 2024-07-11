@@ -43,6 +43,7 @@ template<BlockPassthrough>
 class SingleRowFetcher;
 
 class ConstrainedLessThan;
+class FilterStats;
 class RegisterInfos;
 class InputAqlItemRow;
 class AqlItemBlockInputRange;
@@ -63,7 +64,7 @@ class ConstrainedSortExecutor {
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = SortExecutorInfos;
-  using Stats = NoStats;
+  using Stats = FilterStats;
 
   ConstrainedSortExecutor(Fetcher& fetcher, Infos&);
   ~ConstrainedSortExecutor();
@@ -99,7 +100,7 @@ class ConstrainedSortExecutor {
 
  private:
   bool compareInput(size_t rosPos, InputAqlItemRow const& row) const;
-  void pushRow(InputAqlItemRow const& row);
+  void pushRow(InputAqlItemRow const& row, Stats& stats);
 
   // We're done producing when we've emitted all rows from our heap.
   bool doneProducing() const noexcept;
@@ -109,7 +110,7 @@ class ConstrainedSortExecutor {
   // sort as well. This is for fullCount queries only.
   bool doneSkipping() const noexcept;
 
-  ExecutorState consumeInput(AqlItemBlockInputRange& inputRange);
+  ExecutorState consumeInput(AqlItemBlockInputRange& inputRange, Stats& state);
 
   size_t memoryUsageForSort() const noexcept;
 

@@ -42,7 +42,9 @@
 #include "Utils/CursorRepository.h"
 #include "Utils/Events.h"
 
+#include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
 #include <velocypack/Value.h>
 
 using namespace arangodb;
@@ -53,10 +55,9 @@ RestCursorHandler::RestCursorHandler(
     ArangodServer& server, GeneralRequest* request, GeneralResponse* response,
     arangodb::aql::QueryRegistry* queryRegistry)
     : RestVocbaseBaseHandler(server, request, response),
+      _queryKilled(false),
       _queryRegistry(queryRegistry),
-      _cursor(nullptr),
-      _hasStarted(false),
-      _queryKilled(false) {}
+      _cursor(nullptr) {}
 
 RestCursorHandler::~RestCursorHandler() { releaseCursor(); }
 
@@ -264,18 +265,23 @@ futures::Future<RestStatus> RestCursorHandler::registerQueryOrCursor(
 /// The function is repeatable, so whenever we need to WAIT
 /// in AQL we can post a handler calling this function again.
 RestStatus RestCursorHandler::processQuery() {
-  if (_query == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        "Illegal state in RestCursorHandler, query not found.");
-  }
+  auto query = [this]() {
+    std::unique_lock<std::mutex> mutexLocker{_queryLock};
+
+    if (_query == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          "Illegal state in RestCursorHandler, query not found.");
+    }
+    return _query;
+  }();
 
   {
     // always clean up
     auto guard = scopeGuard([this]() noexcept { unregisterQuery(); });
 
     // continue handler is registered earlier
-    auto state = _query->execute(_queryResult);
+    auto state = query->execute(_queryResult);
 
     if (state == aql::ExecutionState::WAITING) {
       guard.cancel();
@@ -469,16 +475,12 @@ void RestCursorHandler::cancelQuery() {
       _query->sharedState()->resetWakeupHandler();
     }
 
-    _query->kill();
-    _queryKilled = true;
-    _hasStarted = true;
-  } else if (!_hasStarted) {
-    _queryKilled = true;
+    _query->setKillFlag();
   }
+  _queryKilled = true;
 }
 
-/// @brief whether or not the query was canceled
-bool RestCursorHandler::wasCanceled() {
+bool RestCursorHandler::wasCanceled() const {
   std::lock_guard mutexLocker{_queryLock};
   return _queryKilled;
 }

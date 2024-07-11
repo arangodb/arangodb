@@ -104,6 +104,8 @@ MaterializeRocksDBExecutor::produceRows(AqlItemBlockInputRange& inputRange,
             _projectionsBuilder.openObject(true);
             proj.toVelocyPackFromDocument(_projectionsBuilder, doc, &_trx);
             _projectionsBuilder.close();
+            output.moveValueInto(docOutReg, *inputRowIterator,
+                                 _projectionsBuilder.slice());
           }
         } else {
           if (data) {

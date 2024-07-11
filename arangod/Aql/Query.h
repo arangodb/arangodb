@@ -115,6 +115,8 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// @brief set the query to killed
   void kill();
 
+  void setKillFlag();
+
   /// @brief setter and getter methods for the query lockTimeout.
   void setLockTimeout(double timeout) noexcept final;
   double getLockTimeout() const noexcept final;

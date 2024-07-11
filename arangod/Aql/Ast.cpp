@@ -1534,6 +1534,15 @@ AstNode* Ast::createNodeCalculatedObjectElement(AstNode const* attributeName,
   return node;
 }
 
+/// @brief create an AST destructuring node
+AstNode* Ast::createNodeDestructuring(AstNode const* value, bool isObject) {
+  AstNode* node = createNode(NODE_TYPE_DESTRUCTURING);
+  node->setBoolValue(isObject);
+  node->addMember(value);
+
+  return node;
+}
+
 /// @brief create an AST with collections node
 AstNode* Ast::createNodeWithCollections(
     AstNode const* collections, CollectionNameResolver const& resolver) {

@@ -98,6 +98,7 @@
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+#include "SimpleHttpClient/SslClientConnection.h"
 #include "Ssl/SslInterface.h"
 #include "Ssl/ssl-helper.h"
 #include "Utilities/NameValidator.h"
@@ -802,8 +803,10 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
   bool followRedirects = true;
   rest::RequestType method = rest::RequestType::GET;
   bool returnBodyOnError = false;
+  bool verifyCertificates = false;
   int maxRedirects = 5;
-  uint64_t sslProtocol = TLS_V12;
+  int64_t verifyDepth = 10;
+  uint64_t sslProtocol = TLS_V13;
   std::string jwtToken, username, password;
 
   if (args.Length() > 2) {
@@ -828,6 +831,21 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
       sslProtocol = TRI_ObjectToUInt64(
           isolate, TRI_GetProperty(context, isolate, options, "sslProtocol"),
           false);
+    }
+
+    // verify server certificates
+    if (TRI_HasProperty(context, isolate, options, "verifyCertificates")) {
+      verifyCertificates = TRI_ObjectToBoolean(
+          isolate,
+          TRI_GetProperty(context, isolate, options, "verifyCertificates"));
+    }
+
+    // verify server certificates
+    if (TRI_HasProperty(context, isolate, options, "verifyDepth")) {
+      verifyDepth = std::max(
+          int64_t(1),
+          TRI_ObjectToInt64(isolate, TRI_GetProperty(context, isolate, options,
+                                                     "verifyDepth")));
     }
 
     // method
@@ -996,6 +1014,13 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     if (connection == nullptr) {
       TRI_V8_THROW_EXCEPTION_MEMORY();
+    }
+
+    if (auto sslConnection =
+            dynamic_cast<SslClientConnection*>(connection.get());
+        sslConnection != nullptr) {
+      sslConnection->setVerifyCertificates(verifyCertificates);
+      sslConnection->setVerifyDepth(static_cast<int>(verifyDepth));
     }
 
     SimpleHttpClientParams params(timeout, false, addContentLength);

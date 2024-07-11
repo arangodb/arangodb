@@ -244,8 +244,9 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // We directly read the entire cursor. so batchsize == limit
   auto iterator =
-      trx.indexScan(monitor, collectionName,
-                    transaction::Methods::CursorType::ALL, ReadOwnWrites::no);
+      trx.indexScan(collectionName, transaction::Methods::CursorType::ALL,
+                    ReadOwnWrites::no)
+          .waitAndGet();
   auto cb = [&](LocalDocumentId, aql::DocumentData&&, VPackSlice slice) {
     auto const& buffer = resultBuilder.bufferRef();
     size_t memoryUsageOld = buffer.size();

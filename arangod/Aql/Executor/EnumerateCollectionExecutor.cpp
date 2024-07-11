@@ -127,11 +127,12 @@ EnumerateCollectionExecutor::EnumerateCollectionExecutor(Fetcher& fetcher,
       _currentRow(InputAqlItemRow{CreateInvalidInputRowHint{}}) {
   TRI_ASSERT(_trx.status() == transaction::Status::RUNNING);
 
-  _cursor = _trx.indexScan(
-      _infos.getQuery().resourceMonitor(), _infos.getCollection()->name(),
-      (_infos.getRandom() ? transaction::Methods::CursorType::ANY
-                          : transaction::Methods::CursorType::ALL),
-      infos.canReadOwnWrites());
+  _cursor = _trx.indexScan(_infos.getCollection()->name(),
+                           (_infos.getRandom()
+                                ? transaction::Methods::CursorType::ANY
+                                : transaction::Methods::CursorType::ALL),
+                           infos.canReadOwnWrites())
+                .waitAndGet();
 
   if (!_infos.getCount()) {
     if (_infos.getProduceResult()) {

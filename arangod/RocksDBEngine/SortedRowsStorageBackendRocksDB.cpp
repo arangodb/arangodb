@@ -54,7 +54,7 @@ SortedRowsStorageBackendRocksDB::SortedRowsStorageBackendRocksDB(
       _rowNumberForInsert(0),
       _memoryTracker(nullptr, nullptr,
                      RocksDBMethodsMemoryTracker::kDefaultGranularity) {
-  _memoryTracker.beginQuery(&_infos.getQuery().resourceMonitor());
+  _memoryTracker.beginQuery(_infos.getQuery().resourceMonitorAsSharedPtr());
 }
 
 SortedRowsStorageBackendRocksDB::~SortedRowsStorageBackendRocksDB() {

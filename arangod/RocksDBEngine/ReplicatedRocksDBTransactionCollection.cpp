@@ -120,10 +120,11 @@ Result ReplicatedRocksDBTransactionCollection::abortTransaction() {
 }
 
 void ReplicatedRocksDBTransactionCollection::beginQuery(
-    ResourceMonitor* resourceMonitor, bool isModificationQuery) {
+    std::shared_ptr<ResourceMonitor> resourceMonitor,
+    bool isModificationQuery) {
   auto* trxMethods = dynamic_cast<RocksDBTrxMethods*>(_rocksMethods.get());
   if (trxMethods) {
-    trxMethods->beginQuery(resourceMonitor, isModificationQuery);
+    trxMethods->beginQuery(std::move(resourceMonitor), isModificationQuery);
   }
 }
 

@@ -213,7 +213,7 @@ TEST_F(SingleRowFetcherTestDoNotPassBlocks, handling_of_relevant_shadow_rows) {
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   ShadowAqlItemRow shadow{CreateInvalidShadowRowHint{}};
   {
-    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 4, 1)};
+    auto block = itemBlockManager.requestBlock(4, 1);
     block->emplaceValue(0, 0, "a");
     block->setShadowRowDepth(1, AqlValue(AqlValueHintUInt(0ull)));
     block->emplaceValue(1, 0, "a");
@@ -290,7 +290,7 @@ TEST_F(SingleRowFetcherTestDoNotPassBlocks,
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   ShadowAqlItemRow shadow{CreateInvalidShadowRowHint{}};
   {
-    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 7, 1)};
+    auto block = itemBlockManager.requestBlock(7, 1);
     block->emplaceValue(0, 0, "a");
     block->setShadowRowDepth(1, AqlValue(AqlValueHintUInt(0ull)));
     block->emplaceValue(1, 0, "a");
@@ -395,7 +395,7 @@ TEST_F(SingleRowFetcherTestDoNotPassBlocks, handling_consecutive_shadowrows) {
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   ShadowAqlItemRow shadow{CreateInvalidShadowRowHint{}};
   {
-    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 4, 1)};
+    auto block = itemBlockManager.requestBlock(4, 1);
     block->emplaceValue(0, 0, "a");
     block->setShadowRowDepth(0, AqlValue(AqlValueHintUInt(0ull)));
     block->emplaceValue(1, 0, "a");
@@ -1009,7 +1009,7 @@ TEST_F(SingleRowFetcherTestPassBlocks, handling_of_relevant_shadow_rows) {
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   ShadowAqlItemRow shadow{CreateInvalidShadowRowHint{}};
   {
-    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 4, 1)};
+    auto block = itemBlockManager.requestBlock(4, 1);
     block->emplaceValue(0, 0, "a");
     block->setShadowRowDepth(1, AqlValue(AqlValueHintUInt(0ull)));
     block->emplaceValue(1, 0, "a");
@@ -1085,7 +1085,7 @@ TEST_F(SingleRowFetcherTestPassBlocks, handling_of_irrelevant_shadow_rows) {
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   ShadowAqlItemRow shadow{CreateInvalidShadowRowHint{}};
   {
-    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 7, 1)};
+    auto block = itemBlockManager.requestBlock(7, 1);
     block->emplaceValue(0, 0, "a");
     block->setShadowRowDepth(1, AqlValue(AqlValueHintUInt(0ull)));
     block->emplaceValue(1, 0, "a");
@@ -1190,7 +1190,7 @@ TEST_F(SingleRowFetcherTestPassBlocks, handling_consecutive_shadowrows) {
   InputAqlItemRow row{CreateInvalidInputRowHint{}};
   ShadowAqlItemRow shadow{CreateInvalidShadowRowHint{}};
   {
-    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 4, 1)};
+    auto block = itemBlockManager.requestBlock(4, 1);
     block->emplaceValue(0, 0, "a");
     block->setShadowRowDepth(0, AqlValue(AqlValueHintUInt(0ull)));
     block->emplaceValue(1, 0, "a");
@@ -1283,7 +1283,7 @@ TEST_F(SingleRowFetcherTestPassBlocks,
   ShadowAqlItemRow shadow{CreateInvalidShadowRowHint{}};
 
   {
-    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 7, 1)};
+    auto block = itemBlockManager.requestBlock(7, 1);
     block->emplaceValue(0, 0, "a");
     block->emplaceValue(1, 0, "b");
     block->emplaceValue(2, 0, "c");
@@ -1319,7 +1319,7 @@ TEST_F(SingleRowFetcherTestPassBlocks,
   ShadowAqlItemRow shadow{CreateInvalidShadowRowHint{}};
 
   {
-    SharedAqlItemBlockPtr block{new AqlItemBlock(itemBlockManager, 9, 1)};
+    auto block = itemBlockManager.requestBlock(9, 1);
     block->emplaceValue(0, 0, "a");
     block->emplaceValue(1, 0, "b");
     block->emplaceValue(2, 0, "c");

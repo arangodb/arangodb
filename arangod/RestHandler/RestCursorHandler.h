@@ -29,11 +29,10 @@
 #include "Transaction/Hints.h"
 #include "Transaction/OperationOrigin.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
-
+#include <memory>
 #include <mutex>
 #include <optional>
+#include <string_view>
 
 namespace arangodb {
 namespace velocypack {
@@ -56,7 +55,6 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
 
   ~RestCursorHandler();
 
- public:
   char const* name() const override { return "RestCursorHandler"; }
   RequestLane lane() const override final;
 
@@ -90,12 +88,9 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   ///        queryResult.
   virtual RestStatus handleQueryResult();
 
-  /// @brief whether or not the query was canceled
-  bool wasCanceled();
-
  private:
   /// @brief register the currently running query
-  void registerQuery(std::shared_ptr<arangodb::aql::Query> query);
+  void registerQuery(std::shared_ptr<aql::Query> query);
 
   /// @brief cancel the currently running query
   void cancelQuery();
@@ -131,12 +126,17 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   void releaseCursor();
 
  protected:
+  bool wasCanceled() const;
+
   /// @brief Reference to a queryResult, which is reused after waiting.
   aql::QueryResult _queryResult;
 
  private:
+  /// @brief whether or not the query was killed
+  bool _queryKilled;
+
   /// @brief currently running query
-  std::shared_ptr<arangodb::aql::Query> _query;
+  std::shared_ptr<aql::Query> _query;
 
   /// @brief our query registry
   arangodb::aql::QueryRegistry* _queryRegistry;
@@ -145,16 +145,10 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   Cursor* _cursor;
 
   /// @brief lock for currently running query
-  std::mutex _queryLock;
-
-  /// @brief whether or not the query has already started executing
-  bool _hasStarted;
-
-  /// @brief whether or not the query was killed
-  bool _queryKilled;
+  mutable std::mutex _queryLock;
 
   /// @brief A shared pointer to the query options velocypack, s.t. we avoid
   ///        to reparse and set default options
-  std::shared_ptr<arangodb::velocypack::Builder> _options;
+  std::shared_ptr<velocypack::Builder> _options;
 };
 }  // namespace arangodb

@@ -127,13 +127,12 @@ void RocksDBReadOnlyBaseMethods::MultiGet(rocksdb::Snapshot const* snapshot,
                                           rocksdb::Slice const* keys,
                                           rocksdb::PinnableSlice* values,
                                           rocksdb::Status* statuses) {
-  absl::Cleanup restore = [&, was = _readOptions.snapshot] {
-    _readOptions.snapshot = was;
-  };
-  _readOptions.snapshot = snapshot;
+  // make a copy of the ReadOptions, as we are going to modify the snapshot
+  ReadOptions ro = _readOptions;
+  ro.snapshot = snapshot;
 
   // Timestamps and multiple ColumnFamilies are not necessary for us
-  _db->MultiGet(_readOptions, &family, count, keys, values, statuses, false);
+  _db->MultiGet(ro, &family, count, keys, values, statuses, false);
 }
 
 void RocksDBReadOnlyBaseMethods::MultiGet(rocksdb::ColumnFamilyHandle& family,

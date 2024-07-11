@@ -59,18 +59,6 @@ constexpr std::string_view kParallelismParallel("parallel");
 constexpr std::string_view kParallelismSerial("serial");
 constexpr std::string_view kParallelismUndefined("undefined");
 
-constexpr std::string_view toString(GatherNode::Parallelism value) noexcept {
-  switch (value) {
-    case GatherNode::Parallelism::Parallel:
-      return kParallelismParallel;
-    case GatherNode::Parallelism::Serial:
-      return kParallelismSerial;
-    case GatherNode::Parallelism::Undefined:
-    default:
-      return kParallelismUndefined;
-  }
-}
-
 constexpr GatherNode::Parallelism parallelismFromString(
     std::string_view value) noexcept {
   if (value == kParallelismParallel) {
@@ -100,7 +88,28 @@ bool toSortMode(std::string_view str, GatherNode::SortMode& mode) noexcept {
   return true;
 }
 
-std::string_view toString(GatherNode::SortMode mode) noexcept {
+}  // namespace
+
+auto arangodb::aql::toString(GatherNode::Parallelism value) noexcept
+    -> std::string_view {
+  switch (value) {
+    case GatherNode::Parallelism::Parallel:
+      return kParallelismParallel;
+    case GatherNode::Parallelism::Serial:
+      return kParallelismSerial;
+    case GatherNode::Parallelism::Undefined:
+      return kParallelismUndefined;
+    default:
+      LOG_TOPIC("c9367", FATAL, Logger::AQL)
+          << "Invalid value for parallelism: "
+          << static_cast<std::underlying_type_t<GatherNode::Parallelism>>(
+                 value);
+      FATAL_ERROR_ABORT();
+  }
+}
+
+auto arangodb::aql::toString(GatherNode::SortMode mode) noexcept
+    -> std::string_view {
   switch (mode) {
     case GatherNode::SortMode::MinElement:
       return kSortModeMinElement;
@@ -113,8 +122,6 @@ std::string_view toString(GatherNode::SortMode mode) noexcept {
       return {};
   }
 }
-
-}  // namespace
 
 /*static*/ Collection const* GatherNode::findCollection(
     GatherNode const& root) noexcept {

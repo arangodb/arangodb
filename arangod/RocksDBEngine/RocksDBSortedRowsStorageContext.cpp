@@ -66,6 +66,8 @@ RocksDBSortedRowsStorageContext::RocksDBSortedRowsStorageContext(
 
   // create SstFileMethods instance that we will use for file ingestion
   rocksdb::Options options = _db->GetOptions();
+  options.comparator = _cf->GetComparator();
+
   _methods = std::make_unique<RocksDBSstFileMethods>(
       _db, _cf, options, _path, usageTracker, memoryTracker);
 }

@@ -150,7 +150,9 @@ class IResearchInvertedIndexIteratorTestBase
           arangodb::transaction::StandaloneContext::create(
               vocbase(), arangodb::transaction::OperationOriginTestCase{}),
           EMPTY, collections, EMPTY, arangodb::transaction::Options());
-      trx.begin();
+      if (auto res = trx.begin(); res.fail()) {
+        throw arangodb::basics::Exception(res);
+      }
       for (size_t i = 0; i < _docs.size() / 2; ++i) {
         // MSVC fails to compile if EXPECT_TRUE  is called directly
         auto res = _index
@@ -171,7 +173,9 @@ class IResearchInvertedIndexIteratorTestBase
         arangodb::transaction::StandaloneContext::create(
             vocbase(), arangodb::transaction::OperationOriginTestCase{}),
         EMPTY, collections, EMPTY, arangodb::transaction::Options());
-    trx.begin();
+    if (auto res = trx.begin(); res.fail()) {
+      throw arangodb::basics::Exception(res);
+    }
     while (doc != _docs.end()) {
       // MSVC fails to compile if EXPECT_TRUE  is called directly
       auto res = _index

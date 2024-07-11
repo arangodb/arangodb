@@ -25,12 +25,18 @@
 
 #include "Aql/AqlValue.h"
 #include "Aql/Collection.h"
+#include "Aql/ExecutionEngine.h"
 #include "Aql/Executor/ModificationExecutor.h"
 #include "Aql/Executor/ModificationExecutorAccumulator.h"
 #include "Aql/Executor/ModificationExecutorHelpers.h"
 #include "Aql/QueryContext.h"
+#include "Aql/SharedQueryState.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/application-exit.h"
+#include "Logger/LogTopic.h"
+#include "Logger/LogLevel.h"
+#include "Logger/LogMacros.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -137,11 +143,6 @@ typename UpsertModifier::OutputIterator UpsertModifier::OutputIterator::end()
   return it;
 }
 
-ModificationExecutorResultState UpsertModifier::resultState() const noexcept {
-  std::lock_guard<std::mutex> guard(_resultStateMutex);
-  return _resultState;
-}
-
 UpsertModifier::UpsertModifier(ModificationExecutorInfos& infos)
     : _infos(infos),
       _updateResults(Result(), infos._options),
@@ -149,15 +150,14 @@ UpsertModifier::UpsertModifier(ModificationExecutorInfos& infos)
       // Batch size has to be 1 in case the upsert modifier sees its own
       // writes. otherwise it will use the default batching
       _batchSize(_infos._batchSize),
-      _resultState(ModificationExecutorResultState::NoResult) {}
+      _results(NoResult{}) {}
 
 void UpsertModifier::reset() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   {
-    std::unique_lock<std::mutex> guard(_resultStateMutex, std::try_to_lock);
+    std::unique_lock<std::mutex> guard(_resultMutex, std::try_to_lock);
     TRI_ASSERT(guard.owns_lock());
-    TRI_ASSERT(_resultState !=
-               ModificationExecutorResultState::WaitingForResult);
+    TRI_ASSERT(!std::holds_alternative<Waiting>(_results));
   }
 #endif
 
@@ -172,8 +172,8 @@ void UpsertModifier::reset() {
 }
 
 void UpsertModifier::resetResult() noexcept {
-  std::lock_guard<std::mutex> guard(_resultStateMutex);
-  _resultState = ModificationExecutorResultState::NoResult;
+  std::lock_guard<std::mutex> guard(_resultMutex);
+  _results = NoResult{};
 }
 
 UpsertModifier::OperationType UpsertModifier::updateReplaceCase(
@@ -277,49 +277,133 @@ void UpsertModifier::accumulate(InputAqlItemRow& row) {
 }
 
 ExecutionState UpsertModifier::transact(transaction::Methods& trx) {
-  std::lock_guard<std::mutex> guard(_resultStateMutex);
+  std::unique_lock<std::mutex> guard(_resultMutex);
 
-  switch (_resultState) {
-    case ModificationExecutorResultState::WaitingForResult:
-      // WAITING is not yet implemented for UpsertModifier, we shouldn't get
-      // here
-      TRI_ASSERT(false);
-      return ExecutionState::WAITING;
-    case ModificationExecutorResultState::HaveResult:
-      // WAITING is not yet implemented for UpsertModifier, we shouldn't get
-      // here
-      TRI_ASSERT(false);
-      return ExecutionState::DONE;
-    case ModificationExecutorResultState::NoResult:
-      // continue
-      break;
+  if (std::holds_alternative<Waiting>(_results)) {
+    return ExecutionState::WAITING;
+  } else if (std::holds_alternative<HaveResult>(_results)) {
+    return ExecutionState::DONE;
+  } else if (auto* ex = std::get_if<std::exception_ptr>(&_results);
+             ex != nullptr) {
+    std::rethrow_exception(*ex);
+  } else {
+    TRI_ASSERT(std::holds_alternative<NoResult>(_results));
   }
 
-  TRI_ASSERT(_resultState == ModificationExecutorResultState::NoResult);
-  _resultState = ModificationExecutorResultState::NoResult;
+  _results = NoResult{};
 
+  auto fut = transactInternal(trx);
+
+  if (fut.isReady()) {
+    std::move(fut).waitAndGet();
+    _results = HaveResult{};
+    return ExecutionState::DONE;
+  }
+
+  _results = Waiting{};
+
+  TRI_ASSERT(!ServerState::instance()->isSingleServer());
+  TRI_ASSERT(_infos.engine() != nullptr);
+  TRI_ASSERT(_infos.engine()->sharedState() != nullptr);
+
+  // The guard has to be unlocked before "thenValue" is called, otherwise
+  // locking the mutex there will cause a deadlock if the result is already
+  // available.
+  guard.unlock();
+
+  std::move(fut).thenFinal([self = this->shared_from_this(),
+                            sqs = _infos.engine()->sharedState()](
+                               futures::Try<futures::Unit>&& tryResult) {
+    sqs->executeAndWakeup([&]() noexcept {
+      std::unique_lock<std::mutex> guard(self->_resultMutex);
+      try {
+        TRI_ASSERT(std::holds_alternative<Waiting>(self->_results));
+        if (std::holds_alternative<Waiting>(self->_results)) {
+          // get() will throw if opRes holds an exception, which is intended.
+          std::move(tryResult).get();
+          self->_results = HaveResult{};
+        } else {
+          // This can never happen.
+          using namespace std::string_literals;
+          auto state = std::visit(
+              overload{[&](NoResult) { return "NoResults"s; },
+                       [&](Waiting) { return "Waiting"s; },
+                       [&](HaveResult) { return "Result"s; },
+                       [&](std::exception_ptr const& ep) {
+                         auto what = std::string{};
+                         try {
+                           std::rethrow_exception(ep);
+                         } catch (std::exception const& ex) {
+                           what = ex.what();
+                         } catch (...) {
+                           // Exception unknown, give up immediately.
+                           LOG_TOPIC("adb0e", FATAL, Logger::AQL)
+                               << "Caught an exception while handling another "
+                                  "one, giving up.";
+                           FATAL_ERROR_ABORT();
+                         }
+                         return StringUtils::concatT("Exception: ", what);
+                       }},
+              self->_results);
+          auto message = StringUtils::concatT(
+              "Unexpected state when reporting modification result, expected "
+              "'Waiting' but got: ",
+              state);
+          LOG_TOPIC("3b0e1", ERR, Logger::AQL) << message;
+          if (std::holds_alternative<std::exception_ptr>(self->_results)) {
+            // Avoid overwriting an exception with another exception.
+            LOG_TOPIC("78c8b", FATAL, Logger::AQL)
+                << "Caught an exception while handling another one, giving up.";
+            FATAL_ERROR_ABORT();
+          }
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL_AQL,
+                                         std::move(message));
+        }
+      } catch (...) {
+        auto exptr = std::current_exception();
+        self->_results = exptr;
+      }
+      return true;
+    });
+  });
+
+  return ExecutionState::WAITING;
+}
+
+futures::Future<futures::Unit> UpsertModifier::transactInternal(
+    transaction::Methods& trx) {
   auto toInsert = _insertAccumulator.closeAndGetContents();
   if (toInsert.isArray() && toInsert.length() > 0) {
-    _insertResults =
-        trx.insert(_infos._aqlCollection->name(), toInsert, _infos._options);
+    auto future = [&] {
+      auto guard = std::lock_guard(_trxMutex);
+      if (!_trxAlive) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+      }
+      return trx.insertAsync(_infos._aqlCollection->name(), toInsert,
+                             _infos._options);
+    }();
+    _insertResults = co_await std::move(future);
     throwOperationResultException(_infos, _insertResults);
   }
 
   auto toUpdate = _updateAccumulator.closeAndGetContents();
   if (toUpdate.isArray() && toUpdate.length() > 0) {
-    if (_infos._isReplace) {
-      _updateResults =
-          trx.replace(_infos._aqlCollection->name(), toUpdate, _infos._options);
-    } else {
-      _updateResults =
-          trx.update(_infos._aqlCollection->name(), toUpdate, _infos._options);
-    }
+    auto future = [&] {
+      auto guard = std::lock_guard(_trxMutex);
+      if (!_trxAlive) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+      }
+      if (_infos._isReplace) {
+        return trx.replaceAsync(_infos._aqlCollection->name(), toUpdate,
+                                _infos._options);
+      } else {
+        return trx.updateAsync(_infos._aqlCollection->name(), toUpdate,
+                               _infos._options);
+      }
+    }();
+    _updateResults = co_await std::move(future);
     throwOperationResultException(_infos, _updateResults);
   }
-
-  _resultState = ModificationExecutorResultState::HaveResult;
-
-  return ExecutionState::DONE;
 }
 
 size_t UpsertModifier::nrOfDocuments() const {
@@ -362,9 +446,35 @@ size_t UpsertModifier::nrOfWritesIgnored() const { return nrOfErrors(); }
 size_t UpsertModifier::getBatchSize() const { return _batchSize; }
 
 bool UpsertModifier::hasResultOrException() const noexcept {
-  return resultState() == ModificationExecutorResultState::HaveResult;
+  // Note that this is never called while the modifier is running, that's why we
+  // don't need to lock _resultMutex. This way possible unintended races might
+  // be revealed by TSan.
+  return std::visit(overload{
+                        [](NoResult) { return false; },
+                        [](Waiting) { return false; },
+                        [](HaveResult) { return true; },
+                        [](std::exception_ptr const&) { return true; },
+                    },
+                    _results);
 }
 
 bool UpsertModifier::hasNeitherResultNorOperationPending() const noexcept {
-  return resultState() == ModificationExecutorResultState::NoResult;
+  // Note that this is never called while the modifier is running, that's why we
+  // don't need to lock _resultMutex. This way possible unintended races might
+  // be revealed by TSan.
+  return std::visit(overload{
+                        [](NoResult) { return true; },
+                        [](Waiting) { return false; },
+                        [](HaveResult) { return false; },
+                        [](std::exception_ptr const&) { return false; },
+                    },
+                    _results);
+}
+
+void UpsertModifier::stopAndClear() noexcept {
+  _operations.clear();
+  auto guard = std::lock_guard(_trxMutex);
+  // should be called only once, thus...
+  TRI_ASSERT(_trxAlive);
+  _trxAlive = false;
 }

@@ -125,7 +125,7 @@ void ClusterQuery::prepareFromVelocyPack(
       << " this: " << (uintptr_t)this;
 
   // track memory usage
-  ResourceUsageScope scope(_resourceMonitor);
+  ResourceUsageScope scope(*_resourceMonitor);
   scope.increase(querySlice.byteSize() + collections.byteSize() +
                  variables.byteSize() + snippets.byteSize() +
                  traverserSlice.byteSize());
@@ -275,7 +275,7 @@ futures::Future<Result> ClusterQuery::finalizeClusterQuery(
 
     executionStatsGuard().doUnderLock([&](auto& executionStats) {
       executionStats.requests += _numRequests.load(std::memory_order_relaxed);
-      executionStats.setPeakMemoryUsage(_resourceMonitor.peak());
+      executionStats.setPeakMemoryUsage(_resourceMonitor->peak());
       executionStats.setExecutionTime(elapsedSince(_startTime));
       executionStats.setIntermediateCommits(
           _trx->state()->numIntermediateCommits());

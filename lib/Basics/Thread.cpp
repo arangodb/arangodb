@@ -260,8 +260,10 @@ void Thread::shutdown() {
 
 /// @brief checks if the current thread was asked to stop
 bool Thread::isStopping() const noexcept {
-  auto state = _state.load(std::memory_order_relaxed);
-
+  // need acquire to ensure we establish a happens before relation with the
+  // update that updates _state, so threads that wait for isStopping to return
+  // true are properly synchronized
+  auto state = _state.load(std::memory_order_acquire);
   return state == ThreadState::STOPPING || state == ThreadState::STOPPED;
 }
 

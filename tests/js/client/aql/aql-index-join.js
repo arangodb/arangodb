@@ -831,6 +831,35 @@ const IndexJoinTestSuite = function () {
       assertEqual(nodes.indexOf("JoinNode"), -1);
     },
 
+    testJoinWithPrimaryIndexProjections: function () {
+      const A = createCollection("A", ["_key"]);
+      fillCollection("A", singleAttributeGenerator(20, "_key", x => `${x}`));
+      A.ensureIndex({type: "persistent", fields: ["x", "y"]});
+      const documentIdsOfA = [];
+      A.all().toArray().forEach((document) => {
+        documentIdsOfA.push(document._id);
+      });
+      fillEdgeCollectionWith("B", documentIdsOfA);
+
+      // Using the attribute _id causes the primary index to reject the streaming request.
+      // Thus, we expect no join to be created.
+      const query = `
+          FOR doc1 IN A
+          SORT doc1._key
+            FOR doc2 IN B
+            FILTER doc1._key == doc2.x
+            RETURN [doc1, doc2.x, doc1._id]
+        `;
+
+      let plan = db._createStatement({
+        query: query,
+        bindVars: null,
+        options: queryOptions
+      }).explain().plan;
+      let nodes = plan.nodes.map(x => x.type);
+      assertEqual(nodes.indexOf("JoinNode"), -1);
+    },
+
     testJoinMultipleJoins: function () {
       const A1 = createCollection("A1", ["x"], "prototype1");
       A1.ensureIndex({type: "persistent", fields: ["x"]});

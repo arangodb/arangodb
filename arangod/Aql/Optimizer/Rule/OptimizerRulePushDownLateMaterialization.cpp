@@ -194,35 +194,40 @@ void arangodb::aql::pushDownLateMaterializationRule(
     OptimizerRule const& rule) {
   bool modified = false;
 
-  containers::SmallVector<ExecutionNode*, 8> indexes;
-  plan->findNodesOfType(indexes, EN::MATERIALIZE, /* enterSubqueries */ true);
+  // this rule depends crucially on the optimize-projections rule
+  if (!plan->isDisabledRule(
+          static_cast<int>(OptimizerRule::optimizeProjectionsRule))) {
+    containers::SmallVector<ExecutionNode*, 8> indexes;
+    plan->findNodesOfType(indexes, EN::MATERIALIZE, /* enterSubqueries */ true);
 
-  for (auto node : indexes) {
-    TRI_ASSERT(node->getType() == EN::MATERIALIZE);
-    auto matNode = dynamic_cast<materialize::MaterializeRocksDBNode*>(node);
-    if (matNode == nullptr) {
-      continue;  // search materialize requires more work
-    }
-
-    ExecutionNode* insertBefore = matNode->getFirstParent();
-
-    while (insertBefore != nullptr) {
-      LOG_RULE << "ATTEMPT MOVING PAST " << insertBefore->getTypeString() << "["
-               << insertBefore->id() << "]";
-      if (!canMovePastNode(plan.get(), matNode, insertBefore)) {
-        LOG_RULE << "NODE " << matNode->id() << " can not move past "
-                 << insertBefore->id() << " " << insertBefore->getTypeString();
-        break;
+    for (auto node : indexes) {
+      TRI_ASSERT(node->getType() == EN::MATERIALIZE);
+      auto matNode = dynamic_cast<materialize::MaterializeRocksDBNode*>(node);
+      if (matNode == nullptr) {
+        continue;  // search materialize requires more work
       }
-      insertBefore = insertBefore->getFirstParent();
-    }
 
-    if (insertBefore != matNode->getFirstParent()) {
-      plan->unlinkNode(matNode);
-      plan->insertBefore(insertBefore, matNode);
-    }
+      ExecutionNode* insertBefore = matNode->getFirstParent();
 
-    modified = true;
+      while (insertBefore != nullptr) {
+        LOG_RULE << "ATTEMPT MOVING PAST " << insertBefore->getTypeString()
+                 << "[" << insertBefore->id() << "]";
+        if (!canMovePastNode(plan.get(), matNode, insertBefore)) {
+          LOG_RULE << "NODE " << matNode->id() << " can not move past "
+                   << insertBefore->id() << " "
+                   << insertBefore->getTypeString();
+          break;
+        }
+        insertBefore = insertBefore->getFirstParent();
+      }
+
+      if (insertBefore != matNode->getFirstParent()) {
+        plan->unlinkNode(matNode);
+        plan->insertBefore(insertBefore, matNode);
+      }
+
+      modified = true;
+    }
   }
 
   opt->addPlan(std::move(plan), rule, modified);
@@ -233,28 +238,34 @@ void arangodb::aql::materializeIntoSeparateVariable(
     OptimizerRule const& rule) {
   bool modified = false;
 
-  containers::SmallVector<ExecutionNode*, 8> indexes;
-  plan->findNodesOfType(indexes, EN::MATERIALIZE, /* enterSubqueries */ true);
+  // this rule depends crucially on the optimize-projections rule
+  if (!plan->isDisabledRule(
+          static_cast<int>(OptimizerRule::optimizeProjectionsRule))) {
+    containers::SmallVector<ExecutionNode*, 8> indexes;
+    plan->findNodesOfType(indexes, EN::MATERIALIZE, /* enterSubqueries */ true);
 
-  for (auto node : indexes) {
-    TRI_ASSERT(node->getType() == EN::MATERIALIZE);
-    auto matNode = dynamic_cast<materialize::MaterializeRocksDBNode*>(node);
-    if (matNode == nullptr) {
-      continue;  // search materialize requires more work
+    for (auto node : indexes) {
+      TRI_ASSERT(node->getType() == EN::MATERIALIZE);
+      auto matNode = dynamic_cast<materialize::MaterializeRocksDBNode*>(node);
+      if (matNode == nullptr) {
+        continue;  // search materialize requires more work
+      }
+
+      // create a new output variable for the materialized document.
+      // this happens after the join rule. Otherwise, joins are not detected.
+      // A separate variable comes in handy when optimizing projections, because
+      // it allows to distinguish where the projections belongs to (Index or
+      // Mat).
+      auto newOutVariable =
+          plan->getAst()->variables()->createTemporaryVariable();
+      matNode->setDocOutVariable(*newOutVariable);
+
+      // replace every occurrence with this new variable
+      replaceVariableDownwards(
+          matNode->getFirstParent(),
+          {{matNode->oldDocVariable().id, newOutVariable}});
+      modified = true;
     }
-
-    // create a new output variable for the materialized document.
-    // this happens after the join rule. Otherwise, joins are not detected.
-    // A separate variable comes in handy when optimizing projections, because
-    // it allows to distinguish where the projections belongs to (Index or Mat).
-    auto newOutVariable =
-        plan->getAst()->variables()->createTemporaryVariable();
-    matNode->setDocOutVariable(*newOutVariable);
-
-    // replace every occurrence with this new variable
-    replaceVariableDownwards(matNode->getFirstParent(),
-                             {{matNode->oldDocVariable().id, newOutVariable}});
-    modified = true;
   }
 
   opt->addPlan(std::move(plan), rule, modified);

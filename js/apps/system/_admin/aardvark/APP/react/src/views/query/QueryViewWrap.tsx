@@ -28,13 +28,19 @@ export const QueryViewWrap = () => {
   );
 };
 
+const useNavbarHeight = () => {
+  // get the height of the navbar from id #navbar2
+  const navbar = document.getElementById("navbar2");
+  return navbar ? navbar.clientHeight : 60;
+};
 const QueryViewWrapInner = () => {
   const { queryGraphResult } = useQueryContext();
+  const navbarHeight = useNavbarHeight();
   if (queryGraphResult && queryGraphResult.result) {
     return <QueryFullGraphView />;
   }
   return (
-    <Box width="full" height="calc(100vh - 60px)" overflow="auto">
+    <Box width="full" height={`calc(100vh - ${navbarHeight}px)`} overflow="auto">
       <Tabs size="sm" height="full" isLazy>
         <TabList>
           <Tab>Editor</Tab>

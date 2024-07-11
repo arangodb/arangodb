@@ -303,9 +303,9 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
       // TODO: Why? Can we just skip this?
       if (VPackSlice resultsSlice = res.slice().get("results");
           resultsSlice.length() > 0) {
-        Result r =
-            ci.waitForPlan(resultsSlice[0].getNumber<uint64_t>()).waitAndGet();
-        if (r.fail()) {
+        if (auto r = ci.waitForPlan(resultsSlice[0].getNumber<uint64_t>())
+                         .waitAndGet();
+            r.fail()) {
           return r;
         }
 
@@ -361,13 +361,25 @@ Result impl(ClusterInfo& ci, ArangodServer& server,
               // We do not want to undo from here, cancel the guard
               undoCreationGuard.cancel();
 
-              // Wait for Plan to updated
-              // TODO: Why?
+              // Wait for ClusterInfo to catch up, so the Collection is actually
+              // visible after creation.
               if (resultsSlice = removeBuildingResult.slice().get("results");
                   resultsSlice.length() > 0) {
-                r = ci.waitForPlan(resultsSlice[0].getNumber<uint64_t>())
-                        .waitAndGet();
-                if (r.fail()) {
+                // wait for plan first
+                if (auto r =
+                        ci.waitForPlan(resultsSlice[0].getNumber<uint64_t>())
+                            .waitAndGet();
+                    r.fail()) {
+                  return r;
+                }
+                // get current raft index; this is at least as high as the one
+                // we just waited for in waitForPlan
+                auto& agencyCache =
+                    server.getFeature<ClusterFeature>().agencyCache();
+                auto const index = agencyCache.index();
+                // wait for cluster info/current to catch up as well
+                auto futCurrent = ci.waitForCurrent(index);
+                if (auto r = futCurrent.waitAndGet(); r.fail()) {
                   return r;
                 }
                 LOG_TOPIC("98764", DEBUG, Logger::CLUSTER)

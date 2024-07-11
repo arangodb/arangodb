@@ -53,7 +53,8 @@ class ConfigFeature final : public application_features::ApplicationFeature {
         }()},
         _file(configFilename),
         _progname(progname),
-        _checkConfiguration(false) {
+        _checkConfiguration(false),
+        _honorNsswitch(false) {
     static_assert(
         Server::template isCreatedAfter<ConfigFeature, VersionFeature>());
 
@@ -66,6 +67,8 @@ class ConfigFeature final : public application_features::ApplicationFeature {
   void loadOptions(std::shared_ptr<options::ProgramOptions>,
                    char const* binaryPath) override final;
 
+  void prepare() override final;
+
  private:
   void loadConfigFile(std::shared_ptr<options::ProgramOptions>,
                       std::string const& progname, char const* binaryPath);
@@ -75,6 +78,8 @@ class ConfigFeature final : public application_features::ApplicationFeature {
   std::string _progname;
   std::vector<std::string> _defines;
   bool _checkConfiguration;
+  bool _honorNsswitch;  // If this is set to true, the internal override is
+                        // deactivated.
 };
 
 }  // namespace arangodb

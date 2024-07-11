@@ -103,13 +103,17 @@ void AcceptorUnixDomain::close() {
                     // we cancel/close the acceptor, otherwise the
                     // handleError method would restart async_accept
                     // right away
-    _acceptor.close();
-    std::string path = static_cast<EndpointUnixDomain*>(_endpoint)->path();
-    if (basics::FileUtils::remove(path) != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC("56b89", TRACE, arangodb::Logger::FIXME)
-          << "unable to remove socket file '" << path << "'";
-    }
+    _ctx.io_context.wrap([this]() {
+      _acceptor.close();
+      std::string path = static_cast<EndpointUnixDomain*>(_endpoint)->path();
+      if (basics::FileUtils::remove(path) != TRI_ERROR_NO_ERROR) {
+        LOG_TOPIC("56b89", TRACE, arangodb::Logger::FIXME)
+            << "unable to remove socket file '" << path << "'";
+      }
+    });
   }
 }
 
-void AcceptorUnixDomain::cancel() { _acceptor.cancel(); }
+void AcceptorUnixDomain::cancel() {
+  _ctx.io_context.wrap([this]() { _acceptor.cancel(); });
+}

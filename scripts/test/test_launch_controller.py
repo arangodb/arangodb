@@ -48,9 +48,7 @@ def parse_arguments():
     )
     parser.add_argument("--extraArgs", help="", type=str)
     parser.add_argument("--suffix", help="", type=str)
-    parser.add_argument(
-        "--definitions", help="path to the test definitions file", type=str
-    )
+    parser.add_argument("--build", help="build folder", type=str)
     return parser.parse_args()
 
 
@@ -67,7 +65,13 @@ def main():
         if args.cluster:
             extra_args += ["--cluster", "true", "--dumpAgencyOnError", "true"]
         extra_args += ["--testBuckets", args.testBuckets]
-        runner = TestingRunner(SiteConfig(Path(args.definitions).resolve()))
+        base_source_dir = Path(".").resolve()
+        build_dir = (
+            Path(args.build).resolve()
+            if args.build is not None
+            else base_source_dir / "build"
+        )
+        runner = TestingRunner(SiteConfig(base_source_dir, build_dir))
         runner.scenarios.append(
             TestConfig(runner.cfg, name, suite, [*extra_args], 1, 1, [])
         )

@@ -54,16 +54,12 @@ add_library(arango_aql STATIC
   FixedVarExpressionContext.cpp
   Function.cpp
   Functions.cpp
-  GraphOptimizerRules.cpp
-  IResearchViewOptimizerRules.cpp
   InAndOutRowExpressionContext.cpp
   IndexHint.cpp
   IndexJoinStrategy.cpp
-  IndexNodeOptimizerRules.cpp
   InputAqlItemRow.cpp
   InsertModifier.cpp
   LateMaterializedExpressionContext.cpp
-  LateMaterializedOptimizerRulesCommon.cpp
   LazyConditions.cpp
   LimitStats.cpp
   ModificationExecutorFlags.h
@@ -74,15 +70,8 @@ add_library(arango_aql STATIC
   NonConstExpression.cpp
   NonConstExpressionContainer.cpp
   Optimizer.cpp
-  OptimizerRuleBatchMaterializeDocuments.cpp
-  OptimizerRulePropagateConstantAttributes.cpp
-  OptimizerRulePushDownLateMaterialization.cpp
-  OptimizerRuleReplaceEqualAttributeAccess.cpp
   OptimizerRules.cpp
-  OptimizerRulesCluster.cpp
   OptimizerRulesFeature.cpp
-  OptimizerRulesJoin.cpp
-  OptimizerRulesReplaceFunctions.cpp
   OptimizerUtils.cpp
   OutputAqlItemRow.cpp
   Parser.cpp

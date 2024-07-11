@@ -90,6 +90,53 @@ function ahuacatlFailureSuite () {
         idx = null;
       }
     },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test error during plan serialization
+////////////////////////////////////////////////////////////////////////////////
+    
+    testProfileSerialization : function () {
+      ["Query::serializePlans1", "Query::serializePlans2"].forEach((where) => {
+        internal.debugClearFailAt();
+        internal.debugSetFailAt(where);
+
+        try {
+          db._profileQuery(`FOR doc IN ${cn} FILTER doc._key == 'test' RETURN doc`);
+          fail();
+        } catch (err) {
+          assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
+        }
+      });
+    },
+
+    testPlanSerialization : function () {
+      ["Query::serializePlans1", "Query::serializePlans2"].forEach((where) => {
+        internal.debugClearFailAt();
+        internal.debugSetFailAt(where);
+
+        try {
+          db._explain(`FOR doc IN ${cn} FILTER doc._key == 'test' RETURN doc`);
+          fail();
+        } catch (err) {
+          assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
+        }
+      });
+    },
+    
+    testAllPlansSerialization : function () {
+      ["Query::serializePlans1", "Query::serializePlans2"].forEach((where) => {
+        internal.debugClearFailAt();
+        internal.debugSetFailAt(where);
+
+        try {
+          db._explain(`FOR doc IN ${cn} FILTER doc._key == 'test' RETURN doc`, null, {allPlans: true});
+          fail();
+        } catch (err) {
+          assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
+        }
+      });
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test UNION for memleaks
 ////////////////////////////////////////////////////////////////////////////////

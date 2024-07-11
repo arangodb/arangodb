@@ -25,7 +25,7 @@
 
 #include <velocypack/Iterator.h>
 
-#include "Aql/OptimizerRulesFeature.h"
+#include "Aql/OptimizerRule.h"
 #include "IResearch/IResearchLink.h"
 #include "IResearch/IResearchLinkHelper.h"
 #include "IResearch/IResearchView.h"
@@ -347,7 +347,9 @@ $0}}})",
     velocypack::Builder builder;
 
     builder.openObject();
-    view->properties(builder, LogicalDataSource::Serialization::Properties);
+    auto res =
+        view->properties(builder, LogicalDataSource::Serialization::Properties);
+    ASSERT_TRUE(res.ok());
     builder.close();
 
     auto slice = builder.slice();

@@ -42,7 +42,7 @@ ENV COMPILER_VERSION 13
 ENV CLANG_VERSION 16
 
 RUN apt-get update --fix-missing && \
-    apt-get install -y software-properties-common && \
+    apt-get install -y software-properties-common net-tools && \
     apt-get update && \
     apt-get upgrade -y
 

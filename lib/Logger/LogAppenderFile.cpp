@@ -131,10 +131,8 @@ std::shared_ptr<LogAppenderFile> LogAppenderFileFactory::getFileAppender(
   int fd = TRI_CREATE(filename.c_str(),
                       O_APPEND | O_CREAT | O_WRONLY | TRI_O_CLOEXEC, _fileMode);
   if (fd < 0) {
-    TRI_ERRORBUF;
-    TRI_SYSTEM_ERROR();
     std::cerr << "cannot write to file '" << filename
-              << "': " << TRI_GET_ERRORBUF << std::endl;
+              << "': " << TRI_LAST_ERROR_STR << std::endl;
 
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CANNOT_WRITE_FILE);
   }

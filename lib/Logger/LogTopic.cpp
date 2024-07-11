@@ -135,7 +135,6 @@ LogTopic Logger::HTTPCLIENT("httpclient", LogLevel::WARN);
 LogTopic Logger::LICENSE("license", LogLevel::INFO);
 LogTopic Logger::MAINTENANCE("maintenance", LogLevel::INFO);
 LogTopic Logger::MEMORY("memory", LogLevel::INFO);
-LogTopic Logger::MMAP("mmap");
 LogTopic Logger::QUERIES("queries", LogLevel::INFO);
 LogTopic Logger::REPLICATION("replication", LogLevel::INFO);
 LogTopic Logger::REPLICATION2("replication2", LogLevel::WARN);

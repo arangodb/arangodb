@@ -24,9 +24,8 @@
 #include "EvenDistribution.h"
 
 #include "Basics/debugging.h"
-#include "CrashHandler/CrashHandler.h"
-#include "Logger/LogMacros.h"
 #include "Inspection/Format.h"
+#include "Logger/LogMacros.h"
 
 #include <numeric>
 #include <random>

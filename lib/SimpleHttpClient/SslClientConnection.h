@@ -69,6 +69,10 @@ class SslClientConnection final : public GeneralClientConnection {
 
   uint64_t sslProtocol() const { return _sslProtocol; }
 
+  void setVerifyCertificates(bool value) { _verifyCertificates = value; }
+
+  void setVerifyDepth(int value) { _verifyDepth = value; }
+
  protected:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief internal initialization method, called from ctor
@@ -131,6 +135,10 @@ class SslClientConnection final : public GeneralClientConnection {
   //////////////////////////////////////////////////////////////////////////////
 
   int _socketFlags;
+
+  int _verifyDepth;
+
+  bool _verifyCertificates;
 };
 }  // namespace httpclient
 }  // namespace arangodb

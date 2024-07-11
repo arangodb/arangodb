@@ -878,6 +878,9 @@ void HeartbeatThread::beginShutdown() {
       }
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
+    // otherwise FATAL_ERROR_EXIT
+    TRI_ASSERT(!_maintenanceThread->isRunning());
+    _maintenanceThread->shutdown();
   }
 
   // And now the heartbeat thread:

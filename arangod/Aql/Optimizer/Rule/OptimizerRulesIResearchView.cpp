@@ -22,8 +22,6 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "IResearchViewOptimizerRules.h"
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Ast.h"
@@ -44,6 +42,7 @@
 #include "Aql/Expression.h"
 #include "Aql/Function.h"
 #include "Aql/Optimizer.h"
+#include "Aql/Optimizer/Rule/OptimizerRulesIResearchView.h"
 #include "Aql/OptimizerRule.h"
 #include "Aql/Projections.h"
 #include "Aql/Query.h"
