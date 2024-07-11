@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertFalse, assertTrue */
+/* global runSetup assertEqual, assertFalse, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -31,9 +31,9 @@ const jsunity = require('jsunity');
 const fs = require('fs');
 const cn = "UnitTestCollection";
 
-function runSetup() {
+if (runSetup === true) {
   'use strict';
-  internal.debugClearFailAt();
+  global.instanceManager.debugClearFailAt();
 
   db._drop(cn);
   let c = db._create(cn);
@@ -48,7 +48,7 @@ function runSetup() {
   }
 
   db._query(`FOR doc IN ${cn} SORT doc.value1 ASC RETURN doc`, null, {spillOverThresholdNumRows: 5000, stream: true});
-  internal.debugTerminate('crashing server');
+  return global.instanceManager.debugTerminate('crashing server');
 }
 
 function recoverySuite() {
@@ -68,13 +68,5 @@ function recoverySuite() {
   };
 }
 
-function main(argv) {
-  'use strict';
-  if (argv[1] === 'setup') {
-    runSetup();
-    return 0;
-  } else {
-    jsunity.run(recoverySuite);
-    return jsunity.writeDone().status ? 0 : 1;
-  }
-}
+jsunity.run(recoverySuite);
+return jsunity.done();

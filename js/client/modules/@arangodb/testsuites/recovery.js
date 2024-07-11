@@ -186,6 +186,8 @@ function runArangodRecovery (params, useEncryption, isKillAfterSetup = true) {
     }
   } catch (ex) {
     print(`${RED}test '${params.script} failed to parse: - ${ex}${RESET}`);
+    params.instanceManager.shutdownInstance(false);
+    params.instanceManager.destructor(false);
     return {
       status: false,
       message: "test doesn't parse! '" + params.script + "' - " + ex.message || String(ex),

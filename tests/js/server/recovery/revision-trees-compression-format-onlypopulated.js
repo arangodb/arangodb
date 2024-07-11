@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertFalse, assertTrue */
+/* global runSetup assertEqual, assertFalse, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -34,10 +34,10 @@ const colName2 = 'UnitTestsRecovery2';
 const colName3 = 'UnitTestsRecovery3';
 const colName4 = 'UnitTestsRecovery4';
 
-function runSetup () {
+if (runSetup === true) {
   'use strict';
-  internal.debugSetFailAt("MerkleTree::serializeOnlyPopulated");
-  internal.debugSetFailAt("applyUpdates::forceHibernation2");
+  global.instanceManager.debugSetFailAt("MerkleTree::serializeOnlyPopulated");
+  global.instanceManager.debugSetFailAt("applyUpdates::forceHibernation2");
 
   let c = db._create(colName1);
 
@@ -98,7 +98,7 @@ function runSetup () {
     
   c.insert({ _key: 'crashme' }, true);
 
-  internal.debugTerminate('crashing server');
+  return global.instanceManager.debugTerminate('crashing server');
 }
 
 function recoverySuite () {
@@ -111,7 +111,7 @@ function recoverySuite () {
     },
 
     testRevisionTreeCompression: function() {
-      internal.debugSetFailAt("MerkleTree::serializeOnlyPopulated");
+      global.instanceManager.debugSetFailAt("MerkleTree::serializeOnlyPopulated");
 
       const c1 = db._collection(colName1);
       assertEqual(c1._revisionTreeSummary().count, c1.count());
@@ -148,13 +148,5 @@ function recoverySuite () {
   };
 }
 
-function main (argv) {
-  'use strict';
-  if (argv[1] === 'setup') {
-    runSetup();
-    return 0;
-  } else {
-    jsunity.run(recoverySuite);
-    return jsunity.writeDone().status ? 0 : 1;
-  }
-}
+jsunity.run(recoverySuite);
+return jsunity.done();
