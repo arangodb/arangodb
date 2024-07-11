@@ -1,6 +1,10 @@
 devel
 -----
 
+* Add optimizer rule `push-limit-into-index` that pushes a limit down
+  into index iteration and can optimize the query execution when compound
+  index is used along with SORT and LIMIT clauses.
+
 * Remove unused "mmap" log topic.
 
 * Support array and object destructuring for FOR loops that refer to simple
