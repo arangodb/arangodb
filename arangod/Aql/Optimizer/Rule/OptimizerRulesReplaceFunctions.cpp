@@ -161,8 +161,8 @@ AstNode* createSubqueryWithLimit(ExecutionPlan* plan, ExecutionNode* node,
   auto* ast = plan->getAst();
 
   /// singleton
-  ExecutionNode* eSingleton =
-      plan->createNode<SingletonNode>(plan, plan->nextId());
+  ExecutionNode* eSingleton = plan->createNode<SingletonNode>(
+      plan, plan->nextId(), ast->bindParameterVariables());
 
   /// return
   /// link output of index with the return node
@@ -327,7 +327,8 @@ AstNode* replaceNearOrWithin(AstNode* funAstNode, ExecutionNode* calcNode,
   ExecutionNode* eSortOrFilter = nullptr;
   if (isNear) {
     // use calculation node in sort node
-    SortElementVector sortElements{SortElement{calcOutVariable, /*asc*/ true}};
+    SortElementVector sortElements;
+    sortElements.push_back(SortElement::create(calcOutVariable, /*asc*/ true));
     eSortOrFilter =
         plan->createNode<SortNode>(plan, plan->nextId(), sortElements, false);
   } else {

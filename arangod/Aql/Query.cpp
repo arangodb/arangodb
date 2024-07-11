@@ -391,17 +391,26 @@ void Query::prepareQuery() {
           /*verbose*/ false, /*includeInternals*/ false,
           /*explainRegisters*/ false);
       _planSliceCopy = std::make_unique<VPackBufferUInt8>();
-      VPackBuilder b(*_planSliceCopy);
-      plan->toVelocyPack(b, flags, serializeQueryData);
-
       try {
+        VPackBuilder b(*_planSliceCopy);
+        plan->toVelocyPack(b, flags, serializeQueryData);
+
+        TRI_IF_FAILURE("Query::serializePlans1") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
         _resourceMonitor->increaseMemoryUsage(_planSliceCopy->size());
-      } catch (...) {
+      } catch (std::exception const& ex) {
         // must clear _planSliceCopy here so that the destructor of
         // Query doesn't subtract the memory used by _planSliceCopy
         // without us having it tracked properly here.
         _planSliceCopy.reset();
+        LOG_TOPIC("006c7", ERR, Logger::QUERIES)
+            << "unable to convert execution plan to vpack: " << ex.what();
         throw;
+      }
+
+      TRI_IF_FAILURE("Query::serializePlans2") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
     }
 
@@ -459,9 +468,6 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   // doc.@attr).
   _ast->injectBindParametersFirstStage(_bindParameters, this->resolver());
 
-  // put in value bind parameters. TODO: move this further down in the process,
-  // so that the optimizer can run with value bind parameters still unreplaced
-  // in the AST.
   _ast->injectBindParametersSecondStage(_bindParameters);
 
   if (parser.ast()->containsUpsertNode()) {
@@ -555,7 +561,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
         if (useQueryCache) {
           // check the query cache for an existing result
           auto cacheEntry = QueryCache::instance()->lookup(
-              &_vocbase, hash(), _queryString, bindParameters());
+              &_vocbase, hash(), _queryString, bindParametersAsBuilder());
 
           if (cacheEntry != nullptr) {
             if (cacheEntry->currentUserHasPermissions()) {
@@ -678,7 +684,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
 
           // create a query cache entry for later storage
           _cacheEntry = std::make_unique<QueryCacheResultEntry>(
-              hash(), _queryString, queryResult.data, bindParameters(),
+              hash(), _queryString, queryResult.data, bindParametersAsBuilder(),
               std::move(dataSources)  // query DataSources
           );
         }
@@ -782,7 +788,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
     if (useQueryCache) {
       // check the query cache for an existing result
       auto cacheEntry = QueryCache::instance()->lookup(
-          &_vocbase, hash(), _queryString, bindParameters());
+          &_vocbase, hash(), _queryString, bindParametersAsBuilder());
 
       if (cacheEntry != nullptr) {
         if (cacheEntry->currentUserHasPermissions()) {
@@ -925,7 +931,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
 
       // create a cache entry for later usage
       _cacheEntry = std::make_unique<QueryCacheResultEntry>(
-          hash(), _queryString, builder, bindParameters(),
+          hash(), _queryString, builder, bindParametersAsBuilder(),
           std::move(dataSources)  // query DataSources
       );
     }
@@ -1071,7 +1077,7 @@ QueryResult Query::explain() {
     // put in bind parameters
     parser.ast()->injectBindParametersFirstStage(_bindParameters,
                                                  this->resolver());
-    parser.ast()->injectBindParametersSecondStage(_bindParameters);
+    _ast->injectBindParametersSecondStage(_bindParameters);
     _bindParameters.validateAllUsed();
 
     // optimize and validate the ast
@@ -1138,16 +1144,32 @@ QueryResult Query::explain() {
     options.buildUnindexedArrays = true;
     result.data = std::make_shared<VPackBuilder>(&options);
 
+    ResourceUsageScope scope(*_resourceMonitor);
+
     if (_queryOptions.allPlans) {
       VPackArrayBuilder guard(result.data.get());
 
+      size_t previousSize = result.data->bufferRef().byteSize();
       auto const& plans = opt.getPlans();
       for (auto& it : plans) {
         auto& pln = it.first;
         TRI_ASSERT(pln != nullptr);
 
         preparePlanForSerialization(pln);
+
         pln->toVelocyPack(*result.data, flags, serializeQueryData);
+        TRI_IF_FAILURE("Query::serializePlans1") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+
+        // memory accounting for different execution plans
+        size_t currentSize = result.data->bufferRef().byteSize();
+        scope.increase(currentSize - previousSize);
+        previousSize = currentSize;
+
+        TRI_IF_FAILURE("Query::serializePlans2") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
       }
       // cachability not available here
       result.cached = false;
@@ -1159,10 +1181,23 @@ QueryResult Query::explain() {
       preparePlanForSerialization(bestPlan);
       bestPlan->toVelocyPack(*result.data, flags, serializeQueryData);
 
+      TRI_IF_FAILURE("Query::serializePlans1") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+
+      scope.increase(result.data->bufferRef().byteSize());
+
+      TRI_IF_FAILURE("Query::serializePlans2") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+
       // cachability
       result.cached = (!_queryString.empty() && !isModificationQuery() &&
                        _warnings.empty() && _ast->root()->isCacheable());
     }
+
+    // the query object no owns the memory used by the plan(s)
+    _planMemoryUsage += scope.trackedAndSteal();
 
     // technically no need to commit, as we are only explaining here
     auto commitResult = _trx->commit();
@@ -1181,7 +1216,7 @@ QueryResult Query::explain() {
         // optimizer statistics
         ensureExecutionTime();
         VPackObjectBuilder guard(&b, /*unindexed*/ true);
-        opt._stats.toVelocyPack(b);
+        opt.toVelocyPack(b);
         b.add("peakMemoryUsage", VPackValue(_resourceMonitor->peak()));
         b.add("executionTime", VPackValue(executionTime()));
       }
@@ -1350,7 +1385,12 @@ void Query::init(bool createProfile) {
   enterState(QueryExecutionState::ValueType::INITIALIZATION);
 
   TRI_ASSERT(_ast == nullptr);
-  _ast = std::make_unique<Ast>(*this);
+  AstPropertiesFlagsType flags = AstPropertyFlag::AST_FLAG_DEFAULT;
+  // Create a plan that can be executed with different sets of bind parameters.
+  if (_queryOptions.optimizePlanForCaching) {
+    flags |= AstPropertyFlag::NON_CONST_PARAMETERS;
+  }
+  _ast = std::make_unique<Ast>(*this, flags);
 }
 
 void Query::registerQueryInTransactionState() {
@@ -1461,7 +1501,7 @@ std::string Query::extractQueryString(size_t maxLength, bool show) const {
 
 void Query::stringifyBindParameters(std::string& out, std::string_view prefix,
                                     size_t maxLength) const {
-  auto bp = bindParameters();
+  auto bp = bindParametersAsBuilder();
   if (bp != nullptr && !bp->slice().isNone() && maxLength >= 3) {
     // append prefix, e.g. "bind parameters: "
     out.append(prefix);

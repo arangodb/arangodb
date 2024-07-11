@@ -233,10 +233,7 @@ IndexHint::IndexHint(QueryContext& query, AstNode const* node, bool hasLevels) {
 }
 
 IndexHint::IndexHint(velocypack::Slice slice) {
-  // read index hint from slice
-  // index hints were introduced in version 3.5. in previous versions they
-  // are not available, so we need to be careful when reading them
-  std::string_view type;
+  std::string_view type{kTypeNone};
 
   VPackSlice s = slice.get(kFieldContainer);
   if (s.isObject()) {
@@ -246,51 +243,48 @@ IndexHint::IndexHint(velocypack::Slice slice) {
     _waitForSync = basics::VelocyPackHelper::getBooleanValue(
         s, StaticStrings::WaitForSyncString, false);
 
-    type = basics::VelocyPackHelper::getStringValue(s, kFieldType, "");
+    type = basics::VelocyPackHelper::getStringView(s, kFieldType, type);
   }
 
-  if (type != kTypeNone) {
-    TRI_ASSERT(s.isObject());
+  if (type == kTypeNone) {
+    // no index hint specified
+    _hint = NoContents{};
+  } else if (type == kTypeSimple) {
+    // deserialize simple index hint
+    _hint = SimpleContents{};
+    VPackSlice hintSlice = s.get(kFieldHint);
+    TRI_ASSERT(hintSlice.isArray());
+    for (auto index : VPackArrayIterator(hintSlice)) {
+      TRI_ASSERT(index.isString());
+      std::get<SimpleContents>(_hint).emplace_back(index.copyString());
+    }
+  } else if (type == kTypeNested) {
+    // deserialize bested index hint
+    _hint = NestedContents{};
+    VPackSlice hintSlice = s.get(kFieldHint);
+    TRI_ASSERT(hintSlice.isObject());
+    for (auto collection : VPackObjectIterator(hintSlice)) {
+      TRI_ASSERT(collection.value.isObject());
+      for (auto direction : VPackObjectIterator(collection.value)) {
+        TRI_ASSERT(direction.value.isObject());
+        for (auto level : VPackObjectIterator(direction.value)) {
+          std::string_view key = level.key.stringView();
 
-    if (type == kTypeNone) {
-      _hint = NoContents{};
-    } else if (type == kTypeSimple) {
-      // deserialize simple index hint
-      _hint = SimpleContents{};
-      VPackSlice hintSlice = s.get(kFieldHint);
-      TRI_ASSERT(hintSlice.isArray());
-      for (auto index : VPackArrayIterator(hintSlice)) {
-        TRI_ASSERT(index.isString());
-        std::get<SimpleContents>(_hint).emplace_back(index.copyString());
-      }
-    } else if (type == kTypeNested) {
-      // deserialize bested index hint
-      _hint = NestedContents{};
-      VPackSlice hintSlice = s.get(kFieldHint);
-      TRI_ASSERT(hintSlice.isObject());
-      for (auto collection : VPackObjectIterator(hintSlice)) {
-        TRI_ASSERT(collection.value.isObject());
-        for (auto direction : VPackObjectIterator(collection.value)) {
-          TRI_ASSERT(direction.value.isObject());
-          for (auto level : VPackObjectIterator(direction.value)) {
-            std::string_view key = level.key.stringView();
+          auto [levelId, valid] = getDepth(key);
+          TRI_ASSERT(valid);
 
-            auto [levelId, valid] = getDepth(key);
-            TRI_ASSERT(valid);
-
-            auto& ref = std::get<NestedContents>(
-                _hint)[collection.key.stringView()][direction.key.stringView()];
-            TRI_ASSERT(level.value.isArray());
-            for (auto index : VPackArrayIterator(level.value)) {
-              TRI_ASSERT(index.isString());
-              ref[levelId].emplace_back(index.copyString());
-            }
+          auto& ref = std::get<NestedContents>(
+              _hint)[collection.key.stringView()][direction.key.stringView()];
+          TRI_ASSERT(level.value.isArray());
+          for (auto index : VPackArrayIterator(level.value)) {
+            TRI_ASSERT(index.isString());
+            ref[levelId].emplace_back(index.copyString());
           }
         }
       }
-    } else if (type == kTypeDisabled) {
-      _hint = Disabled{};
     }
+  } else if (type == kTypeDisabled) {
+    _hint = Disabled{};
   }
 }
 
@@ -368,6 +362,7 @@ void IndexHint::toVelocyPack(VPackBuilder& builder) const {
           } else {
             builder.add(VPackValue(std::to_string(level.first)));
           }
+          VPackArrayBuilder hintGuard(&builder);
           indexesToVelocyPack(builder, level.second);
         }
         builder.close();

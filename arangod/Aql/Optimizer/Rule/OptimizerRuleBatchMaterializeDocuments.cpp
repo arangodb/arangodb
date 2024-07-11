@@ -67,6 +67,7 @@ void arangodb::aql::batchMaterializeDocumentsRule(
     Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     OptimizerRule const& rule) {
   bool modified = false;
+
   containers::SmallVector<ExecutionNode*, 8> indexes;
   plan->findNodesOfType(indexes, EN::INDEX, /* enterSubqueries */ true);
 

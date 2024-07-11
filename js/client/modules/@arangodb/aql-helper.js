@@ -118,7 +118,7 @@ function getQueryExplanation (query, bindVars) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function getModifyQueryResults (query, bindVars, options = {}) {
-  return  db._createStatement({query, bindVars, options}).execute().getExtra().stats;
+  return db._createStatement({query, bindVars, options}).execute().getExtra().stats;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -134,8 +134,8 @@ function getModifyQueryResultsRaw (query, bindVars, options = {}) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function getRawQueryResults (query, bindVars, options = {}) {
-  var finalOptions = Object.assign({ count: true, batchSize: 3000 }, options);
-  var queryResult = db._query(query, bindVars, finalOptions);
+  let finalOptions = Object.assign({ count: true, batchSize: 3000 }, options);
+  let queryResult = db._query(query, bindVars, finalOptions);
   return queryResult.toArray();
 }
 
@@ -165,6 +165,7 @@ function assertQueryError (errorCode, query, bindVars, options = {}) {
     fail();
   } catch (e) {
     assertFalse(e === "fail", "no exception thrown by query");
+    assertFalse(e === "fail(): invoked without message", "no exception thrown by query");
     assertTrue(e.errorNum !== undefined, 'unexpected error format while calling [' + query + ']');
     assertEqual(errorCode, e.errorNum, 'unexpected error code (' + e.errorMessage +
       " while executing: '" + query + "' expecting: " + errorCode + '): ');
@@ -176,9 +177,10 @@ function assertQueryError (errorCode, query, bindVars, options = {}) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function assertQueryWarningAndNull (errorCode, query, bindVars) {
-  var result = db._query(query, bindVars).data, i, found = { };
+  let result = db._query(query, bindVars).data;
+  let found = {};
 
-  for (i = 0; i < result.extra.warnings.length; ++i) {
+  for (let i = 0; i < result.extra.warnings.length; ++i) {
     found[result.extra.warnings[i].code] = true;
   }
 

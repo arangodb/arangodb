@@ -72,6 +72,82 @@ void Aqlerror(YYLTYPE* locp,
 
 namespace {
 
+// forward declaration
+void destructureObject(Parser* parser, std::string_view sourceVariable, 
+                       arangodb::containers::SmallVector<AstNode const*, 8>& paths, AstNode const* array);
+
+void destructureArray(Parser* parser, std::string_view sourceVariable, 
+                      arangodb::containers::SmallVector<AstNode const*, 8>& paths, AstNode const* array) {
+  int64_t index = 0;
+  size_t const n = array->numMembers();
+
+  for (size_t i = 0; i < n; ++i) {
+    auto member = array->getMember(i);
+    
+    if (member->type == NODE_TYPE_ARRAY) {
+      // array value => recurse
+      AstNode* indexNode = parser->ast()->createNodeValueInt(index);
+      paths.emplace_back(indexNode);
+ 
+      int64_t tag = member->getIntValue(true);
+      if (tag == 1) {
+        destructureArray(parser, sourceVariable, paths, member);
+      } else {
+        destructureObject(parser, sourceVariable, paths, member);
+      }
+
+      paths.pop_back();
+    } else if (member->type == NODE_TYPE_VARIABLE) {
+      // an actual variable assignment. we need to do something!
+      AstNode* indexNode = parser->ast()->createNodeValueInt(index);
+      paths.emplace_back(indexNode);
+
+      AstNode const* accessor = parser->ast()->createNodeReference(sourceVariable);
+      for (auto const& it : paths) {
+        accessor = parser->ast()->createNodeIndexedAccess(accessor, it);
+      }
+      AstNode* node = parser->ast()->createNodeLet(member, accessor);
+      parser->ast()->addOperation(node);
+      
+      paths.pop_back();
+    }
+
+    ++index;
+  }
+}
+
+void destructureObject(Parser* parser, std::string_view sourceVariable, 
+                       arangodb::containers::SmallVector<AstNode const*, 8>& paths, AstNode const* array) {
+  size_t const n = array->numMembers();
+  
+  for (size_t i = 0; i < n; i += 2) {
+    auto member = array->getMember(i);
+    
+    if (member->isStringValue()) {
+      AstNode const* assigned = array->getMember(i + 1);
+      
+      paths.emplace_back(member);
+      if (assigned->type == NODE_TYPE_ARRAY) {
+        // need to recurse
+        int64_t tag = assigned->getIntValue(true);
+        if (tag == 1) {
+          destructureArray(parser, sourceVariable, paths, assigned);
+        } else {
+          destructureObject(parser, sourceVariable, paths, assigned);
+        }
+      } else if (assigned->type == NODE_TYPE_VARIABLE) {
+        AstNode* accessor = parser->ast()->createNodeReference(sourceVariable);
+        for (auto const& it : paths) {
+          accessor = parser->ast()->createNodeIndexedAccess(accessor, it);
+        }
+        AstNode* node = parser->ast()->createNodeLet(assigned, accessor);
+        parser->ast()->addOperation(node);
+      }
+      paths.pop_back();
+    }
+  }
+}
+
 bool caseInsensitiveEqual(std::string_view lhs, std::string_view rhs) noexcept {
   return std::equal(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(), [](char l, char r) {
     return arangodb::basics::StringUtils::tolower(l) == arangodb::basics::StringUtils::tolower(r);
@@ -129,16 +205,31 @@ AstNode* buildShortestPathInfo(Parser* parser,
   return infoNode;
 }
 
-void checkOutVariables(Parser* parser,
-                       AstNode const* variableNamesNode,
-                       size_t minVariables, size_t maxVariables,
-                       char const* errorMessage,
-                       YYLTYPE const& yyloc) {
+void validateForOutVariables(Parser* parser,
+                             AstNode const* variableNamesNode,
+                             size_t minVariables, size_t maxVariables,
+                             bool allowDestructuring,
+                             std::string_view nodeType,
+                             YYLTYPE const& yyloc) {
   TRI_ASSERT(variableNamesNode != nullptr);
-  TRI_ASSERT(variableNamesNode->type == NODE_TYPE_ARRAY);
-  if (variableNamesNode->numMembers() < minVariables ||
-      variableNamesNode->numMembers() > maxVariables) {
-    parser->registerParseError(TRI_ERROR_QUERY_PARSE, errorMessage, yyloc.first_line, yyloc.first_column);
+  TRI_ASSERT(variableNamesNode->type == NODE_TYPE_ARRAY ||
+             variableNamesNode->type == NODE_TYPE_DESTRUCTURING);
+
+  if (variableNamesNode->type == NODE_TYPE_DESTRUCTURING) {
+    // array/object destructuring
+    TRI_ASSERT(variableNamesNode->numMembers() == 1);
+    if (!allowDestructuring) {
+      parser->registerParseError(TRI_ERROR_QUERY_PARSE, absl::StrCat(nodeType, " does not support array/object destructuring"), yyloc.first_line, yyloc.first_column);
+    }
+  } else {
+    if (variableNamesNode->numMembers() < minVariables ||
+        variableNamesNode->numMembers() > maxVariables) {
+      if (maxVariables == 1) {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, absl::StrCat(nodeType, " should only have a single output variable"), yyloc.first_line, yyloc.first_column);
+      } else {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, absl::StrCat(nodeType, " should have between ", minVariables, " and ", maxVariables, " output variables"), yyloc.first_line, yyloc.first_column);
+      }
+    }
   }
 }
 
@@ -489,6 +580,8 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %type <node> T_DOUBLE
 %type <strval> T_PARAMETER;
 %type <strval> T_DATA_SOURCE_PARAMETER;
+%type <node> array_destructuring;
+%type <node> object_destructuring;
 %type <strval> T_OUTBOUND;
 %type <strval> T_INBOUND;
 %type <strval> T_ANY;
@@ -706,6 +799,12 @@ for_output_variables:
     more_output_variables {
       $$ = parser->popArray();
     }
+  | array_destructuring {
+      $$ = parser->ast()->createNodeDestructuring($1, /*isObject*/ false);
+    }
+  | object_destructuring {
+      $$ = parser->ast()->createNodeDestructuring($1, /*isObject*/ true);
+    }
   ;
 
 prune_and_options:
@@ -805,15 +904,23 @@ all_shortest_paths_graph_info:
 for_statement:
     T_FOR for_output_variables T_IN expression {
       AstNode* variablesNode = static_cast<AstNode*>($2);
-      ::checkOutVariables(parser, variablesNode, 1, 1, "Collections and views FOR loops only allow a single return variable", yyloc);
-      parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
-      // now create an out variable for the FOR statement
-      // this prepares us to handle the optional SEARCH condition, which may
-      // or may not refer to the FOR's variable
-      AstNode* variableNameNode = variablesNode->getMemberUnchecked(0);
-      TRI_ASSERT(variableNameNode->isStringValue());
-      AstNode* variableNode = parser->ast()->createNodeVariable(variableNameNode->getStringView(), true);
-      parser->pushStack(variableNode);
+      ::validateForOutVariables(parser, variablesNode, 1, 1, /*allowDestructuring*/ true, "Collections and views FOR loops", yyloc);
+      if (variablesNode->type == NODE_TYPE_ARRAY) {
+        parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
+        
+        // now create an out variable for the FOR statement
+        // this prepares us to handle the optional SEARCH condition, which may
+        // or may not refer to the FOR's variable
+        AstNode* variableNameNode = variablesNode->getMemberUnchecked(0);
+        TRI_ASSERT(variableNameNode->isStringValue());
+        AstNode* variableNode = parser->ast()->createNodeVariable(variableNameNode->getStringView(), true);
+        parser->pushStack(variableNode);
+      } else {
+        TRI_ASSERT(variablesNode->type == NODE_TYPE_DESTRUCTURING);
+        parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
+      
+        parser->pushStack(variablesNode);
+      }
       
       // we are temporarily forcing all conditionals to be inlined, just for
       // evaluating a potential SEARCH condition, which must remain a single
@@ -823,48 +930,95 @@ for_statement:
       parser->lazyConditions().popForceInline();
 
       // now we can handle the optional SEARCH condition and OPTIONS.
-      AstNode* variableNode = static_cast<AstNode*>(parser->popStack());
+      AstNode* variablesNode = static_cast<AstNode*>(parser->popStack());
+        
+      TRI_ASSERT(variablesNode != nullptr);
+      if (variablesNode->type == NODE_TYPE_VARIABLE) {
+        Variable* variable = static_cast<Variable*>(variablesNode->getData());
 
-      Variable* variable = static_cast<Variable*>(variableNode->getData());
+        AstNode* node = nullptr;
+        AstNode* search = nullptr;
+        AstNode* options = nullptr;
 
-      AstNode* node = nullptr;
-      AstNode* search = nullptr;
-      AstNode* options = nullptr;
+        if ($6 != nullptr) {
+          // we got a SEARCH and/or OPTIONS clause
+          TRI_ASSERT($6->type == NODE_TYPE_ARRAY);
+          TRI_ASSERT($6->numMembers() == 2);
 
-      if ($6 != nullptr) {
-        // we got a SEARCH and/or OPTIONS clause
-        TRI_ASSERT($6->type == NODE_TYPE_ARRAY);
-        TRI_ASSERT($6->numMembers() == 2);
-
-        search = $6->getMemberUnchecked(0);
-        if (search->type == NODE_TYPE_NOP) {
-          search = nullptr;
+          search = $6->getMemberUnchecked(0);
+          if (search->type == NODE_TYPE_NOP) {
+            search = nullptr;
+          }
+          options = $6->getMemberUnchecked(1);
+          if (options->type == NODE_TYPE_NOP) {
+            options = nullptr;
+          }
         }
-        options = $6->getMemberUnchecked(1);
-        if (options->type == NODE_TYPE_NOP) {
-          options = nullptr;
-        }
-      }
 
-      if (search != nullptr) {
-        // we got a SEARCH clause. this is always a view.
-        node = parser->ast()->createNodeForView(variable, $4, search, options);
+        if (search != nullptr) {
+          // we got a SEARCH clause. this is always a view.
+          node = parser->ast()->createNodeForView(variable, $4, search, options);
 
-        if ($4->type != NODE_TYPE_PARAMETER_DATASOURCE &&
-            $4->type != NODE_TYPE_VIEW &&
-            $4->type != NODE_TYPE_COLLECTION) {
-          parser->registerParseError(TRI_ERROR_QUERY_PARSE, "SEARCH condition used on non-view", yylloc.first_line, yylloc.first_column);
+          if ($4->type != NODE_TYPE_PARAMETER_DATASOURCE &&
+              $4->type != NODE_TYPE_VIEW &&
+              $4->type != NODE_TYPE_COLLECTION) {
+            parser->registerParseError(TRI_ERROR_QUERY_PARSE, "SEARCH condition used on non-view", yylloc.first_line, yylloc.first_column);
+          }
+        } else {
+          node = parser->ast()->createNodeFor(variable, $4, options);
         }
+      
+        parser->ast()->addOperation(node);
       } else {
-        node = parser->ast()->createNodeFor(variable, $4, options);
-      }
+        TRI_ASSERT(variablesNode->type == NODE_TYPE_DESTRUCTURING);
+        
+        // create a temporary output variable
+        std::string nextName = parser->ast()->variables()->nextName();
+        AstNode* variableNode = parser->ast()->createNodeVariable(nextName, false);
+        Variable* variable = static_cast<Variable*>(variableNode->getData());
+        
+        AstNode* search = nullptr;
+        AstNode* options = nullptr;
 
-      parser->ast()->addOperation(node);
+        if ($6 != nullptr) {
+          // we got a SEARCH and/or OPTIONS clause
+          TRI_ASSERT($6->type == NODE_TYPE_ARRAY);
+          TRI_ASSERT($6->numMembers() == 2);
+
+          search = $6->getMemberUnchecked(0);
+          if (search->type == NODE_TYPE_NOP) {
+            search = nullptr;
+          }
+          options = $6->getMemberUnchecked(1);
+          if (options->type == NODE_TYPE_NOP) {
+            options = nullptr;
+          }
+        }
+
+        if (search != nullptr) {
+          // we got a SEARCH clause. this is disallowed with destructuring
+          parser->registerParseError(TRI_ERROR_QUERY_PARSE, "SEARCH condition is incompatible with destructuring", yylloc.first_line, yylloc.first_column);
+        }
+          
+        AstNode* node = parser->ast()->createNodeFor(variable, $4, options);
+        parser->ast()->addOperation(node);
+      
+        if (variablesNode->getBoolValue()) {
+          // destructure object
+          arangodb::containers::SmallVector<AstNode const*, 8> paths;
+          ::destructureObject(parser, nextName, paths, variablesNode->getMember(0));
+        } else {
+          // destructure array
+          arangodb::containers::SmallVector<AstNode const*, 8> paths;
+          ::destructureArray(parser, nextName, paths, variablesNode->getMember(0));
+        }
+      }
     }
   | T_FOR for_output_variables T_IN traversal_graph_info {
       // Traversal
       auto variableNamesNode = static_cast<AstNode*>($2);
-      ::checkOutVariables(parser, variableNamesNode, 1, 3, "Traversals only have one, two or three return variables", yyloc);
+      TRI_ASSERT(variableNamesNode != nullptr);
+      ::validateForOutVariables(parser, variableNamesNode, 1, 3, /*allowDestructuring*/ false, "Traversal", yyloc);
       parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
       auto variablesNode = ::transformOutputVariables(parser, variableNamesNode);
       auto graphInfoNode = static_cast<AstNode*>($4);
@@ -904,7 +1058,7 @@ for_statement:
   | T_FOR for_output_variables T_IN shortest_path_graph_info {
       // Shortest Path
       auto variableNamesNode = static_cast<AstNode*>($2);
-      ::checkOutVariables(parser, variableNamesNode, 1, 2, "SHORTEST_PATH must have one or two return variables", yyloc);
+      ::validateForOutVariables(parser, variableNamesNode, 1, 2, /*allowDestructuring*/ false, "SHORTEST_PATH", yyloc);
       parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
       auto variablesNode = ::transformOutputVariables(parser, variableNamesNode);
       auto graphInfoNode = static_cast<AstNode*>($4);
@@ -916,7 +1070,7 @@ for_statement:
   | T_FOR for_output_variables T_IN k_shortest_paths_graph_info {
       // K Shortest Paths
       auto variableNamesNode = static_cast<AstNode*>($2);
-      ::checkOutVariables(parser, variableNamesNode, 1, 1, "K_SHORTEST_PATHS only has one return variable", yyloc);
+      ::validateForOutVariables(parser, variableNamesNode, 1, 1, /*allowDestructuring*/ false, "K_SHORTEST_PATHS", yyloc);
       parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
       auto variablesNode = ::transformOutputVariables(parser, variableNamesNode);
       auto graphInfoNode = static_cast<AstNode*>($4);
@@ -928,7 +1082,7 @@ for_statement:
   | T_FOR for_output_variables T_IN k_paths_graph_info {
       // K Paths
       auto variableNamesNode = static_cast<AstNode*>($2);
-      ::checkOutVariables(parser, variableNamesNode, 1, 1, "K_PATHS only has one return variable", yyloc);
+      ::validateForOutVariables(parser, variableNamesNode, 1, 1, /*allowDestructuring*/ false, "K_PATHS", yyloc);
       parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
       auto variablesNode = ::transformOutputVariables(parser, variableNamesNode);
       auto graphInfoNode = static_cast<AstNode*>($4);
@@ -940,7 +1094,7 @@ for_statement:
   | T_FOR for_output_variables T_IN all_shortest_paths_graph_info {
       // All Shortest Paths
       auto variableNamesNode = static_cast<AstNode*>($2);
-      ::checkOutVariables(parser, variableNamesNode, 1, 1, "ALL_SHORTEST_PATHS only has one return variable", yyloc);
+      ::validateForOutVariables(parser, variableNamesNode, 1, 1, /*allowDestructuring*/ false, "ALL_SHORTEST_PATHS", yyloc);
       parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
       auto variablesNode = ::transformOutputVariables(parser, variableNamesNode);
       auto graphInfoNode = static_cast<AstNode*>($4);
@@ -975,6 +1129,84 @@ let_element:
     variable_name T_ASSIGN expression {
       auto node = parser->ast()->createNodeLet($1.value, $1.length, $3, true);
       parser->ast()->addOperation(node);
+    }
+  | array_destructuring T_ASSIGN expression {
+      std::string nextName = parser->ast()->variables()->nextName();
+      auto node = parser->ast()->createNodeLet(nextName.c_str(), nextName.size(), $3, false);
+      parser->ast()->addOperation(node);
+
+      arangodb::containers::SmallVector<AstNode const*, 8> paths;
+      ::destructureArray(parser, nextName, paths, $1);
+    }
+  | object_destructuring T_ASSIGN expression {
+      std::string nextName = parser->ast()->variables()->nextName();
+      auto node = parser->ast()->createNodeLet(nextName.c_str(), nextName.size(), $3, false);
+      parser->ast()->addOperation(node);
+
+      arangodb::containers::SmallVector<AstNode const*, 8> paths;
+      ::destructureObject(parser, nextName, paths, $1);
+    }
+  ;
+
+array_destructuring:
+    T_ARRAY_OPEN {
+      AstNode* node = parser->ast()->createNodeArray();
+      node->setIntValue(1);
+      parser->pushStack(node);
+    } array_destructuring_element T_ARRAY_CLOSE {
+      $$ = static_cast<AstNode*>(parser->popStack());
+    }
+  ;
+
+array_destructuring_element:
+    /* empty */ {
+      parser->pushArrayElement(parser->ast()->createNodeValueNull());
+    }
+  | variable_name {
+      parser->pushArrayElement(parser->ast()->createNodeVariable({$1.value, $1.length}, true));
+    }
+  | array_destructuring {
+      parser->pushArrayElement($1);
+    }
+  | object_destructuring {
+      parser->pushArrayElement($1);
+    }
+  | array_destructuring_element T_COMMA array_destructuring_element {
+    }
+  ;
+
+object_destructuring:
+    T_OBJECT_OPEN {
+      AstNode* node = parser->ast()->createNodeArray();
+      node->setIntValue(2);
+      parser->pushStack(node);
+    } object_destructuring_element T_OBJECT_CLOSE {
+      $$ = static_cast<AstNode*>(parser->popStack());
+    }
+  ;
+
+object_destructuring_element:
+    /* empty */ {
+      parser->pushArrayElement(parser->ast()->createNodeValueNull());
+      parser->pushArrayElement(parser->ast()->createNodeValueNull());
+    }
+  | variable_name {
+      parser->pushArrayElement(parser->ast()->createNodeValueString($1.value, $1.length));
+      parser->pushArrayElement(parser->ast()->createNodeVariable({$1.value, $1.length}, true));
+    }
+  | variable_name T_COLON variable_name {
+      parser->pushArrayElement(parser->ast()->createNodeValueString($1.value, $1.length));
+      parser->pushArrayElement(parser->ast()->createNodeVariable({$3.value, $3.length}, true));
+    }
+  | variable_name T_COLON object_destructuring {
+      parser->pushArrayElement(parser->ast()->createNodeValueString($1.value, $1.length));
+      parser->pushArrayElement($3);
+    }
+  | variable_name T_COLON array_destructuring {
+      parser->pushArrayElement(parser->ast()->createNodeValueString($1.value, $1.length));
+      parser->pushArrayElement($3);
+    }
+  | object_destructuring_element T_COMMA object_destructuring_element {
     }
   ;
 

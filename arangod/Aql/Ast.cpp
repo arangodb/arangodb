@@ -1534,6 +1534,15 @@ AstNode* Ast::createNodeCalculatedObjectElement(AstNode const* attributeName,
   return node;
 }
 
+/// @brief create an AST destructuring node
+AstNode* Ast::createNodeDestructuring(AstNode const* value, bool isObject) {
+  AstNode* node = createNode(NODE_TYPE_DESTRUCTURING);
+  node->setBoolValue(isObject);
+  node->addMember(value);
+
+  return node;
+}
+
 /// @brief create an AST with collections node
 AstNode* Ast::createNodeWithCollections(
     AstNode const* collections, CollectionNameResolver const& resolver) {
@@ -2155,7 +2164,52 @@ void Ast::injectBindParametersFirstStage(
 
 /// @brief injects second-stage bind parameter values into the AST
 /// (i.e. all value bind parameters)
-void Ast::injectBindParametersSecondStage(BindParameters& parameters) {
+void Ast::replaceBindParametersWithVariables(BindParameters& parameters) {
+  if (_containsBindParameters) {
+    auto func = [&](AstNode* node) -> AstNode* {
+      if (node->type == NODE_TYPE_PARAMETER) {
+        // found a bind parameter in the query string.
+        // replace it with a variable
+        TRI_ASSERT(node->type == NODE_TYPE_PARAMETER);
+
+        std::string_view param = node->getStringView();
+        TRI_ASSERT(!param.empty());
+
+        auto [value, cachedNode] = parameters.get(param);
+        if (value.isNone()) {
+          // query uses a bind parameter that was not defined by the user
+          ::throwFormattedError(_query, TRI_ERROR_QUERY_BIND_PARAMETER_MISSING,
+                                param);
+        }
+
+        auto iter = _bindParameterVariables.find(param);
+        if (iter == _bindParameterVariables.end()) {
+          bool inserted = false;
+          auto var = variables()->createTemporaryVariable();
+          std::tie(iter, inserted) =
+              _bindParameterVariables.emplace(param, var);
+          var->setBindParameterReplacement(std::string{param});
+
+          TRI_ASSERT(inserted);
+
+          auto varNode = createNodeReference(iter->second);
+          parameters.registerNode(param, varNode);
+          return varNode;
+        }
+
+        TRI_ASSERT(cachedNode != nullptr);
+        return cachedNode;
+      }
+      return node;
+    };
+
+    _root = traverseAndModify(_root, func);
+  }
+}
+
+/// @brief injects second-stage bind parameter values into the AST
+/// (i.e. all value bind parameters)
+void Ast::replaceBindParametersWithValues(BindParameters& parameters) {
   if (_containsBindParameters) {
     auto func = [&](AstNode* node) -> AstNode* {
       if (node->type == NODE_TYPE_PARAMETER) {
@@ -2167,6 +2221,19 @@ void Ast::injectBindParametersSecondStage(BindParameters& parameters) {
     };
 
     _root = traverseAndModify(_root, func);
+  }
+}
+
+/// @brief injects second-stage bind parameter values into the AST
+/// (i.e. all value bind parameters)
+void Ast::injectBindParametersSecondStage(BindParameters& parameters) {
+  if (_containsBindParameters) {
+    if (query().queryOptions().optimizePlanForCaching) {
+      replaceBindParametersWithVariables(parameters);
+    } else {
+      // put in value bind parameters.
+      replaceBindParametersWithValues(parameters);
+    }
   }
 }
 
@@ -4375,8 +4442,12 @@ AstNode* Ast::endSubQuery() {
 
 bool Ast::isInSubQuery() const noexcept { return (_queries.size() > 1); }
 
-std::unordered_set<std::string> Ast::bindParameters() const {
+std::unordered_set<std::string> Ast::bindParameterNames() const {
   return std::unordered_set<std::string>(_bindParameters);
+}
+
+BindParameterVariableMapping Ast::bindParameterVariables() const {
+  return _bindParameterVariables;
 }
 
 Scopes* Ast::scopes() { return &_scopes; }

@@ -237,10 +237,11 @@ void ExecutionNode::addParent(ExecutionNode* ep) {
   _parents.emplace_back(ep);
 }
 
+/// @brief factory for sort elements, used by SortNode and GatherNode
 void ExecutionNode::getSortElements(SortElementVector& elements,
                                     ExecutionPlan* plan,
                                     arangodb::velocypack::Slice slice,
-                                    char const* which) {
+                                    std::string_view which) {
   VPackSlice elementsSlice = slice.get("elements");
 
   if (!elementsSlice.isArray()) {
@@ -252,20 +253,7 @@ void ExecutionNode::getSortElements(SortElementVector& elements,
   elements.reserve(elementsSlice.length());
 
   for (VPackSlice it : VPackArrayIterator(elementsSlice)) {
-    bool ascending = it.get("ascending").getBoolean();
-    Variable* v = Variable::varFromVPack(plan->getAst(), it, "inVariable");
-    elements.emplace_back(v, ascending);
-    // Is there an attribute path?
-    VPackSlice path = it.get("path");
-    if (path.isArray()) {
-      // Get a list of strings out and add to the path:
-      auto& element = elements.back();
-      for (auto it2 : VPackArrayIterator(path)) {
-        if (it2.isString()) {
-          element.attributePath.emplace_back(it2.copyString());
-        }
-      }
-    }
+    elements.push_back(SortElement::fromVelocyPack(plan->getAst(), it));
   }
 }
 

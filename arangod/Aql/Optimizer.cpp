@@ -40,25 +40,17 @@
 
 #include <absl/strings/str_cat.h>
 
-#include <initializer_list>
-
 using namespace arangodb::aql;
-
-namespace {
-std::initializer_list<ExecutionNode::NodeType> const indexHintCheckTypes{
-    ExecutionNode::ENUMERATE_COLLECTION,
-#ifdef ENABLE_FORCED_INDEX_HINTS_FOR_GRAPH_OPERATIONS
-    ExecutionNode::TRAVERSAL,
-    ExecutionNode::ENUMERATE_PATHS,
-#endif
-};
-}  // namespace
 
 Optimizer::Optimizer(ResourceMonitor& resourceMonitor, size_t maxNumberOfPlans)
     : _plans(resourceMonitor),
       _newPlans(resourceMonitor),
       _maxNumberOfPlans(maxNumberOfPlans),
       _runOnlyRequiredRules(false) {}
+
+void Optimizer::toVelocyPack(velocypack::Builder& b) const {
+  _stats.toVelocyPack(b);
+}
 
 void Optimizer::disableRules(
     ExecutionPlan* plan,
@@ -427,66 +419,11 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
   estimateCosts(queryOptions, estimateAllPlans);
 
   // Best plan should not have forced hints left.
-  while (true) {
-    auto& bestPlan = _plans.list.front().first;
-    if (!bestPlan->hasForcedIndexHints()) {
-      // no forced index hints in best plan
-      break;
-    }
-    // our best plan contains forced index hints.
-    // now check if they are all satisfied.
-    bool foundForcedHint = false;
-    containers::SmallVector<ExecutionNode*, 8> nodes;
-    bestPlan->findNodesOfType(nodes, ::indexHintCheckTypes, true);
-    for (auto n : nodes) {
-      TRI_ASSERT(n);
-      TRI_ASSERT(n->getType() == ExecutionNode::ENUMERATE_COLLECTION ||
-                 n->getType() == ExecutionNode::TRAVERSAL ||
-                 n->getType() == ExecutionNode::ENUMERATE_PATHS);
+  // note: this method will throw in case the plan still contains
+  // unsatisfied index hints that have their force flag set
+  checkForcedIndexHints();
 
-      auto const& hint = [](ExecutionNode const* n) {
-        if (n->getType() == ExecutionNode::ENUMERATE_COLLECTION) {
-          return ExecutionNode::castTo<EnumerateCollectionNode const*>(n)
-              ->hint();
-        }
-#ifdef ENABLE_FORCED_INDEX_HINTS_FOR_GRAPH_OPERATIONS
-        if (n->getType() == ExecutionNode::TRAVERSAL) {
-          return ExecutionNode::castTo<TraversalNode const*>(n)->hint();
-        }
-        if (n->getType() == ExecutionNode::ENUMERATE_PATHS) {
-          return ExecutionNode::castTo<EnumeratePathsNode const*>(n)->hint();
-        }
-#endif
-        TRI_ASSERT(false);
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_INTERNAL,
-            "invalid node encountered with forced index hints");
-      }(n);
-
-      if (hint.isSet() && hint.isForced()) {
-        // unsatisfied index hint.
-        foundForcedHint = true;
-
-        if (_plans.size() == 1) {
-          // we are the last plan and cannot satisfy the index hint -> fail
-          THROW_ARANGO_EXCEPTION_MESSAGE(
-              TRI_ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE,
-              absl::StrCat("could not use index hint to serve query; ",
-                           hint.toString()));
-        }
-
-        // there are more plans left to try.
-        // discard the current plan and continue with the next-best plan.
-        _plans.list.pop_front();
-        break;
-      }
-    }
-    if (!foundForcedHint) {
-      // all index hints satisified in current best plan
-      break;
-    }
-  }
-
+  TRI_ASSERT(!_plans.empty());
   LOG_TOPIC("5b5f6", TRACE, Logger::FIXME)
       << "optimization ends with " << _plans.size() << " plans";
 }
@@ -502,6 +439,32 @@ void Optimizer::finalizePlans() {
     plan.first->root()->walk(checker);
 #endif  // ARANGODB_ENABLE_MAINTAINER_MODE
   }
+}
+
+void Optimizer::checkForcedIndexHints() {
+  while (true) {
+    auto& bestPlan = _plans.list.front().first;
+
+    IndexHint hint = bestPlan->firstUnsatisfiedForcedIndexHint();
+    if (!hint.isSet()) {
+      // all index hints satisified in current best plan
+      break;
+    }
+
+    TRI_ASSERT(hint.isForced());
+    if (_plans.size() == 1) {
+      // we are the last plan and cannot satisfy the index hint -> fail
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE,
+          absl::StrCat("could not use index hint to serve query; ",
+                       hint.toString()));
+    }
+
+    // there are more plans left to try.
+    // discard the current plan and continue with the next-best plan.
+    _plans.list.pop_front();
+  }
+  TRI_ASSERT(!_plans.list.empty());
 }
 
 void Optimizer::estimateCosts(QueryOptions const& queryOptions,

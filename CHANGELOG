@@ -1,24 +1,170 @@
 devel
 -----
 
+* FE-423: Add a progress bar to reflect an index creation process.
+
+* Remove unused "mmap" log topic.
+
+* Support array and object destructuring for FOR loops that refer to simple
+  expressions or collections.
+
+  The following is now possible to write in AQL:
+
+      FOR {value1, value2} IN collection
+        FILTER value1 == @value1 && value2 == @value2
+        RETURN value1
+
+  This destructures every single object from `collection` and extracts its
+  `value1` and `value2` attributes. It is equivalent to writing:
+
+      FOR doc IN collection
+        FILTER doc.value1 == @value1 && doc.value2 == @value2
+        RETURN doc.value1
+
+  It is also possible to destructure array inputs into separate variables.
+  For example, the following query
+
+      FOR doc IN collection 
+        FOR [key, value] IN ENTRIES(doc) 
+        RETURN {key, value}
+
+  can be used to destructure all members from the expression `ENTRIES(doc)`
+  and assign the first member to the variable `key`, and the second member
+  to the variable `value`.
+
+  This is equivalent to writing:
+
+      FOR doc IN collection 
+        FOR entry IN ENTRIES(doc) 
+          LET key = entry[0]
+          LET value = entry[1]
+          RETURN {key, value}
+
+  Accessing an undefined object attribute or an undefined array members results
+  in a value of `null` being produced. Applying destructuring on any 
+  incompatible input types produces `null` as well.
+
+  Destructuring is not supported for view-based FOR loops, for traversal FOR
+  loops, SHORTEST_PATH FOR loops, K_PATHS FOR loops, K_SHORTEST_PATHS FOR loops
+  nor ALL_SHORTEST_PATHS FOR loops.
+
+* Fix an "invalid document type" exception when using the AQL ENTRIES function
+  on a database document or edge.
+
+* Updated ArangoDB Starter to v0.19.3.
+
+* Fixed MDS-1216: restoring the previous value of the "padded" key generator
+  could lead to the key generator's sequence being set to a too low value
+  after recovery.
+
+* Fix a nullptr access when aborting a move shard job for a already dropped collection.
+
+* Use __nss_configure_lookup to opt out of /etc/nsswitch.conf.
+  Add the startup option --honor-nsswitch to cancel the opt-out.
+
+* Make constrained heap sort in AQL report all filtered rows as "filtered" in
+  the query profile.
+
+* Adjust our usage of `_FORTIFY_SOURCE` in maintainer mode:
+  - use `_FORTIFY_SOURCE` compile definition also when building with clang.
+    Previously it was only used when compiling with gcc.
+  - use `_FORTIFY_SOURCE=3`, which adds runtime memory safety checks (and some
+    runtime overhead). Previously we used `_FORTIFY_SOURCE=2`.
+  This only affects maintainer mode builds. Non-maintainer-mode builds are not
+  affected, as `_FORTIFY_SOURCE` is not used on them.
+
+* Added array and object destructuring to AQL LET statements.
+
+  * Array Destructuring: Array destructuring is the assignment of array values
+    into one or multiple variables with a single `LET` assignment. This can be
+    achieved by putting the target assignment variables of the `LET` assignment
+    into angular brackets.
+
+    For example, the statement:
+
+        LET [y, z] = [1, 2]
+
+    will assign the value `1` to variable `y` and the value `2` to variable `z`.
+    The mapping of input array members to the target variables is positional.
+
+    It is also possible to skip over unneeded array values. The following 
+    assignment will assign the value `2` to variable `y` and the value `3` to 
+    variable `z`. The array member with value `1` will not be assigned to any 
+    variable:
+
+        LET [, y, z] = [1, 2, 3]
+
+    When there are more variables assigned than there are array members, the 
+    target variables that are mapped to non-existing array members are 
+    populated with a value of `null`. The assigned target variables will also
+    receive a value of `null` when the destructuring is used on a non-array.
+
+    Destructuring can also be applied on nested arrays, e.g.
+
+        LET [[sub1], [sub2, sub3]] = [["foo", "bar"], [1, 2, 3]]
+
+    In the above example, the value of variable `sub1` will be `foo`, the value
+    of variable `sub2` will be `1` and the value of variable `sub3` will be `2`.
+
+  * Object Destructuring: Object destructuring is the assignment of multiple
+    target variables from a source object value. This is achieved by using the
+    curly brackets after the `LET` assignment token:
+
+        LET { name, age } = { valid: true, age: 39, name: "John Doe" }
+
+    The mapping of input object members to the target variables is by name.
+    In the above example, the variable `name` will get a value of `John Doe`,
+    the variable `age` will get a value of `39`. The attribute `valid` from the
+    source object will be ignored.
+
+    Object destructuring also works with nested objects, e.g.
+
+        LET { name: {first, last} } = { name: { first: "John", middle: "J", last: "Doe" } }
+
+    The above statement will assign the value `John` to the variable `first` 
+    and the value `Doe` to the variable `last`. The attribute `middle` from the
+    source object is ignored.
+    Note that here only variables `first` and `last` will be populated, but
+    variable `name` is not.
+
+    It is also possible for the target variable to get a different name than in
+    the source object, e.g.
+
+        LET { name: {first: firstName, last: lastName} } = { name: { first: "John", last: "Doe" } }
+
+    The above statement assigns the value `John` to the target variable
+    `firstName` and the value `Doe` to the target variable `lastName`. Note
+    that neither of these attributes exist in the source object.
+
+* Added `verifyCertificates` attribute option for the `requests` JavaScript
+  module. This option defaults to false, so that no certificates will be 
+  verified in an HTTPS connection made with the `requests` module. If the
+  option is set to true, the server certificate of the remote server will be
+  verified using the default certificate store of the system.
+  There is also a `verifyDepth` attribute to limit the maximum length of the 
+  certificate chain that counts as valid.
+
+3.12.1 (XXXX-XX-XX)
+-------------------
+
 * Support indexHint AQL option for traversals.
   The structure of traversal index hints is as follows:
-  
+
       { collection: { direction: { level: indexes } } }
- 
+
   with the following meanings:
   - collection: the name of an edge collection for which the index hint should
     be applied. Proper capitalization of the collection name is important.
   - direction:  the direction for which to apply the index hint. Valid values
     are `inbound` and `outbound`, in lowercase.
-  - level: the level/depth for which the index should be applied. Valid level 
-    values are the string `base` and any stringified numeric values greater
-    or equal to zero.
+  - level: the level/depth for which the index should be applied. Valid level
+    values are the string `base` and any stringified numeric values greater or
+    equal to zero.
 
   Example:
 
       FOR v, e, p IN 1..5 OUTBOUND startVertex edgeCollection
-      OPTIONS { 
+      OPTIONS {
         indexHint: {
           "edgeCollection": {
             "outbound": {
@@ -30,12 +176,12 @@ devel
           }
         }
       }
-      FILTER p.edges[1].foo == 'bar' && 
-             p.edges[2].foo == 'bar' && 
+      FILTER p.edges[1].foo == 'bar' &&
+             p.edges[2].foo == 'bar' &&
              p.edges[2].baz == 'qux'
 
-  Because the collection names and levels/depths are used a object keys here,
-  it is useful to enclose them in quotes. Omitting the quotes around them may
+  Because the collection names and levels/depths are used a object keys here, it
+  is useful to enclose them in quotes. Omitting the quotes around them may
   result in parse errors for the query.
 
   Note that index hints for levels other than `base` will only be considered
@@ -51,8 +197,8 @@ devel
 * Rebuilt included rclone v1.65.2 with go1.22.4.
 
 * Swagger UI: Remove fragment identifiers from request URLs. They are merely
-  used to disambiguate polymorphic endpoints in the OpenAPI descriptions of
-  the HTTP API documentation.
+  used to disambiguate polymorphic endpoints in the OpenAPI descriptions of the
+  HTTP API documentation.
 
 * BTS-1909, MDS-1232: Fixed a bug where COLLECT ... AGGREGATE x = UNIQUE(y)
   could miss some results when multiple shards were aggregated in a cluster.
@@ -71,10 +217,6 @@ devel
 
 * OASIS-25850: Fix incomplete replacing of projection variables in traversals.
   This fixes a regression introduced in 3.12.0.
-
-
-3.12.1 (XXXX-XX-XX)
--------------------
 
 * FE-454: Fix saving document in "Tree" mode.
 
