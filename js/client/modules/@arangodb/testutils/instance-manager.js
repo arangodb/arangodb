@@ -199,7 +199,14 @@ class instanceManager {
   }
   debugTerminate() {
     this.arangods.forEach(arangod => {arangod.debugTerminate();});
+    return 0;
   }
+  checkDebugTerminated() {
+    let ret = true;
+    this.arangods.forEach(arangod => {ret = arangod.checkDebugTerminated() && ret;});
+    return ret;
+  }
+
   _getNames(arangods) {
     let names = [];
     arangods.forEach(arangod => {names.push(arangod.name);});

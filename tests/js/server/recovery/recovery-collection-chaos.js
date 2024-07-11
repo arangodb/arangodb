@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertFalse, assertTrue, assertNotNull */
+/* global runSetup assertEqual, assertFalse, assertTrue, assertNotNull */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -29,11 +29,9 @@ const base = require("fs").join(process.cwd(), require('internal').pathForTestin
   'recovery', 'recovery-collection-chaos.inc');
 const chaos = require(base);
 
-function main(argv) {
-  return chaos.main(argv, {
-    withFailurePoints: false,
-    numberOfCollections: 5,
-    maxIterations: 5,
-    maxRunTime: 20,
-  });
-}
+return chaos.main(runSetup, {
+  withFailurePoints: false,
+  numberOfCollections: 5,
+  maxIterations: 5,
+  maxRunTime: 20,
+});

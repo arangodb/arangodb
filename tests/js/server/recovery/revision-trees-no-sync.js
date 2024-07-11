@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertFalse, assertTrue */
+/* global runSetup assertEqual, assertFalse, assertTrue */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -33,12 +33,12 @@ const colName1 = 'UnitTestsRecovery1';
 const colName2 = 'UnitTestsRecovery2';
 const colName3 = 'UnitTestsRecovery3';
 
-function runSetup () {
+if (runSetup === true) {
   'use strict';
-  internal.debugClearFailAt();
+  global.instanceManager.debugClearFailAt();
 
   internal.waitForEstimatorSync();
-  internal.debugSetFailAt("RocksDBMetaCollection::serializeRevisionTree");
+  global.instanceManager.debugSetFailAt("RocksDBMetaCollection::serializeRevisionTree");
 
   db._drop(colName1);
   let c = db._create(colName1);
@@ -76,7 +76,7 @@ function runSetup () {
   c = db._create('test');
   c.save({ _key: 'crashme' }, true);
 
-  internal.debugTerminate('crashing server');
+  return global.instanceManager.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -118,13 +118,5 @@ function recoverySuite () {
 // / @brief executes the test suite
 // //////////////////////////////////////////////////////////////////////////////
 
-function main (argv) {
-  'use strict';
-  if (argv[1] === 'setup') {
-    runSetup();
-    return 0;
-  } else {
-    jsunity.run(recoverySuite);
-    return jsunity.writeDone().status ? 0 : 1;
-  }
-}
+jsunity.run(recoverySuite);
+return jsunity.done();

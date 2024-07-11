@@ -1315,7 +1315,7 @@ class instance {
         if (ex instanceof ArangoError &&
             ex.errorNum === internal.errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code) {
           print(`Terminated instance ${this.name} - ${ex}`);
-          return;
+          return this.checkDebugTerminated();
         }
         throw new Error(`Failed to crash ${this.name}: ${ex}`);
       }
