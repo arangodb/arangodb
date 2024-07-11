@@ -98,7 +98,7 @@ ConstFetcherHelper::ConstFetcherHelper(
         inputRegisters->emplace(i);
       }
       SharedAqlItemBlockPtr block{
-          new AqlItemBlock(itemBlockManager, nrItems, nrRegs)};
+          itemBlockManager.requestBlock(nrItems, nrRegs)};
       VPackToAqlItemBlock(_data, nrRegs, *block);
       SkipResult skipRes{};
       this->injectBlock(block, skipRes);

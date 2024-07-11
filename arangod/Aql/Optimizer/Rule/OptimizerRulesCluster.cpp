@@ -22,8 +22,6 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "OptimizerRules.h"
-
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
@@ -40,6 +38,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/Optimizer.h"
+#include "Aql/OptimizerRules.h"
 #include "Aql/QueryContext.h"
 #include "Basics/StaticStrings.h"
 #include "Indexes/Index.h"

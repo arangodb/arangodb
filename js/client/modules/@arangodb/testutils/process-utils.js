@@ -41,7 +41,6 @@ const debugGetFailurePoints = require('@arangodb/test-helper').debugGetFailurePo
 
 /* Functions: */
 const toArgv = internal.toArgv;
-const executeExternal = internal.executeExternal;
 const executeExternalAndWait = internal.executeExternalAndWait;
 const killExternal = internal.killExternal;
 const statusExternal = internal.statusExternal;
@@ -106,22 +105,6 @@ const TOP_DIR = (function findTopDir () {
   return topDir;
 }());
 
-// create additional system environment variables for coverage
-function coverageEnvironment () {
-  let result = [];
-  let name = 'LLVM_PROFILE_FILE';
-
-  if (process.env.hasOwnProperty(name)) {
-    result.push(
-      name +
-      "=" +
-      process.env[name] +
-      "/" +
-      crypto.md5(String(internal.time() + Math.random())));
-  }
-
-  return result;
-}
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief calculates all the path locations
@@ -370,15 +353,12 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
 
   // V8 executeExternalAndWait thinks that timeout is in ms, so *1000
   
-  let sh = new sanHandler(cmd.replace(/.*\//, ''), options.sanOptions, options.isSan, options.extremeVerbosity);
+  let sh = new sanHandler(cmd.replace(/.*\//, ''), options);
   sh.detectLogfiles(instanceInfo.rootDir, instanceInfo.rootDir);
-  sh.setSanOptions();
-
-  let res = executeExternalAndWait(cmd, args, false, timeout * 1000, coverageEnvironment());
+  let res = executeExternalAndWait(cmd, args, false, timeout * 1000,  sh.getSanOptions());
   
   instanceInfo.pid = res.pid;
   instanceInfo.exitStatus = res;
-  sh.resetSanOptions();
   const deltaTime = time() - startTime;
   let errorMessage = ' - ';
   if (sh.fetchSanFileAfterExit(res.pid)) {
@@ -487,7 +467,6 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
 
 exports.setupBinaries = setupBinaries;
 exports.endpointToURL = endpointToURL;
-exports.coverageEnvironment = coverageEnvironment;
 
 exports.executeAndWait = executeAndWait;
 exports.killRemainingProcesses = killRemainingProcesses;

@@ -161,6 +161,8 @@ class GeneralResponse {
 
   virtual size_t bodySize() const = 0;
 
+  virtual void clearBody() noexcept = 0;
+
   /// used for head
   bool generateBody() const noexcept { return _generateBody; }
 

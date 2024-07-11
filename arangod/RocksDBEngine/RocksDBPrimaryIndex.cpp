@@ -37,9 +37,6 @@
 #include "Cache/CacheManagerFeature.h"
 #include "Cache/TransactionalCache.h"
 #include "Cluster/ServerState.h"
-#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
-#include "CrashHandler/CrashHandler.h"
-#endif
 #include "Indexes/SortedIndexAttributeMatcher.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
@@ -50,6 +47,7 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
+#include "RocksDBEngine/RocksDBPrefixExtractor.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBTypes.h"
@@ -62,8 +60,6 @@
 #include "Utils/OperationOptions.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
-
-#include "RocksDBEngine/RocksDBPrefixExtractor.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/VocBase/VirtualClusterSmartEdgeCollection.h"
@@ -819,10 +815,6 @@ Result RocksDBPrimaryIndex::update(
       err.appendErrorMessage("; new key: ");
       err.appendErrorMessage(newDoc.get(StaticStrings::KeyString).copyString());
     });
-#ifndef ARANGODB_ENABLE_MAINTAINER_MODE
-    LOG_TOPIC("f3b56", ERR, Logger::ENGINES) << res.errorMessage();
-    CrashHandler::logBacktrace();
-#endif
     TRI_ASSERT(false) << res.errorMessage();
     return res;
   }

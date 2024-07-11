@@ -45,6 +45,13 @@ race:VersionSet::SetLastSequence
 deadlock:replication2::replicated_log::LogLeader::triggerAsyncReplication
 deadlock:replication2::replicated_state::ReplicatedStateManager
 
+# the reference counting of exception_ptr is part of the prebuilt glibc and is
+# therefore not instrumented by TSan, so TSan is not aware of the synchronization
+# that happens there. That means we have to ignore all races in destructors of
+# exceptions as a result of a __exception_ptr release that causes the refcnt to
+# drop to zero.
+race:std::__exception_ptr
+
 # TODO - this should be removed once BTS-685 is fixed
 race:AllowImplicitCollectionsSwitcher
 race:graph::RefactoredTraverserCache::appendVertex

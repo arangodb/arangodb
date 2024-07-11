@@ -62,8 +62,7 @@ class EnumeratePathsNode : public virtual GraphNode {
                      AstNode const* target, AstNode const* graph,
                      std::unique_ptr<graph::BaseOptions> options);
 
-  EnumeratePathsNode(ExecutionPlan* plan,
-                     arangodb::velocypack::Slice const& base);
+  EnumeratePathsNode(ExecutionPlan* plan, arangodb::velocypack::Slice base);
 
   ~EnumeratePathsNode();
 
@@ -117,7 +116,7 @@ class EnumeratePathsNode : public virtual GraphNode {
   void setTargetInVariable(Variable const* inVariable);
   void setDistributeVariable(Variable const* distVariable);
 
-  std::string const getStartVertex() const { return _startVertexId; }
+  std::string getStartVertex() const { return _startVertexId; }
 
   /// @brief Test if this node uses an in variable or constant for target
   bool usesTargetInVariable() const { return _inTargetVariable != nullptr; }
@@ -128,10 +127,16 @@ class EnumeratePathsNode : public virtual GraphNode {
     return *_inTargetVariable;
   }
 
-  std::string const getTargetVertex() const { return _targetVertexId; }
+  std::string getTargetVertex() const { return _targetVertexId; }
 
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
                             replacements) override;
+
+  void replaceAttributeAccess(ExecutionNode const* self,
+                              Variable const* searchVariable,
+                              std::span<std::string_view> attribute,
+                              Variable const* replaceVariable,
+                              size_t index) override;
 
   /// @brief getVariablesSetHere
   std::vector<Variable const*> getVariablesSetHere() const override final;

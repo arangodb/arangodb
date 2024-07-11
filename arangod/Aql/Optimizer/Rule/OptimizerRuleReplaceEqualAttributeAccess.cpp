@@ -37,6 +37,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/Optimizer.h"
+#include "Aql/OptimizerRules.h"
 #include "Aql/OptimizerUtils.h"
 #include "Aql/Query.h"
 #include "Aql/Variable.h"
@@ -44,7 +45,6 @@
 #include "Containers/ImmutableMap.h"
 #include "Containers/SmallVector.h"
 #include "Logger/LogMacros.h"
-#include "OptimizerRules.h"
 
 #include <boost/container_hash/hash.hpp>
 
