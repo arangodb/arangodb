@@ -71,7 +71,7 @@ class SortExecutorTest : public AqlExecutorTestCaseWithParam<SortInputParam> {
   }
 
   auto makeRegisterInfos(size_t nestingLevel = 1) -> RegisterInfos {
-    SortElement sl{&sortVar, true};
+    SortElement sl = SortElement::create(&sortVar, true);
     SortRegister sortReg{0, sl};
     std::vector<SortRegister> sortRegisters;
     sortRegisters.emplace_back(std::move(sortReg));
@@ -89,7 +89,7 @@ class SortExecutorTest : public AqlExecutorTestCaseWithParam<SortInputParam> {
       tempStorage = std::make_unique<TemporaryStorageFeature>(
           fakedQuery->vocbase().server());
     }
-    SortElement sl{&sortVar, true};
+    SortElement sl = SortElement::create(&sortVar, true);
     SortRegister sortReg{0, sl};
     std::vector<SortRegister> sortRegisters;
     sortRegisters.emplace_back(std::move(sortReg));
