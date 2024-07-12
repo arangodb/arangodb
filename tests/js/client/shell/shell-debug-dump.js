@@ -384,7 +384,7 @@ function debugDumpViews () {
       explainer.debugDump(fileName, query, {}, {examples: 50, anonymize: false});
       explainer.inspectDump(fileName, outFileName);
       recreateEmptyDatabase();
-      executeFromDump(outFileName);
+      internal.load(outFileName);
 
       let analyzers_arr = analyzers.toArray();
       assertEqual(analyzers_arr.length, 15); // 13 system analyzers plus "my_delimiter" and "text_en_nostem"
