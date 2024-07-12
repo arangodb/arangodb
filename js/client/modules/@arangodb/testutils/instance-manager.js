@@ -41,18 +41,24 @@ const crypto = require('@arangodb/crypto');
 const ArangoError = require('@arangodb').ArangoError;;
 const netstat = require('node-netstat');
 /* Functions: */
-const toArgv = internal.toArgv;
-const executeExternal = internal.executeExternal;
-const executeExternalAndWait = internal.executeExternalAndWait;
-const killExternal = internal.killExternal;
-const statusExternal = internal.statusExternal;
-const statisticsExternal = internal.statisticsExternal;
-const base64Encode = internal.base64Encode;
-const testPort = internal.testPort;
-const download = internal.download;
-const time = internal.time;
-const wait = internal.wait;
-const sleep = internal.sleep;
+const {
+  SetGlobalExecutionDeadlineTo,
+  toArgv,
+  executeExternal,
+  executeExternalAndWait,
+  killExternal,
+  statusExternal,
+  statisticsExternal,
+  clusterHealth,
+  base64Encode,
+  testPort,
+  download,
+  errors,
+  time,
+  wait,
+  sleep,
+  db,
+  platform } = internal;
 
 /* Constants: */
 // const BLUE = internal.COLORS.COLOR_BLUE;
@@ -62,8 +68,6 @@ const RED = internal.COLORS.COLOR_RED;
 const RESET = internal.COLORS.COLOR_RESET;
 // const YELLOW = internal.COLORS.COLOR_YELLOW;
 const IS_A_TTY = internal.isATTy();
-
-const platform = internal.platform;
 
 const termSignal = 15;
 
@@ -382,7 +386,7 @@ class instanceManager {
       return true;
     } catch (e) {
       // disable watchdog
-      let hasTimedOut = internal.SetGlobalExecutionDeadlineTo(0.0);
+      let hasTimedOut = SetGlobalExecutionDeadlineTo(0.0);
       if (hasTimedOut) {
         print(RED + Date() + ' Deadline reached! Forcefully shutting down!' + RESET);
       } else {
@@ -495,7 +499,7 @@ class instanceManager {
     if (forceTerminate === undefined) {
       forceTerminate = false;
     }
-    let timeoutReached = internal.SetGlobalExecutionDeadlineTo(0.0);
+    let timeoutReached = SetGlobalExecutionDeadlineTo(0.0);
     if (timeoutReached) {
       print(RED + Date() + ' Deadline reached! Forcefully shutting down!' + RESET);
       moreReason += "Deadline reached! ";
@@ -511,8 +515,8 @@ class instanceManager {
       }
     }
     catch (e) {
-      if (e instanceof ArangoError && e.errorNum === internal.errors.ERROR_DISABLED.code) {
-        let timeoutReached = internal.SetGlobalExecutionDeadlineTo(0.0);
+      if (e instanceof ArangoError && e.errorNum === errors.ERROR_DISABLED.code) {
+        let timeoutReached = SetGlobalExecutionDeadlineTo(0.0);
         if (timeoutReached) {
           print(RED + Date() + ' Deadline reached during shutdown! Forcefully shutting down NOW!' + RESET);
           moreReason += "Deadline reached! ";
@@ -611,7 +615,7 @@ class instanceManager {
       return this._forceTerminate(moreReason);
     }
 
-    var shutdownTime = internal.time();
+    var shutdownTime = time();
 
     while (toShutdown.length > 0) {
       toShutdown = toShutdown.filter(arangod => {
@@ -634,13 +638,13 @@ class instanceManager {
           if (arangod.isAgent()) {
             localTimeout = localTimeout + 60;
           }
-          if ((internal.time() - shutdownTime) > localTimeout) {
+          if ((time() - shutdownTime) > localTimeout) {
             print(Date() + ' forcefully terminating ' + yaml.safeDump(arangod.getStructure()) +
                   ' after ' + timeout + 's grace period; marking crashy.');
             this.agencyMgr.dumpAgency();
             arangod.serverCrashedLocal = true;
             shutdownSuccess = false;
-            arangod.killWithCoreDump(`taking coredump because of timeout ${internal.time()} - ${shutdownTime}) > ${localTimeout} during shutdown`);
+            arangod.killWithCoreDump(`taking coredump because of timeout ${time()} - ${shutdownTime}) > ${localTimeout} during shutdown`);
             crashUtils.aggregateDebugger(arangod, this.options);
             crashed = true;
             if (!arangod.isAgent()) {
@@ -672,7 +676,7 @@ class instanceManager {
       });
       if (toShutdown.length > 0) {
         this.printStillRunningProcessInfo();
-        require('internal').wait(1, false);
+        wait(1, false);
       }
     }
     if (!this.options.skipLogAnalysis) {
@@ -713,7 +717,7 @@ class instanceManager {
     }
     this.setEndpoints();
     this.printProcessInfo(startTime);
-    internal.sleep(this.options.sleepBeforeStart);
+    sleep(this.options.sleepBeforeStart);
     this.spawnClusterHealthMonitor();
   }
 
@@ -774,7 +778,7 @@ class instanceManager {
     let name = '';
     try {
       name = "global health check";
-      const health = internal.clusterHealth();
+      const health = clusterHealth();
       return this.arangods.every((arangod) => {
         let ret = arangod.checkServerGood(health);
         name += ret[0];
@@ -803,7 +807,7 @@ class instanceManager {
         this.printNetstat();
       }
     } catch (ex) {
-      let timeout = internal.SetGlobalExecutionDeadlineTo(0.0);
+      let timeout = SetGlobalExecutionDeadlineTo(0.0);
       let moreReason = ": " + ex.message;
       if (timeout) {
         moreReason = "because of :" + ex.message;
@@ -840,7 +844,7 @@ class instanceManager {
         if (rc) {
           break;
         } else {
-          internal.sleep(1);
+          sleep(1);
         }
       }
     }
@@ -907,7 +911,7 @@ class instanceManager {
         try {
           if (reply.code === 403) {
             let parsedBody = JSON.parse(reply.body);
-            if (parsedBody.errorNum === internal.errors.ERROR_SERVICE_API_DISABLED.code) {
+            if (parsedBody.errorNum === errors.ERROR_SERVICE_API_DISABLED.code) {
               if (!this.options.noStartStopLogs) {
                 print("service API disabled, continuing.");
               }
@@ -978,7 +982,7 @@ class instanceManager {
           print(RED + Date() + " error requesting server '" + JSON.stringify(arangod.getStructure()) + "' Error: " + JSON.stringify(e) + RESET);
           if (e instanceof ArangoError && e.message.search('Connection reset by peer') >= 0) {
             httpOptions.method = 'GET';
-            internal.sleep(5);
+            sleep(5);
             reply = download(arangod.url + '/_db/_system/_admin/server/id', '', httpOptions);
           } else {
             throw e;
@@ -1045,10 +1049,10 @@ class instanceManager {
     } catch (e) {
       print(RED + Date() + " error connecting '" + this.endpoint + "' Error: " + JSON.stringify(e) + RESET);
       if (e instanceof ArangoError && e.message.search('Connection reset by peer') >= 0) {
-        internal.sleep(5);
+        sleep(5);
         arango.reconnect(this.endpoint, '_system', 'root', '');
       } else if (e instanceof ArangoError && e.message.search('service unavailable due to startup or maintenance mode') >= 0) {
-        internal.sleep(5);
+        sleep(5);
         arango.reconnect(this.endpoint, '_system', 'root', '');
       } else {
         throw e;
