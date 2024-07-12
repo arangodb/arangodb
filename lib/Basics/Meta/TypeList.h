@@ -60,7 +60,13 @@ struct TypeList {
   static std::size_t consteval index() {
     static_assert(contains<T>(), "Type not found in the list");
     size_t i = 0;
-    ((std::is_same_v<T, Ts> ? i : ++i), ...);
+    bool found = false;
+    auto match = [&]() {
+      found = true;
+      return i;
+    };
+    auto nomatch = [&]() { return found ? i : ++i; };
+    ((std::is_same_v<T, Ts> ? match() : nomatch()), ...);
     return i;
   }
 
