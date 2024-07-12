@@ -188,14 +188,30 @@ class instanceManager {
     });
     return ret;
   }
+  debugCanUseFailAt() {
+    const res = arango.GET_RAW("_admin/debug/failat");
+    if (res.code !== 200) {
+      if (res.code === 401) {
+        throw `Error asking for failure point.`;
+      }
+      return false;
+    }
+    return res.parsedBody === true;
+  }
   debugSetFailAt(failurePoint) {
+    let dbName = db._name();
     this.arangods.forEach(arangod => {arangod.debugSetFailAt(failurePoint);});
+    arango.reconnect(this.endpoint, dbName, 'root', '');
   }
   debugRemoveFailAt(failurePoint) {
+    let dbName = db._name();
     this.arangods.forEach(arangod => {arangod.debugClearFailAt(failurePoint);});
+    arango.reconnect(this.endpoint, dbName, 'root', '');
   }
   debugClearFailAt(failurePoint) {
+    let dbName = db._name();
     this.arangods.forEach(arangod => {arangod.debugClearFailAt(failurePoint);});
+    arango.reconnect(this.endpoint, dbName, 'root', '');
   }
   debugTerminate() {
     this.arangods.forEach(arangod => {arangod.debugTerminate();});

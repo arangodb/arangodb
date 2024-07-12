@@ -1157,7 +1157,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMoveShardFromFollowerRepl3_failoverCands: function () {
-      if (!internal.debugCanUseFailAt()) {
+      if (!global.instanceManager.debugCanUseFailAt()) {
         console.log("Skipping test for failoverCandidates because failure points are not compiled in!");
         return;
       }

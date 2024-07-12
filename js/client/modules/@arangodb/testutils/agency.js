@@ -28,8 +28,15 @@
 const crypto = require('@arangodb/crypto');
 const fs = require('fs');
 const tu = require('@arangodb/testutils/test-utils');
+const jsunity = require('jsunity');
+const {assertTrue, assertFalse, assertEqual} = jsunity.jsUnity.assertions;
+const arangosh = require('@arangodb/arangosh');
+const request = require('@arangodb/request');
+
 const internal = require('internal');
 const {
+  arango,
+  db,
   download,
   time,
   sleep
@@ -82,7 +89,7 @@ class agencyMgr {
     this.endpoints = struct['endpoints'];
   }
   getAgency(path, method, body = null) {
-    return this.getAgent(this.agencyInstances[0], path, method, body);
+    return this.getAnyAgent(this.agencyInstances[0], path, method, body);
   }
 
   shouldBeCompleted() {
@@ -96,7 +103,7 @@ class agencyMgr {
     this.wholeCluster.arangods.forEach(arangod => { if (arangod.pid !== null) {count ++;}});
     return count > this.agencySize;
   }
-  getAgent(agent, path, method, body = null) {
+  getAnyAgent(agent, path, method, body = null) {
     let opts = {
       method: method
     };
@@ -111,12 +118,59 @@ class agencyMgr {
     } else if (agent.jwtFiles) {
       opts['jwt'] = crypto.jwtEncode(fs.read(agent.jwtFiles[0]), {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
     }
-    return download(agent.url + path, body, opts);
+    opts['returnBodyOnError'] = true;
+    let ret = download(agent.url + path, body, opts);
+    return ret;
+  }
+  postAgency(operation, body = null) {
+    let res = this.getAnyAgent(this.agencyInstances[0],
+                               `/_api/agency/${operation}`,
+                               'POST',
+                               JSON.stringify(body));
+    assertTrue(res.hasOwnProperty('code'), JSON.stringify(res));
+    assertEqual(res.code, 200, JSON.stringify(res));
+    assertTrue(res.hasOwnProperty('message'));
+    return arangosh.checkRequestResult(JSON.parse(res.body));
+  }
+  call(operation, body) {
+    return this.postAgency(operation, body);
+  }
+
+  get(key) {
+    const res = this.postAgency( 'read', [[
+      `/arango/${key}`,
+    ]]);
+    return res[0];
+  }
+  set (path, value) {
+    return this.postAgency('write', [[{
+      [`/arango/${path}`]: {
+        'op': 'set',
+        'new': value,
+      },
+    }]]);
+  }
+  remove(path) {
+    return this.postAgency('write', [[{
+      [`/arango/${path}`]: {
+        'op': 'delete'
+      },
+    }]]);
+  }
+  transact(body) {
+    return this.postAgency("transact", body);
+  }
+  increaseVersion(path) {
+    return this.postAgency('write', [[{
+      [`/arango/${path}`]: {
+        'op': 'increment',
+      },
+    }]]);
   }
 
   dumpAgent(agent, path, method, fn, dumpdir) {
     print('--------------------------------- '+ fn + ' -----------------------------------------------');
-    let agencyReply = this.getAgent(agent, path, method);
+    let agencyReply = this.getAnyAgent(agent, path, method);
     if (agencyReply.code === 200) {
       if (fn === "agencyState") {
         fs.write(fs.join(dumpdir, `${fn}_${agent.pid}.json`), agencyReply.body);
@@ -180,7 +234,7 @@ class agencyMgr {
     fs.removeDirectory(dumpdir);
   }
   getFromPlan(path) {
-    let req = this.getAgent(this.agencyInstances[0], '/_api/agency/read', 'POST', `[["/arango/${path}"]]`);
+    let req = this.getAnyAgent(this.agencyInstances[0], '/_api/agency/read', 'POST', `[["/arango/${path}"]]`);
     if (req.code !== 200) {
       throw new Error(`Failed to query agency [["/arango/${path}"]] : ${JSON.stringify(req)}`);
     }
@@ -234,7 +288,7 @@ class agencyMgr {
       let haveLeader = 0;
       let leaderId = null;
       for (let agentIndex = 0; agentIndex < this.agencySize; agentIndex ++) {
-        let reply = this.getAgent(this.agencyInstances[agentIndex], '/_api/agency/config', 'GET');
+        let reply = this.getAnyAgent(this.agencyInstances[agentIndex], '/_api/agency/config', 'GET');
         if (this.options.extremeVerbosity) {
           print("Response ====> ");
           print(reply);
@@ -259,7 +313,7 @@ class agencyMgr {
           try {
             // set back log level to info for agents
             for (let agentIndex = 0; agentIndex < this.agencySize; agentIndex ++) {
-              this.getAgent(this.agencyInstances[agentIndex], '/_admin/log/level', 'PUT', JSON.stringify({"agency":"info"}));
+              this.getAnyAgent(this.agencyInstances[agentIndex], '/_admin/log/level', 'PUT', JSON.stringify({"agency":"info"}));
             }
           } catch (err) {}
           return;
