@@ -18,24 +18,19 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Achim Brandt
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "LogAppenderStream.h"
 
-#include <iosfwd>
+#include "Logger/LogMessage.h"
 
 namespace arangodb {
-enum class LogLevel {
-  DEFAULT = 0,
-  FATAL = 1,
-  ERR = 2,
-  WARN = 3,
-  INFO = 4,
-  DEBUG = 5,
-  TRACE = 6
-};
+
+LogAppenderStream::LogAppenderStream(std::string const& filename, int fd)
+    : LogAppender(), _fd(fd), _useColors(false) {}
+
+void LogAppenderStream::logMessage(LogMessage const& message) {
+  this->writeLogMessage(message._level, message._topicId, message._message);
 }
 
-std::ostream& operator<<(std::ostream&, arangodb::LogLevel);
+}  // namespace arangodb

@@ -67,6 +67,7 @@
 #include <vector>
 
 #include "Basics/threads.h"
+#include "Logger/Appenders.h"
 #include "Logger/LogLevel.h"
 #include "Logger/LogTimeFormat.h"
 #include "Logger/LogTopic.h"
@@ -78,49 +79,6 @@ class ApplicationServer;
 }
 class LogGroup;
 class LogThread;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief message container
-////////////////////////////////////////////////////////////////////////////////
-
-struct LogMessage {
-  LogMessage(LogMessage const&) = delete;
-  LogMessage& operator=(LogMessage const&) = delete;
-
-  LogMessage(char const* function, char const* file, int line, LogLevel level,
-             size_t topicId, std::string&& message, uint32_t offset,
-             bool shrunk) noexcept;
-
-  /// @brief whether or no the message was already shrunk
-  bool shrunk() const noexcept { return _shrunk; }
-
-  /// @brief shrink log message to at most maxLength bytes (plus "..." appended)
-  void shrink(std::size_t maxLength);
-
-  /// @brief all details about the log message. we need to
-  /// keep all this data around and not just the big log
-  /// message string, because some LogAppenders will refer
-  /// to individual components such as file, line etc.
-
-  /// @brief function name of log message source code location
-  char const* _function;
-  /// @brief file of log message source code location
-  char const* _file;
-  /// @brief line of log message source code location
-  int const _line;
-  /// @brief log level
-  LogLevel const _level;
-
-  /// @brief id of log topic
-  size_t const _topicId;
-  /// @biref the actual log message
-  std::string _message;
-  /// @brief byte offset where actual message starts (i.e. excluding prologue)
-  uint32_t _offset;
-  /// @brief whether or not the log message was already shrunk (used to
-  /// prevent duplicate shrinking of message)
-  bool _shrunk;
-};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Logger
@@ -278,6 +236,16 @@ class Logger {
   static void setUseJson(bool);
   static LogTimeFormats::TimeFormat timeFormat() { return _timeFormat; }
 
+  static void reopen();
+  static void addAppender(LogGroup const& group, std::string const& definition);
+  static void addGlobalAppender(LogGroup const& group,
+                                std::shared_ptr<LogAppender> appender);
+  static bool haveAppenders(LogGroup const& group, size_t topicId);
+  static void log(LogGroup const& group, LogMessage const& message);
+
+  static bool allowStdLogging() { return _allowStdLogging; }
+  static void allowStdLogging(bool value) { _allowStdLogging = value; }
+
   // can be called after fork()
   static void clearCachedPid() {
     _cachedPid.store(0, std::memory_order_relaxed);
@@ -317,6 +285,9 @@ class Logger {
   // these variables might be changed asynchronously
   static std::atomic<bool> _active;
   static std::atomic<LogLevel> _level;
+
+  static logger::Appenders _appenders;
+  static bool _allowStdLogging;
 
   // default log levels, captured once at startup. these can be used
   // to reset the log levels back to defaults.

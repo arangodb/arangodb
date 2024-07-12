@@ -18,49 +18,56 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include <stddef.h>
 #include <array>
-#include <functional>
 #include <map>
 #include <memory>
 #include <string>
-#include <thread>
-#include <typeindex>
-#include <utility>
 #include <vector>
 
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "Logger/LogGroup.h"
-#include "Logger/LogLevel.h"
 
 namespace arangodb {
-class LogTopic;
+class LogAppender;
 struct LogMessage;
+class LogTopic;
+}  // namespace arangodb
 
-class LogAppender {
- public:
-  LogAppender() = default;
-  virtual ~LogAppender() = default;
+namespace arangodb::logger {
 
-  LogAppender(LogAppender const&) = delete;
-  LogAppender& operator=(LogAppender const&) = delete;
+struct Appenders {
+  void addAppender(LogGroup const&, std::string const& definition);
 
- public:
-  void logMessageGuarded(LogMessage const&);
+  void addGlobalAppender(LogGroup const&, std::shared_ptr<LogAppender>);
 
-  virtual std::string details() const = 0;
+  std::shared_ptr<LogAppender> buildAppender(LogGroup const&,
+                                             std::string const& output);
 
- protected:
-  virtual void logMessage(LogMessage const& message) = 0;
+  void logGlobal(LogGroup const&, LogMessage const&);
+  void log(LogGroup const&, LogMessage const&);
+
+  void reopen();
+  void shutdown();
+
+  bool haveAppenders(LogGroup const&, size_t topicId);
 
  private:
-  basics::ReadWriteLock _logOutputMutex;
-  std::atomic<std::thread::id> _logOutputMutexOwner;
+  Result parseDefinition(std::string const& definition, std::string& topicName,
+                         std::string& output, LogTopic*& topic);
+
+  arangodb::basics::ReadWriteLock _appendersLock;
+  std::array<std::vector<std::shared_ptr<LogAppender>>, LogGroup::Count>
+      _globalAppenders;
+  std::array<std::map<size_t, std::vector<std::shared_ptr<LogAppender>>>,
+             LogGroup::Count>
+      _topics2appenders;
+  std::array<std::map<std::string, std::shared_ptr<LogAppender>>,
+             LogGroup::Count>
+      _definition2appenders;
 };
-}  // namespace arangodb
+}  // namespace arangodb::logger

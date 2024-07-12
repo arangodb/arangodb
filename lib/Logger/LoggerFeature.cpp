@@ -709,15 +709,15 @@ void LoggerFeature::prepare() {
 
   for (auto const& definition : _output) {
     if (_supervisor && definition.starts_with("file://")) {
-      LogAppender::addAppender(Logger::defaultLogGroup(),
-                               definition + ".supervisor");
+      Logger::addAppender(Logger::defaultLogGroup(),
+                          definition + ".supervisor");
     } else {
-      LogAppender::addAppender(Logger::defaultLogGroup(), definition);
+      Logger::addAppender(Logger::defaultLogGroup(), definition);
     }
   }
 
   if (_foregroundTty) {
-    LogAppender::addAppender(Logger::defaultLogGroup(), "-");
+    Logger::addAppender(Logger::defaultLogGroup(), "-");
   }
 
   if (_forceDirect || _supervisor) {

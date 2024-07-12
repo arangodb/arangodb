@@ -25,6 +25,7 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/debugging.h"
 #include "Logger/LogAppender.h"
+#include "Logger/LogMessage.h"
 #include "Logger/Logger.h"
 
 using namespace arangodb;
@@ -140,7 +141,7 @@ bool LogThread::processPendingMessages() {
     TRI_ASSERT(env.group != nullptr);
     TRI_ASSERT(env.msg != nullptr);
     try {
-      LogAppender::log(*env.group, *env.msg);
+      Logger::log(*env.group, *env.msg);
     } catch (...) {
     }
 

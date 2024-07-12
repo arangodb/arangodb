@@ -78,7 +78,7 @@ int main(int argc, char* argv[]) {
 
   arangodb::Logger::setShowLineNumber(logLineNumbers);
   arangodb::Logger::initialize(server, false);
-  arangodb::LogAppender::addAppender(arangodb::Logger::defaultLogGroup(), "-");
+  arangodb::Logger::addAppender(arangodb::Logger::defaultLogGroup(), "-");
 
   arangodb::ArangoGlobalContext ctx(1, const_cast<char**>(&ARGV0), ".");
   ctx.exit(0);  // set "good" exit code by default

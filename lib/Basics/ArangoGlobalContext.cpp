@@ -58,7 +58,7 @@ using namespace arangodb::basics;
 
 namespace {
 
-static void ReopenLog(int) { LogAppender::reopen(); }
+static void ReopenLog(int) { Logger::reopen(); }
 }  // namespace
 
 ArangoGlobalContext* ArangoGlobalContext::CONTEXT = nullptr;

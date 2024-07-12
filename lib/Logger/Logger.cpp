@@ -37,9 +37,11 @@
 #include "Logger/Escaper.h"
 #include "Logger/LogAppender.h"
 #include "Logger/LogAppenderFile.h"
+#include "Logger/LogAppenderStdStream.h"
 #include "Logger/LogContext.h"
 #include "Logger/LogGroup.h"
 #include "Logger/LogMacros.h"
+#include "Logger/LogMessage.h"
 #include "Logger/LogStructuredParamsAllowList.h"
 #include "Logger/LogThread.h"
 
@@ -111,6 +113,9 @@ void LogMessage::shrink(std::size_t maxLength) {
 
 std::atomic<bool> Logger::_active(false);
 std::atomic<LogLevel> Logger::_level(LogLevel::INFO);
+logger::Appenders Logger::_appenders;
+bool Logger::_allowStdLogging = true;
+
 std::function<void()> Logger::_onDroppedMessage;
 
 // default log levels, captured once at startup. these can be used
@@ -469,6 +474,25 @@ void Logger::setUseJson(bool value) {
   }
 
   _useJson = value;
+}
+
+void Logger::reopen() { _appenders.reopen(); }
+
+void Logger::addAppender(LogGroup const& group, std::string const& definition) {
+  _appenders.addAppender(group, definition);
+}
+
+void Logger::addGlobalAppender(LogGroup const& group,
+                               std::shared_ptr<LogAppender> appender) {
+  _appenders.addGlobalAppender(group, std::move(appender));
+}
+
+bool Logger::haveAppenders(LogGroup const& group, size_t topicId) {
+  return _appenders.haveAppenders(group, topicId);
+}
+
+void Logger::log(LogGroup const& group, LogMessage const& message) {
+  _appenders.log(group, message);
 }
 
 bool Logger::translateLogLevel(std::string const& l, bool isGeneral,
@@ -858,7 +882,7 @@ void Logger::append(LogGroup& group, std::unique_ptr<LogMessage> msg,
   // logger plus some Windows-specifc appenders for the debug output window
   // and the Windows event log. note that these loggers do not require any
   // configuration so we can always and safely invoke them.
-  LogAppender::logGlobal(group, *msg);
+  _appenders.logGlobal(group, *msg);
 
   if (!_active.load(std::memory_order_acquire)) {
     // logging is still turned off. now use hard-coded to-stderr logging
@@ -883,7 +907,7 @@ void Logger::append(LogGroup& group, std::unique_ptr<LogMessage> msg,
         return;
       }
 
-      LogAppender::log(group, *msg);
+      _appenders.log(group, *msg);
     }
   }
 }
@@ -969,7 +993,7 @@ void Logger::shutdown() {
   }
 
   // cleanup appenders
-  LogAppender::shutdown();
+  _appenders.shutdown();
 
   _cachedPid.store(0, std::memory_order_relaxed);
 }

@@ -327,7 +327,7 @@ void SupervisorFeature::daemonize() {
     else {
       Logger::shutdown();
 
-      LogAppender::allowStdLogging(false);
+      Logger::allowStdLogging(false);
       DaemonFeature::remapStandardFileDescriptors();
 
       LOG_TOPIC("abe90", DEBUG, Logger::STARTUP)
