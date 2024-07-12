@@ -488,7 +488,8 @@ bool TraversalExecutor::initTraverser(AqlItemBlockInputRange& input) {
   TRI_ASSERT(traversalEnumerator()->isDone());
 
   while (input.hasDataRow()) {
-    std::tie(std::ignore, _inputRow) = input.nextDataRow();
+    std::tie(std::ignore, _inputRow) =
+        input.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
 
     std::string sourceString;
     TRI_ASSERT(_inputRow.isInitialized());
