@@ -544,13 +544,9 @@ void Logger::log(std::string_view logid, std::string_view function,
                  std::string_view file, int line, LogLevel level,
                  size_t topicId, std::string_view message) try {
   TRI_ASSERT(!logid.empty());
-  LogContext& logContext = LogContext::current();
 
   // we only determine our pid once, as currentProcessId() will
   // likely do a syscall.
-  // this read-check-update sequence is not thread-safe, but this
-  // should not matter, as the pid value is only changed from 0 to the
-  // actual pid and never changes afterwards
   if (_cachedPid.load(std::memory_order_relaxed) == 0) {
     _cachedPid.store(Thread::currentProcessId(), std::memory_order_relaxed);
   }
@@ -569,277 +565,11 @@ void Logger::log(std::string_view logid, std::string_view function,
   }
 
   if (Logger::_useJson) {
-    // construct JSON output
-    arangodb::velocypack::StringSink sink(&out);
-    arangodb::velocypack::Options options;
-    options.escapeControl = _useControlEscaped;
-    options.escapeUnicode = _useUnicodeEscaped;
-    arangodb::velocypack::Dumper dumper(&sink, &options);
-
-    out.push_back('{');
-
-    // current date/time
-    {
-      out.append("\"time\":");
-      if (LogTimeFormats::isStringFormat(_timeFormat)) {
-        out.push_back('"');
-      }
-      // value of date/time is always safe to print
-      LogTimeFormats::writeTime(out, _timeFormat,
-                                std::chrono::system_clock::now());
-      if (LogTimeFormats::isStringFormat(_timeFormat)) {
-        out.push_back('"');
-      }
-    }
-
-    // prefix
-    if (!_outputPrefix.empty()) {
-      out.append(",\"prefix\":");
-      dumper.appendString(_outputPrefix.data(), _outputPrefix.size());
-    }
-
-    // pid
-    if (_showProcessIdentifier) {
-      out.append(",\"pid\":");
-      StringUtils::itoa(uint64_t(_cachedPid.load(std::memory_order_relaxed)),
-                        out);
-    }
-
-    // tid
-    if (_showThreadIdentifier) {
-      out.append(",\"tid\":");
-      StringUtils::itoa(uint64_t(Thread::currentThreadNumber()), out);
-    }
-
-    // thread name
-    if (_showThreadName) {
-      ThreadNameFetcher nameFetcher;
-      std::string_view threadName = nameFetcher.get();
-      out.append(",\"thread\":");
-      dumper.appendString(threadName.data(), threadName.size());
-    }
-
-    // role
-    if (_showRole) {
-      out.append(",\"role\":\"");
-      if (_role != '\0') {
-        // value of _role is always safe to print
-        out.push_back(_role);
-      }
-      out.push_back('"');
-    }
-
-    // log level
-    {
-      out.append(",\"level\":");
-      auto const& ll = Logger::translateLogLevel(level);
-      // value of level is always safe to print
-      dumper.appendString(ll.data(), ll.size());
-    }
-
-    // file and line
-    if (_showLineNumber && !file.empty()) {
-      out.append(",\"file\":");
-      dumper.appendString(file);
-    }
-
-    if (_showLineNumber) {
-      out.append(",\"line\":");
-      StringUtils::itoa(uint64_t(line), out);
-    }
-
-    if (_showLineNumber && !function.empty()) {
-      out.append(",\"function\":");
-      dumper.appendString(function);
-    }
-
-    // the topic
-    {
-      out.append(",\"topic\":");
-      std::string_view topic = LogTopic::lookup(topicId);
-      // value of topic is always safe to print
-      dumper.appendString(topic.data(), topic.size());
-    }
-
-    // the logid
-    if (::arangodb::Logger::getShowIds()) {
-      out.append(",\"id\":");
-      // value of id is always safe to print
-      dumper.appendString(logid);
-    }
-
-    // hostname
-    if (!_hostname.empty()) {
-      out.append(",\"hostname\":");
-      dumper.appendString(_hostname.data(), _hostname.size());
-    }
-
-    {
-      READ_LOCKER(guard, _structuredParamsLock);
-      // meta data from log context
-      LogContext::OverloadVisitor visitor([&out, &dumper](
-                                              std::string_view const& key,
-                                              auto&& value) {
-        if (!_structuredLogParams.contains({key.data(), key.size()})) {
-          return;
-        }
-        out.push_back(',');
-        dumper.appendString(key.data(), key.size());
-        out.push_back(':');
-        if constexpr (std::is_same_v<std::string_view,
-                                     std::remove_cv_t<std::remove_reference_t<
-                                         decltype(value)>>>) {
-          dumper.appendString(value.data(), value.size());
-        } else {
-          out.append(std::to_string(value));
-        }
-      });
-      logContext.visit(visitor);
-    }
-
-    // the message itself
-    {
-      out.append(",\"message\":");
-
-      // the log message can be really large, and it can lead to
-      // truncation of the log message further down the road.
-      // however, as we are supposed to produce valid JSON log
-      // entries even with the truncation in place, we need to make
-      // sure that the dynamic text part is truncated and not the
-      // entries JSON thing
-      size_t maxMessageLength = defaultLogGroup().maxLogEntryLength();
-      // cut of prologue, the quotes ('"' --- ' '") and the final '}'
-      if (maxMessageLength >= out.size() + 3) {
-        maxMessageLength -= out.size() + 3;
-      }
-      if (maxMessageLength > message.size()) {
-        maxMessageLength = message.size();
-      }
-      dumper.appendString(message.data(), maxMessageLength);
-
-      // this tells the logger to not shrink our (potentially already
-      // shrunk) message once more - if it would shrink the message again,
-      // it may produce invalid JSON
-      shrunk = true;
-    }
-
-    out.push_back('}');
-
-    TRI_ASSERT(offset == 0);
+    buildJsonLogMessage(out, logid, function, file, line, level, topicId,
+                        message, shrunk);
   } else {
-    // hostname
-    if (!_hostname.empty()) {
-      out.append(_hostname);
-      out.push_back(' ');
-    }
-
-    // human readable format
-    LogTimeFormats::writeTime(out, _timeFormat,
-                              std::chrono::system_clock::now());
-    out.push_back(' ');
-
-    // output prefix
-    if (!_outputPrefix.empty()) {
-      out.append(_outputPrefix);
-      out.push_back(' ');
-    }
-
-    // [pid-tid-threadname], all components are optional
-    bool haveProcessOutput = false;
-    if (_showProcessIdentifier) {
-      // append the process / thread identifier
-      TRI_ASSERT(_cachedPid.load(std::memory_order_relaxed) != 0);
-      out.push_back('[');
-      StringUtils::itoa(uint64_t(_cachedPid.load(std::memory_order_relaxed)),
-                        out);
-      haveProcessOutput = true;
-    }
-
-    if (_showThreadIdentifier) {
-      out.push_back(haveProcessOutput ? '-' : '[');
-      StringUtils::itoa(uint64_t(Thread::currentThreadNumber()), out);
-      haveProcessOutput = true;
-    }
-
-    // log thread name
-    if (_showThreadName) {
-      ThreadNameFetcher nameFetcher;
-      std::string_view threadName = nameFetcher.get();
-
-      out.push_back(haveProcessOutput ? '-' : '[');
-      out.append(threadName.data(), threadName.size());
-      haveProcessOutput = true;
-    }
-
-    if (haveProcessOutput) {
-      out.append("] ", 2);
-    }
-
-    if (_showRole && _role != '\0') {
-      out.push_back(_role);
-      out.push_back(' ');
-    }
-
-    // log level
-    out.append(Logger::translateLogLevel(level));
-    out.push_back(' ');
-
-    // check if we must display the line number
-    if (_showLineNumber && !file.empty() && !function.empty()) {
-      out.push_back('[');
-      out.append(function);
-      out.push_back('@');
-      out.append(file);
-      out.push_back(':');
-      StringUtils::itoa(uint64_t(line), out);
-      out.append("] ", 2);
-    }
-
-    // the offset is used by the in-memory logger, and it cuts off everything
-    // from the start of the concatenated log string until the offset. only
-    // what's after the offset gets displayed in the web interface
-    TRI_ASSERT(out.size() < static_cast<size_t>(UINT32_MAX));
-    offset = static_cast<uint32_t>(out.size());
-
-    if (::arangodb::Logger::getShowIds()) {
-      out.push_back('[');
-      out.append(logid);
-      out.append("] ", 2);
-    }
-
-    {
-      out.push_back('{');
-      out.append(LogTopic::lookup(topicId));
-      out.append("} ", 2);
-    }
-
-    {
-      READ_LOCKER(guard, _structuredParamsLock);
-      //  meta data from log
-      LogContext::OverloadVisitor visitor([&out, writerFn = _writerFn](
-                                              std::string_view const& key,
-                                              auto&& value) {
-        if (!_structuredLogParams.contains({key.data(), key.size()})) {
-          return;
-        }
-        out.push_back('[');
-        out.append(key).append(": ", 2);
-
-        if constexpr (std::is_same_v<std::string_view,
-                                     std::remove_cv_t<std::remove_reference_t<
-                                         decltype(value)>>>) {
-          writerFn(value, out);
-        } else {
-          std::string number = std::to_string(value);
-          writerFn(number, out);
-        }
-
-        out.append("] ", 2);
-      });
-      logContext.visit(visitor);
-    }
-
-    _writerFn(message, out);
+    buildTextLogMessage(out, logid, function, file, line, level, topicId,
+                        message, offset, shrunk);
   }
 
   TRI_ASSERT(offset == 0 || !_useJson);
@@ -857,7 +587,284 @@ void Logger::log(std::string_view logid, std::string_view function,
                                                  level, topicId, msg._message);
          });
 } catch (...) {
-  // logging itself must never cause an exeption to escape
+  // logging itself must never cause an exception to escape
+}
+
+void Logger::buildJsonLogMessage(std::string& out, std::string_view logid,
+                                 std::string_view function,
+                                 std::string_view file, int line,
+                                 LogLevel level, size_t topicId,
+                                 std::string_view message, bool& shrunk) {
+  LogContext& logContext = LogContext::current();
+  // construct JSON output
+  arangodb::velocypack::StringSink sink(&out);
+  arangodb::velocypack::Options options;
+  options.escapeControl = _useControlEscaped;
+  options.escapeUnicode = _useUnicodeEscaped;
+  arangodb::velocypack::Dumper dumper(&sink, &options);
+
+  out.push_back('{');
+
+  // current date/time
+  {
+    out.append("\"time\":");
+    if (LogTimeFormats::isStringFormat(_timeFormat)) {
+      out.push_back('"');
+    }
+    // value of date/time is always safe to print
+    LogTimeFormats::writeTime(out, _timeFormat,
+                              std::chrono::system_clock::now());
+    if (LogTimeFormats::isStringFormat(_timeFormat)) {
+      out.push_back('"');
+    }
+  }
+
+  // prefix
+  if (!_outputPrefix.empty()) {
+    out.append(",\"prefix\":");
+    dumper.appendString(_outputPrefix);
+  }
+
+  // pid
+  if (_showProcessIdentifier) {
+    out.append(",\"pid\":");
+    StringUtils::itoa(uint64_t(_cachedPid.load(std::memory_order_relaxed)),
+                      out);
+  }
+
+  // tid
+  if (_showThreadIdentifier) {
+    out.append(",\"tid\":");
+    StringUtils::itoa(uint64_t(Thread::currentThreadNumber()), out);
+  }
+
+  // thread name
+  if (_showThreadName) {
+    ThreadNameFetcher nameFetcher;
+    std::string_view threadName = nameFetcher.get();
+    out.append(",\"thread\":");
+    dumper.appendString(threadName);
+  }
+
+  // role
+  if (_showRole) {
+    out.append(",\"role\":\"");
+    if (_role != '\0') {
+      // value of _role is always safe to print
+      out.push_back(_role);
+    }
+    out.push_back('"');
+  }
+
+  // log level
+  out.append(",\"level\":");
+  // value of level is always safe to print
+  dumper.appendString(Logger::translateLogLevel(level));
+
+  // file and line
+  if (_showLineNumber && !file.empty()) {
+    out.append(",\"file\":");
+    dumper.appendString(file);
+  }
+
+  if (_showLineNumber) {
+    out.append(",\"line\":");
+    StringUtils::itoa(uint64_t(line), out);
+  }
+
+  if (_showLineNumber && !function.empty()) {
+    out.append(",\"function\":");
+    dumper.appendString(function);
+  }
+
+  // the topic
+  out.append(",\"topic\":");
+  // value of topic is always safe to print
+  dumper.appendString(LogTopic::lookup(topicId));
+
+  // the logid
+  if (::arangodb::Logger::getShowIds()) {
+    out.append(",\"id\":");
+    // value of id is always safe to print
+    dumper.appendString(logid);
+  }
+
+  // hostname
+  if (!_hostname.empty()) {
+    out.append(",\"hostname\":");
+    dumper.appendString(_hostname);
+  }
+
+  {
+    READ_LOCKER(guard, _structuredParamsLock);
+    // meta data from log context
+    LogContext::OverloadVisitor visitor(
+        [&out, &dumper](std::string_view const& key, auto&& value) {
+          if (!_structuredLogParams.contains({key.data(), key.size()})) {
+            return;
+          }
+          out.push_back(',');
+          dumper.appendString(key);
+          out.push_back(':');
+          if constexpr (std::is_same_v<std::string_view,
+                                       std::remove_cv_t<std::remove_reference_t<
+                                           decltype(value)>>>) {
+            dumper.appendString(value);
+          } else {
+            out.append(std::to_string(value));
+          }
+        });
+    logContext.visit(visitor);
+  }
+
+  // the message itself
+  {
+    out.append(",\"message\":");
+
+    // the log message can be really large, and it can lead to
+    // truncation of the log message further down the road.
+    // however, as we are supposed to produce valid JSON log
+    // entries even with the truncation in place, we need to make
+    // sure that the dynamic text part is truncated and not the
+    // entries JSON thing
+    size_t maxMessageLength = defaultLogGroup().maxLogEntryLength();
+    // cut of prologue, the quotes ('"' --- ' '") and the final '}'
+    if (maxMessageLength >= out.size() + 3) {
+      maxMessageLength -= out.size() + 3;
+    }
+    if (maxMessageLength > message.size()) {
+      maxMessageLength = message.size();
+    }
+    dumper.appendString(message.data(), maxMessageLength);
+
+    // this tells the logger to not shrink our (potentially already
+    // shrunk) message once more - if it would shrink the message again,
+    // it may produce invalid JSON
+    shrunk = true;
+  }
+
+  out.push_back('}');
+}
+
+void Logger::buildTextLogMessage(std::string& out, std::string_view logid,
+                                 std::string_view function,
+                                 std::string_view file, int line,
+                                 LogLevel level, size_t topicId,
+                                 std::string_view message, uint32_t& offset,
+                                 bool& shrunk) {
+  LogContext& logContext = LogContext::current();
+  // hostname
+  if (!_hostname.empty()) {
+    out.append(_hostname);
+    out.push_back(' ');
+  }
+
+  // human readable format
+  LogTimeFormats::writeTime(out, _timeFormat, std::chrono::system_clock::now());
+  out.push_back(' ');
+
+  // output prefix
+  if (!_outputPrefix.empty()) {
+    out.append(_outputPrefix);
+    out.push_back(' ');
+  }
+
+  // [pid-tid-threadname], all components are optional
+  bool haveProcessOutput = false;
+  if (_showProcessIdentifier) {
+    // append the process / thread identifier
+    TRI_ASSERT(_cachedPid.load(std::memory_order_relaxed) != 0);
+    out.push_back('[');
+    StringUtils::itoa(uint64_t(_cachedPid.load(std::memory_order_relaxed)),
+                      out);
+    haveProcessOutput = true;
+  }
+
+  if (_showThreadIdentifier) {
+    out.push_back(haveProcessOutput ? '-' : '[');
+    StringUtils::itoa(uint64_t(Thread::currentThreadNumber()), out);
+    haveProcessOutput = true;
+  }
+
+  // log thread name
+  if (_showThreadName) {
+    ThreadNameFetcher nameFetcher;
+    std::string_view threadName = nameFetcher.get();
+
+    out.push_back(haveProcessOutput ? '-' : '[');
+    out.append(threadName);
+    haveProcessOutput = true;
+  }
+
+  if (haveProcessOutput) {
+    out.append("] ", 2);
+  }
+
+  if (_showRole && _role != '\0') {
+    out.push_back(_role);
+    out.push_back(' ');
+  }
+
+  // log level
+  out.append(Logger::translateLogLevel(level));
+  out.push_back(' ');
+
+  // check if we must display the line number
+  if (_showLineNumber && !file.empty() && !function.empty()) {
+    out.push_back('[');
+    out.append(function);
+    out.push_back('@');
+    out.append(file);
+    out.push_back(':');
+    StringUtils::itoa(uint64_t(line), out);
+    out.append("] ", 2);
+  }
+
+  // the offset is used by the in-memory logger, and it cuts off everything
+  // from the start of the concatenated log string until the offset. only
+  // what's after the offset gets displayed in the web interface
+  TRI_ASSERT(out.size() < static_cast<size_t>(UINT32_MAX));
+  offset = static_cast<uint32_t>(out.size());
+
+  if (::arangodb::Logger::getShowIds()) {
+    out.push_back('[');
+    out.append(logid);
+    out.append("] ", 2);
+  }
+
+  {
+    out.push_back('{');
+    out.append(LogTopic::lookup(topicId));
+    out.append("} ", 2);
+  }
+
+  {
+    READ_LOCKER(guard, _structuredParamsLock);
+    //  meta data from log
+    LogContext::OverloadVisitor visitor(
+        [&out, writerFn = _writerFn](std::string_view const& key,
+                                     auto&& value) {
+          if (!_structuredLogParams.contains({key.data(), key.size()})) {
+            return;
+          }
+          out.push_back('[');
+          out.append(key).append(": ", 2);
+
+          if constexpr (std::is_same_v<std::string_view,
+                                       std::remove_cv_t<std::remove_reference_t<
+                                           decltype(value)>>>) {
+            writerFn(value, out);
+          } else {
+            std::string number = std::to_string(value);
+            writerFn(number, out);
+          }
+
+          out.append("] ", 2);
+        });
+    logContext.visit(visitor);
+  }
+
+  _writerFn(message, out);
 }
 
 void Logger::append(LogGroup& group, std::unique_ptr<LogMessage> msg,

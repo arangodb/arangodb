@@ -283,6 +283,19 @@ class Logger {
   static void onDroppedMessage() noexcept;
 
  private:
+  static void buildJsonLogMessage(std::string& out, std::string_view logid,
+                                  std::string_view function,
+                                  std::string_view file, int line,
+                                  LogLevel level, size_t topicId,
+                                  std::string_view message, bool& shrunk);
+
+  static void buildTextLogMessage(std::string& out, std::string_view logid,
+                                  std::string_view function,
+                                  std::string_view file, int line,
+                                  LogLevel level, size_t topicId,
+                                  std::string_view message, uint32_t& offset,
+                                  bool& shrunk);
+
   // these variables might be changed asynchronously
   static std::atomic<bool> _active;
   static std::atomic<LogLevel> _level;
