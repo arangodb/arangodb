@@ -32,9 +32,9 @@ struct LogMessage {
   LogMessage(LogMessage const&) = delete;
   LogMessage& operator=(LogMessage const&) = delete;
 
-  LogMessage(char const* function, char const* file, int line, LogLevel level,
-             size_t topicId, std::string&& message, uint32_t offset,
-             bool shrunk) noexcept;
+  LogMessage(std::string_view function, std::string_view file, int line,
+             LogLevel level, size_t topicId, std::string&& message,
+             uint32_t offset, bool shrunk) noexcept;
 
   /// @brief whether or no the message was already shrunk
   bool shrunk() const noexcept { return _shrunk; }
@@ -48,9 +48,9 @@ struct LogMessage {
   /// to individual components such as file, line etc.
 
   /// @brief function name of log message source code location
-  char const* _function;
+  std::string_view _function;
   /// @brief file of log message source code location
-  char const* _file;
+  std::string_view _file;
   /// @brief line of log message source code location
   int const _line;
   /// @brief log level

@@ -176,18 +176,19 @@ class Logger {
   };
 
   struct FILE {
-    explicit FILE(char const* file) noexcept : _file(file) {}
-    char const* _file;
+    explicit FILE(std::string_view file) noexcept : _file(file) {}
+    std::string_view _file;
   };
 
   struct FUNCTION {
-    explicit FUNCTION(char const* function) noexcept : _function(function) {}
-    char const* _function;
+    explicit FUNCTION(std::string_view function) noexcept
+        : _function(function) {}
+    std::string_view _function;
   };
 
   struct LOGID {
-    explicit LOGID(char const* logid) noexcept : _logid(logid) {}
-    char const* _logid;
+    explicit LOGID(std::string_view logid) noexcept : _logid(logid) {}
+    std::string_view _logid;
   };
 
  public:
@@ -256,9 +257,9 @@ class Logger {
 
   static std::string_view translateLogLevel(LogLevel) noexcept;
 
-  static void log(char const* logid, char const* function, char const* file,
-                  int line, LogLevel level, size_t topicId,
-                  std::string_view message);
+  static void log(std::string_view logid, std::string_view function,
+                  std::string_view file, int line, LogLevel level,
+                  size_t topicId, std::string_view message);
 
   static void append(
       LogGroup&, std::unique_ptr<LogMessage> msg, bool forceDirect,

@@ -81,9 +81,10 @@ DefaultLogGroup defaultLogGroupInstance;
 
 }  // namespace
 
-LogMessage::LogMessage(char const* function, char const* file, int line,
-                       LogLevel level, size_t topicId, std::string&& message,
-                       uint32_t offset, bool shrunk) noexcept
+LogMessage::LogMessage(std::string_view function, std::string_view file,
+                       int line, LogLevel level, size_t topicId,
+                       std::string&& message, uint32_t offset,
+                       bool shrunk) noexcept
     : _function(function),
       _file(file),
       _line(line),
@@ -539,10 +540,10 @@ std::string_view Logger::translateLogLevel(LogLevel level) noexcept {
   return UNKNOWN;
 }
 
-void Logger::log(char const* logid, char const* function, char const* file,
-                 int line, LogLevel level, size_t topicId,
-                 std::string_view message) try {
-  TRI_ASSERT(logid != nullptr);
+void Logger::log(std::string_view logid, std::string_view function,
+                 std::string_view file, int line, LogLevel level,
+                 size_t topicId, std::string_view message) try {
+  TRI_ASSERT(!logid.empty());
   LogContext& logContext = LogContext::current();
 
   // we only determine our pid once, as currentProcessId() will
@@ -559,6 +560,13 @@ void Logger::log(char const* logid, char const* function, char const* file,
 
   uint32_t offset = 0;
   bool shrunk = false;
+
+  if (_showLineNumber && !file.empty() && _shortenFilenames) {
+    auto pos = file.find_last_of(TRI_DIR_SEPARATOR_CHAR);
+    if (pos != std::string_view::npos) {
+      file = file.substr(pos + 1);
+    }
+  }
 
   if (Logger::_useJson) {
     // construct JSON output
@@ -630,16 +638,9 @@ void Logger::log(char const* logid, char const* function, char const* file,
     }
 
     // file and line
-    if (_showLineNumber && file != nullptr) {
-      char const* filename = file;
-      if (_shortenFilenames) {
-        char const* shortened = strrchr(filename, TRI_DIR_SEPARATOR_CHAR);
-        if (shortened != nullptr) {
-          filename = shortened + 1;
-        }
-      }
+    if (_showLineNumber && !file.empty()) {
       out.append(",\"file\":");
-      dumper.appendString(filename, strlen(filename));
+      dumper.appendString(file);
     }
 
     if (_showLineNumber) {
@@ -647,9 +648,9 @@ void Logger::log(char const* logid, char const* function, char const* file,
       StringUtils::itoa(uint64_t(line), out);
     }
 
-    if (_showLineNumber && function != nullptr) {
+    if (_showLineNumber && !function.empty()) {
       out.append(",\"function\":");
-      dumper.appendString(function, strlen(function));
+      dumper.appendString(function);
     }
 
     // the topic
@@ -664,7 +665,7 @@ void Logger::log(char const* logid, char const* function, char const* file,
     if (::arangodb::Logger::getShowIds()) {
       out.append(",\"id\":");
       // value of id is always safe to print
-      dumper.appendString(logid, strlen(logid));
+      dumper.appendString(logid);
     }
 
     // hostname
@@ -784,20 +785,11 @@ void Logger::log(char const* logid, char const* function, char const* file,
     out.push_back(' ');
 
     // check if we must display the line number
-    if (_showLineNumber && file != nullptr && function != nullptr) {
-      char const* filename = file;
-
-      if (_shortenFilenames) {
-        // shorten file names from `/home/.../file.cpp` to just `file.cpp`
-        char const* shortened = strrchr(filename, TRI_DIR_SEPARATOR_CHAR);
-        if (shortened != nullptr) {
-          filename = shortened + 1;
-        }
-      }
+    if (_showLineNumber && !file.empty() && !function.empty()) {
       out.push_back('[');
       out.append(function);
       out.push_back('@');
-      out.append(filename);
+      out.append(file);
       out.push_back(':');
       StringUtils::itoa(uint64_t(line), out);
       out.append("] ", 2);
