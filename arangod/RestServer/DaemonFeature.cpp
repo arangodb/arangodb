@@ -44,7 +44,6 @@
 #include "Basics/process-utils.h"
 #include "Basics/system-functions.h"
 #include "Basics/threads.h"
-#include "Logger/LogAppender.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"

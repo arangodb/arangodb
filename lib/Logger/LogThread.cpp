@@ -24,7 +24,6 @@
 #include "LogThread.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/debugging.h"
-#include "Logger/LogAppender.h"
 #include "Logger/LogMessage.h"
 #include "Logger/Logger.h"
 
