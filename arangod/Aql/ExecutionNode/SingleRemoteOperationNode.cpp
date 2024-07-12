@@ -33,7 +33,6 @@
 #include "Aql/Executor/SingleRemoteModificationExecutor.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterInfos.h"
-#include "Aql/SortRegister.h"
 #include "Aql/types.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"

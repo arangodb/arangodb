@@ -25,8 +25,8 @@
 
 #include "RocksDBVPackIndex.h"
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstNode.h"
+#include "Aql/IndexStreamIterator.h"
 #include "Aql/SortCondition.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
@@ -36,6 +36,7 @@
 #include "Cache/CacheManagerFeature.h"
 #include "Cache/TransactionalCache.h"
 #include "Cache/VPackKeyHasher.h"
+#include "Containers/Enumerate.h"
 #include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
@@ -50,11 +51,9 @@
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBIndexingDisabler.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
-#include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Transaction/OperationOrigin.h"
@@ -62,7 +61,6 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
-#include "Aql/IndexStreamIterator.h"
 
 #include <rocksdb/comparator.h>
 #include <rocksdb/iterator.h>
@@ -76,7 +74,7 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
-#include "Containers/Enumerate.h"
+#include <optional>
 
 using namespace arangodb;
 
@@ -113,10 +111,6 @@ using VPackIndexCacheType = cache::TransactionalCache<cache::VPackKeyHasher>;
 // lists: lexicographically and within each slot according to these rules.
 // ...........................................................................
 
-/// @brief Iterator structure for RocksDB unique index.
-/// This iterator can be used only for equality lookups that use all
-/// index attributes. It uses a point lookup and no seeks
-
 namespace arangodb {
 
 class RocksDBVPackIndexInIterator final : public IndexIterator {
@@ -147,6 +141,10 @@ class RocksDBVPackIndexInIterator final : public IndexIterator {
     ResourceUsageScope scope(_resourceMonitor, _searchValues.size());
     // now we are responsible for tracking memory usage
     _memoryUsage += scope.trackedAndSteal();
+
+    if (opts.limit > 0) {
+      _wrapped->setLimit(opts.limit);
+    }
   }
 
   ~RocksDBVPackIndexInIterator() override {
@@ -282,6 +280,9 @@ class RocksDBVPackIndexInIterator final : public IndexIterator {
   void adjustIterator() {
     bool wasRearmed = _wrapped->rearm(_current.value(), _indexIteratorOptions);
     TRI_ASSERT(wasRearmed);
+    if (_indexIteratorOptions.limit > 0) {
+      _wrapped->setLimit(_indexIteratorOptions.limit);
+    }
   }
 
   ResourceMonitor& _resourceMonitor;
@@ -677,6 +678,10 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     return true;
   }
 
+  void setLimit(uint64_t limit) noexcept override {
+    _limitPerLookupValue = limit;
+  }
+
   /// @brief Get the next limit many elements in the index
   bool nextImpl(LocalDocumentIdCallback const& cb, uint64_t limit) override {
     return nextImplementation(
@@ -921,7 +926,8 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     ensureIterator();
     TRI_ASSERT(_iterator != nullptr);
 
-    if (!_iterator->Valid() || outOfRange() || ADB_UNLIKELY(limit == 0)) {
+    if (!_iterator->Valid() || outOfRange() || ADB_UNLIKELY(limit == 0) ||
+        _limitPerLookupValue.value_or(UINT64_MAX) == 0) {
       // No limit no data, or we are actually done. The last call should have
       // returned false
       TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
@@ -933,6 +939,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
     }
 
     TRI_ASSERT(limit > 0);
+    TRI_ASSERT(_limitPerLookupValue.value_or(UINT64_MAX) > 0);
 
     // cannot get here if we have a cache
     do {
@@ -943,6 +950,13 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
         // validate that Iterator is in a good shape and hasn't failed
         rocksutils::checkIteratorStatus(*_iterator);
         return false;
+      }
+      if (_limitPerLookupValue.has_value()) {
+        uint64_t& l = *_limitPerLookupValue;
+        --l;
+        if (l == 0) {
+          return false;
+        }
       }
 
       if (--limit == 0) {
@@ -1183,6 +1197,13 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
 
   // memory used by this iterator
   size_t _memoryUsage;
+
+  // optional limit for the number of index results to produce.
+  // this is only used as a performance optimization. the iterator will
+  // stop producing results once this limit was exceeded. if not set,
+  // it does nothing.
+  std::optional<uint64_t> _limitPerLookupValue;
+
   RocksDBVPackIndexSearchValueFormat const _format;
   bool _mustSeek;
 };
