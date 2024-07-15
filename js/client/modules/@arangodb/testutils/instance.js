@@ -106,6 +106,7 @@ class instance {
     this.rootDir = rootDir;
     this.protocol = protocol;
 
+    this.moreArgs = {};
     this.args = {};
     for (const [key, value] of Object.entries(addArgs)) {
       if (key.search('extraArgs') >= 0) {
@@ -532,6 +533,7 @@ class instance {
     if (unAuthOK === undefined) {
       unAuthOK = false;
     }
+    this.moreArgs = moreArgs;
     if (moreArgs && moreArgs.hasOwnProperty('server.jwt-secret')) {
       this.JWT = moreArgs['server.jwt-secret'];
     }

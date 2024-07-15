@@ -1,6 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global runSetup assertEqual, assertTrue, assertFalse, assertNull, fail */
-
+/* global runSetup assertEqual, assertTrue, assertFalse, assertNull, fail, print, arango */
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
@@ -21,15 +20,13 @@
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
+// / @author Jan Steemann
+// / @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var arangodb = require('@arangodb');
-var db = arangodb.db;
-var internal = require('internal');
+var db = require('@arangodb').db;
+const internal = require('internal');
 var jsunity = require('jsunity');
-var transactionFailure = require('@arangodb/test-helper-common').transactionFailure;
 
 if (runSetup === true) {
   'use strict';
@@ -44,33 +41,35 @@ if (runSetup === true) {
   var meta = { links: { 'UnitTestsRecoveryDummy': { includeAllFields: true } } };
   db._view('UnitTestsRecoveryView').properties(meta);
 
-  return transactionFailure(
-    {
-      collections: {
-        write: ['UnitTestsRecoveryDummy']
-      },
-      action: `function() {
-        var db = require('@arangodb').db;
-        var c = db.UnitTestsRecoveryDummy;
-        for (let i = 0; i < 10000; i++) {
-          c.save({ a: "foo_" + i, b: "bar_" + i, c: i });
-        }
+  internal.wal.flush(true, true);
+  global.instanceManager.debugSetFailAt("FlushCrashAfterReleasingMinTick");
 
-        c.save({ name: 'crashme' }, true);
-        require('internal').debugTerminate('crashing server');
-      }`,
-      waitForSync: true
-    },
-    internal.errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code,
-    false,
-    true,
-    true);
+  if (global.hasOwnProperty('arango')) {
+    // we intend to crash, so we should get to know quickly:
+    print('setting short timeout');
+    arango.timeout(10);
+  }
+  try {
+    for (let i = 0; i < 10000; i++) {
+      c.save({ a: "foo_" + i, b: "bar_" + i, c: i });
+    }
+    c.save({ name: 'crashme' }, { waitForSync: true });
+  } catch (ex) {
+    if ((ex.errorNum !== internal.errors.ERROR_SIMPLE_CLIENT_UNKNOWN_ERROR.code) &&
+        (ex.errorNum !== internal.errors.ERROR_CLUSTER_CONNECTION_LOST.code) &&
+        (ex.errorNum !== internal.errors.ERROR_SIMPLE_CLIENT_COULD_NOT_CONNECT.code)) {
+      print(ex);
+      throw ex;
+    }
+  }
+
+  global.instanceManager.debugTerminate('crashing server');
   return 0;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 function recoverySuite () {
   'use strict';
@@ -79,11 +78,11 @@ function recoverySuite () {
   return {
 
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test whether we can restore the trx data
-    ////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test whether we can restore the trx data
+    // //////////////////////////////////////////////////////////////////////////////
 
-    testIResearchLinkPopulateFail: function () {
+    testIResearchLinkPopulateNoRelease: function () {
       var v = db._view('UnitTestsRecoveryView');
       assertEqual(v.name(), 'UnitTestsRecoveryView');
       assertEqual(v.type(), 'arangosearch');
@@ -92,15 +91,16 @@ function recoverySuite () {
       assertTrue(p.UnitTestsRecoveryDummy.includeAllFields);
 
       var result = db._query("FOR doc IN UnitTestsRecoveryView SEARCH doc.c >= 0 OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length").toArray();
-      assertEqual(result[0], 0);
+      var expectedResult = db._query("FOR doc IN UnitTestsRecoveryDummy FILTER doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length").toArray();
+      assertEqual(result[0], expectedResult[0]);
     }
 
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(recoverySuite);
 return jsunity.done();

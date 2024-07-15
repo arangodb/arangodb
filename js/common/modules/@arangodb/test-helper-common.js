@@ -85,7 +85,13 @@ exports.transactionFailure = function (trx, errorCode, errorMessage, crashOnSucc
       (ex.errorNum === errorCode) && // check for right error code
       (!errorMessage || (ex.message === errorMessage))) { // optional errorMessage
       if (crashOnSuccess) {
-        internal.debugTerminate('crashing server');
+        if (global.hasOwnProperty('instanceManager')) {
+          global.instanceManager.debugTerminate();
+        } else if (internal.hasOwnProperty('debugTerminate')) {
+          internal.debugTerminate('crashing server');
+        } else {
+          throw new Error('instance manager not found!')
+        }
       }
       return 0;
     }
@@ -104,7 +110,13 @@ exports.truncateFailure = function (collection) {
       throw ex;
     }
   }
-  internal.debugTerminate('crashing server');
+  if (global.hasOwnProperty('instanceManager')) {
+    global.instanceManager.debugTerminate();
+  } else if (internal.hasOwnProperty('debugTerminate')) {
+    internal.debugTerminate('crashing server');
+  } else {
+    throw new Error('instance manager not found!')
+  }
 };
 
 function getInstanceInfo() {
