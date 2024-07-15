@@ -100,6 +100,7 @@ class instance {
   // / protocol must be one of ["tcp", "ssl", "unix"]
   constructor(options, instanceRole, addArgs, authHeaders, protocol, rootDir, restKeyFile, agencyMgr, tmpDir, mem) {
     this.id = null;
+    this.shortName = null;
     this.pm = pm.getPortManager(options);
     this.options = options;
     this.instanceRole = instanceRole;
@@ -627,6 +628,7 @@ class instance {
       return [name, true];
     }
     if (health.hasOwnProperty(this.id)) {
+      this.shortName = health[this.id].ShortName;
       if (health[this.id].Status === "GOOD") {
         return [name, true];
       } else {
@@ -1259,14 +1261,20 @@ class instance {
     }
     return `  [${this.name}] up with pid ${this.pid} - ${this.dataDir}`;
   }
-  debugSetFailAt(failurePoint) {
+  debugSetFailAt(failurePoint, shortName) {
+    if (shortName !== undefined && this.shortName !== shortName) {
+      return;
+    }
     this.connect();
     let reply = arango.PUT_RAW('/_admin/debug/failat/' + failurePoint, '');
     if (reply.code !== 200) {
       throw new Error(`Failed to set ${failurePoint}: ${reply.parsedBody}`);
     }
   }
-  debugClearFailAt(failurePoint) {
+  debugClearFailAt(failurePoint, shortName) {
+    if (shortName !== undefined && this.shortName !== shortName) {
+      return;
+    }
     this.connect();
     let reply = arango.DELETE_RAW(`/_admin/debug/failat/${(failurePoint=== undefined)?'': '/' + failurePoint}`);
     if (reply.code !== 200) {
