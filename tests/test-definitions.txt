@@ -155,8 +155,6 @@ communication_ssl full priority=1000 parallelity=2 single
 
 communication full priority=1000 parallelity=4 cluster
 communication_ssl full priority=1000 parallelity=4 cluster
-=======
->>>>>>> 9dc4bd04f00 (revert)
 
 shell_api priority=500 single -- $EncryptionAtRest
 
@@ -207,8 +205,6 @@ resilience_move priority=600 size=medium buckets=3 cluster -- --dumpAgencyOnErro
 resilience_sharddist size=small cluster -- --dumpAgencyOnError true
 
 shell_api priority=500 cluster -- $EncryptionAtRest
-<<<<<<< HEAD
-=======
 
 shell_api_multi priority=500 cluster suffix=http -- $EncryptionAtRest
 shell_api_multi priority=500 cluster suffix=https -- $EncryptionAtRest --protocol ssl
@@ -280,4 +276,3 @@ communication_ssl full priority=1000 parallelity=2 single
 
 communication full priority=1000 parallelity=4 cluster
 communication_ssl full priority=1000 parallelity=4 cluster
->>>>>>> 9dc4bd04f00 (revert)
