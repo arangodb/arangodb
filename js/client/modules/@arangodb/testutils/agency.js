@@ -110,7 +110,7 @@ class agencyMgr {
     if (body === null) {
       body = (method === 'POST') ? '[["/"]]' : '';
     }
-    let allArgs = [agent.args, agent.moreArgs]
+    let allArgs = [agent.args, agent.moreArgs];
     allArgs.forEach(args => {
       if (args.hasOwnProperty('authOpts')) {
         opts['jwt'] = crypto.jwtEncode(agent.authOpts['server.jwt-secret'], {'server_id': 'none', 'iss': 'arangodb'}, 'HS256');
