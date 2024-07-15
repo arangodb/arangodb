@@ -90,7 +90,7 @@ exports.transactionFailure = function (trx, errorCode, errorMessage, crashOnSucc
         } else if (internal.hasOwnProperty('debugTerminate')) {
           internal.debugTerminate('crashing server');
         } else {
-          throw new Error('instance manager not found!')
+          throw new Error('instance manager not found!');
         }
       }
       return 0;
@@ -115,7 +115,7 @@ exports.truncateFailure = function (collection) {
   } else if (internal.hasOwnProperty('debugTerminate')) {
     internal.debugTerminate('crashing server');
   } else {
-    throw new Error('instance manager not found!')
+    throw new Error('instance manager not found!');
   }
 };
 
