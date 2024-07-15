@@ -401,7 +401,6 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
     res = executeExternalAndWait(cmd, args, false, timeout * 1000, sh.getSanOptions());
     instanceInfo.pid = res.pid;
     instanceInfo.exitStatus = res;
-    sh.resetSanOptions();
     crashUtils.calculateMonitorValues(options, instanceInfo, res.pid, cmd);
   }
   const deltaTime = time() - startTime;
