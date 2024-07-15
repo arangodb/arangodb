@@ -202,19 +202,19 @@ class instanceManager {
     }
     return res.parsedBody === true;
   }
-  debugSetFailAt(failurePoint) {
+  debugSetFailAt(failurePoint, shortName) {
     let dbName = db._name();
-    this.arangods.forEach(arangod => {arangod.debugSetFailAt(failurePoint);});
+    this.arangods.forEach(arangod => {arangod.debugSetFailAt(failurePoint, shortName);});
     arango.reconnect(this.endpoint, dbName, 'root', '');
   }
-  debugRemoveFailAt(failurePoint) {
+  debugRemoveFailAt(failurePoint, shortName) {
     let dbName = db._name();
-    this.arangods.forEach(arangod => {arangod.debugClearFailAt(failurePoint);});
+    this.arangods.forEach(arangod => {arangod.debugClearFailAt(failurePoint, shortName);});
     arango.reconnect(this.endpoint, dbName, 'root', '');
   }
-  debugClearFailAt(failurePoint) {
+  debugClearFailAt(failurePoint, shortName) {
     let dbName = db._name();
-    this.arangods.forEach(arangod => {arangod.debugClearFailAt(failurePoint);});
+    this.arangods.forEach(arangod => {arangod.debugClearFailAt(failurePoint, shortName);});
     arango.reconnect(this.endpoint, dbName, 'root', '');
   }
   debugTerminate() {
@@ -409,24 +409,6 @@ class instanceManager {
     if (this.options.cluster && !this.options.skipReconnect) {
       this.checkClusterAlive({}); // todo addArgs
       this.reconnect();
-      /*
-      if (this.JWT) {
-        print("reconnecting with JWT " + this.endpoint);
-        arango.reconnect(this.endpoint,
-                         '_system',
-                         this.options.username,
-                         this.options.password,
-                         false,
-                         this.JWT);
-      } else {
-        print("reconnecting " + this.endpoint);
-        arango.reconnect(this.endpoint,
-                         '_system',
-                         this.options.username,
-                         this.options.password,
-                         false);
-                         }
-                         */
     }
     this.launchFinalize(startTime);
   }
@@ -719,6 +701,10 @@ class instanceManager {
     this.printProcessInfo(startTime);
     sleep(this.options.sleepBeforeStart);
     this.spawnClusterHealthMonitor();
+    if (this.options.cluster) {
+      this.reconnect();
+      this._checkServersGOOD();
+    }
   }
 
   reStartInstance(moreArgs) {
