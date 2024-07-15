@@ -129,9 +129,7 @@ namespace mdi {
 
 struct ExpressionBounds {
   struct Bound {
-    aql::AstNode const* op_node = nullptr;
-    aql::AstNode const* bounded_expr = nullptr;
-    aql::AstNode const* bound_value = nullptr;
+    std::optional<zkd::byte_string> bound_value;
     bool isStrict = false;
   };
 
