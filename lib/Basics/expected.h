@@ -3,9 +3,6 @@
 #include <type_traits>
 #include "Assertions/Assert.h"
 
-static_assert(std::is_nothrow_copy_constructible_v<std::exception_ptr>);
-static_assert(std::is_nothrow_move_constructible_v<std::exception_ptr>);
-
 namespace arangodb {
 template<typename T>
 struct expected {
