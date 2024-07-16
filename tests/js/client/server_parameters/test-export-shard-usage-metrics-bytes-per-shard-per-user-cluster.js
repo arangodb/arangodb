@@ -1578,11 +1578,11 @@ function TestUser1Suite() {
     
       arango.reconnect(endpoint, db._name(), user, '');
       // set this failure point so that metrics updates are pushed immediately
-      internal.debugSetFailAt("alwaysPublishShardMetrics", jwt);
+      global.instanceManager.debugSetFailAt("alwaysPublishShardMetrics", jwt);
     },
 
     tearDownAll: function () {
-      internal.debugRemoveFailAt("alwaysPublishShardMetrics", jwt);
+      global.instanceManager.debugRemoveFailAt("alwaysPublishShardMetrics", jwt);
       arango.reconnect(endpoint, '_system', oldUser, '');
 
       db._useDatabase("_system");
@@ -1617,11 +1617,11 @@ function TestUser2Suite() {
     
       arango.reconnect(endpoint, db._name(), user, '');
       // set this failure point so that metrics updates are pushed immediately
-      internal.debugSetFailAt("alwaysPublishShardMetrics", jwt);
+      global.instanceManager.debugSetFailAt("alwaysPublishShardMetrics", jwt);
     },
 
     tearDownAll: function () {
-      internal.debugRemoveFailAt("alwaysPublishShardMetrics", jwt);
+      global.instanceManager.debugRemoveFailAt("alwaysPublishShardMetrics", jwt);
       arango.reconnect(endpoint, '_system', oldUser, '');
 
       db._useDatabase("_system");
@@ -1634,7 +1634,7 @@ function TestUser2Suite() {
   return suite;
 }
 
-if (internal.debugCanUseFailAt()) {
+if (global.instanceManager.debugCanUseFailAt()) {
   jsunity.run(TestUser1Suite);
   jsunity.run(TestUser2Suite);
 }
