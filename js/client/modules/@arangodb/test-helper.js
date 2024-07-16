@@ -573,8 +573,7 @@ exports.getCtrlCoordinators = function() {
 };
 
 exports.getServers = function (role) {
-  const instanceInfo = getInstanceInfo();
-  let ret = instanceInfo.arangods.filter(inst => inst.instanceRole === role);
+  let ret = global.instanceManager.arangods.filter(arangod => arangod.isRole(role));
   if (ret.length === 0) {
     throw new Error("No instance matched the type " + role);
   }
