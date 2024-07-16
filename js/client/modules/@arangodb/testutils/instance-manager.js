@@ -204,18 +204,21 @@ class instanceManager {
   }
   debugSetFailAt(failurePoint, shortName) {
     let dbName = db._name();
+    let oldUser = arango.connectedUser();
     this.arangods.forEach(arangod => {arangod.debugSetFailAt(failurePoint, shortName);});
-    arango.reconnect(this.endpoint, dbName, 'root', '');
+    arango.reconnect(this.endpoint, dbName, oldUser, '');
   }
   debugRemoveFailAt(failurePoint, shortName) {
     let dbName = db._name();
+    let oldUser = arango.connectedUser();
     this.arangods.forEach(arangod => {arangod.debugClearFailAt(failurePoint, shortName);});
-    arango.reconnect(this.endpoint, dbName, 'root', '');
+    arango.reconnect(this.endpoint, dbName, oldUser, '');
   }
   debugClearFailAt(failurePoint, shortName) {
     let dbName = db._name();
+    let oldUser = arango.connectedUser();
     this.arangods.forEach(arangod => {arangod.debugClearFailAt(failurePoint, shortName);});
-    arango.reconnect(this.endpoint, dbName, 'root', '');
+    arango.reconnect(this.endpoint, dbName, oldUser, '');
   }
   debugTerminate() {
     this.arangods.forEach(arangod => {arangod.debugTerminate();});
