@@ -353,8 +353,12 @@ bool VelocyPackHelper::VPackStringEqual::operator()(
           0);
 }
 
-int VelocyPackHelper::compareNumberValues(VPackValueType lhsType,
-                                          VPackSlice lhs, VPackSlice rhs) {
+int VelocyPackHelper::compareNumberValuesLegacy(VPackValueType lhsType,
+                                                VPackSlice lhs,
+                                                VPackSlice rhs) {
+  // This function is only for legacy code. The problem is that it casts
+  // all integer types to double, which can lose precision. See
+  // `VelocyPackHelper::compareNumberValues` for a correct implementation.
   if (lhsType == rhs.type()) {
     // both types are equal
     if (lhsType == VPackValueType::Int || lhsType == VPackValueType::SmallInt) {
@@ -385,6 +389,188 @@ int VelocyPackHelper::compareNumberValues(VPackValueType lhsType,
     return 0;
   }
   return (l < r ? -1 : 1);
+}
+
+template<typename T>
+int comp(T a, T b) {
+  if (a == b) {
+    return 0;
+  }
+  return (a < b ? -1 : 1);
+}
+
+static int compareInt64UInt64(int64_t i, uint64_t u) {
+  if (i < 0) {
+    return -1;
+  }
+  return comp<uint64_t>(static_cast<uint64_t>(i), u);
+}
+
+constexpr uint64_t uint64_2_52 = uint64_t{1} << 52;
+constexpr uint64_t uint64_2_63 = uint64_t{1} << 63;
+constexpr double double_2_52 = static_cast<double>(uint64_2_52);
+const double double_2_64 = ldexp(1.0, 64);
+
+static int compareUInt64Double(uint64_t u, double d) {
+  if (std::isnan(d)) {
+    return -1;
+  }
+  if (d < 0.0) {
+    return 1;
+  }
+  if (u < uint64_2_52) {
+    return comp<double>(static_cast<double>(u), d);
+  }
+  if (d < double_2_52) {
+    return 1;  // since we know that u >= 2^52
+  }
+  if (d >= double_2_64) {
+    // Note that this covers the case that d = +inf !
+    return -1;  // since we know that u < 2^64
+  }
+  // Now we know that both numbers are >= 2^52 and < 2^64, so we can look
+  // at the integral and fractional parts of d and decide then:
+  double df = floor(d);
+  uint64_t du = static_cast<uint64_t>(df);  // will work and give the
+                                            // correct integer!
+  if (u < du) {
+    return -1;
+  }
+  if (u > du) {
+    return 1;
+  }
+  // So u == du, let's check the fractional part of d:
+  if (d == df) {
+    // No fractional part, so d and u are equal:
+    return 0;
+  }
+  // There is a fractional part, so u is smaller:
+  return -1;
+}
+
+static int compareInt64Double(int64_t i, double d) {
+  if (std::isnan(d)) {
+    return -1;
+  }
+  if (i < 0) {
+    uint64_t u =
+        (i == std::numeric_limits<int64_t>::min() ? uint64_2_63
+                                                  : static_cast<uint64_t>(-i));
+    return -compareUInt64Double(u, -d);
+  }
+  return compareUInt64Double(static_cast<uint64_t>(i), d);
+}
+
+int VelocyPackHelper::compareNumberValues(VPackValueType lhsType,
+
+                                          VPackSlice lhs, VPackSlice rhs) {
+  if (lhsType == rhs.type()) {
+    // both types are equal
+    if (lhsType == VPackValueType::Int || lhsType == VPackValueType::SmallInt) {
+      // use exact comparisons. no need to cast to double
+      int64_t l = lhs.getIntUnchecked();
+      int64_t r = rhs.getIntUnchecked();
+      return comp<int64_t>(l, r);
+    }
+
+    if (lhsType == VPackValueType::UInt) {
+      // use exact comparisons. no need to cast to double
+      uint64_t l = lhs.getUIntUnchecked();
+      uint64_t r = rhs.getUIntUnchecked();
+      return comp<uint64_t>(l, r);
+    }
+
+    if (lhsType == VPackValueType::Double) {
+      double l = lhs.getDouble();
+      double r = rhs.getDouble();
+      if (std::isnan(l)) {
+        if (std::isnan(r)) {
+          return 0;
+        }
+        return 1;
+      } else if (std::isnan(r)) {
+        return -1;
+      }
+      // No nan on either side!
+      return comp<double>(l, r);
+    }
+  }
+
+  VPackValueType rhsType = rhs.type();
+
+  // Formally, we now have to face 20 different cases, since each side
+  // can be one of SmallInt, Int, UInt, UTCDate, double but the two are
+  // different types. Let's reduce this to only 3 cases by reducing
+  // SmallInt and Int to i64, UInt and UTCDate to u64 and by reordering
+  // to have only I ~ U, I ~ D and U ~ D:
+
+  union Number {
+    int64_t i;
+    uint64_t u;
+    double d;
+  };
+
+  Number l;
+  Number r;
+  short int types = 0;  // 9 cases, = lt + 3 * rt, where
+                        // lt is the left type
+                        // rt is the right type
+                        // 0 is I, 1 is U and 2 is D
+  switch (lhsType) {
+    case VPackValueType::SmallInt:
+    case VPackValueType::Int:
+      l.i = lhs.getIntUnchecked();
+      types += 0;
+      break;
+    case VPackValueType::UInt:
+      l.u = lhs.getUIntUnchecked();
+      types += 1;
+      break;
+    case VPackValueType::Double:
+      l.d = lhs.getNumericValue<double>();
+      types += 2;
+      break;
+    default:    // only happens for the as of now unsupported UTCDate type
+      l.u = 0;  // treat anything else as 0
+      types += 1;
+      break;
+  }
+  switch (rhsType) {
+    case VPackValueType::SmallInt:
+    case VPackValueType::Int:
+      r.i = rhs.getIntUnchecked();
+      types += 0;
+      break;
+    case VPackValueType::UInt:
+      r.u = rhs.getUIntUnchecked();
+      types += 3;
+      break;
+    case VPackValueType::Double:
+      r.d = rhs.getNumericValue<double>();
+      types += 6;
+      break;
+    default:    // only happens for the as of now unsupported UTCDate type
+      r.u = 0;  // treat anything else as 0
+      types += 3;
+      break;
+  }
+
+  switch (types) {
+    case 1:  // 1 + 3 * 0:  UI
+      return -compareInt64UInt64(r.i, l.u);
+    case 2:  // 2 + 3 * 0:  DI
+      return -compareInt64Double(r.i, l.d);
+    case 3:  // 0 + 3 * 1:  IU
+      return compareInt64UInt64(l.i, r.u);
+    case 6:  // 0 + 3 * 2:  ID
+      return compareInt64Double(l.i, r.d);
+    case 7:  // 1 + 3 * 2:  UD
+      return compareUInt64Double(l.u, r.d);
+    case 8:  // 2 + 3 * 1:  DU
+      return -compareUInt64Double(r.u, l.d);
+    default:  // does not happen!
+      return 0;
+  }
 }
 
 /// @brief compares two VelocyPack string values
@@ -447,7 +633,8 @@ void VelocyPackHelper::ensureStringValue(VPackSlice slice,
   }
 }
 
-/// @brief returns a string value, or the default value if it is not a string
+/// @brief returns a string value, or the default value if it is not a
+/// string
 std::string VelocyPackHelper::getStringValue(VPackSlice slice,
                                              std::string const& defaultValue) {
   if (!slice.isString()) {

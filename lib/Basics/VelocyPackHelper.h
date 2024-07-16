@@ -362,6 +362,11 @@ class VelocyPackHelper {
   static bool velocyPackToFile(std::string const& filename, VPackSlice slice,
                                bool syncFile);
 
+  /// @brief compares two VelocyPack number values (legacy version)
+  static int compareNumberValuesLegacy(arangodb::velocypack::ValueType,
+                                       arangodb::velocypack::Slice lhs,
+                                       arangodb::velocypack::Slice rhs);
+
   /// @brief compares two VelocyPack number values
   static int compareNumberValues(arangodb::velocypack::ValueType,
                                  arangodb::velocypack::Slice lhs,
