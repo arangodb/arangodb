@@ -20,24 +20,13 @@ struct expected {
   }
 
   explicit expected(std::exception_ptr ex) noexcept
-      : _exception(std::move(ex)), _state(kException) {}
-
- private:
-  auto copy_from(expected const& other) noexcept(
-      std::is_nothrow_copy_constructible_v<T>) requires
-      std::is_copy_constructible_v<T> {
-    if (other._state == kValue) {
-      new (&_value) T(other._value);
-      _state = kValue;
-    } else if (other._state == kException) {
-      new (&_exception) std::exception_ptr(other._exception);
-      _state = kException;
-    }
+      : _exception(std::move(ex)), _state(kException) {
+    static_assert(std::is_nothrow_move_constructible_v<std::exception_ptr>);
   }
 
- public : expected(expected const& other) noexcept(
-              std::is_nothrow_copy_constructible_v<T>) requires
-          std::is_copy_constructible_v<T> {
+  expected(expected const& other) noexcept(
+      std::is_nothrow_copy_constructible_v<T>) requires
+      std::is_copy_constructible_v<T> {
     copy_from(other);
   }
 
@@ -57,21 +46,9 @@ struct expected {
     return *this;
   }
 
- private : auto move_from(expected&& other) noexcept(
-               std::is_nothrow_move_constructible_v<T>) requires
-           std::move_constructible<T> {
-    if (other._state == kValue) {
-      new (&_value) T(std::move(other._value));
-      _state = kValue;
-    } else if (other._state == kException) {
-      new (&_exception) std::exception_ptr(std::move(other._exception));
-      _state = kException;
-    }
-  }
-
- public : expected(expected&& other) noexcept(
-              std::is_nothrow_move_constructible_v<T>) requires
-          std::move_constructible<T> {
+  expected(expected&& other) noexcept(
+      std::is_nothrow_move_constructible_v<T>) requires
+      std::move_constructible<T> {
     move_from(std::move(other));
   }
 
@@ -182,6 +159,31 @@ struct expected {
   State state() const noexcept { return _state; }
 
  private:
+  auto copy_from(expected const& other) noexcept(
+      std::is_nothrow_copy_constructible_v<T>) requires
+      std::is_copy_constructible_v<T> {
+    if (other._state == kValue) {
+      new (&_value) T(other._value);
+      _state = kValue;
+    } else if (other._state == kException) {
+      static_assert(std::is_nothrow_copy_constructible_v<std::exception_ptr>);
+      new (&_exception) std::exception_ptr(other._exception);
+      _state = kException;
+    }
+  }
+  auto move_from(expected&& other) noexcept(
+      std::is_nothrow_move_constructible_v<T>) requires
+      std::move_constructible<T> {
+    if (other._state == kValue) {
+      new (&_value) T(std::move(other._value));
+      _state = kValue;
+    } else if (other._state == kException) {
+      static_assert(std::is_nothrow_move_constructible_v<std::exception_ptr>);
+      new (&_exception) std::exception_ptr(std::move(other._exception));
+      _state = kException;
+    }
+  }
+
   union {
     T _value;
     std::exception_ptr _exception;
@@ -194,7 +196,9 @@ template<>
 struct expected<void> {
   expected() = default;
   explicit expected(std::exception_ptr ex) noexcept
-      : _exception(std::move(ex)) {}
+      : _exception(std::move(ex)) {
+    static_assert(std::is_nothrow_move_constructible_v<std::exception_ptr>);
+  }
   void reset() noexcept { _exception = nullptr; }
 
   void get() const {
