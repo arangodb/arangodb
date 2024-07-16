@@ -36,12 +36,12 @@ function FollowersSuite () {
 
   return {
     setUp : function () {
-      internal.debugClearFailAt();
+      global.instanceManager.debugClearFailAt();
       db._drop(cn);
     },
     
     tearDown : function () {
-      internal.debugClearFailAt();
+      global.instanceManager.debugClearFailAt();
       db._drop(cn);
     },
     
@@ -128,11 +128,11 @@ function FollowersSuite () {
     },
 
     testWithReplicationAndFailure : function () {
-      if (!internal.debugCanUseFailAt()) {
+      if (!global.instanceManager.debugCanUseFailAt()) {
         return;
       }
 
-      internal.debugSetFailAt("FollowerInfo::add");
+      global.instanceManager.debugSetFailAt("FollowerInfo::add");
 
       // Note that with waitForSyncReplication: true, the collection creation
       // will run into a timeout while waiting for the followers to come in
