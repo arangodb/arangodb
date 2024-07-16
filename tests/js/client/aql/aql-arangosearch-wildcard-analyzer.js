@@ -27,7 +27,6 @@
 let arangodb = require("@arangodb");
 let analyzers = require("@arangodb/analyzers");
 let db = arangodb.db;
-let internal = require("internal");
 let jsunity = require("jsunity");
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 
@@ -35,22 +34,22 @@ function ArangoSearchWildcardAnalyzer(hasPos) {
   const dbName = "ArangoSearchWildcardAnalyzer" + hasPos;
 
   let cleanup = function() {
-    internal.debugClearFailAt();
+    global.instanceManager.debugClearFailAt();
     db._useDatabase("_system");
     try { db._dropDatabase(dbName); } catch (err) {}
   };
 
   let query = function(pattern, needsPrefix, needsMatcher, ignoreCollection = false) {
-    internal.debugClearFailAt();
+    global.instanceManager.debugClearFailAt();
     if (needsPrefix) {
-      internal.debugSetFailAt("wildcard::Filter::needsPrefix");
+      global.instanceManager.debugSetFailAt("wildcard::Filter::needsPrefix");
     } else {
-      internal.debugSetFailAt("wildcard::Filter::dissallowPrefix");
+      global.instanceManager.debugSetFailAt("wildcard::Filter::dissallowPrefix");
     }
     if (needsMatcher) {
-      internal.debugSetFailAt("wildcard::Filter::needsMatcher");
+      global.instanceManager.debugSetFailAt("wildcard::Filter::needsMatcher");
     } else {
-      internal.debugSetFailAt("wildcard::Filter::dissallowMatcher");
+      global.instanceManager.debugSetFailAt("wildcard::Filter::dissallowMatcher");
     }
     let c = db._query("FOR d in c FILTER d.s LIKE '" + pattern + "' RETURN d.s").toArray().sort();
     let i = db._query("FOR d in v1 SEARCH ANALYZER(d.s LIKE '" + pattern + "', 'identity') RETURN d.s").toArray().sort();
