@@ -38,7 +38,8 @@ if (getOptions === true) {
 const jsunity = require('jsunity');
 const db = require('@arangodb').db;
 const internal = require('internal');
-const { getDBServers, deriveTestSuite } = require("@arangodb/test-helper");
+const { instanceRole } = require("@arangodb/testutils/instance");
+const { deriveTestSuite } = require("@arangodb/test-helper");
 const request = require("@arangodb/request");
 const users = require("@arangodb/users");
 const crypto = require('@arangodb/crypto');
@@ -76,7 +77,7 @@ function BaseTestSuite(targetUser) {
 
   let getRawMetrics = function() {
     let lines = [];
-    getDBServers().forEach((server) => {
+    global.instanceManager.arangods.filter(arangod => arangod.isRole(instanceRole.dbServer)).forEach((server) => {
       let res = request({ method: "GET", url: server.url + "/_admin/usage-metrics", auth: { bearer: jwt } });
       assertEqual(200, res.status);
       lines = lines.concat(res.body.split(/\n/).filter((l) => l.match(/^arangodb_collection_requests_bytes_(read|written)_total/)));
@@ -112,7 +113,6 @@ function BaseTestSuite(targetUser) {
         let [key,value] = label.split('=');
         found[key] = value.replace(/"/g, '');
       });
-      
       assertTrue(found.hasOwnProperty("shard"), found);
       assertTrue(found.hasOwnProperty("db"), found);
       assertTrue(found.hasOwnProperty("collection"), found);
@@ -137,7 +137,6 @@ function BaseTestSuite(targetUser) {
       }
       result[type][shard] += amount;
     });
-
     return result;
   };
 
@@ -289,7 +288,7 @@ function BaseTestSuite(targetUser) {
         
         // check if the normal metrics endpoint exports any shard-specific metrics
         let lines = [];
-        getDBServers().forEach((server) => {
+        global.instanceManager.arangods.filter(arangod => arangod.isRole(instanceRole.dbServer)).forEach((server) => {
           let res = request({ method: "GET", url: server.url + "/_admin/metrics" });
           lines = lines.concat(res.body.split(/\n/).filter((l) => l.match(/^arangodb_collection_requests_bytes_(read|written)_total/)));
         });
@@ -297,7 +296,8 @@ function BaseTestSuite(targetUser) {
 
         // check if the usage-metrics endpoint exports any regular metrics
         lines = [];
-        getDBServers().forEach((server) => {
+        global.instanceManager.arangods.filter(arangod => arangod.isRole(instanceRole.dbServer)).forEach((server) => {
+          print(server.url)
           let res = request({ method: "GET", url: server.url + "/_admin/usage-metrics" });
           // we look for any metric name starting with "rocksdb_" here as a placeholder
           lines = lines.concat(res.body.split(/\n/).filter((l) => l.match(/^rocksdb_/)));
