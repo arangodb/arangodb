@@ -297,7 +297,6 @@ function BaseTestSuite(targetUser) {
         // check if the usage-metrics endpoint exports any regular metrics
         lines = [];
         global.instanceManager.arangods.filter(arangod => arangod.isRole(instanceRole.dbServer)).forEach((server) => {
-          print(server.url)
           let res = request({ method: "GET", url: server.url + "/_admin/usage-metrics" });
           // we look for any metric name starting with "rocksdb_" here as a placeholder
           lines = lines.concat(res.body.split(/\n/).filter((l) => l.match(/^rocksdb_/)));
