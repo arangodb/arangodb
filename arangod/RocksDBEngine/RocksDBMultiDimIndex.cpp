@@ -24,6 +24,7 @@
 
 #include "RocksDBMultiDimIndex.h"
 
+#include "Aql/AstNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/Functions.h"
 #include "Aql/Variable.h"
@@ -360,7 +361,6 @@ auto boundsForIterator(RocksDBMdiIndexBase const* index,
   std::unordered_map<size_t, aql::AstNode const*> extractedPrefix;
   std::unordered_map<size_t, mdi::ExpressionBounds> extractedBounds;
   std::unordered_set<aql::AstNode const*> unusedExpressions;
-  LOG_DEVEL << __FUNCTION__;
   extractBoundsFromCondition(index, node, reference, extractedPrefix,
                              extractedBounds, unusedExpressions);
 
@@ -421,9 +421,27 @@ std::vector<std::vector<basics::AttributeName>> const& getSortedPrefixFields(
 }
 
 }  // namespace
-//
-//
-//
+
+void useAsBound(size_t idx, aql::AstNode* bound_value, bool isLower,
+                bool isStrict,
+                std::unordered_map<size_t, arangodb::mdi::ExpressionBounds>&
+                    extractedBounds) {
+  const auto ensureBounds = [&](size_t idx) -> auto& {
+    if (auto it = extractedBounds.find(idx); it != std::end(extractedBounds)) {
+      return it->second;
+    }
+    return extractedBounds[idx];
+  };
+
+  auto& bounds = ensureBounds(idx);
+  if (isLower) {
+    bounds.lower.bound_value = nodeExtractDouble(bound_value);
+    bounds.lower.isStrict = isStrict;
+  } else {
+    bounds.upper.bound_value = nodeExtractDouble(bound_value);
+    bounds.upper.isStrict = isStrict;
+  }
+}
 
 bool checkIsBoundForAttributeForInRange(
     Index const* index, aql::Variable const* reference, aql::AstNode* access,
@@ -431,32 +449,11 @@ bool checkIsBoundForAttributeForInRange(
     std::unordered_map<size_t, arangodb::mdi::ExpressionBounds>&
         extractedBounds,
     bool isLower, bool isStrict) {
-  auto const ensureBounds =
-      [&](size_t idx) -> arangodb::mdi::ExpressionBounds& {
-    if (auto it = extractedBounds.find(idx); it != std::end(extractedBounds)) {
-      return it->second;
-    }
-    return extractedBounds[idx];
-  };
-
-  auto const useAsBound = [&](size_t idx, aql::AstNode* bound_value,
-                              bool asLower, bool isStrict) {
-    auto& bounds = ensureBounds(idx);
-    if (asLower) {
-      bounds.lower.bound_value = nodeExtractDouble(bound_value);
-      bounds.lower.isStrict = isStrict;
-    } else {
-      bounds.upper.bound_value = nodeExtractDouble(bound_value);
-      bounds.upper.isStrict = isStrict;
-    }
-  };
-
   std::pair<aql::Variable const*, std::vector<basics::AttributeName>>
       attributeData;
   if (!access->isAttributeAccessForVariable(attributeData) ||
       attributeData.first != reference) {
     // this access is not referencing this collection
-    LOG_DEVEL << "FAILS " << __FUNCTION__ << " " << __LINE__;
     return false;
   }
 
@@ -465,10 +462,9 @@ bool checkIsBoundForAttributeForInRange(
       continue;
     }
 
-    useAsBound(idx, other, isLower, isStrict);
+    useAsBound(idx, other, isLower, isStrict, extractedBounds);
   }
 
-  LOG_DEVEL << "FAILS " << __FUNCTION__ << " " << __LINE__;
   return false;
 }
 
@@ -477,32 +473,10 @@ bool checkIsBoundForAttribute(
     aql::AstNode* access, aql::AstNode* other, bool reverse,
     std::unordered_map<size_t, arangodb::mdi::ExpressionBounds>&
         extractedBounds) {
-  auto const ensureBounds =
-      [&](size_t idx) -> arangodb::mdi::ExpressionBounds& {
-    if (auto it = extractedBounds.find(idx); it != std::end(extractedBounds)) {
-      return it->second;
-    }
-    return extractedBounds[idx];
-  };
-
-  auto const useAsBound = [&](size_t idx, aql::AstNode* bound_value,
-                              bool asLower, bool isStrict) {
-    auto& bounds = ensureBounds(idx);
-    if (asLower) {
-      bounds.lower.bound_value = nodeExtractDouble(bound_value);
-      bounds.lower.isStrict = isStrict;
-    } else {
-      bounds.upper.bound_value = nodeExtractDouble(bound_value);
-      bounds.upper.isStrict = isStrict;
-    }
-  };
-
   // TODO only used in sparse case
   containers::FlatHashSet<std::string> nonNullAttributes;
   if (!index->canUseConditionPart(access, other, op, reference,
                                   nonNullAttributes, false)) {
-    LOG_DEVEL << "FAILS AT "
-              << "canUseConditionPart";
     return false;
   }
 
@@ -511,7 +485,6 @@ bool checkIsBoundForAttribute(
   if (!access->isAttributeAccessForVariable(attributeData) ||
       attributeData.first != reference) {
     // this access is not referencing this collection
-    LOG_DEVEL << "FAILS " << __FUNCTION__ << " " << __LINE__;
     return false;
   }
 
@@ -522,27 +495,26 @@ bool checkIsBoundForAttribute(
 
     switch (op->type) {
       case aql::NODE_TYPE_OPERATOR_BINARY_EQ:
-        useAsBound(idx, other, true, false);
-        useAsBound(idx, other, false, false);
+        useAsBound(idx, other, true, false, extractedBounds);
+        useAsBound(idx, other, false, false, extractedBounds);
         return true;
       case aql::NODE_TYPE_OPERATOR_BINARY_LE:
-        useAsBound(idx, other, reverse, false);
+        useAsBound(idx, other, reverse, false, extractedBounds);
         return true;
       case aql::NODE_TYPE_OPERATOR_BINARY_GE:
-        useAsBound(idx, other, !reverse, false);
+        useAsBound(idx, other, !reverse, false, extractedBounds);
         return true;
       case aql::NODE_TYPE_OPERATOR_BINARY_LT:
-        useAsBound(idx, other, reverse, true);
+        useAsBound(idx, other, reverse, true, extractedBounds);
         return true;
       case aql::NODE_TYPE_OPERATOR_BINARY_GT:
-        useAsBound(idx, other, !reverse, true);
+        useAsBound(idx, other, !reverse, true, extractedBounds);
         return true;
       default:
         break;
     }
   }
 
-  LOG_DEVEL << "FAILS " << __FUNCTION__ << " " << __LINE__;
   return false;
 }
 
@@ -553,9 +525,6 @@ void mdi::extractBoundsFromCondition(
     std::unordered_map<size_t, ExpressionBounds>& extractedBounds,
     std::unordered_set<aql::AstNode const*>& unusedExpressions) {
   TRI_ASSERT(condition->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
-
-  LOG_DEVEL << __FUNCTION__ << " " << __LINE__;
-  LOG_DEVEL << "CONDITION " << condition->toString();
 
   auto const checkIsPrefixValue = [&](aql::AstNode* op, aql::AstNode* access,
                                       aql::AstNode* other) -> bool {
@@ -588,7 +557,6 @@ void mdi::extractBoundsFromCondition(
   for (size_t i = 0; i < condition->numMembers(); ++i) {
     bool ok = false;
     auto op = condition->getMemberUnchecked(i);
-    LOG_DEVEL << "CONDITION TYPE " << op->getTypeString();
     switch (op->type) {
       case aql::NODE_TYPE_OPERATOR_BINARY_EQ:
         ok |= checkIsPrefixValue(op, op->getMember(0), op->getMember(1));
@@ -601,11 +569,6 @@ void mdi::extractBoundsFromCondition(
       case aql::NODE_TYPE_OPERATOR_BINARY_GE:
       case aql::NODE_TYPE_OPERATOR_BINARY_LT:
       case aql::NODE_TYPE_OPERATOR_BINARY_GT:
-        LOG_DEVEL << "OP " << op->getTypeString()
-                  << ", mem1: " << op->getMember(0)->getTypeString()
-                  << " stringed: " << op->getMember(0)->toString()
-                  << ", mem2: " << op->getMember(1)->getTypeString()
-                  << " stringed: " << op->getMember(1)->toString();
         ok |=
             checkIsBoundForAttribute(index, reference, op, op->getMember(0),
                                      op->getMember(1), false, extractedBounds);
@@ -616,13 +579,10 @@ void mdi::extractBoundsFromCondition(
         if (aql::functions::getFunctionName(*op) == "IN_RANGE") {
           auto* mem = op->getMember(0);
 
-          LOG_DEVEL << "MEM TYPE " << mem->getTypeString();
-          LOG_DEVEL << "MEM STR " << mem->toString();
-          LOG_DEVEL << "ARR num " << mem->numMembers();
-
-          // First is attribute access
+          // There must be five elements in IN_RANGE function
           TRI_ASSERT(mem->numMembers() == 5);
           auto* nodeAttributeAccess = mem->getMember(0);
+          // First is attribute access
           TRI_ASSERT(nodeAttributeAccess->type ==
                      aql::NODE_TYPE_ATTRIBUTE_ACCESS);
 
@@ -636,12 +596,6 @@ void mdi::extractBoundsFromCondition(
           ok |= checkIsBoundForAttributeForInRange(
               index, reference, nodeAttributeAccess, nodeUpperBound,
               extractedBounds, true, nodeUpperBoundStrict);
-
-          for (size_t i = 0; i < mem->numMembers(); ++i) {
-            auto arrElem = mem->getMember(i);
-            LOG_DEVEL << "ELEM " << arrElem->getTypeString() << " "
-                      << arrElem->toString();
-          }
         }
       default:
         break;
@@ -662,7 +616,6 @@ auto mdi::supportsFilterCondition(
   std::unordered_set<aql::AstNode const*> unusedExpressions;
   extractBoundsFromCondition(index, node, reference, extractedPrefix,
                              extractedBounds, unusedExpressions);
-  LOG_DEVEL << __FUNCTION__ << " " << __LINE__;
   if (extractedBounds.empty()) {
     return {};
   }
@@ -716,7 +669,6 @@ auto mdi::specializeCondition(Index const* index, aql::AstNode* condition,
   std::unordered_map<size_t, aql::AstNode const*> extractedPrefix;
   std::unordered_map<size_t, ExpressionBounds> extractedBounds;
   std::unordered_set<aql::AstNode const*> unusedExpressions;
-  LOG_DEVEL << __FUNCTION__;
   extractBoundsFromCondition(index, condition, reference, extractedPrefix,
                              extractedBounds, unusedExpressions);
 
