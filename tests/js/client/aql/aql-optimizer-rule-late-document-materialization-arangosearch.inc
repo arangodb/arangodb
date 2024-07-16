@@ -517,18 +517,18 @@
           });
           assertTrue(materializeNodeFound);
         
-          if (!internal.debugCanUseFailAt()) {
+          if (!global.instanceManager.debugCanUseFailAt()) {
             return;
           }
-          internal.debugClearFailAt();
-          internal.debugSetFailAt('MaterializeExecutor::all_fail');
+          global.instanceManager.debugClearFailAt();
+          global.instanceManager.debugSetFailAt('MaterializeExecutor::all_fail');
           res = db._createStatement({query: query, bindVars:  {limit: 100}, options}).execute();
           result = res.toArray();
           assertEqual(0, result.length);
           assertEqual(500, res.getExtra().stats.fullCount);
         
-          internal.debugClearFailAt();
-          internal.debugSetFailAt('MaterializeExecutor::only_one');
+          global.instanceManager.debugClearFailAt();
+          global.instanceManager.debugSetFailAt('MaterializeExecutor::only_one');
           res = db._createStatement({query: query, bindVars:  {limit: 100}, options}).execute();
           result = res.toArray();
           if (isCluster) {
@@ -541,7 +541,7 @@
           }
           assertEqual(500, res.getExtra().stats.fullCount);
         } finally {
-          internal.debugClearFailAt();
+          global.instanceManager.debugClearFailAt();
         }
       }
     };
