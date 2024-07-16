@@ -193,9 +193,14 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
         }
       });
     }
-    if (options.isCov && process.env.hasOwnProperty(coverage_name)) {
-      options.covOptions[coverage_name] = process.env[coverage_name];
-      delete process.env[coverage_name];
+    if (options.isCov) {
+      if (process.env.hasOwnProperty(coverage_name)) {
+        options.covOptions[coverage_name] = process.env[coverage_name];
+        delete process.env[coverage_name];
+      } else {
+        print(process.env);
+        throw new Error("coverage binaries without coverage setup");
+      }
     }
   });
 };
