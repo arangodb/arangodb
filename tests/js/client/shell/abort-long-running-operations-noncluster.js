@@ -110,11 +110,11 @@ function BaseTestConfig (dropCb, expectedError) {
     },
     
     testWarmupAborts : function () {
-      if (!internal.debugCanUseFailAt()) {
+      if (!global.instanceManager.debugCanUseFailAt()) {
         return;
       }
 
-      internal.debugSetFailAt("warmup::executeDirectly");
+      global.instanceManager.debugSetFailAt("warmup::executeDirectly");
       
       let c = setupCollection('edge');
       let task = dropCb();
@@ -170,7 +170,7 @@ function AbortLongRunningOperationsWhenCollectionIsDroppedSuite() {
   let suite = {
     tearDown: function () {
       shutdownTask();
-      internal.debugClearFailAt();
+      global.instanceManager.debugClearFailAt();
       db._drop(cn);
     }
   };
@@ -230,7 +230,7 @@ function AbortLongRunningOperationsWhenDatabaseIsDroppedSuite() {
     },
     tearDown: function () {
       shutdownTask();
-      internal.debugClearFailAt();
+      global.instanceManager.debugClearFailAt();
       db._useDatabase('_system');
       try {
         db._dropDatabase(cn);
