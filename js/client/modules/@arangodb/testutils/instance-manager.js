@@ -775,7 +775,7 @@ class instanceManager {
         return ret[1];
       });
     } catch(e) {
-      print("Error checking cluster health " + name + " => " + e);
+      print(`${RED} Error checking cluster health '${name}' => '${e}'\n${e.stack}${RESET}`);
       return false;
     }
     return true;
@@ -1021,6 +1021,16 @@ class instanceManager {
 
   reconnect()
   {
+    if (this.JWT !== null) {
+      let deadline = time() + seconds(60);
+      arango.reconnect(this.endpoint,
+                       '_system',
+                       this.options.username,
+                       this.options.password,
+                       time() < deadline,
+                       this.JWT);
+      return true;
+    }
     if (this.options.hasOwnProperty('server')) {
       arango.reconnect(this.endpoint, '_system', 'root', '');
       return true;
