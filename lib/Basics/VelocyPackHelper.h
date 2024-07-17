@@ -108,6 +108,11 @@ class VelocyPackHelper {
     size_t operator()(arangodb::velocypack::Slice slice) const noexcept;
   };
 
+  /// For better readability of the traditional int comparison result:
+  static constexpr int cmp_less = -1;
+  static constexpr int cmp_equal = 0;
+  static constexpr int cmp_greater = 1;
+
   /// @brief equality comparator for VelocyPack values
   struct VPackEqual {
    private:
@@ -362,15 +367,37 @@ class VelocyPackHelper {
   static bool velocyPackToFile(std::string const& filename, VPackSlice slice,
                                bool syncFile);
 
-  /// @brief compares two VelocyPack number values (legacy version)
-  static int compareNumberValuesLegacy(arangodb::velocypack::ValueType,
-                                       arangodb::velocypack::Slice lhs,
-                                       arangodb::velocypack::Slice rhs);
-
-  /// @brief compares two VelocyPack number values
+  /// @brief compares two VelocyPack number values (legacy version, this
+  /// should no longer be used, since it can lead to non-transitive
+  /// behaviour, in particular around NaN, but also for integers larger
+  /// than 2^53, which are compared with doubles or integers in a different
+  /// representation (signed/unsigned)). Use `compareNumberValuesCorrect`
+  /// instead. We keep thisi function to implement the legacy sorting
+  /// behaviour for old vpack indexes.
   static int compareNumberValues(arangodb::velocypack::ValueType,
                                  arangodb::velocypack::Slice lhs,
                                  arangodb::velocypack::Slice rhs);
+
+  /// @brief compares two VelocyPack number values, this must only be called
+  /// if the types on either side are either SmallInt, Int, UInt, UTCDate
+  /// or Double. Otherwise the behaviour is undefined.
+  /// For such values, the function implements the numerical total order
+  /// for all possible values, including Double's -Inf, +Inf, +0, -0 and Nan.
+  /// This is to be understood in the following way: First of all,
+  /// NaN is considered to be larger than any number (including +Inf),
+  /// and all NaN values are considered equal. Integers are considered
+  /// equal if they have different representations (for example many
+  /// positive numbers have an unsigned and a signed representation,
+  /// and the SmallInt values also have representations as signed or
+  /// unsigned integers). An integer of whatever representation is
+  /// considered equal to an integer in its representation as Double (if
+  /// it exists). Other than these representation issues, numbers are
+  /// compared numerically as rational numbers would be compared.
+  /// +Inf is larger than any other number of whatever representation (except
+  /// NaN), and -Inf is smaller than any number.
+  static int compareNumberValuesCorrectly(arangodb::velocypack::ValueType,
+                                          arangodb::velocypack::Slice lhs,
+                                          arangodb::velocypack::Slice rhs);
 
   /// @brief compares two VelocyPack string values
   static int compareStringValues(char const* left, VPackValueLength nl,

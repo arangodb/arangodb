@@ -353,12 +353,12 @@ bool VelocyPackHelper::VPackStringEqual::operator()(
           0);
 }
 
-int VelocyPackHelper::compareNumberValuesLegacy(VPackValueType lhsType,
-                                                VPackSlice lhs,
-                                                VPackSlice rhs) {
+int VelocyPackHelper::compareNumberValues(VPackValueType lhsType,
+                                          VPackSlice lhs, VPackSlice rhs) {
   // This function is only for legacy code. The problem is that it casts
   // all integer types to double, which can lose precision. See
-  // `VelocyPackHelper::compareNumberValues` for a correct implementation.
+  // `VelocyPackHelper::compareNumberValuesCorrecly` for a correct
+  // implementation. This is only used for legacy vpack indexes.
   if (lhsType == rhs.type()) {
     // both types are equal
     if (lhsType == VPackValueType::Int || lhsType == VPackValueType::SmallInt) {
@@ -391,42 +391,73 @@ int VelocyPackHelper::compareNumberValuesLegacy(VPackValueType lhsType,
   return (l < r ? -1 : 1);
 }
 
+namespace {
+
 template<typename T>
 int comp(T a, T b) {
   if (a == b) {
-    return 0;
+    return VelocyPackHelper::cmp_equal;
   }
-  return (a < b ? -1 : 1);
+  return a < b ? VelocyPackHelper::cmp_less : VelocyPackHelper::cmp_greater;
 }
 
-static int compareInt64UInt64(int64_t i, uint64_t u) {
+// The following function deserves an explanation: We want to compare
+// numerically. If i is negative, we are good, since all unsigned numbers
+// are numerically non-negative. Otherwise, we know that i can be cast
+// statically to uint64_t and we can compare there.
+int compareInt64UInt64(int64_t i, uint64_t u) {
   if (i < 0) {
-    return -1;
+    return VelocyPackHelper::cmp_less;
   }
   return comp<uint64_t>(static_cast<uint64_t>(i), u);
 }
 
-constexpr uint64_t uint64_2_52 = uint64_t{1} << 52;
+// We use the following constants below for case distinctions,
+// we use static asserts to ensure that the `double` implementation
+// is actually IEEE 754 with 64 bits, otherwise our comparison method
+// will be faulty:
+
+constexpr uint64_t uint64_2_53 = uint64_t{1} << 53;
 constexpr uint64_t uint64_2_63 = uint64_t{1} << 63;
-constexpr double double_2_52 = static_cast<double>(uint64_2_52);
+constexpr double double_2_53 = static_cast<double>(uint64_2_53);
 const double double_2_64 = ldexp(1.0, 64);
 
-static int compareUInt64Double(uint64_t u, double d) {
+static_assert(53 == std::numeric_limits<double>::digits);
+static_assert(63 == std::numeric_limits<int64_t>::digits);
+
+// The following function deserves an explanation: we want to compare
+// numerically. To get this right and implement a total order (up to equality
+// of differently represented values), we need to be rather careful.
+// First we have to handle NaN separately, we decree it to be larger than
+// any number.
+// Secondly, if d is negative, it is clearly less than any unsigned integer.
+// Note that -0 == +0 and both are not considered negative!
+// Then we must distinguish cases, if u can be represented as double (i.e.
+// it can be written in up to 53 bits), then we can cast it to double and
+// compare using == and <.
+// If d is at least 2^64, it is larger than any uint64_t and we are done.
+// This covers the case of d == +Inf, too.
+// In all other cases we have to use integer comparison to not lose
+// precision. On the other hand, we can now compute the integral part
+// of d accurately and cast it to uint64_t without loss. We then only have
+// to distinguish if d has a fractional part (in which case it lies between
+// two integers), or not (in which case it is equal to its integral part).
+int compareUInt64Double(uint64_t u, double d) {
   if (std::isnan(d)) {
-    return -1;
+    return VelocyPackHelper::cmp_less;
   }
   if (d < 0.0) {
-    return 1;
+    return VelocyPackHelper::cmp_greater;
   }
-  if (u < uint64_2_52) {
+  if (u < uint64_2_53) {
     return comp<double>(static_cast<double>(u), d);
   }
-  if (d < double_2_52) {
-    return 1;  // since we know that u >= 2^52
+  if (d < double_2_53) {
+    return VelocyPackHelper::cmp_greater;  // since we know that u >= 2^52
   }
   if (d >= double_2_64) {
     // Note that this covers the case that d = +inf !
-    return -1;  // since we know that u < 2^64
+    return VelocyPackHelper::cmp_less;  // since we know that u < 2^64
   }
   // Now we know that both numbers are >= 2^52 and < 2^64, so we can look
   // at the integral and fractional parts of d and decide then:
@@ -434,23 +465,31 @@ static int compareUInt64Double(uint64_t u, double d) {
   uint64_t du = static_cast<uint64_t>(df);  // will work and give the
                                             // correct integer!
   if (u < du) {
-    return -1;
+    return VelocyPackHelper::cmp_less;
   }
   if (u > du) {
-    return 1;
+    return VelocyPackHelper::cmp_greater;
   }
   // So u == du, let's check the fractional part of d:
   if (d == df) {
     // No fractional part, so d and u are equal:
-    return 0;
+    return VelocyPackHelper::cmp_equal;
   }
   // There is a fractional part, so u is smaller:
-  return -1;
+  return VelocyPackHelper::cmp_less;
 }
 
-static int compareInt64Double(int64_t i, double d) {
+// The following function deserves an explanation. We want to compare
+// numerically. We want to delegate to the above comparison function
+// for unsigned integers by negating both arguments if the integer is
+// negative and then flipping the result. The only difficulty we are
+// facing is for signed integers here, because we cannot just take the
+// negative of an int64_t because of the twos-complement implementation
+// and the one negative value which does not have a positive counterpart.
+// We also have to handle NaN separately.
+int compareInt64Double(int64_t i, double d) {
   if (std::isnan(d)) {
-    return -1;
+    return VelocyPackHelper::cmp_less;
   }
   if (i < 0) {
     uint64_t u =
@@ -461,23 +500,26 @@ static int compareInt64Double(int64_t i, double d) {
   return compareUInt64Double(static_cast<uint64_t>(i), d);
 }
 
-int VelocyPackHelper::compareNumberValues(VPackValueType lhsType,
+}  // namespace
 
-                                          VPackSlice lhs, VPackSlice rhs) {
+int VelocyPackHelper::compareNumberValuesCorrectly(VPackValueType lhsType,
+
+                                                   VPackSlice lhs,
+                                                   VPackSlice rhs) {
   if (lhsType == rhs.type()) {
     // both types are equal
     if (lhsType == VPackValueType::Int || lhsType == VPackValueType::SmallInt) {
       // use exact comparisons. no need to cast to double
       int64_t l = lhs.getIntUnchecked();
       int64_t r = rhs.getIntUnchecked();
-      return comp<int64_t>(l, r);
+      return ::comp<int64_t>(l, r);
     }
 
     if (lhsType == VPackValueType::UInt) {
       // use exact comparisons. no need to cast to double
       uint64_t l = lhs.getUIntUnchecked();
       uint64_t r = rhs.getUIntUnchecked();
-      return comp<uint64_t>(l, r);
+      return ::comp<uint64_t>(l, r);
     }
 
     if (lhsType == VPackValueType::Double) {
@@ -485,14 +527,14 @@ int VelocyPackHelper::compareNumberValues(VPackValueType lhsType,
       double r = rhs.getDouble();
       if (std::isnan(l)) {
         if (std::isnan(r)) {
-          return 0;
+          return VelocyPackHelper::cmp_equal;
         }
-        return 1;
+        return VelocyPackHelper::cmp_greater;
       } else if (std::isnan(r)) {
-        return -1;
+        return VelocyPackHelper::cmp_less;
       }
-      // No nan on either side!
-      return comp<double>(l, r);
+      // No NaN on either side!
+      return ::comp<double>(l, r);
     }
   }
 
