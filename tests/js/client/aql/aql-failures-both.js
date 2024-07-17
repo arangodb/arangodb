@@ -55,27 +55,27 @@ function queryFailureSuite () {
   return {
 
     setUpAll: function () {
-      internal.debugClearFailAt();
+      global.instanceManager.debugClearFailAt();
       db._drop(cn);
       c = db._create(cn);
     },
 
     setUp: function () {
-      internal.debugClearFailAt();
+      global.instanceManager.debugClearFailAt();
     },
 
     tearDownAll: function () {
-      internal.debugClearFailAt();
+      global.instanceManager.debugClearFailAt();
       db._drop(cn);
       c = null;
     },
 
     tearDown: function() {
-      internal.debugClearFailAt();
+      global.instanceManager.debugClearFailAt();
     },
 
     testThatQueryIsntStuckAtShutdown: function() {
-      internal.debugSetFailAt("Query::finalize_before_done");
+      global.instanceManager.debugSetFailAt("Query::finalize_before_done");
       assertFailingQuery(`INSERT {Hallo:12} INTO ${cn}`);
     },
   };
@@ -85,7 +85,7 @@ function queryFailureSuite () {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
-if (internal.debugCanUseFailAt()) {
+if (global.instanceManager.debugCanUseFailAt()) {
   jsunity.run(queryFailureSuite);
 }
 

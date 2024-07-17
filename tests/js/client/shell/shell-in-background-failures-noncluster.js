@@ -27,6 +27,7 @@
 
 const jsunity = require("jsunity");
 const internal = require("internal");
+const db = internal.db;
 const versionHas = require("@arangodb/test-helper").versionHas;
 
 function IndexInBackgroundFailuresSuite () {
@@ -75,13 +76,13 @@ function IndexInBackgroundFailuresSuite () {
 
     setUp : function () {
       global.instanceManager.debugClearFailAt();
-      internal.db._drop(cn);
-      collection = internal.db._create(cn);
+      db._drop(cn);
+      collection = db._create(cn);
     },
 
     tearDown : function () {
       global.instanceManager.debugClearFailAt();
-      global.instanceManager.db._drop(cn);
+      db._drop(cn);
     },
 
     // this test sets a failure point to delay background index creation.
