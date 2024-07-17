@@ -38,7 +38,7 @@ function optimizerPlansTestSuite () {
 
   return {
     setUp : function () {
-      internal.debugClearFailAt();
+      global.instanceManager.debugClearFailAt();
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection");
 
@@ -48,7 +48,7 @@ function optimizerPlansTestSuite () {
     },
 
     tearDown : function () {
-      internal.debugClearFailAt();
+      global.instanceManager.debugClearFailAt();
       db._drop("UnitTestsCollection");
     },
 
@@ -57,10 +57,10 @@ function optimizerPlansTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCreatePlansOom : function () {
-      if (!internal.debugCanUseFailAt()) {
+      if (!global.instanceManager.debugCanUseFailAt()) {
         return;
       }
-      internal.debugSetFailAt("Optimizer::createPlansOom");
+      global.instanceManager.debugSetFailAt("Optimizer::createPlansOom");
       try {
         db._query("FOR i IN 1..10 FILTER i == 1 || i == 2 RETURN i");
         fail();
