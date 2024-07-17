@@ -26,6 +26,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const internal = require('internal'); // OK: processCsvFile
+const ArangoError = require('@arangodb').ArangoError;;
 const request = require('@arangodb/request');
 const {
   runWithRetry,
@@ -58,7 +59,39 @@ exports.deriveTestSuiteWithnamespace = deriveTestSuiteWithnamespace;
 exports.typeName = typeName;
 exports.isEqual = isEqual;
 exports.compareStringIds = compareStringIds;
-
+exports.pimpInstanceManager = function() {
+  global.instanceManager.arangods.forEach(arangod => {
+    arangod.isRole = function(compareRole) {
+      return this.instanceRole === compareRole;
+    };
+    if (!arangod.isRole('agent') &&
+        !arangod.isRole('single')) {
+      let reply;
+      let httpOptions = {};
+      try {
+        httpOptions.returnBodyOnError = true;
+        httpOptions.method = 'GET';
+        reply = internal.download(arangod.url + '/_db/_system/_admin/server/id', '', httpOptions);
+      } catch (e) {
+        console.log(" error requesting server '" + JSON.stringify(arangod) + "' Error: " + JSON.stringify(e));
+        if (e instanceof ArangoError && e.message.search('Connection reset by peer') >= 0) {
+          httpOptions.method = 'GET';
+          internal.sleep(5);
+          reply = internal.download(arangod.url + '/_db/_system/_admin/server/id', '', httpOptions);
+        } else {
+          throw e;
+        }
+      }
+      if (reply.error || reply.code !== 200) {
+        throw new Error("Server has no detectable ID! " +
+                        JSON.stringify(reply) + "\n" +
+                        JSON.stringify(arangod));
+      }
+      let res = JSON.parse(reply.body);
+      arangod.id = res['id'];
+    }
+  });
+};
 /// @brief set failure point
 exports.debugCanUseFailAt = function (endpoint) {
   let res = request.get({
