@@ -123,14 +123,14 @@ const getServerHealth = function (serverId) {
 
 const dbservers = (function () {
   if (global.hasOwnProperty('instanceManager')) {
-    global.instanceManager.arangods.filter(arangod => arangod.isRole("dbserver")).map((x) => x.id);
+    return global.instanceManager.arangods.filter(arangod => arangod.isRole("dbserver")).map((x) => x.id);
   } else {
     return clientHelper.getDBServers().map((x) => x.id);
   }
 }());
 const coordinators = (function () {
   if (global.hasOwnProperty('instanceManager')) {
-    global.instanceManager.arangods.filter(arangod => arangod.isRole("coordinator")).map((x) => x.id);
+    return global.instanceManager.arangods.filter(arangod => arangod.isRole("coordinator")).map((x) => x.id);
   } else {
     return clientHelper.getServersByType('coordinator').map((x) => x.id);
   }
