@@ -23,21 +23,11 @@
 
 #pragma once
 
-#include <stddef.h>
-#include <array>
-#include <functional>
-#include <map>
-#include <memory>
+#include <atomic>
 #include <string>
 #include <thread>
-#include <typeindex>
-#include <utility>
-#include <vector>
 
 #include "Basics/ReadWriteLock.h"
-#include "Basics/Result.h"
-#include "Logger/LogGroup.h"
-#include "Logger/LogLevel.h"
 
 namespace arangodb {
 class LogTopic;
