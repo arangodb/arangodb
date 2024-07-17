@@ -31,7 +31,7 @@ const arangodb = require('@arangodb');
 const db = arangodb.db;
 const testHelper = require('@arangodb/test-helper').helper;
 const {activateFailure} = require('@arangodb/test-helper');
-const isCluster = require("internal").isCluster();
+const isCluster = internal.isCluster();
 
 let compareStringIds = function (l, r) {
   'use strict';
@@ -69,13 +69,13 @@ function transactionFailuresSuite () {
   return {
 
     setUp: function () {
-      internal.debugClearFailAt();
+      global.instanceManager.debugClearFailAt();
       db._drop(cn);
       c = db._create(cn);
     },
 
     tearDown: function () {
-      internal.debugClearFailAt();
+      global.instanceManager.debugClearFailAt();
 
       db._drop(cn);
       c = null;
@@ -98,7 +98,7 @@ function transactionFailuresSuite () {
         assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
       }
 
-      internal.debugClearFailAt();
+      global.instanceManager.debugClearFailAt();
       assertEqual(1, c.count());
       assertEqual("baz", c.document("foobar").value);
     },
@@ -134,7 +134,7 @@ function transactionFailuresSuite () {
         assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
       }
 
-      internal.debugClearFailAt();
+      global.instanceManager.debugClearFailAt();
       assertEqual(100, c.count());
     },
     
@@ -170,7 +170,7 @@ function transactionFailuresSuite () {
         assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
       }
 
-      internal.debugClearFailAt();
+      global.instanceManager.debugClearFailAt();
       assertEqual(1, c.count());
       assertEqual("baz", c.document("foobar").value);
     }
@@ -186,13 +186,13 @@ function transactionRevisionsSuite () {
   return {
 
     setUp: function () {
-      internal.debugClearFailAt();
+      global.instanceManager.debugClearFailAt();
       db._drop(cn);
       c = db._create(cn);
     },
 
     tearDown: function () {
-      internal.debugClearFailAt();
+      global.instanceManager.debugClearFailAt();
       db._drop(cn);
     },
 
