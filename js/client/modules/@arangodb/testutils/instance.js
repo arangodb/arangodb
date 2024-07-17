@@ -202,6 +202,7 @@ class instance {
       args: this.args,
       pid: this.pid,
       id: this.id,
+      shortName: this.shortName,
       JWT: this.JWT,
       jwtFiles: this.jwtFiles,
       exitStatus: this.exitStatus,
@@ -229,6 +230,7 @@ class instance {
     this.args = struct['args'];
     this.pid = struct['pid'];
     this.id = struct['id'];
+    this.shortName = struct['shortName'];
     this.JWT = struct['JWT'];
     this.jwtFiles = struct['jwtFiles'];
     this.exitStatus = struct['exitStatus'];
@@ -259,6 +261,9 @@ class instance {
   // //////////////////////////////////////////////////////////////////////////////
 
   _makeArgsArangod () {
+    if (this.options.hasOwnProperty('dummy')) {
+      return;
+    }
     console.assert(this.tmpDir !== undefined);
     let endpoint;
     let bindEndpoint;
