@@ -694,7 +694,7 @@ class instanceManager {
           this.arangods.forEach( arangod => {
             let status = arangod.status(false);
             if (status.status !== "RUNNING") {
-              throw new Error(`Arangod ${arangod.pid} exited instantly! ` + JSON.stringify(status));
+              throw new Error(`Arangod ${arangod.pid} exited instantly! Status: ${JSON.stringify(status)} ${e}\n${e.stack}\n${JSON.stringify(arangod.getStructure())}`);
             }
           });
           print(Date() + " caught exception: " + e.message);
