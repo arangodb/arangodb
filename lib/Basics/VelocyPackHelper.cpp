@@ -443,7 +443,7 @@ static_assert(63 == std::numeric_limits<int64_t>::digits);
 // to distinguish if d has a fractional part (in which case it lies between
 // two integers), or not (in which case it is equal to its integral part).
 int compareUInt64Double(uint64_t u, double d) {
-  if (std::isnan(d)) {
+  if (std::isnan(d)) [[unlikely]] {
     return VelocyPackHelper::cmp_less;
   }
   if (d < 0.0) {
@@ -488,7 +488,7 @@ int compareUInt64Double(uint64_t u, double d) {
 // and the one negative value which does not have a positive counterpart.
 // We also have to handle NaN separately.
 int compareInt64Double(int64_t i, double d) {
-  if (std::isnan(d)) {
+  if (std::isnan(d)) [[unlikely]] {
     return VelocyPackHelper::cmp_less;
   }
   if (i < 0) {
@@ -525,12 +525,12 @@ int VelocyPackHelper::compareNumberValuesCorrectly(VPackValueType lhsType,
     if (lhsType == VPackValueType::Double) {
       double l = lhs.getDouble();
       double r = rhs.getDouble();
-      if (std::isnan(l)) {
-        if (std::isnan(r)) {
+      if (std::isnan(l)) [[unlikely]] {
+        if (std::isnan(r)) [[unlikely]] {
           return VelocyPackHelper::cmp_equal;
         }
         return VelocyPackHelper::cmp_greater;
-      } else if (std::isnan(r)) {
+      } else if (std::isnan(r)) [[unlikely]] {
         return VelocyPackHelper::cmp_less;
       }
       // No NaN on either side!
