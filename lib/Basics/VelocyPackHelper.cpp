@@ -450,16 +450,18 @@ int compareUInt64Double(uint64_t u, double d) {
     return VelocyPackHelper::cmp_greater;
   }
   if (u < uint64_2_53) {
+    // All integers smaller than 2^53 can be represented exactly in IEEE 754.
     return comp<double>(static_cast<double>(u), d);
   }
   if (d < double_2_53) {
-    return VelocyPackHelper::cmp_greater;  // since we know that u >= 2^52
+    // since we know that u >= 2^53
+    return VelocyPackHelper::cmp_greater;
   }
   if (d >= double_2_64) {
     // Note that this covers the case that d = +inf !
     return VelocyPackHelper::cmp_less;  // since we know that u < 2^64
   }
-  // Now we know that both numbers are >= 2^52 and < 2^64, so we can look
+  // Now we know that both numbers are >= 2^53 and < 2^64, so we can look
   // at the integral and fractional parts of d and decide then:
   double df = floor(d);
   uint64_t du = static_cast<uint64_t>(df);  // will work and give the
