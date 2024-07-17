@@ -30,6 +30,7 @@
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
+#include "Aql/Functions.h"
 #include "Aql/OptimizerUtils.h"
 #include "Aql/Quantifier.h"
 #include "Aql/Query.h"
@@ -1014,7 +1015,9 @@ void Condition::collectOverlappingMembers(
           ConditionPart current(variable, result.second, operand,
                                 ATTRIBUTE_LEFT, nullptr);
 
-          if (canRemove(plan, current, otherAndNode, isFromTraverser)) {
+          bool canRemoveVar =
+              canRemove(plan, current, otherAndNode, isFromTraverser);
+          if (canRemoveVar) {
             toRemove.emplace(i);
           }
         }
@@ -1033,6 +1036,97 @@ void Condition::collectOverlappingMembers(
             toRemove.emplace(i);
           }
         }
+      }
+    }
+
+    // Check all the nodes in IN_RANGE function
+    if (operand->type == NODE_TYPE_FCALL &&
+        functions::getFunctionName(*operand) == "IN_RANGE") {
+      if (andNode == nullptr || otherAndNode == nullptr) {
+        continue;
+      }
+      auto* arrayNode = andNode;
+      auto* otherArrayNode = otherAndNode;
+      while (arrayNode != nullptr && otherArrayNode != nullptr) {
+        if (arrayNode->type == NODE_TYPE_FCALL) {
+          break;
+        }
+        arrayNode = arrayNode->getMember(0);
+        otherArrayNode = otherArrayNode->getMember(0);
+      }
+      if (arrayNode->type != otherArrayNode->type) {
+        // Not the same type
+        continue;
+      }
+      arrayNode = arrayNode->getMember(0);
+      otherArrayNode = otherArrayNode->getMember(0);
+
+      TRI_ASSERT(arrayNode->numMembers() == 5);
+      if (arrayNode->numMembers() != otherArrayNode->numMembers()) {
+        continue;
+      }
+
+      // Check if the checked element from InRangeFunction is part of the index
+      auto* firstElemInRangeFunction = arrayNode->getMember(0);
+      if (firstElemInRangeFunction->type != NODE_TYPE_ATTRIBUTE_ACCESS ||
+          !firstElemInRangeFunction->isAttributeAccessForVariable(
+              result, isFromTraverser) ||
+          result.first != variable ||
+          !basics::AttributeName::isIdentical(result.second, index->fields()[0],
+                                              false)) {
+        ::clearAttributeAccess(result);
+        continue;
+      }
+      ::clearAttributeAccess(result);
+
+      bool safeToRemove = true;
+      for (size_t i = 0; i < arrayNode->numMembers() && safeToRemove; ++i) {
+        auto const* functionCallNodeElement = arrayNode->getMember(i);
+        auto const* functionCallNodeOtherElement = otherArrayNode->getMember(i);
+
+        if (functionCallNodeElement->type !=
+            functionCallNodeOtherElement->type) {
+          safeToRemove = false;
+          break;
+        }
+
+        switch (functionCallNodeElement->type) {
+          case NODE_TYPE_ATTRIBUTE_ACCESS: {
+            std::pair<Variable const*, std::vector<basics::AttributeName>>
+                attributeAccessForVariableResult;
+            std::pair<Variable const*, std::vector<basics::AttributeName>>
+                attributeAccessForVariableOtherResult;
+
+            if (!functionCallNodeElement->isAttributeAccessForVariable(
+                    attributeAccessForVariableResult, isFromTraverser) ||
+                !functionCallNodeOtherElement->isAttributeAccessForVariable(
+                    attributeAccessForVariableOtherResult, isFromTraverser) ||
+                attributeAccessForVariableResult.first !=
+                    attributeAccessForVariableOtherResult.first ||
+                !basics::AttributeName::isIdentical(
+                    attributeAccessForVariableResult.second,
+                    attributeAccessForVariableOtherResult.second, false)) {
+              safeToRemove = false;
+            }
+            break;
+          }
+          case NODE_TYPE_VALUE:
+            if (aql::compareAstNodes(functionCallNodeElement,
+                                     functionCallNodeOtherElement, true) != 0) {
+              safeToRemove = false;
+              break;
+            }
+          default:
+            // We are being extremely pessimistic, meaning if we encounter
+            // anything else we will not remove the expression
+            safeToRemove = false;
+            break;
+        }
+      }
+
+      if (safeToRemove) {
+        toRemove.emplace(i);
+        continue;
       }
     }
   }
