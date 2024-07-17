@@ -28,6 +28,8 @@
 const internal = require('internal'); // OK: processCsvFile
 const ArangoError = require('@arangodb').ArangoError;;
 const request = require('@arangodb/request');
+const base64Encode = internal.base64Encode;
+const crypto = require('@arangodb/crypto');
 const {
   runWithRetry,
   getServerById,
@@ -60,6 +62,28 @@ exports.typeName = typeName;
 exports.isEqual = isEqual;
 exports.compareStringIds = compareStringIds;
 exports.pimpInstanceManager = function() {
+  function makeAuthorizationHeaders (options, jwtSecret) {
+    if (jwtSecret) {
+      let jwt = crypto.jwtEncode(jwtSecret,
+                                 {'server_id': 'none',
+                                  'iss': 'arangodb'}, 'HS256');
+      if (options.extremeVerbosity) {
+        print(Date() + ' Using jw token:     ' + jwt);
+      }
+      return {
+        'headers': {
+          'Authorization': 'bearer ' + jwt
+        }
+      };
+    } else {
+      return {
+        'headers': {
+          'Authorization': 'Basic ' + base64Encode(options.username + ':' +
+                                                   options.password)
+        }
+      };
+    }
+  }
   global.instanceManager.arangods.forEach(arangod => {
     arangod.isRole = function(compareRole) {
       return this.instanceRole === compareRole;
@@ -67,7 +91,7 @@ exports.pimpInstanceManager = function() {
     if (!arangod.isRole('agent') &&
         !arangod.isRole('single')) {
       let reply;
-      let httpOptions = {};
+      let httpOptions = makeAuthorizationHeaders(global.instanceManager.options, arangod.JWT);
       try {
         httpOptions.returnBodyOnError = true;
         httpOptions.method = 'GET';
