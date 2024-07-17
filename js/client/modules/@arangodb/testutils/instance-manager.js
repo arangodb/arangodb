@@ -155,6 +155,7 @@ class instanceManager {
     this.agencyMgr.setFromStructure(struct['agencyConfig']);
     this.protocol = struct['protocol'];
     this.options = struct['options'];
+    this.options['dummy'] = true;
     this.addArgs = struct['addArgs'];
     this.rootDir = struct['rootDir'];
     this.httpAuthOptions = struct['httpAuthOptions'];
