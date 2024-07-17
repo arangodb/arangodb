@@ -65,7 +65,7 @@ const tmpDirMngr = require('@arangodb/testutils/tmpDirManager').tmpDirManager;
 const {sanHandler} = require('@arangodb/testutils/san-file-handler');
 
 exports.flushInstanceInfo = () => {
-  instanceInfo = null;
+  instanceManager = null;
 };
 
 function getInstanceInfo() {
