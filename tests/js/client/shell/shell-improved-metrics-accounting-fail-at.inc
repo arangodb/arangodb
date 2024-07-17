@@ -38,7 +38,7 @@
     let current = getCompleteMetricsValues(metricName);
     let tries = 120;
     while (current > expected && tries-- > 0) {
-      require("internal").sleep(0.25);
+      internal.sleep(0.25);
       current = getCompleteMetricsValues(metricName);
     }
     assertTrue(current <= expected, metricName + " value is not decreased to at least " + expected);
@@ -113,15 +113,15 @@
       tearDownAll: function () {
         db._useDatabase('_system');
         db._dropDatabase(dbName);
-        internal.debugClearFailAt();
+        global.instanceManager.debugClearFailAt();
       },
 
       setUp: function () {
-        internal.debugClearFailAt();
+        global.instanceManager.debugClearFailAt();
       },
 
       tearDown: function () {
-        internal.debugClearFailAt();
+        global.instanceManager.debugClearFailAt();
         db._drop(collectionName);
       },
 
@@ -131,7 +131,7 @@
         assertNull(res);
         
         // block sync thread from doing anything from now on
-        internal.debugSetFailAt("RocksDBSettingsManagerSync");
+        global.instanceManager.debugSetFailAt("RocksDBSettingsManagerSync");
 
         // wait until all pending estimates & revision tree buffers have been applied
         res = waitForEstimatorSync();
@@ -146,7 +146,7 @@
         assertTrue(metric1 >= metric0 + n * 8, { metric1, metric0 });
 
         // Now check that metric value will go down
-        internal.debugClearFailAt();
+        global.instanceManager.debugClearFailAt();
         // wait until all pending estimates & revision tree buffers have been applied
         res = waitForEstimatorSync();
         assertNull(res);
@@ -160,7 +160,7 @@
         assertNull(res);
 
         // block sync thread from doing anything from now on
-        internal.debugSetFailAt("RocksDBSettingsManagerSync");
+        global.instanceManager.debugSetFailAt("RocksDBSettingsManagerSync");
 
         // wait until all pending estimates & revision tree buffers have been applied
         res = waitForEstimatorSync();
@@ -181,7 +181,7 @@
         assertTrue(metric1 >= metric0 + n * 48, { metric1, metric0 });
 
         // Now check that metric value will go down
-        internal.debugClearFailAt();
+        global.instanceManager.debugClearFailAt();
         // wait until all pending estimates & revision tree buffers have been applied
         res = waitForEstimatorSync();
         assertNull(res);
@@ -266,7 +266,7 @@
 
       testEstimatesShouldIncreaseWhenInsertingIntoPersistentIndex: function () {
         // block sync thread from doing anything from now on
-        internal.debugSetFailAt("RocksDBSettingsManagerSync");
+        global.instanceManager.debugSetFailAt("RocksDBSettingsManagerSync");
 
         // wait until all pending estimates & revision tree buffers have been applied
         let res = waitForEstimatorSync();
@@ -297,7 +297,7 @@
 
       testEstimatesShouldIncreaseWhenInsertingIntoEdgeIndex: function () {
         // block sync thread from doing anything from now on
-        internal.debugSetFailAt("RocksDBSettingsManagerSync");
+        global.instanceManager.debugSetFailAt("RocksDBSettingsManagerSync");
 
         // wait until all pending estimates & revision tree buffers have been applied
         let res = waitForEstimatorSync();
