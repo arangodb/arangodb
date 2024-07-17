@@ -506,7 +506,8 @@ int VelocyPackHelper::compareNumberValuesCorrectly(VPackValueType lhsType,
 
                                                    VPackSlice lhs,
                                                    VPackSlice rhs) {
-  if (lhsType == rhs.type()) {
+  VPackValueType rhsType = rhs.type();
+  if (lhsType == rhsType) {
     // both types are equal
     if (lhsType == VPackValueType::Int || lhsType == VPackValueType::SmallInt) {
       // use exact comparisons. no need to cast to double
@@ -537,8 +538,6 @@ int VelocyPackHelper::compareNumberValuesCorrectly(VPackValueType lhsType,
       return ::comp<double>(l, r);
     }
   }
-
-  VPackValueType rhsType = rhs.type();
 
   // Formally, we now have to face 20 different cases, since each side
   // can be one of SmallInt, Int, UInt, UTCDate, double but the two are
