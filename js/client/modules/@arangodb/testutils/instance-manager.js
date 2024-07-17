@@ -147,7 +147,8 @@ class instanceManager {
       arangods: d,
       restKeyFile: this.restKeyFile,
       tcpdump: this.tcpdump,
-      cleanup: this.cleanup
+      cleanup: this.cleanup,
+      options: this.options
     };
   }
   setFromStructure(struct) {
