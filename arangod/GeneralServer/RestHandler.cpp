@@ -419,7 +419,7 @@ void RestHandler::runHandlerStateMachine() {
           shutdownExecute(false);
           LOG_TOPIC("23a33", DEBUG, Logger::COMMUNICATION)
               << "Pausing rest handler execution " << this;
-          return _state;  // stop state machine
+          return;  // stop state machine
         }
         break;
       }
@@ -430,7 +430,7 @@ void RestHandler::runHandlerStateMachine() {
           shutdownExecute(/*isFinalized*/ false);
           LOG_TOPIC("23727", DEBUG, Logger::COMMUNICATION)
               << "Pausing rest handler execution " << this;
-          return _state;  // stop state machine
+          return;  // stop state machine
         }
         break;
       }
@@ -461,10 +461,10 @@ void RestHandler::runHandlerStateMachine() {
         _sendResponseCallback(this);
 
         shutdownExecute(false);
-        return _state;
+        return;
 
       case HandlerState::DONE:
-        return _state;
+        return;
     }
   }
 }
