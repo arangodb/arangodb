@@ -40,6 +40,7 @@
 #include "Utils/ExecContext.h"
 #include "VocBase/vocbase.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -139,8 +140,8 @@ arangodb::Result getQueries(TRI_vocbase_t& vocbase, velocypack::Builder& out,
     options.param("local", "true");
     options.param("all", allDatabases ? "true" : "false");
 
-    std::string const url = std::string("/_api/query/") +
-                            (mode == QueriesMode::Slow ? "slow" : "current");
+    auto url = absl::StrCat("/_api/query/",
+                            (mode == QueriesMode::Slow ? "slow" : "current"));
 
     auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
     for (auto const& coordinator : ci.getCurrentCoordinators()) {

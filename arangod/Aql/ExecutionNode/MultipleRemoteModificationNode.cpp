@@ -34,7 +34,6 @@
 #include "Aql/Executor/ModificationExecutorInfos.h"
 #include "Aql/Executor/MultipleRemoteModificationExecutor.h"
 #include "Aql/OptimizerRulesFeature.h"
-#include "Aql/SortRegister.h"
 #include "Aql/types.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"

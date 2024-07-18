@@ -59,18 +59,6 @@ constexpr std::string_view kParallelismParallel("parallel");
 constexpr std::string_view kParallelismSerial("serial");
 constexpr std::string_view kParallelismUndefined("undefined");
 
-constexpr std::string_view toString(GatherNode::Parallelism value) noexcept {
-  switch (value) {
-    case GatherNode::Parallelism::Parallel:
-      return kParallelismParallel;
-    case GatherNode::Parallelism::Serial:
-      return kParallelismSerial;
-    case GatherNode::Parallelism::Undefined:
-    default:
-      return kParallelismUndefined;
-  }
-}
-
 constexpr GatherNode::Parallelism parallelismFromString(
     std::string_view value) noexcept {
   if (value == kParallelismParallel) {
@@ -100,7 +88,28 @@ bool toSortMode(std::string_view str, GatherNode::SortMode& mode) noexcept {
   return true;
 }
 
-std::string_view toString(GatherNode::SortMode mode) noexcept {
+}  // namespace
+
+auto arangodb::aql::toString(GatherNode::Parallelism value) noexcept
+    -> std::string_view {
+  switch (value) {
+    case GatherNode::Parallelism::Parallel:
+      return kParallelismParallel;
+    case GatherNode::Parallelism::Serial:
+      return kParallelismSerial;
+    case GatherNode::Parallelism::Undefined:
+      return kParallelismUndefined;
+    default:
+      LOG_TOPIC("c9367", FATAL, Logger::AQL)
+          << "Invalid value for parallelism: "
+          << static_cast<std::underlying_type_t<GatherNode::Parallelism>>(
+                 value);
+      FATAL_ERROR_ABORT();
+  }
+}
+
+auto arangodb::aql::toString(GatherNode::SortMode mode) noexcept
+    -> std::string_view {
   switch (mode) {
     case GatherNode::SortMode::MinElement:
       return kSortModeMinElement;
@@ -113,8 +122,6 @@ std::string_view toString(GatherNode::SortMode mode) noexcept {
       return {};
   }
 }
-
-}  // namespace
 
 /*static*/ Collection const* GatherNode::findCollection(
     GatherNode const& root) noexcept {
@@ -226,17 +233,7 @@ void GatherNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   {
     VPackArrayBuilder guard(&nodes);
     for (auto const& it : _elements) {
-      VPackObjectBuilder obj(&nodes);
-      nodes.add(VPackValue("inVariable"));
-      it.var->toVelocyPack(nodes);
-      nodes.add("ascending", VPackValue(it.ascending));
-      if (!it.attributePath.empty()) {
-        nodes.add(VPackValue("path"));
-        VPackArrayBuilder arr(&nodes);
-        for (auto const& a : it.attributePath) {
-          nodes.add(VPackValue(a));
-        }
-      }
+      it.toVelocyPack(nodes);
     }
   }
 }
@@ -326,7 +323,7 @@ GatherNode::Parallelism GatherNode::evaluateParallelism(
 void GatherNode::replaceVariables(
     std::unordered_map<VariableId, Variable const*> const& replacements) {
   for (auto& it : _elements) {
-    it.var = Variable::replace(it.var, replacements);
+    it.replaceVariables(replacements);
   }
 }
 
@@ -336,33 +333,7 @@ void GatherNode::replaceAttributeAccess(ExecutionNode const* self,
                                         Variable const* replaceVariable,
                                         size_t /*index*/) {
   for (auto& it : _elements) {
-    if (it.var == searchVariable) {
-      // if the attribute path is  $var.a.b and we replace $var.a by $other,
-      // the attribute path should become just `b`, i.e. $other.b.
-
-      auto it2 = attribute.begin();
-      auto it1 = it.attributePath.begin();
-
-      bool isPrefix = true;
-      while (it2 != attribute.end()) {
-        if (it1 == it.attributePath.end() || *it1 != *it2) {
-          // this path does not match the prefix
-          isPrefix = false;
-          break;
-        }
-        ++it1;
-        ++it2;
-      }
-
-      if (!isPrefix) {
-        continue;
-      }
-
-      // it1 now points to the remainder. Remove the prefix.
-      it.attributePath.erase(it.attributePath.cbegin(), it1);
-
-      it.var = replaceVariable;
-    }
+    it.replaceAttributeAccess(searchVariable, attribute, replaceVariable);
   }
 }
 

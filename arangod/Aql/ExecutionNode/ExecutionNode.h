@@ -500,10 +500,9 @@ class ExecutionNode {
   /// coming out of the node
   virtual CostEstimate estimateCost() const = 0;
 
-  /// @brief factory for sort elements
+  /// @brief factory for sort elements, used by SortNode and GatherNode
   static void getSortElements(SortElementVector& elements, ExecutionPlan* plan,
-                              arangodb::velocypack::Slice slice,
-                              char const* which);
+                              velocypack::Slice slice, std::string_view which);
 
   RegisterId variableToRegisterId(Variable const*) const;
 

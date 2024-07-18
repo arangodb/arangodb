@@ -20,7 +20,7 @@ export OPENSSLBRANCH=$1
 export OPENSSLPATCH=$2
 export OPENSSLVERSION="${OPENSSLBRANCH}.${OPENSSLPATCH}"
 
-if [ "$OPENSSLBRANCH" != "3.2" ]; then
+if [ "$OPENSSLBRANCH" != "3.3" ]; then
   OLD="old/${OPENSSLBRANCH}/"
 fi;
 
@@ -28,17 +28,17 @@ export OPENSSLPATH=`echo $OPENSSLVERSION | sed 's/\.[0-9]*$//g'`
 [ "$ARCH" = "x86_64" -a ${OPENSSLPATH:0:1} = "3" ] && X86_64_SUFFIX=64
 
 cd /tmp
-curl -O https://www.openssl.org/source/openssl-$OPENSSLVERSION.tar.gz
+wget https://www.openssl.org/source/openssl-$OPENSSLVERSION.tar.gz
 tar xzf openssl-$OPENSSLVERSION.tar.gz
 cd openssl-$OPENSSLVERSION
 ./config --prefix=/opt no-async no-dso
-make -j64
+make -j$(nproc)  || exit 1
 make install_dev
 cd /tmp
 rm -rf openssl-$OPENSSLVERSION.tar.gz openssl-$OPENSSLVERSION
 
 # Compile openldap library:
-export OPENLDAPVERSION=2.6.7
+export OPENLDAPVERSION=2.6.8
 cd /tmp
 curl -O ftp://ftp.openldap.org/pub/OpenLDAP/openldap-release/openldap-$OPENLDAPVERSION.tgz
 tar xzf openldap-$OPENLDAPVERSION.tgz
@@ -46,7 +46,7 @@ cd openldap-$OPENLDAPVERSION
 CPPFLAGS=-I/opt/include \
 LDFLAGS="-L/opt/lib$X86_64_SUFFIX" \
 ./configure -prefix=/opt --enable-static
-make depend && make -j64
+make depend && make -j$(nproc) || exit 1
 make install
 cd /tmp
 rm -rf openldap-$OPENLDAPVERSION.tgz openldap-$OPENLDAPVERSION

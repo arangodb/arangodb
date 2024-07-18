@@ -27,6 +27,7 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/RecursiveLocker.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/UnshackledMutex.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/hashes.h"
@@ -168,7 +169,7 @@ uint64_t RocksDBMetaCollection::numberDocuments(
 
 // rescans the collection to update document count
 futures::Future<uint64_t> RocksDBMetaCollection::recalculateCounts() {
-  std::unique_lock<std::mutex> guard(_recalculationLock);
+  std::unique_lock<basics::UnshackledMutex> guard(_recalculationLock);
 
   rocksdb::TransactionDB* db = _engine.db();
   const rocksdb::Snapshot* snapshot = nullptr;
@@ -1444,17 +1445,29 @@ void RocksDBMetaCollection::applyUpdates(
       bool haveRemovals = removeIt != _revisionRemovalBuffers.end() &&
                           removeIt->first <= commitSeq;
 
+      TRI_ASSERT(haveInserts || insertIt == _revisionInsertBuffers.end() ||
+                 insertIt->first >= _revisionTreeApplied);
+      TRI_ASSERT(haveRemovals || removeIt == _revisionRemovalBuffers.end() ||
+                 removeIt->first >= _revisionTreeApplied);
+
       bool applyInserts =
           haveInserts && (!haveRemovals || removeIt->first >= insertIt->first);
       bool applyRemovals = haveRemovals && !applyInserts;
 
       // no inserts or removals left to apply, drop out of loop
       if (!applyInserts && !applyRemovals) {
+        TRI_ASSERT(!haveInserts);
+        TRI_ASSERT(!haveRemovals);
         // we have applied all changes up to including commitSeq
         TRI_IF_FAILURE("TransactionChaos::randomSleep") {
           std::this_thread::sleep_for(std::chrono::milliseconds(
               RandomGenerator::interval(uint32_t(5))));
         }
+        LOG_TOPIC("c06cf", TRACE, Logger::ENGINES)
+            << "nothing to do for shard " << _logicalCollection.vocbase().name()
+            << "/" << _logicalCollection.name()
+            << ". bumping applied sequence from " << _revisionTreeApplied
+            << " to " << commitSeq;
         bumpSequence(commitSeq);
 
         if (worked) {
@@ -1487,13 +1500,15 @@ void RocksDBMetaCollection::applyUpdates(
 
         TRI_ASSERT(insertIt->first > _revisionTreeApplied);
 
-        // apply inserts, without holding the lock
+        // apply inserts.
         // if this throws we will not have modified _revisionInsertBuffers
         try {
           _revisionTree->insert(insertIt->second);
         } catch (std::exception const& ex) {
           LOG_TOPIC("27811", ERR, Logger::ENGINES)
-              << "unable to apply revision tree inserts for "
+              << "unable to apply " << insertIt->second.size()
+              << " revision tree insert operation(s) for sequence number "
+              << insertIt->first << " in "
               << _logicalCollection.vocbase().name() << "/"
               << _logicalCollection.name() << ": " << ex.what();
           // it is pretty bad if this fails, so we want to see it in our
@@ -1530,19 +1545,22 @@ void RocksDBMetaCollection::applyUpdates(
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
 
-        // apply removals, without holding the lock
+        // apply removals.
         // if this throws we will not have modified _revisionRemovalBuffers
         try {
           _revisionTree->remove(removeIt->second);
         } catch (std::exception const& ex) {
           // this should never fail, anyway log...
           LOG_TOPIC("a5ba8", ERR, Logger::ENGINES)
-              << "unable to apply revision tree removals for "
+              << "unable to apply " << removeIt->second.size()
+              << " revision tree removal operation(s) for sequence number "
+              << removeIt->first << " in "
               << _logicalCollection.vocbase().name() << "/"
               << _logicalCollection.name() << ": " << ex.what();
           // it is pretty bad if this fails in real life, but we would
           // trigger this assertion during failure testing as well, so we
-          // cannot enable it TRI_ASSERT(false);
+          // cannot enable it
+          TRI_ASSERT(false);
 
           // if an exception escapes from here, the same remove will be
           // retried next time.
@@ -1593,7 +1611,8 @@ Result RocksDBMetaCollection::applyUpdatesForTransaction(
     containers::RevisionTree& tree, rocksdb::SequenceNumber commitSeq,
     std::unique_lock<std::mutex>& lock) const {
   TRI_ASSERT(lock.owns_lock());
-  TRI_ASSERT(_logicalCollection.useSyncByRevision());
+  TRI_ASSERT(_logicalCollection.useSyncByRevision() ||
+             _logicalCollection.deleted());
 
   return basics::catchVoidToResult([&]() -> void {
     auto insertIt = _revisionInsertBuffers.begin();

@@ -1,1 +1,1 @@
-add_subdirectory(Rules)
+add_subdirectory(Rule)

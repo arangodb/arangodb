@@ -1,6 +1,6 @@
 # First rebuild glibc with a special option and provide some .deb files:
 
-FROM ubuntu:23.10 as glibcdebs
+FROM ubuntu:24.04 as glibcdebs
 
 COPY ./static /static
 RUN /static/prepare.sh
@@ -9,7 +9,7 @@ RUN /static/rebuild_glibc.sh
 # Now prepare a standard Ubuntu image and install the provided .deb files
 # for glibc as a preparation:
 
-FROM ubuntu:23.10 as prepare
+FROM ubuntu:24.04 as prepare
 
 RUN apt-get update && apt-get upgrade -y && apt-get install -y libgd3 linux-libc-dev libcrypt-dev libnsl-dev rpcsvc-proto libtirpc-dev
 
@@ -18,15 +18,15 @@ RUN dpkg -i /debs/*.deb
 
 # Now build V8:
 
-FROM ubuntu:23.10 as v81
-
-COPY ./tools/build_v8.sh /tools/build_v8.sh
-RUN /tools/build_v8.sh
-
-FROM v81 as v8
-
-COPY ./tools/install_v8.sh /tools/install_v8.sh
-RUN /tools/install_v8.sh
+#FROM ubuntu:24.04 as v81
+#
+#COPY ./tools/build_v8.sh /tools/build_v8.sh
+#RUN /tools/build_v8.sh
+#
+#FROM v81 as v8
+#
+#COPY ./tools/install_v8.sh /tools/install_v8.sh
+#RUN /tools/install_v8.sh
 
 # Finally, build the actual build image based on the above preparation:
 
@@ -36,13 +36,13 @@ MAINTAINER Max Neunhoeffer <max@arangodb.com>
 
 ARG ARCH="x86_64"
 
-# We provide gcc 13.2.0 as well as clang 16.0.6 from Ubunutu 23.10
+# We provide gcc 13.2.0 as well as clang 16.0.6 from Ubunutu 24.04
 
 ENV COMPILER_VERSION 13
 ENV CLANG_VERSION 16
 
 RUN apt-get update --fix-missing && \
-    apt-get install -y software-properties-common && \
+    apt-get install -y software-properties-common net-tools && \
     apt-get update && \
     apt-get upgrade -y
 
@@ -58,16 +58,16 @@ RUN npm install -g yarn
 RUN curl -L https://github.com/mozilla/sccache/releases/download/v0.3.1/sccache-v0.3.1-${ARCH}-unknown-linux-musl.tar.gz | tar xvz -C /tmp && mv /tmp/sccache-v0.3.1-${ARCH}-unknown-linux-musl/sccache /usr/bin/sccache && chmod +x /usr/bin/sccache && rm -rf /tmp/sccache-v0.3.1-${ARCH}-unknown-linux-musl
 
 # Fetch V8:
-COPY --from=v8 /opt/v8/lib /opt/v8/lib
-COPY --from=v8 /opt/v8/include /opt/v8/include
-COPY --from=v8 /opt/v8/third_party /opt/v8/third_party
+#COPY --from=v8 /opt/v8/lib /opt/v8/lib
+#COPY --from=v8 /opt/v8/include /opt/v8/include
+#COPY --from=v8 /opt/v8/third_party /opt/v8/third_party
 
 # Build openssl and openldap libraries in specific versions and with static
 # libraries, install with prefix /opt:
 
 COPY ./tools/* /tools/
 
-RUN [ "/tools/install.sh", "3.2", "1" ]
+RUN [ "/tools/install.sh", "3.3", "1" ]
 
 COPY ./scripts /scripts
 

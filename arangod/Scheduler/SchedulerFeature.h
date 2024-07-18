@@ -67,6 +67,7 @@ class SchedulerFeature final : public ArangodFeature {
   uint64_t _fifo3Size = 4096;
   double _ongoingLowPriorityMultiplier = 4.0;
   double _unavailabilityQueueFillGrade = 0.75;
+  std::string _schedulerType = "supervised";
 
   std::unique_ptr<Scheduler> _scheduler;
   metrics::MetricsFeature& _metricsFeature;

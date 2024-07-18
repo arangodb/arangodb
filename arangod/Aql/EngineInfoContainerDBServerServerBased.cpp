@@ -176,6 +176,10 @@ std::vector<bool> EngineInfoContainerDBServerServerBased::buildEngineInfo(
   infoBuilder.add(StaticStrings::AttrCoordinatorId,
                   VPackValue(ServerState::instance()->getId()));
 
+  if (_query.queryOptions().optimizePlanForCaching) {
+    infoBuilder.add("bindParameters", q->bindParametersAsBuilder()->slice());
+  }
+
   addSnippetPart(nodesById, infoBuilder, _shardLocking, nodeAliases, server);
   TRI_ASSERT(infoBuilder.isOpenObject());
   auto shardMapping = _shardLocking.getShardMapping();
@@ -219,7 +223,7 @@ EngineInfoContainerDBServerServerBased::buildSetupRequest(
 
   auto buildCallback =
       [this, server, didCreateEngine = std::move(didCreateEngine),
-       &serverToQueryId, &serverToQueryIdLock, &snippetIds, globalId](
+       &serverToQueryId, &serverToQueryIdLock, &snippetIds, globalId, fastPath](
           arangodb::futures::Try<arangodb::network::Response> const& response)
       -> Result {
     auto const& resolvedResponse = response.get();
@@ -246,7 +250,7 @@ EngineInfoContainerDBServerServerBased::buildSetupRequest(
       return {TRI_ERROR_INTERNAL, "malformed response while building engines"};
     }
     auto result = parseResponse(responseSlice, snippetIds, server,
-                                didCreateEngine, queryId, rebootId);
+                                didCreateEngine, queryId, rebootId, fastPath);
     serverToQueryId.emplace_back(ServerQueryIdEntry{server, queryId, rebootId});
 
     return result;
@@ -589,29 +593,37 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
 Result EngineInfoContainerDBServerServerBased::parseResponse(
     VPackSlice response, MapRemoteToSnippet& queryIds, ServerID const& server,
     std::vector<bool> const& didCreateEngine, QueryId& globalQueryId,
-    RebootId& rebootId) const {
+    RebootId& rebootId, bool fastPath) const {
   TRI_ASSERT(!server.starts_with("server:"));
 
   if (!response.isObject() || !response.get("result").isObject()) {
+    if (response.hasKey(StaticStrings::ErrorNum) &&
+        response.hasKey(StaticStrings::ErrorMessage)) {
+      // got a proper error message back
+      Result res =
+          network::resultFromBody(response, TRI_ERROR_CLUSTER_AQL_COMMUNICATION)
+              .withError([&](result::Error& err) {
+                err.appendErrorMessage(
+                    absl::StrCat(". Please check: ", server));
+              });
+      if (!fastPath || res.isNot(TRI_ERROR_LOCKED)) {
+        LOG_TOPIC("0c3f3", WARN, Logger::AQL)
+            << "Received error information from " << server << ": "
+            << response.toJson();
+      }
+      return res;
+    }
+
     LOG_TOPIC("0c3f2", WARN, Logger::AQL)
         << "Received error information from " << server << ": "
         << response.toJson();
-    if (response.hasKey(StaticStrings::ErrorNum) &&
-        response.hasKey(StaticStrings::ErrorMessage)) {
-      return network::resultFromBody(response,
-                                     TRI_ERROR_CLUSTER_AQL_COMMUNICATION)
-          .withError([&](result::Error& err) {
-            err.appendErrorMessage(
-                StringUtils::concatT(". Please check: ", server));
-          });
-    }
     return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
-            "Unable to deploy query on all required "
-            "servers: " +
-                response.toJson() +
-                ". This can happen during "
-                "failover. Please check: " +
-                server};
+            absl::StrCat("Unable to deploy query on all required "
+                         "servers: ",
+                         response.toJson(),
+                         ". This can happen during "
+                         "failover. Please check: ",
+                         server)};
   }
 
   VPackSlice result = response.get("result");
@@ -636,10 +648,10 @@ Result EngineInfoContainerDBServerServerBased::parseResponse(
   for (auto const& resEntry : VPackObjectIterator(snippets)) {
     if (!resEntry.value.isString()) {
       return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
-              "Unable to deploy query snippets on all required "
-              "servers. This can happen during "
-              "failover. Please check: " +
-                  server};
+              absl::StrCat("Unable to deploy query snippets on all required "
+                           "servers. This can happen during "
+                           "failover. Please check: ",
+                           server)};
     }
     auto remoteId = ExecutionNodeId{0};
     std::string shardId;
@@ -659,10 +671,11 @@ Result EngineInfoContainerDBServerServerBased::parseResponse(
   if (!travEngines.isNone()) {
     if (!travEngines.isArray()) {
       return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
-              "Unable to deploy query traverser engines on all required "
-              "servers. This can happen during "
-              "failover. Please check: " +
-                  server};
+              absl::StrCat(
+                  "Unable to deploy query traverser engines on all required "
+                  "servers. This can happen during "
+                  "failover. Please check: ",
+                  server)};
     }
     auto idIter = VPackArrayIterator(travEngines);
     TRI_ASSERT(_graphNodes.size() == didCreateEngine.size());
@@ -670,10 +683,10 @@ Result EngineInfoContainerDBServerServerBased::parseResponse(
       if (didCreateEngine[i]) {
         if (!idIter.valid()) {
           return {TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
-                  "The DBServer was not able to create enough "
-                  "traversal engines. This can happen during "
-                  "failover. Please check; " +
-                      server};
+                  absl::StrCat("The DBServer was not able to create enough "
+                               "traversal engines. This can happen during "
+                               "failover. Please check; ",
+                               server)};
         }
         _graphNodes[i]->addEngine(idIter.value().getNumber<aql::EngineId>(),
                                   server);

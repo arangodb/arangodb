@@ -1303,6 +1303,11 @@ arangodb::Result MoveShard::abort(std::string const& reason) {
     // If the above finish failed, then we must be in PENDING
   }
 
+  if (!_snapshot.has(planColPrefix + _database + "/" + _collection)) {
+    moveShardFinish(true, false, "collection was dropped");
+    return Result{};
+  }
+
   // Can now only be PENDING
   // Find the other shards in the same distributeShardsLike group:
   std::vector<Job::shard_t> shardsLikeMe =

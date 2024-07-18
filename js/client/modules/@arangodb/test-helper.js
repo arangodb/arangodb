@@ -42,6 +42,7 @@ const _ = require('lodash');
 const inst = require('@arangodb/testutils/instance');
 const request = require('@arangodb/request');
 const arangosh = require('@arangodb/arangosh');
+const pu = require('@arangodb/testutils/process-utils');
 const jsunity = require('jsunity');
 const { isCluster } = require('../../bootstrap/modules/internal');
 const arango = internal.arango;
@@ -59,6 +60,8 @@ exports.isEqual = isEqual;
 exports.compareStringIds = compareStringIds;
 
 let instanceInfo = null;
+const tmpDirMngr = require('@arangodb/testutils/tmpDirManager').tmpDirManager;
+const {sanHandler} = require('@arangodb/testutils/san-file-handler');
 
 exports.flushInstanceInfo = () => {
   instanceInfo = null;
@@ -316,7 +319,7 @@ const debug = function (text) {
   console.warn(text);
 };
 
-const runShell = function(args, prefix) {
+const runShell = function(args, prefix, sanHnd) {
   let options = internal.options();
 
   let endpoint = arango.getEndpoint().replace(/\+vpp/, '').replace(/^http:/, 'tcp:').replace(/^https:/, 'ssl:').replace(/^vst:/, 'tcp:').replace(/^h2:/, 'tcp:');
@@ -337,7 +340,7 @@ const runShell = function(args, prefix) {
     argv.push(options['javascript.module-directory'][o]);
   }
 
-  let result = internal.executeExternal(global.ARANGOSH_BIN, argv, false /*usePipes*/);
+  let result = internal.executeExternal(global.ARANGOSH_BIN, argv, false /*usePipes*/, sanHnd.getSanOptions());
   assertTrue(result.hasOwnProperty('pid'));
   let status = internal.statusExternal(result.pid);
   assertEqual(status.status, "RUNNING");
@@ -345,6 +348,7 @@ const runShell = function(args, prefix) {
 };
 
 const buildCode = function(dbname, key, command, cn, duration) {
+  
   let file = fs.getTempFile() + "-" + key;
   fs.write(file, `
 (function() {
@@ -352,14 +356,13 @@ const buildCode = function(dbname, key, command, cn, duration) {
 require('internal').SetGlobalExecutionDeadlineTo((${duration} + 180) * 1000);
 let tries = 0;
 while (true) {
-  if (++tries % 3 === 0) {
-    try {
-      if (db['${cn}'].exists('stop')) {
-        break;
-      }
-    } catch (err) {
-      // the operation may actually fail because of failure points
+  ++tries;
+  try {
+    if (db['${cn}'].exists('stop')) {
+      break;
     }
+  } catch (err) {
+    // the operation may actually fail because of failure points
   }
   ${command}
 }
@@ -376,22 +379,26 @@ while (++saveTries < 100) {
 })();
   `);
 
+  let sanHnd = new sanHandler(pu.ARANGOSH_BIN, global.instanceManager.options);
+  let tmpMgr = new tmpDirMngr(fs.join(`chaos_${key}`), global.instanceManager.options);
+  
   let args = {'javascript.execute': file};
   args["--server.database"] = dbname;
-  let pid = runShell(args, file);
+  sanHnd.detectLogfiles(tmpMgr.tempDir, tmpMgr.tempDir);
+  let pid = runShell(args, file, sanHnd);
   debug("started client with key '" + key + "', pid " + pid + ", args: " + JSON.stringify(args));
-  return { key, file, pid };
+  return { key, file, pid,  sanHnd, tmpMgr};
 };
 exports.runShell = runShell;
 
 const abortSignal = 6;
 
 exports.runParallelArangoshTests = function (tests, duration, cn) {
-  assertTrue(fs.isFile(global.ARANGOSH_BIN), "arangosh executable not found!");
+  assertTrue(fs.isFile(pu.ARANGOSH_BIN), "arangosh executable not found!");
   
   assertFalse(db[cn].exists("stop"));
   let clients = [];
-  debug("starting " + tests.length + " test clients");
+  debug(`starting ${tests.length} test clients`);
   try {
     tests.forEach(function (test) {
       let key = test[0];
@@ -402,8 +409,9 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
       clients.push(client);
     });
 
-    debug("running test for " + duration + " s...");
+    debug(`running test with ${tests.length} clients for ${duration} s...`);
 
+    let reportCounter = 0;
     for (let count = 0; count < duration; count ++) {
       internal.sleep(1);
       clients.forEach(function (client) {
@@ -414,6 +422,7 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
             client.failed = true;
             debug(`Client ${client.pid} exited before the duration end. Aborting tests: ${JSON.stringify(status)}`);
             count = duration + 10;
+            client.sanHnd.fetchSanFileAfterExit(status.pid);
           }
         }
       });
@@ -427,10 +436,14 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
           }
         });
       }
+
+      if (++reportCounter % 15 === 0) {
+        debug(`  ...${reportCounter} s into the test...`);
+      }
     }
 
     // clear failure points
-    debug("clearing failure points");
+    debug("clearing all potential failure points");
     exports.clearAllFailurePoints();
   
     debug("stopping all test clients");
@@ -446,9 +459,11 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
         // try again
       }
     }
-    let tries = 0;
+
     const allClientsDone = () => clients.every(client => client.done);
-    while (++tries < 120) {
+    const maxTries = (versionHas('asan') || versionHas('tsan')) ? 240 : 120;
+    let tries = 0;
+    while (++tries < maxTries) {
       clients.forEach(function (client) {
         if (!client.done) {
           let status = internal.statusExternal(client.pid);
@@ -482,9 +497,9 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
       const logfile = client.file + '.log';
       if (client.failed) {
         if (fs.exists(logfile) && fs.readFileSync(logfile).toString() !== '') {
-          debug("test client with pid " + client.pid + " has failed and wrote logfile '" + logfile + ": " + fs.readFileSync(logfile).toString());
+          debug(`test client with pid ${client.pid} has failed and wrote logfile '${logfile}: ${fs.readFileSync(logfile).toString()}`);
         } else {
-          debug("test client with pid " + client.pid + " has failed and did not write a logfile");
+          debug(`test client with pid ${client.pid} has failed and did not write a logfile`);
         }
       }
       try {
@@ -498,7 +513,7 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
         try {
           let status = internal.statusExternal(client.pid).status;
           if (status === 'RUNNING') {
-            debug("forcefully killing test client with pid " + client.pid);
+            debug(`forcefully killing test client with pid ${client.pid}`);
             internal.killExternal(client.pid, 9 /*SIGKILL*/);
           }
         } catch (err) { }

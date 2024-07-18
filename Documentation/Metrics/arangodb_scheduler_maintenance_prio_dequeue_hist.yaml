@@ -1,0 +1,20 @@
+name: arangodb_scheduler_maintenance_prio_dequeue_hist
+introducedIn: "3.12.1"
+help: |
+  Time required to take an item from the maintenance priority queue.
+unit: µs
+type: histogram
+category: Scheduler
+complexity: advanced
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  This histogram provides the distribution of time required to take entries
+  from the maintenance priority queue, i.e., the amount of time the jobs were
+  sitting in the queue. Long dequeue times indicate that the server is under
+  heavy load and maintenance jobs cannot be dequeued in a timely manner.
+  Note that maintenance jobs are critical for the operation of the cluster, so
+  it is important to keep these dequeue times low.

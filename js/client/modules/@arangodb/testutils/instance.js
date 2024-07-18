@@ -133,6 +133,8 @@ class agencyConfig {
 }
 
 class instance {
+  #pid = null;
+
   // / protocol must be one of ["tcp", "ssl", "unix"]
   constructor(options, instanceRole, addArgs, authHeaders, protocol, rootDir, restKeyFile, agencyConfig, tmpDir, mem) {
     this.id = null;
@@ -186,16 +188,24 @@ class instance {
     }
     this.JWT = null;
     this.jwtFiles = null;
-    this.sanHandler = new sanHandler('arangod', this.options.sanOptions, this.options.isSan, this.options.extremeVerbosity);
+    this.sanHandler = new sanHandler('arangod', this.options);
 
     this._makeArgsArangod();
 
     this.name = instanceRole + ' - ' + this.port;
-    this.pid = null;
     this.exitStatus = null;
     this.serverCrashedLocal = false;
     this.netstat = {'in':{}, 'out': {}};
   }
+
+  set pid(value) {
+    if (this.#pid !== null) {
+      this.processSanitizerReports();
+    }
+    this.#pid = value;
+  }
+
+  get pid() { return this.#pid; }
 
   getStructure() {
     return {
@@ -460,7 +470,7 @@ class instance {
       let maxBuffer = ioraw.length;
       for (let j = 0; j < maxBuffer; j++) {
         if (ioraw[j] === 10) { // \n
-          const line = ioraw.asciiSlice(lineStart, j);
+          const line = ioraw.utf8Slice(lineStart, j);
           lineStart = j + 1;
           let x = line.split(":");
           processStats[x[0]] = parseInt(x[1]);
@@ -536,7 +546,7 @@ class instance {
 
       for (let j = 0; j < maxBuffer; j++) {
         if (buf[j] === 10) { // \n
-          const line = buf.asciiSlice(lineStart, j);
+          const line = buf.utf8Slice(lineStart, j);
           lineStart = j + 1;
 
           // scan for asserts from the crash dumper
@@ -559,9 +569,11 @@ class instance {
     }
   }
   terminateInstance() {
+    internal.removePidFromMonitor(this.pid);
     if (!this.hasOwnProperty('exitStatus')) {
       this.exitStatus = killExternal(this.pid, termSignal);
     }
+    this.processSanitizerReports();
   }
 
   readImportantLogLines (logPath) {
@@ -572,7 +584,7 @@ class instance {
     
     for (let j = 0; j < maxBuffer; j++) {
       if (buf[j] === 10) { // \n
-        const line = buf.asciiSlice(lineStart, j);
+        const line = buf.utf8Slice(lineStart, j);
         lineStart = j + 1;
         
         // filter out regular INFO lines, and test related messages
@@ -642,7 +654,7 @@ class instance {
       print(Date() + ' starting process ' + cmd + ' with arguments: ' + JSON.stringify(argv));
     }
 
-    this.sanHandler.setSanOptions();
+    let subEnv = this.sanHandler.getSanOptions();
 
     if ((this.useableMemory === undefined) && (this.options.memory !== undefined)){
       throw new Error(`${this.name} don't have planned memory though its configured!`);
@@ -651,15 +663,10 @@ class instance {
       if (this.options.extremeVerbosity) {
         print(`appointed ${this.name} memory: ${this.useableMemory}`);
       }
-      process.env['ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY'] = this.useableMemory;
+      subEnv.push(`ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY=${this.useableMemory}`);
     }
-    process.env['ARANGODB_SERVER_DIR'] = this.rootDir;
-    let ret = executeExternal(cmd, argv, false, pu.coverageEnvironment());
-    
-    this.sanHandler.resetSanOptions();
-    if (this.useableMemory !== 0) {
-      delete process.env['ARANGODB_OVERRIDE_DETECTED_TOTAL_MEMORY'];
-    }
+    subEnv.push(`ARANGODB_SERVER_DIR=${this.rootDir}`);
+    let ret = executeExternal(cmd, argv, false, subEnv);
     return ret;
   }
   // //////////////////////////////////////////////////////////////////////////////
@@ -708,25 +715,38 @@ class instance {
       internal.addPidToMonitor(this.pid);
     }
   };
+
+  status(waitForExit) {
+    let ret = statusExternal(this.pid, waitForExit);
+    if (ret.status !== 'RUNNING') {
+      this.processSanitizerReports();
+    }
+    return ret;
+  }
+
   waitForExitAfterDebugKill() {
+    if (this.pid === null) {
+      return;
+    }
     // Crashutils debugger kills our instance, but we neet to get
     // testing.js sapwned-PID-monitoring adjusted.
-    print("waiting for exit - " + this.pid);
+    print(this.name + " waiting for exit - " + this.pid);
     try {
       let ret = statusExternal(this.pid, false);
-      // OK, something has gone wrong, process still alive. anounce and force kill:
+      // OK, something has gone wrong, process still alive. announce and force kill:
       if (ret.status !== "ABORTED") {
-        print(RED+`was expecting the process ${this.pid} to be gone, but ${JSON.stringify(ret)}` + RESET);
+        print(RED + `was expecting the ${this.name} process ${this.pid} to be gone, but ${JSON.stringify(ret)}` + RESET);
+        this.processSanitizerReports();
         killExternal(this.pid, abortSignal);
         print(statusExternal(this.pid, true));
       }
     } catch(ex) {
       print(ex);
     }
-    this.serverCrashedLocal = this.serverCrashedLocal || this.sanHandler.fetchSanFileAfterExit(this.pid);
     this.pid = null;
     print('done');
   }
+
   waitForExit() {
     if (this.pid === null) {
       this.exitStatus = null;
@@ -734,10 +754,9 @@ class instance {
     }
     this.exitStatus = statusExternal(this.pid, true);
     if (this.exitStatus.status !== 'TERMINATED') {
-      this.serverCrashedLocal = this.serverCrashedLocal || this.sanHandler.fetchSanFileAfterExit(this.pid);
+      this.processSanitizerReports();
       throw new Error(this.name + " didn't exit in a regular way: " + JSON.stringify(this.exitStatus));
     }
-    this.serverCrashedLocal = this.serverCrashedLocal || this.sanHandler.fetchSanFileAfterExit(this.pid);
     this.exitStatus = null;
     this.pid = null;
   }
@@ -823,6 +842,15 @@ class instance {
     return running;
   }
 
+  isRunning() {
+    let check = () => (this.exitStatus !== null) && (this.exitStatus.status === 'RUNNING');
+    if (check()) {
+      this.exitStatus = this.status(false);
+      return check();
+    }
+    return false;
+  }
+
   connect() {
     if (this.JWT) {
       return arango.reconnect(this.endpoint, '_system', 'root', '', true, this.JWT);
@@ -882,7 +910,11 @@ class instance {
       print(agencyReply);
     }
   }
+
   killWithCoreDump (message) {
+    if (this.pid == null) {
+      return;
+    }
     let pid = this.pid;
     if (this.options.enableAliveMonitor) {
       internal.removePidFromMonitor(this.pid);
@@ -899,9 +931,10 @@ class instance {
       crashUtils.generateCrashDump(pu.ARANGOD_BIN, this, this.options, message);
     }
   }
+
   aggregateDebugger () {
     crashUtils.aggregateDebugger(this, this.options);
-    print("unlisting our instance");
+    print(CYAN + Date() + this.name + ', url: ' + this.url + "unlisting our instance" + RESET);
     this.waitForExitAfterDebugKill();
   }
   // //////////////////////////////////////////////////////////////////////////////
@@ -909,7 +942,11 @@ class instance {
   // //////////////////////////////////////////////////////////////////////////////
 
   shutdownArangod (forceTerminate) {
-    print(CYAN + Date() +' stopping ' + this.name + ', url: ' + this.url + ', force terminate: ' + forceTerminate + ' ' + this.protocol + RESET);
+    if (this.pid == null) {
+      print(CYAN + Date() + this.name + ', url: ' + this.url + ' already dead, doing nothing' + RESET);
+      return;
+    }
+    print(CYAN + Date() +' stopping ' + this.name + ', pid ' + this.pid + ', url: ' + this.url + ', force terminate: ' + forceTerminate + ' ' + this.protocol + RESET);
     if (forceTerminate === undefined) {
       forceTerminate = false;
     }
@@ -937,7 +974,6 @@ class instance {
       } else if (this.options.useKillExternal) {
         let sockStat = this.getSockStat("Shutdown by kill - sockstat before: ");
         this.exitStatus = killExternal(this.pid);
-        this.serverCrashedLocal = this.serverCrashedLocal || this.sanHandler.fetchSanFileAfterExit(this.pid);
         this.pid = null;
         print(sockStat);
       } else if (this.protocol === 'unix') {
@@ -959,7 +995,7 @@ class instance {
           print(Date() + ' Wrong shutdown response: ' + JSON.stringify(reply) + "' " + sockStat + " continuing with hard kill!");
           this.shutdownArangod(true);
         } else {
-          this.serverCrashedLocal = this.serverCrashedLocal || this.sanHandler.fetchSanFileAfterExit(this.pid);
+          this.processSanitizerReports();
           if (!this.options.noStartStopLogs) {
             print(sockStat);
           }
@@ -986,11 +1022,8 @@ class instance {
           print(Date() + ' Wrong shutdown response: ' + JSON.stringify(reply) + "' " + sockStat + " continuing with hard kill!");
           this.shutdownArangod(true);
         }
-        else {
-          this.serverCrashedLocal = this.serverCrashedLocal || this.sanHandler.fetchSanFileAfterExit(this.pid);
-          if (!this.options.noStartStopLogs) {
-            print(sockStat);
-          }
+        else if (!this.options.noStartStopLogs) {
+          print(sockStat);
         }
         if (this.options.extremeVerbosity) {
           print(Date() + ' Shutdown response: ' + JSON.stringify(reply));
@@ -1162,6 +1195,10 @@ class instance {
       print(metricsReply);
     }
     this.memProfCounter ++;
+  }
+
+  processSanitizerReports() {
+    this.serverCrashedLocal |= this.sanHandler.fetchSanFileAfterExit(this.pid);
   }
 }
 

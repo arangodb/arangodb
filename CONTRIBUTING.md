@@ -39,8 +39,8 @@ yet.
   the appropriate branches there. This will most likely be **devel**.
 
 - You must use the Apache License for your changes and have signed our
-  [CLA](https://www.arangodb.com/documents/cla.pdf). We cannot accept pull requests
-  from contributors that didn't sign the CLA.
+  [CLA](https://arangodb.com/community/#contribute). We cannot accept pull requests
+  from contributors who didn't sign the CLA.
 
 - Please let us know if you plan to work on a ticket. This way we can make sure
   redundant work is avoided.

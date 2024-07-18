@@ -41,6 +41,7 @@
 #include "Containers/FlatHashMap.h"
 #include "Replication2/Version.h"
 #include "RestServer/arangod.h"
+#include "Utils/DatabaseGuard.h"
 #include "Utils/VersionTracker.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/TransactionId.h"
@@ -126,8 +127,17 @@ struct TRI_vocbase_t {
   friend class arangodb::StorageEngine;
 
   explicit TRI_vocbase_t(arangodb::CreateDatabaseInfo&& info);
+
+  // note: isInternal=true is currently only used for the special internal
+  // vocbase object that is used to execute IResearchAqlAnalyzer computations,
+  // namely calculationVocbase.
+  // all other vocbases do not set it.
+  // the isInternal flag is necessary for a slightly different setup of the
+  // internal vocbase object, which does not use the MetricsFeature, because
+  // it can outlive the entire ApplicationServer stack.
   TRI_vocbase_t(arangodb::CreateDatabaseInfo&& info,
-                arangodb::VersionTracker& versionTracker, bool extendedNames);
+                arangodb::VersionTracker& versionTracker, bool extendedNames,
+                bool isInternal = false);
   TEST_VIRTUAL ~TRI_vocbase_t();
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
@@ -292,6 +302,8 @@ struct TRI_vocbase_t {
 
   /// @brief decrease the reference counter for a database
   void release() noexcept;
+
+  arangodb::VocbasePtr getSharedPtr() noexcept;
 
   /// @brief returns whether the database is dangling
   bool isDangling() const noexcept;

@@ -1,6 +1,254 @@
 devel
 -----
 
+* Add optimizer rule `push-limit-into-index` that pushes a limit down
+  into index iteration and can optimize the query execution when compound
+  index is used along with SORT and LIMIT clauses.
+
+* FE-423: Add a progress bar to reflect an index creation process.
+
+* Remove unused "mmap" log topic.
+
+* Support array and object destructuring for FOR loops that refer to simple
+  expressions or collections.
+
+  The following is now possible to write in AQL:
+
+      FOR {value1, value2} IN collection
+        FILTER value1 == @value1 && value2 == @value2
+        RETURN value1
+
+  This destructures every single object from `collection` and extracts its
+  `value1` and `value2` attributes. It is equivalent to writing:
+
+      FOR doc IN collection
+        FILTER doc.value1 == @value1 && doc.value2 == @value2
+        RETURN doc.value1
+
+  It is also possible to destructure array inputs into separate variables.
+  For example, the following query
+
+      FOR doc IN collection 
+        FOR [key, value] IN ENTRIES(doc) 
+        RETURN {key, value}
+
+  can be used to destructure all members from the expression `ENTRIES(doc)`
+  and assign the first member to the variable `key`, and the second member
+  to the variable `value`.
+
+  This is equivalent to writing:
+
+      FOR doc IN collection 
+        FOR entry IN ENTRIES(doc) 
+          LET key = entry[0]
+          LET value = entry[1]
+          RETURN {key, value}
+
+  Accessing an undefined object attribute or an undefined array members results
+  in a value of `null` being produced. Applying destructuring on any 
+  incompatible input types produces `null` as well.
+
+  Destructuring is not supported for view-based FOR loops, for traversal FOR
+  loops, SHORTEST_PATH FOR loops, K_PATHS FOR loops, K_SHORTEST_PATHS FOR loops
+  nor ALL_SHORTEST_PATHS FOR loops.
+
+* Fix an "invalid document type" exception when using the AQL ENTRIES function
+  on a database document or edge.
+
+* Updated ArangoDB Starter to v0.19.3.
+
+* Fixed MDS-1216: restoring the previous value of the "padded" key generator
+  could lead to the key generator's sequence being set to a too low value
+  after recovery.
+
+* Fix a nullptr access when aborting a move shard job for a already dropped collection.
+
+* Use __nss_configure_lookup to opt out of /etc/nsswitch.conf.
+  Add the startup option --honor-nsswitch to cancel the opt-out.
+
+* Make constrained heap sort in AQL report all filtered rows as "filtered" in
+  the query profile.
+
+* Adjust our usage of `_FORTIFY_SOURCE` in maintainer mode:
+  - use `_FORTIFY_SOURCE` compile definition also when building with clang.
+    Previously it was only used when compiling with gcc.
+  - use `_FORTIFY_SOURCE=3`, which adds runtime memory safety checks (and some
+    runtime overhead). Previously we used `_FORTIFY_SOURCE=2`.
+  This only affects maintainer mode builds. Non-maintainer-mode builds are not
+  affected, as `_FORTIFY_SOURCE` is not used on them.
+
+* Added array and object destructuring to AQL LET statements.
+
+  * Array Destructuring: Array destructuring is the assignment of array values
+    into one or multiple variables with a single `LET` assignment. This can be
+    achieved by putting the target assignment variables of the `LET` assignment
+    into angular brackets.
+
+    For example, the statement:
+
+        LET [y, z] = [1, 2]
+
+    will assign the value `1` to variable `y` and the value `2` to variable `z`.
+    The mapping of input array members to the target variables is positional.
+
+    It is also possible to skip over unneeded array values. The following 
+    assignment will assign the value `2` to variable `y` and the value `3` to 
+    variable `z`. The array member with value `1` will not be assigned to any 
+    variable:
+
+        LET [, y, z] = [1, 2, 3]
+
+    When there are more variables assigned than there are array members, the 
+    target variables that are mapped to non-existing array members are 
+    populated with a value of `null`. The assigned target variables will also
+    receive a value of `null` when the destructuring is used on a non-array.
+
+    Destructuring can also be applied on nested arrays, e.g.
+
+        LET [[sub1], [sub2, sub3]] = [["foo", "bar"], [1, 2, 3]]
+
+    In the above example, the value of variable `sub1` will be `foo`, the value
+    of variable `sub2` will be `1` and the value of variable `sub3` will be `2`.
+
+  * Object Destructuring: Object destructuring is the assignment of multiple
+    target variables from a source object value. This is achieved by using the
+    curly brackets after the `LET` assignment token:
+
+        LET { name, age } = { valid: true, age: 39, name: "John Doe" }
+
+    The mapping of input object members to the target variables is by name.
+    In the above example, the variable `name` will get a value of `John Doe`,
+    the variable `age` will get a value of `39`. The attribute `valid` from the
+    source object will be ignored.
+
+    Object destructuring also works with nested objects, e.g.
+
+        LET { name: {first, last} } = { name: { first: "John", middle: "J", last: "Doe" } }
+
+    The above statement will assign the value `John` to the variable `first` 
+    and the value `Doe` to the variable `last`. The attribute `middle` from the
+    source object is ignored.
+    Note that here only variables `first` and `last` will be populated, but
+    variable `name` is not.
+
+    It is also possible for the target variable to get a different name than in
+    the source object, e.g.
+
+        LET { name: {first: firstName, last: lastName} } = { name: { first: "John", last: "Doe" } }
+
+    The above statement assigns the value `John` to the target variable
+    `firstName` and the value `Doe` to the target variable `lastName`. Note
+    that neither of these attributes exist in the source object.
+
+* Added `verifyCertificates` attribute option for the `requests` JavaScript
+  module. This option defaults to false, so that no certificates will be 
+  verified in an HTTPS connection made with the `requests` module. If the
+  option is set to true, the server certificate of the remote server will be
+  verified using the default certificate store of the system.
+  There is also a `verifyDepth` attribute to limit the maximum length of the 
+  certificate chain that counts as valid.
+
+3.12.1 (XXXX-XX-XX)
+-------------------
+
+* Support indexHint AQL option for traversals.
+  The structure of traversal index hints is as follows:
+
+      { collection: { direction: { level: indexes } } }
+
+  with the following meanings:
+  - collection: the name of an edge collection for which the index hint should
+    be applied. Proper capitalization of the collection name is important.
+  - direction:  the direction for which to apply the index hint. Valid values
+    are `inbound` and `outbound`, in lowercase.
+  - level: the level/depth for which the index should be applied. Valid level
+    values are the string `base` and any stringified numeric values greater or
+    equal to zero.
+
+  Example:
+
+      FOR v, e, p IN 1..5 OUTBOUND startVertex edgeCollection
+      OPTIONS {
+        indexHint: {
+          "edgeCollection": {
+            "outbound": {
+              "base": ["edge"],
+              "1": "myIndex1",
+              "2": ["myIndex2", "myIndex1"],
+              "3": "myIndex3",
+            }
+          }
+        }
+      }
+      FILTER p.edges[1].foo == 'bar' &&
+             p.edges[2].foo == 'bar' &&
+             p.edges[2].baz == 'qux'
+
+  Because the collection names and levels/depths are used a object keys here, it
+  is useful to enclose them in quotes. Omitting the quotes around them may
+  result in parse errors for the query.
+
+  Note that index hints for levels other than `base` will only be considered
+  if the traversal actually uses a specific filter condition for the specified
+  level. In the above example, this is true for levels 1 and 2, but not for
+  level 3. Consequently, the index hint for level 3 will be ignored here.
+
+  Currently index hints cannot be forced to be used for traversals, i.e. the
+  `forceIndexHint` option is currently not supported for traversals.
+
+* Update timezone database as of 25.06.2024.
+
+* Rebuilt included rclone v1.65.2 with go1.22.4.
+
+* Swagger UI: Remove fragment identifiers from request URLs. They are merely
+  used to disambiguate polymorphic endpoints in the OpenAPI descriptions of the
+  HTTP API documentation.
+
+* BTS-1909, MDS-1232: Fixed a bug where COLLECT ... AGGREGATE x = UNIQUE(y)
+  could miss some results when multiple shards were aggregated in a cluster.
+
+* Fixed an issue where the request would hang when retrieving the result of an
+  asynchronous HEAD request. Now, the response body is cleared and the
+  Content-Length header is set to 0, ensuring compliance with the HTTP protocol
+  and preventing indefinite client waits.
+
+* Document modification operations (INSERT, UPDATE, REPLACE, REMOVE, and UPSERT)
+  during an AQL query on DBServers no longer block threads while waiting for
+  replication.
+
+* Fixed a bug where accessing a collection right after creation can sometimes
+  fail.
+
+* OASIS-25850: Fix incomplete replacing of projection variables in traversals.
+  This fixes a regression introduced in 3.12.0.
+
+* FE-454: Fix saving document in "Tree" mode.
+
+* FE-310: Query editor in web UI can now be resized vertically.
+
+* Fix a potential data corruption in a collection's Merkle tree, in case a write
+  operation in a streaming transaction ran into the transaction's maximum size
+  limit and failed. If the error was ignored and the transaction committed, the
+  leftovers of the failed operation were not removed from the collection's
+  in-memory Merkle tree buffer and thus be committed as well.
+  This could later cause issues with shards not getting properly in sync.
+
+* Fix the handling of View objects in AQL template strings of the JavaScript API
+  so that the behavior matches collection objects:
+
+      let view = db._view("myView");
+      aql`FOR doc IN ${view} RETURN doc`
+
+* FE-451: update graph UI defaults for edge direction, edge/collection labels &
+  colors.
+
+* Fix possible crashes or UB during some document operations on single- or
+  DBServers.
+
+* Upgrade OpenSSL to 3.3.1 and used glibc build runtime to 2.39.0.
+
+* Updated ArangoDB Starter to v0.19.2.
+
 * Avoid dropping of followers in case a leader resigns and then comes back.
 
 * Fixed MDS-1229 (bad_function_call with batch materialization).
@@ -25,8 +273,6 @@ devel
   cases the thread that orders the query shutdown can be blocked and needs to
   wait synchronously until the shutdown requests have been responded to.
 
-* Updated ArangoDB Starter to v0.19.2-preview-3.
-
 * Fixed MDS-1230: added missing variable replacement for inline filters of
   EnumerateListNodes.
 
@@ -35,8 +281,8 @@ devel
 
 * Move network retry requests to a dedicated thread.
 
-* Reduce frequency in which progress of hot backup upload / download progress
-  is reported to the agency. This limits traffic from DB servers to the agency
+* Reduce frequency in which progress of hot backup upload / download progress is
+  reported to the agency. This limits traffic from DB servers to the agency
   during hot backup uploads and downloads.
 
 * Pass all relevant compiler optimization flags down to relevant CMake sub
@@ -101,7 +347,7 @@ devel
   - persistent indexes with caching enabled
   - collections with document caches enabled
 
-  The startup option defaults to 4MB, meaning that no individual values larger 
+  The startup option defaults to 4MB, meaning that no individual values larger
   than 4MB will be stored in the in-memory cache in these areas.
 
   Limiting the size of cache values helps to avoid storing very large values in
@@ -113,33 +359,30 @@ devel
 
 * FE-432: allow row clicks on all UI tables.
 
-* FE-441: Fix collection unstable default sort in multi-shard collections UI
+* FE-441: Fix collection unstable default sort in multi-shard collections UI.
 
 * Changed default value of `--log.max-queued-entries` from 10000 to 16384.
 
-* Added metric `arangodb_logger_messages_dropped_total` to count the number
-  of log messages that were discarded by the logger if its log queue was full.
+* Added metric `arangodb_logger_messages_dropped_total` to count the number of
+  log messages that were discarded by the logger if its log queue was full.
 
 * Added option `skipFastLockRound` for transactions.
-  The option can be set in a streaming write transaction's options (i.e. 
+  The option can be set in a streaming write transaction's options (i.e.
   `{"skipFastLockRound":true}`) to disable the fast lock round inside the
-  transaction. The option defaults to `false, so the fast lock round is tried 
+  transaction. The option defaults to `false, so the fast lock round is tried
   where possible.
-  Disabling the fast lock round is normally not necessary, but it can make
-  sense when there are many concurrent streaming transactions queued that all
-  try to access the same collection and lock it exclusively. In this case,
-  the fast lock round actually makes things worse, because there will always
-  be some exclusive locks in the way. In this use case it will be better to
-  skip the fast lock round. Disabling the fast mode makes each actual locking 
-  operation take longer than when in fast mode, but it guarantees a 
-  deterministic locking order and thus avoids deadlocking and retrying that
-  is possible with the fast mode. Overall disabling the fast lock mode can be
-  faster in this case.
+  Disabling the fast lock round is normally not necessary, but it can make sense
+  when there are many concurrent streaming transactions queued that all try to
+  access the same collection and lock it exclusively. In this case, the fast
+  lock round actually makes things worse, because there will always be some
+  exclusive locks in the way. In this use case it will be better to skip the
+  fast lock round. Disabling the fast mode makes each actual locking operation
+  take longer than when in fast mode, but it guarantees a deterministic locking
+  order and thus avoids deadlocking and retrying that is possible with the fast
+  mode. Overall disabling the fast lock mode can be faster in this case.
   Setting this option is irrelevant for read-only transactions and will degrade
-  performance when there are no concurrent transactions that use exclusive
-  locks on the same collection.
-
-* Updated ArangoDB Starter to v0.19.1.
+  performance when there are no concurrent transactions that use exclusive locks
+  on the same collection.
 
 * Fixed SEARCH-485 (ES-2010): Search files disappeared during creation of
   HotBackup.
@@ -150,47 +393,47 @@ devel
   from 3.11, if it encounters persistent index values in an unexpected sort
   order. RocksDB's error message in this case was "Corruption: Compaction sees 
   out-of-order keys".
-  The out-of-order keys were caused by a changed sort order for some Unicode 
+  The out-of-order keys were caused by a changed sort order for some Unicode
   characters. The newer ICU 73 version that ArangoDB 3.12 bundles includes the
   most recent changes to the Unicode standard that have been accepted until
   recently.
   This leads to problems, because old versions of ArangoDB were using ICU
   version 64, which was based on an older version of the Unicode standard, and
-  ArangoDB versions from 3.12 onwards were using ICU 73, which implements a
-  very recent version of the Unicode standard.
-  For example, in the Unicode standard implemented by ICU 64, the ASCII 
-  apostrophe character \u0027 compares lower than the Unicode apostrophe 
+  ArangoDB versions from 3.12 onwards were using ICU 73, which implements a very
+  recent version of the Unicode standard.
+  For example, in the Unicode standard implemented by ICU 64, the ASCII
+  apostrophe character \u0027 compares lower than the Unicode apostrophe
   character \u2019. In ICU 73 both characters compare equal.
   The sort order for existing on-disk indexes however must not change, because
   RocksDB relies on the index files being sorted according to a non-changing
   sort order.
   ArangoDB from 3.12.0.2 onwards will thus bundle ICU versions 64 and 73, so
-  that indexes in RocksDB and Arangosearch views will continue to use ICU 
+  that indexes in RocksDB and Arangosearch views will continue to use ICU
   version 64 as they did in previous versions. The V8 engine relies on newer
   versions of ICU and thus will use ICU version 73.
 
-* Make AQL query optimizer create less query execution plan permutations when
-  a query contains multiple occurrences of COLLECT statements under certain
+* Make AQL query optimizer create less query execution plan permutations when a
+  query contains multiple occurrences of COLLECT statements under certain
   conditions:
   - COLLECT statements that are contained in a single loop that is driven by a
     traversal or an enumeration over an array now prefer the hashed collect
     variant.
   - if the hashed collect variant is explicitly requested via the `OPTIONS`
     clause of the COLLECT statement (i.e. COLLECT ... OPTIONS {method: "hash"})
-    then the hashed variant is now always used, even if the maximum number of 
-    query execution plans is already reached. Previously only the sorted
-    variant would be used despite the explicit `OPTIONS` hint.
+    then the hashed variant is now always used, even if the maximum number of
+    query execution plans is already reached. Previously only the sorted variant
+    would be used despite the explicit `OPTIONS` hint.
 
 * Fix an issue that can cause AQL related RestHandlers to wind up in a WAITING
   state and never get woken up. This implies that the associated query snippet
   and transaction cannot be released. If the query contains modification
-  operations, this also implies that the associated collection write lock is
-  not released and can therefore prevent other threads from acquiring the
-  exclusive lock (which is required by e.g., the replication).
+  operations, this also implies that the associated collection write lock is not
+  released and can therefore prevent other threads from acquiring the exclusive
+  lock (which is required by e.g., the replication).
 
 * Fix an issue that can cause some background load in parallel traversals while
   waiting for data from upstream.
-  For full details see https://github.com/arangodb/arangodb/pull/20768
+  For full details see https://github.com/arangodb/arangodb/pull/20768.
 
 * BTS-1848: Issue with Collection Names Containing Non-ASCII Characters in Web
   UI.
@@ -210,20 +453,20 @@ devel
 
   The following request priorities have changed:
   - cluster-internal requests for continuing already started AQL queries have
-    changed their priority from low to medium. This excludes requests that
-    setup AQL queries on DB servers, which still run with low priority.
-  - requests that include the transaction id header are now elevated to run
-    with medium priority if they originally ran with low priority. This
-    excludes requests that begin new transactions or AQL queries.
-  - requests to commit or abort an already running streaming transaction will
-    be elevated from low to medium priority.
+    changed their priority from low to medium. This excludes requests that setup
+    AQL queries on DB servers, which still run with low priority.
+  - requests that include the transaction id header are now elevated to run with
+    medium priority if they originally ran with low priority. This excludes
+    requests that begin new transactions or AQL queries.
+  - requests to commit or abort an already running streaming transaction will be
+    elevated from low to medium priority.
   - requests to HTTP GET `/_api/collection/<collection>/shards` and GET
     `/_api/collection/<collection>/reponsibleShard` are now running with high
-    priority instead of low. Such requests are only used for inspection and
-    have no dependencies.
-  - requests to push further an existing query cursor via the `/_api/cursor`
-    are now running with medium priority instead of low priority. Requests
-    to start new queries still run with low priority.
+    priority instead of low. Such requests are only used for inspection and have
+    no dependencies.
+  - requests to push further an existing query cursor via the `/_api/cursor` are
+    now running with medium priority instead of low priority. Requests to start
+    new queries still run with low priority.
   - follower requests that acquire the lock on the leader while the follower
     tries to get in sync are now running with low instead of medium priority.
 
@@ -231,33 +474,33 @@ devel
   This option is now obsolete because coroutines are used instead of blocking
   function calls.
 
-* Log an info message if a request was queued in the scheduler queue for 30 s
-  or longer.
+* Log an info message if a request was queued in the scheduler queue for 30s or
+  longer.
 
 * Add upgrade task to drop `_pregel_queries` system collections.
 
 * Fixed an upgrade issue on Agents. When agents are started with
   `--database.auto-upgrade true` and `--cluster.force-one-shard true`. The
-  upgrade procedure got into an incorrect state. Please note `--cluster.force-one-shard`
-  is not required on the Agent instances.
+  upgrade procedure got into an incorrect state. Please note
+  `--cluster.force-one-shard` is not required on the Agent instances.
 
 * Fix potential deadlocks in "fast lock round" when starting transactions in
   cluster. The "fast lock round" is used to send out transaction begin requests
   to multiple leaders concurrently, without caring about the order in which
   requests are send out. This can potentially lead to deadlock with other
   out-of-order requests. Thus the intention of the "fast lock round" is to use
-  a very low timeout for these requests, so that deadlocks would be detected
-  and rolled back quickly. However, there was a code path that triggered the
-  "fast lock round" with long request timeouts, which could lead to long
-  wait times until deadlocks were detected and rolled back.
+  a very low timeout for these requests, so that deadlocks would be detected and
+  rolled back quickly. However, there was a code path that triggered the "fast
+  lock round" with long request timeouts, which could lead to long wait times
+  until deadlocks were detected and rolled back.
 
 * EE-Only bug-fix MDS-1190: When using arangorestore to restore a SmartGraph,
   the restore process may generate new internal collection ids.
   These generated ids were not always updated in the restored SmartGraph schema.
-  If the ids diverge, the restored SmartGraph still works as expected, all data is there
-  and can be queried and modified. Only the schema of the restored SmartGraph
-  could not be changed anymore, e.g. no collections could be added to or removed
-  from the graph.
+  If the ids diverge, the restored SmartGraph still works as expected, all data
+  is there and can be queried and modified. Only the schema of the restored
+  SmartGraph could not be changed anymore, e.g. no collections could be added to
+  or removed from the graph.
   The SmartGraph schema handling now does not consider collection ids anymore,
   so that schemas can again be modified, even those of existing SmartGraphs that
   were originally affected by the issue.
@@ -271,29 +514,29 @@ devel
   are now unnecessary. This slightly simplifies the shard synchronization
   protocol.
 
-* Repair shard rebalancer if some server has no leaders of a collection
-  but followers. Previously, this server was then not always considered
-  for leader movements.
+* Repair shard rebalancer if some server has no leaders of a collection but
+  followers. Previously, this server was then not always considered for leader
+  movements.
 
 * Change the default log format. The option log.thread is now by default true.
   The option log.time-format is now by default `utc-datestring-micros`.
 
 * Guarantee conditional-only evaluation of the operands of the AQL ternary
-  operator and the logical AND and OR operators, if any of the operands
-  is a subquery.
+  operator and the logical AND and OR operators, if any of the operands is a
+  subquery.
 
   Given an AQL ternary condition such as
 
       condition ? truePart : falsePart
 
-  the `truePart` expression is now executed only if `condition` is truthy, 
-  and the `falsePart` is evaluated only if `condition` is falsy.
-  In previous versions of ArangoDB the `truePart` and `falsePart` operands 
-  of the ternary operator were evaluated eagerly and out-of-line if the 
-  operands were subqueries.
+  the `truePart` expression is now executed only if `condition` is truthy, and
+  the `falsePart` is evaluated only if `condition` is falsy.
+  In previous versions of ArangoDB the `truePart` and `falsePart` operands of
+  the ternary operator were evaluated eagerly and out-of-line if the operands
+  were subqueries.
 
-  The ternary operator's condition is now pulled out and made available under
-  a separate temporary variable. For example, the query
+  The ternary operator's condition is now pulled out and made available under a
+  separate temporary variable. For example, the query
 
       RETURN condition ? truePart : falsePart
 
@@ -302,8 +545,8 @@ devel
       LET tmp1 = condition
       RETURN tmp1 ? truePart : falsePart
 
-  In case the operands are subqueries and must be executed conditionally,
-  the query is evaluated as
+  In case the operands are subqueries and must be executed conditionally, the
+  query is evaluated as
 
       LET tmp1 = condition
       LET tmp2 = (
@@ -334,11 +577,11 @@ devel
   
   - `--query.max-total-async-prefetch-slots`: the maximum total number of slots
     available for asynchronous prefetching, across all AQL queries.
-  - `--query.max-query-async-prefetch-slots`: the maximum per-query number of 
+  - `--query.max-query-async-prefetch-slots`: the maximum per-query number of
     slots available for asynchronous prefetching inside any AQL query.
 
   That means the total number of concurrent prefetch operations across all AQL
-  queries can be limited using the first option, and the maximum number of 
+  queries can be limited using the first option, and the maximum number of
   prefetch operations in every single AQL query can be capped with the second
   option. These options prevent that running a lot of AQL queries with async
   prefetching fully congests the scheduler queue, and also they prevent large

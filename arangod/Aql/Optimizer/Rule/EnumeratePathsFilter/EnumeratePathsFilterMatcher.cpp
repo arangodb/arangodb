@@ -47,6 +47,7 @@ namespace {
 
 struct Match {
   AstNode const* map;
+  AstNode const* attributeAccess;
   AstNode const* rhs;
   std::string accessedAttribute;
 };
@@ -106,6 +107,13 @@ auto matchExpression(Ast* ast, AstNode const* expression,
     return std::nullopt;
   }
 
+  if (lhs->getMemberUnchecked(1)->type != NODE_TYPE_ATTRIBUTE_ACCESS &&
+      lhs->getMemberUnchecked(4)->type == NODE_TYPE_NOP) {
+    LOG_ENUMERATE_PATHS_OPTIMIZER_RULE << fmt::format(
+        "iterating andNode, bailing lhs member 1 not ATTRIBUTE_ACCESS");
+    return std::nullopt;
+  }
+
   auto map = lhs->getMemberUnchecked(4)->clone(ast);
 
   auto rhsValue = expression->getMemberUnchecked(1);
@@ -161,6 +169,7 @@ auto matchExpression(Ast* ast, AstNode const* expression,
   }
 
   return Match{.map = map,
+               .attributeAccess = lhs->getMemberUnchecked(1),
                .rhs = rhsValue,
                .accessedAttribute = std::string{accessedAttribute}};
 }
@@ -176,18 +185,27 @@ auto matchExpression(Ast* ast, AstNode const* expression,
 // "free" variable (the temporary) evaluating map == rhs
 //
 // TODO: Use the Expression wrapper class?
-auto assembleCondition(Ast* ast, AstNode* tmpVar, AstNode const* map,
+auto assembleCondition(Ast* ast, AstNode* tmpVar,
+                       AstNode const* attributeAccess, AstNode const* map,
                        AstNode const* rhs) -> AstNode const* {
-  auto mapClone = map->clone(ast);
-  auto lhs =
-      Ast::traverseAndModify(mapClone, [&tmpVar](AstNode* node) -> AstNode* {
-        if (node->type == NODE_TYPE_REFERENCE) {
-          return tmpVar;
-        }
-        return node;
-      });
+  if (map->type != NODE_TYPE_NOP) {
+    auto mapClone = map->clone(ast);
+    auto lhs =
+        Ast::traverseAndModify(mapClone, [&tmpVar](AstNode* node) -> AstNode* {
+          if (node->type == NODE_TYPE_REFERENCE) {
+            return tmpVar;
+          }
+          return node;
+        });
+    return ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, lhs,
+                                         rhs);
+  }
 
-  return ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, lhs, rhs);
+  AstNode* access = attributeAccess->clone(ast);
+  // inject tmpVar
+  access->changeMember(0, tmpVar);
+  return ast->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, access,
+                                       rhs);
 }
 
 auto processFilter(Ast* ast, EnumeratePathsNode* enumeratePathsNode,
@@ -216,7 +234,8 @@ auto processFilter(Ast* ast, EnumeratePathsNode* enumeratePathsNode,
   }
 
   auto* tmpVar = enumeratePathsNode->getTemporaryRefNode();
-  auto condition = assembleCondition(ast, tmpVar, match->map, match->rhs);
+  auto condition = assembleCondition(ast, tmpVar, match->attributeAccess,
+                                     match->map, match->rhs);
 
   if (match->accessedAttribute == "vertices") {
     enumeratePathsNode->registerGlobalVertexCondition(condition);

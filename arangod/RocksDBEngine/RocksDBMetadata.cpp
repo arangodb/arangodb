@@ -154,12 +154,14 @@ Result RocksDBMetadata::updateBlocker(TransactionId trxId,
     if (_blockers.end() == previous ||
         _blockersBySeq.end() ==
             _blockersBySeq.find(std::make_pair(previous->second, trxId))) {
-      res.reset(TRI_ERROR_INTERNAL);
+      TRI_ASSERT(false);
+      return res.reset(TRI_ERROR_INTERNAL);
     }
 
     auto removed =
         _blockersBySeq.erase(std::make_pair(previous->second, trxId));
     if (!removed) {
+      TRI_ASSERT(false);
       return res.reset(TRI_ERROR_INTERNAL);
     }
 
@@ -167,6 +169,7 @@ Result RocksDBMetadata::updateBlocker(TransactionId trxId,
     _blockers[trxId] = seq;
     auto crosslist = _blockersBySeq.emplace(seq, trxId);
     if (!crosslist.second) {
+      TRI_ASSERT(false);
       return res.reset(TRI_ERROR_INTERNAL);
     }
 
@@ -626,16 +629,7 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db,
     if (s.ok()) {
       VPackSlice keyGenProps = RocksDBValue::data(value);
       TRI_ASSERT(keyGenProps.isObject());
-      // simon: wtf who decided this is a good deserialization routine ?!
-      VPackSlice val = keyGenProps.get(StaticStrings::LastValue);
-      if (val.isString()) {
-        keyGen.track(val.stringView());
-      } else if (val.isInteger()) {
-        uint64_t lastValue = val.getUInt();
-        std::string str = std::to_string(lastValue);
-        keyGen.track(str);
-      }
-
+      keyGen.initState(keyGenProps);
     } else if (!s.IsNotFound()) {
       return rocksutils::convertStatus(s);
     }

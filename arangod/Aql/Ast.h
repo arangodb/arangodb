@@ -134,7 +134,9 @@ class Ast {
   bool isInSubQuery() const noexcept;
 
   /// @brief return a copy of our own bind parameters
-  std::unordered_set<std::string> bindParameters() const;
+  std::unordered_set<std::string> bindParameterNames() const;
+
+  BindParameterVariableMapping bindParameterVariables() const;
 
   /// @brief get the query scopes
   Scopes* scopes();
@@ -393,6 +395,9 @@ class Ast {
   /// @brief create an AST calculated object element node
   AstNode* createNodeCalculatedObjectElement(AstNode const*, AstNode const*);
 
+  /// @brief create an AST destructuring node
+  AstNode* createNodeDestructuring(AstNode const* value, bool isObject);
+
   /// @brief create an AST with collections node
   AstNode* createNodeWithCollections(AstNode const*,
                                      CollectionNameResolver const& resolver);
@@ -455,6 +460,14 @@ class Ast {
   /// @brief injects second-stage bind parameter values into the AST
   /// (i.e. all value bind parameters)
   void injectBindParametersSecondStage(BindParameters& parameters);
+
+  /// @brief replaces bind parameters with special variables. This is used
+  /// for query plan caching.
+  void replaceBindParametersWithVariables(BindParameters& parameters);
+
+  /// @brief replaces bind parameters with special variables. This is used
+  /// for query plan caching.
+  void replaceBindParametersWithValues(BindParameters& parameters);
 
   /// @brief replace variables
   ///        the unlock parameter will unlock the variable node before it
@@ -747,6 +760,9 @@ class Ast {
 
   /// @brief ast flags
   AstPropertiesFlagsType _astFlags;
+
+  /// @brief variables that bind parameters were replaced with
+  BindParameterVariableMapping _bindParameterVariables;
 };
 
 }  // namespace aql

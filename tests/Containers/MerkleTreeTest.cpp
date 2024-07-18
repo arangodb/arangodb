@@ -278,6 +278,56 @@ TEST_F(InternalMerkleTreeTest, test_modify) {
   }
 }
 
+TEST(MerkleTreeTest, test_insert_and_remove) {
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>
+      t(6, 0, 1ULL << 18);
+
+  std::vector<std::uint64_t> keys = {100, 193295, 2958836, 959302056027,
+                                     29994232};
+  t.insert(keys);
+  EXPECT_EQ(5, t.count());
+  EXPECT_EQ(10532320421211682024ULL, t.rootValue());
+
+  keys = {100, 193295, 2958836, 959302056027, 29994232};
+  t.remove(keys);
+  EXPECT_EQ(0, t.count());
+  EXPECT_EQ(0, t.rootValue());
+}
+
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+TEST(MerkleTreeTest, test_insert_and_rollback) {
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>
+      t(6, 0, 1ULL << 18);
+
+  std::vector<std::uint64_t> keys = {100, 193295, 2958836, 959302056027,
+                                     29994232};
+  t.insert(keys);
+  EXPECT_EQ(5, t.count());
+  EXPECT_EQ(10532320421211682024ULL, t.rootValue());
+
+  keys.clear();
+  keys = {100, 193295, 2958836, 959302056027, 29994232, 100};
+  EXPECT_THROW(t.removeUnsorted(keys), std::invalid_argument);
+
+  EXPECT_EQ(5, t.count());
+  EXPECT_EQ(10532320421211682024ULL, t.rootValue());
+}
+#endif
+
+TEST(MerkleTreeTest, test_remove_out_of_range) {
+  ::arangodb::containers::MerkleTree<::arangodb::containers::FnvHashProvider, 3>
+      t(6, 0, 1ULL << 18);
+
+  t.insert(123);
+  EXPECT_EQ(1, t.count());
+  EXPECT_EQ(10276731894227909406ULL, t.rootValue());
+
+  EXPECT_THROW(t.remove(12345678901234567890ULL), std::out_of_range);
+
+  EXPECT_EQ(1, t.count());
+  EXPECT_EQ(10276731894227909406ULL, t.rootValue());
+}
+
 TEST_F(InternalMerkleTreeTest, test_grow) {
   std::pair<std::uint64_t, std::uint64_t> range = this->range();
   EXPECT_EQ(range.first, 0);

@@ -1273,6 +1273,50 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
       }
     },
 
+    testCancelPendingMoveShardDropCollection: function () {
+      if (replVersion === "2") {
+        console.log("Skipping cancel test for replication 2, because move shards are not cancellable.");
+        return;
+      }
+      if (useData) {
+        for (var i = 0; i < c.length; ++i) {
+          c[i].drop();
+        }
+        c = [];
+        let otherNumDocuments = 100000;
+        createSomeCollections(1, 1, 3, useData, otherNumDocuments);
+        assertTrue(waitForSynchronousReplication(dbn));
+        var servers = findCollectionServers(dbn, c[0].name());
+        var fromServer = servers[0];
+        var toServer = findServerNotOnList(servers);
+        var cinfo = arangoClusterInfoGetCollectionInfo(
+            dbn, c[0].name());
+        var shard = Object.keys(cinfo.shards)[0];
+        let result = moveShard(dbn, c[0]._id, shard, fromServer, toServer, true, "Finished");
+        assertEqual(result.statusCode, 202);
+        let id = JSON.parse(result.body).id;
+        while (queryAgencyJob(result.json.id).status === "ToDo") { // wait for job to start
+          wait(0.1);
+        }
+        assertTrue(maintenanceMode("on"));
+        assertEqual(queryAgencyJob(result.json.id).status, "Pending");
+        assertTrue(cancelAgencyJob(id));
+        for (var j = 0; j < c.length; ++j) {
+          c[j].drop();
+        }
+        c = [];
+        assertTrue(maintenanceMode("off"));
+        while (queryAgencyJob(result.json.id).status === "Finish") { // wait for job to finish
+          wait(0.1);
+        }
+        var job = queryAgencyJob(result.json.id);
+        assertEqual(job.status, "Failed");
+        assertEqual(job.abort);
+        assertTrue(waitForSupervision());
+        checkCollectionContents(otherNumDocuments);
+      }
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief kill todo cleanOutServer job
 ////////////////////////////////////////////////////////////////////////////////

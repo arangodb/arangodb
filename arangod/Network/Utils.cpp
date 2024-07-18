@@ -151,11 +151,10 @@ Result resultFromBody(arangodb::velocypack::Slice slice,
                       ErrorCode defaultError) {
   // read the error number from the response and use it if present
   if (slice.isObject()) {
-    VPackSlice num = slice.get(StaticStrings::ErrorNum);
-    VPackSlice msg = slice.get(StaticStrings::ErrorMessage);
-    if (num.isNumber()) {
+    if (VPackSlice num = slice.get(StaticStrings::ErrorNum); num.isNumber()) {
       auto errorCode = ErrorCode{num.getNumericValue<int>()};
-      if (msg.isString()) {
+      if (VPackSlice msg = slice.get(StaticStrings::ErrorMessage);
+          msg.isString()) {
         // found an error number and an error message, so let's use it!
         return Result(errorCode, msg.copyString());
       }

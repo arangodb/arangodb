@@ -131,7 +131,10 @@ class Thread {
 
   /// @brief true, if the thread is still running
   bool isRunning() const noexcept {
-    return _state.load(std::memory_order_relaxed) != ThreadState::STOPPED;
+    // need acquire to ensure we establish a happens before relation with the
+    // update that sets the state to STOPPED, so threads that wait for isRunning
+    // to return false are properly synchronized
+    return _state.load(std::memory_order_acquire) != ThreadState::STOPPED;
   }
 
   /// @brief checks if the current thread was asked to stop

@@ -35,6 +35,7 @@ const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
 const cu = require('@arangodb/testutils/crash-utils');
+const { getNumSanitizerReports } = require('@arangodb/testutils/san-file-handler');
 const AsciiTable = require('ascii-table');
 const yaml = require('js-yaml');
 const _ = require('lodash');
@@ -274,22 +275,6 @@ function saveToJunitXML(options, results) {
     seenTestCases: false,
   };
   let prefix = (options.cluster ? 'CL_' : '') + (pu.isEnterpriseClient ? 'EE_' : 'CE_');
-
-  if (results.hasOwnProperty('crashreport')) {
-    results['crash'] = {
-      crash_report: {
-        status: false,
-        failed: 1,
-        all: {
-          status: false,
-          failed: 1,
-          message: ((results.crashed)? "SUT crashed: \n": "SUT was aborted: \n") +results.crashreport
-        }
-      },
-      status: false,
-      failed: 1,
-    };
-  }
 
   const addOptionalDuration = (elem, test) => {
     if (test.hasOwnProperty('duration') && test.duration !== undefined) {
@@ -533,7 +518,7 @@ function unitTestPrettyPrintResults (options, results) {
     color = RED;
     statusMessage = 'Fail';
   }
-  if (results.crashed === true || cu.GDB_OUTPUT !== '') {
+  if (results.crashed === true) {
     color = RED;
     for (let failed in failedRuns) {
       crashedText += ' [' + failed + '] : ' + failedRuns[failed].replace(/^/mg, '    ');
@@ -545,6 +530,9 @@ function unitTestPrettyPrintResults (options, results) {
     failText = '\n   Suites failed: ' + failedSuiteCount + ' Tests Failed: ' + failedTestsCount;
     onlyFailedMessages += failText + '\n';
     failText = RED + failText + RESET;
+  }
+  if (getNumSanitizerReports() > 0) { 
+    failText += YELLOW + `\n\n+++ ${getNumSanitizerReports()} sanitizer report(s) found! +++\n` + RESET;
   }
   if (cu.GDB_OUTPUT !== '' && options.crashAnalysisText === options.testFailureText) {
     // write more verbose failures to the testFailureText file
@@ -1030,22 +1018,40 @@ function writeDefaultReports(options, testSuites) {
   }
   fs.write(fs.join(options.testOutputDirectory, testFailureText),
            "Incomplete testrun with these testsuites: '" + testSuites +
-           "'\nand these options: " + JSON.stringify(options, null, 2) + "\n");
+           "'\nand these options: " + JSON.stringify(options, null, 2) + "\n" + cu.GDB_OUTPUT);
 
 }
 
+function processCrashReport(result) {
+  if (cu.GDB_OUTPUT !== '') {
+    result['crashreport'] = cu.GDB_OUTPUT;
+    result['crash'] = {
+      crash_report: {
+        status: false,
+        failed: 1,
+        all: {
+          status: false,
+          failed: 1,
+          message: (result.crashed ? "SUT crashed: \n": "SUT was aborted: \n") + cu.GDB_OUTPUT
+        }
+      },
+      status: false,
+      failed: 1,
+    };
+    result.status = false;
+    result.crashed = true;
+  }
+}
+
 function writeReports(options, results) {
-  fs.write(fs.join(options.testOutputDirectory, 'UNITTEST_RESULT_EXECUTIVE_SUMMARY.json'), String(results.status && cu.GDB_OUTPUT === ''), true);
-  fs.write(fs.join(options.testOutputDirectory, 'UNITTEST_RESULT_CRASHED.json'), String(results.crashed || cu.GDB_OUTPUT !== ''), true);
+  fs.write(fs.join(options.testOutputDirectory, 'UNITTEST_RESULT_EXECUTIVE_SUMMARY.json'), String(results.status), true);
+  fs.write(fs.join(options.testOutputDirectory, 'UNITTEST_RESULT_CRASHED.json'), String(results.crashed), true);
 }
 
 function dumpAllResults(options, results) {
   let j;
 
   try {
-    if (cu.GDB_OUTPUT !== '') {
-      results['crashreport'] = cu.GDB_OUTPUT;
-    }
     j = JSON.stringify(results);
   } catch (err) {
     j = inspect(results);
@@ -1135,6 +1141,7 @@ exports.gatherStatus = gatherStatus;
 exports.gatherFailed = gatherFailed;
 exports.yamlDumpResults = yamlDumpResults;
 exports.addFailRunsMessage = addFailRunsMessage;
+exports.processCrashReport = processCrashReport;
 exports.dumpAllResults = dumpAllResults;
 exports.writeDefaultReports = writeDefaultReports;
 exports.writeReports = writeReports;

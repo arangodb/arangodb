@@ -56,6 +56,8 @@
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
+#include <absl/strings/str_cat.h>
+
 #include <rocksdb/options.h>
 #include <rocksdb/utilities/transaction_db.h>
 #include <rocksdb/utilities/write_batch_with_index.h>
@@ -254,9 +256,9 @@ Result RocksDBTransactionState::addOperation(
     auto tcoll =
         static_cast<RocksDBTransactionCollection*>(findCollection(cid));
     if (tcoll == nullptr) {
-      std::string message = "collection '" + std::to_string(cid.id()) +
-                            "' not found in transaction state";
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::move(message));
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL, absl::StrCat("collection '", cid.id(),
+                                           "' not found in transaction state"));
     }
 
     // should not fail or fail with exception
