@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <s2/base/integral_types.h>
 #include "Aql/AstNode.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/MemoryTypes/MemoryTypes.h"
@@ -106,7 +107,8 @@ class Index {
     TRI_IDX_TYPE_ZKD_INDEX,
     TRI_IDX_TYPE_MDI_INDEX,
     TRI_IDX_TYPE_MDI_PREFIXED_INDEX,
-    TRI_IDX_TYPE_INVERTED_INDEX
+    TRI_IDX_TYPE_INVERTED_INDEX,
+    TRI_IDX_TYPE_VECTOR_INDEX,
   };
 
   /// @brief: helper struct returned by index methods that determine the costs
@@ -479,6 +481,48 @@ struct AttributeAccessParts {
 
   /// @brief operation type
   aql::AstNodeType opType;
+};
+
+struct VectorIndexRandomVector {
+  double bParam;
+  double wParam;
+  std::vector<double> v_param;
+
+  template<class Inspector>
+  friend inline auto inspect(Inspector& f, VectorIndexRandomVector& x) {
+    return f.object(x).fields(f.field("bParam", x.bParam),
+                              f.field("wParam", x.wParam),
+                              f.field("vParam", x.v_param));
+  }
+};
+
+struct VectorIndexDefinition {
+  uint64 dimensions;
+  double min;
+  double max;
+  uint64 Kparamater;
+  uint64 Lparamater;
+  std::vector<VectorIndexRandomVector> randomFunctions;
+
+  template<class Inspector>
+  friend inline auto inspect(Inspector& f, VectorIndexDefinition& x) {
+    return f.object(x)
+        .fields(f.field("dimensions", x.dimensions), f.field("min", x.min),
+                f.field("max", x.max), f.field("Kparamater", x.Kparamater),
+                f.field("Lparamater", x.Lparamater),
+                f.field("randomFunctions", x.randomFunctions))
+        .invariant([](VectorIndexDefinition& x) -> inspection::Status {
+          if (x.min > x.max) {
+            return {"Min cannot be greated then max!"};
+          }
+          if (x.randomFunctions.size() != x.Kparamater * x.Lparamater) {
+            return fmt::format("Number of randomFunctions must be equal {}!",
+                               x.Kparamater * x.Lparamater);
+          }
+          // TODO Add more checks, e.g. dimensions
+          return inspection::Status::Success{};
+        });
+  }
 };
 
 }  // namespace arangodb
