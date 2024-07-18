@@ -605,13 +605,14 @@ int VelocyPackHelper::compareNumberValuesCorrectly(VPackValueType lhsType,
       return -compareInt64Double(r.i, l.d);
     case 3:  // 0 + 3 * 1:  IU
       return compareInt64UInt64(l.i, r.u);
+    case 5:  // 2 + 3 * 1:  DU
+      return -compareUInt64Double(r.u, l.d);
     case 6:  // 0 + 3 * 2:  ID
       return compareInt64Double(l.i, r.d);
     case 7:  // 1 + 3 * 2:  UD
       return compareUInt64Double(l.u, r.d);
-    case 8:  // 2 + 3 * 1:  DU
-      return -compareUInt64Double(r.u, l.d);
     default:  // does not happen!
+      TRI_ASSERT(false);
       return 0;
   }
 }
