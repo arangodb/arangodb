@@ -35,6 +35,14 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+namespace {
+constexpr std::string_view kModeEnumerateArray = "array";
+constexpr std::string_view kModeEnumerateObject = "object";
+constexpr std::string_view kModeField = "mode";
+constexpr std::string_view kKeyOutVariable = "keyOutVariable";
+constexpr std::string_view kValueOutVariable = "valueOutVariable";
+}  // namespace
+
 EnumerateListNode::EnumerateListNode(ExecutionPlan* plan, ExecutionNodeId id,
                                      Variable const* inVariable,
                                      Variable const* outVariable)
@@ -56,6 +64,22 @@ EnumerateListNode::EnumerateListNode(ExecutionPlan* plan,
     // new AstNode is memory-managed by the Ast
     setFilter(std::make_unique<Expression>(ast, ast->createNode(p)));
   }
+  if (VPackSlice m = base.get(kModeField); m.isString()) {
+    if (m.stringView() == kModeEnumerateArray) {
+      _mode = kEnumerateArray;
+    } else if (m.stringView() == kModeEnumerateObject) {
+      _mode = kEnumerateObject;
+
+      _keyValuePairOutVars[0] =
+          Variable::varFromVPack(plan->getAst(), base, kKeyOutVariable);
+      _keyValuePairOutVars[1] =
+          Variable::varFromVPack(plan->getAst(), base, kValueOutVariable);
+
+    } else {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     "Unknown enumeration mode: " + m.toJson());
+    }
+  }
 }
 
 /// @brief doToVelocyPack, for EnumerateListNode
@@ -66,6 +90,14 @@ void EnumerateListNode::doToVelocyPack(velocypack::Builder& nodes,
 
   nodes.add(VPackValue("outVariable"));
   _outVariable->toVelocyPack(nodes);
+
+  if (_mode == kEnumerateObject) {
+    nodes.add(kModeField, VPackValue(kModeEnumerateObject));
+    nodes.add(VPackValue(kKeyOutVariable));
+    _keyValuePairOutVars[0]->toVelocyPack(nodes);
+    nodes.add(VPackValue(kValueOutVariable));
+    _keyValuePairOutVars[1]->toVelocyPack(nodes);
+  }
 
   if (_filter != nullptr) {
     nodes.add(VPackValue(StaticStrings::Filter));
@@ -170,7 +202,21 @@ void EnumerateListNode::getVariablesUsedHere(VarSet& vars) const {
 }
 
 std::vector<Variable const*> EnumerateListNode::getVariablesSetHere() const {
-  return std::vector<Variable const*>{_outVariable};
+  switch (_mode) {
+    case kEnumerateArray:
+      return std::vector<Variable const*>{_outVariable};
+    case kEnumerateObject:
+      return std::vector<Variable const*>{_keyValuePairOutVars[0],
+                                          _keyValuePairOutVars[1]};
+  }
+}
+
+void EnumerateListNode::setEnumerateObject(Variable const* key,
+                                           Variable const* value) noexcept {
+  TRI_ASSERT(_mode == kEnumerateArray);
+  _mode = kEnumerateObject;
+  _keyValuePairOutVars[0] = key;
+  _keyValuePairOutVars[1] = value;
 }
 
 /// @brief remember the condition to execute for early filtering
