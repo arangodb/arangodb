@@ -58,6 +58,7 @@ add_library(arango_rocksdb STATIC
   RocksDBUpgrade.cpp
   RocksDBVPackIndex.cpp
   RocksDBValue.cpp
+  RocksDBVectorIndex.cpp
   RocksDBWalAccess.cpp
   ReplicatedRocksDBTransactionState.cpp
   SimpleRocksDBTransactionState.cpp

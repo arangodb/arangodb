@@ -51,6 +51,7 @@ struct RocksDBColumnFamilyManager {
     ReplicatedLogs = 7,
     MdiIndex = 8,
     MdiVPackIndex = 9,
+    VectorIndex = 10,
 
     Invalid = 1024  // special placeholder
   };

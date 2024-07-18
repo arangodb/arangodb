@@ -101,6 +101,10 @@ rocksdb::ColumnFamilyOptions RocksDBOptionsProvider::getColumnFamilyOptions(
       result.comparator = _vpackCmp.get();
       break;
     }
+    case RocksDBColumnFamilyManager::Family::VectorIndex: {
+      // TODO
+      break;
+    }
   }
 
   // set TTL for .sst file compaction
