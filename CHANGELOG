@@ -1,6 +1,8 @@
 v3.11.11 (XXXX-XX-XX)
 ---------------------
 
+* Fixed FE-435: drop collections checkbox in graph settings modal was not aligned.
+
 * Updated ArangoDB Starter to v0.18.7 and arangosync to v2.19.8.
 
 * Fixed MDS-1216: restoring the previous value of the "padded" key generator
