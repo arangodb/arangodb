@@ -494,25 +494,15 @@
 
 .modal-delete-confirmation {
   display: none;
-
-  button {
-    margin-right: 10px;
-    margin-top: -4px;
-
-    .modal-confirm-delete {
-      margin-right: -18px;
-    }
-  }
+  margin-bottom: 0;
 
   fieldset {
-
-    input {
-      float: left;
-    }
+    display: flex;
+    align-items: center;
 
     label {
-      float: left;
       margin-left: 10px;
+      margin-bottom: 0;
     }
   }
 }
