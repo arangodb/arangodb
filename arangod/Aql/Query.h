@@ -303,6 +303,9 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
  private:
   ExecutionState cleanupTrxAndEngines(ErrorCode errorCode);
 
+  bool tryLoadPlanFromCache();
+  void storePlanInCache(ExecutionPlan& plan);
+
   // @brief injects vertex collections into all types of graph nodes:
   // ExecutionNode::TRAVERSAL, ExecutionNode::SHORTEST_PATH and
   // ExecutionNode::ENUMERATE_PATHS - in case the GraphNode does not
