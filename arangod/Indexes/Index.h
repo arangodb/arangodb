@@ -34,6 +34,8 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
+#include <cstddef>
+#include <cstdint>
 #include <iosfwd>
 #include <string_view>
 #include <vector>
@@ -497,11 +499,11 @@ struct VectorIndexRandomVector {
 };
 
 struct VectorIndexDefinition {
-  uint64 dimensions;
+  std::size_t dimensions;
   double min;
   double max;
-  uint64 Kparamater;
-  uint64 Lparamater;
+  std::size_t Kparamater;
+  std::size_t Lparamater;
   std::vector<VectorIndexRandomVector> randomFunctions;
 
   template<class Inspector>
