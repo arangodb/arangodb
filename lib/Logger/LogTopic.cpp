@@ -164,7 +164,9 @@ std::vector<std::pair<TopicName, LogLevel>> LogTopic::logLevelTopics() {
   levels.reserve(logger::kNumTopics);
 
   auto visitor = [&levels](TopicName name, LogTopic const* topic) {
-    levels.emplace_back(name, topic->level());
+    if (topic) {
+      levels.emplace_back(name, topic->level());
+    }
     return true;
   };
 
