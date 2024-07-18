@@ -1105,6 +1105,7 @@ void RocksDBEngine::start() {
   addFamily(RocksDBColumnFamilyManager::Family::ReplicatedLogs);
   addFamily(RocksDBColumnFamilyManager::Family::MdiIndex);
   addFamily(RocksDBColumnFamilyManager::Family::MdiVPackIndex);
+  addFamily(RocksDBColumnFamilyManager::Family::VectorIndex);
 
   bool dbExisted = checkExistingDB(cfFamilies);
 
@@ -1176,6 +1177,8 @@ void RocksDBEngine::start() {
   TRI_ASSERT(RocksDBColumnFamilyManager::get(
                  RocksDBColumnFamilyManager::Family::Definitions)
                  ->GetID() == 0);
+  RocksDBColumnFamilyManager::set(
+      RocksDBColumnFamilyManager::Family::VectorIndex, cfHandles[10]);
 
   // will crash the process if version does not match
   arangodb::rocksdbStartupVersionCheck(server(), _db, dbExisted,

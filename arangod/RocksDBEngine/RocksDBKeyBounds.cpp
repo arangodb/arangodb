@@ -117,6 +117,11 @@ RocksDBKeyBounds RocksDBKeyBounds::MdiVPackIndex(uint64_t indexId) {
   return RocksDBKeyBounds(RocksDBEntryType::MdiVPackIndexValue, indexId, false);
 }
 
+RocksDBKeyBounds RocksDBKeyBounds::VectorVPackIndex(uint64_t indexId) {
+  return RocksDBKeyBounds(RocksDBEntryType::VectorVPackIndexValue, indexId,
+                          false);
+}
+
 /// used for seeking lookups
 RocksDBKeyBounds RocksDBKeyBounds::UniqueVPackIndex(uint64_t indexId,
                                                     VPackSlice left,
@@ -259,6 +264,9 @@ rocksdb::ColumnFamilyHandle* RocksDBKeyBounds::columnFamily() const {
     case RocksDBEntryType::UniqueMdiVPackIndexValue:
       return RocksDBColumnFamilyManager::get(
           RocksDBColumnFamilyManager::Family::MdiVPackIndex);
+    case RocksDBEntryType::VectorVPackIndexValue:
+      return RocksDBColumnFamilyManager::get(
+          RocksDBColumnFamilyManager::Family::VectorIndex);
     case RocksDBEntryType::LogEntry:
       return RocksDBColumnFamilyManager::get(
           RocksDBColumnFamilyManager::Family::ReplicatedLogs);
