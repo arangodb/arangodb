@@ -403,13 +403,9 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept try {
   // can do here to signal this problem.
 }
 
-auto RestHandler::runHandlerStateMachine(bool isWakeup) -> HandlerState {
-  std::lock_guard lock{_executionMutex};
+void RestHandler::runHandlerStateMachine() {
+  // _executionMutex has to be locked here
   TRI_ASSERT(_sendResponseCallback);
-
-  if (isWakeup && _state != HandlerState::PAUSED) {
-    return _state;
-  }
 
   while (true) {
     switch (_state) {
@@ -517,8 +513,11 @@ void RestHandler::shutdownExecute(bool isFinalized) noexcept {
 /// Execute the rest handler state machine. Retry the wakeup,
 /// returns true if _state == PAUSED, false otherwise
 bool RestHandler::wakeupHandler() {
-  auto const state = runHandlerStateMachine(true);
-  return state == HandlerState::PAUSED;
+  std::lock_guard lock{_executionMutex};
+  if (_state == HandlerState::PAUSED) {
+    runHandlerStateMachine();
+  }
+  return _state == HandlerState::PAUSED;
 }
 
 void RestHandler::executeEngine(bool isContinue) {
@@ -793,5 +792,6 @@ void RestHandler::runHandler(
     std::function<void(rest::RestHandler*)> responseCallback) {
   TRI_ASSERT(_state == HandlerState::PREPARE);
   _sendResponseCallback = std::move(responseCallback);
+  std::lock_guard guard(_executionMutex);
   runHandlerStateMachine();
 }

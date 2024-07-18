@@ -176,7 +176,7 @@ class RestHandler : public std::enable_shared_from_this<RestHandler> {
   HandlerState state() const { return _state; }
 
  private:
-  auto runHandlerStateMachine(bool isWakeup = false) -> HandlerState;
+  void runHandlerStateMachine();
 
   void prepareEngine();
   /// @brief Executes the RestHandler
