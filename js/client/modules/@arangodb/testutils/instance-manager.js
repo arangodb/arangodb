@@ -363,6 +363,18 @@ class instanceManager {
       this.launchFinalize(startTime);
       return true;
     } catch (e) {
+      // disable watchdog
+      let hasTimedOut = internal.SetGlobalExecutionDeadlineTo(0.0);
+      if (hasTimedOut) {
+        print(RED + Date() + ' Deadline reached! Forcefully shutting down!' + RESET);
+      }
+      this.arangods.forEach(arangod => {
+        try {
+          arangod.shutdownArangod(true);
+        } catch(e) {
+          print("Error cleaning up: ", e, e.stack);
+        }
+      });
       print(e, e.stack);
       return false;
     }
@@ -1060,17 +1072,7 @@ class instanceManager {
           }
           return true;
         }
-        if ((arangod.exitStatus !== null) && (arangod.exitStatus.status === 'RUNNING')) {
-          arangod.exitStatus = statusExternal(arangod.pid, false);
-          if (!crashUtils.checkMonitorAlive(pu.ARANGOD_BIN, arangod, this.options, arangod.exitStatus)) {
-            if (!arangod.isAgent()) {
-              nonAgenciesCount--;
-            }
-            print(Date() + ' Server "' + arangod.name + '" shutdown: detected irregular death by monitor: pid', arangod.pid);
-            return false;
-          }
-        }
-        if ((arangod.exitStatus !== null) && (arangod.exitStatus.status === 'RUNNING')) {
+        if (arangod.isRunning()) {
           let localTimeout = timeout;
           if (arangod.isAgent()) {
             localTimeout = localTimeout + 60;
@@ -1144,6 +1146,10 @@ class instanceManager {
     }
     this.arangods.forEach(arangod => {
       arangod.readAssertLogLines(this.expectAsserts);
+      if (arangod.exitStatus && arangod.exitStatus.exit !== 0) {
+        print(RED + `arangod "${arangod.instanceRole}" with pid ${arangod.pid} exited with exit code ${arangod.exitStatus.exit}` + RESET);
+        shutdownSuccess = false;
+      }
     });
     this.cleanup = this.cleanup && shutdownSuccess;
     return shutdownSuccess;
@@ -1330,6 +1336,7 @@ class instanceManager {
             if ((arangod.exitStatus === null) ||
                 (arangod.exitStatus.status === 'RUNNING')) {
               // arangod.killWithCoreDump();
+              arangod.processSanitizerReports();
               arangod.exitStatus = killExternal(arangod.pid, termSignal);
             }
             arangod.analyzeServerCrash('startup timeout; forcefully terminating ' + arangod.name + ' with pid: ' + arangod.pid);
@@ -1644,7 +1651,6 @@ class instanceManager {
 
 exports.instanceManager = instanceManager;
 exports.registerOptions = function(optionsDefaults, optionsDocumentation, optionHandlers) {
-  const isSan = versionHas('asan') || versionHas('tsan');
   tu.CopyIntoObject(optionsDefaults, {
     'memory': undefined,
     'singles': 1, // internal only
@@ -1665,9 +1671,6 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
     'sniffDevice': undefined,
     'sniffProgram': undefined,
     'sniffFilter': undefined,
-    'sanitizer': isSan,
-    'isSan': isSan,
-    'sanOptions': {},
     'sleepBeforeStart' : 0,
     'memprof': false,
     'valgrind': false,
@@ -1698,9 +1701,6 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
     '   - `serverRoot`: directory where data/ points into the db server. Use in',
     '                   conjunction with "server".',
     '   - `memprof`: take snapshots (requries memprof enabled build)',
-    '   - `sanitizer`: if set the programs are run with enabled sanitizer',
-    '   - `isSan`: doubles oneTestTimeot value if set to true (for ASAN-related builds)',
-    '     and need longer timeouts',
     ' SUT packet capturing:',
     '   - `sniff`: if we should try to launch tcpdump / windump for a testrun',
     '              false / true / sudo',
@@ -1732,43 +1732,5 @@ exports.registerOptions = function(optionsDefaults, optionsDocumentation, option
     if (options.encryptionAtRest && !pu.isEnterpriseClient) {
       options.encryptionAtRest = false;
     }
-    // fiddle in suppressions for sanitizers if not already set from an
-    // outside script. this can populate the environment variables
-    // - ASAN_OPTIONS
-    // - UBSAN_OPTIONS
-    // - LSAN_OPTIONS
-    // - TSAN_OPTIONS
-    // note: this code repeats existing logic that can be found in
-    // scripts/unittest as well. according to @dothebart it must be
-    // present in both code locations.
-  if (options.isSan) {
-    ['ASAN_OPTIONS',
-     'LSAN_OPTIONS',
-     'UBSAN_OPTIONS',
-     'TSAN_OPTIONS'].forEach(sanOpt => {
-       if (process.env.hasOwnProperty(sanOpt)) {
-         options.sanOptions[sanOpt] = {};
-         let opt = process.env[sanOpt];
-         opt.split(':').forEach(oneOpt => {
-           let pair = oneOpt.split('=');
-           if (pair.length === 2) {
-             options.sanOptions[sanOpt][pair[0]] = pair[1];
-           }
-         });
-       }
-     });
-  }
-
-    ["asan", "ubsan", "lsan", "tsan"].forEach((san) => {
-      let envName = san.toUpperCase() + "_OPTIONS";
-      let fileName = san + "_arangodb_suppressions.txt";
-      if (!process.env.hasOwnProperty(envName) &&
-          fs.exists(fileName)) {
-        process.env[envName] = `suppressions=${fs.join(fs.makeAbsolute(''), fileName)}`;
-        print('preparing ' + san + ' environment:', envName + '=' + process.env[envName]);
-      }
-    });
-
-    
   });
 };

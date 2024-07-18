@@ -1,1 +1,2 @@
 apps/system/_admin/aardvark/APP/react/build/*
+client/modules/@arangodb/testutils/instance.js

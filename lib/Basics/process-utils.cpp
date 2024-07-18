@@ -91,6 +91,7 @@
 #include "Basics/operating-system.h"
 #include "Basics/tri-strings.h"
 #include "Basics/voc-errors.h"
+#include "Containers/FlatHashMap.h"
 #include "Basics/files.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -354,15 +355,49 @@ static void StartExternalProcess(ExternalProcess* external, bool usePipes,
     return;
   }
 
+  auto extractName = [](char const* value) noexcept {
+    std::string_view v;
+    if (value != nullptr) {
+      v = value;
+      if (auto pos = v.find('='); pos != std::string_view::npos) {
+        v = v.substr(0, pos);
+      }
+    }
+    return v;
+  };
+
+  // note the position in the envs vector for every unique environment variable.
+  // we do this to make the passed environment variables unique, e.g. in case
+  // the original env contains a setting with is later overriden by
+  // additionalEnv. in this case we want additionalEnv to win.
+  containers::FlatHashMap<std::string_view, size_t> positions;
+
   std::vector<char*> envs;
   for (char** e = environ; *e != nullptr; ++e) {
+    positions.insert_or_assign(extractName(*e), envs.size());
     envs.push_back(*e);
   }
 
   envs.reserve(envs.size() + additionalEnv.size() + 1);
-  std::transform(
-      additionalEnv.begin(), additionalEnv.end(), std::back_inserter(envs),
-      [](auto& str) -> char* { return const_cast<char*>(str.data()); });
+  for (auto const& e : additionalEnv) {
+    auto name = extractName(e.data());
+    if (auto it = positions.find(name); it != positions.end()) {
+      // environment variable already set. now update it
+      envs[it->second] = const_cast<char*>(e.data());
+    } else {
+      // new environment variable
+      positions.emplace(name, envs.size());
+      envs.push_back(const_cast<char*>(e.data()));
+    }
+  }
+
+  TRI_ASSERT(std::unique(envs.begin(), envs.end(),
+                         [&](char const* lhs, char const* rhs) {
+                           return extractName(lhs) == extractName(rhs);
+                         }) == envs.end());
+
+  // terminate the array with a null pointer entry. this is required for
+  // posix_spawnp
   envs.emplace_back(nullptr);
 
   int result = posix_spawnp(&external->_pid, external->_executable.c_str(),
