@@ -149,6 +149,21 @@ void RocksDBKey::constructMdiIndexValue(uint64_t indexId,
   TRI_ASSERT(_buffer->size() == keyLength);
 }
 
+void RocksDBKey::constructVectorIndexValue(uint64_t indexId,
+                                           std::vector<std::byte> const& value,
+                                           LocalDocumentId documentId) {
+  _type = RocksDBEntryType::VectorVPackIndexValue;
+  size_t keyLength = sizeof(uint64_t) + value.size() + sizeof(uint64_t);
+  _buffer->clear();
+  _buffer->reserve(keyLength);
+  uint64ToPersistent(*_buffer, indexId);
+  auto sv = std::string_view{reinterpret_cast<const char*>(value.data()),
+                             value.size()};
+  _buffer->append(sv.data(), sv.size());
+  uint64ToPersistent(*_buffer, documentId.id());
+  TRI_ASSERT(_buffer->size() == keyLength);
+}
+
 void RocksDBKey::constructDatabase(TRI_voc_tick_t databaseId) {
   TRI_ASSERT(databaseId != 0);
   _type = RocksDBEntryType::Database;
@@ -629,6 +644,15 @@ zkd::byte_string_view RocksDBKey::mdiIndexCurveValue(
 zkd::byte_string_view RocksDBKey::mdiUniqueIndexCurveValue(
     const rocksdb::Slice& slice) {
   return mdiUniqueIndexCurveValue(slice.data(), slice.size());
+}
+
+zkd::byte_string_view RocksDBKey::vectorVPackIndexValue(char const* data,
+                                                        size_t size) {
+  TRI_ASSERT(data != nullptr);
+  TRI_ASSERT(size > sizeof(uint64_t));
+  return zkd::byte_string_view(
+      reinterpret_cast<const std::byte*>(data) + sizeof(uint64_t),
+      size - sizeof(uint64_t));
 }
 
 namespace arangodb {

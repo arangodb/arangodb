@@ -31,6 +31,7 @@
 #include "VocBase/voc-types.h"
 #include "Zkd/ZkdHelper.h"
 
+#include <cstddef>
 #include <iosfwd>
 #include <string>
 #include <string_view>
@@ -190,6 +191,13 @@ class RocksDBKey {
   void constructMdiIndexValue(uint64_t objectId, const zkd::byte_string& value);
   void constructMdiIndexValue(uint64_t objectId, const zkd::byte_string& value,
                               LocalDocumentId documentId);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Create a fully-specified key for vector index
+  //////////////////////////////////////////////////////////////////////////////
+  void constructVectorIndexValue(uint64_t objectId,
+                                 const std::vector<std::byte>& value,
+                                 LocalDocumentId documentId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for revision tree for a collection
@@ -379,6 +387,8 @@ class RocksDBKey {
                                                        size_t size);
   static zkd::byte_string_view mdiUniqueVPackIndexCurveValue(char const* data,
                                                              size_t size);
+  static zkd::byte_string_view vectorVPackIndexValue(char const* data,
+                                                     size_t size);
 
  private:
   static const char _stringSeparator;
