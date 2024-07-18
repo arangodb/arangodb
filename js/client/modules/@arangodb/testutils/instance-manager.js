@@ -148,7 +148,6 @@ class instanceManager {
       restKeyFile: this.restKeyFile,
       tcpdump: this.tcpdump,
       cleanup: this.cleanup,
-      options: this.options
     };
   }
   setFromStructure(struct) {

@@ -68,7 +68,7 @@ exports.pimpInstanceManager = function() {
                                  {'server_id': 'none',
                                   'iss': 'arangodb'}, 'HS256');
       if (options.extremeVerbosity) {
-        print(Date() + ' Using jw token:     ' + jwt);
+        console.log(Date() + ' Using jw token:     ' + jwt);
       }
       return {
         'headers': {
