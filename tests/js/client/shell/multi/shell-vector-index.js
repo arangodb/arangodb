@@ -23,43 +23,179 @@
 // /
 // //////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var internal = require("internal");
+const jsunity = require("jsunity");
+const internal = require("internal");
+const errors = internal.errors;
 
-function vectorIndexCreateSuite () {
-  'use strict';
+function vectorIndexCreateSuite() {
+  "use strict";
   var cn = "UnitTestsFulltext";
   var c = null;
 
   return {
-    setUp : function () {
+    setUp: function () {
       internal.db._drop(cn);
       c = internal.db._create(cn);
     },
-    tearDown : function () {
+    tearDown: function () {
       internal.db._drop(cn);
     },
 
-    testVectorIndexTest : function () {
-      const vectorIndexFields = ["vec"];
-      const idx = c.ensureIndex({ 
+    testVectorIndexTest: function () {
+      const idx = c.ensureIndex({
         type: "vector",
-        fields: vectorIndexFields,
-        params: { dimensions: 5, min: 0, max: 10, Kparameter: 2, Lparameter: 1, randomFunctions: [ { bParam: 3, wParam: 4, vParam: [0,1,2,3,4] }, { bParam: 1, wParam: 2, vParam: [0,1,2,3,4] } ]} });
+        fields: ["vec"],
+        params: {
+          dimensions: 5,
+          min: 0,
+          max: 10,
+          Kparameter: 2,
+          Lparameter: 1,
+          randomFunctions: [
+            { bParam: 3, wParam: 4, vParam: [0, 1, 2, 3, 4] },
+            { bParam: 1, wParam: 2, vParam: [0, 1, 2, 3, 4] },
+          ],
+        },
+      });
       const indexes = c.getIndexes();
       assertEqual(2, indexes.length);
 
-      const vectorIndexes = indexes.filter(function(n) { return n.type == "vector" }); 
+      const vectorIndexes = indexes.filter(function (n) {
+        return n.type == "vector";
+      });
       assertEqual(1, vectorIndexes.length);
 
       const vectorIndex = vectorIndexes[0];
       assertEqual(idx.id, vectorIndex.id);
-      assertEqual(vectorIndexFields, vectorIndex.fields);
+      assertEqual(["vec"], vectorIndex.fields);
+    },
+
+    testVectorIndexUndefinedParametersTest: function () {
+      const vectorIndexFields = ["vec"];
+      const invalidIndexes = [
+        {
+          type: "vector",
+          fields: vectorIndexFields,
+          unique: true,
+          params: {
+            dimensions: 5,
+            min: 0,
+            max: 10,
+            Kparameter: 1,
+            Lparameter: 1,
+            randomFunctions: [
+              { bParam: 1, wParam: 2, vParam: [0, 1, 2, 3, 4] },
+            ],
+          },
+        },
+        {
+          type: "vector",
+          fields: vectorIndexFields,
+          params: {
+            dimensions: 5,
+            min: 0,
+            max: 10,
+            Kparameter: 1,
+            Lparameter: 1,
+            DParameter: 212,
+            randomFunctions: [
+              { bParam: 1, wParam: 2, vParam: [0, 1, 2, 3, 4] },
+            ],
+          },
+        },
+      ];
+
+      for (let i = 0; i < invalidIndexes.length; ++i) {
+        try {
+          c.ensureIndex(invalidIndexes[i]);
+        } catch (err) {
+          assertTrue(err.code != 0);
+        }
+
+        // Only primary index remains
+        const indexes = c.getIndexes();
+        assertEqual(1, indexes.length);
+      }
+    },
+
+    testVectorIndexWrongParameters: function () {
+      const vectorIndexFields = ["vec"];
+      const invalidIndexes = [
+        {
+          type: "vector",
+          fields: vectorIndexFields,
+          params: {
+            dimensions: 5,
+            min: 10,
+            max: 9,
+            Kparameter: 1,
+            Lparameter: 1,
+            randomFunctions: [
+              { bParam: 1, wParam: 2, vParam: [0, 1, 2, 3, 4] },
+            ],
+          },
+        },
+        {
+          type: "vector",
+          fields: vectorIndexFields,
+          params: {
+            dimensions: 0,
+            min: 10,
+            max: 9,
+            Kparameter: 1,
+            Lparameter: 1,
+            randomFunctions: [
+              { bParam: 1, wParam: 2, vParam: [0, 1, 2, 3, 4] },
+            ],
+          },
+        },
+        {
+          type: "vector",
+          fields: vectorIndexFields,
+          params: {
+            dimensions: 5,
+            min: 10,
+            max: 9,
+            Kparameter: 0,
+            Lparameter: 1,
+            randomFunctions: [
+              { bParam: 1, wParam: 2, vParam: [0, 1, 2, 3, 4] },
+            ],
+          },
+        },
+        {
+          type: "vector",
+          fields: vectorIndexFields,
+          params: {
+            dimensions: 5,
+            min: 10,
+            max: 9,
+            Kparameter: 1,
+            Lparameter: 0,
+            randomFunctions: [
+              { bParam: 1, wParam: 2, vParam: [0, 1, 2, 3, 4] },
+            ],
+          },
+        },
+      ];
+
+      for (let i = 0; i < invalidIndexes.length; ++i) {
+        try {
+          c.ensureIndex(invalidIndexes[i]);
+        } catch (err) {
+          assertTrue(err.code != 0);
+        }
+
+        // Only primary index remains
+        const indexes = c.getIndexes();
+        assertEqual(1, indexes.length);
+      }
     },
   };
 }
+// todo Add more test cases
+// invariants, e.g. w not 0
 
 jsunity.run(vectorIndexCreateSuite);
 
 return jsunity.done();
-

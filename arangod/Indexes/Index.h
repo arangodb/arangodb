@@ -514,6 +514,16 @@ struct VectorIndexDefinition {
                 f.field("Lparameter", x.Lparameter),
                 f.field("randomFunctions", x.randomFunctions))
         .invariant([](VectorIndexDefinition& x) -> inspection::Status {
+          if (x.dimensions < 1) {
+            return {"Dimensions must be greated then 0!"};
+          }
+          if (x.Kparameter < 1) {
+            return {"K parameter must be greated then 0!"};
+          }
+          if (x.Lparameter < 1) {
+            return {"L parameter must be greated then 0!"};
+          }
+
           if (x.min > x.max) {
             return {"Min cannot be greated then max!"};
           }
