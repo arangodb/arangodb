@@ -29,7 +29,7 @@ const errors = internal.errors;
 
 function vectorIndexCreateSuite() {
   "use strict";
-  var cn = "UnitTestsFulltext";
+  var cn = "UnitTestsVectorIndex";
   var c = null;
 
   return {
@@ -193,8 +193,6 @@ function vectorIndexCreateSuite() {
     },
   };
 }
-// todo Add more test cases
-// invariants, e.g. w not 0
 
 jsunity.run(vectorIndexCreateSuite);
 
