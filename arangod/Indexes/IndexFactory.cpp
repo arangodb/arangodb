@@ -910,6 +910,10 @@ Result IndexFactory::enhanceJsonIndexVector(
                   fmt::format("error: {}, path: {}", res.error(), res.path()));
   }
 
+  if (definition.get("unique").isTrue()) {
+    return Result(TRI_ERROR_BAD_PARAMETER, "Vector index cannot be unique");
+  }
+
   builder.add(VPackValue("params"));
   velocypack::serialize(builder, vectorIndexDefinition);
   Result const res =
