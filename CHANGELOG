@@ -1,6 +1,12 @@
 devel
 -----
 
+* Fix sorting behaviour of VelocyPack values w.r.t. numbers. This has an
+  impact on indexes indexing VPackValues. Therefore, after an upgrade the 
+  old sorting order will be retained to allow smooth upgrades. Newly started
+  instances with a fresh database directory will only use the new sorting
+  method. There will be a migration path.
+
 * Add optimizer rule `push-limit-into-index` that pushes a limit down
   into index iteration and can optimize the query execution when compound
   index is used along with SORT and LIMIT clauses.
