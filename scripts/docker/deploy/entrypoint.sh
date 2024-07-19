@@ -8,8 +8,6 @@ fi
 AUTHENTICATION="true"
 
 # if command starts with an option, prepend arangod
-echo "PARAMETERS: "
-echo "$@"
 case "$1" in
     -*) set -- arangod "$@" ;;
     *) ;;
@@ -86,8 +84,6 @@ if [ "$1" = 'arangod' ]; then
         fi
 
         echo "Initializing database...Hang on..."
-        echo "PARAMETERS: "
-        echo "$@"
         $NUMACTL arangod "$@" --config /tmp/arangod.conf \
                 --server.endpoint tcp://127.0.0.1:$ARANGO_INIT_PORT \
                 --server.authentication false \
