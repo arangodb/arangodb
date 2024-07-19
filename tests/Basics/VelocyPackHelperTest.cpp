@@ -579,9 +579,9 @@ TEST(VPackHelperTest, test_signed_double_comparison) {
   i = -(int64_t{1} << 53);
   EXPECT_EQ(0, comp(d, i));
   EXPECT_EQ(0, comp(i, d));
-  // d+1.0 is equal to d here due to limited precision!
-  EXPECT_EQ(-1, comp(d - 1.0, i - 1));
-  EXPECT_EQ(1, comp(i - 1, d - 1.0));
+  // d-1.0 is equal to d here due to limited precision!
+  EXPECT_EQ(1, comp(d - 1.0, i - 1));
+  EXPECT_EQ(-1, comp(i - 1, d - 1.0));
 
   // Test another large non-representable value:
   d = -ldexp(1.0, 60);
