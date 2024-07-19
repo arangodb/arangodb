@@ -22,6 +22,7 @@
 #pragma once
 
 #include "RocksDBIndex.h"
+#include "Indexes/Index.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "VocBase/Identifiers/IndexId.h"
 
@@ -37,7 +38,7 @@ class Slice;
 class RocksDBVectorIndex final : public RocksDBIndex {
  public:
   RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
-                     arangodb::velocypack::Slice const& info);
+                     arangodb::velocypack::Slice info);
 
   IndexType type() const override { return Index::TRI_IDX_TYPE_VECTOR_INDEX; }
 
@@ -70,6 +71,9 @@ class RocksDBVectorIndex final : public RocksDBIndex {
   Result remove(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId documentId, velocypack::Slice doc,
                 OperationOptions const& /*options*/) override;
+
+ private:
+  VectorIndexDefinition _definition;
 };
 
 }  // namespace arangodb

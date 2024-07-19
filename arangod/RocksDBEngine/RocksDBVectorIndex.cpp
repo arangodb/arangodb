@@ -31,7 +31,7 @@
 namespace arangodb {
 
 RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
-                                       arangodb::velocypack::Slice const& info)
+                                       arangodb::velocypack::Slice info)
     : RocksDBIndex(iid, coll, info,
                    RocksDBColumnFamilyManager::get(
                        RocksDBColumnFamilyManager::Family::VectorIndex),
@@ -40,6 +40,7 @@ RocksDBVectorIndex::RocksDBVectorIndex(IndexId iid, LogicalCollection& coll,
                    /*engine*/
                    coll.vocbase().engine<RocksDBEngine>()) {
   TRI_ASSERT(type() == Index::TRI_IDX_TYPE_VECTOR_INDEX);
+  velocypack::deserialize(info.get("params"), _definition);
 }
 
 /// @brief Test if this index matches the definition
@@ -50,7 +51,9 @@ bool RocksDBVectorIndex::matchesDefinition(VPackSlice const& info) const {
 void RocksDBVectorIndex::toVelocyPack(
     arangodb::velocypack::Builder& builder,
     std::underlying_type<Index::Serialize>::type flags) const {
-  // TODO
+  VPackObjectBuilder objectBuilder(&builder);
+  RocksDBIndex::toVelocyPack(builder, flags);
+  // TODO serialize our own stuff
 }
 
 /// @brief inserts a document into the index
