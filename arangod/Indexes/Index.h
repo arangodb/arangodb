@@ -502,24 +502,24 @@ struct VectorIndexDefinition {
   std::size_t dimensions;
   double min;
   double max;
-  std::size_t Kparamater;
-  std::size_t Lparamater;
+  std::size_t Kparameter;
+  std::size_t Lparameter;
   std::vector<VectorIndexRandomVector> randomFunctions;
 
   template<class Inspector>
   friend inline auto inspect(Inspector& f, VectorIndexDefinition& x) {
     return f.object(x)
         .fields(f.field("dimensions", x.dimensions), f.field("min", x.min),
-                f.field("max", x.max), f.field("Kparamater", x.Kparamater),
-                f.field("Lparamater", x.Lparamater),
+                f.field("max", x.max), f.field("Kparameter", x.Kparameter),
+                f.field("Lparameter", x.Lparameter),
                 f.field("randomFunctions", x.randomFunctions))
         .invariant([](VectorIndexDefinition& x) -> inspection::Status {
           if (x.min > x.max) {
             return {"Min cannot be greated then max!"};
           }
-          if (x.randomFunctions.size() != x.Kparamater * x.Lparamater) {
+          if (x.randomFunctions.size() != x.Kparameter * x.Lparameter) {
             return fmt::format("Number of randomFunctions must be equal {}!",
-                               x.Kparamater * x.Lparamater);
+                               x.Kparameter * x.Lparameter);
           }
           // TODO Add more checks, e.g. dimensions
           return inspection::Status::Success{};
