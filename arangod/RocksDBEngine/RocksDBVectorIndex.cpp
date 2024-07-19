@@ -20,11 +20,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBVectorIndex.h"
+#include "Inspection/VPack.h"
 #include "RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+#include <velocypack/Value.h>
 #include "Indexes/Index.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -53,7 +55,8 @@ void RocksDBVectorIndex::toVelocyPack(
     std::underlying_type<Index::Serialize>::type flags) const {
   VPackObjectBuilder objectBuilder(&builder);
   RocksDBIndex::toVelocyPack(builder, flags);
-  // TODO serialize our own stuff
+  builder.add(VPackValue("params"));
+  velocypack::serialize(builder, _definition);
 }
 
 /// @brief inserts a document into the index
