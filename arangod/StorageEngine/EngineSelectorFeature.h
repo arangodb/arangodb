@@ -66,12 +66,17 @@ class EngineSelectorFeature final : public ArangodFeature {
   void setEngineTesting(StorageEngine*);
 #endif
 
+  static bool legacyVPackSorting() {
+    return _legacyVPackSorting.load(std::memory_order_relaxed);
+  }
+
  private:
   StorageEngine* _engine;
   std::string _engineName;
   std::string _engineFilePath;
   std::atomic<bool> _selected;
   bool _allowDeprecatedDeployments;
+  static std::atomic<bool> _legacyVPackSorting;
 };
 
 }  // namespace arangodb

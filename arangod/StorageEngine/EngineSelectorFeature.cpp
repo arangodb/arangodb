@@ -65,6 +65,8 @@ constexpr std::array<std::pair<std::string_view, EngineInfo>, 1> kEngines{
 
 namespace arangodb {
 
+std::atomic<bool> EngineSelectorFeature::_legacyVPackSorting = true;
+
 EngineSelectorFeature::EngineSelectorFeature(Server& server)
     : ArangodFeature{server, *this},
       _engine(nullptr),
@@ -234,6 +236,38 @@ void EngineSelectorFeature::prepare() {
   }
 
   _selected.store(true);
+
+  // read vpack sorting method from file in database_directory
+  // SORTING (LEGACY/CORRECT):
+  std::string _sortingFilePath =
+      basics::FileUtils::buildFilename(path, "SORTING");
+
+  if (basics::FileUtils::isRegularFile(_sortingFilePath)) {
+    std::string value;
+    try {
+      basics::FileUtils::slurp(_sortingFilePath, value);
+      _legacyVPackSorting.store(value == "LEGACY", std::memory_order_relaxed);
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("8ff0e", FATAL, Logger::STARTUP)
+          << "unable to read 'SORTING' file '" << _sortingFilePath
+          << "': " << ex.what()
+          << ". please make sure the file/directory is readable for the "
+             "arangod process and user";
+      FATAL_ERROR_EXIT();
+    }
+  } else {
+    std::string value = legacyVPackSorting() ? "LEGACY" : "CORRECT";
+    try {
+      basics::FileUtils::spit(_sortingFilePath, value, true);
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("8ff0f", FATAL, Logger::STARTUP)
+          << "unable to write 'SORTING' file '" << _sortingFilePath
+          << "': " << ex.what()
+          << ". please make sure the file/directory is writable for the "
+             "arangod process and user";
+      FATAL_ERROR_EXIT();
+    }
+  }
 }
 
 void EngineSelectorFeature::start() {

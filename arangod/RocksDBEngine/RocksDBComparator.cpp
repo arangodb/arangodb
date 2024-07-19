@@ -29,6 +29,7 @@
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBPrefixExtractor.h"
 #include "RocksDBEngine/RocksDBTypes.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -53,9 +54,13 @@ int compareIndexedValues(arangodb::velocypack::Slice const& lhs,
       return static_cast<int>(lhsIter.size() - rhsIter.size());
     }
 
-    int res = arangodb::basics::VelocyPackHelper::compare(
-        (lhsValid ? *lhsIter : VPackSlice::noneSlice()),
-        (rhsValid ? *rhsIter : VPackSlice::noneSlice()), true);
+    int res = EngineSelectorFeature::legacyVPackSorting()
+                  ? arangodb::basics::VelocyPackHelper::compareLegacy(
+                        (lhsValid ? *lhsIter : VPackSlice::noneSlice()),
+                        (rhsValid ? *rhsIter : VPackSlice::noneSlice()), true)
+                  : arangodb::basics::VelocyPackHelper::compareCorrectly(
+                        (lhsValid ? *lhsIter : VPackSlice::noneSlice()),
+                        (rhsValid ? *rhsIter : VPackSlice::noneSlice()), true);
     if (res != 0) {
       return res;
     }

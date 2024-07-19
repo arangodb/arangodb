@@ -2433,8 +2433,8 @@ void fetchVerticesFromEngines(
         // If we fix above todo (fast-path) this case should
         // be impossible.
         TRI_ASSERT(result.find(key) != result.end());
-        TRI_ASSERT(VelocyPackHelper::equal(result.find(key)->second, pair.value,
-                                           true));
+        TRI_ASSERT(VelocyPackHelper::equalCorrectly(result.find(key)->second,
+                                                    pair.value, true));
       } else {
         TRI_ASSERT(result.find(key) == result.end());
         if (!cached) {
@@ -4433,8 +4433,9 @@ arangodb::Result hotBackupCoordinator(ClusterFeature& feature,
     }
 
     try {
-      if (!Helper::equal(agency->slice()[0].get(versionPath),
-                         agencyCheck->slice()[0].get(versionPath), false)) {
+      if (!Helper::equalCorrectly(agency->slice()[0].get(versionPath),
+                                  agencyCheck->slice()[0].get(versionPath),
+                                  false)) {
         if (!allowInconsistent) {
           removeLocalBackups(pool, backupId, dbServers, dummy);
         }

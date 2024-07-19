@@ -284,8 +284,9 @@ bool IResearchDataStoreMeta::json(
                 velocypack::Value(_consolidationIntervalMsec));
   }
 
+  // FIXMEFIXME: OK to always use new sorting method?
   if ((!ignoreEqual ||
-       !basics::VelocyPackHelper::equal(
+       !basics::VelocyPackHelper::equalCorrectly(
            _consolidationPolicy.properties(),
            ignoreEqual->_consolidationPolicy.properties(), false)) &&
       (!mask || mask->_consolidationPolicy)) {
@@ -522,7 +523,7 @@ bool IResearchDataStoreMeta::operator==(
   }
 
   try {
-    if (!basics::VelocyPackHelper::equal(
+    if (!basics::VelocyPackHelper::equalCorrectly(
             _consolidationPolicy.properties(),
             other._consolidationPolicy.properties(), false)) {
       return false;  // values do not match

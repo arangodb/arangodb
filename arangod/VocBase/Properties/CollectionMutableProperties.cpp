@@ -57,15 +57,15 @@ using namespace arangodb;
 
 bool CollectionMutableProperties::operator==(
     CollectionMutableProperties const& other) const {
-  if (!basics::VelocyPackHelper::equal(computedValues.slice(),
-                                       other.computedValues.slice(), true)) {
+  if (!basics::VelocyPackHelper::equalCorrectly(
+          computedValues.slice(), other.computedValues.slice(), true)) {
     return false;
   }
   if (schema.has_value() != other.schema.has_value()) {
     // If one has a schema, the other not, they cannot be equal
     return false;
   }
-  if (schema.has_value() && !basics::VelocyPackHelper::equal(
+  if (schema.has_value() && !basics::VelocyPackHelper::equalCorrectly(
                                 schema->slice(), other.schema->slice(), true)) {
     // If one has a schema, it follows the other has one too,
     // so they need to be equal.

@@ -118,8 +118,8 @@ bool ValidatorBase::isSame(VPackSlice validator1, VPackSlice validator2) {
         StaticStrings::ValidationParameterLevel,
         StaticStrings::ValidationParameterRule};
     for (auto const& f : fields) {
-      if (!basics::VelocyPackHelper::equal(validator1.get(f), validator2.get(f),
-                                           false)) {
+      if (!basics::VelocyPackHelper::equalCorrectly(validator1.get(f),
+                                                    validator2.get(f), false)) {
         return false;
       }
     }

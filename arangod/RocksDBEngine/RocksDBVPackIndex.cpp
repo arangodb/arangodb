@@ -54,6 +54,7 @@
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Transaction/OperationOrigin.h"
@@ -1549,9 +1550,9 @@ void RocksDBVPackIndex::buildIndexValues(
   }
 
   std::unordered_set<VPackSlice, basics::VelocyPackHelper::VPackHash,
-                     basics::VelocyPackHelper::VPackEqual>
+                     basics::VelocyPackHelper::VPackEqualC>
       seen(2, basics::VelocyPackHelper::VPackHash(),
-           basics::VelocyPackHelper::VPackEqual());
+           basics::VelocyPackHelper::VPackEqualC());
 
   auto moveOn = [&](VPackSlice something) -> void {
     auto it = seen.find(something);
@@ -2019,7 +2020,7 @@ bool attributesEqual(VPackSlice first, VPackSlice second,
     }
   }
 
-  return basics::VelocyPackHelper::equal(first, second, true);
+  return basics::VelocyPackHelper::equalCorrectly(first, second, true);
 }
 }  // namespace
 
@@ -2765,14 +2766,25 @@ void RocksDBVPackIndex::expandInSearchValues(
           vector.emplace_back(el);
         }
 
-        // sort the vector once
-        std::sort(vector.begin(), vector.end(),
-                  basics::VelocyPackHelper::VPackLess<true>());
+        if (EngineSelectorFeature::legacyVPackSorting()) {
+          // sort the vector once
+          std::sort(vector.begin(), vector.end(),
+                    basics::VelocyPackHelper::VPackLessL<true>());
 
-        // make it unique
-        vector.erase(std::unique(vector.begin(), vector.end(),
-                                 basics::VelocyPackHelper::VPackEqual()),
-                     vector.end());
+          // make it unique
+          vector.erase(std::unique(vector.begin(), vector.end(),
+                                   basics::VelocyPackHelper::VPackEqualL()),
+                       vector.end());
+        } else {
+          // sort the vector once
+          std::sort(vector.begin(), vector.end(),
+                    basics::VelocyPackHelper::VPackLessC<true>());
+
+          // make it unique
+          vector.erase(std::unique(vector.begin(), vector.end(),
+                                   basics::VelocyPackHelper::VPackEqualC()),
+                       vector.end());
+        }
 
         if (!opts.ascending) {
           // reverse what's left, if necessary
@@ -2924,7 +2936,12 @@ void RocksDBVPackIndex::warmupInternal(transaction::Methods* trx) {
     rocksdb::Slice key = it->key();
     TRI_ASSERT(objectId() == RocksDBKey::objectId(key));
     VPackSlice v = RocksDBKey::indexedVPack(key);
-    if (basics::VelocyPackHelper::compare(v, builder.slice(), true) != 0) {
+    int cmp =
+        EngineSelectorFeature::legacyVPackSorting()
+            ? basics::VelocyPackHelper::compareLegacy(v, builder.slice(), true)
+            : basics::VelocyPackHelper::compareCorrectly(v, builder.slice(),
+                                                         true);
+    if (cmp != 0) {
       // index values are different. now do a lookup in cache/rocksdb
       builder.clear();
       builder.add(v);
