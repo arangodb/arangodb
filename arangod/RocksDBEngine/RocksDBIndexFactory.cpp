@@ -463,6 +463,8 @@ RocksDBIndexFactory::RocksDBIndexFactory(ArangodServer& server)
                                                Index::TRI_IDX_TYPE_ZKD_INDEX);
   static const MdiIndexFactory mdiIndexFactory(server,
                                                Index::TRI_IDX_TYPE_MDI_INDEX);
+  static const VectorIndexFactory vectorIndexFactory(
+      server, Index::TRI_IDX_TYPE_VECTOR_INDEX);
   static const iresearch::IResearchRocksDBInvertedIndexFactory
       iresearchInvertedIndexFactory(server);
   static const MdiPrefixedIndexFactory mdiPrefixedIndexFactory(server);
@@ -481,6 +483,7 @@ RocksDBIndexFactory::RocksDBIndexFactory(ArangodServer& server)
   emplace("zkd", zkdIndexFactory);
   emplace("mdi", mdiIndexFactory);
   emplace("mdi-prefixed", mdiPrefixedIndexFactory);
+  emplace("vector", vectorIndexFactory);
   emplace(arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE.data(),
           iresearchInvertedIndexFactory);
 }

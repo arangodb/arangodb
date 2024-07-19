@@ -328,6 +328,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _partitionFilesForEdgeIndexCf(false),
       _partitionFilesForVPackIndexCf(false),
       _partitionFilesForMdiIndexCf(false),
+      _partitionFilesForVectorIndexCf(false),
       _maxWriteBufferNumberCf{0, 0, 0, 0, 0, 0, 0, 0, 0, 0} {
   // setting the number of background jobs to
   _maxBackgroundJobs = static_cast<int32_t>(
@@ -1527,6 +1528,37 @@ limited number of edge collections/shards/indexes.)");
   limited number of edge collections/shards/indexes.)");
 
   options
+      ->addOption("--rocksdb.partition-files-for-vector-index",
+                  "If enabled, the index data for different vector "
+                  "indexes will end up in different .sst files.",
+                  new BooleanParameter(&_partitionFilesForVectorIndexCf),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::Uncommon,
+                      arangodb::options::Flags::Experimental,
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31202)
+      .setLongDescription(R"(Enabling this option will make RocksDB's
+  compaction write the persistent index data for different vector
+  indexes (also indexes from different collections/shards) into different
+  .sst files. Otherwise the persistent index data from different
+  collections/shards/indexes can be mixed and written into the same .sst files.
+
+  Enabling this option usually has the benefit of making the RocksDB
+  compaction more efficient when a lot of different collections/shards/indexes
+  are written to in parallel.
+  The disavantage of enabling this option is that there can be more .sst
+  files than when the option is turned off, and the disk space used by
+  these .sst files can be higher than if there are fewer .sst files (this
+  is because there is some per-.sst file overhead).
+  In particular on deployments with many collections/shards/indexes
+  this can lead to a very high number of .sst files, with the potential
+  of outgrowing the maximum number of file descriptors the ArangoDB process
+  can open. Thus the option should only be enabled on deployments with a
+  limited number of edge collections/shards/indexes.)");
+
+  options
       ->addOption(
           "--rocksdb.use-io_uring",
           "Check for existence of io_uring at startup and use it if available. "
@@ -1551,7 +1583,8 @@ limited number of edge collections/shards/indexes.)");
       RocksDBColumnFamilyManager::Family::FulltextIndex,
       RocksDBColumnFamilyManager::Family::ReplicatedLogs,
       RocksDBColumnFamilyManager::Family::MdiIndex,
-      RocksDBColumnFamilyManager::Family::MdiVPackIndex};
+      RocksDBColumnFamilyManager::Family::MdiVPackIndex,
+      RocksDBColumnFamilyManager::Family::VectorIndex};
 
   auto addMaxWriteBufferNumberCf =
       [this, &options](RocksDBColumnFamilyManager::Family family) {
@@ -1565,6 +1598,10 @@ limited number of edge collections/shards/indexes.)");
             family == RocksDBColumnFamilyManager::Family::MdiIndex) {
           introducedIn = 31200;
         }
+        if (family == RocksDBColumnFamilyManager::Family::VectorIndex) {
+          introducedIn = 31202;
+        }
+
         options
             ->addOption("--rocksdb.max-write-buffer-number-" + name,
                         "If non-zero, overrides the value of "
@@ -2165,6 +2202,13 @@ rocksdb::ColumnFamilyOptions RocksDBOptionFeature::getColumnFamilyOptions(
       family == RocksDBColumnFamilyManager::Family::MdiVPackIndex) {
     // partition .sst files by object id prefix
     if (_partitionFilesForMdiIndexCf) {
+      result.sst_partitioner_factory =
+          rocksdb::NewSstPartitionerFixedPrefixFactory(sizeof(uint64_t));
+    }
+  }
+  if (family == RocksDBColumnFamilyManager::Family::VectorIndex) {
+    // partition .sst files by object id prefix
+    if (_partitionFilesForVectorIndexCf) {
       result.sst_partitioner_factory =
           rocksdb::NewSstPartitionerFixedPrefixFactory(sizeof(uint64_t));
     }
