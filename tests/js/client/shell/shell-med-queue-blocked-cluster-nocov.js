@@ -27,12 +27,10 @@
 let jsunity = require('jsunity');
 let arangodb = require('@arangodb');
 let db = arangodb.db;
-let { getEndpointsByType,
-      debugCanUseFailAt,
-      debugClearFailAt,
-      debugSetFailAt,
-    } = require('@arangodb/test-helper');
-      
+let { getEndpointsByType } = require('@arangodb/test-helper');
+let { instanceRole } = require('@arangodb/testutils/instance');
+let IM = global.instanceManager;
+
 function medQueueBlockedSuite() {
   'use strict';
   const cn = 'UnitTestsMedQueueBlocked';
@@ -135,8 +133,7 @@ function medQueueBlockedSuite() {
   };
 }
 
-let ep = getEndpointsByType('coordinator');
-if (ep.length && debugCanUseFailAt(ep[0])) {
+if (IM.debugCanUseFailAt()) {
   // only execute if failure tests are available
   jsunity.run(medQueueBlockedSuite);
 }

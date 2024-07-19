@@ -39,18 +39,18 @@ function DocumentOperationsFailuresSuite() {
   return {
 
     setUp: function () {
-      internal.debugClearFailAt();
+      global.instanceManager.debugClearFailAt();
     },
     
     tearDown: function () {
-      internal.debugClearFailAt();
+      global.instanceManager.debugClearFailAt();
       db._drop(cn);
     },
     
     testInsertSizeLimit: function () {
       let c = db._create(cn);
 
-      internal.debugSetFailAt("addOperationSizeError");
+      global.instanceManager.debugSetFailAt("addOperationSizeError");
 
       try {
         c.insert({ _key: "testi" });
@@ -62,7 +62,7 @@ function DocumentOperationsFailuresSuite() {
 
       assertEqual(0, c.count());
     
-      internal.debugClearFailAt();
+      global.instanceManager.debugClearFailAt();
 
       c.insert({ _key: "testi" });
       assertEqual(1, c.count());
@@ -71,7 +71,7 @@ function DocumentOperationsFailuresSuite() {
     testInsertFailure1: function () {
       let c = db._create(cn);
 
-      internal.debugSetFailAt("RocksDBCollection::insertFail1Always");
+      global.instanceManager.debugSetFailAt("RocksDBCollection::insertFail1Always");
 
       try {
         c.insert({ _key: "testi" });
@@ -83,7 +83,7 @@ function DocumentOperationsFailuresSuite() {
 
       assertEqual(0, c.count());
     
-      internal.debugClearFailAt();
+      global.instanceManager.debugClearFailAt();
 
       c.insert({ _key: "testi" });
       assertEqual(1, c.count());
@@ -92,7 +92,7 @@ function DocumentOperationsFailuresSuite() {
     testInsertFailure2: function () {
       let c = db._create(cn);
 
-      internal.debugSetFailAt("RocksDBCollection::insertFail2Always");
+      global.instanceManager.debugSetFailAt("RocksDBCollection::insertFail2Always");
 
       try {
         c.insert({ _key: "testi" });
@@ -104,7 +104,7 @@ function DocumentOperationsFailuresSuite() {
 
       assertEqual(0, c.count());
     
-      internal.debugClearFailAt();
+      global.instanceManager.debugClearFailAt();
 
       c.insert({ _key: "testi" });
       assertEqual(1, c.count());
@@ -114,7 +114,7 @@ function DocumentOperationsFailuresSuite() {
       let c = db._create(cn);
       c.insert({ _key: "testi" });
 
-      internal.debugSetFailAt("addOperationSizeError");
+      global.instanceManager.debugSetFailAt("addOperationSizeError");
 
       try {
         c.remove("testi");
@@ -126,7 +126,7 @@ function DocumentOperationsFailuresSuite() {
 
       assertEqual(1, c.count());
     
-      internal.debugClearFailAt();
+      global.instanceManager.debugClearFailAt();
 
       c.remove("testi");
       assertEqual(0, c.count());
@@ -136,7 +136,7 @@ function DocumentOperationsFailuresSuite() {
       let c = db._create(cn);
       c.insert({ _key: "testi" });
 
-      internal.debugSetFailAt("RocksDBCollection::removeFail1Always");
+      global.instanceManager.debugSetFailAt("RocksDBCollection::removeFail1Always");
 
       try {
         c.remove("testi");
@@ -148,7 +148,7 @@ function DocumentOperationsFailuresSuite() {
 
       assertEqual(1, c.count());
     
-      internal.debugClearFailAt();
+      global.instanceManager.debugClearFailAt();
 
       c.remove("testi");
       assertEqual(0, c.count());
@@ -158,7 +158,7 @@ function DocumentOperationsFailuresSuite() {
       let c = db._create(cn);
       c.insert({ _key: "testi" });
 
-      internal.debugSetFailAt("RocksDBCollection::removeFail2Always");
+      global.instanceManager.debugSetFailAt("RocksDBCollection::removeFail2Always");
 
       try {
         c.remove("testi");
@@ -170,7 +170,7 @@ function DocumentOperationsFailuresSuite() {
 
       assertEqual(1, c.count());
     
-      internal.debugClearFailAt();
+      global.instanceManager.debugClearFailAt();
 
       c.remove("testi");
       assertEqual(0, c.count());
@@ -180,7 +180,7 @@ function DocumentOperationsFailuresSuite() {
       let c = db._create(cn);
       c.insert({ _key: "testi", value: 1 });
 
-      internal.debugSetFailAt("addOperationSizeError");
+      global.instanceManager.debugSetFailAt("addOperationSizeError");
 
       try {
         c.update("testi", { value: 2 });
@@ -193,7 +193,7 @@ function DocumentOperationsFailuresSuite() {
       assertEqual(1, c.count());
       assertEqual(1, c.document("testi").value);
     
-      internal.debugClearFailAt();
+      global.instanceManager.debugClearFailAt();
 
       c.update("testi", { value: 3 });
       assertEqual(1, c.count());
@@ -204,7 +204,7 @@ function DocumentOperationsFailuresSuite() {
       let c = db._create(cn);
       c.insert({ _key: "testi", value: 1 });
 
-      internal.debugSetFailAt("RocksDBCollection::modifyFail1Always");
+      global.instanceManager.debugSetFailAt("RocksDBCollection::modifyFail1Always");
 
       try {
         c.update("testi", { value: 2 });
@@ -217,7 +217,7 @@ function DocumentOperationsFailuresSuite() {
       assertEqual(1, c.count());
       assertEqual(1, c.document("testi").value);
     
-      internal.debugClearFailAt();
+      global.instanceManager.debugClearFailAt();
 
       c.update("testi", { value: 3 });
       assertEqual(1, c.count());
@@ -228,7 +228,7 @@ function DocumentOperationsFailuresSuite() {
       let c = db._create(cn);
       c.insert({ _key: "testi", value: 1 });
 
-      internal.debugSetFailAt("RocksDBCollection::modifyFail3Always");
+      global.instanceManager.debugSetFailAt("RocksDBCollection::modifyFail3Always");
 
       try {
         c.update("testi", { value: 2 });
@@ -241,7 +241,7 @@ function DocumentOperationsFailuresSuite() {
       assertEqual(1, c.count());
       assertEqual(1, c.document("testi").value);
     
-      internal.debugClearFailAt();
+      global.instanceManager.debugClearFailAt();
 
       c.update("testi", { value: 3 });
       assertEqual(1, c.count());
@@ -252,7 +252,7 @@ function DocumentOperationsFailuresSuite() {
       let c = db._create(cn);
       c.insert({ _key: "testi", value: 1 });
 
-      internal.debugSetFailAt("RocksDBCollection::modifyFail2Always");
+      global.instanceManager.debugSetFailAt("RocksDBCollection::modifyFail2Always");
 
       try {
         c.update("testi", { value: 2 });
@@ -265,7 +265,7 @@ function DocumentOperationsFailuresSuite() {
       assertEqual(1, c.count());
       assertEqual(1, c.document("testi").value);
     
-      internal.debugClearFailAt();
+      global.instanceManager.debugClearFailAt();
 
       c.update("testi", { value: 3 });
       assertEqual(1, c.count());
@@ -280,7 +280,7 @@ function CollectionTruncateFailuresSuite() {
   const cn = "UnitTestsTruncate";
   let c;
   const cleanUp = () => {
-    internal.debugClearFailAt();
+    global.instanceManager.debugClearFailAt();
     try {
       db._drop(cn);
     } catch(_) { }
@@ -308,7 +308,7 @@ function CollectionTruncateFailuresSuite() {
     tearDown: cleanUp,
 
     testTruncateFailsAfterAllCommits: function () {
-      internal.debugSetFailAt("FailAfterAllCommits");
+      global.instanceManager.debugSetFailAt("FailAfterAllCommits");
       try {
         c.truncate({ compact: false });
         fail();
@@ -382,7 +382,7 @@ function CollectionTruncateFailuresSuite() {
     testTruncateFailsBeforeCommit: function () {
       const docsWithEqHash = 20000 / 250;
       const docsWithEqSkip = 20000 / 100;
-      internal.debugSetFailAt("FailBeforeIntermediateCommit");
+      global.instanceManager.debugSetFailAt("FailBeforeIntermediateCommit");
       try {
         c.truncate();
         fail();
@@ -453,7 +453,7 @@ function CollectionTruncateFailuresSuite() {
     },
 
     testTruncateFailsBetweenCommits: function () {
-      internal.debugSetFailAt("FailAfterIntermediateCommit");
+      global.instanceManager.debugSetFailAt("FailAfterIntermediateCommit");
       const docsWithEqHash = 20000 / 250;
       const docsWithEqSkip = 20000 / 100;
 
@@ -540,7 +540,7 @@ function IntermediateCommitFailureSuite() {
   const cn = "UnitTestsIntermediate";
   let c;
   const cleanUp = () => {
-    internal.debugClearFailAt();
+    global.instanceManager.debugClearFailAt();
     try {
       db._drop(cn);
     } catch(_) { }
@@ -562,7 +562,7 @@ function IntermediateCommitFailureSuite() {
     },
 
     testFailOnRemoveAql: function () {
-      internal.debugSetFailAt("FailBeforeIntermediateCommit");
+      global.instanceManager.debugSetFailAt("FailBeforeIntermediateCommit");
       try {
         db._query("FOR doc IN @@cn REMOVE doc IN @@cn", { "@cn" : cn }, { intermediateCommitCount: 10000 });
         fail();
@@ -576,7 +576,7 @@ function IntermediateCommitFailureSuite() {
     },
     
     testFailOnUpdateAql: function () {
-      internal.debugSetFailAt("FailBeforeIntermediateCommit");
+      global.instanceManager.debugSetFailAt("FailBeforeIntermediateCommit");
       try {
         db._query("FOR doc IN @@cn UPDATE doc WITH { aha: 1 } IN @@cn", { "@cn" : cn }, { intermediateCommitCount: 10000 });
         fail();
@@ -592,7 +592,7 @@ function IntermediateCommitFailureSuite() {
     },
     
     testFailOnReplaceAql: function () {
-      internal.debugSetFailAt("FailBeforeIntermediateCommit");
+      global.instanceManager.debugSetFailAt("FailBeforeIntermediateCommit");
       try {
         db._query("FOR doc IN @@cn REPLACE doc WITH { aha: 1 } IN @@cn", { "@cn" : cn }, { intermediateCommitCount: 10000 });
         fail();
@@ -608,7 +608,7 @@ function IntermediateCommitFailureSuite() {
     },
     
     testFailOnInsertAql: function () {
-      internal.debugSetFailAt("FailBeforeIntermediateCommit");
+      global.instanceManager.debugSetFailAt("FailBeforeIntermediateCommit");
       try {
         db._query("FOR i IN 1..10000 INSERT {} IN @@cn", { "@cn" : cn }, { intermediateCommitCount: 10000 });
         fail();
@@ -624,7 +624,7 @@ function IntermediateCommitFailureSuite() {
   };
 }
     
-if (internal.debugCanUseFailAt()) {
+if (global.instanceManager.debugCanUseFailAt()) {
   jsunity.run(DocumentOperationsFailuresSuite);
   jsunity.run(CollectionTruncateFailuresSuite);
   jsunity.run(IntermediateCommitFailureSuite);

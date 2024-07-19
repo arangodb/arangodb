@@ -27,23 +27,16 @@
 
 const jsunity = require('jsunity');
 const {db} = require('@arangodb');
+let { instanceRole } = require('@arangodb/testutils/instance');
+let IM = global.instanceManager;
 
-const {debugCanUseFailAt} = require("internal");
 const {
   getDBServers,
-  debugSetFailAt,
-  debugClearFailAt,
-  getEndpointById,
   waitForShardsInSync
 } = require('@arangodb/test-helper');
 
 function ReplicationDeadLockSuite() {
   const collectionName = "UnitTestCollection";
-  const clearAllFailurePoints = () => {
-    for (const server of getDBServers()) {
-      debugClearFailAt(getEndpointById(server.id));
-    }
-  };
 
   return {
     setUp: function () {
@@ -53,7 +46,7 @@ function ReplicationDeadLockSuite() {
     },
 
     tearDown: function () {
-      clearAllFailurePoints();
+      IM.debugClearFailAt(undefined, undefined, instanceRole.dbServer);
       try {
         db._drop(collectionName);
       } catch (e) {
@@ -77,11 +70,11 @@ function ReplicationDeadLockSuite() {
       // Insert some random documents, to avoid getting away with a fast-path sync
       col.save([{}, {}, {}, {}]);
 
-      for (const server of getDBServers()) {
-        debugSetFailAt(getEndpointById(server.id), `LeaderWrongChecksumOnSoftLock${shardName}`);
-        debugSetFailAt(getEndpointById(server.id), `FollowerBlockRequestsLanesForSyncOnShard${shardName}`);
-        debugSetFailAt(getEndpointById(server.id), `LeaderBlockRequestsLanesForSyncOnShard${shardName}`);
-      }
+      IM.debugSetFailAt(undefined, undefined, instanceRole.dbServer);
+
+      IM.debugSetFailAt(`LeaderWrongChecksumOnSoftLock${shardName}`, undefined, undefined, instanceRole.dbServer);
+      IM.debugSetFailAt(`FollowerBlockRequestsLanesForSyncOnShard${shardName}`, undefined, undefined, instanceRole.dbServer);
+      IM.debugSetFailAt(`LeaderBlockRequestsLanesForSyncOnShard${shardName}`, undefined, undefined, instanceRole.dbServer);
 
       /* Increase replication factor, this will trigger the failurePointCascade */
       col.properties({replicationFactor: 2});
@@ -89,7 +82,7 @@ function ReplicationDeadLockSuite() {
       waitForShardsInSync(collectionName, 20, 1);
       // Unlock medium lanes again. The collections are synced
       // so we can revert back to normal state.
-      clearAllFailurePoints();
+      IM.debugClearFailAt(undefined, undefined, instanceRole.dbServer);
       try {
         // Should be able to insert documents again
         col.save({});
@@ -100,7 +93,7 @@ function ReplicationDeadLockSuite() {
   };
 }
 
-if (debugCanUseFailAt()) {
+if (IM.debugCanUseFailAt()) {
   jsunity.run(ReplicationDeadLockSuite);
 }
 

@@ -42,7 +42,8 @@ let {
 
 const maxNumberOfShards    = getMaxNumberOfShards();
 const maxReplicationFactor = getMaxReplicationFactor();
-const minReplicationFactor = getMinReplicationFactor(); 
+const minReplicationFactor = getMinReplicationFactor();
+let IM = global.instanceManager;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -50,42 +51,6 @@ const minReplicationFactor = getMinReplicationFactor();
 
 function ClusterCollectionSuite () {
   'use strict';
-
-  function baseUrl(endpoint) { // arango.getEndpoint()
-    return endpoint.replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
-  }
-
-  /// @brief set failure point
-  function debugCanUseFailAt(endpoint) {
-    let res = request.get({
-      url: baseUrl(endpoint) + '/_admin/debug/failat',
-    });
-    return res.status === 200;
-  }
-
-  /// @brief set failure point
-  function debugSetFailAt(endpoint, failAt) {
-    assertTrue(typeof failAt !== 'undefined');
-    let res = request.put({
-      url: baseUrl(endpoint) + '/_admin/debug/failat/' + failAt,
-      body: ""
-    });
-    if (res.status !== 200) {
-      throw "Error setting failure point";
-    }
-  }
-
-  /// @brief remove failure point
-  function debugRemoveFailAt(endpoint, failAt) {
-    assertTrue(typeof failAt !== 'undefined');
-    let res = request.delete({
-      url: baseUrl(endpoint) + '/_admin/debug/failat/' + failAt,
-      body: ""
-    });
-    if (res.status !== 200) {
-      throw "Error seting failure point";
-    }
-  }
 
   return {
 
@@ -610,83 +575,38 @@ function ClusterCollectionSuite () {
     },
 
     testCreateFailureDuringIsBuilding : function () {
-      if (!isServer) {
-        console.info('Skipping client test');
-        // TODO make client tests work
-        return;
-      }
-      let setFailAt;
-      let removeFailAt;
-      if (isServer) {
-        if (internal.debugCanUseFailAt()) {
-          setFailAt = internal.debugSetFailAt;
-          removeFailAt = internal.debugRemoveFailAt;
-        }
-      } else {
-        const arango = internal.arango;
-        const coordinatorEndpoint = arango.getEndpoint();
-        if (debugCanUseFailAt(coordinatorEndpoint)) {
-          setFailAt = failurePoint => debugSetFailAt(coordinatorEndpoint, failurePoint);
-          removeFailAt = failurePoint => debugRemoveFailAt(coordinatorEndpoint, failurePoint);
-        }
-      }
-      if (!setFailAt) {
+      if (!IM.debugCanUseFailAt()) {
         console.info('Failure tests disabled, skipping...');
         return;
       }
 
       const failurePoint = 'ClusterInfo::createCollectionsCoordinator';
       try {
-        setFailAt(failurePoint);
+        IM.debugSetFailAt(failurePoint);
         const colName = "UnitTestClusterShouldNotBeCreated";
         let threw = false;
         try {
           db._create(colName);
         } catch (e) {
           threw = true;
-          if (isServer) {
-            assertTrue(e instanceof ArangoError);
-            assertEqual(22, e.errorNum);
-            assertEqual('intentional debug error', e.errorMessage);
-          } else {
-            const expected = {
-              'error': true,
-              'errorNum': 22,
-              'code': 500,
-              'errorMessage': 'intentional debug error',
-            };
-            assertEqual(expected, e);
-          }
+          assertTrue(e instanceof ArangoError);
+          assertEqual(22, e.errorNum);
+          assertEqual('intentional debug error', e.errorMessage);
         }
         assertTrue(threw);
-        const collections = global.ArangoAgency.get(`Plan/Collections/${db._name()}`)
+        const collections = IM.agencyMgr.get(`Plan/Collections/${db._name()}`)
           .arango.Plan.Collections[db._name()];
         assertEqual([], Object.values(collections).filter(col => col.name === colName),
           'Collection should have been deleted');
       } finally {
-        removeFailAt(failurePoint);
+        IM.debugRemoveFailAt(failurePoint);
       }
     },
 
     testCreateFailureWhenRemovingIsBuilding : function () {
-      if (!isServer) {
-        console.info('Skipping client test');
-        return;
-      }
-      let setFailAt;
-      let removeFailAt;
-      if (internal.debugCanUseFailAt()) {
-        setFailAt = internal.debugSetFailAt;
-        removeFailAt = internal.debugRemoveFailAt;
-      }
-      if (!setFailAt) {
-        console.info('Failure tests disabled, skipping...');
-        return;
-      }
-
       const failurePoint = 'ClusterInfo::createCollectionsCoordinatorRemoveIsBuilding';
       try {
-        setFailAt(failurePoint);
+        IM.debugSetFailAt(failurePoint);
         const colName = "UnitTestClusterShouldNotBeCreated1";
         let threw = false;
         try {
@@ -704,7 +624,7 @@ function ClusterCollectionSuite () {
         }
         assertTrue(threw);
       } finally {
-        removeFailAt(failurePoint);
+        IM.debugRemoveFailAt(failurePoint);
       }
     },
 
@@ -991,14 +911,7 @@ function ClusterCollectionSuite () {
 
     // regression test for https://github.com/arangodb/arangodb/pull/21071
     testCreateWithSlowCurrentUpdate : function () {
-      let setFailAt;
-      let removeFailAt;
-      const coordinatorEndpoint = internal.arango.getEndpoint();
-      if (debugCanUseFailAt(coordinatorEndpoint)) {
-        setFailAt = failurePoint => debugSetFailAt(coordinatorEndpoint, failurePoint);
-        removeFailAt = failurePoint => debugRemoveFailAt(coordinatorEndpoint, failurePoint);
-      }
-      if (!setFailAt) {
+      if (!IM.debugCanUseFailAt()) {
         console.info('Failure tests disabled, skipping...');
         return;
       }
@@ -1007,7 +920,7 @@ function ClusterCollectionSuite () {
       const cn = "UnitTestsClusterCrud";
       try {
         // delay updates for current in the syncer thread
-        setFailAt(failurePoint);
+        IM.debugSetFailAt(failurePoint);
         // create a collection
         const c = db._create(cn, { numberOfShards: 1, replicationFactor: 1 });
         const docs = [];
@@ -1019,7 +932,7 @@ function ClusterCollectionSuite () {
         // throws an exception.
         c.insert(docs);
       } finally {
-        removeFailAt(failurePoint);
+        IM.debugRemoveFailAt(failurePoint);
         db._drop(cn);
       }
     },
