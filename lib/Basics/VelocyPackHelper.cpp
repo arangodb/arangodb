@@ -357,7 +357,7 @@ int VelocyPackHelper::compareNumberValues(VPackValueType lhsType,
                                           VPackSlice lhs, VPackSlice rhs) {
   // This function is only for legacy code. The problem is that it casts
   // all integer types to double, which can lose precision. See
-  // `VelocyPackHelper::compareNumberValuesCorrecly` for a correct
+  // `VelocyPackHelper::compareNumberValuesCorrectly` for a correct
   // implementation. This is only used for legacy vpack indexes.
   if (lhsType == rhs.type()) {
     // both types are equal
@@ -417,68 +417,47 @@ int compareInt64UInt64(int64_t i, uint64_t u) {
 // is actually IEEE 754 with 64 bits, otherwise our comparison method
 // will be faulty:
 
-constexpr uint64_t uint64_2_53 = uint64_t{1} << 53;
 constexpr uint64_t uint64_2_63 = uint64_t{1} << 63;
-constexpr double double_2_53 = static_cast<double>(uint64_2_53);
-const double double_2_64 = ldexp(1.0, 64);
 
 static_assert(53 == std::numeric_limits<double>::digits);
 static_assert(63 == std::numeric_limits<int64_t>::digits);
 
-// The following function deserves an explanation: we want to compare
-// numerically. To get this right and implement a total order (up to equality
-// of differently represented values), we need to be rather careful.
-// First we have to handle NaN separately, we decree it to be larger than
-// any number.
-// Secondly, if d is negative, it is clearly less than any unsigned integer.
-// Note that -0 == +0 and both are not considered negative!
-// Then we must distinguish cases, if u can be represented as double (i.e.
-// it can be written in up to 53 bits), then we can cast it to double and
-// compare using == and <.
-// If d is at least 2^64, it is larger than any uint64_t and we are done.
-// This covers the case of d == +Inf, too.
-// In all other cases we have to use integer comparison to not lose
-// precision. On the other hand, we can now compute the integral part
-// of d accurately and cast it to uint64_t without loss. We then only have
-// to distinguish if d has a fractional part (in which case it lies between
-// two integers), or not (in which case it is equal to its integral part).
+// This function deserves an explanation: Not all possible values of
+// uint64_t can be represented faithfully as double (IEEE 754 64bit).
+// At the same time, there are lots of values of double which cannot
+// be represented as uint64_t. Therefore, proper numerical comparison
+// is somewhat of a challenge. We cannot just cast one to the other
+// and then compare. First we need to handle NaN separately. Then, we
+// need to carefully cast u to double and keep track what we lost due to
+// the limited precision of double. Then we can evaluate the result.
+// This method has been evaluated using godbolt. Only change if you
+// know what you are doing!
 int compareUInt64Double(uint64_t u, double d) {
   if (std::isnan(d)) [[unlikely]] {
     return VelocyPackHelper::cmp_less;
   }
-  if (d < 0.0) {
-    return VelocyPackHelper::cmp_greater;
+  // We essentially want to cast to double, but we want to explicitly
+  // round downwards if necessary and also keep the low bits which we
+  // lose due to limited precision of doubles. Therefore we determine
+  // the number of leading zero bits and from this the number of low bits
+  // we will lose on the conversion. Including the topmost one bit, a
+  // IEEE 754 double can store 53 bits of precision. Therefore, we can
+  // accomodate clz+53 bits in the double (which could be all 64 bits!).
+  // We can then mask the low bits out and do a static cast:
+  auto clz = std::countl_zero(u);
+  auto rbits = 64 - std::min(64, clz + 53);
+  auto const mask = (std::uint64_t{1} << rbits) - 1;
+  auto ud = static_cast<double>(u & ~mask);
+  // Now ud is u cast to double with rounding down. If ud and d are not
+  // equal as doubles, then the comparison result is correct. If not, we
+  // need to distinguish if we lost bits above (in which case u was actually
+  // larger than d numerically), or not (in which case they represent the
+  // same integral value):
+  if (ud == d) {
+    return (mask & u) != 0 ? VelocyPackHelper::cmp_greater
+                           : VelocyPackHelper::cmp_equal;
   }
-  if (u < uint64_2_53) {
-    // All integers smaller than 2^53 can be represented exactly in IEEE 754.
-    return comp<double>(static_cast<double>(u), d);
-  }
-  if (d < double_2_53) {
-    // since we know that u >= 2^53
-    return VelocyPackHelper::cmp_greater;
-  }
-  if (d >= double_2_64) {
-    // Note that this covers the case that d = +inf !
-    return VelocyPackHelper::cmp_less;  // since we know that u < 2^64
-  }
-  // Now we know that both numbers are >= 2^53 and < 2^64, so we can look
-  // at the integral and fractional parts of d and decide then:
-  double df = floor(d);
-  uint64_t du = static_cast<uint64_t>(df);  // will work and give the
-                                            // correct integer!
-  if (u < du) {
-    return VelocyPackHelper::cmp_less;
-  }
-  if (u > du) {
-    return VelocyPackHelper::cmp_greater;
-  }
-  // So u == du, let's check the fractional part of d:
-  if (d == df) {
-    // No fractional part, so d and u are equal:
-    return VelocyPackHelper::cmp_equal;
-  }
-  // There is a fractional part, so u is smaller:
-  return VelocyPackHelper::cmp_less;
+  return ud < d ? VelocyPackHelper::cmp_less : VelocyPackHelper::cmp_greater;
 }
 
 // The following function deserves an explanation. We want to compare
@@ -573,7 +552,11 @@ int VelocyPackHelper::compareNumberValuesCorrectly(VPackValueType lhsType,
       l.d = lhs.getNumericValue<double>();
       types += 2;
       break;
-    default:    // only happens for the as of now unsupported UTCDate type
+    case VPackValueType::UTCDate:
+      l.i = lhs.getUTCDate();
+      types += 0;
+      break;
+    default:    // does not happen, just to please the compiler!
       l.u = 0;  // treat anything else as 0
       types += 1;
       break;
@@ -592,7 +575,11 @@ int VelocyPackHelper::compareNumberValuesCorrectly(VPackValueType lhsType,
       r.d = rhs.getNumericValue<double>();
       types += 6;
       break;
-    default:    // only happens for the as of now unsupported UTCDate type
+    case VPackValueType::UTCDate:
+      r.i = lhs.getUTCDate();
+      types += 0;
+      break;
+    default:    // does not happen, just to please the compiler!
       r.u = 0;  // treat anything else as 0
       types += 3;
       break;

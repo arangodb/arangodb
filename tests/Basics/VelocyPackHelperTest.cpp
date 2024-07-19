@@ -295,7 +295,7 @@ constexpr uint64_t mantmax = (uint64_t(1) << 52) - 1;
 
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
-TEST(VPackHelperTest, test_comparison_numerical) {
+TEST(VPackHelperTest, test_comparison_numerical_double) {
   // We create a vector of numerical velocypack values which is supposed
   // to be sorted stricly ascending. We also check transitivity by comparing
   // all pairs:
@@ -307,6 +307,7 @@ TEST(VPackHelperTest, test_comparison_numerical) {
   }
   v.push_back(makeVPack(makeDoubleValue(1, 0, mantmax).d));  // - denormalized
   v.push_back(makeVPack(makeDoubleValue(1, 0, 1).d));        // - denormalized
+  // Avoid -0, since it is equal to +0!
   // v.push_back(makeVPack(makeDoubleValue(1, 0, 0).d));        // - 0
 
   v.push_back(makeVPack(makeDoubleValue(0, 0, 0).d));        // + 0
@@ -325,6 +326,11 @@ TEST(VPackHelperTest, test_comparison_numerical) {
     EXPECT_EQ(-1, c) << "Not strictly increasing: " << i << " "
                      << v[i].slice().toJson() << " "
                      << v[i + 1].slice().toJson();
+    c = VelocyPackHelper::compareNumberValuesCorrectly(
+        v[i + 1].slice().type(), v[i + 1].slice(), v[i].slice());
+    EXPECT_EQ(1, c) << "Not strictly decreasing: " << i << " "
+                    << v[i + 1].slice().toJson() << " "
+                    << v[i].slice().toJson();
   }
   // Check reflexivity:
   for (std::size_t i = 0; i < v.size(); ++i) {
@@ -439,4 +445,196 @@ TEST(VPackHelperTest, test_numbers_compare_as_doubles) {
                     b.slice().type(), b.slice(), c.slice()));
   EXPECT_EQ(-1, VelocyPackHelper::compareNumberValuesCorrectly(
                     a.slice().type(), a.slice(), c.slice()));
+}
+
+template<typename T>
+static inline void checkNaN(T t) {
+  VPackBuilder nan = makeVPack(makeDoubleValue(0, 2047, 1).d);  // NaN
+  VPackBuilder a = makeVPack(t);
+  EXPECT_EQ(-1, VelocyPackHelper::compareNumberValuesCorrectly(
+                    (a).slice().type(), (a).slice(), nan.slice()));
+  EXPECT_EQ(1, VelocyPackHelper::compareNumberValuesCorrectly(
+                   nan.slice().type(), nan.slice(), (a).slice()));
+}
+
+TEST(VPackHelperTest, test_nan_greater_than_all) {
+  VPackBuilder a;
+  checkNaN(int64_t{0});
+  checkNaN(uint64_t{0});
+  checkNaN(int64_t{-1});
+  checkNaN(int64_t{1});
+  checkNaN(uint64_t{1});
+  checkNaN(std::numeric_limits<int64_t>::max());
+  checkNaN(std::numeric_limits<int64_t>::min());
+  checkNaN(std::numeric_limits<uint64_t>::max());
+  checkNaN(int64_t{12321222123});
+  checkNaN(int64_t{-12321222123});
+  checkNaN(uint64_t{12321222123});
+
+  checkNaN(double{0.0});                    // +0
+  checkNaN(makeDoubleValue(1, 0, 0).d);     // -0
+  checkNaN(makeDoubleValue(0, 2047, 0).d);  // +infty
+  checkNaN(makeDoubleValue(1, 2047, 0).d);  // -infty
+  checkNaN(double{1.0});
+  checkNaN(double{-1.0});
+  checkNaN(double{123456.789});
+  checkNaN(double{-123456.789});
+  checkNaN(double{1.23456e89});
+  checkNaN(double{-1.23456e89});
+  checkNaN(double{1.23456e-89});
+  checkNaN(double{-1.23456e-89});
+  checkNaN(makeDoubleValue(0, 0, 1).d);                        // denormalized
+  checkNaN(makeDoubleValue(0, 0, 123456789).d);                // denormalized
+  checkNaN(makeDoubleValue(0, 0, (uint64_t{1} << 52) - 1).d);  // denormalized
+  checkNaN(makeDoubleValue(1, 0, 1).d);                        // denormalized
+  checkNaN(makeDoubleValue(1, 0, 123456789).d);                // denormalized
+  checkNaN(makeDoubleValue(1, 0, (uint64_t{1} << 52) - 1).d);  // denormalized
+}
+
+template<typename A, typename B>
+static inline int comp(A a, B b) {
+  VPackBuilder Ba = makeVPack(a);
+  VPackBuilder Bb = makeVPack(b);
+  return VelocyPackHelper::compareNumberValuesCorrectly(Ba.slice().type(),
+                                                        Ba.slice(), Bb.slice());
+}
+
+TEST(VPackHelperTest, test_unsigned_double_comparison) {
+  // Test a large representable value:
+  double d = ldexp(1.0, 52);
+  uint64_t u = uint64_t{1} << 52;
+  EXPECT_EQ(0, comp(d, u));
+  EXPECT_EQ(0, comp(u, d));
+  EXPECT_EQ(0, comp(d + 1.0, u + 1));
+  EXPECT_EQ(0, comp(u + 1, d + 1.0));
+
+  // Test a large non-representable value:
+  d = ldexp(1.0, 53);
+  u = uint64_t{1} << 53;
+  EXPECT_EQ(0, comp(d, u));
+  EXPECT_EQ(0, comp(u, d));
+  // d+1.0 is equal to d here due to limited precision!
+  EXPECT_EQ(-1, comp(d + 1.0, u + 1));
+  EXPECT_EQ(1, comp(u + 1, d + 1.0));
+
+  // Test another large non-representable value:
+  d = ldexp(1.0, 60);
+  u = uint64_t{1} << 60;
+  EXPECT_EQ(0, comp(d, u));
+  EXPECT_EQ(0, comp(u, d));
+  // d+1.0 is equal to d here due to limited precision!
+  EXPECT_EQ(-1, comp(d + 1.0, u + 1));
+  EXPECT_EQ(1, comp(u + 1, d + 1.0));
+
+  // Test close to the top:
+  d = ldexp(1.0, 63);
+  u = uint64_t{1} << 63;
+  EXPECT_EQ(0, comp(d, u));
+  EXPECT_EQ(0, comp(u, d));
+  // d+1.0 is equal to d here due to limited precision!
+  EXPECT_EQ(-1, comp(d + 1.0, u + 1));
+  EXPECT_EQ(1, comp(u + 1, d + 1.0));
+
+  // Test rounding down:
+  d = ldexp(1.0, 60);
+  u = (uint64_t{1} << 61) - 1;
+  EXPECT_EQ(-1, comp(d, u));
+  EXPECT_EQ(1, comp(u, d));
+  d = ldexp(1.0, 61);
+  EXPECT_EQ(1, comp(d, u));
+  EXPECT_EQ(-1, comp(u, d));
+
+  // Test doubles between two representable integers:
+  d = ldexp(1.0, 51) + 0.5;
+  u = uint64_t{1} << 51;
+  EXPECT_EQ(1, comp(d, u));
+  EXPECT_EQ(-1, comp(u, d));
+  EXPECT_EQ(-1, comp(d, u + 1));
+  EXPECT_EQ(1, comp(u + 1, d));
+
+  // Test when no precision is lost by a large margin:
+  d = 123456789.0;
+  u = 123456789;
+  EXPECT_EQ(0, comp(d, u));
+  EXPECT_EQ(0, comp(u, d));
+  EXPECT_EQ(1, comp(d + 0.5, u));
+  EXPECT_EQ(-1, comp(u, d + 0.5));
+  EXPECT_EQ(1, comp(d + 1.0, u));
+  EXPECT_EQ(-1, comp(u, d + 1.0));
+  EXPECT_EQ(1, comp(d, u - 1));
+  EXPECT_EQ(-1, comp(u - 1, d));
+}
+
+TEST(VPackHelperTest, test_signed_double_comparison) {
+  // Test a large representable value:
+  double d = -ldexp(1.0, 52);
+  int64_t i = -(int64_t{1} << 52);
+  EXPECT_EQ(0, comp(d, i));
+  EXPECT_EQ(0, comp(i, d));
+  EXPECT_EQ(0, comp(d + 1.0, i + 1));
+  EXPECT_EQ(0, comp(i + 1, d + 1.0));
+
+  // Test a large non-representable value:
+  d = -ldexp(1.0, 53);
+  i = -(int64_t{1} << 53);
+  EXPECT_EQ(0, comp(d, i));
+  EXPECT_EQ(0, comp(i, d));
+  // d+1.0 is equal to d here due to limited precision!
+  EXPECT_EQ(-1, comp(d - 1.0, i - 1));
+  EXPECT_EQ(1, comp(i - 1, d - 1.0));
+
+  // Test another large non-representable value:
+  d = -ldexp(1.0, 60);
+  i = -(int64_t{1} << 60);
+  EXPECT_EQ(0, comp(d, i));
+  EXPECT_EQ(0, comp(i, d));
+  // d+1.0 is equal to d here due to limited precision!
+  EXPECT_EQ(-1, comp(d + 1.0, i + 1));
+  EXPECT_EQ(1, comp(i + 1, d + 1.0));
+
+  // Test close to the top:
+  d = -ldexp(1.0, 62);
+  i = -(int64_t{1} << 62);
+  EXPECT_EQ(0, comp(d, i));
+  EXPECT_EQ(0, comp(i, d));
+  // d+1.0 is equal to d here due to limited precision!
+  EXPECT_EQ(-1, comp(d + 1.0, i + 1));
+  EXPECT_EQ(1, comp(i + 1, d + 1.0));
+
+  // Test rounding down:
+  d = -ldexp(1.0, 60);
+  i = -((int64_t{1} << 61) - 1);
+  EXPECT_EQ(1, comp(d, i));
+  EXPECT_EQ(-1, comp(i, d));
+  d = -ldexp(1.0, 61);
+  EXPECT_EQ(-1, comp(d, i));
+  EXPECT_EQ(1, comp(i, d));
+
+  // Test doubles between two representable integers:
+  d = -ldexp(1.0, 51) + 0.5;
+  i = -(int64_t{1} << 51);
+  EXPECT_EQ(1, comp(d, i));
+  EXPECT_EQ(-1, comp(i, d));
+  EXPECT_EQ(-1, comp(d, i + 1));
+  EXPECT_EQ(1, comp(i + 1, d));
+
+  // Test when no precision is lost by a large margin:
+  d = -123456789.0;
+  i = -123456789;
+  EXPECT_EQ(0, comp(d, i));
+  EXPECT_EQ(0, comp(i, d));
+  EXPECT_EQ(1, comp(d + 0.5, i));
+  EXPECT_EQ(-1, comp(i, d + 0.5));
+  EXPECT_EQ(1, comp(d + 1.0, i));
+  EXPECT_EQ(-1, comp(i, d + 1.0));
+  EXPECT_EQ(1, comp(d, i - 1));
+  EXPECT_EQ(-1, comp(i - 1, d));
+
+  // Test the smallest signed integer:
+  i = std::numeric_limits<int64_t>::min();
+  d = -ldexp(1.0, 63);
+  EXPECT_EQ(0, comp(d, i));
+  EXPECT_EQ(0, comp(i, d));
+  EXPECT_EQ(-1, comp(d, i + 1));
+  EXPECT_EQ(1, comp(i + 1, d));
 }
