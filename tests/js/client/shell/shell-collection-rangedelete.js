@@ -38,13 +38,13 @@ function CollectionRangeDeleteSuite () {
 
   return {
     setUp : function () {
-      internal.debugClearFailAt();
+      global.instanceManager.debugClearFailAt();
       db._drop(cn);
       c = db._create(cn);
     },
 
     tearDown : function () {
-      internal.debugClearFailAt();
+      global.instanceManager.debugClearFailAt();
       db._drop(cn);
     },
     
@@ -64,7 +64,7 @@ function CollectionRangeDeleteSuite () {
       
       assertEqual(100000, c.count());
 
-      internal.debugSetFailAt("RocksDBRemoveLargeRangeOn");
+      global.instanceManager.debugSetFailAt("RocksDBRemoveLargeRangeOn");
       try {
         // should fire
         c.truncate();
@@ -90,7 +90,7 @@ function CollectionRangeDeleteSuite () {
       
       assertEqual(100000, c.count());
 
-      internal.debugSetFailAt("RocksDBRemoveLargeRangeOn");
+      global.instanceManager.debugSetFailAt("RocksDBRemoveLargeRangeOn");
       // should fire!
       try {
         c.truncate({ compact: false });
@@ -100,7 +100,7 @@ function CollectionRangeDeleteSuite () {
       }
       
       assertEqual(100000, c.count());
-      internal.debugClearFailAt();
+      global.instanceManager.debugClearFailAt();
       
       c.truncate({ compact: false });
       assertEqual(0, c.count());
@@ -113,7 +113,7 @@ function CollectionRangeDeleteSuite () {
       }
 
       assertEqual(100, c.count());
-      internal.debugSetFailAt("RocksDBRemoveLargeRangeOn");
+      global.instanceManager.debugSetFailAt("RocksDBRemoveLargeRangeOn");
       // should not fire
       c.truncate({ compact: false });
       assertEqual(0, c.count());
@@ -122,8 +122,8 @@ function CollectionRangeDeleteSuite () {
         c.insert({});
       }
       
-      internal.debugClearFailAt();
-      internal.debugSetFailAt("RocksDBRemoveLargeRangeOff");
+      global.instanceManager.debugClearFailAt();
+      global.instanceManager.debugSetFailAt("RocksDBRemoveLargeRangeOff");
 
       try {
         // should fire
@@ -136,7 +136,7 @@ function CollectionRangeDeleteSuite () {
   };
 }
 
-if (internal.debugCanUseFailAt()) {
+if (global.instanceManager.debugCanUseFailAt()) {
   jsunity.run(CollectionRangeDeleteSuite);
 }
 

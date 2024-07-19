@@ -31,7 +31,9 @@ let internal = require('internal');
 let arangodb = require('@arangodb');
 let fs = require('fs');
 let db = arangodb.db;
-let { debugCanUseFailAt, debugRemoveFailAt, debugSetFailAt, debugClearFailAt, waitForShardsInSync } = require('@arangodb/test-helper');
+let { waitForShardsInSync } = require('@arangodb/test-helper');
+let { instanceRole } = require('@arangodb/testutils/instance');
+let IM = global.instanceManager;
 
 function queryAgencyJob (id) {
   let query = arango.GET(`/_admin/cluster/queryAgencyJob?id=${id}`);
@@ -153,14 +155,14 @@ function moveShardSynchronizeShardFailureSuite() {
         fs.writeFileSync(pcPath, "");
 
         // Activate failure points in leader and follower:
-        debugSetFailAt(followerEndpoint, "HandleLeadership::before");
-        debugSetFailAt(followerEndpoint, "HandleLeadership::after");
-        debugSetFailAt(followerEndpoint, "Maintenance::BeforePhaseTwo");
-        debugSetFailAt(leaderEndpoint, "SynchronizeShard::beginning");
-        debugSetFailAt(leaderEndpoint, "SynchronizeShard::beforeSetTheLeader");
-        debugSetFailAt(leaderEndpoint, "ClusterInfo::loadCurrentSeesLeader");
-        debugSetFailAt(leaderEndpoint, "ClusterInfo::loadCurrentDone");
-        debugSetFailAt(leaderEndpoint, "SynchronizeShard::fail");
+        IM.debugSetFailAt("HandleLeadership::before", undefined, undefined, followerEndpoint);
+        IM.debugSetFailAt("HandleLeadership::after", undefined, undefined, followerEndpoint);
+        IM.debugSetFailAt("Maintenance::BeforePhaseTwo", undefined, undefined, followerEndpoint);
+        IM.debugSetFailAt("SynchronizeShard::beginning", undefined, undefined, leaderEndpoint);
+        IM.debugSetFailAt("SynchronizeShard::beforeSetTheLeader", undefined, undefined, leaderEndpoint);
+        IM.debugSetFailAt("ClusterInfo::loadCurrentSeesLeader", undefined, undefined, leaderEndpoint);
+        IM.debugSetFailAt("ClusterInfo::loadCurrentDone", undefined, undefined, leaderEndpoint);
+        IM.debugSetFailAt("SynchronizeShard::fail", undefined, undefined, leaderEndpoint);
 
         // Now move the shard:
         let res = moveShard("_system", cn, collInfo.shard, collInfo.leader, collInfo.follower, false /* dontwait */);
@@ -184,8 +186,7 @@ function moveShardSynchronizeShardFailureSuite() {
         // Remove program and failure points:
         fs.remove(progPath);
         fs.remove(pcPath);
-        debugClearFailAt(leaderEndpoint);
-        debugClearFailAt(followerEndpoint);
+        IM.debugClearFailAt();
       }
     },
     
@@ -193,7 +194,7 @@ function moveShardSynchronizeShardFailureSuite() {
 }
 
 if (db._properties().replicationVersion !== "2" &&
-    internal.debugCanUseFailAt()) {
+    IM.debugCanUseFailAt()) {
   jsunity.run(moveShardSynchronizeShardFailureSuite);
 }
 return jsunity.done();

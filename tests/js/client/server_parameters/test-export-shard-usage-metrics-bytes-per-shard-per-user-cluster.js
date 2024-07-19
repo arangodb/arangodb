@@ -77,11 +77,14 @@ function BaseTestSuite(targetUser) {
 
   let getRawMetrics = function() {
     let lines = [];
-    global.instanceManager.arangods.filter(arangod => arangod.isRole(instanceRole.dbServer)).forEach((server) => {
+    global.instanceManager.arangods.filter(arangod => arangod.isRole(instanceRole.dbServer)).forEach(server => {
+print(server.url)
       let res = request({ method: "GET", url: server.url + "/_admin/usage-metrics", auth: { bearer: jwt } });
       assertEqual(200, res.status);
+      print(JSON.stringify(res))
       lines = lines.concat(res.body.split(/\n/).filter((l) => l.match(/^arangodb_collection_requests_bytes_(read|written)_total/)));
     });
+    print(lines)
     return lines;
   };
 
@@ -91,6 +94,7 @@ function BaseTestSuite(targetUser) {
       collections = [ collections ];
     }
     let metrics = getRawMetrics();
+    print(metrics)
     let result = {};
     metrics.forEach((line) => {
       let matches = line.match(/^arangodb_collection_requests_bytes_(read|written)_total\s*\{(.*)?\}\s*(\d+)$/);
@@ -232,6 +236,9 @@ function BaseTestSuite(targetUser) {
 
   const assertTotalWriteMetricsAreCounted = (c, replicationFactor, leaderLowerBound, leaderUpperBound, canHaveReads = false) => {
     const parsedMetrics = getParsedMetrics(db._name(), c.name());
+    print(parsedMetrics)
+    print(db._name())
+    print(c.name());
     const {shards, logs} = getShardsAndLogs(db, c);
     assertEqual(parsedMetrics.hasOwnProperty("reads"), canHaveReads, `We do ${canHaveReads ? "" : "not"} expect to have reads. ${JSON.stringify(parsedMetrics)}`);
     assertTrue(parsedMetrics.hasOwnProperty("writes"), `${JSON.stringify(parsedMetrics)} should report writes`);
@@ -1407,12 +1414,17 @@ function BaseTestSuite(targetUser) {
     testHasMetricsWhenUsingStreamingTrx : function () {
       [1, 2].forEach((replicationFactor) => {
         const cn = getUniqueCollectionName();
+        print(db._name())
+        print(cn)
+        print(arango.connectedUser())
 
         let c = db._create(cn, {numberOfShards: 3, replicationFactor});
         try {
           let shards = c.shards();
           assertEqual(3, shards.length);
-
+          print(shards)
+          print(arango.connectedUser())
+          
           const n = 50;
           let trx = db._createTransaction({ collections: { write: cn } });
 
@@ -1422,6 +1434,9 @@ function BaseTestSuite(targetUser) {
             for (let i = 0; i < n; ++i) {
               c.insert({ value: i });
             }
+            print(arango.connectedUser())
+            print('failurepoints')
+            print(global.instanceManager.checkServerFailurePoints())
             assertTotalWriteMetricsAreCounted(db[cn], replicationFactor, n * 40, n * 50);
             // issue read query inside streaming trx
             trx.query(`FOR doc IN ${cn} RETURN doc`).toArray();
@@ -1577,10 +1592,12 @@ function TestUser1Suite() {
     
       arango.reconnect(endpoint, db._name(), user, '');
       // set this failure point so that metrics updates are pushed immediately
+      print('ssss')
       global.instanceManager.debugSetFailAt("alwaysPublishShardMetrics", jwt);
     },
 
     tearDownAll: function () {
+      print('rrrr')
       global.instanceManager.debugRemoveFailAt("alwaysPublishShardMetrics", jwt);
       arango.reconnect(endpoint, '_system', oldUser, '');
 
@@ -1616,10 +1633,12 @@ function TestUser2Suite() {
     
       arango.reconnect(endpoint, db._name(), user, '');
       // set this failure point so that metrics updates are pushed immediately
+      print('sss')
       global.instanceManager.debugSetFailAt("alwaysPublishShardMetrics", jwt);
     },
 
     tearDownAll: function () {
+      print('rrr')
       global.instanceManager.debugRemoveFailAt("alwaysPublishShardMetrics", jwt);
       arango.reconnect(endpoint, '_system', oldUser, '');
 
