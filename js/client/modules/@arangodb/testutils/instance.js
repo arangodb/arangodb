@@ -37,7 +37,6 @@ const internal = require('internal');
 const crashUtils = require('@arangodb/testutils/crash-utils');
 const {sanHandler} = require('@arangodb/testutils/san-file-handler');
 const ArangoError = require('@arangodb').ArangoError;
-const debugGetFailurePoints = require('@arangodb/test-helper').debugGetFailurePoints;
 
 /* Functions: */
 const {
@@ -1265,6 +1264,18 @@ class instance {
       ports.push('port ' + port);
     }
     return `  [${this.name}] up with pid ${this.pid} - ${this.dataDir}`;
+  }
+  debugGetFailurePoints() {
+    this.connect();
+    let haveFailAt = arango.GET("/_admin/debug/failat") === true;
+    if (haveFailAt) {
+      let res = arango.GET_RAW('/_admin/debug/failat/all');
+      if (res.code !== 200) {
+        throw "Error checking failure points = " + JSON.stringify(res);
+      }
+      return res.parsedBody;
+    }
+    return [];
   }
   debugSetFailAt(failurePoint, shortName) {
     if (shortName !== undefined && this.shortName !== shortName) {

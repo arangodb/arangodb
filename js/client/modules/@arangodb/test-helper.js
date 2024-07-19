@@ -168,24 +168,6 @@ exports.debugClearFailAt = function (endpoint) {
   }
 };
 
-exports.debugGetFailurePoints = function (endpoint) {
-  const primaryEndpoint = arango.getEndpoint();
-  try {
-    reconnectRetry(endpoint, db._name(), "root", "");
-    let haveFailAt = arango.GET("/_admin/debug/failat") === true;
-    if (haveFailAt) {
-      let res = arango.GET_RAW('/_admin/debug/failat/all');
-      if (res.code !== 200) {
-        throw "Error checking failure points = " + JSON.stringify(res);
-      }
-      return res.parsedBody;
-    }
-  } finally {
-    reconnectRetry(primaryEndpoint, db._name(), "root", "");
-  }
-  return [];
-};
-
 exports.getChecksum = function (endpoint, name) {
   const primaryEndpoint = arango.getEndpoint();
   try {

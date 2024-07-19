@@ -36,7 +36,7 @@ const rp = require('@arangodb/testutils/result-processing');
 const inst = require('@arangodb/testutils/instance');
 const { agencyMgr } = require('@arangodb/testutils/agency');
 const crashUtils = require('@arangodb/testutils/crash-utils');
-const {versionHas, debugGetFailurePoints} = require("@arangodb/test-helper");
+const {versionHas} = require("@arangodb/test-helper");
 const crypto = require('@arangodb/crypto');
 const ArangoError = require('@arangodb').ArangoError;;
 const netstat = require('node-netstat');
@@ -94,6 +94,8 @@ class instanceManager {
     this.restKeyFile = '';
     this.tcpdump = null;
     this.JWT = null;
+    this.dbName = "_System";
+    this.userName = "root";
     this.memlayout = {};
     this.cleanup = options.cleanup && options.server === undefined;
     if (!options.hasOwnProperty('startupMaxCount')) {
@@ -193,6 +195,13 @@ class instanceManager {
     });
     return ret;
   }
+  rememberConnection() {
+    this.dbName = db._name();
+    this.userName = arango.connectedUser();
+  }
+  reconnectMe() {
+    arango.reconnect(this.endpoint, this.dbName, this.userName, '');
+  }
   debugCanUseFailAt() {
     const res = arango.GET_RAW("_admin/debug/failat");
     if (res.code !== 200) {
@@ -203,23 +212,45 @@ class instanceManager {
     }
     return res.parsedBody === true;
   }
-  debugSetFailAt(failurePoint, shortName) {
+  debugSetFailAt(failurePoint, shortName, role, url) {
     let dbName = db._name();
     let oldUser = arango.connectedUser();
-    this.arangods.forEach(arangod => {arangod.debugSetFailAt(failurePoint, shortName);});
+    this.arangods.forEach(arangod => {
+      if (role !== undefined && !arangod.isRole(role)) {
+        return;
+      }
+      if (url !== undefined && arangod.url !== url) {
+        return;
+      }
+      arangod.debugSetFailAt(failurePoint, shortName);
+    });
     arango.reconnect(this.endpoint, dbName, oldUser, '');
   }
-  debugRemoveFailAt(failurePoint, shortName) {
-    let dbName = db._name();
-    let oldUser = arango.connectedUser();
-    this.arangods.forEach(arangod => {arangod.debugClearFailAt(failurePoint, shortName);});
-    arango.reconnect(this.endpoint, dbName, oldUser, '');
+  debugRemoveFailAt(failurePoint, shortName, role, url) {
+    this.rememberConnection();
+    this.arangods.forEach(arangod => {
+      if (role !== undefined && !arangod.isRole(role)) {
+        return;
+      }
+      if (url !== undefined && arangod.url !== url) {
+        return;
+      }
+      arangod.debugClearFailAt(failurePoint, shortName);
+    });
+    this.reconnectMe();
   }
-  debugClearFailAt(failurePoint, shortName) {
-    let dbName = db._name();
-    let oldUser = arango.connectedUser();
-    this.arangods.forEach(arangod => {arangod.debugClearFailAt(failurePoint, shortName);});
-    arango.reconnect(this.endpoint, dbName, oldUser, '');
+  debugClearFailAt(failurePoint, shortName, role, url) {
+    this.rememberConnection();
+    this.arangods.forEach(arangod => {
+      if (role !== undefined && !arangod.isRole(role)) {
+        return;
+      }
+      if (url !== undefined && arangod.url !== url) {
+        return;
+      }
+      arangod.debugClearFailAt(failurePoint, shortName);
+    });
+    this.reconnectMe();
   }
   debugTerminate() {
     this.arangods.forEach(arangod => {arangod.debugTerminate();});
@@ -999,13 +1030,12 @@ class instanceManager {
     if (instanceMgr !== null) {
       im = instanceMgr;
     }
-
     im.arangods.forEach(arangod => {
       // we don't have JWT success atm, so if, skip:
       if ((!arangod.isAgent()) &&
           !arangod.args.hasOwnProperty('server.jwt-secret-folder') &&
           !arangod.args.hasOwnProperty('server.jwt-secret')) {
-        let fp = debugGetFailurePoints(arangod.endpoint);
+        let fp = arangod.debugGetFailurePoints();
         if (fp.length > 0) {
           failurePoints.push({
             "role": arangod.instanceRole,
