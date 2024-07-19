@@ -69,36 +69,6 @@ constexpr std::string_view cidRef("cid");
 static std::unique_ptr<VPackAttributeTranslator> translator;
 static std::unique_ptr<VPackCustomTypeHandler> customTypeHandler;
 
-template<bool useUtf8, typename Comparator>
-int compareObjects(VPackSlice lhs, VPackSlice rhs,
-                   VPackOptions const* options) {
-  // compare two velocypack objects
-  std::set<std::string_view, Comparator> keys;
-  VPackCollection::unorderedKeys(lhs, keys);
-  VPackCollection::unorderedKeys(rhs, keys);
-  for (auto const& key : keys) {
-    VPackSlice lhsValue = lhs.get(key).resolveExternal();
-    if (lhsValue.isNone()) {
-      // not present => null
-      lhsValue = VPackSlice::nullSlice();
-    }
-    VPackSlice rhsValue = rhs.get(key).resolveExternal();
-    if (rhsValue.isNone()) {
-      // not present => null
-      rhsValue = VPackSlice::nullSlice();
-    }
-
-    int result = VelocyPackHelper::compare(lhsValue, rhsValue, useUtf8, options,
-                                           &lhs, &rhs);
-
-    if (result != 0) {
-      return result;
-    }
-  }
-
-  return 0;
-}
-
 // statically computed table of type weights
 // the weight for type MinKey must be lowest, the weight for type MaxKey must be
 // highest the table contains a special value -50 to indicate that the value is
@@ -161,6 +131,37 @@ static int8_t const typeWeights[256] = {
 };
 
 }  // namespace
+
+template<bool useUtf8, typename Comparator,
+         VelocyPackHelper::SortingMethod sortingMethod>
+int VelocyPackHelper::compareObjects(VPackSlice lhs, VPackSlice rhs,
+                                     VPackOptions const* options) {
+  // compare two velocypack objects
+  std::set<std::string_view, Comparator> keys;
+  VPackCollection::unorderedKeys(lhs, keys);
+  VPackCollection::unorderedKeys(rhs, keys);
+  for (auto const& key : keys) {
+    VPackSlice lhsValue = lhs.get(key).resolveExternal();
+    if (lhsValue.isNone()) {
+      // not present => null
+      lhsValue = VPackSlice::nullSlice();
+    }
+    VPackSlice rhsValue = rhs.get(key).resolveExternal();
+    if (rhsValue.isNone()) {
+      // not present => null
+      rhsValue = VPackSlice::nullSlice();
+    }
+
+    int result = VelocyPackHelper::compareInternal<sortingMethod>(
+        lhsValue, rhsValue, useUtf8, options, &lhs, &rhs);
+
+    if (result != 0) {
+      return result;
+    }
+  }
+
+  return 0;
+}
 
 // a default custom type handler that prevents throwing exceptions when
 // custom types are encountered during Slice.toJson() and family
@@ -310,9 +311,14 @@ size_t VelocyPackHelper::VPackStringHash::operator()(
   return static_cast<size_t>(slice.hashString());
 }
 
-bool VelocyPackHelper::VPackEqual::operator()(VPackSlice lhs,
-                                              VPackSlice rhs) const {
-  return VelocyPackHelper::equal(lhs, rhs, false, _options);
+bool VelocyPackHelper::VPackEqualC::operator()(VPackSlice lhs,
+                                               VPackSlice rhs) const {
+  return VelocyPackHelper::equalCorrectly(lhs, rhs, false, _options);
+}
+
+bool VelocyPackHelper::VPackEqualL::operator()(VPackSlice lhs,
+                                               VPackSlice rhs) const {
+  return VelocyPackHelper::equalLegacy(lhs, rhs, false, _options);
 }
 
 static inline int8_t TypeWeight(VPackSlice& slice) {
@@ -836,10 +842,11 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
   return true;
 }
 
-int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs, bool useUTF8,
-                              VPackOptions const* options,
-                              VPackSlice const* lhsBase,
-                              VPackSlice const* rhsBase) {
+template<VelocyPackHelper::SortingMethod sortingMethod>
+int VelocyPackHelper::compareInternal(VPackSlice lhs, VPackSlice rhs,
+                                      bool useUTF8, VPackOptions const* options,
+                                      VPackSlice const* lhsBase,
+                                      VPackSlice const* rhsBase) {
   {
     // will resolve externals and modify both lhs & rhs...
     int8_t lWeight = TypeWeight(lhs);
@@ -888,7 +895,11 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs, bool useUTF8,
     case VPackValueType::Int:
     case VPackValueType::UInt:
     case VPackValueType::SmallInt: {
-      return compareNumberValues(lhsType, lhs, rhs);
+      if (sortingMethod == SortingMethod::Correct) {
+        return compareNumberValuesCorrectly(lhsType, lhs, rhs);
+      } else {
+        return compareNumberValues(lhsType, lhs, rhs);
+      }
     }
     case VPackValueType::String:
     case VPackValueType::Custom: {
@@ -950,7 +961,8 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs, bool useUTF8,
           ar.next();
         }
 
-        int result = compare(lhsValue, rhsValue, useUTF8, options, &lhs, &rhs);
+        int result = compareInternal<sortingMethod>(lhsValue, rhsValue, useUTF8,
+                                                    options, &lhs, &rhs);
         if (result != 0) {
           return result;
         }
@@ -960,11 +972,11 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs, bool useUTF8,
     }
     case VPackValueType::Object: {
       if (useUTF8) {
-        return ::compareObjects<true, AttributeSorterUTF8StringView>(lhs, rhs,
-                                                                     options);
+        return compareObjects<true, AttributeSorterUTF8StringView,
+                              sortingMethod>(lhs, rhs, options);
       }
-      return ::compareObjects<false, AttributeSorterBinaryStringView>(lhs, rhs,
-                                                                      options);
+      return compareObjects<false, AttributeSorterBinaryStringView,
+                            sortingMethod>(lhs, rhs, options);
     }
     case VPackValueType::Illegal:
     case VPackValueType::MinKey:
@@ -979,6 +991,21 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs, bool useUTF8,
       return 0;
   }
 }
+
+// Instantiate template functions explicitly:
+template int
+VelocyPackHelper::compareInternal<VelocyPackHelper::SortingMethod::Correct>(
+    arangodb::velocypack::Slice lhs, arangodb::velocypack::Slice rhs,
+    bool useUTF8, arangodb::velocypack::Options const* options,
+    arangodb::velocypack::Slice const* lhsBase,
+    arangodb::velocypack::Slice const* rhsBase);
+
+template int
+VelocyPackHelper::compareInternal<VelocyPackHelper::SortingMethod::Legacy>(
+    arangodb::velocypack::Slice lhs, arangodb::velocypack::Slice rhs,
+    bool useUTF8, arangodb::velocypack::Options const* options,
+    arangodb::velocypack::Slice const* lhsBase,
+    arangodb::velocypack::Slice const* rhsBase);
 
 bool VelocyPackHelper::hasNonClientTypes(velocypack::Slice input) {
   if (input.isExternal()) {
