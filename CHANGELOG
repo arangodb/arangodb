@@ -1,4 +1,4 @@
-3.12.1 (XXXX-XX-XX)
+3.12.1 (2024-07-21)
 -------------------
 
 * Fix an "invalid document type" exception when using the AQL ENTRIES function
