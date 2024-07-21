@@ -5,12 +5,12 @@
   on a database document or edge.
 
 * Fixed MDS-1216: restoring the previous value of the "padded" key generator
-  could lead to the key generator's sequence being set to a too low value
-  after recovery.
+  could lead to the key generator's sequence being set to a too low value after
+  recovery.
 
 * Updated ArangoDB Starter to v0.19.3.
 
-* Fix a nullptr access when aborting a move shard job for a already dropped 
+* Fix a nullptr access when aborting a move shard job for a already dropped
   collection.
 
 * Use __nss_configure_lookup to opt out of /etc/nsswitch.conf.
