@@ -1,7 +1,7 @@
 v3.11.11 (XXXX-XX-XX)
 ---------------------
 
-* Updated ArangoDB Starter to v0.18.7 and arangosync to v2.19.8-preview-2.
+* Updated ArangoDB Starter to v0.18.7 and arangosync to v2.19.8.
 
 * Fixed MDS-1216: restoring the previous value of the "padded" key generator
   could lead to the key generator's sequence being set to a too low value after
