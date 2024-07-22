@@ -28,10 +28,11 @@
 var db = require('@arangodb').db;
 var internal = require('internal');
 var jsunity = require('jsunity');
+let IM = global.instanceManager;
 
 if (runSetup === true) {
   'use strict';
-  global.instanceManager.debugClearFailAt();
+  IM.debugClearFailAt();
 
   db._drop('UnitTestsRecovery');
   db._create('UnitTestsRecovery');
@@ -49,7 +50,7 @@ if (runSetup === true) {
           c.save({ _key: 'test' + i, value1: 'test' + i, value2: i }, { waitForSync: true });
         }
 
-        require('internal').debugSetFailAt('TransactionWriteCommitMarkerSegfault');
+        IM.debugSetFailAt('TransactionWriteCommitMarkerSegfault');
       }
     });
   } catch (err) {

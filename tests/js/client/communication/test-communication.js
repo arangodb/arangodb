@@ -33,13 +33,7 @@ let fs = require('fs');
 let pu = require('@arangodb/testutils/process-utils');
 let db = arangodb.db;
 
-let { debugCanUseFailAt,
-      debugSetFailAt,
-      debugResetRaceControl,
-      debugRemoveFailAt,
-      debugClearFailAt,
-      versionHas
-    } = require('@arangodb/test-helper');
+let { versionHas } = require('@arangodb/test-helper');
 
 const isCov = versionHas('coverage');
 const {
@@ -54,6 +48,7 @@ const toArgv = require('internal').toArgv;
 
 
 const getMetric = require('@arangodb/test-helper').getMetricSingle;
+let { instanceRole } = require('@arangodb/testutils/instance');
 let IM = global.instanceManager;
 
 const endpointToURL = (endpoint) => {
@@ -212,7 +207,7 @@ function GenericAqlSetupPathSuite(type) {
     const shardList = db[twoShardColName].shards(true);
     for (const [shard, servers] of Object.entries(shardList)) {
       const endpoint = getEndpointById(servers[0]);
-      debugSetFailAt(endpoint, `WaitOnLock::${shard}`);
+      IM.debugSetFailAt(`WaitOnLock::${shard}`, undefined, instanceRole.dbServer, endpoint);
     }
   };
 
@@ -221,7 +216,7 @@ function GenericAqlSetupPathSuite(type) {
     const shardList = db[twoShardColName].shards(true);
     for (const [shard, servers] of Object.entries(shardList)) {
       const endpoint = getEndpointById(servers[0]);
-      debugClearFailAt(endpoint);
+      IM.debugClearFailAt(undefined, undefined, instanceRole.dbServer, endpoint);
       debugResetRaceControl(endpoint);
     }
   };

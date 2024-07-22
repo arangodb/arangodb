@@ -29,6 +29,7 @@ var jsunity = require("jsunity");
 var arangodb = require("@arangodb");
 var db = arangodb.db;
 var internal = require("internal");
+let IM = global.instanceManager;
 
 const {ERROR_QUERY_COLLECTION_LOCK_FAILED, ERROR_CLUSTER_TIMEOUT} = internal.errors;
 
@@ -56,7 +57,7 @@ function ahuacatlFailureSuite () {
         
   return {
     setUpAll: function () {
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
       db._drop(cn);
       db._create(cn, { numberOfShards: 3 });
       db._drop(en);
@@ -64,21 +65,21 @@ function ahuacatlFailureSuite () {
     },
 
     setUp: function () {
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
     },
 
     tearDownAll: function () {
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
       db._drop(cn);
       db._drop(en);
     },
 
     tearDown: function () {
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
     },
 
     testQueryRegistryInsert1: function () {
-      internal.debugSetFailAt("QueryRegistryInsertException1");
+      IM.debugSetFailAt("QueryRegistryInsertException1");
       // we need a diamond-query to trigger an insertion into the q-registry
       assertFailingQuery(
         "FOR doc1 IN " +
@@ -91,7 +92,7 @@ function ahuacatlFailureSuite () {
     },
 
     testQueryRegistryInsert2: function () {
-      internal.debugSetFailAt("QueryRegistryInsertException2");
+      IM.debugSetFailAt("QueryRegistryInsertException2");
       // we need a diamond-query to trigger an insertion into the q-registry
       assertFailingQuery(
         "FOR doc1 IN " +
@@ -104,7 +105,7 @@ function ahuacatlFailureSuite () {
     },
 
     testShutdownSync: function () {
-      internal.debugSetFailAt("ExecutionEngine::shutdownSync");
+      IM.debugSetFailAt("ExecutionEngine::shutdownSync");
 
       let res = db._query("FOR doc IN " + cn + " RETURN doc").toArray();
       // no real test expectations here, just that the query works and doesn't fail on shutdown
@@ -112,7 +113,7 @@ function ahuacatlFailureSuite () {
     },
 
     testShutdownSyncDiamond: function () {
-      internal.debugSetFailAt("ExecutionEngine::shutdownSync");
+      IM.debugSetFailAt("ExecutionEngine::shutdownSync");
 
       let res = db._query(
         "FOR doc1 IN " +
@@ -126,15 +127,15 @@ function ahuacatlFailureSuite () {
     },
 
     testShutdownSyncFailInGetSome: function () {
-      internal.debugSetFailAt("ExecutionEngine::shutdownSync");
-      internal.debugSetFailAt("RestAqlHandler::getSome");
+      IM.debugSetFailAt("ExecutionEngine::shutdownSync");
+      IM.debugSetFailAt("RestAqlHandler::getSome");
 
       assertFailingQuery("FOR doc IN " + cn + " RETURN doc");
     },
 
     testShutdownSyncDiamondFailInGetSome: function () {
-      internal.debugSetFailAt("ExecutionEngine::shutdownSync");
-      internal.debugSetFailAt("RestAqlHandler::getSome");
+      IM.debugSetFailAt("ExecutionEngine::shutdownSync");
+      IM.debugSetFailAt("RestAqlHandler::getSome");
 
       assertFailingQuery(
         "FOR doc1 IN " +
@@ -146,7 +147,7 @@ function ahuacatlFailureSuite () {
     },
 
     testNoShardsReturned: function () {
-      internal.debugSetFailAt("ClusterInfo::failedToGetShardList");
+      IM.debugSetFailAt("ClusterInfo::failedToGetShardList");
       assertFailingQuery(
         "FOR doc1 IN " +
           cn +
@@ -180,7 +181,7 @@ function ahuacatlFailureOneShardSuite () {
     setUpAll: function () {
       // Note: We use a OneShardDatabase here to force the SLEEP onto the DBServer
       // This is only convenience for the test but not a requirement
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
       db._createDatabase(dbn, { sharding: "single" });
       db._useDatabase(dbn);
       const c = db._create(cn);
@@ -192,21 +193,21 @@ function ahuacatlFailureOneShardSuite () {
     },
 
     setUp: function () {
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
     },
 
     tearDownAll: function () {
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
       db._useDatabase("_system");
       db._dropDatabase(dbn);
     },
 
     tearDown: function () {
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
     },
 
     testAbortQuerySnippetsOnTimeout: function () {
-      internal.debugSetFailAt("RemoteExecutor::impatienceTimeout");
+      IM.debugSetFailAt("RemoteExecutor::impatienceTimeout");
       // This query sleeps 100 * 10 seconds. So it should give us a lot of time
       // to abort it early and still assert we do not overshoot on time.
 
@@ -230,7 +231,7 @@ function ahuacatlFailureOneShardSuite () {
   };
 }
  
-if (internal.debugCanUseFailAt()) {
+if (IM.debugCanUseFailAt()) {
   jsunity.run(ahuacatlFailureSuite);
   jsunity.run(ahuacatlFailureOneShardSuite);
 }
