@@ -30,8 +30,6 @@
 #include "Basics/Result.h"
 #include "Containers/FlatHashSet.h"
 #include "VocBase/Identifiers/IndexId.h"
-#include "VocBase/Identifiers/LocalDocumentId.h"
-#include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
 #include <cstddef>
