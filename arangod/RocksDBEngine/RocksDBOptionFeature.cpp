@@ -1540,9 +1540,9 @@ limited number of edge collections/shards/indexes.)");
                       arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31202)
       .setLongDescription(R"(Enabling this option will make RocksDB's
-  compaction write the persistent index data for different vector
+  compaction write the index data for different vector
   indexes (also indexes from different collections/shards) into different
-  .sst files. Otherwise the persistent index data from different
+  .sst files. Otherwise the index data from different
   collections/shards/indexes can be mixed and written into the same .sst files.
 
   Enabling this option usually has the benefit of making the RocksDB

@@ -515,23 +515,21 @@ struct VectorIndexDefinition {
                 f.field("randomFunctions", x.randomFunctions))
         .invariant([](VectorIndexDefinition& x) -> inspection::Status {
           if (x.dimensions < 1) {
-            return {"Dimensions must be greated then 0!"};
+            return {"Dimensions must be greater then 0!"};
           }
           if (x.Kparameter < 1) {
-            return {"K parameter must be greated then 0!"};
+            return {"K parameter must be greater then 0!"};
           }
           if (x.Lparameter < 1) {
-            return {"L parameter must be greated then 0!"};
+            return {"L parameter must be greater then 0!"};
           }
-
           if (x.min > x.max) {
-            return {"Min cannot be greated then max!"};
+            return {"Min cannot be greater then max!"};
           }
           if (x.randomFunctions.size() != x.Kparameter * x.Lparameter) {
-            return fmt::format("Number of randomFunctions must be equal {}!",
+            return fmt::format("Number of `randomFunctions` must be equal {}!",
                                x.Kparameter * x.Lparameter);
           }
-          // TODO Add more checks, e.g. dimensions
           return inspection::Status::Success{};
         });
   }
