@@ -135,11 +135,6 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// the start of finalize)
   double executionTime() const noexcept;
 
-  /// @brief make sure that the query execution time is set.
-  /// only the first call to this function will set the time.
-  /// every following call will be ignored.
-  void ensureExecutionTime() noexcept;
-
   void prepareQuery();
 
   /// @brief execute an AQL query
@@ -268,6 +263,11 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   std::string extractQueryString(size_t maxLength, bool show) const;
 
  protected:
+  /// @brief make sure that the query execution time is set.
+  /// only the first call to this function will set the time.
+  /// every following call will be ignored.
+  void ensureExecutionTime() noexcept;
+
   /// @brief initializes the query
   void init(bool createProfile);
 
