@@ -1,6 +1,112 @@
 devel
 -----
 
+* Optional logging of AQL query metadata into `_queries` system collection.
+
+  There is now a functionality to optionally log metadata of finished AQL
+  queries into a system collection for later analysis. The query metadata
+  includes the following attributes:
+  - `id`: internal ID of the query
+  - `database`: name of the database the query ran in
+  - `user`: name of the user that executed the query
+  - `query`: query string
+  - `bindVars`:
+  - `dataSources`: array of collection names / view names that were used in the
+    query.
+  - `started`: date/time the query started executing
+  - `runTime`: total runtime of the query, in seconds
+  - `state`: the state of the query (will always be "finished")
+  - `stream` whether or not the query was a streaming AQL query
+  - `modificationQuery`: whether or not the query was a modification query
+  - `warnings`: number of warnings issued by the query
+  - `exitCode`: exit code of the query (0 = success, any other exit code 
+    indicates a specific error)
+  
+  Only finished queries will be logged to the `_queries` system collection.
+  Queries are considered "finished" in case they have executed completely
+  or have failed with an error. In-flight queries will not be logged, but
+  should eventually become finished queries.
+
+  Queries will only be logged to the `_queries` system collection if the
+  startup option `--query.collection-logger.enabled` is set to `true`.
+  Additionally, queries in the `_system` database are only logged if the
+  option `--query.collection-logger.include-system-database` is also set to
+  `true`.
+  The option `--query.collection-logger-probability` can be used to specify a
+  probability for logging queries to the system collection. If set to a value
+  of `100`, all executed queries will be logged. If set to a value less than
+  `100`, only the specified percentage of queries will be logged. This can be
+  used to draw a random sample from the total set of queries on very busy 
+  systems on which tracking every individual query would have prohibitive
+  overhead. For example, using `--query.collection-logger-probability=1` will
+  log approximately every 100th query to the system collection, and ignore all
+  others. 
+  Which exact queries are logged and which aren't is based on randomness.
+  The startup option `--query.collection-logger-all-slow-queries` can be used
+  to make all slow queries be logged, regardless of whether they were selected
+  for sampling or not.
+
+  Query metadata is stored in the `_queries` collection in the `_system`
+  database. This collection will be created automatically when needed. The
+  collection is a normal system collection, so it can be queried by everyone
+  with at least read access to the `_system` database and the `_queries`
+  collection. Keep this in mind when enabling the query logging, as the data
+  may include sensitive information, such as query strings and/or user names.
+  Query metadata can be retrieved by running an AQL query on the `_queries`
+  collection with filters and sort clauses of choice, e.g.
+
+      FOR doc IN queries
+        FILTER doc.runTime >= 10.0
+        FILTER doc.user == @user
+        SORT doc.started
+        RETURN doc
+
+      FOR doc IN queries
+        FILTER doc.started >= @start
+        FILTER doc.started < @end
+        COLLECT db = doc.database, user = doc.user
+        WITH COUNT INTO count
+        RETURN {db, user, count}
+
+  When query logging is enabled, obsolete entries from the `_queries` 
+  collection are purged with a configurable schedule. The startup option
+  `--query.collection-logger-retention-time` is used to determine how long
+  after a query's start time it will be approximately retained in the system
+  collection. For example, `--query.collection-logger-retention-time=86400`
+  will keep query information around for approximately 1 day (86400 seconds).
+  The actual cleanup of the system collection is only executed with a 
+  configurable interval as well, so that the cleanup process does not cause
+  much traffic. The cleanup interval can be controlled by setting the option
+  `--query.collection-logger-cleanup-interval`. The value is in milliseconds.
+
+  The option `--query.collection-logger-push-interval` can be used to set a
+  maximum wait time after which queries are logged to the system collection.
+  This is a performance optimization, which helps to reduce the overhead of
+  query logging. For example, `--query.collection-logger-push-interval=10000`
+  will buffer queries in memory for at most 10000 milliseconds before they
+  are actually written to the system collection. When additional queries
+  arrive within this interval, they will be batched together into a single
+  write operation to the system collection. This can amortize the cost of
+  writing the query metadata to the system collection across multiple user 
+  queries.
+
+  The option `--query.collection-logger-max-buffered-queries` can be used to
+  limit the amount of query metadata buffered in memory before it is flushed
+  to the system collection. Once this limit has been reached, no further
+  query metadata will be buffered in memory and will be lost.
+  To make this relatively unlikely, a flush is triggered automatically once
+  a fourth of the maximum queries limit is reached. It is still possible
+  however that the single-thread flush operation cannot keep up with the
+  rate of incoming queries, so that the limit is reached and some query
+  metadata are not logged.
+
+  Any queries that are buffered in memory and are not yet flushed out to the
+  system collection will be lost upon an instance shutdown or crash.
+  This means that the query logging functionality should not be used for
+  auditing, but rather for debugging and troubleshooting query issues, such
+  as finding long-running queries, queries that produced warnings or errors,
+  users that overuse the database etc.
+
 * Add optimizer rule `push-limit-into-index` that pushes a limit down into index
   iteration and can optimize the query execution when compound index is used
   along with SORT and LIMIT clauses.
