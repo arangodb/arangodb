@@ -213,6 +213,7 @@ class instanceManager {
     return res.parsedBody === true;
   }
   debugSetFailAt(failurePoint, shortName, role, url) {
+    let count = 0;
     let dbName = db._name();
     let oldUser = arango.connectedUser();
     this.arangods.forEach(arangod => {
@@ -222,8 +223,13 @@ class instanceManager {
       if (url !== undefined && arangod.url !== url) {
         return;
       }
-      arangod.debugSetFailAt(failurePoint, shortName);
+      if (arangod.debugSetFailAt(failurePoint, shortName)) {
+        count += 1;
+      }
     });
+    if (count === 0) {
+      throw new Error(`no server matched your conditions to set failurepoint ${failurePoint}, ${shortName}, ${role}, ${url}`)
+    }
     arango.reconnect(this.endpoint, dbName, oldUser, '');
   }
   debugRemoveFailAt(failurePoint, shortName, role, url) {

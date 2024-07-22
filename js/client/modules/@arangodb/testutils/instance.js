@@ -1279,23 +1279,25 @@ class instance {
   }
   debugSetFailAt(failurePoint, shortName) {
     if (shortName !== undefined && this.shortName !== shortName) {
-      return;
+      return false;
     }
     this.connect();
     let reply = arango.PUT_RAW('/_admin/debug/failat/' + failurePoint, '');
     if (reply.code !== 200) {
       throw new Error(`Failed to set ${failurePoint}: ${reply.parsedBody}`);
     }
+    return true;
   }
   debugClearFailAt(failurePoint, shortName) {
     if (shortName !== undefined && this.shortName !== shortName) {
-      return;
+      return false;
     }
     this.connect();
     let reply = arango.DELETE_RAW(`/_admin/debug/failat/${(failurePoint=== undefined)?'': '/' + failurePoint}`);
     if (reply.code !== 200) {
       throw new Error(`Failed to remove FP: '${failurePoint}' =>  ${reply.parsedBody}`);
     }
+    return true;
   }
   debugCanUseFailAt() {
     let reply = arango.GET_RAW('/_admin/debug/failat/');
