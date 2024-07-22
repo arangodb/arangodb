@@ -32,6 +32,7 @@
 #include "Zkd/ZkdHelper.h"
 
 #include <cstddef>
+#include <cstdint>
 #include <iosfwd>
 #include <string>
 #include <string_view>
@@ -196,7 +197,7 @@ class RocksDBKey {
   /// @brief Create a fully-specified key for vector index
   //////////////////////////////////////////////////////////////////////////////
   void constructVectorIndexValue(uint64_t objectId,
-                                 const std::vector<std::byte>& value,
+                                 const std::vector<std::uint8_t>& value,
                                  LocalDocumentId documentId);
 
   //////////////////////////////////////////////////////////////////////////////

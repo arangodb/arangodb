@@ -29,6 +29,7 @@
 #include "RocksDBEngine/RocksDBFormat.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 
+#include <cstdint>
 #include <iostream>
 
 using namespace arangodb;
@@ -149,9 +150,9 @@ void RocksDBKey::constructMdiIndexValue(uint64_t indexId,
   TRI_ASSERT(_buffer->size() == keyLength);
 }
 
-void RocksDBKey::constructVectorIndexValue(uint64_t indexId,
-                                           std::vector<std::byte> const& value,
-                                           LocalDocumentId documentId) {
+void RocksDBKey::constructVectorIndexValue(
+    uint64_t indexId, std::vector<std::uint8_t> const& value,
+    LocalDocumentId documentId) {
   _type = RocksDBEntryType::VectorVPackIndexValue;
   size_t keyLength = sizeof(uint64_t) + value.size() + sizeof(uint64_t);
   _buffer->clear();
