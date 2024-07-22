@@ -91,7 +91,8 @@ void Appenders::addAppender(LogGroup const& group,
   TRI_ASSERT(appender != nullptr);
 
   auto& topicsMap = _topics2appenders[group.id()];
-  size_t n = (topic == nullptr) ? LogTopic::MAX_LOG_TOPICS : topic->id();
+  size_t n = (config.topic == nullptr) ? LogTopic::GLOBAL_LOG_TOPIC
+                                       : config.topic->id();
   if (std::find(topicsMap[n].begin(), topicsMap[n].end(), appender) ==
       topicsMap[n].end()) {
     topicsMap[n].emplace_back(appender);
@@ -186,13 +187,13 @@ void Appenders::log(LogGroup const& group, LogMessage const& message) {
     // try to find a topic-specific appender
     size_t topicId = message._topicId;
 
-    if (topicId < LogTopic::MAX_LOG_TOPICS) {
+    if (topicId < LogTopic::GLOBAL_LOG_TOPIC) {
       shown = output(group, message, topicId);
     }
 
     // otherwise use the general topic appender
     if (!shown) {
-      output(group, message, LogTopic::MAX_LOG_TOPICS);
+      output(group, message, LogTopic::GLOBAL_LOG_TOPIC);
     }
   } catch (std::out_of_range const&) {
     // no topic 2 appenders entry for this group.
@@ -297,7 +298,7 @@ bool Appenders::haveAppenders(LogGroup const& group, size_t topicId) {
       return it != appenders.end() && !it->second.empty();
     };
     return haveTopicAppenders(topicId) ||
-           haveTopicAppenders(LogTopic::MAX_LOG_TOPICS) ||
+           haveTopicAppenders(LogTopic::GLOBAL_LOG_TOPIC) ||
            !_globalAppenders.at(group.id()).empty();
   } catch (std::out_of_range const&) {
     // no topic 2 appenders entry for this group.

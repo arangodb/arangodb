@@ -86,7 +86,7 @@ bool LogThread::log(LogGroup& group, std::unique_ptr<LogMessage>& message) {
 
   // only release message if adding to the queue succeeded
   // otherwise we would leak here
-  message.release();
+  std::ignore = message.release();
 
   if (isDirectLogLevel) {
     this->flush();

@@ -30,6 +30,7 @@
 #include <vector>
 
 #include "Logger/LogLevel.h"
+#include "Logger/Topics.h"
 
 namespace arangodb {
 
@@ -39,7 +40,8 @@ class LogTopic {
   LogTopic& operator=(LogTopic const&) = delete;
 
  public:
-  static constexpr size_t MAX_LOG_TOPICS = 64;
+  static constexpr size_t GLOBAL_LOG_TOPIC = 64;
+  static_assert(logger::kNumTopics < GLOBAL_LOG_TOPIC);
 
   // pseudo topic to address all log topics
   static constexpr TopicName ALL = "all";

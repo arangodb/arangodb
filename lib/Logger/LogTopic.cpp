@@ -213,7 +213,7 @@ LogTopic::LogTopic(TopicName name, LogLevel level, size_t id)
   }
 
   Topics::instance().emplace(name, this);
-  TRI_ASSERT(_id < MAX_LOG_TOPICS);
+  TRI_ASSERT(_id < GLOBAL_LOG_TOPIC);
 }
 
 // those two log topics are created in other files, so we have to explicitly
