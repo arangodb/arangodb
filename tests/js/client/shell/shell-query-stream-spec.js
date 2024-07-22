@@ -255,7 +255,7 @@ describe('AQL query analyzer', function () {
       expect(testee.slow().filter(filterQueries).length).to.equal(max);
     });
 
-    if (isServer && internal.debugCanUseFailAt()) {
+    if (isServer && IM.debugCanUseFailAt()) {
       it('should not crash when trying to move a query into the slow list', function () {
         IM.debugSetFailAt('QueryList::remove');
 
