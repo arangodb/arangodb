@@ -50,7 +50,6 @@ let internal = require('internal');
 let arangodb = require('@arangodb');
 let fs = require('fs');
 let db = arangodb.db;
-let { debugCanUseFailAt, debugRemoveFailAt, debugSetFailAt, debugClearFailAt } = require('@arangodb/test-helper');
 
 function detachSchedulerThreadsSuite() {
   'use strict';

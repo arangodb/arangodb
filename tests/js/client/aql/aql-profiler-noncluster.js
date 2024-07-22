@@ -46,6 +46,7 @@ const edgeColName = profHelper.edgeColName;
 const viewName = profHelper.viewName;
 const defaultBatchSize = profHelper.defaultBatchSize;
 const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
+let IM = global.instanceManager;
 
 const {
  AsyncNode, CalculationNode, CollectNode, DistributeNode, EnumerateCollectionNode,
@@ -74,7 +75,7 @@ function ahuacatlProfilerTestSuite() {
     },
 
     testMaterializeBlock: function () {
-      internal.debugSetFailAt('batch-materialize-no-estimation');
+      IM.debugSetFailAt('batch-materialize-no-estimation');
       const col = db._create(colName);
       col.insert({ name_1: "foo", "value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
       let indexMeta = {};
@@ -124,16 +125,16 @@ function ahuacatlProfilerTestSuite() {
          FILTER d.value <= 10 SORT d.more LIMIT 3 RETURN d`;
       let iiQueryRes = db._query(iiQuery).toArray();
       assertTrue(iiQueryRes.length >= 2); // 2 docs with nested + more from 'prepare' function
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
     },
 
     testMaterializeBlockThatFilters: function () {
-      if (!internal.debugCanUseFailAt()) {
+      if (!IM.debugCanUseFailAt()) {
         return;
       }
 
       try {
-        internal.debugSetFailAt('batch-materialize-no-estimation');
+        IM.debugSetFailAt('batch-materialize-no-estimation');
         const col = db._create(colName);
         col.insert({name_1: "foo", "value_nested": [{"nested_1": [{"nested_2": "foo123"}]}]});
         let indexMeta = {};
@@ -191,7 +192,7 @@ function ahuacatlProfilerTestSuite() {
 
       } finally {
         // clear failure points!
-        internal.debugClearFailAt();
+        IM.debugClearFailAt();
       }
     },
 

@@ -54,8 +54,7 @@ let internal = require('internal');
 let arangodb = require('@arangodb');
 let fs = require('fs');
 let db = arangodb.db;
-let { debugCanUseFailAt, debugRemoveFailAt, debugSetFailAt, debugClearFailAt } = require('@arangodb/test-helper');
-let im = global.instanceManager;
+let IM = global.instanceManager;
 
 function createCollectionWithKnownLeaderAndFollower(cn) {
   db._create(cn, {numberOfShards:1, replicationFactor:2});
@@ -101,7 +100,7 @@ function detachSchedulerThreadsSuite2() {
       try {
         // Block replication in the follower, such that it can be released
         // later on (nested failure points).
-        im.debugSetFailAt("synchronousReplication::blockReplication", collInfo.follower);
+        IM.debugSetFailAt("synchronousReplication::blockReplication", collInfo.follower);
 
         // Create a transaction T writing to the replicated collection
         let trx = arango.POST_RAW("/_api/transaction/begin", {collections:{write:[cn]}});
@@ -130,7 +129,7 @@ function detachSchedulerThreadsSuite2() {
         c.document("K1");
 
         // Unblock everything:
-        im.debugSetFailAt("synchronousReplication::unblockReplication", collInfo.follower);
+        IM.debugSetFailAt("synchronousReplication::unblockReplication", collInfo.follower);
 
         // And now expect that all ops terminate:
         let waitForJob = function(id) {
@@ -155,14 +154,14 @@ function detachSchedulerThreadsSuite2() {
         let res = arango.DELETE_RAW(`/_api/transaction/${trx}`);
         assertEqual(200, res.code);
       } finally {
-        im.debugClearFailAt(collInfo.follower);
+        IM.debugClearFailAt(collInfo.follower);
       }
     }
   };
 }
 
 if (db._properties().replicationVersion !== "2" &&
-    global.instanceManager.debugCanUseFailAt()) {
+    IM.debugCanUseFailAt()) {
   jsunity.run(detachSchedulerThreadsSuite2);
 }
 return jsunity.done();

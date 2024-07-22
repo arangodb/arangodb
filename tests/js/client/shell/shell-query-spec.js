@@ -90,8 +90,8 @@ describe('AQL query analyzer', function () {
 
   describe('with active tracking', function () {
     beforeEach(function () {
-      if (isServer && internal.debugCanUseFailAt()) {
-        internal.debugClearFailAt();
+      if (isServer && global.instanceManager.debugCanUseFailAt()) {
+        global.instanceManager.debugClearFailAt();
       }
       testee.properties({
         enabled: true,
@@ -101,8 +101,8 @@ describe('AQL query analyzer', function () {
     });
 
     afterEach(function () {
-      if (isServer && internal.debugCanUseFailAt()) {
-        internal.debugClearFailAt();
+      if (isServer && global.instanceManager.debugCanUseFailAt()) {
+        global.instanceManager.debugClearFailAt();
       }
       // kill all async tasks that will execute the query that we
       // are looking for
@@ -136,9 +136,9 @@ describe('AQL query analyzer', function () {
       }
     });
 
-    if (isServer && internal.debugCanUseFailAt()) {
+    if (isServer && global.instanceManager.debugCanUseFailAt()) {
       it('should not crash when inserting a query into the current list fails', function () {
-        internal.debugSetFailAt('QueryList::insert');
+        global.instanceManager.debugSetFailAt('QueryList::insert');
 
         // inserting the query will fail
         sendQuery(1, true);
@@ -333,9 +333,9 @@ describe('AQL query analyzer', function () {
       expect(testee.slow().filter(filterQueries).length).to.equal(max);
     });
 
-    if (isServer && internal.debugCanUseFailAt()) {
+    if (isServer && global.instanceManager.debugCanUseFailAt()) {
       it('should not crash when trying to move a query into the slow list', function () {
-        internal.debugSetFailAt('QueryList::remove');
+        global.instanceManager.debugSetFailAt('QueryList::remove');
 
         testee.properties({
           slowQueryThreshold: 2
