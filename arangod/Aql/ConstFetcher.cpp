@@ -42,10 +42,6 @@ ConstFetcher::ConstFetcher(DependencyProxy& executionBlock)
 
 auto ConstFetcher::execute(AqlCallStack const& stack)
     -> std::tuple<ExecutionState, SkipResult, AqlItemBlockInputRange> {
-  // We only peek the call here, as we do not take over ownership.
-  // We can replace this by pop again if all executors also only take a
-  // reference to the stack.
-  auto call = stack.peek();
   if (_blockForPassThrough == nullptr) {
     SkipResult skipped = _skipped;
     _skipped.reset();
@@ -53,6 +49,11 @@ auto ConstFetcher::execute(AqlCallStack const& stack)
     return {ExecutionState::DONE, skipped,
             AqlItemBlockInputRange{MainQueryState::DONE}};
   }
+
+  // We only peek the call here, as we do not take over ownership.
+  // We can replace this by pop again if all executors also only take a
+  // reference to the stack.
+  auto call = stack.peek();
 
   containers::SmallVector<std::pair<size_t, size_t>, 4> sliceIndexes;
 
@@ -77,7 +78,7 @@ auto ConstFetcher::execute(AqlCallStack const& stack)
             // we cannot jump over relevant shadow rows.
             // Unfortunately we need to stop including rows here.
             // NOTE: As all blocks have this behavior anyway
-            // this is not cirtical.
+            // this is not critical.
             break;
           }
           toShadowRow++;

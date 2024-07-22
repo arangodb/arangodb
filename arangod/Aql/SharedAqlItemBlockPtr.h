@@ -26,8 +26,7 @@
 #include "Aql/AqlItemBlock.h"
 #include "Basics/debugging.h"
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 class SharedAqlItemBlockPtr {
  public:
@@ -81,7 +80,6 @@ class SharedAqlItemBlockPtr {
 
   void returnBlock() noexcept;
 
- private:
   AqlItemBlock* _aqlItemBlock;
 };
 
@@ -215,5 +213,4 @@ void arangodb::aql::SharedAqlItemBlockPtr::decrRefCount() noexcept {
   }
 }
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql

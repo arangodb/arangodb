@@ -300,7 +300,7 @@ class AqlItemBlock {
   /// @brief get the ShadowRowDepth
   /// Does only work if this row is a shadow row
   /// Asserts on Maintainer, returns 0 on production
-  size_t getShadowRowDepth(size_t row) const;
+  size_t getShadowRowDepth(size_t row) const noexcept;
 
   /// @brief Transform the given row into a ShadowRow.
   void makeShadowRow(size_t row, size_t depth);

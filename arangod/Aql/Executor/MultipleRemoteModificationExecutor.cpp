@@ -95,7 +95,7 @@ transaction::Methods MultipleRemoteModificationExecutor::createTransaction(
                                      "fetch data from produceRows only once");
     }
     _hasFetchedDataRow = true;
-    auto [state, row] = input.nextDataRow();
+    auto [state, row] = input.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     if (input.hasDataRow()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL,

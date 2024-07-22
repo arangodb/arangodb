@@ -216,7 +216,6 @@ class TraversalExecutor {
 
   auto traversalEnumerator() -> arangodb::graph::TraversalEnumerator*;
 
- private:
   Infos& _infos;
 
   // an AST owned by the TraversalExecutor, used to store data of index
