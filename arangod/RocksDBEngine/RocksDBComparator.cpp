@@ -24,20 +24,17 @@
 
 #include "RocksDBComparator.h"
 
-#include "Basics/VelocyPackHelper.h"
 #include "Basics/system-compiler.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBPrefixExtractor.h"
 #include "RocksDBEngine/RocksDBTypes.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
-using namespace arangodb;
-
 namespace {
 
+template<arangodb::basics::VelocyPackHelper::SortingMethod sortingMethod>
 int compareIndexedValues(arangodb::velocypack::Slice const& lhs,
                          arangodb::velocypack::Slice const& rhs) {
   TRI_ASSERT(lhs.isArray());
@@ -54,13 +51,17 @@ int compareIndexedValues(arangodb::velocypack::Slice const& lhs,
       return static_cast<int>(lhsIter.size() - rhsIter.size());
     }
 
-    int res = EngineSelectorFeature::legacyVPackSorting()
-                  ? arangodb::basics::VelocyPackHelper::compareLegacy(
-                        (lhsValid ? *lhsIter : VPackSlice::noneSlice()),
-                        (rhsValid ? *rhsIter : VPackSlice::noneSlice()), true)
-                  : arangodb::basics::VelocyPackHelper::compareCorrectly(
-                        (lhsValid ? *lhsIter : VPackSlice::noneSlice()),
-                        (rhsValid ? *rhsIter : VPackSlice::noneSlice()), true);
+    int res;
+    if (sortingMethod ==
+        arangodb::basics::VelocyPackHelper::SortingMethod::Legacy) {
+      res = arangodb::basics::VelocyPackHelper::compareLegacy(
+          (lhsValid ? *lhsIter : VPackSlice::noneSlice()),
+          (rhsValid ? *rhsIter : VPackSlice::noneSlice()), true);
+    } else {
+      res = arangodb::basics::VelocyPackHelper::compare(
+          (lhsValid ? *lhsIter : VPackSlice::noneSlice()),
+          (rhsValid ? *rhsIter : VPackSlice::noneSlice()), true);
+    }
     if (res != 0) {
       return res;
     }
@@ -72,7 +73,10 @@ int compareIndexedValues(arangodb::velocypack::Slice const& lhs,
 
 }  // namespace
 
-int RocksDBVPackComparator::compareIndexValues(
+namespace arangodb {
+
+template<arangodb::basics::VelocyPackHelper::SortingMethod sortingMethod>
+int RocksDBVPackComparator<sortingMethod>::compareIndexValues(
     rocksdb::Slice const& lhs, rocksdb::Slice const& rhs) const {
   constexpr size_t objectIDLength = RocksDBKey::objectIdSize();
 
@@ -99,7 +103,7 @@ int RocksDBVPackComparator::compareIndexValues(
   VPackSlice const rSlice = VPackSlice(
       reinterpret_cast<uint8_t const*>(rhs.data()) + sizeof(uint64_t));
 
-  r = ::compareIndexedValues(lSlice, rSlice);
+  r = ::compareIndexedValues<sortingMethod>(lSlice, rSlice);
 
   if (r != 0) {
     // comparison of index values produced an unambiguous result
@@ -128,3 +132,11 @@ int RocksDBVPackComparator::compareIndexValues(
 
   return static_cast<int>(lSize - rSize);
 }
+
+// Now explicitly instantiate the two cases:
+template class RocksDBVPackComparator<
+    arangodb::basics::VelocyPackHelper::SortingMethod::Legacy>;
+template class RocksDBVPackComparator<
+    arangodb::basics::VelocyPackHelper::SortingMethod::Correct>;
+
+}  // namespace arangodb
