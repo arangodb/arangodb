@@ -134,7 +134,9 @@ class Ast {
   bool isInSubQuery() const noexcept;
 
   /// @brief return a copy of our own bind parameters
-  std::unordered_set<std::string> bindParameters() const;
+  std::unordered_set<std::string> bindParameterNames() const;
+
+  BindParameterVariableMapping bindParameterVariables() const;
 
   /// @brief get the query scopes
   Scopes* scopes();
@@ -459,6 +461,14 @@ class Ast {
   /// (i.e. all value bind parameters)
   void injectBindParametersSecondStage(BindParameters& parameters);
 
+  /// @brief replaces bind parameters with special variables. This is used
+  /// for query plan caching.
+  void replaceBindParametersWithVariables(BindParameters& parameters);
+
+  /// @brief replaces bind parameters with special variables. This is used
+  /// for query plan caching.
+  void replaceBindParametersWithValues(BindParameters& parameters);
+
   /// @brief replace variables
   ///        the unlock parameter will unlock the variable node before it
   ///        replaces the variable. This unlock is potentially dangerous if the
@@ -750,6 +760,9 @@ class Ast {
 
   /// @brief ast flags
   AstPropertiesFlagsType _astFlags;
+
+  /// @brief variables that bind parameters were replaced with
+  BindParameterVariableMapping _bindParameterVariables;
 };
 
 }  // namespace aql

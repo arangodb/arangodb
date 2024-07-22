@@ -197,8 +197,100 @@ void QueryList::remove(Query& query) {
 
   TRI_ASSERT(!query.queryString().empty());
 
-  WRITE_LOCKER(writeLocker, _lock);
-  _current.erase(query.id());
+  {
+    // acquire the query list's write lock only for a short amount of
+    // time. if we need to insert a slow query later, we will re-acquire
+    // the lock. but the hope is that for the majority of queries this is
+    // not required
+    WRITE_LOCKER(writeLocker, _lock);
+
+    if (_current.erase(query.id()) == 0) {
+      // not found
+      return;
+    }
+  }
+
+  // elapsed time since query start
+  double const elapsed = query.executionTime();
+
+  _queryRegistryFeature.trackQueryEnd(elapsed);
+
+  if (!trackSlowQueries()) {
+    return;
+  }
+
+  bool const isStreaming = query.queryOptions().stream;
+  double threshold =
+      isStreaming ? _slowStreamingQueryThreshold.load(std::memory_order_relaxed)
+                  : _slowQueryThreshold.load(std::memory_order_relaxed);
+
+  // check if we need to push the query into the list of slow queries
+  if (elapsed >= threshold && threshold >= 0.0) {
+    // yes.
+    try {
+      TRI_IF_FAILURE("QueryList::remove") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+
+      _queryRegistryFeature.trackSlowQuery(elapsed);
+
+      // we calculate the query start timestamp as the current time minus
+      // the elapsed time since query start. this is not 100% accurrate, but
+      // best effort, and saves us from bookkeeping the start timestamp of the
+      // query inside the Query object.
+      double const now = TRI_microtime();
+      size_t const maxQueryStringLength =
+          _maxQueryStringLength.load(std::memory_order_relaxed);
+
+      std::string q =
+          query.extractQueryString(maxQueryStringLength, trackQueryString());
+      std::string bindParameters;
+      if (_trackBindVars) {
+        // also log bind variables
+        query.stringifyBindParameters(bindParameters,
+                                      ", bind vars: ", maxQueryStringLength);
+      }
+
+      std::string dataSources;
+      if (_trackDataSources) {
+        query.stringifyDataSources(dataSources, ", data sources: ");
+      }
+
+      auto resultCode = query.resultCode();
+
+      LOG_TOPIC("8bcee", WARN, Logger::QUERIES)
+          << "slow " << (isStreaming ? "streaming " : "") << "query: '" << q
+          << "'" << bindParameters << dataSources
+          << ", database: " << query.vocbase().name()
+          << ", user: " << query.user() << ", id: " << query.id()
+          << ", token: QRY" << query.id()
+          << ", peak memory usage: " << query.resourceMonitor().peak()
+          << ", exit code: " << resultCode
+          << ", took: " << Logger::FIXED(elapsed) << " s";
+
+      // acquire the query list lock again
+      WRITE_LOCKER(writeLocker, _lock);
+
+      _slow.emplace_back(
+          query.id(), query.vocbase().name(), query.user(), std::move(q),
+          _trackBindVars ? query.bindParametersAsBuilder() : nullptr,
+          _trackDataSources ? query.collectionNames()
+                            : std::vector<std::string>(),
+          now - elapsed, /* start timestamp */
+          elapsed /* run time */, query.resourceMonitor().peak(),
+          query.killed() ? QueryExecutionState::ValueType::KILLED
+                         : QueryExecutionState::ValueType::FINISHED,
+          isStreaming, resultCode);
+
+      // _slow is an std::list, but since c++11 the size() method of all
+      // standard containers is O(1), so this is ok
+      if (_slow.size() > _maxSlowQueries) {
+        // free first element
+        _slow.pop_front();
+      }
+    } catch (...) {
+    }
+  }
 }
 
 /// @brief kills a query

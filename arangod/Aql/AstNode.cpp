@@ -1015,7 +1015,7 @@ bool AstNode::valueHasVelocyPackRepresentation() const {
 /// @brief build a VelocyPack representation of the node value
 ///        Can throw Out of Memory Error
 void AstNode::toVelocyPackValue(VPackBuilder& builder) const {
-  TRI_ASSERT(valueHasVelocyPackRepresentation());
+  TRI_ASSERT(valueHasVelocyPackRepresentation()) << this->toString();
   if (type == NODE_TYPE_VALUE) {
     // dump value of "value" node
     switch (value.type) {

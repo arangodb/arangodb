@@ -203,8 +203,7 @@ void replaceGatherNodeVariables(
 
     if (it2 != replacements.end()) {
       // match with our replacement table
-      it.var = (*it2).second;
-      it.attributePath.clear();
+      it.resetTo((*it2).second);
     } else {
       // no match. now check all our replacements and compare how
       // their sources are actually calculated (e.g. #2 may mean
@@ -222,8 +221,7 @@ void replaceGatherNodeVariables(
         expr->stringify(buffer);
         if (cmp == buffer) {
           // finally a match!
-          it.var = it3.second;
-          it.attributePath.clear();
+          it.resetTo(it3.second);
           break;
         }
       }
@@ -1976,7 +1974,7 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
         // add the post-SORT
         SortElementVector sortElements;
         for (auto const& v : collectNode->groupVariables()) {
-          sortElements.emplace_back(v.outVar, true);
+          sortElements.push_back(SortElement::create(v.outVar, true));
         }
 
         auto sortNode = plan->createNode<SortNode>(plan.get(), plan->nextId(),
@@ -2011,7 +2009,7 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
         // add the post-SORT
         SortElementVector sortElements;
         for (auto const& v : newCollectNode->groupVariables()) {
-          sortElements.emplace_back(v.outVar, true);
+          sortElements.push_back(SortElement::create(v.outVar, true));
         }
 
         auto sortNode = newPlan->createNode<SortNode>(
@@ -2051,7 +2049,7 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
     if (!groupVariables.empty()) {
       SortElementVector sortElements;
       for (auto const& v : groupVariables) {
-        sortElements.emplace_back(v.inVar, true);
+        sortElements.push_back(SortElement::create(v.inVar, true));
       }
 
       auto sortNode = plan->createNode<SortNode>(plan.get(), plan->nextId(),
@@ -3783,7 +3781,8 @@ auto insertGatherNode(
       // result, or if we use the index for filtering only
       if (first->isSorted() && idxNode->needsGatherNodeSort()) {
         for (auto const& path : first->fieldNames()) {
-          elements.emplace_back(sortVariable, isSortAscending, path);
+          elements.push_back(
+              SortElement::createWithPath(sortVariable, isSortAscending, path));
         }
         for (auto const& it : allIndexes) {
           if (first != it) {

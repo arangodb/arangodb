@@ -97,6 +97,9 @@ using RegIdOrderedSetStack = std::vector<RegIdOrderedSet>;
 using RegIdFlatSet = containers::flat_set<RegisterId>;
 using RegIdFlatSetStack = std::vector<containers::flat_set<RegisterId>>;
 
+using BindParameterVariableMapping =
+    absl::flat_hash_map<std::string, Variable const*>;
+
 }  // namespace aql
 
 namespace traverser {

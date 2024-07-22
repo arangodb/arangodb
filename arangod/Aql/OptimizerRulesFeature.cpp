@@ -808,6 +808,11 @@ involved attributes are covered by inverted indexes.)");
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
                R"(Push down late materialization.)");
 
+  registerRule("push-limit-into-index", pushLimitIntoIndexRule,
+               OptimizerRule::pushLimitIntoIndexRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+               R"(Push limit into index node.)");
+
   registerRule("materialize-into-separate-variable",
                materializeIntoSeparateVariable,
                OptimizerRule::materializeIntoSeparateVariable,
