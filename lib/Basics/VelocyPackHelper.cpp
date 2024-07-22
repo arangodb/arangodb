@@ -540,69 +540,73 @@ int VelocyPackHelper::compareNumberValuesCorrectly(VPackValueType lhsType,
 
   Number l;
   Number r;
-  short int types = 0;  // 9 cases, = lt + 3 * rt, where
-                        // lt is the left type
-                        // rt is the right type
-                        // 0 is I, 1 is U and 2 is D
+  enum Type {
+    kSignedIntegral = 0,
+    kUnsignedIntegral = 1,
+    kDouble = 2,
+    kNumTypes = 3
+  };
+  Type lhst;
   switch (lhsType) {
     case VPackValueType::SmallInt:
     case VPackValueType::Int:
       l.i = lhs.getIntUnchecked();
-      types += 0;
+      lhst = Type::kSignedIntegral;
       break;
     case VPackValueType::UInt:
       l.u = lhs.getUIntUnchecked();
-      types += 1;
+      lhst = Type::kUnsignedIntegral;
       break;
     case VPackValueType::Double:
       l.d = lhs.getNumericValue<double>();
-      types += 2;
+      lhst = Type::kDouble;
       break;
     case VPackValueType::UTCDate:
       l.i = lhs.getUTCDate();
-      types += 0;
+      lhst = Type::kSignedIntegral;
       break;
     default:    // does not happen, just to please the compiler!
       l.u = 0;  // treat anything else as 0
-      types += 1;
+      lhst = Type::kUnsignedIntegral;
       break;
   }
+  Type rhst;
   switch (rhsType) {
     case VPackValueType::SmallInt:
     case VPackValueType::Int:
       r.i = rhs.getIntUnchecked();
-      types += 0;
+      rhst = Type::kSignedIntegral;
       break;
     case VPackValueType::UInt:
       r.u = rhs.getUIntUnchecked();
-      types += 3;
+      rhst = Type::kUnsignedIntegral;
       break;
     case VPackValueType::Double:
       r.d = rhs.getNumericValue<double>();
-      types += 6;
+      rhst = Type::kDouble;
       break;
     case VPackValueType::UTCDate:
       r.i = lhs.getUTCDate();
-      types += 0;
+      rhst = Type::kSignedIntegral;
       break;
     default:    // does not happen, just to please the compiler!
       r.u = 0;  // treat anything else as 0
-      types += 3;
+      rhst = Type::kUnsignedIntegral;
       break;
   }
 
-  switch (types) {
-    case 1:  // 1 + 3 * 0:  UI
+  switch (lhst + rhst * Type::kNumTypes) {
+    case kUnsignedIntegral + kSignedIntegral * Type::kNumTypes:
       return -compareInt64UInt64(r.i, l.u);
-    case 2:  // 2 + 3 * 0:  DI
+    case kDouble + kSignedIntegral * Type::kNumTypes:
       return -compareInt64Double(r.i, l.d);
-    case 3:  // 0 + 3 * 1:  IU
+    case kSignedIntegral + kUnsignedIntegral * Type::kNumTypes:
       return compareInt64UInt64(l.i, r.u);
-    case 5:  // 2 + 3 * 1:  DU
+    case kDouble + kUnsignedIntegral * Type::kNumTypes:
       return -compareUInt64Double(r.u, l.d);
-    case 6:  // 0 + 3 * 2:  ID
+    case kSignedIntegral + kDouble * Type::kNumTypes:
       return compareInt64Double(l.i, r.d);
-    case 7:  // 1 + 3 * 2:  UD
+    case kUnsignedIntegral + kDouble * Type::kNumTypes:
       return compareUInt64Double(l.u, r.d);
     default:  // does not happen!
       TRI_ASSERT(false);
