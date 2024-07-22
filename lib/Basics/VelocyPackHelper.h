@@ -92,21 +92,18 @@ struct VPackHashedSlice {
 // Note that the following class has some code duplication, which is
 // intentional. Unfortunately, we had a bug in the sorting functionality
 // for VelocyPack regarding numbers in their different representations.
-// Since we need to retain the old, buggy behaviour, we have some methods
-// in a "correct" and a "legacy" version. We did not want to expose internal
-// template magic to the user of this class, therefore we have methods
-//   compareCorrectly
-//   compareLegacy
-//   equalCorrectly
-//   equalLegacy
-// For the helper classes we have abbreviated this to
-//   VPackLessC
-//   VPackLessL
-//   VPackEqualC
-//   VPackEqualL
-//   VPackSortedC
-//   VPackSortedL
-// to avoid code blowup with templates and `SortingMethod::Correct` etc.
+// Since we need to retain the old, buggy behaviour, we have the compare
+// method in a "correct" and a "legacy" version. We did not want to
+// expose internal template magic to the user of this class, therefore
+// we have methods
+//   compare       (correctly)
+//   compareLegacy (legacy)
+// We need the legacy methods only for the RocksDB comparator. There is
+// a global switch, such that at server start, we can choose about this
+// switch so that in new database directories can directly use the new
+// sorting method, whereas after an upgrade, we can at first use the old
+// sorting method for backwards compatibility (and to avoid that RocksDB
+// is corrupt).
 
 class VelocyPackHelper {
  private:
@@ -136,27 +133,13 @@ class VelocyPackHelper {
   static constexpr int cmp_greater = 1;
 
   /// @brief equality comparator for VelocyPack values
-  struct VPackEqualC {
+  struct VPackEqual {
    private:
     arangodb::velocypack::Options const* _options;
 
    public:
-    VPackEqualC() : _options(nullptr) {}
-    explicit VPackEqualC(arangodb::velocypack::Options const* opts)
-        : _options(opts) {}
-
-    bool operator()(arangodb::velocypack::Slice lhs,
-                    arangodb::velocypack::Slice rhs) const;
-  };
-
-  /// @brief equality comparator for VelocyPack values
-  struct VPackEqualL {
-   private:
-    arangodb::velocypack::Options const* _options;
-
-   public:
-    VPackEqualL() : _options(nullptr) {}
-    explicit VPackEqualL(arangodb::velocypack::Options const* opts)
+    VPackEqual() : _options(nullptr) {}
+    explicit VPackEqual(arangodb::velocypack::Options const* opts)
         : _options(opts) {}
 
     bool operator()(arangodb::velocypack::Slice lhs,
@@ -170,17 +153,17 @@ class VelocyPackHelper {
 
   /// @brief less comparator for VelocyPack values
   template<bool useUtf8>
-  struct VPackLessC {
-    VPackLessC(arangodb::velocypack::Options const* options =
-                   &arangodb::velocypack::Options::Defaults,
-               arangodb::velocypack::Slice const* lhsBase = nullptr,
-               arangodb::velocypack::Slice const* rhsBase = nullptr)
+  struct VPackLess {
+    VPackLess(arangodb::velocypack::Options const* options =
+                  &arangodb::velocypack::Options::Defaults,
+              arangodb::velocypack::Slice const* lhsBase = nullptr,
+              arangodb::velocypack::Slice const* rhsBase = nullptr)
         : options(options), lhsBase(lhsBase), rhsBase(rhsBase) {}
 
     bool operator()(arangodb::velocypack::Slice lhs,
                     arangodb::velocypack::Slice rhs) const {
-      return VelocyPackHelper::compareInternal<SortingMethod::Correct>(
-                 lhs, rhs, useUtf8, options, lhsBase, rhsBase) < 0;
+      return VelocyPackHelper::compare(lhs, rhs, useUtf8, options, lhsBase,
+                                       rhsBase) < 0;
     }
 
     arangodb::velocypack::Options const* options;
@@ -188,33 +171,14 @@ class VelocyPackHelper {
     arangodb::velocypack::Slice const* rhsBase;
   };
 
-  /// @brief less comparator for VelocyPack values
+#if 0
   template<bool useUtf8>
-  struct VPackLessL {
-    VPackLessL(arangodb::velocypack::Options const* options =
-                   &arangodb::velocypack::Options::Defaults,
-               arangodb::velocypack::Slice const* lhsBase = nullptr,
-               arangodb::velocypack::Slice const* rhsBase = nullptr)
-        : options(options), lhsBase(lhsBase), rhsBase(rhsBase) {}
-
-    bool operator()(arangodb::velocypack::Slice lhs,
-                    arangodb::velocypack::Slice rhs) const {
-      return VelocyPackHelper::compareInternal<SortingMethod::Legacy>(
-                 lhs, rhs, useUtf8, options, lhsBase, rhsBase) < 0;
-    }
-
-    arangodb::velocypack::Options const* options;
-    arangodb::velocypack::Slice const* lhsBase;
-    arangodb::velocypack::Slice const* rhsBase;
-  };
-
-  template<bool useUtf8>
-  struct VPackSortedC {
-    explicit VPackSortedC(bool reverse,
-                          arangodb::velocypack::Options const* options =
-                              &arangodb::velocypack::Options::Defaults,
-                          arangodb::velocypack::Slice const* lhsBase = nullptr,
-                          arangodb::velocypack::Slice const* rhsBase = nullptr)
+  struct VPackSorted {
+    explicit VPackSorted(bool reverse,
+                         arangodb::velocypack::Options const* options =
+                             &arangodb::velocypack::Options::Defaults,
+                         arangodb::velocypack::Slice const* lhsBase = nullptr,
+                         arangodb::velocypack::Slice const* rhsBase = nullptr)
         : _reverse(reverse),
           options(options),
           lhsBase(lhsBase),
@@ -223,10 +187,10 @@ class VelocyPackHelper {
     bool operator()(arangodb::velocypack::Slice lhs,
                     arangodb::velocypack::Slice rhs) const {
       if (_reverse) {
-        return VelocyPackHelper::compareInternal<SortingMethod::Correct>(
+        return VelocyPackHelper::compare(
                    lhs, rhs, useUtf8, options, lhsBase, rhsBase) > 0;
       }
-      return VelocyPackHelper::compareInternal<SortingMethod::Correct>(
+      return VelocyPackHelper::compare(
                  lhs, rhs, useUtf8, options, lhsBase, rhsBase) < 0;
     }
 
@@ -235,34 +199,7 @@ class VelocyPackHelper {
     arangodb::velocypack::Slice const* lhsBase;
     arangodb::velocypack::Slice const* rhsBase;
   };
-
-  template<bool useUtf8>
-  struct VPackSortedL {
-    explicit VPackSortedL(bool reverse,
-                          arangodb::velocypack::Options const* options =
-                              &arangodb::velocypack::Options::Defaults,
-                          arangodb::velocypack::Slice const* lhsBase = nullptr,
-                          arangodb::velocypack::Slice const* rhsBase = nullptr)
-        : _reverse(reverse),
-          options(options),
-          lhsBase(lhsBase),
-          rhsBase(rhsBase) {}
-
-    bool operator()(arangodb::velocypack::Slice lhs,
-                    arangodb::velocypack::Slice rhs) const {
-      if (_reverse) {
-        return VelocyPackHelper::compareInternal<SortingMethod::Legacy>(
-                   lhs, rhs, useUtf8, options, lhsBase, rhsBase) > 0;
-      }
-      return VelocyPackHelper::compareInternal<SortingMethod::Legacy>(
-                 lhs, rhs, useUtf8, options, lhsBase, rhsBase) < 0;
-    }
-
-    bool _reverse;
-    arangodb::velocypack::Options const* options;
-    arangodb::velocypack::Slice const* lhsBase;
-    arangodb::velocypack::Slice const* rhsBase;
-  };
+#endif
 
   struct AttributeSorterUTF8StringView {
     bool operator()(std::string_view l, std::string_view r) const;
@@ -458,9 +395,9 @@ class VelocyPackHelper {
   /// representation (signed/unsigned)). Use `compareNumberValuesCorrect`
   /// instead. We keep thisi function to implement the legacy sorting
   /// behaviour for old vpack indexes.
-  static int compareNumberValues(arangodb::velocypack::ValueType,
-                                 arangodb::velocypack::Slice lhs,
-                                 arangodb::velocypack::Slice rhs);
+  static int compareNumberValuesLegacy(arangodb::velocypack::ValueType,
+                                       arangodb::velocypack::Slice lhs,
+                                       arangodb::velocypack::Slice rhs);
 
   /// @brief compares two VelocyPack number values, this must only be called
   /// if the types on either side are either SmallInt, Int, UInt, UTCDate
@@ -503,38 +440,27 @@ class VelocyPackHelper {
       arangodb::velocypack::Slice const* rhsBase = nullptr)
       ADB_WARN_UNUSED_RESULT;
 
-  template<SortingMethod sortingMethod>
-  static bool equalInternal(
-      arangodb::velocypack::Slice lhs, arangodb::velocypack::Slice rhs,
-      bool useUTF8,
-      arangodb::velocypack::Options const* options =
-          &arangodb::velocypack::Options::Defaults,
-      arangodb::velocypack::Slice const* lhsBase = nullptr,
-      arangodb::velocypack::Slice const* rhsBase = nullptr) {
-    return compareInternal<sortingMethod>(lhs, rhs, useUTF8, options, lhsBase,
-                                          rhsBase) == 0;
-  }
-
  public:
   /// @brief Compares two VelocyPack slices
-  /// returns 0 if the two slices are equal, < 0 if lhs < rhs, and > 0 if rhs >
-  /// lhs, there is a correct, modern method and a wrong legacy method.
-  /// The legacy method is wrong w.r.t. numeric comparisons and NaN and
-  /// in the case that numbers of different types (unsigned, signed or double)
-  /// are compared and the integers are too large to fit in the precision
-  /// of double.
-  static int compareCorrectly(
-      arangodb::velocypack::Slice lhs, arangodb::velocypack::Slice rhs,
-      bool useUTF8,
-      arangodb::velocypack::Options const* options =
-          &arangodb::velocypack::Options::Defaults,
-      arangodb::velocypack::Slice const* lhsBase = nullptr,
-      arangodb::velocypack::Slice const* rhsBase = nullptr)
+  /// returns 0 if the two slices are equal, < 0 if lhs < rhs, and > 0
+  /// if rhs > lhs, there is a correct, modern method and a wrong legacy
+  /// method. The legacy method is wrong w.r.t. numeric comparisons and
+  /// NaN and in the case that numbers of different types (unsigned,
+  /// signed or double) are compared and the integers are too large to
+  /// fit in the precision of double.
+  /// This is the "correct" method!
+  static int compare(arangodb::velocypack::Slice lhs,
+                     arangodb::velocypack::Slice rhs, bool useUTF8,
+                     arangodb::velocypack::Options const* options =
+                         &arangodb::velocypack::Options::Defaults,
+                     arangodb::velocypack::Slice const* lhsBase = nullptr,
+                     arangodb::velocypack::Slice const* rhsBase = nullptr)
       ADB_WARN_UNUSED_RESULT {
     return compareInternal<SortingMethod::Correct>(lhs, rhs, useUTF8, options,
                                                    lhsBase, rhsBase);
   }
 
+  /// This is the "legacy" method!
   static int compareLegacy(arangodb::velocypack::Slice lhs,
                            arangodb::velocypack::Slice rhs, bool useUTF8,
                            arangodb::velocypack::Options const* options =
@@ -548,31 +474,14 @@ class VelocyPackHelper {
 
   /// @brief Compares two VelocyPack slices for equality
   /// returns true if the slices are equal, false otherwise
-  /// There is a correct, modern method and a wrong legacy method.
-  /// The legacy method is wrong w.r.t. numeric comparisons and NaN and
-  /// in the case that numbers of different types (unsigned, signed or double)
-  /// are compared and the integers are too large to fit in the precision
-  /// of double.
-  static bool equalCorrectly(
-      arangodb::velocypack::Slice lhs, arangodb::velocypack::Slice rhs,
-      bool useUTF8,
-      arangodb::velocypack::Options const* options =
-          &arangodb::velocypack::Options::Defaults,
-      arangodb::velocypack::Slice const* lhsBase = nullptr,
-      arangodb::velocypack::Slice const* rhsBase = nullptr) {
+  static bool equal(arangodb::velocypack::Slice lhs,
+                    arangodb::velocypack::Slice rhs, bool useUTF8,
+                    arangodb::velocypack::Options const* options =
+                        &arangodb::velocypack::Options::Defaults,
+                    arangodb::velocypack::Slice const* lhsBase = nullptr,
+                    arangodb::velocypack::Slice const* rhsBase = nullptr) {
     return compareInternal<SortingMethod::Correct>(lhs, rhs, useUTF8, options,
                                                    lhsBase, rhsBase) == 0;
-  }
-
-  static bool equalLegacy(
-      arangodb::velocypack::Slice lhs, arangodb::velocypack::Slice rhs,
-      bool useUTF8,
-      arangodb::velocypack::Options const* options =
-          &arangodb::velocypack::Options::Defaults,
-      arangodb::velocypack::Slice const* lhsBase = nullptr,
-      arangodb::velocypack::Slice const* rhsBase = nullptr) {
-    return compareInternal<SortingMethod::Legacy>(lhs, rhs, useUTF8, options,
-                                                  lhsBase, rhsBase) == 0;
   }
 
   static bool hasNonClientTypes(arangodb::velocypack::Slice input);
