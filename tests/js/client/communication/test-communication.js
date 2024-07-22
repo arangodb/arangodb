@@ -48,6 +48,7 @@ const toArgv = require('internal').toArgv;
 
 
 const getMetric = require('@arangodb/test-helper').getMetricSingle;
+let { debugResetRaceControl } = require('@arangodb/test-helper');
 let { instanceRole } = require('@arangodb/testutils/instance');
 let IM = global.instanceManager;
 

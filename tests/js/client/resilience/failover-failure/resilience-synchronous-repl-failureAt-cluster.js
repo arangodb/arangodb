@@ -36,9 +36,6 @@ const instanceRoledbServer = 'dbserver';
 const suspendExternal = require("internal").suspendExternal;
 const continueExternal = require("internal").continueExternal;
 const {
-  debugRemoveFailAt,
-  debugSetFailAt,
-  debugClearFailAt,
   getEndpointById,
   getServersByType,
   getDBServers,
@@ -47,7 +44,7 @@ const {
   arangoClusterInfoGetCollectionInfoCurrent,
   getServerById
 } = require('@arangodb/test-helper');
-
+let IM = global.instanceManager;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -61,11 +58,6 @@ function SynchronousReplicationSuite() {
   var ccinfo;
   var shards;
   var failedState = { leader: null, follower: null };
-
-  if (!require('internal').debugSetFailAt) {
-    console.info("Failure Tests disabled, Skipping...");
-    return {};
-  }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief find out servers for the system collections
@@ -129,7 +121,7 @@ function SynchronousReplicationSuite() {
   
     assertTrue(pos >= 0, pos);
     if (failAt) {
-      debugSetFailAt(endpoint.replace('tcp://', 'http://'), failAt);
+      IM.debugSetFailAt(failAt, undefined, undefined, endpoint);
       console.info("Have added failure in follower", follower, " at ", failAt);
     } else {
       assertTrue(suspendExternal(arangods[pos].pid));
@@ -151,7 +143,7 @@ function SynchronousReplicationSuite() {
       x => x.url === endpoint);
     assertTrue(pos >= 0);
     if (failAt) {
-      debugRemoveFailAt(endpoint.replace('tcp://', 'http://'), failAt);
+      IM.debugSetFailAt(failAt, undefined, undefined, endpoint);
       console.info("Have removed failure in follower", follower, " at ", failAt);
     } else {
       assertTrue(continueExternal(arangods[pos].pid));
@@ -173,7 +165,7 @@ function SynchronousReplicationSuite() {
       x => x.url === endpoint);
     assertTrue(pos >= 0);
     if (failAt) {
-      debugSetFailAt(endpoint.replace('tcp://', 'http://'), failAt);
+      IM.debugSetFailAt(failAt, undefined, undefined, endpoint);
       console.info("Have failed leader", leader, " at ", failAt);
     } else {
       assertTrue(suspendExternal(arangods[pos].pid));
@@ -196,7 +188,7 @@ function SynchronousReplicationSuite() {
       x => x.url === endpoint);
     assertTrue(pos >= 0);
     if (failAt) {
-      debugRemoveFailAt(endpoint.replace('tcp://', 'http://'), failAt);
+      IM.debugSetFailAt(failAt, undefined, undefined, endpoint);
       console.info("Have removed failure in leader", leader, " at ", failAt);
     } else {
       assertTrue(continueExternal(arangods[pos].pid));
@@ -359,10 +351,7 @@ function SynchronousReplicationSuite() {
 
     tearDown: function () {
       var servers = getServersByType(instanceRoledbServer);
-      servers.forEach(s => {
-        let endpoint = getServerById(s.id).endpoint;
-        debugClearFailAt(endpoint.replace('tcp://', 'http://'));
-      });
+      IM.debugClearFailAt();
       if(failedState.leader != null) healLeader(failedState.leader.failAt, failedState.leader.failedServer);
       if(failedState.follower != null) healFollower(failedState.follower.failAt, failedState.follower.failedServer);
       db._drop(cn);
@@ -673,7 +662,9 @@ function SynchronousReplicationSuite() {
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(SynchronousReplicationSuite);
+if (IM.debugCanUseFailAt()) {
+  jsunity.run(SynchronousReplicationSuite);
+}
 
 return jsunity.done();
 

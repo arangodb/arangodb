@@ -36,6 +36,7 @@ const arangodb = require("@arangodb");
 const db = arangodb.db;
 const errors = arangodb.errors;
 const { getCoordinators, getAgents } = require('@arangodb/test-helper');
+let IM = global.instanceManager;
 
 // In replication2, the shard distribution is handled by the supervision.
 // In replication1, the shard distribution is handled by the coordinator.

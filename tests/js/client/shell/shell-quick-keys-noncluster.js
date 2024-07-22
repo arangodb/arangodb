@@ -82,12 +82,12 @@ function quickKeysSuite() {
   return {
 
     setUp: function () {
-      debugClearFailAt(primaryEndpoint);
+      IM.debugClearFailAt();
       db._drop(cn);
     },
 
     tearDown: function () {
-      debugClearFailAt(primaryEndpoint);
+      IM.debugClearFailAt();
       db._drop(cn);
     },
     
