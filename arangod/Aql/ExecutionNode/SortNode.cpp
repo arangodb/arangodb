@@ -64,17 +64,7 @@ void SortNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   {
     VPackArrayBuilder guard(&nodes);
     for (auto const& it : _elements) {
-      VPackObjectBuilder obj(&nodes);
-      nodes.add(VPackValue("inVariable"));
-      it.var->toVelocyPack(nodes);
-      nodes.add("ascending", VPackValue(it.ascending));
-      if (!it.attributePath.empty()) {
-        nodes.add(VPackValue("path"));
-        VPackArrayBuilder arr(&nodes);
-        for (auto const& a : it.attributePath) {
-          nodes.add(VPackValue(a));
-        }
-      }
+      it.toVelocyPack(nodes);
     }
   }
   nodes.add("stable", VPackValue(_stable));
@@ -233,6 +223,16 @@ void SortNode::replaceVariables(
     std::unordered_map<VariableId, Variable const*> const& replacements) {
   for (auto& variable : _elements) {
     variable.var = Variable::replace(variable.var, replacements);
+  }
+}
+
+void SortNode::replaceAttributeAccess(ExecutionNode const* self,
+                                      Variable const* searchVariable,
+                                      std::span<std::string_view> attribute,
+                                      Variable const* replaceVariable,
+                                      size_t /*index*/) {
+  for (auto& it : _elements) {
+    it.replaceAttributeAccess(searchVariable, attribute, replaceVariable);
   }
 }
 

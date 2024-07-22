@@ -468,9 +468,6 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   // doc.@attr).
   _ast->injectBindParametersFirstStage(_bindParameters, this->resolver());
 
-  // put in value bind parameters. TODO: move this further down in the process,
-  // so that the optimizer can run with value bind parameters still unreplaced
-  // in the AST.
   _ast->injectBindParametersSecondStage(_bindParameters);
 
   if (parser.ast()->containsUpsertNode()) {
@@ -564,7 +561,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
         if (useQueryCache) {
           // check the query cache for an existing result
           auto cacheEntry = QueryCache::instance()->lookup(
-              &_vocbase, hash(), _queryString, bindParameters());
+              &_vocbase, hash(), _queryString, bindParametersAsBuilder());
 
           if (cacheEntry != nullptr) {
             if (cacheEntry->currentUserHasPermissions()) {
@@ -711,7 +708,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
 
           // create a query cache entry for later storage
           _cacheEntry = std::make_unique<QueryCacheResultEntry>(
-              hash(), _queryString, queryResult.data, bindParameters(),
+              hash(), _queryString, queryResult.data, bindParametersAsBuilder(),
               std::move(dataSources)  // query DataSources
           );
         }
@@ -815,7 +812,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
     if (useQueryCache) {
       // check the query cache for an existing result
       auto cacheEntry = QueryCache::instance()->lookup(
-          &_vocbase, hash(), _queryString, bindParameters());
+          &_vocbase, hash(), _queryString, bindParametersAsBuilder());
 
       if (cacheEntry != nullptr) {
         if (cacheEntry->currentUserHasPermissions()) {
@@ -958,7 +955,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
 
       // create a cache entry for later usage
       _cacheEntry = std::make_unique<QueryCacheResultEntry>(
-          hash(), _queryString, builder, bindParameters(),
+          hash(), _queryString, builder, bindParametersAsBuilder(),
           std::move(dataSources)  // query DataSources
       );
     }
@@ -1104,7 +1101,7 @@ QueryResult Query::explain() {
     // put in bind parameters
     parser.ast()->injectBindParametersFirstStage(_bindParameters,
                                                  this->resolver());
-    parser.ast()->injectBindParametersSecondStage(_bindParameters);
+    _ast->injectBindParametersSecondStage(_bindParameters);
     _bindParameters.validateAllUsed();
 
     // optimize and validate the ast
@@ -1412,7 +1409,12 @@ void Query::init(bool createProfile) {
   enterState(QueryExecutionState::ValueType::INITIALIZATION);
 
   TRI_ASSERT(_ast == nullptr);
-  _ast = std::make_unique<Ast>(*this);
+  AstPropertiesFlagsType flags = AstPropertyFlag::AST_FLAG_DEFAULT;
+  // Create a plan that can be executed with different sets of bind parameters.
+  if (_queryOptions.optimizePlanForCaching) {
+    flags |= AstPropertyFlag::NON_CONST_PARAMETERS;
+  }
+  _ast = std::make_unique<Ast>(*this, flags);
 }
 
 void Query::registerQueryInTransactionState() {
@@ -1523,7 +1525,7 @@ std::string Query::extractQueryString(size_t maxLength, bool show) const {
 
 void Query::stringifyBindParameters(std::string& out, std::string_view prefix,
                                     size_t maxLength) const {
-  auto bp = bindParameters();
+  auto bp = bindParametersAsBuilder();
   if (bp != nullptr && !bp->slice().isNone() && maxLength >= 3) {
     // append prefix, e.g. "bind parameters: "
     out.append(prefix);

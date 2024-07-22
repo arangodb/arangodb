@@ -23,27 +23,64 @@
 
 #pragma once
 
+#include "Aql/Variable.h"
+
+#include <span>
 #include <string>
+#include <string_view>
+#include <unordered_map>
 #include <vector>
 
+namespace arangodb::velocypack {
+class Builder;
+class Slice;
+}  // namespace arangodb::velocypack
+
 namespace arangodb::aql {
+class Ast;
 struct Variable;
 
 /// @brief sort element, consisting of variable, sort direction, and a possible
 /// attribute path to dig into the document
 struct SortElement {
-  Variable const* var;
-  bool ascending;
-  std::vector<std::string> attributePath;
-
+ private:
   SortElement(Variable const* v, bool asc);
 
   SortElement(Variable const* v, bool asc, std::vector<std::string> path);
+
+ public:
+  static SortElement create(Variable const* v, bool asc);
+  static SortElement createWithPath(Variable const* v, bool asc,
+                                    std::vector<std::string> path);
 
   /// @brief stringify a sort element. note: the output of this should match the
   /// stringification output of an AstNode for an attribute access
   /// (e.g. foo.bar => $0.bar)
   std::string toString() const;
+
+  /// @brief resets variable to v, and clears the attributePath
+  void resetTo(Variable const* v);
+
+  void replaceVariables(
+      std::unordered_map<VariableId, Variable const*> const& replacements);
+
+  void replaceAttributeAccess(Variable const* searchVariable,
+                              std::span<std::string_view> attribute,
+                              Variable const* replaceVariable);
+
+  void toVelocyPack(velocypack::Builder& builder) const;
+
+  static SortElement fromVelocyPack(Ast* ast, velocypack::Slice info);
+
+  // variable to sort by
+  Variable const* var;
+
+  // sort direction: true => ascending, false => descending
+  bool ascending;
+
+  // an extra attribute path to sort by, used by GatherNode in cluster for
+  // merge-sorting
+  std::vector<std::string> attributePath;
 };
 
 using SortElementVector = std::vector<SortElement>;

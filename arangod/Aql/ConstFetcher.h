@@ -31,8 +31,7 @@
 #include <memory>
 #include <span>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 class AqlCallStack;
 class AqlItemBlock;
@@ -109,5 +108,4 @@ class ConstFetcher {
       std::span<std::pair<size_t, size_t> const> ranges) const noexcept -> bool;
 };
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql

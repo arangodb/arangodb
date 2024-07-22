@@ -58,7 +58,9 @@ struct Variable {
     /// query
     Regular,
     /// @brief a variable with a constant value
-    Const
+    Const,
+    /// @brief variable is a replacement for a bind parameter
+    BindParameter,
   };
 
   /// @brief create the variable
@@ -110,6 +112,10 @@ struct Variable {
   /// This implicitly changes the type -> see type()
   void setConstantValue(AqlValue value);
 
+  void setBindParameterReplacement(std::string name);
+
+  std::string_view bindParameterName() const noexcept;
+
   /// @brief variable id
   VariableId const id;
 
@@ -131,6 +137,8 @@ struct Variable {
   // while initializing the plan. Note: the variable takes ownership of this
   // value and destroys it
   AqlValue _constantValue;
+
+  std::string _bindParameterName;
 };
 }  // namespace aql
 }  // namespace arangodb

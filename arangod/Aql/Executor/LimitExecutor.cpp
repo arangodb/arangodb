@@ -150,7 +150,8 @@ auto LimitExecutor::produceRows(AqlItemBlockInputRange& inputRange,
           "exactly enough space for all input in the output.");
       auto numRowsWritten = size_t{0};
       if (inputRange.hasDataRow()) {
-        auto const& [_, inputRow] = inputRange.peekDataRow();
+        auto const& [_, inputRow] =
+            inputRange.peekDataRow(AqlItemBlockInputRange::HasDataRow{});
         size_t rows = inputRange.countAndSkipAllRemainingDataRows();
         output.fastForwardAllRows(inputRow, rows);
         numRowsWritten = rows;

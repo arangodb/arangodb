@@ -4,19 +4,56 @@ devel
 * During AQL setup, the Coordinator will no longer block threads while waiting
   for DBServers to finish the query instantiation.
 
-* Fix an "invalid document type" exception when using the AQL ENTRIES function
-  on a database document or edge.
+* Add optimizer rule `push-limit-into-index` that pushes a limit down into index
+  iteration and can optimize the query execution when compound index is used
+  along with SORT and LIMIT clauses.
 
-* Updated ArangoDB Starter to v0.19.3.
+* FE-423: Add a progress bar to reflect an index creation process.
 
-* Fixed MDS-1216: restoring the previous value of the "padded" key generator
-  could lead to the key generator's sequence being set to a too low value
-  after recovery.
+* Remove unused "mmap" log topic.
 
-* Fix a nullptr access when aborting a move shard job for a already dropped collection.
+* Support array and object destructuring for FOR loops that refer to simple
+  expressions or collections.
 
-* Use __nss_configure_lookup to opt out of /etc/nsswitch.conf.
-  Add the startup option --honor-nsswitch to cancel the opt-out.
+  The following is now possible to write in AQL:
+
+      FOR {value1, value2} IN collection
+        FILTER value1 == @value1 && value2 == @value2
+        RETURN value1
+
+  This destructures every single object from `collection` and extracts its
+  `value1` and `value2` attributes. It is equivalent to writing:
+
+      FOR doc IN collection
+        FILTER doc.value1 == @value1 && doc.value2 == @value2
+        RETURN doc.value1
+
+  It is also possible to destructure array inputs into separate variables.
+  For example, the following query
+
+      FOR doc IN collection 
+        FOR [key, value] IN ENTRIES(doc) 
+        RETURN {key, value}
+
+  can be used to destructure all members from the expression `ENTRIES(doc)` and
+  assign the first member to the variable `key`, and the second member to the
+  variable `value`.
+
+  This is equivalent to writing:
+
+      FOR doc IN collection 
+        FOR entry IN ENTRIES(doc)
+          LET key = entry[0]
+          LET value = entry[1]
+          RETURN {key, value}
+
+  Accessing an undefined object attribute or an undefined array members results
+  in a value of `null` being produced. Applying destructuring on any
+  incompatible input types produces `null` as well.
+
+  Destructuring is not supported for view-based FOR loops, for traversal FOR
+  loops, SHORTEST_PATH FOR loops, K_PATHS FOR loops, K_SHORTEST_PATHS FOR loops
+  nor ALL_SHORTEST_PATHS FOR loops.
 
 * Make constrained heap sort in AQL report all filtered rows as "filtered" in
   the query profile.
@@ -31,7 +68,7 @@ devel
 
 * Added array and object destructuring to AQL LET statements.
 
-  * Array Destructuring: Array destructuring is the assignment of array values
+  - Array Destructuring: Array destructuring is the assignment of array values
     into one or multiple variables with a single `LET` assignment. This can be
     achieved by putting the target assignment variables of the `LET` assignment
     into angular brackets.
@@ -43,17 +80,17 @@ devel
     will assign the value `1` to variable `y` and the value `2` to variable `z`.
     The mapping of input array members to the target variables is positional.
 
-    It is also possible to skip over unneeded array values. The following 
-    assignment will assign the value `2` to variable `y` and the value `3` to 
-    variable `z`. The array member with value `1` will not be assigned to any 
+    It is also possible to skip over unneeded array values. The following
+    assignment will assign the value `2` to variable `y` and the value `3` to
+    variable `z`. The array member with value `1` will not be assigned to any
     variable:
 
         LET [, y, z] = [1, 2, 3]
 
-    When there are more variables assigned than there are array members, the 
-    target variables that are mapped to non-existing array members are 
-    populated with a value of `null`. The assigned target variables will also
-    receive a value of `null` when the destructuring is used on a non-array.
+    When there are more variables assigned than there are array members, the
+    target variables that are mapped to non-existing array members are populated
+    with a value of `null`. The assigned target variables will also receive a
+    value of `null` when the destructuring is used on a non-array.
 
     Destructuring can also be applied on nested arrays, e.g.
 
@@ -62,7 +99,7 @@ devel
     In the above example, the value of variable `sub1` will be `foo`, the value
     of variable `sub2` will be `1` and the value of variable `sub3` will be `2`.
 
-  * Object Destructuring: Object destructuring is the assignment of multiple
+  - Object Destructuring: Object destructuring is the assignment of multiple
     target variables from a source object value. This is achieved by using the
     curly brackets after the `LET` assignment token:
 
@@ -75,10 +112,11 @@ devel
 
     Object destructuring also works with nested objects, e.g.
 
-        LET { name: {first, last} } = { name: { first: "John", middle: "J", last: "Doe" } }
+        LET { name: {first, last} } =
+        { name: { first: "John", middle: "J", last: "Doe" } }
 
-    The above statement will assign the value `John` to the variable `first` 
-    and the value `Doe` to the variable `last`. The attribute `middle` from the
+    The above statement will assign the value `John` to the variable `first` and
+    the value `Doe` to the variable `last`. The attribute `middle` from the
     source object is ignored.
     Note that here only variables `first` and `last` will be populated, but
     variable `name` is not.
@@ -86,11 +124,12 @@ devel
     It is also possible for the target variable to get a different name than in
     the source object, e.g.
 
-        LET { name: {first: firstName, last: lastName} } = { name: { first: "John", last: "Doe" } }
+        LET { name: {first: firstName, last: lastName} } =
+        { name: { first: "John", last: "Doe" } }
 
     The above statement assigns the value `John` to the target variable
-    `firstName` and the value `Doe` to the target variable `lastName`. Note
-    that neither of these attributes exist in the source object.
+    `firstName` and the value `Doe` to the target variable `lastName`. Note that
+    neither of these attributes exist in the source object.
 
 * Added `verifyCertificates` attribute option for the `requests` JavaScript
   module. This option defaults to false, so that no certificates will be 
@@ -100,8 +139,35 @@ devel
   There is also a `verifyDepth` attribute to limit the maximum length of the 
   certificate chain that counts as valid.
 
+
 3.12.1 (XXXX-XX-XX)
 -------------------
+
+* Fix an "invalid document type" exception when using the AQL ENTRIES function
+  on a database document or edge.
+
+* Fixed MDS-1216: restoring the previous value of the "padded" key generator
+  could lead to the key generator's sequence being set to a too low value after
+  recovery.
+
+* Updated ArangoDB Starter to v0.19.3.
+
+* Fix a nullptr access when aborting a move shard job for a already dropped
+  collection.
+
+* Use __nss_configure_lookup to opt out of /etc/nsswitch.conf.
+  Add the startup option --honor-nsswitch to cancel the opt-out.
+
+* Fix memory accounting in join executor.
+
+* Fix issues with late materialization being sometimes implicitly dependent on
+  the optimizer rule "optimize-projections" being enabled. Now disable some
+  late materialization optimizations in case this rule is not active.
+  Also fix a specific case in which no results were being materialized in case
+  the optimizer rule "optimize-projections" was disabled.
+
+* Fix serialization of multiple query plans using the `allPlans: true` hint
+  when run `explain` on a query.
 
 * Support indexHint AQL option for traversals.
   The structure of traversal index hints is as follows:
