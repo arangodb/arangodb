@@ -13,7 +13,6 @@ devel
   - `--rocksdb.throttle-scaling-factor` was changed from 17 to 192.
   - `--rocksdb.pending-compactions-slowdown-trigger` was changed from 128KB to 1GB.
   - `--rocksdb.pending-compactions-stop-trigger` was changed from 16GB to 32GB.
-  - `--rocksdb.recycle-log-file-num` was changed from 0 to 4.
   - `--rocksdb.partition-files-for-documents` was changed from false to true.
 
   The startup option `--rocksdb.throttle-slow-down-writes-trigger` has been
