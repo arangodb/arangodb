@@ -182,7 +182,6 @@ class Logger {
   static LogTopic LICENSE;
   static LogTopic MAINTENANCE;
   static LogTopic MEMORY;
-  static LogTopic MMAP;
   static LogTopic QUERIES;
   static LogTopic REPLICATION;
   static LogTopic REPLICATION2;

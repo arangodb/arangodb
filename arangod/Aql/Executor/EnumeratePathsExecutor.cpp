@@ -224,7 +224,8 @@ auto EnumeratePathsExecutor<FinderType>::fetchPaths(
   while (input.hasDataRow()) {
     auto source = VPackSlice{};
     auto target = VPackSlice{};
-    std::tie(std::ignore, _inputRow) = input.nextDataRow();
+    std::tie(std::ignore, _inputRow) =
+        input.nextDataRow(AqlItemBlockInputRange::HasDataRow{});
     TRI_ASSERT(_inputRow.isInitialized());
 
     // Check start and end for validity

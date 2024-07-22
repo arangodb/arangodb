@@ -204,9 +204,10 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   ErrorCode resultCode() const noexcept;
 
   /// @brief return the bind parameters as passed by the user
-  std::shared_ptr<velocypack::Builder> bindParameters() const {
+  std::shared_ptr<velocypack::Builder> bindParametersAsBuilder() const {
     return _bindParameters.builder();
   }
+  BindParameters const& bindParameters() const { return _bindParameters; }
 
   /// @brief return the query's shared state
   std::shared_ptr<SharedQueryState> sharedState() const;

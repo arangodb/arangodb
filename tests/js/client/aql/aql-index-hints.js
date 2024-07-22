@@ -29,6 +29,7 @@ const internal = require("internal");
 const db = require('internal').db;
 const jsunity = require("jsunity");
 const normalize = require("@arangodb/aql-helper").normalizeProjections;
+const {waitForEstimatorSync } = require('@arangodb/test-helper');
 const errors = internal.errors;
 const analyzers = require("@arangodb/analyzers");
 const cn = 'UnitTestsIndexHints';
@@ -957,6 +958,8 @@ function indexHintTraversalSuite () {
       c.insert(docs);
       
       c = db._createEdgeCollection(cn + "Edge");
+      // note: we want that every index gets a different selectivity estimate, so that we can be sure which
+      // index the optimizer will use by default
       c.ensureIndex({type: 'persistent', name: 'from', fields: ['_from']});
       c.ensureIndex({type: 'persistent', name: 'from_value1', fields: ['_from', 'value1']});
       c.ensureIndex({type: 'persistent', name: 'from_value1_value2', fields: ['_from', 'value1', 'value2']});
@@ -966,12 +969,13 @@ function indexHintTraversalSuite () {
 
       docs = [];
       for (let i = 0; i < 10000; ++i) {
-        docs.push({ _from: cn + "Vertex/test" + (i % 100), _to: cn + "Vertex/test" + (i % 1000), value1: i, value2: i });
+        docs.push({ _from: cn + "Vertex/test" + (i % 100), _to: cn + "Vertex/test" + (i % 500), value1: (i % 3), value2: (i % 61) });
         if (docs.length === 1000) {
           c.insert(docs);
           docs = [];
         }
       }
+      waitForEstimatorSync();
     },
 
     tearDownAll: function () {

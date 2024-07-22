@@ -1784,11 +1784,12 @@ ExecutionNode* ExecutionPlan::fromNodeSort(ExecutionNode* previous,
       // sort operand is a variable
       auto v = static_cast<Variable*>(expression->getData());
       TRI_ASSERT(v != nullptr);
-      elements.emplace_back(v, isAscending);
+      elements.push_back(SortElement::create(v, isAscending));
     } else {
       // sort operand is some misc expression
       auto calc = createTemporaryCalculation(expression, previous);
-      elements.emplace_back(getOutVariable(calc), isAscending);
+      elements.push_back(
+          SortElement::create(getOutVariable(calc), isAscending));
       previous = calc;
     }
   }
@@ -2345,7 +2346,7 @@ ExecutionNode* ExecutionPlan::fromNodeWindow(ExecutionNode* previous,
 
     // add a sort on rangeVariable in front of the WINDOW
     SortElementVector elements;
-    elements.emplace_back(rangeVar, /*isAscending*/ true);
+    elements.push_back(SortElement::create(rangeVar, /*isAscending*/ true));
     auto en = registerNode(
         std::make_unique<SortNode>(this, nextId(), std::move(elements), false));
     previous = addDependency(previous, en);
@@ -2406,7 +2407,8 @@ ExecutionNode* ExecutionPlan::fromNodeWindow(ExecutionNode* previous,
 ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
 
-  ExecutionNode* en = createNode<SingletonNode>(this, nextId());
+  ExecutionNode* en =
+      createNode<SingletonNode>(this, nextId(), _ast->bindParameterVariables());
 
   size_t const n = node->numMembers();
 

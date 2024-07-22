@@ -37,10 +37,13 @@ if (isEnterprise) {
   smartGraph = require("@arangodb/smart-graph");
 }
 const graphModule = require("@arangodb/general-graph");
+const { assert } = require('console');
+const analyzers = require('@arangodb/analyzers');
 
 const vn1 = "testVertex1";
 const vn2 = "testVertex2";
 const vn3 = "testVertex3";
+const cn  = "collection";
 const cn1 = "edgeTestCollection";
 const cn2 = "edgeTestCollection2";
 const relationName = "isRelated";
@@ -326,11 +329,86 @@ function debugDumpGraphTestsuite () {
   };
 }
 
+function debugDumpViews () {
+  return {
+    setUp: function () {
+      db._createDatabase(dbName, { replicationFactor: 3, writeConcern: 2 });
+      db._useDatabase(dbName);
+
+      analyzers.save("my_delimiter", "delimiter", {"delimiter": "@"});
+      analyzers.save("delimiter_hyphen", "delimiter", {"delimiter": "-" });
+      analyzers.save("text_en_nostem", "text", { locale: "en", case: "lower", accent: false, stemming: false, stopwords: []});
+      
+      db._create(cn, {numberOfShards: 3});
+      db._create(cn1, {numberOfShards: 3});
+
+
+      for (let i = 0; i < 50; ++i) {
+        db[cn].insert({ value1: i + "@" + i, value2: i});
+        db[cn1].insert({ value3: i + "@" + i, value4: i});
+      }
+
+      let properties = {"links": {}};
+      properties["links"][cn] = {
+        "analyzers": [
+            "my_delimiter",
+            "identity",
+            "text_en_nostem"
+        ],
+        "fields": {
+            "value1": {},
+            "value2": {}
+        }
+      };
+      properties["links"][cn1] = {
+        "analyzers": [
+          "my_delimiter",
+        ],
+        "fields": {
+            "value3": {},
+            "value4": {}
+        }
+      };
+      db._createView("view", "arangosearch", properties);
+    },
+
+    tearDown: function () {
+      db._useDatabase("_system");
+      db._dropDatabase(dbName);
+      try {
+        fs.unlink(fileName);
+      } catch (err) {
+      }
+      try {
+        fs.unlink(outFileName);
+      } catch (err) {
+      }
+    },
+
+    testDebugDumpWithViews: function () {
+      let query = `for d in view search ANALYZER(d.value1 == "31" or d.value1 == "1", "my_delimiter") OPTIONS {waitForSync: true } return d `;
+      let res = db._query(query).toArray();
+      assertEqual(res.length, 2);
+      explainer.debugDump(fileName, query, {}, {examples: 50, anonymize: false});
+      explainer.inspectDump(fileName, outFileName);
+      recreateEmptyDatabase();
+      executeFromDump(outFileName);
+
+      let analyzers_arr = analyzers.toArray();
+      assertEqual(analyzers_arr.length, 15); // 13 system analyzers plus "my_delimiter" and "text_en_nostem"
+
+      res = db._query(query).toArray();
+      assertEqual(res.length, 2);
+    },
+  };
+}
+
 
 if (isEnterprise) {
   jsunity.run(debugDumpSmartGraphTestsuite);
   jsunity.run(debugDumpSmartGraphDisjointTestsuite);
 }
 jsunity.run(debugDumpGraphTestsuite);
+jsunity.run(debugDumpViews);
 
 return jsunity.done();

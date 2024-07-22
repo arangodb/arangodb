@@ -333,6 +333,12 @@ class IndexIterator {
     return false;
   }
 
+  // set an optional limit for the index iterator.
+  // the default implementation does nothing. derived classes can override it
+  // as a performance optimization, so that fewer index results will be
+  // produced.
+  virtual void setLimit(uint64_t limit) noexcept {}
+
   /// @brief skip the next toSkip many elements.
   ///        skipped will be increased by the amount of skipped elements
   ///        afterwards Check hasMore()==true before using this NOTE: This will
