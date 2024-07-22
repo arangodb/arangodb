@@ -133,6 +133,18 @@ int RocksDBVPackComparator<sortingMethod>::compareIndexValues(
   return static_cast<int>(lSize - rSize);
 }
 
+template<>
+char const* RocksDBVPackComparator<
+    arangodb::basics::VelocyPackHelper::SortingMethod::Legacy>::Name() const {
+  return "RocksDBVPackComparator(legacy)";
+}
+
+template<>
+char const* RocksDBVPackComparator<
+    arangodb::basics::VelocyPackHelper::SortingMethod::Correct>::Name() const {
+  return "RocksDBVPackComparator(correct)";
+}
+
 // Now explicitly instantiate the two cases:
 template class RocksDBVPackComparator<
     arangodb::basics::VelocyPackHelper::SortingMethod::Legacy>;
