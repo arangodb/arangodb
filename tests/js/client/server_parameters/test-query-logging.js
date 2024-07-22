@@ -46,6 +46,7 @@ if (getOptions === true) {
     'query.collection-logger-enabled': 'true',
     'query.collection-logger-include-system-database': 'true',
     'query.collection-logger-probability': '100',
+    'query.collection-logger-push-interval': '250',
   };
 }
 
@@ -57,10 +58,36 @@ const jwt = crypto.jwtEncode(jwtSecret, {
 const baseUrl = function (dbName = '_system') {
   return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:') + `/_db/${dbName}`;
 };
+  
+const waitForCollection = () => {
+  let tries = 0;
+  while (++tries < 200) {
+    let result = request.post({
+      url: baseUrl() + "/_api/cursor",
+      body: {query:"FOR doc IN _queries LIMIT 1 RETURN doc"},
+      json: true,
+      auth: {bearer: jwt},
+    });
+
+    assertInstanceOf(request.Response, result);
+    let body = JSON.parse(result.body);
+    if (!body.error) {
+      return;
+    }
+    if (body.code !== 404 || body.errorNum !== errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code) {
+      throw body;
+    }
+    internal.sleep(0.25);
+  }
+  assertFalse(true, "_queries collection did not appear in time");
+};
+
 
 function QueryPermissionsSuite() { 
   return {
     setUpAll: function () {
+      waitForCollection();
+
       db._create(cn);
       // run at least one AQL query so that the _queries collection
       // will be created
@@ -210,29 +237,6 @@ function QueryLoggerSuite() {
     }
   };
   
-  const waitForCollection = () => {
-    let tries = 0;
-    while (++tries < 200) {
-      let result = request.post({
-        url: baseUrl() + "/_api/cursor",
-        body: {query:"FOR doc IN _queries LIMIT 1 RETURN doc"},
-        json: true,
-        auth: {bearer: jwt},
-      });
-
-      assertInstanceOf(request.Response, result);
-      let body = JSON.parse(result.body);
-      if (!body.error) {
-        return;
-      }
-      if (body.code !== 404 || body.errorNum !== errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) {
-        throw body;
-      }
-      internal.sleep(0.25);
-    }
-    assertFalse(true, "_queries collection did not appear in time");
-  };
-
   const getQueries = () => {
     let result = request.post({
       url: baseUrl() + "/_api/cursor",

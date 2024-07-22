@@ -2345,6 +2345,7 @@ void Query::toVelocyPack(velocypack::Builder& builder, bool isCurrent,
 #if 0
   // TODO: currently does not work in cluster, as stats in cluster are only 
   // updated after the query is removed from the query list.
+  // these attributes can be added once the issue is fixed in cluster.
   builder.add("writesExecuted", VPackValue(_execStats.writesExecuted));
   builder.add("writesIgnored", VPackValue(_execStats.writesIgnored));
   builder.add("documentLookups", VPackValue(_execStats.documentLookups));

@@ -70,9 +70,14 @@ namespace arangodb::aql {
 class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
  public:
   explicit QueryInfoLoggerThread(ArangodServer& server,
-                                 size_t maxBufferedQueries)
+                                 size_t maxBufferedQueries,
+                                 uint64_t pushInterval,
+                                 uint64_t cleanupInterval, double retentionTime)
       : ServerThread<ArangodServer>(server, "QueryInfoLogger"),
-        _maxBufferedQueries(maxBufferedQueries) {}
+        _maxBufferedQueries(maxBufferedQueries),
+        _pushInterval(pushInterval),
+        _cleanupInterval(cleanupInterval),
+        _retentionTime(retentionTime) {}
 
   ~QueryInfoLoggerThread() { shutdown(); }
 
@@ -90,12 +95,15 @@ class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
 
       if (_queries.size() < _maxBufferedQueries) {
         _queries.emplace_back(std::move(query));
-        doNotify = true;
+        if (_queries.size() >= _maxBufferedQueries / 4) {
+          // only notify in case we have added the query,
+          // and we have accumulated enough data
+          doNotify = true;
+        }
       }
     }
 
     if (doNotify) {
-      // notify only in case we have added the query
       _condition.notify_one();
     }
   }
@@ -117,7 +125,8 @@ class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
 
     // interval in which garbage collection for "old" query entries
     // runs.
-    constexpr auto gcCheckInterval = std::chrono::minutes(3);
+    auto gcCheckInterval = std::chrono::milliseconds(_cleanupInterval);
+    auto pushInterval = std::chrono::milliseconds(_pushInterval);
 
     while (true) {
       decltype(_queries) queries;
@@ -143,7 +152,7 @@ class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
           }
 
           // only sleep if we have no queries left to process
-          _condition.wait_for(guard, gcCheckInterval);
+          _condition.wait_for(guard, pushInterval);
         } else {
           std::swap(queries, _queries);
 
@@ -207,7 +216,7 @@ class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
     }
 
     auto workItem = scheduler->queueDelayed(
-        "queries-gc", RequestLane::CLIENT_SLOW, std::chrono::seconds(10),
+        "queries-gc", RequestLane::CLIENT_SLOW, std::chrono::seconds(2),
         [this](bool canceled) {
           if (!canceled && !isStopping()) {
             if (Result res = basics::catchToResult(
@@ -253,9 +262,8 @@ class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
         "/*queries cleanup*/ FOR doc IN @@collection FILTER doc.started < "
         "@minDate REMOVE doc IN @@collection";
 
-    // TODO: make retention period dynamic
-    std::string minDate =
-        TRI_StringTimeStamp(TRI_microtime() - 86400, /*useLocalTime*/ false);
+    std::string minDate = TRI_StringTimeStamp(TRI_microtime() - _retentionTime,
+                                              /*useLocalTime*/ false);
 
     auto bindVars = std::make_shared<VPackBuilder>();
     bindVars->openObject();
@@ -419,6 +427,22 @@ class QueryInfoLoggerThread final : public ServerThread<ArangodServer> {
   // being inserted into the _queries system collection.
   size_t const _maxBufferedQueries;
 
+  // interval (in milliseconds) with which buffered queries will be pushed out
+  // to the _queries system collection. to amortize the cost of writing query
+  // information into the system collection, one can increase the push interval.
+  // this increases the chances of multiple queries being written to the system
+  // collection with a single write operation. it will delay writing to the
+  // system collection however.
+  uint64_t const _pushInterval;
+
+  // interval (in milliseconds) with which outdated query information is purged
+  // from the _queries system collection.
+  uint64_t const _cleanupInterval;
+
+  // retention time (in seconds) for which queries are kept in the _queries
+  // system collection before they are purged.
+  double const _retentionTime;
+
   // mutex and condition variable that protect _queries.
   std::mutex _mutex;
   std::condition_variable _condition;
@@ -441,7 +465,10 @@ QueryInfoLoggerFeature::QueryInfoLoggerFeature(Server& server)
       _logEnabled(false),
       _logSystemDatabaseQueries(false),
       _logSlowQueries(true),
-      _logProbability(0.001) {
+      _logProbability(0.1),
+      _pushInterval(3'000),
+      _cleanupInterval(600'000),
+      _retentionTime(86400.0) {
   setOptional(true);
   // we need to be able to run AQL queries here ourselves.
   startsAfter<DatabaseFeaturePhase>();
@@ -461,7 +488,7 @@ void QueryInfoLoggerFeature::collectOptions(
                   options::makeDefaultFlags(options::Flags::DefaultNoComponents,
                                             options::Flags::OnCoordinator,
                                             options::Flags::OnSingle))
-      .setIntroducedIn(31300);
+      .setIntroducedIn(31202);
 
   options
       ->addOption(
@@ -471,17 +498,17 @@ void QueryInfoLoggerFeature::collectOptions(
           options::makeDefaultFlags(options::Flags::DefaultNoComponents,
                                     options::Flags::OnCoordinator,
                                     options::Flags::OnSingle))
-      .setIntroducedIn(31300);
+      .setIntroducedIn(31202);
 
   options
       ->addOption("--query.collection-logger-include-system-database",
-                  "Whether or not to include system database queries in query "
+                  "Whether or not to include _system database queries in query "
                   "collection logging.",
                   new options::BooleanParameter(&_logSystemDatabaseQueries),
                   options::makeDefaultFlags(options::Flags::DefaultNoComponents,
                                             options::Flags::OnCoordinator,
                                             options::Flags::OnSingle))
-      .setIntroducedIn(31300);
+      .setIntroducedIn(31202);
 
   options
       ->addOption("--query.collection-logger-all-slow-queries",
@@ -491,7 +518,7 @@ void QueryInfoLoggerFeature::collectOptions(
                   options::makeDefaultFlags(options::Flags::DefaultNoComponents,
                                             options::Flags::OnCoordinator,
                                             options::Flags::OnSingle))
-      .setIntroducedIn(31300);
+      .setIntroducedIn(31202);
 
   options
       ->addOption(
@@ -502,7 +529,38 @@ void QueryInfoLoggerFeature::collectOptions(
           options::makeDefaultFlags(options::Flags::DefaultNoComponents,
                                     options::Flags::OnCoordinator,
                                     options::Flags::OnSingle))
-      .setIntroducedIn(31300);
+      .setIntroducedIn(31202);
+
+  options
+      ->addOption("--query.collection-logger-retention-time",
+                  "The time duration (in seconds) for with which queries are "
+                  "kept in the "
+                  "_queries system collection before they are purged.",
+                  new options::DoubleParameter(&_retentionTime, 1.0, 1.0),
+                  options::makeDefaultFlags(options::Flags::DefaultNoComponents,
+                                            options::Flags::OnCoordinator,
+                                            options::Flags::OnSingle))
+      .setIntroducedIn(31202);
+
+  options
+      ->addOption("--query.collection-logger-push-interval",
+                  "The interval (in milliseconds) in which query information "
+                  "is flushed to the _queries system collection.",
+                  new options::UInt64Parameter(&_pushInterval),
+                  options::makeDefaultFlags(options::Flags::DefaultNoComponents,
+                                            options::Flags::OnCoordinator,
+                                            options::Flags::OnSingle))
+      .setIntroducedIn(31202);
+
+  options
+      ->addOption("--query.collection-logger-cleanup-interval",
+                  "The interval (in milliseconds) in which query information "
+                  "is purged from the _queries system collection.",
+                  new options::UInt64Parameter(&_cleanupInterval, 1, 1'000),
+                  options::makeDefaultFlags(options::Flags::DefaultNoComponents,
+                                            options::Flags::OnCoordinator,
+                                            options::Flags::OnSingle))
+      .setIntroducedIn(31202);
 }
 
 void QueryInfoLoggerFeature::validateOptions(
@@ -520,8 +578,9 @@ void QueryInfoLoggerFeature::start() {
     return;
   }
 
-  _loggerThread =
-      std::make_unique<QueryInfoLoggerThread>(server(), _maxBufferedQueries);
+  _loggerThread = std::make_unique<QueryInfoLoggerThread>(
+      server(), _maxBufferedQueries, _pushInterval, _cleanupInterval,
+      _retentionTime);
 
   if (!_loggerThread->start()) {
     LOG_TOPIC("cfbe5", FATAL, Logger::STARTUP)

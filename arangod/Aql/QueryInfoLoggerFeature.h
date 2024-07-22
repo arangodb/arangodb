@@ -72,6 +72,16 @@ class QueryInfoLoggerFeature final : public ArangodFeature {
 
   // probability with which queries are logged. scaled between 0.0 and 100.0.
   double _logProbability;
+
+  // push interval, specified in milliseconds
+  uint64_t _pushInterval;
+
+  // collection cleanup interval, specified in milliseconds.
+  uint64_t _cleanupInterval;
+
+  // retention time for which queries are kept in the _queries system collection
+  // before they are purged. specified in seconds.
+  double _retentionTime;
 };
 
 }  // namespace arangodb::aql
