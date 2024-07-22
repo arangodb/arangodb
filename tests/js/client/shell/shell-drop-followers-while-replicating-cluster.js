@@ -60,11 +60,11 @@ function dropFollowersWhileReplicatingSuite() {
     
     testSingleOperationDropFollowerWhileReplicating: function() {
       let { c, leader, follower } = setupCollection();
-      IM.debugSetFailAt("replicateOperationsDropFollower", getServerById(leader).shortName)
+      IM.debugSetFailAt("replicateOperationsDropFollower", getServerById(leader).shortName);
       
       c.insert({});
       
-      IM.debugClearFailAt("replicateOperationsDropFollower", getServerById(leader).shortName)
+      IM.debugClearFailAt("replicateOperationsDropFollower", getServerById(leader).shortName);
 
       assertEqual(1, c.count());
       waitForShardsInSync(cn, 60, 1);
@@ -73,11 +73,11 @@ function dropFollowersWhileReplicatingSuite() {
     testMultiOperationDropFollowerWhileReplicating: function() {
       let { c, leader, follower } = setupCollection();
      
-      IM.debugSetFailAt("replicateOperationsDropFollower", getServerById(leader).shortName)
+      IM.debugSetFailAt("replicateOperationsDropFollower", getServerById(leader).shortName);
       
       c.insert([{}, {}, {}, {}]);
       
-      IM.debugSetFailAt("replicateOperationsDropFollower", getServerById(leader).shortName)
+      IM.debugSetFailAt("replicateOperationsDropFollower", getServerById(leader).shortName);
       
       assertEqual(4, c.count());
       waitForShardsInSync(cn, 60, 1);
@@ -86,11 +86,11 @@ function dropFollowersWhileReplicatingSuite() {
     testAqlDropFollowerWhileReplicating: function() {
       let { c, leader, follower } = setupCollection();
      
-      IM.debugSetFailAt("replicateOperationsDropFollower", getServerById(leader).shortName)
+      IM.debugSetFailAt("replicateOperationsDropFollower", getServerById(leader).shortName);
      
       db._query("FOR i IN 1..10 INSERT {} INTO " + cn);
       
-      IM.debugSetFailAt("replicateOperationsDropFollower", getServerById(leader).shortName)
+      IM.debugSetFailAt("replicateOperationsDropFollower", getServerById(leader).shortName);
       
       assertEqual(10, c.count());
       waitForShardsInSync(cn, 60, 1);
@@ -99,11 +99,11 @@ function dropFollowersWhileReplicatingSuite() {
     testSingleOperationBuildEmptyTransactionBody: function() {
       let { c, leader, follower } = setupCollection();
      
-      IM.debugSetFailAt("buildTransactionBodyEmpty", getServerById(leader).shortName)
+      IM.debugSetFailAt("buildTransactionBodyEmpty", getServerById(leader).shortName);
       
       c.insert({});
       
-      IM.debugSetFailAt("buildTransactionBodyEmpty", getServerById(leader).shortName)
+      IM.debugSetFailAt("buildTransactionBodyEmpty", getServerById(leader).shortName);
       
       assertEqual(1, c.count());
       waitForShardsInSync(cn, 60, 1);
@@ -112,11 +112,11 @@ function dropFollowersWhileReplicatingSuite() {
     testMultiOperationBuildEmptyTransactionBody: function() {
       let { c, leader, follower } = setupCollection();
      
-      IM.debugSetFailAt("buildTransactionBodyEmpty", getServerById(leader).shortName)
+      IM.debugSetFailAt("buildTransactionBodyEmpty", getServerById(leader).shortName);
       
       c.insert([{}, {}, {}, {}]);
       
-      IM.debugSetFailAt("buildTransactionBodyEmpty", getServerById(leader).shortName)
+      IM.debugSetFailAt("buildTransactionBodyEmpty", getServerById(leader).shortName);
       
       assertEqual(4, c.count());
       waitForShardsInSync(cn, 60, 1);
@@ -125,11 +125,11 @@ function dropFollowersWhileReplicatingSuite() {
     testAqlBuildEmptyTransactionBody: function() {
       let { c, leader, follower } = setupCollection();
      
-      IM.debugSetFailAt("buildTransactionBodyEmpty", getServerById(leader).shortName)
+      IM.debugSetFailAt("buildTransactionBodyEmpty", getServerById(leader).shortName);
       
       db._query("FOR i IN 1..10 INSERT {} INTO " + cn);
       
-      IM.debugSetFailAt("buildTransactionBodyEmpty", getServerById(leader).shortName)
+      IM.debugSetFailAt("buildTransactionBodyEmpty", getServerById(leader).shortName);
       
       assertEqual(10, c.count());
       waitForShardsInSync(cn, 60, 1);
