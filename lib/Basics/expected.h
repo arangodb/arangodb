@@ -205,6 +205,7 @@ struct expected<void> {
   }
 
   void set_exception(std::exception_ptr ex) noexcept {
+    static_assert(std::is_nothrow_move_assignable_v<std::exception_ptr>);
     _exception = std::move(ex);
   }
 
