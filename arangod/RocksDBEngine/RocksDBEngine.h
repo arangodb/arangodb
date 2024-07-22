@@ -570,6 +570,10 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
                              ::rocksdb::ColumnFamilyHandle* const metaCf)
       -> std::unique_ptr<replication2::storage::IStorageEngineMethods>;
 
+  // The following two methods throw if things go wrong:
+  void writeSortingFile(bool legacyVPackSorting);
+  bool readSortingFile();
+
   RocksDBOptionsProvider const& _optionsProvider;
 
   metrics::MetricsFeature& _metrics;
@@ -802,6 +806,8 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   std::unique_ptr<RocksDBDumpManager> _dumpManager;
 
   std::shared_ptr<replication2::storage::wal::WalManager> _walManager;
+
+  bool _legacyVPackSorting;  // Detected at startup in the prepare method
 };
 
 static constexpr const char* kEncryptionTypeFile = "ENCRYPTION";
