@@ -35,7 +35,7 @@ const internal = require('internal');
 const errors = internal.errors;
 
 const jwtSecret = 'haxxmann';
-const cn = "UnitTests";
+const cn = "UnitTestsQueries";
 // fetch everything at once
 const batchSize = 10 * 1000;
 
@@ -54,8 +54,8 @@ const jwt = crypto.jwtEncode(jwtSecret, {
   "iss": "arangodb", "exp": Math.floor(Date.now() / 1000) + 3600
 }, 'HS256');
   
-const baseUrl = function () {
-  return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:') + '/_db/' + db._name();
+const baseUrl = function (dbName = '_system') {
+  return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:') + `/_db/${dbName}`;
 };
 
 function QueryPermissionsSuite() { 
@@ -123,6 +123,69 @@ function QueryPermissionsSuite() {
       assertFalse(body.error, body);
     },
 
+    testDifferentDatabaseNoAccessWithoutDatabasePermissions: function () {
+      db._createDatabase(cn);
+      try {
+        db._useDatabase(cn);
+        users.save("test_user", "testi");
+        users.grantDatabase("test_user", cn, "none");
+
+        let result = request.post({
+          url: baseUrl(cn) + "/_api/cursor",
+          body: {query:"FOR doc IN _queries RETURN doc", batchSize, options: {batchSize}},
+          json: true,
+          auth: {username: "test_user", password: "testi"},
+        });
+        assertEqual(401, result.statusCode);
+        let body = JSON.parse(result.body);
+        assertTrue(body.error, body);
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(cn);
+      }
+    },
+    
+    testDifferentDatabaseAccessWithDatabaseReadOnlyPermissions: function () {
+      db._createDatabase(cn);
+      try {
+        db._useDatabase(cn);
+        users.save("test_user", "testi");
+        users.grantDatabase("test_user", cn, "ro");
+      
+        let result = request.post({
+          url: baseUrl(cn) + "/_api/cursor",
+          body: {query:"FOR doc IN _queries RETURN doc", batchSize, options: {batchSize}},
+          json: true,
+          auth: {username: "test_user", password: "testi"},
+        });
+        // no _queries collection in non-system database
+        assertEqual(404, result.statusCode);
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(cn);
+      }
+    },
+    
+    testDifferentDatabasesAccessWithDatabaseReadWritePermissions: function () {
+      db._createDatabase(cn);
+      try {
+        db._useDatabase(cn);
+        users.save("test_user", "testi");
+        users.grantDatabase("test_user", cn, "rw");
+
+        let result = request.post({
+            url: baseUrl(cn) + "/_api/cursor",
+            body: {query:"FOR doc IN _queries RETURN doc", batchSize, options: {batchSize}},
+            json: true,
+            auth: {username: "test_user", password: "testi"},
+          });
+        // no _queries collection in non-system database
+        assertEqual(404, result.statusCode);
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(cn);
+      }
+    },
   };
 }
 
@@ -196,7 +259,7 @@ function QueryLoggerSuite() {
         });
       });
       if (filtered.length === n) {
-        return;
+        return filtered;
       }
       internal.sleep(0.25);
     }
@@ -214,6 +277,8 @@ function QueryLoggerSuite() {
     },
 
     tearDown: function () {
+      assertEqual("_system", db._name());
+      db._flushCache();
       db._drop(cn);
     },
     
@@ -455,6 +520,122 @@ function QueryLoggerSuite() {
         warnings: 0, 
         exitCode: 0
       });
+    },
+    
+    testPeakMemoryUsage: function () {
+      const query = `${uniqid()} FOR i IN 1..10000 RETURN i`;
+      db._query(query).toArray();
+
+      checkForQuery(1, {
+        query, 
+        database: "_system", 
+        user: "root", 
+        state: "finished",
+        modificationQuery: false, 
+        stream: false, 
+        peakMemoryUsage: 32768,
+        warnings: 0, 
+        exitCode: 0
+      });
+    },
+    
+    testHigherPeakMemoryUsage: function () {
+      const query = `${uniqid()} FOR i IN 1..100000 RETURN i`;
+      db._query(query).toArray();
+
+      checkForQuery(1, {
+        query, 
+        database: "_system", 
+        user: "root", 
+        state: "finished",
+        modificationQuery: false, 
+        stream: false, 
+        peakMemoryUsage: 360448,
+        warnings: 0, 
+        exitCode: 0
+      });
+    },
+    
+    testDifferentDatabase: function () {
+      db._createDatabase(cn);
+      try {
+        db._useDatabase(cn);
+        const query = `${uniqid()} FOR i IN 1..10000 RETURN i`;
+        db._query(query).toArray();
+
+        checkForQuery(1, {
+          query, 
+          database: cn,
+          user: "root", 
+          state: "finished",
+          modificationQuery: false, 
+          stream: false, 
+          warnings: 0, 
+          exitCode: 0
+        });
+      } finally {
+        db._useDatabase("_system");
+        db._dropDatabase(cn);
+      }
+    },
+
+    testDifferentUser: function () {
+      let endpoint = arango.getEndpoint();
+      users.save("test_user", "testi");
+      users.grantDatabase("test_user", "_system", "rw");
+      try {
+        arango.reconnect(endpoint, db._name(), "test_user", "testi");
+        const query = `${uniqid()} FOR i IN 1..10000 RETURN i`;
+        db._query(query).toArray();
+
+        checkForQuery(1, {
+          query, 
+          database: "_system",
+          user: "test_user", 
+          state: "finished",
+          modificationQuery: false, 
+          stream: false, 
+          warnings: 0, 
+          exitCode: 0
+        });
+      } finally {
+        arango.reconnect(endpoint, db._name(), "root", "");
+        try {
+          users.remove("test_user");
+        } catch (err) {
+        }
+      }
+    },
+    
+    testDifferentUserInDifferentDatabase: function () {
+      let endpoint = arango.getEndpoint();
+      users.save("test_user", "testi");
+      users.grantDatabase("test_user", cn, "ro");
+      users.grantDatabase("test_user", "_system", "ro");
+      db._createDatabase(cn);
+      try {
+        arango.reconnect(endpoint, cn, "test_user", "testi");
+        const query = `${uniqid()} FOR i IN 1..10000 RETURN i`;
+        db._query(query).toArray();
+
+        checkForQuery(1, {
+          query, 
+          database: cn,
+          user: "test_user", 
+          state: "finished",
+          modificationQuery: false, 
+          stream: false, 
+          warnings: 0, 
+          exitCode: 0
+        });
+      } finally {
+        arango.reconnect(endpoint, "_system", "root", "");
+        try {
+          users.remove("test_user");
+        } catch (err) {
+        }
+        db._dropDatabase(cn);
+      }
     },
 
   };

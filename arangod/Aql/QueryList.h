@@ -146,7 +146,7 @@ class QueryList {
   void killQuery(Query& query, size_t maxLength, bool silent);
 
   /// @brief r/w lock for the list
-  arangodb::basics::ReadWriteLock mutable _lock;
+  basics::ReadWriteLock mutable _lock;
 
   /// @brief list of current queries, protected by _lock
   std::unordered_map<TRI_voc_tick_t, std::weak_ptr<Query>> _current;

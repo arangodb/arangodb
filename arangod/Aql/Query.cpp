@@ -2303,7 +2303,8 @@ void Query::toVelocyPack(velocypack::Builder& builder, bool isCurrent,
 
   // bind parameters
   if (options.includeBindParameters) {
-    if (auto b = bindParameters(); b != nullptr && !b->slice().isNone()) {
+    if (auto b = bindParametersAsBuilder();
+        b != nullptr && !b->slice().isNone()) {
       builder.add("bindVars", b->slice());
     } else {
       builder.add("bindVars", velocypack::Slice::emptyObjectSlice());
