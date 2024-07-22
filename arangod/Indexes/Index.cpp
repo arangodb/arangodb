@@ -550,15 +550,14 @@ bool Index::CompareIdentifiers(velocypack::Slice const& lhs,
   VPackSlice lhsId = lhs.get(arangodb::StaticStrings::IndexId);
   VPackSlice rhsId = rhs.get(arangodb::StaticStrings::IndexId);
   if (lhsId.isString() && rhsId.isString() &&
-      arangodb::basics::VelocyPackHelper::equalCorrectly(lhsId, rhsId, true)) {
+      arangodb::basics::VelocyPackHelper::equal(lhsId, rhsId, true)) {
     return true;
   }
 
   VPackSlice lhsName = lhs.get(arangodb::StaticStrings::IndexName);
   VPackSlice rhsName = rhs.get(arangodb::StaticStrings::IndexName);
   if (lhsName.isString() && rhsName.isString() &&
-      arangodb::basics::VelocyPackHelper::equalCorrectly(lhsName, rhsName,
-                                                         true)) {
+      arangodb::basics::VelocyPackHelper::equal(lhsName, rhsName, true)) {
     return true;
   }
 

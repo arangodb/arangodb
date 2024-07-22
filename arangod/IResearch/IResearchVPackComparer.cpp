@@ -58,9 +58,7 @@ int VPackComparer<Sort>::CompareImpl(irs::bytes_view lhs,
     TRI_ASSERT(!lhsSlice.isNone());
     TRI_ASSERT(!rhsSlice.isNone());
 
-    // FIXMEFIXME: OK to always use new sorting?
-    auto const r =
-        basics::VelocyPackHelper::compareCorrectly(lhsSlice, rhsSlice, true);
+    auto const r = basics::VelocyPackHelper::compare(lhsSlice, rhsSlice, true);
     if (r) {
       return kMultiplier[size_t{_sort->direction(i)}] * r;
     }

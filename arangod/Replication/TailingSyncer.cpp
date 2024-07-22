@@ -330,8 +330,8 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
           TRI_ERROR_REPLICATION_INVALID_RESPONSE,
           "create database marker did not contain data");
     }
-    TRI_ASSERT(basics::VelocyPackHelper::equalCorrectly(data.get("name"),
-                                                        nameSlice, false));
+    TRI_ASSERT(
+        basics::VelocyPackHelper::equal(data.get("name"), nameSlice, false));
 
     if (name != StaticStrings::SystemDatabase &&
         sysDbFeature.server().getFeature<DatabaseFeature>().existsDatabase(

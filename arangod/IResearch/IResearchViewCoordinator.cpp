@@ -59,10 +59,9 @@ bool equalPartial(IResearchViewMeta const& lhs, IResearchViewMeta const& rhs) {
     return false;
   }
   try {
-    // FIXMEFIXME: OK to always use new sorting method?
-    if (!basics::VelocyPackHelper::equalCorrectly(
-            lhs._consolidationPolicy.properties(),
-            rhs._consolidationPolicy.properties(), false)) {
+    if (!basics::VelocyPackHelper::equal(lhs._consolidationPolicy.properties(),
+                                         rhs._consolidationPolicy.properties(),
+                                         false)) {
       return false;
     }
   } catch (...) {

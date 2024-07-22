@@ -45,7 +45,7 @@ struct VPackKeyHasher {
 
   static bool sameKey(void const* key1, std::size_t /*keySize1*/,
                       void const* key2, std::size_t /*keySize2*/) noexcept {
-    int res = arangodb::basics::VelocyPackHelper::compareCorrectly(
+    int res = arangodb::basics::VelocyPackHelper::compare(
         VPackSlice(static_cast<std::uint8_t const*>(key1)),
         VPackSlice(static_cast<std::uint8_t const*>(key2)), true);
     return res == 0;
