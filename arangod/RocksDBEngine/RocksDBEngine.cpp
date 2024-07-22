@@ -977,7 +977,9 @@ void RocksDBEngine::start() {
     _sortingMethod = arangodb::basics::VelocyPackHelper::SortingMethod::Correct;
     // Now remember this decision by putting a `SORTING` file in the
     // database directory:
-    writeSortingFile(_sortingMethod);
+    if (writeSortingFile(_sortingMethod).fail()) {
+      FATAL_ERROR_EXIT();
+    }
   } else {
     // In this case the engine-rocksdb directory does already exist.
     // Therefore, we want to recognize the sorting behaviour in the
@@ -4186,7 +4188,7 @@ void RocksDBEngine::addCacheMetrics(uint64_t initial, uint64_t effective,
 
 using SortingMethod = arangodb::basics::VelocyPackHelper::SortingMethod;
 
-void RocksDBEngine::writeSortingFile(SortingMethod sortingMethod) {
+Result RocksDBEngine::writeSortingFile(SortingMethod sortingMethod) {
   auto& databasePathFeature = server().getFeature<DatabasePathFeature>();
   std::string path = databasePathFeature.subdirectoryName("SORTING");
   std::string value =
@@ -4194,12 +4196,13 @@ void RocksDBEngine::writeSortingFile(SortingMethod sortingMethod) {
   try {
     basics::FileUtils::spit(path, value, true);
   } catch (std::exception const& ex) {
-    LOG_TOPIC("8ff0f", FATAL, Logger::STARTUP)
+    LOG_TOPIC("8ff0f", ERR, Logger::STARTUP)
         << "unable to write 'SORTING' file '" << _path << "': " << ex.what()
-        << ". please make sure the file/directory is writable for the "
-           "arangod process and user";
-    FATAL_ERROR_EXIT();
+        << ". Please make sure the file/directory is writable for the "
+           "arangod process and user!";
+    return {TRI_ERROR_CANNOT_WRITE_FILE};
   }
+  return {};
 }
 
 SortingMethod RocksDBEngine::readSortingFile() {
@@ -4215,19 +4218,12 @@ SortingMethod RocksDBEngine::readSortingFile() {
     sortingMethod = SortingMethod::Legacy;
     LOG_TOPIC("8ff0e", WARN, Logger::STARTUP)
         << "unable to read 'SORTING' file '" << path << "': " << ex.what()
-        << ". This is expected directly after an upgrade but should then be "
+        << ". This is expected directly after an upgrade and will then be "
            "rectified automatically for subsequent restarts.";
-    // Now try to write SORTING file, but ignore errors:
-    std::string value =
-        sortingMethod == SortingMethod::Legacy ? "LEGACY" : "CORRECT";
-    try {
-      basics::FileUtils::spit(path, value, true);
-    } catch (std::exception const& ex) {
-      LOG_TOPIC("8ff0f", WARN, Logger::STARTUP)
-          << "unable to write 'SORTING' file '" << _path << "': " << ex.what()
-          << ". Please make sure the file/directory is writable for the "
-             "arangod process and user, this is OK for now, legacy sorting"
-             " will be used anyway.";
+    if (writeSortingFile(sortingMethod).fail()) {
+      LOG_TOPIC("8ff0d", WARN, Logger::STARTUP)
+          << "Unable to write 'SORTING' file '" << _path << "', "
+          << "this is OK for now, legacy sorting will be used anyway.";
     }
   }
   return sortingMethod;
