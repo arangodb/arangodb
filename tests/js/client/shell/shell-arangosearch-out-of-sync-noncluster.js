@@ -29,6 +29,7 @@ const db = require("@arangodb").db;
 const internal = require("internal");
 const errors = internal.errors;
 const isEnterprise = require("internal").isEnterprise();
+let IM = global.instanceManager;
 
 function ArangoSearchOutOfSyncSuite () {
   'use strict';
@@ -63,7 +64,7 @@ function ArangoSearchOutOfSyncSuite () {
       c1.ensureIndex(indexMeta);
       v.properties(viewMeta);
       
-      internal.debugSetFailAt("ArangoSearch::FailOnCommit");
+      IM.debugSetFailAt("ArangoSearch::FailOnCommit");
 
       let docs = [];
       for (let i = 0; i < 10; ++i) {
@@ -76,7 +77,7 @@ function ArangoSearchOutOfSyncSuite () {
       db._query("FOR doc IN UnitTestsView1 OPTIONS {waitForSync: true} RETURN doc");
       db._query("FOR doc IN UnitTestsCollection1 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.value == 1 RETURN doc");
      
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
       
       let c2 = db._create('UnitTestsCollection2');
       c2.insert(docs);
@@ -109,7 +110,7 @@ function ArangoSearchOutOfSyncSuite () {
       assertTrue(idx.hasOwnProperty('error'));
       assertEqual("outOfSync", idx.error);
       
-      internal.debugSetFailAt("ArangoSearch::FailQueriesOnOutOfSync");
+      IM.debugSetFailAt("ArangoSearch::FailQueriesOnOutOfSync");
       
       // query must fail because the link is marked as out of sync
       try {
@@ -139,7 +140,7 @@ function ArangoSearchOutOfSyncSuite () {
       assertEqual(0, result.length);
     
       // clear all failure points
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
 
       // queries must not fail now because we removed the failure point
       result = db._query("FOR doc IN UnitTestsView1 OPTIONS {waitForSync: true} RETURN doc").toArray();
@@ -179,7 +180,7 @@ function ArangoSearchOutOfSyncSuite () {
       v.properties(viewMeta);
       c.ensureIndex(indexMeta);
       
-      internal.debugSetFailAt("ArangoSearch::FailOnCommit");
+      IM.debugSetFailAt("ArangoSearch::FailOnCommit");
 
       let docs = [];
       for (let i = 0; i < 1000; ++i) {
@@ -192,7 +193,7 @@ function ArangoSearchOutOfSyncSuite () {
       db._query("FOR doc IN UnitTestsView1 OPTIONS {waitForSync: true} RETURN doc");
       db._query("FOR doc IN UnitTestsCollection1 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.value == 1 RETURN doc");
      
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
       
       // now check properties of out-of-sync link
       let p = db._view('UnitTestsView1').properties();
@@ -236,7 +237,7 @@ function ArangoSearchOutOfSyncSuite () {
       c.ensureIndex(indexMeta);
       v.properties(viewMeta);
       
-      internal.debugSetFailAt("ArangoSearch::FailOnCommit");
+      IM.debugSetFailAt("ArangoSearch::FailOnCommit");
 
       let docs = [];
       for (let i = 0; i < 1000; ++i) {
@@ -249,7 +250,7 @@ function ArangoSearchOutOfSyncSuite () {
       db._query("FOR doc IN UnitTestsView1 OPTIONS {waitForSync: true} RETURN doc");
       db._query("FOR doc IN UnitTestsCollection1 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.value == 1 RETURN doc");
      
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
       
       // now check properties of out-of-sync link
       let p = db._view('UnitTestsView1').properties();
@@ -260,12 +261,12 @@ function ArangoSearchOutOfSyncSuite () {
       assertTrue(idx.hasOwnProperty('error'));
       assertEqual("outOfSync", idx.error);
       
-      internal.debugSetFailAt("ArangoSearch::FailQueriesOnOutOfSync");
+      IM.debugSetFailAt("ArangoSearch::FailQueriesOnOutOfSync");
      
       // should not produce any errors - but not insert into the link/index
       c.insert(docs);
      
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
 
       let result = db._query("FOR doc IN UnitTestsView1 OPTIONS {waitForSync: true} RETURN doc").toArray();
       assertEqual(1 * docs.length, result.length);
@@ -310,14 +311,14 @@ function ArangoSearchOutOfSyncSuite () {
       result = db._query("FOR doc IN UnitTestsCollection1 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.value == 1 RETURN doc").toArray();
       assertEqual(1, result.length);
      
-      internal.debugSetFailAt("ArangoSearch::FailOnCommit");
+      IM.debugSetFailAt("ArangoSearch::FailOnCommit");
       c.insert({});
 
       // resync - this will set the outOfSync flags
       db._query("FOR doc IN UnitTestsView1 SEARCH doc.value == 1 OPTIONS {waitForSync: true} RETURN doc");
       db._query("FOR doc IN UnitTestsCollection1 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.value == 1 RETURN doc");
       
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
       
       // now check properties of out-of-sync link
       let p = db._view('UnitTestsView1').properties();
@@ -331,7 +332,7 @@ function ArangoSearchOutOfSyncSuite () {
       // set all values to 1 - this removes all existing documents
       // and re-inserts them with a different LocalDocumentId
       db._query("FOR doc IN UnitTestsCollection1 UPDATE doc WITH { value: 1 } IN UnitTestsCollection1");
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
       
       // query results should not have changed, as the link/index
       // participate in the remove/insert ops.
@@ -376,14 +377,14 @@ function ArangoSearchOutOfSyncSuite () {
       result = db._query("FOR doc IN UnitTestsCollection1 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.value == 1 RETURN doc").toArray();
       assertEqual(1, result.length);
      
-      internal.debugSetFailAt("ArangoSearch::FailOnCommit");
+      IM.debugSetFailAt("ArangoSearch::FailOnCommit");
       c.insert({});
 
       // resync - this will set the outOfSync flags
       db._query("FOR doc IN UnitTestsView1 SEARCH doc.value == 1 OPTIONS {waitForSync: true} RETURN doc");
       db._query("FOR doc IN UnitTestsCollection1 OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} FILTER doc.value == 1 RETURN doc");
       
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
       
       // now check properties of out-of-sync link
       let p = db._view('UnitTestsView1').properties();
@@ -394,14 +395,14 @@ function ArangoSearchOutOfSyncSuite () {
       assertTrue(idx.hasOwnProperty('error'));
       assertEqual("outOfSync", idx.error);
 
-      internal.debugSetFailAt("ArangoSearch::FailQueriesOnOutOfSync");
+      IM.debugSetFailAt("ArangoSearch::FailQueriesOnOutOfSync");
 
       // set all values to 1 - this removes all existing documents
       // and re-inserts them with a different LocalDocumentId. note:
       // due to the failure point set, the link/index will not carry
       // out the removes/inserts!
       db._query("FOR doc IN UnitTestsCollection1 UPDATE doc WITH { value: 1 } IN UnitTestsCollection1");
-      internal.debugClearFailAt();
+      IM.debugClearFailAt();
       
       // although the link/index did not carry out the remove and
       // re-insert operations, it should cannot produce any documents,
@@ -416,7 +417,7 @@ function ArangoSearchOutOfSyncSuite () {
   };
 }
 
-if (internal.debugCanUseFailAt()) {
+if (IM.debugCanUseFailAt()) {
   jsunity.run(ArangoSearchOutOfSyncSuite);
 }
 return jsunity.done();
