@@ -36,6 +36,7 @@
 #include <vector>
 
 #include "Basics/ReadWriteLock.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Containers/FlatHashSet.h"
 #include "Metrics/Fwd.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
@@ -85,7 +86,6 @@ class RocksDBReplicationManager;
 class RocksDBSettingsManager;
 class RocksDBSyncThread;
 class RocksDBThrottle;  // breaks tons if RocksDBThrottle.h included here
-class RocksDBVPackComparator;
 class RocksDBWalAccess;
 class TransactionCollection;
 class TransactionState;
@@ -570,6 +570,13 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
                              ::rocksdb::ColumnFamilyHandle* const metaCf)
       -> std::unique_ptr<replication2::storage::IStorageEngineMethods>;
 
+  // The following methods calls FATAL_ERROR_EXIT if things go wrong:
+  void writeSortingFile(
+      arangodb::basics::VelocyPackHelper::SortingMethod sortingMethod);
+  // The following method returns what is detected for the sorting method.
+  // If no SORTING file is detected, a new one with "LEGACY" will be created.
+  arangodb::basics::VelocyPackHelper::SortingMethod readSortingFile();
+
   RocksDBOptionsProvider const& _optionsProvider;
 
   metrics::MetricsFeature& _metrics;
@@ -802,6 +809,9 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   std::unique_ptr<RocksDBDumpManager> _dumpManager;
 
   std::shared_ptr<replication2::storage::wal::WalManager> _walManager;
+
+  arangodb::basics::VelocyPackHelper::SortingMethod
+      _sortingMethod;  // Detected at startup in the prepare method
 };
 
 static constexpr const char* kEncryptionTypeFile = "ENCRYPTION";

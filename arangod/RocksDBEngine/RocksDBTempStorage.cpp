@@ -32,7 +32,6 @@
 #include "RestServer/TemporaryStorageFeature.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBSortedRowsStorageContext.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RocksDBEngine/EncryptionProvider.h"
@@ -101,10 +100,7 @@ class KeysComparator : public rocksdb::Comparator {
       char order2 = *p2;
       TRI_ASSERT(order1 == order2);
 
-      diff = EngineSelectorFeature::legacyVPackSorting()
-                 ? basics::VelocyPackHelper::compareLegacy(slice1, slice2, true)
-                 : basics::VelocyPackHelper::compareCorrectly(slice1, slice2,
-                                                              true);
+      diff = basics::VelocyPackHelper::compare(slice1, slice2, true);
 
       if (diff != 0) {
         return (order1 == '1') ? diff : -diff;

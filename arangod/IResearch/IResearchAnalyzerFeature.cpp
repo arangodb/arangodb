@@ -420,7 +420,7 @@ bool equalAnalyzer(AnalyzerPool const& pool, std::string_view type,
 
   // this check is not final as old-normalized definition may be present in
   // database!
-  if (basics::VelocyPackHelper::equalCorrectly(
+  if (basics::VelocyPackHelper::equal(
           arangodb::iresearch::slice(normalizedProperties), pool.properties(),
           false)) {
     return true;
@@ -441,7 +441,7 @@ bool equalAnalyzer(AnalyzerPool const& pool, std::string_view type,
         << "'";
     return false;
   }
-  return basics::VelocyPackHelper::equalCorrectly(
+  return basics::VelocyPackHelper::equal(
       arangodb::iresearch::slice(normalizedProperties),
       arangodb::iresearch::slice(reNormalizedProperties), false);
 }
@@ -917,8 +917,7 @@ bool AnalyzerPool::operator==(AnalyzerPool const& rhs) const {
   return _name == rhs._name && _type == rhs._type &&
          _inputType == rhs._inputType && _returnType == rhs._returnType &&
          _features == rhs._features &&
-         basics::VelocyPackHelper::equalCorrectly(_properties, rhs._properties,
-                                                  true);
+         basics::VelocyPackHelper::equal(_properties, rhs._properties, true);
 }
 
 bool AnalyzerPool::init(std::string_view type, VPackSlice const properties,

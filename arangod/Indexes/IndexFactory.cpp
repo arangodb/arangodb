@@ -147,16 +147,16 @@ bool IndexTypeFactory::equal(Index::IndexType type, velocypack::Slice lhs,
     // geoJson must be identical if present
     value = lhs.get("geoJson");
 
-    if (value.isBoolean() && !basics::VelocyPackHelper::equalCorrectly(
-                                 value, rhs.get("geoJson"), false)) {
+    if (value.isBoolean() &&
+        !basics::VelocyPackHelper::equal(value, rhs.get("geoJson"), false)) {
       return false;
     }
   } else if (Index::IndexType::TRI_IDX_TYPE_FULLTEXT_INDEX == type) {
     // minLength
     value = lhs.get("minLength");
 
-    if (value.isNumber() && !basics::VelocyPackHelper::equalCorrectly(
-                                value, rhs.get("minLength"), false)) {
+    if (value.isNumber() &&
+        !basics::VelocyPackHelper::equal(value, rhs.get("minLength"), false)) {
       return false;
     }
   } else if (Index::IndexType::TRI_IDX_TYPE_TTL_INDEX == type) {
@@ -176,7 +176,7 @@ bool IndexTypeFactory::equal(Index::IndexType type, velocypack::Slice lhs,
     value = lhs.get(StaticStrings::IndexPrefixFields);
 
     if (value.isArray() &&
-        !basics::VelocyPackHelper::equalCorrectly(
+        !basics::VelocyPackHelper::equal(
             value, rhs.get(StaticStrings::IndexPrefixFields), false)) {
       return false;
     }
@@ -203,7 +203,7 @@ bool IndexTypeFactory::equal(Index::IndexType type, velocypack::Slice lhs,
         bool found = false;
 
         for (VPackSlice vr : VPackArrayIterator(r)) {
-          if (basics::VelocyPackHelper::equalCorrectly(v, vr, false)) {
+          if (basics::VelocyPackHelper::equal(v, vr, false)) {
             found = true;
             break;
           }
@@ -215,7 +215,7 @@ bool IndexTypeFactory::equal(Index::IndexType type, velocypack::Slice lhs,
       }
     } else {
       // attribute order matters
-      if (!basics::VelocyPackHelper::equalCorrectly(
+      if (!basics::VelocyPackHelper::equal(
               value, rhs.get(StaticStrings::IndexFields), false)) {
         return false;
       }

@@ -58,9 +58,6 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-common.h>
 
-using namespace arangodb;
-using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
-
 namespace {
 
 constexpr std::string_view idRef("id");
@@ -131,6 +128,8 @@ static int8_t const typeWeights[256] = {
 };
 
 }  // namespace
+
+namespace arangodb::basics {
 
 template<bool useUtf8, typename Comparator,
          VelocyPackHelper::SortingMethod sortingMethod>
@@ -311,14 +310,9 @@ size_t VelocyPackHelper::VPackStringHash::operator()(
   return static_cast<size_t>(slice.hashString());
 }
 
-bool VelocyPackHelper::VPackEqualC::operator()(VPackSlice lhs,
-                                               VPackSlice rhs) const {
-  return VelocyPackHelper::equalCorrectly(lhs, rhs, false, _options);
-}
-
-bool VelocyPackHelper::VPackEqualL::operator()(VPackSlice lhs,
-                                               VPackSlice rhs) const {
-  return VelocyPackHelper::equalLegacy(lhs, rhs, false, _options);
+bool VelocyPackHelper::VPackEqual::operator()(VPackSlice lhs,
+                                              VPackSlice rhs) const {
+  return VelocyPackHelper::equal(lhs, rhs, false, _options);
 }
 
 static inline int8_t TypeWeight(VPackSlice& slice) {
@@ -359,8 +353,9 @@ bool VelocyPackHelper::VPackStringEqual::operator()(
           0);
 }
 
-int VelocyPackHelper::compareNumberValues(VPackValueType lhsType,
-                                          VPackSlice lhs, VPackSlice rhs) {
+int VelocyPackHelper::compareNumberValuesLegacy(VPackValueType lhsType,
+                                                VPackSlice lhs,
+                                                VPackSlice rhs) {
   // This function is only for legacy code. The problem is that it casts
   // all integer types to double, which can lose precision. See
   // `VelocyPackHelper::compareNumberValuesCorrectly` for a correct
@@ -500,14 +495,14 @@ int VelocyPackHelper::compareNumberValuesCorrectly(VPackValueType lhsType,
       // use exact comparisons. no need to cast to double
       int64_t l = lhs.getIntUnchecked();
       int64_t r = rhs.getIntUnchecked();
-      return ::comp<int64_t>(l, r);
+      return comp<int64_t>(l, r);
     }
 
     if (lhsType == VPackValueType::UInt) {
       // use exact comparisons. no need to cast to double
       uint64_t l = lhs.getUIntUnchecked();
       uint64_t r = rhs.getUIntUnchecked();
-      return ::comp<uint64_t>(l, r);
+      return comp<uint64_t>(l, r);
     }
 
     if (lhsType == VPackValueType::Double) {
@@ -522,7 +517,7 @@ int VelocyPackHelper::compareNumberValuesCorrectly(VPackValueType lhsType,
         return VelocyPackHelper::cmp_less;
       }
       // No NaN on either side!
-      return ::comp<double>(l, r);
+      return comp<double>(l, r);
     }
   }
 
@@ -902,7 +897,7 @@ int VelocyPackHelper::compareInternal(VPackSlice lhs, VPackSlice rhs,
       if (sortingMethod == SortingMethod::Correct) {
         return compareNumberValuesCorrectly(lhsType, lhs, rhs);
       } else {
-        return compareNumberValues(lhsType, lhs, rhs);
+        return compareNumberValuesLegacy(lhsType, lhs, rhs);
       }
     }
     case VPackValueType::String:
@@ -1112,3 +1107,5 @@ arangodb::LoggerStream& operator<<(arangodb::LoggerStream& logger,
   }
   return logger;
 }
+
+}  // namespace arangodb::basics

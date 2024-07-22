@@ -27,8 +27,11 @@
 #include <rocksdb/comparator.h>
 #include <rocksdb/slice.h>
 
+#include "Basics/VelocyPackHelper.h"
+
 namespace arangodb {
 
+template<arangodb::basics::VelocyPackHelper::SortingMethod sortingMethod>
 class RocksDBVPackComparator final : public rocksdb::Comparator {
  public:
   RocksDBVPackComparator() = default;
@@ -49,7 +52,7 @@ class RocksDBVPackComparator final : public rocksdb::Comparator {
   }
 
   // SECTION: API compatibility
-  char const* Name() const override { return "RocksDBVPackComparator"; }
+  char const* Name() const override;
   void FindShortestSeparator(std::string*,
                              rocksdb::Slice const&) const override {}
   void FindShortSuccessor(std::string*) const override {}

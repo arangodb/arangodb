@@ -337,7 +337,9 @@ RocksDBEngine::RocksDBEngine(Server& server,
       _metricsEdgeCacheCompressedInserts(
           metrics.add(rocksdb_cache_edge_compressed_inserts_total{})),
       _metricsEdgeCacheEmptyInserts(
-          metrics.add(rocksdb_cache_edge_empty_inserts_total{})) {
+          metrics.add(rocksdb_cache_edge_empty_inserts_total{})),
+      _sortingMethod(
+          arangodb::basics::VelocyPackHelper::SortingMethod::Correct) {
   startsAfter<BasicFeaturePhaseServer>();
   // inherits order from StorageEngine but requires "RocksDBOption" that is
   // used to configure this engine
@@ -969,6 +971,25 @@ void RocksDBEngine::start() {
           << "': " << systemErrorStr;
       FATAL_ERROR_EXIT();
     }
+    // When we are getting here, the whole engine-rocksdb directory
+    // did not exist when we got here. Therefore, we can use the correct
+    // sorting behaviour in the RocksDBVPackComparator:
+    _sortingMethod = arangodb::basics::VelocyPackHelper::SortingMethod::Correct;
+    // Now remember this decision by putting a `SORTING` file in the
+    // database directory:
+    writeSortingFile(_sortingMethod);
+  } else {
+    // In this case the engine-rocksdb directory does already exist.
+    // Therefore, we want to recognize the sorting behaviour in the
+    // RocksDBVPackComparator:
+    _sortingMethod = readSortingFile();
+  }
+  // Now fix the actual rocksdb Comparator, if we need to:
+  if (_sortingMethod ==
+      arangodb::basics::VelocyPackHelper::SortingMethod::Legacy) {
+    server().getFeature<RocksDBOptionFeature>().resetVPackComparator(
+        std::make_unique<RocksDBVPackComparator<
+            arangodb::basics::VelocyPackHelper::SortingMethod::Legacy>>());
   }
 
 #ifdef USE_SST_INGESTION
@@ -4162,4 +4183,54 @@ void RocksDBEngine::addCacheMetrics(uint64_t initial, uint64_t effective,
     _metricsEdgeCacheEmptyInserts.count(totalEmptyInserts);
   }
 }
+
+using SortingMethod = arangodb::basics::VelocyPackHelper::SortingMethod;
+
+void RocksDBEngine::writeSortingFile(SortingMethod sortingMethod) {
+  auto& databasePathFeature = server().getFeature<DatabasePathFeature>();
+  std::string path = databasePathFeature.subdirectoryName("SORTING");
+  std::string value =
+      sortingMethod == SortingMethod::Legacy ? "LEGACY" : "CORRECT";
+  try {
+    basics::FileUtils::spit(path, value, true);
+  } catch (std::exception const& ex) {
+    LOG_TOPIC("8ff0f", FATAL, Logger::STARTUP)
+        << "unable to write 'SORTING' file '" << _path << "': " << ex.what()
+        << ". please make sure the file/directory is writable for the "
+           "arangod process and user";
+    FATAL_ERROR_EXIT();
+  }
+}
+
+SortingMethod RocksDBEngine::readSortingFile() {
+  SortingMethod sortingMethod = SortingMethod::Legacy;
+  auto& databasePathFeature = server().getFeature<DatabasePathFeature>();
+  std::string path = databasePathFeature.subdirectoryName("SORTING");
+  std::string value;
+  try {
+    basics::FileUtils::slurp(path, value);
+    sortingMethod =
+        (value == "LEGACY") ? SortingMethod::Legacy : SortingMethod::Correct;
+  } catch (std::exception const& ex) {
+    sortingMethod = SortingMethod::Legacy;
+    LOG_TOPIC("8ff0e", WARN, Logger::STARTUP)
+        << "unable to read 'SORTING' file '" << path << "': " << ex.what()
+        << ". This is expected directly after an upgrade but should then be "
+           "rectified automatically for subsequent restarts.";
+    // Now try to write SORTING file, but ignore errors:
+    std::string value =
+        sortingMethod == SortingMethod::Legacy ? "LEGACY" : "CORRECT";
+    try {
+      basics::FileUtils::spit(path, value, true);
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("8ff0f", WARN, Logger::STARTUP)
+          << "unable to write 'SORTING' file '" << _path << "': " << ex.what()
+          << ". Please make sure the file/directory is writable for the "
+             "arangod process and user, this is OK for now, legacy sorting"
+             " will be used anyway.";
+    }
+  }
+  return sortingMethod;
+}
+
 }  // namespace arangodb

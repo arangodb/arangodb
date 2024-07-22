@@ -50,13 +50,13 @@ bool Collection::MutableProperties::operator==(
       // If both have a schema, compare them
       TRI_ASSERT(other.schema.has_value())
           << "We should have tested that either both or none have a schema";
-      if (!VelocyPackHelper::equalCorrectly(
-              schema.value().slice(), other.schema.value().slice(), true)) {
+      if (!VelocyPackHelper::equal(schema.value().slice(),
+                                   other.schema.value().slice(), true)) {
         return false;
       }
     }
   }
-  return VelocyPackHelper::equalCorrectly(computedValues.slice(),
-                                          other.computedValues.slice(), true) &&
+  return VelocyPackHelper::equal(computedValues.slice(),
+                                 other.computedValues.slice(), true) &&
          other.cacheEnabled == cacheEnabled;
 }

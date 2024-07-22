@@ -54,7 +54,6 @@
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Transaction/OperationOrigin.h"
@@ -549,7 +548,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
       RocksDBVPackIndexSearchValueFormat format)
       : IndexIterator(collection, trx, readOwnWrites),
         _index(index),
-        _cmp(static_cast<RocksDBVPackComparator const*>(index->comparator())),
+        _cmp(index->comparator()),
         _cache(std::static_pointer_cast<VPackIndexCacheType>(std::move(cache))),
         _maxCacheValueSize(_cache == nullptr ? 0 : _cache->maxCacheValueSize()),
         _resourceMonitor(monitor),
@@ -1170,7 +1169,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   static constexpr size_t expectedIteratorMemoryUsage = 8192;
 
   RocksDBVPackIndex const* _index;
-  RocksDBVPackComparator const* _cmp;
+  rocksdb::Comparator const* _cmp;
   std::unique_ptr<rocksdb::Iterator> _iterator;
   std::shared_ptr<VPackIndexCacheType> _cache;
   size_t const _maxCacheValueSize;
@@ -1550,9 +1549,9 @@ void RocksDBVPackIndex::buildIndexValues(
   }
 
   std::unordered_set<VPackSlice, basics::VelocyPackHelper::VPackHash,
-                     basics::VelocyPackHelper::VPackEqualC>
+                     basics::VelocyPackHelper::VPackEqual>
       seen(2, basics::VelocyPackHelper::VPackHash(),
-           basics::VelocyPackHelper::VPackEqualC());
+           basics::VelocyPackHelper::VPackEqual());
 
   auto moveOn = [&](VPackSlice something) -> void {
     auto it = seen.find(something);
@@ -2020,7 +2019,7 @@ bool attributesEqual(VPackSlice first, VPackSlice second,
     }
   }
 
-  return basics::VelocyPackHelper::equalCorrectly(first, second, true);
+  return basics::VelocyPackHelper::equal(first, second, true);
 }
 }  // namespace
 
@@ -2766,25 +2765,14 @@ void RocksDBVPackIndex::expandInSearchValues(
           vector.emplace_back(el);
         }
 
-        if (EngineSelectorFeature::legacyVPackSorting()) {
-          // sort the vector once
-          std::sort(vector.begin(), vector.end(),
-                    basics::VelocyPackHelper::VPackLessL<true>());
+        // sort the vector once
+        std::sort(vector.begin(), vector.end(),
+                  basics::VelocyPackHelper::VPackLess<true>());
 
-          // make it unique
-          vector.erase(std::unique(vector.begin(), vector.end(),
-                                   basics::VelocyPackHelper::VPackEqualL()),
-                       vector.end());
-        } else {
-          // sort the vector once
-          std::sort(vector.begin(), vector.end(),
-                    basics::VelocyPackHelper::VPackLessC<true>());
-
-          // make it unique
-          vector.erase(std::unique(vector.begin(), vector.end(),
-                                   basics::VelocyPackHelper::VPackEqualC()),
-                       vector.end());
-        }
+        // make it unique
+        vector.erase(std::unique(vector.begin(), vector.end(),
+                                 basics::VelocyPackHelper::VPackEqual()),
+                     vector.end());
 
         if (!opts.ascending) {
           // reverse what's left, if necessary
@@ -2936,11 +2924,7 @@ void RocksDBVPackIndex::warmupInternal(transaction::Methods* trx) {
     rocksdb::Slice key = it->key();
     TRI_ASSERT(objectId() == RocksDBKey::objectId(key));
     VPackSlice v = RocksDBKey::indexedVPack(key);
-    int cmp =
-        EngineSelectorFeature::legacyVPackSorting()
-            ? basics::VelocyPackHelper::compareLegacy(v, builder.slice(), true)
-            : basics::VelocyPackHelper::compareCorrectly(v, builder.slice(),
-                                                         true);
+    int cmp = basics::VelocyPackHelper::compare(v, builder.slice(), true);
     if (cmp != 0) {
       // index values are different. now do a lookup in cache/rocksdb
       builder.clear();
