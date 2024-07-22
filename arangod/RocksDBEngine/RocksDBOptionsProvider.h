@@ -29,16 +29,12 @@
 #include <rocksdb/table.h>
 #include <rocksdb/utilities/transaction_db.h>
 
-#include "Basics/VelocyPackHelper.h"
-#include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 
 namespace arangodb {
 
-using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
-
 struct RocksDBOptionsProvider {
-  RocksDBOptionsProvider(VelocyPackHelper::SortingMethod sortingMethod);
+  RocksDBOptionsProvider();
   virtual ~RocksDBOptionsProvider() = default;
 
   virtual rocksdb::TransactionDBOptions getTransactionDBOptions() const = 0;
@@ -46,6 +42,10 @@ struct RocksDBOptionsProvider {
   rocksdb::BlockBasedTableOptions const& getTableOptions() const;
   virtual rocksdb::ColumnFamilyOptions getColumnFamilyOptions(
       RocksDBColumnFamilyManager::Family family) const;
+  void resetVPackComparator(
+      std::unique_ptr<rocksdb::Comparator> newComparator) {
+    _vpackCmp.reset(newComparator.release());
+  }
 
   virtual bool useFileLogging() const noexcept { return false; }
   virtual bool limitOpenFilesAtStartup() const noexcept { return false; }

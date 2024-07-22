@@ -23,23 +23,18 @@
 
 #include "RocksDBEngine/RocksDBOptionsProvider.h"
 
+#include "Basics/VelocyPackHelper.h"
+#include "RocksDBEngine/RocksDBComparator.h"
 #include "RocksDBEngine/RocksDBPrefixExtractor.h"
 
 #include <rocksdb/slice_transform.h>
 
 namespace arangodb {
 
-RocksDBOptionsProvider::RocksDBOptionsProvider(
-    VelocyPackHelper::SortingMethod sortingMethod)
-    : _vpackCmp(nullptr) {
-  if (sortingMethod == VelocyPackHelper::SortingMethod::Legacy) {
-    _vpackCmp.reset(
-        new RocksDBVPackComparator<VelocyPackHelper::SortingMethod::Legacy>());
-  } else {
-    _vpackCmp.reset(
-        new RocksDBVPackComparator<VelocyPackHelper::SortingMethod::Correct>());
-  }
-}
+RocksDBOptionsProvider::RocksDBOptionsProvider()
+    : _vpackCmp(
+          std::make_unique<RocksDBVPackComparator<
+              arangodb::basics::VelocyPackHelper::SortingMethod::Correct>>()) {}
 
 rocksdb::Options const& RocksDBOptionsProvider::getOptions() const {
   if (!_options) {

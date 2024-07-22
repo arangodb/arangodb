@@ -225,6 +225,8 @@ uint64_t defaultMinWriteBufferNumberToMerge(uint64_t totalSize,
 
 RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
     : ArangodFeature{server, *this},
+      RocksDBOptionsProvider{
+          arangodb::basics::VelocyPackHelper::SortingMethod::Correct},
       // number of lock stripes for the transaction lock manager. we bump this
       // to at least 16 to reduce contention for small scale systems.
       _transactionLockStripes(

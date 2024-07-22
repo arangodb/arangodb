@@ -338,7 +338,8 @@ RocksDBEngine::RocksDBEngine(Server& server,
           metrics.add(rocksdb_cache_edge_compressed_inserts_total{})),
       _metricsEdgeCacheEmptyInserts(
           metrics.add(rocksdb_cache_edge_empty_inserts_total{})),
-      _legacyVPackSorting(false) {
+      _sortingMethod(
+          arangodb::basics::VelocyPackHelper::SortingMethod::Correct) {
   startsAfter<BasicFeaturePhaseServer>();
   // inherits order from StorageEngine but requires "RocksDBOption" that is
   // used to configure this engine
@@ -973,15 +974,22 @@ void RocksDBEngine::start() {
     // When we are getting here, the whole engine-rocksdb directory
     // did not exist when we got here. Therefore, we can use the correct
     // sorting behaviour in the RocksDBVPackComparator:
-    _legacyVPackSorting = false;
+    _sortingMethod = arangodb::basics::VelocyPackHelper::SortingMethod::Correct;
     // Now remember this decision by putting a `SORTING` file in the
     // database directory:
-    writeSortingFile(_legacyVPackSorting);
+    writeSortingFile(_sortingMethod);
   } else {
     // In this case the engine-rocksdb directory does already exist.
     // Therefore, we want to recognize the sorting behaviour in the
     // RocksDBVPackComparator:
-    _legacyVPackSorting = readSortingFile();
+    _sortingMethod = readSortingFile();
+  }
+  // Now fix the actual rocksdb Comparator, if we need to:
+  if (_sortingMethod ==
+      arangodb::basics::VelocyPackHelper::SortingMethod::Legacy) {
+    server().getFeature<RocksDBOptionFeature>().resetVPackComparator(
+        std::make_unique<RocksDBVPackComparator<
+            arangodb::basics::VelocyPackHelper::SortingMethod::Legacy>>());
   }
 
 #ifdef USE_SST_INGESTION
@@ -4176,10 +4184,13 @@ void RocksDBEngine::addCacheMetrics(uint64_t initial, uint64_t effective,
   }
 }
 
-void RocksDBEngine::writeSortingFile(bool legacyVPackSorting) {
+using SortingMethod = arangodb::basics::VelocyPackHelper::SortingMethod;
+
+void RocksDBEngine::writeSortingFile(SortingMethod sortingMethod) {
   auto& databasePathFeature = server().getFeature<DatabasePathFeature>();
   std::string path = databasePathFeature.subdirectoryName("SORTING");
-  std::string value = legacyVPackSorting ? "LEGACY" : "CORRECT";
+  std::string value =
+      sortingMethod == SortingMethod::Legacy ? "LEGACY" : "CORRECT";
   try {
     basics::FileUtils::spit(path, value, true);
   } catch (std::exception const& ex) {
@@ -4191,22 +4202,24 @@ void RocksDBEngine::writeSortingFile(bool legacyVPackSorting) {
   }
 }
 
-bool RocksDBEngine::readSortingFile() {
-  bool legacyVPackSorting = true;
+SortingMethod RocksDBEngine::readSortingFile() {
+  SortingMethod sortingMethod = SortingMethod::Legacy;
   auto& databasePathFeature = server().getFeature<DatabasePathFeature>();
   std::string path = databasePathFeature.subdirectoryName("SORTING");
   std::string value;
   try {
     basics::FileUtils::slurp(path, value);
-    legacyVPackSorting = (value == "LEGACY");
+    sortingMethod =
+        (value == "LEGACY") ? SortingMethod::Legacy : SortingMethod::Correct;
   } catch (std::exception const& ex) {
-    legacyVPackSorting = true;
+    sortingMethod = SortingMethod::Legacy;
     LOG_TOPIC("8ff0e", WARN, Logger::STARTUP)
         << "unable to read 'SORTING' file '" << path << "': " << ex.what()
         << ". This is expected directly after an upgrade but should then be "
            "rectified automatically for subsequent restarts.";
     // Now try to write SORTING file, but ignore errors:
-    std::string value = legacyVPackSorting ? "LEGACY" : "CORRECT";
+    std::string value =
+        sortingMethod == SortingMethod::Legacy ? "LEGACY" : "CORRECT";
     try {
       basics::FileUtils::spit(path, value, true);
     } catch (std::exception const& ex) {
@@ -4217,7 +4230,7 @@ bool RocksDBEngine::readSortingFile() {
              " will be used anyway.";
     }
   }
-  return legacyVPackSorting;
+  return sortingMethod;
 }
 
 }  // namespace arangodb
