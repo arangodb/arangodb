@@ -546,10 +546,10 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
       transaction::Methods* trx, RocksDBVPackIndex const* index,
       RocksDBKeyBounds&& bounds, std::shared_ptr<cache::Cache> cache,
       IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
-      RocksDBVPackIndexSearchValueFormat format)
+      RocksDBVPackIndexSearchValueFormat format, bool legacyVPackSorting)
       : IndexIterator(collection, trx, readOwnWrites),
         _index(index),
-        _cmp(static_cast<RocksDBVPackComparator const*>(index->comparator())),
+        _cmp(index->comparator()),
         _cache(std::static_pointer_cast<VPackIndexCacheType>(std::move(cache))),
         _maxCacheValueSize(_cache == nullptr ? 0 : _cache->maxCacheValueSize()),
         _resourceMonitor(monitor),
@@ -1170,7 +1170,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   static constexpr size_t expectedIteratorMemoryUsage = 8192;
 
   RocksDBVPackIndex const* _index;
-  RocksDBVPackComparator const* _cmp;
+  rocksdb::Comparator const* _cmp;
   std::unique_ptr<rocksdb::Iterator> _iterator;
   std::shared_ptr<VPackIndexCacheType> _cache;
   size_t const _maxCacheValueSize;

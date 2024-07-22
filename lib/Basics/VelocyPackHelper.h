@@ -110,10 +110,10 @@ class VelocyPackHelper {
   VelocyPackHelper() = delete;
   ~VelocyPackHelper() = delete;
 
+ public:
   // For templating:
   enum SortingMethod { Legacy = 0, Correct = 1 };
 
- public:
   /// @brief static initializer for all VPack values
   static void initialize();
 

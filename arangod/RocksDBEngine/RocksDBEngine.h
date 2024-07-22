@@ -570,8 +570,10 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
                              ::rocksdb::ColumnFamilyHandle* const metaCf)
       -> std::unique_ptr<replication2::storage::IStorageEngineMethods>;
 
-  // The following two methods throw if things go wrong:
+  // The following methods calls FATAL_ERROR_EXIT if things go wrong:
   void writeSortingFile(bool legacyVPackSorting);
+  // The following method returns what is detected for the sorting method.
+  // If no SORTING file is detected, a new one with "LEGACY" will be created.
   bool readSortingFile();
 
   RocksDBOptionsProvider const& _optionsProvider;

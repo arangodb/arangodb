@@ -29,8 +29,17 @@
 
 namespace arangodb {
 
-RocksDBOptionsProvider::RocksDBOptionsProvider()
-    : _vpackCmp(std::make_unique<RocksDBVPackComparator>()) {}
+RocksDBOptionsProvider::RocksDBOptionsProvider(
+    VelocyPackHelper::SortingMethod sortingMethod)
+    : _vpackCmp(nullptr) {
+  if (sortingMethod == VelocyPackHelper::SortingMethod::Legacy) {
+    _vpackCmp.reset(
+        new RocksDBVPackComparator<VelocyPackHelper::SortingMethod::Legacy>());
+  } else {
+    _vpackCmp.reset(
+        new RocksDBVPackComparator<VelocyPackHelper::SortingMethod::Correct>());
+  }
+}
 
 rocksdb::Options const& RocksDBOptionsProvider::getOptions() const {
   if (!_options) {
