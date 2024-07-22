@@ -488,13 +488,20 @@ struct AttributeAccessParts {
 struct VectorIndexRandomVector {
   double bParam;
   double wParam;
-  std::vector<double> v_param;
+  std::vector<double> Vparam;
 
   template<class Inspector>
   friend inline auto inspect(Inspector& f, VectorIndexRandomVector& x) {
-    return f.object(x).fields(f.field("bParam", x.bParam),
-                              f.field("wParam", x.wParam),
-                              f.field("vParam", x.v_param));
+    return f.object(x)
+        .fields(f.field("bParam", x.bParam), f.field("wParam", x.wParam),
+                f.field("vParam", x.Vparam))
+        .invariant([](VectorIndexRandomVector& x) -> inspection::Status {
+          if (x.wParam == 0) {
+            return {"Divisin by zero is undefined!"};
+          }
+
+          return inspection::Status::Success{};
+        });
   }
 };
 
