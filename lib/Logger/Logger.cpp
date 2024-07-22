@@ -74,8 +74,8 @@ static constexpr std::string_view DEBUG = "DEBUG";
 static constexpr std::string_view TRACE = "TRACE";
 static constexpr std::string_view UNKNOWN = "UNKNOWN";
 
-class DefaultLogGroup final : public LogGroup {
-  std::size_t id() const override { return 0; }
+struct DefaultLogGroup final : LogGroup {
+  DefaultLogGroup() : LogGroup(0) {}
 };
 DefaultLogGroup defaultLogGroupInstance;
 

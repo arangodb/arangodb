@@ -39,7 +39,9 @@
 #include "Enterprise/Audit/AuditFeature.h"
 #endif
 
-using namespace arangodb;
+namespace arangodb {
+
+static_assert(logger::kNumTopics < LogTopic::GLOBAL_LOG_TOPIC);
 
 namespace {
 
@@ -220,3 +222,5 @@ LogTopic::LogTopic(TopicName name, LogLevel level, size_t id)
 // instantiate them here
 template LogTopic::LogTopic(logger::topic::ArangoSearch);
 template LogTopic::LogTopic(logger::topic::LibIResearch);
+
+}  // namespace arangodb

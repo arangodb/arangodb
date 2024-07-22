@@ -22,6 +22,7 @@
 
 #include "Appenders.h"
 
+#include "Assertions/Assert.h"
 #include "Basics/StringUtils.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
@@ -43,54 +44,46 @@ constexpr std::string_view syslogPrefix("syslog://");
 void Appenders::addGlobalAppender(LogGroup const& group,
                                   std::shared_ptr<LogAppender> appender) {
   WRITE_LOCKER(guard, _appendersLock);
-  _globalAppenders[group.id()].emplace_back(std::move(appender));
+  _groups[group.id()].globalAppenders.emplace_back(std::move(appender));
 }
 
-void Appenders::addAppender(LogGroup const& group,
+void Appenders::addAppender(LogGroup const& logGroup,
                             std::string const& definition) {
-  std::string topicName;
-  std::string output;
-  LogTopic* topic = nullptr;
-  Result res = parseDefinition(definition, topicName, output, topic);
-
+  auto res = parseDefinition(definition);
   if (res.fail()) {
     LOG_TOPIC("658e0", ERR, Logger::FIXME) << res.errorMessage();
     return;
   }
 
-  auto key = output;
+  auto& config = res.get();
+  TRI_ASSERT(res->type != Type::Unknown);
 
-#ifdef ARANGODB_ENABLE_SYSLOG
-  if (output.starts_with(syslogPrefix)) {
-    key = syslogPrefix;
-  }
-#endif
+  auto key =
+      config.type == Type::Syslog ? std::string(syslogPrefix) : config.output;
 
   std::shared_ptr<LogAppender> appender;
 
   WRITE_LOCKER(guard, _appendersLock);
 
-  auto& definitionsMap = _definition2appenders[group.id()];
+  auto& group = _groups[logGroup.id()];
 
-  auto it = definitionsMap.find(key);
-
-  if (it != definitionsMap.end()) {
+  auto& definitionsMap = group.definition2appenders;
+  if (auto it = definitionsMap.find(key); it != definitionsMap.end()) {
     // found an existing appender
     appender = it->second;
   } else {
     // build a new appender from the definition
-    appender = buildAppender(group, output);
+    appender = buildAppender(logGroup, config);
     if (appender == nullptr) {
       // cannot create appender, for whatever reason
       return;
     }
-
-    definitionsMap[key] = appender;
+    definitionsMap.emplace(key, appender);
   }
 
   TRI_ASSERT(appender != nullptr);
 
-  auto& topicsMap = _topics2appenders[group.id()];
+  auto& topicsMap = group.topics2appenders;
   size_t n = (config.topic == nullptr) ? LogTopic::GLOBAL_LOG_TOPIC
                                        : config.topic->id();
   if (std::find(topicsMap[n].begin(), topicsMap[n].end(), appender) ==
@@ -100,53 +93,51 @@ void Appenders::addAppender(LogGroup const& group,
 }
 
 std::shared_ptr<LogAppender> Appenders::buildAppender(
-    LogGroup const& group, std::string const& output) {
-#ifdef ARANGODB_ENABLE_SYSLOG
-  // first handle syslog-logging
-  if (output.starts_with(syslogPrefix)) {
-    auto s =
-        basics::StringUtils::split(output.substr(syslogPrefix.size()), '/');
-    TRI_ASSERT(s.size() == 1 || s.size() == 2);
-
-    std::string identifier;
-
-    if (s.size() == 2) {
-      identifier = s[1];
-    }
-
-    return std::make_shared<LogAppenderSyslog>(s[0], identifier);
-  }
-#endif
-
-  if (output == "+" || output == "-") {
-    for (auto const& it : _definition2appenders[group.id()]) {
-      if (it.first == "+" || it.first == "-") {
-        // already got a logger for stderr/stdout
-        return nullptr;
+    LogGroup const& group, AppenderConfig const& config) {
+  switch (config.type) {
+    case Type::File:
+      return LogAppenderFileFactory::getFileAppender(
+          config.output.substr(filePrefix.size()));
+    case Type::Stderr:
+      TRI_ASSERT(config.output == "+");
+      if (!_groups[group.id()].definition2appenders.contains("+")) {
+        return std::make_shared<LogAppenderStderr>();
       }
+      // already got a logger for stderr
+      break;
+    case Type::Stdout:
+      TRI_ASSERT(config.output == "-");
+      if (!_groups[group.id()].definition2appenders.contains("-")) {
+        return std::make_shared<LogAppenderStdout>();
+      }
+      // already got a logger for stdout
+      break;
+    case Type::Syslog:
+#ifdef ARANGODB_ENABLE_SYSLOG
+    {
+      auto s = basics::StringUtils::split(
+          config.output.substr(syslogPrefix.size()), '/');
+      TRI_ASSERT(s.size() == 1 || s.size() == 2);
+
+      std::string identifier;
+      if (s.size() == 2) {
+        identifier = s[1];
+      }
+
+      return std::make_shared<LogAppenderSyslog>(s[0], identifier);
     }
+#endif
+    case Type::Unknown:
+      TRI_ASSERT(false);
   }
-
-  // everything else must be file-/stream-based logging
-  std::shared_ptr<LogAppenderStream> result;
-
-  if (output == "+") {
-    result = std::make_shared<LogAppenderStderr>();
-  } else if (output == "-") {
-    result = std::make_shared<LogAppenderStdout>();
-  } else if (output.starts_with(filePrefix)) {
-    result = LogAppenderFileFactory::getFileAppender(
-        output.substr(filePrefix.size()));
-  }
-
-  return result;
+  return nullptr;
 }
 
 void Appenders::logGlobal(LogGroup const& group, LogMessage const& message) {
   READ_LOCKER(guard, _appendersLock);
 
   try {
-    auto& appenders = _globalAppenders.at(group.id());
+    auto& appenders = _groups.at(group.id()).globalAppenders;
 
     // append to global appenders first
     for (auto const& appender : appenders) {
@@ -164,7 +155,7 @@ void Appenders::log(LogGroup const& group, LogMessage const& message) {
   // output to appenders
   READ_LOCKER(guard, _appendersLock);
   try {
-    auto& topicsMap = _topics2appenders.at(group.id());
+    auto& topicsMap = _groups.at(group.id()).topics2appenders;
     auto output = [&topicsMap](LogGroup const& group, LogMessage const& message,
                                size_t n) -> bool {
       bool shown = false;
@@ -211,10 +202,10 @@ void Appenders::shutdown() {
 #endif
   LogAppenderFileFactory::closeAll();
 
-  for (std::size_t i = 0; i < LogGroup::Count; ++i) {
-    _globalAppenders[i].clear();
-    _topics2appenders[i].clear();
-    _definition2appenders[i].clear();
+  for (auto& g : _groups) {
+    g.globalAppenders.clear();
+    g.topics2appenders.clear();
+    g.definition2appenders.clear();
   }
 }
 
@@ -224,25 +215,23 @@ void Appenders::reopen() {
   LogAppenderFileFactory::reopenAll();
 }
 
-Result Appenders::parseDefinition(std::string const& definition,
-                                  std::string& topicName, std::string& output,
-                                  LogTopic*& topic) {
-  topicName.clear();
-  output.clear();
-  topic = nullptr;
+ResultT<Appenders::AppenderConfig> Appenders::parseDefinition(
+    std::string const& definition) {
+  AppenderConfig result;
 
   // split into parts and do some basic validation
   std::vector<std::string> v = basics::StringUtils::split(definition, '=');
+  std::string topicName;
 
   if (v.size() == 1) {
-    output = v[0];
+    result.output = v[0];
   } else if (v.size() == 2) {
     topicName = basics::StringUtils::tolower(v[0]);
 
     if (topicName.empty()) {
-      output = v[0];
+      result.output = v[0];
     } else {
-      output = v[1];
+      result.output = v[1];
     }
   } else {
     return Result(
@@ -251,58 +240,59 @@ Result Appenders::parseDefinition(std::string const& definition,
   }
 
   if (!topicName.empty()) {
-    topic = LogTopic::lookup(topicName);
+    result.topic = LogTopic::lookup(topicName);
 
-    if (topic == nullptr) {
-      return Result(TRI_ERROR_BAD_PARAMETER, std::string("strange topic '") +
-                                                 topicName +
+    if (result.topic == nullptr) {
+      return Result(TRI_ERROR_BAD_PARAMETER, "strange topic '" + topicName +
                                                  "', ignoring whole defintion");
     }
   }
 
-  bool handled = false;
+  if (result.output == "+") {
+    result.type = Type::Stderr;
+  } else if (result.output == "-") {
+    result.type = Type::Stdout;
 #ifdef ARANGODB_ENABLE_SYSLOG
-  if (output.starts_with(syslogPrefix)) {
-    handled = true;
-    auto s =
-        basics::StringUtils::split(output.substr(syslogPrefix.size()), '/');
+  } else if (result.output.starts_with(syslogPrefix)) {
+    auto s = basics::StringUtils::split(
+        result.output.substr(syslogPrefix.size()), '/');
 
     if (s.size() < 1 || s.size() > 2) {
       return Result(TRI_ERROR_BAD_PARAMETER,
-                    std::string("unknown syslog definition '") + output +
+                    "unknown syslog definition '" + result.output +
                         "', expecting 'syslog://facility/identifier'");
     }
-  }
+    result.type = Type::Syslog;
 #endif
-
-  if (!handled) {
-    // not yet handled. must be a file-based logger now.
-    if (output != "+" && output != "-" && !output.starts_with(filePrefix)) {
-      return Result(TRI_ERROR_BAD_PARAMETER,
-                    std::string("unknown output definition '") + output + "'");
-    }
+  } else if (result.output.starts_with(filePrefix)) {
+    result.type = Type::File;
+  } else {
+    return Result(TRI_ERROR_BAD_PARAMETER,
+                  "unknown output definition '" + result.output + "'");
   }
 
-  return Result();
+  return result;
 }
 
-bool Appenders::haveAppenders(LogGroup const& group, size_t topicId) {
-  // It might be preferable if we could avoid the lock here, but ATM this is not
-  // possible. If this actually causes performance issues we have to think about
-  // other solutions.
+bool Appenders::haveAppenders(LogGroup const& logGroup, size_t topicId) {
+  // It might be preferable if we could avoid the lock here, but ATM this is
+  // not possible. If this actually causes performance issues we have to think
+  // about other solutions.
   READ_LOCKER(guard, _appendersLock);
+  auto& group = _groups.at(logGroup.id());
   try {
-    auto const& appenders = _topics2appenders.at(group.id());
+    auto const& appenders = group.topics2appenders;
     auto haveTopicAppenders = [&appenders](size_t topicId) {
       auto it = appenders.find(topicId);
       return it != appenders.end() && !it->second.empty();
     };
     return haveTopicAppenders(topicId) ||
            haveTopicAppenders(LogTopic::GLOBAL_LOG_TOPIC) ||
-           !_globalAppenders.at(group.id()).empty();
+           !group.globalAppenders.empty();
   } catch (std::out_of_range const&) {
     // no topic 2 appenders entry for this group.
-    TRI_ASSERT(false) << "no topic 2 appender match for group " << group.id();
+    TRI_ASSERT(false) << "no topic 2 appender match for group "
+                      << logGroup.id();
     // This should never happen, however if it does we should not crash
     // but we also cannot log anything, as we are the logger.
     return false;

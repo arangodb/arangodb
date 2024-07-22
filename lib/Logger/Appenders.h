@@ -23,13 +23,13 @@
 #pragma once
 
 #include <array>
-#include <map>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "Basics/ReadWriteLock.h"
-#include "Basics/Result.h"
+#include "Basics/ResultT.h"
 #include "Logger/LogGroup.h"
 
 namespace arangodb {
@@ -45,9 +45,6 @@ struct Appenders {
 
   void addGlobalAppender(LogGroup const&, std::shared_ptr<LogAppender>);
 
-  std::shared_ptr<LogAppender> buildAppender(LogGroup const&,
-                                             std::string const& output);
-
   void logGlobal(LogGroup const&, LogMessage const&);
   void log(LogGroup const&, LogMessage const&);
 
@@ -57,17 +54,33 @@ struct Appenders {
   bool haveAppenders(LogGroup const&, size_t topicId);
 
  private:
-  Result parseDefinition(std::string const& definition, std::string& topicName,
-                         std::string& output, LogTopic*& topic);
+  enum class Type {
+    Unknown,
+    File,
+    Stderr,
+    Stdout,
+    Syslog,
+  };
+
+  struct AppenderConfig {
+    std::string output;
+    LogTopic* topic = nullptr;
+    Type type = Type::Unknown;
+  };
+  ResultT<AppenderConfig> parseDefinition(std::string const& definition);
+
+  std::shared_ptr<LogAppender> buildAppender(LogGroup const&,
+                                             AppenderConfig const& config);
+
+  struct Group {
+    std::vector<std::shared_ptr<LogAppender>> globalAppenders;
+    std::unordered_map<size_t, std::vector<std::shared_ptr<LogAppender>>>
+        topics2appenders;
+    std::unordered_map<std::string, std::shared_ptr<LogAppender>>
+        definition2appenders;
+  };
 
   arangodb::basics::ReadWriteLock _appendersLock;
-  std::array<std::vector<std::shared_ptr<LogAppender>>, LogGroup::Count>
-      _globalAppenders;
-  std::array<std::map<size_t, std::vector<std::shared_ptr<LogAppender>>>,
-             LogGroup::Count>
-      _topics2appenders;
-  std::array<std::map<std::string, std::shared_ptr<LogAppender>>,
-             LogGroup::Count>
-      _definition2appenders;
+  std::array<Group, LogGroup::Count> _groups;
 };
 }  // namespace arangodb::logger
