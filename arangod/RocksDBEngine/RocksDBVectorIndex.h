@@ -25,6 +25,7 @@
 #include "Indexes/Index.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "VocBase/Identifiers/IndexId.h"
+#include "VocBase/Identifiers/LocalDocumentId.h"
 
 namespace arangodb {
 class LogicalCollection;
@@ -73,6 +74,9 @@ class RocksDBVectorIndex final : public RocksDBIndex {
                 OperationOptions const& /*options*/) override;
 
  private:
+  template<typename F>
+  Result processDocument(velocypack::Slice doc, LocalDocumentId id, F func);
+
   VectorIndexDefinition _definition;
 };
 

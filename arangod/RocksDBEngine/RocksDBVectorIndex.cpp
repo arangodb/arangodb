@@ -20,11 +20,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBVectorIndex.h"
+#include "Basics/voc-errors.h"
 #include "Inspection/VPack.h"
+#include "RocksDBEngine/RocksDBMethods.h"
 #include "RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Vector/LocalSensitiveHashing.h"
+#endif
 
 #include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/Value.h>
 #include "Indexes/Index.h"
@@ -59,25 +65,83 @@ void RocksDBVectorIndex::toVelocyPack(
   velocypack::serialize(builder, _definition);
 }
 
+// TODO Move away, also remove from MDIIndex.cpp
+auto accessDocumentPath(VPackSlice doc,
+                        std::vector<basics::AttributeName> const& path)
+    -> VPackSlice {
+  for (auto&& attrib : path) {
+    TRI_ASSERT(attrib.shouldExpand == false);
+    if (!doc.isObject()) {
+      return VPackSlice::noneSlice();
+    }
+
+    doc = doc.get(attrib.name);
+  }
+
+  return doc;
+}
+
+template<typename F>
+Result RocksDBVectorIndex::processDocument(velocypack::Slice doc,
+                                           LocalDocumentId documentId, F func) {
+  TRI_ASSERT(_fields.size() == 1);
+  VPackSlice value = accessDocumentPath(doc, _fields[0]);
+  std::vector<double> input;
+  input.reserve(_definition.dimensions);
+  if (auto res = velocypack::deserializeWithStatus(value, input); !res.ok()) {
+    return {TRI_ERROR_BAD_PARAMETER, res.error()};
+  }
+
+  if (input.size() != _definition.dimensions) {
+    // TODO Find better error code
+    return {TRI_ERROR_BAD_PARAMETER};
+  }
+  // TODO Maybe check all values withing <min, max>
+  auto hashes = calculateHashedStrings(_definition, input);
+  // prefix + hash + documentId
+  for (auto const& hashedString : hashes) {
+    RocksDBKey rocksdbKey;
+    rocksdbKey.constructVectorIndexValue(objectId(), hashedString, documentId);
+
+    auto status = func(rocksdbKey);
+    if (!status.ok()) {
+      return rocksutils::convertStatus(status);
+    }
+  }
+
+  return Result{};
+}
+
 /// @brief inserts a document into the index
 Result RocksDBVectorIndex::insert(transaction::Methods& trx,
-                                  RocksDBMethods* mthds,
+                                  RocksDBMethods* methods,
                                   LocalDocumentId documentId,
                                   velocypack::Slice doc,
                                   OperationOptions const& options,
                                   bool performChecks) {
-  // TODO
-  return Result();
+#ifdef USE_ENTERPRISE
+  return processDocument(doc, documentId, [this, &methods](auto const& key) {
+    auto value = RocksDBValue::VectorIndexValue();
+    return methods->PutUntracked(this->_cf, key, value.string());
+  });
+#else
+  return Result(TRI_ERROR_ONLY_ENTERPRISE);
+#endif
 }
 
 /// @brief removes a document from the index
 Result RocksDBVectorIndex::remove(transaction::Methods& trx,
-                                  RocksDBMethods* mthds,
+                                  RocksDBMethods* methods,
                                   LocalDocumentId documentId,
                                   velocypack::Slice doc,
                                   OperationOptions const& options) {
-  // TODO
-  return Result();
+#ifdef USE_ENTERPRISE
+  return processDocument(doc, documentId, [this, &methods](auto const& key) {
+    return methods->Delete(this->_cf, key);
+  });
+#else
+  return Result(TRI_ERROR_ONLY_ENTERPRISE);
+#endif
 }
 
 }  // namespace arangodb
