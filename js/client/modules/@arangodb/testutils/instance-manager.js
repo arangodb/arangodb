@@ -228,7 +228,7 @@ class instanceManager {
       }
     });
     if (count === 0) {
-      throw new Error(`no server matched your conditions to set failurepoint ${failurePoint}, ${shortName}, ${role}, ${url}`)
+      throw new Error(`no server matched your conditions to set failurepoint ${failurePoint}, ${shortName}, ${role}, ${url}`);
     }
     arango.reconnect(this.endpoint, dbName, oldUser, '');
   }
