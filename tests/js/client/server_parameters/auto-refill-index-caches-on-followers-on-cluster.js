@@ -120,7 +120,7 @@ function AutoRefillIndexCachesOnFollowers() {
   };
 }
 
-if (IM.debugCanUseFailAt() {
+if (IM.debugCanUseFailAt()) {
   // only execute if failure tests are available
   jsunity.run(AutoRefillIndexCachesOnFollowers);
 }

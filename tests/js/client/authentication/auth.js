@@ -201,7 +201,7 @@ function AuthSuite() {
       }
       try {
         IM.debugSetFailAt("QueryAllUsers");
-        debugSetFailAt("BootstrapFeature_not_ready");
+        IM.debugSetFailAt("BootstrapFeature_not_ready");
 
         users.reload();
 

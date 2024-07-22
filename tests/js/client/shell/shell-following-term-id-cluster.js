@@ -150,7 +150,7 @@ function followingTermIdSuite() {
         assertTrue(droppedFollowersAfter > droppedFollowersBefore, { droppedFollowersBefore, droppedFollowersAfter });
         
         switchConnectionToFollower(collInfo);
-        global.instanceManager.debugRemoveFailAt("synchronousReplication::refuseOnFollower", undefined, undefinedfollowerEndpoint);
+        global.instanceManager.debugRemoveFailAt("synchronousReplication::refuseOnFollower", undefined, undefined, followerEndpoint);
 
         // wait for everything to get back into sync
         switchConnectionToCoordinator(collInfo);

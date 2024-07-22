@@ -49,6 +49,7 @@ const {
   getEndpointById,
   getCoordinators
 } = require('@arangodb/test-helper');
+const { instanceRole } = require("@arangodb/testutils/instance");
 let IM = global.instanceManager;
 
 // in the `useData` case, use this many documents:

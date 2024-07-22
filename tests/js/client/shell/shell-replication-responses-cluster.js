@@ -205,7 +205,7 @@ function followerResponsesSuite() {
   };
 }
 
-if (global.instanceManager.debugCanUseFailAt(ep[0])) {
+if (global.instanceManager.debugCanUseFailAt()) {
   jsunity.run(followerResponsesSuite);
 }
 return jsunity.done();

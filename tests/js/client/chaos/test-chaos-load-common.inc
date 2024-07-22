@@ -310,7 +310,6 @@ function BaseChaosSuite(testOpts) {
         IM.debugSetFailAt("Query::setupTimeout", undefined, instanceRole.coordinator);
         IM.debugSetFailAt("Query::setupTimeoutFailSequence", undefined, instanceRole.coordinator);
         IM.debugSetFailAt("lowCountCacheTimeout", undefined, instanceRole.coordinator);
-        }
       }
       if (testOpts.withDelays) {
         IM.debugSetFailAt("TransactionChaos::blockerOnSync", undefined, instanceRole.dbServer);

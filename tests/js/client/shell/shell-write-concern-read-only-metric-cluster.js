@@ -45,7 +45,7 @@ function WriteConcernReadOnlyMetricSuite() {
     },
 
     tearDown: function () {
-      global.instanceManager.clearAllFailurePoints();
+      global.instanceManager.debugClearFailAt();
       db._useDatabase("_system");
       db._dropDatabase(database);
     },
@@ -73,7 +73,7 @@ function WriteConcernReadOnlyMetricSuite() {
       metricValue = getMetric(getUrlById(leader), "arangodb_vocbase_shards_read_only_by_write_concern");
       assertEqual(metricValue, 1); // one shard does not have enough in sync follower
 
-      clearAllFailurePoints();
+      global.instanceManager.debugClearFailAt();
       waitForShardsInSync(c.name());
 
       metricValue = getMetric(getUrlById(leader), "arangodb_vocbase_shards_read_only_by_write_concern");
