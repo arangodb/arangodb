@@ -445,6 +445,9 @@ int compareUInt64Double(uint64_t u, double d) {
   // IEEE 754 double can store 53 bits of precision. Therefore, we can
   // accomodate clz+53 bits in the double (which could be all 64 bits!).
   // We can then mask the low bits out and do a static cast:
+  //  u    = 0 ... 0 1 ? ... ? 1 0 ... 0
+  //         \ clz / \  <= 53  / \rbits/
+  //  mask = 0 ...         ... 0 1 ... 1
   auto clz = std::countl_zero(u);
   auto rbits = 64 - std::min(64, clz + 53);
   auto const mask = (std::uint64_t{1} << rbits) - 1;
