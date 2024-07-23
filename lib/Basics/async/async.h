@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Basics/async/registry.hpp"
 #include "Basics/expected.h"
 #include <coroutine>
 #include <atomic>
@@ -15,8 +16,11 @@ template<typename T>
 struct async;
 
 template<typename T>
-struct async_promise_base {
+struct async_promise_base : coroutine::PromiseInList {
   using promise_type = async_promise<T>;
+
+  async_promise_base(std::source_location loc)
+      : PromiseInList(std::move(loc)) {}
 
   std::suspend_never initial_suspend() noexcept { return {}; }
   auto final_suspend() noexcept {
@@ -42,6 +46,7 @@ struct async_promise_base {
   }
   void unhandled_exception() { _value.set_exception(std::current_exception()); }
   auto get_return_object() {
+    coroutine::promises.add(this);
     return async<T>{std::coroutine_handle<promise_type>::from_promise(
         *static_cast<promise_type*>(this))};
   }
@@ -52,6 +57,8 @@ struct async_promise_base {
 
 template<typename T>
 struct async_promise : async_promise_base<T> {
+  async_promise(std::source_location loc = std::source_location::current())
+      : async_promise_base<T>(std::move(loc)) {}
   template<typename V = T>
   void return_value(V&& v) {
     async_promise_base<T>::_value.emplace(std::forward<V>(v));
@@ -60,6 +67,8 @@ struct async_promise : async_promise_base<T> {
 
 template<>
 struct async_promise<void> : async_promise_base<void> {
+  async_promise(std::source_location loc = std::source_location::current())
+      : async_promise_base<void>(std::move(loc)) {}
   void return_void() { async_promise_base<void>::_value.emplace(); }
 };
 
@@ -107,7 +116,10 @@ struct async {
   bool valid() const noexcept { return _handle != nullptr; }
   operator bool() const noexcept { return valid(); }
 
-  ~async() { reset(); }
+  ~async() {
+    // TODO add to free list
+    reset();
+  }
 
   explicit async(std::coroutine_handle<promise_type> h) : _handle(h) {}
 
