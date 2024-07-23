@@ -52,7 +52,7 @@ class RocksDBVPackComparator final : public rocksdb::Comparator {
   }
 
   // SECTION: API compatibility
-  char const* Name() const override;
+  char const* Name() const override { return "RocksDBVPackComparator"; }
   void FindShortestSeparator(std::string*,
                              rocksdb::Slice const&) const override {}
   void FindShortSuccessor(std::string*) const override {}
