@@ -1,8 +1,10 @@
 target_sources(arangodbtests
   PRIVATE
+  AsyncTest.cpp
   ConversionsTest.cpp
   CsvTest.cpp
   datetime.cpp
+  ExpectedTests.cpp
   FilesTest.cpp
   FpConvTest.cpp
   FutureSharedLockTest.cpp
