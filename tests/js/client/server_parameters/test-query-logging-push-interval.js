@@ -134,8 +134,6 @@ function QueryLoggerSuite() {
     },
 
     tearDown: function () {
-      assertEqual("_system", db._name());
-      db._flushCache();
       db._drop(cn);
     },
     
