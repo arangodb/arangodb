@@ -39,3 +39,10 @@ target_sources(arangodbtests
   TypeListTests.cpp
   UnshackledMutexTest.cpp
   VelocyPackHelperTest.cpp)
+
+# added for testing purpose
+add_executable(coro-registry
+	CoroutineRegistry.cpp)
+target_link_libraries(coro-registry
+	arango_crashhandler_light
+	arango_assertions)
