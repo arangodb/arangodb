@@ -22,7 +22,7 @@
 #pragma once
 
 #include "RocksDBIndex.h"
-#include "Indexes/Index.h"
+#include "Indexes/VectorIndexDefinition.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"

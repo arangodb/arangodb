@@ -92,7 +92,9 @@ if (USE_ENTERPRISE)
   target_include_directories(arango_rocksdb PUBLIC
     ${IRESEARCH_INCLUDE})
   target_link_libraries(arango_rocksdb
-    arango_rclone)
+    arango_rclone 
+    arango_lsh
+  )
 endif()
 
 if ((CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_CLANG) AND ARCH_AMD64)

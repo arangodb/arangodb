@@ -483,63 +483,6 @@ struct AttributeAccessParts {
   aql::AstNodeType opType;
 };
 
-struct VectorIndexRandomVector {
-  double bParam;
-  double wParam;
-  std::vector<double> Vparam;
-
-  template<class Inspector>
-  friend inline auto inspect(Inspector& f, VectorIndexRandomVector& x) {
-    return f.object(x)
-        .fields(f.field("bParam", x.bParam), f.field("wParam", x.wParam),
-                f.field("vParam", x.Vparam))
-        .invariant([](VectorIndexRandomVector& x) -> inspection::Status {
-          if (x.wParam == 0) {
-            return {"Divisin by zero is undefined!"};
-          }
-
-          return inspection::Status::Success{};
-        });
-  }
-};
-
-struct VectorIndexDefinition {
-  std::size_t dimensions;
-  double min;
-  double max;
-  std::size_t Kparameter;
-  std::size_t Lparameter;
-  std::vector<VectorIndexRandomVector> randomFunctions;
-
-  template<class Inspector>
-  friend inline auto inspect(Inspector& f, VectorIndexDefinition& x) {
-    return f.object(x)
-        .fields(f.field("dimensions", x.dimensions), f.field("min", x.min),
-                f.field("max", x.max), f.field("Kparameter", x.Kparameter),
-                f.field("Lparameter", x.Lparameter),
-                f.field("randomFunctions", x.randomFunctions))
-        .invariant([](VectorIndexDefinition& x) -> inspection::Status {
-          if (x.dimensions < 1) {
-            return {"Dimensions must be greater then 0!"};
-          }
-          if (x.Kparameter < 1) {
-            return {"K parameter must be greater then 0!"};
-          }
-          if (x.Lparameter < 1) {
-            return {"L parameter must be greater then 0!"};
-          }
-          if (x.min > x.max) {
-            return {"Min cannot be greater then max!"};
-          }
-          if (x.randomFunctions.size() != x.Kparameter * x.Lparameter) {
-            return fmt::format("Number of `randomFunctions` must be equal {}!",
-                               x.Kparameter * x.Lparameter);
-          }
-          return inspection::Status::Success{};
-        });
-  }
-};
-
 }  // namespace arangodb
 
 std::ostream& operator<<(std::ostream&, arangodb::Index const*);
