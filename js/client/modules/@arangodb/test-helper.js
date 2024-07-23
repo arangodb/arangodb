@@ -68,7 +68,7 @@ exports.flushInstanceInfo = () => {
   instanceManager = null;
 };
 
-function getInstanceInfo() {
+exports.getInstanceInfo = function() {
   if (global.hasOwnProperty('instanceManager')) {
     return global.instanceManager;
   }

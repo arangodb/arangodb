@@ -170,8 +170,8 @@ class instanceManager {
     this.cleanup = struct['cleanup'];
     struct['arangods'].forEach(arangodStruct => {
       let oneArangod = new inst.instance(this.options, '', {}, {}, '', '', '', this.agencyMgr, this.tmpDir);
-      this.arangods.push(oneArangod);
       oneArangod.setFromStructure(arangodStruct);
+      this.arangods.push(oneArangod);
       if (oneArangod.isAgent()) {
         this.agencyMgr.agencyInstances.push(oneArangod);
       }
@@ -196,7 +196,10 @@ class instanceManager {
     return ret;
   }
   rememberConnection() {
-    this.dbName = db._name();
+    this.dbName = '_system';
+    try {
+      this.dbName = db._name();
+    } catch (e) {}
     this.userName = arango.connectedUser();
   }
   reconnectMe() {

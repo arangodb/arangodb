@@ -33,7 +33,8 @@ const request = require('@arangodb/request');
 const crypto = require('@arangodb/crypto');
 const expect = require('chai').expect;
 const ERRORS = require('internal').errors;
-let IM = global.instanceManager;
+
+let IM = require('@arangodb/test-helper').getInstanceInfo();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
