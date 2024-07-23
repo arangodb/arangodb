@@ -32,7 +32,6 @@
 #include "Basics/operating-system.h"
 #include "Basics/process-utils.h"
 #include "Basics/signals.h"
-#include "Logger/LogAppender.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -55,7 +54,7 @@ using namespace arangodb::basics;
 
 namespace {
 
-static void ReopenLog(int) { LogAppender::reopen(); }
+static void ReopenLog(int) { Logger::reopen(); }
 }  // namespace
 
 ArangoGlobalContext* ArangoGlobalContext::CONTEXT = nullptr;
