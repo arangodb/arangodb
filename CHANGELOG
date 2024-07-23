@@ -1,6 +1,9 @@
 devel
 -----
 
+* Include LANGUAGE file in hotbackups. This is necessary to be able to detect
+  locale changes across a hotbackup create/restore process.
+
 * Fix sorting behaviour of VelocyPack values w.r.t. numbers. This has an
   impact on indexes indexing VPackValues. Therefore, after an upgrade the 
   old sorting order will be retained to allow smooth upgrades. Newly started
@@ -10,10 +13,6 @@ devel
 * Add optimizer rule `push-limit-into-index` that pushes a limit down
   into index iteration and can optimize the query execution when compound
   index is used along with SORT and LIMIT clauses.
-
-* Add optimizer rule `push-limit-into-index` that pushes a limit down into index
-  iteration and can optimize the query execution when compound index is used
-  along with SORT and LIMIT clauses.
 
 * FE-423: Add a progress bar to reflect an index creation process.
 
