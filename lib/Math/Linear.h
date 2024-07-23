@@ -23,11 +23,13 @@
 
 #include <vector>
 
+#include "Assertions/Assert.h"
+
 namespace arangodb {
 
 template<typename T>
 T dotProduct(std::vector<T> const& lhs, std::vector<T> const& rhs) {
-  TRI_ASSERT(lhs.size() == rhs.size());
+  TRI_ASSERT(lhs.size() == rhs.size()) << lhs.size() << " != " << rhs.size();
   T result{0};
   for (std::size_t i{0}; i < lhs.size(); ++i) {
     result += lhs[i] * rhs[i];

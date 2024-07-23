@@ -43,7 +43,7 @@ struct VectorIndexRandomVector {
                 f.field("vParam", x.Vparam))
         .invariant([](VectorIndexRandomVector& x) -> inspection::Status {
           if (x.wParam == 0) {
-            return {"Divisin by zero is undefined!"};
+            return {"Division by zero is undefined!"};
           }
 
           return inspection::Status::Success{};
