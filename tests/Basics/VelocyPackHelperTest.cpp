@@ -638,3 +638,64 @@ TEST(VPackHelperTest, test_signed_double_comparison) {
   EXPECT_EQ(-1, comp(d, i + 1));
   EXPECT_EQ(1, comp(i + 1, d));
 }
+
+template<typename A, typename B>
+static inline int compGeneric(A a, B b) {
+  VPackBuilder Ba = makeVPack(a);
+  VPackBuilder Bb = makeVPack(b);
+  return VelocyPackHelper::compare(Ba.slice(), Bb.slice(), true);
+}
+
+TEST(VPackHelperTest, test_generic_uses_correct_numerical_comparison) {
+  // Test large non-representable value:
+  double d = ldexp(1.0, 60);
+  uint64_t u = uint64_t{1} << 60;
+  EXPECT_EQ(0, compGeneric(d, u));
+  EXPECT_EQ(0, compGeneric(u, d));
+  // d+1.0 is equal to d here due to limited precision!
+  EXPECT_EQ(-1, compGeneric(d + 1.0, u + 1));
+  EXPECT_EQ(1, compGeneric(u + 1, d + 1.0));
+
+  // Test another large non-representable value:
+  d = -ldexp(1.0, 60);
+  int64_t i = -(int64_t{1} << 60);
+  EXPECT_EQ(0, compGeneric(d, i));
+  EXPECT_EQ(0, compGeneric(i, d));
+  // d+1.0 is equal to d here due to limited precision!
+  EXPECT_EQ(-1, compGeneric(d + 1.0, i + 1));
+  EXPECT_EQ(1, compGeneric(i + 1, d + 1.0));
+
+  // Now compare signed and unsigned:
+  u = uint64_t{1} << 60;
+  i = int64_t{1} << 60;
+  EXPECT_EQ(0, compGeneric(u, i));
+  EXPECT_EQ(0, compGeneric(i, u));
+  EXPECT_EQ(0, compGeneric(u + 1, i + 1));
+  EXPECT_EQ(0, compGeneric(i + 1, u + 1));
+  EXPECT_EQ(0, compGeneric(u - 1, i - 1));
+  EXPECT_EQ(0, compGeneric(i - 1, u - 1));
+  EXPECT_EQ(1, compGeneric(u + 1, i));
+  EXPECT_EQ(-1, compGeneric(i, u + 1));
+  EXPECT_EQ(-1, compGeneric(u - 1, i));
+  EXPECT_EQ(1, compGeneric(i, u - 1));
+  EXPECT_EQ(1, compGeneric(i + 1, u));
+  EXPECT_EQ(-1, compGeneric(u, i + 1));
+  EXPECT_EQ(-1, compGeneric(i - 1, u));
+  EXPECT_EQ(1, compGeneric(u, i - 1));
+}
+
+// So far we do not actually use UTCDate, but for the sake of completeness
+// we check if things work as expected:
+
+TEST(VPackHelperTest, test_UTCDate) {
+  // Test large non-representable value:
+  double d = ldexp(1.0, 60);
+  uint64_t u = uint64_t{1} << 60;
+  int64_t i = int64_t{1} << 60;
+  EXPECT_EQ(0, compGeneric(d, VPackValue(i, VPackValueType::UTCDate)));
+  EXPECT_EQ(0, compGeneric(VPackValue(i, VPackValueType::UTCDate), d));
+  EXPECT_EQ(0, compGeneric(u, VPackValue(i, VPackValueType::UTCDate)));
+  EXPECT_EQ(0, compGeneric(VPackValue(i, VPackValueType::UTCDate), u));
+  EXPECT_EQ(0, compGeneric(i, VPackValue(i, VPackValueType::UTCDate)));
+  EXPECT_EQ(0, compGeneric(VPackValue(i, VPackValueType::UTCDate), i));
+}

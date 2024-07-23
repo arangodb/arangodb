@@ -581,7 +581,7 @@ int VelocyPackHelper::compareNumberValuesCorrectly(VPackValueType lhsType,
       rhst = Type::kDouble;
       break;
     case VPackValueType::UTCDate:
-      r.i = lhs.getUTCDate();
+      r.i = rhs.getUTCDate();
       rhst = Type::kSignedIntegral;
       break;
     default:    // does not happen, just to please the compiler!
@@ -591,17 +591,17 @@ int VelocyPackHelper::compareNumberValuesCorrectly(VPackValueType lhsType,
   }
 
   switch (lhst + rhst * Type::kNumTypes) {
-    case kUnsignedIntegral + kSignedIntegral * Type::kNumTypes:
+    case kUnsignedIntegral + kSignedIntegral* Type::kNumTypes:
       return -compareInt64UInt64(r.i, l.u);
-    case kDouble + kSignedIntegral * Type::kNumTypes:
+    case kDouble + kSignedIntegral* Type::kNumTypes:
       return -compareInt64Double(r.i, l.d);
-    case kSignedIntegral + kUnsignedIntegral * Type::kNumTypes:
+    case kSignedIntegral + kUnsignedIntegral* Type::kNumTypes:
       return compareInt64UInt64(l.i, r.u);
-    case kDouble + kUnsignedIntegral * Type::kNumTypes:
+    case kDouble + kUnsignedIntegral* Type::kNumTypes:
       return -compareUInt64Double(r.u, l.d);
-    case kSignedIntegral + kDouble * Type::kNumTypes:
+    case kSignedIntegral + kDouble* Type::kNumTypes:
       return compareInt64Double(l.i, r.d);
-    case kUnsignedIntegral + kDouble * Type::kNumTypes:
+    case kUnsignedIntegral + kDouble* Type::kNumTypes:
       return compareUInt64Double(l.u, r.d);
     default:  // does not happen!
       TRI_ASSERT(false);
