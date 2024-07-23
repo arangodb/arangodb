@@ -410,14 +410,14 @@ function transactionIntermediateCommitsMultiSuite() {
   return {
 
     setUp: function () {
-      IM.debugClearFailAt(undefined, instanceRole.dbServer);
+      IM.debugClearFailAt(undefined, undefined, instanceRole.dbServer);
       db._drop(cn + "1");
       db._drop(cn + "2");
       isReplication2 = db._properties().replicationVersion === "2";
     },
 
     tearDown: function () {
-      IM.debugClearFailAt(undefined, instanceRole.dbServer);
+      IM.debugClearFailAt(undefined, undefined, instanceRole.dbServer);
       db._drop(cn + "1");
       db._drop(cn + "2");
     },
