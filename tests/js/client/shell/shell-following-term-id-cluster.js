@@ -30,6 +30,7 @@ let internal = require('internal');
 let arangodb = require('@arangodb');
 let db = arangodb.db;
 let { getMetric, waitForShardsInSync } = require('@arangodb/test-helper');
+let IM = global.instanceManager;
 
 function getEndpointAndIdMap() {
   const health = arango.GET("/_admin/cluster/health").Health;
@@ -122,7 +123,7 @@ function followingTermIdSuite() {
       let followerEndpoint = collInfo.endpointMap[collInfo.follower];
       let leaderEndpoint = collInfo.endpointMap[collInfo.leader];
 
-      if (!global.instanceManager.debugCanUseFailAt()) {
+      if (!IM.debugCanUseFailAt()) {
         // test only works if we can use failure points
         return;
       }
@@ -134,12 +135,12 @@ function followingTermIdSuite() {
         switchConnectionToFollower(collInfo);
         // this failure point makes a follower refuse every operation sent by the leader
         // via synchronous replication
-        global.instanceManager.debugSetFailAt("synchronousReplication::refuseOnFollower", undefined, undefined, followerEndpoint);
+        IM.debugSetFailAt("synchronousReplication::refuseOnFollower", undefined, undefined, followerEndpoint);
         // this failure point makes the follower not send the "wantFollowingTermId" as part
         // of the synchronization protocol
-        global.instanceManager.debugSetFailAt("synchronousReplication::dontSendWantFollowingTerm", undefined, undefined, followerEndpoint);
+        IM.debugSetFailAt("synchronousReplication::dontSendWantFollowingTerm", undefined, undefined, followerEndpoint);
         
-        let droppedFollowersBefore = getMetric("arangodb_dropped_followers_total", undefined, undefined, leaderEndpoint);
+        let droppedFollowersBefore = getMetric(leaderEndpoint, "arangodb_dropped_followers_total");
      
         switchConnectionToCoordinator(collInfo);
         let c = db._collection(cn);
@@ -150,7 +151,7 @@ function followingTermIdSuite() {
         assertTrue(droppedFollowersAfter > droppedFollowersBefore, { droppedFollowersBefore, droppedFollowersAfter });
         
         switchConnectionToFollower(collInfo);
-        global.instanceManager.debugRemoveFailAt("synchronousReplication::refuseOnFollower", undefined, undefined, followerEndpoint);
+        IM.debugRemoveFailAt("synchronousReplication::refuseOnFollower", undefined, undefined, followerEndpoint);
 
         // wait for everything to get back into sync
         switchConnectionToCoordinator(collInfo);
@@ -165,7 +166,7 @@ function followingTermIdSuite() {
         
       } finally {
         switchConnectionToFollower(collInfo);
-        global.instanceManager.debugClearFailAt();
+        IM.debugClearFailAt();
 
         switchConnectionToCoordinator(collInfo);
       }
@@ -177,7 +178,7 @@ function followingTermIdSuite() {
       let followerEndpoint = collInfo.endpointMap[collInfo.follower];
       let leaderEndpoint = collInfo.endpointMap[collInfo.leader];
 
-      if (!global.instanceManager.debugCanUseFailAt()) {
+      if (!IM.debugCanUseFailAt()) {
         // test only works if we can use failure points
         return;
       }
@@ -190,10 +191,10 @@ function followingTermIdSuite() {
 
         // this failure point makes a follower refuse every operation sent by the leader
         // via synchronous replication
-        global.instanceManager.debugSetFailAt("synchronousReplication::refuseOnFollower", undefined, undefined, followerEndpoint);
+        IM.debugSetFailAt("synchronousReplication::refuseOnFollower", undefined, undefined, followerEndpoint);
         // this failure point makes the follower reject all synchronous replication requests
         // that do not have a following term id
-        global.instanceManager.debugSetFailAt("synchronousReplication::expectFollowingTerm", undefined, undefined, followerEndpoint);
+        IM.debugSetFailAt("synchronousReplication::expectFollowingTerm", undefined, undefined, followerEndpoint);
         
         let droppedFollowersBefore = getMetric(leaderEndpoint, "arangodb_dropped_followers_total");
      
@@ -206,7 +207,7 @@ function followingTermIdSuite() {
         assertTrue(droppedFollowersAfter > droppedFollowersBefore, { droppedFollowersBefore, droppedFollowersAfter });
         
         switchConnectionToFollower(collInfo);
-        global.instanceManager.debugRemoveFailAt("synchronousReplication::refuseOnFollower", undefined, undefined, followerEndpoint);
+        IM.debugRemoveFailAt("synchronousReplication::refuseOnFollower", undefined, undefined, followerEndpoint);
 
         // wait for everything to get back into sync
         switchConnectionToCoordinator(collInfo);
@@ -230,7 +231,7 @@ function followingTermIdSuite() {
         
       } finally {
         switchConnectionToFollower(collInfo);
-        global.instanceManager.debugClearFailAt();
+        IM.debugClearFailAt();
         switchConnectionToCoordinator(collInfo);
       }
     },
